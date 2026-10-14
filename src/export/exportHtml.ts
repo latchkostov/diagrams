@@ -1,3 +1,5 @@
+import { t } from "../i18n";
+import { formatBytes } from "../i18n/format";
 import { templatePath } from "virtual:interactive-viewer";
 import type { DiagramFile } from "../model/types";
 import { iconUrl } from "../stencils/registry";
@@ -30,8 +32,7 @@ export type HtmlExportOptions = Omit<ExportInput, "diagram" | "iconSvgs" | "expo
 /** The template, relative to the page, so a build served from a sub-path finds its own. */
 const loadTemplate = loadOnce(async () => {
   const res = await fetch(new URL(templatePath, document.baseURI));
-  if (!res.ok)
-    throw new Error(`The viewer couldn't be downloaded (${res.status}). Check your connection and try again.`);
+  if (!res.ok) throw new Error(t("htmlExport.theViewerCouldntBeDownloadedValue0Check", { value0: res.status }));
   return res.text();
 });
 
@@ -83,16 +84,23 @@ export async function downloadInteractiveHtml(
 /** The dialog's Download: the file, with progress and the outcome in a toast (never a thrown error). */
 export async function exportInteractiveHtml(diagram: DiagramFile, options: HtmlExportOptions): Promise<void> {
   const locked = options.password !== undefined;
-  const busy = toast.busy(locked ? "Encrypting the HTML file…" : "Making the HTML file…");
+  const busy = toast.busy(locked ? t("htmlExport.encryptingTheHTMLFile") : t("htmlExport.makingTheHTMLFile"));
   try {
     const { name, bytes } = await downloadInteractiveHtml(diagram, options);
     toast.dismiss(busy);
-    const who = locked
-      ? "Only people with the password can open it. Send the password separately."
-      : "Anyone who has it can open it.";
-    toast.success(`Exported “${name}” (${Math.max(1, Math.round(bytes / 1000))} kB). ${who}`);
+    toast.success(
+      t("htmlExport.exported", {
+        name,
+        size: formatBytes(bytes, { unit: "kilobyte" }),
+        locked: locked ? "yes" : "no",
+      }),
+    );
   } catch (err) {
     toast.dismiss(busy);
-    toast.error(`Couldn't export the interactive HTML. ${err instanceof Error ? err.message : String(err)}`);
+    toast.error(
+      t("htmlExport.couldntExportTheInteractiveHTMLValue0", {
+        value0: err instanceof Error ? err.message : String(err),
+      }),
+    );
   }
 }

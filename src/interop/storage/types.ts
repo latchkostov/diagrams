@@ -8,6 +8,15 @@ import type { GlyphName } from "../ui/glyphs";
 // own reference to a file. For the device it's a file handle (kept in memory); for every other
 // provider it's plain JSON, stored with the document so Save goes back to the same file.
 
+/** Stable identifiers used by every cloud client and message selector. */
+export type CloudOperation =
+  | "read_the_file_details"
+  | "download_the_file"
+  | "save_the_file"
+  | "update_the_file"
+  | "list_your_diagrams"
+  | "read_the_file";
+
 export type ProviderId = "device" | "gdrive" | "onedrive" | "dropbox" | "test";
 
 /** A file read from a provider. */

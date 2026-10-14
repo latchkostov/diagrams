@@ -42,7 +42,12 @@
     },
     "backlog": { "use": "achterstand", "match": ["achterstand", "backlog"] },
     "retry": { "use": "nieuwe poging", "match": ["opnieuw", "poging"], "note": "The Retry button: Opnieuw proberen" },
-    "diagram": { "use": "diagram", "match": ["diagram"] },
+    "diagram": {
+      "use": "diagram",
+      "match": ["diagram"],
+      "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"],
+      "note": "Diagrams in these cloud errors is the existing folder name."
+    },
     "node": { "use": "knooppunt", "match": ["knooppunt"] },
     "edge": {
       "use": "verbinding",

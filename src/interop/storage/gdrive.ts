@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import { driveEnabled, NATIVE_MIME } from "../gdrive/config";
 import { driveClient, getDriveToken, pickDriveFile, preloadDrive, signOutDrive } from "../gdrive/google";
 import type { StorageProvider } from "./types";
@@ -12,6 +13,7 @@ let signedIn = false;
 
 export const gdriveProvider: StorageProvider<DriveRef> = {
   id: "gdrive",
+  // eslint-disable-next-line local/no-literal-ui-text -- provider brand or test fixture name
   label: "Google Drive",
   icon: "drive",
   isConfigured: () => driveEnabled,
@@ -31,7 +33,7 @@ export const gdriveProvider: StorageProvider<DriveRef> = {
     const picked = await pickDriveFile();
     signedIn = true;
     if (!picked) return undefined;
-    const done = ctx.progress(`Opening ${picked.name}…`);
+    const done = ctx.progress(t("cloud.openingValue0", { value0: picked.name }));
     const file = await driveClient().download(picked.id);
     done();
     return { name: file.name, text: file.text, ref: { id: file.id } };

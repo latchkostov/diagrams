@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { state } from "./index";
-import { formatDate, formatDuration, formatList, formatNumber, formatPercent, formatRate } from "./format";
+import { formatBytes, formatDate, formatDuration, formatList, formatNumber, formatPercent, formatRate } from "./format";
 
 // Numbers, units, rates, percentages, dates and lists in the current language (./format.ts), all through Intl.
 
@@ -12,6 +12,15 @@ afterEach(() => as("en"));
 const spaces = (s: string) => s.replace(/\s/g, " ");
 
 describe("formatting for the language", () => {
+  it("file sizes use localized decimal units and numbers", () => {
+    expect(formatBytes(1250)).toBe("1 kB");
+    expect(formatBytes(0)).toBe("1 kB");
+    expect(formatBytes(100_000)).toBe("0.1 MB");
+    as("de");
+    expect(formatBytes(1250000)).toBe("1,3 MB");
+    as("ar");
+    expect(formatBytes(1250000)).toBe("1.3 م.ب");
+  });
   it("numbers", () => {
     expect(formatNumber(1234.5)).toBe("1,234.5");
     as("de");

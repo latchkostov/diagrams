@@ -1,3 +1,4 @@
+import { formatImportMessage } from "../ui/importMessages";
 import { describe, expect, it } from "vitest";
 import type { DiagramFile } from "../../model/types";
 import type { ImportOutcome } from "../formats";
@@ -74,7 +75,9 @@ describe("big imports: the boundaries with the most flows, and a picker", () => 
     expect(diagram.nodes.length).toBe(drawn.length * 11);
     expect(diagram.groups?.map((g) => g.label).sort()).toEqual(drawn.map((g) => g.label).sort());
     expect(report.nodes).toBe(diagram.nodes.length);
-    expect(report.summary).toMatch(new RegExp(`^Imported “.*” from Kubernetes: ${diagram.nodes.length} of 440 nodes,`));
+    expect(formatImportMessage(report.summary!)).toMatch(
+      new RegExp(`^Imported “.*” from Kubernetes: ${diagram.nodes.length} of 440 nodes,`),
+    );
   });
 
   it("draws the picked boundaries again, with the picker still there", () => {
@@ -91,7 +94,7 @@ describe("big imports: the boundaries with the most flows, and a picker", () => 
         .map((g) => g.label)
         .sort(),
     ).toEqual(["team-05", "team-39"]);
-    expect(again.report.summary).toContain("22 of 440 nodes");
+    expect(formatImportMessage(again.report.summary!)).toContain("22 of 440 nodes");
   });
 
   it("leaves small imports, and imports with one boundary, whole", () => {

@@ -24,6 +24,20 @@ keyboard and contextual naming, panel coordination and draft retention. The live
 the fix reverted; removing draft retention also fails its regression. Review used source and browser-test
 evidence, without a separate screenshot walkthrough.
 
+## File-dialog localization review (2026-10-14)
+
+Designer-agent review against the UX principles covered the remaining File dialogs and provider prompts.
+The existing chrome and progressive disclosure remain; image, HTML and embed settings stay behind Options.
+German and Arabic wording received a manual review. Production Chromium checks open every converted dialog
+in German, Arabic and the pseudo-locale at 1280 × 800 and audit wrapping, bounds and translated copy.
+
+Logical padding and alignment keep the dialogs readable in Arabic without reversing diagram content or code.
+Product names and file syntax stay intact; counts and sizes use Intl. No extra controls or explanatory copy
+were added. Library operations wait for their messages, and failed downloads leave a visible retry or error.
+
+Rejected translating generated diagram labels and shared agent diagnostics: those are content and API output.
+Rejected moving dialog messages into startup code: they load with the operations that use them.
+
 ## Round 35: external discovery (2026-10-14)
 
 P5a follows planning-model §4.1: the existing category becomes **Clients & external**, with quiet
@@ -3626,3 +3640,21 @@ one line that agents and copied prompts are off here. With the on-device model o
 menu entry at all. The brand name replaces "Live Diagrams" in the top bar and the page title only; the start card
 still says what the software is. A screenshot pass on the internal build (File menu, AI panel, a new Private diagram)
 found no clutter or dead ends; `tests/e2e/self-host.spec.ts` and `self-host-locked.spec.ts` cover each state.
+
+## File dialog review fixes — 2026-10-14
+
+The designer's source review found no blocking UX regressions. Saves, downloads and native pickers act
+independently of optional notifications. Cancel and Esc stop deferred dialog imports. Retained import
+diagnostics follow language changes while diagram content stays as written. Shared cloud errors keep
+provider-specific permission guidance and recovery steps. No controls, layout changes or focus targets
+were added, so the existing chrome budget and primary actions remain intact. Browser regression coverage
+checks these flows; this source review did not inspect layout or contrast.
+
+## File extraction English compatibility — 2026-10-14
+
+The designer's source review passed: errors again identify their provider or image format and keep the
+folder guidance that helps find files. Pagination, library detail spacing, report conjunctions, lists,
+count words and number presentation match the previous English. No controls, focus targets or chrome
+were added. Historical singular wording stays for compatibility; a grammar change belongs in a deliberate
+copy update. The precision-helper suggestion was applied: English traffic values retain their original
+string interpolation, including small rates and fractional minutes. This review did not inspect the browser.

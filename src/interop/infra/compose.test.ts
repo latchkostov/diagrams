@@ -1,3 +1,5 @@
+import { presentReportLine } from "../ui/importMessages";
+import { formatImportMessage } from "../ui/importMessages";
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import type { DiagramFile } from "../../model/types";
@@ -134,7 +136,7 @@ describe("docker-compose import: the shop fixture", () => {
     expect(groupOf("topic-orders.placed.v1")).toBe("backend");
     expect(groupOf("users")).toBeUndefined();
     expect(groupOf("compose-secrets")).toBeUndefined();
-    expect(report.notes).toEqual(["orders-api is on frontend and backend; shown in backend"]);
+    expect(report.notes.map(formatImportMessage)).toEqual(["orders-api is on frontend and backend; shown in backend"]);
   });
 
   it("reports guesses with chips, settings with their variable, and what wasn't drawn", () => {
@@ -153,17 +155,21 @@ describe("docker-compose import: the shop fixture", () => {
     expect(report.guesses[0].alternatives).toContain("client.browser");
     expect(report.guesses[1].alternatives[0]).toBe("generic.external-api");
     expect(report.guesses[0].evidence).toBe("storefront:4.2.0 · NODE_ENV");
-    const found = Object.fromEntries(report.inferred.map((c) => [`${c.from} → ${c.to}`, c]));
+    const found = Object.fromEntries(
+      report.inferred
+        .map((line) => ({ ...line, ...(line.note ? { note: formatImportMessage(line.note) } : {}) }))
+        .map((c) => [`${c.from} → ${c.to}`, c]),
+    );
     expect(found["orders-api → postgres"].evidence).toBe("SPRING_DATASOURCE_URL");
     expect(found["orders.placed.v1 → payments-worker"]).toMatchObject({ evidence: "INPUT_TOPIC", note: "reads" });
     expect(found["orders-api → orders.placed.v1"]).toMatchObject({ evidence: "ORDERS_TOPIC", guess: true });
     expect(found["shipping-worker → kafka"].note).toBe("couldn't tell what it reads or writes");
     expect(found["shipping-worker → postgres"].evidence).toBe("DATABASE_URL");
-    expect(report.notDrawn).toEqual([
+    expect(report.notDrawn.map(presentReportLine)).toEqual([
       { name: "pgdata", reason: "volume" },
       { name: "kafka-ui", reason: "only in profile “debug”" },
     ]);
-    expect(report.unread).toEqual([]);
+    expect(report.unread.map(presentReportLine)).toEqual([]);
   });
 
   it("lays out without overlaps, members inside their boundaries", () => {
@@ -260,7 +266,7 @@ services:
     expect(stripe?.stencil).toBe("stripe");
     const config = d.edges.find((e) => relationOf(e) === "config");
     expect(config?.props?.settings).toEqual([{ key: "api-settings" }]);
-    expect(report.unread).toEqual([
+    expect(report.unread.map(presentReportLine)).toEqual([
       { name: "include ./other-compose.yml", reason: "not among the files you opened" },
       { name: "env_file ./missing.env", reason: "not among the files you opened" },
     ]);
@@ -274,7 +280,7 @@ services:
   ui: { image: provectuslabs/kafka-ui }
   aws: { image: localstack/localstack }
 `);
-    expect(report.notDrawn).toEqual([
+    expect(report.notDrawn.map(presentReportLine)).toEqual([
       { name: "zk", reason: "part of Kafka" },
       { name: "ui", reason: "developer tool" },
       { name: "aws", reason: "emulates AWS; its services aren't known from the image" },
@@ -358,7 +364,9 @@ services:
       ]);
       const { diagram: d, report } = ok(outcome);
       expect(edge(d, "api", "db"), environment).toBeUndefined();
-      expect(report.inferred).toEqual([]);
+      expect(
+        report.inferred.map((line) => ({ ...line, ...(line.note ? { note: formatImportMessage(line.note) } : {}) })),
+      ).toEqual([]);
     }
   });
 

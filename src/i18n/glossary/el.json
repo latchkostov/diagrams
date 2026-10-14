@@ -45,7 +45,8 @@
     "diagram": {
       "use": "διάγραμμα",
       "match": ["διάγραμμ", "διαγράμμ", "διαγραμμ"],
-      "note": "neuter: το διάγραμμα, τα διαγράμματα."
+      "note": "neuter: το διάγραμμα, τα διαγράμματα.; Diagrams in these cloud errors is the existing folder name.",
+      "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"]
     },
     "node": { "use": "κόμβος", "match": ["κόμβ"] },
     "edge": {

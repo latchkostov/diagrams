@@ -2,6 +2,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Locator, Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors, pageLoadTimeout, waitForStableBox } from "./fixtures";
+import en from "../../src/i18n/en";
+import { parse, compile } from "../../src/i18n/icu";
+import { helpersFor } from "../../src/i18n/helpers";
+import { pseudoLocalize } from "../../src/i18n/pseudo";
 
 // Languages (docs/I18N.md, docs/DESIGN-REVIEW.md round 33): View ▸ Language… switches the converted areas at once and
 // is remembered; the browser's language is the default; Arabic mirrors the chrome but not the diagram; the
@@ -16,6 +20,239 @@ const catalog = (code: string) =>
   >;
 const de = catalog("de");
 const SLUG = "kafka-order-pipeline";
+
+// Each File dialog is checked independently, including its Options and password disclosures. Expectations come
+// from the real ICU catalogs: they check reordered placeholders and counts as well as plain labels.
+for (const code of ["de", "ar", "en-XA"]) {
+  test.describe(`File dialogs in ${code}`, () => {
+    test.use({ viewport: { width: 1280, height: 800 } });
+    test.beforeEach(async ({ page }) => remember(page, code));
+    const messages = code === "en-XA" ? en : catalog(code);
+    const words = (key: keyof typeof en, values: Record<string, unknown> = {}) => {
+      const parts = parse(messages[key]);
+      const compiled = new Function("h", "return " + compile(code === "en-XA" ? pseudoLocalize(parts) : parts))(
+        helpersFor(code === "en-XA" ? "en" : code),
+      ) as string | ((values: Record<string, unknown>) => string);
+      return typeof compiled === "string" ? compiled : compiled(values);
+    };
+    const check = async (page: Page, id: string, title: keyof typeof en, values: Record<string, unknown> = {}) => {
+      await expect(page.getByTestId(`${id}-title`)).toHaveText(words(title, values));
+      await expectNothingCut(page.getByTestId(id), `${code}: ${id}`);
+      const box = await page.getByTestId(id).boundingBox();
+      if (!box) throw new Error(`${id} has no box`);
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.y).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(1280);
+      expect(box.y + box.height).toBeLessThanOrEqual(800);
+    };
+    const file = async (page: Page, item: string, parent?: string) => {
+      await page.getByTestId("file-button").click();
+      if (parent) await page.getByTestId(parent).click();
+      await page.getByTestId(item).click();
+    };
+    const share = async (page: Page, item: string, publicChoice = false) => {
+      await file(page, "file-share");
+      if (publicChoice) await page.getByTestId("share-public-toggle").click();
+      await page.getByTestId(item).click();
+    };
+
+    test("paste, open a link, and the import report", async ({ page, consoleErrors }) => {
+      await gotoCanvas(page, SLUG);
+      await file(page, "import-paste", "file-import-from");
+      await expect(page.getByTestId("paste-dialog")).toContainText(words("fileDialog.pasteADiagram"));
+      await check(page, "paste-dialog", "fileDialog.pasteADiagram");
+      await expect(page.getByTestId("paste-submit")).toContainText(words("fileDialog.import"));
+      await expect(page.getByTestId("paste-format")).toHaveText(words("fileDialog.waitingForText"));
+      await page.getByTestId("paste-cancel").click();
+      await file(page, "import-share-link", "file-import-from");
+      await check(page, "open-link-dialog", "fileDialog.openAShareLink");
+      await expect(page.getByTestId("open-link-input")).toHaveAttribute("aria-label", words("fileDialog.shareLink"));
+      await page.getByTestId("open-link-cancel").click();
+      await file(page, "import-paste", "file-import-from");
+      await page
+        .getByTestId("paste-input")
+        .fill(
+          "name: i18n-fixture\nservices:\n  api:\n    image: example/unknown\n  redis:\n    image: redis:7\nvolumes:\n  data: {}\n",
+        );
+      await page.getByTestId("paste-submit").click();
+      await page.getByTestId("toast-import-details").click();
+      await check(page, "import-report", "importReport.importReport");
+      await expect(page.getByTestId("import-report-summary")).toHaveText(
+        words("importReport.drew", { nodes: 2, connections: 0, boundaries: 0 }),
+      );
+      await expect(page.getByTestId("import-report-not-drawn")).toContainText(words("importDetail.volume"));
+      await expect(page.getByTestId("diagram-title")).toHaveText("i18n-fixture");
+      await page.getByTestId("import-report-done").click();
+      expectNoErrors(consoleErrors);
+    });
+
+    test("image and Interactive HTML, including Options and its password", async ({ page, consoleErrors }) => {
+      await gotoCanvas(page, SLUG);
+      await file(page, "export-image", "file-more-formats");
+      await page.getByTestId("image-options-toggle").click();
+      await check(page, "image-dialog", "fileDialog.exportImage");
+      await expect(page.getByTestId("image-export")).toContainText(
+        words("fileDialog.downloadFormat", { format: "PNG" }),
+      );
+      await page.getByTestId("image-cancel").click();
+      await file(page, "export-html", "file-more-formats");
+      await page.getByTestId("html-export-options-toggle").click();
+      await page.getByTestId("html-export-password-toggle").check();
+      await check(page, "html-export-dialog", "htmlExport.interactiveHTML");
+      await expect(page.getByTestId("html-export-password-strength")).toHaveText(
+        words("password.minimum", { count: 8 }),
+      );
+      await page.getByTestId("html-export-password-input").fill("password");
+      await expect(page.getByTestId("html-export-password-strength")).toHaveText(
+        words("password.easyToGuessTryFourOrMore"),
+      );
+      await expect(page.getByTestId("html-export-banner")).toHaveAttribute(
+        "placeholder",
+        words("htmlExport.egConfidentialInternalUseOnly"),
+      );
+      await page.getByTestId("html-export-cancel").click();
+      expectNoErrors(consoleErrors);
+    });
+
+    test("share link, password link and unlock", async ({ page, consoleErrors }) => {
+      await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+      await gotoCanvas(page, SLUG);
+      await share(page, "share-option-link", true);
+      await check(page, "share-link-dialog", "fileDialog.shareLink");
+      await expect(page.getByTestId("share-link-copy")).toContainText(words("fileDialog.copyLink"));
+      await page.getByTestId("share-link-password").click();
+      await check(page, "password-link-dialog", "passwordLink.linkWithPassword");
+      await page.getByTestId("password-link-input").fill("river violet moon lantern");
+      await expect(page.getByTestId("password-link-strength")).toHaveText(words("password.strong"));
+      await page.getByTestId("password-link-copy").click();
+      const url = await page.getByTestId("password-link-url").inputValue();
+      await check(page, "password-link-dialog", "passwordLink.linkWithPassword");
+      await page.getByTestId("password-link-done").click();
+      await file(page, "import-share-link", "file-import-from");
+      await page.getByTestId("open-link-input").fill(url);
+      await page.getByTestId("open-link-submit").click();
+      await check(page, "password-prompt", "passwordLink.thisDiagramIsPasswordprotected");
+      await page.getByTestId("password-prompt-input").fill("wrong password");
+      await page.getByTestId("password-prompt-submit").click();
+      await expect(page.getByTestId("password-prompt-error")).toHaveText(words("passwordLink.wrongPassword"));
+      await page.getByTestId("password-prompt-cancel").click();
+      expectNoErrors(consoleErrors);
+    });
+
+    test("all three embed sources, their Options, and Your diagrams", async ({ page, consoleErrors }) => {
+      await gotoCanvas(page, SLUG);
+      await share(page, "share-option-embed-public", true);
+      await check(page, "embed-dialog", "fileDialog.embedCode");
+      await expect(page.getByTestId("embed-source-example")).toHaveText(words("embedDialog.exampleByName"));
+      await page.getByTestId("embed-source-inline").click();
+      await page.getByTestId("embed-options-toggle").click();
+      await check(page, "embed-dialog", "fileDialog.embedCode");
+      await page.getByTestId("embed-dialog-close").click();
+      await share(page, "share-option-embed");
+      await page.getByTestId("embed-options-toggle").click();
+      await check(page, "embed-dialog", "fileDialog.embedCode");
+      await expect(page.getByTestId("embed-host-format-component")).toHaveText(words("embedDialog.webComponent"));
+      await page.getByTestId("embed-host-format-iframe").click();
+      await expect(page.getByTestId("embed-host-format-iframe")).toHaveText("iframe + postMessage");
+      await page.getByTestId("embed-dialog-close").click();
+      await file(page, "file-library");
+      await check(page, "library-dialog", "topbar.yourDiagrams");
+      expectNoErrors(consoleErrors);
+    });
+
+    test("cloud Open from, Save to and Save prompts", async ({ page, consoleErrors }) => {
+      await page.goto(`./?view=canvas&example=${SLUG}&storage=test`);
+      await expect(page.getByTestId("canvas-view")).toBeVisible();
+      await file(page, "open-from-test", "file-open-from");
+      await check(page, "storage-files-dialog", "storageDialog.title", { provider: "Test storage" });
+      await expect(page.getByTestId("storage-files-empty")).toHaveText(
+        words("storageDialog.empty", { provider: "Test storage" }),
+      );
+      await page.getByTestId("storage-files-dialog-close").click();
+      await file(page, "save-to-test", "file-save-to");
+      await expect(page.getByTestId("toast")).toContainText(
+        words("fileToast.savedToValue0AsValue1", { value0: "Test storage", value1: `${SLUG}.diagram.json` }),
+      );
+      await file(page, "file-save");
+      await expect(page.getByTestId("toast")).toContainText(
+        words("fileToast.savedToValue0AsValue1", { value0: "Test storage", value1: `${SLUG}.diagram.json` }),
+      );
+      expectNoErrors(consoleErrors);
+    });
+
+    test("native Open, draw.io pages, Save and Save as use localized descriptions", async ({ page, consoleErrors }) => {
+      const drawio = readFileSync(
+        join(process.cwd(), "src/interop/drawio/fixtures/two-pages-compressed.drawio"),
+        "utf8",
+      );
+      await page.addInitScript((text) => {
+        const state = { open: "", save: "", writes: 0 };
+        Object.defineProperty(window, "__i18nNative", { value: state });
+        const handle = (name: string) => ({
+          kind: "file",
+          name,
+          getFile: async () => new File([text], name, { type: "application/xml" }),
+          createWritable: async () => ({
+            write: async () => {
+              state.writes++;
+            },
+            close: async () => {},
+          }),
+        });
+        Object.defineProperty(window, "showOpenFilePicker", {
+          configurable: true,
+          value: async (options: { types: { description: string }[] }) => {
+            state.open = options.types[0].description;
+            return [handle("pages.drawio")];
+          },
+        });
+        Object.defineProperty(window, "showSaveFilePicker", {
+          configurable: true,
+          value: async (options: { types: { description: string }[] }) => {
+            state.save = options.types[0].description;
+            return handle("saved.diagram.json");
+          },
+        });
+      }, drawio);
+      const native = () =>
+        page.evaluate(
+          () => (window as Window & { __i18nNative: { open: string; save: string; writes: number } }).__i18nNative,
+        );
+      await gotoCanvas(page, SLUG);
+      await file(page, "file-open");
+      await check(page, "drawio-pages-dialog", "fileDialog.chooseAPage");
+      expect((await native()).open).toBe(words("fileType.open"));
+      await expect(page.getByTestId("drawio-pages-dialog")).toContainText(
+        words("fileDialog.pagesSubtitle", { name: "pages.drawio", count: 2 }),
+      );
+      await page.getByTestId("drawio-pages-dialog-close").click();
+      await file(page, "file-save");
+      await expect.poll(async () => (await native()).writes).toBe(1);
+      expect((await native()).save).toBe(words("fileType.native"));
+      await file(page, "export-save-as");
+      await expect.poll(async () => (await native()).writes).toBe(2);
+      expect((await native()).save).toBe(words("fileType.native"));
+      expectNoErrors(consoleErrors);
+    });
+
+    test("cloud blocked sign-in, consent, admin, expiry and full-storage prompts", async ({ page, consoleErrors }) => {
+      for (const [scenario, key, values] of [
+        ["blocked", "cloud.theLabelSigninWindowWasBlockedAllow", { label: "OneDrive" }],
+        ["admin", "cloud.yourOrganizationsAdminHasToApproveLive", { label: "OneDrive" }],
+        ["denied", "cloud.labelAccessWasntGrantedSoLiveDiagrams", { label: "OneDrive" }],
+        ["expired", "cloud.signInExpired", { provider: "OneDrive", action: "download_the_file" }],
+        ["full", "cloud.storageFull", { provider: "OneDrive" }],
+      ] as const) {
+        await page.goto(`./?view=lab&preset=file-prompts&scenario=${scenario}`);
+        await expect(page.getByTestId("file-prompts-message")).toHaveText(words(key, values), {
+          timeout: pageLoadTimeout(),
+        });
+        await check(page, "file-prompts-dialog", "storageDialog.title", { provider: "OneDrive" });
+      }
+      expectNoErrors(consoleErrors);
+    });
+  });
+}
 
 /** The bare address: a blank canvas with the start card. */
 async function gotoStart(page: Page) {
@@ -35,6 +272,27 @@ const remember = (page: Page, code: string) =>
   page.addInitScript((c) => window.localStorage.setItem("diagrams.locale", c), code);
 
 test.describe("choosing a language", () => {
+  test("a cached import report follows a language change when reopened", async ({ page, consoleErrors }) => {
+    await gotoCanvas(page, SLUG);
+    await page.getByTestId("import-input").setInputFiles({
+      name: "compose.yaml",
+      mimeType: "application/yaml",
+      buffer: Buffer.from("services:\n  api:\n    image: nginx\nvolumes:\n  data: {}\n"),
+    });
+    await page.getByTestId("toast-import-details").click();
+    await expect(page.getByTestId("import-report-not-drawn-0")).toContainText(en["importDetail.volume"]);
+    await page.getByTestId("import-report-done").click();
+    await openLanguage(page);
+    await page.getByTestId("language-option-ar").click();
+    await expect(page.getByTestId("language-option-ar")).toHaveAttribute("aria-checked", "true");
+    await page.getByTestId("language-done").click();
+    await page.keyboard.press("Control+k");
+    await page.getByTestId("command-input").fill(catalog("ar")["importReport.importReport"]);
+    await page.getByTestId("command-input").press("Enter");
+    await expect(page.getByTestId("import-report-not-drawn-0")).toContainText(catalog("ar")["importDetail.volume"]);
+    expectNoErrors(consoleErrors);
+  });
+
   test("View ▸ Language… switches the converted areas at once, and a reload keeps it", async ({
     page,
     consoleErrors,

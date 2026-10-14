@@ -39,7 +39,8 @@
     "diagram": {
       "use": "مخطط",
       "match": ["مخطط"],
-      "note": "Short and common (مخطط، مخططات، مخططاتك); Visio's رسم تخطيطي is too long for the UI."
+      "note": "Short and common (مخطط، مخططات، مخططاتك); Visio's رسم تخطيطي is too long for the UI.; Diagrams in these cloud errors is the existing folder name.",
+      "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"]
     },
     "node": { "use": "عقدة", "match": ["عقد", "عُقد"] },
     "edge": {

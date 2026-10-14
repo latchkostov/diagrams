@@ -1,3 +1,6 @@
+import { cloudMessages, cloudNetwork } from "./cloudMessages";
+import type { CloudOperation } from "./types";
+import { t } from "../../i18n";
 import { oneDriveConfig, type OneDriveConfig } from "./config";
 import { authorized, checkSize, jsonField, readTextCapped, type ClientDeps } from "./http";
 import {
@@ -81,25 +84,28 @@ export interface DriveItem {
   "@microsoft.graph.downloadUrl"?: string;
 }
 
-export function graphError(status: number, body: string, action: string): string {
+export function graphError(status: number, body: string, action: CloudOperation): string {
   const code = jsonField(body, (j) => (j.error as { code?: unknown } | undefined)?.code);
   const message = jsonField(body, (j) => (j.error as { message?: unknown } | undefined)?.message);
-  if (status === 401) return `OneDrive sign-in expired while trying to ${action}. Please try again.`;
+  if (status === 401) return cloudMessages.expired("OneDrive", action);
   if (status === 507 || code === "quotaLimitReached" || code === "insufficientStorage")
-    return "Your OneDrive is full, so the file couldn't be saved.";
+    return cloudMessages.full("OneDrive");
   if (status === 403)
-    return `OneDrive refused to ${action}. Live Diagrams can only use files in its own folder (Apps › Diagrams).${message ? ` (${message})` : ""}`;
-  if (status === 404) return "That OneDrive file no longer exists, or it was moved out of the Diagrams folder.";
-  if (status === 409 || status === 412) return `The file changed in OneDrive while trying to ${action}. Try again.`;
-  if (status === 429 || status >= 500) return `OneDrive is busy right now (${status}). Try again in a moment.`;
-  return `Couldn't ${action} on OneDrive (${status}${message ? `: ${message}` : ""}).`;
+    return t("cloud.oneDriveRefusedToActionLiveDiagramsCan", {
+      action: action,
+      value1: message ? ` (${message})` : "",
+    });
+  if (status === 404) return cloudMessages.missing("OneDrive");
+  if (status === 409 || status === 412) return cloudMessages.changed("OneDrive", action);
+  if (status === 429 || status >= 500) return cloudMessages.busy("OneDrive", status);
+  return cloudMessages.failed("OneDrive", action, status, message ? `: ${message}` : "");
 }
 
 const SELECT = "id,name,size,lastModifiedDateTime,webUrl,file";
 const MAX_PAGES = 10;
 
 export function createOneDriveClient(deps: ClientDeps) {
-  const call = (url: string, init: RequestInit, action: string) =>
+  const call = (url: string, init: RequestInit, action: CloudOperation) =>
     authorized(deps, LABEL, graphError, url, init, action);
 
   return {
@@ -108,7 +114,7 @@ export function createOneDriveClient(deps: ClientDeps) {
       const items: DriveItem[] = [];
       let url: string | undefined = `${GRAPH}/me/drive/special/approot/children?$select=${SELECT}&$top=200`;
       for (let page = 0; url && page < MAX_PAGES; page++) {
-        const res = await call(url, { method: "GET" }, "list your diagrams");
+        const res = await call(url, { method: "GET" }, "list_your_diagrams");
         const body = (await res.json()) as { value?: DriveItem[]; "@odata.nextLink"?: string };
         items.push(...(body.value ?? []));
         const next = body["@odata.nextLink"];
@@ -128,19 +134,19 @@ export function createOneDriveClient(deps: ClientDeps) {
       const res = await call(
         `${GRAPH}/me/drive/items/${encodeURIComponent(id)}?$select=id,name,size,@microsoft.graph.downloadUrl`,
         { method: "GET" },
-        "read the file",
+        "read_the_file",
       );
       const item = (await res.json()) as DriveItem;
       checkSize(item.size);
       const href = item["@microsoft.graph.downloadUrl"];
-      if (!href || !/^https:\/\//.test(href)) throw new StorageError("OneDrive didn't offer a download for that file.");
+      if (!href || !/^https:\/\//.test(href)) throw new StorageError(t("cloud.oneDriveDidntOfferADownloadForThat"));
       let file: Response;
       try {
         file = await deps.fetch(href, { method: "GET" });
       } catch {
-        throw new StorageError("Couldn't reach OneDrive to download the file. Check your connection.");
+        throw new StorageError(cloudNetwork("OneDrive", "download_the_file"));
       }
-      if (!file.ok) throw new StorageError(graphError(file.status, "", "download the file"), file.status);
+      if (!file.ok) throw new StorageError(graphError(file.status, "", "download_the_file"), file.status);
       return { ...item, text: await readTextCapped(file) };
     },
 
@@ -149,7 +155,7 @@ export function createOneDriveClient(deps: ClientDeps) {
       const res = await call(
         `${GRAPH}/me/drive/special/approot:/${encodeURIComponent(name)}:/content?@microsoft.graph.conflictBehavior=rename`,
         { method: "PUT", headers: { "Content-Type": "application/json" }, body: text, signal },
-        "save the file",
+        "save_the_file",
       );
       return (await res.json()) as DriveItem;
     },
@@ -159,7 +165,7 @@ export function createOneDriveClient(deps: ClientDeps) {
       const res = await call(
         `${GRAPH}/me/drive/items/${encodeURIComponent(id)}/content`,
         { method: "PUT", headers: { "Content-Type": "application/json" }, body: text, signal },
-        "update the file",
+        "update_the_file",
       );
       return (await res.json()) as DriveItem;
     },
@@ -179,7 +185,7 @@ export function oneDriveProvider(
 ): StorageProvider<Ref> {
   const tokens: TokenSource = createTokenSource({
     interactive: async () => {
-      if (!config) throw new StorageError("OneDrive isn't configured for this site.");
+      if (!config) throw new StorageError(t("cloud.oneDriveIsntConfiguredForThisSite"));
       const code = await authorizeInPopup(LABEL, (p) => oneDriveAuthorizeUrl(config, p));
       return exchangeOneDriveCode(fetchFn, config, code);
     },

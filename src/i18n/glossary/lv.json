@@ -96,7 +96,9 @@
     },
     "diagram": {
       "use": "diagramma",
-      "match": ["diagramm"]
+      "match": ["diagramm"],
+      "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"],
+      "note": "Diagrams in these cloud errors is the existing folder name."
     },
     "node": {
       "use": "mezgls",

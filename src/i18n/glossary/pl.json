@@ -44,7 +44,12 @@
     "offset": { "use": "offset", "keepEnglish": true, "match": ["offset"] },
     "backlog": { "use": "zaległe wiadomości", "match": ["zaległ", "backlog"] },
     "retry": { "use": "ponów", "match": ["ponów", "ponow"], "note": "Button: Ponów próbę." },
-    "diagram": { "use": "diagram", "match": ["diagram"] },
+    "diagram": {
+      "use": "diagram",
+      "match": ["diagram"],
+      "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"],
+      "note": "Diagrams in these cloud errors is the existing folder name."
+    },
     "node": { "use": "węzeł", "match": ["węzeł", "węzł", "węź"], "note": "węzła, węzły, węzłów, na węźle." },
     "edge": {
       "use": "połączenie",

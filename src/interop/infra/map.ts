@@ -1,3 +1,5 @@
+import { diagnostic } from "./graph";
+import { t as tr } from "../../i18n";
 import {
   DIAGRAM_FORMAT,
   type DiagramEdge,
@@ -24,7 +26,10 @@ const capped = (lines: ReportLine[]): ReportLine[] =>
     ? lines
     : [
         ...lines.slice(0, MAX_REPORT_LINES),
-        { name: `${(lines.length - MAX_REPORT_LINES).toLocaleString("en")} more`, reason: "not listed" },
+        {
+          name: diagnostic("importReport.more", { count: lines.length - MAX_REPORT_LINES }),
+          reason: diagnostic("importDetail.notListed"),
+        },
       ];
 
 /** How long the "Imported traffic" simulation sends. */
@@ -44,9 +49,7 @@ export function graphToDiagram(g: ImportGraph, total?: number): { diagram: Diagr
   // The budgets first: nothing is laid out for a graph the validator would refuse anyway.
   const over = (n: number, max: number, what: string) => {
     if (n > max)
-      throw new ImportError(
-        `It would draw ${n.toLocaleString("en")} ${what}; the most an import draws is ${max.toLocaleString("en")}.`,
-      );
+      throw new ImportError(tr("importDetail.itWouldDrawValue0NumberValue1", { value0: n, value1: what, value2: max }));
   };
   over(g.components.length, MAX_DRAWN, "nodes");
   over(g.links.length, LIMITS.maxEdges, "connections");
@@ -161,6 +164,7 @@ export function graphToDiagram(g: ImportGraph, total?: number): { diagram: Diagr
   const simulation: Simulation | undefined = traffic.length
     ? {
         id: "imported-traffic",
+        // eslint-disable-next-line local/no-literal-ui-text -- persisted diagram content, not UI copy
         title: "Imported traffic",
         description: `${TRAFFIC_SECONDS / 60} minutes of steady traffic where messages start, from the import.`,
         traffic: traffic.map((t, i) => ({
@@ -180,14 +184,15 @@ export function graphToDiagram(g: ImportGraph, total?: number): { diagram: Diagr
     edges,
     ...(simulation ? { simulations: [simulation] } : {}),
   });
-  const n = (k: number, one: string, many = `${one}s`) => `${k.toLocaleString("en")} ${k === 1 ? one : many}`;
-  const drew =
-    total && total > nodes.length
-      ? `${nodes.length.toLocaleString("en")} of ${n(total, "node")}`
-      : n(nodes.length, "node");
-  const summary =
-    `Imported “${g.title}” from ${g.format}: ${drew}, ${n(edges.length, "connection")}.` +
-    (guesses.length ? ` ${n(guesses.length, "guess", "guesses")}.` : "");
+  const summary = diagnostic("importReport.summary", {
+    title: g.title,
+    format: g.format,
+    total: total && total > nodes.length ? "part" : "all",
+    drawn: nodes.length,
+    nodes: total && total > nodes.length ? total : nodes.length,
+    connections: edges.length,
+    guesses: guesses.length,
+  });
   return {
     diagram,
     report: {
@@ -205,8 +210,9 @@ export function graphToDiagram(g: ImportGraph, total?: number): { diagram: Diagr
       unread: capped(g.unread),
       notes: [
         ...g.notes,
-        ...(unlisted ? [`${unlisted.toLocaleString("en")} more connections like these aren't listed`] : []),
-        ...(simulation ? ["Go live and pick “Imported traffic” to watch messages flow"] : []),
+        ...(unlisted ? [diagnostic("importReport.unlisted", { count: unlisted })] : []),
+        // eslint-disable-next-line local/no-literal-ui-text -- persisted diagram content, not UI copy
+        ...(simulation ? [diagnostic("importReport.watchTraffic", { title: "Imported traffic" })] : []),
       ],
       ...(traffic.length
         ? {

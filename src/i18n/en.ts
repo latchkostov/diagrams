@@ -10,20 +10,478 @@
 // stays.
 
 const en = {
+  "format.byteSize": "{size} {unit}",
+  "format.importList": "{before} and {last}",
+  "cloud.dropboxFileMissing": "That Dropbox file no longer exists, or it was moved out of the Diagrams folder.",
+  "fileToast.providerSaveFailed": "Couldn't save to {provider}. {error}",
+  "fileToast.providerOpenFailed": "Couldn't open from {provider}. {error}",
+  "fileToast.imageFailed": "Couldn't export the {format}. {error}",
+  "fileType.terraformPlan": "Terraform plan",
+  "format.importSeconds": "{duration} s",
+  "format.importMinutes": "{duration} min",
+  "importReport.namedCount": "{name} ×{count, number}",
+  "importReport.aclWide":
+    "{action, select, both {read and write} read {read} other {write}} {scope, select, all {every topic} other {topics starting “{name}”}}",
+  "importReport.aclHosts":
+    "{action, select, both {read and write} read {read} other {write}} {name} from some hosts only",
+  "importReport.kafkaConnections": "Connections found in settings and KafkaUser ACLs",
+  "library.deleted": "Deleted “{title}”.",
+  "library.duplicated": "Duplicated “{title}”.",
+  "library.failed":
+    "{action, select, save {Couldn't save your edits.} rename {Couldn't rename it.} duplicate {Couldn't duplicate it.} delete {Couldn't delete it.} other {Couldn't restore it.}} {error}",
+  "library.storageFull": "Storage is full or blocked. Save or export this diagram before continuing.",
+  "library.restoreFull": "The browser's storage is full.",
+  "fileToast.tooLarge": "Couldn't import {name}. It's too large to open ({size}; the limit is {limit}).",
+  "importReason.shownThroughItsQueuesAndTopics": "shown through its queues and topics",
+  "importReason.shownThroughItsEventHubs": "shown through its event hubs",
+  "importReason.shownThroughItsDatabases": "shown through its databases",
+  "importReason.hostingPlan": "hosting plan",
+  "importReason.shownThroughItsServices": "shown through its services",
+  "importReason.partOfAnECSService": "part of an ECS service",
+  "importReason.partOfTheCluster": "part of the cluster",
+  "importReason.aSecretsValueNeverRead": "a secret's value: never read",
+  "importReason.partOfKeyVault": "part of Key Vault",
+  "importReason.partOfEventHubs": "part of Event Hubs",
+  "importReason.encryptionKey": "encryption key",
+  "importReason.anEnabledAPI": "an enabled API",
+  "importReason.partOfAPIGateway": "part of API Gateway",
+  "importReason.partOfALoadBalancer": "part of a load balancer",
+  "fileToast.privateLink": "Private diagrams can't be shared as links. Export Interactive HTML instead.",
+  "fileToast.linksOff": "Share links are turned off here. Export Interactive HTML instead.",
+  "fileToast.linkOpenOff": "Opening shared links is turned off here. Ask for the diagram file instead.",
+  "passwordLink.tooLong": "This share link is too long to open.",
+  "passwordLink.newer":
+    "This link was made by a newer version of Live Diagrams. Reload the page to update, then open the link again.",
+  "passwordLink.damaged":
+    "This password-protected link is damaged or incomplete. Ask for the link again, and make sure it was copied in full.",
+  "importDetail.profiles": "only in {count, plural, one {profile} other {profiles}} {names}",
+  "importReason.helperNotInfrastructure": "helper, not infrastructure",
+  "importKind.helpers": "helpers",
+  "importReason.accessAndPermissions": "access and permissions",
+  "importKind.accessAndPermissions": "access and permissions",
+  "importReason.networking": "networking",
+  "importKind.networking": "networking",
+  "importReason.monitoring": "monitoring",
+  "importKind.monitoring": "monitoring",
+  "importReason.dataSource": "data source",
+  "importKind.dataSources": "data sources",
+  "importReason.connectsNothingInTheseFiles": "connects nothing in these files",
+  "importKind.connectionsWithNoEndsHere": "connections with no ends here",
+  "importReason.terraformTypeNotDrawn": "Terraform type not drawn",
+  "importKind.otherTypes": "other types",
+  "importKind.parts": "parts of what's drawn",
+  "importKind.more": "more",
+  "importDetail.supporting":
+    "{count, plural, one {# supporting resource isn't drawn} other {# supporting resources aren't drawn}}: {kinds}",
+  "importReason.partOf": "part of {type}",
+  "cloud.value0SigninDidntReturnACodePlease": "{value0} sign-in didn't return a code. Please try again.",
+  "cloud.value0SigninTimedOutPleaseTryAgain": "{value0} sign-in timed out. Please try again.",
+  "cloud.theValue0SigninWindowWasClosedBefore": "The {value0} sign-in window was closed before it finished.",
+  "cloud.oneDriveDidntOfferADownloadForThat": "OneDrive didn't offer a download for that file.",
+  "fileDialog.makeNotPrivate": "Make this diagram not private…",
+  "fileDialog.makePrivate": "Make this diagram private",
+  "fileDialog.alwaysPrivate": "Always private",
+  "fileDialog.private": "Private",
+  "fileDialog.pngOrSvg": "PNG or SVG",
+  "fileToast.imported":
+    "Imported “{title}”{format, select, native {} drawio { from draw.io} other { from Mermaid}}.{warning, select, none {} other { {warning}}}{more, plural, =0 {} one { (+# more)} other { (+# more)}}",
+  "fileToast.files": "{count, plural, one {# file} other {# files}}",
+  "fileToast.pastedText": "the pasted text",
+  "fileToast.private": "Private: no share links, cloud saves or AI for this diagram.",
+  "fileToast.failed":
+    "{action, select, diagram {Couldn't export the diagram. {error}} image {Couldn't export the image. {error}} drawio {Couldn't export to draw.io. {error}} copyMermaid {Couldn't copy Mermaid. {error}} mermaid {Couldn't export Mermaid. {error}} html {Couldn't export the interactive HTML. {error}} shareLink {Couldn't create a share link. {error}} passwordLink {Couldn't create a link with password. {error}} share {Couldn't share the diagram. {error}} embed {Couldn't create embed code. {error}} save {Couldn't save the file. {error}} open {Couldn't open the file. {error}} copy {Couldn't keep a copy. {error}} private {Couldn't make it private. {error}} privacy {Couldn't change its privacy. {error}} other {Couldn't complete the file operation. {error}}}",
+  "fileDialog.loadFailed": "Couldn't download this part of the app. Check your connection and try again.",
+  "passwordLink.wrongPassword": "That password doesn't open this link. Check it and try again.",
+  "fileDialog.dropToOpen": "Drop to open",
+  "fileDialog.dropHint": "Opens as your diagram. Examples are never overwritten.",
+  "importDetail.value0DoesntHoldADockercomposeFile": "{value0} doesn't hold a docker-compose file.",
+  "importDetail.itHasNoServicesToDraw": "It has no services to draw (docker-compose files list them under services:).",
+  "importDetail.volume": "volume",
+  "importDetail.notAServiceDefinition": "not a service definition",
+  "importDetail.theresNothingToDrawEveryService":
+    "There's nothing to draw: every service is in a profile or isn't a component.",
+  "importDetail.value0IsOnValue1ShownIn": "{value0} is on {value1}; shown in {value2}",
+  "importDetail.value0IsntAnAsyncAPI2xOr": "{value0} isn't an AsyncAPI 2.x or 3.x document.",
+  "importDetail.itHasNoAsyncAPIDocumentTo": "It has no AsyncAPI document to read.",
+  "importDetail.itHasTooMuchToRead": "It has too much to read in one import.",
+  "importDetail.noOperationInValue0UsesIt": "no operation in {value0} uses it",
+  "importDetail.aMessageNoChannelUses": "a message no channel uses",
+  "importDetail.notComponentsOfTheSystem": "not components of the system",
+  "importDetail.value0IsTheDeadletterRouteOf":
+    "{value0} is the dead-letter route of {value1} ({value2} sends its failures there)",
+  "importDetail.value0SendsToValue1WhichInputs":
+    "{value0} sends to {value1}: which input's failures go there couldn't be told, so it's drawn as an ordinary message",
+  "importDetail.value0IsAQueueValue1Sends": "{value0} is a queue; {value1} sends to it through the exchange “{value2}”",
+  "importDetail.value0HasNoProducerInThese": "{value0} has no producer in these files",
+  "importDetail.schemaRegistryAddedMessagesOnValue0":
+    "Schema Registry added: messages on {value0} use Avro or Protobuf",
+  "importDetail.nothingInItCouldBeDrawn": "Nothing in it could be drawn: {value0} ({value1}).",
+  "importDetail.nothingInItCouldBeDrawnMore":
+    "Nothing in it could be drawn: no operation sends or receives on a channel.",
+  "importDetail.theseFilesHoldMoreThanValue0":
+    "These files hold more than {value0, number} YAML documents; one import reads at most that many.",
+  "importDetail.notAKubernetesResourceNoKind": "not a Kubernetes resource (no kind or apiVersion)",
+  "importDetail.aValue0WithNoName": "a {value0} with no name",
+  "importDetail.theseFilesHoldMoreThanValue0More":
+    "These files hold more than {value0, plural, one {# resources} other {# resources}}; one import reads at most that many.",
+  "importDetail.theresNothingToDrawNoKubernetes": "There's nothing to draw: no Kubernetes resources were found.",
+  "importDetail.foldedIntoItsOwner": "folded into its owner",
+  "importDetail.shownThroughItsTopics": "shown through its topics",
+  "importDetail.value0AServiceWithValue1In":
+    "{value0}: a Service with {reason, select, definition {no definition} other {no workload}} in these files",
+  "importDetail.scalesAWorkloadThatIsntIn": "scales a workload that isn't in these files",
+  "importDetail.value0RunsUpToValue1Jobs":
+    "{value0} runs up to {value1, plural, one {# jobs} other {# jobs}} at once (KEDA)",
+  "importDetail.value0ScalesFromValue1ToValue2":
+    "{value0} scales from {value1, number} to {value2, plural, one {# replicas} other {# replicas}} (KEDA)",
+  "importDetail.value0TriggerScalingOnly": "{value0} trigger: scaling only",
+  "importDetail.value0ScalesFromValue1ToValue2More":
+    "{value0} scales from {value1, number} to {value2, plural, one {# replicas} other {# replicas}} (HorizontalPodAutoscaler)",
+  "importDetail.settingsPastTheFirstValue0Number":
+    "Settings past the first {value0, number} weren't read for connections (ConfigMaps shared by many workloads count each time)",
+  "importDetail.itsACLsArentDrawnNoWorkload": "its ACLs aren't drawn: no workload in these files uses its Secret",
+  "importDetail.value0KafkaUserMayValue1value2NotDrawn": "{value0} (KafkaUser) may {value1}{value2}: not drawn",
+  "importDetail.shownAsItsWorkloadsFlows": "shown as its workloads' flows",
+  "importDetail.noWorkloadUsesIt": "no workload uses it",
+  "importDetail.notAComponent": "not a component",
+  "importDetail.partOfKafka": "part of Kafka",
+  "importDetail.unknownKindValue0": "unknown kind ({value0})",
+  "importDetail.theresNothingToDrawTheseFiles":
+    "There's nothing to draw: these files hold no workloads, Services or topics.",
+  "importDetail.value0IsntValidJSONSoIt": "{value0} isn't valid JSON, so it wasn't read.",
+  "importDetail.value0IsntTerraformJSON": "{value0} isn't Terraform JSON.",
+  "importDetail.value0IsTerraformJSONFormatValue1":
+    "{value0} is Terraform JSON format {value1}; only format 1 is read.",
+  "importDetail.connectionsFromSubscriptionsMappingsAndGrants": "Connections from subscriptions, mappings and grants",
+  "importDetail.modulesNestedMoreThanValue0Deep": "modules nested more than {value0, number} deep aren't read",
+  "importDetail.noTypeOrName": "no type or name",
+  "importDetail.theresNothingToDrawNoTerraform": "There's nothing to draw: no Terraform resources were found.",
+  "importDetail.dataSource": "data source",
+  "importDetail.anEmailSMSOrAppSubscription": "an email, SMS or app subscription",
+  "importDetail.destroyedByThisPlan": "destroyed by this plan",
+  "importDetail.theresNothingToDrawNoneOf":
+    "There's nothing to draw: none of these resources is a component (queues, topics, functions, databases…).",
+  "importDetail.planValue0ToAddValue1To":
+    "Plan: {value0, number} to add, {value1, number} to change, {value2, number} to destroy",
+  "importDetail.someReferencesWerentFollowedThePlan":
+    "Some references weren't followed: the plan holds too many to read them all",
+  "importDetail.noBoundaryInItFitsIn":
+    "No boundary in it fits in {value0, plural, one {# nodes} other {# nodes}}, the most an import draws.",
+  "importDetail.aHelmTemplateImportHelmTemplate": "a Helm template: import “helm template” output instead",
+  "importDetail.terraformSourceImportTerraformShowJson":
+    "Terraform source: import “terraform show -json” output instead",
+  "importDetail.notReadADifferentKindOf": "not read: a different kind of file",
+  "importDetail.notListed": "not listed",
+  "importDetail.itWouldDrawValue0NumberValue1":
+    "{value1, select, nodes {It would draw {value0, plural, one {# nodes} other {# nodes}}} connections {It would draw {value0, plural, one {# connections} other {# connections}}} boundaries {It would draw {value0, plural, one {# boundaries} other {# boundaries}}} other {It would draw {value0, number} items}}; the most an import draws is {value2, number}.",
+  "importDetail.terraformTypeNotDrawn": "Terraform type not drawn",
+  "importDetail.developerTool": "developer tool",
+  "importDetail.emulatesAWSItsServicesArentKnown": "emulates AWS; its services aren't known from the image",
+  "importDetail.value0CouldntBeReadAsYAML": "{value0} couldn't be read as YAML.",
+  "importDetail.value0HasMoreThanValue1Number": "{value0} has more than {value1, number} documents.",
+  "importDetail.value0IsntValidYAMLvalue1Value2": "{value0} isn't valid YAML{value1}: {value2}",
+  "importDetail.thisFileHoldsTooManyValues": "This file holds too many values to read.",
+  "importDetail.thisFileIsNestedTooDeeply": "This file is nested too deeply to read.",
+  "importDetail.itHasTooManyReferencesRef": "It has too many references ($ref) to follow.",
+  "importReport.summary":
+    "Imported “{title}” from {format}: {total, select, all {{nodes, plural, one {# node} other {# nodes}}} other {{drawn, number} of {nodes, plural, one {# node} other {# nodes}}}}, {connections, plural, one {# connection} other {# connections}}.{guesses, plural, =0 {} one { # guess.} other { # guesses.}}",
+  "importReport.unlisted":
+    "{count, plural, one {# more connections like these aren't listed} other {# more connections like these aren't listed}}",
+  "importReport.watchTraffic": "Go live and pick “{title}” to watch messages flow",
+  "importReport.more": "{count, plural, one {# more} other {# more}}",
+  "embedDialog.webComponent": "Web component",
+  "library.storageAlmostFullPercentDeleteOrExport":
+    "Storage almost full ({percent}). Delete or export diagrams you don't need.",
+  "library.usedOfAboutBudgetUsed": "{used} of about {budget} used",
+  "library.openNow": "Open now ·",
+  "library.firstlastOfCountPluralOneDiagramOther": "{first}–{last} of {count, plural, one {#} other {#}}",
+  "library.renameTitle": "Rename {title}",
+  "library.duplicateTitle": "Duplicate {title}",
+  "library.deleteTitle": "Delete {title}",
+  "fileType.native": "Live Diagrams file",
+  "fileType.open": "Live Diagrams, draw.io, Mermaid, docker-compose, Kubernetes, AsyncAPI and Terraform JSON files",
+  "fileType.drawioDiagram": "draw.io diagram",
+  "fileType.mermaidFlowchart": "Mermaid flowchart",
+  "fileType.dockercomposeFile": "docker-compose file",
+  "fileType.asyncAPIDocument": "AsyncAPI document",
+  "fileType.kubernetesManifests": "Kubernetes manifests",
+  "fileType.terraformPlanOrState": "Terraform plan or state",
+  "password.useAtLeastCountPluralOneCharacter": "Use at least {count, plural, one {# character} other {# characters}}.",
+  "exportToast.drawio":
+    "Exported a .drawio file. {private, select, yes {This diagram is private: keep it where your team controls access.} other {Open it at app.diagrams.net or in draw.io Desktop.}}",
+  "exportToast.mermaid":
+    "Mermaid flowchart copied. {private, select, yes {This diagram is private: keep it where your team controls access.} other {Paste it into GitHub, Notion, Obsidian or mermaid.live.}}",
+  "htmlExport.exported":
+    "Exported “{name}” ({size}). {locked, select, yes {Only people with the password can open it. Send the password separately.} other {Anyone who has it can open it.}}",
+  "library.keptInThisBrowserSaveOrExport": "Kept in this browser. Save or export a diagram to keep a copy elsewhere.",
+  "library.browsersGiveEachSiteAbout10MB": "Browsers give each site about 10 MB for everything it keeps.",
+  "library.noDiagramsYetStartANewOne":
+    "No diagrams yet. Start a new one, or open a file from draw.io, Mermaid or Live Diagrams.",
+  "library.private": "Private ·",
+  "library.diagramTitle": "Diagram title",
+  "library.rename": "Rename",
+  "library.deleteUndoable": "Delete (undoable)",
+  "library.libraryPages": "Library pages",
+  "library.previous": "Previous",
+  "library.next": "Next",
+  "fileDialog.permissionToSaveValue0WasntGranted": "Permission to save “{value0}” wasn't granted.",
+  "fileToast.openADiagramOnTheCanvasFirst": "Open a diagram on the canvas first.",
+  "fileToast.renderingValue0": "Rendering {value0}…",
+  "fileToast.exportedValue0": "Exported {value0}.",
+  "fileToast.theBrowserBlockedClipboardAccessUseDownload":
+    "The browser blocked clipboard access. Use Download .mmd instead.",
+  "fileToast.exportedAMermaidMmdFile": "Exported a Mermaid .mmd file.",
+  "fileToast.downloadedNameThisBrowserCantSaveOver":
+    "Downloaded {name}. (This browser can't save over a file, so each save is a new download.)",
+  "fileToast.savedToValue0": "Saved to {value0}.",
+  "fileToast.savedToValue0CtrlSSavesHereAgain": "Saved to {value0}. Ctrl+S saves here again.",
+  "fileToast.savedValue0ToValue1CtrlSSavesIt":
+    "Saved “{value0}” to {value1}. Ctrl+S saves it there again when it's open.",
+  "fileToast.savedValue0ToValue1TheOpenDiagram":
+    "Saved “{value0}” to {value1}. The open diagram has changed; save it separately.",
+  "fileToast.privateDiagramsArentSavedToValue0Save":
+    "Private diagrams aren't saved to {value0}. Save to this device instead.",
+  "fileToast.saveToThisDevice": "Save to this device",
+  "fileToast.notSavedToValue0Value1BecamePrivate":
+    "Not saved to {value0}: “{value1}” became private. Save it to this device instead.",
+  "fileToast.savingToValue0": "Saving to {value0}…",
+  "fileToast.savedToValue0AsValue1": "Saved to {value0} as {value1}.",
+  "fileToast.savedValue0ToValue1AsValue2The":
+    "Saved “{value0}” to {value1} as {value2}. The open diagram has changed; save it separately.",
+  "fileToast.openInValue0": "Open in {value0}",
+  "fileToast.couldntImportValue0Value1": "Couldn't import {value0}. {value1}",
+  "fileToast.details": "Details",
+  "fileToast.couldntReadName": "Couldn't read {name}.",
+  "fileToast.openingTheSharedDiagram": "Opening the shared diagram…",
+  "fileToast.openedTheSharedDiagramValue0ItsKept":
+    "Opened the shared diagram “{value0}”. It's kept apart from your own diagrams.",
+  "fileToast.anotherDiagramOpenedWhileThisOneWas":
+    "Another diagram opened while this one was unlocking. Enter the password again to open it.",
+  "fileToast.thatDoesntLookLikeALiveDiagrams":
+    "That doesn't look like a Live Diagrams share link (it should contain #d=… or #e=…).",
+  "fileToast.savedACopyOfValue0ToYour": "Saved a copy of “{value0}” to Your diagrams.",
+  "fileToast.savedAPrivateCopyOfValue0To": "Saved a private copy of “{value0}” to Your diagrams.",
+  "fileToast.thisDiagramIsNoLongerPrivate": "This diagram is no longer private.",
+  "fileToast.signedOutOfValue0": "Signed out of {value0}.",
+  "fileToast.thePasswordprotectedDiagramWasntOpenedReloadThe":
+    "The password-protected diagram wasn't opened. Reload the page to enter the password.",
+  "fileToast.export": "Export",
+  "password.easyToGuessTryFourOrMore": "Easy to guess. Try four or more random words.",
+  "password.strong": "Strong.",
+  "password.fairLongerIsStrongerTryFourOr": "Fair. Longer is stronger: try four or more random words.",
+  "htmlExport.theViewerCouldntBeDownloadedValue0Check":
+    "The viewer couldn't be downloaded ({value0}). Check your connection and try again.",
+  "htmlExport.encryptingTheHTMLFile": "Encrypting the HTML file…",
+  "htmlExport.makingTheHTMLFile": "Making the HTML file…",
+  "htmlExport.couldntExportTheInteractiveHTMLValue0": "Couldn't export the interactive HTML. {value0}",
+  "storage.thisBrowserCantOpenFilesFromHere": "This browser can't open files from here.",
+  "storage.couldntReadValue0": "Couldn't read {value0}.",
+  "cloud.theLabelSigninWindowWasBlockedAllow":
+    "The {label} sign-in window was blocked. Allow pop-ups for this site and try again.",
+  "cloud.supersededByANewerLabelSignin": "Superseded by a newer {label} sign-in.",
+  "cloud.labelAccessWasntGrantedSoLiveDiagrams":
+    "{label} access wasn't granted, so Live Diagrams can't open or save files there.",
+  "cloud.yourOrganizationsAdminHasToApproveLive":
+    "Your organization's admin has to approve Live Diagrams before you can use {label} with this account.",
+  "cloud.labelSigninFailedValue1": "{label} sign-in failed ({value1}).",
+  "cloud.couldntReachLabelToSignInCheck": "Couldn't reach {label} to sign in. Check your connection.",
+  "cloud.labelSigninIsntSetUpForThis":
+    '{label} sign-in isn\'t set up for this site yet: its app registration needs this address as a "Single-page application" redirect URI.',
+  "cloud.labelSigninIsntSetUpForThisMore":
+    "{label} sign-in isn't set up for this address (the redirect URI isn't registered).",
+  "cloud.labelSigninExpiredPleaseTryAgain": "{label} sign-in expired. Please try again.",
+  "cloud.labelSigninIsBusyRightNowStatus": "{label} sign-in is busy right now ({status}). Try again in a moment.",
+  "cloud.couldntReachLabelToActionCheckYour":
+    "{action, select, read_the_file_details {Couldn't reach {label} to read the file details. Check your connection.} download_the_file {Couldn't reach {label} to download the file. Check your connection.} save_the_file {Couldn't reach {label} to save the file. Check your connection.} update_the_file {Couldn't reach {label} to update the file. Check your connection.} list_your_diagrams {Couldn't reach {label} to list your diagrams. Check your connection.} read_the_file {Couldn't reach {label} to read the file. Check your connection.} other {Couldn't reach {label} to complete the file operation. Check your connection.}}",
+  "cloud.oneDriveRefusedToActionLiveDiagramsCan":
+    "{action, select, read_the_file_details {OneDrive refused to read the file details. Live Diagrams can only use files in its own folder (Apps › Diagrams).{value1}} download_the_file {OneDrive refused to download the file. Live Diagrams can only use files in its own folder (Apps › Diagrams).{value1}} save_the_file {OneDrive refused to save the file. Live Diagrams can only use files in its own folder (Apps › Diagrams).{value1}} update_the_file {OneDrive refused to update the file. Live Diagrams can only use files in its own folder (Apps › Diagrams).{value1}} list_your_diagrams {OneDrive refused to list your diagrams. Live Diagrams can only use files in its own folder (Apps › Diagrams).{value1}} read_the_file {OneDrive refused to read the file. Live Diagrams can only use files in its own folder (Apps › Diagrams).{value1}} other {OneDrive refused to complete the file operation. Live Diagrams can only use files in its own folder (Apps › Diagrams).{value1}}}",
+  "cloud.oneDriveIsntConfiguredForThisSite": "OneDrive isn't configured for this site.",
+  "cloud.dropboxRefusedToActionTheAppIsnt":
+    "{action, select, read_the_file_details {Dropbox refused to read the file details: the app isn't set up with the permissions Live Diagrams needs.} download_the_file {Dropbox refused to download the file: the app isn't set up with the permissions Live Diagrams needs.} save_the_file {Dropbox refused to save the file: the app isn't set up with the permissions Live Diagrams needs.} update_the_file {Dropbox refused to update the file: the app isn't set up with the permissions Live Diagrams needs.} list_your_diagrams {Dropbox refused to list your diagrams: the app isn't set up with the permissions Live Diagrams needs.} read_the_file {Dropbox refused to read the file: the app isn't set up with the permissions Live Diagrams needs.} other {Dropbox refused to complete the file operation: the app isn't set up with the permissions Live Diagrams needs.}}",
+  "cloud.dropboxRefusedToAction":
+    "{action, select, read_the_file_details {Dropbox refused to read the file details.} download_the_file {Dropbox refused to download the file.} save_the_file {Dropbox refused to save the file.} update_the_file {Dropbox refused to update the file.} list_your_diagrams {Dropbox refused to list your diagrams.} read_the_file {Dropbox refused to read the file.} other {Dropbox refused to complete the file operation.}}",
+  "cloud.dropboxIsntConfiguredForThisSite": "Dropbox isn't configured for this site.",
+  "cloud.openingValue0": "Opening {value0}…",
+  "cloud.googleDriveRefusedToActionLiveDiagrams":
+    "{action, select, read_the_file_details {Google Drive refused to read the file details. Live Diagrams can only open files you pick with it or that it created.{value1}} download_the_file {Google Drive refused to download the file. Live Diagrams can only open files you pick with it or that it created.{value1}} save_the_file {Google Drive refused to save the file. Live Diagrams can only open files you pick with it or that it created.{value1}} update_the_file {Google Drive refused to update the file. Live Diagrams can only open files you pick with it or that it created.{value1}} list_your_diagrams {Google Drive refused to list your diagrams. Live Diagrams can only open files you pick with it or that it created.{value1}} read_the_file {Google Drive refused to read the file. Live Diagrams can only open files you pick with it or that it created.{value1}} other {Google Drive refused to complete the file operation. Live Diagrams can only open files you pick with it or that it created.{value1}}}",
+  "cloud.thatGoogleDriveFileNoLongerExists":
+    "That Google Drive file no longer exists, or Live Diagrams no longer has access to it.",
+  "cloud.couldntLoadGooglesSigninScriptCheckYour":
+    "Couldn't load Google's sign-in script. Check your connection, or whether an ad blocker is blocking Google.",
+  "cloud.couldntLoadTheGooglePicker": "Couldn't load the Google Picker.",
+  "cloud.googleDriveAccessWasntGranted": "Google Drive access wasn't granted.",
+  "cloud.googleSigninFailedValue0": "Google sign-in failed ({value0}).",
+  "cloud.googleSigninWasClosedBeforeItFinished": "Google sign-in was closed before it finished.",
+  "cloud.theGoogleSigninWindowWasBlockedAllow":
+    "The Google sign-in window was blocked. Allow pop-ups for this site and try again.",
+  "cloud.googleSigninFailed": "Google sign-in failed.",
+  "cloud.googleDriveIsntConfiguredForThisSite": "Google Drive isn't configured for this site.",
+  "cloud.googleSigninIsntAvailableRightNow": "Google sign-in isn't available right now.",
+  "cloud.supersededByANewerSigninRequest": "Superseded by a newer sign-in request.",
+  "fileToast.exportedNodesPluralOneNodeOtherNodes":
+    "Exported {nodes, plural, one {# nodes} other {# nodes}} and {edges, plural, one {# edges} other {# edges}}. Anyone who has this file can open it.",
+  "fileDialog.characters": "{count, plural, one {# character} other {# characters}}",
+  "fileDialog.longLink":
+    "This link is long ({length}). Some chat apps and email clients cut long links off. For big diagrams, share the <b>.diagram.json</b> file instead (or save it to Google Drive and share that).",
+  "embedDialog.publicNote":
+    "<b>Anyone who can see the page can open this diagram.</b> It's inside the code. For a work diagram, use Share… ▸ Embed in your app.",
+  "embedDialog.hostNote":
+    "<b>The diagram never leaves your app. Live Diagrams only provides the viewer.</b> Serve the diagram file from your app, behind its own sign-in; your page fetches it and hands it to the viewer. It's never in a URL and never sent to livediagrams.dev.",
+  "fileDialog.diagramCounts":
+    "{nodes, plural, one {# nodes} other {# nodes}}, {edges, plural, one {# edges} other {# edges}}{simulations, plural, =0 {} one {, # simulation} other {, # simulations}}",
+  "embedDialog.exampleByName": "Example by name",
+  "embedDialog.inTheLink": "In the link",
+  "fileDialog.play": "Play “{title}”",
+  "fileDialog.detected": "Detected: {format}",
+  "fileDialog.pagesSubtitle": "“{name}” has {count, plural, one {# pages} other {# pages}}. Which one should open?",
+  "fileDialog.options": "Options",
+  "imageDialog.summary":
+    "{kind, select, svg {SVG, scalable} other {PNG, {scale}× resolution{transparent, select, yes {, transparent background} other {}}}}{withTitle, select, yes {} other {, without the title}}",
+  "fileDialog.downloadFormat": "Download {format}",
+  "passwordLink.note":
+    "<b>Send the password separately.</b> Anyone with the link and the password can open it. Nothing is uploaded, and a forgotten password can't be recovered.",
+  "htmlExport.anyone": "Anyone who has this file can open it.",
+  "htmlExport.protectedNote":
+    "<b>Only people with the password can open it.</b> Send the password separately, not with the file.",
+  "htmlExport.accessNote":
+    "<b>Anyone who has this file can open it.</b> Keep it where your team already controls access, such as SharePoint, Confluence or a private repository.",
+  "htmlExport.simulationCount": "{count, plural, one {# simulation} other {# simulations}}",
+  "htmlExport.playsWhenOpened": "plays “{title}” when opened",
+  "password.minimum":
+    "At least {count, plural, one {# character} other {# characters}}. Several random words work well.",
+  "storageDialog.title": "Open from {provider}",
+  "storageDialog.folder": "Diagrams saved in {folder}",
+  "storageDialog.signOut": "Sign out of {provider}",
+  "storageDialog.empty": "No diagrams here yet. Save one with File → Save to ▸ {provider}.",
+  "importReport.drew":
+    "Drew {nodes, plural, one {# node} other {# nodes}}{boundaries, plural, =0 { and } other {, }}{connections, plural, one {# connection} other {# connections}}{boundaries, plural, =0 {} one { and # boundary} other { and # boundaries}}.",
+  "importReport.trafficDuration": "{rate} for {duration}",
+  "importReport.aGuess": ", a guess",
+  "importReport.boundariesDrawn": "Boundaries ({drawn, number} of {total, plural, one {# drawn} other {# drawn}})",
+  "importReport.pickLede":
+    "It has {count, plural, one {# nodes} other {# nodes}}, more than a diagram reads well, so only some boundaries are drawn. The ones with the most flows come first; tick others to draw them as a new diagram.",
+  "importReport.groupCounts":
+    "{nodes, plural, one {# node} other {# nodes}} · {flows, plural, one {# flow} other {# flows}}",
+  "importReport.drawThese": "Draw these ({count, plural, one {# node} other {# nodes}})",
+  "importReport.overLimit":
+    "{count, plural, one {# nodes ticked} other {# nodes ticked}}, over the {limit} an import draws: untick some.",
+  "importReport.alreadyDrawn": "{count, plural, one {# nodes ticked} other {# nodes ticked}}: these are drawn.",
+  "importReport.ticked": "{count, plural, one {# nodes ticked} other {# nodes ticked}}.",
+  "importReport.stencilFor": "{stencil} for {name}",
+  "importReport.anotherStencil": "Another stencil for {name}",
+  "importReport.otherStencil": "Other stencil for {name}",
+  "fileDialog.shareLink": "Share link",
+  "fileDialog.anyoneWithTheLinkCanOpenIt": "Anyone with the link can open it and keep an editable copy.",
+  "fileDialog.open": "Open",
+  "fileDialog.copyLink": "Copy link",
+  "fileDialog.theDiagramLivesInsideTheLinkItself":
+    "The diagram lives inside the link itself (after the #), so it's never uploaded anywhere. Opening it never overwrites the recipient's own diagrams.",
+  "fileDialog.embedPreview": "Embed preview",
+  "fileDialog.embedCode": "Embed code",
+  "fileDialog.aPrivateDiagramEmbedsOnlyWhereYour":
+    "A private diagram embeds only where your own app supplies it. Viewers can pan, zoom and play it.",
+  "fileDialog.showThisDiagramInsideYourOwnApp":
+    "Show this diagram inside your own app or intranet. Viewers can pan, zoom and play it, not edit it.",
+  "fileDialog.pasteThisIntoABlogPostWiki":
+    "Paste this into a blog post, wiki or docs page. Viewers can pan and zoom, not edit.",
+  "fileDialog.saveTheDiagramFileToServeFrom": "Save the diagram file to serve from your app",
+  "fileDialog.openViewer": "Open viewer",
+  "fileDialog.copyCode": "Copy code",
+  "fileDialog.whereTheDiagramComesFrom": "Where the diagram comes from",
+  "fileDialog.code": "Code",
+  "fileDialog.preparingPreview": "Preparing preview…",
+  "fileDialog.fileInYourApp": "File in your app",
+  "fileDialog.height": "Height",
+  "fileDialog.fitsTheDiagram": "Fits the diagram",
+  "fileDialog.live": "Live",
+  "fileDialog.staticDiagram": "Static diagram",
+  "fileDialog.pasteADiagram": "Paste a diagram",
+  "fileDialog.liveDiagramsJSONDrawioXMLAMermaid":
+    "Live Diagrams JSON, draw.io XML, a Mermaid flowchart, a docker-compose file, Kubernetes manifests, an AsyncAPI document or a Terraform plan (terraform show -json). The format is detected for you.",
+  "fileDialog.readClipboard": "Read clipboard",
+  "fileDialog.import": "Import",
+  "fileDialog.diagramText": "Diagram text",
+  "fileDialog.openAShareLink": "Open a share link",
+  "fileDialog.itOpensInItsOwnSharedSlot": "It opens in its own “Shared” slot, so your diagrams stay as they are.",
+  "fileDialog.chooseAPage": "Choose a page",
+  "fileDialog.exportImage": "Export image",
+  "fileDialog.theWholeDiagramAtFullSizeWhatever": "The whole diagram at full size, whatever part of it is on screen.",
+  "fileDialog.format": "Format",
+  "fileDialog.title": "Title",
+  "fileDialog.diagramTitleAndDescription": "Diagram title and description",
+  "fileDialog.resolution": "Resolution",
+  "fileDialog.background": "Background",
+  "fileDialog.transparent": "Transparent",
+  "fileDialog.shareLinkCopiedAnyoneWithTheLink": "Share link copied. Anyone with the link can open the diagram.",
+  "fileDialog.couldntCopyAutomaticallySelectTheLinkAnd": "Couldn't copy automatically. Select the link and copy it.",
+  "fileDialog.embedCodeCopied": "Embed code copied.",
+  "fileDialog.couldntCopyAutomaticallySelectTheCodeAnd": "Couldn't copy automatically. Select the code and copy it.",
+  "fileDialog.theBrowserDidntAllowReadingTheClipboard":
+    "The browser didn't allow reading the clipboard. Paste with Ctrl+V instead.",
+  "fileDialog.unrecognisedFormat": "Unrecognised format",
+  "fileDialog.waitingForText": "Waiting for text",
+  "passwordLink.linkWithPassword": "Link with password",
+  "passwordLink.theDiagramIsEncryptedInThisBrowser":
+    "The diagram is encrypted in this browser before it goes into the link.",
+  "passwordLink.copyAgain": "Copy again",
+  "passwordLink.thisLinkIsLongSomeChatApps": "This link is long. Some chat apps and email clients cut long links off.",
+  "passwordLink.thisDiagramIsPasswordprotected": "This diagram is password-protected",
+  "passwordLink.enterThePasswordYouWereGivenIts":
+    "Enter the password you were given. It's checked in this browser; nothing is sent anywhere.",
+  "passwordLink.password": "Password",
+  "passwordLink.linkWithPasswordCopiedSendThePassword": "Link with password copied. Send the password separately.",
+  "passwordLink.encrypting": "Encrypting…",
+  "passwordLink.unlocking": "Unlocking…",
+  "password.show": "Show",
+  "storageDialog.loadingYourDiagrams": "Loading your diagrams…",
+  "storageDialog.tryAgain": "Try again",
+  "importReport.selectIt": "Select it",
+  "importReport.importReport": "Import report",
+  "importReport.readOnThisDeviceNothingWasUploaded": "Read on this device. Nothing was uploaded.",
+  "importReport.thisDiagramIsntPrivate": "This diagram isn't private.",
+  "importReport.makeItPrivate": "Make it private",
+  "importReport.filePrivacy": "File ▸ Privacy",
+  "importReport.checkTheseGuesses": "Check these guesses",
+  "importReport.importedTraffic": "Imported traffic",
+  "importReport.notDrawn": "Not drawn",
+  "importReport.opensANewDiagramWithEveryResource": "Opens a new diagram with every resource as a node",
+  "importReport.drawEverything": "Draw everything",
+  "importReport.couldntRead": "Couldn't read",
+  "importReport.opensANewDiagramWithTheTicked":
+    "Opens a new diagram with the ticked boundaries; this one stays as it is",
+  "importReport.searchStencils": "Search stencils",
+  "importReport.other": "Other…",
+  "importReport.thatNodeIsntInTheDiagramAny": "That node isn't in the diagram any more.",
+  "importReport.connectionsFoundInSettings": "Connections found in settings",
+  "importReport.nothingTicked": "Nothing ticked.",
+  "htmlExport.interactiveHTML": "Interactive HTML",
+  "htmlExport.oneFileWithTheDiagramAndIts":
+    "One file with the diagram and its simulations, to open in any browser. It makes no requests and needs no internet.",
+  "htmlExport.downloadHTML": "Download HTML",
+  "htmlExport.requireAPassword": "Require a password",
+  "htmlExport.encryptsTheWholeDiagramTitleIncludedOnly":
+    "Encrypts the whole diagram, title included; only the file’s size shows. The password is never stored or sent and can’t be recovered: if it’s lost, export again.",
+  "htmlExport.banner": "Banner",
+  "htmlExport.egConfidentialInternalUseOnly": "e.g. Confidential: internal use only",
+  "htmlExport.theme": "Theme",
+  "htmlExport.simulations": "Simulations",
+  "htmlExport.simulationsToInclude": "Simulations to include",
+  "htmlExport.whenOpened": "When opened",
+  "htmlExport.showTheDiagramNotPlaying": "Show the diagram, not playing",
+  "htmlExport.noSimulations": "no simulations",
+  "htmlExport.opensWithoutPlaying": "opens without playing",
+  "htmlExport.withABanner": "with a banner",
+  "htmlExport.light": "Light",
+  "htmlExport.dark": "Dark",
   "live.sourceRateLimit":
     "Continuous traffic needs a higher sampling scale for these source rates. Open Inputs and increase Messages per dot, or lower the source rates.",
   "live.sourceVolumeLimit": "Continuous traffic reached its 200,000 sampled-message budget. Restart to continue.",
-  // ------------------------------------------------------------------------------------------------ common
   "common.close": "Close",
   "common.cancel": "Cancel",
   "common.retry": "Retry",
   "common.loading": "Loading…",
   "common.done": "Done",
-
-  // Units (src/i18n/format.ts). Developers in most languages keep "msg/s".
   "format.rate": "{rate} msg/s",
-
-  // ------------------------------------------------------------------------------------------------ top bar
   "topbar.views": "View",
   "topbar.diagram": "Diagram",
   "topbar.stencils": "Stencils",
@@ -35,8 +493,6 @@ const en = {
   "topbar.toDark": "Switch to dark theme",
   "topbar.lightTheme": "Light theme",
   "topbar.darkTheme": "Dark theme",
-
-  // ------------------------------------------------------------------------------------------------ View menu
   "view.menu": "View options",
   "view.button": "View",
   "view.buttonTitle": "Node and edge style, and overlays",
@@ -52,8 +508,6 @@ const en = {
   "view.dependencies": "Show dependencies",
   "view.dependenciesDesc": "Config, secret, identity and other dotted edges",
   "view.language": "Language…",
-
-  // ------------------------------------------------------------------------------------------------ File menu
   "file.menu": "File",
   "file.buttonTitle": "Save, open, export and share",
   "file.new": "New diagram",
@@ -86,8 +540,6 @@ const en = {
   "file.privacyDesc": "This diagram is private",
   "file.exportPng": "Export PNG",
   "file.exportAs": "Export as",
-
-  // Storage: "This device" is the one word for the device (docs/UX-PRINCIPLES.md, Storage).
   "storage.thisDevice": "This device",
   "storage.thisDeviceMore": "This device…",
   "storage.thisDeviceInSentence": "this device",
@@ -98,8 +550,6 @@ const en = {
   "shared.chip": "Shared",
   "shared.keepTitle": "Keep a copy in Your diagrams",
   "shared.keep": "Save a copy",
-
-  // File ▸ Privacy
   "privacy.diagram": "Private diagram",
   "privacy.diagramAlways": "Always private: it comes from a local-only example",
   "privacy.diagramDesc": "No share links, cloud saves or AI",
@@ -107,23 +557,17 @@ const en = {
   "privacy.newDiagramsDesc": "Diagrams you start or bring in from this device",
   "privacy.note": "To share a private diagram, export Interactive HTML.",
   "privacy.clear": "Clear everything on this device…",
-
-  // File ▸ Export as
   "export.file": "Diagram file",
   "export.image": "Image…",
   "export.imageDesc": "PNG or SVG, size and background",
   "export.html": "Interactive HTML…",
   "export.mermaidFile": "Mermaid file",
   "export.copyMermaid": "Copy as Mermaid",
-
-  // ------------------------------------------------------------------------------------------------ presenting
   "present.exit": "Exit presentation",
   "present.fullScreen": "Full screen",
   "present.exitFullScreen": "Exit full screen",
   "present.fullScreenKey": "Full screen ({key})",
   "present.exitFullScreenKey": "Exit full screen ({key})",
-
-  // ------------------------------------------------------------------------------------------------ start card
   "start.title": "Draw a system, then watch messages flow through it",
   "start.ledeRecent": "Pick up where you left off, open an example, or start from a blank canvas.",
   "start.lede": "Open an example to explore, or start from a blank canvas.",
@@ -142,8 +586,6 @@ const en = {
   "start.privacy": "Privacy",
   "start.terms": "Terms",
   "start.recentDetail": "{count, plural, one {# node} other {# nodes}} · edited {ago}",
-
-  // ------------------------------------------------------------------------------------------------ Share…
   "share.title": "Share",
   "share.subtitle": "Safest first. Each says who can open what it makes.",
   "share.ways": "Ways to share",
@@ -163,8 +605,6 @@ const en = {
   "share.linkDesc": "<b>Public:</b> anyone with the link can open it.",
   "share.embedPublic": "Embed on a public page…",
   "share.embedPublicDesc": "<b>Public:</b> anyone who can see the page can open it.",
-
-  // ------------------------------------------------------------------------------------------------ privacy dialogs
   "privateDialog.title": "Private diagram",
   "privateDialog.subtitle": "It stays on this device. To share it, export Interactive HTML or the diagram file.",
   "privateDialog.more": "How privacy works",
@@ -183,8 +623,6 @@ const en = {
   "clear.settings": "Your settings, the language included",
   "clear.stays":
     "Files you saved or exported, and copies in Google Drive, OneDrive or Dropbox, stay where they are. This can't be undone. Other tabs of Live Diagrams start over too.",
-
-  // ------------------------------------------------------------------------------------------------ Language
   "language.title": "Language",
   "language.subtitle": "For menus, dialogs and messages. Your diagrams stay as you wrote them.",
   "language.browser": "Browser default",
@@ -196,8 +634,6 @@ const en = {
     "Translated by machine. Something reads wrong? <link>Suggest a better translation</link> on GitHub.",
   "language.palette": "Language…",
   "language.paletteKeywords": "language translation",
-
-  // ------------------------------------------------------------------------------------------------ shortcuts sheet
   "shortcuts.title": "Keyboard shortcuts",
   "shortcuts.footer": "Live Diagrams is free and open source, and your diagrams stay in your browser.",
   "shortcuts.privacy": "Privacy",
@@ -291,6 +727,14 @@ const en = {
   "shortcuts.mouse.boundary.does": "Join it (lit) or leave it (dashed)",
   "shortcuts.mouse.resize": "Drag a boundary's corner",
   "shortcuts.mouse.resize.does": "Resize; takes in what's now inside",
+  "cloud.operationFailed":
+    "{value0, select, read_the_file_details {Couldn't read the file details on {provider} ({value1}{value2}).} download_the_file {Couldn't download the file on {provider} ({value1}{value2}).} save_the_file {Couldn't save the file on {provider} ({value1}{value2}).} update_the_file {Couldn't update the file on {provider} ({value1}{value2}).} list_your_diagrams {Couldn't list your diagrams on {provider} ({value1}{value2}).} read_the_file {Couldn't read the file on {provider} ({value1}{value2}).} other {Couldn't complete the file operation on {provider} ({value1}{value2}).}}",
+  "cloud.signInExpired":
+    "{action, select, read_the_file_details {{provider} sign-in expired while trying to read the file details. Please try again.} download_the_file {{provider} sign-in expired while trying to download the file. Please try again.} save_the_file {{provider} sign-in expired while trying to save the file. Please try again.} update_the_file {{provider} sign-in expired while trying to update the file. Please try again.} list_your_diagrams {{provider} sign-in expired while trying to list your diagrams. Please try again.} read_the_file {{provider} sign-in expired while trying to read the file. Please try again.} other {{provider} sign-in expired while trying to complete the file operation. Please try again.}}",
+  "cloud.fileChanged":
+    "{action, select, read_the_file_details {The file changed in {provider} while trying to read the file details. Try again.} download_the_file {The file changed in {provider} while trying to download the file. Try again.} save_the_file {The file changed in {provider} while trying to save the file. Try again.} update_the_file {The file changed in {provider} while trying to update the file. Try again.} list_your_diagrams {The file changed in {provider} while trying to list your diagrams. Try again.} read_the_file {The file changed in {provider} while trying to read the file. Try again.} other {The file changed in {provider} while trying to complete the file operation. Try again.}}",
+  "cloud.busy": "{provider} is busy right now ({status}). Try again in a moment.",
+  "cloud.storageFull": "Your {provider} is full, so the file couldn't be saved.",
+  "cloud.fileMissing": "That {provider} file no longer exists, or it was moved out of the app folder.",
 } as const;
-
 export default en;

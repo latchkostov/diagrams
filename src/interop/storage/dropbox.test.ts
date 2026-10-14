@@ -131,14 +131,14 @@ describe("Dropbox client", () => {
     expect(r.asked).toEqual([false, true]);
     const gone = client([{ status: 409, body: { error_summary: "path/not_found/.." } }]);
     await expect(gone.c.download("id:x")).rejects.toThrow(/no longer exists/);
-    expect(dropboxError(409, '{"error_summary":"path/insufficient_space/"}', "save the file")).toBe(
+    expect(dropboxError(409, '{"error_summary":"path/insufficient_space/"}', "save_the_file")).toBe(
       "Your Dropbox is full, so the file couldn't be saved.",
     );
-    expect(dropboxError(409, '{"error_summary":"path/conflict/file/"}', "update the file")).toMatch(/changed/);
-    expect(dropboxError(400, "Error in call: missing scope files.content.write", "save the file")).toMatch(
+    expect(dropboxError(409, '{"error_summary":"path/conflict/file/"}', "update_the_file")).toMatch(/changed/);
+    expect(dropboxError(400, "Error in call: missing scope files.content.write", "save_the_file")).toMatch(
       /permissions/,
     );
-    expect(dropboxError(503, "", "save the file")).toMatch(/busy/);
+    expect(dropboxError(503, "", "save_the_file")).toMatch(/busy/);
     const offline = client(["network-error"]);
     await expect(offline.c.list()).rejects.toThrow("Couldn't reach Dropbox to list your diagrams");
   });

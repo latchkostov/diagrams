@@ -12,6 +12,20 @@ Changes to habits people already have. The app has no "what's new" panel, so the
 - Opening properties makes room beside the canvas by closing Inputs or Simulations. An unsaved simulation
   draft comes back when Simulations reopens.
 
+## File dialogs in your language (2026-10-14)
+
+- Open, import, export, embed, password links and cloud-storage dialogs and messages now use the chosen language,
+  with translations in all 37 locales. Counts, sizes and file dates follow that language too.
+- Diagram text, code snippets, file formats and product names stay as written. Arabic mirrors the dialogs;
+  long translations wrap in the same compact layout, with export options still behind Options.
+- Saving to this device and downloading diagram files work while notification messages download, and when that
+  download fails. Native Open and Save retain the browser gesture that allows their pickers to open.
+- Cancelling Paste also cancels an import waiting for its messages. Import reports follow language changes when
+  reopened, including reasons, notes and reports drawn again from retained import data.
+- English keeps its previous wording and formatting after extraction: storage failures name their provider,
+  image failures name their format, and locked copies retain the warning when someone sends a link. Library
+  pagination, detail spacing, import counts and lists, file sizes and traffic units keep their original output.
+
 ## External discovery (2026-10-14)
 
 - **Clients & external** brings External API, Webhook, Email, SMS, Mobile Push, Marketing Automation and LLM API

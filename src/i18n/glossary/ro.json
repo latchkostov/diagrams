@@ -34,7 +34,12 @@
     "offset": { "use": "offset", "keepEnglish": true, "match": ["offset"] },
     "backlog": { "use": "backlog", "keepEnglish": true, "match": ["backlog"] },
     "retry": { "use": "reîncercați", "match": ["reîncerc"] },
-    "diagram": { "use": "diagramă", "match": ["diagram"] },
+    "diagram": {
+      "use": "diagramă",
+      "match": ["diagram"],
+      "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"],
+      "note": "Diagrams in these cloud errors is the existing folder name."
+    },
     "node": { "use": "nod", "match": ["nod"], "note": "nod, noduri, 20 de noduri" },
     "edge": {
       "use": "conexiune",

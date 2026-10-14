@@ -1,3 +1,12 @@
+export { fileActions } from "../interop/fileActions";
+import { fileActions } from "../interop/fileActions";
+import type { InteropApi } from "../interop/useInterop";
+import { actionRegistry } from "./actions";
+
+/** Registration belongs to the canvas module, alongside the actions it registers. */
+export function registerCanvasActions(get: () => InteropApi): () => void {
+  return actionRegistry.register([...builtinActions(), ...fileActions(get)]);
+}
 import { stencils, getStencil } from "../stencils/registry";
 import { CATEGORY_ORDER, categoryLabel } from "../lib/categories";
 import { toneColor, toneLabel } from "../canvas/groupTones";

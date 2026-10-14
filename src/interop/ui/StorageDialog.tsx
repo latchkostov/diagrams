@@ -1,5 +1,6 @@
+import { t, useLocale } from "../../i18n";
 import { useCallback, useEffect, useState } from "react";
-import { formatAgo } from "../../lib/time";
+import { formatAgo } from "../../i18n/format";
 import type { StorageEntry } from "../storage/types";
 import { Dialog } from "./Dialog";
 import { Glyph, type GlyphName } from "./glyphs";
@@ -22,6 +23,7 @@ export function StorageFilesDialog({
   onSignOut?: () => void;
   onClose: () => void;
 }) {
+  useLocale();
   const [state, setState] = useState<
     { kind: "loading" } | { kind: "error"; message: string } | { kind: "ready"; files: StorageEntry[] }
   >({ kind: "loading" });
@@ -40,8 +42,8 @@ export function StorageFilesDialog({
 
   return (
     <Dialog
-      title={`Open from ${label}`}
-      subtitle={folder ? `Diagrams saved in ${folder}` : undefined}
+      title={t("storageDialog.title", { provider: label })}
+      subtitle={folder ? t("storageDialog.folder", { folder }) : undefined}
       icon={<Glyph name={icon} />}
       onClose={onClose}
       testId="storage-files-dialog"
@@ -49,12 +51,12 @@ export function StorageFilesDialog({
       footer={
         <>
           <a className="link-btn" href="privacy.html" target="_blank" rel="noopener" data-testid="storage-privacy">
-            Privacy
+            {t("file.privacy")}
           </a>
           <span className="ix-grow" />
           {onSignOut && (
             <button className="link-btn" onClick={onSignOut} data-testid="storage-sign-out">
-              Sign out of {label}
+              {t("storageDialog.signOut", { provider: label })}
             </button>
           )}
         </>
@@ -62,7 +64,7 @@ export function StorageFilesDialog({
     >
       {state.kind === "loading" && (
         <p className="ix-storage-state" role="status" data-testid="storage-files-loading">
-          <Glyph name="spinner" size={14} /> Loading your diagrams…
+          <Glyph name="spinner" size={14} /> {t("storageDialog.loadingYourDiagrams")}
         </p>
       )}
       {state.kind === "error" && (
@@ -77,13 +79,13 @@ export function StorageFilesDialog({
             data-testid="storage-files-retry"
             data-autofocus
           >
-            Try again
+            {t("storageDialog.tryAgain")}
           </button>
         </div>
       )}
       {state.kind === "ready" && state.files.length === 0 && (
         <p className="ix-storage-state" data-testid="storage-files-empty">
-          No diagrams here yet. Save one with File → Save to ▸ {label}.
+          {t("storageDialog.empty", { provider: label })}
         </p>
       )}
       {state.kind === "ready" && state.files.length > 0 && (

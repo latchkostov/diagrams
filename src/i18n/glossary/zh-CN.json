@@ -39,7 +39,12 @@
     "offset": { "use": "偏移量", "match": ["偏移"] },
     "backlog": { "use": "积压", "match": ["积压"] },
     "retry": { "use": "重试", "match": ["重试"] },
-    "diagram": { "use": "图表", "match": ["图表"] },
+    "diagram": {
+      "use": "图表",
+      "match": ["图表"],
+      "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"],
+      "note": "Diagrams in these cloud errors is the existing folder name."
+    },
     "node": { "use": "节点", "match": ["节点"] },
     "edge": {
       "use": "连线",

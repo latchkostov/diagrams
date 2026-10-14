@@ -1,3 +1,6 @@
+import { cloudMessages, cloudNetwork } from "../storage/cloudMessages";
+import type { CloudOperation } from "../storage/types";
+import { t } from "../../i18n";
 import { LIMITS, tooLargeMessage } from "../native";
 
 // Google Drive REST v3, the few calls we need, with an injected `fetch` and token source so the
@@ -53,28 +56,30 @@ export function multipartBody(metadata: object, content: string, contentType: st
   ].join("\r\n");
 }
 
-function friendly(status: number, body: string, action: string): string {
+function friendly(status: number, body: string, action: CloudOperation): string {
   let reason = "";
   try {
     reason = (JSON.parse(body) as { error?: { message?: string } }).error?.message ?? "";
   } catch {
     /* not JSON */
   }
-  if (status === 401) return `Google Drive sign-in expired while trying to ${action}. Please try again.`;
-  if (status === 403 && /storage|quota/i.test(reason))
-    return "Your Google Drive is full, so the file couldn't be saved.";
+  if (status === 401) return cloudMessages.expired("Google Drive", action);
+  if (status === 403 && /storage|quota/i.test(reason)) return cloudMessages.full("Google Drive");
   if (status === 403)
-    return `Google Drive refused to ${action}. Live Diagrams can only open files you pick with it or that it created.${reason ? ` (${reason})` : ""}`;
-  if (status === 404) return "That Google Drive file no longer exists, or Live Diagrams no longer has access to it.";
-  if (status === 429 || status >= 500) return `Google Drive is busy right now (${status}). Try again in a moment.`;
-  return `Couldn't ${action} on Google Drive (${status}${reason ? `: ${reason}` : ""}).`;
+    return t("cloud.googleDriveRefusedToActionLiveDiagrams", {
+      action: action,
+      value1: reason ? ` (${reason})` : "",
+    });
+  if (status === 404) return t("cloud.thatGoogleDriveFileNoLongerExists");
+  if (status === 429 || status >= 500) return cloudMessages.busy("Google Drive", status);
+  return cloudMessages.failed("Google Drive", action, status, reason ? `: ${reason}` : "");
 }
 
 export function createDriveClient(deps: DriveClientDeps) {
   const boundary = deps.boundary ?? (() => `diagrams-${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`);
 
   /** Authorised fetch; retries once with a fresh token on 401. */
-  async function call(url: string, init: RequestInit, action: string): Promise<Response> {
+  async function call(url: string, init: RequestInit, action: CloudOperation): Promise<Response> {
     let token = await deps.getToken();
     for (let attempt = 0; ; attempt++) {
       // A cancelled write stops here, after the token (which may have meant a sign-in) and before the upload.
@@ -87,7 +92,7 @@ export function createDriveClient(deps: DriveClientDeps) {
         });
       } catch (err) {
         if (init.signal?.aborted) throw init.signal.reason ?? err;
-        throw new DriveError(`Couldn't reach Google Drive to ${action}. Check your connection.`);
+        throw new DriveError(cloudNetwork("Google Drive", action));
       }
       if (res.ok) return res;
       if (res.status === 401 && attempt === 0) {
@@ -103,7 +108,7 @@ export function createDriveClient(deps: DriveClientDeps) {
       const res = await call(
         `${API}/${encodeURIComponent(id)}?fields=${FIELDS}&supportsAllDrives=true`,
         { method: "GET" },
-        "read the file details",
+        "read_the_file_details",
       );
       return (await res.json()) as DriveFile;
     },
@@ -114,7 +119,7 @@ export function createDriveClient(deps: DriveClientDeps) {
       const res = await call(
         `${API}/${encodeURIComponent(id)}?alt=media&supportsAllDrives=true`,
         { method: "GET" },
-        "download the file",
+        "download_the_file",
       );
       const size = Number(res.headers.get("Content-Length"));
       if (size > LIMITS.maxTextChars) {
@@ -159,7 +164,7 @@ export function createDriveClient(deps: DriveClientDeps) {
           body: multipartBody(meta, file.content, file.mimeType, b),
           signal,
         },
-        "save the file",
+        "save_the_file",
       );
       return (await res.json()) as DriveFile;
     },
@@ -180,7 +185,7 @@ export function createDriveClient(deps: DriveClientDeps) {
           body: multipartBody(meta, file.content, file.mimeType, b),
           signal,
         },
-        "update the file",
+        "update_the_file",
       );
       return (await res.json()) as DriveFile;
     },

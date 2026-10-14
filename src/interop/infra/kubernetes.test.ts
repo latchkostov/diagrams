@@ -1,3 +1,5 @@
+import { presentReportLine } from "../ui/importMessages";
+import { formatImportMessage } from "../ui/importMessages";
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import type { DiagramFile } from "../../model/types";
@@ -179,11 +181,17 @@ describe("Kubernetes import: the fixture set", () => {
 
   it("reports the settings it read, what it didn't draw, the Service with no workload and the KEDA range", () => {
     const { report } = fixture();
-    expect(report.summary).toBe("Imported “shop and kafka” from Kubernetes: 14 nodes, 13 connections.");
+    expect(formatImportMessage(report.summary!)).toBe(
+      "Imported “shop and kafka” from Kubernetes: 14 nodes, 13 connections.",
+    );
     expect(report.format).toBe("Kubernetes");
     expect(report.boundaries).toBe(2);
     expect(report.guesses).toEqual([]);
-    expect(report.inferred.map((c) => `${c.from} → ${c.to} ${c.evidence}${c.guess ? " (guess)" : ""}`)).toEqual([
+    expect(
+      report.inferred
+        .map((line) => ({ ...line, ...(line.note ? { note: formatImportMessage(line.note) } : {}) }))
+        .map((c) => `${c.from} → ${c.to} ${c.evidence}${c.guess ? " (guess)" : ""}`),
+    ).toEqual([
       // Two namespaces: each row says where its nodes live.
       "orders-api (shop) → redis (shop) REDIS_URL",
       "orders-api (shop) → postgres (shop) DATABASE_HOST",
@@ -191,15 +199,15 @@ describe("Kubernetes import: the fixture set", () => {
       "payments-worker (shop) → payments.completed.v1 (kafka) OUTPUT_TOPIC",
       "settlement-report (shop) → postgres (shop) DATABASE_HOST",
     ]);
-    expect(report.notDrawn).toEqual([
+    expect(report.notDrawn.map(presentReportLine)).toEqual([
       { name: "Kafka shop-kafka", reason: "shown through its topics" },
       { name: "ServiceMonitor orders-api", reason: "unknown kind (monitoring.coreos.com)" },
     ]);
-    expect(report.notes).toEqual([
+    expect(report.notes.map(formatImportMessage)).toEqual([
       "storefront: a Service with no workload in these files",
       "payments-worker scales from 1 to 12 replicas (KEDA)",
     ]);
-    expect(report.unread).toEqual([]);
+    expect(report.unread.map(presentReportLine)).toEqual([]);
   });
 
   it("lays out without overlaps, every member inside its boundary", () => {
@@ -404,12 +412,20 @@ ${deployment("orders-app", "example/orders", "", "shop").replace(
     // Describe alone, a deny, and a prefix draw nothing; the prefix is said.
     expect(diagram.nodes.map((n) => n.id)).not.toContain("topic-secret-topic");
     expect(diagram.nodes.filter((n) => n.stencil === "kafka.topic")).toHaveLength(2);
-    expect(report.notes).toContain("orders-app (KafkaUser) may read topics starting “audit.”: not drawn");
-    expect(report.notDrawn).toContainEqual({ name: "KafkaUser orders-app", reason: "shown as its workloads' flows" });
+    expect(report.notes.map(formatImportMessage)).toContain(
+      "orders-app (KafkaUser) may read topics starting “audit.”: not drawn",
+    );
+    expect(report.notDrawn.map(presentReportLine)).toContainEqual({
+      name: "KafkaUser orders-app",
+      reason: "shown as its workloads' flows",
+    });
     // Each flow names the KafkaUser that allows it, under a heading that says so.
-    expect(report.connectionsTitle).toBe("Connections found in settings and KafkaUser ACLs");
+    expect(formatImportMessage(report.connectionsTitle!)).toBe("Connections found in settings and KafkaUser ACLs");
     expect(
-      report.inferred.filter((c) => c.evidence === "KafkaUser orders-app").map((c) => `${c.from} → ${c.to}`),
+      report.inferred
+        .map((line) => ({ ...line, ...(line.note ? { note: formatImportMessage(line.note) } : {}) }))
+        .filter((c) => c.evidence === "KafkaUser orders-app")
+        .map((c) => `${c.from} → ${c.to}`),
     ).toEqual(["orders-app → orders.v1", "payments.v1 → orders-app"]);
   });
 
@@ -419,7 +435,7 @@ ${deployment("orders-app", "example/orders", "", "shop").replace(
     // The prefix is set but the workload reads a Secret named like the user: not this user's credentials.
     const { diagram, report } = k8s(set({ prefix: "kafka-" }));
     expect(edge(diagram, "orders-app", "topic-orders.v1")).toBeUndefined();
-    expect(report.notDrawn).toContainEqual({
+    expect(report.notDrawn.map(presentReportLine)).toContainEqual({
       name: "KafkaUser orders-app",
       reason: "its ACLs aren't drawn: no workload in these files uses its Secret",
     });
@@ -491,7 +507,9 @@ ${deployment("orders-app", "example/orders", "", "shop").replace(
       set({ acls: '      - { host: "10.0.0.7", resource: { type: topic, name: orders.v1 }, operations: [Write] }' }),
     );
     expect(edge(diagram, "orders-app", "topic-orders.v1")).toBeUndefined();
-    expect(report.notes).toContain("orders-app (KafkaUser) may write orders.v1 from some hosts only: not drawn");
+    expect(report.notes.map(formatImportMessage)).toContain(
+      "orders-app (KafkaUser) may write orders.v1 from some hosts only: not drawn",
+    );
   });
 
   it("gives settings' ungrouped consumers the user's group, so two consumers share it rather than each get a copy", () => {
@@ -559,7 +577,9 @@ spec: { topicName: orders.v1, partitions: 24 }
         ["topic-orders.v1", "kafka.topic", { partitions: 24 }],
       ]);
       expect(boundaryOf(diagram, "topic-orders.v1")).toBe("kafka");
-      expect(report.notDrawn).toEqual([{ name: "Kafka events", reason: "shown through its topics" }]);
+      expect(report.notDrawn.map(presentReportLine)).toEqual([
+        { name: "Kafka events", reason: "shown through its topics" },
+      ]);
     }
     // The same topic name on two clusters is two topics.
     const { diagram } = k8s(strimzi("v1beta2", "a") + strimzi("v1", "b"));
@@ -613,8 +633,8 @@ spec:
     expect(edge(diagram, "topic-invoices", "worker")?.props).toEqual({ group: "worker" });
     // KEDA keeps at least minReplicaCount running.
     expect(node(diagram, "worker")?.props).toEqual({ replicas: 2 });
-    expect(report.notes).toContain("worker scales from 2 to 20 replicas (KEDA)");
-    expect(report.notDrawn).toEqual([
+    expect(report.notes.map(formatImportMessage)).toContain("worker scales from 2 to 20 replicas (KEDA)");
+    expect(report.notDrawn.map(presentReportLine)).toEqual([
       { name: "ScaledObject worker-scaler", reason: "cpu trigger: scaling only" },
       { name: "ScaledObject worker-scaler", reason: "cron trigger: scaling only" },
     ]);
@@ -634,8 +654,10 @@ metadata: { name: ghost }
 spec: { scaleTargetRef: { name: ghost }, triggers: [] }
 `);
     expect(node(diagram, "web")).toMatchObject({ stencil: "nginx", props: { replicas: 3 } });
-    expect(report.notes).toContain("web scales from 3 to 9 replicas (HorizontalPodAutoscaler)");
-    expect(report.notDrawn).toEqual([
+    expect(report.notes.map(formatImportMessage)).toContain(
+      "web scales from 3 to 9 replicas (HorizontalPodAutoscaler)",
+    );
+    expect(report.notDrawn.map(presentReportLine)).toEqual([
       { name: "ScaledObject ghost", reason: "scales a workload that isn't in these files" },
     ]);
   });
@@ -896,7 +918,7 @@ kind: KafkaUser
 metadata: { name: web }
 `);
     expect(diagram.nodes.map((n) => n.id)).toEqual(["web"]);
-    expect(report.notDrawn).toEqual([
+    expect(report.notDrawn.map(presentReportLine)).toEqual([
       { name: "ReplicaSet web-5d9c", reason: "folded into its owner" },
       { name: "Pod ×2", reason: "folded into its owner" },
       { name: "PersistentVolumeClaim ×2", reason: "not a component" },
@@ -932,8 +954,8 @@ metadata: { name: web }
     expect(detectFormat(list, "dump.json")).toBe("kubernetes");
     const { diagram, report } = ok(await importText(list, "dump.json"));
     expect(diagram.nodes.map((n) => n.id)).toEqual(["orders"]);
-    expect(report.notDrawn).toEqual([{ name: "StatefulSet zk", reason: "part of Kafka" }]);
-    expect(report.unread).toEqual([
+    expect(report.notDrawn.map(presentReportLine)).toEqual([{ name: "StatefulSet zk", reason: "part of Kafka" }]);
+    expect(report.unread.map(presentReportLine)).toEqual([
       { name: "dump.json, document 1", reason: "not a Kubernetes resource (no kind or apiVersion)" },
     ]);
     // An unknown image is a Kubernetes Deployment, listed as a guess with chips.
@@ -957,7 +979,7 @@ metadata:
     expect(await importText(late, "all.yaml")).toEqual({ ok: false, error: HELM_TEMPLATE });
     // Among rendered manifests, the template is listed rather than read.
     const outcome = ok(await importFiles([...FIXTURES, { name: "templates/deployment.yaml", text: chart }]));
-    expect(outcome.report.unread).toContainEqual({
+    expect(outcome.report.unread.map(presentReportLine)).toContainEqual({
       name: "templates/deployment.yaml",
       reason: "a Helm template: import “helm template” output instead",
     });
@@ -1232,7 +1254,9 @@ stringData: { DB_HOST: db-b-from-secret }
         pods(`w${i}`, ["{ name: a, image: example/a, envFrom: [{ configMapRef: { name: big } }] }"]),
       ).join("");
       const { report } = k8s(`apiVersion: v1\nkind: ConfigMap\nmetadata: { name: big }\ndata:\n${data}\n${many}`);
-      expect(report.notes.some((n) => n.startsWith("Settings past the first 100,000 weren't read"))).toBe(true);
+      expect(
+        report.notes.map(formatImportMessage).some((n) => n.startsWith("Settings past the first 100,000 weren't read")),
+      ).toBe(true);
     });
 
     it("stops reading a shared ConfigMap once the budget runs out, however many workloads share it", () => {
@@ -1362,7 +1386,9 @@ metadata:
 spec: { template: { spec: { containers: [{ name: p, image: "example/proxy" }] } } }
 `);
     expect(diagram.nodes.map((n) => n.id)).toEqual(["db-proxy"]);
-    expect(report.notDrawn).toEqual([{ name: "Database main", reason: "unknown kind (example.com)" }]);
+    expect(report.notDrawn.map(presentReportLine)).toEqual([
+      { name: "Database main", reason: "unknown kind (example.com)" },
+    ]);
   });
 
   it.each(["apiVersion", "kind", "metadata"])("imports Kubernetes JSON with %s first", async (first) => {
@@ -1402,7 +1428,7 @@ spec: { template: { spec: { containers: [{ name: p, image: "example/proxy" }] } 
       ]),
     );
     expect(relationBetween(outcome.diagram, "api", "other")).toBe("request");
-    expect(outcome.report.unread).toEqual([]);
+    expect(outcome.report.unread.map(presentReportLine)).toEqual([]);
   });
 
   it("names the namespace in report rows when two workloads share a name", () => {

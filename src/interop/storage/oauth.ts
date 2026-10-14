@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import { StorageError } from "./types";
 
 // OAuth 2.0 authorization code flow with PKCE for a static site: no client secret, no backend.
@@ -111,9 +112,8 @@ export async function authorizeInPopup(
   deps: PopupDeps = browserDeps(),
 ): Promise<AuthCode> {
   const popup = deps.open();
-  if (!popup)
-    throw new StorageError(`The ${label} sign-in window was blocked. Allow pop-ups for this site and try again.`);
-  cancelActive?.(new StorageError(`Superseded by a newer ${label} sign-in.`));
+  if (!popup) throw new StorageError(t("cloud.theLabelSigninWindowWasBlockedAllow", { label: label }));
+  cancelActive?.(new StorageError(t("cloud.supersededByANewerLabelSignin", { label: label })));
   const verifier = randomToken(48);
   const state = randomToken(16);
   const uri = deps.redirectUri ?? redirectUri();
@@ -149,7 +149,8 @@ export async function authorizeInPopup(
           /* cut off by the provider's opener policy: auth.html closes itself */
         }
         if (params.error) reject(new StorageError(authorizeError(label, params.error, params.error_description)));
-        else if (!params.code) reject(new StorageError(`${label} sign-in didn't return a code. Please try again.`));
+        else if (!params.code)
+          reject(new StorageError(t("cloud.value0SigninDidntReturnACodePlease", { value0: label })));
         else resolve({ code: params.code, verifier, redirectUri: uri });
       });
     });
@@ -158,7 +159,7 @@ export async function authorizeInPopup(
     const timer = setInterval(() => {
       const now = Date.now();
       if (now - started > (deps.timeoutMs ?? 10 * 60_000))
-        return cancel(new StorageError(`${label} sign-in timed out. Please try again.`));
+        return cancel(new StorageError(t("cloud.value0SigninTimedOutPleaseTryAgain", { value0: label })));
       let closed: boolean;
       try {
         closed = popup.closed;
@@ -168,7 +169,7 @@ export async function authorizeInPopup(
       if (!closed || !deps.hasFocus()) return void (closedAt = undefined);
       closedAt ??= now;
       if (now - closedAt >= (deps.graceMs ?? 1200))
-        cancel(new StorageError(`The ${label} sign-in window was closed before it finished.`));
+        cancel(new StorageError(t("cloud.theValue0SigninWindowWasClosedBefore", { value0: label })));
     }, deps.pollMs ?? 400);
   });
 }
@@ -176,10 +177,10 @@ export async function authorizeInPopup(
 /** Errors the authorize redirect can carry, in words. */
 export function authorizeError(label: string, error: string, description?: string): string {
   if (error === "access_denied" || /AADSTS65004/.test(description ?? ""))
-    return `${label} access wasn't granted, so Live Diagrams can't open or save files there.`;
+    return t("cloud.labelAccessWasntGrantedSoLiveDiagrams", { label: label });
   if (/AADSTS90094|AADSTS90008|admin/i.test(description ?? ""))
-    return `Your organization's admin has to approve Live Diagrams before you can use ${label} with this account.`;
-  return `${label} sign-in failed (${short(description) || error}).`;
+    return t("cloud.yourOrganizationsAdminHasToApproveLive", { label: label });
+  return t("cloud.labelSigninFailedValue1", { label: label, value1: short(description) || error });
 }
 
 const short = (s?: string) => (s ?? "").split(/\r?\n/)[0].slice(0, 160).trim();
@@ -207,7 +208,7 @@ export async function postTokenForm(
       body: new URLSearchParams(form).toString(),
     });
   } catch {
-    throw new StorageError(`Couldn't reach ${label} to sign in. Check your connection.`);
+    throw new StorageError(t("cloud.couldntReachLabelToSignInCheck", { label: label }));
   }
   const text = await res.text().catch(() => "");
   let body: Partial<TokenSet> & { error?: string; error_description?: string } = {};
@@ -223,12 +224,13 @@ export async function postTokenForm(
 export function tokenError(label: string, status: number, error?: string, description?: string): string {
   const d = description ?? "";
   if (/AADSTS9002326|AADSTS9002327|Single-Page Application/i.test(d))
-    return `${label} sign-in isn't set up for this site yet: its app registration needs this address as a "Single-page application" redirect URI.`;
+    return t("cloud.labelSigninIsntSetUpForThis", { label: label });
   if (/AADSTS50011|redirect_uri|redirect uri/i.test(d))
-    return `${label} sign-in isn't set up for this address (the redirect URI isn't registered).`;
-  if (error === "invalid_grant") return `${label} sign-in expired. Please try again.`;
-  if (status === 429 || status >= 500) return `${label} sign-in is busy right now (${status}). Try again in a moment.`;
-  return `${label} sign-in failed (${short(d) || error || status}).`;
+    return t("cloud.labelSigninIsntSetUpForThisMore", { label: label });
+  if (error === "invalid_grant") return t("cloud.labelSigninExpiredPleaseTryAgain", { label: label });
+  if (status === 429 || status >= 500)
+    return t("cloud.labelSigninIsBusyRightNowStatus", { label: label, status: status });
+  return t("cloud.labelSigninFailedValue1", { label: label, value1: short(d) || error || status });
 }
 
 // ---------------------------------------------------------------- an in-memory token

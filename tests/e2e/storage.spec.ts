@@ -142,6 +142,20 @@ test.describe("storage providers", () => {
     expect(await files(page)).toHaveLength(1);
   });
 
+  test("a failed cloud open names the provider and keeps the diagram", async ({ page }) => {
+    await gotoWithTestStorage(page);
+    await submenuItem(page, "file-save-to", "save-to-test");
+    await expect(page.getByTestId("save-status")).toContainText("Saved to Test storage");
+    const title = await page.getByTestId("diagram-title").textContent();
+    await page.evaluate((key) => localStorage.setItem(key, "open"), FAIL);
+    await submenuItem(page, "file-open-from", "open-from-test");
+    await page.getByTestId("storage-file-0").click();
+    await expect(page.getByTestId("toast")).toHaveText(
+      "Couldn't open from Test storage. Test storage refused to open the file (a simulated failure).",
+    );
+    await expect(page.getByTestId("diagram-title")).toHaveText(title ?? "");
+  });
+
   test("an empty folder explains what to do; the list closes with Esc", async ({ page }) => {
     await gotoWithTestStorage(page);
     await submenuItem(page, "file-open-from", "open-from-test");

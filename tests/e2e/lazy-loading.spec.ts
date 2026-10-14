@@ -11,6 +11,111 @@ const chunk = (name: string, source: string) =>
 const LIBRARY = chunk("LibraryDialog", "src/components/LibraryDialog.tsx");
 const DIALOGS = chunk("dialogs", "src/interop/ui/dialogs.tsx");
 const SESSION = chunk("LiveSession", "src/live/LiveSession.tsx");
+const MESSAGES = chunk("fileMessages", "src/interop/ui/fileMessages.ts");
+
+for (const failed of [false, true]) {
+  for (const action of ["save", "download"] as const) {
+    test(`${action} completes while operation messages are ${failed ? "failed" : "pending"}`, async ({ page }) => {
+      await page.addInitScript(() => {
+        Object.defineProperty(window, "showSaveFilePicker", { configurable: true, value: undefined });
+      });
+      const messages = await gate(page, MESSAGES);
+      messages.fail = failed;
+      await gotoCanvas(page, SLUG);
+      const downloaded = page.waitForEvent("download");
+      if (action === "save") await page.keyboard.press(`${MOD}+s`);
+      else {
+        await page.getByTestId("file-button").click();
+        await page.getByTestId("file-share").click();
+        await page.getByTestId("share-option-file").click();
+      }
+      expect((await downloaded).suggestedFilename()).toBe(`${SLUG}.diagram.json`);
+      await expect.poll(messages.requested).toBe(true);
+      if (!failed) messages.release();
+      await settle(page);
+      await expect(page.getByTestId("toast").filter({ hasText: "Couldn't" })).toHaveCount(0);
+    });
+  }
+  for (const action of ["open", "save"] as const) {
+    test(`native ${action} keeps user activation while messages are ${failed ? "failed" : "pending"}`, async ({
+      page,
+    }) => {
+      await page.addInitScript(() => {
+        const state = { active: false, calls: 0, writes: 0 };
+        Object.assign(window, { __coldPicker: state });
+        Object.defineProperty(window, "showOpenFilePicker", {
+          configurable: true,
+          value: async () => {
+            state.active = navigator.userActivation.isActive;
+            state.calls++;
+            return [];
+          },
+        });
+        Object.defineProperty(window, "showSaveFilePicker", {
+          configurable: true,
+          value: async () => {
+            state.active = navigator.userActivation.isActive;
+            state.calls++;
+            return {
+              kind: "file",
+              name: "saved.diagram.json",
+              createWritable: async () => ({
+                write: async () => {
+                  state.writes++;
+                },
+                close: async () => {},
+              }),
+            };
+          },
+        });
+      });
+      const messages = await gate(page, MESSAGES);
+      messages.fail = failed;
+      await gotoCanvas(page, SLUG);
+      await page.keyboard.press(`${MOD}+${action === "open" ? "o" : "s"}`);
+      const state = () =>
+        page.evaluate(
+          () => (window as Window & { __coldPicker: { active: boolean; calls: number; writes: number } }).__coldPicker,
+        );
+      await expect.poll(async () => (await state()).calls).toBe(1);
+      expect((await state()).active).toBe(true);
+      if (action === "save") await expect.poll(async () => (await state()).writes).toBe(1);
+      await expect.poll(messages.requested).toBe(true);
+      if (!failed) messages.release();
+      await settle(page);
+      await expect(page.getByTestId("toast").filter({ hasText: "Couldn't" })).toHaveCount(0);
+    });
+  }
+}
+
+for (const cancel of ["cancel", "escape"] as const) {
+  test(`a valid paste ${cancel === "cancel" ? "cancelled" : "closed with Esc"} while messages download never imports`, async ({
+    page,
+    consoleErrors,
+  }) => {
+    const messages = await gate(page, MESSAGES);
+    await gotoCanvas(page, SLUG);
+    const before = await page.evaluate(() => localStorage.getItem("diagrams.library.v1"));
+    await page.getByTestId("file-button").click();
+    await page.getByTestId("file-import-from").click();
+    await page.getByTestId("import-paste").click();
+    await page
+      .getByTestId("paste-input")
+      .fill(JSON.stringify({ format: "diagrams/v1", title: "Cancelled import", nodes: [], edges: [] }));
+    await page.getByTestId("paste-submit").click();
+    await expect.poll(messages.requested).toBe(true);
+    if (cancel === "cancel") await page.getByTestId("paste-cancel").click();
+    else await page.keyboard.press("Escape");
+    await expect(page.getByTestId("paste-dialog")).toHaveCount(0);
+    const downloaded = page.waitForResponse((response) => MESSAGES.test(response.url()));
+    messages.release();
+    await (await downloaded).finished();
+    await settle(page);
+    await expect(page.getByTestId("node-payments")).toBeVisible();
+    expect(await page.evaluate(() => localStorage.getItem("diagrams.library.v1"))).toBe(before);
+    expectNoErrors(consoleErrors);
+  });
+}
 
 /** Holds every request for `pattern` until release(); `fail` aborts them while it's true. */
 async function gate(page: Page, pattern: RegExp) {
@@ -167,4 +272,30 @@ test("a simulation chosen while the live session downloads runs once it arrives"
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
   expectNoErrors(consoleErrors);
+});
+
+test("Your diagrams waits for operation messages before offering library actions", async ({ page }) => {
+  const messages = await gate(page, chunk("fileMessages", "src/interop/ui/fileMessages.ts"));
+  messages.fail = true;
+  await gotoCanvas(page, SLUG);
+  await openLibrary(page);
+  await expect(page.getByTestId("lazy-dialog-error")).toBeVisible();
+  await expect(page.getByTestId("library-dialog")).toHaveCount(0);
+  messages.fail = false;
+  messages.hold = false;
+  await page.getByTestId("lazy-dialog-retry").click();
+  await expect(page.getByTestId("library-dialog")).toBeVisible();
+});
+
+test("an oversized import still reports a failed message download", async ({ page, consoleErrors }) => {
+  const messages = await gate(page, chunk("fileMessages", "src/interop/ui/fileMessages.ts"));
+  messages.fail = true;
+  await gotoCanvas(page, SLUG);
+  await page
+    .getByTestId("import-input")
+    .setInputFiles({ name: "oversized.diagram.json", mimeType: "application/json", buffer: Buffer.alloc(8_000_001) });
+  await expect(page.getByTestId("toast")).toContainText("Couldn't download this part of the app");
+  await expect(page.getByTestId("node-payments")).toBeVisible();
+  // The request abort is deliberate; a pageerror would still expose an unhandled import rejection.
+  expectNoErrors(consoleErrors.filter((error) => error !== "console.error: Failed to load resource: net::ERR_FAILED"));
 });

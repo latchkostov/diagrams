@@ -1,3 +1,4 @@
+import { diagnostic, type ImportText } from "./graph";
 import { catalog } from "../../stencils/catalog";
 import { namedStencil, resolveKind } from "../../ai/stencils";
 import type { StencilHint } from "./graph";
@@ -20,11 +21,19 @@ export interface StencilPick {
 
 /** An image that isn't drawn, and why (a fixed string for the report). */
 export interface Skip {
-  skip: string;
+  skip: ImportText;
 }
 
-const PART_OF_KAFKA = { skip: "part of Kafka" };
-const DEV_TOOL = { skip: "developer tool" };
+const PART_OF_KAFKA = {
+  get skip() {
+    return diagnostic("importDetail.partOfKafka");
+  },
+};
+const DEV_TOOL = {
+  get skip() {
+    return diagnostic("importDetail.developerTool");
+  },
+};
 
 /** Repository (registry and tag removed) → stencil id, or a reason not to draw it. */
 const IMAGES: Record<string, string | Skip> = {
@@ -102,7 +111,11 @@ const IMAGES: Record<string, string | Skip> = {
   "obsidiandynamics/kafdrop": DEV_TOOL,
   "dpage/pgadmin4": DEV_TOOL,
   adminer: DEV_TOOL,
-  "localstack/localstack": { skip: "emulates AWS; its services aren't known from the image" },
+  "localstack/localstack": {
+    get skip() {
+      return diagnostic("importDetail.emulatesAWSItsServicesArentKnown");
+    },
+  },
 };
 
 /** Whole families by prefix ("jaegertracing/all-in-one", "otel/opentelemetry-collector-contrib"). */

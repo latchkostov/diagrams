@@ -1,3 +1,6 @@
+import { formatImportMessage } from "./importMessages";
+import { formatNumber, formatImportTraffic } from "../../i18n/format";
+import { t as tr, useLocale } from "../../i18n";
 import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Dialog } from "./Dialog";
 import { Glyph } from "./glyphs";
@@ -22,13 +25,9 @@ import { MAX_DRAWN, pickedNodes } from "../infra/pick";
  */
 const PRIVATE_OFFERED_KEY = "diagrams.newDiagramsPrivateOffered.v1";
 
-const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString("en")} ${n === 1 ? one : many}`;
-
-/** "Drew 15 nodes, 17 connections and 2 boundaries." */
+/** The counts are one sentence, so each language chooses its order and plurals. */
 function drewLine(r: Pick<ImportReport, "nodes" | "connections" | "boundaries">): string {
-  const parts = [plural(r.nodes, "node"), plural(r.connections, "connection")];
-  if (r.boundaries) parts.push(plural(r.boundaries, "boundary", "boundaries"));
-  return `Drew ${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}.`;
+  return tr("importReport.drew", r);
 }
 
 const editor = () => paletteHost.get().canvas?.editor ?? null;
@@ -103,6 +102,7 @@ export function ImportReportDialog({
   onReplay?: (outcome: ImportOutcome) => void;
   onClose: () => void;
 }) {
+  useLocale();
   const [, rerender] = useState(0);
   const done = useRef<HTMLButtonElement>(null);
   // Privacy is read from the document itself, and the report follows it as it changes (here or in another tab).
@@ -113,7 +113,7 @@ export function ImportReportDialog({
   }, []);
   const select = (nodeId: string) => {
     const host = paletteHost.get().canvas;
-    if (!host?.editor.getNode(nodeId)) return toast.error("That node isn't in the diagram any more.");
+    if (!host?.editor.getNode(nodeId)) return toast.error(tr("importReport.thatNodeIsntInTheDiagramAny"));
     onClose();
     // Once the dialog has closed and the canvas is no longer inert, so the node can take the focus.
     window.setTimeout(() => paletteHost.get().canvas?.focusNode(nodeId), 0);
@@ -121,7 +121,7 @@ export function ImportReportDialog({
   /** A chip: the editor's own stencil change, one undo step. */
   const swap = (nodeId: string, stencilId: string) => {
     const ed = editor();
-    if (!ed?.getNode(nodeId)) return toast.error("That node isn't in the diagram any more.");
+    if (!ed?.getNode(nodeId)) return toast.error(tr("importReport.thatNodeIsntInTheDiagramAny"));
     ed.updateNode(nodeId, { stencil: stencilId }, { merge: `import:swap:${++swaps}` });
     rerender((n) => n + 1);
   };
@@ -132,7 +132,12 @@ export function ImportReportDialog({
       .nodes.map((n) => [n.id, n.stencil]),
   );
   const name = (nodeId: string, label: string, testId: string) => (
-    <button className="link-btn ix-report-name" onClick={() => select(nodeId)} data-testid={testId} title="Select it">
+    <button
+      className="link-btn ix-report-name"
+      onClick={() => select(nodeId)}
+      data-testid={testId}
+      title={tr("importReport.selectIt")}
+    >
       {label}
     </button>
   );
@@ -146,7 +151,7 @@ export function ImportReportDialog({
   const newPrivate = useNewDiagramsPrivate();
   return (
     <Dialog
-      title="Import report"
+      title={tr("importReport.importReport")}
       subtitle={report.source}
       icon={<Glyph name="upload" />}
       onClose={onClose}
@@ -155,11 +160,11 @@ export function ImportReportDialog({
       footer={
         <>
           <span className="ix-report-foot" data-testid="import-report-privacy">
-            Read on this device. Nothing was uploaded.
+            {tr("importReport.readOnThisDeviceNothingWasUploaded")}
             {!privateNow && (
               <>
                 {" "}
-                This diagram isn't private.{" "}
+                {tr("importReport.thisDiagramIsntPrivate")}{" "}
                 <button
                   className="link-btn"
                   onClick={() => {
@@ -172,7 +177,7 @@ export function ImportReportDialog({
                   }}
                   data-testid="import-report-make-private"
                 >
-                  Make it private
+                  {tr("importReport.makeItPrivate")}
                 </button>
               </>
             )}
@@ -184,8 +189,8 @@ export function ImportReportDialog({
                   onChange={(e) => newDiagramsPrivate.set(e.target.checked)}
                   data-testid="import-report-new-private"
                 />
-                New diagrams are private
-                <span className="ix-report-offer-where">File ▸ Privacy</span>
+                {tr("privacy.newDiagrams")}
+                <span className="ix-report-offer-where">{tr("importReport.filePrivacy")}</span>
               </label>
             )}
           </span>
@@ -197,7 +202,7 @@ export function ImportReportDialog({
             data-autofocus
             data-testid="import-report-done"
           >
-            Done
+            {tr("common.done")}
           </button>
         </>
       }
@@ -206,8 +211,8 @@ export function ImportReportDialog({
         {drewLine(report)}
       </p>
       {report.notes.map((note) => (
-        <p key={note} className="ix-report-note" data-testid="import-report-note">
-          {note}.
+        <p key={JSON.stringify(note)} className="ix-report-note" data-testid="import-report-note">
+          {formatImportMessage(note)}.
         </p>
       ))}
       <div className="ix-report">
@@ -224,7 +229,11 @@ export function ImportReportDialog({
           />
         )}
         {report.guesses.length > 0 && (
-          <Section title="Check these guesses" count={report.guesses.length} testId="import-report-guesses">
+          <Section
+            title={tr("importReport.checkTheseGuesses")}
+            count={report.guesses.length}
+            testId="import-report-guesses"
+          >
             {report.guesses.map((g, i) => (
               <GuessRow
                 key={g.nodeId}
@@ -239,7 +248,11 @@ export function ImportReportDialog({
         )}
         {report.traffic && report.traffic.length > 0 && (
           // Where the saved simulation starts messages, and how fast: Go live and pick it to watch them flow.
-          <Section title="Imported traffic" count={report.traffic.length} testId="import-report-traffic">
+          <Section
+            title={tr("importReport.importedTraffic")}
+            count={report.traffic.length}
+            testId="import-report-traffic"
+          >
             {report.traffic.map((t, i) => (
               <li key={t.nodeId} className="ix-report-row" data-testid={`import-report-traffic-${i}`}>
                 <span className="ix-report-what">
@@ -247,7 +260,7 @@ export function ImportReportDialog({
                   {t.messageType && <span className="ix-report-muted">{t.messageType}</span>}
                 </span>
                 <span className="ix-report-why">
-                  {t.ratePerSec} msg/s for {t.seconds >= 60 ? `${t.seconds / 60} min` : `${t.seconds} s`}
+                  {tr("importReport.trafficDuration", formatImportTraffic(t.ratePerSec, t.seconds))}
                 </span>
               </li>
             ))}
@@ -255,7 +268,11 @@ export function ImportReportDialog({
         )}
         {report.inferred.length > 0 && (
           <Section
-            title={report.connectionsTitle ?? "Connections found in settings"}
+            title={
+              report.connectionsTitle
+                ? formatImportMessage(report.connectionsTitle)
+                : tr("importReport.connectionsFoundInSettings")
+            }
             count={report.inferred.length}
             testId="import-report-settings"
           >
@@ -267,8 +284,8 @@ export function ImportReportDialog({
                   {c.note && (
                     <span className="ix-report-muted">
                       {" "}
-                      ({c.note}
-                      {c.guess ? ", a guess" : ""})
+                      ({formatImportMessage(c.note)}
+                      {c.guess ? tr("importReport.aGuess") : ""})
                     </span>
                   )}
                 </span>
@@ -281,7 +298,7 @@ export function ImportReportDialog({
         )}
         {report.notDrawn.length > 0 && (
           <Section
-            title="Not drawn"
+            title={tr("importReport.notDrawn")}
             count={report.notDrawn.length}
             testId="import-report-not-drawn"
             action={
@@ -290,30 +307,30 @@ export function ImportReportDialog({
                 <button
                   className="link-btn ix-report-action"
                   onClick={() => void drawAgain((p) => p.replayOutcome(replay), onReplay, onClose)}
-                  title="Opens a new diagram with every resource as a node"
+                  title={tr("importReport.opensANewDiagramWithEveryResource")}
                   data-testid="import-report-draw-everything"
                 >
-                  Draw everything
+                  {tr("importReport.drawEverything")}
                 </button>
               )
             }
           >
             {report.notDrawn.map((l, i) => (
               <li key={i} className="ix-report-row" data-testid={`import-report-not-drawn-${i}`}>
-                <span className="ix-report-what">{l.name}</span>
-                <span className="ix-report-why">{l.reason}</span>
+                <span className="ix-report-what">{formatImportMessage(l.name)}</span>
+                <span className="ix-report-why">{formatImportMessage(l.reason)}</span>
               </li>
             ))}
           </Section>
         )}
         {report.unread.length > 0 && (
-          <Section title="Couldn't read" count={report.unread.length} testId="import-report-unread">
+          <Section title={tr("importReport.couldntRead")} count={report.unread.length} testId="import-report-unread">
             {report.unread.map((l, i) => (
               <li key={i} className="ix-report-row" data-testid={`import-report-unread-${i}`}>
                 <span className="ix-report-what text-selectable">
-                  <Breakable text={l.name} />
+                  <Breakable text={formatImportMessage(l.name)} />
                 </span>
-                <span className="ix-report-why">{l.reason}</span>
+                <span className="ix-report-why">{formatImportMessage(l.reason)}</span>
               </li>
             ))}
           </Section>
@@ -347,15 +364,13 @@ function PickSection({ pick, onDraw }: { pick: ImportPick; onDraw: (keys: string
   return (
     <section className="ix-report-section" data-testid="import-report-pick">
       <h3>
-        Boundaries{" "}
-        <span className="ix-report-count">
-          ({pick.groups.filter((g) => g.drawn).length.toLocaleString("en")} of {pick.groups.length.toLocaleString("en")}{" "}
-          drawn)
-        </span>
+        {tr("importReport.boundariesDrawn", {
+          drawn: pick.groups.filter((g) => g.drawn).length,
+          total: pick.groups.length,
+        })}
       </h3>
       <p className="ix-report-note" data-testid="import-report-pick-lede">
-        It has {pick.total.toLocaleString("en")} nodes, more than a diagram reads well, so only some boundaries are
-        drawn. The ones with the most flows come first; tick others to draw them as a new diagram.
+        {tr("importReport.pickLede", { count: pick.total })}
       </p>
       <ul className="ix-report-pick-list" data-testid="import-report-pick-list">
         {pick.groups.map((g, i) => (
@@ -370,10 +385,7 @@ function PickSection({ pick, onDraw }: { pick: ImportPick; onDraw: (keys: string
               />
               <Breakable text={g.label} />
             </label>
-            <span className="ix-report-why">
-              {g.nodes.toLocaleString("en")} {g.nodes === 1 ? "node" : "nodes"} · {g.flows.toLocaleString("en")}{" "}
-              {g.flows === 1 ? "flow" : "flows"}
-            </span>
+            <span className="ix-report-why">{tr("importReport.groupCounts", { nodes: g.nodes, flows: g.flows })}</span>
           </li>
         ))}
       </ul>
@@ -386,10 +398,10 @@ function PickSection({ pick, onDraw }: { pick: ImportPick; onDraw: (keys: string
           onClick={() => {
             if (!unavailable) onDraw(keys);
           }}
-          title="Opens a new diagram with the ticked boundaries; this one stays as it is"
+          title={tr("importReport.opensANewDiagramWithTheTicked")}
           data-testid="import-report-pick-draw"
         >
-          Draw these ({count.toLocaleString("en")} {count === 1 ? "node" : "nodes"})
+          {tr("importReport.drawThese", { count })}
         </button>
         {/* Announced as the ticks change: the total, and why the button is unavailable when it is. */}
         <span
@@ -399,12 +411,12 @@ function PickSection({ pick, onDraw }: { pick: ImportPick; onDraw: (keys: string
           data-testid="import-report-pick-status"
         >
           {over
-            ? `${count.toLocaleString("en")} nodes ticked, over the ${MAX_DRAWN.toLocaleString("en")} an import draws: untick some.`
+            ? tr("importReport.overLimit", { count, limit: formatNumber(MAX_DRAWN) })
             : !keys.length
-              ? "Nothing ticked."
+              ? tr("importReport.nothingTicked")
               : same
-                ? `${count.toLocaleString("en")} nodes ticked: these are drawn.`
-                : `${count.toLocaleString("en")} nodes ticked.`}
+                ? tr("importReport.alreadyDrawn", { count })
+                : tr("importReport.ticked", { count })}
         </span>
       </div>
     </section>
@@ -427,7 +439,7 @@ function Section({
 }) {
   const heading = (
     <h3>
-      {title} <span className="ix-report-count">({count})</span>
+      {title} <span className="ix-report-count">({formatNumber(count)})</span>
     </h3>
   );
   return (
@@ -473,7 +485,7 @@ function GuessRow({
       key={testId}
       className="ix-report-chip"
       // The visible name first, then which node it changes: two rows may show the same stencil.
-      aria-label={`${getStencil(id).label} for ${guess.label}`}
+      aria-label={tr("importReport.stencilFor", { stencil: getStencil(id).label, name: guess.label })}
       onClick={() => {
         onSwap(guess.nodeId, id);
         setSearching(false);
@@ -502,8 +514,8 @@ function GuessRow({
             className="ix-input ix-report-search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search stencils"
-            aria-label={`Another stencil for ${guess.label}`}
+            placeholder={tr("importReport.searchStencils")}
+            aria-label={tr("importReport.anotherStencil", { name: guess.label })}
             ref={(el) => el?.focus()}
             data-testid={`import-report-search-${index}`}
           />
@@ -511,11 +523,11 @@ function GuessRow({
           <button
             ref={other}
             className="ix-report-chip is-other"
-            aria-label={`Other stencil for ${guess.label}`}
+            aria-label={tr("importReport.otherStencil", { name: guess.label })}
             onClick={() => setSearching(true)}
             data-testid={`import-report-other-${index}`}
           >
-            Other…
+            {tr("importReport.other")}
           </button>
         )}
         {found.map((s) => chip(s.id, `import-report-found-${index}-${s.id}`))}

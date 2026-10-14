@@ -104,7 +104,9 @@ export function Dialog({
         <header className="ix-dialog-head">
           {icon && <span className="ix-dialog-icon">{icon}</span>}
           <div className="ix-dialog-titles">
-            <h2 id={titleId}>{title}</h2>
+            <h2 id={titleId} data-testid={`${testId}-title`}>
+              {title}
+            </h2>
             {subtitle && <p>{subtitle}</p>}
           </div>
           <button

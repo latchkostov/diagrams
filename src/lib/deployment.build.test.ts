@@ -14,6 +14,7 @@ import { DEPLOYMENT_VARIABLES, INTERNAL_DEFAULTS } from "../../scripts/deploymen
 
 interface Output {
   code: string;
+  catalogCode: string;
   modules: string[];
   html: string;
   files: string[];
@@ -44,7 +45,16 @@ async function buildWith(env: Record<string, string>): Promise<Output> {
   const chunks = output.filter((o): o is Rollup.OutputChunk => o.type === "chunk");
   const page = output.find((o): o is Rollup.OutputAsset => o.type === "asset" && o.fileName === "index.html");
   return {
-    code: chunks.map((c) => c.code).join("\n"),
+    // Locale dictionaries use English lookup keys even for features absent from this copy. Check executable
+    // feature chunks separately: those lookup keys do not contain the feature's implementation.
+    code: chunks
+      .filter((c) => !Object.keys(c.modules).some((id) => id.startsWith("\0virtual:i18n/catalog/")))
+      .map((c) => c.code)
+      .join("\n"),
+    catalogCode: chunks
+      .filter((c) => Object.keys(c.modules).some((id) => id.startsWith("\0virtual:i18n/catalog/")))
+      .map((c) => c.code)
+      .join("\n"),
     modules: chunks.flatMap((c) =>
       Object.entries(c.modules)
         .filter(([, m]) => m.renderedLength > 0)
@@ -145,6 +155,7 @@ describe("self-hosting switches in the production build", () => {
   });
 
   it("without share links, no code that makes a link ships; opening one still does", () => {
+    expect(internal.catalogCode).toContain("Share link copied");
     expect(found(internal, LINK_MAKING)).toEqual([]);
     expect(internal.code.includes("Opening the shared diagram")).toBe(true);
     expect(internal.modules.some((id) => id.endsWith("/interop/shareCrypto.ts"))).toBe(true);

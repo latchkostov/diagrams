@@ -53,6 +53,13 @@ const NATIVE = {
   nodes: [{ id: "a", stencil: "generic.service", label: "A", x: 40, y: 160 }],
   edges: [],
 };
+
+test("a failed image export keeps the format in its error", async ({ page }) => {
+  await page.route(/\/assets\/image-[^/]+\.js(?:\?.*)?$/, (route) => route.abort());
+  await gotoCanvas(page, publicExamples[0].slug);
+  await fileItem(page, "export-png");
+  await expect(page.getByTestId("toast").filter({ hasText: "Couldn't export the PNG." })).toBeVisible();
+});
 interface FsState {
   pickerCalls: number;
   writes: { name: string; text: string }[];
@@ -318,6 +325,8 @@ test.describe("interop", () => {
     }, MERMAID);
     await page.getByTestId("canvas-view").dispatchEvent("dragenter", { dataTransfer: dt });
     await expect(page.getByTestId("drop-overlay")).toBeVisible();
+    await expect(page.getByTestId("drop-overlay")).toContainText("Terraform plan");
+    await expect(page.getByTestId("drop-overlay")).not.toContainText("Terraform plan or state");
     await page.getByTestId("drop-overlay").dispatchEvent("drop", { dataTransfer: dt });
     await expect(page.getByTestId("drop-overlay")).toHaveCount(0);
     await expect(page.getByTestId("toast")).toContainText("Imported");

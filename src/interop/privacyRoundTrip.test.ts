@@ -68,7 +68,7 @@ describe("a cancelled cloud write never uploads", () => {
         mapError,
         "https://x",
         { method: "PUT", signal: cancel.signal },
-        "save",
+        "save_the_file",
       ),
     ).rejects.toBe(blocked);
     expect(fetch).not.toHaveBeenCalled();
@@ -88,7 +88,7 @@ describe("a cancelled cloud write never uploads", () => {
         mapError,
         "https://x",
         { method: "POST", signal: cancel.signal },
-        "save",
+        "save_the_file",
       ),
     ).rejects.toBe(blocked);
   });

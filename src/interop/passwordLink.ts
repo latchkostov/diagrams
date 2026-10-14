@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { BadTokenError, parseToken, type BadTokenReason, type EncryptedParts } from "./encryptedToken";
 
 // Password links: the share link's compressed diagram, encrypted in the browser with WebCrypto before it
@@ -25,6 +26,7 @@ export {
 export const ENCRYPTED_PARAM = "e";
 
 /** What a link's prompt says when the password doesn't open it. */
+// Crypto error text also used outside the editor; the dialog translates WrongPasswordError itself.
 export const WRONG_LINK_PASSWORD = "That password doesn't open this link. Check it and try again.";
 
 /** The link is malformed or made by a version of Diagrams this one doesn't know. Retrying won't help. */
@@ -35,11 +37,10 @@ export class BadEncryptedLinkError extends BadTokenError {
   }
 }
 
-const LINK_MESSAGES: Record<BadTokenReason, string> = {
-  "too-long": "This share link is too long to open.",
-  newer: "This link was made by a newer version of Live Diagrams. Reload the page to update, then open the link again.",
-  damaged:
-    "This password-protected link is damaged or incomplete. Ask for the link again, and make sure it was copied in full.",
+const LINK_MESSAGES: Record<BadTokenReason, () => string> = {
+  "too-long": () => t("passwordLink.tooLong"),
+  newer: () => t("passwordLink.newer"),
+  damaged: () => t("passwordLink.damaged"),
 };
 
 /** Splits and checks a link's `v1.<salt>.<iv>.<ciphertext>` token; throws BadEncryptedLinkError, in a link's words. */
@@ -47,7 +48,7 @@ export function parseEncrypted(token: string): EncryptedParts {
   try {
     return parseToken(token);
   } catch (err) {
-    if (err instanceof BadTokenError) throw new BadEncryptedLinkError(err.reason, LINK_MESSAGES[err.reason]);
+    if (err instanceof BadTokenError) throw new BadEncryptedLinkError(err.reason, LINK_MESSAGES[err.reason]());
     throw err;
   }
 }

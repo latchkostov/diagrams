@@ -67,11 +67,17 @@ const LabView =
     ? lazy(() => import("./lab/LabView").then((m) => ({ default: m.LabView })))
     : () => null;
 /** Your diagrams: loads when the app is idle, or when first opened. */
+let libraryMessages: typeof import("./interop/ui/fileMessages");
 const LibraryDialog = lazyComponent(
-  () => import("./components/LibraryDialog").then((m) => m.LibraryDialog),
-  loadingDialog("Your diagrams"),
+  () =>
+    Promise.all([import("./components/LibraryDialog"), import("./interop/ui/fileMessages")]).then(
+      ([dialog, messages]) => {
+        libraryMessages = messages;
+        return dialog.LibraryDialog;
+      },
+    ),
+  loadingDialog(() => t("topbar.yourDiagrams")),
 );
-
 // ?embed=1 renders the read-only viewer only: no top bar, no editor.
 // Any `embed` parameter (the links say embed=1): the same rule as the CSP that lets other sites frame
 // embeds and nothing else (scripts/security-headers.ts), so no URL gets the app in a frame.
@@ -286,7 +292,16 @@ function MainApp() {
   // ---------------------------------------------------------------- Your diagrams (the library)
 
   const failed = (what: string, err: unknown) => {
-    const message = `Couldn't ${what}. ${err instanceof Error ? err.message : String(err)}`;
+    const words = libraryMessages;
+    const reason =
+      what === "save"
+        ? words.libraryStorageFull()
+        : what === "restore"
+          ? words.libraryRestoreFull()
+          : err instanceof Error
+            ? err.message
+            : String(err);
+    const message = words.libraryFailure(what, reason);
     setLibraryError(message);
     notify(message, { kind: "error" });
   };
@@ -296,7 +311,7 @@ function MainApp() {
     setLibraryError(null);
     if (target !== slug || !canvasRef.current) return true;
     if (writeAutosave(target, canvasRef.current.getDiagram(), canvasIdentity)) return true;
-    failed("save your edits", new Error("Storage is full or blocked. Save or export this diagram before continuing."));
+    failed("save", new Error("Storage is full or blocked. Save or export this diagram before continuing."));
     return false;
   };
   const titleOf = (target: string) => library.entries.find((e) => e.slug === target)?.title ?? UNTITLED;
@@ -310,17 +325,17 @@ function MainApp() {
       try {
         renameLibraryDiagram(target, title);
       } catch (err) {
-        failed("rename it", err);
+        failed("rename", err);
       }
     },
     onDuplicate: (target: string) => {
       if (!saveForLibraryAction(target)) return;
       try {
         const copy = duplicateLibraryDiagram(target);
-        notify(`Duplicated “${titleOf(target)}”.`, {
+        notify(libraryMessages.libraryDuplicated(titleOf(target)), {
           kind: "success",
           action: {
-            label: "Open",
+            label: t("fileDialog.open"),
             run: () => {
               setLibraryOpen(false);
               setUrl({ view: "canvas", example: copy, present: false });
@@ -329,7 +344,7 @@ function MainApp() {
           },
         });
       } catch (err) {
-        failed("duplicate it", err);
+        failed("duplicate", err);
       }
     },
     onDelete: (target: string) => {
@@ -340,7 +355,7 @@ function MainApp() {
       try {
         undo = deleteLibraryDiagram(target);
       } catch (err) {
-        return failed("delete it", err);
+        return failed("delete", err);
       }
       if (wasOpen) {
         // On to the most recent other diagram, or a blank one.
@@ -348,21 +363,16 @@ function MainApp() {
         if (!next) newDraft();
         setUrl({ view: "canvas", example: next ?? DRAFT_SLUG, present: false }, { replace: true });
       }
-      const message = `Deleted “${title}”.`;
+
       const restore = () => {
-        if (!undo()) return failed("restore it", new Error("The browser's storage is full."));
+        if (!undo()) return failed("restore", new Error("The browser's storage is full."));
         setLibraryUndo(null);
         setLibraryError(null);
         if (wasOpen) setUrl({ view: "canvas", example: target, present: false });
       };
+      const message = libraryMessages.libraryDeleted(title);
       setLibraryUndo({ message, run: restore });
-      notify(message, {
-        action: {
-          label: "Undo",
-          run: restore,
-          testId: "delete-undo",
-        },
-      });
+      notify(message, { action: { label: t("shortcuts.undo"), run: restore, testId: "delete-undo" } });
     },
   };
 
