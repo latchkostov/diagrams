@@ -65,6 +65,13 @@ describe("trouble seen in playback", () => {
     expect(seen).toEqual([]);
   });
 
+  it("a dead-letter queue filling up is no trouble: it keeps them on purpose", () => {
+    const d = diagram(8, { failureRate: 0.8, replicas: 3 });
+    d.nodes.push({ id: "dlq", stencil: "aws.sqs", label: "orders-dlq", x: 0, y: 0 });
+    d.edges.push({ id: "dead", from: "q", to: "dlq", kind: "async", props: { dlq: true } });
+    expect(watch(d, 40)).toEqual([]);
+  });
+
   it("a down consumer behind a queue: its messages wait there, counted, with Revive", () => {
     const [down] = watch(diagram(2), 20, (e) => e.setNodeStatus("worker", "down"));
     expect(down).toMatchObject({

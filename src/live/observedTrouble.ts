@@ -94,6 +94,9 @@ function troubles(frame: WatchedFrame, d: DiagramFile, samples: readonly Sample[
   };
   const compiled = compileTopology(d);
   const flows = flowEdges(d.edges);
+  const isDeadLetterQueue = (id: string) =>
+    compiled.edges.some((e) => e.to === id && e.dlq) ||
+    /dlq|dead.?letter/i.test(`${byId.get(id)?.label ?? ""} ${byId.get(id)?.sublabel ?? ""}`);
   const out: Trouble[] = [];
   const oldest = samples[0];
   const middle = samples[Math.floor(samples.length / 2)];
@@ -147,7 +150,8 @@ function troubles(frame: WatchedFrame, d: DiagramFile, samples: readonly Sample[
       });
       continue;
     }
-    if (!BROKERS.has(r) || (n.noConsumer && r !== "queue")) continue;
+    // A dead-letter queue keeps what it gets on purpose, read or not: its backlog is no trouble.
+    if (!BROKERS.has(r) || (n.noConsumer && r !== "queue") || isDeadLetterQueue(id)) continue;
     const now = maxLag(n),
       before = oldest.lag.get(id) ?? 0,
       mid = middle.lag.get(id) ?? 0;
