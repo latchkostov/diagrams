@@ -1,3 +1,4 @@
+import { t, useLocale } from "../i18n";
 import {
   memo,
   useCallback,
@@ -24,6 +25,8 @@ import { captureTypeAhead, type TypeAhead } from "../canvas/typeAhead";
 // layer so nothing clips them. Closes on outside pointer-down, wheel, resize and window blur.
 
 interface Anchor {
+  /** Physical canvas coordinates are left-aligned regardless of page direction. */
+  alignment?: "physical-left";
   x: number;
   y: number;
   /** Submenus: where to put the menu's right edge if it doesn't fit to the right. */
@@ -35,6 +38,7 @@ const HOVER_DELAY = 110;
 const MAX_RESULTS = 60;
 
 export interface ContextMenuProps {
+  alignment?: Anchor["alignment"];
   x: number;
   y: number;
   /** Where the menu's right edge goes when it doesn't fit right of `x` (it flips to the left). */
@@ -52,12 +56,14 @@ export function ContextMenu({
   x,
   y,
   flipX,
+  alignment,
   items,
   onClose,
   searchable,
-  label = "Context menu",
+  label = t("chrome.contextMenu"),
   testId = "context-menu",
 }: ContextMenuProps) {
+  useLocale();
   const layer = useRef<HTMLDivElement>(null);
   const invoker = useRef(document.activeElement instanceof HTMLElement ? document.activeElement : null);
   const closeRef = useRef(onClose);
@@ -79,7 +85,7 @@ export function ContextMenu({
   }, []);
   // The same anchor while the menu stays put: the list places itself whenever its anchor changes, so a new one on
   // every render moved a searchable menu that typing had shortened (from under the pointer: nightly #78).
-  const anchor = useMemo(() => ({ x, y, flipX }), [x, y, flipX]);
+  const anchor = useMemo(() => ({ x, y, flipX, alignment }), [x, y, flipX, alignment]);
 
   useEffect(() => {
     const previousFocus = invoker.current;
@@ -174,12 +180,15 @@ function search(items: MenuNode[], q: string): MenuNode[] {
 }
 
 function MenuList(p: ListProps) {
+  const locale = useLocale();
+  const rtl = document.documentElement.dir === "rtl";
   const id = useId();
   const ref = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number; maxHeight: number } | null>(null);
   const [q, setQ] = useState("");
-  const shown = useMemo(() => (q.trim() ? search(p.items, q) : p.items), [p.items, q]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- stencil scoring reads the locale-dependent shared search index
+  const shown = useMemo(() => (q.trim() ? search(p.items, q) : p.items), [p.items, q, locale]);
   const [active, setActive] = useState(() => (p.activateFirst ? shown.findIndex(selectable) : -1));
   const [open, setOpen] = useState<{ index: number; anchor: Anchor; viaKeyboard: boolean } | null>(null);
   const hoverTimer = useRef<number | undefined>(undefined);
@@ -198,13 +207,30 @@ function MenuList(p: ListProps) {
     const r = el.getBoundingClientRect();
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    let left = p.anchor.x;
-    if (left + r.width > vw - MARGIN) left = (p.anchor.flipX ?? p.anchor.x) - r.width;
+    const alignRight = rtl && p.anchor.alignment !== "physical-left";
+    let left = alignRight ? p.anchor.x - r.width : p.anchor.x;
+    if (alignRight && left < MARGIN) left = p.anchor.flipX ?? p.anchor.x;
+    if (!alignRight && left + r.width > vw - MARGIN) left = (p.anchor.flipX ?? p.anchor.x) - r.width;
     left = Math.max(MARGIN, Math.min(left, vw - MARGIN - r.width));
     let top = p.anchor.y;
     if (top + r.height > vh - MARGIN) top = Math.max(MARGIN, vh - MARGIN - r.height);
     setPos({ left, top, maxHeight: vh - MARGIN - top });
-  }, [p.anchor]);
+  }, [p.anchor, rtl, locale]);
+
+  // Measure again after parent placement or direction changes, retaining the open row and its focus.
+  const openIndex = open?.index;
+  useLayoutEffect(() => {
+    const row = openIndex === undefined ? null : itemRefs.current[openIndex];
+    if (!row || !pos) return;
+    const r = row.getBoundingClientRect();
+    const anchor = { x: rtl ? r.left + 4 : r.right - 4, y: r.top - 5, flipX: rtl ? r.right - 4 : r.left + 4 };
+    setOpen((current) =>
+      current &&
+      (current.anchor.x !== anchor.x || current.anchor.y !== anchor.y || current.anchor.flipX !== anchor.flipX)
+        ? { ...current, anchor }
+        : current,
+    );
+  }, [openIndex, pos, rtl, locale]);
 
   // Focus once placed (a visibility:hidden element can't take focus).
   const placed = pos !== null;
@@ -240,8 +266,16 @@ function MenuList(p: ListProps) {
   const [previousShown, setPreviousShown] = useState(shown);
   if (previousShown !== shown) {
     setPreviousShown(shown);
-    setActive(shown.findIndex(selectable));
-    setOpen(null);
+    // Retranslation preserves the active row and open submenu when stable ids have not changed.
+    if (
+      previousShown.length !== shown.length ||
+      previousShown.some(
+        (n, i) => n.type !== shown[i].type || (n.type === "item" && (shown[i].type !== "item" || n.id !== shown[i].id)),
+      )
+    ) {
+      setActive(shown.findIndex(selectable));
+      setOpen(null);
+    }
   }
 
   useEffect(() => {
@@ -253,7 +287,11 @@ function MenuList(p: ListProps) {
     const item = shown[index];
     if (!el || !selectable(item) || !item.children) return;
     const r = el.getBoundingClientRect();
-    setOpen({ index, anchor: { x: r.right - 4, y: r.top - 5, flipX: r.left + 4 }, viaKeyboard });
+    setOpen({
+      index,
+      anchor: { x: rtl ? r.left + 4 : r.right - 4, y: r.top - 5, flipX: rtl ? r.right - 4 : r.left + 4 },
+      viaKeyboard,
+    });
   };
 
   const closeSub = () => {
@@ -288,7 +326,8 @@ function MenuList(p: ListProps) {
   const onKeyDown = (e: ReactKeyboardEvent) => {
     e.stopPropagation();
     const inInput = e.target === input.current;
-    switch (e.key) {
+    const key = rtl ? (e.key === "ArrowLeft" ? "ArrowRight" : e.key === "ArrowRight" ? "ArrowLeft" : e.key) : e.key;
+    switch (key) {
       case "ArrowDown":
         e.preventDefault();
         move(1);
@@ -450,7 +489,7 @@ function MenuList(p: ListProps) {
               />
             );
           })}
-          {shown.length === 0 && <div className="cm-empty">No matches</div>}
+          {shown.length === 0 && <div className="cm-empty">{t("menu.noMatches")}</div>}
         </div>
       </div>
       {open && selectable(sub) && sub.children && (

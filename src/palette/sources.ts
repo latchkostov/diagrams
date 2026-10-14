@@ -1,4 +1,4 @@
-import type { ActionContext, ActionRegistry, EditorMode, MenuItem, MenuNode, MenuTarget } from "../editor/actions";
+import type { ActionContext, ActionRegistry, EditorMode, MenuItem, MenuNode } from "../editor/actions";
 import type { EditorApi, Selection } from "../editor/types";
 import type { Stencil } from "../model/types";
 import { scoreStencil } from "../lib/stencilSearch";
@@ -23,6 +23,8 @@ export interface DiagramOption {
 }
 
 export interface SourceInput {
+  /** Makes a language change invalidate memoized command presentation. */
+  locale?: string;
   registry: Pick<ActionRegistry, "build">;
   canvas: CanvasHost | null;
   live: LiveHost | null;
@@ -79,28 +81,14 @@ export function contextsFor(editor: EditorApi, mode: EditorMode): ActionContext[
 
 /** Covered by the "Add stencil" source, which also connects to the selection. */
 const SKIP = new Set(["canvas.add-node"]);
-const LABEL: Record<string, string> = { "canvas.paste": "Paste" };
-const NOUN: Record<MenuTarget, string> = {
-  canvas: "",
-  node: "node",
-  edge: "edge",
-  group: "boundary",
-  selection: "selection",
-  annotation: "annotation",
-};
-
-/** Menu labels are read next to the thing; out of context "Rename" needs its noun. */
-export function paletteLabel(item: MenuItem, target: MenuTarget): string {
-  if (LABEL[item.id]) return LABEL[item.id];
-  const noun = NOUN[target];
-  if (!noun || /\s/.test(item.label) || item.children) return item.label;
-  if (item.label === "Properties") return `${noun[0].toUpperCase()}${noun.slice(1)} properties`;
-  return `${item.label} ${noun}`;
+/** Action definitions supply complete command names; generic flattening never infers English nouns. */
+export function paletteLabel(item: MenuItem): string {
+  return item.paletteLabel ?? item.label;
 }
 
 function leafLabel(parent: string, leaf: string): string {
   const first = parent.toLowerCase().split(/\s+/)[0];
-  return leaf.toLowerCase().includes(first) ? leaf : `${parent} › ${leaf}`;
+  return leaf.toLowerCase().includes(first) ? leaf : t("chrome.valueValue", { parent, leaf });
 }
 
 function leaves(items: MenuNode[], trail: string[] = []): { item: MenuItem; trail: string[] }[] {
@@ -125,7 +113,7 @@ export function actionCommands(registry: Pick<ActionRegistry, "build">, contexts
   for (const ctx of contexts) {
     for (const node of registry.build(ctx)) {
       if (node.type !== "item" || (node.disabled && !node.hint) || SKIP.has(node.id)) continue;
-      const label = paletteLabel(node, ctx.target);
+      const label = paletteLabel(node);
       if (!node.children) {
         add({
           id: `action:${node.id}`,
@@ -184,7 +172,18 @@ export function actionCommands(registry: Pick<ActionRegistry, "build">, contexts
 /** Stencil score on the palette's per-token scale; a leading "add" is the verb, not a search word. */
 export function stencilScore(s: Stencil, query: string): number {
   const ts = tokens(query);
-  const rest = ts[0] === "add" ? ts.slice(1) : ts;
+  // A language can place the verb after the stencil, or attach it without spaces. Match the complete
+  // command's framing around a placeholder, keeping the existing English "add" alias in every language.
+  const marker = "\uFFFC";
+  const [before, after] = t("chrome.addValue", { name: marker }).split(marker);
+  const raw = query.trim();
+  const framed = raw.toLowerCase().startsWith(before.toLowerCase()) && raw.toLowerCase().endsWith(after.toLowerCase());
+  const rest =
+    ts[0] === "add"
+      ? ts.slice(1)
+      : framed
+        ? tokens(raw.slice(before.length, after.length ? -after.length : undefined))
+        : ts;
   if (!rest.length) return ts.length ? 60 : 1;
   const score = scoreStencil(s, rest.join(" "));
   return score ? score / rest.length : 0;
@@ -203,7 +202,7 @@ export function collectCommands(input: SourceInput): Command[] {
       id: "live:toggle",
       group: "actions",
       // The Live toggle's own words: "Go live", and "Back to editing" (its tooltip) while live.
-      label: canvas.live ? "Back to editing" : "Go live",
+      label: canvas.live ? t("chrome.backToEditing") : t("chrome.goLive"),
       icon: "bolt",
       shortcut: "L",
       keywords: canvas.live ? "toggle live stop exit edit" : "toggle live start play simulate",
@@ -214,7 +213,7 @@ export function collectCommands(input: SourceInput): Command[] {
     out.push({
       id: "view:present",
       group: "actions",
-      label: "Present",
+      label: t("topbar.present"),
       icon: "present",
       keywords: "presentation presenter meeting slideshow full screen",
       run: input.present,
@@ -252,10 +251,10 @@ export function collectCommands(input: SourceInput): Command[] {
         id: `sim:${s.id}`,
         documentScoped: true,
         group: "simulations",
-        label: `Run “${s.title}”`,
+        label: t("chrome.runValue", { name: s.title }),
         icon: "bolt",
         keywords: "simulation replay play",
-        hint: canvas.live ? undefined : "goes live",
+        hint: canvas.live ? undefined : t("chrome.goesLive"),
         disabled: !!input.session?.disabledHint,
         ...(input.session?.disabledHint ? { hint: input.session.disabledHint } : {}),
         run: () => {
@@ -278,8 +277,8 @@ export function collectCommands(input: SourceInput): Command[] {
       out.push({
         id: `stencil:${s.id}`,
         group: "stencils",
-        label: `Add ${s.label}`,
-        hint: from ? `after ${from.label || from.id}` : s.vendor,
+        label: t("chrome.addValue", { name: s.label }),
+        hint: from ? t("chrome.afterValue", { name: from.label || from.id }) : s.vendor,
         stencil: s.id,
         idle: recent.has(s.id),
         score: (q) => stencilScore(s, q),
@@ -300,7 +299,12 @@ export function collectCommands(input: SourceInput): Command[] {
       group: "diagrams",
       label: d.title,
       icon: "canvas",
-      hint: d.group === "examples" ? (d.theme ? `Example · ${d.theme.label}` : "Example") : "Your diagram",
+      hint:
+        d.group === "examples"
+          ? d.theme
+            ? t("chrome.exampleValue", { theme: d.theme.label })
+            : t("chrome.example")
+          : t("chrome.yourDiagram"),
       keywords:
         d.group === "examples" ? `open example ${d.theme?.label.toLowerCase() ?? ""}`.trim() : "open your diagram mine",
       run: () => input.openDiagram(d.slug),

@@ -23,7 +23,8 @@
     },
     "consumer": {
       "use": "forbruger",
-      "match": ["forbruger", "consumer"]
+      "match": ["forbruger", "consumer"],
+      "except": ["menu.setConsumerGroup"]
     },
     "consumer group": {
       "use": "consumer group",
@@ -116,7 +117,15 @@
     "edge": {
       "use": "forbindelse",
       "match": ["forbindelse"],
-      "except": ["shortcuts.mouse.boundary"],
+      "except": [
+        "shortcuts.mouse.boundary",
+        "menu.leftEdges",
+        "menu.rightEdges",
+        "menu.topEdges",
+        "menu.bottomEdges",
+        "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+      ],
       "note": "In shortcuts.mouse.boundary 'edge' is the boundary's kant"
     },
     "stencil": {

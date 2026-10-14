@@ -1,12 +1,20 @@
+import { categoryLabel, familyLabel } from "../i18n/chrome";
+import { t, useLocale } from "../i18n";
 import { useEffect, useRef, type CSSProperties } from "react";
 import type { Stencil } from "../model/types";
-import { nodeVariants } from "../harness/nodeVariants";
-import { categoryLabel } from "../lib/categories";
-import { simRoleMeta } from "../lib/simRoles";
+import { nodeVariants, type NodeVariantId } from "../harness/nodeVariants";
+import {} from "../lib/categories";
+import { galleryRoleMeta as simRoleMeta } from "../i18n/galleryRoles";
 import { familyOf, getFamily } from "../lib/vendorFamilies";
 import { Icon } from "../components/Icon";
 import { StencilIcon } from "../components/StencilIcon";
 import { iconSource, roleExplained } from "./stencilInfo";
+
+const variantLabel: Record<NodeVariantId, () => string> = {
+  card: () => t("view.node.card"),
+  compact: () => t("view.node.compact"),
+  iconOnly: () => t("view.node.iconOnly"),
+};
 
 interface Props {
   stencil: Stencil;
@@ -33,6 +41,7 @@ export function StencilDrawer({
   onCopy,
   onCopyJson,
 }: Props) {
+  useLocale();
   const root = useRef<HTMLDivElement>(null);
   const role = simRoleMeta[s.simRole] ?? simRoleMeta.none;
   const family = getFamily(familyOf(s));
@@ -49,7 +58,8 @@ export function StencilDrawer({
         onClose();
       } else if ((e.key === "ArrowRight" || e.key === "ArrowLeft") && !(e.target instanceof HTMLInputElement)) {
         e.preventDefault();
-        onStep(e.key === "ArrowRight" ? 1 : -1);
+        const nextKey = document.documentElement.dir === "rtl" ? "ArrowLeft" : "ArrowRight";
+        onStep(e.key === nextKey ? 1 : -1);
       }
     };
     el.addEventListener("keydown", onKey);
@@ -81,21 +91,21 @@ export function StencilDrawer({
             className="icon-btn icon-btn-quiet"
             onClick={() => onStep(-1)}
             disabled={total < 2}
-            aria-label="Previous stencil"
-            title="Previous (←)"
+            aria-label={t("gallery.previousStencil")}
+            title={t("gallery.previous")}
             data-testid="drawer-prev"
           >
             <Icon name="chevron-right" size={14} />
           </button>
           <span className="drawer-pos" aria-live="polite">
-            {index + 1} of {total}
+            {t("chrome.valueOfValueOtherValue", { index: index + 1, total })}
           </span>
           <button
             className="icon-btn icon-btn-quiet"
             onClick={() => onStep(1)}
             disabled={total < 2}
-            aria-label="Next stencil"
-            title="Next (→)"
+            aria-label={t("gallery.nextStencil")}
+            title={t("gallery.next")}
             data-testid="drawer-next"
           >
             <Icon name="chevron-right" size={14} />
@@ -103,8 +113,8 @@ export function StencilDrawer({
           <button
             className="icon-btn icon-btn-quiet"
             onClick={onClose}
-            aria-label="Close details"
-            title="Close (Esc)"
+            aria-label={t("gallery.closeDetails")}
+            title={t("gallery.closeEsc")}
             data-testid="drawer-close"
           >
             <Icon name="close" size={14} />
@@ -119,7 +129,7 @@ export function StencilDrawer({
               <div className="drawer-variant-node">
                 <v.Component stencil={s} label={s.label} sublabel={s.defaultSublabel} />
               </div>
-              <figcaption>{v.label}</figcaption>
+              <figcaption data-testid={`drawer-variant-${id}`}>{variantLabel[id as NodeVariantId]()}</figcaption>
             </figure>
           ))}
         </div>
@@ -127,7 +137,7 @@ export function StencilDrawer({
         <p className="drawer-desc">{s.description}</p>
 
         <section className="drawer-section">
-          <h3>In a simulation</h3>
+          <h3>{t("gallery.inASimulation")}</h3>
           <div className="drawer-role">
             <span className="role" style={{ "--role": role.hue } as CSSProperties}>
               {role.label}
@@ -137,33 +147,33 @@ export function StencilDrawer({
         </section>
 
         <section className="drawer-section">
-          <h3>Details</h3>
+          <h3>{t("fileToast.details")}</h3>
           <dl className="drawer-facts">
-            <dt>Stencil id</dt>
+            <dt>{t("gallery.stencilId")}</dt>
             <dd>
               <button
                 className="copy-chip"
-                onClick={() => onCopy(s.id, "id")}
-                title="Copy stencil id"
+                onClick={() => onCopy(s.id, t("chrome.id"))}
+                title={t("gallery.copyStencilId")}
                 data-testid="drawer-copy-id"
               >
                 <span>{s.id}</span>
                 <Icon name="copy" size={12} />
               </button>
             </dd>
-            <dt>Category</dt>
+            <dt>{t("gallery.category")}</dt>
             <dd>{categoryLabel[s.category] ?? s.category}</dd>
-            <dt>Family</dt>
+            <dt>{t("gallery.family")}</dt>
             <dd className="drawer-family">
               <i style={{ background: family.hue }} />
-              {family.label}
+              {familyLabel[family.id]}
             </dd>
-            <dt>Accent</dt>
+            <dt>{t("gallery.accent")}</dt>
             <dd>
               <button
                 className="copy-chip"
-                onClick={() => onCopy(s.accent, "colour")}
-                title="Copy accent colour"
+                onClick={() => onCopy(s.accent, t("chrome.colour"))}
+                title={t("gallery.copyAccentColour")}
                 data-testid="drawer-copy-accent"
               >
                 <i className="drawer-swatch" />
@@ -172,11 +182,11 @@ export function StencilDrawer({
             </dd>
             {s.defaultSublabel && (
               <>
-                <dt>New nodes say</dt>
+                <dt>{t("gallery.newNodesSay")}</dt>
                 <dd className="mono">{s.defaultSublabel}</dd>
               </>
             )}
-            <dt>Icon</dt>
+            <dt>{t("view.node.iconOnly")}</dt>
             <dd>
               {icon.source}
               <small>{icon.licence}</small>
@@ -187,16 +197,17 @@ export function StencilDrawer({
 
       <footer className="drawer-foot">
         <button className="btn btn-primary" onClick={onAdd} data-testid="drawer-add">
-          <Icon name="plus" size={14} /> Add to current diagram
+          <Icon name="plus" size={14} />
+          {t("gallery.addToCurrentDiagramText")}
         </button>
         <button className="btn" onClick={onNewDiagram} data-testid="drawer-new">
-          New diagram with this
+          {t("gallery.newDiagramWithThis")}
         </button>
         <button
           className="icon-btn"
           onClick={onCopyJson}
-          aria-label="Copy as JSON node"
-          title="Copy as JSON node"
+          aria-label={t("gallery.copyAsJSONNode")}
+          title={t("gallery.copyAsJSONNode")}
           data-testid="drawer-copy-json"
         >
           <Icon name="copy" size={14} />

@@ -1,5 +1,42 @@
 # Design review
 
+## Canvas localization review fixes (2026-10-14)
+
+The designer-agent gate approved the fixes after identifying and correcting stale submenu anchors
+when the page changes direction. Search shares the visible metadata; action definitions own complete
+command names. Pending language loads refresh existing panels without losing search text, active rows
+or open submenus. Canvas anchors remain physical, and only collapsed category chevrons mirror.
+No controls or menu rows were added. Production browser regressions cover these transitions, explicit
+RTL drawer advancement, and placement beside the prospective node.
+
+## Canvas-menu localization review (2026-10-14)
+
+The designer-agent gate and seven review angles covered canvas menus, editing feedback, Ctrl+K, the stencil rail
+and gallery. The batch adds no controls or menu rows; actions keep their existing identities and availability.
+Your diagrams retains its previous File-batch conversion. Inspector, Live/capacity, planning, Checks and stencil
+catalog copy stay outside this batch.
+
+- Translated menu, command and annotation labels wrap instead of clipping. Native family selects shrink within
+  their rail; category headings and the drawer footer have room at 1280 × 800.
+- Arabic opens submenus leftward and mirrors their keyboard direction. Drawer Previous/Next glyphs, hints and
+  arrow keys agree; the canvas keeps its original geometry. RTL empty instructions identify the right-hand rail.
+- Complete rich messages let translators move keyboard badges and links. Membership feedback says nodes departed
+  a boundary, rather than confusing that verb with the direction Left. Glossary exceptions distinguish geometric
+  edges and compound consumer-group terminology from diagram connections and individual consumers.
+- Review caught fused machine-translation output, directional mistranslations, English fallback fragments and
+  a zone's missing palette noun. They were corrected; catalogs have a sentinel/completeness regression, and
+  localized Add-command search works with leading, trailing or attached verbs.
+
+Production Chromium checks cover canvas/node/edge/boundary menus and nested submenus, palette, editing toasts,
+stencil library, gallery/details and Your diagrams in German, Arabic and the pseudo-locale. The designer reviewed
+available screenshots and final source. Deliberately reverting extraction, rich messages, catalog integrity,
+localized search and layout fixes makes the corresponding regressions fail. English-output and the existing
+interaction regressions preserve the original wording and behavior.
+
+Rejected: new chrome, translating catalog descriptions or authored diagram content, and widening this batch into
+the excluded panels. These would change the intended scope or add unnecessary controls. The production entry
+grows by 30 B gzip against master; the new message data stays with its lazy UI.
+
 ## Planning P1 CI UX gate (2026-10-14)
 
 The designer-agent source review found no blocking issue: no new chrome, immediate name saves and
@@ -3765,3 +3802,11 @@ Regression checks temporarily restored the faulty behavior: metadata validation,
 microphone/model errors, revert language switching, Arabic/Hebrew isolation, Windows-only assertions on a Mac
 and premature WebMCP checks all failed as expected. The WebMCP test holds the bridge chunk until the host is read,
 so static tool help cannot conceal missing registration. Native-key checks run with explicit Windows/Mac platforms.
+
+## Canvas localization after Planning P1 rebase — 2026-10-14
+
+The designer's scoped source review against Planning P1 found no blockers in canvas menus, quick-add,
+Ctrl+K, the stencil rail, gallery and editing feedback. No controls were added. Stable menu and command
+identities, focus and undo paths remain intact; localized labels, wrapping and RTL navigation agree.
+The slim i18n entry keeps the typed API in its React-free core, and connection creation retains P1's defaults.
+This was a source review, not a whole-app browser or screenshot audit; production e2e results are reported separately.

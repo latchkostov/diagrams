@@ -1,7 +1,16 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, pageLoadTimeout, waitForStableBox } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  expectNoErrors,
+  pageLoadTimeout,
+  waitForStableBox,
+  waitForStableViewport,
+  fitDiagram,
+} from "./fixtures";
 import en from "../../src/i18n/en";
 import { parse, compile } from "../../src/i18n/icu";
 import { helpersFor } from "../../src/i18n/helpers";
@@ -34,6 +43,207 @@ const catalog = (code: string) =>
   >;
 const de = catalog("de");
 const SLUG = "kafka-order-pipeline";
+
+for (const code of ["de", "ar", "en-XA"]) {
+  test.describe(`canvas chrome in ${code}`, () => {
+    test.use({ viewport: { width: 1280, height: 800 } });
+    test.beforeEach(async ({ page }) => remember(page, code));
+    const messages = code === "en-XA" ? en : catalog(code);
+    const words = (key: keyof typeof en, values: Record<string, unknown> = {}) => {
+      const parts = parse(messages[key]);
+      const compiled = new Function("h", "return " + compile(code === "en-XA" ? pseudoLocalize(parts) : parts))(
+        helpersFor(code === "en-XA" ? "en" : code),
+      ) as string | ((values: Record<string, unknown>) => string);
+      return typeof compiled === "string" ? compiled : compiled(values);
+    };
+
+    test("context menus, submenus and command palette translate and wrap", async ({
+      page,
+      consoleErrors,
+    }, testInfo) => {
+      await gotoCanvas(page, SLUG);
+      await waitForStableViewport(page);
+      const canvas = page.getByTestId("canvas-wrap");
+      const box = await canvas.boundingBox();
+      if (!box) throw new Error("Canvas has no box");
+      await canvas.click({ button: "right", position: { x: box.width / 2, y: 90 } });
+      await expect(page.getByTestId("context-menu-item-canvas.add-node")).toContainText(words("menu.addNodeHere"));
+      await expectNothingCut(page.getByTestId("context-menu"), `${code}: canvas menu`);
+      await page.getByTestId("context-menu-item-canvas.annotate").click();
+      const submenu = page.getByTestId("context-menu-sub");
+      await expect(submenu).toBeVisible();
+      await expectNothingCut(submenu, `${code}: annotation submenu`);
+      if (code === "ar") {
+        const parentBox = await page.getByTestId("context-menu").boundingBox();
+        const childBox = await submenu.boundingBox();
+        if (!parentBox || !childBox) throw new Error("Menu has no box");
+        expect(childBox.x).toBeLessThan(parentBox.x);
+      }
+      await page.keyboard.press("Escape");
+      await page.keyboard.press("Escape");
+      await page.getByTestId("node-payments").click({ button: "right" });
+      await expect(page.getByTestId("context-menu-item-node.rename")).toContainText(words("library.rename"));
+      await expectNothingCut(page.getByTestId("context-menu"), `${code}: node menu`);
+      await page.keyboard.press("Escape");
+
+      await page.getByTestId("edge-label-shopper-to-gateway").click({ button: "right" });
+      await expect(page.getByTestId("context-menu-item-edge.relationship")).toContainText(words("chrome.relationship"));
+      await expectNothingCut(page.getByTestId("context-menu"), `${code}: edge menu`);
+      await page.getByTestId("context-menu-item-edge.route").click();
+      await expect(page.getByTestId("context-menu-item-edge.from-side")).toContainText(words("menu.fromSide"));
+      await expectNothingCut(submenu, `${code}: edge routing submenu`);
+      await page.getByTestId("context-menu-item-edge.from-side").click();
+      await expect(page.getByTestId("context-menu-item-edge.from-side:right")).toContainText(words("chrome.right"));
+      await expectNothingCut(page.getByTestId("context-menu-sub-sub"), `${code}: edge side submenu`);
+      await page.keyboard.press("Escape");
+      await page.keyboard.press("Escape");
+      await page.keyboard.press("Escape");
+
+      // A boundary named by the person stays as written while its menu is translated.
+      await fitDiagram(page);
+      await page.getByTestId("node-shopper").click();
+      await page.getByTestId("node-gateway").click({ modifiers: ["Control"] });
+      await page.keyboard.press("Control+g");
+      const boundaryName = page.getByTestId("inspector-field-label");
+      await expect(boundaryName).toBeFocused();
+      await boundaryName.fill("i18n boundary");
+      await boundaryName.press("Enter");
+      await expect(page.getByTestId("group-label-boundary-1")).toHaveText("i18n boundary");
+      await waitForStableViewport(page);
+      await page.getByTestId("group-label-boundary-1").click({ button: "right" });
+      await expect(page.getByTestId("context-menu-item-group.ungroup")).toContainText(words("menu.removeBoundary"));
+      await expectNothingCut(page.getByTestId("context-menu"), `${code}: boundary menu`);
+      await page.getByTestId("context-menu-item-group.tone").click();
+      await expect(page.getByTestId("context-menu-item-tone:neutral")).toContainText(words("chrome.neutral"));
+      await expectNothingCut(submenu, `${code}: boundary colour submenu`);
+      await page.screenshot({ path: testInfo.outputPath("boundary-chrome.png") });
+      await page.keyboard.press("Escape");
+      await page.keyboard.press("Escape");
+      await page.getByTestId("node-payments").click();
+      await canvas.focus();
+      await page.keyboard.press("Control+k");
+      await expect(page.getByTestId("command-palette")).toBeVisible();
+      await expect(page.getByTestId("command-item-action:node.rename")).toContainText(words("chrome.renameNode"));
+      await expectNothingCut(page.getByTestId("command-palette"), `${code}: palette`);
+      await page.getByTestId("command-input").fill("zzzz-no-command");
+      await expect(page.getByTestId("command-empty")).toContainText(
+        words("chrome.noMatchesForValue", { query: "zzzz-no-command" }),
+      );
+      await expectNothingCut(page.getByTestId("command-palette"), `${code}: palette empty`);
+      await page.screenshot({ path: testInfo.outputPath("canvas-chrome.png") });
+      expectNoErrors(consoleErrors);
+    });
+
+    test("edit toasts and restored selection feedback use the chosen language", async ({ page, consoleErrors }) => {
+      await gotoCanvas(page, SLUG);
+      await page.getByTestId("node-payments").click();
+      await page.keyboard.press("Alt+ArrowRight");
+      await expect(page.getByTestId("quick-add")).toBeVisible();
+      await page.getByTestId("quick-add-search").fill("postgres");
+      await page.getByTestId("quick-add-search").press("Enter");
+      await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId("toast")).toContainText(words("chrome.requestTheCallerWaitsForAReply"));
+      await expect(page.getByTestId("toast-make-message")).toHaveText(words("edit.makeItAMessage"));
+      await expectNothingCut(page.getByTestId("toast"), `${code}: editing toast`);
+      await page.getByTestId("toast-make-message").click();
+
+      await page.getByTestId("node-payments").click({ button: "right" });
+      await page.getByTestId("context-menu-item-node.rename").click();
+      const name = await page.getByTestId("inspector-field-label").inputValue();
+      await page.keyboard.press("Escape");
+      await page.getByTestId("node-payments").click({ button: "right" });
+      await page.getByTestId("context-menu-item-item.delete").click();
+      await expect(page.getByTestId("node-payments")).toHaveCount(0);
+      await page.getByTestId("canvas-wrap").focus();
+      await page.keyboard.press("Control+z");
+      await expect(page.getByTestId("node-payments")).toBeVisible();
+      await expect(page.getByTestId("node-payments")).toContainText(name);
+      await expect(page.getByTestId("canvas-announce")).toHaveText(
+        words("chrome.undoneValue", { selection: words("ai.selected", { count: 5 }) }),
+      );
+      expectNoErrors(consoleErrors);
+    });
+
+    test("stencil library, gallery and Your diagrams chrome translate without clipping", async ({
+      page,
+      consoleErrors,
+    }, testInfo) => {
+      await gotoCanvas(page, SLUG);
+      if (
+        await page
+          .getByTestId("palette")
+          .getAttribute("class")
+          .then((c) => c?.includes("is-collapsed"))
+      )
+        await page.getByTestId("palette-toggle").click();
+      await expect(page.getByTestId("palette-search")).toHaveAttribute("placeholder", words("library.findAStencil"));
+      await expect(page.getByTestId("palette-section-messaging")).toContainText(words("chrome.messaging"));
+      await page.getByTestId("palette-section-messaging").click();
+      await expectNothingCut(page.getByTestId("palette"), `${code}: stencil library`);
+      await expect(page.getByTestId("palette-annotate")).toContainText(words("menu.annotate"));
+      await page.getByTestId("palette-annotate").scrollIntoViewIfNeeded();
+      await expectNothingCut(page.getByTestId("palette-annotate"), `${code}: annotation rail`);
+      await page.screenshot({ path: testInfo.outputPath("annotation-rail.png") });
+      await page.getByTestId("palette-family").selectOption("aws");
+      await page.getByTestId("palette-search").fill("pg");
+      await expect(page.getByTestId("palette-empty")).toBeVisible();
+      await expectNothingCut(page.getByTestId("palette"), `${code}: library empty`);
+      await page.goto("./?view=gallery");
+      await expect(page.getByTestId("gallery-head")).toBeVisible();
+      await expect(page.getByTestId("gallery-search")).toHaveAttribute(
+        "aria-label",
+        words("importReport.searchStencils"),
+      );
+      await expectNothingCut(page.getByTestId("gallery-head"), `${code}: gallery filters`);
+      await expectNothingCut(page.getByTestId("gallery-rail"), `${code}: gallery categories`);
+      await page.getByTestId("stencil-tile-kafka.topic").click();
+      await expect(page.getByTestId("stencil-drawer")).toBeVisible();
+      await expect(page.getByTestId("drawer-add")).toContainText(words("gallery.addToCurrentDiagramText").trim());
+      await expect(page.getByTestId("drawer-variant-card")).toHaveText(words("view.node.card"));
+      await expect(page.getByTestId("drawer-variant-compact")).toHaveText(words("view.node.compact"));
+      await expect(page.getByTestId("drawer-variant-iconOnly")).toHaveText(words("view.node.iconOnly"));
+      await expectNothingCut(page.getByTestId("stencil-drawer"), `${code}: stencil details`);
+      if (code === "ar") {
+        const iconStyle = (id: string) =>
+          page.getByTestId(id).evaluate((button) => {
+            const icon = button.firstElementChild;
+            if (!icon) throw new Error("Expected a drawer icon");
+            const style = getComputedStyle(icon);
+            return { rotate: style.rotate, transform: style.transform };
+          });
+        const previousIcon = await iconStyle("drawer-prev");
+        expect(previousIcon.rotate).toBe("none");
+        expect(previousIcon.transform).toBe("none");
+        expect((await iconStyle("drawer-next")).transform).toBe("matrix(-1, 0, 0, 1, 0, 0)");
+        const before = "kafka.topic";
+        const next = "kafka.cluster";
+        await expect(page.getByTestId("stencil-drawer")).toHaveAttribute("data-stencil", before);
+        await page.getByTestId("drawer-next").click();
+        await expect(page.getByTestId("stencil-drawer")).toHaveAttribute("data-stencil", next);
+        await page.getByTestId("drawer-prev").click();
+        await expect(page.getByTestId("stencil-drawer")).toHaveAttribute("data-stencil", before);
+        await page.getByTestId("stencil-drawer").press("ArrowLeft");
+        await expect(page.getByTestId("stencil-drawer")).toHaveAttribute("data-stencil", next);
+        await page.getByTestId("stencil-drawer").press("ArrowRight");
+        await expect(page.getByTestId("stencil-drawer")).toHaveAttribute("data-stencil", before);
+      }
+      await page.screenshot({ path: testInfo.outputPath("stencil-details.png") });
+      await page.getByTestId("drawer-close").click();
+      await page.getByTestId("gallery-search").fill("zzzz-no-stencil");
+      await expect(page.getByTestId("gallery-empty")).toContainText(
+        words("chrome.nothingMatchesValue", { query: "zzzz-no-stencil" }),
+      );
+      await expectNothingCut(page.getByTestId("gallery-empty"), `${code}: gallery empty`);
+      await page.getByTestId("file-button").click();
+      await page.getByTestId("file-library").click();
+      await expect(page.getByTestId("library-dialog")).toBeVisible();
+      await expectNothingCut(page.getByTestId("library-dialog"), `${code}: Your diagrams`);
+      await page.screenshot({ path: testInfo.outputPath("library-chrome.png") });
+      expectNoErrors(consoleErrors);
+    });
+  });
+}
 
 for (const code of ["de", "fi", "ar", "en-XA"]) {
   test.describe(`AI and keyboard labels in ${code}`, () => {
@@ -139,6 +349,37 @@ for (const code of ["de", "fi", "ar", "en-XA"]) {
 }
 
 for (const outcome of ["pending", "failed"]) {
+  test(`canvas commands work while the catalog is ${outcome}`, async ({ page }) => {
+    await gotoCanvas(page, SLUG);
+    let release = () => {};
+    let asked = false;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route(catalogRequest("de"), async (route) => {
+      asked = true;
+      if (outcome === "pending") await held;
+      await route.abort();
+    });
+    try {
+      await openLanguage(page);
+      await page.getByTestId("language-option-de").click();
+      await expect.poll(() => asked).toBe(true);
+      if (outcome === "failed") await expect(page.getByTestId("language-failed")).toBeVisible();
+      await page.keyboard.press("Escape");
+      await page.getByTestId("node-payments").click({ button: "right" });
+      await expect(page.getByTestId("context-menu-item-item.duplicate")).toContainText("Duplicate");
+      const before = await nodeCount(page);
+      await page.getByTestId("context-menu-item-item.duplicate").click();
+      await expect.poll(() => nodeCount(page)).toBe(before + 1);
+      await page.getByTestId("canvas-wrap").focus();
+      await page.keyboard.press("Control+k");
+      await page.getByTestId("command-input").fill("Undo");
+      await page.getByTestId("command-item-action:canvas.undo").click();
+      await expect.poll(() => nodeCount(page)).toBe(before);
+    } finally {
+      release();
+    }
+  });
+
   test(`AI sending and dictation work while the catalog is ${outcome}`, async ({ page }) => {
     await installFakeSpeech(page);
     await installFakeLanguageModel(page, {
@@ -974,4 +1215,133 @@ test("Clear everything forgets the language: the app comes back in the browser's
   await expect(page.getByTestId("start-blank")).toHaveText("Start blank", { timeout: pageLoadTimeout() });
   expect(await page.evaluate(() => localStorage.getItem("diagrams.locale"))).toBeNull();
   expectNoErrors(consoleErrors);
+});
+
+for (const surface of ["command", "context", "rail", "rail-role", "gallery"] as const) {
+  test(`successful pending locale load refreshes mounted ${surface} search and labels`, async ({ page }) => {
+    await gotoCanvas(page, SLUG);
+    if (surface === "gallery") await page.goto("./?view=gallery");
+    let release = () => {};
+    let asked = false;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route(catalogRequest("de"), async (route) => {
+      asked = true;
+      await held;
+      await route.continue();
+    });
+    try {
+      await openLanguage(page);
+      await page.getByTestId("language-option-de").click();
+      await expect.poll(() => asked).toBe(true);
+      await page.keyboard.press("Escape");
+      if (surface === "command") {
+        await page.getByTestId("canvas-wrap").focus();
+        await page.keyboard.press("Control+k");
+        await page.getByTestId("command-input").fill(">");
+        await expect(page.getByTestId("command-item-action:canvas.fit")).toContainText("Fit view");
+      } else if (surface === "context") {
+        await page.getByTestId("node-payments").click({ button: "right" });
+        await page.getByTestId("context-menu").press("ArrowDown");
+        await expect(page.getByTestId("context-menu-item-node.rename")).toHaveAttribute("data-active", "true");
+      } else if (surface === "rail" || surface === "rail-role") {
+        if ((await page.getByTestId("palette").getAttribute("class"))?.includes("is-collapsed"))
+          await page.getByTestId("palette-toggle").click();
+        await page
+          .getByTestId("palette-search")
+          .fill(surface === "rail" ? de["chrome.roundedRectangle"] : de["gallery.store"]);
+        await expect(
+          page.getByTestId(surface === "rail" ? "palette-annotate-shape-rounded" : "palette-item-postgres"),
+        ).toHaveCount(0);
+      } else {
+        await page.getByTestId("gallery-search").fill(de["gallery.store"]);
+        await expect(page.getByTestId("stencil-tile-postgres")).toHaveCount(0);
+      }
+      release();
+      if (surface === "command") {
+        await expect(page.getByTestId("command-item-action:canvas.fit")).toContainText(de["menu.fitView"]);
+        await expect(page.getByTestId("command-input")).toHaveValue(">");
+      } else if (surface === "context") {
+        await expect(page.getByTestId("context-menu-item-node.rename")).toContainText(de["library.rename"]);
+        await expect(page.getByTestId("context-menu-item-node.rename")).toHaveAttribute("data-active", "true");
+      } else if (surface === "rail" || surface === "rail-role") {
+        await expect(
+          page.getByTestId(surface === "rail" ? "palette-annotate-shape-rounded" : "palette-item-postgres"),
+        ).toBeVisible();
+        await expect(page.getByTestId("palette-search")).toHaveValue(
+          surface === "rail" ? de["chrome.roundedRectangle"] : de["gallery.store"],
+        );
+        await page.getByTestId("palette-search").fill(de["gallery.store"]);
+        await expect(page.getByTestId("palette-item-postgres")).toBeVisible();
+      } else {
+        await expect(page.getByTestId("stencil-tile-postgres")).toBeVisible();
+        await expect(page.getByTestId("gallery-search")).toHaveValue(de["gallery.store"]);
+      }
+    } finally {
+      release();
+    }
+  });
+}
+
+test("RTL quick-add preserves physical placement and expanded chevrons point down", async ({ page }) => {
+  await remember(page, "ar");
+  await gotoCanvas(page, SLUG);
+  await fitDiagram(page);
+  await page.getByTestId("node-payments").click();
+  await page.keyboard.press("Alt+ArrowRight");
+  await expect(page.getByTestId("landing-outline")).toBeVisible();
+  await waitForStableViewport(page);
+  const outline = await page.getByTestId("landing-outline").boundingBox();
+  const menu = await page.getByTestId("quick-add").boundingBox();
+  if (!outline || !menu) throw new Error("Missing quick-add geometry");
+  expect(menu.x).toBeGreaterThanOrEqual(outline.x + outline.width);
+  await page.keyboard.press("Escape");
+  if ((await page.getByTestId("palette").getAttribute("class"))?.includes("is-collapsed"))
+    await page.getByTestId("palette-toggle").click();
+  const head = page.getByTestId("palette-section-messaging");
+  if ((await head.getAttribute("aria-expanded")) === "false") await head.click();
+  const style = () =>
+    head.evaluate((el) => {
+      const icon = el.firstElementChild;
+      if (!icon) throw new Error("Missing chevron");
+      const css = getComputedStyle(icon);
+      return { rotate: css.rotate, transform: css.transform };
+    });
+  await expect.poll(style).toEqual({ rotate: "90deg", transform: "none" });
+  await head.click();
+  await expect.poll(style).toEqual({ rotate: "0deg", transform: "matrix(-1, 0, 0, 1, 0, 0)" });
+});
+
+test("pending RTL locale refresh retains an open submenu beside its parent", async ({ page }) => {
+  await gotoCanvas(page, SLUG);
+  let release = () => {};
+  let asked = false;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route(catalogRequest("ar"), async (route) => {
+    asked = true;
+    await held;
+    await route.continue();
+  });
+  try {
+    await openLanguage(page);
+    await page.getByTestId("language-option-ar").click();
+    await expect.poll(() => asked).toBe(true);
+    await page.keyboard.press("Escape");
+    const canvas = page.getByTestId("canvas-wrap");
+    await canvas.click({ button: "right", position: { x: 650, y: 90 } });
+    await page.getByTestId("context-menu-item-canvas.annotate").click();
+    const sub = page.getByTestId("context-menu-sub");
+    await expect(sub).toBeVisible();
+    release();
+    await expect(page.getByTestId("context-menu-item-canvas.annotate")).toContainText(catalog("ar")["menu.annotate"]);
+    await expect(sub).toBeVisible();
+    await expect
+      .poll(async () => {
+        const parent = await page.getByTestId("context-menu").boundingBox();
+        const child = await sub.boundingBox();
+        return parent && child ? Math.abs(child.x + child.width - parent.x) : Infinity;
+      })
+      .toBeLessThan(16);
+  } finally {
+    release();
+  }
 });

@@ -79,22 +79,34 @@ export const annotationCoordinate = (v: number) =>
   Number.isFinite(v) ? Math.max(-ANNOTATION_LIMITS.maxCoordinate, Math.min(ANNOTATION_LIMITS.maxCoordinate, v)) : 0;
 export const annotationText = (v: string) => v.slice(0, ANNOTATION_LIMITS.maxAnnotationText);
 
+export type AnnotationGeometryReason = "finite" | "coordinate-budget" | "size";
+
+const geometryDiagnostics: Record<AnnotationGeometryReason, string> = {
+  finite: "its geometry must be finite.",
+  "coordinate-budget": "it's outside the coordinate budget. Move the selection closer to the origin.",
+  size: `its size must be between 1 and ${ANNOTATION_LIMITS.maxAnnotationSize} pixels. Choose a smaller selection.`,
+};
+export function annotationGeometryError(at: Pick<DiagramAnnotation, "x" | "y" | "width" | "height">): string | null {
+  const reason = annotationGeometryReason(at);
+  return reason ? geometryDiagnostics[reason] : null;
+}
+
 /** Shared creation/persistence gate. Reject rather than shrink a zone away from its selection. */
-export function annotationGeometryError({
+export function annotationGeometryReason({
   x,
   y,
   width,
   height,
-}: Pick<DiagramAnnotation, "x" | "y" | "width" | "height">): string | null {
-  if (![x, y, width, height].every(Number.isFinite)) return "its geometry must be finite.";
+}: Pick<DiagramAnnotation, "x" | "y" | "width" | "height">): AnnotationGeometryReason | null {
+  if (![x, y, width, height].every(Number.isFinite)) return "finite";
   if (Math.abs(x) > ANNOTATION_LIMITS.maxCoordinate || Math.abs(y) > ANNOTATION_LIMITS.maxCoordinate)
-    return "it's outside the coordinate budget. Move the selection closer to the origin.";
+    return "coordinate-budget";
   if (
     width < 1 ||
     height < 1 ||
     width > ANNOTATION_LIMITS.maxAnnotationSize ||
     height > ANNOTATION_LIMITS.maxAnnotationSize
   )
-    return `its size must be between 1 and ${ANNOTATION_LIMITS.maxAnnotationSize} pixels. Choose a smaller selection.`;
+    return "size";
   return null;
 }

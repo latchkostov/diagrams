@@ -1,3 +1,4 @@
+import * as annotationValidation from "../model/annotations";
 import { describe, expect, it, vi } from "vitest";
 import type { ReactFlowInstance } from "@xyflow/react";
 import { toFlow } from "../canvas/convert";
@@ -155,4 +156,20 @@ it.each(["duplicate", "paste"] as const)("%s preserves mixed foreground layer or
   if (transfer === "duplicate") api.duplicate({ nodeIds: ["a", "text"] });
   else api.pastePayload(makePayload(api.getDiagram(), ["a", "text"])!);
   expect(api.getDiagram().layerOrder).toEqual(["text", "a", "b", "text-1", "a-1"]);
+});
+
+it.each([
+  [Infinity, "its geometry must be finite."],
+  [2000000, "it's outside the coordinate budget. Move the selection closer to the origin."],
+])("creation uses typed geometry recovery even when English diagnostics change (%s)", (x, guidance) => {
+  const diagnostic = vi
+    .spyOn(annotationValidation, "annotationGeometryError")
+    .mockReturnValue("a revised model diagnostic");
+  try {
+    const { api } = setup([]);
+    expect(api.addAnnotation("note", { at: { x, y: 0 } })).toBeNull();
+    expect(toast.current?.text).toBe(`Couldn't add note: ${guidance}`);
+  } finally {
+    diagnostic.mockRestore();
+  }
 });

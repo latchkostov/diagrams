@@ -1,3 +1,5 @@
+import { t } from "../i18n";
+import { relationLabel } from "../i18n/chrome";
 import type { IconName } from "../components/Icon";
 import type { DiagramEdge, EdgeRelation } from "../model/types";
 import { DEPENDENCY_RELATIONS, RELATION_META, relationOf, type DependencyRelation } from "../model/relations";
@@ -26,6 +28,7 @@ export const relationIcon = (relation: EdgeRelation, kind?: "async" | "sync"): I
 export const RELATION_CHOICES: readonly RelationChoice[] = [
   {
     id: "message",
+    // eslint-disable-next-line local/no-literal-ui-text -- inspector metadata belongs to its later batch
     label: "Message",
     icon: "rel-message",
     hint: "Async: queued, dashed",
@@ -34,6 +37,7 @@ export const RELATION_CHOICES: readonly RelationChoice[] = [
   },
   {
     id: "request",
+    // eslint-disable-next-line local/no-literal-ui-text -- inspector metadata belongs to its later batch
     label: "Request",
     icon: "rel-request",
     hint: "Sync: waits for a reply",
@@ -86,7 +90,12 @@ export function relationMenu(ctx: ActionContext): MenuNode[] {
     {
       type: "item",
       id: `relation:${c.id}`,
-      label: c.label,
+      label:
+        c.relation === "flow"
+          ? c.kind === "sync"
+            ? t("chrome.request")
+            : t("chrome.message")
+          : relationLabel[c.relation],
       icon: c.icon,
       hint: c.relation === "flow" ? (c.kind === "sync" ? "sync" : "async") : undefined,
       keywords: `relationship ${c.hint} ${c.relation === "flow" ? "flow" : `dependency ${RELATION_META[c.relation].implicit}`}`,
@@ -101,7 +110,9 @@ export const relationshipAction: Action = {
   id: "edge.relationship",
   section: "edge",
   targets: ["edge", "selection"],
-  label: "Relationship",
+  get label() {
+    return t("chrome.relationship");
+  },
   icon: "rel-any",
   order: 10,
   when: (ctx) => targetEdges(ctx).length > 0,

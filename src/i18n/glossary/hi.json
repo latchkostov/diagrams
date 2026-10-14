@@ -25,7 +25,8 @@
       "keepEnglish": true,
       "match": ["कंज़्यूमर", "कंज्यूमर", "consumer"],
       "avoid": ["उपभोक्ता"],
-      "note": "उपभोक्ता is a shopper, not a message reader."
+      "note": "उपभोक्ता is a shopper, not a message reader.",
+      "except": ["menu.setConsumerGroup"]
     },
     "consumer group": {
       "use": "कंज़्यूमर ग्रुप",
@@ -126,7 +127,15 @@
     "edge": {
       "use": "कनेक्शन",
       "match": ["कनेक्शन"],
-      "except": ["shortcuts.mouse.boundary"],
+      "except": [
+        "shortcuts.mouse.boundary",
+        "menu.leftEdges",
+        "menu.rightEdges",
+        "menu.topEdges",
+        "menu.bottomEdges",
+        "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+      ],
       "note": "The line between two nodes. In shortcuts.mouse.boundary 'edge' is the boundary's rim (किनारा)."
     },
     "stencil": {

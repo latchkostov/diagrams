@@ -1,5 +1,14 @@
 # Release notes
 
+## Canvas localization review fixes (2026-10-14)
+
+- Stencil search finds translated roles, categories and families, while keeping English aliases.
+  Open search panels and menus refresh when a language finishes loading, preserving queries and navigation.
+- RTL quick-add stays beside its prospective node in physical canvas coordinates; expanded library
+  categories keep their downward chevrons. The diagram retains its direction.
+- Command names come from their actions, avoiding mixed-language nouns. Annotation recovery guidance
+  follows typed validation reasons, and chrome counts reuse number formatters.
+
 ## Planning P1 CI fixes (2026-10-14)
 
 - Live stats cards open below nodes when there is room, flip above when needed, and keep covering
@@ -51,6 +60,17 @@
   currently fall back to English. No top-bar controls were added.
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
+
+## Canvas menus and stencil chrome in your language (2026-10-14)
+
+- Canvas number formatting stays lightweight alongside Planning P1; the agent skill viewer is refreshed in plugin 1.1.14.
+- Right-click menus and their submenus, quick-add, edit feedback and Ctrl+K commands now use the chosen language,
+  with translations in all 37 locales. Commands keep their stable identities when a language downloads or changes.
+- Stencil categories, families, filters, gallery details, empty states and buttons are translated. Stencil catalog
+  names/descriptions and authored diagram content keep their original text. Your diagrams retains its existing
+  File-batch translations.
+- Longer menu, palette and annotation labels wrap. Arabic mirrors the menus, opens submenus to the left and
+  reverses drawer navigation, while diagram geometry keeps its direction. English wording remains unchanged.
 
 ## AI language switching fixes (2026-10-14)
 

@@ -23,7 +23,8 @@
     },
     "consumer": {
       "use": "צרכן",
-      "match": ["צרכן", "צרכנ"]
+      "match": ["צרכן", "צרכנ"],
+      "except": ["menu.setConsumerGroup"]
     },
     "consumer group": {
       "use": "Consumer Group",
@@ -109,7 +110,15 @@
     "edge": {
       "use": "חיבור",
       "match": ["חיבור"],
-      "except": ["shortcuts.mouse.boundary"],
+      "except": [
+        "shortcuts.mouse.boundary",
+        "menu.leftEdges",
+        "menu.rightEdges",
+        "menu.topEdges",
+        "menu.bottomEdges",
+        "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+      ],
       "note": "In shortcuts.mouse.boundary \"edge\" is a boundary's border (קצה)."
     },
     "stencil": {

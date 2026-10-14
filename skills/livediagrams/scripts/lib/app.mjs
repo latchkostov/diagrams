@@ -295,16 +295,25 @@ function normalizeAnnotation(value, usedIds = /* @__PURE__ */ new Set(), warn = 
 	if (member(ANNOTATION_TEXT_SIZES, a.textSize)) out.textSize = a.textSize;
 	return out;
 }
+var geometryDiagnostics = {
+	finite: "its geometry must be finite.",
+	"coordinate-budget": "it's outside the coordinate budget. Move the selection closer to the origin.",
+	size: `its size must be between 1 and ${ANNOTATION_LIMITS.maxAnnotationSize} pixels. Choose a smaller selection.`
+};
+function annotationGeometryError(at) {
+	const reason = annotationGeometryReason(at);
+	return reason ? geometryDiagnostics[reason] : null;
+}
 /** Shared creation/persistence gate. Reject rather than shrink a zone away from its selection. */
-function annotationGeometryError({ x, y, width, height }) {
+function annotationGeometryReason({ x, y, width, height }) {
 	if (![
 		x,
 		y,
 		width,
 		height
-	].every(Number.isFinite)) return "its geometry must be finite.";
-	if (Math.abs(x) > ANNOTATION_LIMITS.maxCoordinate || Math.abs(y) > ANNOTATION_LIMITS.maxCoordinate) return "it's outside the coordinate budget. Move the selection closer to the origin.";
-	if (width < 1 || height < 1 || width > ANNOTATION_LIMITS.maxAnnotationSize || height > ANNOTATION_LIMITS.maxAnnotationSize) return `its size must be between 1 and ${ANNOTATION_LIMITS.maxAnnotationSize} pixels. Choose a smaller selection.`;
+	].every(Number.isFinite)) return "finite";
+	if (Math.abs(x) > ANNOTATION_LIMITS.maxCoordinate || Math.abs(y) > ANNOTATION_LIMITS.maxCoordinate) return "coordinate-budget";
+	if (width < 1 || height < 1 || width > ANNOTATION_LIMITS.maxAnnotationSize || height > ANNOTATION_LIMITS.maxAnnotationSize) return "size";
 	return null;
 }
 //#endregion
@@ -602,13 +611,13 @@ function validateDiagram(data) {
 			const props = isObj$1(sim.setup) && isObj$1(sim.setup.props) ? sim.setup.props : {};
 			for (const [id, value] of Object.entries(props)) if (unsupportedPreset(value)) return {
 				ok: false,
-				error: t(673, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
+				error: t(1028, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
 			};
 			if (Array.isArray(sim.timeline)) for (const step of sim.timeline) {
 				const action = isObj$1(step) && isObj$1(step.action) ? step.action : void 0;
 				if (action?.do === "props" && unsupportedPreset(action.props)) return {
 					ok: false,
-					error: t(673, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
+					error: t(1028, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
 				};
 			}
 		}
@@ -703,7 +712,7 @@ function validateDiagram(data) {
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
 		if (unsupportedPreset(out.props)) return {
 			ok: false,
-			error: t(673, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
+			error: t(1028, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
 		};
 		const problem = out.props === void 0 ? void 0 : propsProblem(out.props);
 		if (problem) return {
@@ -780,7 +789,7 @@ function validateDiagram(data) {
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
 		if (invalidPlanningDelay(out.props)) return {
 			ok: false,
-			error: t(618, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
+			error: t(973, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
 				id: e.id,
 				limit: SIM_LIMITS.timeMs
 			})

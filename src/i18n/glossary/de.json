@@ -28,7 +28,8 @@
       "keepEnglish": true,
       "match": ["consumer"],
       "avoid": ["Verbraucher"],
-      "note": "der Consumer, die Consumer"
+      "note": "der Consumer, die Consumer",
+      "except": ["menu.setConsumerGroup"]
     },
     "consumer group": {
       "use": "Consumer Group",
@@ -136,7 +137,15 @@
     "edge": {
       "use": "Verbindung",
       "match": ["verbindung"],
-      "except": ["shortcuts.mouse.boundary"],
+      "except": [
+        "shortcuts.mouse.boundary",
+        "menu.leftEdges",
+        "menu.rightEdges",
+        "menu.topEdges",
+        "menu.bottomEdges",
+        "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+      ],
       "note": "In shortcuts.mouse.boundary 'edge' is the boundary's Rand, not a connection"
     },
     "stencil": {

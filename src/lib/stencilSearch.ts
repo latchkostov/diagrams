@@ -1,4 +1,7 @@
 import type { Stencil } from "../model/types";
+import { getLocale } from "../i18n/core";
+import { categoryLabel as localizedCategory, familyLabel } from "../i18n/chrome";
+import { galleryRoleMeta } from "../i18n/galleryRoles";
 import { categoryLabel } from "./categories";
 import { simRoleMeta } from "./simRoles";
 import { familyOf, getFamily } from "./vendorFamilies";
@@ -335,9 +338,15 @@ interface Indexed {
   aliases: string[];
 }
 
-const index = new WeakMap<Stencil, Indexed>();
+let index = new WeakMap<Stencil, Indexed>();
+let indexLocale: string | undefined;
 
 function indexed(s: Stencil): Indexed {
+  const locale = getLocale();
+  if (indexLocale !== locale) {
+    index = new WeakMap();
+    indexLocale = locale;
+  }
   let hit = index.get(s);
   if (hit) return hit;
   const aliases = (STENCIL_ALIASES[s.id] ?? []).map((a) => a.toLowerCase());
@@ -350,6 +359,9 @@ function indexed(s: Stencil): Indexed {
     // Ordinary traffic sources are clients; the renamed category must not make a browser an external API.
     s.category === "clients" && s.simRole === "source" ? "Clients" : (categoryLabel[s.category] ?? s.category),
     getFamily(familyOf(s)).label,
+    galleryRoleMeta[s.simRole].label,
+    s.category === "clients" && s.simRole === "source" ? "" : localizedCategory[s.category],
+    familyLabel[familyOf(s)],
     s.defaultSublabel ?? "",
     ...aliases,
   ].map((f) => f.toLowerCase());
@@ -358,8 +370,8 @@ function indexed(s: Stencil): Indexed {
   hit = {
     stencil: s,
     label,
-    labelWords: label.split(/[^a-z0-9#+]+/).filter(Boolean),
-    words: hay.split(/[^a-z0-9#+]+/).filter(Boolean),
+    labelWords: label.split(/[^\p{L}\p{N}#+]+/u).filter(Boolean),
+    words: hay.split(/[^\p{L}\p{N}#+]+/u).filter(Boolean),
     hay,
     aliases,
   };

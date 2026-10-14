@@ -21,7 +21,8 @@
     },
     "consumer": {
       "use": "tarbija",
-      "match": ["tarbija"]
+      "match": ["tarbija"],
+      "except": ["menu.setConsumerGroup"]
     },
     "consumer group": {
       "use": "consumer group",
@@ -109,7 +110,15 @@
     "edge": {
       "use": "ühendus",
       "match": ["ühendu"],
-      "except": ["shortcuts.mouse.boundary"],
+      "except": [
+        "shortcuts.mouse.boundary",
+        "menu.leftEdges",
+        "menu.rightEdges",
+        "menu.topEdges",
+        "menu.bottomEdges",
+        "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+      ],
       "note": "A boundary's edge is its serv."
     },
     "stencil": {

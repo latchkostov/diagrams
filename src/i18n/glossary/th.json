@@ -23,7 +23,8 @@
     "consumer": {
       "use": "คอนซูเมอร์",
       "keepEnglish": true,
-      "match": ["คอนซูเมอร์", "consumer"]
+      "match": ["คอนซูเมอร์", "consumer"],
+      "except": ["menu.setConsumerGroup"]
     },
     "consumer group": {
       "use": "consumer group",
@@ -122,7 +123,15 @@
     "edge": {
       "use": "เส้นเชื่อม",
       "match": ["เส้นเชื่อม"],
-      "except": ["shortcuts.mouse.boundary"],
+      "except": [
+        "shortcuts.mouse.boundary",
+        "menu.leftEdges",
+        "menu.rightEdges",
+        "menu.topEdges",
+        "menu.bottomEdges",
+        "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+      ],
       "note": "The line between two nodes. In shortcuts.mouse.boundary 'edge' is the boundary's rim (ขอบ)."
     },
     "stencil": {

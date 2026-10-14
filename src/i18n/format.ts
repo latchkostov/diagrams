@@ -1,15 +1,11 @@
 import { getLocale, t } from "./index";
+import { formatNumber } from "./number";
+export { formatNumber } from "./number";
 export { formatAgo } from "./relativeTime";
 
 // Numbers, units, rates, percentages, dates, relative times and lists in the current language, all through the
 // browser's Intl: no data to download, and each language's conventions (1 234,5 in French, 1.234,5 in German,
 // 12,34,567 in Hindi; "vor 5 Min."; "A, B und C"). English keeps the app's own wording where it had one.
-
-const lang = () => getLocale();
-
-/** A number: `formatNumber(1234.5)` is "1,234.5", "1.234,5" in German. */
-export const formatNumber = (n: number, options?: Intl.NumberFormatOptions): string =>
-  new Intl.NumberFormat(lang(), options).format(n);
 
 /** A fraction as a percentage: 0.42 is "42%", "42 %" in German and French. */
 export const formatPercent = (fraction: number, digits = 0): string =>
@@ -27,13 +23,13 @@ export function formatDuration(ms: number): string {
 
 /** A list: "A, B and C" ("A, B und C"; "A、B、C"). `or` for alternatives. */
 export const formatList = (items: string[], type: "and" | "or" = "and"): string =>
-  new Intl.ListFormat(lang(), { type: type === "and" ? "conjunction" : "disjunction" }).format(items);
+  new Intl.ListFormat(getLocale(), { type: type === "and" ? "conjunction" : "disjunction" }).format(items);
 
 /** A date (a day and a short month by default: "12 Oct", "12. Okt."). */
 export const formatDate = (
   at: number | Date,
   options: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" },
-): string => new Date(at).toLocaleDateString(lang(), options);
+): string => new Date(at).toLocaleDateString(getLocale(), options);
 
 /**
  * How long ago: "just now", "5 min ago", "3 h ago", "yesterday", then a date. In English as the app has always said

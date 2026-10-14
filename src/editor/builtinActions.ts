@@ -1,3 +1,5 @@
+import { t } from "../i18n";
+import { categoryLabel, toneLabel, kindLabel, shapeLabel, colorLabel } from "../i18n/chrome";
 export { fileActions } from "../interop/fileActions";
 import { fileActions } from "../interop/fileActions";
 import type { InteropApi } from "../interop/useInterop";
@@ -8,18 +10,11 @@ export function registerCanvasActions(get: () => InteropApi): () => void {
   return actionRegistry.register([...builtinActions(), ...fileActions(get)]);
 }
 import { stencils, getStencil } from "../stencils/registry";
-import { CATEGORY_ORDER, categoryLabel } from "../lib/categories";
-import { toneColor, toneLabel } from "../canvas/groupTones";
+import { CATEGORY_ORDER } from "../lib/categories";
+import { toneColor } from "../canvas/groupTones";
 import type { GroupTone } from "../canvas/types";
 import type { AnnotationKind, AnnotationShape, Side, Stencil } from "../model/types";
-import {
-  ANNOTATION_COLORS,
-  ANNOTATION_COLOR_IDS,
-  ANNOTATION_SHAPES,
-  annotationColor,
-  kindLabel,
-  shapeLabel,
-} from "../canvas/annotations";
+import { ANNOTATION_COLORS, ANNOTATION_COLOR_IDS, ANNOTATION_SHAPES, annotationColor } from "../canvas/annotations";
 import type { Action, ActionContext, MenuItem, MenuNode } from "./actions";
 import type { AlignMode } from "./arrange";
 import { shortcutKeys } from "./shortcuts";
@@ -33,8 +28,22 @@ import type { EdgeEnd } from "./edgeEdits";
 // Built-in context-menu actions. Each reads the target from ctx and mutates through ctx.editor.
 
 const TONES = Object.keys(toneColor) as GroupTone[];
-const SIDE_LABEL: Record<Side, string> = { top: "Top", right: "Right", bottom: "Bottom", left: "Left" };
-const SIDE_HINT = (side: Side | undefined) => (side ? SIDE_LABEL[side] : "Auto");
+const SIDE_LABEL: Record<Side, string> = {
+  get top() {
+    return t("chrome.top");
+  },
+  get right() {
+    return t("chrome.right");
+  },
+  get bottom() {
+    return t("chrome.bottom");
+  },
+  get left() {
+    return t("chrome.left");
+  },
+};
+
+const SIDE_HINT = (side: Side | undefined) => (side ? SIDE_LABEL[side] : t("menu.auto"));
 
 /** Category ▸ stencil submenus. `pick` builds the leaf for one stencil. */
 export function stencilMenu(
@@ -81,7 +90,12 @@ export function quickAddMenu(pick: (s: Stencil) => void, recent: readonly string
   const all = stencilMenu("quick-add", (s) => ({ run: () => pick(s) }));
   if (!recents.length) return all;
   return [
-    { type: "header", label: "Recently used" },
+    {
+      type: "header",
+      get label() {
+        return t("menu.recentlyUsed");
+      },
+    },
     ...recents.map((s): MenuItem => ({
       type: "item",
       id: `quick-add:recent:${s.id}`,
@@ -106,26 +120,66 @@ const total = (ctx: ActionContext) =>
   ctx.selection.nodeIds.length + ctx.selection.groupIds.length + ctx.selection.edgeIds.length;
 
 const ALIGN: { mode: AlignMode; label: string; icon: MenuItem["icon"] }[] = [
-  { mode: "left", label: "Left edges", icon: "align-left" },
-  { mode: "center", label: "Horizontal centres", icon: "align-center" },
-  { mode: "right", label: "Right edges", icon: "align-right" },
-  { mode: "top", label: "Top edges", icon: "align-top" },
-  { mode: "middle", label: "Vertical middles", icon: "align-middle" },
-  { mode: "bottom", label: "Bottom edges", icon: "align-bottom" },
+  {
+    mode: "left",
+    get label() {
+      return t("menu.leftEdges");
+    },
+    icon: "align-left",
+  },
+  {
+    mode: "center",
+    get label() {
+      return t("menu.horizontalCentres");
+    },
+    icon: "align-center",
+  },
+  {
+    mode: "right",
+    get label() {
+      return t("menu.rightEdges");
+    },
+    icon: "align-right",
+  },
+  {
+    mode: "top",
+    get label() {
+      return t("menu.topEdges");
+    },
+    icon: "align-top",
+  },
+  {
+    mode: "middle",
+    get label() {
+      return t("menu.verticalMiddles");
+    },
+    icon: "align-middle",
+  },
+  {
+    mode: "bottom",
+    get label() {
+      return t("menu.bottomEdges");
+    },
+    icon: "align-bottom",
+  },
 ];
 
 function sideMenu(ctx: ActionContext, end: "sourceSide" | "targetSide"): MenuNode[] {
   const id = ctx.edgeId!;
   const current = ctx.editor.getEdge(id)?.[end];
   const prefix = end === "sourceSide" ? "edge.from-side" : "edge.to-side";
-  const name = end === "sourceSide" ? "Route from side" : "Route to side";
+  const name = end === "sourceSide" ? t("chrome.routeFromSide") : t("chrome.routeToSide");
   return [
     {
       type: "item",
       id: `${prefix}:auto`,
-      label: "Auto",
-      paletteLabel: `${name} › Auto`,
-      hint: "follows layout",
+      get label() {
+        return t("menu.auto");
+      },
+      paletteLabel: t("chrome.valueAuto", { name }),
+      get hint() {
+        return t("menu.followsLayout");
+      },
       checked: !current,
       run: () => ctx.editor.updateEdge(id, { [end]: undefined }),
     },
@@ -134,7 +188,7 @@ function sideMenu(ctx: ActionContext, end: "sourceSide" | "targetSide"): MenuNod
       type: "item",
       id: `${prefix}:${side}`,
       label: SIDE_LABEL[side],
-      paletteLabel: `${name} › ${SIDE_LABEL[side]}`,
+      paletteLabel: t("chrome.valueValue", { parent: name, leaf: SIDE_LABEL[side] }),
       checked: current === side,
       run: () => ctx.editor.updateEdge(id, { [end]: side }),
     })),
@@ -156,7 +210,10 @@ function reconnectMenu(ctx: ActionContext, end: EdgeEnd): MenuNode[] {
         id: `reconnect-${end}:${n.id}`,
         documentScoped: true,
         label: n.label || n.id,
-        paletteLabel: `Reconnect ${end === "source" ? "from" : "to"} › ${n.label || n.id}`,
+        paletteLabel:
+          end === "source"
+            ? t("chrome.reconnectFromValue", { name: n.label || n.id })
+            : t("chrome.reconnectToValue", { name: n.label || n.id }),
         stencil: n.stencil,
         hint: n.sublabel,
         keywords: n.id,
@@ -169,7 +226,10 @@ function reconnectMenu(ctx: ActionContext, end: EdgeEnd): MenuNode[] {
         id: `reconnect-${end}:${a.id}`,
         documentScoped: true,
         label: a.text || a.id,
-        paletteLabel: `Reconnect ${end === "source" ? "from" : "to"} › ${a.text || a.id}`,
+        paletteLabel:
+          end === "source"
+            ? t("chrome.reconnectFromValue", { name: a.text || a.id })
+            : t("chrome.reconnectToValue", { name: a.text || a.id }),
         icon: "shape-rect",
         keywords: `${a.id} shape`,
         run: run(a.id),
@@ -196,12 +256,14 @@ const SHAPE_ICON: Record<AnnotationShape, MenuItem["icon"]> = {
   cylinder: "shape-cylinder",
 };
 const KIND_ICON: Record<AnnotationKind, MenuItem["icon"]> = {
+  // eslint-disable-next-line local/no-literal-ui-text -- icon identifier
   text: "type",
   note: "note",
   zone: "zone",
   shape: "shape-rect",
 };
 const KIND_KEYWORDS: Record<AnnotationKind, string> = {
+  // eslint-disable-next-line local/no-literal-ui-text -- English search aliases; visible labels are translated separately
   text: "annotation label caption title words free text",
   note: "annotation sticky note comment post-it",
   zone: "annotation region area highlight band lane",
@@ -223,7 +285,9 @@ export function annotateMenu(add: (kind: AnnotationKind, shape?: AnnotationShape
     {
       type: "item",
       id: "annotate:shape",
-      label: "Shape",
+      get label() {
+        return t("menu.shape");
+      },
       icon: "shape-rect",
       children: ANNOTATION_SHAPES.map((sh): MenuItem => ({
         type: "item",
@@ -244,24 +308,33 @@ export function builtinActions(): Action[] {
       id: "canvas.add-node",
       section: "insert",
       targets: ["canvas"],
-      label: "Add node here",
+      get label() {
+        return t("menu.addNodeHere");
+      },
       icon: "plus",
-      searchable: "Search stencils",
+      get searchable() {
+        return t("importReport.searchStencils");
+      },
       children: (ctx) => stencilMenu("add-node", (s) => ({ run: () => void ctx.editor.addNode(s.id, ctx.point) })),
     },
     {
       id: "canvas.annotate",
       section: "insert",
       targets: ["canvas"],
-      label: "Annotate",
+      get label() {
+        return t("menu.annotate");
+      },
       icon: "note",
       children: (ctx) => annotateMenu((kind, shape) => void ctx.editor.addAnnotation(kind, { at: ctx.point, shape })),
     },
     {
       id: "canvas.paste",
+      paletteLabel: () => t("shortcuts.paste"),
       section: "clipboard",
       targets: ["canvas"],
-      label: "Paste here",
+      get label() {
+        return t("menu.pasteHere");
+      },
       icon: "paste",
       shortcut: shortcutKeys("paste"),
       enabled: (ctx) => ctx.editor.hasClipboard(),
@@ -271,7 +344,9 @@ export function builtinActions(): Action[] {
       id: "canvas.select-all",
       section: "clipboard",
       targets: ["canvas"],
-      label: "Select all",
+      get label() {
+        return t("shortcuts.selectAll");
+      },
       icon: "select-all",
       shortcut: shortcutKeys("select-all"),
       run: (ctx) => ctx.editor.selectAll(),
@@ -280,7 +355,9 @@ export function builtinActions(): Action[] {
       id: "canvas.auto-layout",
       section: "arrange",
       targets: ["canvas"],
-      label: "Auto-layout",
+      get label() {
+        return t("menu.autoLayout");
+      },
       icon: "layout",
       enabled: (ctx) => ctx.editor.getDiagram().nodes.length > 1,
       run: (ctx) => ctx.editor.autoLayout(),
@@ -290,6 +367,7 @@ export function builtinActions(): Action[] {
       id: "canvas.check-diagram",
       section: "arrange",
       targets: ["canvas"],
+      // eslint-disable-next-line local/no-literal-ui-text -- Checks wording is excluded from this batch
       label: "Check diagram",
       icon: "checklist",
       enabled: (ctx) => !!ctx.editor.getDiagram?.().nodes.length,
@@ -303,6 +381,7 @@ export function builtinActions(): Action[] {
       id: "canvas.run-simulations",
       section: "arrange",
       targets: ["canvas"],
+      // eslint-disable-next-line local/no-literal-ui-text -- Checks wording is excluded from this batch
       label: "Run simulations",
       icon: "bolt",
       when: (ctx) => simulationsShown(ctx) && !editingRuns()!.isRunning(),
@@ -317,6 +396,7 @@ export function builtinActions(): Action[] {
       id: "canvas.stop-simulations",
       section: "arrange",
       targets: ["canvas"],
+      // eslint-disable-next-line local/no-literal-ui-text -- Checks wording is excluded from this batch
       label: "Stop simulations",
       icon: "bolt",
       when: (ctx) => simulationsShown(ctx) && editingRuns()!.isRunning(),
@@ -329,7 +409,9 @@ export function builtinActions(): Action[] {
       paletteOnly: true,
       section: "view",
       targets: ["canvas"],
-      label: "Fit view",
+      get label() {
+        return t("menu.fitView");
+      },
       icon: "fit",
       shortcut: shortcutKeys("fit-view"),
       run: (ctx) => ctx.editor.fitView(),
@@ -341,11 +423,15 @@ export function builtinActions(): Action[] {
       paletteOnly: true,
       section: "view",
       targets: ["canvas"],
-      label: "Zoom to selection",
+      get label() {
+        return t("shortcuts.zoomSelection");
+      },
       icon: "fit",
       shortcut: shortcutKeys("zoom-selection"),
       enabled: (ctx) => ctx.selection.nodeIds.length + ctx.selection.groupIds.length + ctx.selection.edgeIds.length > 0,
-      hint: "Select something first",
+      get hint() {
+        return t("menu.selectSomethingFirst");
+      },
       run: (ctx) => void ctx.editor.zoomToSelection(),
     },
     {
@@ -353,7 +439,9 @@ export function builtinActions(): Action[] {
       modes: ["edit", "live"],
       section: "view",
       targets: ["canvas"],
-      label: "Show",
+      get label() {
+        return t("password.show");
+      },
       icon: "grid",
       children: (ctx) => {
         const p = ctx.editor.prefs;
@@ -373,16 +461,18 @@ export function builtinActions(): Action[] {
           run: () => ctx.editor.setPref(key, !p[key]),
         });
         return [
-          toggle("grid", "Grid", "grid", "grid"),
+          toggle("grid", t("chrome.grid"), "grid", "grid"),
           // Grid and smart guides together: a drag lines up with other nodes, else the 10 px grid.
-          toggle("snap", "Snapping", "snap", "magnet", "snap to grid smart guides align equal spacing"),
-          toggle("minimap", "Minimap", "minimap", "minimap"),
-          toggle("inspector", "Inspector", "inspector", "panel-right"),
+          toggle("snap", t("chrome.snapping"), "snap", "magnet", "snap to grid smart guides align equal spacing"),
+          toggle("minimap", t("chrome.minimap"), "minimap", "minimap"),
+          toggle("inspector", t("chrome.inspector"), "inspector", "panel-right"),
           // The capacity heat map: the same app-wide setting as View > Show capacity and C.
           {
             type: "item",
             id: "view:capacity",
-            label: "Capacity",
+            get label() {
+              return t("menu.capacity");
+            },
             icon: "sliders",
             shortcut: "C",
             keywords: "show capacity heat map bottleneck utilization",
@@ -393,7 +483,9 @@ export function builtinActions(): Action[] {
           {
             type: "item",
             id: "view:dependencies",
-            label: "Dependencies",
+            get label() {
+              return t("menu.dependencies");
+            },
             icon: "rel-any",
             keywords: "show hide dependencies relationships config secret identity telemetry deploy layers",
             checked: dependencyVisibility.get(),
@@ -407,7 +499,9 @@ export function builtinActions(): Action[] {
       modes: ["edit", "live"],
       section: "view",
       targets: ["canvas"],
-      label: "Diagram properties",
+      get label() {
+        return t("menu.diagramProperties");
+      },
       icon: "sliders",
       order: 5,
       run: (ctx) => {
@@ -421,7 +515,9 @@ export function builtinActions(): Action[] {
       paletteOnly: true,
       section: "history",
       targets: ["canvas"],
-      label: "Undo",
+      get label() {
+        return t("ai.undo");
+      },
       icon: "undo",
       shortcut: shortcutKeys("undo"),
       enabled: (ctx) => ctx.editor.canUndo(),
@@ -432,7 +528,9 @@ export function builtinActions(): Action[] {
       paletteOnly: true,
       section: "history",
       targets: ["canvas"],
-      label: "Redo",
+      get label() {
+        return t("shortcuts.redo");
+      },
       icon: "redo",
       shortcut: shortcutKeys("redo"),
       enabled: (ctx) => ctx.editor.canRedo(),
@@ -445,7 +543,9 @@ export function builtinActions(): Action[] {
       paletteOnly: true,
       section: "file",
       targets: ["canvas"],
-      label: "Keyboard shortcuts",
+      get label() {
+        return t("shortcuts.title");
+      },
       icon: "keyboard",
       shortcut: "?",
       run: (ctx) => ctx.editor.showShortcuts(),
@@ -454,10 +554,13 @@ export function builtinActions(): Action[] {
     // ---------------- node ----------------
     {
       id: "node.rename",
+      paletteLabel: () => t("chrome.renameNode"),
       modes: ["edit", "live"],
       section: "edit",
       targets: ["node"],
-      label: "Rename",
+      get label() {
+        return t("library.rename");
+      },
       icon: "edit",
       shortcut: shortcutKeys("rename"),
       run: (ctx) => ctx.editor.startEditing({ kind: "node", id: ctx.nodeId!, field: "label" }),
@@ -466,7 +569,9 @@ export function builtinActions(): Action[] {
       id: "node.edit-sublabel",
       section: "edit",
       targets: ["node"],
-      label: "Edit subtitle",
+      get label() {
+        return t("menu.editSubtitle");
+      },
       icon: "text",
       run: (ctx) => ctx.editor.startEditing({ kind: "node", id: ctx.nodeId!, field: "sublabel" }),
     },
@@ -474,9 +579,13 @@ export function builtinActions(): Action[] {
       id: "node.change-stencil",
       section: "edit",
       targets: ["node"],
-      label: "Change stencil",
+      get label() {
+        return t("menu.changeStencil");
+      },
       icon: "shapes",
-      searchable: "Search stencils",
+      get searchable() {
+        return t("importReport.searchStencils");
+      },
       children: (ctx) => {
         const node = ctx.editor.getNode(ctx.nodeId!);
         const current = node ? getStencil(node.stencil) : undefined;
@@ -494,9 +603,13 @@ export function builtinActions(): Action[] {
       id: "node.connect",
       section: "edit",
       targets: ["node"],
-      label: "Connect to",
+      get label() {
+        return t("menu.connectTo");
+      },
       icon: "link",
-      searchable: "Search nodes",
+      get searchable() {
+        return t("menu.searchNodes");
+      },
       children: (ctx) =>
         ctx.editor
           .getDiagram()
@@ -514,10 +627,20 @@ export function builtinActions(): Action[] {
     },
     {
       id: "node.properties",
+      paletteLabel: (ctx) =>
+        ctx.target === "edge"
+          ? t("chrome.edgeProperties")
+          : ctx.target === "annotation"
+            ? t("chrome.annotationProperties")
+            : ctx.target === "group"
+              ? t("chrome.boundaryProperties")
+              : t("chrome.nodeProperties"),
       modes: ["edit", "live"],
       section: "edit",
       targets: ["node", "edge", "group", "annotation"],
-      label: "Properties",
+      get label() {
+        return t("menu.properties");
+      },
       icon: "sliders",
       order: 200,
       run: (ctx) => ctx.editor.openInspector(),
@@ -527,7 +650,9 @@ export function builtinActions(): Action[] {
       id: "item.select-similar",
       section: "edit",
       targets: ["node", "edge"],
-      label: "Select similar",
+      get label() {
+        return t("menu.selectSimilar");
+      },
       icon: "select-all",
       order: 150,
       when: (ctx) => (ctx.nodeId ? !!ctx.editor.getNode(ctx.nodeId) : !!ctx.edgeId),
@@ -535,9 +660,19 @@ export function builtinActions(): Action[] {
     },
     {
       id: "item.duplicate",
+      paletteLabel: (ctx) =>
+        ctx.target === "node"
+          ? t("chrome.duplicateNode")
+          : ctx.target === "group"
+            ? t("chrome.duplicateBoundary")
+            : ctx.target === "annotation"
+              ? t("chrome.duplicateAnnotation")
+              : t("shortcuts.duplicate"),
       section: "clipboard",
       targets: ["node", "selection", "group", "annotation"],
-      label: "Duplicate",
+      get label() {
+        return t("shortcuts.mouse.altDrag.does");
+      },
       icon: "duplicate",
       shortcut: shortcutKeys("duplicate"),
       when: (ctx) => nodeCount(ctx) + ctx.selection.groupIds.length > 0,
@@ -545,9 +680,19 @@ export function builtinActions(): Action[] {
     },
     {
       id: "item.copy",
+      paletteLabel: (ctx) =>
+        ctx.target === "node"
+          ? t("chrome.copyNode")
+          : ctx.target === "group"
+            ? t("chrome.copyBoundary")
+            : ctx.target === "annotation"
+              ? t("chrome.copyAnnotation")
+              : t("chrome.copySelection"),
       section: "clipboard",
       targets: ["node", "selection", "group", "annotation"],
-      label: "Copy",
+      get label() {
+        return t("shortcuts.copy");
+      },
       icon: "copy",
       shortcut: shortcutKeys("copy"),
       when: (ctx) => nodeCount(ctx) + ctx.selection.groupIds.length > 0,
@@ -555,9 +700,17 @@ export function builtinActions(): Action[] {
     },
     {
       id: "item.cut",
+      paletteLabel: (ctx) =>
+        ctx.target === "node"
+          ? t("chrome.cutNode")
+          : ctx.target === "annotation"
+            ? t("chrome.cutAnnotation")
+            : t("chrome.cutSelection"),
       section: "clipboard",
       targets: ["node", "selection", "annotation"],
-      label: "Cut",
+      get label() {
+        return t("shortcuts.cut");
+      },
       icon: "cut",
       shortcut: shortcutKeys("cut"),
       when: (ctx) => nodeCount(ctx) + ctx.selection.groupIds.length > 0,
@@ -568,7 +721,9 @@ export function builtinActions(): Action[] {
       id: "node.front",
       section: "arrange",
       targets: ["selection"],
-      label: "Bring to front",
+      get label() {
+        return t("menu.bringToFront");
+      },
       icon: "front",
       when: (ctx) => nodeCount(ctx) > 0,
       run: (ctx) => ctx.editor.bringToFront(ctx.selection.nodeIds),
@@ -577,16 +732,31 @@ export function builtinActions(): Action[] {
       id: "node.back",
       section: "arrange",
       targets: ["selection"],
-      label: "Send to back",
+      get label() {
+        return t("menu.sendToBack");
+      },
       icon: "back",
       when: (ctx) => nodeCount(ctx) > 0,
       run: (ctx) => ctx.editor.sendToBack(ctx.selection.nodeIds),
     },
     {
       id: "item.delete",
+      paletteLabel: (ctx) =>
+        ctx.target === "group"
+          ? t("command.deleteBoundary")
+          : ctx.target === "node"
+            ? t("chrome.deleteNode")
+            : ctx.target === "edge"
+              ? t("chrome.deleteEdge")
+              : ctx.target === "annotation"
+                ? t("chrome.deleteAnnotation")
+                : t("chrome.deleteValueItemsOtherValueItems", { count: total(ctx) }),
       section: "danger",
       targets: ["node", "edge", "selection", "annotation"],
-      label: (ctx) => (ctx.target === "selection" ? `Delete ${total(ctx)} items` : "Delete"),
+      label: (ctx) =>
+        ctx.target === "selection"
+          ? t("chrome.deleteValueItemsOtherValueItems", { count: total(ctx) })
+          : t("chrome.delete"),
       icon: "trash",
       danger: true,
       shortcut: shortcutKeys("delete"),
@@ -599,7 +769,9 @@ export function builtinActions(): Action[] {
       modes: ["edit", "live"],
       section: "edit",
       targets: ["edge"],
-      label: "Edit label",
+      get label() {
+        return t("menu.editLabel");
+      },
       icon: "tag",
       run: (ctx) => ctx.editor.startEditing({ kind: "edge", id: ctx.edgeId! }),
     },
@@ -608,9 +780,12 @@ export function builtinActions(): Action[] {
       // Rewire one end from the keyboard (dragging a selected edge's end is the pointer's way): From ▸ and To ▸,
       // each a searchable list of the nodes that end could move to. Keeps the label, relationship and settings.
       id: "edge.reconnect",
+      paletteLabel: () => t("chrome.reconnectEdge"),
       section: "edge",
       targets: ["edge"],
-      label: "Reconnect",
+      get label() {
+        return t("menu.reconnect");
+      },
       icon: "link",
       children: (ctx) => {
         const e = ctx.editor.getEdge(ctx.edgeId!);
@@ -620,17 +795,25 @@ export function builtinActions(): Action[] {
           {
             type: "item",
             id: "edge.reconnect:from",
-            label: "From",
+            get label() {
+              return t("menu.from");
+            },
             hint: name(e?.from),
-            searchable: "Search nodes",
+            get searchable() {
+              return t("menu.searchNodes");
+            },
             children: reconnectMenu(ctx, "source"),
           },
           {
             type: "item",
             id: "edge.reconnect:to",
-            label: "To",
+            get label() {
+              return t("menu.to");
+            },
             hint: name(e?.to),
-            searchable: "Search nodes",
+            get searchable() {
+              return t("menu.searchNodes");
+            },
             children: reconnectMenu(ctx, "target"),
           },
         ];
@@ -642,9 +825,13 @@ export function builtinActions(): Action[] {
       id: "edge.insert-node",
       section: "edge",
       targets: ["edge"],
-      label: "Insert node",
+      get label() {
+        return t("menu.insertNode");
+      },
       icon: "plus",
-      searchable: "Search stencils",
+      get searchable() {
+        return t("importReport.searchStencils");
+      },
       children: (ctx) =>
         stencilMenu("insert-node", (s) => ({
           run: () => ctx.editor.nameNew(() => ctx.editor.insertNode(ctx.edgeId!, s.id), s.label),
@@ -654,7 +841,9 @@ export function builtinActions(): Action[] {
       id: "edge.reverse",
       section: "edge",
       targets: ["edge"],
-      label: "Reverse direction",
+      get label() {
+        return t("menu.reverseDirection");
+      },
       icon: "swap",
       run: (ctx) => ctx.editor.reverseEdge(ctx.edgeId!),
     },
@@ -662,7 +851,9 @@ export function builtinActions(): Action[] {
       id: "edge.toggle-dlq",
       section: "edge",
       targets: ["edge"],
-      label: "Dead-letter path",
+      get label() {
+        return t("menu.deadLetterPath");
+      },
       icon: "inbox",
       when: isFlowEdgeTarget,
       checked: (ctx) => ctx.editor.getEdge(ctx.edgeId!)?.props?.dlq === true,
@@ -675,7 +866,9 @@ export function builtinActions(): Action[] {
       id: "edge.consumer-group",
       section: "edge",
       targets: ["edge"],
-      label: "Set consumer group…",
+      get label() {
+        return t("menu.setConsumerGroup");
+      },
       icon: "users",
       when: isFlowEdgeTarget,
       run: (ctx) => ctx.editor.openInspector("group"),
@@ -685,13 +878,17 @@ export function builtinActions(): Action[] {
       id: "edge.route",
       section: "edge",
       targets: ["edge"],
-      label: "Route",
+      get label() {
+        return t("menu.route");
+      },
       icon: "route",
       children: (ctx) => [
         {
           type: "item",
           id: "edge.from-side",
-          label: "From side",
+          get label() {
+            return t("menu.fromSide");
+          },
           icon: "route",
           hint: SIDE_HINT(ctx.editor.getEdge(ctx.edgeId!)?.sourceSide),
           children: sideMenu(ctx, "sourceSide"),
@@ -699,7 +896,9 @@ export function builtinActions(): Action[] {
         {
           type: "item",
           id: "edge.to-side",
-          label: "To side",
+          get label() {
+            return t("menu.toSide");
+          },
           icon: "route",
           hint: SIDE_HINT(ctx.editor.getEdge(ctx.edgeId!)?.targetSide),
           children: sideMenu(ctx, "targetSide"),
@@ -712,7 +911,9 @@ export function builtinActions(): Action[] {
       id: "selection.align",
       section: "arrange",
       targets: ["selection"],
-      label: "Align",
+      get label() {
+        return t("menu.align");
+      },
       icon: "align-left",
       order: 10,
       enabled: (ctx) => nodeCount(ctx) > 1,
@@ -732,14 +933,18 @@ export function builtinActions(): Action[] {
       id: "selection.distribute",
       section: "arrange",
       targets: ["selection"],
-      label: "Distribute",
+      get label() {
+        return t("menu.distribute");
+      },
       icon: "distribute-h",
       order: 20,
       children: (ctx) => [
         {
           type: "item",
           id: "distribute:h",
-          label: "Horizontally",
+          get label() {
+            return t("menu.horizontally");
+          },
           icon: "distribute-h",
           disabled: nodeCount(ctx) < 3,
           run: () => ctx.editor.distribute(ctx.selection.nodeIds, "h"),
@@ -747,7 +952,9 @@ export function builtinActions(): Action[] {
         {
           type: "item",
           id: "distribute:v",
-          label: "Vertically",
+          get label() {
+            return t("menu.vertically");
+          },
           icon: "distribute-v",
           disabled: nodeCount(ctx) < 3,
           run: () => ctx.editor.distribute(ctx.selection.nodeIds, "v"),
@@ -759,7 +966,9 @@ export function builtinActions(): Action[] {
       id: "selection.tidy",
       section: "arrange",
       targets: ["selection"],
-      label: "Tidy up",
+      get label() {
+        return t("menu.tidyUp");
+      },
       icon: "layout",
       order: 25,
       when: (ctx) => tidyCount(ctx) >= 3,
@@ -769,7 +978,9 @@ export function builtinActions(): Action[] {
       id: "selection.group",
       section: "arrange",
       targets: ["selection", "node"],
-      label: "Add boundary",
+      get label() {
+        return t("menu.addBoundary");
+      },
       icon: "boundary",
       shortcut: shortcutKeys("group"),
       order: 30,
@@ -784,9 +995,12 @@ export function builtinActions(): Action[] {
     // ---------------- annotation ----------------
     {
       id: "annotation.edit",
+      paletteLabel: (ctx) =>
+        ctx.editor.getAnnotation(ctx.nodeId!)?.kind === "zone" ? t("chrome.renameAnnotation") : t("chrome.editText"),
       section: "edit",
       targets: ["annotation"],
-      label: (ctx) => (ctx.editor.getAnnotation(ctx.nodeId!)?.kind === "zone" ? "Rename" : "Edit text"),
+      label: (ctx) =>
+        ctx.editor.getAnnotation(ctx.nodeId!)?.kind === "zone" ? t("library.rename") : t("chrome.editText"),
       icon: "edit",
       shortcut: shortcutKeys("rename"),
       run: (ctx) => ctx.editor.startEditing({ kind: "annotation", id: ctx.nodeId! }),
@@ -795,7 +1009,9 @@ export function builtinActions(): Action[] {
       id: "annotation.color",
       section: "edit",
       targets: ["annotation"],
-      label: "Colour",
+      get label() {
+        return t("menu.colour");
+      },
       icon: "tone",
       children: (ctx) => {
         const a = ctx.editor.getAnnotation(ctx.nodeId!);
@@ -803,7 +1019,7 @@ export function builtinActions(): Action[] {
         return ANNOTATION_COLOR_IDS.map((c) => ({
           type: "item" as const,
           id: `annotation-color:${c}`,
-          label: ANNOTATION_COLORS[c].label,
+          label: colorLabel[c],
           swatch: ANNOTATION_COLORS[c].hex,
           checked: current === c,
           run: () => ctx.editor.updateAnnotation(ctx.nodeId!, { color: c }),
@@ -814,7 +1030,9 @@ export function builtinActions(): Action[] {
       id: "annotation.shape",
       section: "edit",
       targets: ["annotation"],
-      label: "Shape",
+      get label() {
+        return t("menu.shape");
+      },
       icon: "shapes",
       when: (ctx) => ctx.editor.getAnnotation(ctx.nodeId!)?.kind === "shape",
       children: (ctx) => {
@@ -833,7 +1051,9 @@ export function builtinActions(): Action[] {
       id: "annotation.front",
       section: "arrange",
       targets: ["annotation"],
-      label: "Bring to front",
+      get label() {
+        return t("menu.bringToFront");
+      },
       icon: "front",
       when: (ctx) => ctx.editor.getAnnotation(ctx.nodeId!)?.kind !== "zone",
       run: (ctx) => ctx.editor.bringToFront([ctx.nodeId!]),
@@ -842,7 +1062,9 @@ export function builtinActions(): Action[] {
       id: "annotation.back",
       section: "arrange",
       targets: ["annotation"],
-      label: "Send to back",
+      get label() {
+        return t("menu.sendToBack");
+      },
       icon: "back",
       when: (ctx) => ctx.editor.getAnnotation(ctx.nodeId!)?.kind !== "zone",
       run: (ctx) => ctx.editor.sendToBack([ctx.nodeId!]),
@@ -851,10 +1073,13 @@ export function builtinActions(): Action[] {
     // ---------------- group ----------------
     {
       id: "group.rename",
+      paletteLabel: () => t("chrome.renameBoundary"),
       modes: ["edit", "live"],
       section: "edit",
       targets: ["group"],
-      label: "Rename",
+      get label() {
+        return t("library.rename");
+      },
       icon: "edit",
       shortcut: shortcutKeys("rename"),
       run: (ctx) => ctx.editor.startEditing({ kind: "group", id: ctx.groupId! }),
@@ -863,7 +1088,9 @@ export function builtinActions(): Action[] {
       id: "group.tone",
       section: "edit",
       targets: ["group"],
-      label: "Colour",
+      get label() {
+        return t("menu.colour");
+      },
       icon: "tone",
       children: (ctx) =>
         toneMenu("tone", ctx.editor.getGroup(ctx.groupId!)?.tone ?? "neutral", (t) =>
@@ -874,7 +1101,9 @@ export function builtinActions(): Action[] {
       id: "group.fit",
       section: "arrange",
       targets: ["group"],
-      label: "Fit to contents",
+      get label() {
+        return t("menu.fitToContents");
+      },
       icon: "fit",
       run: (ctx) => ctx.editor.fitGroupToContents(ctx.groupId!),
     },
@@ -882,7 +1111,9 @@ export function builtinActions(): Action[] {
       id: "group.ungroup",
       section: "danger",
       targets: ["group"],
-      label: "Remove boundary",
+      get label() {
+        return t("menu.removeBoundary");
+      },
       icon: "ungroup",
       run: (ctx) => ctx.editor.ungroup(ctx.groupId!),
     },
@@ -890,7 +1121,9 @@ export function builtinActions(): Action[] {
       id: "group.delete",
       section: "danger",
       targets: ["group"],
-      label: "Delete boundary and nodes",
+      get label() {
+        return t("menu.deleteBoundaryAndNodes");
+      },
       icon: "trash",
       danger: true,
       run: (ctx) => ctx.editor.deleteGroupWithContents(ctx.groupId!),

@@ -20,7 +20,8 @@
     },
     "consumer": {
       "use": "konzument",
-      "match": ["konzument"]
+      "match": ["konzument"],
+      "except": ["menu.setConsumerGroup"]
     },
     "consumer group": {
       "use": "skupina konzumentů",
@@ -110,7 +111,15 @@
     "edge": {
       "use": "spojení",
       "match": ["spoj"],
-      "except": ["shortcuts.mouse.boundary"],
+      "except": [
+        "shortcuts.mouse.boundary",
+        "menu.leftEdges",
+        "menu.rightEdges",
+        "menu.topEdges",
+        "menu.bottomEdges",
+        "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+      ],
       "note": "In shortcuts.mouse.boundary 'edge' is the border of a boundary (okraj), not a connection."
     },
     "stencil": {

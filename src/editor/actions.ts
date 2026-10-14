@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import type { IconName } from "../components/Icon";
 import type { EditorApi, Selection, XY } from "./types";
 
@@ -97,6 +98,8 @@ export interface Action {
   /** Modes the action is offered in. Default ["edit"]. */
   modes?: readonly EditorMode[];
   label: string | ((ctx: ActionContext) => string);
+  /** Complete command name, owned by the action rather than inferred from its menu label. */
+  paletteLabel?: string | ((ctx: ActionContext) => string);
   icon?: IconName;
   shortcut?: string;
   danger?: boolean;
@@ -134,7 +137,13 @@ export const builtinSections: readonly MenuSection[] = [
   { id: "edge", order: 25 },
   { id: "clipboard", order: 30 },
   { id: "arrange", order: 40 },
-  { id: "simulation", order: 50, title: "Live" },
+  {
+    id: "simulation",
+    order: 50,
+    get title() {
+      return t("fileDialog.live");
+    },
+  },
   { id: "view", order: 60 },
   { id: "history", order: 70 },
   { id: "file", order: 80 },
@@ -221,6 +230,7 @@ function toItem(a: Action, ctx: ActionContext): MenuItem | null {
     type: "item",
     id: a.id,
     label: typeof a.label === "function" ? a.label(ctx) : a.label,
+    paletteLabel: typeof a.paletteLabel === "function" ? a.paletteLabel(ctx) : a.paletteLabel,
     icon: a.icon,
     shortcut: a.shortcut,
     danger: a.danger,

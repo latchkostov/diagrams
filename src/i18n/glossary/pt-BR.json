@@ -18,7 +18,8 @@
       "use": "fila"
     },
     "consumer": {
-      "use": "consumidor"
+      "use": "consumidor",
+      "except": ["menu.setConsumerGroup"]
     },
     "consumer group": {
       "use": "grupo de consumidores",
@@ -95,7 +96,15 @@
     "edge": {
       "use": "conexão",
       "match": ["conex"],
-      "except": ["shortcuts.mouse.boundary"],
+      "except": [
+        "shortcuts.mouse.boundary",
+        "menu.leftEdges",
+        "menu.rightEdges",
+        "menu.topEdges",
+        "menu.bottomEdges",
+        "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+      ],
       "note": "The boundary's 'edge' in shortcuts.mouse.boundary is its border (borda)."
     },
     "stencil": {

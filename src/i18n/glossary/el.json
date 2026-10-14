@@ -23,7 +23,8 @@
     },
     "consumer": {
       "use": "καταναλωτής",
-      "match": ["καταναλωτ"]
+      "match": ["καταναλωτ"],
+      "except": ["menu.setConsumerGroup"]
     },
     "consumer group": {
       "use": "consumer group",
@@ -111,7 +112,15 @@
     "edge": {
       "use": "σύνδεση",
       "match": ["σύνδεσ", "συνδέσ"],
-      "except": ["shortcuts.mouse.boundary"],
+      "except": [
+        "shortcuts.mouse.boundary",
+        "menu.leftEdges",
+        "menu.rightEdges",
+        "menu.topEdges",
+        "menu.bottomEdges",
+        "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+      ],
       "note": "In shortcuts.mouse.boundary \"edge\" is a boundary's border (περίγραμμα), not a connection."
     },
     "stencil": {

@@ -22,7 +22,8 @@
     },
     "consumer": {
       "use": "consumator",
-      "match": ["consumat"]
+      "match": ["consumat"],
+      "except": ["menu.setConsumerGroup"]
     },
     "consumer group": {
       "use": "consumer group",
@@ -59,7 +60,7 @@
     },
     "load balancer": {
       "use": "echilibrator de încărcare",
-      "match": ["echilibrator"]
+      "match": ["echilibrator", "echilibrato"]
     },
     "gateway": {
       "use": "gateway",
@@ -111,7 +112,15 @@
     "edge": {
       "use": "conexiune",
       "match": ["conexiun"],
-      "except": ["shortcuts.mouse.boundary"],
+      "except": [
+        "shortcuts.mouse.boundary",
+        "menu.leftEdges",
+        "menu.rightEdges",
+        "menu.topEdges",
+        "menu.bottomEdges",
+        "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+      ],
       "note": "In shortcuts.mouse.boundary 'edge' is the boundary's border (margine)."
     },
     "stencil": {

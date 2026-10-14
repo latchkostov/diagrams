@@ -145,6 +145,7 @@ export function liveActions(host: LiveActionsHost): Action[] {
     },
     {
       id: "sim.kill",
+      paletteLabel: (ctx) => (status(ctx.nodeId!) === "down" ? "Revive node" : "Kill node"),
       section: "simulation",
       targets: ["node"],
       label: (ctx) => (status(ctx.nodeId!) === "down" ? "Revive" : "Kill"),

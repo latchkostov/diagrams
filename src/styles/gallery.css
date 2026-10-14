@@ -8,7 +8,7 @@
 /* ---------- rail ---------- */
 
 .gallery-rail {
-  border-right: 1px solid var(--line);
+  border-inline-end: 1px solid var(--line);
   background: var(--surface);
   padding: 20px 12px;
   overflow-y: auto;
@@ -37,7 +37,7 @@
   color: var(--text-2);
   font-weight: 550;
   font-size: 13.5px;
-  text-align: left;
+  text-align: start;
   transition:
     background var(--dur-1),
     color var(--dur-1);
@@ -143,7 +143,7 @@
 }
 
 .gallery-search {
-  margin-left: auto;
+  margin-inline-start: auto;
   min-width: 0;
 }
 
@@ -251,7 +251,7 @@
 }
 
 .gallery-filter-end {
-  margin-left: auto;
+  margin-inline-start: auto;
   flex: none;
   display: flex;
   align-items: center;
@@ -695,14 +695,14 @@
 .drawer {
   position: fixed;
   top: var(--topbar-h);
-  right: 0;
+  inset-inline-end: 0;
   bottom: 0;
   z-index: 60;
   width: min(460px, 100vw);
   display: flex;
   flex-direction: column;
   background: var(--surface-raised);
-  border-left: 1px solid var(--line-strong);
+  border-inline-start: 1px solid var(--line-strong);
   box-shadow: var(--shadow-3);
   animation: drawer-in var(--dur-3) var(--ease-out);
 }
@@ -776,7 +776,15 @@
 }
 
 .drawer-nav .icon-btn:first-child svg {
-  rotate: 180deg;
+  transform: rotate(180deg);
+}
+
+[dir="rtl"] .drawer-nav .icon-btn:not(:last-child) svg {
+  transform: scaleX(-1);
+}
+
+[dir="rtl"] .drawer-nav .icon-btn:first-child svg {
+  transform: none;
 }
 
 .drawer-pos {
@@ -981,7 +989,7 @@
 }
 
 .drawer-foot > .icon-btn {
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 /* ---------- drag dock + note ---------- */
@@ -1064,7 +1072,7 @@
     display: none;
   }
   .gallery-search {
-    margin-left: 0;
+    margin-inline-start: 0;
     flex-basis: 100%;
   }
   .field-lg {
@@ -1081,4 +1089,20 @@
 
 .drawer:focus {
   outline: none;
+}
+
+.rail-link {
+  height: auto;
+  min-height: 32px;
+  gap: 8px;
+}
+.rail-link > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.drawer-foot {
+  flex-wrap: wrap;
+}
+.drawer-nav {
+  flex-wrap: wrap;
 }

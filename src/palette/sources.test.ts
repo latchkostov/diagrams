@@ -48,8 +48,23 @@ function registry(): ActionRegistry {
       enabled: () => false,
       run: vi.fn(),
     },
-    { id: "node.rename", section: "edit", targets: ["node"], modes: ["edit", "live"], label: "Rename", run: vi.fn() },
-    { id: "node.properties", section: "edit", targets: ["node", "edge"], label: "Properties", run: vi.fn() },
+    {
+      id: "node.rename",
+      section: "edit",
+      targets: ["node"],
+      modes: ["edit", "live"],
+      label: "Rename",
+      paletteLabel: "Rename node",
+      run: vi.fn(),
+    },
+    {
+      id: "node.properties",
+      section: "edit",
+      targets: ["node", "edge"],
+      label: "Properties",
+      paletteLabel: "Node properties",
+      run: vi.fn(),
+    },
     {
       id: "selection.group",
       section: "arrange",
@@ -134,13 +149,21 @@ describe("palette action source", () => {
     });
   });
 
-  it("names bare verbs after the thing they act on", () => {
-    const item = { type: "item" as const, id: "item.delete", label: "Delete" };
-    expect(paletteLabel(item, "edge")).toBe("Delete edge");
-    expect(paletteLabel(item, "group")).toBe("Delete boundary");
-    expect(paletteLabel(item, "canvas")).toBe("Delete");
-    expect(paletteLabel({ ...item, label: "Delete 3 items" }, "selection")).toBe("Delete 3 items");
-    expect(paletteLabel({ ...item, id: "canvas.paste", label: "Paste here" }, "canvas")).toBe("Paste");
+  it("uses action-owned palette labels without inferring nouns for extensions", () => {
+    const r = new ActionRegistry();
+    r.register([
+      {
+        id: "custom",
+        section: "edit",
+        targets: ["node"],
+        label: "Aufräumen",
+        paletteLabel: (ctx) => `Complete ${ctx.target}`,
+      },
+      { id: "unconverted", section: "edit", targets: ["node"], label: "Rename" },
+    ]);
+    const commands = actionCommands(r, contextsFor(fakeEditor({ nodeIds: ["api"] }), "edit"));
+    expect(commands.map((c) => c.label)).toEqual(["Complete node", "Rename"]);
+    expect(paletteLabel({ type: "item", id: "translated", label: "Aufräumen" })).toBe("Aufräumen");
   });
 });
 

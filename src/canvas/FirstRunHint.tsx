@@ -1,3 +1,4 @@
+import { t, useLocale } from "../i18n";
 import { Icon } from "../components/Icon";
 
 /**
@@ -6,25 +7,27 @@ import { Icon } from "../components/Icon";
  * first right-click and on the first trip into live view.
  */
 export function FirstRunHint({ simulations, onDismiss }: { simulations: number; onDismiss: () => void }) {
+  useLocale();
   // The slot spans the canvas so the hint can drop its first line on a narrow pane (a container query)
   // instead of clipping words; toasts stack above it (data-toast-avoid).
   return (
     <div className="first-hint-slot">
       <div className="first-hint" role="note" data-testid="first-run-hint" data-canvas-overlay data-toast-avoid>
         <span className="first-hint-menu">
-          <Icon name="sliders" size={13} /> Right-click anything for its actions
+          <Icon name="sliders" size={13} />
+          {t("canvas.rightClickAnythingForItsActions")}
         </span>
         <span>
           <kbd>L</kbd>{" "}
           {simulations
-            ? `Go live to replay ${simulations === 1 ? "its saved simulation" : `its ${simulations} saved simulations`}`
-            : "Go live to watch messages flow"}
+            ? t("chrome.goLiveToReplayValueOtherValueSavedSimulations", { count: simulations })
+            : t("chrome.goLiveToWatchMessagesFlow")}
         </span>
         <button
           className="icon-btn icon-btn-quiet"
           onClick={onDismiss}
-          aria-label="Dismiss tip"
-          title="Dismiss"
+          aria-label={t("canvas.dismissTip")}
+          title={t("canvas.dismiss")}
           data-testid="first-run-hint-dismiss"
         >
           <Icon name="close" size={12} />

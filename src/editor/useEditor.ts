@@ -1,4 +1,7 @@
-import { connectionProps } from "../model/connectionDefaults";
+import { connectionProps, connectionDefaults } from "../model/connectionDefaults";
+import { t } from "../i18n";
+import { kindLabel, relationNoun } from "../i18n/chrome";
+import { annotationGeometryMessage, relationChangeMessage } from "./editMessages";
 import { useLayoutEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { newPlanningProps } from "../model/planning";
 import { useReactFlow, type ReactFlowInstance } from "@xyflow/react";
@@ -23,16 +26,15 @@ import {
 } from "../canvas/annotations";
 import {
   ANNOTATION_LIMITS,
-  annotationGeometryError,
+  annotationGeometryReason,
   annotationSize,
   annotationCoordinate,
   annotationText,
 } from "../model/annotations";
 import { foregroundLayerOrder } from "../model/layers";
 import { notify } from "../interop/ui/toast";
-import { isDependency, relationOf, RELATION_META, type DependencyRelation } from "../model/relations";
-import { reinferRelations, relationChangeText } from "../stencils/relations";
-import { connectionDefaults } from "../model/connectionDefaults";
+import { isDependency, relationOf, type DependencyRelation } from "../model/relations";
+import { reinferRelations } from "../stencils/relations";
 import {
   boundsOf,
   clearOffset,
@@ -103,8 +105,14 @@ let requestExplained = false;
 function explainRequest(makeMessage: () => void): void {
   if (requestExplained) return;
   requestExplained = true;
-  notify("Request: the caller waits for a reply", {
-    action: { label: "Make it a message", run: makeMessage, testId: "toast-make-message" },
+  notify(t("chrome.requestTheCallerWaitsForAReply"), {
+    action: {
+      get label() {
+        return t("edit.makeItAMessage");
+      },
+      run: makeMessage,
+      testId: "toast-make-message",
+    },
   });
 }
 
@@ -112,8 +120,14 @@ function explainRequest(makeMessage: () => void): void {
 function explainInference(relation: DependencyRelation, makeFlow: () => void): void {
   if (explained.has(relation)) return;
   explained.add(relation);
-  notify(`${RELATION_META[relation].noun}: no messages flow here`, {
-    action: { label: "Make it a flow", run: makeFlow, testId: "toast-make-flow" },
+  notify(t("chrome.valueNoMessagesFlowHere", { relationship: relationNoun[relation] }), {
+    action: {
+      get label() {
+        return t("edit.makeItAFlow");
+      },
+      run: makeFlow,
+      testId: "toast-make-flow",
+    },
   });
 }
 
@@ -502,8 +516,15 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
         return { ...e, data };
       }),
     );
-    notify(relationChangeText(changes), {
-      action: { label: "Undo", run: () => api.undo(), testId: "relation-reinfer-undo", undoes: true },
+    notify(relationChangeMessage(changes), {
+      action: {
+        get label() {
+          return t("ai.undo");
+        },
+        run: () => api.undo(),
+        testId: "relation-reinfer-undo",
+        undoes: true,
+      },
     });
   };
   /** The first time a relationship is inferred, a toast says what it means (with a way back to a flow). */
@@ -636,9 +657,17 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
         const x = kind === "text" && pointed ? c.x - 8 : c.x - size.width / 2;
         at = { x: snap10(x), y: snap10(c.y - size.height / 2), ...size };
       }
-      const geometryError = annotationGeometryError(at);
+      const geometryError = annotationGeometryReason(at);
       if (geometryError) {
-        notify(`Couldn't add ${kind}: ${geometryError}`, { kind: "error" });
+        notify(
+          t("chrome.couldnTAddValueValue", {
+            kind: kindLabel[kind].toLowerCase(),
+            error: annotationGeometryMessage(geometryError),
+          }),
+          {
+            kind: "error",
+          },
+        );
         return null;
       }
       const id = uniqueId(annotationIdBase(kind), takenIds());
@@ -1080,7 +1109,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       });
       const grow = pos && fit(pos);
       if (!pos || !grow) {
-        notify("Couldn't find room. Nothing moved.");
+        notify(t("chrome.couldnTFindRoomNothingMoved"));
         return false;
       }
       // The positions and the boundaries' growth together, as planned: one undo step.

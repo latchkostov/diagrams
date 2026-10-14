@@ -70,6 +70,12 @@ describe("live action availability during slow motion", () => {
       for (const id of ["sim.trace-next", "sim.events", "sim.record", "sim.trace-message:next"])
         expect(rows.find((r) => r.id === id)?.disabled, id).not.toBe(true);
       const commands = actionCommands(registry, contexts);
+      expect(commands.find((command) => command.id === "action:sim.kill")?.label).toBe("Kill node");
+      controller.setNodeStatus("payments", "down");
+      expect(actionCommands(registry, contexts).find((command) => command.id === "action:sim.kill")?.label).toBe(
+        "Revive node",
+      );
+      controller.setNodeStatus("payments", "up");
       expect(commands.find((c) => c.id === "action:sim.failure:0.5")).toMatchObject({
         disabled: true,
         hint: EXIT_SLOW_MOTION_HINT,

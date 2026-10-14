@@ -22,7 +22,8 @@
     },
     "consumer": {
       "use": "patērētājs",
-      "match": ["patērētāj"]
+      "match": ["patērētāj"],
+      "except": ["menu.setConsumerGroup"]
     },
     "consumer group": {
       "use": "consumer group",
@@ -108,7 +109,15 @@
     "edge": {
       "use": "savienojums",
       "match": ["savienojum"],
-      "except": ["shortcuts.mouse.boundary"],
+      "except": [
+        "shortcuts.mouse.boundary",
+        "menu.leftEdges",
+        "menu.rightEdges",
+        "menu.topEdges",
+        "menu.bottomEdges",
+        "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+      ],
       "note": "A boundary's edge is its mala."
     },
     "stencil": {
