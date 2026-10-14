@@ -150,6 +150,7 @@
   "language.browserDesc": "Сега: {language}",
   "language.search": "Търсене на езици",
   "language.none": "Няма език, съответстващ на „{query}“.",
+  "language.failed": "{language} не може да се изтегли. Проверете връзката си и опитайте отново.",
   "language.machine": "Машинен превод. Нещо звучи неправилно? <link>Предложете по-добър превод</link> в GitHub.",
   "language.palette": "Език…",
   "language.paletteKeywords": "език превод локализация",

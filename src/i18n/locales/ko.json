@@ -150,6 +150,7 @@
   "language.browserDesc": "현재 {language}",
   "language.search": "언어 검색",
   "language.none": "“{query}”에 해당하는 언어가 없습니다.",
+  "language.failed": "{language}을(를) 다운로드할 수 없습니다. 연결을 확인하고 다시 시도하세요.",
   "language.machine": "기계 번역입니다. 어색한 부분이 있나요? GitHub에서 <link>더 나은 번역을 제안</link>하세요.",
   "language.palette": "언어…",
   "language.paletteKeywords": "언어 번역 로캘",

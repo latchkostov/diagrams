@@ -40,6 +40,24 @@
   background: var(--surface-3);
 }
 
+/* After the checked row's colours: the keyboard's place shows on it too. */
+.lang-option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Downloading the language: the row waits. */
+.lang-option[aria-busy="true"] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.lang-failed {
+  margin: 0 0 10px;
+  color: var(--danger);
+  font-size: 12.5px;
+}
+
 .lang-text {
   flex: 1;
   min-inline-size: 0;

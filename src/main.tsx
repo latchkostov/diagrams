@@ -13,6 +13,7 @@ import { SettingsProvider } from "./harness/SettingsProvider";
 import { App } from "./App";
 import { startStorageLifecycle } from "./lib/storage";
 import { startI18n } from "./i18n/start";
+import { preloadCanvasView } from "./canvas/loadCanvasView";
 
 // This page takes part in Clear everything on this device (the exported HTML viewer, its own entry, doesn't).
 startStorageLifecycle();
@@ -25,5 +26,12 @@ const render = () =>
       </SettingsProvider>
     </StrictMode>,
   );
-// In English at once; in another language once its catalog is in (in English if it can't be had).
-void (startI18n()?.then(render, render) ?? render());
+// In English at once; in another language once its catalog is in (in English if it can't be had). Meanwhile the view
+// the address asks for downloads too, so the language doesn't hold it up: the stencil library, else the canvas.
+const language = startI18n();
+if (language) {
+  if (new URLSearchParams(window.location.search).get("view") === "gallery")
+    void import("./gallery/GalleryView").catch(() => {});
+  else preloadCanvasView();
+}
+void (language?.then(render, render) ?? render());

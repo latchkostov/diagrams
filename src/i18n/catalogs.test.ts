@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import en from "./en";
@@ -13,6 +14,24 @@ import { catalogLocales, compileCatalog, numberedKeys, readCatalog, rewriteCalls
 const DIR = path.resolve("src/i18n");
 const read = <T>(file: string): T => JSON.parse(fs.readFileSync(path.join(DIR, file), "utf8")) as T;
 const terms = read<TermGlossary>("glossary/terms.json");
+
+/**
+ * A language's errors, and its glossary terms without a rendering, from `root` (src/i18n, or a test's copy): what
+ * every discovered catalog is held to, launch language or not.
+ */
+function check(code: string, root = DIR) {
+  const json = <T>(file: string): T => JSON.parse(fs.readFileSync(path.join(root, file), "utf8")) as T;
+  const glossary = json<LocaleGlossary>(`glossary/${code}.json`);
+  const report = validateLocale({
+    locale: code,
+    english: en,
+    messages: json<Record<string, string>>(`locales/${code}.json`),
+    glossary: terms,
+    localeGlossary: glossary,
+    meta: json<LocaleMeta>(`locales/${code}.meta.json`),
+  });
+  return { errors: report.errors, undecided: Object.keys(terms.terms).filter((id) => !glossary.terms[id]?.use) };
+}
 
 /** Tier 1 (docs/research/i18n.md): the Windows base languages, plus Indonesian, Vietnamese and Hindi. */
 const LAUNCH = [
@@ -76,22 +95,36 @@ describe("the catalogs", () => {
     }
   });
 
-  it.each(LAUNCH)("%s: no errors, and its glossary decides every term", (code) => {
-    const glossary = read<LocaleGlossary>(`glossary/${code}.json`);
-    const report = validateLocale({
-      locale: code,
-      english: en,
-      messages: read<Record<string, string>>(`locales/${code}.json`),
-      glossary: terms,
-      localeGlossary: glossary,
-      meta: read<LocaleMeta>(`locales/${code}.meta.json`),
-    });
-    expect(report.errors).toEqual([]);
-    const undecided = Object.keys(terms.terms).filter((id) => !glossary.terms[id]?.use);
+  // Every catalog the build would offer, not only the launch languages: a language added later is checked the same way.
+  it.each(codes)("%s: no errors, and its glossary decides every term", (code) => {
+    const { errors, undecided } = check(code);
+    expect(errors).toEqual([]);
     expect(undecided, `${code}: glossary terms without a rendering`).toEqual([]);
   });
 
-  it.each(LAUNCH)("%s compiles: every message, by English text or number", (code) => {
+  it("a newly discovered language is validated in full: a renamed plural argument fails", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "i18n-catalogs-"));
+    try {
+      fs.mkdirSync(path.join(root, "locales"));
+      fs.mkdirSync(path.join(root, "glossary"));
+      const glossary = {
+        language: "ca",
+        terms: Object.fromEntries(Object.keys(terms.terms).map((id) => [id, { use: "x" }])),
+      };
+      fs.writeFileSync(path.join(root, "glossary", "ca.json"), JSON.stringify(glossary));
+      fs.writeFileSync(path.join(root, "locales", "ca.meta.json"), JSON.stringify({ reviewed: false, sources: {} }));
+      fs.writeFileSync(
+        path.join(root, "locales", "ca.json"),
+        JSON.stringify({ "file.libraryCount": "{n, plural, one {# desat} other {# desats}}" }),
+      );
+      expect(catalogLocales(path.join(root, "locales"))).toEqual(["ca"]);
+      expect(check("ca", root).errors.map((e) => e.kind)).toEqual(["placeholders"]);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it.each(codes)("%s compiles: every message, by English text or number", (code) => {
     const source = compileCatalog(code, numberedKeys(codes.map((c) => readCatalog(c))));
     expect(source).toMatch(/^import \{ helpersFor \} from /);
     expect(source.split("\n").at(-1)).toMatch(/^export default \{.*\};$/);
@@ -106,6 +139,7 @@ describe("the build step (scripts/i18n-plugin.ts)", () => {
   const ids = Object.keys(en).sort();
   // Module code to rewrite, spelled so this file's own transform (the same plugin) doesn't rewrite it first.
   const uses = `import { t } from "../i18n";${"\n"}`;
+  const NL = String.fromCharCode(10);
   const call = (fn: string, key: string, rest = "") => `${fn}(${JSON.stringify(key)}${rest})`;
 
   it("a plain message becomes t`English`; one with arguments t(number, English, values)", () => {
@@ -119,6 +153,35 @@ describe("the build step (scripts/i18n-plugin.ts)", () => {
   it("leaves modules that don't use the i18n API alone, and their own t() calls", () => {
     expect(rewriteCalls(`const t = (x) => x;${"\n"}${call("t", "file.new")};`, none, fail)).toBeUndefined();
     expect(rewriteCalls(`${uses}${call("msg", "db", ', "billing"')};`, none, fail)).toBeUndefined();
+  });
+
+  it("follows the imported binding: an alias is rewritten; a method, a string or a comment never is", () => {
+    const alias = `import { t as tr, msg as m } from "../../i18n";${NL}// é… ${call("t", "file.new")}${NL}const a = ${call("tr", "file.new")}, b = ${call("m", "shortcuts.undo")};`;
+    const out = rewriteCalls(alias, none, fail)!;
+    expect(out).toContain("const a = tr`New diagram`, b = m`Undo`;");
+    expect(out).toContain(`// é… ${call("t", "file.new")}`);
+    const lookalikes = `${uses}const s = '${call("t", "file.new")}';${NL}other.${call("t", "file.new")};`;
+    expect(rewriteCalls(lookalikes, none, fail)).toBeUndefined();
+  });
+
+  it("rejects what it can't rewrite: a computed key, t passed around, a message with tags through t", () => {
+    const errors: string[] = [];
+    const collect = (m: string) => void errors.push(m);
+    rewriteCalls(`${uses}const k = "file.new";${NL}t(k);`, none, collect);
+    rewriteCalls(`${uses}const rows = ["a"].map(t);`, none, collect);
+    rewriteCalls(`${uses}${call("t", "share.linkDesc")};`, none, collect);
+    rewriteCalls(`import * as i18n from "../i18n";${NL}i18n.${call("t", "file.new")};`, none, collect);
+    expect(errors).toEqual([
+      expect.stringMatching(/needs a message key as a string literal/),
+      expect.stringMatching(/only ever called/),
+      expect.stringMatching(/has tags: render it with tRich/),
+      expect.stringMatching(/Import t, msg and tRich by name/),
+    ]);
+    // A local t (a timer id, a parameter) is not the imported one: left alone, no error.
+    const local = `${uses}function f(t) { return t(${JSON.stringify("x")}); }${NL}function g() { const t = 1; clearTimeout(t); }`;
+    expect(rewriteCalls(local, none, fail)).toBeUndefined();
+    const rich = `import { tRich } from "../i18n/rich";${NL}${call("tRich", "share.linkDesc", ", { b }")};`;
+    expect(rewriteCalls(rich, none, fail)).toContain(`tRich(${ids.indexOf("share.linkDesc")},v=>`);
   });
 
   it("fails on a dotted key English hasn't", () => {

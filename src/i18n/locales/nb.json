@@ -150,6 +150,7 @@
   "language.browserDesc": "Nå {language}",
   "language.search": "Søk etter språk",
   "language.none": "Ingen språk samsvarer med «{query}».",
+  "language.failed": "Kunne ikke laste ned {language}. Sjekk tilkoblingen og prøv igjen.",
   "language.machine": "Maskinoversatt. Høres noe feil ut? <link>Foreslå en bedre oversettelse</link> på GitHub.",
   "language.palette": "Språk…",
   "language.paletteKeywords": "språk oversettelse nasjonale innstillinger",

@@ -68,9 +68,21 @@ describe("t", () => {
     expect(() => t("file.libraryCount")).toThrow();
     // @ts-expect-error: a plural's count is a number.
     t("file.libraryCount", { count: "3" });
-    // @ts-expect-error: no such key (and a dotted one fails the build: scripts/i18n-plugin.ts).
-    expect(t("nope")).toBeUndefined();
     // @ts-expect-error: a plain message takes no values.
     t("file.new", { count: 1 });
+  });
+
+  it("types: no unknown keys, and a message with tags only through tRich", () => {
+    // Types only: the build rejects these calls outright (scripts/i18n-plugin.ts), so they're never written as calls.
+    type Key = Parameters<typeof t>[0];
+    type MsgKey = Parameters<typeof msg>[0];
+    // @ts-expect-error: no such key.
+    const unknown: Key = "file.nope";
+    // @ts-expect-error: share.public has <b>: t can't render it.
+    const richT: Key = "share.public";
+    // @ts-expect-error: start.about has <b>: nor can msg.
+    const richMsg: MsgKey = "start.about";
+    const plain: Key = "file.new";
+    expect([unknown, richT, richMsg, plain]).toHaveLength(4);
   });
 });

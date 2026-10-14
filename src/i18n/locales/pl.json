@@ -150,6 +150,7 @@
   "language.browserDesc": "Teraz: {language}",
   "language.search": "Szukaj języków",
   "language.none": "Żaden język nie pasuje do „{query}”.",
+  "language.failed": "Nie udało się pobrać języka {language}. Sprawdź połączenie i spróbuj ponownie.",
   "language.machine": "Przetłumaczone maszynowo. Coś brzmi źle? <link>Zaproponuj lepsze tłumaczenie</link> na GitHub.",
   "language.palette": "Język…",
   "language.paletteKeywords": "język tłumaczenie lokalizacja",

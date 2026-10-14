@@ -150,6 +150,7 @@
   "language.browserDesc": "ขณะนี้ {language}",
   "language.search": "ค้นหาภาษา",
   "language.none": "ไม่มีภาษาที่ตรงกับ “{query}”",
+  "language.failed": "ดาวน์โหลด {language} ไม่ได้ ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง",
   "language.machine": "แปลด้วยเครื่อง มีตรงไหนอ่านแล้วไม่ถูกต้องไหม <link>เสนอคำแปลที่ดีกว่า</link>บน GitHub",
   "language.palette": "ภาษา…",
   "language.paletteKeywords": "ภาษา แปล language",

@@ -150,6 +150,7 @@
   "language.browserDesc": "Şu an {language}",
   "language.search": "Dil ara",
   "language.none": "\"{query}\" ile eşleşen dil yok.",
+  "language.failed": "{language} indirilemedi. Bağlantınızı kontrol edip yeniden deneyin.",
   "language.machine": "Makine çevirisi. Yanlış görünen bir yer mi var? GitHub'da <link>daha iyi bir çeviri önerin</link>.",
   "language.palette": "Dil…",
   "language.paletteKeywords": "dil çeviri yerel ayar",

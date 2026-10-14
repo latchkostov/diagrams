@@ -150,6 +150,7 @@
   "language.browserDesc": "כרגע {language}",
   "language.search": "חיפוש שפות",
   "language.none": "אין שפה שתואמת ל-\"{query}\".",
+  "language.failed": "לא ניתן היה להוריד את {language}. כדאי לבדוק את החיבור ולנסות שוב.",
   "language.machine": "תורגם במכונה. משהו נשמע לא נכון? <link>הציעו תרגום טוב יותר</link> ב-GitHub.",
   "language.palette": "שפה…",
   "language.paletteKeywords": "שפה תרגום עברית",

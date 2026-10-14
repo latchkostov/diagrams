@@ -150,6 +150,7 @@
   "language.browserDesc": "Acum: {language}",
   "language.search": "Căutați limbi",
   "language.none": "Nicio limbă nu corespunde cu „{query}”.",
+  "language.failed": "Nu s-a putut descărca {language}. Verificați conexiunea și încercați din nou.",
   "language.machine": "Traducere automată. Ceva nu sună bine? <link>Sugerați o traducere mai bună</link> pe GitHub.",
   "language.palette": "Limbă…",
   "language.paletteKeywords": "limbă traducere localizare",

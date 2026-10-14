@@ -150,6 +150,7 @@
   "language.browserDesc": "Сейчас: {language}",
   "language.search": "Поиск языков",
   "language.none": "Нет языков по запросу «{query}».",
+  "language.failed": "Не удалось загрузить язык {language}. Проверьте подключение и повторите попытку.",
   "language.machine": "Машинный перевод. Что-то звучит не так? <link>Предложите лучший перевод</link> на GitHub.",
   "language.palette": "Язык…",
   "language.paletteKeywords": "язык перевод локализация",

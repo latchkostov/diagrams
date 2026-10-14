@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Dialog } from "../interop/ui/Dialog";
 import { Glyph } from "../interop/ui/glyphs";
 import { t, useLocale } from "../i18n";
@@ -55,15 +55,37 @@ export function LanguageDialog({ onClose }: { onClose: () => void }) {
   const lang = useLocale();
   const [chosen, setChosen] = useState(chosenLocale);
   const [query, setQuery] = useState("");
+  // The language being downloaded, and one whose download failed ({ code: null } is Browser default).
+  const [pending, setPending] = useState<{ code: string | null } | null>(null);
+  const [failed, setFailed] = useState<{ code: string | null } | null>(null);
   const list = useRef<HTMLDivElement>(null);
   const all = useMemo(() => options(lang), [lang]);
   const words = query.trim().toLocaleLowerCase();
   const shown = words ? all.filter((o) => o.search.toLocaleLowerCase().includes(words)) : all;
 
+  // A pick is checked and remembered once its language is in (src/i18n/load.ts): until then the previous one stays
+  // checked; a failed download says so, with Retry, and changes nothing.
   const pick = (code: string | null) => {
-    setChosen(code);
-    void chooseLocale(code);
+    // The list unfiltered: a name typed in this language may not match once the language changes, and the row the
+    // keyboard is on must stay.
+    setQuery("");
+    setFailed(null);
+    const mine = { code };
+    setPending(mine);
+    chooseLocale(code)
+      .then(
+        (switched) => switched && setChosen(code),
+        () => setFailed(mine),
+      )
+      .finally(() => setPending((p) => (p === mine ? null : p)));
   };
+
+  // Focus never falls out of the dialog: if the row that had it went away, the checked row takes it.
+  useLayoutEffect(() => {
+    const active = document.activeElement;
+    if (active && active !== document.body && active.isConnected) return;
+    list.current?.querySelector<HTMLElement>("[aria-checked=true]")?.focus();
+  });
 
   // Arrow keys move between the rows (a native listener: the dialog keeps keys from bubbling past its panel).
   useEffect(() => {
@@ -129,6 +151,14 @@ export function LanguageDialog({ onClose }: { onClose: () => void }) {
           data-testid="language-search"
         />
       )}
+      {failed && (
+        <p className="lang-failed" role="alert" data-testid="language-failed">
+          {t("language.failed", { language: failed.code ? languageName(failed.code) : t("language.browser") })}{" "}
+          <button type="button" className="link-btn" onClick={() => pick(failed.code)} data-testid="language-retry">
+            {t("common.retry")}
+          </button>
+        </p>
+      )}
       <div ref={list} className="lang-list" role="radiogroup" aria-label={t("language.title")}>
         {shown.map((o) => {
           const on = o.code === chosen;
@@ -138,6 +168,7 @@ export function LanguageDialog({ onClose }: { onClose: () => void }) {
               type="button"
               role="radio"
               aria-checked={on}
+              aria-busy={pending?.code === o.code || undefined}
               className={`lang-option${on ? " is-on" : ""}`}
               onClick={() => pick(o.code)}
               data-testid={`language-option-${o.code ?? "browser"}`}

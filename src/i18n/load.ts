@@ -89,22 +89,39 @@ export const isRtl = (code: string) => /^(ar|he|fa|ur)\b/.test(code);
 
 let request = 0;
 
-/** Loads a language's catalog and switches to it (the latest call wins when several overlap). */
-async function apply(code: string): Promise<void> {
+/**
+ * Loads a language's catalog, then (only if no later call started meanwhile) runs `commit` and switches to it. True
+ * when it switched, false when a later call superseded it. A failed download throws, unless superseded: nothing has
+ * changed then, the language and the stored choice are still the previous ones.
+ */
+async function apply(code: string, commit?: () => void): Promise<boolean> {
   const mine = ++request;
   const load = catalogs[code];
-  const messages = load ? ((await load()).default as Catalog) : undefined;
-  if (mine === request) setLocale(code, messages);
+  let messages: Catalog | undefined;
+  try {
+    messages = load ? ((await load()).default as Catalog) : undefined;
+  } catch (error) {
+    if (mine !== request) return false;
+    throw error;
+  }
+  if (mine !== request) return false;
+  commit?.();
+  setLocale(code, messages);
+  return true;
 }
 
 /** At startup (./start.ts's startI18n): the person's choice, else the browser's language. */
-export const start = (): Promise<void> => apply(chosenLocale() ?? browserLocale());
+export const start = async (): Promise<void> => void (await apply(chosenLocale() ?? browserLocale()));
 
-/** The Language dialog's choice: a language, or null for the browser's. Remembered in this browser. */
-export async function chooseLocale(code: string | null): Promise<void> {
-  if (code) safeStorage.setItem(LOCALE_KEY, code);
-  else safeStorage.removeItem(LOCALE_KEY);
-  await apply(code ?? browserLocale());
+/**
+ * The Language dialog's choice: a language, or null for the browser's. Kept in this browser once its catalog is in,
+ * together with the switch, so the stored choice and the language on screen never disagree. Rejects when the
+ * download fails (the language and the stored choice stay as they were); false when a later choice superseded it.
+ */
+export function chooseLocale(code: string | null): Promise<boolean> {
+  return apply(code ?? browserLocale(), () =>
+    code ? safeStorage.setItem(LOCALE_KEY, code) : safeStorage.removeItem(LOCALE_KEY),
+  );
 }
 
 /** A language's name: in its own language (`of`) or in another (`in`). "zh-CN" reads as Simplified Chinese. */

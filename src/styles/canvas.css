@@ -1329,7 +1329,8 @@
 .present-bar {
   position: absolute;
   top: 24px;
-  inset-inline-end: 24px;
+  /* Physical, in every language: the diagram's title card sits top left in presenting, and the diagram doesn't mirror. */
+  right: 24px;
   z-index: 6;
   display: flex;
   gap: 8px;

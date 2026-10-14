@@ -10,6 +10,7 @@ import {
 import { createPortal } from "react-dom";
 import { formatCombo } from "../../editor/shortcuts";
 import { Glyph } from "./glyphs";
+import { MARGIN, menuLeft } from "./menuPlacement";
 
 // Top-bar dropdown (the File menu): rows with an icon, title, optional one-line description and
 // shortcut, separators, and one level of submenus ("More formats ▸"). Keyboard: arrows / Home / End
@@ -55,7 +56,6 @@ interface Props {
   width?: number;
 }
 
-const MARGIN = 8;
 const HOVER_DELAY = 120;
 /** A right-to-left language (src/i18n): menus open from the trigger's other edge, submenus to the left. */
 const rtl = () => document.documentElement.dir === "rtl";
@@ -166,10 +166,10 @@ function MenuPanel({
     const el = panel.current;
     if (!el) return;
     const h = el.offsetHeight;
-    let l = left;
-    if (parentLeft !== undefined && l + width > window.innerWidth - MARGIN) l = parentLeft - width + 4;
-    if (parentLeft !== undefined && l < MARGIN) l = parentLeft + width - 4;
-    setPlace({ top: Math.max(MARGIN, Math.min(top, window.innerHeight - h - MARGIN)), left: Math.max(MARGIN, l) });
+    setPlace({
+      top: Math.max(MARGIN, Math.min(top, window.innerHeight - h - MARGIN)),
+      left: menuLeft(left, width, parentLeft, window.innerWidth),
+    });
   }, [top, left, width, parentLeft]);
 
   useEffect(() => {
@@ -280,8 +280,14 @@ function MenuPanel({
               >
                 {entry.icon && <span className="ix-menu-icon">{entry.icon}</span>}
                 <span className="ix-menu-text">
-                  <span className="ix-menu-title">{entry.title}</span>
-                  {entry.desc && <span className="ix-menu-desc">{entry.desc}</span>}
+                  <span className="ix-menu-title" data-testid={`${entry.testId}-title`}>
+                    {entry.title}
+                  </span>
+                  {entry.desc && (
+                    <span className="ix-menu-desc" data-testid={`${entry.testId}-desc`}>
+                      {entry.desc}
+                    </span>
+                  )}
                 </span>
                 {entry.hint && <span className="ix-menu-hint">{entry.hint}</span>}
                 {entry.shortcut && <kbd className="ix-menu-kbd">{formatCombo(entry.shortcut)}</kbd>}

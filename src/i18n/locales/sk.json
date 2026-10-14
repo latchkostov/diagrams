@@ -150,6 +150,7 @@
   "language.browserDesc": "Aktuálne: {language}",
   "language.search": "Hľadať jazyky",
   "language.none": "Žiadny jazyk nezodpovedá „{query}“.",
+  "language.failed": "Jazyk {language} sa nepodarilo stiahnuť. Skontrolujte pripojenie a skúste to znova.",
   "language.machine": "Preložené strojovo. Niečo neznie správne? <link>Navrhnite lepší preklad</link> na GitHube.",
   "language.palette": "Jazyk…",
   "language.paletteKeywords": "jazyk preklad lokalizácia",

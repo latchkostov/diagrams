@@ -150,6 +150,7 @@
   "language.browserDesc": "Aktuell {language}",
   "language.search": "Sprachen durchsuchen",
   "language.none": "Keine Sprache entspricht „{query}“.",
+  "language.failed": "{language} konnte nicht heruntergeladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
   "language.machine": "Maschinell übersetzt. Klingt etwas falsch? Auf GitHub <link>eine bessere Übersetzung vorschlagen</link>.",
   "language.palette": "Sprache…",
   "language.paletteKeywords": "Sprache Übersetzung Gebietsschema",

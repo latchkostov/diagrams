@@ -150,6 +150,7 @@
   "language.browserDesc": "अभी {language}",
   "language.search": "भाषाएँ खोजें",
   "language.none": "“{query}” से कोई भाषा मेल नहीं खाती।",
+  "language.failed": "{language} डाउनलोड नहीं हो सकी। अपना कनेक्शन जाँचें और फिर से कोशिश करें।",
   "language.machine": "मशीन से अनुवादित। कुछ गलत लगता है? GitHub पर <link>बेहतर अनुवाद सुझाएँ</link>।",
   "language.palette": "भाषा…",
   "language.paletteKeywords": "भाषा अनुवाद लैंग्वेज bhasha",

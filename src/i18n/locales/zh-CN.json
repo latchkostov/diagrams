@@ -150,6 +150,7 @@
   "language.browserDesc": "当前：{language}",
   "language.search": "搜索语言",
   "language.none": "没有与“{query}”匹配的语言。",
+  "language.failed": "无法下载{language}。请检查网络连接，然后重试。",
   "language.machine": "由机器翻译。有读起来不对的地方？在 GitHub 上<link>建议更好的翻译</link>。",
   "language.palette": "语言…",
   "language.paletteKeywords": "语言 翻译 区域设置",

@@ -150,6 +150,7 @@
   "language.browserDesc": "Jelenleg: {language}",
   "language.search": "Nyelvek keresése",
   "language.none": "Egy nyelv sem felel meg ennek: „{query}”.",
+  "language.failed": "A(z) {language} nyelv nem tölthető le. Ellenőrizze a kapcsolatot, és próbálja újra.",
   "language.machine": "Gépi fordítás. Valami rosszul hangzik? <link>Javasoljon jobb fordítást</link> a GitHubon.",
   "language.palette": "Nyelv…",
   "language.paletteKeywords": "nyelv fordítás honosítás",
