@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Plugin, ViteDevServer } from "vite";
+import { parseAst, type Plugin, type ViteDevServer } from "vite";
 import en from "../src/i18n/en";
 import { compile, parse } from "../src/i18n/icu";
 import { pseudoLocalize, PSEUDO_LOCALE } from "../src/i18n/pseudo";
@@ -14,7 +14,8 @@ import { readDeployment, resolveDeploymentEnv } from "./deployment-env";
 //      t("file.new")                   → t`New diagram`               plain text: the English is the lookup key
 //      t("file.libraryCount", {count}) → t(41,v=>…,{count})           placeholders: a number, English compiled
 //    A plain message whose English is shared by another key that some language translates differently ("View" the
-//    tab list and "View" the menu) takes the numbered form too, so each keeps its own translation.
+//    tab list and "View" the menu) takes the numbered form too, so each keeps its own translation. Calls are found in
+//    the module's syntax tree, after TypeScript and JSX are compiled away, by the bindings imported from src/i18n.
 // 2. Catalogs. `virtual:i18n/catalogs` maps each language this build offers to a lazy import of
 //    `virtual:i18n/catalog/<code>`: src/i18n/locales/<code>.json compiled the same way, keyed by English text or by
 //    number. One chunk per language, loaded only by the people who use it. The pseudo-locale (en-XA) is made from
@@ -107,34 +108,195 @@ function reviewed(dir: string, codes: string[]): string[] {
   });
 }
 
-/** Whether a module uses the i18n API: it imports src/i18n (or, inside src/i18n, ./index or ./rich). */
-const USES_I18N = /from\s*["'][^"']*\/i18n(?:\/(?:index|rich))?["']/;
-const USES_I18N_INSIDE = /from\s*["']\.\/(?:index|rich)["']/;
-const CALL = /\b(t|tRich|msg)\(\s*(["'])([A-Za-z0-9_.-]+)\2(\s*\))?/g;
+/** The i18n API's module, as an import names it: src/i18n (or ./index, ./rich from inside src/i18n). */
+const API_MODULE = /(?:^|\/)i18n(?:\/(?:index|rich))?$/;
+const API_MODULE_INSIDE = /^\.\/(?:index|rich)$/;
+const API = new Set(["t", "msg", "tRich"]);
 
-/** Rewrites the call sites in one module's code (`id`: its path); undefined when it has none. */
+interface Node {
+  type: string;
+  start: number;
+  end: number;
+  [key: string]: unknown;
+}
+const isNode = (v: unknown): v is Node => !!v && typeof v === "object" && typeof (v as Node).type === "string";
+
+/** The names a binding pattern declares (`x`, `{ a, b: c }`, `[d, ...e]`, `f = 1`). */
+function patternNames(node: unknown, out: string[] = []): string[] {
+  if (!isNode(node)) return out;
+  if (node.type === "Identifier") out.push(node.name as string);
+  else if (node.type === "ObjectPattern")
+    for (const p of node.properties as Node[]) patternNames(p.type === "RestElement" ? p.argument : p.value, out);
+  else if (node.type === "ArrayPattern") for (const e of node.elements as unknown[]) patternNames(e, out);
+  else if (node.type === "RestElement") patternNames(node.argument, out);
+  else if (node.type === "AssignmentPattern") patternNames(node.left, out);
+  return out;
+}
+
+/** The names declared directly in a scope's statements: let, const, var, functions and classes. */
+function declaredIn(statements: unknown): string[] {
+  const out: string[] = [];
+  for (const s of Array.isArray(statements) ? statements : []) {
+    if (!isNode(s)) continue;
+    const decl = s.type === "ExportNamedDeclaration" || s.type === "ExportDefaultDeclaration" ? s.declaration : s;
+    if (!isNode(decl)) continue;
+    if (decl.type === "VariableDeclaration") for (const d of decl.declarations as Node[]) patternNames(d.id, out);
+    else if ((decl.type === "FunctionDeclaration" || decl.type === "ClassDeclaration") && isNode(decl.id))
+      out.push(decl.id.name as string);
+  }
+  return out;
+}
+
+/** The names a node declares for its own scope (a function's parameters, a block's declarations…), if it has one. */
+function scopeOf(node: Node): string[] | undefined {
+  switch (node.type) {
+    case "FunctionDeclaration":
+    case "FunctionExpression":
+    case "ArrowFunctionExpression":
+      return [
+        ...(node.params as Node[]).flatMap((p) => patternNames(p)),
+        ...(node.type === "FunctionExpression" && isNode(node.id) ? [node.id.name as string] : []),
+      ];
+    case "BlockStatement":
+    case "StaticBlock":
+      return declaredIn(node.body);
+    case "SwitchStatement":
+      return (node.cases as Node[]).flatMap((c) => declaredIn(c.consequent));
+    case "ForStatement":
+      return isNode(node.init) && node.init.type === "VariableDeclaration" ? declaredIn([node.init]) : [];
+    case "ForInStatement":
+    case "ForOfStatement":
+      return isNode(node.left) && node.left.type === "VariableDeclaration" ? declaredIn([node.left]) : [];
+    case "CatchClause":
+      return patternNames(node.param);
+    case "ClassExpression":
+      return isNode(node.id) ? [node.id.name as string] : [];
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Every node, with its parent, the property that holds it, and whether a name is shadowed there: declared in a scope
+ * between the node and the module's top (a local `t` isn't the imported one). `var` counts as block-scoped here,
+ * which only errs towards treating a name as shadowed.
+ */
+function walk(
+  node: Node,
+  visit: (node: Node, parent: Node | undefined, key: string, shadowed: (name: string) => boolean) => void,
+  parent?: Node,
+  key = "",
+  scopes: string[][] = [],
+) {
+  const own = node.type === "Program" ? undefined : scopeOf(node);
+  const inner = own?.length ? [...scopes, own] : scopes;
+  visit(node, parent, key, (name) => inner.some((s) => s.includes(name)));
+  for (const [k, value] of Object.entries(node)) {
+    if (k === "parent") continue;
+    if (Array.isArray(value)) {
+      for (const child of value) if (isNode(child)) walk(child, visit, node, k, inner);
+    } else if (isNode(value)) walk(value, visit, node, k, inner);
+  }
+}
+
+/** Where an identifier is a name, not a reference: `a.t`, `{ t: 1 }`, an import's own name. */
+function isNameOnly(parent: Node | undefined, key: string): boolean {
+  if (!parent) return false;
+  if (parent.type === "MemberExpression" && key === "property" && !parent.computed) return true;
+  if (
+    (parent.type === "Property" || parent.type === "MethodDefinition" || parent.type === "PropertyDefinition") &&
+    key === "key" &&
+    !parent.computed &&
+    !parent.shorthand
+  )
+    return true;
+  return parent.type === "ImportSpecifier" || parent.type === "ExportSpecifier";
+}
+
+/**
+ * Rewrites the i18n calls in one module's JavaScript (after TypeScript and JSX are compiled away; `id`: its path).
+ * Only calls of the bindings imported from src/i18n count, under whatever local name (`import { t as tr }`); a
+ * method `other.t("x")`, a string or a comment never does. What the build can't rewrite is an error, reported through
+ * `onError` (the build fails): a key that isn't a string literal, a key English hasn't, a message with tags passed to
+ * t or msg, or t passed around as a value. Undefined when the module has nothing to rewrite.
+ */
 export function rewriteCalls(
   code: string,
   numbered: Set<Key>,
-  onUnknown: (key: string) => void,
+  onError: (message: string) => void,
   id = "",
 ): string | undefined {
-  const inside = /[/\\]src[/\\]i18n[/\\]/.test(id) && USES_I18N_INSIDE.test(code);
-  if (!(inside || USES_I18N.test(code)) || !/\b(?:t|tRich|msg)\(\s*["']/.test(code)) return undefined;
-  let changed = false;
-  const out = code.replace(CALL, (match, fn: string, _q: string, name: string, closed?: string) => {
-    const key = name as Key;
-    const id = ids.get(key);
-    if (id === undefined) {
-      // A dotted name that English hasn't: a typo (TypeScript says so too) or a message not added yet.
-      if (name.includes(".")) onUnknown(name);
-      return match;
+  if (!/i18n|\.\/(?:index|rich)/.test(code)) return undefined;
+  const inside = /[/\\]src[/\\]i18n[/\\]/.test(id);
+  let ast: Node;
+  try {
+    ast = parseAst(code) as unknown as Node;
+  } catch {
+    return undefined; // not JavaScript this step reads (the transform pipeline reports real syntax errors)
+  }
+  // The local names of t, msg and tRich in this module.
+  const local = new Map<string, string>();
+  for (const statement of ast.body as Node[]) {
+    if (statement.type !== "ImportDeclaration") continue;
+    const source = String((statement.source as Node).value);
+    if (!API_MODULE.test(source) && !(inside && API_MODULE_INSIDE.test(source))) continue;
+    for (const spec of statement.specifiers as Node[]) {
+      if (spec.type === "ImportNamespaceSpecifier")
+        onError(`Import t, msg and tRich by name from "${source}": the build rewrites their calls`);
+      if (spec.type !== "ImportSpecifier") continue;
+      const imported = (spec.imported as Node).name as string;
+      if (API.has(imported)) local.set((spec.local as Node).name as string, imported);
     }
-    changed = true;
-    if (closed && fn !== "tRich" && plain(key) && !numbered.has(key)) return `${fn}${template(en[key])}`;
-    return `${fn}(${id},${english.get(key)}${closed ? ")" : ""}`;
+  }
+  if (!local.size) return undefined;
+  // rich.ts wraps t itself; everywhere else t, msg and tRich are only ever called.
+  const valuesAllowed = /[/\\]src[/\\]i18n[/\\]rich\.ts$/.test(id);
+  const edits: { start: number; end: number; text: string }[] = [];
+  const callees = new Set<Node>();
+  walk(ast, (node, parent, key, shadowed) => {
+    if (node.type === "CallExpression" && isNode(node.callee) && node.callee.type === "Identifier") {
+      const name = node.callee.name as string;
+      const fn = local.get(name);
+      if (!fn || shadowed(name)) return;
+      callees.add(node.callee);
+      const args = node.arguments as Node[];
+      const first = args[0];
+      if (!first || first.type !== "Literal" || typeof first.value !== "string") {
+        onError(`${name}() needs a message key as a string literal (${id})`);
+        return;
+      }
+      const k = first.value as Key;
+      const n = ids.get(k);
+      if (n === undefined) {
+        onError(`Unknown message "${first.value}" (add it to src/i18n/en.ts)`);
+        return;
+      }
+      const rich = /<[a-z][a-z0-9]*>/.test(en[k]);
+      if (rich && fn !== "tRich") {
+        onError(`"${k}" has tags: render it with tRich, not ${fn} (${id})`);
+        return;
+      }
+      if (args.length === 1 && fn !== "tRich" && plain(k) && !numbered.has(k))
+        edits.push({ start: node.start, end: node.end, text: `${name}${template(en[k])}` });
+      else if (args.length === 1)
+        edits.push({ start: node.start, end: node.end, text: `${name}(${n},${english.get(k)})` });
+      else edits.push({ start: node.start, end: first.end, text: `${name}(${n},${english.get(k)}` });
+      return;
+    }
+    if (
+      node.type === "Identifier" &&
+      local.has(node.name as string) &&
+      !valuesAllowed &&
+      !shadowed(node.name as string)
+    ) {
+      if (isNameOnly(parent, key) || (parent?.type === "CallExpression" && key === "callee")) return;
+      onError(`${node.name as string} is only ever called, with a string key: the build rewrites the calls (${id})`);
+    }
   });
-  return changed ? out : undefined;
+  if (!edits.length) return undefined;
+  let out = code;
+  for (const e of edits.sort((a, b) => b.start - a.start)) out = out.slice(0, e.start) + e.text + out.slice(e.end);
+  return out;
 }
 
 export interface I18nOptions {
@@ -163,7 +325,6 @@ export function i18n(options: I18nOptions = {}): Plugin {
   };
   return {
     name: "i18n",
-    enforce: "pre",
     config(config, { command, mode }) {
       // The pseudo-locale is for spotting untranslated and overflowing UI: the dev server, Vitest and the e2e build.
       pseudo = command === "serve" || process.env.VITE_E2E === "1";
@@ -210,12 +371,8 @@ export function i18n(options: I18nOptions = {}): Plugin {
     },
     transform(code, id) {
       if (id.startsWith("\0") || id.includes("node_modules") || !/\.[cm]?[jt]sx?(?:\?|$)/.test(id)) return;
-      const out = rewriteCalls(
-        code,
-        numbered,
-        (key) => this.error(`Unknown message "${key}" (add it to src/i18n/en.ts)`),
-        id,
-      );
+      // After TypeScript and JSX are compiled away (no enforce: "pre"): the calls are read from the module's syntax tree.
+      const out = rewriteCalls(code, numbered, (message) => this.error(message), id);
       return out === undefined ? undefined : { code: out, map: null };
     },
     // A catalog edited in the dev server: if it changes which messages are numbered, every call site changes too.

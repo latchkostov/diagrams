@@ -150,6 +150,7 @@
   "language.browserDesc": "Pašlaik: {language}",
   "language.search": "Meklēt valodas",
   "language.none": "Neviena valoda neatbilst „{query}”.",
+  "language.failed": "Neizdevās lejupielādēt: {language}. Pārbaudiet savienojumu un mēģiniet vēlreiz.",
   "language.machine": "Mašīntulkojums. Kaut kas izklausās nepareizi? <link>Iesakiet labāku tulkojumu</link> vietnē GitHub.",
   "language.palette": "Valoda…",
   "language.paletteKeywords": "valoda tulkojums lokalizācija",

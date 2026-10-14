@@ -150,6 +150,7 @@
   "language.browserDesc": "Praegu: {language}",
   "language.search": "Otsi keeli",
   "language.none": "Päringule „{query}“ ei vasta ükski keel.",
+  "language.failed": "Keelt {language} ei õnnestunud alla laadida. Kontrollige ühendust ja proovige uuesti.",
   "language.machine": "Masintõlge. Kas miski kõlab valesti? <link>Pakkuge paremat tõlget</link> GitHubis.",
   "language.palette": "Keel…",
   "language.paletteKeywords": "keel tõlge lokaliseerimine",

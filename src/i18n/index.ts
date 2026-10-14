@@ -114,9 +114,11 @@ export type ArgList<K extends MessageKey> = [Args<Messages[K]>] extends [never] 
 /** Messages with tags, for tRich (./rich.ts). */
 export type RichKey = { [K in MessageKey]: [Tags<Messages[K]>] extends [never] ? never : K }[MessageKey];
 export type RichValues<K extends MessageKey> = ValuesOf<K, true>;
+/** Messages without tags: what t and msg take (a message with tags needs its render functions, through tRich). */
+export type PlainKey = Exclude<MessageKey, RichKey>;
 
 /** A message in the current language. Re-renders need `useLocale()` in the component. */
-export function t<K extends MessageKey>(key: K, ...values: ArgList<K>): string;
+export function t<K extends PlainKey>(key: K, ...values: ArgList<K>): string;
 // What every call compiles to (t`English` or t(number, English, values)): the language's message, else the English.
 export function t(key: number | TemplateStringsArray, english?: Compiled, values?: Record<string, unknown>): unknown {
   const m = typeof key == "object" ? (state.c?.[key[0]] ?? key[0]) : (state.c?.[key] ?? english!);
@@ -129,6 +131,6 @@ type Raw = (key: number | TemplateStringsArray, english?: Compiled, values?: Rec
  * gives it in the language of the moment.
  */
 export const msg = ((key: number | TemplateStringsArray, english?: Compiled) => (values?: Record<string, unknown>) =>
-  (t as unknown as Raw)(key, english, values)) as unknown as <K extends MessageKey>(
+  (t as unknown as Raw)(key, english, values)) as unknown as <K extends PlainKey>(
   key: K,
 ) => (...values: ArgList<K>) => string;

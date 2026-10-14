@@ -150,6 +150,7 @@
   "language.browserDesc": "Nyt: {language}",
   "language.search": "Hae kieliä",
   "language.none": "Mikään kieli ei vastaa hakua ”{query}”.",
+  "language.failed": "Kieltä {language} ei voitu ladata. Tarkista yhteys ja yritä uudelleen.",
   "language.machine": "Konekäännös. Kuulostaako jokin väärältä? <link>Ehdota parempaa käännöstä</link> GitHubissa.",
   "language.palette": "Kieli…",
   "language.paletteKeywords": "kieli käännös lokalisointi",

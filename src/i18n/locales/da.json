@@ -150,6 +150,7 @@
   "language.browserDesc": "Nu {language}",
   "language.search": "Søg efter sprog",
   "language.none": "Intet sprog matcher »{query}«.",
+  "language.failed": "{language} kunne ikke hentes. Tjek din forbindelse, og prøv igen.",
   "language.machine": "Maskinoversat. Lyder noget forkert? <link>Foreslå en bedre oversættelse</link> på GitHub.",
   "language.palette": "Sprog…",
   "language.paletteKeywords": "sprog oversættelse landestandard",

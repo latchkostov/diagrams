@@ -150,6 +150,7 @@
   "language.browserDesc": "Saat ini {language}",
   "language.search": "Cari bahasa",
   "language.none": "Bahasa “{query}” tidak ditemukan.",
+  "language.failed": "Tidak dapat mengunduh {language}. Periksa koneksi Anda, lalu coba lagi.",
   "language.machine": "Diterjemahkan oleh mesin. Ada yang terasa janggal? <link>Sarankan terjemahan yang lebih baik</link> di GitHub.",
   "language.palette": "Bahasa…",
   "language.paletteKeywords": "bahasa terjemahan lokal",

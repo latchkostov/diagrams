@@ -150,6 +150,7 @@
   "language.browserDesc": "現在：{language}",
   "language.search": "言語を検索",
   "language.none": "「{query}」に一致する言語はありません。",
+  "language.failed": "{language} をダウンロードできませんでした。接続を確認して、もう一度お試しください。",
   "language.machine": "機械翻訳です。おかしな箇所があれば、GitHub で<link>より良い翻訳を提案</link>してください。",
   "language.palette": "言語…",
   "language.paletteKeywords": "言語 翻訳 ロケール",

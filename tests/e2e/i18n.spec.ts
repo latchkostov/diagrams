@@ -123,6 +123,76 @@ test.describe("choosing a language", () => {
   });
 });
 
+/** A language's catalog: the build's chunk, or the dev server's virtual module. */
+const catalogRequest = (code: string) =>
+  new RegExp(String.raw`/(?:assets/${code}-[\w-]+\.js|@id/__x00__virtual:i18n/catalog/${code})(?:\?|$)`);
+
+test.describe("when a language can't be downloaded", () => {
+  test("nothing changes, the dialog says so with Retry, and the retry switches", async ({ page }) => {
+    await gotoStart(page);
+    await page.route(catalogRequest("de"), (route) => route.abort());
+    await openLanguage(page);
+    await page.getByTestId("language-option-de").click();
+    await expect(page.getByTestId("language-failed")).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(page.getByTestId("language-option-browser")).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByTestId("language-option-de")).toHaveAttribute("aria-checked", "false");
+    await expect(page.getByTestId("language-option-de")).toBeFocused();
+    expect(await page.evaluate(() => localStorage.getItem("diagrams.locale"))).toBeNull();
+
+    await page.unroute(catalogRequest("de"));
+    await page.getByTestId("language-retry").click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "de");
+    await expect(page.getByTestId("language-failed")).toHaveCount(0);
+    await expect(page.getByTestId("language-option-de")).toHaveAttribute("aria-checked", "true");
+    expect(await page.evaluate(() => localStorage.getItem("diagrams.locale"))).toBe("de");
+  });
+
+  test("the canvas's code downloads while the language does, not after", async ({ page }) => {
+    await remember(page, "de");
+    // The catalog waits until the canvas's code is asked for: without the preload, that never happens.
+    let canvasAsked: () => void = () => {};
+    const canvas = new Promise<void>((resolve) => (canvasAsked = resolve));
+    page.on("request", (r) => /CanvasView/.test(r.url()) && canvasAsked());
+    await page.route(catalogRequest("de"), async (route) => {
+      await canvas;
+      await route.continue();
+    });
+    await gotoCanvas(page, SLUG);
+    await expect(page.locator("html")).toHaveAttribute("lang", "de");
+  });
+});
+
+test.describe("the keyboard in the Language dialog", () => {
+  test("a language found by its name in the current language keeps the keyboard when the language changes", async ({
+    page,
+  }) => {
+    await remember(page, "fr");
+    await gotoStart(page);
+    await openLanguage(page);
+    await page.getByTestId("language-search").fill("allemand");
+    await page.getByTestId("language-option-de").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("html")).toHaveAttribute("lang", "de");
+    await expect(page.getByTestId("language-option-de")).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("language-dialog")).toHaveCount(0);
+  });
+
+  test("the checked language shows where the keyboard is", async ({ page }) => {
+    await gotoStart(page);
+    await openLanguage(page);
+    const browser = page.getByTestId("language-option-browser");
+    const outline = () => browser.evaluate((el) => getComputedStyle(el).outlineStyle);
+    expect(await outline()).toBe("none");
+    // From the search field, Tab reaches the first row: Browser default, checked.
+    await page.getByTestId("language-search").focus();
+    await page.keyboard.press("Tab");
+    await expect(browser).toBeFocused();
+    expect(await outline()).toBe("solid");
+  });
+});
+
 test.describe("the browser's language is the default", () => {
   test.use({ locale: "bg-BG" });
 
@@ -182,6 +252,13 @@ test.describe("right to left", () => {
     expect(english).toBe(true);
     expect(await order()).toBe(english);
     expect(await page.getByTestId("rf__wrapper").evaluate((el) => getComputedStyle(el).direction)).toBe("ltr");
+
+    // Presenting: the controls keep to the top right, clear of the diagram's title at the top left.
+    await page.getByTestId("present-toggle").click();
+    await expect(page.getByTestId("present-exit")).toBeVisible();
+    const title = await box("diagram-title");
+    const exit = await box("present-exit");
+    expect(exit.x).toBeGreaterThan(title.x + title.width);
     expectNoErrors(consoleErrors);
   });
 });
@@ -211,26 +288,39 @@ async function expectNothingCut(root: Locator, label: string) {
   expect(problems, label).toEqual([]);
 }
 
-/** The menu rows' titles are all pseudo-localized (in brackets), but for names that stay as they are. */
-async function expectAllTranslated(menu: Locator, label: string, except: string[] = []) {
-  const titles = await menu
-    .getByTestId(/./)
-    .evaluateAll(
-      (els, skip) =>
-        els
-          .filter(
-            (el) =>
-              el.getAttribute("role")?.startsWith("menuitem") && !skip.includes(el.getAttribute("data-testid") ?? ""),
-          )
-          .map((el) => `${el.getAttribute("data-testid")}: ${(el.textContent ?? "").trim()}`),
-      except,
-    );
-  expect(titles.length, label).toBeGreaterThan(0);
-  expect(
-    titles.filter((t) => !t.includes("[")),
-    label,
-  ).toEqual([]);
+/**
+ * The menu rows' titles and descriptions that aren't pseudo-localized (no brackets), each on its own: a translated
+ * description never covers for an English title. `except`: rows whose words stay as they are (a product name) or
+ * wait for a later batch; a title or description testid alone skips just that line.
+ */
+function untranslated(menu: Locator, except: string[] = []) {
+  return menu.getByTestId(/-(title|desc)$/).evaluateAll(
+    (els, skip) =>
+      els
+        .map((el) => ({ id: el.getAttribute("data-testid") ?? "", text: (el.textContent ?? "").trim() }))
+        .filter(
+          ({ id, text }) =>
+            !skip.some((row) => id === row || id === `${row}-title` || id === `${row}-desc`) && !text.includes("["),
+        )
+        .map(({ id, text }) => `${id}: ${text}`),
+    except,
+  );
 }
+
+async function expectAllTranslated(menu: Locator, label: string, except: string[] = []) {
+  await expect(menu.getByTestId(/-title$/).first(), label).toBeVisible();
+  expect(await untranslated(menu, except), label).toEqual([]);
+}
+
+test("the pseudo audit reads titles and descriptions apart: an English title is caught under a translated line", async ({
+  page,
+}) => {
+  await page.setContent(
+    '<div data-testid="menu"><button role="menuitem" data-testid="row"><span data-testid="row-title">Open…</span>' +
+      '<span data-testid="row-desc">[Óóþééñ á ƒííļéé]</span></button></div>',
+  );
+  expect(await untranslated(page.getByTestId("menu"))).toEqual(["row-title: Open…"]);
+});
 
 test.describe("the pseudo-locale", () => {
   test.beforeEach(async ({ page }) => {
@@ -250,7 +340,12 @@ test.describe("the pseudo-locale", () => {
     await page.getByTestId("view-button").click();
     await expectNothingCut(page.getByTestId("view-menu"), "View menu");
     // Capacity and Checks wait for their batches (docs/I18N.md).
-    await expectAllTranslated(page.getByTestId("view-menu"), "View menu", ["view-checks", "capacity-overlay-toggle"]);
+    await expectAllTranslated(page.getByTestId("view-menu"), "View menu", [
+      "view-checks",
+      "capacity-overlay-toggle",
+      // The Language row's second line is English on purpose: the way back for someone who can't read the UI.
+      "view-language-desc",
+    ]);
     await page.keyboard.press("Escape");
 
     await page.getByTestId("view-button").click();

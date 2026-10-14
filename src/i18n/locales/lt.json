@@ -150,6 +150,7 @@
   "language.browserDesc": "Dabar: {language}",
   "language.search": "Ieškoti kalbų",
   "language.none": "Nė viena kalba neatitinka „{query}“.",
+  "language.failed": "Nepavyko atsisiųsti: {language}. Patikrinkite ryšį ir bandykite dar kartą.",
   "language.machine": "Išversta mašininiu būdu. Kažkas skamba ne taip? <link>Pasiūlykite geresnį vertimą</link> svetainėje GitHub.",
   "language.palette": "Kalba…",
   "language.paletteKeywords": "kalba vertimas lokalizacija",

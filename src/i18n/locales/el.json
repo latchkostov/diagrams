@@ -150,6 +150,7 @@
   "language.browserDesc": "Τώρα: {language}",
   "language.search": "Αναζήτηση γλωσσών",
   "language.none": "Καμία γλώσσα δεν ταιριάζει με «{query}».",
+  "language.failed": "Δεν ήταν δυνατή η λήψη: {language}. Ελέγξτε τη σύνδεσή σας και δοκιμάστε ξανά.",
   "language.machine": "Μηχανική μετάφραση. Κάτι δεν διαβάζεται σωστά; <link>Προτείνετε καλύτερη μετάφραση</link> στο GitHub.",
   "language.palette": "Γλώσσα…",
   "language.paletteKeywords": "γλώσσα μετάφραση τοπικές ρυθμίσεις",

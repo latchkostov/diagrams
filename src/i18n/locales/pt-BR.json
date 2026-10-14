@@ -150,6 +150,7 @@
   "language.browserDesc": "Agora {language}",
   "language.search": "Pesquisar idiomas",
   "language.none": "Nenhum idioma corresponde a “{query}”.",
+  "language.failed": "Não foi possível baixar {language}. Verifique sua conexão e tente novamente.",
   "language.machine": "Tradução automática. Algo soa errado? <link>Sugira uma tradução melhor</link> no GitHub.",
   "language.palette": "Idioma…",
   "language.paletteKeywords": "idioma tradução língua",

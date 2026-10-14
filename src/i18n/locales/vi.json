@@ -150,6 +150,7 @@
   "language.browserDesc": "Hiện là {language}",
   "language.search": "Tìm ngôn ngữ",
   "language.none": "Không có ngôn ngữ nào khớp với “{query}”.",
+  "language.failed": "Không thể tải xuống {language}. Hãy kiểm tra kết nối rồi thử lại.",
   "language.machine": "Dịch bằng máy. Có chỗ nào đọc chưa ổn? <link>Đề xuất bản dịch tốt hơn</link> trên GitHub.",
   "language.palette": "Ngôn ngữ…",
   "language.paletteKeywords": "ngôn ngữ dịch ngon ngu",

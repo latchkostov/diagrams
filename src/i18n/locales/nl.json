@@ -150,6 +150,7 @@
   "language.browserDesc": "Nu {language}",
   "language.search": "Talen zoeken",
   "language.none": "Geen taal komt overeen met “{query}”.",
+  "language.failed": "Kan {language} niet downloaden. Controleer je verbinding en probeer het opnieuw.",
   "language.machine": "Machinaal vertaald. Klopt er iets niet? <link>Stel een betere vertaling voor</link> op GitHub.",
   "language.palette": "Taal…",
   "language.paletteKeywords": "taal vertaling landinstelling",

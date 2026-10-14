@@ -150,6 +150,7 @@
   "language.browserDesc": "目前：{language}",
   "language.search": "搜尋語言",
   "language.none": "沒有符合「{query}」的語言。",
+  "language.failed": "無法下載{language}。請檢查網路連線，然後再試一次。",
   "language.machine": "由機器翻譯。讀起來不對嗎？請在 GitHub 上<link>建議更好的翻譯</link>。",
   "language.palette": "語言…",
   "language.paletteKeywords": "語言 翻譯 地區設定",

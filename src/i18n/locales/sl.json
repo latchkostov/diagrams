@@ -150,6 +150,7 @@
   "language.browserDesc": "Trenutno: {language}",
   "language.search": "Iskanje jezikov",
   "language.none": "Noben jezik se ne ujema z »{query}«.",
+  "language.failed": "Jezika {language} ni bilo mogoče prenesti. Preverite povezavo in poskusite znova.",
   "language.machine": "Strojni prevod. Se kaj ne bere prav? <link>Predlagajte boljši prevod</link> na GitHubu.",
   "language.palette": "Jezik…",
   "language.paletteKeywords": "jezik prevod lokalizacija",

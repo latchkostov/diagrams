@@ -150,6 +150,7 @@
   "language.browserDesc": "حاليًا {language}",
   "language.search": "البحث في اللغات",
   "language.none": "لا توجد لغة تطابق «{query}».",
+  "language.failed": "تعذّر تنزيل {language}. تحقق من اتصالك وحاول مرة أخرى.",
   "language.machine": "ترجمة آلية. هل يبدو شيء خاطئًا؟ <link>اقترح ترجمة أفضل</link> على GitHub.",
   "language.palette": "اللغة…",
   "language.paletteKeywords": "لغة ترجمة عربي",

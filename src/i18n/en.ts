@@ -188,6 +188,7 @@ const en = {
   "language.browserDesc": "Now {language}",
   "language.search": "Search languages",
   "language.none": "No language matches “{query}”.",
+  "language.failed": "Couldn't download {language}. Check your connection and try again.",
   "language.machine":
     "Translated by machine. Something reads wrong? <link>Suggest a better translation</link> on GitHub.",
   "language.palette": "Language…",
