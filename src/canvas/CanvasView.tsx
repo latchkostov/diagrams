@@ -11,6 +11,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type DragEvent,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
@@ -2175,6 +2176,7 @@ function CanvasInner({
   const contentCount = nodeCount + annotationNodes.length;
   const undoTitle = tr("canvas.undoValue", { combo: formatCombo(shortcutKeys("undo")) });
   const redoTitle = tr("canvas.redoValue", { combo: formatCombo(shortcutKeys("redo")) });
+  const diagramColor = meta.color ? resolveAnnotationColor(meta.color).hex : undefined;
 
   return (
     <DiagramContext.Provider value={ui}>
@@ -2196,11 +2198,12 @@ function CanvasInner({
           />
         )}
         <div
-          className="canvas-wrap"
+          className={`canvas-wrap${diagramColor ? " has-diagram-color" : ""}`}
           data-testid="canvas-wrap"
           data-toast-area
           tabIndex={-1}
           ref={wrapper}
+          style={diagramColor ? ({ "--diagram-color": diagramColor } as CSSProperties) : undefined}
           onPointerDownCapture={(e) => {
             // Shift+drag on empty canvas adds the box's pick to the selection, as Shift+click adds a node.
             const onPane = e.target instanceof Element && e.target.classList.contains("react-flow__pane");

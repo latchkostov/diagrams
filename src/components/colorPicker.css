@@ -214,7 +214,7 @@
   background: var(--surface-2);
   color: var(--text-2);
   cursor: pointer;
-  transition: border-color 100ms, background-color 100ms;
+  transition: border-color 100ms, background-color 100ms, transform 80ms, box-shadow 80ms;
   flex-shrink: 0;
 }
 
@@ -222,6 +222,9 @@
   background: var(--hover);
   color: var(--text);
   border-color: var(--text-3);
+  transform: scale(1.08);
+  z-index: 2;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 0.15);
 }
 
 .insp-tone-custom.is-on {
@@ -229,6 +232,13 @@
     0 0 0 2px var(--surface),
     0 0 0 3.5px var(--accent);
   border-color: var(--accent);
+}
+
+.insp-tone-custom.is-on:hover {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 3.5px var(--accent),
+    0 2px 4px rgb(0 0 0 / 0.15);
 }
 
 .insp-tone-custom-swatch {

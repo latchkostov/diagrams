@@ -20,6 +20,8 @@ export interface ColorPickerModalProps {
   anchorRect?: DOMRect | null;
   /** Called when a color is chosen. */
   onSelect: (hex: string) => void;
+  /** Optional callback when the clear/reset button is clicked. */
+  onReset?: () => void;
   /** Called when modal requests close. */
   onClose: () => void;
 }
@@ -29,6 +31,7 @@ export function ColorPickerModal({
   defaultColor = "#64748B",
   anchorRect,
   onSelect,
+  onReset,
   onClose,
 }: ColorPickerModalProps) {
   const initialHex = normalizeHex(currentColor) ?? defaultColor;
@@ -160,9 +163,13 @@ export function ColorPickerModal({
   };
 
   const handleReset = () => {
-    setDraftHex(defaultColor);
-    setLastValidHex(defaultColor);
-    onSelect(defaultColor);
+    if (onReset) {
+      onReset();
+    } else {
+      setDraftHex(defaultColor);
+      setLastValidHex(defaultColor);
+      onSelect(defaultColor);
+    }
   };
 
   return createPortal(

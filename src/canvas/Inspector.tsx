@@ -1169,6 +1169,7 @@ function AnnotationPanel({ note, editor, onTextSettled }: InspectorProps & { not
               style={{ "--tone": ANNOTATION_COLORS[c].hex } as CSSProperties}
               title={ANNOTATION_COLORS[c].label}
               aria-label={ANNOTATION_COLORS[c].label}
+              data-color={c}
               onClick={() => editor.updateAnnotation(id, { color: c })}
               data-testid={`inspector-color-${c}`}
             />
@@ -1713,6 +1714,7 @@ function BulkSwatches<T extends string>({
             style={{ "--tone": o.colour } as CSSProperties}
             title={o.label}
             aria-label={o.label}
+            data-color={o.id}
             onClick={() => onPick(o.id)}
             data-testid={`${itemTestId}-${o.id}`}
           />
@@ -1724,6 +1726,11 @@ function BulkSwatches<T extends string>({
 }
 
 function DiagramPanel({ editor, meta, counts }: InspectorProps) {
+  const [pickerAnchor, setPickerAnchor] = useState<DOMRect | null>(null);
+  const color = meta.color;
+  const isCustomColor = !!color && !ANNOTATION_COLOR_IDS.includes(color as (typeof ANNOTATION_COLOR_IDS)[number]);
+  const resolved = color ? resolveAnnotationColor(color) : null;
+
   return (
     <>
       <PlanningUpgrade editor={editor} planning={meta.planning} />
@@ -1750,6 +1757,53 @@ function DiagramPanel({ editor, meta, counts }: InspectorProps) {
             data-testid="inspector-field-description"
           />
         </Field>
+        <Field label="Colour" hint="Canvas background tint" group>
+          <div className="insp-tones" data-testid="inspector-field-diagram-color" role="radiogroup" aria-label="Colour">
+            {ANNOTATION_COLOR_IDS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                role="radio"
+                aria-checked={color === c}
+                className={`insp-tone${color === c ? " is-on" : ""}`}
+                style={{ "--tone": ANNOTATION_COLORS[c].hex } as CSSProperties}
+                title={ANNOTATION_COLORS[c].label}
+                aria-label={ANNOTATION_COLORS[c].label}
+                data-color={c}
+                onClick={() => editor.updateMeta({ color: color === c ? undefined : c })}
+                data-testid={`inspector-diagram-color-${c}`}
+              />
+            ))}
+            <button
+              type="button"
+              className={`insp-tone-custom${isCustomColor ? " is-on" : ""}`}
+              title="Custom colour"
+              aria-label="Custom colour"
+              aria-haspopup="dialog"
+              onClick={(e) => setPickerAnchor(e.currentTarget.getBoundingClientRect())}
+              data-testid="inspector-diagram-color-custom-btn"
+            >
+              <span
+                className={`insp-tone-custom-swatch${!isCustomColor ? " insp-tone-custom-rainbow" : ""}`}
+                style={isCustomColor && resolved ? { backgroundColor: resolved.hex } : undefined}
+              />
+              <Icon name="chevron-down" size={12} />
+            </button>
+          </div>
+        </Field>
+        {pickerAnchor && (
+          <ColorPickerModal
+            currentColor={resolved?.hex ?? "#3B82F6"}
+            defaultColor="#3B82F6"
+            anchorRect={pickerAnchor}
+            onSelect={(hex) => editor.updateMeta({ color: hex })}
+            onReset={() => {
+              editor.updateMeta({ color: undefined });
+              setPickerAnchor(null);
+            }}
+            onClose={() => setPickerAnchor(null)}
+          />
+        )}
         <Field label="Flow direction" hint="Edges prefer this axis when picking sides; auto-layout follows it" group>
           <Segmented
             testId="inspector-field-direction"

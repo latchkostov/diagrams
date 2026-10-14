@@ -22,6 +22,11 @@
       "type": "string",
       "maxLength": 2000
     },
+    "color": {
+      "type": "string",
+      "pattern": "^(white|neutral|yellow|green|blue|purple|red|#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8}))$",
+      "description": "Background canvas tint colour (hex or predefined annotation color id)."
+    },
     "direction": {
       "type": "string",
       "enum": [

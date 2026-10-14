@@ -47,6 +47,8 @@ export interface DiagramFile {
   planning?: PlanningModel;
   title: string;
   description?: string;
+  /** Background canvas tint colour (hex or predefined annotation color id). Absent means default canvas background. */
+  color?: string;
   /** Primary flow direction, used for auto-layout and handle placement. Default "LR". */
   direction?: "LR" | "TB";
   groups?: DiagramGroup[];

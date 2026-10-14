@@ -613,6 +613,7 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
     format: DIAGRAM_FORMAT,
     title: defaultName ? fallbackTitle : page.name,
     ...(meta.dg_description ? { description: meta.dg_description } : {}),
+    ...(meta.dg_color ? { color: meta.dg_color } : {}),
     ...(meta.dg_direction === "LR" || meta.dg_direction === "TB" ? { direction: meta.dg_direction } : {}),
     // A private diagram's export says so; anything but an absent or "false" marking keeps it private.
     ...(meta.dg_private !== undefined && meta.dg_private !== "false" ? { private: true } : {}),

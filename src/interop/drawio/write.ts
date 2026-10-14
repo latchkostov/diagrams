@@ -102,9 +102,9 @@ export function diagramToDrawio(d: DiagramFile, opts: DrawioWriteOptions = {}): 
   const lines: string[] = [];
   const groups = new Map((d.groups ?? []).map((g) => [g.id, g]));
 
-  // Root cell carries diagram-level fields (description, direction, simulations, checks).
+  // Root cell carries diagram-level fields (description, direction, simulations, checks, color).
   lines.push(
-    `        <object id="0"${attr("dg_format", d.format)}${attr("dg_description", d.description)}${attr("dg_direction", d.direction)}${attr("dg_simulations", json(d.simulations))}${attr("dg_layer_order", json(d.layerOrder))}${attr("dg_private", d.private ? "true" : undefined)}${attr("dg_checks", json(d.checks))}>`,
+    `        <object id="0"${attr("dg_format", d.format)}${attr("dg_description", d.description)}${attr("dg_color", d.color)}${attr("dg_direction", d.direction)}${attr("dg_simulations", json(d.simulations))}${attr("dg_layer_order", json(d.layerOrder))}${attr("dg_private", d.private ? "true" : undefined)}${attr("dg_checks", json(d.checks))}>`,
     `          <mxCell />`,
     `        </object>`,
     `        <mxCell id="1" parent="0" />`,

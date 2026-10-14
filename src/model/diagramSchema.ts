@@ -68,6 +68,11 @@ function diagramSchema() {
       },
       title: str(200),
       description: str(2000),
+      color: {
+        type: "string",
+        pattern: `^(${ANNOTATION_COLOR_IDS.join("|")}|#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8}))$`,
+        description: "Background canvas tint colour (hex or predefined annotation color id).",
+      },
       direction: { type: "string", enum: ["LR", "TB"], default: "LR", description: "Main flow direction." },
       nodes: { type: "array", items: { $ref: "#/$defs/Node" } },
       edges: { type: "array", items: { $ref: "#/$defs/Edge" } },

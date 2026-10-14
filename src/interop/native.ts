@@ -3,7 +3,7 @@ import { propsProblem, SIM_LIMITS, unsupportedPreset, invalidPlanningDelay } fro
 
 // The simulation settings' bounds, for the editors that share this chunk (the inspector, the Inputs panel).
 export { SIM_LIMITS };
-import { ANNOTATION_LIMITS, normalizeAnnotation } from "../model/annotations";
+import { ANNOTATION_LIMITS, isColorValue, normalizeAnnotation } from "../model/annotations";
 import type { DiagramAnnotation } from "../model/types";
 import { isDependency, isEdgeRelation, isRelationOrigin, sanitizeSettings } from "../model/relations";
 import { sanitizeChecks } from "../model/checks";
@@ -183,6 +183,12 @@ export function validateDiagram(data: unknown): NativeResult {
   if (typeof d.title !== "string" || !d.title.trim())
     d.title = typeof d.title === "number" ? String(d.title) : "Untitled diagram";
   if (d.description !== undefined && typeof d.description !== "string") delete d.description;
+  if (d.color !== undefined) {
+    if (typeof d.color !== "string" || !isColorValue(d.color)) {
+      warnings.push(`Unknown diagram colour "${String(d.color)}" was ignored.`);
+      delete d.color;
+    }
+  }
   // Fails closed: any "private" that isn't plainly true or false keeps the diagram private.
   if (d.private === false) delete d.private;
   else if (d.private !== undefined && d.private !== true) {
@@ -666,6 +672,7 @@ const KNOWN_TOP = new Set([
   "format",
   "title",
   "description",
+  "color",
   "direction",
   "groups",
   "nodes",

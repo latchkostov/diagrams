@@ -56,6 +56,18 @@ describe("native format validation", () => {
     expect(r.warnings.length).toBeGreaterThanOrEqual(4);
   });
 
+  it("validates diagram color and warns on invalid values", () => {
+    const valid = validateDiagram({ ...base, color: "blue" });
+    expect(valid.ok && valid.diagram.color).toBe("blue");
+
+    const validHex = validateDiagram({ ...base, color: "#10b981" });
+    expect(validHex.ok && validHex.diagram.color).toBe("#10b981");
+
+    const invalid = validateDiagram({ ...base, color: "not-a-color" });
+    expect(invalid.ok && invalid.diagram.color).toBeUndefined();
+    expect(invalid.ok && invalid.warnings.some((w) => w.includes("Unknown diagram colour"))).toBe(true);
+  });
+
   it("keeps unknown fields", () => {
     const r = validateDiagram({ ...base, theme: "neon", nodes: [{ ...base.nodes[0], owner: "team-a" }] });
     expect(r.ok && (r.diagram as unknown as Record<string, unknown>).theme).toBe("neon");

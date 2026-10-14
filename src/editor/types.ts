@@ -35,7 +35,7 @@ export interface Selection {
 
 /** Diagram-level fields. `simulations` is here so the simulation UI gets undo + autosave for free. */
 export type DiagramMetaPatch = Partial<
-  Pick<DiagramFile, "title" | "description" | "direction" | "simulations" | "checks" | "planning">
+  Pick<DiagramFile, "title" | "description" | "color" | "direction" | "simulations" | "checks" | "planning">
 >;
 
 export interface EditOptions {

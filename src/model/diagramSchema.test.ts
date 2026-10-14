@@ -117,6 +117,7 @@ const file: Required<DiagramFile> = {
   planning: { revision: "p1" },
   title: "Everything",
   description: "Every field the format has.",
+  color: "#3B82F6",
   direction: "TB",
   groups: [group],
   nodes: [node, { id: "config", stencil: "azure.app-config", label: "Config", x: 400, y: 80 }],
@@ -145,6 +146,12 @@ describe("diagram.v1 schema", () => {
     expect(() => check({ ...annotation, color: "#3B82F6" }, "Annotation")).not.toThrow();
     expect(() => check({ ...annotation, color: "#fff" }, "Annotation")).not.toThrow();
     expect(() => check({ ...annotation, color: "invalid-color" }, "Annotation")).toThrow(/match/);
+  });
+
+  it("validates diagram color (predefined including white, and custom hex)", () => {
+    expect(() => check({ ...file, color: "blue" })).not.toThrow();
+    expect(() => check({ ...file, color: "#10b981" })).not.toThrow();
+    expect(() => check({ ...file, color: "invalid-color" })).toThrow(/match/);
   });
 
   it("describes checks: rules turned off and findings ignored, bounded", () => {

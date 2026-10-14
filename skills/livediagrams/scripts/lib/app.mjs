@@ -252,6 +252,7 @@ var HEX_COLOR_REGEX = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
 var isHexColor = (v) => typeof v === "string" && HEX_COLOR_REGEX.test(v);
 var finite = (v) => typeof v === "number" && Number.isFinite(v);
 var member = (list, v) => typeof v === "string" && list.some((s) => s === v);
+var isColorValue = (v) => member(ANNOTATION_COLOR_IDS, v) || isHexColor(v);
 var isObject = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 /** Pure normalization for every untrusted annotation. Never mutates the input or asserts its type. */
 function normalizeAnnotation(value, usedIds = /* @__PURE__ */ new Set(), warn = () => {}) {
@@ -295,8 +296,7 @@ function normalizeAnnotation(value, usedIds = /* @__PURE__ */ new Set(), warn = 
 	delete out.color;
 	delete out.textSize;
 	if (kind === "shape" && member(ANNOTATION_SHAPES, a.shape)) out.shape = a.shape;
-	if (member(ANNOTATION_COLOR_IDS, a.color)) out.color = a.color;
-	else if (isHexColor(a.color)) out.color = a.color;
+	if (isColorValue(a.color)) out.color = a.color;
 	if (member(ANNOTATION_TEXT_SIZES, a.textSize)) out.textSize = a.textSize;
 	return out;
 }
@@ -654,6 +654,12 @@ function validateDiagram(data) {
 	};
 	if (typeof d.title !== "string" || !d.title.trim()) d.title = typeof d.title === "number" ? String(d.title) : "Untitled diagram";
 	if (d.description !== void 0 && typeof d.description !== "string") delete d.description;
+	if (d.color !== void 0) {
+		if (typeof d.color !== "string" || !isColorValue(d.color)) {
+			warnings.push(`Unknown diagram colour "${String(d.color)}" was ignored.`);
+			delete d.color;
+		}
+	}
 	if (d.private === false) delete d.private;
 	else if (d.private !== void 0 && d.private !== true) {
 		warnings.push(`"private" should be true or false; the diagram was kept private.`);
