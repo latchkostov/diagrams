@@ -1,3 +1,4 @@
+import { t, msg } from "../../i18n";
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { actionRegistry, type Action } from "../../editor/actions";
 import { matches } from "../../editor/shortcuts";
@@ -9,7 +10,7 @@ import { AI_PANEL_COMBO, OPEN_AI_PANEL, aiPanelTitle, buildWithAi, openAiPanel, 
 import { aiDock, RAIL_WIDTH, clampWidth, collapseDock, useAiDock } from "./dock";
 import { forgetLegacyAiKeys } from "./legacy";
 import { railLabel, unseen, useUnseen } from "./unseen";
-import { lazyComponent, LOAD_FAILED, whenIdle } from "../../lib/lazyLoad";
+import { lazyComponent, whenIdle } from "../../lib/lazyLoad";
 
 // The app shell's only AI code, kept small because it's in the main bundle: the dock's frame (the slim
 // rail, or the column the AI panel loads into), the shortcut, and the menu entries. The panel, the AI
@@ -22,13 +23,13 @@ const AiPanel = /* @__PURE__ */ lazyComponent(
   (_, { failed, retry }) =>
     failed ? (
       <div className="ai-dock-loading ai-dock-failed" role="alert" data-testid="ai-panel-load-error">
-        <p>{LOAD_FAILED}</p>
+        <p>{t("ai.loadFailed")}</p>
         <div>
           <button className="btn" onClick={collapseDock} data-testid="ai-panel-load-close">
-            Close
+            {t("ai.close")}
           </button>
           <button className="btn btn-primary" onClick={retry} data-testid="ai-panel-load-retry">
-            Retry
+            {t("ai.retry")}
           </button>
         </div>
       </div>
@@ -61,6 +62,7 @@ export function AiMount({
   presenting: boolean;
   onNewDiagram: () => void;
 }) {
+  // App subscribes to the locale and renders this shell; the lazy panel subscribes independently.
   const host = useSyncExternalStore(paletteHost.subscribe, paletteHost.get);
   const canvas = view === "canvas" ? host.canvas : null;
   const dock = useAiDock();
@@ -130,7 +132,7 @@ export function AiMount({
           targets: ["canvas"],
           modes: ["edit", "live"],
           order: 110,
-          label: "AI panel",
+          label: msg("ai.aIPanel"),
           icon: "ai",
           shortcut: AI_PANEL_COMBO,
           run: () => openAiPanel(),
@@ -172,7 +174,7 @@ export function AiMount({
             <AiPanel key={canvas?.documentId ?? "none"} request={request} />
           </div>
         ) : (
-          <aside className="ai-rail" aria-label="AI panel" data-testid="ai-rail">
+          <aside className="ai-rail" aria-label={t("ai.aIPanel")} data-testid="ai-rail">
             <button
               className="ai-rail-btn"
               onClick={() => openAiPanel()}
@@ -209,11 +211,11 @@ function aiToolActions(newDiagram: () => void): Action[] {
       targets: ["node", "edge", "selection"],
       modes: ["edit", "live"],
       order: 190,
-      label: "Copy for AI",
+      label: msg("ai.copyForAI"),
       icon: "ai",
       // Off (and saying why) on a private diagram. A local-only example's says so when chosen.
       enabled: () => privacyOf(paletteHost.get().canvas) !== "private",
-      hint: () => (privacyOf(paletteHost.get().canvas) === "private" ? "Private" : undefined),
+      hint: () => (privacyOf(paletteHost.get().canvas) === "private" ? t("ai.private") : undefined),
       // Loaded on use: the main bundle stays small.
       run: (ctx) =>
         void import("./copyForAi").then((m) =>
@@ -225,7 +227,7 @@ function aiToolActions(newDiagram: () => void): Action[] {
       section: "file",
       targets: ["canvas"],
       paletteOnly: true,
-      label: "Build with AI…",
+      label: msg("ai.buildWithAI"),
       icon: "ai",
       run: () => buildWithAi(newDiagram),
     },

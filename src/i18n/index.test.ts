@@ -70,6 +70,9 @@ describe("t", () => {
     t("file.libraryCount", { count: "3" });
     // @ts-expect-error: a plain message takes no values.
     t("file.new", { count: 1 });
+    t("ai.opsReady", { count: 1 });
+    // @ts-expect-error: a count reused as a plain argument inside its plural is still numeric.
+    t("ai.opsReady", { count: "1" });
   });
 
   it("types: no unknown keys, and a message with tags only through tRich", () => {

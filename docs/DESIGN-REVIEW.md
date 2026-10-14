@@ -3658,3 +3658,16 @@ count words and number presentation match the previous English. No controls, foc
 were added. Historical singular wording stays for compatibility; a grammar change belongs in a deliberate
 copy update. The precision-helper suggestion was applied: English traffic values retain their original
 string interpolation, including small rates and fractional minutes. This review did not inspect the browser.
+
+## AI and keyboard localization — 2026-10-14
+
+Source review and production-browser checks cover the dock, idle help, tool-help disclosure, Advanced,
+dictation notices, on-device controls and conversation actions. No controls or focus targets were added;
+Advanced and the existing scrollable conversation keep their places. German, Finnish, Arabic and the
+pseudo-locale fit at 1280 × 800. The panel subtitle and menu titles wrap when labels grow. Arabic mirrors
+the dock, microphone and disclosure arrows while keyboard combinations stay left to right.
+
+The English audit retains original punctuation, list separators, ungrouped counts and historical Mac
+prose hints. Shortcut matching, agent prompts, schemas and tool results are unchanged. Requests,
+dictation and pasted replies work during a pending or failed catalog request, and switching language
+keeps a dictation session and its draft. Translation catalogs remain marked as machine-translated.

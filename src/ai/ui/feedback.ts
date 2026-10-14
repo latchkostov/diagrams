@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 // What every AI change shows once applied: a toast with Undo and a brief highlight of what changed.
 // Shared by the AI panel and the WebMCP tools.
 
@@ -114,11 +115,11 @@ export function showApplied(
   { turnUndo, reveal }: AppliedFeedback,
 ): void {
   if (typeof document === "undefined") return;
-  if (turnUndo && panelShown()) announce(`AI: ${summary}`);
+  if (turnUndo && panelShown()) announce(t("ai.appliedSummary", { summary }));
   else {
-    const id = notify(`AI: ${summary}`, {
+    const id = notify(t("ai.appliedSummary", { summary }), {
       kind: "success",
-      action: { label: "Undo", run: () => editor.undo(), testId: "ai-toast-undo", undoes: true },
+      action: { label: t("ai.undo"), run: () => editor.undo(), testId: "ai-toast-undo", undoes: true },
     });
     appliedToast = turnUndo ? id : undefined;
   }

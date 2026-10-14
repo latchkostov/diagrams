@@ -1,3 +1,4 @@
+import { t, msg, useLocale } from "../../i18n";
 import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { Icon } from "../../components/Icon";
 import type { TurnRecord } from "../ui/commitTurn";
@@ -13,10 +14,10 @@ import { useOnDeviceRequest } from "./useOnDeviceRequest";
 // the person turned it on in Advanced). Enter sends; the model's ops land as one turn with Undo, like an
 // agent's change. The model runs on this device: no key, no server. Dictation says where it runs.
 
-const STATUS: Record<OnDeviceStatus, string> = {
-  thinking: "Thinking…",
-  retrying: "Checking and trying again…",
-  applying: "Applying…",
+const STATUS: Record<OnDeviceStatus, () => string> = {
+  thinking: msg("ai.thinking"),
+  retrying: msg("ai.checkingAndTryingAgain"),
+  applying: msg("ai.applying"),
 };
 
 export default function OnDeviceInput({
@@ -40,6 +41,7 @@ export default function OnDeviceInput({
   scope: readonly ScopeItem[];
   onTurn: (turn: TurnRecord) => void;
 }) {
+  useLocale();
   const id = useId();
   const blocked = live || localOnly || !documentId;
   const [request, setRequest] = useState("");
@@ -86,7 +88,7 @@ export default function OnDeviceInput({
       await primedSession((loaded) => setProgress(loaded));
       onAvailability("available");
     } catch (err) {
-      setError(`The model didn't download. ${err instanceof Error ? err.message : ""}`.trim());
+      setError(t("ai.downloadFailed", { error: err instanceof Error ? err.message : "" }).trim());
     } finally {
       setProgress(null);
     }
@@ -118,15 +120,15 @@ export default function OnDeviceInput({
   };
 
   const placeholder = localOnly
-    ? "AI is off for this local-only diagram"
+    ? t("ai.aIIsOffForThisLocalOnly")
     : live
-      ? "Back to editing to change the diagram"
-      : "Describe a change…";
+      ? t("ai.backToEditingToChangeTheDiagram")
+      : t("ai.describeAChange");
 
   return (
     <section
       className="ai-ondevice"
-      aria-label="On-device model"
+      aria-label={t("ai.onDeviceModel")}
       data-testid="ai-ondevice"
       data-state={availability}
       onKeyDownCapture={onKeyDownCapture}
@@ -140,32 +142,33 @@ export default function OnDeviceInput({
               disabled={localOnly}
               data-testid="ai-ondevice-download"
             >
-              <Icon name="download" size={14} /> Download the on-device model
+              <Icon name="download" size={14} />
+              {t("ai.downloadTheOnDeviceModel")}
             </button>
           ) : (
             <div className="ai-ondevice-progress" data-testid="ai-ondevice-progress">
-              <span>Downloading the on-device model… {Math.round(progress * 100)}%</span>
+              <span>{t("ai.downloadPercent", { percent: Math.round(progress * 100) })}</span>
               <progress
                 max={1}
                 value={progress}
-                aria-label="Download progress"
+                aria-label={t("ai.downloadProgress")}
                 data-testid="ai-ondevice-progress-bar"
               />
             </div>
           )}
-          <p className="ai-ondevice-note">One-time download from Chrome. It then runs on this device.</p>
+          <p className="ai-ondevice-note">{t("ai.oneTimeDownloadFromChromeItThen")}</p>
         </div>
       ) : (
         <>
           {scope.length > 0 && !blocked && (
             <p className="ai-ondevice-scope" data-testid="ai-ondevice-scope">
               <Icon name="select-all" size={12} />
-              <span>{scope.length === 1 ? scope[0].label : `${scope.length} selected`}</span>
+              <span>{scope.length === 1 ? scope[0].label : t("ai.selected", { count: scope.length })}</span>
             </p>
           )}
           <DictationField
             id={`${id}-ondevice`}
-            label="Describe a change"
+            label={t("ai.describeAChange2")}
             inputRef={inputRef}
             value={request}
             onChange={(v) => {
@@ -181,17 +184,19 @@ export default function OnDeviceInput({
               input: "ai-ondevice-input",
               mic: "ai-ondevice-mic",
               interim: "ai-ondevice-interim",
+              // eslint-disable-next-line local/no-literal-ui-text -- a test id, not display text
               message: "ai-ondevice-dictation-message",
               service: "ai-ondevice-speech-service",
             }}
           />
           <div className="ai-composer-row">
             <span className="ai-hint" role="status" data-testid="ai-ondevice-status">
-              {busy && status ? STATUS[status] : "Runs on this device with Chrome's built-in model"}
+              {busy && status ? STATUS[status]() : t("ai.runsOnThisDeviceWithChromeS")}
             </span>
             {busy ? (
               <button className="btn" onClick={cancel} data-testid="ai-ondevice-stop">
-                <Icon name="close" size={13} /> Stop
+                <Icon name="close" size={13} />
+                {t("ai.stop")}
               </button>
             ) : (
               <button
@@ -200,13 +205,13 @@ export default function OnDeviceInput({
                 disabled={blocked || !request.trim()}
                 data-testid="ai-ondevice-send"
               >
-                Send
+                {t("ai.send")}
               </button>
             )}
           </div>
           {speechLeaves && dictation.supported && !blocked && !privateDiagram && dictation.status === "idle" && (
             <p className="ai-ondevice-note" data-testid="ai-ondevice-speech-note">
-              Dictation: {speechServiceNote()}
+              {t("ai.dictationService", { notice: speechServiceNote() })}
             </p>
           )}
         </>

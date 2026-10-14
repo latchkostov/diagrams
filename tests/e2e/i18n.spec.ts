@@ -6,6 +6,20 @@ import en from "../../src/i18n/en";
 import { parse, compile } from "../../src/i18n/icu";
 import { helpersFor } from "../../src/i18n/helpers";
 import { pseudoLocalize } from "../../src/i18n/pseudo";
+import {
+  callTool,
+  fakeModel,
+  installFakeLanguageModel,
+  installFakeModelContext,
+  installFakeSpeech,
+  modelReply,
+  nodeCount,
+  openAdvanced,
+  openAiPanel,
+  speech,
+  speechState,
+  toolNames,
+} from "./ai-helpers";
 
 // Languages (docs/I18N.md, docs/DESIGN-REVIEW.md round 33): View ▸ Language… switches the converted areas at once and
 // is remembered; the browser's language is the default; Arabic mirrors the chrome but not the diagram; the
@@ -20,6 +34,171 @@ const catalog = (code: string) =>
   >;
 const de = catalog("de");
 const SLUG = "kafka-order-pipeline";
+
+for (const code of ["de", "fi", "ar", "en-XA"]) {
+  test.describe(`AI and keyboard labels in ${code}`, () => {
+    test.use({ viewport: { width: 1280, height: 800 } });
+    test.beforeEach(async ({ page }) => remember(page, code));
+    const messages = code === "en-XA" ? en : catalog(code);
+    const words = (key: keyof typeof en, values: Record<string, unknown> = {}) => {
+      const parts = parse(messages[key]);
+      const compiled = new Function("h", "return " + compile(code === "en-XA" ? pseudoLocalize(parts) : parts))(
+        helpersFor(code === "en-XA" ? "en" : code),
+      ) as string | ((values: Record<string, unknown>) => string);
+      return typeof compiled === "string" ? compiled : compiled(values);
+    };
+
+    test("AI chrome, dictation, tool help, thread and Advanced wrap", async ({ page, consoleErrors }, testInfo) => {
+      await installFakeLanguageModel(page, {
+        replies: [modelReply("Added a worker", [{ op: "add", kind: "service", label: "i18n-worker" }])],
+      });
+      await installFakeModelContext(page);
+      await installFakeSpeech(page);
+      await gotoCanvas(page, SLUG);
+      await openAiPanel(page);
+      await expect(page.getByTestId("ai-empty")).toContainText(words("ai.changeThisDiagramWithAI"));
+      await expect(page.getByTestId("ai-ondevice-send")).toHaveText(words("ai.send"));
+      await page.getByTestId("ai-tools-toggle").click();
+      await expect(page.getByTestId("ai-tool-describe_diagram")).toContainText(words("ai.tool.describeDiagram"));
+      expect(await toolNames(page)).toContain("edit_diagram");
+      await expectNothingCut(page.getByTestId("ai-panel"), `${code}: AI help`, ["ai-resize"]);
+      const read = await callTool(page, "describe_diagram");
+      expect(read.isError).toBe(false);
+      expect(read.text).toContain("Inventory service");
+
+      await openAdvanced(page);
+      await expect(page.getByTestId("ai-copy-prompt")).toContainText(words("ai.copyPrompt"));
+      await expect(page.getByTestId("ai-reply")).toHaveAttribute("placeholder", words("ai.pasteTheReply"));
+      await page.getByTestId("ai-mic").click();
+      await expect(page.getByTestId("ai-mic")).toHaveAttribute("data-status", "listening");
+      await expect(page.getByTestId("ai-speech-service")).toHaveText(words("ai.speechGoogle"));
+      await speech(page, "result", [["add a worker", true]]);
+      await expect(page.getByTestId("ai-request")).toHaveValue("Add a worker");
+      await page.getByTestId("ai-mic").click();
+      await page.getByTestId("ai-reply").fill('[{"op":"add_node","kind":"service","label":"pasted-worker"}]');
+      await expect(page.getByTestId("ai-reply-status")).toHaveText(words("ai.opsReady", { count: 1 }));
+      await expectNothingCut(page.getByTestId("ai-panel"), `${code}: Advanced`, ["ai-resize"]);
+      await page.screenshot({ path: testInfo.outputPath("ai-advanced.png") });
+
+      await page.getByTestId("ai-ondevice-input").fill("Add a worker");
+      await page.getByTestId("ai-ondevice-send").click();
+      await expect(page.getByTestId("ai-turn-0")).toBeVisible();
+      await expect(page.getByTestId("ai-turn-0-undo")).toContainText(words("ai.undoThisChange"));
+      await expectNothingCut(page.getByTestId("ai-panel"), `${code}: conversation`, ["ai-resize"]);
+      expect((await fakeModel(page)).prompts[0]).toContain("Request: Add a worker");
+      await page.getByTestId("ai-clear").click();
+      await expect(page.getByTestId("ai-clear-undo")).toContainText(words("ai.undo"));
+      expectNoErrors(consoleErrors);
+    });
+
+    test("the whole shortcuts sheet fits, with native key names", async ({ page, consoleErrors }, testInfo) => {
+      await gotoCanvas(page, SLUG);
+      await page.getByTestId("canvas-wrap").focus();
+      await page.keyboard.press("?");
+      const sheet = page.getByTestId("shortcuts-dialog");
+      await expect(sheet).toContainText(words("shortcuts.live.toggle"));
+      await expect(sheet).toContainText(words("keys.shift"));
+      await expect(sheet).toContainText(words("keys.space"));
+      if (code === "de") await expect(sheet).toContainText("Strg+Umschalt+Z");
+      await expectNothingCut(sheet, `${code}: shortcuts`);
+      const box = await sheet.boundingBox();
+      if (!box) throw new Error("The shortcuts sheet has no box");
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.y + box.height).toBeLessThanOrEqual(800);
+      await page.screenshot({ path: testInfo.outputPath("shortcuts.png") });
+      await page.getByTestId("shortcuts-live").scrollIntoViewIfNeeded();
+      await expectNothingCut(sheet, `${code}: Live shortcuts`);
+      await page.screenshot({ path: testInfo.outputPath("shortcuts-live.png") });
+      expectNoErrors(consoleErrors);
+    });
+  });
+}
+
+for (const outcome of ["pending", "failed"]) {
+  test(`AI sending and dictation work while the catalog is ${outcome}`, async ({ page }) => {
+    await installFakeSpeech(page);
+    await installFakeLanguageModel(page, {
+      replies: [modelReply("Added a worker", [{ op: "add", kind: "service", label: "fallback-worker" }])],
+    });
+    await gotoCanvas(page, SLUG);
+    await openAdvanced(page);
+    const before = await nodeCount(page);
+    let release = () => {};
+    let asked = false;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route(catalogRequest("de"), async (route) => {
+      asked = true;
+      if (outcome === "pending") await held;
+      await route.abort();
+    });
+    try {
+      await openLanguage(page);
+      await page.getByTestId("language-option-de").click();
+      await expect.poll(() => asked).toBe(true);
+      if (outcome === "failed") await expect(page.getByTestId("language-failed")).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId("ai-ondevice-send")).toHaveText("Send");
+      await page.getByTestId("ai-ondevice-mic").click();
+      await expect(page.getByTestId("ai-ondevice-mic")).toHaveAttribute("data-status", "listening");
+      await speech(page, "result", [["add a worker", true]]);
+      await expect(page.getByTestId("ai-ondevice-input")).toHaveValue("Add a worker");
+      await page.getByTestId("ai-ondevice-send").click();
+      await expect(page.getByTestId("ai-turn-0")).toHaveAttribute("data-engine", "on-device");
+      expect(await nodeCount(page)).toBe(before + 1);
+      await page.getByTestId("ai-turn-0-undo").click();
+      await expect.poll(() => nodeCount(page)).toBe(before);
+      await page.getByTestId("ai-reply").fill('[{"op":"add_node","kind":"service","label":"paste-fallback"}]');
+      await page.getByTestId("ai-apply").click();
+      await expect.poll(() => nodeCount(page)).toBe(before + 1);
+    } finally {
+      release();
+    }
+  });
+}
+
+test("switching language updates the mounted AI UI without resetting dictation or the request", async ({ page }) => {
+  await installFakeSpeech(page);
+  await installFakeLanguageModel(page);
+  await gotoCanvas(page, SLUG);
+  await openAdvanced(page);
+  await page.getByTestId("ai-request").fill("Keep this draft");
+  await page.getByTestId("ai-mic").click();
+  await expect(page.getByTestId("ai-mic")).toHaveAttribute("data-status", "listening");
+  await openLanguage(page);
+  await page.getByTestId("language-option-de").click();
+  await expect(page.getByTestId("language-option-de")).toHaveAttribute("aria-checked", "true");
+  await page.getByTestId("language-done").click();
+  await expect(page.getByTestId("ai-copy-prompt")).toContainText(de["ai.copyPrompt"]);
+  await expect(page.getByTestId("ai-ondevice-send")).toHaveText(de["ai.send"]);
+  await expect(page.getByTestId("ai-speech-service")).toHaveText(de["ai.speechGoogle"]);
+  await expect(page.getByTestId("ai-request")).toHaveValue("Keep this draft");
+  expect((await speechState(page)).starts).toBe(1);
+  await page.getByTestId("ai-collapse").click();
+  await expect(page.getByTestId("ai-rail-open")).toHaveAttribute("aria-label", de["ai.aIPanel"]);
+  await expect(page.getByTestId("ai-rail-open")).toHaveAttribute("title", /Strg\+I/);
+});
+
+test("Arabic dock resize keys move its canvas-facing edge in the physical direction", async ({ page }) => {
+  await remember(page, "ar");
+  await gotoCanvas(page, SLUG);
+  await openAiPanel(page);
+  await waitForStableBox(page.getByTestId("ai-dock"));
+  const before = await page.getByTestId("ai-dock").boundingBox();
+  if (!before) throw new Error("The AI dock has no box");
+  await page.getByTestId("ai-resize").press("ArrowRight");
+  await expect.poll(async () => (await page.getByTestId("ai-dock").boundingBox())?.width).toBe(before.width + 24);
+  await page.getByTestId("ai-resize").press("ArrowLeft");
+  await expect.poll(async () => (await page.getByTestId("ai-dock").boundingBox())?.width).toBe(before.width);
+});
+
+test("English mouse gestures on Mac retain their original literal modifier names", async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(navigator, "platform", { get: () => "MacIntel" }));
+  await gotoCanvas(page, SLUG);
+  await page.getByTestId("canvas-wrap").focus();
+  await page.keyboard.press("?");
+  await expect(page.getByTestId("shortcuts-mouse")).toContainText("Shift / Ctrl / ⌘ + click");
+  await expect(page.getByTestId("shortcuts-mouse")).toContainText("Ctrl / ⌘ + drag on the canvas");
+});
 
 // Each File dialog is checked independently, including its Options and password disclosures. Expectations come
 // from the real ICU catalogs: they check reordered placeholders and counts as well as plain labels.
@@ -525,8 +704,8 @@ test.describe("right to left", () => {
  * Nothing in `root` is cut off: no box whose text is wider than it with its overflow hidden, and nothing reaching
  * past `root`'s sides. What's scrolled away vertically (a long menu) is fine.
  */
-async function expectNothingCut(root: Locator, label: string) {
-  const problems = await root.evaluate((rootEl) => {
+async function expectNothingCut(root: Locator, label: string, outside: string[] = []) {
+  const problems = await root.evaluate((rootEl, allowedOutside) => {
     const out: string[] = [];
     const outer = rootEl.getBoundingClientRect();
     const name = (el: Element) =>
@@ -538,11 +717,13 @@ async function expectNothingCut(root: Locator, label: string) {
       const clips = style.overflowX === "hidden" || style.overflowX === "clip" || style.textOverflow === "ellipsis";
       if (clips && el.scrollWidth > el.clientWidth + 1 && (el.textContent ?? "").trim()) out.push(`cut: ${name(el)}`);
       const box = el.getBoundingClientRect();
+      // The AI dock's splitter straddles the canvas edge by four pixels; it has no display text.
+      if (allowedOutside.includes(el.dataset.testid ?? "")) continue;
       if (el !== rootEl && box.width > 0 && (box.right > outer.right + 1 || box.left < outer.left - 1))
         out.push(`past the edge: ${name(el)}`);
     }
     return out;
-  });
+  }, outside);
   expect(problems, label).toEqual([]);
 }
 

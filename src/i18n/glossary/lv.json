@@ -7,7 +7,8 @@
     "Topic is tēma, so the colour theme is motīvs (Gaišais motīvs), never tēma.",
     "AI is MI (mākslīgais intelekts).",
     "Plurals: zero (0, 10-20…), one (1, 21…), other.",
-    "Your diagrams is the library name Jūsu diagrammas everywhere."
+    "Your diagrams is the library name Jūsu diagrammas everywhere.",
+    "Keyboard labels follow docs/research/keyboard-key-names.md; macOS modifier keys use ⌘⌃⌥⇧. Tokens used to match key events remain English."
   ],
   "terms": {
     "topic": {
@@ -173,5 +174,17 @@
       "use": "anotācija",
       "match": ["anotācij"]
     }
+  },
+  "keys": {
+    "ctrl": "Ctrl",
+    "shift": "Shift",
+    "alt": "Alt",
+    "delete": "Del",
+    "backspace": "Backspace",
+    "escape": "Esc",
+    "enter": "Enter",
+    "tab": "Tab",
+    "space": "Atstarpe",
+    "drag": "Vilkšana"
   }
 }

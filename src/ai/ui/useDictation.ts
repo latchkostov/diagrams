@@ -1,3 +1,4 @@
+import { t, msg } from "../../i18n";
 import { useEffect, useRef, useState } from "react";
 import {
   isFatalSpeechError,
@@ -59,11 +60,20 @@ export function speechServiceOwner(ua: string = globalThis.navigator?.userAgent 
 }
 
 /** Shown by the mic every time the browser's speech service (not the device) is listening. */
-export const speechServiceNote = (ua?: string): string =>
-  `What you say may be sent to ${speechServiceOwner(ua)} speech service.`;
+export function speechServiceNote(ua?: string): string {
+  switch (speechServiceOwner(ua)) {
+    case "Google's":
+      return t("ai.speechGoogle");
+    case "Microsoft's":
+      return t("ai.speechMicrosoft");
+    case "Apple's":
+      return t("ai.speechApple");
+    default:
+      return t("ai.speechBrowser");
+  }
+}
 /** A private diagram's dictation never goes to the browser's speech service. */
-export const PRIVATE_SPEECH_NOTE =
-  "Dictation is off here: this browser would send your voice to its speech service, and this diagram is private.";
+export const PRIVATE_SPEECH_NOTE = msg("ai.dictationIsOffHereThisBrowserWould");
 
 type Message = { tone: "info" | "error"; text: string } | null;
 
@@ -133,7 +143,7 @@ function createSession(Ctor: RecognitionCtor, ui: Ui, onDeviceOnly: () => boolea
       // An on-device pack can go missing: fall back to the browser's service (restarts on end).
       if (kind === "language" && local && onDeviceOnly()) {
         wanted = false;
-        ui.message({ tone: "info", text: PRIVATE_SPEECH_NOTE });
+        ui.message({ tone: "info", text: PRIVATE_SPEECH_NOTE() });
         return;
       }
       if (kind === "language" && local) {
@@ -155,7 +165,7 @@ function createSession(Ctor: RecognitionCtor, ui: Ui, onDeviceOnly: () => boolea
       restarts = [...restarts.filter((t) => now - t < 4000), now];
       if (restarts.length > 4) {
         idle();
-        ui.message({ tone: "error", text: "Dictation keeps stopping. Try again in a moment." });
+        ui.message({ tone: "error", text: t("ai.dictationKeepsStoppingTryAgainInA") });
         return;
       }
       open();
@@ -196,7 +206,7 @@ function createSession(Ctor: RecognitionCtor, ui: Ui, onDeviceOnly: () => boolea
         if (!wanted || token !== generation) return;
         if (!isLocal && onDeviceOnly()) {
           idle();
-          ui.message({ tone: "info", text: PRIVATE_SPEECH_NOTE });
+          ui.message({ tone: "info", text: PRIVATE_SPEECH_NOTE() });
           return;
         }
         local = isLocal;

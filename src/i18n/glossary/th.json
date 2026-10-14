@@ -6,7 +6,8 @@
     "No spaces between words inside a phrase; a space separates phrases and clauses, and surrounds Latin words and placeholders.",
     "No full stop at the end of a sentence (Thai UIs don't use one); keep ? on confirmations, the ellipsis … and the · separator.",
     "Buttons are plain verbs as in Microsoft and Google Thai UIs (บันทึก, เปิด, ปิด, ยกเลิก).",
-    "Developers keep topic, dead-letter queue, offset, backlog, consumer group and throughput in English; other technical words are transliterated (โหนด, แคช, เกตเวย์)."
+    "Developers keep topic, dead-letter queue, offset, backlog, consumer group and throughput in English; other technical words are transliterated (โหนด, แคช, เกตเวย์).",
+    "Keyboard labels follow docs/research/keyboard-key-names.md; macOS modifier keys use ⌘⌃⌥⇧. Tokens used to match key events remain English."
   ],
   "terms": {
     "topic": {
@@ -15,33 +16,97 @@
       "match": ["topic"],
       "note": "Kept in English as Thai Kafka developers write it; หัวข้อ reads as a heading."
     },
-    "queue": { "use": "คิว", "match": ["คิว", "queue"] },
-    "consumer": { "use": "คอนซูเมอร์", "keepEnglish": true, "match": ["คอนซูเมอร์", "consumer"] },
-    "consumer group": { "use": "consumer group", "keepEnglish": true, "match": ["consumer group"] },
-    "producer": { "use": "โปรดิวเซอร์", "keepEnglish": true, "match": ["โปรดิวเซอร์", "producer"] },
-    "partition": { "use": "พาร์ติชัน", "keepEnglish": true, "match": ["พาร์ติชัน", "partition"] },
-    "broker": { "use": "โบรกเกอร์", "keepEnglish": true, "match": ["โบรกเกอร์", "broker"] },
+    "queue": {
+      "use": "คิว",
+      "match": ["คิว", "queue"]
+    },
+    "consumer": {
+      "use": "คอนซูเมอร์",
+      "keepEnglish": true,
+      "match": ["คอนซูเมอร์", "consumer"]
+    },
+    "consumer group": {
+      "use": "consumer group",
+      "keepEnglish": true,
+      "match": ["consumer group"]
+    },
+    "producer": {
+      "use": "โปรดิวเซอร์",
+      "keepEnglish": true,
+      "match": ["โปรดิวเซอร์", "producer"]
+    },
+    "partition": {
+      "use": "พาร์ติชัน",
+      "keepEnglish": true,
+      "match": ["พาร์ติชัน", "partition"]
+    },
+    "broker": {
+      "use": "โบรกเกอร์",
+      "keepEnglish": true,
+      "match": ["โบรกเกอร์", "broker"]
+    },
     "dead-letter queue": {
       "use": "dead-letter queue",
       "keepEnglish": true,
       "match": ["dead-letter queue", "dlq"],
       "note": "Never a literal 'dead letter'."
     },
-    "throughput": { "use": "throughput", "keepEnglish": true, "match": ["throughput"] },
-    "latency": { "use": "เวลาแฝง", "match": ["เวลาแฝง", "latency"] },
-    "replica": { "use": "เรพลิกา", "keepEnglish": true, "match": ["เรพลิกา", "replica"] },
+    "throughput": {
+      "use": "throughput",
+      "keepEnglish": true,
+      "match": ["throughput"]
+    },
+    "latency": {
+      "use": "เวลาแฝง",
+      "match": ["เวลาแฝง", "latency"]
+    },
+    "replica": {
+      "use": "เรพลิกา",
+      "keepEnglish": true,
+      "match": ["เรพลิกา", "replica"]
+    },
     "load balancer": {
       "use": "ตัวจัดสรรภาระงาน",
       "match": ["ตัวจัดสรรภาระงาน", "load balancer"]
     },
-    "gateway": { "use": "เกตเวย์", "keepEnglish": true, "match": ["เกตเวย์", "gateway"] },
-    "cache": { "use": "แคช", "keepEnglish": true, "match": ["แคช", "cache"] },
-    "message": { "use": "ข้อความ", "match": ["ข้อความ"] },
-    "event": { "use": "อีเวนต์", "keepEnglish": true, "match": ["อีเวนต์", "event"] },
-    "subscription": { "use": "ซับสคริปชัน", "keepEnglish": true, "match": ["ซับสคริปชัน", "subscription"] },
-    "offset": { "use": "offset", "keepEnglish": true, "match": ["offset"] },
-    "backlog": { "use": "backlog", "keepEnglish": true, "match": ["backlog"] },
-    "retry": { "use": "ลองอีกครั้ง", "match": ["ลองอีกครั้ง", "ลองใหม่"] },
+    "gateway": {
+      "use": "เกตเวย์",
+      "keepEnglish": true,
+      "match": ["เกตเวย์", "gateway"]
+    },
+    "cache": {
+      "use": "แคช",
+      "keepEnglish": true,
+      "match": ["แคช", "cache"]
+    },
+    "message": {
+      "use": "ข้อความ",
+      "match": ["ข้อความ"]
+    },
+    "event": {
+      "use": "อีเวนต์",
+      "keepEnglish": true,
+      "match": ["อีเวนต์", "event"]
+    },
+    "subscription": {
+      "use": "ซับสคริปชัน",
+      "keepEnglish": true,
+      "match": ["ซับสคริปชัน", "subscription"]
+    },
+    "offset": {
+      "use": "offset",
+      "keepEnglish": true,
+      "match": ["offset"]
+    },
+    "backlog": {
+      "use": "backlog",
+      "keepEnglish": true,
+      "match": ["backlog"]
+    },
+    "retry": {
+      "use": "ลองอีกครั้ง",
+      "match": ["ลองอีกครั้ง", "ลองใหม่"]
+    },
     "diagram": {
       "use": "ไดอะแกรม",
       "keepEnglish": true,
@@ -49,26 +114,93 @@
       "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"],
       "note": "Diagrams in these cloud errors is the existing folder name."
     },
-    "node": { "use": "โหนด", "keepEnglish": true, "match": ["โหนด"] },
+    "node": {
+      "use": "โหนด",
+      "keepEnglish": true,
+      "match": ["โหนด"]
+    },
     "edge": {
       "use": "เส้นเชื่อม",
       "match": ["เส้นเชื่อม"],
       "except": ["shortcuts.mouse.boundary"],
       "note": "The line between two nodes. In shortcuts.mouse.boundary 'edge' is the boundary's rim (ขอบ)."
     },
-    "stencil": { "use": "สเตนซิล", "keepEnglish": true, "match": ["สเตนซิล"] },
-    "boundary": { "use": "ขอบเขต", "match": ["ขอบเขต"], "avoid": ["กลุ่ม"], "note": "Never 'group' (กลุ่ม)." },
-    "simulation": { "use": "การจำลอง", "match": ["จำลอง"] },
-    "live": { "use": "ไลฟ์", "keepEnglish": true, "match": ["ไลฟ์", "live"] },
-    "present": { "use": "นำเสนอ", "match": ["นำเสนอ"], "note": "As PowerPoint's Thai UI." },
-    "embed": { "use": "ฝัง", "match": ["ฝัง"], "note": "Microsoft's Thai word; การฝัง for the noun." },
-    "share link": { "use": "ลิงก์แชร์", "match": ["ลิงก์แชร์", "แชร์ลิงก์"] },
-    "export": { "use": "ส่งออก", "match": ["ส่งออก"] },
-    "import": { "use": "นำเข้า", "match": ["นำเข้า"] },
-    "private": { "use": "ส่วนตัว", "match": ["ส่วนตัว"], "avoid": ["ลับ"] },
-    "this device": { "use": "อุปกรณ์นี้", "match": ["อุปกรณ์นี้"], "avoid": ["คอมพิวเตอร์", "ดิสก์"] },
-    "capacity": { "use": "ความจุ", "match": ["ความจุ"] },
-    "checks": { "use": "การตรวจสอบ", "match": ["ตรวจสอบ"], "avoid": ["ข้อผิดพลาด"] },
-    "annotation": { "use": "คำอธิบายประกอบ", "match": ["คำอธิบายประกอบ"] }
+    "stencil": {
+      "use": "สเตนซิล",
+      "keepEnglish": true,
+      "match": ["สเตนซิล"]
+    },
+    "boundary": {
+      "use": "ขอบเขต",
+      "match": ["ขอบเขต"],
+      "avoid": ["กลุ่ม"],
+      "note": "Never 'group' (กลุ่ม)."
+    },
+    "simulation": {
+      "use": "การจำลอง",
+      "match": ["จำลอง"]
+    },
+    "live": {
+      "use": "ไลฟ์",
+      "keepEnglish": true,
+      "match": ["ไลฟ์", "live"]
+    },
+    "present": {
+      "use": "นำเสนอ",
+      "match": ["นำเสนอ"],
+      "note": "As PowerPoint's Thai UI."
+    },
+    "embed": {
+      "use": "ฝัง",
+      "match": ["ฝัง"],
+      "note": "Microsoft's Thai word; การฝัง for the noun."
+    },
+    "share link": {
+      "use": "ลิงก์แชร์",
+      "match": ["ลิงก์แชร์", "แชร์ลิงก์"]
+    },
+    "export": {
+      "use": "ส่งออก",
+      "match": ["ส่งออก"]
+    },
+    "import": {
+      "use": "นำเข้า",
+      "match": ["นำเข้า"]
+    },
+    "private": {
+      "use": "ส่วนตัว",
+      "match": ["ส่วนตัว"],
+      "avoid": ["ลับ"]
+    },
+    "this device": {
+      "use": "อุปกรณ์นี้",
+      "match": ["อุปกรณ์นี้"],
+      "avoid": ["คอมพิวเตอร์", "ดิสก์"]
+    },
+    "capacity": {
+      "use": "ความจุ",
+      "match": ["ความจุ"]
+    },
+    "checks": {
+      "use": "การตรวจสอบ",
+      "match": ["ตรวจสอบ"],
+      "avoid": ["ข้อผิดพลาด"]
+    },
+    "annotation": {
+      "use": "คำอธิบายประกอบ",
+      "match": ["คำอธิบายประกอบ"]
+    }
+  },
+  "keys": {
+    "ctrl": "Ctrl",
+    "shift": "Shift",
+    "alt": "Alt",
+    "delete": "Del",
+    "backspace": "Backspace",
+    "escape": "Esc",
+    "enter": "Enter",
+    "tab": "Tab",
+    "space": "เว้นวรรค",
+    "drag": "ลาก"
   }
 }

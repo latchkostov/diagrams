@@ -1,3 +1,4 @@
+import { t, useLocale } from "../../i18n";
 import type { CSSProperties } from "react";
 import { Icon } from "../../components/Icon";
 import { StencilIcon } from "../../components/StencilIcon";
@@ -31,6 +32,7 @@ export function Tile({ stencil, size }: { stencil: Stencil; size: number }) {
 
 /** A stencil the app wasn't sure of, with its alternatives one click away (shown while its node is current). */
 export function ChoiceRow({ choice, onSwap }: { choice: StencilChoice; onSwap: (stencilId: string) => void }) {
+  useLocale();
   const s = getStencil(choice.stencil.id);
   const sure = choice.stencil.confidence === "high";
   return (
@@ -42,16 +44,16 @@ export function ChoiceRow({ choice, onSwap }: { choice: StencilChoice; onSwap: (
           {!sure && (
             <>
               {" "}
-              for “{choice.kind}”{" "}
+              {t("ai.choiceFor", { kind: choice.kind })}{" "}
               <span className={`ai-confidence is-${choice.stencil.confidence}`}>
-                {choice.stencil.confidence === "low" ? "a guess" : "not sure"}
+                {choice.stencil.confidence === "low" ? t("ai.aGuess") : t("ai.notSure")}
               </span>
             </>
           )}
         </span>
       </span>
       {choice.stencil.alternatives.length > 0 && (
-        <span className="ai-choice-alts" role="group" aria-label={`Other stencils for ${choice.kind}`}>
+        <span className="ai-choice-alts" role="group" aria-label={t("ai.otherStencils", { kind: choice.kind })}>
           {choice.stencil.alternatives.slice(0, 3).map((id) => {
             const alt = getStencil(id);
             return (
@@ -59,8 +61,8 @@ export function ChoiceRow({ choice, onSwap }: { choice: StencilChoice; onSwap: (
                 key={id}
                 className="ai-alt"
                 onClick={() => onSwap(id)}
-                title={`Use ${alt.label} (${alt.vendor})`}
-                aria-label={`Use ${alt.label}`}
+                title={t("ai.useStencilVendor", { label: alt.label, vendor: alt.vendor })}
+                aria-label={t("ai.useStencil", { label: alt.label })}
                 data-testid={`ai-swap-${choice.nodeId}-${id}`}
                 data-node={choice.nodeId}
                 data-stencil={id}
@@ -90,6 +92,7 @@ export function FailureBox({
   fixOff?: boolean;
   onChoose: (id: string) => void;
 }) {
+  useLocale();
   const { error } = failure;
   const canPick = !!failure.ops && !!(error.ref ?? failedRef(error.error));
   const candidates = error.candidates?.slice(0, 8) ?? [];
@@ -98,19 +101,19 @@ export function FailureBox({
       <p className="ai-failure-title">
         <Icon name="info" size={14} />
         <span>
-          Nothing was applied.{" "}
+          {t("ai.nothingWasApplied")}{" "}
           {error.i >= 0 && failure.ops ? (
-            <>
-              Op {error.i + 1} of {failure.ops.length}:{" "}
-            </>
+            <>{t("ai.operationIndex", { index: error.i + 1, count: failure.ops.length })} </>
           ) : null}
-          <span data-testid="ai-error-message">{error.error}</span>
+          <span data-testid="ai-error-message">
+            {error.error === "The reply didn't change anything." ? t("ai.theReplyDidnTChangeAnything") : error.error}
+          </span>
         </span>
       </p>
       {candidates.length > 0 && (
         <div className="ai-candidates">
           <p className="ai-candidates-label">
-            {canPick ? "Did you mean one of these? Pick one to apply." : "Elements it could mean:"}
+            {canPick ? t("ai.didYouMeanOneOfThesePick") : t("ai.elementsItCouldMean")}
           </p>
           <ul data-testid="ai-candidates">
             {candidates.map((c) => {
@@ -143,14 +146,18 @@ export function FailureBox({
           </ul>
         </div>
       )}
-      {error.hint && !canPick && <p className="ai-failure-hint">{error.hint}</p>}
+      {error.hint && !canPick && (
+        <p className="ai-failure-hint">
+          {error.hint === "Check the request, or ask your AI again." ? t("ai.checkTheRequestOrAskYourAI") : error.hint}
+        </p>
+      )}
       <div className="ai-copy-row">
         <button className="btn btn-primary" onClick={onCopyFix} disabled={fixOff} data-testid="ai-copy-fix">
           <Icon name={copied ? "check" : "copy"} size={14} />
-          {copied ? "Copied" : "Copy fix-up prompt"}
+          {copied ? t("ai.copied") : t("ai.copyFixUpPrompt")}
         </button>
         <span className="ai-hint">
-          {fixOff ? "Off for this private diagram." : "Your AI corrects its reply; paste it back below."}
+          {fixOff ? t("ai.offForThisPrivateDiagram") : t("ai.yourAICorrectsItsReplyPasteIt")}
         </span>
       </div>
     </section>
@@ -162,12 +169,13 @@ export function FailureBox({
  * its own in a copy deployed without AI tools (which has no Advanced), so it can always be turned back on.
  */
 export function OnDevicePreference({ on, set }: { on: boolean; set: (on: boolean) => void }) {
+  useLocale();
   return (
     <label className="ai-ondevice-pref" data-testid="ai-ondevice-pref">
       <input type="checkbox" checked={on} onChange={(e) => set(e.target.checked)} data-testid="ai-ondevice-toggle" />
       <span>
-        Try the on-device model
-        <small>Chrome&apos;s built-in model, on this device: a request box at the panel&apos;s foot.</small>
+        {t("ai.tryTheOnDeviceModel")}
+        <small>{t("ai.chromeSBuiltInModelOnThis")}</small>
       </span>
     </label>
   );

@@ -6,35 +6,92 @@
     "Buttons and menu items in the infinitive: Guardar, Abrir, Exportar PNG; instructions in the third person (Abra, Largue).",
     "European vocabulary, never Brazilian: ficheiro, guardar, transferir, ecrã, partilhar, ligação, eliminar, anular, definições, separador, rato, palavra-passe, browser.",
     "Progressive with a + infinitive: A carregar…",
-    "Kept in English: broker, offset, gateway, cache, stencil (as Microsoft's European Portuguese Visio)."
+    "Kept in English: broker, offset, gateway, cache, stencil (as Microsoft's European Portuguese Visio).",
+    "Keyboard labels follow docs/research/keyboard-key-names.md; macOS modifier keys use ⌘⌃⌥⇧. Tokens used to match key events remain English."
   ],
   "terms": {
-    "topic": { "use": "tópico", "match": ["tópico"] },
-    "queue": { "use": "fila" },
-    "consumer": { "use": "consumidor" },
-    "consumer group": { "use": "grupo de consumidores", "match": ["grupo de consumidores", "grupos de consumidores"] },
-    "producer": { "use": "produtor" },
-    "partition": { "use": "partição", "match": ["partiç"] },
-    "broker": { "use": "broker", "keepEnglish": true },
-    "dead-letter queue": { "use": "fila de mensagens não entregues", "match": ["não entregue", "dlq"] },
-    "throughput": { "use": "débito", "match": ["débito", "throughput"] },
-    "latency": { "use": "latência" },
-    "replica": { "use": "réplica" },
-    "load balancer": { "use": "balanceador de carga", "match": ["balanceador"] },
-    "gateway": { "use": "gateway", "keepEnglish": true },
-    "cache": { "use": "cache" },
-    "message": { "use": "mensagem", "match": ["mensage"] },
-    "event": { "use": "evento" },
-    "subscription": { "use": "subscrição", "match": ["subscriç"] },
-    "offset": { "use": "offset", "keepEnglish": true },
-    "backlog": { "use": "mensagens pendentes", "match": ["pendente", "backlog"] },
-    "retry": { "use": "tentar novamente", "match": ["tentar novamente", "tentativa"] },
+    "topic": {
+      "use": "tópico",
+      "match": ["tópico"]
+    },
+    "queue": {
+      "use": "fila"
+    },
+    "consumer": {
+      "use": "consumidor"
+    },
+    "consumer group": {
+      "use": "grupo de consumidores",
+      "match": ["grupo de consumidores", "grupos de consumidores"]
+    },
+    "producer": {
+      "use": "produtor"
+    },
+    "partition": {
+      "use": "partição",
+      "match": ["partiç"]
+    },
+    "broker": {
+      "use": "broker",
+      "keepEnglish": true
+    },
+    "dead-letter queue": {
+      "use": "fila de mensagens não entregues",
+      "match": ["não entregue", "dlq"]
+    },
+    "throughput": {
+      "use": "débito",
+      "match": ["débito", "throughput"]
+    },
+    "latency": {
+      "use": "latência"
+    },
+    "replica": {
+      "use": "réplica"
+    },
+    "load balancer": {
+      "use": "balanceador de carga",
+      "match": ["balanceador"]
+    },
+    "gateway": {
+      "use": "gateway",
+      "keepEnglish": true
+    },
+    "cache": {
+      "use": "cache"
+    },
+    "message": {
+      "use": "mensagem",
+      "match": ["mensage"]
+    },
+    "event": {
+      "use": "evento"
+    },
+    "subscription": {
+      "use": "subscrição",
+      "match": ["subscriç"]
+    },
+    "offset": {
+      "use": "offset",
+      "keepEnglish": true
+    },
+    "backlog": {
+      "use": "mensagens pendentes",
+      "match": ["pendente", "backlog"]
+    },
+    "retry": {
+      "use": "tentar novamente",
+      "match": ["tentar novamente", "tentativa"]
+    },
     "diagram": {
       "use": "diagrama",
       "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"],
       "note": "Diagrams in these cloud errors is the existing folder name."
     },
-    "node": { "use": "nó", "match": ["nó", "nós"] },
+    "node": {
+      "use": "nó",
+      "match": ["nó", "nós"]
+    },
     "edge": {
       "use": "ligação",
       "match": ["ligaç"],
@@ -42,23 +99,75 @@
       "avoid": ["conexão", "conexões"],
       "note": "The boundary's 'edge' in shortcuts.mouse.boundary is its border (margem)."
     },
-    "stencil": { "use": "stencil", "keepEnglish": true, "avoid": ["estêncil"] },
-    "boundary": { "use": "limite" },
-    "simulation": { "use": "simulação", "match": ["simulaç"] },
-    "live": { "use": "em direto", "match": ["direto"], "avoid": ["ao vivo"] },
-    "present": { "use": "Apresentar", "match": ["apresent"] },
-    "embed": { "use": "incorporar", "match": ["incorpor"], "note": "noun: uma incorporação" },
+    "stencil": {
+      "use": "stencil",
+      "keepEnglish": true,
+      "avoid": ["estêncil"]
+    },
+    "boundary": {
+      "use": "limite"
+    },
+    "simulation": {
+      "use": "simulação",
+      "match": ["simulaç"]
+    },
+    "live": {
+      "use": "em direto",
+      "match": ["direto"],
+      "avoid": ["ao vivo"]
+    },
+    "present": {
+      "use": "Apresentar",
+      "match": ["apresent"]
+    },
+    "embed": {
+      "use": "incorporar",
+      "match": ["incorpor"],
+      "note": "noun: uma incorporação"
+    },
     "share link": {
       "use": "ligação de partilha",
       "match": ["ligação de partilha", "ligações de partilha"],
       "avoid": ["compartilhamento"]
     },
-    "export": { "use": "Exportar", "match": ["export"] },
-    "import": { "use": "Importar", "match": ["import"] },
-    "private": { "use": "privado", "match": ["privad"] },
-    "this device": { "use": "este dispositivo", "note": "also neste / deste dispositivo" },
-    "capacity": { "use": "capacidade" },
-    "checks": { "use": "verificações", "match": ["verifica"] },
-    "annotation": { "use": "anotação", "match": ["anotaç"] }
+    "export": {
+      "use": "Exportar",
+      "match": ["export"]
+    },
+    "import": {
+      "use": "Importar",
+      "match": ["import"]
+    },
+    "private": {
+      "use": "privado",
+      "match": ["privad"]
+    },
+    "this device": {
+      "use": "este dispositivo",
+      "note": "also neste / deste dispositivo"
+    },
+    "capacity": {
+      "use": "capacidade"
+    },
+    "checks": {
+      "use": "verificações",
+      "match": ["verifica"]
+    },
+    "annotation": {
+      "use": "anotação",
+      "match": ["anotaç"]
+    }
+  },
+  "keys": {
+    "ctrl": "Ctrl",
+    "shift": "Shift",
+    "alt": "Alt",
+    "delete": "Del",
+    "backspace": "Retrocesso",
+    "escape": "Esc",
+    "enter": "Enter",
+    "tab": "Tab",
+    "space": "Espaço",
+    "drag": "Arrastar"
   }
 }

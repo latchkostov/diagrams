@@ -7,7 +7,8 @@
     "Consumer is gavėjas, never vartotojas (that is user); producer is siuntėjas to pair with it.",
     "Topic is tema, so the colour theme is režimas (Šviesusis režimas), never tema.",
     "AI is DI (dirbtinis intelektas). Plurals: one (1, 21…), few (2-9, 22…), other (0, 10-20…).",
-    "Your diagrams is the library name Jūsų diagramos everywhere; a spaced en dash (–) is the dash."
+    "Your diagrams is the library name Jūsų diagramos everywhere; a spaced en dash (–) is the dash.",
+    "Keyboard labels follow docs/research/keyboard-key-names.md; macOS modifier keys use ⌘⌃⌥⇧. Tokens used to match key events remain English."
   ],
   "terms": {
     "topic": {
@@ -176,5 +177,17 @@
       "use": "anotacija",
       "match": ["anotacij"]
     }
+  },
+  "keys": {
+    "ctrl": "Ctrl",
+    "shift": "Shift",
+    "alt": "Alt",
+    "delete": "Del",
+    "backspace": "Backspace",
+    "escape": "Esc",
+    "enter": "Enter",
+    "tab": "Tab",
+    "space": "Tarpas",
+    "drag": "Vilkimas"
   }
 }

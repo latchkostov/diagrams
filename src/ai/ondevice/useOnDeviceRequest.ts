@@ -1,8 +1,8 @@
+import { msg, t } from "../../i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { EditorApi } from "../../editor/types";
 import { paletteHost } from "../../palette/host";
-import { canUseOnDevice } from "../../lib/localOnly";
-import { aiOffMessage } from "../privacy";
+import { canUseOnDevice, privacyOf } from "../../lib/localOnly";
 import { planTurn } from "../ui/apply";
 import { commitPlan, type TurnRecord } from "../ui/commitTurn";
 import { resolveScope } from "../ui/context";
@@ -15,10 +15,10 @@ import { primedSession, resetPrimedSession } from "./session";
 // and commit only if the diagram is still the one asked about, still in the editor and still allowed to
 // reach AI. Leaving the editor, another diagram or a local-only switch cancels a request in flight.
 
-export const FAILED = "Couldn't apply that. Try rephrasing.";
-export const CHANGED = "The diagram changed while the model was thinking. Send it again.";
-const TOO_BIG = "This diagram is too big for the on-device model. Select the part to change and try again.";
-const SLOW = "The on-device model took too long to answer. Try again, or ask for a smaller change.";
+export const FAILED = msg("ai.couldnTApplyThatTryRephrasing");
+export const CHANGED = msg("ai.theDiagramChangedWhileTheModelWas");
+const TOO_BIG = msg("ai.thisDiagramIsTooBigForThe");
+const SLOW = msg("ai.theOnDeviceModelTookTooLong");
 
 /** The editor, when this diagram may be read and changed by the model now; null otherwise. */
 function editable(documentId: string | undefined): EditorApi | null {
@@ -76,7 +76,8 @@ export function useOnDeviceRequest({
     const ed = editable(documentId);
     if (!ed) {
       const canvas = paletteHost.get().canvas;
-      if (!canUseOnDevice(canvas)) setError(aiOffMessage(canvas));
+      if (!canUseOnDevice(canvas))
+        setError(privacyOf(canvas) === "private" ? t("ai.privateNotice") : t("ai.localOnlyNotice"));
       return false;
     }
     const diagram = ed.getDiagram();
@@ -112,7 +113,7 @@ export function useOnDeviceRequest({
       });
       signal.throwIfAborted();
       if (!result.ok) {
-        setError(result.tooBig ? TOO_BIG : result.error === TIMED_OUT ? SLOW : FAILED);
+        setError(result.tooBig ? TOO_BIG() : result.error === TIMED_OUT ? SLOW() : FAILED());
         return false;
       }
       // Commit only into the same diagram, still in the editor, still allowed to reach AI, and with the
@@ -121,18 +122,18 @@ export function useOnDeviceRequest({
       if (!now) return false;
       const latest = now.getDiagram();
       if (!sameContent(latest, diagram)) {
-        setError(CHANGED);
+        setError(CHANGED());
         return false;
       }
       const plan = planTurn(latest, { ok: true, kind: "ops", ops: result.ops });
       if (!plan.ok || !plan.hasChanges) {
-        setError(FAILED);
+        setError(FAILED());
         return false;
       }
       onTurn(commitPlan(now, plan, { request: request.slice(0, 400), engine: "on-device", reply: result.summary }));
       return true;
     } catch (err) {
-      if (!isAbort(err) && !signal.aborted) setError(FAILED);
+      if (!isAbort(err) && !signal.aborted) setError(FAILED());
       return false;
     } finally {
       if (session && session !== base) session.destroy();

@@ -7,55 +7,182 @@
     "No suffix right after a placeholder: put the placeholder after a colon (Şuraya kaydedildi: {where}) or before a full word.",
     "\"Your diagrams\" is \"Diyagramlarınız\" everywhere; in straight quotes when named inside a sentence.",
     "topic, partition, broker, offset and API Gateway stay in English, as Turkish developers write them; producer is \"üretici\", never \"Yapımcı\".",
-    "AI is \"yapay zekâ\"."
+    "AI is \"yapay zekâ\".",
+    "Keyboard labels follow docs/research/keyboard-key-names.md; macOS modifier keys use ⌘⌃⌥⇧. Tokens used to match key events remain English."
   ],
   "terms": {
-    "topic": { "use": "topic", "keepEnglish": true, "note": "Not \"konu\" (Microsoft's machine translation)." },
-    "queue": { "use": "kuyruk", "match": ["kuyru"] },
-    "consumer": { "use": "tüketici", "match": ["tüketici"] },
-    "consumer group": { "use": "tüketici grubu", "match": ["tüketici grub", "consumer group"] },
-    "producer": { "use": "üretici", "match": ["üretici"], "avoid": ["yapımcı"], "note": "Yapımcı is a film producer." },
-    "partition": { "use": "partition", "keepEnglish": true },
-    "broker": { "use": "broker", "keepEnglish": true },
-    "dead-letter queue": { "use": "teslim edilemeyen ileti kuyruğu", "match": ["teslim edilemeyen", "dlq"] },
-    "throughput": { "use": "aktarım hızı", "match": ["aktarım hız"] },
-    "latency": { "use": "gecikme süresi", "match": ["gecikme"] },
-    "replica": { "use": "replika", "match": ["replika"] },
-    "load balancer": { "use": "yük dengeleyici", "match": ["yük dengeleyici"] },
-    "gateway": { "use": "Gateway", "keepEnglish": true, "match": ["gateway"], "note": "API Gateway." },
-    "cache": { "use": "önbellek", "match": ["önbell"] },
-    "message": { "use": "ileti", "match": ["ileti", "mesaj"], "note": "Microsoft's word, as in the DLQ name." },
-    "event": { "use": "olay", "match": ["olay"] },
-    "subscription": { "use": "abonelik", "match": ["abonel"] },
-    "offset": { "use": "offset", "keepEnglish": true },
-    "backlog": { "use": "biriken iletiler", "match": ["biriken", "backlog"] },
-    "retry": { "use": "Yeniden dene", "match": ["yeniden dene", "yeniden den"] },
+    "topic": {
+      "use": "topic",
+      "keepEnglish": true,
+      "note": "Not \"konu\" (Microsoft's machine translation)."
+    },
+    "queue": {
+      "use": "kuyruk",
+      "match": ["kuyru"]
+    },
+    "consumer": {
+      "use": "tüketici",
+      "match": ["tüketici"]
+    },
+    "consumer group": {
+      "use": "tüketici grubu",
+      "match": ["tüketici grub", "consumer group"]
+    },
+    "producer": {
+      "use": "üretici",
+      "match": ["üretici"],
+      "avoid": ["yapımcı"],
+      "note": "Yapımcı is a film producer."
+    },
+    "partition": {
+      "use": "partition",
+      "keepEnglish": true
+    },
+    "broker": {
+      "use": "broker",
+      "keepEnglish": true
+    },
+    "dead-letter queue": {
+      "use": "teslim edilemeyen ileti kuyruğu",
+      "match": ["teslim edilemeyen", "dlq"]
+    },
+    "throughput": {
+      "use": "aktarım hızı",
+      "match": ["aktarım hız"]
+    },
+    "latency": {
+      "use": "gecikme süresi",
+      "match": ["gecikme"]
+    },
+    "replica": {
+      "use": "replika",
+      "match": ["replika"]
+    },
+    "load balancer": {
+      "use": "yük dengeleyici",
+      "match": ["yük dengeleyici"]
+    },
+    "gateway": {
+      "use": "Gateway",
+      "keepEnglish": true,
+      "match": ["gateway"],
+      "note": "API Gateway."
+    },
+    "cache": {
+      "use": "önbellek",
+      "match": ["önbell"]
+    },
+    "message": {
+      "use": "ileti",
+      "match": ["ileti", "mesaj"],
+      "note": "Microsoft's word, as in the DLQ name."
+    },
+    "event": {
+      "use": "olay",
+      "match": ["olay"]
+    },
+    "subscription": {
+      "use": "abonelik",
+      "match": ["abonel"]
+    },
+    "offset": {
+      "use": "offset",
+      "keepEnglish": true
+    },
+    "backlog": {
+      "use": "biriken iletiler",
+      "match": ["biriken", "backlog"]
+    },
+    "retry": {
+      "use": "Yeniden dene",
+      "match": ["yeniden dene", "yeniden den"]
+    },
     "diagram": {
       "use": "diyagram",
       "match": ["diyagram"],
       "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"],
       "note": "Diagrams in these cloud errors is the existing folder name."
     },
-    "node": { "use": "düğüm", "match": ["düğüm"] },
+    "node": {
+      "use": "düğüm",
+      "match": ["düğüm"]
+    },
     "edge": {
       "use": "bağlantı",
       "match": ["bağlantı"],
       "except": ["shortcuts.mouse.boundary"],
       "note": "In shortcuts.mouse.boundary \"edge\" is a boundary's border (kenar)."
     },
-    "stencil": { "use": "kalıp", "match": ["kalıp", "kalıb"] },
-    "boundary": { "use": "sınır", "match": ["sınır"], "note": "Never grup." },
-    "simulation": { "use": "simülasyon", "match": ["simülasyon"] },
-    "live": { "use": "canlı", "match": ["canlı"] },
-    "present": { "use": "Sunum", "match": ["sunum", "sunu"] },
-    "embed": { "use": "yerleştir", "match": ["yerleştir"] },
-    "share link": { "use": "paylaşım bağlantısı", "match": ["paylaşım bağlantı"] },
-    "export": { "use": "dışa aktar", "match": ["dışa aktar"] },
-    "import": { "use": "içe aktar", "match": ["içe aktar"] },
-    "private": { "use": "özel", "match": ["özel"], "note": "Never gizli (secret)." },
-    "this device": { "use": "bu cihaz", "match": ["bu cihaz"], "avoid": ["yerel disk", "bilgisayar"] },
-    "capacity": { "use": "kapasite", "match": ["kapasite"] },
-    "checks": { "use": "Kontroller", "match": ["kontrol"] },
-    "annotation": { "use": "ek açıklama", "match": ["açıklama"] }
+    "stencil": {
+      "use": "kalıp",
+      "match": ["kalıp", "kalıb"]
+    },
+    "boundary": {
+      "use": "sınır",
+      "match": ["sınır"],
+      "note": "Never grup."
+    },
+    "simulation": {
+      "use": "simülasyon",
+      "match": ["simülasyon"]
+    },
+    "live": {
+      "use": "canlı",
+      "match": ["canlı"]
+    },
+    "present": {
+      "use": "Sunum",
+      "match": ["sunum", "sunu"]
+    },
+    "embed": {
+      "use": "yerleştir",
+      "match": ["yerleştir"]
+    },
+    "share link": {
+      "use": "paylaşım bağlantısı",
+      "match": ["paylaşım bağlantı"]
+    },
+    "export": {
+      "use": "dışa aktar",
+      "match": ["dışa aktar"]
+    },
+    "import": {
+      "use": "içe aktar",
+      "match": ["içe aktar"]
+    },
+    "private": {
+      "use": "özel",
+      "match": ["özel"],
+      "note": "Never gizli (secret)."
+    },
+    "this device": {
+      "use": "bu cihaz",
+      "match": ["bu cihaz"],
+      "avoid": ["yerel disk", "bilgisayar"]
+    },
+    "capacity": {
+      "use": "kapasite",
+      "match": ["kapasite"]
+    },
+    "checks": {
+      "use": "Kontroller",
+      "match": ["kontrol"]
+    },
+    "annotation": {
+      "use": "ek açıklama",
+      "match": ["açıklama"]
+    }
+  },
+  "keys": {
+    "ctrl": "Ctrl",
+    "shift": "Shift",
+    "alt": "Alt",
+    "delete": "Del",
+    "backspace": "Geri al",
+    "escape": "Esc",
+    "enter": "Enter",
+    "tab": "Tab",
+    "space": "Boşluk",
+    "drag": "Sürükle"
   }
 }
