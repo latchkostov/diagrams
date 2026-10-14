@@ -99,7 +99,7 @@ and a `shape` (a plain outline, the only kind an edge may end on) need `x`, `y`,
 
 - Boundary `tone`: `azure`, `aws`, `gcp`, `k8s`, `onprem`, `neutral`
 - Edge `kind`: `async`, `sync`; `relation`: `flow`, `config`, `secret`, `identity`, `telemetry`, `deploy`, `depends`; `sourceSide` / `targetSide`: `top`, `right`, `bottom`, `left`
-- Annotation `kind`: `text`, `note`, `zone`, `shape`; `shape`: `rect`, `rounded`, `ellipse`, `diamond`, `cylinder`; `color`: `neutral`, `yellow`, `green`, `blue`, `purple`, `red`; `textSize`: `s`, `m`, `l`, `xl`
+- Annotation `kind`: `text`, `note`, `zone`, `shape`; `shape`: `rect`, `rounded`, `ellipse`, `diamond`, `cylinder`; `color`: `white`, `neutral`, `yellow`, `green`, `blue`, `purple`, `red`; `textSize`: `s`, `m`, `l`, `xl`
 - Limits: 5,000 nodes, 20,000 edges, coordinates within ±1,000,000
 
 <!-- END GENERATED enums -->

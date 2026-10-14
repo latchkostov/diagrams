@@ -140,6 +140,13 @@ describe("diagram.v1 schema", () => {
     expect(() => check(file)).not.toThrow();
   });
 
+  it("validates annotation colors (predefined including white, and custom hex)", () => {
+    expect(() => check({ ...annotation, color: "white" }, "Annotation")).not.toThrow();
+    expect(() => check({ ...annotation, color: "#3B82F6" }, "Annotation")).not.toThrow();
+    expect(() => check({ ...annotation, color: "#fff" }, "Annotation")).not.toThrow();
+    expect(() => check({ ...annotation, color: "invalid-color" }, "Annotation")).toThrow(/match/);
+  });
+
   it("describes checks: rules turned off and findings ignored, bounded", () => {
     expect(() => check(file.checks, "Checks")).not.toThrow();
     expect(() => check({ ignore: [{ rule: "dead-letter" }] }, "Checks")).toThrow(/target/);

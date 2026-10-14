@@ -10,7 +10,13 @@ import {
 import { Handle, NodeResizeControl, ResizeControlVariant, useReactFlow, type NodeProps } from "@xyflow/react";
 import { ANNOTATION_LIMITS, annotationSize, annotationText } from "../../model/annotations";
 import type { AnnotationKind, AnnotationShape } from "../../model/types";
-import { ANNOTATION_COLORS, annotationColor, isConnectable, isObstacle, kindLabel, minSize } from "../annotations";
+import {
+  resolveAnnotationColor,
+  isConnectable,
+  isObstacle,
+  kindLabel,
+  minSize,
+} from "../annotations";
 import { useSelectOnMount } from "../../components/useSelectOnMount";
 import { editKeyAction, refocusAfterEdit } from "../../components/editKeys";
 import { keepInPane } from "../keepInPane";
@@ -38,7 +44,7 @@ function AnnotationNodeImpl({
   const { editing, setEditing, settleText } = useDiagram();
   const { updateNode, deleteElements } = useReactFlow<FlowNode>();
   const kind = data.kind;
-  const color = annotationColor(data);
+  const resolved = resolveAnnotationColor(data.color, kind);
   const isEditing = editing?.kind === "annotation" && editing.id === id;
   const w = width ?? 0;
   const h = height ?? 0;
@@ -46,6 +52,7 @@ function AnnotationNodeImpl({
     e.stopPropagation();
     setEditing({ kind: "annotation", id });
   };
+
   const commit = (text: string | null, overflow: number) => {
     setEditing(null);
     if (text === null) return;
@@ -96,11 +103,11 @@ function AnnotationNodeImpl({
   return (
     <div
       className={`ann ann-${kind} ann-s-${data.textSize ?? "m"}${selected ? " is-selected" : ""}${isEditing ? " is-editing" : ""}`}
-      style={{ "--ann": ANNOTATION_COLORS[color].hex } as CSSProperties}
+      style={{ "--ann": resolved.hex } as CSSProperties}
       data-testid={`annotation-${id}`}
       data-kind={kind}
       data-shape={kind === "shape" ? (data.shape ?? "rect") : undefined}
-      data-color={color}
+      data-color={resolved.presetKey ?? "custom"}
       data-obstacle={isObstacle(kind) ? "1" : "0"}
       onDoubleClick={kind === "zone" ? undefined : startEdit}
     >

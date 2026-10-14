@@ -3,13 +3,16 @@ import type { DiagramAnnotation } from "./types";
 export const ANNOTATION_KINDS = ["text", "note", "zone", "shape"] as const;
 export const ANNOTATION_SHAPES = ["rect", "rounded", "ellipse", "diamond", "cylinder"] as const;
 export const ANNOTATION_TEXT_SIZES = ["s", "m", "l", "xl"] as const;
-export const ANNOTATION_COLOR_IDS = ["neutral", "yellow", "green", "blue", "purple", "red"] as const;
+export const ANNOTATION_COLOR_IDS = ["white", "neutral", "yellow", "green", "blue", "purple", "red"] as const;
 export const ANNOTATION_LIMITS = {
   maxAnnotations: 2_000,
   maxAnnotationText: 10_000,
   maxAnnotationSize: 20_000,
   maxCoordinate: 1_000_000,
 } as const;
+
+export const HEX_COLOR_REGEX = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+export const isHexColor = (v: unknown): v is string => typeof v === "string" && HEX_COLOR_REGEX.test(v);
 
 const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 const member = <T extends string>(list: readonly T[], v: unknown): v is T =>
@@ -68,6 +71,7 @@ export function normalizeAnnotation(
   delete out.textSize;
   if (kind === "shape" && member(ANNOTATION_SHAPES, a.shape)) out.shape = a.shape;
   if (member(ANNOTATION_COLOR_IDS, a.color)) out.color = a.color;
+  else if (isHexColor(a.color)) out.color = a.color;
   if (member(ANNOTATION_TEXT_SIZES, a.textSize)) out.textSize = a.textSize;
   return out;
 }

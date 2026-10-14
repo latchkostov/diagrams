@@ -1,6 +1,6 @@
 import { t } from "../../i18n";
 import type { DiagramAnnotation, DiagramFile, DiagramNode, Side } from "../../model/types";
-import { ANNOTATION_COLORS, annotationColor, textSizePx } from "../../canvas/annotations";
+import { resolveAnnotationColor, textSizePx } from "../../canvas/annotations";
 import { foregroundLayerOrder } from "../../model/layers";
 import { catalog } from "../../stencils/catalog";
 import { escapeXml } from "../xml";
@@ -44,11 +44,11 @@ export const cellId = (kind: "n" | "e" | "g" | "a", id: string) => `dg-${kind}-$
  * ellipse / rhombus / cylinder3. Colours come from the curated palette, so they look the same there.
  */
 export function annotationStyle(a: DiagramAnnotation): string {
-  const c = ANNOTATION_COLORS[annotationColor(a)];
+  const c = resolveAnnotationColor(a.color, a.kind);
   const font = `fontSize=${textSizePx[a.textSize ?? "m"]};`;
   switch (a.kind) {
     case "text":
-      return `text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=top;${font}fontColor=${a.color && a.color !== "neutral" ? c.hex : "#1F2937"};${a.textSize === "xl" || a.textSize === "l" ? "fontStyle=1;" : ""}`;
+      return `text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=top;${font}fontColor=${a.color && a.color !== "neutral" && a.color !== "white" ? c.hex : "#1F2937"};${a.textSize === "xl" || a.textSize === "l" ? "fontStyle=1;" : ""}`;
     case "note":
       return `shape=note;html=1;whiteSpace=wrap;backgroundOutline=1;size=14;align=left;verticalAlign=top;spacing=10;${font}fillColor=${c.fill};strokeColor=${c.hex};fontColor=#1F2937;`;
     case "zone":

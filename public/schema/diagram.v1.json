@@ -549,14 +549,7 @@
         },
         "color": {
           "type": "string",
-          "enum": [
-            "neutral",
-            "yellow",
-            "green",
-            "blue",
-            "purple",
-            "red"
-          ]
+          "pattern": "^(white|neutral|yellow|green|blue|purple|red|#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8}))$"
         },
         "textSize": {
           "type": "string",

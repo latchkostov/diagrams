@@ -29,6 +29,7 @@ export const textSizePx: Record<AnnotationTextSize, number> = { s: 12, m: 14, l:
  * from it, so every colour reads in light and dark. The hex also goes to draw.io.
  */
 export const ANNOTATION_COLORS: Record<AnnotationColor, { label: string; hex: string; fill: string }> = {
+  white: { label: "White", hex: "#F8FAFC", fill: "#FFFFFF" },
   neutral: { label: "Grey", hex: "#64748B", fill: "#F1F5F9" },
   yellow: { label: "Yellow", hex: "#E0A800", fill: "#FFF4C2" },
   green: { label: "Green", hex: "#1F9D61", fill: "#DCF5E8" },
@@ -69,8 +70,29 @@ export const isObstacle = (kind: AnnotationKind) => kind === "note" || kind === 
 /** Only shapes take edges (for documentation; they never carry traffic). */
 export const isConnectable = (kind: AnnotationKind) => kind === "shape";
 
-export const annotationColor = (a: Pick<DiagramAnnotation, "kind" | "color">): AnnotationColor =>
+export const annotationColor = (a: Pick<DiagramAnnotation, "kind" | "color">): AnnotationColor | string =>
   a.color ?? defaultColor[a.kind];
+
+export interface ResolvedAnnotationColor {
+  hex: string;
+  fill: string;
+  label: string;
+  isPreset: boolean;
+  presetKey?: AnnotationColor;
+}
+
+export function resolveAnnotationColor(color?: string, kind: AnnotationKind = "text"): ResolvedAnnotationColor {
+  const c = color ?? defaultColor[kind];
+  if (Object.hasOwn(ANNOTATION_COLORS, c)) {
+    const preset = ANNOTATION_COLORS[c as AnnotationColor];
+    return { ...preset, isPreset: true, presetKey: c as AnnotationColor };
+  }
+  if (typeof c === "string" && c.startsWith("#")) {
+    return { hex: c, fill: c, label: c, isPreset: false };
+  }
+  const fallback = ANNOTATION_COLORS[defaultColor[kind]];
+  return { ...fallback, isPreset: true, presetKey: defaultColor[kind] };
+}
 
 /** One line describing an annotation: its first line of text, or its kind. */
 export function annotationTitle(a: Pick<DiagramAnnotation, "kind" | "text" | "shape">): string {

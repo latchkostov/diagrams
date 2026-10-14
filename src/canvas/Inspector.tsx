@@ -29,11 +29,14 @@ import {
   ANNOTATION_SHAPES,
   ANNOTATION_TEXT_SIZES,
   annotationColor,
+  defaultColor,
+  resolveAnnotationColor,
   kindLabel,
   minSize,
   shapeLabel,
   textSizeLabel,
 } from "./annotations";
+import { ColorPickerModal } from "../components/ColorPickerModal";
 import { safeStorage } from "../lib/storage";
 import {
   RELATION_META,
@@ -1101,6 +1104,9 @@ function AnnotationPanel({ note, editor, onTextSettled }: InspectorProps & { not
   const { kind } = note.data;
   const merge = (f: string) => ({ merge: `inspector:annotation:${id}:${f}` });
   const color = annotationColor(note.data);
+  const resolved = resolveAnnotationColor(note.data.color, kind);
+  const isCustomColor = !resolved.isPreset;
+  const [pickerAnchor, setPickerAnchor] = useState<DOMRect | null>(null);
   const min = minSize[kind];
   /** The text's box as it is now (before an edit that may grow it). */
   const boxNow = () => ({
@@ -1167,8 +1173,32 @@ function AnnotationPanel({ note, editor, onTextSettled }: InspectorProps & { not
               data-testid={`inspector-color-${c}`}
             />
           ))}
+          <button
+            type="button"
+            className={`insp-tone-custom${isCustomColor ? " is-on" : ""}`}
+            title="Custom colour"
+            aria-label="Custom colour"
+            aria-haspopup="dialog"
+            onClick={(e) => setPickerAnchor(e.currentTarget.getBoundingClientRect())}
+            data-testid="inspector-color-custom-btn"
+          >
+            <span
+              className={`insp-tone-custom-swatch${!isCustomColor ? " insp-tone-custom-rainbow" : ""}`}
+              style={isCustomColor ? { backgroundColor: resolved.hex } : undefined}
+            />
+            <Icon name="chevron-down" size={12} />
+          </button>
         </div>
       </Field>
+      {pickerAnchor && (
+        <ColorPickerModal
+          currentColor={resolved.hex}
+          defaultColor={ANNOTATION_COLORS[defaultColor[kind]].hex}
+          anchorRect={pickerAnchor}
+          onSelect={(hex) => editor.updateAnnotation(id, { color: hex })}
+          onClose={() => setPickerAnchor(null)}
+        />
+      )}
       {/* A zone's label is a label, like a boundary's: one size. */}
       {kind !== "zone" && (
         <Field label="Text size" group>
@@ -1347,23 +1377,7 @@ function MultiPanel(p: InspectorProps) {
       {selectedEdges.length > 0 && <BulkEdges {...p} />}
       {selectedAnnotations.length > 0 && (
         <Section title={plural(selectedAnnotations.length, "annotation", "annotations")}>
-          <BulkSwatches
-            testId="inspector-field-color"
-            itemTestId="inspector-color"
-            options={ANNOTATION_COLOR_IDS.map((c) => ({
-              id: c,
-              colour: ANNOTATION_COLORS[c].hex,
-              label: ANNOTATION_COLORS[c].label,
-            }))}
-            value={shared(selectedAnnotations, (a) => annotationColor(a.data))}
-            onPick={(c) =>
-              editor.updateAnnotations(
-                selectedAnnotations.map((a) => a.id),
-                { color: c },
-                bulkStep("annotation-colour"),
-              )
-            }
-          />
+          <BulkAnnotations selectedAnnotations={selectedAnnotations} editor={editor} />
         </Section>
       )}
       {selectedGroups.length > 0 && (
@@ -1581,6 +1595,74 @@ function BulkEdges({ editor, selectedEdges }: InspectorProps) {
   );
 }
 
+function BulkAnnotations({
+  selectedAnnotations,
+  editor,
+}: {
+  selectedAnnotations: AnnotationFlowNode[];
+  editor: EditorApi;
+}) {
+  const [pickerAnchor, setPickerAnchor] = useState<DOMRect | null>(null);
+  const sharedColor = shared(selectedAnnotations, (a) => annotationColor(a.data));
+  const isCustom = typeof sharedColor === "string" && sharedColor.startsWith("#");
+  const firstKind = selectedAnnotations[0]?.data.kind ?? "text";
+  const resolved = resolveAnnotationColor(sharedColor === MIXED ? undefined : sharedColor, firstKind);
+
+  return (
+    <>
+      <BulkSwatches
+        testId="inspector-field-color"
+        itemTestId="inspector-color"
+        options={ANNOTATION_COLOR_IDS.map((c) => ({
+          id: c,
+          colour: ANNOTATION_COLORS[c].hex,
+          label: ANNOTATION_COLORS[c].label,
+        }))}
+        value={sharedColor}
+        onPick={(c) =>
+          editor.updateAnnotations(
+            selectedAnnotations.map((a) => a.id),
+            { color: c },
+            bulkStep("annotation-colour"),
+          )
+        }
+        customButton={
+          <button
+            type="button"
+            className={`insp-tone-custom${isCustom ? " is-on" : ""}`}
+            title="Custom colour"
+            aria-label="Custom colour"
+            aria-haspopup="dialog"
+            onClick={(e) => setPickerAnchor(e.currentTarget.getBoundingClientRect())}
+            data-testid="inspector-color-custom-btn"
+          >
+            <span
+              className={`insp-tone-custom-swatch${!isCustom ? " insp-tone-custom-rainbow" : ""}`}
+              style={isCustom ? { backgroundColor: resolved.hex } : undefined}
+            />
+            <Icon name="chevron-down" size={12} />
+          </button>
+        }
+      />
+      {pickerAnchor && (
+        <ColorPickerModal
+          currentColor={resolved.hex}
+          defaultColor={ANNOTATION_COLORS[defaultColor[firstKind]].hex}
+          anchorRect={pickerAnchor}
+          onSelect={(hex) =>
+            editor.updateAnnotations(
+              selectedAnnotations.map((a) => a.id),
+              { color: hex },
+              bulkStep("annotation-colour"),
+            )
+          }
+          onClose={() => setPickerAnchor(null)}
+        />
+      )}
+    </>
+  );
+}
+
 /** The value a select shows while the selection differs (a disabled "Mixed" option). */
 const MIXED_VALUE = "__mixed";
 
@@ -1601,12 +1683,14 @@ function BulkSwatches<T extends string>({
   onPick,
   testId,
   itemTestId,
+  customButton,
 }: {
   options: { id: T; colour: string; label: string }[];
   value: T | typeof MIXED | undefined;
   onPick: (v: T) => void;
   testId: string;
   itemTestId: string;
+  customButton?: ReactNode;
 }) {
   return (
     <div className="insp-bulk-row">
@@ -1633,6 +1717,7 @@ function BulkSwatches<T extends string>({
             data-testid={`${itemTestId}-${o.id}`}
           />
         ))}
+        {customButton}
       </div>
     </div>
   );

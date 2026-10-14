@@ -104,7 +104,7 @@ export interface CheckIgnore {
 export type AnnotationKind = "text" | "note" | "zone" | "shape";
 export type AnnotationShape = "rect" | "rounded" | "ellipse" | "diamond" | "cylinder";
 /** A small curated palette that reads well in both themes. */
-export type AnnotationColor = "neutral" | "yellow" | "green" | "blue" | "purple" | "red";
+export type AnnotationColor = "white" | "neutral" | "yellow" | "green" | "blue" | "purple" | "red";
 export type AnnotationTextSize = "s" | "m" | "l" | "xl";
 
 export interface DiagramAnnotation {
@@ -119,8 +119,8 @@ export interface DiagramAnnotation {
   height: number;
   /** Kind "shape" only. Default "rect". */
   shape?: AnnotationShape;
-  /** Default per kind: note yellow, zone blue, text and shape neutral. */
-  color?: AnnotationColor;
+  /** Default per kind: note yellow, zone blue, text and shape neutral. Can also be a hex string (#rrggbb). */
+  color?: AnnotationColor | string;
   /** Default "m"; text uses "xl" for titles. */
   textSize?: AnnotationTextSize;
 }

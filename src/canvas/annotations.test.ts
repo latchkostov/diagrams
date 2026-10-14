@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
 import type { InternalNode } from "@xyflow/react";
 import type { DiagramAnnotation, DiagramFile, Simulation } from "../model/types";
-import { annotationAriaLabel, annotationTitle, isConnectable, isObstacle, parseAnnotationDrag } from "./annotations";
+import {
+  ANNOTATION_COLOR_IDS,
+  ANNOTATION_COLORS,
+  annotationAriaLabel,
+  annotationTitle,
+  isConnectable,
+  isObstacle,
+  parseAnnotationDrag,
+  resolveAnnotationColor,
+} from "./annotations";
 import { fromFlow, toFlow } from "./convert";
 import { routeInputFromStore } from "./edges/useEdgeRoute";
 import { routeDiagram } from "./geometry/router";
@@ -232,5 +241,44 @@ describe("the simulation ignores annotations", () => {
   it("capacity analysis sees only nodes", () => {
     const result = analyzeCapacity(d, sim);
     expect(Object.keys(result.nodes).sort()).toEqual(["a", "b"]);
+  });
+});
+
+describe("annotation colors", () => {
+  it("predefined colors list starts with white followed by neutral", () => {
+    expect(ANNOTATION_COLOR_IDS[0]).toBe("white");
+    expect(ANNOTATION_COLOR_IDS[1]).toBe("neutral");
+    expect(ANNOTATION_COLORS.white).toEqual({
+      label: "White",
+      hex: "#F8FAFC",
+      fill: "#FFFFFF",
+    });
+  });
+
+  it("resolves predefined colors correctly", () => {
+    const whiteRes = resolveAnnotationColor("white", "note");
+    expect(whiteRes.isPreset).toBe(true);
+    expect(whiteRes.presetKey).toBe("white");
+    expect(whiteRes.hex).toBe("#F8FAFC");
+
+    const blueRes = resolveAnnotationColor("blue", "shape");
+    expect(blueRes.isPreset).toBe(true);
+    expect(blueRes.presetKey).toBe("blue");
+    expect(blueRes.hex).toBe("#3B82F6");
+  });
+
+  it("resolves custom hex colors", () => {
+    const custom = resolveAnnotationColor("#FF5733", "shape");
+    expect(custom.isPreset).toBe(false);
+    expect(custom.hex).toBe("#FF5733");
+    expect(custom.presetKey).toBeUndefined();
+  });
+
+  it("falls back to kind default when color is undefined or invalid", () => {
+    const noteFallback = resolveAnnotationColor(undefined, "note");
+    expect(noteFallback.presetKey).toBe("yellow");
+
+    const textFallback = resolveAnnotationColor("invalid-color", "text");
+    expect(textFallback.presetKey).toBe("neutral");
   });
 });

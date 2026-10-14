@@ -234,6 +234,7 @@ var ANNOTATION_TEXT_SIZES = [
 	"xl"
 ];
 var ANNOTATION_COLOR_IDS = [
+	"white",
 	"neutral",
 	"yellow",
 	"green",
@@ -247,6 +248,8 @@ var ANNOTATION_LIMITS = {
 	maxAnnotationSize: 2e4,
 	maxCoordinate: 1e6
 };
+var HEX_COLOR_REGEX = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+var isHexColor = (v) => typeof v === "string" && HEX_COLOR_REGEX.test(v);
 var finite = (v) => typeof v === "number" && Number.isFinite(v);
 var member = (list, v) => typeof v === "string" && list.some((s) => s === v);
 var isObject = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -293,6 +296,7 @@ function normalizeAnnotation(value, usedIds = /* @__PURE__ */ new Set(), warn = 
 	delete out.textSize;
 	if (kind === "shape" && member(ANNOTATION_SHAPES, a.shape)) out.shape = a.shape;
 	if (member(ANNOTATION_COLOR_IDS, a.color)) out.color = a.color;
+	else if (isHexColor(a.color)) out.color = a.color;
 	if (member(ANNOTATION_TEXT_SIZES, a.textSize)) out.textSize = a.textSize;
 	return out;
 }

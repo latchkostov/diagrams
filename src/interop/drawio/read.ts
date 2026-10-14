@@ -19,6 +19,7 @@ import { childrenNamed, decodeEntities, findFirst, parseXml, XmlError, type XmlE
 import { parseStyle, stencilFromStyle, toneFromStyle } from "./mapping";
 import { filterLayerOrder } from "../../model/layers";
 import { isEdgeRelation } from "../../model/relations";
+import { isHexColor } from "../../model/annotations";
 import { idClaimer } from "../../model/ids";
 import { sanitizeChecks } from "../../model/checks";
 import { CARD, textHtml } from "./write";
@@ -526,7 +527,9 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
       width,
       height,
       ...(kind === "shape" ? { shape: shape ?? "rect" } : {}),
-      ...(color && Object.hasOwn(ANNOTATION_COLORS, color) ? { color: color as DiagramAnnotation["color"] } : {}),
+      ...(color && (Object.hasOwn(ANNOTATION_COLORS, color) || isHexColor(color))
+        ? { color: color as DiagramAnnotation["color"] }
+        : {}),
       ...(size && ANNOTATION_TEXT_SIZES.includes(size) ? { textSize: size } : {}),
     });
   }

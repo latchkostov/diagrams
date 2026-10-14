@@ -83,10 +83,9 @@ import { panIntoView, type Viewport } from "./geometry/fit";
 import { union } from "./geometry/rect";
 import { canvasNodeTypes } from "./nodes/nodeTypes";
 import {
-  ANNOTATION_COLORS,
   ANNOTATION_DND_MIME,
   annotationAriaLabel,
-  annotationColor,
+  resolveAnnotationColor,
   annotationTitle,
   parseAnnotationDrag,
 } from "./annotations";
@@ -237,7 +236,7 @@ export interface CanvasViewerOptions {
 
 /** Minimap: notes show their tint; zones, text and shapes are outlines. */
 function annotationMinimapFill(n: AnnotationFlowNode): string {
-  return n.data.kind === "note" ? ANNOTATION_COLORS[annotationColor(n.data)].hex : "transparent";
+  return n.data.kind === "note" ? resolveAnnotationColor(n.data.color, n.data.kind).hex : "transparent";
 }
 
 export function CanvasView(props: Props) {
@@ -2383,7 +2382,7 @@ function CanvasInner({
                   n.type === "boundary"
                     ? toneColor[(n as GroupFlowNode).data.tone]
                     : n.type === "annotation" && (n as AnnotationFlowNode).data.kind !== "note"
-                      ? ANNOTATION_COLORS[annotationColor((n as AnnotationFlowNode).data)].hex
+                      ? resolveAnnotationColor((n as AnnotationFlowNode).data.color, (n as AnnotationFlowNode).data.kind).hex
                       : "transparent"
                 }
               />

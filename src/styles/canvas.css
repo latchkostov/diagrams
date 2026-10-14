@@ -2751,7 +2751,8 @@ select.insp-input {
   font-weight: 520;
 }
 
-.ann-text[data-color="neutral"] .ann-content {
+.ann-text[data-color="neutral"] .ann-content,
+.ann-text[data-color="white"] .ann-content {
   color: var(--text);
 }
 
@@ -2972,7 +2973,8 @@ select.insp-input {
   color: var(--ann-ink);
 }
 
-.ann-text[data-color="neutral"] .ann-editor {
+.ann-text[data-color="neutral"] .ann-editor,
+.ann-text[data-color="white"] .ann-editor {
   color: var(--text);
 }
 

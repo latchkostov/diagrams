@@ -1,6 +1,7 @@
 import { nodeSimPropsSchema, edgeSimPropsSchema } from "./simProps";
 import { EDGE_RELATIONS, MAX_SETTINGS, MAX_SETTING_KEY } from "./relations";
 import { CHECK_LIMITS, CHECK_RULE_ID } from "./checks";
+import { ANNOTATION_COLOR_IDS } from "./annotations";
 import type { JsonSchema } from "./jsonSchema";
 import type {
   CheckIgnore,
@@ -215,7 +216,10 @@ function diagramSchema() {
           width: { type: "number", minimum: 0 },
           height: { type: "number", minimum: 0 },
           shape: { type: "string", enum: ["rect", "rounded", "ellipse", "diamond", "cylinder"] },
-          color: { type: "string", enum: ["neutral", "yellow", "green", "blue", "purple", "red"] },
+          color: {
+            type: "string",
+            pattern: `^(${ANNOTATION_COLOR_IDS.join("|")}|#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8}))$`,
+          },
           textSize: { type: "string", enum: ["s", "m", "l", "xl"] },
         } satisfies Fields<DiagramAnnotation>,
       },
