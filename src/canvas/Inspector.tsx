@@ -29,7 +29,6 @@ import {
   ANNOTATION_SHAPES,
   ANNOTATION_TEXT_SIZES,
   annotationColor,
-  defaultColor,
   resolveAnnotationColor,
   kindLabel,
   minSize,
@@ -75,6 +74,7 @@ import { DEFAULT_TRAVEL_MS } from "../sim/topology";
 import { nodeSimFields, edgeSimFields, inertNodeProps } from "./simFieldRules";
 import { SIM_LIMITS } from "../interop/native";
 import { t } from "../i18n";
+import { colorLabel } from "../i18n/chrome";
 import { brokerSpec, isClusterWrapper } from "../model/brokers";
 import { assignmentLabel, groupLabel } from "../stencils/brokerVocabulary";
 import { NodePlanning, PlanningUpgrade } from "../planning/lazy";
@@ -1106,7 +1106,7 @@ function AnnotationPanel({ note, editor, onTextSettled }: InspectorProps & { not
   const color = annotationColor(note.data);
   const resolved = resolveAnnotationColor(note.data.color, kind);
   const isCustomColor = !resolved.isPreset;
-  const [pickerAnchor, setPickerAnchor] = useState<DOMRect | null>(null);
+  const [pickerAnchor, setPickerAnchor] = useState<{ rect: DOMRect; merge: string } | null>(null);
   const min = minSize[kind];
   /** The text's box as it is now (before an edit that may grow it). */
   const boxNow = () => ({
@@ -1167,8 +1167,8 @@ function AnnotationPanel({ note, editor, onTextSettled }: InspectorProps & { not
               aria-checked={color === c}
               className={`insp-tone${color === c ? " is-on" : ""}`}
               style={{ "--tone": ANNOTATION_COLORS[c].hex } as CSSProperties}
-              title={ANNOTATION_COLORS[c].label}
-              aria-label={ANNOTATION_COLORS[c].label}
+              title={colorLabel[c]}
+              aria-label={colorLabel[c]}
               data-color={c}
               onClick={() => editor.updateAnnotation(id, { color: c })}
               data-testid={`inspector-color-${c}`}
@@ -1177,10 +1177,12 @@ function AnnotationPanel({ note, editor, onTextSettled }: InspectorProps & { not
           <button
             type="button"
             className={`insp-tone-custom${isCustomColor ? " is-on" : ""}`}
-            title="Custom colour"
-            aria-label="Custom colour"
+            title={t("chrome.customColour")}
+            aria-label={t("chrome.customColour")}
             aria-haspopup="dialog"
-            onClick={(e) => setPickerAnchor(e.currentTarget.getBoundingClientRect())}
+            onClick={(e) =>
+              setPickerAnchor({ rect: e.currentTarget.getBoundingClientRect(), merge: bulkStep("colour").merge })
+            }
             data-testid="inspector-color-custom-btn"
           >
             <span
@@ -1193,10 +1195,14 @@ function AnnotationPanel({ note, editor, onTextSettled }: InspectorProps & { not
       </Field>
       {pickerAnchor && (
         <ColorPickerModal
-          currentColor={resolved.hex}
-          defaultColor={ANNOTATION_COLORS[defaultColor[kind]].hex}
-          anchorRect={pickerAnchor}
-          onSelect={(hex) => editor.updateAnnotation(id, { color: hex })}
+          currentColor={note.data.color}
+          defaultColor={resolved.hex}
+          anchorRect={pickerAnchor.rect}
+          onSelect={(hex) => editor.updateAnnotation(id, { color: hex }, pickerAnchor)}
+          onReset={() => {
+            editor.updateAnnotation(id, { color: undefined }, pickerAnchor);
+            setPickerAnchor(null);
+          }}
           onClose={() => setPickerAnchor(null)}
         />
       )}
@@ -1603,7 +1609,7 @@ function BulkAnnotations({
   selectedAnnotations: AnnotationFlowNode[];
   editor: EditorApi;
 }) {
-  const [pickerAnchor, setPickerAnchor] = useState<DOMRect | null>(null);
+  const [pickerAnchor, setPickerAnchor] = useState<{ rect: DOMRect; merge: string } | null>(null);
   const sharedColor = shared(selectedAnnotations, (a) => annotationColor(a.data));
   const isCustom = typeof sharedColor === "string" && sharedColor.startsWith("#");
   const firstKind = selectedAnnotations[0]?.data.kind ?? "text";
@@ -1617,7 +1623,7 @@ function BulkAnnotations({
         options={ANNOTATION_COLOR_IDS.map((c) => ({
           id: c,
           colour: ANNOTATION_COLORS[c].hex,
-          label: ANNOTATION_COLORS[c].label,
+          label: colorLabel[c],
         }))}
         value={sharedColor}
         onPick={(c) =>
@@ -1631,10 +1637,12 @@ function BulkAnnotations({
           <button
             type="button"
             className={`insp-tone-custom${isCustom ? " is-on" : ""}`}
-            title="Custom colour"
-            aria-label="Custom colour"
+            title={t("chrome.customColour")}
+            aria-label={t("chrome.customColour")}
             aria-haspopup="dialog"
-            onClick={(e) => setPickerAnchor(e.currentTarget.getBoundingClientRect())}
+            onClick={(e) =>
+              setPickerAnchor({ rect: e.currentTarget.getBoundingClientRect(), merge: bulkStep("colour").merge })
+            }
             data-testid="inspector-color-custom-btn"
           >
             <span
@@ -1647,16 +1655,24 @@ function BulkAnnotations({
       />
       {pickerAnchor && (
         <ColorPickerModal
-          currentColor={resolved.hex}
-          defaultColor={ANNOTATION_COLORS[defaultColor[firstKind]].hex}
-          anchorRect={pickerAnchor}
+          currentColor={sharedColor === MIXED ? undefined : sharedColor}
+          defaultColor={resolved.hex}
+          anchorRect={pickerAnchor.rect}
           onSelect={(hex) =>
             editor.updateAnnotations(
               selectedAnnotations.map((a) => a.id),
               { color: hex },
-              bulkStep("annotation-colour"),
+              pickerAnchor,
             )
           }
+          onReset={() => {
+            editor.updateAnnotations(
+              selectedAnnotations.map((a) => a.id),
+              { color: undefined },
+              pickerAnchor,
+            );
+            setPickerAnchor(null);
+          }}
           onClose={() => setPickerAnchor(null)}
         />
       )}
@@ -1726,7 +1742,7 @@ function BulkSwatches<T extends string>({
 }
 
 function DiagramPanel({ editor, meta, counts }: InspectorProps) {
-  const [pickerAnchor, setPickerAnchor] = useState<DOMRect | null>(null);
+  const [pickerAnchor, setPickerAnchor] = useState<{ rect: DOMRect; merge: string } | null>(null);
   const color = meta.color;
   const isCustomColor = !!color && !ANNOTATION_COLOR_IDS.includes(color as (typeof ANNOTATION_COLOR_IDS)[number]);
   const resolved = color ? resolveAnnotationColor(color) : null;
@@ -1757,7 +1773,7 @@ function DiagramPanel({ editor, meta, counts }: InspectorProps) {
             data-testid="inspector-field-description"
           />
         </Field>
-        <Field label="Colour" hint="Canvas background tint" group>
+        <Field label="Colour" hint={t("chrome.canvasBackgroundTint")} group>
           <div className="insp-tones" data-testid="inspector-field-diagram-color" role="radiogroup" aria-label="Colour">
             {ANNOTATION_COLOR_IDS.map((c) => (
               <button
@@ -1767,8 +1783,8 @@ function DiagramPanel({ editor, meta, counts }: InspectorProps) {
                 aria-checked={color === c}
                 className={`insp-tone${color === c ? " is-on" : ""}`}
                 style={{ "--tone": ANNOTATION_COLORS[c].hex } as CSSProperties}
-                title={ANNOTATION_COLORS[c].label}
-                aria-label={ANNOTATION_COLORS[c].label}
+                title={colorLabel[c]}
+                aria-label={colorLabel[c]}
                 data-color={c}
                 onClick={() => editor.updateMeta({ color: color === c ? undefined : c })}
                 data-testid={`inspector-diagram-color-${c}`}
@@ -1777,10 +1793,12 @@ function DiagramPanel({ editor, meta, counts }: InspectorProps) {
             <button
               type="button"
               className={`insp-tone-custom${isCustomColor ? " is-on" : ""}`}
-              title="Custom colour"
-              aria-label="Custom colour"
+              title={t("chrome.customColour")}
+              aria-label={t("chrome.customColour")}
               aria-haspopup="dialog"
-              onClick={(e) => setPickerAnchor(e.currentTarget.getBoundingClientRect())}
+              onClick={(e) =>
+                setPickerAnchor({ rect: e.currentTarget.getBoundingClientRect(), merge: bulkStep("colour").merge })
+              }
               data-testid="inspector-diagram-color-custom-btn"
             >
               <span
@@ -1793,12 +1811,12 @@ function DiagramPanel({ editor, meta, counts }: InspectorProps) {
         </Field>
         {pickerAnchor && (
           <ColorPickerModal
-            currentColor={resolved?.hex ?? "#3B82F6"}
+            currentColor={color}
             defaultColor="#3B82F6"
-            anchorRect={pickerAnchor}
-            onSelect={(hex) => editor.updateMeta({ color: hex })}
+            anchorRect={pickerAnchor.rect}
+            onSelect={(hex) => editor.updateMeta({ color: hex }, pickerAnchor)}
             onReset={() => {
-              editor.updateMeta({ color: undefined });
+              editor.updateMeta({ color: undefined }, pickerAnchor);
               setPickerAnchor(null);
             }}
             onClose={() => setPickerAnchor(null)}

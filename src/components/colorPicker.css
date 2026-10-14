@@ -3,13 +3,15 @@
   position: fixed;
   inset: 0;
   z-index: 1000;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .color-picker-popover {
   position: fixed;
   pointer-events: auto;
-  width: 254px;
+  width: min(254px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
   background: var(--surface);
   border: 1px solid var(--line-strong);
   border-radius: 8px;
@@ -106,7 +108,7 @@
 
 .color-picker-hash {
   color: var(--text-3);
-  margin-right: 2px;
+  margin-inline-end: 2px;
   user-select: none;
 }
 

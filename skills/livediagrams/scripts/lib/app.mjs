@@ -213,6 +213,11 @@ function propsProblem(value) {
 	}
 }
 //#endregion
+//#region src/model/colors.ts
+/** The persisted colour contract: a leading hash and 3, 4, 6 or 8 hex digits. */
+var HEX_COLOR_REGEX = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+var isHexColor = (value) => typeof value === "string" && HEX_COLOR_REGEX.test(value);
+//#endregion
 //#region src/model/annotations.ts
 var ANNOTATION_KINDS = [
 	"text",
@@ -248,8 +253,6 @@ var ANNOTATION_LIMITS = {
 	maxAnnotationSize: 2e4,
 	maxCoordinate: 1e6
 };
-var HEX_COLOR_REGEX = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
-var isHexColor = (v) => typeof v === "string" && HEX_COLOR_REGEX.test(v);
 var finite = (v) => typeof v === "number" && Number.isFinite(v);
 var member = (list, v) => typeof v === "string" && list.some((s) => s === v);
 var isColorValue = (v) => member(ANNOTATION_COLOR_IDS, v) || isHexColor(v);
@@ -616,13 +619,13 @@ function validateDiagram(data) {
 			const props = isObj$1(sim.setup) && isObj$1(sim.setup.props) ? sim.setup.props : {};
 			for (const [id, value] of Object.entries(props)) if (unsupportedPreset(value)) return {
 				ok: false,
-				error: t(1050, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
+				error: t(1055, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
 			};
 			if (Array.isArray(sim.timeline)) for (const step of sim.timeline) {
 				const action = isObj$1(step) && isObj$1(step.action) ? step.action : void 0;
 				if (action?.do === "props" && unsupportedPreset(action.props)) return {
 					ok: false,
-					error: t(1050, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
+					error: t(1055, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
 				};
 			}
 		}
@@ -656,7 +659,8 @@ function validateDiagram(data) {
 	if (d.description !== void 0 && typeof d.description !== "string") delete d.description;
 	if (d.color !== void 0) {
 		if (typeof d.color !== "string" || !isColorValue(d.color)) {
-			warnings.push(`Unknown diagram colour "${String(d.color)}" was ignored.`);
+			const shown = typeof d.color === "string" ? ` "${d.color.slice(0, 80)}${d.color.length > 80 ? "…" : ""}"` : "";
+			warnings.push(`Unknown diagram colour${shown} was ignored.`);
 			delete d.color;
 		}
 	}
@@ -723,7 +727,7 @@ function validateDiagram(data) {
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
 		if (unsupportedPreset(out.props)) return {
 			ok: false,
-			error: t(1050, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
+			error: t(1055, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
 		};
 		const problem = out.props === void 0 ? void 0 : propsProblem(out.props);
 		if (problem) return {
@@ -800,7 +804,7 @@ function validateDiagram(data) {
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
 		if (invalidPlanningDelay(out.props)) return {
 			ok: false,
-			error: t(995, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
+			error: t(1e3, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
 				id: e.id,
 				limit: SIM_LIMITS.timeMs
 			})
@@ -2093,4 +2097,4 @@ function passwordStrength(password) {
 	};
 }
 //#endregion
-export { LIMITS, MIN_PASSWORD_LENGTH, PAYLOAD_LIMITS, annotationGeometryError, layoutDiagram, lockPayload, lockedFileName, parsePayload, passwordStrength, simulationProblem, unlockPayloadText, validateDiagram };
+export { LIMITS, MIN_PASSWORD_LENGTH, PAYLOAD_LIMITS, annotationGeometryError, isColorValue, layoutDiagram, lockPayload, lockedFileName, parsePayload, passwordStrength, simulationProblem, unlockPayloadText, validateDiagram };

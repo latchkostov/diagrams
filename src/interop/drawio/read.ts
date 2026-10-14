@@ -1,4 +1,10 @@
-import { ANNOTATION_LIMITS, annotationSize, annotationCoordinate, annotationText } from "../../model/annotations";
+import {
+  ANNOTATION_LIMITS,
+  annotationSize,
+  annotationCoordinate,
+  annotationText,
+  isColorValue,
+} from "../../model/annotations";
 import {
   DIAGRAM_FORMAT,
   type AnnotationKind,
@@ -19,12 +25,10 @@ import { childrenNamed, decodeEntities, findFirst, parseXml, XmlError, type XmlE
 import { parseStyle, stencilFromStyle, toneFromStyle } from "./mapping";
 import { filterLayerOrder } from "../../model/layers";
 import { isEdgeRelation } from "../../model/relations";
-import { isHexColor } from "../../model/annotations";
 import { idClaimer } from "../../model/ids";
 import { sanitizeChecks } from "../../model/checks";
 import { CARD, textHtml } from "./write";
 import {
-  ANNOTATION_COLORS,
   ANNOTATION_KINDS,
   ANNOTATION_SHAPES,
   ANNOTATION_TEXT_SIZES,
@@ -527,9 +531,7 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
       width,
       height,
       ...(kind === "shape" ? { shape: shape ?? "rect" } : {}),
-      ...(color && (Object.hasOwn(ANNOTATION_COLORS, color) || isHexColor(color))
-        ? { color: color as DiagramAnnotation["color"] }
-        : {}),
+      ...(isColorValue(color) ? { color } : {}),
       ...(size && ANNOTATION_TEXT_SIZES.includes(size) ? { textSize: size } : {}),
     });
   }
@@ -613,7 +615,7 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
     format: DIAGRAM_FORMAT,
     title: defaultName ? fallbackTitle : page.name,
     ...(meta.dg_description ? { description: meta.dg_description } : {}),
-    ...(meta.dg_color ? { color: meta.dg_color } : {}),
+    ...(isColorValue(meta.dg_color) ? { color: meta.dg_color } : {}),
     ...(meta.dg_direction === "LR" || meta.dg_direction === "TB" ? { direction: meta.dg_direction } : {}),
     // A private diagram's export says so; anything but an absent or "false" marking keeps it private.
     ...(meta.dg_private !== undefined && meta.dg_private !== "false" ? { private: true } : {}),

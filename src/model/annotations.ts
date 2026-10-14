@@ -1,4 +1,6 @@
 import type { DiagramAnnotation } from "./types";
+import { isHexColor, HEX_COLOR_REGEX } from "./colors";
+export { isHexColor, HEX_COLOR_REGEX };
 
 export const ANNOTATION_KINDS = ["text", "note", "zone", "shape"] as const;
 export const ANNOTATION_SHAPES = ["rect", "rounded", "ellipse", "diamond", "cylinder"] as const;
@@ -10,9 +12,6 @@ export const ANNOTATION_LIMITS = {
   maxAnnotationSize: 20_000,
   maxCoordinate: 1_000_000,
 } as const;
-
-export const HEX_COLOR_REGEX = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
-export const isHexColor = (v: unknown): v is string => typeof v === "string" && HEX_COLOR_REGEX.test(v);
 
 const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 const member = <T extends string>(list: readonly T[], v: unknown): v is T =>

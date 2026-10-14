@@ -68,6 +68,46 @@ describe("native format validation", () => {
     expect(invalid.ok && invalid.warnings.some((w) => w.includes("Unknown diagram colour"))).toBe(true);
   });
 
+  it.each([{ toString: null }, { toString: 0 }, null, [], 42])(
+    "ignores invalid colour objects without coercion: %j",
+    (color) => {
+      const input = { ...base, color };
+      for (const result of [validateDiagram(input), parseNative(JSON.stringify(input))]) {
+        expect(result.ok).toBe(true);
+        if (!result.ok) return;
+        expect(result.diagram.color).toBeUndefined();
+        expect(result.warnings).toEqual(["Unknown diagram colour was ignored."]);
+      }
+      expect(input.color).toEqual(color);
+    },
+  );
+
+  it("bounds the untrusted colour shown in a warning", () => {
+    const color = "x".repeat(100_000);
+    const result = validateDiagram({ ...base, color });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.warnings).toEqual([`Unknown diagram colour "${color.slice(0, 80)}…" was ignored.`]);
+  });
+
+  it.each(["#abc", "#abcd", "#fff0", "#abcdef", "#abcdef00", "#11223344", "white", "blue"])(
+    "keeps native canvas and annotation colour channels exactly: %s",
+    (color) => {
+      const result = parseNative(
+        JSON.stringify({
+          ...base,
+          color,
+          annotations: [{ id: "note", kind: "note", text: "Note", x: 0, y: 200, width: 240, height: 160, color }],
+        }),
+      );
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.diagram.color).toBe(color);
+      expect(result.diagram.annotations?.[0].color).toBe(color);
+      expect(result.warnings).toEqual([]);
+    },
+  );
+
   it("keeps unknown fields", () => {
     const r = validateDiagram({ ...base, theme: "neon", nodes: [{ ...base.nodes[0], owner: "team-a" }] });
     expect(r.ok && (r.diagram as unknown as Record<string, unknown>).theme).toBe("neon");

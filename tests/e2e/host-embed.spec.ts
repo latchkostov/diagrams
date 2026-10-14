@@ -4,6 +4,7 @@ import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import type { Frame, Page, Request } from "@playwright/test";
 import { test as base, expect, E2E_TARGET, expectNoErrors, pageLoadTimeout, shareVia } from "./fixtures";
+import { textFieldsFixture } from "../../src/lab/textFieldsFixture";
 
 // Host-supplied embeds (docs/EMBEDDING.md): a page on another origin loads the <live-diagram> web component from
 // the app, fetches the diagram from its own server (with its own session cookie) and hands it to the viewer
@@ -484,6 +485,56 @@ test.describe("host-supplied embeds: timing and requests", () => {
       [diagrams, options] as const,
     );
   const titled = (title: string) => ({ ...hostDiagram(), title });
+
+  for (const theme of ["light", "dark"] as const) {
+    test(`host embeds preserve custom background tint and read-only annotations in ${theme}`, async ({
+      page,
+      baseURL,
+      servers,
+      consoleErrors,
+    }) => {
+      const violations = await watchCsp(page);
+      await emptyHost(page, servers, baseURL ?? "");
+      expect(await loadVia(page, [textFieldsFixture], { theme })).toEqual(["loaded:Fields"]);
+      const canvas = view(page).getByTestId("canvas-wrap");
+      await expect(view(page).getByTestId("annotation-n1")).toBeVisible();
+      const plain = await canvas.evaluate((el) => getComputedStyle(el).backgroundColor);
+      const color = "#FF000080";
+      expect(await loadVia(page, [{ ...textFieldsFixture, color }], { theme })).toEqual(["loaded:Fields"]);
+      await expect
+        .poll(() => canvas.evaluate((el) => getComputedStyle(el).getPropertyValue("--diagram-color").trim()))
+        .toBe(color);
+      const tinted = await canvas.evaluate((el) => getComputedStyle(el).backgroundColor);
+      expect(tinted).not.toBe(plain);
+      await expect(view(page).getByTestId("rf__wrapper")).toHaveCSS("background-color", tinted);
+      await view(page).getByTestId("annotation-n1").dblclick();
+      await expect(view(page).getByTestId("annotation-editor")).toHaveCount(0);
+      await expect(view(page).getByTestId("inspector")).toHaveCount(0);
+      expect(await violations()).toEqual([]);
+      expectNoErrors(consoleErrors);
+    });
+  }
+
+  test("host embeds ignore invalid colour objects and acknowledge the loaded diagram", async ({
+    page,
+    baseURL,
+    servers,
+    consoleErrors,
+  }) => {
+    const violations = await watchCsp(page);
+    await emptyHost(page, servers, baseURL ?? "");
+    expect(await loadVia(page, [{ ...textFieldsFixture, color: { toString: null } }])).toEqual(["loaded:Fields"]);
+    await expect(view(page).getByTestId("diagram-title")).toHaveText("Fields");
+    await expect(view(page).getByTestId("annotation-n1")).toBeVisible();
+    expect(
+      await view(page)
+        .getByTestId("canvas-wrap")
+        .evaluate((el) => el.style.getPropertyValue("--diagram-color")),
+    ).toBe("");
+    expect(await events(page, "error")).toEqual([]);
+    expect(await violations()).toEqual([]);
+    expectNoErrors(consoleErrors);
+  });
 
   test(
     "the viewer says ready once, so the element loads its diagram once",

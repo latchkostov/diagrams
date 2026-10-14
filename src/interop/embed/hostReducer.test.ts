@@ -30,6 +30,17 @@ const load = (d: unknown = diagram, options: LoadOptions = {}): HostMessage => (
 const posts = (effects: Effect[]) => effects.flatMap((e) => (e.kind === "post" ? [e.message] : []));
 
 describe("host embed reducer: load", () => {
+  it("loads invalid colour objects safely and replies to the host", () => {
+    const { state, effects } = run([load({ ...diagram, color: { toString: null } })]);
+    expect(state.diagram?.color).toBeUndefined();
+    expect(state.diagram?.title).toBe(diagram.title);
+    expect(posts(effects)).toEqual([expect.objectContaining({ type: "loaded", id: "L" })]);
+  });
+
+  it.each(["#fff0", "#abcd", "#11223344", "#abcdef00"])("preserves canvas tint alpha on host load: %s", (color) => {
+    const { state } = run([load({ ...diagram, color })]);
+    expect(state.diagram?.color).toBe(color);
+  });
   it("shows a valid diagram, private, and replies loaded with its simulations", () => {
     const { state, effects } = run([load(diagram, { simulation: sims[0], autoplay: true, speed: 2, theme: "dark" })]);
     expect(state.diagram?.title).toBe(diagram.title);

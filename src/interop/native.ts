@@ -185,7 +185,8 @@ export function validateDiagram(data: unknown): NativeResult {
   if (d.description !== undefined && typeof d.description !== "string") delete d.description;
   if (d.color !== undefined) {
     if (typeof d.color !== "string" || !isColorValue(d.color)) {
-      warnings.push(`Unknown diagram colour "${String(d.color)}" was ignored.`);
+      const shown = typeof d.color === "string" ? ` "${d.color.slice(0, 80)}${d.color.length > 80 ? "…" : ""}"` : "";
+      warnings.push(`Unknown diagram colour${shown} was ignored.`);
       delete d.color;
     }
   }

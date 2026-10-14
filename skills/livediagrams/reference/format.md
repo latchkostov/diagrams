@@ -22,6 +22,8 @@ are published at <https://www.livediagrams.dev/schema/diagram.v1.json> (the file
 
 - `format` (required): `"diagrams/v2"` with `planning: { "revision": "p2" }` for new planning diagrams; `"diagrams/v1"` for legacy playback.
 - `title` (required) and an optional `description` of one or two sentences.
+- `color` (optional): the canvas background tint, using an annotation palette colour or hex (`#RGB`, `#RGBA`,
+  `#RRGGBB` or `#RRGGBBAA`). Omit it for the theme's default background. Alpha is preserved.
 - `direction`: `"LR"` (left to right, the default) or `"TB"` (top to bottom). The layout follows it.
 - `nodes` and `edges` (required, may be empty), and optionally `groups`, `annotations` and `simulations`.
 - `private`: `true` marks a Private diagram. The app keeps it on the device (no share links, no cloud saves, no
@@ -99,7 +101,7 @@ and a `shape` (a plain outline, the only kind an edge may end on) need `x`, `y`,
 
 - Boundary `tone`: `azure`, `aws`, `gcp`, `k8s`, `onprem`, `neutral`
 - Edge `kind`: `async`, `sync`; `relation`: `flow`, `config`, `secret`, `identity`, `telemetry`, `deploy`, `depends`; `sourceSide` / `targetSide`: `top`, `right`, `bottom`, `left`
-- Annotation `kind`: `text`, `note`, `zone`, `shape`; `shape`: `rect`, `rounded`, `ellipse`, `diamond`, `cylinder`; `color`: `white`, `neutral`, `yellow`, `green`, `blue`, `purple`, `red`; `textSize`: `s`, `m`, `l`, `xl`
+- Annotation `kind`: `text`, `note`, `zone`, `shape`; `shape`: `rect`, `rounded`, `ellipse`, `diamond`, `cylinder`; `color`: `white`, `neutral`, `yellow`, `green`, `blue`, `purple`, `red` or hex (`#RGB`, `#RGBA`, `#RRGGBB`, `#RRGGBBAA`; alpha is preserved); `textSize`: `s`, `m`, `l`, `xl`
 - Limits: 5,000 nodes, 20,000 edges, coordinates within ±1,000,000
 
 <!-- END GENERATED enums -->

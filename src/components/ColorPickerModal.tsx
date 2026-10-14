@@ -1,19 +1,14 @@
-import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-  type KeyboardEvent as ReactKeyboardEvent,
-} from "react";
+import { useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { QUICK_PALETTE, THEME_PALETTE, SPECTRUM_GRID, normalizeHex, isValidHex } from "./colorPalette";
+import { useDialogInteraction } from "./useDialogInteraction";
+import { t, useLocale } from "../i18n";
 import { Icon } from "./Icon";
 import "./colorPicker.css";
 
 export interface ColorPickerModalProps {
   /** The current active color (hex or predefined hex). */
-  currentColor: string;
+  currentColor?: string;
   /** Fallback color when resetting/reverting. */
   defaultColor?: string;
   /** Bounding rect of trigger button for anchored positioning. */
@@ -34,22 +29,20 @@ export function ColorPickerModal({
   onReset,
   onClose,
 }: ColorPickerModalProps) {
-  const initialHex = normalizeHex(currentColor) ?? defaultColor;
+  useLocale();
+  const initialHex = normalizeHex(currentColor ?? "") ?? defaultColor;
   const [draftHex, setDraftHex] = useState(initialHex);
   const [lastValidHex, setLastValidHex] = useState(initialHex);
   const panelRef = useRef<HTMLDivElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
+  const lastEmitted = useRef(normalizeHex(currentColor ?? ""));
+  useDialogInteraction(panelRef, backdropRef, onClose);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const valid = isValidHex(draftHex);
   const previewHex = normalizeHex(draftHex) ?? lastValidHex;
 
-  // Auto-focus the input on mount
-  useEffect(() => {
-    inputRef.current?.select();
-  }, []);
-
   // Compute position relative to anchor or viewport
-  const [pos, setPos] = useState<{ top: number; left: number }>({ top: 100, left: 100 });
 
   useLayoutEffect(() => {
     const el = panelRef.current;
@@ -70,43 +63,20 @@ export function ColorPickerModal({
       }
       if (top < margin) top = margin;
 
-      setPos({ top, left });
+      el.style.top = `${top}px`;
+      el.style.left = `${left}px`;
     } else {
       // Centered fallback
-      setPos({
-        top: Math.max(margin, (window.innerHeight - height) / 2),
-        left: Math.max(margin, (window.innerWidth - width) / 2),
-      });
+      el.style.top = `${Math.max(margin, (window.innerHeight - height) / 2)}px`;
+      el.style.left = `${Math.max(margin, (window.innerWidth - width) / 2)}px`;
     }
   }, [anchorRect]);
 
-  // Click outside to close (committing valid or reverting invalid)
-  useEffect(() => {
-    const onMouseDown = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        if (isValidHex(draftHex)) {
-          const norm = normalizeHex(draftHex);
-          if (norm) onSelect(norm);
-        } else {
-          onSelect(lastValidHex);
-        }
-        onClose();
-      }
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onSelect(lastValidHex);
-        onClose();
-      }
-    };
-    document.addEventListener("mousedown", onMouseDown, true);
-    document.addEventListener("keydown", onKeyDown, true);
-    return () => {
-      document.removeEventListener("mousedown", onMouseDown, true);
-      document.removeEventListener("keydown", onKeyDown, true);
-    };
-  }, [draftHex, lastValidHex, onSelect, onClose]);
+  const emit = (hex: string) => {
+    if (lastEmitted.current === hex) return;
+    lastEmitted.current = hex;
+    onSelect(hex);
+  };
 
   const handleHexChange = (val: string) => {
     setDraftHex(val);
@@ -114,44 +84,17 @@ export function ColorPickerModal({
       const norm = normalizeHex(val);
       if (norm) {
         setLastValidHex(norm);
-        onSelect(norm);
+        emit(norm);
       }
     }
   };
 
-  const handleInputBlur = () => {
-    if (isValidHex(draftHex)) {
-      const norm = normalizeHex(draftHex);
-      if (norm) {
-        setDraftHex(norm);
-        setLastValidHex(norm);
-        onSelect(norm);
-      }
-    } else {
-      // Revert to last valid
-      setDraftHex(lastValidHex);
-      onSelect(lastValidHex);
-    }
-  };
+  const handleInputBlur = () => setDraftHex(normalizeHex(draftHex) ?? lastValidHex);
 
   const handleInputKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" || e.key === "Escape") {
+      e.stopPropagation();
       e.preventDefault();
-      if (isValidHex(draftHex)) {
-        const norm = normalizeHex(draftHex);
-        if (norm) {
-          onSelect(norm);
-          onClose();
-        }
-      } else {
-        setDraftHex(lastValidHex);
-        onSelect(lastValidHex);
-        onClose();
-      }
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      setDraftHex(lastValidHex);
-      onSelect(lastValidHex);
       onClose();
     }
   };
@@ -159,7 +102,7 @@ export function ColorPickerModal({
   const handlePickSwatch = (hex: string) => {
     setDraftHex(hex);
     setLastValidHex(hex);
-    onSelect(hex);
+    emit(hex);
   };
 
   const handleReset = () => {
@@ -168,37 +111,29 @@ export function ColorPickerModal({
     } else {
       setDraftHex(defaultColor);
       setLastValidHex(defaultColor);
-      onSelect(defaultColor);
+      emit(defaultColor);
     }
   };
 
   return createPortal(
-    <div className="color-picker-layer" data-editor-overlay>
+    <div ref={backdropRef} className="color-picker-layer" data-editor-overlay data-testid="color-picker-backdrop">
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Color picker"
+        aria-label={t("menu.colour")}
+        tabIndex={-1}
         className="color-picker-popover"
-        style={{ top: `${pos.top}px`, left: `${pos.left}px` } as CSSProperties}
         data-testid="color-picker-modal"
       >
         <header className="color-picker-header">
-          <span className="color-picker-title">Color</span>
+          <span className="color-picker-title">{t("menu.colour")}</span>
           <button
             type="button"
             className="icon-btn color-picker-close"
-            onClick={() => {
-              if (isValidHex(draftHex)) {
-                const norm = normalizeHex(draftHex);
-                if (norm) onSelect(norm);
-              } else {
-                onSelect(lastValidHex);
-              }
-              onClose();
-            }}
-            title="Close"
-            aria-label="Close color picker"
+            onClick={onClose}
+            title={t("common.close")}
+            aria-label={t("common.close")}
             data-testid="color-picker-close"
           >
             <Icon name="close" size={12} />
@@ -210,7 +145,7 @@ export function ColorPickerModal({
           <span
             className="color-picker-preview"
             style={{ backgroundColor: previewHex }}
-            title={`Preview: ${previewHex}`}
+            title={previewHex}
             data-testid="color-picker-preview"
           />
           <div className={`color-picker-input-wrap${!valid ? " is-invalid" : ""}`}>
@@ -220,13 +155,18 @@ export function ColorPickerModal({
               type="text"
               className="color-picker-input"
               value={draftHex.startsWith("#") ? draftHex.slice(1) : draftHex}
-              onChange={(e) => handleHexChange(`#${e.target.value}`)}
+              onChange={(e) => handleHexChange(e.target.value)}
               onBlur={handleInputBlur}
               onKeyDown={handleInputKeyDown}
-              maxLength={8}
+              maxLength={9}
+              // eslint-disable-next-line local/no-literal-ui-text -- hex digit notation, not prose
               placeholder="RRGGBB"
               data-testid="color-picker-hex-input"
-              aria-label="Hex color code"
+              aria-invalid={!valid}
+              aria-label={t("chrome.hexColour")}
+              data-autofocus
+              data-autoselect
+              data-local-keys
               spellCheck={false}
               autoComplete="off"
             />
@@ -235,8 +175,8 @@ export function ColorPickerModal({
             type="button"
             className="icon-btn color-picker-reset-btn"
             onClick={handleReset}
-            title="Reset to default color"
-            aria-label="Reset to default color"
+            title={t("chrome.resetColour")}
+            aria-label={t("chrome.resetColour")}
             data-testid="color-picker-reset"
           >
             <Icon name="reset" size={13} />
@@ -256,21 +196,12 @@ export function ColorPickerModal({
                   style={{ backgroundColor: hex }}
                   title={hex}
                   aria-label={hex}
+                  aria-pressed={active}
                   onClick={() => handlePickSwatch(hex)}
-                  data-testid={`color-swatch-${hex}`}
+                  data-testid={`color-swatch-quick-${hex}`}
                 />
               );
             })}
-            <button
-              type="button"
-              className="color-picker-swatch color-picker-clear-swatch"
-              title="Clear / Default"
-              aria-label="Clear / Default"
-              onClick={handleReset}
-              data-testid="color-swatch-clear"
-            >
-              <Icon name="close" size={10} />
-            </button>
           </div>
         </div>
 
@@ -290,7 +221,8 @@ export function ColorPickerModal({
                       title={hex}
                       aria-label={hex}
                       onClick={() => handlePickSwatch(hex)}
-                      data-testid={`color-swatch-${hex}`}
+                      aria-pressed={active}
+                      data-testid={`color-swatch-theme-${hex}`}
                     />
                   );
                 })}
@@ -315,7 +247,8 @@ export function ColorPickerModal({
                       title={hex}
                       aria-label={hex}
                       onClick={() => handlePickSwatch(hex)}
-                      data-testid={`color-swatch-${hex}`}
+                      aria-pressed={active}
+                      data-testid={`color-swatch-spectrum-${hex}`}
                     />
                   );
                 })}

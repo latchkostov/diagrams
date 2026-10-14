@@ -43,27 +43,4 @@ export const SPECTRUM_GRID: readonly (readonly string[])[] = [
   ["#7F1D1D", "#7C2D12", "#713F12", "#365314", "#064E3B", "#164E63", "#1E3A8A", "#312E81", "#581C87", "#831843"],
 ];
 
-const HEX_REGEX = /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
-
-/** Validate and normalize a hex color to `#RRGGBB` or `#RGB`. */
-export function normalizeHex(input: string): string | null {
-  const trimmed = input.trim();
-  if (!HEX_REGEX.test(trimmed)) return null;
-  const hex = trimmed.startsWith("#") ? trimmed.slice(1) : trimmed;
-  if (hex.length === 3 || hex.length === 6) {
-    return `#${hex.toUpperCase()}`;
-  }
-  if (hex.length === 4) {
-    // #RGBA -> #RGB if alpha is FF
-    return `#${hex.slice(0, 3).toUpperCase()}`;
-  }
-  if (hex.length === 8) {
-    // #RRGGBBAA -> #RRGGBB if alpha is FF
-    return `#${hex.slice(0, 6).toUpperCase()}`;
-  }
-  return `#${hex.toUpperCase()}`;
-}
-
-export function isValidHex(input: string): boolean {
-  return HEX_REGEX.test(input.trim());
-}
+export { normalizeHex, isValidHex } from "../model/colors";

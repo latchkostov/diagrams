@@ -3528,3 +3528,11 @@ select.insp-input {
 .palette-results-head {
   flex-wrap: wrap;
 }
+
+/* Custom tints span the full spectrum. Theme ink stays readable on the quiet fills above,
+   including transparent colours; the chosen hue still belongs to paper and outlines. */
+.ann[data-color="custom"] .ann-content,
+.ann[data-color="custom"] .ann-zone-label,
+.ann[data-color="custom"] .ann-editor {
+  color: var(--text);
+}

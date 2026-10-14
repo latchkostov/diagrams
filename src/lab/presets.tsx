@@ -1,3 +1,5 @@
+import { ColourPickerLab } from "./ColourPickerLab";
+import { customColoursFixture } from "./customColoursFixture";
 import { planningP2Fixture } from "./planningP2Fixture";
 import { OnDeviceEvalsLab } from "./OnDeviceEvalsLab";
 import { relationshipFixture } from "./relationshipFixture";
@@ -400,6 +402,20 @@ const playgroundPresets: Preset[] = [
     title: "Relationship regressions",
     group: "Playground",
     diagram: () => relationshipFixture,
+  },
+  {
+    kind: "diagram",
+    id: "custom-colours",
+    title: "Custom colours",
+    group: "Playground",
+    diagram: () => customColoursFixture,
+  },
+  {
+    kind: "render",
+    id: "colour-picker",
+    title: "Colour picker mutations",
+    group: "Playground",
+    render: () => <ColourPickerLab />,
   },
   {
     kind: "diagram",

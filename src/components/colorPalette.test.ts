@@ -23,6 +23,13 @@ describe("colorPalette", () => {
   });
 
   describe("normalizeHex", () => {
+    it.each(["#fff0", "#abcd", "#ffff", "#12345600", "#11223344", "#abcdefFF"])(
+      "normalization preserves color and alpha: %s",
+      (color) => {
+        expect(normalizeHex(color)).toBe(color.toUpperCase());
+        expect(normalizeHex(color.slice(1))).toBe(color.toUpperCase());
+      },
+    );
     it("normalizes valid hex strings to uppercase #RRGGBB or #RGB", () => {
       expect(normalizeHex("3b82f6")).toBe("#3B82F6");
       expect(normalizeHex("#3b82f6")).toBe("#3B82F6");
