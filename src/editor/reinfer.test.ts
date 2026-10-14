@@ -6,6 +6,7 @@ import type { DiagramFile } from "../model/types";
 import { createEditor, type EditorDeps } from "./useEditor";
 import { HistoryController } from "./historyController";
 import { notify } from "../interop/ui/toast";
+import { applyChoice, RELATION_CHOICES } from "./relationActions";
 
 vi.mock("../interop/ui/toast", () => ({ notify: vi.fn() }));
 
@@ -120,6 +121,39 @@ describe("a stencil change re-infers its edges", () => {
     t.api.updateNode("kv", { stencil: "postgres" });
     t.commit();
     expect(t.edge("e3")).toMatchObject({ relation: "secret", relationOrigin: "explicit" });
+  });
+
+  it("explicit Request survives a target stencil change (a choice that keeps the relation is still a choice)", () => {
+    const t = setup();
+    // Message → Request: the kind changes, the relation stays a flow.
+    applyChoice(
+      t.api,
+      ["e2"],
+      RELATION_CHOICES.find((c) => c.id === "request")!,
+    );
+    t.commit();
+    expect(t.edge("e2")).toMatchObject({ kind: "sync", relationOrigin: "explicit" });
+    t.api.updateNode("cfg", { stencil: "azure.app-config" });
+    t.commit();
+    expect(t.edge("e2").relation).toBeUndefined();
+    expect(toast).not.toHaveBeenCalled();
+  });
+
+  it("reselecting inferred Config pins the relationship", () => {
+    const t = setup();
+    t.api.updateNode("cfg", { stencil: "azure.app-config" });
+    t.commit();
+    expect(t.edge("e2").relationOrigin).toBe("inferred");
+    applyChoice(
+      t.api,
+      ["e2"],
+      RELATION_CHOICES.find((c) => c.id === "config")!,
+    );
+    t.commit();
+    expect(t.edge("e2")).toMatchObject({ relation: "config", relationOrigin: "explicit" });
+    t.api.updateNode("cfg", { stencil: "service.java" });
+    t.commit();
+    expect(t.edge("e2").relation).toBe("config");
   });
 
   it("a dependency with no origin (a hand-written file) is left alone; its flows still follow", () => {

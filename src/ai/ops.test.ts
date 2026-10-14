@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyOps } from "./ops";
+import { applyOps, MAX_RELATIONS_PER_BATCH, MAX_RELATIONS_PER_OP } from "./ops";
 import type { DiagramFile } from "../model/types";
 import type { DiagramOp } from "./index";
 import { LIMITS, validateDiagram } from "../interop/native";
@@ -115,6 +115,33 @@ describe("applyOps", () => {
     const kept = run(pinned, [{ op: "update", target: "Settings", kind: "azure.app-config" }]);
     expect(kept.diagram.edges[0].relation).toBeUndefined();
     expect(kept.results[0].relations).toBeUndefined();
+  });
+  it("bounds the re-inferred connections it lists, per op and per batch, and still counts them all", () => {
+    // 12 config-store candidates, each fed by 60 services: every stencil change re-infers 60 connections.
+    const d: DiagramFile = { ...empty(), nodes: [], edges: [] };
+    for (let s = 0; s < 12; s++) {
+      d.nodes.push({ id: `store${s}`, stencil: "generic.service", label: `Store ${s}`, x: 0, y: s * 100 });
+      for (let i = 0; i < 60; i++) {
+        d.nodes.push({ id: `svc${s}-${i}`, stencil: "service.go", label: `Svc ${s}-${i}`, x: 400, y: 0 });
+        d.edges.push({ id: `e${s}-${i}`, from: `svc${s}-${i}`, to: `store${s}` });
+      }
+    }
+    const made = run(
+      d,
+      Array.from({ length: 12 }, (_, s): DiagramOp => ({
+        op: "update",
+        target: `store${s}`,
+        kind: "azure.app-config",
+      })),
+    );
+    expect(made.diagram.edges.every((e) => e.relation === "config")).toBe(true);
+    const listed = made.results.map((r) => r.relations?.length ?? 0);
+    expect(Math.max(...listed)).toBe(MAX_RELATIONS_PER_OP);
+    expect(listed.reduce((a, b) => a + b, 0)).toBe(MAX_RELATIONS_PER_BATCH);
+    for (const r of made.results) {
+      expect((r.relations?.length ?? 0) + (r.relationsOmitted ?? 0)).toBe(60);
+      expect(r.note).toBe("60 connections are now Config: no messages flow over them");
+    }
   });
   it("changes an edge's kind, label and props by endpoint reference", () => {
     const changed = run(graph(), [

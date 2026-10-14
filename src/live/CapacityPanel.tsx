@@ -28,7 +28,7 @@ import {
   isPresetActive,
   nearestStop,
   parseRate,
-  partitionsNote,
+  partitionsNotes,
   PRESETS,
   RATE_STEPS,
   rateFromSlider,
@@ -134,6 +134,7 @@ export const CapacityPanel = memo(function CapacityPanel({
     };
   }, [editing, heldRows, byId, selectedRows]);
   const props = (n: DiagramNode) => baseProps(n, base, inputs.props[n.id]);
+  const notes = useMemo(() => partitionsNotes(diagram, base, inputs), [diagram, base, inputs]);
   const traffic = inputs.traffic ?? base?.multipliers?.traffic ?? 1;
   const capacity = inputs.capacity ?? base?.multipliers?.capacity ?? 1;
   const dirty = hasInputs(inputs) || invalidFields.size > 0;
@@ -272,7 +273,7 @@ export const CapacityPanel = memo(function CapacityPanel({
                     node={byId.get(id)!}
                     heat={view.nodes[id]}
                     partitions={props(byId.get(id)!).partitions}
-                    note={partitionsNote(diagram, id, base, inputs)}
+                    note={notes.get(id)}
                     onPartitions={(n) => setProp(id, "partitions", n)}
                   />
                 ))}
@@ -856,7 +857,7 @@ function BrokerRow({
   node: DiagramNode;
   heat?: NodeHeat;
   partitions: number;
-  /** Why more partitions change nothing here (partitionsNote), once they're raised. */
+  /** Why more partitions change nothing here (partitionsNotes), once they're raised. */
   note?: string;
   onPartitions: (n: number) => void;
 }) {

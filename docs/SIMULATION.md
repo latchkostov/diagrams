@@ -66,8 +66,10 @@ each node's stencil `simRole`, edge direction and `kind`, plus optional `props`.
 
   The same holds for every way a stencil changes: the inspector (one node or a bulk edit), the node's right-click and
   Ctrl+K (Change stencil), and the agents' `edit_diagram` `update` with `kind`, whose result lists the re-inferred
-  connections (`relations`) and says so in a sentence (`note`). Pasting and importing change no stencil, so they keep
-  their edges as they are.
+  connections (`relations`, at most 50 per op and 200 per batch; `relationsOmitted` counts the rest) and says so in a
+  sentence (`note`, which counts them all). Pasting and importing change no stencil, so they keep their edges as they
+  are. A relationship someone picks is `explicit` even when it's the one the edge already had (Request on a Message,
+  Config on an inferred Config).
 
 - Not yet (phase 3 of `docs/research/diagram-semantics.md`): dependency outages. A `when` of `startup`,
   `cached`, `request` or `never` is accepted on a dependency and kept, but the engine doesn't read it.

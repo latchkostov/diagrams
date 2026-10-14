@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DIAGRAM_FORMAT, type DiagramFile, type DiagramNode } from "../model/types";
-import { capacityView, emptyInputs, freePlaySimulation, partitionsNote } from "./capacityModel";
+import { capacityView, emptyInputs, freePlaySimulation, partitionsNotes } from "./capacityModel";
 import { heldWords } from "./format";
 import { createEngine } from "../sim/engine";
 import { stencilRole } from "../stencils/roles";
@@ -136,9 +136,9 @@ describe("badge and hover-card words", () => {
 
 describe("the Inputs panel's partitions note", () => {
   const raised = (d: DiagramFile, partitions: number) =>
-    partitionsNote(d, "bus", null, { ...emptyInputs(), props: { bus: { partitions } } });
+    partitionsNotes(d, null, { ...emptyInputs(), props: { bus: { partitions } } }).get("bus");
   it("says nothing until partitions are raised", () => {
-    expect(partitionsNote(owner(), "bus", null, emptyInputs())).toBeUndefined();
+    expect(partitionsNotes(owner(), null, emptyInputs()).size).toBe(0);
   });
   it("no consumer: more partitions change nothing", () => {
     expect(raised(owner(), 9000)).toBe("Nobody reads it yet, so more partitions change nothing.");

@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
 import css from "./tokens.css?raw";
+import { readFileSync } from "node:fs";
 
 function luminance(hex: string) {
   const rgb = [1, 3, 5].map((i) => {
@@ -42,5 +43,28 @@ it("keeps dependency tints at 3:1 on the canvas and label pills in both themes",
           b = luminance(tokens[surface]);
         expect((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05), `rel-${rel} on ${surface}`).toBeGreaterThanOrEqual(3);
       }
+  }
+});
+
+it("keeps small warning words (the trace card's Kept and Waiting) at AA on the warning tint, in both themes", () => {
+  const trace = readFileSync("src/styles/trace.css", "utf8");
+  expect(trace).toMatch(/\.tr-status\.is-kept \{[^}]*color: var\(--warning-ink\)/);
+  for (const block of [css.split('[data-theme="dark"]')[0], css.split('[data-theme="dark"]')[1]]) {
+    const tokens = Object.fromEntries(
+      [...block.matchAll(/--([\w-]+):\s*(#[\da-f]{6})/g)].map((match) => [match[1], match[2]]),
+    );
+    const soft = /--warning-soft:\s*rgb\((\d+) (\d+) (\d+) \/ ([\d.]+)\)/.exec(block)!;
+    const [r, g, b, alpha] = soft.slice(1).map(Number);
+    for (const surface of ["surface", "surface-2", "surface-raised"]) {
+      // The tint composited over the card's surface.
+      const under = [1, 3, 5].map((i) => parseInt(tokens[surface].slice(i, i + 2), 16));
+      const mixed = [r, g, b].map((c, i) => Math.round(c * alpha + under[i] * (1 - alpha)));
+      const hex = `#${mixed.map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+      const a = luminance(tokens["warning-ink"]),
+        bg = luminance(hex);
+      expect((Math.max(a, bg) + 0.05) / (Math.min(a, bg) + 0.05), `warning-ink on ${surface}`).toBeGreaterThanOrEqual(
+        4.5,
+      );
+    }
   }
 });

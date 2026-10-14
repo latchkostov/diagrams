@@ -126,7 +126,7 @@
 /* Kept in a topic nobody reads: not lost, not done either. */
 .tr-status.is-kept {
   background: var(--warning-soft);
-  color: var(--warning);
+  color: var(--warning-ink);
 }
 
 .tr-status.is-dlq,

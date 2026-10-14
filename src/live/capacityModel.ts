@@ -471,22 +471,19 @@ function withoutProp(
 // ---------------------------------------------------------------- partitions
 
 /**
- * Why raising a topic's partitions changes nothing, under its Partitions in the Inputs panel: shown only once
- * they're raised past the saved value, and only when they can't help. Partitions cap how many consumers in one
- * group work in parallel; they don't speed up publishing. Undefined when there's nothing to say.
+ * Why raising a topic's partitions changes nothing, by topic id, for the notes under Partitions in the Inputs panel:
+ * only topics raised past their saved value, and only where that can't help. Partitions cap how many consumers in
+ * one group work in parallel; they don't speed up publishing. One topology and one node index for every row (none
+ * at all while nothing is raised), so a panel of hundreds of topics stays linear.
  */
-export function partitionsNote(
-  d: DiagramFile,
-  nodeId: string,
-  sim: Simulation | null,
-  inputs: LiveInputs,
-): string | undefined {
-  const node = d.nodes.find((n) => n.id === nodeId);
-  if (!node || !PARTITIONED.has(roleOf(node))) return undefined;
-  const now = baseProps(node, sim, inputs.props[nodeId]).partitions;
-  if (!(now > baseProps(node, sim).partitions)) return undefined;
-  const groups = compileTopology(d).groups.get(nodeId) ?? [];
-  if (!groups.length) return "Nobody reads it yet, so more partitions change nothing.";
+export function partitionsNotes(d: DiagramFile, sim: Simulation | null, inputs: LiveInputs): Map<string, string> {
+  const notes = new Map<string, string>();
+  const raised = d.nodes.filter(
+    (n) =>
+      PARTITIONED.has(roleOf(n)) && baseProps(n, sim, inputs.props[n.id]).partitions > baseProps(n, sim).partitions,
+  );
+  if (!raised.length) return notes;
+  const groupsOf = compileTopology(d).groups;
   const byId = new Map(d.nodes.map((n) => [n.id, n]));
   const capacity = inputs.capacity ?? resolveMultiplier(sim?.multipliers?.capacity);
   const replicas = (id: string) => {
@@ -494,10 +491,22 @@ export function partitionsNote(
     if (roleOf(member) !== "processor") return Infinity;
     return Math.max(1, Math.round(baseProps(member, sim, inputs.props[id]).replicas * capacity));
   };
-  const most = Math.max(...groups.map((g) => g.members.reduce((sum, id) => sum + replicas(id), 0)));
-  if (!(most < now)) return undefined;
-  const which = groups.length > 1 ? "Its largest consumer group has" : "Its consumer group has";
-  return `${which} ${most} ${most === 1 ? "replica" : "replicas"}: partitions past ${most} add no speed.`;
+  for (const node of raised) {
+    const groups = groupsOf.get(node.id) ?? [];
+    if (!groups.length) {
+      notes.set(node.id, "Nobody reads it yet, so more partitions change nothing.");
+      continue;
+    }
+    const now = baseProps(node, sim, inputs.props[node.id]).partitions;
+    const most = Math.max(...groups.map((g) => g.members.reduce((sum, id) => sum + replicas(id), 0)));
+    if (!(most < now)) continue;
+    const which = groups.length > 1 ? "Its largest consumer group has" : "Its consumer group has";
+    notes.set(
+      node.id,
+      `${which} ${most} ${most === 1 ? "replica" : "replicas"}: partitions past ${most} add no speed.`,
+    );
+  }
+  return notes;
 }
 
 // ---------------------------------------------------------------- rows

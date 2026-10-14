@@ -134,12 +134,13 @@ export function BottleneckCallout({ view, onApply, floating, onOpenPanel, disabl
   const fix = reader ? null : view.fix;
   const callout = useRef<HTMLDivElement>(null);
   const applied = useRef(false);
+  // The action's button goes once it's done (the fix applied, the consumer added): keep focus on the callout.
   useLayoutEffect(() => {
-    if (applied.current && !fix) {
+    if (applied.current && !fix && !reader) {
       callout.current?.focus();
       applied.current = false;
     }
-  }, [fix]);
+  }, [fix, reader]);
   return (
     <div
       ref={callout}
@@ -169,7 +170,10 @@ export function BottleneckCallout({ view, onApply, floating, onOpenPanel, disabl
       {reader ? (
         <button
           className="btn cap-callout-apply is-fix"
-          onClick={() => onAddConsumer?.(reader)}
+          onClick={() => {
+            applied.current = true;
+            onAddConsumer?.(reader);
+          }}
           data-testid="bottleneck-add-consumer"
           disabled={!!disabledHint}
           title={disabledHint ?? "Add a service that reads it (undo with Ctrl+Z)"}

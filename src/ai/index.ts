@@ -67,6 +67,8 @@ export interface OpResult {
   stencil?: StencilResolution;
   /** A node's new stencil re-inferred these connections' relationships (an `update` with `kind`). */
   relations?: RelationChange[];
+  /** Re-inferred connections left out of `relations` (it lists at most 50 per op, 200 per batch). */
+  relationsOmitted?: number;
   /** What changed besides the op itself, in a sentence ("1 connection is now Config: no messages flow over it"). */
   note?: string;
 }

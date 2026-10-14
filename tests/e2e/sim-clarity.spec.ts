@@ -191,7 +191,20 @@ test("the owner's diagram: config carries nothing, and a topic nobody reads says
     "the consumer",
   );
   expect(consumer.stencil).toBe("service.dotnet");
-  expect(d.edges.some((e) => e.from === topic && e.to === consumer.id && !e.relation)).toBe(true);
+  const reads = (s: Saved) => s.edges.some((e) => e.from === topic && e.to === consumer.id && !e.relation);
+  expect(reads(d)).toBe(true);
+  await expect(page.getByTestId("bottleneck-headline")).not.toHaveText("Nobody reads Kafka Topic");
+  // Its button went with the warning: the keyboard stays on the callout, not the page.
+  await expect(page.getByTestId("bottleneck-callout")).toBeFocused();
+
+  // One undoable edit: Undo takes the consumer, its connection and its name together; Redo brings them all back.
+  await page.getByTestId("add-consumer-undo").click();
+  await savedWhen(page, (s) => !s.nodes.some((n) => n.id === consumer.id) && !s.edges.some((e) => e.from === topic));
+  await expect(page.getByTestId("bottleneck-headline")).toHaveText("Nobody reads Kafka Topic");
+  await page.getByTestId("redo-button").click();
+  d = await savedWhen(page, (s) => s.nodes.some((n) => n.id === consumer.id));
+  expect(d.nodes.find((n) => n.id === consumer.id)?.label).toBe("Kafka Topic consumer");
+  expect(reads(d)).toBe(true);
   await expect(page.getByTestId("bottleneck-headline")).not.toHaveText("Nobody reads Kafka Topic");
   await expect(page.getByTestId(`node-badge-${topic}`)).not.toContainText("kept");
   await expect.poll(() => backlog(page, topic)).toBeLessThan(kept);

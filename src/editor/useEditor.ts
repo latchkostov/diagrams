@@ -722,11 +722,10 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
           if ("label" in patch) data.label = patch.label || undefined;
           if ("kind" in patch) data.kind = patch.kind ?? "async";
           if ("relation" in patch) {
-            const relation = isDependency(patch) ? relationOf(patch) : undefined;
-            // A relationship someone picks (the menu, Make it a flow) is theirs: a stencil change never re-infers it.
-            if (relation !== (isDependency(data) ? relationOf(data) : undefined))
-              data.relationOrigin = patch.relationOrigin ?? "explicit";
-            data.relation = relation;
+            // A relationship someone picks (the menu, Make it a flow) is theirs, even when it's the one it already had
+            // (Request on a Message, Config on an inferred Config): a stencil change never re-infers it.
+            data.relation = isDependency(patch) ? relationOf(patch) : undefined;
+            data.relationOrigin = patch.relationOrigin ?? "explicit";
           } else if ("relationOrigin" in patch) data.relationOrigin = patch.relationOrigin;
           if ("sourceSide" in patch) data.sourceSide = patch.sourceSide;
           if ("targetSide" in patch) data.targetSide = patch.targetSide;
