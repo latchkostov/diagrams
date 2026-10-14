@@ -1,5 +1,15 @@
+import { simReviewFixture, simReviewTrafficFixture } from "../../src/lab/simReviewFixture";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, gotoLive, expectNoErrors, pageLoadTimeout, waitForStableViewport } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  gotoLive,
+  expectNoErrors,
+  pageLoadTimeout,
+  pauseClock,
+  waitForStableViewport,
+} from "./fixtures";
 import { STORAGE_KEYS, gotoLab } from "./fixtures";
 
 // The simulation tells the truth (docs/research/sim-flows-review.md, items 1–6): a consumer behind a broker drains
@@ -332,6 +342,11 @@ test("at 1440 with the AI panel open, the callout occupies the room beside the t
     if (!card || !box || !canvas) throw new Error("Expected the canvas, card and callout");
     expect(box.x >= card.x + card.width || box.y >= card.y + card.height).toBe(true);
     expect(box.x + box.width).toBeLessThanOrEqual(canvas.x + canvas.width);
+    const toggle = await page.getByTestId("live-toggle").boundingBox();
+    if (!toggle) throw new Error("Expected the Live toggle");
+    expect(box.x + box.width <= toggle.x || box.y >= toggle.y + toggle.height || box.y + box.height <= toggle.y).toBe(
+      true,
+    );
   };
   await expect(() => clearOfTitle("trouble-callout")).toPass();
   await page.getByTestId("trouble-dismiss").click();
@@ -382,4 +397,97 @@ test("an outage hidden behind Inputs does not consume the callout's turn", async
   await page.getByTestId("node-payments").click({ button: "right" });
   await page.getByTestId("context-menu-item-sim.kill").click();
   await expect(page.getByTestId("trouble-headline")).toHaveText("Payments service is down");
+});
+
+async function injectTen(page: Page, node: string) {
+  await expect(async () => {
+    await page.getByTestId(`node-${node}`).click({ button: "right" });
+    await page.getByTestId("context-menu-item-sim.inject").click({ timeout: 1000 });
+    await page.getByTestId("context-menu-item-sim.inject:10").click({ timeout: 1000 });
+  }).toPass();
+}
+
+test("loss callout adds a broker DLQ in one undo step and exhausted messages reach it", async ({
+  page,
+  consoleErrors,
+}) => {
+  const original = simReviewFixture();
+  await seed(page, original);
+  await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1&traffic=0&speed=4`);
+  await injectTen(page, "q");
+  await expect(page.getByTestId("trouble-action")).toHaveAttribute("data-action", "add-dlq");
+  await page.getByTestId("trouble-action").click();
+  const d = await savedWhen(page, (s) => s.nodes.length === original.nodes.length + 1);
+  const route = d.edges.find((e) => e.props?.dlq === true);
+  expect(route).toMatchObject({ from: "q", kind: "async", props: { dlq: true } });
+  if (!route) throw new Error("Expected the broker's dead-letter route");
+  expect(d.nodes.find((n) => n.id === route.to)?.stencil).toBe("aws.sqs");
+  await waitForStableViewport(page);
+  await injectTen(page, "q");
+  await expect(page.getByTestId(`node-badge-${route.to}`)).toHaveAttribute("data-processed", "10");
+  await page.keyboard.press("ControlOrMeta+z");
+  const undone = await savedWhen(page, (s) => s.nodes.length === original.nodes.length);
+  expect(undone.edges).toEqual(original.edges);
+  expect(undone.nodes).toEqual(original.nodes);
+  expectNoErrors(consoleErrors);
+});
+
+test("Show events from a loss callout stays available while slow motion freezes live", async ({
+  page,
+  consoleErrors,
+}) => {
+  await seed(page, simReviewFixture(true));
+  await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1&speed=4`);
+  await expect(page.getByTestId("trouble-action")).toHaveAttribute("data-action", "events");
+  await expect(async () => {
+    await page.getByTestId("node-web").click({ button: "right" });
+    await page.getByTestId("context-menu-item-sim.slowmo-from").click({ timeout: 1000 });
+  }).toPass();
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "slowmo");
+  await expect(page.getByTestId("trouble-action")).toBeEnabled();
+  await page.getByTestId("trouble-action").click();
+  await expect(page.getByTestId("live-events")).toBeVisible();
+  await expect(page.getByTestId("live-events-filter")).toHaveValue("q");
+  await expect(page.getByTestId("live-events-list")).toContainText("delivery limit");
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "slowmo");
+  expectNoErrors(consoleErrors);
+});
+
+test("ten-million-message source rates remain valid but an unsafe saved scale disables Continuous traffic", async ({
+  page,
+  consoleErrors,
+}) => {
+  await seed(page, simReviewTrafficFixture());
+  await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1&sim=budget&paused=1`);
+  await page.getByTestId("live-more").click();
+  await expect(page.getByTestId("live-traffic")).toBeDisabled();
+  await expect(page.getByTestId("live-traffic")).toHaveAttribute("title", /Inputs.*Messages per dot/);
+  const d = await saved(page);
+  expect(d?.nodes.find((n) => n.id === "web")?.props?.ratePerSec).toBe(10_000_000);
+  expectNoErrors(consoleErrors);
+});
+
+test("the continuous source volume budget announces its stop and Restart clears it", async ({
+  page,
+  consoleErrors,
+}) => {
+  await page.clock.install();
+  await seed(page, simReviewTrafficFixture(10_000));
+  await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1&sim=budget&paused=1&speed=8`);
+  await pauseClock(page);
+  await page.getByTestId("live-more").click();
+  await page.getByTestId("live-traffic").click();
+  await page.getByTestId("live-play").click();
+  // Advance the fake clock through 200,000 samples at 10,000/s and 8x playback, plus a publication.
+  await page.clock.runFor(((200_000 / 10_000) * 1_000) / 8 + 100);
+  await expect(page.getByTestId("live-notice")).toContainText("200,000 sampled-message budget");
+  await expect(page.getByTestId("node-badge-web")).toHaveAttribute("data-processed", "200000");
+  await page.getByTestId("live-more").click();
+  await expect(page.getByTestId("live-traffic")).toBeDisabled();
+  await expect(page.getByTestId("live-traffic")).toHaveAttribute("aria-checked", "false");
+  await page.getByTestId("live-more").click();
+  await page.getByTestId("live-restart").click();
+  await page.getByTestId("live-more").click();
+  await expect(page.getByTestId("live-traffic")).toBeEnabled();
+  expectNoErrors(consoleErrors);
 });

@@ -313,14 +313,17 @@ function useFloatingPlacement(box: RefObject<HTMLElement | null>, floating: bool
     const parent = el?.offsetParent;
     if (!floating || !el || !(parent instanceof HTMLElement)) return;
     const card = el.closest(".canvas-wrap")?.querySelector<HTMLElement>(".diagram-card");
+    const toggle = el.closest(".canvas-wrap")?.querySelector<HTMLElement>('[data-testid="live-toggle"]');
     const measure = () => {
       const p = parent.getBoundingClientRect();
       const c = card && !card.hidden ? card.getBoundingClientRect() : null;
-      const room = c ? p.right - 16 - (c.right + 16) : p.width - 32;
-      const below = !!c && room < CALLOUT_MIN;
-      const top = c ? Math.round(c.bottom - p.top + 8) : 0;
-      const left = c && !below ? Math.round(c.right - p.left + 16 + room / 2) : undefined;
-      const width = c && !below ? Math.floor(room) : undefined;
+      const t = toggle?.getBoundingClientRect();
+      const right = t ? Math.min(p.right - 16, t.left - 16) : p.right - 16;
+      const room = c ? right - (c.right + 16) : right - p.left - 16;
+      const below = room < CALLOUT_MIN;
+      const top = Math.round(Math.max(c?.bottom ?? p.top, t?.bottom ?? p.top) - p.top + 8);
+      const left = !below ? Math.round((c?.right ?? p.left) - p.left + 16 + room / 2) : undefined;
+      const width = !below ? Math.floor(room) : undefined;
       setPlace((old) =>
         old.below === below && old.top === top && old.left === left && old.room === width
           ? old
@@ -331,6 +334,7 @@ function useFloatingPlacement(box: RefObject<HTMLElement | null>, floating: bool
     const watch = new ResizeObserver(measure);
     watch.observe(parent);
     if (card) watch.observe(card);
+    if (toggle) watch.observe(toggle);
     return () => watch.disconnect();
   }, [box, floating]);
   return {

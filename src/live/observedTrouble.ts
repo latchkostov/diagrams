@@ -1,6 +1,6 @@
 import type { DiagramFile, SimRole } from "../model/types";
 import { stencilRole } from "../stencils/roles";
-import { brokerFeeds, compileTopology, type CompiledGroup } from "../sim/topology";
+import { brokerFeeds, compileTopology, deadLetterRoutes, type CompiledGroup } from "../sim/topology";
 import type { NodeStatus } from "../sim/types";
 import { formatCount } from "./format";
 import { brokerList, waitDetail } from "./capacityModel";
@@ -41,6 +41,7 @@ export interface WatchedNode {
   status: NodeStatus;
   lag: Record<string, number>;
   dropped: number;
+  outageDropped?: number;
   noConsumer?: true;
 }
 export interface WatchedFrame {
@@ -54,6 +55,7 @@ interface Sample {
   time: number;
   lag: Map<string, number>;
   dropped: Map<string, number>;
+  outageDropped: Map<string, number>;
 }
 
 const BROKERS: ReadonlySet<SimRole> = new Set(["queue", "topic", "stream"]);
@@ -64,11 +66,11 @@ const KIND_ORDER: Record<TroubleKind, number> = { down: 0, dropping: 1, lag: 2 }
  * Samples snapshots about once a simulated second and reports the trouble they show, worst first: down, then
  * losing messages, then lag that rose over the last 10 s (and is still rising). A jump (a restart, a seek)
  * starts the history again. Status is read on every call (a node killed or revived while paused shows at once);
- * the rest is recomputed only when a sample is taken.
+ * loss counters are also read every call, independently of trend sampling.
  */
 export class TroubleWatcher {
   private samples: Sample[] = [];
-  private last: { statuses: string; diagram: DiagramFile; troubles: Trouble[] } | undefined;
+  private last: { statuses: string; losses: string; diagram: DiagramFile; troubles: Trouble[] } | undefined;
 
   reset(): void {
     this.samples = [];
@@ -90,21 +92,28 @@ export class TroubleWatcher {
     let sampled = false;
     if (!last || jumped || frame.time - last.time >= SAMPLE_MS) {
       const lag = new Map<string, number>(),
-        dropped = new Map<string, number>();
+        dropped = new Map<string, number>(),
+        outageDropped = new Map<string, number>();
       for (const [id, n] of Object.entries(frame.nodes)) {
         lag.set(id, maxLag(n));
         dropped.set(id, n.dropped);
+        outageDropped.set(id, n.outageDropped ?? 0);
       }
-      this.samples.push({ time: frame.time, lag, dropped });
+      this.samples.push({ time: frame.time, lag, dropped, outageDropped });
       while (this.samples.length > 2 && this.samples[1].time <= frame.time - WINDOW_MS) this.samples.shift();
       sampled = true;
     }
-    let statuses = "";
-    for (const [id, n] of Object.entries(frame.nodes)) if (n.status !== "up") statuses += `${id}:${n.status};`;
+    let statuses = "",
+      losses = "";
+    for (const [id, n] of Object.entries(frame.nodes)) {
+      if (n.status !== "up") statuses += `${id}:${n.status};`;
+      if (n.dropped) losses += `${id}:${n.dropped}:${n.outageDropped ?? 0};`;
+    }
     const cached = this.last;
-    if (!sampled && cached && cached.statuses === statuses && cached.diagram === diagram) return cached.troubles;
+    if (!sampled && cached && cached.statuses === statuses && cached.losses === losses && cached.diagram === diagram)
+      return cached.troubles;
     const result = troubles(frame, shapeOf(diagram), this.samples);
-    this.last = { statuses, diagram, troubles: result };
+    this.last = { statuses, losses, diagram, troubles: result };
     return result;
   }
 }
@@ -134,8 +143,8 @@ function shapeOf(d: DiagramFile): Shape {
   const compiled = compileTopology(d);
   const deadLetterTargets = new Set<string>(),
     hasDeadLetterRoute = new Set<string>();
-  for (const e of compiled.edges)
-    if (e.dlq && !e.deny && BROKERS.has(role.get(e.from)!)) {
+  for (const e of deadLetterRoutes(compiled).values())
+    if (!e.deny && BROKERS.has(role.get(e.from)!)) {
       deadLetterTargets.add(e.to);
       hasDeadLetterRoute.add(e.from);
     }
@@ -201,19 +210,25 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
       continue;
     }
     // Loss needs no long history: a short run that drops one message says so.
-    const lost = oldest && frame.time > oldest.time ? n.dropped - (oldest.dropped.get(id) ?? 0) : 0;
+    const lost = oldest ? n.dropped - (oldest.dropped.get(id) ?? 0) : 0;
     if (lost > 0) {
       const broker = BROKERS.has(r);
+      const outage = (n.outageDropped ?? 0) - (oldest?.outageDropped.get(id) ?? 0);
+      const exhausted = broker && lost > outage;
       out.push({
         key: `dropping:${id}`,
         kind: "dropping",
         node: id,
         headline: `${name(id)} is losing messages: ${formatCount(n.dropped)} dropped`,
         announce: `${name(id)} is losing messages`,
-        detail: broker
-          ? "They ran out of deliveries, and no dead-letter queue keeps them."
-          : "Messages that fail here are dropped: nothing retries them.",
-        action: broker && !d.hasDeadLetterRoute.has(id) ? { kind: "add-dlq", node: id } : { kind: "events", node: id },
+        detail:
+          broker && !exhausted
+            ? "Messages sent to it while it was down were dropped on arrival."
+            : broker
+              ? "They ran out of deliveries, and no dead-letter queue keeps them."
+              : "Messages that fail here are dropped: nothing retries them.",
+        action:
+          exhausted && !d.hasDeadLetterRoute.has(id) ? { kind: "add-dlq", node: id } : { kind: "events", node: id },
       });
       continue;
     }

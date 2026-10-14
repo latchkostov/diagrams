@@ -49,6 +49,8 @@ each node's stencil `simRole`, edge direction and `kind`, plus optional `props`.
 | `sink`      | received                                                                                    | nothing (terminal)                                                                                                                                                                                                                                                       |
 | `none`      | passes through like a processor with 0 latency                                              | every outgoing edge                                                                                                                                                                                                                                                      |
 
+Service time is resolved centrally by `hasServiceTime` in `src/sim/defaults.ts`: only processors, gateways and stores use latency. The inspector derives sink latency applicability from that same rule. Paused/injected/resumed sink work therefore finishes without a saved delay, just as arriving sink work does.
+
 ## Sync vs async edges
 
 - `async` edges carry messages (dashed, particles).
@@ -355,14 +357,13 @@ can call `setScale` and `setCapacityMultiplier`; direct injection still takes sa
 
 The plan (below) can't see everything: a node down, messages lost, a backlog that keeps growing.
 `TroubleWatcher` (`src/live/observedTrouble.ts`) reads the run's real-unit snapshot on every publication (`useObservedTrouble`), so a status change shows at once,
-paused or not; trends are sampled about once a simulated second, 10 s kept, and a jump in time (a seek, a restart,
+paused or not. Changes to dropped counters also invalidate the trouble cache on every publication, including the final partial second of a completed run; lag trends are sampled about once a simulated second, 10 s kept, and a jump in time (a seek, a restart,
 a stalled tab) starts them again. The topology it needs (routes into each node, dead-letter targets as playback
 classifies them, deny rules left out) is indexed once per diagram. Worst first:
 
 - **down**: a node (not a source or decorative) whose status is down. Revive. Behind brokers it says where its
   messages wait and how many so far, in the capacity callout's words.
-- **dropping**: a node whose `dropped` grew over the window. A broker with no dead-letter route offers **Add
-  dead-letter queue** (the same queue as the `dead-letter` check's fix, `deadLetterFor`); otherwise **Show events**.
+- **dropping**: a node whose `dropped` grew over the window. Broker arrival losses while down are tracked in `outageDropped` (also in real units), independently of the bounded event log, and offer **Show events** after revival. Exhausted broker deliveries with no effective dead-letter route offer **Add dead-letter queue** (the same queue as the `dead-letter` check's fix, `deadLetterFor`); otherwise **Show events**. Effective dead-letter targets come from `deadLetterRoutes`, selecting the first route before deny handling. Diagnostic actions remain available in slow motion.
 - **lag**: a broker whose largest group lag rose over the window by more than `max(10, 3 × scale, 20% of where it
 was)`, and is still rising (the middle and latest samples). It names the group's consumers ("Billing doesn't keep
   up with it") with **Inputs…**; a queue nobody reads offers **Add a consumer**. Dead-letter queues are left out:
@@ -379,10 +380,30 @@ throttle, a rebuild).
 
 `SIM_LIMITS` (`src/model/simProps.ts`) is the file format's bound on every simulation setting, and every editor uses
 it: rates up to **10,000,000 msg/s** (node `ratePerSec` and traffic profiles; live view samples them, so they cost
-nothing to play), counts (replicas, partitions, concurrency, max deliveries) up to 10,000, times up to 600,000 ms. The
+bounded work to play), counts (replicas, partitions, concurrency, max deliveries) up to 10,000, times up to 600,000 ms. The
 inspector clamps to them and says so under the field; the Inputs panel takes the same rates. A file past one is refused
 with the field and the limit ("ratePerSec 20,000,000 is over the 10,000,000 limit"). The document's traffic budget
 (200,000) counts what plays: scripted messages × the Traffic multiplier ÷ the simulation's saved `scale`.
+
+Continuous source traffic has a separate engine budget, including saved runs with explicit scale overrides:
+all source rates combined, divided by the current scale, must be at most **10,000 sampled messages/s**.
+An unsafe combination cannot enable Continuous traffic; its menu explains how to increase Messages per dot in
+Inputs or lower source rates. The engine rechecks the bound before every tick, including after setup, timeline,
+live prop or scale changes. The accepted file/UI rate remains 10,000,000 msg/s; automatic sampling safely
+represents it. Sampling is never changed silently in the middle of a run.
+
+Across a run, continuous sources emit at most **200,000 sampled messages total**. Fractions are retained per
+source; a tick emits the integer credits only while that shared budget has room (about 100 dots/tick at the rate
+ceiling, plus carried fractions across sources). Reaching the volume budget stops continuous input, logs the
+reason and shows a notice in Live; restarting clears it, toggling does not. Checkpoints restore the budget with
+the run. Thus an unread queue cannot accumulate unlimited continuous input. Scripted/manual traffic has its
+own validation and is not charged to this source budget. Fan-out still copies admitted messages, so the budget
+bounds source input, not the number of downstream copies in an arbitrary graph.
+
+Travelling messages are scheduled in a stable min-heap by arrival time and particle ID. An idle tick inspects
+only its earliest arrival, independently of burst size; due arrivals cost O(k log n) for k arrivals among n
+travelling messages. A separate collection of at most `maxParticles` drawn trips bounds `frame()` work. Brokers
+and sinks retain unlimited delivery throughput: the drawing cap never stages or discards messages.
 
 ## Capacity analysis without playback
 

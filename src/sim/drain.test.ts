@@ -169,7 +169,13 @@ describe("staged deliveries cost nothing while they wait", () => {
     const before = engine.frame().nodes.billing.processed;
     engine.step(1_000);
     // One slot, 10 ms each: about 100 in a second, never the whole backlog at once.
-    expect(engine.frame().nodes.billing.processed - before).toBeLessThanOrEqual(101);
+    const after = engine.frame().nodes.billing;
+    expect(after.processed - before).toBeGreaterThanOrEqual(99);
+    expect(after.processed - before).toBeLessThanOrEqual(101);
+    expect(after.backlog).toBe(2_000 - after.processed - after.inFlight);
+    engine.step(20_000);
+    expect(engine.frame().nodes.billing).toMatchObject({ processed: 2_000, backlog: 0, inFlight: 0, dropped: 0 });
+    expect(engine.metrics().inSystem).toBe(0);
   });
 
   it("a tick's work doesn't grow with the staged backlog", () => {
@@ -177,7 +183,9 @@ describe("staged deliveries cost nothing while they wait", () => {
     const time = (n: number) => {
       const engine = staged(n);
       const start = performance.now();
+      const before = engine.frame().nodes.billing.processed;
       engine.step(500);
+      expect(engine.frame().nodes.billing.processed - before).toBeGreaterThanOrEqual(49);
       return performance.now() - start;
     };
     let small = Infinity,
@@ -300,5 +308,71 @@ describe("second review", () => {
     }).not.toThrow();
     const consumer = Object.entries(engine.frame().nodes).find(([key]) => key === id)?.[1];
     expect(consumer?.processed).toBe(3);
+  });
+});
+
+describe("third review", () => {
+  it.each(["injected", "pushed"])("a paused sink's latency is inert after revival (%s)", (entry) => {
+    const run = (latencyMs: number) => {
+      const engine = createEngine({ seed: 1 });
+      engine.load({
+        format: "diagrams/v1",
+        title: "Sink",
+        nodes: [node("web", "client.browser"), node("sink", "generic.email", { latencyMs, jitter: 0 })],
+        edges: [edge("web", "sink", { travelMs: 10 })],
+      });
+      engine.setNodeStatus("sink", "paused");
+      engine.inject(entry === "injected" ? "sink" : "web", 1);
+      engine.step(20);
+      expect(engine.frame().nodes.sink.backlog).toBe(1);
+      engine.setNodeStatus("sink", "up");
+      engine.step(100);
+      return engine.frame().nodes.sink;
+    };
+    expect(run(2_000)).toEqual(run(0));
+    expect(run(2_000).processed).toBe(1);
+  });
+
+  it("idle travel and drawing work stay constant with an eightfold undrawn burst", () => {
+    const idle = (n: number) => {
+      const engine = createEngine({ seed: 1, maxParticles: 2 });
+      engine.load({
+        format: "diagrams/v1",
+        title: "Travel",
+        nodes: [node("broker", "kafka.topic"), node("queue", "aws.sqs")],
+        edges: [edge("broker", "queue", { travelMs: 1e15 })],
+      });
+      engine.inject("broker", n);
+      engine.step(10);
+      expect(engine.snapshot().edges["broker-queue"].active).toBe(n);
+      return () => {
+        engine.step(10);
+        expect(engine.frame().particles.length).toBe(2);
+      };
+    };
+    // Waiting trips do no work until due; drawing visits only its bounded set.
+    expect(growth(idle(12_500), idle(100_000))).toBeLessThan(3);
+  });
+
+  it("unlimited broker arrivals still all finish at their due time, including after restore", () => {
+    const engine = createEngine({ seed: 1, maxParticles: 2 });
+    engine.load({
+      format: "diagrams/v1",
+      title: "Travel",
+      nodes: [node("broker", "kafka.topic"), node("queue", "aws.sqs")],
+      edges: [edge("broker", "queue", { travelMs: 10_000 })],
+    });
+    engine.inject("broker", 2_000);
+    engine.step(10);
+    const checkpoint = engine.checkpoint();
+    engine.step(9_990);
+    expect(engine.frame().nodes.queue.processed).toBe(0);
+    engine.step(10);
+    const after = engine.snapshot();
+    expect(after.nodes.queue.backlog).toBe(2_000);
+    expect(after.edges["broker-queue"].active).toBe(0);
+    engine.restore(checkpoint);
+    engine.step(10_000);
+    expect(engine.snapshot()).toEqual(after);
   });
 });

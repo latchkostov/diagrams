@@ -1,8 +1,9 @@
 import type { DiagramFile, SimRole } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { messageColor } from "./colors";
-import { resolveProps, type ResolvedProps } from "./defaults";
+import { hasServiceTime, resolveProps, type ResolvedProps } from "./defaults";
 import { activeUnits } from "../stencils/netDevices";
+import { pushDue, popDue } from "./dueHeap";
 import { Deque } from "./deque";
 import { createLineage, type Family } from "./lineage";
 import { mulberry32 } from "./rng";
@@ -33,6 +34,8 @@ import type {
 const STEP = 10;
 const EWMA_ALPHA = 1 - Math.exp(-STEP / 1000);
 const EVENT_CAP = 200;
+export const SOURCE_RATE_CAP = 10_000;
+export const SOURCE_VOLUME_CAP = 200_000;
 
 interface Message {
   id: number;
@@ -100,6 +103,7 @@ interface Node {
   failed: number;
   deadLettered: number;
   dropped: number;
+  outageDropped: number;
   /** Stopped by a deny rule on an outgoing connection (on purpose, so never `dropped`). */
   blocked: number;
   throughput: number;
@@ -170,6 +174,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   const edges: Edge[] = [];
   let trips: Trip[] = [];
   let drawn = 0;
+  let drawnTrips = new Map<number, Trip>();
+  let sourceRate = 0;
+  let sourceEmitted = 0;
   let time = 0;
   let accumulator = 0;
   let speed = 1;
@@ -299,6 +306,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function drop(node: Node, message: Message, reason: string): void {
     node.dropped++;
+    if (reason === "node down") node.outageDropped++;
     log("drop", node, message, reason);
     gone(node, message, "drop", reason);
   }
@@ -372,7 +380,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const processor = target.role === "processor";
     // Only processors, stores and gateways work on what arrives; the rest (sinks, brokers, decorative nodes) finish
     // on arrival whatever latency they have saved, so they never limit a delivery.
-    const works = processor || target.role === "store" || target.role === "gateway";
+    const works = hasServiceTime(target.role);
     if (units === Infinity || !works || (!processor && !(target.props.latencyMs > 0))) return Infinity;
     // A sampled dot costs `scale` messages of a processor's service budget (see tick): it works on units ÷ scale dots
     // at a time, so only that many (and what's on the way to them) are held for it. The rest is lag at the broker.
@@ -448,6 +456,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         else node.rawProps[key] = structuredClone(value);
       }
       node.props = resolveProps(node.role, node.label, node.rawProps, node.stencil);
+      if (node.role === "source") sourceRate += node.props.ratePerSec - previous.ratePerSec;
       if (
         Math.max(1, Math.round(node.props.replicas * capacityMultiplier)) !== node.replicas ||
         (isBroker(node) && node.props.partitions !== previous.partitions)
@@ -492,7 +501,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     edge.active++;
     if (kind === "message" || kind === "dlq") edge.to.incoming++;
     const end = time + Math.max(STEP, edge.travelMs) + delay;
-    trips.push({ id: nextParticle++, edge, message, kind, delivery, start: time, end, drawn: visible });
+    const trip = { id: nextParticle++, edge, message, kind, delivery, start: time, end, drawn: visible };
+    pushDue(trips, trip);
+    if (visible) drawnTrips.set(trip.id, trip);
     if (message.family.trace) {
       const back = kind === "reply" || kind === "retry";
       step(message, "send", back ? edge.to.id : edge.from.id, { edge: edge.id, via: kind, until: end });
@@ -803,23 +814,20 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         schedule(batch);
       }
     }
-    if (traffic)
+    if (traffic && !engine.trafficLimit())
       for (const node of nodes.values()) {
         if (node.role !== "source" || node.status !== "up") continue;
         node.trafficCredit += (node.props.ratePerSec * STEP) / (1000 * scale);
-        const count = Math.floor(node.trafficCredit + 1e-10);
+        const count = Math.min(SOURCE_VOLUME_CAP - sourceEmitted, Math.floor(node.trafficCredit + 1e-10));
         node.trafficCredit -= count;
+        sourceEmitted += count;
+        if (sourceEmitted === SOURCE_VOLUME_CAP && count)
+          log("status", node, undefined, "continuous traffic budget reached; restart to continue");
         for (let i = 0; i < count; i++) emit(node, node.props.messageType, false);
       }
-    // Partition the array in place. Trips created by arrival callbacks are kept for later ticks.
-    const tripCount = trips.length;
-    let write = 0;
-    for (let i = 0; i < tripCount; i++) {
-      const trip = trips[i];
-      if (trip.end > time) {
-        trips[write++] = trip;
-        continue;
-      }
+    while (trips.length && trips[0].end <= time) {
+      const trip = popDue(trips);
+      drawnTrips.delete(trip.id);
       trip.edge.active--;
       if (trip.drawn) drawn--;
       if (trip.kind === "retry") returned(trip);
@@ -836,8 +844,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         });
       }
     }
-    for (let i = tripCount; i < trips.length; i++) trips[write++] = trips[i];
-    trips.length = write;
 
     for (const node of nodes.values()) {
       // A sampled dot consumes scale messages of service budget, while keeping per-message latency.
@@ -898,7 +904,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
   }
 
+  function refreshSourceRate(): void {
+    sourceRate = 0;
+    for (const node of nodes.values()) if (node.role === "source") sourceRate += node.props.ratePerSec;
+  }
+
   function reset(): void {
+    refreshSourceRate();
     time = 0;
     accumulator = 0;
     inSystem = 0;
@@ -907,6 +919,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     nextParticle = 1;
     nextInjection = 1;
     trips = [];
+    drawnTrips.clear();
+    sourceEmitted = 0;
     injections.length = 0;
     events.length = 0;
     eventHead = 0;
@@ -923,6 +937,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.failed = 0;
       node.deadLettered = 0;
       node.dropped = 0;
+      node.outageDropped = 0;
       node.blocked = 0;
       node.holdUntil = 0;
       node.throughput = 0;
@@ -966,12 +981,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         for (const [id, family] of copy.lineage.store) family.trace = records.get(id);
         return copy;
       };
-      const graph = cloneGraph({ nodes, edges, trips, injections, events, lineage: lineage.state });
+      const graph = cloneGraph({ nodes, edges, trips, drawnTrips, injections, events, lineage: lineage.state });
       const clock = {
         time,
         accumulator,
         speed,
         traffic,
+        sourceRate,
+        sourceEmitted,
         drawn,
         nextMessage,
         nextParticle,
@@ -1002,6 +1019,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         indexGroups();
         edges.splice(0, edges.length, ...copy.edges);
         trips = copy.trips;
+        drawnTrips = copy.drawnTrips;
         injections.splice(0, injections.length, ...copy.injections);
         events.splice(0, events.length, ...copy.events);
         lineage.state = copy.lineage;
@@ -1010,6 +1028,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           accumulator,
           speed,
           traffic,
+          sourceRate,
+          sourceEmitted,
           drawn,
           nextMessage,
           nextParticle,
@@ -1084,6 +1104,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           failed: 0,
           deadLettered: 0,
           dropped: 0,
+          outageDropped: 0,
           blocked: 0,
           throughput: 0,
           completedThisStep: 0,
@@ -1136,18 +1157,17 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     },
     frame() {
       const particles: Particle[] = [];
-      for (const trip of trips)
-        if (trip.drawn)
-          particles.push({
-            id: trip.id,
-            edgeId: trip.edge.id,
-            messageId: trip.message.id,
-            rootId: trip.message.family.root,
-            kind: trip.kind,
-            progress: Math.min(1, Math.max(0, (time - trip.start) / (trip.end - trip.start))),
-            type: trip.message.type,
-            color: trip.message.color,
-          });
+      for (const trip of drawnTrips.values())
+        particles.push({
+          id: trip.id,
+          edgeId: trip.edge.id,
+          messageId: trip.message.id,
+          rootId: trip.message.family.root,
+          kind: trip.kind,
+          progress: Math.min(1, Math.max(0, (time - trip.start) / (trip.end - trip.start))),
+          type: trip.message.type,
+          color: trip.message.color,
+        });
       const nodeStates: Record<string, NodeSimState> = Object.create(null);
       for (const node of nodes.values()) {
         const lag: Record<string, number> = Object.create(null);
@@ -1168,6 +1188,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           failed: node.failed,
           deadLettered: node.deadLettered,
           dropped: node.dropped,
+          ...(node.outageDropped ? { outageDropped: node.outageDropped } : {}),
           ...(node.blocked ? { blocked: node.blocked } : {}),
           ...(held(node) ? { failingOver: true } : {}),
           throughput: node.throughput,
@@ -1210,6 +1231,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       setNodePropsBatch({ [nodeId]: patch });
     },
     setNodePropsBatch,
+    trafficLimit: () =>
+      sourceRate / scale > SOURCE_RATE_CAP ? "rate" : sourceEmitted >= SOURCE_VOLUME_CAP ? "volume" : undefined,
     setScale(value): void {
       const next = resolveScale(value);
       if (next === scale) return;
@@ -1221,7 +1244,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       setNodePropsBatch({}, value);
     },
     setTraffic(on: boolean): void {
-      traffic = on;
+      traffic = on && !engine.trafficLimit();
     },
     setSpeed(value: number): void {
       if (Number.isFinite(value)) speed = Math.max(0.25, Math.min(8, value));

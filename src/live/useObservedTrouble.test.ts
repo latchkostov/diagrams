@@ -71,3 +71,28 @@ it("an ongoing lag warning returns after forward seeking warms its history", () 
   expect(tracker.current()?.key).toBe("lag:q");
   off();
 });
+
+it.each([
+  { duration: 500, at: 250 },
+  { duration: 1_800, at: 1_500 },
+])("a completed $duration ms run reports a loss in its final partial second", ({ duration, at }) => {
+  const d = structuredClone(diagram);
+  d.nodes.find((n) => n.id === "worker")!.props = { failureRate: 1, latencyMs: 0 };
+  const c = new LiveController(d);
+  c.selectSimulation({
+    id: "short",
+    title: "Short",
+    seed: 1,
+    scale: 1,
+    durationMs: duration,
+    traffic: [],
+    timeline: [{ atMs: at, action: { do: "inject", node: "worker", count: 1 } }],
+  });
+  const tracker = new TroubleTracker(c);
+  const off = tracker.subscribe(() => undefined);
+  for (let t = 0; t < duration; t += 50) c.step(50);
+  expect(c.getState().run?.done).toBe(true);
+  expect(c.snapshot().nodes.worker.dropped).toBe(1);
+  expect(tracker.current()).toMatchObject({ kind: "dropping", node: "worker" });
+  off();
+});

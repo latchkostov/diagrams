@@ -14,6 +14,10 @@ import {
 } from "../stencils/netDevices";
 import type { NodeSimProps } from "./types";
 
+/** Only these roles spend service time, including paused and resumed work. */
+export const hasServiceTime = (role: SimRole): boolean =>
+  role === "processor" || role === "store" || role === "gateway";
+
 type DeviceKey = "size" | "gbps" | "messageKB" | "ha" | "failoverMs" | "healthChecks";
 
 /** A network device's settings, its size preset's values under the node's own. */
@@ -52,18 +56,20 @@ export function resolveProps(
   const ha = device?.ha ?? "standalone";
   return {
     ratePerSec: number("ratePerSec", 2),
-    latencyMs: number(
-      "latencyMs",
-      device?.preset
-        ? device.preset.latencyMs
-        : role === "processor"
-          ? 250
-          : role === "gateway"
-            ? 60
-            : role === "store"
-              ? 40
-              : 0,
-    ),
+    latencyMs: hasServiceTime(role)
+      ? number(
+          "latencyMs",
+          device?.preset
+            ? device.preset.latencyMs
+            : role === "processor"
+              ? 250
+              : role === "gateway"
+                ? 60
+                : role === "store"
+                  ? 40
+                  : 0,
+        )
+      : 0,
     concurrency: role === "processor" ? Math.floor(number("concurrency", 4)) : Infinity,
     // An HA pair or cluster starts at two units.
     replicas: Math.max(1, Math.floor(number("replicas", ha === "standalone" ? 1 : 2, 1))),

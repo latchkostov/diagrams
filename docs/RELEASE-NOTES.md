@@ -2,6 +2,18 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Simulation review, round 3 (2026-10)
+
+- Live reports losses between trend samples, including the last partial second of a finished run. Broker outages
+  say messages were dropped on arrival; delivery-limit losses offer a dead-letter queue. Only playback's selected
+  dead-letter route exempts its target from lag warnings.
+- Large bursts no longer cost a full travel-array scan every tick or frame. Broker throughput stays unlimited;
+  paused sinks ignore saved latency when revived, matching the inspector.
+- Continuous traffic keeps the 10,000,000 msg/s input limit, with a sampled rate and per-run source budget. Unsafe
+  scale combinations explain how to change Inputs; reaching the volume budget shows a notice and requires Restart.
+- Callouts reserve room for Back to editing, and Show events remains usable during slow motion. Adding a dead-letter
+  queue is covered through delivery and one-step Undo; staged-backlog tests now require progress and full draining.
+
 ## Simulation review follow-up (2026-10)
 
 - A saved sink latency really does nothing: topic delivery stays immediate. Large consumer groups refresh their

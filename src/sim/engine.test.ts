@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DiagramEdge, DiagramFile, DiagramNode, SimRole } from "../model/types";
 import { getStencil } from "../stencils/registry";
-import { createEngine } from "./engine";
+import { SOURCE_RATE_CAP, SOURCE_VOLUME_CAP, createEngine } from "./engine";
 import { messageColor, MESSAGE_PALETTE } from "./colors";
 import type { EngineOptions, SimEngine } from "./types";
 
@@ -962,5 +962,62 @@ describe("real example smoke tests", () => {
     ).toBeGreaterThan(0);
     expect(snap.inSystem).toBeGreaterThanOrEqual(0);
     expect(snap.particles.every((p) => p.progress >= 0 && p.progress <= 1)).toBe(true);
+  });
+});
+
+describe("continuous source safety budget", () => {
+  it("an explicit scale of one cannot emit an unsafe continuous rate, but safe sampling keeps that real rate", () => {
+    const e = engine([node("web", "source", { ratePerSec: 10_000_000 }), node("q", "queue")], [edge("web", "q")]);
+    e.setTraffic(true);
+    e.step(10);
+    expect(e.metrics().inSystem).toBe(0);
+    e.setScale(10_000_000 / SOURCE_RATE_CAP);
+    e.setTraffic(true);
+    e.step(10);
+    expect(e.frame().nodes.web.processed).toBe(SOURCE_RATE_CAP / 100);
+    expect(e.frame().scale).toBe(1_000);
+    e.setScale(1);
+    e.step(10);
+    expect(e.frame().nodes.web.processed).toBe(SOURCE_RATE_CAP / 100);
+  });
+
+  it("rate checks aggregate sources, include live patches, and fail closed before any emission", () => {
+    const e = engine(
+      [node("a", "source", { ratePerSec: SOURCE_RATE_CAP }), node("b", "source", { ratePerSec: SOURCE_RATE_CAP })],
+      [],
+    );
+    e.setTraffic(true);
+    e.step(10);
+    expect(e.frame().nodes.a.processed + e.frame().nodes.b.processed).toBe(0);
+    e.setNodePropsBatch({ a: { ratePerSec: 0 }, b: { ratePerSec: 1 } });
+    e.setTraffic(true);
+    e.step(1_000);
+    expect(e.frame().nodes.b.processed).toBe(1);
+    e.setNodeProps("b", { ratePerSec: 10_000_000 });
+    e.step(10);
+    expect(e.frame().nodes.b.processed).toBe(1);
+  });
+
+  it("continuous volume is bounded across toggles and checkpoints and reset by restart", () => {
+    const e = engine([node("web", "source", { ratePerSec: SOURCE_RATE_CAP }), node("q", "queue")], [edge("web", "q")], {
+      maxParticles: 0,
+    });
+    e.setTraffic(true);
+    e.step(10);
+    const checkpoint = e.checkpoint();
+    e.step(30_000);
+    expect(e.frame().nodes.web.processed).toBe(SOURCE_VOLUME_CAP);
+    expect(e.metrics().inSystem).toBe(SOURCE_VOLUME_CAP);
+    e.setTraffic(false);
+    e.setTraffic(true);
+    e.step(10);
+    expect(e.frame().nodes.web.processed).toBe(SOURCE_VOLUME_CAP);
+    e.restore(checkpoint);
+    e.step(30_000);
+    expect(e.frame().nodes.web.processed).toBe(SOURCE_VOLUME_CAP);
+    e.reset();
+    e.setTraffic(true);
+    e.step(10);
+    expect(e.frame().nodes.web.processed).toBe(SOURCE_RATE_CAP / 100);
   });
 });

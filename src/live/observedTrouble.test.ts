@@ -330,3 +330,55 @@ describe("the trouble callout and the capacity callout", () => {
     );
   });
 });
+
+describe("third review", () => {
+  it("loss counters invalidate cached trouble even at the same paused time", () => {
+    const d = diagram(0, { failureRate: 1, latencyMs: 0 });
+    const e = createEngine({ seed: 1 });
+    e.load(d);
+    const watcher = new TroubleWatcher();
+    expect(watcher.observe(realSnapshot(e.snapshot()), d)).toEqual([]);
+    e.inject("worker", 1);
+    e.step(10);
+    const frame = realSnapshot(e.snapshot());
+    const trouble = watcher.observe(frame, d);
+    expect(trouble).toEqual([expect.objectContaining({ kind: "dropping", node: "worker" })]);
+    expect(watcher.observe(frame, d)).toBe(trouble);
+    e.inject("worker", 1);
+    e.step(10);
+    expect(watcher.observe(realSnapshot(e.snapshot()), d)[0].headline).toContain("2 dropped");
+  });
+
+  it.each([false, true])("an unused second DLQ route never suppresses ordinary lag (first denied: %s)", (deny) => {
+    const d = diagram(30);
+    d.nodes.push({ id: "other", stencil: "aws.sqs", label: "Other", x: 0, y: 0 });
+    d.edges.push(
+      { id: "first", from: "q", to: "other", props: { dlq: true, deny } },
+      { id: "second", from: "q", to: "unread", props: { dlq: true } },
+    );
+    d.nodes.push({ id: "unread", stencil: "aws.sqs", label: "Unread", x: 0, y: 0 });
+    d.edges.push({ id: "ordinary", from: "web", to: "unread" });
+    expect(watch(d, 30).find((t) => t.node === "unread")).toMatchObject({
+      kind: "lag",
+      action: { kind: "add-consumer" },
+    });
+  });
+
+  it("broker arrival losses remain outage diagnostics after revival, even after event eviction", () => {
+    const d = diagram(0);
+    const e = createEngine({ seed: 1 });
+    e.load(d);
+    const watcher = new TroubleWatcher();
+    watcher.observe(realSnapshot(e.snapshot()), d);
+    e.setNodeStatus("q", "down");
+    e.inject("q", 300);
+    e.step(1_000);
+    e.setNodeStatus("q", "up");
+    for (let i = 0; i < 210; i++) e.setNodeStatus("worker", i % 2 ? "up" : "down");
+    expect(e.snapshot().events.some((event) => event.kind === "drop")).toBe(false);
+    const trouble = watcher.observe(realSnapshot(e.snapshot()), d).find((t) => t.node === "q");
+    expect(trouble).toMatchObject({ kind: "dropping", action: { kind: "events", node: "q" } });
+    expect(trouble?.detail).toContain("dropped on arrival");
+    expect(realSnapshot(e.snapshot()).nodes.q.outageDropped).toBe(300);
+  });
+});

@@ -29,6 +29,7 @@ import type {
   TraceRequest,
 } from "../sim/types";
 import { realSnapshot, resolveMultiplier, resolveScale } from "../sim/units";
+import { t } from "../i18n";
 import { autoScale } from "../sim/scale";
 import { effectiveSimulation, emptyInputs, freePlayProps, freePlayScale, type LiveInputs } from "./capacityModel";
 import { DEFAULT_SEED } from "./storm";
@@ -208,7 +209,7 @@ export class LiveController {
       scale: resolveScale(snapshot.scale),
       playing: this.playing,
       speed: this.speed,
-      traffic: this.traffic,
+      traffic: this.traffic && !this.engine.trafficLimit(),
       simulation: this.base,
       running: this.sim,
       inputs: this.inputs,
@@ -410,8 +411,13 @@ export class LiveController {
     this.publish();
   }
 
+  trafficHint(): string | undefined {
+    const limit = this.engine.trafficLimit();
+    return limit === "rate" ? t("live.sourceRateLimit") : limit === "volume" ? t("live.sourceVolumeLimit") : undefined;
+  }
+
   setTraffic(on: boolean): void {
-    this.traffic = on;
+    this.traffic = on && !this.engine.trafficLimit();
     this.engine.setTraffic(on);
     this.publish();
   }

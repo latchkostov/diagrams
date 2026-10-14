@@ -280,6 +280,8 @@ export function liveActions(host: LiveActionsHost): Action[] {
       icon: "traffic",
       order: 20,
       checked: () => c.getState().traffic,
+      enabled: () => c.getState().traffic || !c.trafficHint(),
+      hint: () => c.trafficHint(),
       run: () => c.setTraffic(!c.getState().traffic),
     },
     {
@@ -370,7 +372,8 @@ export function liveActions(host: LiveActionsHost): Action[] {
     ...action,
     ...(mutations.has(action.id)
       ? {
-          ...guard,
+          enabled: (ctx) => guard.enabled() && (action.enabled?.(ctx) ?? true),
+          hint: (ctx) => guard.hint() ?? (typeof action.hint === "function" ? action.hint(ctx) : action.hint),
           run: action.run
             ? (ctx) => {
                 if (guard.enabled()) action.run?.(ctx);

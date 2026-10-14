@@ -207,6 +207,14 @@ export function LiveSession({
     noticeTimer.current = window.setTimeout(() => setNotice(null), 3200);
   }, []);
   useEffect(() => () => window.clearTimeout(noticeTimer.current), []);
+  const previousTraffic = useRef(state.traffic);
+  useEffect(() => {
+    if (previousTraffic.current && !state.traffic) {
+      const hint = controller.trafficHint();
+      if (hint) flash(hint);
+    }
+    previousTraffic.current = state.traffic;
+  }, [state.traffic, controller, flash]);
 
   // ---------------------------------------------------------------- diagram edits while live
 
@@ -889,7 +897,7 @@ export function LiveSession({
   const { trouble, dismiss: dismissTrouble, shown: troubleShown } = useObservedTrouble(controller);
   const runTroubleAction = useCallback(
     (action: TroubleAction) => {
-      if (slowRef.current?.session.active) return;
+      if (slowRef.current?.session.active && action.kind !== "events" && action.kind !== "inputs") return;
       if (action.kind === "revive") controller.setNodeStatus(action.node, "up");
       else if (action.kind === "add-consumer") addReader(action.node);
       else if (action.kind === "add-dlq") {
@@ -1234,7 +1242,11 @@ export function LiveSession({
             floating
             onAction={troubleActionHere(troubleOnScreen) ? runTroubleAction : undefined}
             onDismiss={dismissTrouble}
-            disabledHint={liveMutationGuard(() => slow.session.active).hint()}
+            disabledHint={
+              troubleOnScreen.action.kind === "events" || troubleOnScreen.action.kind === "inputs"
+                ? undefined
+                : liveMutationGuard(() => slow.session.active).hint()
+            }
           />
         ) : (
           showCapacity &&
