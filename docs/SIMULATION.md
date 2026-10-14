@@ -172,6 +172,10 @@ Routers, switches, firewalls and ADCs (`src/stencils/netDevices.ts`; research an
   - **In analysis** (`analyzeCapacity`) a device's capacity is the same ceiling, flagged `device: true`, so live view's
     heat map colours it. Other gateways stay unmodeled.
   - **Explicit throughput:** any gateway with an explicit `gbps` gets a ceiling too.
+  - **Sizing** is the shared planner's (`sizingFix`, src/sim/capacityPlanning.ts): a device at 90% or more moves to the
+    smallest bigger size that lands it under 55%, with a `gbps` typed over the old size moved to the new size's figure.
+    The capacity check turns it into edit ops, live view into overrides. Capacity × scales a device's units like a
+    service's replicas, and Save to diagram keeps them.
 - **Units and high availability.** `replicas` are units, and `ha` says how they work:
   - `standalone` (default): one box.
   - `active-standby`: one unit carries traffic whatever the count. Choosing it starts at two units.
@@ -201,8 +205,18 @@ neither dead-lettered nor dropped). Replies and retries travel back and aren't d
   slow motion ends on "Blocked by a deny rule" with no failure flash, and the trace card's status reads Blocked.
 - **What it never counts as:** `dropped` or `failed`, so live view shows it as its own neutral badge (never the red
   count or a failure flash), and Run simulations never reports it as a loss.
-- **Capacity analysis** sends no demand down a denied edge, a broker's included (its share is blocked at the
-  broker), and a denied route never counts as a broker's consumer capacity.
+- **A denied route out of a broker isn't a consumer.** Its target leaves the consumer group's members (it takes no
+  partition and isn't restricted by one) and the route bypasses the group's slot gate: it's always ready, even when the
+  consumers are full or there are none, so a topic whose only route is denied blocks everything it gets and holds
+  nothing. The no-reader check reads it as "Nobody reads", saying its only route out is a deny rule.
+- **Capacity analysis** treats a denied route as an unbounded exit, the way playback does. A type a denied route in a
+  group accepts never limits the broker (no false overload), each allowed route in that group takes its round-robin
+  share at most its own capacity, and the rest is blocked at the broker. A gateway's or service's denied edge gets no
+  demand. The capacity check, live view's heat map, its fix and the Inputs panel all read this one analysis.
+- **Malformed values fail closed.** `isDenyRule` (src/stencils/netDevices.ts) reads anything set that isn't `false`
+  as deny, everywhere a rule is read (playback, analysis, the canvas, the inspector, accessible names). Opening a file
+  with a `deny` that isn't true or false sets it to `true` and warns: "it's read as deny, so what's routed there is
+  blocked. Set it to false to allow."
 - **Filters make it a rulebase line:** "Deny: branch → payments" with `filter: ["PaymentAdmin"]` blocks only that
   type.
 

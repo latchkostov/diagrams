@@ -1,5 +1,5 @@
 import { ANNOTATION_LIMITS } from "../model/annotations";
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import { getStencil } from "../stencils/registry";
 import { simRoleMeta } from "../lib/simRoles";
 import type { NodeSimProps } from "../sim/types";
@@ -51,6 +51,7 @@ import {
   SIZE_LABEL,
   deviceSpec,
   isDeviceHa,
+  isDenyRule,
   isFirewallStencil,
   messagesPerSec,
   type DeviceHa,
@@ -181,7 +182,8 @@ const SIM_FIELDS_BY_ROLE: Record<SimRole, SimKey[]> = {
 const SIM_KEYS = new Set<string>(Object.keys(SIM_FIELDS));
 // A setting leaves Custom properties only where a control for it shows: a device's own section, a firewall's rule.
 // Anywhere else (an nginx with a `gbps`, a service's connection with `deny`) it stays there, to see, change or remove.
-const DEVICE_KEYS = new Set<string>([...SIM_KEYS, "size", "gbps", "messageKB", "ha", "failoverMs", "healthChecks"]);
+const DEVICE_KEYS = new Set<string>([...SIM_KEYS, "size", "gbps", "messageKB", "ha", "failoverMs"]);
+const ADC_KEYS = new Set<string>([...DEVICE_KEYS, "healthChecks"]);
 const EDGE_KEYS = new Set(["group", "dlq", "travelMs", "filter", "emits", "share", "settings"]);
 const RULE_KEYS = new Set([...EDGE_KEYS, "deny"]);
 const SIDES: Side[] = ["top", "right", "bottom", "left"];
@@ -298,6 +300,8 @@ function NodePanel({ node, editor, groups }: InspectorProps & { node: DiagramFlo
   const [picker, setPicker] = useState<{ x: number; y: number } | null>(null);
   const simFields = SIM_FIELDS_BY_ROLE[role];
   const device = role === "gateway" ? deviceSpec(node.data.stencil) : undefined;
+  // What Custom properties leaves out: only the settings a control here shows.
+  const hidden = !device ? SIM_KEYS : device.kind === "adc" ? ADC_KEYS : DEVICE_KEYS;
 
   return (
     <>
@@ -396,14 +400,10 @@ function NodePanel({ node, editor, groups }: InspectorProps & { node: DiagramFlo
         )}
       </Disclosure>
 
-      <Disclosure
-        id="node-properties"
-        title="Custom properties"
-        count={customCount(props, device ? DEVICE_KEYS : SIM_KEYS)}
-      >
+      <Disclosure id="node-properties" title="Custom properties" count={customCount(props, hidden)}>
         <PropsEditor
           props={props}
-          hidden={device ? DEVICE_KEYS : SIM_KEYS}
+          hidden={hidden}
           onSet={(patch) => editor.setNodeProps(node.id, patch)}
           onSetMerged={(patch, key) => editor.setNodeProps(node.id, patch, merge(`prop:${key}`))}
         />
@@ -503,13 +503,14 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
             group
           >
             <Segmented
-              value={props.deny === true ? "deny" : "allow"}
+              value={isDenyRule(props) ? "deny" : "allow"}
               options={[
                 { value: "allow", label: "Allow", hint: "Traffic passes" },
                 { value: "deny", label: "Deny", hint: "Traffic is blocked at the firewall" },
               ]}
               onChange={(v) => editor.setEdgeProps(edge.id, { deny: v === "deny" || undefined })}
               testId="inspector-field-rule"
+              label="Firewall rule"
             />
           </Field>
         )}
@@ -903,6 +904,7 @@ function AnnotationPanel({ note, editor, onTextSettled }: InspectorProps & { not
         <Field label="Text size" group>
           <Segmented
             testId="inspector-field-text-size"
+            label="Text size"
             value={note.data.textSize ?? "m"}
             options={ANNOTATION_TEXT_SIZES.map((t) => ({ value: t, label: textSizeLabel[t] }))}
             onChange={(textSize) => {
@@ -1380,6 +1382,7 @@ function DiagramPanel({ editor, meta, counts }: InspectorProps) {
         <Field label="Flow direction" hint="Edges prefer this axis when picking sides; auto-layout follows it" group>
           <Segmented
             testId="inspector-field-direction"
+            label="Flow direction"
             value={meta.direction ?? "LR"}
             options={[
               { value: "LR", label: "Left → right" },
@@ -1540,6 +1543,7 @@ function DeviceFields({
           unit: "Gbps",
           kind: "number",
           min: 0,
+          max: 1_000_000,
           step: 0.5,
           placeholder: String(preset.gbps),
           hint: `Per unit, with its usual inspection on. Default: the ${preset.model} datasheet figure`,
@@ -1580,6 +1584,7 @@ function DeviceFields({
             label: "Units",
             kind: "number",
             min: 1,
+            max: 10_000,
             step: 1,
             placeholder: "2",
             hint:
@@ -1598,6 +1603,7 @@ function DeviceFields({
           unit: "ms",
           kind: "number",
           min: 0,
+          max: 600_000,
           step: 0.05,
           placeholder: String(preset.latencyMs),
           hint: "Time through the device, per message",
@@ -1628,6 +1634,7 @@ function DeviceFields({
             unit: "kB",
             kind: "number",
             min: 0.01,
+            max: 1_000_000,
             step: 1,
             placeholder: String(DEFAULT_MESSAGE_KB),
             hint: "The average message the throughput is converted with (1 kB = 1,000 bytes)",
@@ -1643,6 +1650,7 @@ function DeviceFields({
               unit: "ms",
               kind: "number",
               min: 0,
+              max: 600_000,
               step: 100,
               placeholder: String(DEFAULT_FAILOVER_MS),
               hint: "How long traffic waits when the active unit fails and the standby takes over",
@@ -1694,28 +1702,62 @@ function Field({
   );
 }
 
+/**
+ * A radio group drawn as a segmented control: named by `label`, one Tab stop (the checked option), and the arrow keys,
+ * Home and End move the choice, as the WAI-ARIA radio group pattern says.
+ */
 function Segmented<T extends string>({
   value,
   options,
   onChange,
   testId,
+  label,
 }: {
   value: T;
   options: { value: T; label: string; hint?: string }[];
   onChange: (v: T) => void;
   testId: string;
+  label: string;
 }) {
+  const current = Math.max(
+    0,
+    options.findIndex((o) => o.value === value),
+  );
+  const move = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const last = options.length - 1;
+    const next =
+      e.key === "ArrowRight" || e.key === "ArrowDown"
+        ? index === last
+          ? 0
+          : index + 1
+        : e.key === "ArrowLeft" || e.key === "ArrowUp"
+          ? index === 0
+            ? last
+            : index - 1
+          : e.key === "Home"
+            ? 0
+            : e.key === "End"
+              ? last
+              : -1;
+    if (next < 0) return;
+    e.preventDefault();
+    onChange(options[next].value);
+    const group = e.currentTarget.parentElement;
+    group?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[next]?.focus();
+  };
   return (
-    <div className="segmented insp-seg" role="radiogroup" data-testid={testId}>
-      {options.map((o) => (
+    <div className="segmented insp-seg" role="radiogroup" aria-label={label} data-testid={testId}>
+      {options.map((o, i) => (
         <button
           key={o.value}
           type="button"
           role="radio"
           aria-checked={value === o.value}
+          tabIndex={i === current ? 0 : -1}
           className={value === o.value ? "is-on" : ""}
           title={o.hint}
           onClick={() => onChange(o.value)}
+          onKeyDown={(e) => move(e, i)}
           data-testid={`${testId}-${o.value}`}
         >
           {o.label}
@@ -1818,8 +1860,8 @@ function SimInput({
               }
               if (raw.trim() === "") return onChange(undefined);
               const v = Number(raw);
-              if (Number.isFinite(v))
-                onChange(field.max !== undefined ? Math.min(field.max, Math.max(field.min ?? -Infinity, v)) : v);
+              // Each bound on its own: a value the file format would reject never reaches the diagram.
+              if (Number.isFinite(v)) onChange(Math.min(field.max ?? Infinity, Math.max(field.min ?? -Infinity, v)));
             }}
             name={name}
             data-testid={`inspector-field-${name}`}

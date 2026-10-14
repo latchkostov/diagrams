@@ -619,7 +619,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (node.status !== "up") return;
     for (const group of node.groups) {
       if (!group.pending.length) continue;
-      while (group.pending.length && group.active < group.limit) {
+      // A deny rule delivers nothing and reserves no slot: it's ready even when the group's consumers are full.
+      while (group.pending.length) {
+        const free = group.active < group.limit;
         const message = group.pending.peek()!;
         let ready: Edge | undefined;
         for (let offset = 0; offset < group.edges.length; offset++) {
@@ -629,7 +631,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           if (
             accepts(edge, message.type) &&
             (edge.deny ||
-              (target.status === "up" &&
+              (free &&
+                target.status === "up" &&
                 target.working.length + target.incoming + target.pending.length < slots(target) &&
                 (node.role === "queue" ||
                   (group.activeByNode[target.id] ?? 0) <

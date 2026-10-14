@@ -284,6 +284,14 @@ export function validateDiagram(data: unknown): NativeResult {
     if (out.sourceSide !== undefined && !SIDES.has(out.sourceSide as string)) delete out.sourceSide;
     if (out.targetSide !== undefined && !SIDES.has(out.targetSide as string)) delete out.targetSide;
     if (out.props !== undefined && !isObj(out.props)) delete out.props;
+    // A deny rule fails closed: anything that isn't true or false is read as deny, never as allow, and said.
+    const deny = (out.props as Record<string, unknown> | undefined)?.deny;
+    if (deny !== undefined && typeof deny !== "boolean") {
+      warnings.push(
+        `Edge "${e.id}" had a deny rule that wasn't true or false (${String(JSON.stringify(deny)).slice(0, 40)}); it's read as deny, so what's routed there is blocked. Set it to false to allow.`,
+      );
+      out.props = { ...(out.props as Record<string, unknown>), deny: true };
+    }
     repairRelation(out, warnings);
     edges.push(out);
   }

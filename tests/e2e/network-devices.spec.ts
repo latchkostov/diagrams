@@ -152,4 +152,63 @@ test.describe("network devices", () => {
     await page.getByTestId("node-firewall").hover();
     await expect(page.getByTestId("node-detail-firewall")).toContainText("Active-standby pair");
   });
+
+  test("the firewall rule is a named radio group with one Tab stop and arrow keys", async ({ page }) => {
+    await gotoCanvas(page, SLUG);
+    await page.getByTestId("edge-label-firewall-spine-1").click();
+    const group = page.getByTestId("inspector-field-rule");
+    await expect(group).toHaveAttribute("role", "radiogroup");
+    await expect(group).toHaveAccessibleName("Firewall rule");
+    const allow = page.getByTestId("inspector-field-rule-allow");
+    const deny = page.getByTestId("inspector-field-rule-deny");
+    await expect(allow).toHaveAttribute("tabindex", "0");
+    await expect(deny).toHaveAttribute("tabindex", "-1");
+    await allow.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(deny).toHaveAttribute("aria-checked", "true");
+    await expect(deny).toBeFocused();
+    await expect(page.getByTestId("edge-deny-firewall-spine-1")).toBeVisible();
+    await page.keyboard.press("Home");
+    await expect(allow).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByTestId("edge-deny-firewall-spine-1")).toHaveCount(0);
+  });
+
+  test("a device keeps settings its controls don't show in custom properties, and out-of-range numbers are held to bounds", async ({
+    page,
+  }) => {
+    await gotoCanvas(page, SLUG);
+    await page.getByTestId("node-firewall").click();
+    // Health checks only have a control on a load balancer: on a firewall the setting stays a custom property.
+    await page.getByTestId("inspector-section-node-properties").click();
+    await page.getByTestId("inspector-prop-new").fill("healthChecks");
+    await page.getByTestId("inspector-prop-add").click();
+    await expect(page.getByTestId("inspector-prop-remove-healthChecks")).toBeVisible();
+    // Bounds hold whatever is typed: a negative throughput becomes 0, a zero message size the smallest allowed.
+    await page.getByTestId("inspector-section-node-simulation").click();
+    const gbps = page.getByTestId("inspector-field-gbps");
+    await gbps.fill("-1");
+    await gbps.blur();
+    await expect(gbps).toHaveValue("0");
+    const kb = page.getByTestId("inspector-field-messageKB");
+    await kb.fill("0");
+    await kb.blur();
+    await expect(kb).toHaveValue("0.01");
+  });
+
+  test("the event log's blocked label fits its column", async ({ page }) => {
+    await gotoLive(page, `./?view=canvas&example=${SLUG}&sim=payments-denied`);
+    await expect(page.getByTestId("node-blocked-firewall")).toBeVisible();
+    await page.getByTestId("node-firewall").click({ button: "right" });
+    await page.getByTestId("context-menu-item-sim.behaviour").click();
+    await page.getByTestId("context-menu-item-sim.events").click();
+    // The log keeps the latest events, so a block may have scrolled out: measure the column with its longest word.
+    const kind = page.getByTestId("live-event-kind").first();
+    await expect(kind).toBeVisible();
+    expect(
+      await kind.evaluate((el) => {
+        el.textContent = "blocked";
+        return el.scrollWidth <= el.clientWidth;
+      }),
+    ).toBe(true);
+  });
 });

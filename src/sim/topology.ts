@@ -1,3 +1,4 @@
+import { isDenyRule } from "../stencils/netDevices";
 import type { DiagramEdge, DiagramFile, DiagramNode, SimRole } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { flowEdges } from "../model/relations";
@@ -113,7 +114,7 @@ export function compileTopology(diagram: DiagramFile, roleOf = stencilRole): Com
         ? input.props.filter.filter((value): value is string => typeof value === "string")
         : undefined,
       emits: typeof input.props?.emits === "string" ? input.props.emits : undefined,
-      deny: input.props?.deny === true,
+      deny: isDenyRule(input.props),
       groupName: from === "queue" ? "queue" : typeof input.props?.group === "string" ? input.props.group : input.id,
     };
     edges.push(edge);
@@ -121,6 +122,8 @@ export function compileTopology(diagram: DiagramFile, roleOf = stencilRole): Com
     const routes = outgoing.get(edge.from) ?? [];
     routes.push(edge);
     outgoing.set(edge.from, routes);
+    // A deny rule delivers nothing, so its target isn't a consumer: it takes no partition and isn't restricted by one.
+    if (edge.deny && brokerRole(from)) continue;
     if (from === "topic" || from === "stream") restricted.add(edge.to);
     else unrestricted.add(edge.to);
   }
@@ -135,7 +138,9 @@ export function compileTopology(diagram: DiagramFile, roleOf = stencilRole): Com
       }
       group.edges.push(edge);
     }
-    for (const group of named.values()) group.members = [...new Set(group.edges.map((edge) => edge.to))];
+    // Members are the consumers: a deny rule's target in the group (and nowhere else in it) isn't one.
+    for (const group of named.values())
+      group.members = [...new Set(group.edges.filter((edge) => !edge.deny).map((edge) => edge.to))];
     groups.set(id, [...named.values()]);
   }
   for (const id of unrestricted) restricted.delete(id);

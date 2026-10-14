@@ -189,3 +189,10 @@ export function messagesPerSec(gbps: number, messageKB = DEFAULT_MESSAGE_KB): nu
 export function activeUnits(ha: DeviceHa, units: number): number {
   return ha === "active-standby" ? Math.min(1, units) : units;
 }
+
+/**
+ * Whether an edge's props make it a deny rule. Fails closed: anything set that isn't `false` denies, so a malformed
+ * value (a string, a number) never quietly lets traffic through. Opening a file says so (src/interop/native.ts).
+ */
+export const isDenyRule = (props: Record<string, unknown> | undefined): boolean =>
+  props?.deny !== undefined && props.deny !== false;

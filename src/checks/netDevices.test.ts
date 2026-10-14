@@ -7,6 +7,8 @@ import { edgeSimPropsSchema, propsProblem, simPropsPatchSchema } from "../model/
 import type { DiagramEdge, DiagramFile, DiagramNode } from "../model/types";
 import { collectEvidence } from "./evidence";
 import { runChecks } from "./run";
+import { capacityView, emptyInputs, freePlaySaveProps, freePlaySimulation } from "../live/capacityModel";
+import { isDenyRule } from "../stencils/netDevices";
 
 // Checks on network devices (docs/research/network-infrastructure.md, "Checks"): a device is a box you run, so the
 // single-point check offers an HA pair; can't-keep-up reads its datasheet ceiling and offers a bigger size; and a
@@ -177,5 +179,86 @@ describe("device settings in the file format", () => {
       checkJsonSchema({ size: "datacentre", gbps: null, ha: "active-active" }, simPropsPatchSchema),
     ).not.toThrow();
     expect(() => checkJsonSchema({ size: "rack" }, simPropsPatchSchema)).toThrow();
+  });
+});
+
+describe("review round 2", () => {
+  it("one planner sizes a device for checks and live view alike", () => {
+    // Live view's capacity fix and the capacity check's come from src/sim/capacityPlanning.ts.
+    const d = path({ size: "branch" }, 5000);
+    const view = capacityView(d, freePlaySimulation(d, emptyInputs()));
+    expect(view.fix?.changes).toEqual([
+      { nodeId: "fw", key: "size", from: "branch", to: "campus", model: "PA-3440", label: "fw" },
+    ]);
+    // A throughput typed over the old size moves to the new size's figure, or the preset wouldn't show.
+    const typed = path({ size: "branch", gbps: 1.2 }, 5000);
+    const fix = runChecks(typed).findings.find((f) => f.rule === "capacity")!.fix!;
+    expect(fix.label).toBe("Use the campus size (PA-3440)");
+    expect(applyOps(typed, fix.ops!).diagram.nodes.find((n) => n.id === "fw")?.props).toEqual({
+      size: "campus",
+      gbps: 20,
+    });
+  });
+
+  it("saves a device's units with Capacity ×, its HA default included", () => {
+    const d = diagram(
+      [
+        node("users", "client.user"),
+        node("cluster", "generic.router", { ha: "active-active" }),
+        node("api", "generic.service"),
+      ],
+      [req("users", "cluster"), req("cluster", "api")],
+    );
+    const saved = freePlaySaveProps(d, { ...emptyInputs(), capacity: 2 });
+    expect(saved.cluster).toEqual({ replicas: 4 });
+    expect(saved.api).toEqual({ replicas: 2 });
+  });
+
+  it("reads a topic whose only route is a deny rule as unread, and never as overloaded", () => {
+    const d = diagram(
+      [
+        node("svc", "generic.service", { replicas: 2 }),
+        node("topic", "kafka.topic"),
+        node("worker", "generic.service", { concurrency: 0 }),
+      ],
+      [
+        { id: "svc-topic", from: "svc", to: "topic", kind: "async" },
+        { id: "topic-worker", from: "topic", to: "worker", kind: "async", props: { deny: true } },
+      ],
+    );
+    const findings = runChecks({
+      ...d,
+      nodes: [node("src", "client.user", { ratePerSec: 5 }), ...d.nodes],
+      edges: [req("src", "svc"), ...d.edges],
+    }).findings;
+    const unread = findings.find((f) => f.rule === "no-reader")!;
+    expect(unread.title).toBe("Nobody reads topic");
+    expect(unread.message).toContain("its only route out is a deny rule: every message is blocked");
+    expect(findings.map((f) => f.rule)).not.toContain("capacity");
+  });
+
+  it("reads a malformed deny from a file as deny, and says so", () => {
+    const file = (deny: unknown) => ({
+      format: "diagrams/v1",
+      title: "t",
+      nodes: [node("fw", "paloalto.ngfw"), node("api", "generic.service")],
+      edges: [{ id: "fw-api", from: "fw", to: "api", props: { deny } }],
+    });
+    for (const deny of ["true", 1, "false", 0, null, { yes: true }]) {
+      const result = validateDiagram(file(deny));
+      if (!result.ok) throw new Error(result.error);
+      expect(result.diagram.edges[0].props?.deny, JSON.stringify(deny)).toBe(true);
+      expect(result.warnings.join(" "), JSON.stringify(deny)).toMatch(/read as deny/);
+    }
+    for (const deny of [true, false]) {
+      const result = validateDiagram(file(deny));
+      if (!result.ok) throw new Error(result.error);
+      expect(result.diagram.edges[0].props?.deny).toBe(deny);
+      expect(result.warnings.join(" ")).not.toMatch(/deny/);
+    }
+    // Anything else that reaches the engine fails closed too.
+    expect(isDenyRule({ deny: "false" })).toBe(true);
+    expect(isDenyRule({ deny: false })).toBe(false);
+    expect(isDenyRule({})).toBe(false);
   });
 });

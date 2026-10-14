@@ -71,7 +71,9 @@ export function EventLog({ state }: { state: LiveState }) {
         {rows.map((e, i) => (
           <li key={`${e.time}-${e.messageId ?? ""}-${e.kind}-${i}`} className={`ev-${e.kind}`} data-node={e.nodeId}>
             <span className="lv-ev-time">{(e.time / 1000).toFixed(2)}</span>
-            <span className="lv-ev-kind">{KIND_LABEL[e.kind] ?? e.kind}</span>
+            <span className="lv-ev-kind" data-testid="live-event-kind">
+              {KIND_LABEL[e.kind] ?? e.kind}
+            </span>
             <span className="lv-ev-text">{e.text}</span>
           </li>
         ))}

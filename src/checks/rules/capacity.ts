@@ -2,17 +2,7 @@ import type { DiagramOp } from "../../ai";
 import type { NodeCapacity } from "../../sim/capacity";
 import { MAX_COUNT, sizingFix } from "../../sim/capacityPlanning";
 import { formatRate, isBroker, type CheckContext } from "../context";
-import {
-  activeUnits,
-  DEFAULT_MESSAGE_KB,
-  deviceSpec,
-  messagesPerSec,
-  presetOf,
-  SIZE_LABEL,
-  sizeOf,
-  sizesOf,
-} from "../../stencils/netDevices";
-import { FIX_TARGET } from "../../sim/capacityPlanning";
+import { SIZE_LABEL } from "../../stencils/netDevices";
 import type { CheckFix, CheckRule } from "../types";
 
 // 7. capacity: the busiest processor or broker can't keep up at the diagram's own (free-play) rates: the
@@ -32,34 +22,13 @@ function scaleFix(ctx: CheckContext, n: NodeCapacity): CheckFix | undefined {
   });
   if (!changes) return undefined;
   const ops: DiagramOp[] = changes.map((c) => ({ op: "update", target: c.nodeId, props: { [c.key]: c.to } }));
+  // A device's next size (and the throughput typed over its old one) is one change: say it as the size.
+  const size = changes.find((c) => c.key === "size");
+  if (size) return { label: `Use the ${SIZE_LABEL[size.to].toLowerCase()} size (${size.model})`, ops };
   const words = changes.map((c) =>
     c.key === "replicas" ? `replicas to ${c.to}` : `${ctx.name(c.nodeId)} partitions to ${c.to}`,
   );
   return { label: `Set ${words.join(" and ")}`, ops };
-}
-
-/**
- * A network device's fix: the smallest bigger size whose preset carries the load at FIX_TARGET, with the throughput
- * and latency typed over the old size cleared so the preset shows through.
- */
-function deviceFix(ctx: CheckContext, n: NodeCapacity): CheckFix | undefined {
-  const node = ctx.nodes.get(n.id);
-  const spec = deviceSpec(node?.stencil);
-  if (!node || !spec) return undefined;
-  const props = node.props ?? {};
-  const sizes = sizesOf(spec);
-  const now = sizes.indexOf(sizeOf(spec, props.size));
-  const kb = typeof props.messageKB === "number" && props.messageKB > 0 ? props.messageKB : DEFAULT_MESSAGE_KB;
-  const ha = props.ha === "active-standby" || props.ha === "active-active" ? props.ha : "standalone";
-  const units = activeUnits(ha, Math.max(1, n.replicas));
-  const size = sizes
-    .slice(now + 1)
-    .find((s) => messagesPerSec(presetOf(spec, s).gbps, kb) * units * FIX_TARGET >= n.offered);
-  if (!size) return undefined;
-  return {
-    label: `Use the ${SIZE_LABEL[size].toLowerCase()} size (${presetOf(spec, size).model})`,
-    ops: [{ op: "update", target: n.id, props: { size, gbps: null, latencyMs: null } }],
-  };
 }
 
 export const capacity: CheckRule = {
@@ -100,7 +69,7 @@ export const capacity: CheckRule = {
       top.idleReplicas > 0
         ? ` ${top.idleReplicas} of its ${top.replicas} replicas sit idle: a consumer group can't use more consumers than partitions.`
         : "";
-    const fix = top.device ? deviceFix(ctx, top) : scaleFix(ctx, top);
+    const fix = scaleFix(ctx, top);
     return [
       {
         id: `capacity:${top.id}`,

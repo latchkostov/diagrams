@@ -1,3 +1,4 @@
+import { isDenyRule } from "../stencils/netDevices";
 import {
   DIAGRAM_FORMAT,
   type DiagramAnnotation,
@@ -91,7 +92,7 @@ export function withEdgeAria(edges: DiagramFlowEdge[], labelOf: (id: string) => 
       e.data?.kind,
       e.data?.label,
       e.data?.relation,
-      e.data?.props?.deny === true,
+      isDenyRule(e.data?.props),
     );
     if (e.ariaLabel === want) return e;
     changed = true;

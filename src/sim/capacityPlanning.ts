@@ -5,6 +5,7 @@ import { resolveProps } from "./defaults";
 import { allocateGroupReplicas, compileTopology } from "./topology";
 import type { NodeStatus } from "./types";
 import { resolveMultiplier } from "./units";
+import { activeUnits, deviceSpec, messagesPerSec, presetOf, sizesOf, type DeviceSize } from "../stencils/netDevices";
 
 // Capacity planning and its one-click fix, shared by live view's Show capacity (src/live/capacityModel.ts)
 // and the capacity check (src/checks/rules/capacity.ts), so the two never disagree. Pure, and free of the
@@ -21,7 +22,7 @@ const roleOf = (n: DiagramNode): SimRole => stencilRole(n.stencil);
 
 /** Node props as a simulation sees them: the diagram's, then the saved setup's. */
 const planProps = (node: DiagramNode, sim: Simulation) =>
-  resolveProps(roleOf(node), node.label, { ...node.props, ...sim.setup?.props?.[node.id] });
+  resolveProps(roleOf(node), node.label, { ...node.props, ...sim.setup?.props?.[node.id] }, node.stencil);
 
 /** Every source sending steadily at `rate` (default: its own ratePerSec): free play as a simulation. */
 export function sourceTraffic(
@@ -47,13 +48,17 @@ export function planningSimulation(d: DiagramFile, sim: Simulation): Simulation 
   return { ...sim, setup: { ...sim.setup, props } };
 }
 
-export interface SizingChange {
-  nodeId: string;
-  key: "replicas" | "partitions";
-  /** Base values, as saved (before Capacity ×). */
-  from: number;
-  to: number;
-}
+export type SizingChange =
+  | {
+      nodeId: string;
+      key: "replicas" | "partitions";
+      /** Base values, as saved (before Capacity ×). */
+      from: number;
+      to: number;
+    }
+  /** A network device's next size; with `gbps` alongside when the old size's throughput was typed over. */
+  | { nodeId: string; key: "size"; from: DeviceSize; to: DeviceSize; model: string }
+  | { nodeId: string; key: "gbps"; from: number; to: number };
 
 /** The simulation with `changes` in its saved setup props. */
 export function withSizing(sim: Simulation, changes: readonly SizingChange[]): Simulation {
@@ -90,7 +95,16 @@ export function sizingFix(
   const byId = new Map(d.nodes.map((n) => [n.id, n]));
   const effective = new Map<string, number>();
   const changes: SizingChange[] = [];
+  const devices = new Set<string>();
   for (const n of nodes) {
+    if (n.device && Number.isFinite(n.utilization) && n.utilization >= FIX_ABOVE && n.capacity) {
+      const sized = deviceSizing(byId.get(n.id)!, sim, n);
+      if (sized) {
+        changes.push(...sized);
+        devices.add(n.id);
+      }
+      continue;
+    }
     if (n.role !== "processor" || !Number.isFinite(n.utilization) || n.utilization < FIX_ABOVE || !n.capacity) continue;
     const active = Math.max(1, n.activeReplicas);
     const wanted = Math.max(n.replicas, Math.ceil((active * n.utilization) / FIX_TARGET));
@@ -135,8 +149,31 @@ export function sizingFix(
   }
   if (!changes.length) return null;
   const verified = analyzeCapacity(d, planningSimulation(d, withSizing(sim, changes)), { status: opts.status });
-  if ([...effective.keys()].some((id) => verified.nodes[id].utilization > FIX_TARGET + 1e-9)) return null;
+  if ([...effective.keys(), ...devices].some((id) => verified.nodes[id].utilization > FIX_TARGET + 1e-9)) return null;
   return changes;
+}
+
+/**
+ * A network device's fix: the smallest bigger size whose preset carries its load at FIX_TARGET, on the units it has
+ * carrying traffic. A throughput typed over the old size (in the diagram or the simulation's setup) would hide the
+ * preset, so it moves to the new size's figure alongside. Null when no bigger size would do.
+ */
+function deviceSizing(node: DiagramNode, sim: Simulation, n: NodeCapacity): SizingChange[] | null {
+  const spec = deviceSpec(node.stencil);
+  const device = planProps(node, sim).device;
+  if (!spec || !device?.size) return null;
+  const sizes = sizesOf(spec);
+  const units = activeUnits(device.ha, Math.max(1, n.replicas));
+  const to = sizes
+    .slice(sizes.indexOf(device.size) + 1)
+    .find((s) => messagesPerSec(presetOf(spec, s).gbps, device.messageKB) * units * FIX_TARGET >= n.offered);
+  if (!to) return null;
+  const preset = presetOf(spec, to);
+  const typed = { ...node.props, ...sim.setup?.props?.[node.id] }.gbps;
+  return [
+    { nodeId: node.id, key: "size", from: device.size, to, model: preset.model },
+    ...(typeof typed === "number" ? [{ nodeId: node.id, key: "gbps" as const, from: typed, to: preset.gbps }] : []),
+  ];
 }
 
 /**
@@ -153,5 +190,7 @@ export function redundancyFix(
 ): { replicas: number; enough: boolean } {
   if (!Number.isFinite(node.utilization) || node.utilization < FIX_ABOVE) return { replicas: 2, enough: true };
   const sized = sizingFix(d, sim, [node], { maxCount })?.find((c) => c.nodeId === node.id && c.key === "replicas");
-  return sized ? { replicas: Math.min(maxCount, Math.max(2, sized.to)), enough: true } : { replicas: 2, enough: false };
+  return sized?.key === "replicas"
+    ? { replicas: Math.min(maxCount, Math.max(2, sized.to)), enough: true }
+    : { replicas: 2, enough: false };
 }

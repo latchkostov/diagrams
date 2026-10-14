@@ -1,3 +1,4 @@
+import { isDenyRule } from "../stencils/netDevices";
 import { edgeSettings, isDependency, RELATION_META, settingsSummary } from "../model/relations";
 import { pipsByNode } from "./nodes/dependencyRows";
 import { dependencyVisibility, projectDependencies, useShowDependencies } from "./dependencyVisibility";
@@ -1929,7 +1930,7 @@ function CanvasInner({
           e.data?.kind,
           e.data?.label,
           e.data?.relation,
-          e.data?.props?.deny === true,
+          isDenyRule(e.data?.props),
         );
         const settings = settingsSummary(edgeSettings(e.data));
         announce(

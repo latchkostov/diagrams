@@ -253,15 +253,17 @@ export function analyzeCapacity(
     if (brokerRole(entry.role)) {
       for (const group of groups.get(id) ?? []) {
         const accepting = group.edges.filter((edge) => acceptsType(edge.filter, type));
-        split(
-          next,
-          accepting,
-          type,
-          rate,
-          accepting.map(
-            (edge) => groupRate(group, edge) / accepting.filter((candidate) => candidate.to === edge.to).length,
-          ),
+        const allowed = accepting.filter((edge) => !edge.deny);
+        const weights = allowed.map(
+          (edge) => groupRate(group, edge) / allowed.filter((candidate) => candidate.to === edge.to).length,
         );
+        if (allowed.length === accepting.length) split(next, accepting, type, rate, weights);
+        else {
+          // A deny rule is an unbounded exit (playback: always ready, no slot): each allowed route takes its round-robin
+          // share at most what it can handle, and the rest is blocked at the broker.
+          const share = rate / accepting.length;
+          allowed.forEach((edge, i) => add(next, edge.to, emittedType(edge.emits, type), Math.min(share, weights[i])));
+        }
       }
     } else if (entry.role === "gateway") {
       // Equal shares; health checks leave out targets that are down while another is up. A deny rule's share is
@@ -310,8 +312,12 @@ export function analyzeCapacity(
     let capacity = serviceRate(entry);
     if (brokerRole(entry.role)) {
       const limits = (groups.get(id) ?? []).map((group) => {
-        const capacities = new Map(group.edges.map((edge) => [edge.to, groupRate(group, edge)]));
+        const capacities = new Map(
+          group.edges.filter((edge) => !edge.deny).map((edge) => [edge.to, groupRate(group, edge)]),
+        );
+        // A type a deny rule in this group accepts always has a way out (it's blocked), so it never limits the broker.
         const demands = [...(rates.get(id) ?? [])]
+          .filter(([type]) => !group.edges.some((edge) => edge.deny && acceptsType(edge.filter, type)))
           .map(([type, rate]) => ({
             rate,
             consumers: [

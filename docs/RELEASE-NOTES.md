@@ -34,7 +34,8 @@ New:
 - **draw.io imports** read the Cisco library's routers, switches, firewalls and load balancers.
 
 Nothing changes for diagrams you already have: existing gateways (nginx, HAProxy, Load Balancer, Firewall / WAF) behave
-as before.
+as before. A file whose connection has a `deny` that isn't true or false opens with it read as deny, and says so: a
+firewall rule never quietly turns into Allow.
 
 ## Live explains itself (2026-10)
 

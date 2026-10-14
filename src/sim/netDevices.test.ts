@@ -575,3 +575,101 @@ describe("a blocked trace is its own outcome", () => {
       expect(frameAt(script, t, d).flashes.filter((f) => f.kind === "drop")).toEqual([]);
   });
 });
+
+describe("denied broker routes aren't consumers", () => {
+  // Review round 2 (P1): a denied route sat behind the consumer-group slot gate and took a partition.
+  it.each([
+    ["topic", "kafka.topic"],
+    ["stream", "aws.kinesis"],
+  ])("denied %s deliveries ignore consumer capacity", (_role, stencil) => {
+    const sim = load(
+      diagram(
+        [node("broker", stencil), node("worker", "generic.service", { concurrency: 0 })],
+        [edge("broker", "worker", { deny: true })],
+      ),
+    );
+    sim.inject("broker", 5);
+    run(sim, 1000);
+    const { nodes } = sim.snapshot();
+    expect(nodes.broker.blocked).toBe(5);
+    expect(nodes.broker.backlog).toBe(0);
+    expect(nodes.worker.processed).toBe(0);
+    expect(sim.metrics().inSystem).toBe(0);
+  });
+
+  it("blocks at once while the group's consumers are all busy", () => {
+    const sim = load(
+      diagram(
+        [node("topic", "kafka.topic"), node("slow", "generic.service", { concurrency: 1, latencyMs: 5000 })],
+        [
+          edge("topic", "slow", { group: "g" }),
+          { ...edge("topic", "slow", { group: "g", deny: true }), id: "topic-denied" },
+        ],
+      ),
+    );
+    sim.inject("topic", 10);
+    run(sim, 200);
+    const { nodes } = sim.snapshot();
+    expect(nodes.topic.backlog).toBe(0);
+    expect(nodes.topic.blocked! + nodes.slow.inFlight).toBe(10);
+    expect(nodes.topic.blocked).toBeGreaterThanOrEqual(9);
+  });
+
+  it("takes no partition from an allowed consumer in the same group", () => {
+    const d = diagram(
+      [node("topic", "kafka.topic", { partitions: 1 }), node("admin", "generic.email"), node("web", "generic.service")],
+      [
+        edge("topic", "admin", { group: "g", filter: ["Admin"], deny: true }),
+        edge("topic", "web", { group: "g", filter: ["Web"] }),
+      ],
+    );
+    const sim = load(d);
+    sim.inject("topic", 10, { type: "Web" });
+    run(sim, 5000);
+    expect(sim.snapshot().nodes.web.processed).toBe(10);
+    expect(sim.snapshot().nodes.topic.backlog).toBe(0);
+    expect(sim.snapshot().nodes.web.activeReplicas).toBe(1);
+  });
+
+  it("is an unbounded exit in the analysis: no false overload, and allowed routes get at most what they handle", () => {
+    const d = diagram(
+      [
+        node("queue", "aws.sqs"),
+        node("worker", "generic.service", { latencyMs: 100, concurrency: 1 }),
+        node("sink", "generic.email"),
+      ],
+      [edge("queue", "worker"), edge("queue", "sink", { deny: true })],
+    );
+    const traffic: Simulation = {
+      id: "s",
+      title: "s",
+      durationMs: 5000,
+      traffic: [{ id: "t", node: "queue", shape: { kind: "constant", ratePerSec: 100, durationMs: 5000 } }],
+    };
+    const analysis = analyzeCapacity(d, traffic);
+    expect(analysis.nodes.queue.capacity).toBe(Infinity);
+    expect(analysis.nodes.queue.utilization).toBe(0);
+    expect(analysis.nodes.worker.offered).toBeCloseTo(10);
+    expect(analysis.nodes.sink.offered).toBe(0);
+    // Playback agrees: the queue never backs up; the worker is busy and the rest is blocked.
+    const r = createSimulationRun(d, traffic);
+    for (let t = 0; t < 5000; t += 10) r.step(10);
+    expect(r.engine.measure({ node: "queue", field: "backlog" })).toBeLessThanOrEqual(1);
+    expect(r.engine.measure({ node: "queue", field: "blocked" })).toBeGreaterThan(300);
+  });
+
+  it("leaves a topic whose only route is denied with no consumer capacity to overload", () => {
+    const d = diagram(
+      [node("topic", "kafka.topic"), node("worker", "generic.service", { concurrency: 0 })],
+      [edge("topic", "worker", { deny: true })],
+    );
+    const traffic: Simulation = {
+      id: "s",
+      title: "s",
+      traffic: [{ id: "t", node: "topic", shape: { kind: "constant", ratePerSec: 50, durationMs: 1000 } }],
+    };
+    const analysis = analyzeCapacity(d, traffic);
+    expect(analysis.nodes.topic.utilization).toBe(0);
+    expect(analysis.nodes.worker.offered).toBe(0);
+  });
+});

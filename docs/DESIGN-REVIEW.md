@@ -65,6 +65,20 @@ and 1440 × 900 dark, public examples only. Screenshots are in `docs/screenshots
   with `deny`, keeps it there to see, change or remove.
 - **The "failing over" chip** uses `--warning-ink`: 4.5:1 or better in both themes (it was about 2.6:1 in light).
 
+### Code review (PR #86, second round)
+
+- **A denied route out of a broker isn't a consumer.** It took a partition and waited behind a full consumer group;
+  now it takes neither, and capacity analysis treats it as the unbounded exit it is in playback. A topic whose only
+  route is a deny rule reads "Nobody reads": its only route out is a deny rule, so every message is blocked.
+- **One planner sizes devices.** Live view's capacity fix and the check's both come from the shared planner, and
+  Save to diagram keeps a device's units under Capacity ×.
+- **The Firewall rule is a named radio group:** one Tab stop, the arrow keys, Home and End move the choice. So are Flow
+  direction and Text size, which use the same control.
+- **Numbers stay in range:** a negative throughput becomes 0, a zero message size the smallest allowed, before the
+  diagram sees them. Health checks stay in Custom properties on a device that isn't a load balancer.
+- **The event log's kind column fits "blocked".**
+- **A malformed `deny` in a file reads as deny,** with a warning: a firewall rule never quietly turns into Allow.
+
 ### Still open (owner's call)
 
 - At 1280 the gallery's family chips fold **Network vendors** (and Generic & clients, as before) into Vendor ▾'s

@@ -1483,7 +1483,8 @@
 
 .lv-events li {
   display: grid;
-  grid-template-columns: 44px 30px 1fr;
+  /* The kind column fits its longest word ("blocked") at 11px mono. */
+  grid-template-columns: 44px 50px 1fr;
   gap: 6px;
   padding: 2px 12px;
   color: var(--text-2);

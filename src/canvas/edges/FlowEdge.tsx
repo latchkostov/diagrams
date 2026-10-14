@@ -1,3 +1,4 @@
+import { isDenyRule } from "../../stencils/netDevices";
 import { useKeyboardFocusOn, useTooltip } from "../../components/useTooltip";
 import { memo, useCallback, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import { EdgeLabelRenderer, useReactFlow, useStore, type EdgeProps, type ReactFlowState } from "@xyflow/react";
@@ -49,7 +50,7 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   const { path, label } = route;
   const mid = label ?? pointAlong(route.points, 0.5).point;
   // A firewall rule that denies: a "no entry" glyph just after the source, so it's never colour alone.
-  const deny = !relation && data?.props?.deny === true ? denyPoint(route.points) : undefined;
+  const deny = !relation && isDenyRule(data?.props) ? denyPoint(route.points) : undefined;
   const settings = dep?.settings ?? [];
   const tip = relation ? dependencyTip(relation, dep, sourceStencil) : undefined;
   const marker = selected
