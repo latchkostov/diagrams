@@ -209,11 +209,14 @@ export function LiveSession({
   useEffect(() => () => window.clearTimeout(noticeTimer.current), []);
   const previousTraffic = useRef(state.traffic);
   useEffect(() => {
-    if (previousTraffic.current && !state.traffic) {
-      const hint = controller.trafficHint();
-      if (hint) flash(hint);
-    }
+    const stopped = previousTraffic.current && !state.traffic;
     previousTraffic.current = state.traffic;
+    if (!stopped) return;
+    const hint = controller.trafficHint();
+    if (!hint) return;
+    // Shown on the next task, not during this commit: a notice needs no synchronous re-render.
+    const id = window.setTimeout(() => flash(hint), 0);
+    return () => window.clearTimeout(id);
   }, [state.traffic, controller, flash]);
 
   // ---------------------------------------------------------------- diagram edits while live
