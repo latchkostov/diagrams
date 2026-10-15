@@ -12,7 +12,7 @@ export function registerCanvasActions(get: () => InteropApi): () => void {
 }
 import { stencils, getStencil } from "../stencils/registry";
 import { CATEGORY_ORDER } from "../lib/categories";
-import { toneColor } from "../canvas/groupTones";
+import { toneColor, isPresetGroupTone } from "../canvas/groupTones";
 import type { GroupTone } from "../canvas/types";
 import type { AnnotationKind, AnnotationShape, Side, Stencil } from "../model/types";
 import { ANNOTATION_COLORS, ANNOTATION_COLOR_IDS, ANNOTATION_SHAPES, annotationColor } from "../canvas/annotations";
@@ -995,12 +995,24 @@ export function builtinActions(): Action[] {
       icon: "boundary",
       shortcut: shortcutKeys("group"),
       order: 30,
-      // Boundaries hold nodes; a selection of annotations only has nothing to put in one.
       when: (ctx) => {
-        const selected = new Set(ctx.selection.nodeIds);
-        return ctx.editor.getDiagram().nodes.some((n) => selected.has(n.id));
+        const sel = ctx.selection;
+        const nodeCount = sel.nodeIds?.length ?? 0;
+        const groupCount = sel.groupIds?.length ?? 0;
+        if (nodeCount + groupCount === 0) return false;
+        const d = ctx.editor.getDiagram();
+        const selected = new Set(sel.nodeIds);
+        const hasNodes = d.nodes.some((n) => selected.has(n.id));
+        const hasAnnotations = (d.annotations ?? []).some((a) => selected.has(a.id));
+        const hasGroups = groupCount > 0;
+        return hasNodes || hasAnnotations || hasGroups;
       },
-      children: (ctx) => toneMenu("group-tone", undefined, (t) => void ctx.editor.groupNodes(ctx.selection.nodeIds, t)),
+      children: (ctx) =>
+        toneMenu(
+          "group-tone",
+          undefined,
+          (t) => void ctx.editor.groupNodes([...(ctx.selection.nodeIds ?? []), ...(ctx.selection.groupIds ?? [])], t),
+        ),
     },
 
     // ---------------- annotation ----------------
@@ -1080,6 +1092,17 @@ export function builtinActions(): Action[] {
       when: (ctx) => ctx.editor.getAnnotation(ctx.nodeId!)?.kind !== "zone",
       run: (ctx) => ctx.editor.sendToBack([ctx.nodeId!]),
     },
+    {
+      id: "annotation.convertToBoundary",
+      section: "arrange",
+      targets: ["annotation"],
+      get label() {
+        return t("menu.convertToBoundary");
+      },
+      icon: "boundary",
+      when: (ctx) => ctx.editor.getAnnotation(ctx.nodeId!)?.kind === "zone",
+      run: (ctx) => ctx.editor.convertZoneToBoundary(ctx.nodeId!),
+    },
 
     // ---------------- group ----------------
     {
@@ -1103,10 +1126,12 @@ export function builtinActions(): Action[] {
         return t("menu.colour");
       },
       icon: "tone",
-      children: (ctx) =>
-        toneMenu("tone", ctx.editor.getGroup(ctx.groupId!)?.tone ?? "neutral", (t) =>
+      children: (ctx) => {
+        const tone = ctx.editor.getGroup(ctx.groupId!)?.tone;
+        return toneMenu("tone", isPresetGroupTone(tone) ? tone : undefined, (t) =>
           ctx.editor.updateGroup(ctx.groupId!, { tone: t }),
-        ),
+        );
+      },
     },
     {
       id: "group.fit",
@@ -1117,6 +1142,16 @@ export function builtinActions(): Action[] {
       },
       icon: "fit",
       run: (ctx) => ctx.editor.fitGroupToContents(ctx.groupId!),
+    },
+    {
+      id: "group.convertToZone",
+      section: "arrange",
+      targets: ["group"],
+      get label() {
+        return t("menu.convertToZone");
+      },
+      icon: "zone",
+      run: (ctx) => ctx.editor.convertGroupToZone(ctx.groupId!),
     },
     {
       id: "group.ungroup",

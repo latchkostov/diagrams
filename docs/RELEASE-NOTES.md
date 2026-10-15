@@ -1,5 +1,41 @@
 # Release notes
 
+## Nested boundaries final verification (#115, 2026-10-15)
+
+- Removed boundary and annotation parents stay removed after autosave and library duplication.
+  Pasted annotations join the boundary at their destination while copied subtrees keep their links.
+- Native, storage and clipboard validation share the parent-cycle sanitizer; repaired native links
+  produce warnings, and every boundary remains keyboard reachable. Unsupported clipboard tones
+  normalize to neutral, and preset lookups ignore inherited properties.
+- Ctrl+G includes selected boundaries. Copy and drag use indexed descendant traversal, and undo
+  selects the moved boundary without its carried child boundaries or annotations.
+- Custom captions share canvas-background measurement and include visible zone and boundary fills
+  in their contrast checks. Preset captions skip measurement. Conversion rejects boundary labels
+  above the annotation text limit without changing the diagram; labels exactly at the limit survive reopening.
+- Refreshed generated skill code and its viewer, retaining plugin 1.1.21 (one patch above master).
+  The shared sanitizer adds a small preloaded `groupHierarchy` chunk; the startup assertion pins it
+  explicitly, with the entry size budget unchanged.
+- Parity: only `node/i18n/catalogs.json` changes. The translated conversion text-limit error adds one
+  message and changes the `edit` hash in all 38 catalogs; fallback counts remain unchanged. All
+  diagram, simulation, layout, import, export and browser goldens stay unchanged.
+
+## Nested boundaries review fixes (2026-10-15)
+
+- Moving selected boundaries and wrapping them with their selected contents preserves their existing
+  nesting, including nodes and annotations. Tab reaches enclosing boundaries before their contents.
+- Boundary-to-zone conversion checks annotation geometry and count limits before changing anything,
+  with recovery guidance when refused. Annotation membership uses the same geometry in drag previews
+  and drop settlement.
+- Clipboard boundaries receive unique IDs, valid parent references and an acyclic hierarchy before
+  rendering. Indexed subtree traversal avoids repeated work during adoption, wrapping and drops;
+  operation-count regressions cover child-first hierarchies at eight times the input size.
+- Custom boundary names remain readable, with the chosen colour in the outline and swatch. Custom
+  caption colours are retained when they meet AA against the actual canvas, including theme, tint and
+  transparency; otherwise they use theme ink. Refreshed the agent viewer (plugin 1.1.21).
+- Parity: the only changed golden is `node/i18n/catalogs.json`: the new annotation-limit conversion
+  error adds one message in all 38 languages and updates their `edit` hashes.
+  Diagram, simulation, layout, export and browser goldens remain unchanged.
+
 ## Showcase review fixes (2026-10-15)
 
 - Phone Live menus and expectation summaries remain visible and usable with Inputs open. Inputs stays

@@ -73,15 +73,24 @@ export function tabOrder(
   boundaries: readonly (NavBox & { members: readonly string[] })[],
   direction: "LR" | "TB" = "LR",
 ): string[] {
-  const read = readingOrder(items, direction).map((b) => b.id);
-  const before = new Map<string, string[]>();
-  const empty: NavBox[] = [];
-  for (const g of boundaries) {
-    const members = new Set(g.members);
-    const first = read.find((id) => members.has(id));
-    if (first) before.set(first, [...(before.get(first) ?? []), g.id]);
-    else empty.push(g);
+  const parent = new Map<string, string>();
+  for (const g of boundaries) for (const id of g.members) parent.set(id, g.id);
+  const empty = boundaries.filter((g) => !g.members.length);
+  const order: string[] = [];
+  const seen = new Set<string>();
+  for (const item of readingOrder([...items, ...empty], direction)) {
+    const chain: string[] = [];
+    const visiting = new Set<string>();
+    let id: string | undefined = item.id;
+    while (id && !seen.has(id) && !visiting.has(id)) {
+      visiting.add(id);
+      chain.push(id);
+      id = parent.get(id);
+    }
+    for (const next of chain.reverse()) {
+      seen.add(next);
+      order.push(next);
+    }
   }
-  const order = empty.length ? readingOrder([...items, ...empty], direction).map((b) => b.id) : read;
-  return order.flatMap((id) => [...(before.get(id) ?? []), id]);
+  return order;
 }

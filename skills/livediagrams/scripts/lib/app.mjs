@@ -550,9 +550,11 @@ function normalizeAnnotation(value, usedIds = /* @__PURE__ */ new Set(), warn = 
 	delete out.shape;
 	delete out.color;
 	delete out.textSize;
+	delete out.group;
 	if (kind === "shape" && member(ANNOTATION_SHAPES, a.shape)) out.shape = a.shape;
 	if (isColorValue(a.color)) out.color = a.color;
 	if (member(ANNOTATION_TEXT_SIZES, a.textSize)) out.textSize = a.textSize;
+	if (typeof a.group === "string" && a.group) out.group = a.group;
 	return out;
 }
 var geometryDiagnostics = {
@@ -724,6 +726,32 @@ function t(key, english, values) {
 	return typeof m == "function" ? m(values) : m;
 }
 //#endregion
+//#region src/model/groupHierarchy.ts
+/** Input parents are untrusted. Keep only existing references and break cycles before rendering. */
+function sanitizeGroupParents(groups, externalIds) {
+	const ids = /* @__PURE__ */ new Set([...externalIds, ...groups.map((g) => g.id)]);
+	const clean = groups.map((g) => ({
+		...g,
+		group: typeof g.group === "string" && ids.has(g.group) ? g.group : void 0
+	}));
+	const byId = new Map(clean.map((g) => [g.id, g]));
+	const done = /* @__PURE__ */ new Set();
+	for (const g of clean) {
+		const path = /* @__PURE__ */ new Set();
+		let cur = g;
+		while (cur && !done.has(cur.id)) {
+			path.add(cur.id);
+			if (cur.group && path.has(cur.group)) {
+				cur.group = void 0;
+				break;
+			}
+			cur = cur.group ? byId.get(cur.group) : void 0;
+		}
+		for (const id of path) done.add(id);
+	}
+	return clean;
+}
+//#endregion
 //#region src/interop/native.ts
 /**
 * Budgets for untrusted input (files, pastes, share links, Drive, storage). Generous for real
@@ -886,13 +914,13 @@ function validateDiagram(data) {
 			const props = isObj$1(sim.setup) && isObj$1(sim.setup.props) ? sim.setup.props : {};
 			for (const [id, value] of Object.entries(props)) if (unsupportedPreset(value)) return {
 				ok: false,
-				error: t(1084, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
+				error: t(1088, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
 			};
 			if (Array.isArray(sim.timeline)) for (const step of sim.timeline) {
 				const action = isObj$1(step) && isObj$1(step.action) ? step.action : void 0;
 				if (action?.do === "props" && unsupportedPreset(action.props)) return {
 					ok: false,
-					error: t(1084, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
+					error: t(1088, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
 				};
 			}
 		}
@@ -960,7 +988,8 @@ function validateDiagram(data) {
 			}
 			const out = { ...g };
 			if (typeof out.label !== "string") out.label = typeof out.label === "number" ? String(out.label) : "";
-			if (out.tone !== void 0 && !TONES.has(out.tone)) delete out.tone;
+			if (out.tone !== void 0 && !TONES.has(out.tone) && !isHexColor(out.tone)) delete out.tone;
+			if (out.group !== void 0 && (typeof out.group !== "string" || !out.group.trim())) delete out.group;
 			groups.push(out);
 		});
 	}
@@ -994,7 +1023,7 @@ function validateDiagram(data) {
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
 		if (unsupportedPreset(out.props)) return {
 			ok: false,
-			error: t(1084, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
+			error: t(1088, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
 		};
 		const problem = out.props === void 0 ? void 0 : propsProblem(out.props);
 		if (problem) return {
@@ -1018,6 +1047,7 @@ function validateDiagram(data) {
 				return;
 			}
 			out.id = claim(out.id);
+			if (out.group !== void 0 && !groupIds.has(out.group)) delete out.group;
 			annotationIds.add(out.id);
 			if (out.kind === "shape") shapeIds.add(out.id);
 			annotations.push(out);
@@ -1032,6 +1062,22 @@ function validateDiagram(data) {
 		g.id = id;
 	}
 	for (const n of nodes) if (n.group !== void 0) n.group = groupIdFor.get(n.group);
+	for (const g of groups) if (g.group !== void 0) g.group = groupIdFor.get(g.group) ?? g.group;
+	for (const a of annotations) if (a.group !== void 0) {
+		const mapped = groupIdFor.get(a.group);
+		if (mapped) a.group = mapped;
+		else delete a.group;
+	}
+	const hierarchy = groups.map((g) => ({
+		...g,
+		id: g.id,
+		group: g.group
+	}));
+	const sanitized = sanitizeGroupParents(hierarchy, /* @__PURE__ */ new Set());
+	sanitized.forEach((g, i) => {
+		if (g.group !== hierarchy[i].group) warnings.push(`Boundary "${g.id}" had an invalid or cyclic parent and was taken out of it.`);
+	});
+	if (sanitized.length) d.groups = sanitized;
 	const edges = [];
 	const rawEdges = raw.edges === void 0 ? [] : raw.edges;
 	if (!Array.isArray(rawEdges)) return {
@@ -1071,7 +1117,7 @@ function validateDiagram(data) {
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
 		if (invalidPlanningDelay(out.props)) return {
 			ok: false,
-			error: t(1029, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
+			error: t(1033, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
 				id: e.id,
 				limit: SIM_LIMITS.timeMs
 			})

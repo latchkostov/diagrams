@@ -31,6 +31,26 @@ const SEED: DiagramFile = {
   ],
 };
 
+it("excludes carried child boundaries and annotations from undo and redo selection", () => {
+  const before = structuredClone(SEED);
+  before.groups!.push({ id: "child", label: "Child", group: "pay", x: 40, y: 180, width: 300, height: 200 });
+  before.nodes[0].group = "child";
+  before.annotations = [
+    { id: "note", kind: "note", text: "Note", group: "child", x: 80, y: 220, width: 100, height: 60 },
+  ];
+  const after = structuredClone(before);
+  for (const item of [...after.groups!, ...after.nodes.filter((n) => n.group), ...after.annotations!]) {
+    item.x += 70;
+    item.y += 40;
+  }
+  expect(stepChanges(before, after)).toEqual({
+    before: { nodes: ["group:pay"], edges: [] },
+    after: { nodes: ["group:pay"], edges: [] },
+  });
+  after.annotations![0].text = "Edited too";
+  expect(stepChanges(before, after).after.nodes).toContain("note");
+});
+
 const sel = (nodes: string[] = [], edges: string[] = []): FlowSelection => ({ nodes, edges });
 const file = (s: CanvasSnapshot) => fromFlow(s.meta, s.nodes, s.edges);
 const selected = (s: CanvasSnapshot) => {

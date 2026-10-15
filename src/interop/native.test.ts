@@ -3,6 +3,7 @@ import type { DiagramFile } from "../model/types";
 import { exceedsDepth, LIMITS, MIGRATIONS, parseNative, preserveUnknown, validateDiagram } from "./native";
 import { createSimulationRun } from "../sim/simulation";
 import { fromFlow, toFlow } from "../canvas/convert";
+import { tabOrder } from "../canvas/keyboardNav";
 
 const base = {
   format: "diagrams/v1",
@@ -12,6 +13,61 @@ const base = {
 };
 
 describe("native format validation", () => {
+  it.each([2, 3])("repairs cyclic boundary parents on native import (%i boundaries)", (count) => {
+    const result = parseNative(
+      JSON.stringify({
+        ...base,
+        nodes: [],
+        groups: Array.from({ length: count }, (_, i) => ({
+          id: `g${i}`,
+          label: "Boundary",
+          group: `g${(i + 1) % count}`,
+          x: i * 10,
+          y: 0,
+          width: 100,
+          height: 100,
+        })),
+      }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.warnings.some((w) => w.includes("cyclic parent"))).toBe(true);
+    const groups = result.diagram.groups!;
+    for (const g of groups) {
+      const seen = new Set<string>();
+      let current: typeof g | undefined = g;
+      while (current) {
+        expect(seen.has(current.id)).toBe(false);
+        seen.add(current.id);
+        current = groups.find((next) => next.id === current?.group);
+      }
+    }
+    expect(
+      tabOrder(
+        [],
+        groups.map((g) => ({ ...g, members: groups.filter((c) => c.group === g.id).map((c) => c.id) })),
+      ),
+    ).toHaveLength(count);
+  });
+
+  it("keeps removed boundary and annotation parents removed after autosave and duplication", () => {
+    const original: DiagramFile = {
+      ...base,
+      format: "diagrams/v1",
+      groups: [
+        { id: "outer", label: "Outer", x: 0, y: 0, width: 400, height: 400 },
+        { id: "inner", label: "Inner", x: 10, y: 10, width: 200, height: 200, group: "outer" },
+      ],
+      annotations: [{ id: "note", kind: "note", text: "Note", x: 20, y: 20, width: 100, height: 60, group: "inner" }],
+    };
+    const flow = toFlow(original);
+    for (const n of flow.nodes) n.data.group = undefined;
+    const current = fromFlow(flow.meta, flow.nodes, flow.edges);
+    const autosaved = JSON.parse(JSON.stringify(current)) as DiagramFile;
+    const duplicate = preserveUnknown(autosaved, original);
+    expect(duplicate.groups?.every((g) => g.group === undefined)).toBe(true);
+    expect(duplicate.annotations?.[0].group).toBeUndefined();
+  });
   it("accepts a minimal file and fills defaults", () => {
     const r = parseNative(JSON.stringify({ ...base, title: "" }));
     expect(r.ok && r.diagram.title).toBe("Untitled diagram");
@@ -54,6 +110,30 @@ describe("native format validation", () => {
     expect(r.diagram.edges.map((e) => e.id)).toEqual(["e", "e-2"]);
     expect(r.diagram.edges[0].kind).toBeUndefined();
     expect(r.warnings.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("remaps group references on groups and annotations after group ID deduplication", () => {
+    const r = validateDiagram({
+      ...base,
+      groups: [
+        { id: "parent", label: "Parent", x: 0, y: 0, width: 200, height: 200 },
+        { id: "child", label: "Child", x: 10, y: 10, width: 80, height: 80, group: "parent" },
+        // Collision with an existing node ID "a" -> gets claimed as "a-2"
+        { id: "a", label: "Clashing Group", x: 20, y: 20, width: 50, height: 50, group: "parent" },
+      ],
+      nodes: [{ ...base.nodes[0], group: "child" }],
+      annotations: [
+        { id: "note1", kind: "note", text: "Inside child", x: 15, y: 15, width: 40, height: 40, group: "child" },
+        { id: "note2", kind: "note", text: "Inside clashing", x: 25, y: 25, width: 40, height: 40, group: "a" },
+      ],
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const clashingGroup = r.diagram.groups?.find((g) => g.label === "Clashing Group");
+    expect(clashingGroup?.id).toBe("a-2");
+    expect(clashingGroup?.group).toBe("parent");
+    expect(r.diagram.annotations?.find((a) => a.id === "note1")?.group).toBe("child");
+    expect(r.diagram.annotations?.find((a) => a.id === "note2")?.group).toBe("a-2");
   });
 
   it("validates diagram color and warns on invalid values", () => {

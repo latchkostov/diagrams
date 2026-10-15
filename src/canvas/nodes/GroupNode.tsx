@@ -3,7 +3,8 @@ import { NodeResizer, type NodeProps } from "@xyflow/react";
 import { useDiagram } from "../DiagramContext";
 import type { GroupFlowNode } from "../types";
 
-import { toneColor } from "../groupTones";
+import { isHexColor } from "../../model/colors";
+import { resolveGroupTone } from "../groupTones";
 
 /** Boundary box (cloud, cluster, network) drawn behind nodes. Dragged by its label; a double-click names it. */
 function GroupNodeImpl({ data, selected }: NodeProps<GroupFlowNode>) {
@@ -11,8 +12,9 @@ function GroupNodeImpl({ data, selected }: NodeProps<GroupFlowNode>) {
   return (
     <div
       className={`grp${selected ? " is-selected" : ""}`}
-      style={{ "--tone": toneColor[data.tone] ?? toneColor.neutral } as CSSProperties}
+      style={{ "--tone": resolveGroupTone(data.tone) } as CSSProperties}
       data-testid={`group-${data.groupId}`}
+      data-tone={isHexColor(data.tone) ? "custom" : data.tone}
       onDoubleClick={(e) => {
         e.stopPropagation();
         rename?.({ kind: "group", id: data.groupId });

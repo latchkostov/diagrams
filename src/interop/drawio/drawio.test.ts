@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DiagramFile } from "../../model/types";
 import { catalog } from "../../stencils/catalog";
-import { LIMITS } from "../native";
+import { LIMITS, validateDiagram } from "../native";
 import { bytesToBase64, deflateRaw, textToBytes } from "../codec";
 import { parseXml } from "../xml";
 import { drawioPageToDiagram, readDrawio } from "./read";
@@ -17,6 +17,25 @@ async function importFirst(xml: string) {
   const doc = await readDrawio(xml);
   return drawioPageToDiagram(doc.pages[0]);
 }
+
+it("repairs cyclic draw.io boundary metadata through native validation", async () => {
+  const input: DiagramFile = {
+    format: "diagrams/v1",
+    title: "Cycle",
+    nodes: [],
+    edges: [],
+    groups: [
+      { id: "a", label: "A", group: "b", x: 0, y: 0, width: 400, height: 400 },
+      { id: "b", label: "B", group: "a", x: 50, y: 50, width: 200, height: 200 },
+    ],
+  };
+  const imported = await importFirst(diagramToDrawio(input));
+  const result = validateDiagram(imported.diagram);
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  expect(result.diagram.groups?.filter((g) => g.group)).toHaveLength(1);
+  expect(result.warnings.some((w) => w.includes("cyclic parent"))).toBe(true);
+});
 
 describe("draw.io colour contract", () => {
   it("never writes invalid colours into draw.io metadata or styles", () => {

@@ -72,7 +72,10 @@ function Stage({ diagram, minimap = true, onRendered }: Props) {
   const base = useContext(DiagramContext);
   const [editing, setEditing] = useState<InlineEdit | null>(null);
   const direction = flow.meta.direction ?? "LR";
-  const ui = useMemo(() => ({ ...base, direction, editing, setEditing }) as Ui, [base, direction, editing]);
+  const ui = useMemo(
+    () => ({ ...base, theme, direction, editing, setEditing }) as Ui,
+    [base, theme, direction, editing],
+  );
 
   return (
     <DiagramContext.Provider value={ui}>

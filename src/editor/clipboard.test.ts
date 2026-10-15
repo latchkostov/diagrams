@@ -168,6 +168,48 @@ describe("clipboard", () => {
     expect(uniqueId("orders-2", new Set(["orders-1"]))).toBe("orders-2");
     expect(uniqueId("orders", new Set(["orders-1", "orders-2"]))).toBe("orders-3");
   });
+
+  it.each([
+    [
+      "parent-first",
+      [
+        { id: "parent", label: "Parent", x: 0, y: 0, width: 400, height: 400 },
+        { id: "child", label: "Child", x: 50, y: 50, width: 200, height: 200, group: "parent" },
+      ],
+    ],
+    [
+      "child-first",
+      [
+        { id: "child", label: "Child", x: 50, y: 50, width: 200, height: 200, group: "parent" },
+        { id: "parent", label: "Parent", x: 0, y: 0, width: 400, height: 400 },
+      ],
+    ],
+  ])("remaps nested parents regardless of group order (%s)", (_label, groups) => {
+    const payload = {
+      format: CLIP_FORMAT,
+      groups,
+      nodes: [{ id: "n1", stencil: "service.go", label: "N", x: 60, y: 60, group: "child" }],
+      edges: [],
+    };
+    const taken = {
+      nodes: new Set(["n1"]),
+      groups: new Set(["parent", "child"]),
+      edges: new Set<string>(),
+    };
+    const remapped = remapPayload(payload, taken, { x: 100, y: 100 });
+    const parentCopy = remapped.groups.find((g) => g.label === "Parent")!;
+    const childCopy = remapped.groups.find((g) => g.label === "Child")!;
+    const nodeCopy = remapped.nodes[0];
+
+    // IDs are fresh
+    expect(parentCopy.id).not.toBe("parent");
+    expect(childCopy.id).not.toBe("child");
+    expect(nodeCopy.id).not.toBe("n1");
+
+    // Parent relationship is remapped to the new parent ID regardless of order
+    expect(childCopy.group).toBe(parentCopy.id);
+    expect(nodeCopy.group).toBe(childCopy.id);
+  });
 });
 
 it("filters, validates and remaps mixed foreground order through clipboard JSON", () => {
@@ -196,4 +238,56 @@ it("filters, validates and remaps mixed foreground order through clipboard JSON"
     { x: 30, y: 30 },
   );
   expect(r.layerOrder).toEqual([r.annotations![0].id, r.nodes[0].id]);
+});
+
+describe("untrusted boundary clipboard hierarchy", () => {
+  it.each(["__proto__", "constructor", "toString", "invalid"])("normalizes unsafe tone %s", (tone) => {
+    const parsed = parsePayload(
+      JSON.stringify({
+        format: CLIP_FORMAT,
+        nodes: [],
+        edges: [],
+        groups: [{ id: "g", tone, x: 0, y: 0, width: 100, height: 100 }],
+      }),
+    );
+    expect(parsed?.groups[0].tone).toBe("neutral");
+  });
+  const group = (id: string, parent: unknown) => ({
+    id,
+    label: id,
+    x: 0,
+    y: 0,
+    width: 200,
+    height: 100,
+    group: parent,
+  });
+  const paste = (groups: unknown[]) => {
+    const parsed = parsePayload(JSON.stringify({ format: CLIP_FORMAT, nodes: [], edges: [], groups }));
+    expect(parsed).not.toBeNull();
+    return remapPayload(parsed!, { nodes: new Set(), edges: new Set(), groups: new Set(["existing"]) }, { x: 0, y: 0 });
+  };
+  it.each([{ toString: null }, [], 42, "missing"])("clears unsafe parent %j before rendering", (parent) => {
+    expect(paste([group("boundary", parent)]).groups[0].group).toBeUndefined();
+  });
+  it.each([[group("a", "a")], [group("a", "b"), group("b", "c"), group("c", "a")]])(
+    "breaks cycles before insertion: %j",
+    (...groups) => {
+      const pasted = paste(groups);
+      for (const g of pasted.groups) {
+        const visited = new Set<string>();
+        let current: typeof g | undefined = g;
+        while (current) {
+          expect(visited.has(current.id)).toBe(false);
+          visited.add(current.id);
+          current = pasted.groups.find((next) => next.id === current?.group);
+        }
+      }
+    },
+  );
+  it("allocates a unique ID per duplicate boundary occurrence and deterministic references", () => {
+    const pasted = paste([group("dup", "existing"), group("dup", "existing"), group("child", "dup")]);
+    expect(new Set(pasted.groups.map((g) => g.id)).size).toBe(3);
+    expect(pasted.groups[2].group).toBe(pasted.groups[0].id);
+    expect(pasted.groups.slice(0, 2).map((g) => g.group)).toEqual(["existing", "existing"]);
+  });
 });

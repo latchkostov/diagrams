@@ -837,14 +837,7 @@
         },
         "tone": {
           "type": "string",
-          "enum": [
-            "azure",
-            "aws",
-            "gcp",
-            "k8s",
-            "onprem",
-            "neutral"
-          ]
+          "pattern": "^(?:azure|aws|gcp|k8s|onprem|neutral|#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8}))$"
         },
         "x": {
           "type": "number"
@@ -859,6 +852,10 @@
         "height": {
           "type": "number",
           "minimum": 0
+        },
+        "group": {
+          "type": "string",
+          "description": "Id of the outer boundary it sits in."
         }
       }
     },
@@ -929,6 +926,10 @@
             "l",
             "xl"
           ]
+        },
+        "group": {
+          "type": "string",
+          "description": "Id of the boundary it sits in."
         }
       }
     },

@@ -44,6 +44,8 @@ export interface EditOptions {
    * undo step. Use it for per-keystroke edits, e.g. `inspector:node:${id}:label`.
    */
   merge?: string;
+  /** Whether resizing a boundary should apply membership rules and adopt/release nodes. */
+  adopt?: boolean;
 }
 
 export interface EditorPrefs {
@@ -186,12 +188,17 @@ export interface EditorApi {
    */
   settleMembership(ids: readonly string[]): Map<string, string[]>;
   /** A boundary resized by hand adopts the nodes now inside it and releases those now outside it. */
+  settleBoundaryMembership(ids: readonly string[]): void;
   adoptAfterResize(groupId: string): { adopted: string[]; released: string[] };
-  /** Wraps nodes in a new boundary and starts renaming it. Returns the group id. */
-  groupNodes(nodeIds: string[], tone?: GroupTone): string | null;
+  /** Wraps nodes, annotations, and boundaries in a new boundary and starts renaming it. Returns the group id. */
+  groupNodes(ids: string[], tone?: GroupTone): string | null;
   ungroup(groupId: string): void;
   deleteGroupWithContents(groupId: string): void;
   fitGroupToContents(groupId: string): void;
+  /** Converts a boundary into a zone annotation, releasing all member nodes. Returns the new zone id. */
+  convertGroupToZone(groupId: string, opts?: EditOptions): string | null;
+  /** Converts a zone annotation into a boundary, adopting all elements inside it. Returns the new boundary id. */
+  convertZoneToBoundary(zoneId: string, opts?: EditOptions): string | null;
   bringToFront(nodeIds: string[]): void;
   sendToBack(nodeIds: string[]): void;
   /** Moves the selected nodes (and the contents of selected boundaries). */

@@ -192,6 +192,31 @@ describe("draw.io", () => {
     expect(diagram.nodes.map((n) => n.id)).toEqual(["web", "api"]);
   });
 
+  it("round-trips nested boundaries and annotations inside boundaries via dg_group", async () => {
+    const d: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Nested",
+      nodes: [{ id: "n1", stencil: "service.go", label: "App", x: 60, y: 100, group: "inner" }],
+      edges: [],
+      groups: [
+        { id: "outer", label: "Outer Boundary", tone: "neutral", x: 20, y: 20, width: 400, height: 300 },
+        { id: "inner", label: "Inner Boundary", tone: "azure", x: 40, y: 60, width: 300, height: 200, group: "outer" },
+      ],
+      annotations: [
+        { id: "note1", kind: "note", text: "Important Note", x: 60, y: 220, width: 140, height: 80, group: "inner" },
+        { id: "zone1", kind: "zone", text: "Zone in Outer", x: 40, y: 30, width: 100, height: 50, group: "outer" },
+      ],
+    };
+    const xml = diagramToDrawio(d);
+    expect(xml).toContain('dg_group="outer"');
+    expect(xml).toContain('dg_group="inner"');
+    const { diagram } = drawioPageToDiagram((await readDrawio(xml)).pages[0]);
+    expect(diagram.groups?.find((g) => g.id === "inner")?.group).toBe("outer");
+    expect(diagram.annotations?.find((a) => a.id === "note1")?.group).toBe("inner");
+    expect(diagram.annotations?.find((a) => a.id === "zone1")?.group).toBe("outer");
+    expect(diagram.nodes.find((n) => n.id === "n1")?.group).toBe("inner");
+  });
+
   it("reads foreign text, notes, diamonds and loose geometry as annotations", async () => {
     const cell = (id: string, value: string, style: string, x: number, extra = "") =>
       `<mxCell id="${id}" value="${value}" style="${style}" vertex="1" parent="1"${extra}><mxGeometry x="${x}" y="40" width="120" height="60" as="geometry" /></mxCell>`;

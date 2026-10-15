@@ -10,6 +10,7 @@ import {
 // The simulation settings' bounds, for the editors that share this chunk (the inspector, the Inputs panel).
 export { SIM_LIMITS };
 import { ANNOTATION_LIMITS, isColorValue, normalizeAnnotation } from "../model/annotations";
+import { isHexColor } from "../model/colors";
 import type { DiagramAnnotation } from "../model/types";
 import { isDependency, isEdgeRelation, isRelationOrigin, sanitizeSettings } from "../model/relations";
 import { sanitizeChecks } from "../model/checks";
@@ -17,6 +18,7 @@ import { idClaimer } from "../model/ids";
 import { t } from "../i18n/core";
 import { checkJsonSchema } from "../model/jsonSchema";
 import { callerSchema, planningSchema } from "../model/admissionSchema";
+import { sanitizeGroupParents } from "../model/groupHierarchy";
 
 // The native format (diagrams/v1): versioned validation with friendly messages, a migration hook
 // for future formats, and preservation of fields this version doesn't know about (a newer app, or
@@ -245,7 +247,8 @@ export function validateDiagram(data: unknown): NativeResult {
         }
         const out = { ...g };
         if (typeof out.label !== "string") out.label = typeof out.label === "number" ? String(out.label) : "";
-        if (out.tone !== undefined && !TONES.has(out.tone as string)) delete out.tone;
+        if (out.tone !== undefined && !TONES.has(out.tone as string) && !isHexColor(out.tone)) delete out.tone;
+        if (out.group !== undefined && (typeof out.group !== "string" || !out.group.trim())) delete out.group;
         groups.push(out);
       });
     }
@@ -305,6 +308,7 @@ export function validateDiagram(data: unknown): NativeResult {
           return;
         }
         out.id = claim(out.id);
+        if (out.group !== undefined && !groupIds.has(out.group)) delete out.group;
         annotationIds.add(out.id);
         if (out.kind === "shape") shapeIds.add(out.id);
         annotations.push(out);
@@ -320,6 +324,25 @@ export function validateDiagram(data: unknown): NativeResult {
     g.id = id;
   }
   for (const n of nodes) if (n.group !== undefined) n.group = groupIdFor.get(n.group);
+  for (const g of groups) {
+    if (g.group !== undefined) {
+      g.group = groupIdFor.get(g.group) ?? g.group;
+    }
+  }
+  for (const a of annotations) {
+    if (a.group !== undefined) {
+      const mapped = groupIdFor.get(a.group);
+      if (mapped) a.group = mapped;
+      else delete a.group;
+    }
+  }
+  const hierarchy = groups.map((g) => ({ ...g, id: g.id as string, group: g.group as string | undefined }));
+  const sanitized = sanitizeGroupParents(hierarchy, new Set());
+  sanitized.forEach((g, i) => {
+    if (g.group !== hierarchy[i].group)
+      warnings.push(`Boundary "${g.id}" had an invalid or cyclic parent and was taken out of it.`);
+  });
+  if (sanitized.length) d.groups = sanitized;
 
   const edges: Record<string, unknown>[] = [];
   const rawEdges = raw.edges === undefined ? [] : raw.edges;
@@ -729,8 +752,20 @@ const KNOWN_EDGE = new Set([
   "targetSide",
   "props",
 ]);
-const KNOWN_GROUP = new Set(["id", "label", "tone", "x", "y", "width", "height"]);
-const KNOWN_ANNOTATION = new Set(["id", "kind", "text", "x", "y", "width", "height", "shape", "color", "textSize"]);
+const KNOWN_GROUP = new Set(["id", "label", "tone", "x", "y", "width", "height", "group"]);
+const KNOWN_ANNOTATION = new Set([
+  "id",
+  "kind",
+  "text",
+  "x",
+  "y",
+  "width",
+  "height",
+  "shape",
+  "color",
+  "textSize",
+  "group",
+]);
 
 function extras(obj: object, known: Set<string>): [string, unknown][] {
   return Object.entries(obj).filter(([k]) => !known.has(k));

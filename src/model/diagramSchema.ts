@@ -38,6 +38,7 @@ const METRICS = [
 ];
 const OPS = ["<", "<=", "==", ">=", ">"];
 const COLOR_PATTERN = `^(?:${ANNOTATION_COLOR_IDS.join("|")}|${HEX_COLOR_REGEX.source.slice(1, -1)})$`;
+const GROUP_TONE_PATTERN = `^(?:${TONES.join("|")}|${HEX_COLOR_REGEX.source.slice(1, -1)})$`;
 
 const num = { type: "number" };
 const ID = {
@@ -200,11 +201,12 @@ function diagramSchema() {
         properties: {
           id: ID,
           label: str(200),
-          tone: { type: "string", enum: TONES },
+          tone: { type: "string", pattern: GROUP_TONE_PATTERN },
           x: num,
           y: num,
           width: { type: "number", minimum: 0 },
           height: { type: "number", minimum: 0 },
+          group: { type: "string", description: "Id of the outer boundary it sits in." },
         } satisfies Fields<DiagramGroup>,
       },
       Annotation: {
@@ -225,6 +227,7 @@ function diagramSchema() {
             pattern: COLOR_PATTERN,
           },
           textSize: { type: "string", enum: ["s", "m", "l", "xl"] },
+          group: { type: "string", description: "Id of the boundary it sits in." },
         } satisfies Fields<DiagramAnnotation>,
       },
       Simulation: {

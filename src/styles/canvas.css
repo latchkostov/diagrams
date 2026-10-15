@@ -443,6 +443,12 @@
   white-space: nowrap;
 }
 
+/* A custom tone can be any colour, including transparent white or black. */
+.grp[data-tone="custom"] .grp-label {
+  color: var(--text);
+  background: var(--bg);
+}
+
 .grp-swatch {
   width: 8px;
   height: 8px;
@@ -3554,8 +3560,13 @@ select.insp-input {
 
 /* Custom tints span the full spectrum. Theme ink stays readable on the quiet fills above,
    including transparent colours; the chosen hue still belongs to paper and outlines. */
-.ann[data-color="custom"] .ann-content,
+.ann:not(.ann-text)[data-color="custom"] .ann-content,
 .ann[data-color="custom"] .ann-zone-label,
-.ann[data-color="custom"] .ann-editor {
+.ann:not(.ann-text)[data-color="custom"] .ann-editor {
   color: var(--text);
+}
+
+.ann-text[data-color="custom"] .ann-content,
+.ann-text[data-color="custom"] .ann-editor {
+  color: var(--ann-text-ink, var(--text));
 }

@@ -4,13 +4,13 @@ import type {
   AnnotationKind,
   AnnotationShape,
   AnnotationTextSize,
-  DiagramGroup,
+  GroupTone,
   EdgeRelation,
   RelationOrigin,
   Side,
 } from "../model/types";
 
-export type GroupTone = NonNullable<DiagramGroup["tone"]>;
+export type { GroupTone };
 
 export type DiagramNodeData = {
   stencil: string;
@@ -25,7 +25,9 @@ export type GroupNodeData = {
   /** The group's id in the DiagramFile (React Flow id is prefixed to avoid clashing with node ids). */
   groupId: string;
   label: string;
-  tone: GroupTone;
+  tone: GroupTone | string;
+  /** Optional id of an enclosing boundary this boundary sits inside. */
+  group?: string;
 };
 
 /** Text, note, zone or shape. The React Flow id is the annotation's id (edges may end on shapes). */
@@ -35,6 +37,7 @@ export type AnnotationNodeData = {
   shape?: AnnotationShape;
   color?: AnnotationColor | string;
   textSize?: AnnotationTextSize;
+  group?: string;
 };
 
 export type DiagramFlowNode = Node<DiagramNodeData, "diagram">;

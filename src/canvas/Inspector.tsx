@@ -1,8 +1,10 @@
 import { stencilLabel, vendorLabel } from "../i18n/stencils";
 import { ANNOTATION_LIMITS } from "../model/annotations";
+import { eligibleParentGroupIds } from "../model/groupHierarchy";
 import {
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -22,7 +24,7 @@ import type { EditorApi } from "../editor/types";
 import type { AlignMode } from "../editor/arrange";
 import { parseEmits } from "../editor/emits";
 import type { DiagramMeta } from "./convert";
-import { toneColor, toneLabel } from "./groupTones";
+import { toneColor, toneLabel, resolveGroupTone, isPresetGroupTone } from "./groupTones";
 import type { AnnotationFlowNode, DiagramFlowEdge, DiagramFlowNode, GroupFlowNode, GroupTone } from "./types";
 import {
   ANNOTATION_COLORS,
@@ -1081,9 +1083,21 @@ function isFanOut(editor: EditorApi, sourceId: string, kind: string | undefined)
   return FAN_OUT_ROLES.has(role) || (role === "store" && kind !== "sync");
 }
 
-function GroupPanel({ group, editor }: InspectorProps & { group: GroupFlowNode }) {
+function GroupPanel({ group, editor, groups }: InspectorProps & { group: GroupFlowNode }) {
   const naming = useNameFields(editor, "group", group.data.groupId, group.id);
   const id = group.data.groupId;
+  const isCustomTone = !isPresetGroupTone(group.data.tone) && Boolean(group.data.tone);
+  const resolvedTone = resolveGroupTone(group.data.tone);
+  const [pickerAnchor, setPickerAnchor] = useState<{ rect: DOMRect; merge: string } | null>(null);
+  const eligibleParents = useMemo(
+    () =>
+      eligibleParentGroupIds(
+        id,
+        groups.map((g) => ({ id: g.data.groupId, group: g.data.group })),
+      ),
+    [id, groups],
+  );
+
   return (
     <Section>
       <Field label="Label">
@@ -1101,6 +1115,7 @@ function GroupPanel({ group, editor }: InspectorProps & { group: GroupFlowNode }
           {(Object.keys(toneColor) as GroupTone[]).map((t) => (
             <button
               key={t}
+              type="button"
               role="radio"
               aria-checked={group.data.tone === t}
               className={`insp-tone${group.data.tone === t ? " is-on" : ""}`}
@@ -1111,21 +1126,92 @@ function GroupPanel({ group, editor }: InspectorProps & { group: GroupFlowNode }
               data-testid={`inspector-tone-${t}`}
             />
           ))}
+          <button
+            type="button"
+            className={`insp-tone-custom${isCustomTone ? " is-on" : ""}`}
+            title={t("chrome.customColour")}
+            aria-label={t("chrome.customColour")}
+            aria-haspopup="dialog"
+            onClick={(e) =>
+              setPickerAnchor({ rect: e.currentTarget.getBoundingClientRect(), merge: `inspector:group:${id}:tone` })
+            }
+            data-testid="inspector-tone-custom-btn"
+          >
+            <span
+              className={`insp-tone-custom-swatch${!isCustomTone ? " insp-tone-custom-rainbow" : ""}`}
+              style={isCustomTone ? { backgroundColor: resolvedTone } : undefined}
+            />
+            <Icon name="chevron-down" size={12} />
+          </button>
         </div>
+      </Field>
+      {pickerAnchor && (
+        <ColorPickerModal
+          currentColor={group.data.tone}
+          defaultColor={resolvedTone}
+          anchorRect={pickerAnchor.rect}
+          onSelect={(hex) => editor.updateGroup(id, { tone: hex }, pickerAnchor)}
+          onReset={() => {
+            editor.updateGroup(id, { tone: undefined }, pickerAnchor);
+            setPickerAnchor(null);
+          }}
+          onClose={() => setPickerAnchor(null)}
+        />
+      )}
+      <Field label="Size" group>
+        <div className="insp-size">
+          <SizeInput
+            label="Width"
+            value={group.width ?? group.measured?.width ?? 0}
+            min={160}
+            testId="inspector-field-width"
+            onCommit={(width) => editor.updateGroup(id, { width }, { adopt: true })}
+          />
+          <span aria-hidden>{"×"}</span>
+          <SizeInput
+            label="Height"
+            value={group.height ?? group.measured?.height ?? 0}
+            min={100}
+            testId="inspector-field-height"
+            onCommit={(height) => editor.updateGroup(id, { height }, { adopt: true })}
+          />
+        </div>
+      </Field>
+      <Field label="Boundary">
+        <select
+          className="insp-input"
+          value={group.data.group ?? ""}
+          onChange={(e) => editor.updateGroup(id, { group: e.target.value || undefined })}
+          name="group"
+          data-testid="inspector-field-group"
+        >
+          <option value="">None</option>
+          {groups
+            .filter((g) => eligibleParents.has(g.data.groupId))
+            .map((g) => (
+              <option key={g.id} value={g.data.groupId}>
+                {g.data.label}
+              </option>
+            ))}
+        </select>
       </Field>
       <div className="insp-actions">
         <button className="btn" onClick={() => editor.fitGroupToContents(id)} data-testid="inspector-group-fit">
           <Icon name="fit" size={14} /> Fit to contents
         </button>
+        <button className="btn" onClick={() => editor.convertGroupToZone(id)} data-testid="inspector-group-convert">
+          <Icon name="zone" size={14} /> Convert to zone
+        </button>
         <button className="btn" onClick={() => editor.ungroup(id)} data-testid="inspector-group-ungroup">
           <Icon name="ungroup" size={14} /> Remove boundary
         </button>
       </div>
+      <CopyId id={id} />
     </Section>
   );
 }
 
-function AnnotationPanel({ note, editor, onTextSettled }: InspectorProps & { note: AnnotationFlowNode }) {
+function AnnotationPanel({ note, editor, groups, onTextSettled }: InspectorProps & { note: AnnotationFlowNode }) {
   const id = note.id;
   const { kind } = note.data;
   const merge = (f: string) => ({ merge: `inspector:annotation:${id}:${f}` });
@@ -1146,21 +1232,33 @@ function AnnotationPanel({ note, editor, onTextSettled }: InspectorProps & { not
   return (
     <Section>
       <Field label={kind === "zone" ? "Label" : "Text"}>
-        <textarea
-          className="insp-input"
-          rows={kind === "zone" ? 1 : 3}
-          value={note.data.text}
-          placeholder={kind === "zone" ? "Zone name" : "Write something"}
-          onFocus={() => (typedFrom.current = kind === "text" ? boxNow() : null)}
-          onBlur={() => {
-            if (typedFrom.current) onTextSettled?.(id, typedFrom.current);
-            typedFrom.current = null;
-          }}
-          onChange={(e) => editor.updateAnnotation(id, { text: e.target.value }, merge("text"))}
-          maxLength={ANNOTATION_LIMITS.maxAnnotationText}
-          name="annotation-text"
-          data-testid="inspector-field-text"
-        />
+        {kind === "zone" ? (
+          <input
+            className="insp-input"
+            value={note.data.text}
+            placeholder="Zone name"
+            onChange={(e) => editor.updateAnnotation(id, { text: e.target.value }, merge("text"))}
+            maxLength={ANNOTATION_LIMITS.maxAnnotationText}
+            name="annotation-text"
+            data-testid="inspector-field-label"
+          />
+        ) : (
+          <textarea
+            className="insp-input"
+            rows={3}
+            value={note.data.text}
+            placeholder="Write something"
+            onFocus={() => (typedFrom.current = kind === "text" ? boxNow() : null)}
+            onBlur={() => {
+              if (typedFrom.current) onTextSettled?.(id, typedFrom.current);
+              typedFrom.current = null;
+            }}
+            onChange={(e) => editor.updateAnnotation(id, { text: e.target.value }, merge("text"))}
+            maxLength={ANNOTATION_LIMITS.maxAnnotationText}
+            name="annotation-text"
+            data-testid="inspector-field-text"
+          />
+        )}
       </Field>
       {kind === "shape" && (
         <Field label="Shape" group>
@@ -1270,11 +1368,34 @@ function AnnotationPanel({ note, editor, onTextSettled }: InspectorProps & { not
           </div>
         </Field>
       )}
-      <p className="insp-note">
+      <p className="insp-note" data-testid="inspector-annotation-hint">
         {kind === "zone"
-          ? "A zone only marks an area: nodes don't move with it. To keep nodes together, use a boundary."
+          ? "A zone only marks an area: nodes don't move with it. Convert it to a boundary to group nodes and move them together."
           : "Annotations don't take part in the simulation."}
       </p>
+      {kind === "zone" && (
+        <div className="insp-actions">
+          <button className="btn" onClick={() => editor.convertZoneToBoundary(id)} data-testid="inspector-zone-convert">
+            <Icon name="boundary" size={14} /> Convert to boundary
+          </button>
+        </div>
+      )}
+      <Field label="Boundary">
+        <select
+          className="insp-input"
+          value={note.data.group ?? ""}
+          onChange={(e) => editor.updateAnnotation(id, { group: e.target.value || undefined })}
+          name="group"
+          data-testid="inspector-field-group"
+        >
+          <option value="">None</option>
+          {groups.map((g) => (
+            <option key={g.id} value={g.data.groupId}>
+              {g.data.label}
+            </option>
+          ))}
+        </select>
+      </Field>
       <CopyId id={id} />
     </Section>
   );
@@ -1346,6 +1467,11 @@ const bulkStep = (what: string) => ({ merge: `bulk:${what}:${++bulkSeq}` });
 function MultiPanel(p: InspectorProps) {
   const { editor, selectedNodes, selectedEdges, selectedGroups, selectedAnnotations = [] } = p;
   const nodeIds = selectedNodes.map((n) => n.id);
+  const groupableIds = [
+    ...nodeIds,
+    ...selectedAnnotations.map((a) => a.id),
+    ...selectedGroups.map((g) => g.data.groupId),
+  ];
   // Align and distribute arrange nodes and annotations alike; Tidy up lays out nodes (and their edges).
   const ids = [...nodeIds, ...selectedAnnotations.map((n) => n.id)];
   return (
@@ -1415,29 +1541,17 @@ function MultiPanel(p: InspectorProps) {
       )}
       {selectedGroups.length > 0 && (
         <Section title={plural(selectedGroups.length, "boundary", "boundaries")}>
-          <BulkSwatches
-            testId="inspector-field-tone"
-            itemTestId="inspector-tone"
-            options={(Object.keys(toneColor) as GroupTone[]).map((t) => ({
-              id: t,
-              colour: toneColor[t],
-              label: toneLabel[t],
-            }))}
-            value={shared(selectedGroups, (g) => g.data.tone)}
-            onPick={(t) =>
-              editor.updateGroups(
-                selectedGroups.map((g) => g.data.groupId),
-                { tone: t },
-                bulkStep("tone"),
-              )
-            }
-          />
+          <BulkGroups selectedGroups={selectedGroups} editor={editor} />
         </Section>
       )}
       <Section>
         <div className="insp-actions">
-          {nodeIds.length > 0 && (
-            <button className="btn" onClick={() => editor.groupNodes(nodeIds)} data-testid="inspector-group-selection">
+          {groupableIds.length > 0 && (
+            <button
+              className="btn"
+              onClick={() => editor.groupNodes(groupableIds)}
+              data-testid="inspector-group-selection"
+            >
               <Icon name="boundary" size={14} /> Add boundary
             </button>
           )}
@@ -1640,6 +1754,77 @@ function BulkEdges({ editor, selectedEdges }: InspectorProps) {
         />
       </BulkRow>
     </Section>
+  );
+}
+
+function BulkGroups({ selectedGroups, editor }: { selectedGroups: GroupFlowNode[]; editor: EditorApi }) {
+  const [pickerAnchor, setPickerAnchor] = useState<{ rect: DOMRect; merge: string } | null>(null);
+  const sharedTone = shared(selectedGroups, (g) => g.data.tone);
+  const isCustom = typeof sharedTone === "string" && !isPresetGroupTone(sharedTone) && sharedTone.startsWith("#");
+  const resolved = resolveGroupTone(sharedTone === MIXED ? undefined : sharedTone);
+
+  return (
+    <>
+      <BulkSwatches
+        testId="inspector-field-tone"
+        itemTestId="inspector-tone"
+        options={(Object.keys(toneColor) as GroupTone[]).map((t) => ({
+          id: t,
+          colour: toneColor[t],
+          label: toneLabel[t],
+        }))}
+        value={sharedTone}
+        onPick={(t) =>
+          editor.updateGroups(
+            selectedGroups.map((g) => g.data.groupId),
+            { tone: t },
+            bulkStep("tone"),
+          )
+        }
+        customButton={
+          <button
+            type="button"
+            className={`insp-tone-custom${isCustom ? " is-on" : ""}`}
+            title={t("chrome.customColour")}
+            aria-label={t("chrome.customColour")}
+            aria-haspopup="dialog"
+            onClick={(e) =>
+              setPickerAnchor({ rect: e.currentTarget.getBoundingClientRect(), merge: bulkStep("tone").merge })
+            }
+            data-testid="inspector-tone-custom-btn"
+          >
+            <span
+              className={`insp-tone-custom-swatch${!isCustom ? " insp-tone-custom-rainbow" : ""}`}
+              style={isCustom ? { backgroundColor: resolved } : undefined}
+            />
+            <Icon name="chevron-down" size={12} />
+          </button>
+        }
+      />
+      {pickerAnchor && (
+        <ColorPickerModal
+          currentColor={sharedTone === MIXED ? undefined : sharedTone}
+          defaultColor={resolved}
+          anchorRect={pickerAnchor.rect}
+          onSelect={(hex) =>
+            editor.updateGroups(
+              selectedGroups.map((g) => g.data.groupId),
+              { tone: hex },
+              pickerAnchor,
+            )
+          }
+          onReset={() => {
+            editor.updateGroups(
+              selectedGroups.map((g) => g.data.groupId),
+              { tone: undefined },
+              pickerAnchor,
+            );
+            setPickerAnchor(null);
+          }}
+          onClose={() => setPickerAnchor(null)}
+        />
+      )}
+    </>
   );
 }
 

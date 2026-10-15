@@ -57,7 +57,10 @@ const STARTUP_CHUNKS = [
   "catalog",
   "checks",
   "codec",
+  "colors",
   "examples",
+  // Native validation and clipboard insertion share the parent-cycle sanitizer.
+  "groupHierarchy",
   "i18n",
   "index",
   "jsx-runtime",

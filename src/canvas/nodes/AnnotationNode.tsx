@@ -97,7 +97,11 @@ function AnnotationNodeImpl({
   return (
     <div
       className={`ann ann-${kind} ann-s-${data.textSize ?? "m"}${selected ? " is-selected" : ""}${isEditing ? " is-editing" : ""}`}
-      style={{ "--ann": resolved.hex } as CSSProperties}
+      style={
+        {
+          "--ann": resolved.hex,
+        } as CSSProperties
+      }
       data-testid={`annotation-${id}`}
       data-kind={kind}
       data-shape={kind === "shape" ? (data.shape ?? "rect") : undefined}

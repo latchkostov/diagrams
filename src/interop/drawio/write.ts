@@ -114,7 +114,7 @@ export function diagramToDrawio(d: DiagramFile, opts: DrawioWriteOptions = {}): 
 
   const annotations = d.annotations ?? [];
   const annotationCell = (a: DiagramAnnotation) => [
-    `        <object id="${escapeXml(cellId("a", a.id))}" label="${escapeXml(textHtml(a.text))}" dg_id="${escapeXml(a.id)}" dg_annotation="${a.kind}"${attr("dg_shape", a.kind === "shape" ? (a.shape ?? "rect") : undefined)}${attr("dg_color", isColorValue(a.color) ? a.color : undefined)}${attr("dg_text_size", a.textSize)}${attr("dg_text", a.text)}>`,
+    `        <object id="${escapeXml(cellId("a", a.id))}" label="${escapeXml(textHtml(a.text))}" dg_id="${escapeXml(a.id)}" dg_annotation="${a.kind}"${attr("dg_shape", a.kind === "shape" ? (a.shape ?? "rect") : undefined)}${attr("dg_color", isColorValue(a.color) ? a.color : undefined)}${attr("dg_text_size", a.textSize)}${attr("dg_text", a.text)}${attr("dg_group", a.group)}>`,
     `          <mxCell style="${escapeXml(annotationStyle(a))}" vertex="1" parent="1">`,
     `            <mxGeometry x="${r(a.x)}" y="${r(a.y)}" width="${r(a.width)}" height="${r(a.height)}" as="geometry" />`,
     `          </mxCell>`,
@@ -126,7 +126,7 @@ export function diagramToDrawio(d: DiagramFile, opts: DrawioWriteOptions = {}): 
   for (const g of d.groups ?? []) {
     const tone = g.tone ?? "neutral";
     lines.push(
-      `        <object id="${escapeXml(cellId("g", g.id))}" label="${escapeXml(escapeXml(g.label, false))}" dg_id="${escapeXml(g.id)}" dg_tone="${tone}">`,
+      `        <object id="${escapeXml(cellId("g", g.id))}" label="${escapeXml(escapeXml(g.label, false))}" dg_id="${escapeXml(g.id)}" dg_tone="${tone}"${attr("dg_group", g.group)}>`,
       `          <mxCell style="${escapeXml(groupStyle(tone))}" vertex="1" parent="1">`,
       `            <mxGeometry x="${r(g.x)}" y="${r(g.y)}" width="${r(g.width)}" height="${r(g.height)}" as="geometry" />`,
       `          </mxCell>`,

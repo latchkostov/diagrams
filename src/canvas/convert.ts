@@ -148,7 +148,7 @@ export const groupToFlow = (g: DiagramGroup): GroupFlowNode => ({
   height: g.height,
   zIndex: -1,
   dragHandle: ".grp-drag",
-  data: { groupId: g.id, label: g.label, tone: g.tone ?? "neutral" },
+  data: { groupId: g.id, label: g.label, tone: g.tone ?? "neutral", group: g.group },
 });
 
 export const nodeToFlow = (n: DiagramNode): DiagramFlowNode => ({
@@ -172,7 +172,7 @@ export const annotationToFlow = (a: DiagramAnnotation): AnnotationFlowNode => ({
   height: a.height,
   connectable: isConnectable(a.kind),
   ...(a.kind === "zone" ? { zIndex: -2, dragHandle: ".ann-zone-label" } : {}),
-  data: { kind: a.kind, text: a.text, shape: a.shape, color: a.color, textSize: a.textSize },
+  data: { kind: a.kind, text: a.text, shape: a.shape, color: a.color, textSize: a.textSize, group: a.group },
 });
 
 export const edgeToFlow = (e: DiagramEdge): DiagramFlowEdge => ({
@@ -265,6 +265,7 @@ export function fromFlow(meta: DiagramMeta, nodes: FlowNode[], edges: DiagramFlo
         shape: n.data.kind === "shape" ? n.data.shape : undefined,
         color: n.data.color,
         textSize: n.data.textSize,
+        group: n.data.group,
       });
     } else if (n.type === "boundary") {
       groups.push({
@@ -275,6 +276,7 @@ export function fromFlow(meta: DiagramMeta, nodes: FlowNode[], edges: DiagramFlo
         y: r(n.position.y),
         width: r(n.width ?? n.measured?.width ?? 0),
         height: r(n.height ?? n.measured?.height ?? 0),
+        group: n.data.group,
       });
     } else {
       out.push({
@@ -291,7 +293,9 @@ export function fromFlow(meta: DiagramMeta, nodes: FlowNode[], edges: DiagramFlo
   }
   // Drop references to groups that were deleted on the canvas.
   const groupIds = new Set(groups.map((g) => g.id));
+  for (const g of groups) if (g.group && !groupIds.has(g.group)) g.group = undefined;
   for (const n of out) if (n.group && !groupIds.has(n.group)) n.group = undefined;
+  for (const a of annotations) if (a.group && !groupIds.has(a.group)) a.group = undefined;
   const outEdges: DiagramEdge[] = edges.map(edgeFromFlow);
   const layerOrder = nodes
     .filter((n) => n.type !== "boundary" && !(n.type === "annotation" && n.data.kind === "zone"))

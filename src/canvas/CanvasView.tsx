@@ -1,3 +1,4 @@
+import { useCaptionContrast } from "./useCaptionContrast";
 import { isDenyRule } from "../stencils/netDevices";
 import { edgeSettings, isDependency, RELATION_META, settingsSummary } from "../model/relations";
 import { pipsByNode } from "./nodes/dependencyRows";
@@ -66,6 +67,8 @@ import {
 import { privacyOf } from "../lib/localOnly";
 import { PRIVACY_REQUEST, usePrivacyFlags } from "../lib/usePrivacy";
 import type { AnnotationKind, AnnotationShape, DiagramFile } from "../model/types";
+import { memberBoxes } from "./memberBoxes";
+import { expandGroupIds } from "../model/groupHierarchy";
 import {
   edgeAriaLabel,
   fromFlow,
@@ -90,7 +93,7 @@ import {
   annotationTitle,
   parseAnnotationDrag,
 } from "./annotations";
-import { toneColor } from "./groupTones";
+import { resolveGroupTone } from "./groupTones";
 import { EdgeMarkers, FlowEdge } from "./edges/FlowEdge";
 import { Palette, STENCIL_DND_MIME } from "./Palette";
 import { Inspector } from "./Inspector";
@@ -312,6 +315,7 @@ function CanvasInner({
   });
   const [meta, setMeta] = useState<DiagramMeta>(flow.meta);
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(flow.nodes);
+  useCaptionContrast(wrapper, nodes, theme, meta.color);
   const [edges, setEdges, onEdgesChange] = useEdgesState<DiagramFlowEdge>(flow.edges);
   const [modified, setModified] = useState(loadedJson !== originalJson);
   const [paletteCollapsed, setPaletteCollapsed] = useState(() => {
@@ -1232,17 +1236,28 @@ function CanvasInner({
    * The dragged nodes whose membership a drop decides (their copies' ids, for an Alt-drag): all of them but the
    * members of a boundary dragged with them, which it carries.
    */
-  const droppedNodes = useCallback((dragged: FlowNode[], copies: Map<string, string> | null) => {
-    const carriers = new Set(dragged.filter(isGroupNode).map((g) => g.data.groupId));
-    const carried = (n: DiagramFlowNode) => {
-      // An Alt-drag's copy belongs to the copy of its boundary, the original's to the original.
-      const g = n.data.group;
-      return !!g && carriers.has(g);
-    };
-    return dragged
-      .filter((n): n is DiagramFlowNode => isDiagramNode(n) && !carried(n))
-      .map((n) => copies?.get(n.id) ?? n.id);
-  }, []);
+  const droppedNodes = useCallback(
+    (dragged: FlowNode[], copies: Map<string, string> | null) => {
+      const carriers = expandGroupIds(
+        dragged.filter(isGroupNode).map((g) => g.data.groupId),
+        store
+          .getState()
+          .nodes.filter(isGroupNode)
+          .map((g) => ({ id: g.data.groupId, group: g.data.group })),
+      );
+      const carried = (n: FlowNode) => {
+        // An Alt-drag's copy belongs to the copy of its boundary, the original's to the original.
+        const g = n.data.group;
+        return !!g && carriers.has(g);
+      };
+      return dragged
+        .filter(
+          (n): n is DiagramFlowNode | AnnotationFlowNode => (isDiagramNode(n) || isAnnotationNode(n)) && !carried(n),
+        )
+        .map((n) => copies?.get(n.id) ?? n.id);
+    },
+    [store],
+  );
   const watchMembership = useCallback(
     (dragged: FlowNode[], copies: Map<string, string> | null) => {
       const s = store.getState();
@@ -1255,15 +1270,8 @@ function CanvasInner({
           width: g.width ?? g.measured?.width ?? 0,
           height: g.height ?? g.measured?.height ?? 0,
         }));
-      const sizeOf = (n: FlowNode) => ({
-        width: n.measured?.width ?? n.width ?? 0,
-        height: n.measured?.height ?? n.height ?? 0,
-      });
       const moving = new Set([...ids, ...dragged.map((n) => n.id)]);
-      const othersOf = (ns: readonly FlowNode[]): MemberBox[] =>
-        ns
-          .filter((n): n is DiagramFlowNode => isDiagramNode(n) && !moving.has(n.id))
-          .map((n) => ({ id: n.id, ...n.position, ...sizeOf(n), group: n.data.group }));
+      const othersOf = (ns: readonly FlowNode[]): MemberBox[] => memberBoxes(ns.filter((n) => !moving.has(n.id)));
       // Boundaries dragged along (with their members) move under the nodes: read them each frame then. Otherwise
       // the rest holds still, so it's read once.
       const live = dragged.some(isGroupNode);
@@ -1283,8 +1291,8 @@ function CanvasInner({
         for (const id of ids) {
           const n = st.nodeLookup.get(id);
           const u = n?.internals.userNode;
-          if (!n || !u || !isDiagramNode(u)) continue;
-          now.push({ id, ...n.internals.positionAbsolute, ...sizeOf(u), group: u.data.group });
+          if (!n || !u) continue;
+          now.push(...memberBoxes([{ ...u, position: n.internals.positionAbsolute }]));
         }
         const preview = previewMembership(now, groups, others);
         for (const [id, el] of marked)
@@ -1382,6 +1390,7 @@ function CanvasInner({
       const copies = altCopies.current;
       altCopies.current = null;
       // Members a dragged boundary carries stay in it; every other dropped node settles where it landed.
+      const draggedGroups = dragged.filter(isGroupNode);
       const ids = droppedNodes(dragged, copies);
       // Once the drop has rendered: a copy dropped onto something moves to the nearest free place (nothing
       // overlaps by default), then the dropped nodes settle into the boundaries around them, which grow to hold
@@ -1394,9 +1403,15 @@ function CanvasInner({
             groupIds: made.filter((id) => id.startsWith(GROUP_PREFIX)).map((id) => id.slice(GROUP_PREFIX.length)),
           });
         }
-        if (!ids.length) return;
-        const left = editor.settleMembership(ids);
-        if (!copies && editGestures) sayLeft(left);
+        if (!ids.length && !draggedGroups.length) return;
+        if (ids.length) {
+          const left = editor.settleMembership(ids);
+          if (!copies && editGestures) sayLeft(left);
+        }
+        if (draggedGroups.length) {
+          const targetFlowIds = draggedGroups.map((g) => copies?.get(g.id) ?? g.id);
+          editor.settleBoundaryMembership(targetFlowIds.map((id) => id.slice(GROUP_PREFIX.length)));
+        }
       });
     },
     [editor, guides, editGestures, sayLeft, droppedNodes],
@@ -1671,6 +1686,8 @@ function CanvasInner({
   );
   const ui = useMemo<DiagramUi>(
     () => ({
+      theme,
+      canvasColor: meta.color,
       direction,
       editing,
       setEditing: editGestures ? setEditing : () => {},
@@ -1682,6 +1699,8 @@ function CanvasInner({
       boundaryResized: editGestures ? boundaryResized : undefined,
     }),
     [
+      theme,
+      meta.color,
       direction,
       editing,
       openEdgeMenu,
@@ -1940,7 +1959,7 @@ function CanvasInner({
         ns.filter((n) => !isGroupNode(n)).map(navBox),
         ns.filter(isGroupNode).map((g) => ({
           ...navBox(g),
-          members: ns.filter((m) => isDiagramNode(m) && m.data.group === g.data.groupId).map((m) => m.id),
+          members: ns.filter((m) => m.data.group === g.data.groupId).map((m) => m.id),
         })),
         direction,
       ),
@@ -2011,7 +2030,9 @@ function CanvasInner({
           announce(`${nodeAriaLabel(n.data)}${inGroup ? `, in ${inGroup}` : ""}. ${at}. ${edges}.${deps}`);
         } else if (isAnnotationNode(n)) announce(`${annotationAriaLabel(n.data)}. ${at}.`);
         else {
-          const members = ns.filter((m) => isDiagramNode(m) && m.data.group === (n as GroupFlowNode).data.groupId);
+          const members = ns.filter(
+            (m) => (isDiagramNode(m) || isAnnotationNode(m)) && m.data.group === (n as GroupFlowNode).data.groupId,
+          );
           announce(`${labelOf(id)}, boundary, ${members.length === 1 ? "1 node" : `${members.length} nodes`}. ${at}.`);
         }
         return true;
@@ -2383,7 +2404,7 @@ function CanvasInner({
                 }
                 nodeStrokeColor={(n) =>
                   n.type === "boundary"
-                    ? toneColor[(n as GroupFlowNode).data.tone]
+                    ? resolveGroupTone((n as GroupFlowNode).data.tone)
                     : n.type === "annotation" && (n as AnnotationFlowNode).data.kind !== "note"
                       ? resolveAnnotationColor(
                           (n as AnnotationFlowNode).data.color,

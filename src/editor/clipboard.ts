@@ -7,6 +7,9 @@ import {
   type DiagramNode,
 } from "../model/types";
 import { filterLayerOrder } from "../model/layers";
+import { expandGroupIds, sanitizeGroupParents } from "../model/groupHierarchy";
+import { isPresetGroupTone } from "../canvas/groupTones";
+import { isHexColor } from "../model/colors";
 import { uniqueId } from "./ids";
 import { normalizeAnnotation, annotationCoordinate } from "../model/annotations";
 import { LIMITS, exceedsDepth, validateDiagram } from "../interop/native";
@@ -50,10 +53,11 @@ export function makePayload(
   groupIds: Iterable<string> = [],
   isPrivate = false,
 ): ClipboardPayload | null {
-  const gs = new Set(groupIds);
+  const gs = expandGroupIds(groupIds, d.groups ?? []);
   const groups = (d.groups ?? []).filter((g) => gs.has(g.id));
   const ns = new Set(nodeIds);
   for (const n of d.nodes) if (n.group && gs.has(n.group)) ns.add(n.id);
+  for (const a of d.annotations ?? []) if (a.group && gs.has(a.group)) ns.add(a.id);
   const nodes = clipboardNodes(d).filter((n) => ns.has(n.id));
   const annotations = (d.annotations ?? []).filter((a) => ns.has(a.id));
   if (!nodes.length && !groups.length && !annotations.length) return null;
@@ -134,7 +138,7 @@ export function parsePayload(text: string): ClipboardPayload | null {
   if (!nodes.length && !groups.length && !annotations.length) return null;
   return {
     format: CLIP_FORMAT,
-    groups,
+    groups: groups.map((g) => ({ ...g, tone: isPresetGroupTone(g.tone) || isHexColor(g.tone) ? g.tone : "neutral" })),
     nodes: nodes.map((n) => ({ ...n, label: n.label ?? "" })),
     edges,
     ...(annotations.length ? { annotations } : {}),
@@ -163,12 +167,20 @@ export function remapPayload(p: ClipboardPayload, taken: TakenIds, offset: { x: 
   const used = new Set([...taken.nodes, ...taken.edges, ...taken.groups]);
   const gmap = new Map<string, string>();
   const nmap = new Map<string, string>();
-  const groups = p.groups.map((g) => {
+  const groupIds = p.groups.map((g) => {
     const id = uniqueId(g.id, used);
     used.add(id);
-    gmap.set(g.id, id);
-    return { ...g, id, x: g.x + offset.x, y: g.y + offset.y };
+    if (!gmap.has(g.id)) gmap.set(g.id, id);
+    return id;
   });
+  const groups = sanitizeGroupParents(
+    p.groups.map((g, i) => {
+      const id = groupIds[i];
+      const group = typeof g.group === "string" ? (gmap.get(g.group) ?? g.group) : undefined;
+      return { ...g, id, group, x: g.x + offset.x, y: g.y + offset.y };
+    }),
+    taken.groups,
+  );
   const nodes = p.nodes.map((n) => {
     const id = uniqueId(n.id, used);
     used.add(id);
@@ -180,9 +192,11 @@ export function remapPayload(p: ClipboardPayload, taken: TakenIds, offset: { x: 
     const id = uniqueId(a.id, used);
     used.add(id);
     nmap.set(a.id, id);
+    const group = a.group ? (gmap.get(a.group) ?? a.group) : undefined;
     return {
       ...structuredClone(a),
       id,
+      group,
       x: annotationCoordinate(a.x + offset.x),
       y: annotationCoordinate(a.y + offset.y),
     };

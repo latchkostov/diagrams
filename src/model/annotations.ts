@@ -69,9 +69,11 @@ export function normalizeAnnotation(
   delete out.shape;
   delete out.color;
   delete out.textSize;
+  delete out.group;
   if (kind === "shape" && member(ANNOTATION_SHAPES, a.shape)) out.shape = a.shape;
   if (isColorValue(a.color)) out.color = a.color;
   if (member(ANNOTATION_TEXT_SIZES, a.textSize)) out.textSize = a.textSize;
+  if (typeof a.group === "string" && a.group) out.group = a.group;
   return out;
 }
 
