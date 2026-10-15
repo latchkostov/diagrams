@@ -31,6 +31,7 @@ interface Anchor {
   y: number;
   /** Submenus: where to put the menu's right edge if it doesn't fit to the right. */
   flipX?: number;
+  minWidth?: number;
 }
 
 const MARGIN = 8;
@@ -43,6 +44,7 @@ export interface ContextMenuProps {
   y: number;
   /** Where the menu's right edge goes when it doesn't fit right of `x` (it flips to the left). */
   flipX?: number;
+  minWidth?: number;
   items: MenuNode[];
   onClose: () => void;
   /** Root-level search box placeholder (quick-add, stencil picker). */
@@ -57,6 +59,7 @@ export function ContextMenu({
   y,
   flipX,
   alignment,
+  minWidth,
   items,
   onClose,
   searchable,
@@ -85,7 +88,7 @@ export function ContextMenu({
   }, []);
   // The same anchor while the menu stays put: the list places itself whenever its anchor changes, so a new one on
   // every render moved a searchable menu that typing had shortened (from under the pointer: nightly #78).
-  const anchor = useMemo(() => ({ x, y, flipX, alignment }), [x, y, flipX, alignment]);
+  const anchor = useMemo(() => ({ x, y, flipX, alignment, minWidth }), [x, y, flipX, alignment, minWidth]);
 
   useEffect(() => {
     const previousFocus = invoker.current;
@@ -427,8 +430,18 @@ function MenuList(p: ListProps) {
         data-depth={p.depth}
         style={
           pos
-            ? { left: pos.left, top: pos.top, maxHeight: pos.maxHeight }
-            : { left: p.anchor.x, top: p.anchor.y, visibility: "hidden" }
+            ? {
+                left: pos.left,
+                top: pos.top,
+                maxHeight: pos.maxHeight,
+                ...(p.anchor.minWidth ? { minWidth: p.anchor.minWidth } : {}),
+              }
+            : {
+                left: p.anchor.x,
+                top: p.anchor.y,
+                visibility: "hidden",
+                ...(p.anchor.minWidth ? { minWidth: p.anchor.minWidth } : {}),
+              }
         }
         onKeyDown={onKeyDown}
         onMouseLeave={() => {
@@ -545,7 +558,7 @@ const MenuRow = memo(function MenuRow({
       aria-disabled={n.disabled || undefined}
       aria-haspopup={n.children ? "menu" : undefined}
       aria-expanded={n.children ? open : undefined}
-      className={`cm-item${active ? " is-active" : ""}${n.disabled ? " is-disabled" : ""}${n.danger ? " is-danger" : ""}${open ? " is-open" : ""}`}
+      className={`cm-item${n.className ? ` ${n.className}` : ""}${active ? " is-active" : ""}${n.disabled ? " is-disabled" : ""}${n.danger ? " is-danger" : ""}${open ? " is-open" : ""}`}
       data-testid={`context-menu-item-${n.id}`}
       data-active={active || undefined}
       // The pointer moving on a row hovers it; a row arriving under a pointer at rest doesn't (mouseenter would:

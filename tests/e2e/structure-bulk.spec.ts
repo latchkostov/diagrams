@@ -314,11 +314,12 @@ test.describe("bulk edit and Select similar (D11)", () => {
     await expect.poll(() => selectedIds(page)).toEqual(["edge-a-c", "edge-a-w"]);
     const relation = page.getByTestId("inspector-field-relation");
     const label = page.getByTestId("inspector-field-label");
-    await expect(relation).toHaveValue("message");
+    await expect(relation).toContainText("Message");
     // "Authorize" and "Ship order": the label is mixed.
     await expect(label).toHaveValue("");
     await expect(label).toHaveAttribute("placeholder", "Mixed");
-    await relation.selectOption("request");
+    await relation.click();
+    await menuItem(page, "request").click();
     await savedWhen(page, (s) => s.edges.filter((e) => e.kind === "sync").length === 3);
     await page.getByTestId("undo-button").click();
     await savedWhen(page, (s) => s.edges.filter((e) => e.kind === "sync").length === 1);

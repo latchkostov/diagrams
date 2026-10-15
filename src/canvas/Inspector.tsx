@@ -39,6 +39,7 @@ import {
   textSizeLabel,
 } from "./annotations";
 import { ColorPickerModal } from "../components/ColorPickerModal";
+import { Dropdown, type DropdownItem } from "../components/Dropdown";
 import { safeStorage } from "../lib/storage";
 import {
   RELATION_META,
@@ -53,7 +54,34 @@ import {
   settingsText,
   type ConfigSetting,
 } from "../model/relations";
-import { RELATION_CHOICES, applyChoice, choiceOf, relationIcon } from "../editor/relationActions";
+import {
+  RELATION_CHOICES,
+  applyChoice,
+  choiceOf,
+  relationIcon,
+  type RelationChoiceId,
+} from "../editor/relationActions";
+
+const RELATION_DROPDOWN_ITEMS: readonly DropdownItem<RelationChoiceId>[] = [
+  {
+    label: "Flow",
+    options: RELATION_CHOICES.filter((c) => c.relation === "flow").map((c) => ({
+      value: c.id,
+      label: `${c.label} (${c.kind})`,
+      icon: c.icon,
+      hint: c.kind,
+    })),
+  },
+  {
+    label: "Dependency",
+    options: RELATION_CHOICES.filter((c) => c.relation !== "flow").map((c) => ({
+      value: c.id,
+      label: c.label,
+      icon: c.icon,
+      className: `fe-rel-${c.relation}`,
+    })),
+  },
+];
 import { inferRelation } from "../stencils/relations";
 import {
   DEFAULT_FAILOVER_MS,
@@ -710,34 +738,17 @@ function EdgePanel({ edge, editor, nodeLabel, meta }: InspectorProps & { edge: D
           />
         </Field>
         <Field label="Relationship" hint="Flows carry messages in Live; dependencies are drawn dotted and carry none">
-          <span className={`insp-relation${flow ? "" : ` fe-rel-${relation}`}`}>
-            <Icon name={relationIcon(relation, data.kind)} size={14} />
-            <select
-              className="insp-input"
-              value={choice}
-              onChange={(e) => {
-                const next = RELATION_CHOICES.find((c) => c.id === e.target.value);
-                if (next) applyChoice(editor, [edge.id], next);
-              }}
-              name="relationship"
-              data-testid="inspector-field-relation"
-            >
-              <optgroup label="Flow">
-                {RELATION_CHOICES.filter((c) => c.relation === "flow").map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.label} ({c.kind})
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Dependency">
-                {RELATION_CHOICES.filter((c) => c.relation !== "flow").map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.label}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-          </span>
+          <Dropdown
+            value={choice}
+            onChange={(nextId) => {
+              const next = RELATION_CHOICES.find((c) => c.id === nextId);
+              if (next) applyChoice(editor, [edge.id], next);
+            }}
+            items={RELATION_DROPDOWN_ITEMS}
+            name="relationship"
+            aria-label="Relationship"
+            testId="inspector-field-relation"
+          />
         </Field>
         <RelationHint edge={edge} editor={editor} />
         {rule && (
@@ -1710,37 +1721,18 @@ function BulkEdges({ editor, selectedEdges }: InspectorProps) {
   return (
     <Section title={plural(ids.length, "edge", "edges")}>
       <BulkRow label="Relationship">
-        <select
-          className="insp-input"
-          value={choice === MIXED ? MIXED_VALUE : choice}
-          onChange={(e) => {
-            const next = RELATION_CHOICES.find((c) => c.id === e.target.value);
+        <Dropdown
+          value={choice === MIXED ? undefined : choice}
+          placeholder={choice === MIXED ? "Mixed" : undefined}
+          onChange={(nextId) => {
+            const next = RELATION_CHOICES.find((c) => c.id === nextId);
             if (next) applyChoice(editor, ids, next);
           }}
+          items={RELATION_DROPDOWN_ITEMS}
           name="relationship"
           aria-label={`Relationship of ${ids.length} edges`}
-          data-testid="inspector-field-relation"
-        >
-          {choice === MIXED && (
-            <option value={MIXED_VALUE} disabled>
-              Mixed
-            </option>
-          )}
-          <optgroup label="Flow">
-            {RELATION_CHOICES.filter((c) => c.relation === "flow").map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.label} ({c.kind})
-              </option>
-            ))}
-          </optgroup>
-          <optgroup label="Dependency">
-            {RELATION_CHOICES.filter((c) => c.relation !== "flow").map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.label}
-              </option>
-            ))}
-          </optgroup>
-        </select>
+          testId="inspector-field-relation"
+        />
       </BulkRow>
       <BulkRow label="Label">
         <input

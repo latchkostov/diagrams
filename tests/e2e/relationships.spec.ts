@@ -124,7 +124,8 @@ test.describe("relationships", () => {
 
     // The inspector offers the same eight choices.
     await page.getByTestId("edge-label-api-to-sb").click();
-    await page.getByTestId("inspector-field-relation").selectOption("telemetry");
+    await page.getByTestId("inspector-field-relation").click();
+    await menuItem(page, "telemetry").click();
     await expect(page.getByTestId("edge-api-to-sb")).toHaveAttribute("data-relation", "telemetry");
     await expect(page.getByTestId("inspector-field-group")).toHaveCount(0);
     expectNoErrors(consoleErrors);
@@ -412,10 +413,12 @@ test("relationship-only changes invalidate edit capacity demand and bottleneck f
   await expect(page.getByTestId("capacity-label-worker")).toHaveAttribute("data-level", "over");
   await expect(page.getByTestId("bottleneck-fix")).toBeVisible();
   await page.getByTestId("edge-label-demand").click();
-  await page.getByTestId("inspector-field-relation").selectOption("secret");
+  await page.getByTestId("inspector-field-relation").click();
+  await menuItem(page, "secret").click();
   await expect(page.getByTestId("capacity-label-worker")).toHaveCount(0);
   await expect(page.getByTestId("bottleneck-fix")).toHaveCount(0);
-  await page.getByTestId("inspector-field-relation").selectOption("message");
+  await page.getByTestId("inspector-field-relation").click();
+  await menuItem(page, "message").click();
   await expect(page.getByTestId("capacity-label-worker")).toHaveAttribute("data-level", "over");
   expectNoErrors(consoleErrors);
 });

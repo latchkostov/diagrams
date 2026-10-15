@@ -1538,6 +1538,11 @@
   color: var(--accent);
 }
 
+.cm-item[class*="fe-rel-"] .cm-lead,
+.cm-item[class*="fe-rel-"].is-active .cm-lead {
+  color: var(--rel);
+}
+
 .cm-tile {
   width: 18px;
   height: 18px;
@@ -1933,6 +1938,42 @@ select.insp-input {
 .insp-relation select {
   flex: 1;
   min-width: 0;
+}
+
+button.insp-input.dropdown-trigger {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  text-align: left;
+  user-select: none;
+  font-family: inherit;
+}
+
+.dropdown-lead {
+  width: 16px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  color: var(--text-2);
+}
+
+.dropdown-lead[class*="fe-rel-"] {
+  color: var(--rel);
+}
+
+.dropdown-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdown-chevron {
+  flex: none;
+  color: var(--text-3);
+  margin-inline-start: auto;
 }
 
 .insp-hint {
