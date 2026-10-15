@@ -187,6 +187,16 @@ export class Bench {
     return { wallMs: Date.now() - started };
   }
 
+  /**
+   * Turns live view on from a settled canvas (a page opened with live=1 never goes quiet: its frames are the
+   * animation), waits for its controls and a warm-up of `warmMs`.
+   */
+  async goLive(warmMs = 3_000) {
+    await this.page.getByTestId("live-toggle").click();
+    await this.page.getByTestId("live-controls").waitFor({ timeout: 180_000 });
+    await this.page.waitForTimeout(warmMs);
+  }
+
   /** Waits until no long animation frame for `quietMs`, at most `maxMs`; returns when the last one ended. */
   async settle(quietMs = 1_000, maxMs = 120_000): Promise<number> {
     const until = Date.now() + maxMs;

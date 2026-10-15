@@ -179,10 +179,9 @@ for (const n of uiSizes([100, 500, 1_500], [100, 500]))
     test.skip(MODE === "gates", "report-only");
     const w = loadWorkload("pipeline", n);
     const b = await Bench.create(page, { renders: true });
-    await b.open(w, { url: NAMES_URL, query: "&live=1" });
-    await page.getByTestId("live-controls").waitFor({ timeout: 180_000 });
+    await b.open(w, { url: NAMES_URL });
     await b.settle(3_000, 300_000);
-    await page.waitForTimeout(2_000);
+    await b.goLive();
     await b.startRenders();
     await page.waitForTimeout(3_000);
     const r = await b.renders();

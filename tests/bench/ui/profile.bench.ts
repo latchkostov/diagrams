@@ -128,9 +128,8 @@ test("profile: selecting nodes, pipeline@1500", async ({ page }) => {
 });
 
 test("profile: live view, pipeline@500", async ({ page }) => {
-  const { b } = await open(page, "pipeline", 500, "&live=1");
-  await page.getByTestId("live-controls").waitFor({ timeout: 180_000 });
-  await page.waitForTimeout(2_000);
+  const { b } = await open(page, "pipeline", 500);
+  await b.goLive();
   await profiled(b, "live-pipeline@500", () => page.waitForTimeout(4_000));
 });
 
