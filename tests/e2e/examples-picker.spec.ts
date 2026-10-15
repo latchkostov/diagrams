@@ -4,6 +4,7 @@ import {
   test,
   expect,
   publicExamples,
+  publicExampleCards,
   expectNoErrors,
   openExample,
   currentDiagram,
@@ -133,7 +134,7 @@ test("picker contains your work and a separate gallery entry; gallery filters an
       ),
     ).toEqual(slugs);
   }
-  await expect(page.getByTestId(/^example-card-/)).toHaveCount(publicExamples.length);
+  await expect(publicExampleCards(page)).toHaveCount(publicExamples.length);
   await page.getByTestId("examples-search").fill("no such system");
   await expect(page.getByTestId("examples-empty")).toBeVisible();
   await page.getByTestId("examples-search").fill("kafka order");
@@ -553,8 +554,13 @@ test("keyboard menu navigation, dialog arrows, Escape and focus return", async (
   await page.keyboard.press("End");
   await expect(page.getByTestId("picker-browse-examples")).toBeFocused();
   await page.keyboard.press("ArrowUp");
+  const localMenu = page.getByTestId("picker-local-examples");
+  if (await localMenu.count()) {
+    await expect(localMenu).toBeFocused();
+    await page.keyboard.press("ArrowUp");
+  }
   await expect(page.getByTestId("picker-new")).toBeFocused();
-  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("End");
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("examples-search")).toBeFocused();
   await page.getByTestId(`example-open-${SLUG}`).focus();
@@ -611,4 +617,83 @@ test("gallery horizontal arrows follow the visual order in Arabic", async ({ pag
   await page.keyboard.press("ArrowRight");
   await expect(page.getByTestId(`example-open-${SLUG}`)).toBeFocused();
   expect(await page.getByTestId("examples-dialog").evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+});
+
+test("selection-only changes do not schedule example autosaves", async ({ page }) => {
+  await page.goto(`./?example=${SLUG}`);
+  await expect(page.getByTestId("node-shopper")).toBeVisible();
+  await page.clock.install();
+  await pauseClock(page);
+  await page.clock.runFor(1000);
+  await page.evaluate(() => {
+    const original = JSON.stringify;
+    (window as unknown as { diagramSerializations: number }).diagramSerializations = 0;
+    JSON.stringify = function (...args: Parameters<typeof original>) {
+      const value = args[0] as { format?: string } | null;
+      if (value?.format === "diagrams/v1")
+        (window as unknown as { diagramSerializations: number }).diagramSerializations++;
+      return original(...args);
+    };
+  });
+  const calls = () =>
+    page.evaluate(() => (window as unknown as { diagramSerializations: number }).diagramSerializations);
+  for (let i = 0; i < 3; i++) {
+    await page.getByTestId("node-shopper").click();
+    const selected = await calls();
+    await page.clock.runFor(0);
+    expect(await calls()).toBe(selected);
+  }
+});
+
+test("gallery supports a synthetic local catalog entry", async ({ page }) => {
+  await page.goto("./?view=lab&preset=gallery-local-catalog");
+  const fixture = page.getByTestId("gallery-catalog-fixture");
+  await fixture.getByTestId("example-picker").click();
+  // Menus render in a portal: choose the menu opened by this fixture.
+  const menu = page.getByTestId("diagram-menu");
+  await page.keyboard.press("End");
+  await expect(menu.getByTestId("picker-browse-examples")).toBeFocused();
+  await page.keyboard.press("ArrowUp");
+  await expect(menu.getByTestId("picker-local-examples")).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByTestId("picker-local-synthetic-local")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("End");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("examples-search")).toBeFocused();
+  for (const example of publicExamples) await expect(page.getByTestId(`example-card-${example.slug}`)).toBeVisible();
+  await expect(publicExampleCards(page)).toHaveCount(publicExamples.length);
+  await expect(page.getByTestId("example-card-synthetic-local")).toBeVisible();
+  await page.getByTestId("examples-search").fill("synthetic local");
+  await expect(page.getByTestId("example-card-synthetic-local")).toBeVisible();
+  await expect(page.getByTestId(/^example-card-/)).toHaveCount(1);
+});
+
+test("gallery Run it supersedes a palette run while LiveSession loads", async ({ page }) => {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let requested = false;
+  await page.route(/\/(?:assets\/LiveSession-[\w-]+\.js|src\/live\/LiveSession\.tsx)(?:\?.*)?$/, async (route) => {
+    requested = true;
+    await held;
+    await route.continue();
+  });
+  try {
+    await page.goto(`./?example=${SLUG}`);
+    await expect(page.getByTestId("node-shopper")).toBeVisible();
+    await page.keyboard.press("Control+k");
+    await page.getByTestId("command-input").fill("black friday");
+    await page.getByTestId("command-item-sim:black-friday").click();
+    await expect.poll(() => requested).toBe(true);
+    await page.getByTestId("example-picker").click();
+    await page.getByTestId("picker-browse-examples").click();
+    await page.getByTestId("example-run-notification-fanout").click();
+    await expect(page.getByTestId("diagram-title")).toHaveText("Notification fan-out");
+    release();
+    await expect(page.getByTestId("live-sim-picker")).toHaveValue("shipping-wave", { timeout: pageLoadTimeout() });
+  } finally {
+    release();
+  }
 });

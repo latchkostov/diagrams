@@ -1,5 +1,5 @@
 import { useState, type KeyboardEvent } from "react";
-import { examples } from "../examples";
+import { examples, type Example } from "../examples";
 import { exampleFeatures, exampleThemeLabel, filterExamples } from "../examples/gallery";
 import { DiagramThumbnail } from "./DiagramThumbnail";
 import { Dialog } from "../interop/ui/Dialog";
@@ -9,14 +9,16 @@ import "../styles/examples.css";
 export function ExamplesDialog({
   onClose,
   onOpen,
+  catalog = examples,
 }: {
+  catalog?: readonly Example[];
   onClose: () => void;
   onOpen: (slug: string, simulation?: string) => void;
 }) {
   useLocale();
   const [query, setQuery] = useState("");
   const [feature, setFeature] = useState("");
-  const sections = filterExamples(examples, query, feature);
+  const sections = filterExamples(catalog, query, feature);
   const navigate = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (!(event.target instanceof HTMLButtonElement) || !event.target.hasAttribute("data-example-action")) return;
     const actions = Array.from(

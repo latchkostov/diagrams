@@ -33,7 +33,6 @@ const LIBRARY_SLUG_PREFIX = "my-";
 const AUTOSAVE_PREFIX = "diagrams.autosave.v1:";
 const LEGACY_KEY = "diagrams.imported.v1";
 const SHARED_KEY = "diagrams.shared.v1";
-const BINDINGS_KEY = "diagrams.bindings.v1";
 export const LIBRARY_KEY = "diagrams.library.v1";
 // Each diagram owns one index record. Publishing it is a single atomic storage write;
 // tabs never overwrite a shared snapshot containing other diagrams' entries.
@@ -212,13 +211,15 @@ function promoteDraft(identity: string): string | undefined {
 
 // Only pending Save operations follow a promotion, once. There is no shared identity redirect.
 const exampleCopyListeners = new Set<(source: string, copy: string) => void>();
+const exampleSaveSessions = new Map<string, number>();
 
 /** A pending save follows its initiating document into its first copy, even after navigation. */
 export function trackDocumentSession(source: string) {
   let slug = source;
   let identity = getDiagramIdentity(source);
+  const generation = exampleSaveSessions.get(source);
   const onCopy = (from: string, copy: string) => {
-    if (from !== source) return;
+    if (from !== source || exampleSaveSessions.get(source) !== generation) return;
     slug = copy;
     identity = getDiagramIdentity(copy);
     dispose();
@@ -229,6 +230,7 @@ export function trackDocumentSession(source: string) {
   if (examples.some((e) => e.slug === source)) exampleCopyListeners.add(onCopy);
   return {
     resolve: () => {
+      if (slug === source && exampleSaveSessions.get(source) !== generation) return undefined;
       const owner = resolveDocumentSession(slug, identity);
       return owner ? { slug: owner, identity } : undefined;
     },
@@ -267,6 +269,14 @@ function replaceDocument(slug: string, diagram: DiagramFile, target?: SaveTarget
   if (replaced !== sessionId) safeStorage.removeItem(AI_THREAD_PREFIX + replaced);
 }
 
+/** Destinations for examples live only for their initiating mounted canvas. */
+export function releaseExampleSaveTarget(slug: string): void {
+  if (examples.some((example) => example.slug === slug)) {
+    memoryTargets.delete(slug);
+    exampleSaveSessions.set(slug, (exampleSaveSessions.get(slug) ?? 0) + 1);
+  }
+}
+
 export function getSaveTarget(slug: string): SaveTarget | undefined {
   const sessionId = getDiagramIdentity(slug);
   const memory = memoryTargets.get(slug);
@@ -278,13 +288,7 @@ export function getSaveTarget(slug: string): SaveTarget | undefined {
       ? storedTarget(stored.target ?? stored.drive)
       : undefined;
   }
-  const stored = read<Record<string, { sessionId: string; target: unknown }>>(BINDINGS_KEY)?.[slug];
-  const previous = read<unknown>(`diagrams.example-session.v1:${slug}`);
-  return stored &&
-    (stored.sessionId === sessionId ||
-      (typeof previous === "string" && previous.startsWith(sessionId + ":") && stored.sessionId === previous))
-    ? storedTarget(stored.target)
-    : undefined;
+  return undefined;
 }
 
 /** Resolve an initiating session once for both asynchronous privacy checks and destination binding. */
@@ -321,14 +325,6 @@ export function bindSaveTarget(slug: string, target: SaveTarget, expectedIdentit
     delete rest.drive;
     delete rest.target;
     storeSession(key, { ...rest, ...(inMemoryOnly(target) ? {} : { target }) });
-  } else {
-    const all = Object.fromEntries(
-      Object.entries(read<Record<string, { sessionId: string; target: unknown }>>(BINDINGS_KEY) ?? {}).filter(
-        ([key]) => key !== slug,
-      ),
-    );
-    if (!inMemoryOnly(target)) all[slug] = { sessionId: expectedIdentity, target };
-    safeStorage.setItem(BINDINGS_KEY, JSON.stringify(all)); // optional for examples
   }
   memoryTargets.delete(slug);
   // Example bindings also belong to this mounted session: another tab may bind its own destination.
@@ -779,6 +775,7 @@ export function copyEditedExample(
       },
     },
   );
+  releaseExampleSaveTarget(slug);
   return { slug: copy, title };
 }
 

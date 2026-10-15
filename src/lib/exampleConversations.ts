@@ -1,13 +1,47 @@
 import { AI_THREAD_PREFIX } from "./aiThreadKey";
 import { safeStorage } from "./storage";
 
-// Each tab retains the example conversation it read or edited. Promotion only reads this
-// snapshot; it never changes the example's identity, storage or another tab's snapshot.
-const snapshots = new Map<string, string | null>();
+import type { ThreadTurn } from "../ai/ui/thread";
+
+// One LRU owns both parsed threads and the serialized snapshot used by promotion.
+export const MAX_CACHED_THREADS = 4;
+const cache = new Map<string, { raw?: string | null; turns?: ThreadTurn[] }>();
+const pins = new Map<string, number>();
+function trim(keep?: string) {
+  for (const id of cache.keys()) {
+    if (cache.size <= MAX_CACHED_THREADS) break;
+    if (id !== keep && !pins.has(id)) cache.delete(id);
+  }
+}
+function touch(identity: string) {
+  const entry = cache.get(identity) ?? {};
+  cache.delete(identity);
+  cache.set(identity, entry);
+  trim(identity);
+  return entry;
+}
+export function retainConversation(identity: string): () => void {
+  pins.set(identity, (pins.get(identity) ?? 0) + 1);
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    const count = pins.get(identity) ?? 0;
+    if (count <= 1) pins.delete(identity);
+    else pins.set(identity, count - 1);
+    trim();
+  };
+}
+export const cachedConversationCount = () => cache.size;
+export const cachedTurns = (identity: string) => cache.get(identity)?.turns;
+export function cacheTurns(identity: string, turns: ThreadTurn[]) {
+  touch(identity).turns = turns;
+}
 export const exampleIdentity = (slug: string) => `example:${slug}`;
 
 export function readConversation(identity: string): string | null {
-  if (snapshots.has(identity)) return snapshots.get(identity)!;
+  const cached = cache.get(identity);
+  if (cached && "raw" in cached) return touch(identity).raw!;
   let raw = safeStorage.getItem(AI_THREAD_PREFIX + identity);
   if (identity.startsWith("example:")) {
     // Older versions used a generation key. Read it only as a fallback; never migrate it.
@@ -22,7 +56,7 @@ export function readConversation(identity: string): string | null {
         /* Malformed legacy marker. */
       }
     }
-    snapshots.set(identity, raw);
+    touch(identity).raw = raw;
   }
   return raw;
 }
@@ -46,7 +80,7 @@ export function withoutConversationSnapshots(raw: string): string {
 
 export function saveConversation(identity: string, raw: string | null): boolean {
   const example = identity.startsWith("example:");
-  if (example) snapshots.set(identity, raw);
+  if (example) touch(identity).raw = raw;
   const key = AI_THREAD_PREFIX + identity;
   // An explicit empty conversation masks any read-only legacy fallback.
   if (raw === null) return example ? safeStorage.setItem(key, '{"turns":[]}') : safeStorage.removeItem(key);

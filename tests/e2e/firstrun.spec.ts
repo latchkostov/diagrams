@@ -1,7 +1,7 @@
 import { currentDiagram } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, publicExamples, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, publicExamples, publicExampleCards, expectNoErrors } from "./fixtures";
 
 // First run and starting a diagram: the bare URL opens a blank canvas with the start card, the
 // card's ways in, File > New diagram (nothing is replaced), the one-time hint and the node tooltip.
@@ -65,7 +65,7 @@ test.describe("first run", () => {
         String(ex.nodeIds.length),
       );
     }
-    await expect(page.getByTestId(/^example-card-/)).toHaveCount(publicExamples.length);
+    await expect(publicExampleCards(page)).toHaveCount(publicExamples.length);
     await page.getByTestId(`example-open-${publicExamples[0].slug}`).click();
     await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", publicExamples[0].slug);
     await expect(page.getByTestId(`node-${publicExamples[0].nodeIds[0]}`)).toBeVisible();

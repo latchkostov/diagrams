@@ -36,6 +36,27 @@
   error adds one message in all 38 languages and updates their `edit` hashes.
   Diagram, simulation, layout, export and browser goldens remain unchanged.
 
+## Example gallery verification fixes (2026-10-15)
+
+- An example's completed Save destination belongs only to its mounted session and first owned copy.
+  Reopening the original asks for a new destination, including when the first copy is Private. Legacy
+  example bindings stay stored but are no longer reused: they cannot identify which copy owns the file.
+  Late saves from an unmounted original cannot attach to a reopened session.
+- Gallery and command-palette simulation launches share one document-scoped queue; the latest request
+  wins while Live loads. Navigation cancels requests for the previous diagram.
+- Example conversation snapshots and parsed threads share the four-entry memory cache. Mounted
+  conversations stay pinned; inactive entries reload from storage, including its snapshot-free fallback.
+- Selection-only changes no longer schedule an immediate example autosave. Gallery tests tolerate
+  additional local entries through a synthetic Lab catalog, and pending device/cloud saves are covered
+  through the actual controller. No new controls or chrome.
+- No parity goldens change. Diagram, simulation, layout, export, agent and language output is unchanged.
+  Refreshed the agent skill viewer; marketplace version remains 1.1.21 (one patch above master).
+
+Verification: 6,535 unit checks pass (four existing skips). The production browser sweep passed 398
+checks and found two old persistent-binding assertions; those assertions now check the owned file,
+and all 35 follow-up checks pass. Deliberate regressions fail for every finding. All 1,634 parity
+goldens match, with the eight previously documented browser deferrals.
+
 ## Example gallery round 5: copy-only promotion (2026-10-15)
 
 - Promotion copies the current conversation into a new document with a fresh identity. It never

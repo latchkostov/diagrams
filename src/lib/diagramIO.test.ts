@@ -779,7 +779,7 @@ describe("first example edit", () => {
     },
   );
   it.each([false, true])(
-    "reads a legacy cloud Save binding without rewriting it (generation: %s)",
+    "ignores an unscoped legacy cloud Save binding without rewriting it (generation: %s)",
     async (generation) => {
       const { loadExample } = await import("../examples");
       const source = "kafka-order-pipeline";
@@ -790,10 +790,10 @@ describe("first example edit", () => {
       const binding = JSON.stringify({ [source]: { sessionId, target } });
       storage.setItem("diagrams.bindings.v1", binding);
       const identity = io.getDiagramIdentity(source);
-      expect(io.getSaveTarget(source)).toEqual(target);
+      expect(io.getSaveTarget(source)).toBeUndefined();
       const copy = io.copyEditedExample(source, original, identity)!;
-      expect(io.getSaveTarget(copy.slug)).toEqual(target);
-      expect(io.getSaveTarget(source)).toEqual(target);
+      expect(io.getSaveTarget(copy.slug)).toBeUndefined();
+      expect(io.getSaveTarget(source)).toBeUndefined();
       expect(storage.getItem("diagrams.bindings.v1")).toBe(binding);
     },
   );
@@ -808,7 +808,11 @@ describe("first example edit", () => {
       const copy = io.copyEditedExample(source, original, identity)!;
       expect(io.getSaveTarget(copy.slug)).toEqual(target);
       if (target.providerId === "device") expect(io.getSaveTarget(copy.slug)?.ref).toBe(handle);
-      expect(io.getSaveTarget(source)).toEqual(target);
+      expect(io.getSaveTarget(source)).toBeUndefined();
+      io.setDiagramPrivate(copy.slug, true);
+      const next = io.copyEditedExample(source, original, identity)!;
+      expect(io.getSaveTarget(next.slug)).toBeUndefined();
+      expect(io.getSaveTarget(copy.slug)).toEqual(target);
     },
   );
   it("pending saves follow only their first copy; a reopened example has a separate save", async () => {
@@ -980,4 +984,28 @@ describe("first example edit", () => {
     expect(io.getCurrent(source)).toEqual(original);
     expect(io.listLibrary()).toHaveLength(0);
   });
+});
+
+it("a pending save from an unmounted example cannot bind or follow a reopened session", async () => {
+  const source = "kafka-order-pipeline";
+  const original = await (await import("../examples")).loadExample(source);
+  const old = io.trackDocumentSession(source);
+  io.releaseExampleSaveTarget(source);
+  const reopened = io.trackDocumentSession(source);
+  const copy = io.copyEditedExample(source, original, io.getDiagramIdentity(source))!;
+  expect(old.resolve()).toBeUndefined();
+  expect(reopened.resolve()?.slug).toBe(copy.slug);
+  old.dispose();
+  reopened.dispose();
+});
+
+it("example-session cleanup leaves a pending promoted draft save alone", () => {
+  const identity = io.getDiagramIdentity("new");
+  const pending = io.trackDocumentSession("new");
+  expect(io.writeAutosave("new", good, identity)).toBe(true);
+  const owner = pending.resolve();
+  expect(owner?.slug).toMatch(/^my-/);
+  io.releaseExampleSaveTarget("new");
+  expect(pending.resolve()).toEqual(owner);
+  pending.dispose();
 });

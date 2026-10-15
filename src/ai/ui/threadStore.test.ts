@@ -43,3 +43,37 @@ describe("thread store", () => {
     expect(threads.get("watched")).toEqual([]);
   });
 });
+
+it.each([false, true])("shares the example snapshot budget with threads (storage fails: %s)", async (fails) => {
+  const { readConversation, retainConversation, cachedConversationCount } =
+    await import("../../lib/exampleConversations");
+  const { saveThread } = await import("./thread");
+  const set = vi.spyOn(localStorage, "setItem");
+  if (fails)
+    set.mockImplementation(() => {
+      throw new Error("full");
+    });
+  const identity = `example:pinned-${fails}`;
+  const release = retainConversation(identity);
+  const turns: ThreadTurn[] = [{ ...turn("Kept"), id: "kept", at: 1 }];
+  try {
+    saveThread(identity, turns);
+    const raw = readConversation(identity);
+    for (let i = 0; i < MAX_CACHED_THREADS + 6; i++) {
+      const id = `example:budget-${fails}-${i}`;
+      threads.set(id, [{ ...turn(`change ${i}`), id: "turn", at: 1 }]);
+      expect(cachedConversationCount()).toBeLessThanOrEqual(MAX_CACHED_THREADS);
+    }
+    expect(readConversation(identity)).toBe(raw);
+    const evicted = readConversation(`example:budget-${fails}-0`);
+    expect(evicted === null).toBe(fails);
+    if (!fails) expect(JSON.parse(evicted!).turns[0].summary).toBe("change 0");
+    release();
+    for (let i = 0; i < MAX_CACHED_THREADS + 1; i++) threads.append(`release-${i}`, turn("other"));
+    // An inactive session reloads durable storage; a refused write is no longer retained.
+    if (fails) expect(readConversation(identity)).toBeNull();
+  } finally {
+    release();
+    set.mockRestore();
+  }
+});

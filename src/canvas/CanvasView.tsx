@@ -1,4 +1,6 @@
 import { useCaptionContrast } from "./useCaptionContrast";
+
+import { retainConversation } from "../lib/exampleConversations";
 import { isDenyRule } from "../stencils/netDevices";
 import { edgeSettings, isDependency, RELATION_META, settingsSummary } from "../model/relations";
 import { pipsByNode } from "./nodes/dependencyRows";
@@ -58,6 +60,7 @@ import {
   emptyDiagram,
   getAutosave,
   getDiagramIdentity,
+  releaseExampleSaveTarget,
   getOriginal,
   isLibrarySlug,
   setDiagramPrivate,
@@ -645,6 +648,7 @@ function CanvasInner({
     [readOnly, identity, renameHistoryTitle, original.title],
   );
   const firstExampleEdit = onExampleCopy !== undefined;
+  const saveRevision = history.stateKey;
   useEffect(() => {
     if (readOnly) return;
     const t = setTimeout(
@@ -655,7 +659,7 @@ function CanvasInner({
       firstExampleEdit && !exampleCopyFailed.current ? 0 : 300,
     );
     return () => clearTimeout(t);
-  }, [meta, nodes, edges, readOnly, flushSave, firstExampleEdit]);
+  }, [saveRevision, readOnly, flushSave, firstExampleEdit]);
   useEffect(() => {
     if (readOnly) return;
     const onPageHide = () => void flushSave();
@@ -668,8 +672,16 @@ function CanvasInner({
       window.removeEventListener("pagehide", onPageHide);
       document.removeEventListener("visibilitychange", onVisibility);
       flushSave();
+      releaseExampleSaveTarget(latest.current.slug);
     };
   }, [readOnly, flushSave]);
+
+  // Release after the unmount flush: promotion still needs this tab's conversation snapshot.
+  const conversationIdentity = initial ? undefined : getDiagramIdentity(slug);
+  useEffect(
+    () => (conversationIdentity ? retainConversation(conversationIdentity) : undefined),
+    [conversationIdentity],
+  );
 
   useImperativeHandle(
     ref,

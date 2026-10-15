@@ -9,6 +9,19 @@ fills. Conversion retains the existing error treatment and gives translated reco
 oversized labels. No controls or chrome were added. Production browser regressions cover the shortcut,
 contrast and existing nested movement; the accessibility, groups, clipboard, layout and interop suites pass.
 
+## Example gallery verification gate (2026-10-15)
+
+The designer agent's scoped source/test review found no blocking UX issue. Reopening an example
+keeps its fresh-original/new-copy behavior, while promotion retains the canvas and Undo. Destination
+ownership follows the initiating mount; Private copies keep their own file. Gallery and palette runs
+share one latest-request queue. The synthetic catalog fixture stays in the Lab and exercises the
+additional local submenu with existing keyboard, Escape, autofocus and focus-return behavior.
+No production controls, layout changes or chrome were added.
+
+This was a source review, not a visual, browser or screen-reader walkthrough. Production Playwright
+separately checks the Private-copy save boundary, successful pending device/cloud saves, delayed
+mixed launches, selection serialization counts and synthetic local-catalog keyboard navigation.
+
 ## Example gallery round 5 (2026-10-15)
 
 The designer agent's scoped source and test review found no blocking UX issue. Promotion copies the

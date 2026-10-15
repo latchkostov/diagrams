@@ -200,3 +200,40 @@ test("the shortcuts dialog links the privacy page, which loads", async ({ page }
   expect(res.status()).toBe(200);
   expect(await res.text()).toContain("No analytics");
 });
+
+test("pending Save follows the first promoted copy (test cloud)", async ({ page }) => {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let requested = false;
+  await page.route(
+    /\/(?:assets\/testProvider-[\w-]+\.js|src\/interop\/storage\/testProvider\.ts)(?:\?.*)?$/,
+    async (route) => {
+      requested = true;
+      await held;
+      await route.continue();
+    },
+  );
+  try {
+    await gotoWithTestStorage(page, "kafka-order-pipeline");
+    await submenuItem(page, "file-save-to", "save-to-test");
+    await expect.poll(() => requested).toBe(true);
+    await page.getByTestId("node-shopper").click();
+    await page.getByTestId("inspector-field-label").fill("Promoted storefront");
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+    release();
+    await expect(page.getByTestId("save-status")).toContainText("Test storage");
+    await expect.poll(async () => (await files(page)).length).toBe(1);
+    const id = (await files(page))[0].id;
+    await page.keyboard.press("Control+s");
+    await expect
+      .poll(
+        async () => JSON.parse((await files(page))[0].text).nodes.find((n: { id: string }) => n.id === "shopper").label,
+      )
+      .toBe("Promoted storefront");
+    expect((await files(page)).map((f) => f.id)).toEqual([id]);
+  } finally {
+    release();
+  }
+});

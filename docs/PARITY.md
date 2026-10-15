@@ -16,6 +16,13 @@ pnpm parity sim checks # only parity files whose path contains "sim" or "checks"
 A filtered run skips the stale-golden check. The browser tier needs Docker running (see "Browser tier").
 Without it, `pnpm parity:node` still checks everything that doesn't need a browser.
 
+## Example gallery verification round (2026-10-15)
+
+These fixes change save-destination ownership, launch queuing, retained conversation memory and
+selection autosave scheduling. They deliberately change no diagram output. No golden is updated;
+the refreshed skill viewer's built script is already excluded from byte pinning, while its behavior
+remains covered by the existing viewer goldens.
+
 ## What's pinned
 
 Inputs are fixed: the public examples (`src/examples/*.json`, top level only: `src/examples/private/` is never listed

@@ -80,6 +80,10 @@ export const publicExamples: PublicExample[] = (() => {
     });
 })();
 
+/** Public-card assertions stay valid when the development catalog adds local entries. */
+export const publicExampleCards = (page: Page) =>
+  page.getByTestId(new RegExp(`^example-card-(${publicExamples.map((e) => e.slug).join("|")})$`));
+
 declare global {
   interface Window {
     /** Dev and e2e builds: RGBA pixels of a live canvas layer inside a client rect (src/live/LiveView.tsx). */

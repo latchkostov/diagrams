@@ -638,3 +638,64 @@ test("image export wraps an unbroken title and URL within the measured one-node 
   expect(result.exportedDescription).toBe("https://example.test/" + "path".repeat(120));
   await expect(page.getByTestId("export-header")).toHaveCount(0);
 });
+
+test("pending Save follows the first promoted copy (device)", async ({ page }) => {
+  await fakeFileSystem(page);
+  await gotoCanvas(page, "kafka-order-pipeline");
+  await page.evaluate(() => {
+    window.__fs.defer = true;
+  });
+  await openFile(page);
+  await page.getByTestId("file-save").click();
+  await expect.poll(() => page.evaluate(() => !!window.__fs.release)).toBe(true);
+  await page.getByTestId("node-shopper").click();
+  await page.getByTestId("inspector-field-label").fill("Promoted storefront");
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+  await page.evaluate(() => {
+    window.__fs.defer = false;
+    window.__fs.release?.();
+  });
+  await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(1);
+  await expect(page.getByTestId("save-status")).toBeVisible();
+  await page.keyboard.press("Control+s");
+  await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(2);
+  expect(await page.evaluate(() => window.__fs.pickerCalls)).toBe(1);
+  expect(
+    await page.evaluate(
+      () => JSON.parse(window.__fs.writes[1].text).nodes.find((n: { id: string }) => n.id === "shopper").label,
+    ),
+  ).toBe("Promoted storefront");
+});
+
+test("reopening an example never overwrites its Private copy's destination", async ({ page }) => {
+  await fakeFileSystem(page);
+  await gotoCanvas(page, "kafka-order-pipeline");
+  await saveFile(page);
+  await page.getByTestId("node-shopper").click();
+  await page.getByTestId("inspector-field-label").fill("Private storefront");
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-privacy").click();
+  await page.getByTestId("privacy-diagram").click();
+  await expect(page.getByTestId("private-badge")).toBeVisible();
+  await page.keyboard.press("Control+s");
+  await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(2);
+  const privateFile = await page.evaluate(() => window.__fs.writes[1]);
+  expect(JSON.parse(privateFile.text).private).toBe(true);
+  await openExample(page, "kafka-order-pipeline");
+  await expect(page.getByTestId("example-badge")).toBeVisible();
+  await expect(page.getByTestId("node-shopper")).not.toContainText("Private storefront");
+  await page.keyboard.press("Control+s");
+  await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(3);
+  expect(await page.evaluate(() => window.__fs.pickerCalls)).toBe(2);
+  await page.getByTestId("node-shopper").click();
+  await page.getByTestId("inspector-field-label").fill("Second storefront");
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+  await page.keyboard.press("Control+s");
+  await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(4);
+  expect(await page.evaluate(() => window.__fs.writes.filter((w) => w.name === "saved-1.json"))).toEqual([
+    expect.anything(),
+    privateFile,
+  ]);
+  expect(await page.evaluate(() => window.__fs.writes[3].name)).toBe("saved-2.json");
+});

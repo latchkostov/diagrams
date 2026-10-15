@@ -55,7 +55,7 @@ export function useHistory(
   state: CanvasSnapshot,
   apply: (s: CanvasSnapshot) => void,
   onStep?: (direction: "undo" | "redo", selection: FlowSelection) => void,
-): HistoryApi & { renameTitle(from: string, to: string): void } {
+): HistoryApi & { stateKey: string; renameTitle(from: string, to: string): void } {
   const [ctl] = useState(() => new HistoryController(clean(state), Date.now()));
   const [history, setHistory] = useState(ctl.history);
   const latest = useRef(state);
@@ -176,6 +176,7 @@ export function useHistory(
   }, [ctl]);
 
   return {
+    stateKey,
     undo,
     redo,
     renameTitle,

@@ -112,8 +112,7 @@ function MainApp() {
   useLocale();
   const [url, setUrl] = useUrlState();
   const canvasRef = useRef<CanvasHandle>(null);
-  const cancelGalleryRun = useRef<(() => void) | null>(null);
-  useEffect(() => () => cancelGalleryRun.current?.(), []);
+  useEffect(() => () => paletteHost.cancelRun(), []);
   // Your diagrams and the shared slot, re-read when they change (here or in another tab).
   const library = useLibrary();
   const [copyNotice, setCopyNotice] = useState<string | null>(null);
@@ -183,6 +182,11 @@ function MainApp() {
   // from the URL's example while one is loading. A layout effect, so it's current before the live
   // view's effects write them.
   const canvasShown = url.view === "canvas" && displayedSlug !== undefined;
+  useLayoutEffect(() => {
+    const pending = paletteHost.get().pendingRun;
+    if (pending && (url.view !== "canvas" || pending.documentId !== getDiagramIdentity(targetSlug)))
+      paletteHost.cancelRun();
+  }, [url.view, targetSlug]);
   useLayoutEffect(() => {
     showDiagram(canvasShown ? { identity: canvasIdentity, example: slug } : null);
   }, [canvasShown, canvasIdentity, slug]);
@@ -523,7 +527,7 @@ function MainApp() {
         <ExamplesDialog
           onClose={() => setExamplesOpen(false)}
           onOpen={(example, simulation) => {
-            cancelGalleryRun.current?.();
+            paletteHost.cancelRun();
             canvasRef.current?.flush();
             setExamplesOpen(false);
             setExampleFocus((previous) => ({ slug: example, request: (previous?.request ?? 0) + 1 }));
@@ -535,31 +539,7 @@ function MainApp() {
               if (localOnly) query.delete("sim");
               else query.set("sim", simulation);
               window.history.replaceState(null, "", `${window.location.pathname}?${query}${window.location.hash}`);
-              // Wait for this document's session, including for public examples. A global
-              // pending run can otherwise be consumed by a different canvas after navigation.
-              const identity = getDiagramIdentity(example);
-              const start = () => {
-                const current = new URLSearchParams(window.location.search);
-                if (current.get("view") !== "canvas" || current.get("example") !== example || !current.has("live")) {
-                  cancel();
-                  return;
-                }
-                const host = paletteHost.get();
-                if (host.canvas?.documentId !== identity || !host.live) return;
-                if (!host.session) {
-                  host.live.goLive();
-                  return;
-                }
-                cancel();
-                if (!host.session.disabledHint) host.session.run(simulation);
-              };
-              const off = paletteHost.subscribe(start);
-              const cancel = () => {
-                off();
-                cancelGalleryRun.current = null;
-              };
-              cancelGalleryRun.current = cancel;
-              start();
+              paletteHost.runSimulation(simulation, getDiagramIdentity(example));
             }
           }}
         />

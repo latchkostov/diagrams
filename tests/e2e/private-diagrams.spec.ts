@@ -378,7 +378,14 @@ for (const onDevice of [false, true]) {
 const testFile = (page: Page) =>
   page.evaluate(
     () =>
-      (JSON.parse(localStorage.getItem("diagrams.test-storage.v1") ?? "[]") as { text: string; modified: string }[])[0],
+      (
+        JSON.parse(localStorage.getItem("diagrams.test-storage.v1") ?? "[]") as {
+          id: string;
+          name: string;
+          text: string;
+          modified: string;
+        }[]
+      )[0],
   );
 
 /** An imported diagram saved once to Test storage (bound: Ctrl+S goes back there). */
@@ -441,10 +448,7 @@ for (const byDefault of [false, true]) {
     await page.getByTestId("save-to-test").click();
     await expect(page.getByTestId("save-status")).toHaveAttribute("data-provider", "test");
     const before = await testFile(page);
-    const targetBefore = await page.evaluate(
-      (slug) => JSON.parse(localStorage.getItem("diagrams.bindings.v1") ?? "{}")[slug].target,
-      SLUG,
-    );
+    const targetBefore = { providerId: "test", ref: { id: before.id }, name: before.name };
     if (byDefault) {
       await openPrivacyMenu(page);
       await page.getByTestId("privacy-new-diagrams").click();
@@ -469,7 +473,7 @@ for (const byDefault of [false, true]) {
       copy,
     );
     // The previously bound destination is unchanged; completion never binds a new destination.
-    expect(stored.target).toEqual(targetBefore);
+    expect(stored.target).toMatchObject(targetBefore);
     await page.getByTestId("canvas-wrap").focus();
     await page.keyboard.press(`${MOD}+s`);
     await expect(page.getByTestId("toast-private-save-device")).toBeVisible();
