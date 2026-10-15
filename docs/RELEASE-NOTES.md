@@ -12,6 +12,7 @@
 - Parity: only `node/i18n/catalogs.json` changed. It combines both PRs' messages: 1,689 per language,
   retaining master's nested-boundary `edit` hashes and adding the gallery's 17-message `examples` area
   in all 38 languages. All other 1,633 goldens are unchanged; the eight existing browser deferrals remain.
+
 ## Autoscaling A1 final review fixes (2026-10-15)
 
 - Timeline lifecycle edits preflight allocation configuration before advancing. Unrelated edits
@@ -22,6 +23,17 @@
 - Continue refusal recovery now has controller coverage, including an exactly-once retry. Sampled
   retained-memory estimates must stay within 5% of exact memory in both directions.
 - These review fixes preserve every parity golden; deliberate regressions verify the new guards.
+- Rebased onto the Examples gallery and diagram picker (#118), retaining both features and both
+  documentation histories. Autoscaling now filters to the existing Kafka worker showcase, with
+  its label translated in all 37 catalogs. Regenerated from master's skill files and released
+  plugin 1.1.23, exactly one patch above master. The policy-persistence browser check follows the
+  gallery's owned copy after the first edit; the DLQ browser check waits for the live topology
+  reload before injecting, so the reload cannot discard its new traffic.
+- Rebase parity re-records only `node/i18n/catalogs.json`: 67 existing A1 messages plus the new
+  Autoscaling tag raise master's message count from 1,689 to 1,757; only admission, autoscaling and
+  examples hashes change, with fallback counts unchanged. The five other A1 metadata goldens
+  (public schemas, agent tools, skill files, current stencil ranking and validation records) and all
+  127 A1-specific additions remain unchanged. All diagram-output goldens match. See `docs/PARITY.md`.
 
 ## Autoscaling A1 refusal recovery review fixes (2026-10-15)
 
@@ -118,6 +130,7 @@ goldens match, with the eight previously documented browser deferrals.
   favor of eliminating those transitions. The lazy-load race gate matches development and build URLs.
 - No parity goldens change: diagram, simulation, layout, export, agent and language outputs are unchanged.
   The skill viewer is refreshed; plugin version 1.1.21 is exactly one patch above master.
+
 ## Autoscaling A1 final verification fixes (2026-10-15)
 
 - Keyboard Save commits a valid focused autoscaling number before taking the document snapshot;

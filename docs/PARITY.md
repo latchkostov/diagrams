@@ -397,6 +397,27 @@ The seeded refusal probe now edits replicas (an allocation input) rather than co
 all no-op and next-step replay assertions. Fixed/overridden readiness completion and two-sided sampled
 memory bounds have focused regressions. No golden is re-recorded for these fixes.
 
+### Rebase onto Examples gallery and diagram picker (#118)
+
+Generated skill inputs and the marketplace started from master's files, then `pnpm schemas` and
+`pnpm skill:release` regenerated the combined feature set with plugin 1.1.23. Both documentation
+histories and both Lab fixtures are retained. Golden conflicts took master's complete files;
+none was hand-merged.
+
+The first full parity run found only `node/i18n/catalogs.json` different. `pnpm parity:update`
+re-records exactly that catalog summary: master's 1,689 messages become 1,757 in all 38 records
+through the 67 A1 messages and the Autoscaling gallery label. Only `admission`, `autoscaling` and
+`examples` hashes change. All 37 language catalogs translate the new label; fallback counts remain
+unchanged. The gallery's `shows` metadata derives the autoscaling tag from explicit A1 resources
+and enabled HPA, rather than vendor icons; this metadata does not alter exported diagrams.
+
+The other five shared metadata goldens already carrying A1 stay unchanged: public schemas retain
+the A1 resource/HPA and legacy revision contracts; agent tools carry the same properties; skill
+files retain the A1 format/spec and frozen stencil ranking; the current stencil ranking includes
+the A1 showcase; validation retains its six additional A1 records. All 127 A1-specific additions
+and every simulation, planning, check, trace, layout, import, export and browser golden remain
+unchanged. All 1,761 records remain present, including the eight existing browser deferrals.
+
 The pre-rebase run matches all 1,761 goldens, with none changed, added, missing or stale. These
 local fixes cover refused runner operations (including slow-motion forecast recovery), occupied concurrency reductions, replacement admission
 and staged editor identities outside the frozen corpus. The speech regression is covered by the

@@ -13,6 +13,7 @@ import {
   waitForStableViewport,
   expectNoErrors,
   STORAGE_KEYS,
+  savedDiagram,
 } from "./fixtures";
 
 const slug = "kafka-order-pipeline";
@@ -450,13 +451,11 @@ test("A1: valid Advanced JSON recovers and commits atomically", async ({ page })
   await field.press("Tab");
   await expect(page.getByTestId("autoscaling-policy-invalid")).toHaveCount(0);
   await expect(page.getByTestId("autoscaling-sync")).toHaveValue("5000");
-  const saved = () =>
-    page.evaluate((key) => {
-      const raw = localStorage.getItem(key);
-      if (!raw) throw new Error("Missing saved diagram");
-      const d = JSON.parse(raw);
-      return d.nodes.find((n: { id: string }) => n.id === "worker").props.autoscaling.controller.settings;
-    }, STORAGE_KEYS.autosavePrefix + slug);
+  const saved = async () => {
+    const d = await savedDiagram(page);
+    const policy = d.nodes.find((n) => n.id === "worker")?.props?.autoscaling as ReturnType<typeof hpaLesson>;
+    return policy.controller.settings;
+  };
   await expect.poll(saved).toEqual(settings);
   await page.getByTestId("undo-button").click();
   await expect.poll(saved).toEqual(before);

@@ -1875,6 +1875,7 @@ const en = {
   "examples.partitions": "Partitions",
   "examples.rateLimits": "Rate limits",
   "examples.networkDevices": "Network devices",
+  "examples.autoscaling": "Autoscaling",
   "examples.themeStreaming": "Event streaming",
   "examples.themeData": "Data & AI",
   "examples.themeCloud": "Cloud apps",

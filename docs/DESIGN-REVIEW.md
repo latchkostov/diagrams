@@ -1,5 +1,14 @@
 # Design review
 
+## Autoscaling A1 final review gate (2026-10-15)
+
+The designer's scoped source/test review found no blocking UX concern. Scaling speech stays polite
+and atomic outside collapsed Live details; readiness completion updates fixed and overridden fleets
+without speaking every jittered readiness frame. No controls, focus behavior or chrome were added.
+Production browser regressions cover automatic coalescing and completion with suspended syncs.
+The gallery reuses its existing feature filter for the translated Autoscaling tag, backed by the
+explicit resource/HPA showcase rather than a vendor icon.
+
 ## Gallery rebase integration review (#118, 2026-10-15)
 
 Scoped source review preserves both gallery session/copy behavior and nested-boundary membership,
@@ -62,6 +71,7 @@ search and collapse controls. No global control was added.
 Production browser checks verify stencil-control separation, shared and overflow navigation, English
 and Arabic accessible names, and the gallery's existing theme, narrow-layout and axe checks. The
 designer review itself was a source review, not a browser or screen-reader walkthrough.
+
 ## Autoscaling A1 round 2 review fixes (2026-10-15)
 
 Scoped designer source review found no blocking UX issues. The inspector preserves its four main
@@ -4245,6 +4255,7 @@ cancellation on navigation or unmount. The test records every history write, fai
 and passes afterward; all eight synthetic privacy checks pass. No real local diagrams were inspected.
 The final launch/navigation/privacy follow-up passes 35 checks. Security re-review finds no further issue,
 and the full unit suite again passes 6,382 tests with 4 skipped.
+
 ## Autoscaling A1 round 3 (2026-10-15)
 
 Designer review passed after correcting a stale upgrade focus request. A refused paste now explains

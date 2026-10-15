@@ -82,6 +82,7 @@ test("ordinary autosaves serialize the diagram once and reuse that result", asyn
 const BY_THEME: Record<string, string[]> = {
   streaming: [
     "kafka-order-pipeline",
+    "autoscaling-image-workers",
     "cqrs-event-sourcing",
     "cdc-analytics",
     "iot-telemetry",
@@ -161,6 +162,17 @@ test("start card opens the gallery; feature filter and Run it start a saved simu
   await expect(page.getByTestId("live-sim-picker")).toHaveValue("shipping-wave");
   await expect(page).toHaveURL(/live=1/);
   expectNoErrors(consoleErrors);
+});
+
+test("Autoscaling filter finds the resource showcase and runs its saved burst", async ({ page }) => {
+  await page.goto("./");
+  await page.getByTestId("start-all-examples").click();
+  await page.getByTestId("examples-feature").selectOption("autoscaling");
+  await expect(publicExampleCards(page)).toHaveCount(1);
+  await expect(page.getByTestId("example-card-autoscaling-image-workers")).toBeVisible();
+  await page.getByTestId("example-run-autoscaling-image-workers").click();
+  await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("live-sim-picker")).toHaveValue("upload-burst");
 });
 
 test("Run it starts and restarts the currently open example", async ({ page }) => {
