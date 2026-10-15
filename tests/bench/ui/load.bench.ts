@@ -1,9 +1,9 @@
 // Cold load (docs/BENCHMARKS.md § Metrics): a fresh browser context (no cache, empty storage but for the diagram), the
 // diagram stored as a saved one, the canvas URL opened. Per workload and size, the median of a few runs of:
 // - firstNode: navigation start to the first frame with a diagram node on screen (first meaningful render);
-// - settled: to the end of the last long animation frame before a second without one (the page is usable);
-// - mainThread: main-thread task time from navigation until a second without a long frame, with its script, style
-//   and layout parts (DevTools counters; it includes what idle time loads in that second);
+// - settled: to the end of the last long animation frame, once three seconds pass without one (the page is usable);
+// - mainThread: main-thread task time from navigation until three seconds without a long frame, with its script, style
+//   and layout parts (DevTools counters; it includes what idle time loads in those seconds);
 // - longestFrame, blocking: the longest animation frame, and the long frames' blocking time in all;
 // - checksDone: to the frame after the first architecture check run finished (in its worker) and was delivered;
 // - heapAfterLoad: JS heap after a full GC; domNodes and listeners after it.
@@ -45,9 +45,13 @@ for (const family of FAMILIES)
             timedOut = LIMIT;
             return;
           }
-          const settled = await b.settle(1_000, 180_000);
+          // Three quiet seconds: the canvas routes its edges in a frame of its own after the first paint, which can
+          // start more than a second later.
+          const quiet = await b.settle(3_000, 300_000);
           const m = await b.metrics();
           const e = await b.entries();
+          // The readings above waited for any frame still running: the page settled when the last long one ended.
+          const settled = Math.max(quiet, ...e.loaf.map((f) => f.start + f.duration));
           const checksAt = await page
             .waitForFunction(() => (window as unknown as { __checksAt?: number }).__checksAt, undefined, {
               timeout: 120_000,

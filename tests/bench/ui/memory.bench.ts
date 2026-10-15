@@ -71,7 +71,7 @@ for (const [name, cycle] of CYCLES_UNDER_TEST)
     const w = loadWorkload("pipeline", 500);
     const b = await Bench.create(page);
     await b.open(w);
-    await b.settle(1_000, 180_000);
+    await b.settle(3_000, 300_000);
     // Focus the canvas, so keyboard shortcuts reach it.
     const spot = await b.emptySpot();
     await page.mouse.click(spot.x, spot.y);

@@ -118,7 +118,7 @@ for (const [family, sizes] of FAMILIES)
           const page = await context.newPage();
           const b = await Bench.create(page);
           await b.open(w);
-          await b.settle(1_000, 180_000);
+          await b.settle(3_000, 300_000);
 
           // Pan: the empty canvas dragged a frame at a time.
           const spot = await b.emptySpot({ x: 0.5, y: 0.45 });

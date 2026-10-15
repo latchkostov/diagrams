@@ -75,7 +75,7 @@ async function open(page: Page, family: string, n: number, query = "") {
   const w = loadWorkload(family, n);
   const b = await Bench.create(page);
   await b.open(w, { url: NAMES_URL, query });
-  await b.settle(1_000, 180_000);
+  await b.settle(3_000, 300_000);
   return { b, w };
 }
 
@@ -140,6 +140,6 @@ test("profile: cold load, pipeline@1500", async ({ page }) => {
   await b.cdp.send("Profiler.enable");
   await profiled(b, "load-pipeline@1500", async () => {
     await b.open(w, { url: NAMES_URL });
-    await b.settle(1_000, 180_000);
+    await b.settle(3_000, 300_000);
   });
 });

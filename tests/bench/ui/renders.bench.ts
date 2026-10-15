@@ -87,7 +87,7 @@ for (const [family, sizes] of CASES)
         .map((x) => x.id);
       const b = await Bench.create(page, { renders: true });
       await b.open(w, { url: NAMES_URL });
-      await b.settle(1_000, 180_000);
+      await b.settle(3_000, 300_000);
 
       const results: Record<string, Awaited<ReturnType<typeof counted>>> = {};
 
@@ -181,7 +181,7 @@ for (const n of uiSizes([100, 500, 1_500], [100, 500]))
     const b = await Bench.create(page, { renders: true });
     await b.open(w, { url: NAMES_URL, query: "&live=1" });
     await page.getByTestId("live-controls").waitFor({ timeout: 180_000 });
-    await b.settle(1_000, 180_000);
+    await b.settle(3_000, 300_000);
     await page.waitForTimeout(2_000);
     await b.startRenders();
     await page.waitForTimeout(3_000);

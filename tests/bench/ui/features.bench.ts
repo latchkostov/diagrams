@@ -49,7 +49,7 @@ for (const n of uiSizes([100, 500, 1_500]))
     const w = loadWorkload("pipeline", n);
     const b = await Bench.create(page);
     await b.open(w);
-    await b.settle(1_000, 180_000);
+    await b.settle(3_000, 300_000);
     const record = (name: string, r: { wall: number; task: number; longest: number }) => {
       s.time(name, [r.wall], w.info, undefined, "input to done, wall clock");
       s.time(`${name}-mainThread`, [r.task], w.info);

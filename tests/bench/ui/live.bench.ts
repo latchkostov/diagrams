@@ -84,7 +84,7 @@ for (const [family, sizes] of LIVE)
             const b = await Bench.create(page);
             await b.open(w, { query: `&live=1${renderer === "main" ? "&renderer=main" : ""}` });
             await page.getByTestId("live-controls").waitFor({ timeout: 180_000 });
-            await b.settle(1_000, 180_000);
+            await b.settle(3_000, 300_000);
             if (rate === "x10") await setTrafficTimesTen(page);
             await page.waitForTimeout(3_000);
             const r = await watch(b);
@@ -110,7 +110,7 @@ test("live memory over a minute", async ({ page }) => {
   const b = await Bench.create(page);
   await b.open(w, { query: "&live=1" });
   await page.getByTestId("live-controls").waitFor({ timeout: 180_000 });
-  await b.settle(1_000, 180_000);
+  await b.settle(3_000, 300_000);
   await page.waitForTimeout(3_000);
   const start = await b.heap();
   const dom0 = await b.domCounters();
