@@ -1592,5 +1592,22 @@
   "admission.source": "Leverandørkilde · kontrollert {date}",
   "admission.summary": "{name}: {capacity}; {offered} innkommende.",
   "admission.rejectEstimate": "{rate} kan bli avvist.",
-  "admission.model": "p3 · administrert adgang"
+  "admission.model": "p3 · administrert adgang",
+  "examples.browse": "Bla gjennom eksempler…",
+  "examples.intro": "Utforsk et system og tilpass det. Den første endringen din lagrer en kopi.",
+  "examples.search": "Søk i eksempler",
+  "examples.shows": "Viser",
+  "examples.allFeatures": "Alle funksjoner",
+  "examples.empty": "Ingen eksempler samsvarer. Prøv et annet søk eller en annen funksjon.",
+  "examples.run": "Kjør",
+  "examples.openNamed": "Åpne {title}",
+  "examples.runNamed": "Kjør {title}",
+  "examples.partitions": "Partisjoner",
+  "examples.rateLimits": "Hastighetsgrenser",
+  "examples.networkDevices": "Nettverksenheter",
+  "examples.themeStreaming": "Hendelsesstrømming",
+  "examples.themeData": "Data og KI",
+  "examples.themeCloud": "Skyapper",
+  "examples.themeIntegration": "Integrasjon",
+  "examples.themeReliability": "Pålitelighet"
 }

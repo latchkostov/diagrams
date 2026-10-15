@@ -81,3 +81,21 @@ describe("creation transactions", () => {
     expect(ctl.history.entries).toHaveLength(2);
   });
 });
+
+it("a generated copy name preserves tagged steps, undo, redo and redo branches", () => {
+  const ctl = new HistoryController(snap(SEED), 0);
+  ctl.replace(snap(SEED), undefined, added, "ai:turn:1", { nodes: [], edges: [] }, 10);
+  const before = ctl.history.entries.length;
+  ctl.renameTitle("Creation", "Creation (copy)");
+  expect(ctl.history.entries).toHaveLength(before);
+  expect(present(ctl.history).mergeKey).toBe("ai:turn:1");
+  const undone = ctl.step("undo", { nodes: [], edges: [] });
+  expect(labelsOf(undone)).toEqual(["Orders API"]);
+  expect(undone?.meta.title).toBe("Creation (copy)");
+  ctl.renameTitle("Creation (copy)", "Creation (copy 2)");
+  const redone = ctl.step("redo", { nodes: [], edges: [] });
+  expect(labelsOf(redone)).toEqual(["Orders API", "PostgreSQL"]);
+  expect(redone?.meta.title).toBe("Creation (copy 2)");
+  // Observing or saving this rewritten snapshot must not create another step.
+  if (redone) expect(ctl.commit(redone, undefined, 20)).toBe(false);
+});

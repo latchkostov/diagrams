@@ -1592,5 +1592,22 @@
   "admission.source": "Izvor dobavljača · provjeren {date}",
   "admission.summary": "{name}: {capacity}; dolazno {offered}.",
   "admission.rejectEstimate": "{rate} može biti odbijeno.",
-  "admission.model": "p3 · upravljani prihvat"
+  "admission.model": "p3 · upravljani prihvat",
+  "examples.browse": "Pregledaj primjere…",
+  "examples.intro": "Istražite sustav i prilagodite ga. Prva izmjena sprema kopiju.",
+  "examples.search": "Pretraži primjere",
+  "examples.shows": "Prikazuje",
+  "examples.allFeatures": "Sve mogućnosti",
+  "examples.empty": "Nema odgovarajućih primjera. Pokušajte drugu pretragu ili mogućnost.",
+  "examples.run": "Pokreni",
+  "examples.openNamed": "Otvori {title}",
+  "examples.runNamed": "Pokreni {title}",
+  "examples.partitions": "Particije",
+  "examples.rateLimits": "Ograničenja brzine",
+  "examples.networkDevices": "Mrežni uređaji",
+  "examples.themeStreaming": "Strujanje događaja",
+  "examples.themeData": "Podaci i umjetna inteligencija",
+  "examples.themeCloud": "Aplikacije u oblaku",
+  "examples.themeIntegration": "Integracija",
+  "examples.themeReliability": "Pouzdanost"
 }

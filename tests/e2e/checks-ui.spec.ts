@@ -199,7 +199,7 @@ test("Ignore keeps its reason through reload, export and import, and Show again 
     ignore: [{ rule: "dead-letter", target: "posting-sub", reason: "The platform team owns its redrive" }],
   });
   await page.getByTestId("import-input").setInputFiles(file);
-  await expect(page.getByTestId("example-picker")).toHaveValue(/^my-/);
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
   await page.getByTestId("view-button").click();
   await page.getByTestId("view-checks").click();
   await page.getByTestId("checks-ignored-toggle").click();
@@ -217,7 +217,7 @@ test("an empty diagram's check finishes: an empty state, not 'Checking…' forev
     mimeType: "application/json",
     buffer: Buffer.from(JSON.stringify({ format: "diagrams/v1", title: "Empty", nodes: [], edges: [] })),
   });
-  await expect(page.getByTestId("example-picker")).toHaveValue(/^my-/);
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
   await page.getByTestId("view-button").click();
   await page.getByTestId("view-checks").click();
   await expect(page.getByTestId("checks-empty")).toContainText("Nothing to check yet");

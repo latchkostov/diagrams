@@ -154,14 +154,18 @@ for (const theme of ["light", "dark"] as const)
 
 test.describe("mobile title card", () => {
   test.use({ viewport: { width: 390, height: 844 } });
-  test("keeps checks and reset available while folding the description", async ({ page }) => {
+  test("keeps checks and Undo available while folding the description", async ({ page }) => {
     await gotoCanvas(page, "partitions-vs-subscriptions");
     await expect(page.getByTestId("checks-count")).toBeVisible();
     await page.getByTestId("node-receipts").click();
     await page.keyboard.press("ArrowRight");
-    await expect(page.getByTestId("reset-diagram")).toBeVisible();
-    await page.getByTestId("reset-diagram").click();
+    // Editing an example makes an owned copy; Undo is its recovery action.
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+    await expect(page.getByTestId("checks-count")).toBeVisible();
     await expect(page.getByTestId("reset-diagram")).toHaveCount(0);
+    await page.getByTestId("undo-button").click();
+    await expect(page.getByTestId("undo-button")).toBeDisabled();
+    await expect(page.getByTestId("redo-button")).toBeEnabled();
     for (const id of ["example-picker", "view-button", "file-button", "theme-toggle"]) {
       const control = page.getByTestId(id);
       await control.focus();

@@ -1592,5 +1592,22 @@
   "admission.source": "Źródło dostawcy · sprawdzono {date}",
   "admission.summary": "{name}: {capacity}; ruch przychodzący: {offered}.",
   "admission.rejectEstimate": "{rate} może zostać odrzucone.",
-  "admission.model": "p3 · zarządzane przyjmowanie"
+  "admission.model": "p3 · zarządzane przyjmowanie",
+  "examples.browse": "Przeglądaj przykłady…",
+  "examples.intro": "Poznaj system i dostosuj go do siebie. Pierwsza edycja zapisuje kopię.",
+  "examples.search": "Szukaj przykładów",
+  "examples.shows": "Pokazuje",
+  "examples.allFeatures": "Wszystkie funkcje",
+  "examples.empty": "Brak pasujących przykładów. Spróbuj innego wyszukiwania lub funkcji.",
+  "examples.run": "Uruchom",
+  "examples.openNamed": "Otwórz {title}",
+  "examples.runNamed": "Uruchom {title}",
+  "examples.partitions": "Partycje",
+  "examples.rateLimits": "Limity szybkości",
+  "examples.networkDevices": "Urządzenia sieciowe",
+  "examples.themeStreaming": "Strumieniowanie zdarzeń",
+  "examples.themeData": "Dane i AI",
+  "examples.themeCloud": "Aplikacje w chmurze",
+  "examples.themeIntegration": "Integracja",
+  "examples.themeReliability": "Niezawodność"
 }

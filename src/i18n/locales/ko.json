@@ -1592,5 +1592,22 @@
   "admission.source": "공급업체 자료 · 확인일 {date}",
   "admission.summary": "{name}: {capacity}, 수신 {offered}.",
   "admission.rejectEstimate": "{rate}이 거부될 수 있습니다.",
-  "admission.model": "p3 · 관리형 수락 제어"
+  "admission.model": "p3 · 관리형 수락 제어",
+  "examples.browse": "예제 둘러보기…",
+  "examples.intro": "시스템을 살펴보고 직접 수정하세요. 처음 편집하면 사본이 저장됩니다.",
+  "examples.search": "예제 검색",
+  "examples.shows": "주요 기능",
+  "examples.allFeatures": "모든 기능",
+  "examples.empty": "일치하는 예제가 없습니다. 다른 검색어나 기능을 사용해 보세요.",
+  "examples.run": "실행",
+  "examples.openNamed": "{title} 열기",
+  "examples.runNamed": "{title} 실행",
+  "examples.partitions": "파티션",
+  "examples.rateLimits": "속도 제한",
+  "examples.networkDevices": "네트워크 장치",
+  "examples.themeStreaming": "이벤트 스트리밍",
+  "examples.themeData": "데이터 및 AI",
+  "examples.themeCloud": "클라우드 앱",
+  "examples.themeIntegration": "통합",
+  "examples.themeReliability": "안정성"
 }

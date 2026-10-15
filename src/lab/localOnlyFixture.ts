@@ -18,3 +18,9 @@ export const localOnlyFixture: DiagramFile = {
   ],
   edges: [{ id: "fixture-link", from: "fixture-orchid", to: "fixture-violet", label: "Synthetic orchid dispatch" }],
 };
+
+/** A separate saved-run variant for gallery privacy coverage. */
+export const localOnlySimulationFixture: DiagramFile = {
+  ...localOnlyFixture,
+  simulations: [{ id: "synthetic-local-run", title: "Synthetic saved run", traffic: [] }],
+};

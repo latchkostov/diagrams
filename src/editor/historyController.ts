@@ -89,6 +89,18 @@ export class HistoryController {
     this.settled = selectionOf(next);
   }
 
+  /** A system-assigned copy name is not an edit: keep step tags, selections and redo intact. */
+  renameTitle(from: string, to: string) {
+    this.history = {
+      ...this.history,
+      entries: this.history.entries.map((entry) => {
+        if (entry.value.meta.title !== from) return entry;
+        const value = { ...entry.value, meta: { ...entry.value.meta, title: to } };
+        return { ...entry, value, key: snapshotKey(value) };
+      }),
+    };
+  }
+
   /** Undo or Redo with the canvas's `current` selection: the snapshot to show, or null at either end. */
   step(direction: "undo" | "redo", current: FlowSelection): CanvasSnapshot | null {
     const step = stepWithSelection(this.history, direction, current);

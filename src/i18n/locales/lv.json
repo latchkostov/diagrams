@@ -1592,5 +1592,22 @@
   "admission.source": "Piegādātāja avots · pārbaudīts {date}",
   "admission.summary": "{name}: {capacity}; ienākošie {offered}.",
   "admission.rejectEstimate": "{rate} var tikt noraidīti.",
-  "admission.model": "p3 · pārvaldīta uzņemšana"
+  "admission.model": "p3 · pārvaldīta uzņemšana",
+  "examples.browse": "Pārlūkot piemērus…",
+  "examples.intro": "Izpētiet sistēmu un pielāgojiet to sev. Pirmais labojums saglabā kopiju.",
+  "examples.search": "Meklēt piemērus",
+  "examples.shows": "Parāda",
+  "examples.allFeatures": "Visas iespējas",
+  "examples.empty": "Nav atbilstošu piemēru. Izmēģiniet citu meklējumu vai iespēju.",
+  "examples.run": "Palaist",
+  "examples.openNamed": "Atvērt {title}",
+  "examples.runNamed": "Palaist {title}",
+  "examples.partitions": "Nodalījumi",
+  "examples.rateLimits": "Ātruma ierobežojumi",
+  "examples.networkDevices": "Tīkla ierīces",
+  "examples.themeStreaming": "Notikumu straumēšana",
+  "examples.themeData": "Dati un MI",
+  "examples.themeCloud": "Mākoņa lietotnes",
+  "examples.themeIntegration": "Integrācija",
+  "examples.themeReliability": "Uzticamība"
 }

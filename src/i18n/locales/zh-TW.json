@@ -1592,5 +1592,22 @@
   "admission.source": "供應商來源 · 確認日期 {date}",
   "admission.summary": "{name}：{capacity}；輸入 {offered}。",
   "admission.rejectEstimate": "{rate} 可能被拒絕。",
-  "admission.model": "p3 · 受控准入"
+  "admission.model": "p3 · 受控准入",
+  "examples.browse": "瀏覽範例…",
+  "examples.intro": "探索系統並依需求修改。首次編輯會儲存一份副本。",
+  "examples.search": "搜尋範例",
+  "examples.shows": "展示",
+  "examples.allFeatures": "所有功能",
+  "examples.empty": "沒有符合的範例。請嘗試其他搜尋詞或功能。",
+  "examples.run": "執行",
+  "examples.openNamed": "開啟 {title}",
+  "examples.runNamed": "執行 {title}",
+  "examples.partitions": "分割區",
+  "examples.rateLimits": "速率限制",
+  "examples.networkDevices": "網路裝置",
+  "examples.themeStreaming": "事件串流",
+  "examples.themeData": "資料與 AI",
+  "examples.themeCloud": "雲端應用程式",
+  "examples.themeIntegration": "整合",
+  "examples.themeReliability": "可靠性"
 }

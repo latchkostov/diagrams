@@ -1592,5 +1592,22 @@
   "admission.source": "Джерело постачальника · перевірено {date}",
   "admission.summary": "{name}: {capacity}; вхідний потік: {offered}.",
   "admission.rejectEstimate": "{rate} може бути відхилено.",
-  "admission.model": "p3 · керований допуск"
+  "admission.model": "p3 · керований допуск",
+  "examples.browse": "Переглянути приклади…",
+  "examples.intro": "Дослідіть систему та змініть її під себе. Перша зміна збереже копію.",
+  "examples.search": "Пошук прикладів",
+  "examples.shows": "Показує",
+  "examples.allFeatures": "Усі можливості",
+  "examples.empty": "Немає відповідних прикладів. Спробуйте інший пошук або можливість.",
+  "examples.run": "Запустити",
+  "examples.openNamed": "Відкрити {title}",
+  "examples.runNamed": "Запустити {title}",
+  "examples.partitions": "Партиції",
+  "examples.rateLimits": "Обмеження частоти",
+  "examples.networkDevices": "Мережеві пристрої",
+  "examples.themeStreaming": "Потокова обробка подій",
+  "examples.themeData": "Дані та ШІ",
+  "examples.themeCloud": "Хмарні застосунки",
+  "examples.themeIntegration": "Інтеграція",
+  "examples.themeReliability": "Надійність"
 }

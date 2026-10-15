@@ -1592,5 +1592,22 @@
   "admission.source": "แหล่งข้อมูลผู้ให้บริการ · ตรวจสอบ {date}",
   "admission.summary": "{name}: {capacity} รับเข้า {offered}",
   "admission.rejectEstimate": "อาจปฏิเสธ {rate}",
-  "admission.model": "p3 · การรับงานแบบจัดการ"
+  "admission.model": "p3 · การรับงานแบบจัดการ",
+  "examples.browse": "เรียกดูตัวอย่าง…",
+  "examples.intro": "สำรวจระบบแล้วปรับให้เป็นของคุณ การแก้ไขครั้งแรกจะบันทึกสำเนา",
+  "examples.search": "ค้นหาตัวอย่าง",
+  "examples.shows": "แสดง",
+  "examples.allFeatures": "คุณสมบัติทั้งหมด",
+  "examples.empty": "ไม่พบตัวอย่างที่ตรงกัน ลองค้นหาหรือเลือกคุณสมบัติอื่น",
+  "examples.run": "เรียกใช้",
+  "examples.openNamed": "เปิด {title}",
+  "examples.runNamed": "เรียกใช้ {title}",
+  "examples.partitions": "พาร์ติชัน",
+  "examples.rateLimits": "ขีดจำกัดอัตรา",
+  "examples.networkDevices": "อุปกรณ์เครือข่าย",
+  "examples.themeStreaming": "การสตรีมอีเวนต์",
+  "examples.themeData": "ข้อมูลและ AI",
+  "examples.themeCloud": "แอปบนคลาวด์",
+  "examples.themeIntegration": "การผสานรวม",
+  "examples.themeReliability": "ความน่าเชื่อถือ"
 }

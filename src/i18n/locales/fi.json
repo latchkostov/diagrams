@@ -1592,5 +1592,22 @@
   "admission.source": "Toimittajan lähde · tarkistettu {date}",
   "admission.summary": "{name}: {capacity}; saapuva {offered}.",
   "admission.rejectEstimate": "{rate} voidaan hylätä.",
-  "admission.model": "p3 · hallittu hyväksyntä"
+  "admission.model": "p3 · hallittu hyväksyntä",
+  "examples.browse": "Selaa esimerkkejä…",
+  "examples.intro": "Tutustu järjestelmään ja muokkaa siitä omasi. Ensimmäinen muokkaus tallentaa kopion.",
+  "examples.search": "Hae esimerkkejä",
+  "examples.shows": "Esittelee",
+  "examples.allFeatures": "Kaikki ominaisuudet",
+  "examples.empty": "Vastaavia esimerkkejä ei löytynyt. Kokeile toista hakua tai ominaisuutta.",
+  "examples.run": "Suorita",
+  "examples.openNamed": "Avaa {title}",
+  "examples.runNamed": "Suorita {title}",
+  "examples.partitions": "Osiot",
+  "examples.rateLimits": "Nopeusrajoitukset",
+  "examples.networkDevices": "Verkkolaitteet",
+  "examples.themeStreaming": "Tapahtumien suoratoisto",
+  "examples.themeData": "Data ja tekoäly",
+  "examples.themeCloud": "Pilvisovellukset",
+  "examples.themeIntegration": "Integraatio",
+  "examples.themeReliability": "Luotettavuus"
 }

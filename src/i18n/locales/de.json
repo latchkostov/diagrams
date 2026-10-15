@@ -1592,5 +1592,22 @@
   "admission.source": "Herstellerquelle · geprüft {date}",
   "admission.summary": "{name}: {capacity}; {offered} eingehend.",
   "admission.rejectEstimate": "{rate} können abgelehnt werden.",
-  "admission.model": "p3 · verwaltete Zulassung"
+  "admission.model": "p3 · verwaltete Zulassung",
+  "examples.browse": "Beispiele durchsuchen…",
+  "examples.intro": "Erkunden Sie ein System und passen Sie es an. Ihre erste Änderung speichert eine Kopie.",
+  "examples.search": "Beispiele suchen",
+  "examples.shows": "Zeigt",
+  "examples.allFeatures": "Alle Funktionen",
+  "examples.empty": "Keine passenden Beispiele. Versuchen Sie eine andere Suche oder Funktion.",
+  "examples.run": "Ausführen",
+  "examples.openNamed": "{title} öffnen",
+  "examples.runNamed": "{title} ausführen",
+  "examples.partitions": "Partitionen",
+  "examples.rateLimits": "Ratenlimits",
+  "examples.networkDevices": "Netzwerkgeräte",
+  "examples.themeStreaming": "Event-Streaming",
+  "examples.themeData": "Daten & KI",
+  "examples.themeCloud": "Cloud-Apps",
+  "examples.themeIntegration": "Integration",
+  "examples.themeReliability": "Zuverlässigkeit"
 }

@@ -1592,5 +1592,22 @@
   "admission.source": "Nguồn nhà cung cấp · kiểm tra {date}",
   "admission.summary": "{name}: {capacity}; đầu vào {offered}.",
   "admission.rejectEstimate": "{rate} có thể bị từ chối.",
-  "admission.model": "p3 · kiểm soát tiếp nhận được quản lý"
+  "admission.model": "p3 · kiểm soát tiếp nhận được quản lý",
+  "examples.browse": "Duyệt ví dụ…",
+  "examples.intro": "Khám phá hệ thống rồi tùy chỉnh theo ý bạn. Lần chỉnh sửa đầu tiên sẽ lưu một bản sao.",
+  "examples.search": "Tìm ví dụ",
+  "examples.shows": "Minh họa",
+  "examples.allFeatures": "Tất cả tính năng",
+  "examples.empty": "Không có ví dụ phù hợp. Hãy thử tìm kiếm hoặc tính năng khác.",
+  "examples.run": "Chạy",
+  "examples.openNamed": "Mở {title}",
+  "examples.runNamed": "Chạy {title}",
+  "examples.partitions": "Phân vùng",
+  "examples.rateLimits": "Giới hạn tốc độ",
+  "examples.networkDevices": "Thiết bị mạng",
+  "examples.themeStreaming": "Luồng sự kiện",
+  "examples.themeData": "Dữ liệu và AI",
+  "examples.themeCloud": "Ứng dụng đám mây",
+  "examples.themeIntegration": "Tích hợp",
+  "examples.themeReliability": "Độ tin cậy"
 }

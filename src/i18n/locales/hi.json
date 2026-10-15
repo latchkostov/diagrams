@@ -1592,5 +1592,22 @@
   "admission.source": "विक्रेता का स्रोत · जाँचा गया {date}",
   "admission.summary": "{name}: {capacity}; आने वाला {offered}।",
   "admission.rejectEstimate": "{rate} अस्वीकृत हो सकता है।",
-  "admission.model": "p3 · प्रबंधित प्रवेश"
+  "admission.model": "p3 · प्रबंधित प्रवेश",
+  "examples.browse": "उदाहरण देखें…",
+  "examples.intro": "सिस्टम देखें और उसे अपना बनाएँ। आपका पहला संपादन एक प्रति सहेजता है।",
+  "examples.search": "उदाहरण खोजें",
+  "examples.shows": "दिखाता है",
+  "examples.allFeatures": "सभी सुविधाएँ",
+  "examples.empty": "कोई उदाहरण मेल नहीं खाता। दूसरी खोज या सुविधा आज़माएँ।",
+  "examples.run": "चलाएँ",
+  "examples.openNamed": "{title} खोलें",
+  "examples.runNamed": "{title} चलाएँ",
+  "examples.partitions": "पार्टिशन",
+  "examples.rateLimits": "दर सीमाएँ",
+  "examples.networkDevices": "नेटवर्क डिवाइस",
+  "examples.themeStreaming": "इवेंट स्ट्रीमिंग",
+  "examples.themeData": "डेटा और AI",
+  "examples.themeCloud": "क्लाउड ऐप",
+  "examples.themeIntegration": "एकीकरण",
+  "examples.themeReliability": "विश्वसनीयता"
 }

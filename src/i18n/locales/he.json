@@ -1592,5 +1592,22 @@
   "admission.source": "מקור הספק · נבדק {date}",
   "admission.summary": "{name}: {capacity}; קצב נכנס: {offered}.",
   "admission.rejectEstimate": "ייתכן ש־{rate} יידחו.",
-  "admission.model": "p3 · קבלה מנוהלת"
+  "admission.model": "p3 · קבלה מנוהלת",
+  "examples.browse": "עיון בדוגמאות…",
+  "examples.intro": "חקרו מערכת והתאימו אותה לצרכים שלכם. העריכה הראשונה שומרת עותק.",
+  "examples.search": "חיפוש דוגמאות",
+  "examples.shows": "מדגים",
+  "examples.allFeatures": "כל היכולות",
+  "examples.empty": "לא נמצאו דוגמאות מתאימות. נסו חיפוש או יכולת אחרים.",
+  "examples.run": "הפעלה",
+  "examples.openNamed": "פתיחת {title}",
+  "examples.runNamed": "הפעלת {title}",
+  "examples.partitions": "מחיצות",
+  "examples.rateLimits": "מגבלות קצב",
+  "examples.networkDevices": "התקני רשת",
+  "examples.themeStreaming": "הזרמת אירועים",
+  "examples.themeData": "נתונים ובינה מלאכותית",
+  "examples.themeCloud": "יישומי ענן",
+  "examples.themeIntegration": "אינטגרציה",
+  "examples.themeReliability": "אמינות"
 }

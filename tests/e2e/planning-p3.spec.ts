@@ -1,3 +1,4 @@
+import { savedDiagram } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { planningP3Fixture, planningP3BulkFixture } from "../../src/lab/planningP3Fixture";
 import {
@@ -247,13 +248,8 @@ test("P3: managed bulk editing uses applicable admission fields and preserves ea
   await page.getByTestId("admission-concurrency").press("Tab");
   await expect
     .poll(async () => {
-      const saved = await page.evaluate(
-        (key) => JSON.parse(localStorage.getItem(key) ?? "null"),
-        STORAGE_KEYS.autosavePrefix + slug,
-      );
-      return saved.nodes
-        .filter((node: { id: string }) => node.id !== "source")
-        .map((node: { props: { api: object } }) => node.props.api);
+      const saved = await savedDiagram(page);
+      return saved.nodes.filter((node) => node.id !== "source").map((node) => node.props?.api);
     })
     .toEqual([
       expect.objectContaining({ maxInFlight: 3, sharedConcurrency: "first", costPerRequest: { tokens: 2 } }),
@@ -264,13 +260,8 @@ test("P3: managed bulk editing uses applicable admission fields and preserves ea
   await expect(page.getByTestId("admission-concurrency")).toHaveAttribute("placeholder", "Mixed");
   await expect
     .poll(async () => {
-      const saved = await page.evaluate(
-        (key) => JSON.parse(localStorage.getItem(key) ?? "null"),
-        STORAGE_KEYS.autosavePrefix + slug,
-      );
-      return saved.nodes
-        .filter((node: { id: string }) => node.id !== "source")
-        .map((node: { props: { api: { maxInFlight: number } } }) => node.props.api.maxInFlight);
+      const saved = await savedDiagram(page);
+      return saved.nodes.filter((node) => node.id !== "source").map((node) => node.props?.api?.maxInFlight);
     })
     .toEqual([2, 4]);
   expectNoErrors(consoleErrors);

@@ -1,3 +1,6 @@
+import { savedDiagram } from "./fixtures";
+import { currentDiagram } from "./fixtures";
+import { openExample } from "./fixtures";
 import type { Page } from "@playwright/test";
 import {
   test,
@@ -209,15 +212,10 @@ test.describe("live view", () => {
     await expect(page.getByTestId("live-sim-picker")).toContainText("Month-end storm");
 
     await expect
-      .poll(() =>
-        page.evaluate(() => {
-          const saved = JSON.parse(
-            localStorage.getItem("diagrams.autosave.v1:azure-service-bus-integration") ?? "null",
-          ) as { simulations?: { title: string; traffic: { messageType: string }[] }[] } | null;
-          return saved?.simulations?.some(
-            (sim) => sim.title === "Month-end storm" && sim.traffic[0].messageType === "MemberJoined",
-          );
-        }),
+      .poll(async () =>
+        (await savedDiagram(page)).simulations?.some(
+          (sim) => sim.title === "Month-end storm" && sim.traffic[0].messageType === "MemberJoined",
+        ),
       )
       .toBe(true);
     await page.reload();
@@ -349,7 +347,7 @@ test.describe("live view", () => {
     await expect(page.getByTestId("inspector-title")).toBeVisible();
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await openNodeMenu(page, "inventory", "sim.storm");
-    await page.getByTestId("example-picker").selectOption("azure-service-bus-integration");
+    await openExample(page, "azure-service-bus-integration");
     await expect
       .poll(() =>
         page.evaluate(() => JSON.parse(localStorage.getItem("diagrams.editor.v1") ?? "{}").inspector as boolean),
@@ -449,10 +447,11 @@ test.describe("live view", () => {
     // loaded, so switching back before the other one arrived (a slow import on the dev server) kept
     // this canvas and its live session, and the round trip never reloaded the saved diagram.
     const title = page.getByTestId("diagram-title");
-    await page.getByTestId("example-picker").selectOption(KAFKA);
+    const copy = await currentDiagram(page);
+    await openExample(page, KAFKA);
     await expect(title).toHaveText("Kafka order pipeline");
-    await page.getByTestId("example-picker").selectOption("azure-service-bus-integration");
-    await expect(title).toHaveText("Azure invoice integration");
+    await openExample(page, copy);
+    await expect(title).toHaveText("Azure invoice integration (copy)");
     await page.clock.resume();
     // A freshly opened diagram starts out of live view (switching diagrams drops the live URL params).
     await expect(page.getByTestId("live-controls")).toHaveCount(0);

@@ -1592,5 +1592,22 @@
   "admission.source": "مصدر المورّد · تم التحقق {date}",
   "admission.summary": "{name}: {capacity}؛ الوارد: {offered}.",
   "admission.rejectEstimate": "قد يُرفض {rate}.",
-  "admission.model": "p3 · قبول مُدار"
+  "admission.model": "p3 · قبول مُدار",
+  "examples.browse": "تصفح الأمثلة…",
+  "examples.intro": "استكشف نظامًا ثم اجعله خاصًا بك. يحفظ أول تعديل نسخة.",
+  "examples.search": "ابحث في الأمثلة",
+  "examples.shows": "يعرض",
+  "examples.allFeatures": "كل الميزات",
+  "examples.empty": "لا توجد أمثلة مطابقة. جرّب بحثًا أو ميزة أخرى.",
+  "examples.run": "شغّله",
+  "examples.openNamed": "افتح {title}",
+  "examples.runNamed": "شغّل {title}",
+  "examples.partitions": "الأقسام",
+  "examples.rateLimits": "حدود المعدل",
+  "examples.networkDevices": "أجهزة الشبكة",
+  "examples.themeStreaming": "تدفق الأحداث",
+  "examples.themeData": "البيانات والذكاء الاصطناعي",
+  "examples.themeCloud": "تطبيقات السحابة",
+  "examples.themeIntegration": "التكامل",
+  "examples.themeReliability": "الموثوقية"
 }

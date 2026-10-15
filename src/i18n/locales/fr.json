@@ -1592,5 +1592,22 @@
   "admission.source": "Source du fournisseur · vérifiée le {date}",
   "admission.summary": "{name} : {capacity} ; {offered} en entrée.",
   "admission.rejectEstimate": "{rate} peuvent être refusés.",
-  "admission.model": "p3 · admission gérée"
+  "admission.model": "p3 · admission gérée",
+  "examples.browse": "Parcourir les exemples…",
+  "examples.intro": "Explorez un système, puis adaptez-le. Votre première modification enregistre une copie.",
+  "examples.search": "Rechercher des exemples",
+  "examples.shows": "Présente",
+  "examples.allFeatures": "Toutes les fonctions",
+  "examples.empty": "Aucun exemple ne correspond. Essayez une autre recherche ou fonction.",
+  "examples.run": "Exécuter",
+  "examples.openNamed": "Ouvrir {title}",
+  "examples.runNamed": "Exécuter {title}",
+  "examples.partitions": "Partitions",
+  "examples.rateLimits": "Limites de débit",
+  "examples.networkDevices": "Équipements réseau",
+  "examples.themeStreaming": "Streaming d’événements",
+  "examples.themeData": "Données et IA",
+  "examples.themeCloud": "Applications cloud",
+  "examples.themeIntegration": "Intégration",
+  "examples.themeReliability": "Fiabilité"
 }

@@ -1592,5 +1592,22 @@
   "admission.source": "Sursa furnizorului · verificată {date}",
   "admission.summary": "{name}: {capacity}; {offered} la intrare.",
   "admission.rejectEstimate": "{rate} pot fi respinse.",
-  "admission.model": "p3 · admitere gestionată"
+  "admission.model": "p3 · admitere gestionată",
+  "examples.browse": "Răsfoiți exemplele…",
+  "examples.intro": "Explorați un sistem și adaptați-l. Prima editare salvează o copie.",
+  "examples.search": "Căutați exemple",
+  "examples.shows": "Prezintă",
+  "examples.allFeatures": "Toate funcțiile",
+  "examples.empty": "Niciun exemplu nu corespunde. Încercați altă căutare sau funcție.",
+  "examples.run": "Rulați",
+  "examples.openNamed": "Deschideți {title}",
+  "examples.runNamed": "Rulați {title}",
+  "examples.partitions": "Partiții",
+  "examples.rateLimits": "Limite de rată",
+  "examples.networkDevices": "Dispozitive de rețea",
+  "examples.themeStreaming": "Streaming de evenimente",
+  "examples.themeData": "Date și IA",
+  "examples.themeCloud": "Aplicații cloud",
+  "examples.themeIntegration": "Integrare",
+  "examples.themeReliability": "Fiabilitate"
 }

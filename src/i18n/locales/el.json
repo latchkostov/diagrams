@@ -1592,5 +1592,22 @@
   "admission.source": "Πηγή παρόχου · ελέγχθηκε {date}",
   "admission.summary": "{name}: {capacity}· {offered} εισερχόμενα.",
   "admission.rejectEstimate": "{rate} ενδέχεται να απορριφθούν.",
-  "admission.model": "p3 · διαχειριζόμενη αποδοχή"
+  "admission.model": "p3 · διαχειριζόμενη αποδοχή",
+  "examples.browse": "Περιήγηση στα παραδείγματα…",
+  "examples.intro": "Εξερευνήστε ένα σύστημα και προσαρμόστε το. Η πρώτη αλλαγή σας αποθηκεύει ένα αντίγραφο.",
+  "examples.search": "Αναζήτηση παραδειγμάτων",
+  "examples.shows": "Δείχνει",
+  "examples.allFeatures": "Όλες οι δυνατότητες",
+  "examples.empty": "Δεν βρέθηκαν παραδείγματα. Δοκιμάστε άλλη αναζήτηση ή δυνατότητα.",
+  "examples.run": "Εκτέλεση",
+  "examples.openNamed": "Άνοιγμα του {title}",
+  "examples.runNamed": "Εκτέλεση του {title}",
+  "examples.partitions": "Διαμερίσματα",
+  "examples.rateLimits": "Όρια ρυθμού",
+  "examples.networkDevices": "Συσκευές δικτύου",
+  "examples.themeStreaming": "Ροή συμβάντων",
+  "examples.themeData": "Δεδομένα και AI",
+  "examples.themeCloud": "Εφαρμογές cloud",
+  "examples.themeIntegration": "Ενσωμάτωση",
+  "examples.themeReliability": "Αξιοπιστία"
 }

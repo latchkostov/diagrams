@@ -1594,6 +1594,23 @@
     "admission.source": "fdbdd0f4",
     "admission.summary": "6bfc4c8a",
     "admission.rejectEstimate": "5eab754b",
-    "admission.model": "88eb23b9"
+    "admission.model": "88eb23b9",
+    "examples.browse": "9e791530",
+    "examples.intro": "4c83ef28",
+    "examples.search": "51adcec8",
+    "examples.shows": "70e4b3fd",
+    "examples.allFeatures": "4b42e7ab",
+    "examples.empty": "cf96b76b",
+    "examples.run": "72430853",
+    "examples.openNamed": "a7a6e261",
+    "examples.runNamed": "3ef95b5e",
+    "examples.partitions": "92fe9b2e",
+    "examples.rateLimits": "bae91de5",
+    "examples.networkDevices": "514523f2",
+    "examples.themeStreaming": "484f7023",
+    "examples.themeData": "56a7fe0b",
+    "examples.themeCloud": "b036b58e",
+    "examples.themeIntegration": "4e79f42d",
+    "examples.themeReliability": "e4361c5b"
   }
 }

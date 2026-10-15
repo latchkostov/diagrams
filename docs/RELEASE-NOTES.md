@@ -1,5 +1,18 @@
 # Release notes
 
+## Example gallery integration with master (#118, 2026-10-15)
+
+- Rebased the gallery onto nested boundaries and zones (#115), the six showcases (#120) and the
+  nightly reliability fixes (#121). Both Lab presets and both sides of the design/release history remain.
+- Showcase metadata uses the existing tags: Partitions for partitions-vs-subscriptions and
+  shared-worker-pool, Network devices for contoso-dmz, and Rate limits for shared-api-quotas. Rate-limit
+  discovery now recognizes explicit positive API quotas as well as rate-limiter stencils. The measured
+  capacity and serverless concurrency examples stay untagged: none of the existing tags describes them.
+- Regenerated the agent skill and HTML viewer; plugin 1.1.22 is exactly one patch above master.
+- Parity: only `node/i18n/catalogs.json` changed. It combines both PRs' messages: 1,689 per language,
+  retaining master's nested-boundary `edit` hashes and adding the gallery's 17-message `examples` area
+  in all 38 languages. All other 1,633 goldens are unchanged; the eight existing browser deferrals remain.
+
 ## Nested boundaries final verification (#115, 2026-10-15)
 
 - Removed boundary and annotation parents stay removed after autosave and library duplication.
@@ -36,6 +49,44 @@
   error adds one message in all 38 languages and updates their `edit` hashes.
   Diagram, simulation, layout, export and browser goldens remain unchanged.
 
+## Example gallery verification fixes (2026-10-15)
+
+- An example's completed Save destination belongs only to its mounted session and first owned copy.
+  Reopening the original asks for a new destination, including when the first copy is Private. Legacy
+  example bindings stay stored but are no longer reused: they cannot identify which copy owns the file.
+  Late saves from an unmounted original cannot attach to a reopened session.
+- Gallery and command-palette simulation launches share one document-scoped queue; the latest request
+  wins while Live loads. Navigation cancels requests for the previous diagram.
+- Example conversation snapshots and parsed threads share the four-entry memory cache. Mounted
+  conversations stay pinned; inactive entries reload from storage, including its snapshot-free fallback.
+- Selection-only changes no longer schedule an immediate example autosave. Gallery tests tolerate
+  additional local entries through a synthetic Lab catalog, and pending device/cloud saves are covered
+  through the actual controller. No new controls or chrome.
+- No parity goldens change. Diagram, simulation, layout, export, agent and language output is unchanged.
+  Refreshed the agent skill viewer; marketplace version remains 1.1.21 (one patch above master).
+
+Verification: 6,535 unit checks pass (four existing skips). The production browser sweep passed 398
+checks and found two old persistent-binding assertions; those assertions now check the owned file,
+and all 35 follow-up checks pass. Deliberate regressions fail for every finding. All 1,634 parity
+goldens match, with the eight previously documented browser deferrals.
+
+## Example gallery round 5: copy-only promotion (2026-10-15)
+
+- Promotion copies the current conversation into a new document with a fresh identity. It never
+  changes or deletes the example's conversation, session marker, autosave or destination. Examples
+  keep a stable identity; legacy keys are read-only fallbacks. Other tabs keep their work.
+- Removed session migration, its retries and identity caches, and promotion-time cleanup. Old entries
+  remain: they are small, and reclaiming them is unnecessary risk to live tabs. The canvas mount stays
+  separate from document identity, preserving Undo, unread AI counts, copy naming and gallery flows.
+- Conversation saves and promotion share the snapshot-dropping storage fallback. Failed publication
+  rolls back only the new copy; the existing storage notice and retry preserve pending edits. Pending
+  saves follow their first copy once, for the operation's lifetime; Private copies block cloud writes.
+- All six round-5 findings are addressed, consolidating the three reports of the same cross-tab loss.
+  Ownership rotation, conditional deletion, migration debouncing and cleanup timers were rejected in
+  favor of eliminating those transitions. The lazy-load race gate matches development and build URLs.
+- No parity goldens change: diagram, simulation, layout, export, agent and language outputs are unchanged.
+  The skill viewer is refreshed; plugin version 1.1.21 is exactly one patch above master.
+
 ## Showcase review fixes (2026-10-15)
 
 - Phone Live menus and expectation summaries remain visible and usable with Inputs open. Inputs stays
@@ -57,6 +108,22 @@
   diagram and 1.5× ratio. Simulation samples start after worker progress arrives; the checks test
   retains its per-key run counts. Cancellation tests keep the same traffic on a smaller canvas.
 - Application output is unchanged; no parity goldens changed.
+
+## Example gallery round 4 review fixes (2026-10-15)
+
+- A failed conversation migration keeps the mounted canvas identity through storage recovery.
+  Pending edits, promotion, autosave, Undo and Redo survive without remounting the canvas.
+- Examples retain one durable reload conversation. Mounted tabs keep independent snapshots;
+  promotion transfers the conversation into its owned diagram. Abandoned generations are reclaimed,
+  while active tabs and library-owned conversations remain available. Clear and Delete reclaim their data.
+- Public gallery runs wait for their document's live session and cancel after navigation, so an earlier
+  run cannot replace another diagram's requested simulation. No controls or visible wording were added.
+- Browser persistence assertions share one reader that follows the current owned slug, unwraps sessions
+  and requires a diagram. Cross-tab coverage awaits the receiving storage event and rendered library update.
+- All nine review findings were confirmed, with duplicate reports consolidated into five fixes.
+  No findings were rejected. Durable example conversations avoid adding ownership leases or cleanup timers.
+- No parity goldens change in this round. The skill viewer was refreshed, with plugin version 1.1.20
+  (one patch above master); diagram, simulation, planning, layout, export, agent and language outputs stay unchanged.
 
 ## Toolchain review fixes (2026-10-15)
 
@@ -89,6 +156,58 @@
   initial renders, plus auto-layout/tidy for all six. Their Node goldens and production Live tests
   remain enabled. No existing browser case is excluded.
 - Refreshed the stale offline skill viewer; plugin 1.1.20 is one patch above master.
+
+## Example gallery final review fixes (2026-10-15)
+
+- Pending cloud saves follow their initiating session into its owned copy. Marking that copy Private,
+  including through New diagrams are private, cancels before provider loading or an upload can finish.
+  Privacy checks and destination binding use the same ownership resolver.
+- Each tab keeps an independent example session, Save destination, canvas and Undo history. Promoting
+  one tab preserves another tab's pending edits; each can keep its own copy. Reloads retain conversation
+  snapshots while assigning the new mounted session its own identity.
+- Copy creation, library publication and source-session rotation now roll back together on storage
+  failure. The first edit still saves immediately; failed retries debounce and show storage guidance once.
+- Open and Run it move keyboard focus to the destination canvas after downloading an example.
+  Dismissing the gallery still returns focus to its opener. No controls were added.
+- No output goldens change in this round. Diagram, simulation, layout, export, agent and language
+  outputs stay unchanged; the earlier gallery catalog golden change remains documented below.
+  The agent viewer is refreshed; plugin version is 1.1.20, one patch above master.
+
+## Example gallery review fixes (2026-10-15)
+
+- Editing an example keeps its existing device or cloud Save destination. A Save that finishes after
+  the edit binds to that owned copy, even after another example session has opened.
+- Legacy example conversations, including Revert snapshots, migrate together with retained autosaves
+  to a durable session. Reloading preserves the conversation; first-edit promotion carries it into
+  Your diagrams. Legacy cloud Save bindings migrate too. A failed migration retains the source data
+  and retries later; promotion publishes a fresh example identity so other tabs reject stale writes.
+- Shared work always has a picker row, and older saved work remains reachable through Your diagrams
+  overflow. Regression tests cover both paths and starting/restarting the currently mounted example.
+- The copy notice stacks inside the canvas clear of stencil controls and action toasts. Run it includes
+  its translated visible label in its accessible name. Ordinary autosaves reuse their serialized diagram.
+- These fixes change no output goldens. The gallery feature's existing catalog golden change is described
+  in the entry below; diagram, simulation, layout, export and agent outputs remain unchanged.
+  The agent viewer is refreshed; plugin version remains 1.1.19, one patch above master.
+
+## Example gallery (2026-10-14)
+
+- The diagram picker now focuses on Your diagrams, with New diagram and a separate Browse examples entry.
+  Recent work is capped, the current diagram stays visible, and the full library remains one step away.
+- Browse examples opens a lazy gallery from the picker or start card: thumbnails, short descriptions,
+  theme groups, search and a small translated Shows filter. Open edits a diagram; Run it starts its first
+  saved simulation in Live. Keyboard navigation, focus return and narrow layouts work in both themes.
+- An open original is labelled Example. Its first edit creates an owned copy in Your diagrams,
+  using “(copy)” unless you chose a new title. It keeps Undo/Redo and live playback, and shows a quiet notice without replacing an action's Undo toast.
+  Reloading a copy and returning to its source opens a pristine example; undone edits stay undone after reload.
+  A cleared title becomes an owned Untitled diagram while its input stays empty for typing. Slow example
+  downloads keep the edited copy mounted.
+- New gallery copy is translated in all 37 locale catalogs. The development-only catalog remains available
+  through its existing picker area and the gallery, using the generic catalog boundary. Its saved runs
+  start in memory without putting simulation identifiers in the URL, even transiently.
+- Output parity changes only `tests/parity/goldens/node/i18n/catalogs.json`: the 17 new gallery messages add
+  an `examples` area hash and increase the message count by 17 in each of the 38 languages, including the
+  pseudo-locale. Existing area hashes and fallback counts are unchanged. Diagram, simulation, export,
+  layout and agent output goldens are unchanged. The agent viewer is refreshed; plugin version is 1.1.19.
 
 ## Self-hosting review fixes (2026-10-14)
 

@@ -14,6 +14,7 @@ import type { CanvasHandle } from "../canvas/CanvasView";
 import type { View } from "../lib/urlState";
 import {
   bindSaveTarget,
+  trackDocumentSession,
   DEVICE_PROVIDER,
   DIAGRAMS_CHANGED,
   DRAFT_SLUG,
@@ -475,21 +476,29 @@ export function useInterop({
         notify(({ downloadedFile }) => toast.success(downloadedFile(name)));
         return;
       }
-      const identity = getDiagramIdentity(slug);
-      const target = getSaveTarget(slug);
-      const existing = target?.providerId === DEVICE_PROVIDER ? (target.ref as FileHandle) : undefined;
-      if (existing && !as) {
-        const file = await deviceProvider.save(existing, text);
-        bind(slug, deviceTarget(file.ref, Date.now()), identity);
-        toast.success(t("fileToast.savedToValue0", { value0: file.name }));
-        return;
+      const session = trackDocumentSession(slug);
+      try {
+        const target = getSaveTarget(slug);
+        const bindSession = (target: SaveTarget) => {
+          const owner = session.resolve();
+          return owner ? bind(owner.slug, target, owner.identity) : false;
+        };
+        const existing = target?.providerId === DEVICE_PROVIDER ? (target.ref as FileHandle) : undefined;
+        if (existing && !as) {
+          const file = await deviceProvider.save(existing, text);
+          bindSession(deviceTarget(file.ref, Date.now()));
+          toast.success(t("fileToast.savedToValue0", { value0: file.name }));
+          return;
+        }
+        const file = await deviceProvider.saveAs(name, text);
+        if (!file) return;
+        // The destination binds to the diagram that started the save, even if another one is open now.
+        const bound = bindSession(deviceTarget(file.ref, Date.now()));
+        const stillOpen = openSlug.current === slug;
+        notify(({ deviceSaved }) => toast.success(deviceSaved(file.name, d.title, bound, stillOpen)));
+      } finally {
+        session.dispose();
       }
-      const file = await deviceProvider.saveAs(name, text);
-      if (!file) return;
-      // The destination binds to the diagram that started the save, even if another one is open now.
-      const bound = bind(slug, deviceTarget(file.ref, Date.now()), identity);
-      const stillOpen = openSlug.current === slug;
-      notify(({ deviceSaved }) => toast.success(deviceSaved(file.name, d.title, bound, stillOpen)));
     });
 
   /** Save to a cloud provider: over the file this diagram is bound to there, or (`asNew`) a new file. */
@@ -507,7 +516,7 @@ export function useInterop({
         return;
       }
       const d = current();
-      const identity = getDiagramIdentity(source);
+      const session = trackDocumentSession(source);
       const stored = getSaveTarget(source);
       // Loading the provider and signing in take time. If this document becomes private meanwhile (the
       // switch, a paste, another tab), the write is cancelled: the provider checks the signal after every
@@ -519,7 +528,8 @@ export function useInterop({
         true,
       );
       const watch = () => {
-        if (!canSaveToCloud(privacyState(source))) cancel.abort(blocked);
+        const owner = session.resolve();
+        if (!owner || !canSaveToCloud(privacyState(owner.slug))) cancel.abort(blocked);
       };
       window.addEventListener(DIAGRAMS_CHANGED, watch);
       let busy: number | undefined;
@@ -534,16 +544,18 @@ export function useInterop({
           stored?.providerId === info.id && !asNew
             ? await provider.save(stored.ref, content, { signal: cancel.signal })
             : await provider.saveAs(`${baseName(d)}.diagram.json`, content, { signal: cancel.signal });
+        watch();
+        cancel.signal.throwIfAborted();
       } finally {
+        session.dispose();
         window.removeEventListener(DIAGRAMS_CHANGED, watch);
         if (busy !== undefined) toast.dismiss(busy);
       }
       if (!file) return;
-      const bound = bind(
-        source,
-        { providerId: info.id, ref: file.ref, name: file.name, savedAt: Date.now() },
-        identity,
-      );
+      const owner = session.resolve();
+      const bound =
+        !!owner &&
+        bind(owner.slug, { providerId: info.id, ref: file.ref, name: file.name, savedAt: Date.now() }, owner.identity);
       const url = file.url;
       toast.success(
         bound

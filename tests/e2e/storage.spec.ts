@@ -7,8 +7,6 @@ import { test, expect, gotoCanvas, publicExamples, expectNoErrors } from "./fixt
 
 const TEST_FILES = "diagrams.test-storage.v1";
 const FAIL = "diagrams.test-storage.fail";
-/** An example saves under its slug (your own diagrams under their title). */
-const FIRST = `${publicExamples[0].slug}.diagram.json`;
 
 interface TestFile {
   id: string;
@@ -82,16 +80,18 @@ test.describe("storage providers", () => {
 
     // Save to ▸ Test storage: a new file, and the diagram is now bound to it.
     await setTitle(page, "Cloud round trip");
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+    const filename = "cloud-round-trip.diagram.json";
     await submenuItem(page, "file-save-to", "save-to-test");
-    await expect(page.getByTestId("toast")).toContainText(`Saved to Test storage as ${FIRST}.`);
+    await expect(page.getByTestId("toast")).toContainText(`Saved to Test storage as ${filename}.`);
     await expect(page.getByTestId("save-status")).toHaveText("Saved to Test storage · just now");
     let stored = await files(page);
-    expect(stored.map((f) => f.name)).toEqual([FIRST]);
+    expect(stored.map((f) => f.name)).toEqual([filename]);
     expect(JSON.parse(stored[0].text).title).toBe("Cloud round trip");
 
     // Save (Ctrl+S) writes over the same file.
     await openMenu(page);
-    await expect(page.getByTestId("file-save")).toContainText(`To Test storage: ${FIRST}`);
+    await expect(page.getByTestId("file-save")).toContainText(`To Test storage: ${filename}`);
     await page.keyboard.press("Escape");
     await setTitle(page, "Cloud round trip, edited");
     await page.keyboard.press("Control+s");
@@ -104,7 +104,7 @@ test.describe("storage providers", () => {
     await submenuItem(page, "file-open-from", "open-from-test");
     const dialog = page.getByTestId("storage-files-dialog");
     await expect(dialog).toContainText("Open from Test storage", { timeout: 20_000 }); // lazy chunk
-    await expect(dialog.getByTestId("storage-file-0")).toContainText(FIRST);
+    await expect(dialog.getByTestId("storage-file-0")).toContainText(filename);
     await dialog.getByTestId("storage-file-0").click();
     await expect(dialog).toHaveCount(0);
     await expect(page.getByTestId("diagram-title")).toHaveText("Cloud round trip, edited");
@@ -123,7 +123,7 @@ test.describe("storage providers", () => {
     await page.getByTestId("save-to-test").click();
     await expect
       .poll(async () => (await files(page)).map((f) => f.name))
-      .toEqual([FIRST, "opened-and-saved-back.diagram.json"]);
+      .toEqual([filename, "opened-and-saved-back.diagram.json"]);
     expectNoErrors(consoleErrors);
   });
 
@@ -199,4 +199,41 @@ test("the shortcuts dialog links the privacy page, which loads", async ({ page }
   const res = await page.request.get("./privacy.html");
   expect(res.status()).toBe(200);
   expect(await res.text()).toContain("No analytics");
+});
+
+test("pending Save follows the first promoted copy (test cloud)", async ({ page }) => {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let requested = false;
+  await page.route(
+    /\/(?:assets\/testProvider-[\w-]+\.js|src\/interop\/storage\/testProvider\.ts)(?:\?.*)?$/,
+    async (route) => {
+      requested = true;
+      await held;
+      await route.continue();
+    },
+  );
+  try {
+    await gotoWithTestStorage(page, "kafka-order-pipeline");
+    await submenuItem(page, "file-save-to", "save-to-test");
+    await expect.poll(() => requested).toBe(true);
+    await page.getByTestId("node-shopper").click();
+    await page.getByTestId("inspector-field-label").fill("Promoted storefront");
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+    release();
+    await expect(page.getByTestId("save-status")).toContainText("Test storage");
+    await expect.poll(async () => (await files(page)).length).toBe(1);
+    const id = (await files(page))[0].id;
+    await page.keyboard.press("Control+s");
+    await expect
+      .poll(
+        async () => JSON.parse((await files(page))[0].text).nodes.find((n: { id: string }) => n.id === "shopper").label,
+      )
+      .toBe("Promoted storefront");
+    expect((await files(page)).map((f) => f.id)).toEqual([id]);
+  } finally {
+    release();
+  }
 });

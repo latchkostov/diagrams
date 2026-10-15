@@ -1,8 +1,10 @@
+import { currentDiagram } from "./fixtures";
+import { openExample } from "./fixtures";
 // Runs on the dev server (see DEV_ONLY in playwright.config.ts): local-only examples and the content
 // fingerprint exist only in development builds, by design.
 import type { Page } from "@playwright/test";
 import { deflateRawSync } from "node:zlib";
-import { localOnlyFixture } from "../../src/lab/localOnlyFixture";
+import { localOnlyFixture, localOnlySimulationFixture } from "../../src/lab/localOnlyFixture";
 import { test, expect, gotoCanvas, expectNoErrors, openShareChooser } from "./fixtures";
 import {
   SLUG,
@@ -16,22 +18,52 @@ import {
   openAiPanel,
 } from "./ai-helpers";
 
-async function installSyntheticRegistry(page: Page) {
+async function installSyntheticRegistry(page: Page, diagram = localOnlyFixture) {
   await installFakeModelContext(page);
   await page.route(/\/src\/examples\/index\.ts(?:\?.*)?$/, (route) =>
     route.fulfill({
       contentType: "text/javascript",
       body: `import publicDiagram from "/src/examples/kafka-order-pipeline.json?import";
     import { exampleMetadata } from "/src/examples/metadata.ts";
+    import { diagramThumb } from "/src/lib/thumbnail.ts";
+    const localDiagram = ${JSON.stringify(diagram)};
       export const examples = [
         { ...exampleMetadata["kafka-order-pipeline"], slug: "${SLUG}", diagram: publicDiagram },
-        { slug: "synthetic-local", localOnly: true, diagram: ${JSON.stringify(localOnlyFixture)} }
+        { slug: "synthetic-local", localOnly: true, title: localDiagram.title, thumb: diagramThumb(localDiagram), simulation: localDiagram.simulations?.[0]?.id, diagram: localDiagram }
       ];
       export const getLoadedExample = (slug) => examples.find((e) => e.slug === slug)?.diagram;
       export const loadExample = async (slug) => getLoadedExample(slug);`,
     }),
   );
 }
+
+test("gallery runs a local-only example without writing its simulation id to history", async ({
+  page,
+  consoleErrors,
+}) => {
+  await installSyntheticRegistry(page, localOnlySimulationFixture);
+  await gotoCanvas(page, SLUG);
+  await page.evaluate(() => {
+    const urls: string[] = [];
+    Object.assign(window, { galleryHistoryUrls: urls });
+    for (const method of ["pushState", "replaceState"] as const) {
+      const update = history[method].bind(history);
+      history[method] = (data, unused, url) => {
+        urls.push(String(url));
+        update(data, unused, url);
+      };
+    }
+  });
+  await page.getByTestId("example-picker").click();
+  await page.getByTestId("picker-browse-examples").click();
+  await page.getByTestId("examples-search").fill("synthetic-local");
+  await page.getByTestId("example-run-synthetic-local").click();
+  await expect(page.getByTestId("live-sim-picker")).toHaveValue("synthetic-local-run");
+  expect(new URL(page.url()).searchParams.has("sim")).toBe(false);
+  const urls = await page.evaluate(() => Reflect.get(window, "galleryHistoryUrls") as string[]);
+  expect(urls.some((url) => url.includes("synthetic-local-run"))).toBe(false);
+  expectNoErrors(consoleErrors);
+});
 
 async function expectBlocked(page: Page) {
   await expect.poll(() => toolNames(page)).toEqual([]);
@@ -56,7 +88,7 @@ test("Save a copy keeps a fingerprint-detected shared diagram local-only", async
   await page.getByTestId("ai-collapse").click();
   await page.getByTestId("shared-keep").click();
   await expect(page.getByTestId("shared-keep")).toHaveCount(0);
-  const slug = await page.getByTestId("example-picker").inputValue();
+  const slug = await currentDiagram(page);
   expect(slug).toMatch(/^my-/);
   const entry = await page.evaluate(
     (slug) => JSON.parse(localStorage.getItem(`diagrams.library-entry.v1:${slug}`) ?? "null"),
@@ -82,7 +114,7 @@ test("import and Duplicate persist local-only metadata and stay blocked after re
     buffer: Buffer.from(JSON.stringify(localOnlyFixture)),
   });
   await expect(page.getByTestId("diagram-title")).toHaveText(localOnlyFixture.title);
-  const source = await page.getByTestId("example-picker").inputValue();
+  const source = await currentDiagram(page);
   await expectBlocked(page);
   await page.getByTestId("ai-collapse").click();
   await page.getByTestId("file-button").click();
@@ -90,7 +122,7 @@ test("import and Duplicate persist local-only metadata and stay blocked after re
   await page.getByTestId(`library-duplicate-${source}`).click();
   await page.getByTestId("duplicate-open").click();
   await expect(page.getByTestId("diagram-title")).toHaveText(`${localOnlyFixture.title} (copy)`);
-  const copy = await page.getByTestId("example-picker").inputValue();
+  const copy = await currentDiagram(page);
   expect(copy).not.toBe(source);
   const record = await page.evaluate(
     (slug) => JSON.parse(localStorage.getItem(`diagrams.library-entry.v1:${slug}`) ?? "null"),
@@ -191,14 +223,14 @@ test("a request in flight when the diagram switches to a local-only one never co
   await page.getByTestId("ai-ondevice-input").fill("Add a queue after Inventory service");
   await page.getByTestId("ai-ondevice-input").press("Enter");
   await expect(page.getByTestId("ai-ondevice-status")).toHaveText("Thinking…");
-  await page.getByTestId("example-picker").selectOption("synthetic-local");
+  await openExample(page, "synthetic-local");
   await expect(page.getByTestId("ai-privacy-note")).toContainText("Local-only");
   await expect.poll(async () => (await fakeModel(page)).aborted).toBe(1);
   await releaseModel(page);
   await page.waitForTimeout(300);
   await expect(page.getByTestId("ai-turn-0")).toHaveCount(0);
   await expect(page.getByTestId("node-late-queue")).toHaveCount(0);
-  await page.getByTestId("example-picker").selectOption(SLUG);
+  await openExample(page, SLUG);
   await expect(page.getByTestId("node-inventory")).toBeVisible();
   await expect(page.getByTestId("ai-turn-0")).toHaveCount(0);
   expect((await fakeModel(page)).prompts).toHaveLength(1);

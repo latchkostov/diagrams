@@ -1,3 +1,4 @@
+import { savedDiagram } from "./fixtures";
 import type { Locator, Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors, fitDiagram, waitForStableViewport, STORAGE_KEYS } from "./fixtures";
 
@@ -66,7 +67,7 @@ async function seed(page: Page, viewport = { width: 1440, height: 900 }, diagram
 }
 
 /** The diagram as autosaved (written 300 ms after the last edit). */
-const saved = (page: Page) => page.evaluate((k) => JSON.parse(localStorage.getItem(k) ?? "null") as Saved | null, KEY);
+const saved = (page: Page) => savedDiagram(page) as Promise<Saved>;
 
 /** Polls the autosave until `check` holds, and returns it. */
 async function savedWhen(page: Page, check: (d: Saved) => boolean): Promise<Saved> {

@@ -1592,5 +1592,22 @@
   "admission.source": "Sağlayıcı kaynağı · kontrol tarihi: {date}",
   "admission.summary": "{name}: {capacity}; gelen: {offered}.",
   "admission.rejectEstimate": "{rate} reddedilebilir.",
-  "admission.model": "p3 · yönetilen kabul"
+  "admission.model": "p3 · yönetilen kabul",
+  "examples.browse": "Örneklere göz at…",
+  "examples.intro": "Bir sistemi keşfedin ve kendinize göre uyarlayın. İlk düzenlemeniz bir kopya kaydeder.",
+  "examples.search": "Örnek ara",
+  "examples.shows": "Gösterilen",
+  "examples.allFeatures": "Tüm özellikler",
+  "examples.empty": "Eşleşen örnek yok. Başka bir arama veya özellik deneyin.",
+  "examples.run": "Çalıştır",
+  "examples.openNamed": "{title} aç",
+  "examples.runNamed": "{title} çalıştır",
+  "examples.partitions": "Partition'lar",
+  "examples.rateLimits": "Hız sınırları",
+  "examples.networkDevices": "Ağ cihazları",
+  "examples.themeStreaming": "Olay akışı",
+  "examples.themeData": "Veri ve YZ",
+  "examples.themeCloud": "Bulut uygulamaları",
+  "examples.themeIntegration": "Entegrasyon",
+  "examples.themeReliability": "Güvenilirlik"
 }

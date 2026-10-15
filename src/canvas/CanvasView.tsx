@@ -1,4 +1,5 @@
 import { useCaptionContrast } from "./useCaptionContrast";
+import { retainConversation } from "../lib/exampleConversations";
 import { isDenyRule } from "../stencils/netDevices";
 import { edgeSettings, isDependency, RELATION_META, settingsSummary } from "../model/relations";
 import { pipsByNode } from "./nodes/dependencyRows";
@@ -54,9 +55,11 @@ import { useSettings } from "../harness/settings";
 import { getNodeVariant } from "../harness/nodeVariants";
 import {
   DRAFT_SLUG,
+  copyEditedExample,
   emptyDiagram,
   getAutosave,
   getDiagramIdentity,
+  releaseExampleSaveTarget,
   getOriginal,
   isLibrarySlug,
   setDiagramPrivate,
@@ -144,6 +147,7 @@ import { useBelow } from "./checks/useBelow";
 import { PresentFullscreen } from "./PresentFullscreen";
 import { useFullscreen } from "../lib/fullscreen";
 import { t as tr, useLocale } from "../i18n";
+import { CopyNotice } from "./CopyNotice";
 
 const nodeTypes: NodeTypes = canvasNodeTypes;
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
@@ -219,6 +223,10 @@ interface Props {
   start?: StartOptions;
   /** Told the title as it's edited (the picker follows it without waiting for the autosave). */
   onTitleChange?: (title: string) => void;
+  onExampleCopy?: (source: string, copy: string, title: string) => void;
+  copyNotice?: string;
+  /** A gallery selection hands keyboard focus to this canvas once it is ready. */
+  focusRequest?: number;
   /** The exported HTML viewer (src/export/viewer): read-only, plus the options below. */
   viewer?: CanvasViewerOptions;
 }
@@ -287,6 +295,9 @@ function CanvasInner({
   initial,
   start,
   onTitleChange,
+  onExampleCopy,
+  copyNotice,
+  focusRequest,
   viewer,
 }: Props) {
   const locale = useLocale();
@@ -578,6 +589,8 @@ function CanvasInner({
     revision: hostRevision,
   });
 
+  const renameHistoryTitle = history.renameTitle;
+
   // ---------------------------------------------------------------- autosave
   // Debounced while editing, and flushed whenever the canvas could go away before the timer fires:
   // on unmount (switching diagrams), on page hide (reload, close, navigation) and when the tab is
@@ -588,25 +601,64 @@ function CanvasInner({
     latest.current = { meta, nodes, edges, slug };
   });
   const lastSaved = useRef(loadedJson);
+  const saveBaseline = useRef(originalJson);
+  const copyCallback = useRef(onExampleCopy);
+  useLayoutEffect(() => {
+    copyCallback.current = onExampleCopy;
+  });
+  const copiedExample = useRef<{ slug: string; identity: string } | null>(null);
+  const exampleCopyFailed = useRef(false);
   /** Returns whether the diagram differs from its original, or undefined when there was nothing to write. */
-  const flushSave = useCallback((): boolean | undefined => {
-    if (readOnly) return undefined;
-    const { meta, nodes, edges, slug } = latest.current;
-    const d = fromFlow(meta, nodes, edges);
-    const json = JSON.stringify(d);
-    if (json === lastSaved.current) return undefined;
-    const mod = json !== originalJson;
-    if (writeAutosave(slug, mod ? d : null, identity)) lastSaved.current = json;
-    return mod;
-  }, [readOnly, originalJson, identity]);
+  const flushSave = useCallback(
+    (override?: DiagramFile): boolean | undefined => {
+      if (readOnly) return undefined;
+      const { meta, nodes, edges, slug } = latest.current;
+      let d = override ?? fromFlow(meta, nodes, edges);
+      let json = JSON.stringify(d);
+      if (json === lastSaved.current) return undefined;
+      const mod = json !== saveBaseline.current;
+      // Only the editable app promotes examples; embeds and exported viewers never save.
+      if (mod && identity && copyCallback.current && !copiedExample.current) {
+        try {
+          const copy = copyEditedExample(slug, d, identity);
+          if (copy) {
+            const sourceTitle = d.title;
+            const canvasTitle = sourceTitle.trim() ? copy.title : sourceTitle;
+            renameHistoryTitle(sourceTitle, canvasTitle);
+            copiedExample.current = { slug: copy.slug, identity: getDiagramIdentity(copy.slug) };
+            saveBaseline.current = JSON.stringify({ ...d, title: copy.title });
+            d = { ...d, title: canvasTitle };
+            json = JSON.stringify(d);
+            latest.current = { ...latest.current, slug: copy.slug, meta: toFlow(d).meta };
+            setMeta((current) => ({ ...current, title: canvasTitle }));
+            copyCallback.current(slug, copy.slug, original.title);
+          }
+        } catch {
+          if (!exampleCopyFailed.current) notify(tr("library.storageFull"), { kind: "error" });
+          exampleCopyFailed.current = true;
+          return mod;
+        }
+      }
+      const destination = copiedExample.current?.slug ?? slug;
+      if (writeAutosave(destination, mod ? d : null, copiedExample.current?.identity ?? identity))
+        lastSaved.current = json;
+      return mod;
+    },
+    [readOnly, identity, renameHistoryTitle, original.title],
+  );
+  const firstExampleEdit = onExampleCopy !== undefined;
+  const saveRevision = history.stateKey;
   useEffect(() => {
     if (readOnly) return;
-    const t = setTimeout(() => {
-      const mod = flushSave();
-      if (mod !== undefined) setModified(mod);
-    }, 300);
+    const t = setTimeout(
+      () => {
+        const mod = flushSave();
+        if (mod !== undefined) setModified(mod);
+      },
+      firstExampleEdit && !exampleCopyFailed.current ? 0 : 300,
+    );
     return () => clearTimeout(t);
-  }, [meta, nodes, edges, readOnly, flushSave]);
+  }, [saveRevision, readOnly, flushSave, firstExampleEdit]);
   useEffect(() => {
     if (readOnly) return;
     const onPageHide = () => void flushSave();
@@ -619,8 +671,16 @@ function CanvasInner({
       window.removeEventListener("pagehide", onPageHide);
       document.removeEventListener("visibilitychange", onVisibility);
       flushSave();
+      releaseExampleSaveTarget(latest.current.slug);
     };
   }, [readOnly, flushSave]);
+
+  // Release after the unmount flush: promotion still needs this tab's conversation snapshot.
+  const conversationIdentity = initial ? undefined : getDiagramIdentity(slug);
+  useEffect(
+    () => (conversationIdentity ? retainConversation(conversationIdentity) : undefined),
+    [conversationIdentity],
+  );
 
   useImperativeHandle(
     ref,
@@ -636,6 +696,13 @@ function CanvasInner({
   );
 
   useEffect(() => onTitleChange?.(meta.title), [meta.title, onTitleChange]);
+
+  useEffect(() => {
+    if (focusRequest === undefined) return;
+    // Dialog teardown first restores its opener; move to the destination after that cleanup.
+    const frame = requestAnimationFrame(() => wrapper.current?.focus({ preventScroll: true }));
+    return () => cancelAnimationFrame(frame);
+  }, [focusRequest]);
 
   // Presenting hides the button that started it: focus goes to the canvas, not the page, so the keys (Esc, L,
   // Space) and the next Tab start from there.
@@ -2254,6 +2321,7 @@ function CanvasInner({
           onDrop={onDrop}
         >
           <EdgeMarkers />
+          {!hideChrome && copyNotice && <CopyNotice text={copyNotice} />}
           <ReactFlow<FlowNode, DiagramFlowEdge>
             nodes={ariaNodes}
             // Focus brings a node into view clear of the chrome (revealFocused above).
@@ -2432,9 +2500,8 @@ function CanvasInner({
                   readOnly
                     ? undefined
                     : (diagram) => {
-                        const mod = JSON.stringify(diagram) !== originalJson;
-                        writeAutosave(slug, mod ? diagram : null, identity);
-                        setModified(mod);
+                        const mod = flushSave(diagram);
+                        if (mod !== undefined) setModified(mod);
                       }
                 }
               />

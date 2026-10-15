@@ -1592,5 +1592,22 @@
   "admission.source": "Szolgáltatói forrás · ellenőrizve: {date}",
   "admission.summary": "{name}: {capacity}; bejövő: {offered}.",
   "admission.rejectEstimate": "{rate} elutasítható.",
-  "admission.model": "p3 · felügyelt befogadás"
+  "admission.model": "p3 · felügyelt befogadás",
+  "examples.browse": "Példák böngészése…",
+  "examples.intro": "Fedezzen fel egy rendszert, majd alakítsa saját igényeire. Az első szerkesztés másolatot ment.",
+  "examples.search": "Példák keresése",
+  "examples.shows": "Bemutatott funkció",
+  "examples.allFeatures": "Minden funkció",
+  "examples.empty": "Nincs megfelelő példa. Próbáljon más keresést vagy funkciót.",
+  "examples.run": "Futtatás",
+  "examples.openNamed": "{title} megnyitása",
+  "examples.runNamed": "{title} futtatása",
+  "examples.partitions": "Partíciók",
+  "examples.rateLimits": "Sebességkorlátok",
+  "examples.networkDevices": "Hálózati eszközök",
+  "examples.themeStreaming": "Eseményfolyamok",
+  "examples.themeData": "Adatok és MI",
+  "examples.themeCloud": "Felhőalkalmazások",
+  "examples.themeIntegration": "Integráció",
+  "examples.themeReliability": "Megbízhatóság"
 }

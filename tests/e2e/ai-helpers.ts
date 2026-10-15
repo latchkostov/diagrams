@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, STORAGE_KEYS, waitForStableBox, pageLoadTimeout } from "./fixtures";
+import { expect, waitForStableBox, pageLoadTimeout } from "./fixtures";
 
 // Shared by the ai-*.spec.ts files: fakes for browser APIs Playwright's Chromium doesn't have
 // (WebMCP's document.modelContext, the Web Speech API), installed with page.addInitScript.
@@ -13,16 +13,7 @@ export function must<T>(value: T | null | undefined, what: string): T {
   return value;
 }
 
-/** The open example's saved edits (examples autosave the diagram JSON as it is). */
-export async function savedDiagram(page: Page, slug = SLUG) {
-  const raw = await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEYS.autosavePrefix + slug);
-  return raw
-    ? (JSON.parse(raw) as {
-        nodes: { id: string; stencil: string; label: string; sublabel?: string }[];
-        edges: { id: string; from: string; to: string; label?: string; kind?: string }[];
-      })
-    : null;
-}
+export { savedDiagram } from "./fixtures";
 
 /** Nodes on the canvas (not their tooltips or editors). */
 export const nodeCount = (page: Page) => page.getByTestId(/^node-(?!tooltip$|editor-)/).count();

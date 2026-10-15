@@ -1,3 +1,5 @@
+import { currentDiagram } from "./fixtures";
+import { openExample } from "./fixtures";
 import { planningFixture } from "../../src/lab/planningFixture";
 import { upgradePlanning } from "../../src/planning/migration";
 import { filePayload } from "./html-viewer";
@@ -44,7 +46,7 @@ async function importDiagram(page: Page, title: string, extra: object = {}) {
     buffer: Buffer.from(JSON.stringify({ ...work(title), ...extra })),
   });
   await expect(page.getByTestId("diagram-title")).toHaveText(title);
-  const slug = await page.getByTestId("example-picker").inputValue();
+  const slug = await currentDiagram(page);
   expect(slug).toMatch(/^my-/);
   return slug;
 }
@@ -132,7 +134,7 @@ test("share links are off, saying why, embeds are the private kind, and a privat
   await gotoCanvas(page, SLUG);
   // An example isn't yours to change: Private saves a private copy.
   await makePrivate(page);
-  await expect(page.getByTestId("example-picker")).toHaveValue(/^my-/);
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
   await expect(page.getByTestId("toast").last()).toContainText("private copy");
 
   // Share… lists only what a private diagram allows, and one line says why the links are gone.
@@ -253,14 +255,14 @@ test("Duplicate and pasted nodes keep the diagram private; an example refuses th
   await page.getByTestId("duplicate-open").click();
   await expect(page.getByTestId("diagram-title")).toHaveText("Secret diagram (copy)");
   await expect(page.getByTestId("private-badge")).toHaveAttribute("data-kind", "private");
-  const copy = await page.getByTestId("example-picker").inputValue();
+  const copy = await currentDiagram(page);
   expect((await entry(page, copy)).private).toBe(true);
 
   // Copy a node from the private diagram...
   await page.getByTestId("node-intake").click();
   await page.keyboard.press(`${MOD}+c`);
   // ...an example won't take it...
-  await page.getByTestId("example-picker").selectOption(SLUG);
+  await openExample(page, SLUG);
   await expect(page.getByTestId("node-orders")).toBeVisible();
   const before = await page.getByTestId(/^node-(?!tooltip$|editor-)/).count();
   await page.getByTestId("canvas-wrap").click({ position: { x: 700, y: 420 } });
@@ -270,7 +272,7 @@ test("Duplicate and pasted nodes keep the diagram private; an example refuses th
   await expect(page.getByTestId("private-badge")).toHaveCount(0);
 
   // ...and your own diagram becomes private with it.
-  await page.getByTestId("example-picker").selectOption(plain);
+  await openExample(page, plain);
   await expect(page.getByTestId("diagram-title")).toHaveText("Plain diagram");
   await expect(page.getByTestId("private-badge")).toHaveCount(0);
   await page.getByTestId("canvas-wrap").click({ position: { x: 700, y: 420 } });
@@ -299,7 +301,7 @@ test("an exported private diagram says so, and importing it again keeps it priva
 
   await page.getByTestId("import-input").setInputFiles(file);
   await expect(page.getByTestId("toast").last()).toContainText("Imported");
-  const again = await page.getByTestId("example-picker").inputValue();
+  const again = await currentDiagram(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();
   expect((await entry(page, again)).private).toBe(true);
   // A public diagram's export never says private.
@@ -376,7 +378,14 @@ for (const onDevice of [false, true]) {
 const testFile = (page: Page) =>
   page.evaluate(
     () =>
-      (JSON.parse(localStorage.getItem("diagrams.test-storage.v1") ?? "[]") as { text: string; modified: string }[])[0],
+      (
+        JSON.parse(localStorage.getItem("diagrams.test-storage.v1") ?? "[]") as {
+          id: string;
+          name: string;
+          text: string;
+          modified: string;
+        }[]
+      )[0],
   );
 
 /** An imported diagram saved once to Test storage (bound: Ctrl+S goes back there). */
@@ -426,6 +435,57 @@ test("a cloud save still pending when the diagram becomes private never lands", 
   expect(await testFile(page)).toEqual(before);
   expectNoErrors(consoleErrors);
 });
+
+for (const byDefault of [false, true]) {
+  test(`a promoted copy cancels a pending bound cloud save when Private ${byDefault ? "is inherited" : "is switched on"}`, async ({
+    page,
+    consoleErrors,
+  }) => {
+    await page.goto(`./?view=canvas&example=${SLUG}&storage=test`);
+    await expect(page.getByTestId("example-badge")).toBeVisible();
+    await page.getByTestId("file-button").click();
+    await page.getByTestId("file-save-to").click();
+    await page.getByTestId("save-to-test").click();
+    await expect(page.getByTestId("save-status")).toHaveAttribute("data-provider", "test");
+    const before = await testFile(page);
+    const targetBefore = { providerId: "test", ref: { id: before.id }, name: before.name };
+    if (byDefault) {
+      await openPrivacyMenu(page);
+      await page.getByTestId("privacy-new-diagrams").click();
+    }
+    await page.evaluate(() => localStorage.setItem("diagrams.test-storage.hold", "1"));
+    await page.getByTestId("canvas-wrap").focus();
+    await page.keyboard.press(`${MOD}+s`);
+    await expect
+      .poll(() => page.evaluate(() => typeof (window as { __testStorageRelease?: () => void }).__testStorageRelease))
+      .toBe("function");
+    await page.getByTestId("node-shopper").click();
+    await page.getByTestId("inspector-field-label").fill("Quillfeather promoted work");
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+    const copy = await currentDiagram(page);
+    if (!byDefault) await makePrivate(page);
+    await expect(page.getByTestId("private-badge")).toBeVisible();
+    await page.evaluate(() => (window as { __testStorageRelease?: () => void }).__testStorageRelease?.());
+    await expect(page.getByTestId("toast")).toContainText("became private");
+    expect(await testFile(page)).toEqual(before);
+    const stored = await page.evaluate(
+      (slug) => JSON.parse(localStorage.getItem(`diagrams.doc.v1:${slug.slice(3)}`) ?? "null"),
+      copy,
+    );
+    // The previously bound destination is unchanged; completion never binds a new destination.
+    expect(stored.target).toMatchObject(targetBefore);
+    await page.getByTestId("canvas-wrap").focus();
+    await page.keyboard.press(`${MOD}+s`);
+    await expect(page.getByTestId("toast-private-save-device")).toBeVisible();
+    expect(await testFile(page)).toEqual(before);
+    expect(page.url()).not.toContain("quillfeather");
+    expect(new URL(page.url()).hash).toBe("");
+    await openShareChooser(page);
+    await expect(page.getByTestId("share-private-note")).toBeVisible();
+    await expect(page.getByTestId("share-public-toggle")).toHaveCount(0);
+    expectNoErrors(consoleErrors);
+  });
+}
 
 test("a share dialog left open closes when another tab makes the diagram private", async ({
   page,
@@ -563,7 +623,7 @@ for (const [format, item, file] of [
     await download.saveAs(path);
     await page.getByTestId("import-input").setInputFiles(path);
     await expect(page.getByTestId("toast").last()).toContainText("Imported");
-    const again = await page.getByTestId("example-picker").inputValue();
+    const again = await currentDiagram(page);
     await expect(page.getByTestId("private-badge")).toHaveAttribute("data-kind", "private");
     expect((await entry(page, again)).private).toBe(true);
     expectNoErrors(consoleErrors);
@@ -674,7 +734,7 @@ test("Private P1 diagrams keep privacy through native, legacy and Interactive HT
     await page.getByTestId("import-input").setInputFiles(file);
     await expect(page.getByTestId("toast").last()).toContainText("Imported");
     await expect(page.getByTestId("private-badge")).toBeVisible();
-    const slug = await page.getByTestId("example-picker").inputValue();
+    const slug = await currentDiagram(page);
     expect((await entry(page, slug)).private).toBe(true);
   }
   // Interactive HTML is a viewer; re-import its embedded native payload through the supported JSON path.
@@ -685,6 +745,6 @@ test("Private P1 diagrams keep privacy through native, legacy and Interactive HT
   });
   await expect(page.getByTestId("toast").last()).toContainText("Imported");
   await expect(page.getByTestId("private-badge")).toBeVisible();
-  expect((await entry(page, await page.getByTestId("example-picker").inputValue())).private).toBe(true);
+  expect((await entry(page, await currentDiagram(page))).private).toBe(true);
   expectNoErrors(consoleErrors);
 });

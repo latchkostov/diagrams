@@ -1,3 +1,5 @@
+import { currentDiagram } from "./fixtures";
+import { openExample } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, publicExamples, expectNoErrors, STORAGE_KEYS } from "./fixtures";
 
@@ -24,7 +26,7 @@ async function importDiagram(page: Page, title: string, nodes = 1) {
     buffer: Buffer.from(JSON.stringify(diagram(title, nodes))),
   });
   await expect(page.getByTestId("diagram-title")).toHaveText(title);
-  return page.getByTestId("example-picker").inputValue();
+  return currentDiagram(page);
 }
 
 async function openLibrary(page: Page) {
@@ -44,11 +46,17 @@ test.describe("data safety", () => {
     await page.clock.pauseAt(new Date(Date.now() + 1000));
     await page.getByTestId("inspector-field-label").fill("Edited just now");
     await expect(page.getByTestId(`node-${node}`)).toContainText("Edited just now");
-    await page.getByTestId("example-picker").selectOption(b.slug);
+    await openExample(page, b.slug);
     await expect(page.getByTestId("diagram-title")).toHaveText(b.title);
-    await page.getByTestId("example-picker").selectOption(a.slug);
+    await page.getByTestId("example-picker").click();
+    const copy = (await page.getByTestId(/^picker-option-my-.*(?<!-title)$/).getAttribute("data-testid"))?.slice(
+      "picker-option-".length,
+    );
+    if (!copy) throw new Error("The switch did not keep a copy");
+    await page.keyboard.press("Escape");
+    await openExample(page, copy);
     await expect(page.getByTestId(`node-${node}`)).toContainText("Edited just now");
-    await expect(page.getByTestId("reset-diagram")).toBeVisible();
+    await expect(page.getByTestId("reset-diagram")).toHaveCount(0);
   });
 
   test('your own diagrams don\'t offer "Edited, reset": the edits are the diagram', async ({ page }) => {
@@ -68,8 +76,11 @@ test.describe("data safety", () => {
     await page.getByTestId(`node-${node}`).click();
     await page.clock.pauseAt(new Date(Date.now() + 1000));
     await page.getByTestId("inspector-field-label").fill("Before pagehide");
-    const saved = () =>
-      page.evaluate((key) => localStorage.getItem(key) ?? "", `${STORAGE_KEYS.autosavePrefix}${ex.slug}`);
+    const saved = async () =>
+      page.evaluate(
+        (key) => localStorage.getItem(key) ?? "",
+        `${STORAGE_KEYS.autosavePrefix}${await currentDiagram(page)}`,
+      );
     expect(await saved()).not.toContain("Before pagehide");
     await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pagehide")));
     expect(await saved()).toContain("Before pagehide");
@@ -92,13 +103,14 @@ test.describe("Your diagrams", () => {
     const a = await importDiagram(page, "Alpha");
     const b = await importDiagram(page, "Beta", 3);
     expect(a).not.toBe(b);
-    // Yours come first in the picker, most recent first; the examples follow in their theme groups.
-    const yours = page.getByTestId("picker-group-yours").getByTestId(/^picker-option-/);
-    await expect(yours).toHaveText(["Beta", "Alpha"]);
-    await expect(
-      page.getByTestId(/^picker-group-(?!yours$)/).getByTestId(`picker-option-${publicExamples[0].slug}`),
-    ).toHaveText(publicExamples[0].title);
-    await page.getByTestId("example-picker").selectOption(a);
+    await page.getByTestId("example-picker").click();
+    await expect(page.getByTestId("diagram-menu").getByTestId(/^picker-option-.*(?<!-title)$/)).toHaveText([
+      "Beta",
+      "Alpha",
+    ]);
+    await expect(page.getByTestId(`picker-option-${publicExamples[0].slug}`)).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await openExample(page, a);
     await expect(page.getByTestId("diagram-title")).toHaveText("Alpha");
 
     await openLibrary(page);
@@ -141,17 +153,17 @@ test.describe("Your diagrams", () => {
     await expect(page.getByTestId(/^library-item-/)).toHaveCount(3);
     await page.getByTestId("duplicate-open").click();
     await expect(page.getByTestId("diagram-title")).toHaveText("Alpha renamed (copy)");
-    const copy = await page.getByTestId("example-picker").inputValue();
+    const copy = await currentDiagram(page);
     expect([a, b]).not.toContain(copy);
 
     // Deleting the open diagram moves on to another one; Undo brings it back and reopens it.
     await openLibrary(page);
     await page.getByTestId(`library-delete-${copy}`).click();
     await expect(page.getByTestId(`library-item-${copy}`)).toHaveCount(0);
-    await expect(page.getByTestId("example-picker")).not.toHaveValue(copy);
+    await expect(page.getByTestId("example-picker")).not.toHaveAttribute("data-diagram-slug", copy);
     await page.getByTestId("library-dialog-close").click();
     await page.getByTestId("delete-undo").click();
-    await expect(page.getByTestId("example-picker")).toHaveValue(copy);
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", copy);
     await expect(page.getByTestId("diagram-title")).toHaveText("Alpha renamed (copy)");
 
     // Everything persists across a reload.
@@ -163,13 +175,13 @@ test.describe("Your diagrams", () => {
 
   test("the picker label follows title edits as you type", async ({ page }) => {
     await gotoCanvas(page, publicExamples[0].slug);
-    const a = await importDiagram(page, "Alpha");
+    await importDiagram(page, "Alpha");
     // No timer runs: the label can't be waiting for the autosave.
     await page.clock.install();
     await page.clock.pauseAt(new Date(Date.now() + 1000));
     await page.getByTestId("inspector-toggle").click();
     await page.getByTestId("inspector-field-title").fill("Alpha, retitled");
-    await expect(page.getByTestId(`picker-option-${a}`)).toHaveText("Alpha, retitled");
+    await expect(page.getByTestId("example-picker")).toContainText("Alpha, retitled");
   });
 
   test("the start card lists your recent diagrams first, with thumbnails", async ({ page }) => {
@@ -196,7 +208,7 @@ test.describe("Your diagrams", () => {
     );
     await page.goto("./?view=canvas&example=imported");
     await expect(page.getByTestId("diagram-title")).toHaveText("Legacy, edited");
-    await expect(page.getByTestId("example-picker")).toHaveValue("imported");
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", "imported");
     await openLibrary(page);
     await expect(page.getByTestId("library-title-imported")).toHaveText("Legacy, edited");
     expect(await page.evaluate((k) => localStorage.getItem(k), STORAGE_KEYS.library)).toContain('"imported"');
