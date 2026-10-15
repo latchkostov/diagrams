@@ -122,6 +122,7 @@ function MainApp() {
     return () => clearTimeout(timer);
   }, [copyNotice]);
   const [examplesOpen, setExamplesOpen] = useState(false);
+  const [exampleFocus, setExampleFocus] = useState<{ slug: string; request: number } | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [libraryError, setLibraryError] = useState<string | null>(null);
   const [libraryUndo, setLibraryUndo] = useState<{ message: string; run: () => void } | null>(null);
@@ -480,6 +481,7 @@ function MainApp() {
                   key={canvasIdentity}
                   ref={canvasCallbackRef}
                   slug={slug}
+                  focusRequest={exampleFocus?.slug === slug ? exampleFocus.request : undefined}
                   presenting={presenting}
                   onExitPresent={() => setUrl({ present: false })}
                   start={start}
@@ -518,6 +520,7 @@ function MainApp() {
             cancelGalleryRun.current?.();
             canvasRef.current?.flush();
             setExamplesOpen(false);
+            setExampleFocus((previous) => ({ slug: example, request: (previous?.request ?? 0) + 1 }));
             setUrl({ view: "canvas", example, present: false });
             if (simulation) {
               const query = new URLSearchParams(window.location.search);

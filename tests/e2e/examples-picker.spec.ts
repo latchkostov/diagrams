@@ -242,6 +242,92 @@ test("first edit creates your named copy, preserves undo and leaves the deep-lin
   expectNoErrors(consoleErrors);
 });
 
+test("promotion preserves another tab's mounted session, pending edits and undo", async ({ page, context }) => {
+  await page.goto(`./?example=${SLUG}`);
+  await expect(page.getByTestId("node-shopper")).toBeVisible();
+  const other = await context.newPage();
+  await other.goto(`./?example=${SLUG}`);
+  await other.getByTestId("node-shopper").click();
+  await other.clock.install();
+  await pauseClock(other);
+  await other.getByTestId("inspector-field-label").fill("Pending in other tab");
+  await other.getByTestId("canvas-view").evaluate((el) => el.setAttribute("data-test-instance", "retained"));
+  await page.getByTestId("node-shopper").click();
+  await page.getByTestId("inspector-field-label").fill("Owned in first tab");
+  // Playwright's clock is context-wide: flush this tab without advancing the other's pending timer.
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pagehide")));
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+  const firstCopy = await currentDiagram(page);
+  // Observe the real storage event before checking that it did not replace the mounted canvas.
+  await expect
+    .poll(() =>
+      other.evaluate(
+        () => Object.keys(localStorage).filter((key) => key.startsWith("diagrams.library-entry.v1:")).length,
+      ),
+    )
+    .toBe(1);
+  await other.getByTestId("file-button").click();
+  await other.keyboard.press("Escape");
+  await expect(other.getByTestId("canvas-view")).toHaveAttribute("data-test-instance", "retained");
+  await expect(other.getByTestId("node-shopper")).toContainText("Pending in other tab");
+  await other.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pagehide")));
+  await expect(other.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+  const secondCopy = await currentDiagram(other);
+  expect(secondCopy).not.toBe(firstCopy);
+  await other.getByTestId("undo-button").click();
+  await expect(other.getByTestId("node-shopper")).toContainText("Storefront");
+  await other.getByTestId("redo-button").click();
+  await expect(other.getByTestId("node-shopper")).toContainText("Pending in other tab");
+  await expect(page.getByTestId("node-shopper")).toContainText("Owned in first tab");
+  await other.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pagehide")));
+  await other.clock.resume();
+  await other.reload();
+  await expect(other.getByTestId("node-shopper")).toContainText("Pending in other tab");
+  await other.close();
+});
+
+test("a failed example copy debounces retries, warns once and recovers the latest edits", async ({ page }) => {
+  await page.goto(`./?example=${SLUG}`);
+  await page.getByTestId("node-shopper").click();
+  await page.clock.install();
+  await pauseClock(page);
+  await page.evaluate(() => {
+    const write = Storage.prototype.setItem;
+    const probe = { attempts: 0, blocked: true };
+    (window as unknown as { __copyProbe: typeof probe }).__copyProbe = probe;
+    Storage.prototype.setItem = function (key, value) {
+      if (key.startsWith("diagrams.doc.v1:")) {
+        probe.attempts++;
+        if (probe.blocked) throw new DOMException("full", "QuotaExceededError");
+      }
+      return write.call(this, key, value);
+    };
+  });
+  await page.getByTestId("inspector-field-label").fill("First failed edit");
+  await page.clock.runFor(1);
+  const attempts = () =>
+    page.evaluate(() => (window as unknown as { __copyProbe: { attempts: number } }).__copyProbe.attempts);
+  await expect.poll(attempts).toBe(1);
+  await page.getByTestId("toast").evaluate((el) => el.setAttribute("data-test-notification", "retained"));
+  for (let edit = 0; edit < 8; edit++) {
+    await page.getByTestId("inspector-field-label").fill(`Latest edit ${edit}`);
+    await page.clock.runFor(1);
+  }
+  expect(await attempts()).toBe(1);
+  await page.clock.runFor(300);
+  expect(await attempts()).toBe(2);
+  // Every failed attempt used to publish a new toast; observe notifications, not their expiry.
+  await expect(page.getByTestId("toast")).toHaveAttribute("data-test-notification", "retained");
+  await page.evaluate(() => ((window as unknown as { __copyProbe: { blocked: boolean } }).__copyProbe.blocked = false));
+  await page.getByTestId("inspector-field-label").fill("Recovered latest edit");
+  await page.clock.runFor(300);
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+  expect(await attempts()).toBe(3);
+  await page.clock.resume();
+  await page.reload();
+  await expect(page.getByTestId("node-shopper")).toContainText("Recovered latest edit");
+});
+
 test("a title-first edit can be undone and stays undone after the owned copy reloads", async ({ page }) => {
   await page.goto(`./?example=${SLUG}`);
   await page.getByTestId("inspector-toggle").click();

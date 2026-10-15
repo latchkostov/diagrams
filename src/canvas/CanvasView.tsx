@@ -223,6 +223,8 @@ interface Props {
   onTitleChange?: (title: string) => void;
   onExampleCopy?: (source: string, copy: string, title: string) => void;
   copyNotice?: string;
+  /** A gallery selection hands keyboard focus to this canvas once it is ready. */
+  focusRequest?: number;
   /** The exported HTML viewer (src/export/viewer): read-only, plus the options below. */
   viewer?: CanvasViewerOptions;
 }
@@ -293,6 +295,7 @@ function CanvasInner({
   onTitleChange,
   onExampleCopy,
   copyNotice,
+  focusRequest,
   viewer,
 }: Props) {
   const locale = useLocale();
@@ -602,6 +605,7 @@ function CanvasInner({
     copyCallback.current = onExampleCopy;
   });
   const copiedExample = useRef<string | null>(null);
+  const exampleCopyFailed = useRef(false);
   /** Returns whether the diagram differs from its original, or undefined when there was nothing to write. */
   const flushSave = useCallback(
     (override?: DiagramFile): boolean | undefined => {
@@ -628,7 +632,8 @@ function CanvasInner({
             copyCallback.current(slug, copy.slug, original.title);
           }
         } catch {
-          notify(tr("library.storageFull"), { kind: "error" });
+          if (!exampleCopyFailed.current) notify(tr("library.storageFull"), { kind: "error" });
+          exampleCopyFailed.current = true;
           return mod;
         }
       }
@@ -645,7 +650,7 @@ function CanvasInner({
         const mod = flushSave();
         if (mod !== undefined) setModified(mod);
       },
-      firstExampleEdit ? 0 : 300,
+      firstExampleEdit && !exampleCopyFailed.current ? 0 : 300,
     );
     return () => clearTimeout(t);
   }, [meta, nodes, edges, readOnly, flushSave, firstExampleEdit]);
@@ -678,6 +683,13 @@ function CanvasInner({
   );
 
   useEffect(() => onTitleChange?.(meta.title), [meta.title, onTitleChange]);
+
+  useEffect(() => {
+    if (focusRequest === undefined) return;
+    // Dialog teardown first restores its opener; move to the destination after that cleanup.
+    const frame = requestAnimationFrame(() => wrapper.current?.focus({ preventScroll: true }));
+    return () => cancelAnimationFrame(frame);
+  }, [focusRequest]);
 
   // Presenting hides the button that started it: focus goes to the canvas, not the page, so the keys (Esc, L,
   // Space) and the next Tab start from there.

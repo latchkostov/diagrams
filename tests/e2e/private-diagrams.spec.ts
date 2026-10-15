@@ -429,6 +429,56 @@ test("a cloud save still pending when the diagram becomes private never lands", 
   expectNoErrors(consoleErrors);
 });
 
+for (const byDefault of [false, true]) {
+  test(`a promoted copy cancels a pending bound cloud save when Private ${byDefault ? "is inherited" : "is switched on"}`, async ({
+    page,
+    consoleErrors,
+  }) => {
+    await page.goto(`./?view=canvas&example=${SLUG}&storage=test`);
+    await expect(page.getByTestId("example-badge")).toBeVisible();
+    await page.getByTestId("file-button").click();
+    await page.getByTestId("file-save-to").click();
+    await page.getByTestId("save-to-test").click();
+    await expect(page.getByTestId("save-status")).toHaveAttribute("data-provider", "test");
+    const before = await testFile(page);
+    const targetBefore = await page.evaluate(
+      (slug) => JSON.parse(localStorage.getItem("diagrams.bindings.v1") ?? "{}")[slug].target,
+      SLUG,
+    );
+    if (byDefault) {
+      await openPrivacyMenu(page);
+      await page.getByTestId("privacy-new-diagrams").click();
+    }
+    await page.evaluate(() => localStorage.setItem("diagrams.test-storage.hold", "1"));
+    await page.getByTestId("canvas-wrap").focus();
+    await page.keyboard.press(`${MOD}+s`);
+    await expect
+      .poll(() => page.evaluate(() => typeof (window as { __testStorageRelease?: () => void }).__testStorageRelease))
+      .toBe("function");
+    await page.getByTestId("node-shopper").click();
+    await page.getByTestId("inspector-field-label").fill("Quillfeather promoted work");
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+    const copy = await currentDiagram(page);
+    if (!byDefault) await makePrivate(page);
+    await expect(page.getByTestId("private-badge")).toBeVisible();
+    await page.evaluate(() => (window as { __testStorageRelease?: () => void }).__testStorageRelease?.());
+    await expect(page.getByTestId("toast")).toContainText("became private");
+    expect(await testFile(page)).toEqual(before);
+    const stored = await page.evaluate(
+      (slug) => JSON.parse(localStorage.getItem(`diagrams.doc.v1:${slug.slice(3)}`) ?? "null"),
+      copy,
+    );
+    // The previously bound destination is unchanged; completion never binds a new destination.
+    expect(stored.target).toEqual(targetBefore);
+    expect(page.url()).not.toContain("quillfeather");
+    expect(new URL(page.url()).hash).toBe("");
+    await openShareChooser(page);
+    await expect(page.getByTestId("share-private-note")).toBeVisible();
+    await expect(page.getByTestId("share-public-toggle")).toHaveCount(0);
+    expectNoErrors(consoleErrors);
+  });
+}
+
 test("a share dialog left open closes when another tab makes the diagram private", async ({
   page,
   context,

@@ -222,6 +222,62 @@ test.describe("requests and third parties", () => {
   });
 });
 
+for (const byDefault of [false, true]) {
+  test(`a pending example save follows promotion privacy before provider loading (${byDefault ? "default" : "switch"})`, async ({
+    page,
+    consoleErrors,
+  }) => {
+    const requests = watchRequests(page);
+    let release!: () => void;
+    let intercepted = false;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route(/\/testProvider(-[\w-]+\.js|\.ts)(\?.*)?$/, async (route) => {
+      intercepted = true;
+      await held;
+      await route.continue();
+    });
+    await page.goto(`./?view=canvas&example=${SLUG}&storage=test`);
+    await expect(page.getByTestId("example-badge")).toBeVisible();
+    if (byDefault) {
+      await page.getByTestId("file-button").click();
+      await page.getByTestId("file-privacy").click();
+      await page.getByTestId("privacy-new-diagrams").click();
+    }
+    await page.getByTestId("file-button").click();
+    await page.getByTestId("file-save-to").click();
+    await page.getByTestId("save-to-test").click();
+    await expect.poll(() => intercepted).toBe(true);
+    await page.getByTestId("node-shopper").click();
+    await page.getByTestId("inspector-field-label").fill("Quillfeather promoted work");
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+    const copy = await currentDiagram(page);
+    if (!byDefault) {
+      await page.getByTestId("file-button").click();
+      await page.getByTestId("file-privacy").click();
+      await page.getByTestId("privacy-diagram").click();
+    }
+    await expect(page.getByTestId("private-badge")).toBeVisible();
+    release();
+    await expect(page.getByTestId("toast")).toContainText("became private");
+    const stored = await page.evaluate(
+      (slug) => ({
+        files: JSON.parse(localStorage.getItem("diagrams.test-storage.v1") ?? "[]"),
+        document: JSON.parse(localStorage.getItem(`diagrams.doc.v1:${slug.slice(3)}`) ?? "null"),
+        bindings: JSON.parse(localStorage.getItem("diagrams.bindings.v1") ?? "{}"),
+      }),
+      copy,
+    );
+    expect(stored.files).toEqual([]);
+    expect(stored.document.target).toBeUndefined();
+    expect(stored.bindings[SLUG]).toBeUndefined();
+    expect(requests.outside(appOrigin())).toEqual([]);
+    expect(requests.carrying(WORD)).toEqual([]);
+    expect(page.url().toLowerCase()).not.toContain(WORD);
+    expect(new URL(page.url()).hash).toBe("");
+    expectNoErrors(consoleErrors);
+  });
+}
+
 test.describe("embeds", () => {
   test("an embed reads the saved theme but writes nothing to storage", async ({ page, consoleErrors }) => {
     await page.addInitScript(() => {

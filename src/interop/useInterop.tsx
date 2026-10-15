@@ -14,6 +14,7 @@ import type { CanvasHandle } from "../canvas/CanvasView";
 import type { View } from "../lib/urlState";
 import {
   bindSaveTarget,
+  resolveDocumentSession,
   DEVICE_PROVIDER,
   DIAGRAMS_CHANGED,
   DRAFT_SLUG,
@@ -519,7 +520,8 @@ export function useInterop({
         true,
       );
       const watch = () => {
-        if (!canSaveToCloud(privacyState(source))) cancel.abort(blocked);
+        const owner = resolveDocumentSession(source, identity);
+        if (!owner || !canSaveToCloud(privacyState(owner))) cancel.abort(blocked);
       };
       window.addEventListener(DIAGRAMS_CHANGED, watch);
       let busy: number | undefined;
@@ -534,6 +536,8 @@ export function useInterop({
           stored?.providerId === info.id && !asNew
             ? await provider.save(stored.ref, content, { signal: cancel.signal })
             : await provider.saveAs(`${baseName(d)}.diagram.json`, content, { signal: cancel.signal });
+        watch();
+        cancel.signal.throwIfAborted();
       } finally {
         window.removeEventListener(DIAGRAMS_CHANGED, watch);
         if (busy !== undefined) toast.dismiss(busy);

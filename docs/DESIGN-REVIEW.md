@@ -9,6 +9,18 @@ fills. Conversion retains the existing error treatment and gives translated reco
 oversized labels. No controls or chrome were added. Production browser regressions cover the shortcut,
 contrast and existing nested movement; the accessibility, groups, clipboard, layout and interop suites pass.
 
+## Example gallery final review fixes (2026-10-15)
+
+The designer agent's scoped, read-only source review found no blocking UX issues. Open and Run it
+hand focus to the matching destination canvas after dialog cleanup, including delayed downloads;
+dismissal keeps opener restoration. Failed copy creation retains edits, debounces subsequent attempts
+and announces the existing save/export guidance once. Independent mounted sessions retain their
+canvas and Undo history. No controls, layout or global chrome were added. An extra retry button or
+confirmation would add unnecessary chrome; no further simplification was needed.
+
+This was a source review, not a browser, screen-reader or whole-app walkthrough. Production browser
+regressions verify delayed-download focus, dismissal, storage recovery, cross-tab edits and privacy.
+
 ## Example gallery review fixes (2026-10-15)
 
 The designer agent's scoped, read-only code and test review found no blocking UX issues. The picker

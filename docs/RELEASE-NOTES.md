@@ -90,6 +90,22 @@
   remain enabled. No existing browser case is excluded.
 - Refreshed the stale offline skill viewer; plugin 1.1.20 is one patch above master.
 
+## Example gallery final review fixes (2026-10-15)
+
+- Pending cloud saves follow their initiating session into its owned copy. Marking that copy Private,
+  including through New diagrams are private, cancels before provider loading or an upload can finish.
+  Privacy checks and destination binding use the same ownership resolver.
+- Each tab keeps an independent example session, Save destination, canvas and Undo history. Promoting
+  one tab preserves another tab's pending edits; each can keep its own copy. Reloads retain conversation
+  snapshots while assigning the new mounted session its own identity.
+- Copy creation, library publication and source-session rotation now roll back together on storage
+  failure. The first edit still saves immediately; failed retries debounce and show storage guidance once.
+- Open and Run it move keyboard focus to the destination canvas after downloading an example.
+  Dismissing the gallery still returns focus to its opener. No controls were added.
+- No output goldens change in this round. Diagram, simulation, layout, export, agent and language
+  outputs stay unchanged; the earlier gallery catalog golden change remains documented below.
+  The agent viewer is refreshed; plugin version is 1.1.20, one patch above master.
+
 ## Example gallery review fixes (2026-10-15)
 
 - Editing an example keeps its existing device or cloud Save destination. A Save that finishes after

@@ -218,33 +218,41 @@ const exampleCopies = new Map<string, { source: string; slug: string }>();
 function exampleIdentity(slug: string): string {
   const key = EXAMPLE_SESSION_PREFIX + slug;
   const stored = read<unknown>(key);
-  if (typeof stored === "string" && !exampleCopies.has(stored)) return stored;
   const cached = exampleIdentities.get(slug);
-  const identity = cached ?? `example:${slug}:${randomHex(4)}`;
+  // A mounted tab owns its session even when another tab opens or promotes this example.
+  if (cached && typeof stored === "string") return cached;
+  const identity = (typeof stored !== "string" && cached) || `example:${slug}:${randomHex(4)}`;
   const legacyIdentity = `example:${slug}`;
-  const legacyThreadKey = AI_THREAD_PREFIX + legacyIdentity;
+  const previousIdentity = typeof stored === "string" ? stored : legacyIdentity;
+  const legacyThreadKey = AI_THREAD_PREFIX + previousIdentity;
   const legacyThread = safeStorage.getItem(legacyThreadKey);
   const autosaveKey = AUTOSAVE_PREFIX + slug;
   const autosave = readDiagram(autosaveKey);
   const writes: [string, string | null][] = [[key, JSON.stringify(identity)]];
   const bindings = read<Record<string, { sessionId: string; target: unknown }>>(BINDINGS_KEY);
   const binding = bindings?.[slug];
-  if (binding?.sessionId === legacyIdentity && storedTarget(binding.target))
+  if (binding?.sessionId === previousIdentity && storedTarget(binding.target))
     writes.push([BINDINGS_KEY, JSON.stringify({ ...bindings, [slug]: { ...binding, sessionId: identity } })]);
   if (autosave)
     writes.push([
       autosaveKey,
       JSON.stringify({ sessionFormat: SESSION_FORMAT, sessionId: identity, diagram: autosave }),
     ]);
-  if (legacyThread !== null) writes.push([AI_THREAD_PREFIX + identity, legacyThread], [legacyThreadKey, null]);
+  if (legacyThread !== null) {
+    writes.push([AI_THREAD_PREFIX + identity, legacyThread]);
+    // Another mounted session may still own a modern thread; only retire the old unowned key.
+    if (previousIdentity === legacyIdentity) writes.push([legacyThreadKey, null]);
+  }
   try {
     commitWrites(writes);
   } catch {
     // A failed migration keeps its source keys readable and can retry on the next visit.
     if (legacyThread === null) exampleIdentities.set(slug, identity);
-    return legacyThread !== null ? `example:${slug}` : identity;
+    return legacyThread !== null ? previousIdentity : identity;
   }
   exampleIdentities.set(slug, identity);
+  const target = binding?.sessionId === previousIdentity ? storedTarget(binding.target) : undefined;
+  if (target) memoryTargets.set(slug, { sessionId: identity, target });
   return identity;
 }
 
@@ -294,11 +302,18 @@ export function getSaveTarget(slug: string): SaveTarget | undefined {
   return stored?.sessionId === sessionId ? storedTarget(stored.target) : undefined;
 }
 
+/** Resolve an initiating session once for both asynchronous privacy checks and destination binding. */
+export function resolveDocumentSession(slug: string, identity: string): string | undefined {
+  const copy = exampleCopies.get(identity);
+  const resolved = copy?.source === slug ? copy.slug : resolveSlug(slug);
+  return getDiagramIdentity(resolved) === identity ? resolved : undefined;
+}
+
 /** A completed asynchronous save may bind only the document that initiated it. */
 export function bindSaveTarget(slug: string, target: SaveTarget, expectedIdentity: string): boolean {
-  const copy = exampleCopies.get(expectedIdentity);
-  if (copy?.source === slug) slug = copy.slug;
-  if (getDiagramIdentity(slug) !== expectedIdentity) return false;
+  const resolved = resolveDocumentSession(slug, expectedIdentity);
+  if (!resolved) return false;
+  slug = resolved;
   if (slug === DRAFT_SLUG) {
     // Saving a blank draft keeps it: it becomes a library entry, and the destination binds to that.
     let entry: string | undefined;
@@ -332,7 +347,8 @@ export function bindSaveTarget(slug: string, target: SaveTarget, expectedIdentit
     safeStorage.setItem(BINDINGS_KEY, JSON.stringify(all)); // optional for examples
   }
   memoryTargets.delete(slug);
-  if (inMemoryOnly(target)) memoryTargets.set(slug, { sessionId: expectedIdentity, target });
+  // Example bindings also belong to this mounted session: another tab may bind its own destination.
+  if (inMemoryOnly(target) || !slotKey(slug)) memoryTargets.set(slug, { sessionId: expectedIdentity, target });
   return true;
 }
 
@@ -387,6 +403,10 @@ export function writeAutosave(slug: string, d: DiagramFile | null, identity?: st
     slug = entry;
   }
   if (identity !== undefined && getDiagramIdentity(slug) !== identity) return false;
+  // Only the current source generation may write a legacy example autosave. Mounted older
+  // sessions keep their own snapshots by promotion, never by overwriting the catalog's slot.
+  if (!slotKey(slug) && identity !== undefined && read<unknown>(EXAMPLE_SESSION_PREFIX + slug) !== identity)
+    return false;
   if (isLibrarySlug(slug) && isDeleted(slug)) return false;
   const key = AUTOSAVE_PREFIX + slug;
   const ok = d
@@ -685,6 +705,16 @@ export function createLibraryDiagram(
   sessionId?: string,
   provenance: PrivacyFlags & { sourceSlug?: string } = {},
 ): string {
+  return createLibraryEntry(input, target, sessionId, provenance);
+}
+
+function createLibraryEntry(
+  input: DiagramFile,
+  target: SaveTarget | undefined,
+  sessionId: string = randomHex(4),
+  provenance: PrivacyFlags & { sourceSlug?: string } = {},
+  promotion?: { writes: [string, string | null][]; beforePublish: (slug: string) => void },
+): string {
   const entries = readIndex();
   let slug: string;
   do slug = LIBRARY_SLUG_PREFIX + randomHex(2).slice(0, 12);
@@ -700,13 +730,21 @@ export function createLibraryDiagram(
     private: provenance.private || source.private || input.private === true,
     onDevice: provenance.onDevice || source.onDevice,
   };
-  replaceDocument(slug, d, target, sessionId);
   const r = validateDiagram(d);
-  if (!writeEntry(summarize(slug, r.ok ? r.diagram : d, Date.now(), undefined, flags))) {
-    safeStorage.removeItem(slotKey(slug)!);
-    memoryTargets.delete(slug);
-    throw new Error(STORAGE_FULL);
-  }
+  if (!r.ok) throw new Error(r.error);
+  const session: DocumentSession = {
+    sessionFormat: SESSION_FORMAT,
+    sessionId,
+    diagram: r.diagram,
+    ...(target && !inMemoryOnly(target) ? { target } : {}),
+  };
+  commitWrites([
+    [slotKey(slug)!, JSON.stringify(session)],
+    [entryKey(slug), JSON.stringify(summarize(slug, r.diagram, Date.now(), undefined, flags))],
+    ...(promotion?.writes ?? []),
+  ]);
+  if (target && inMemoryOnly(target)) memoryTargets.set(slug, { sessionId, target });
+  promotion?.beforePublish(slug);
   changed();
   warnIfNearlyFull();
   return slug;
@@ -739,17 +777,24 @@ export function copyEditedExample(
           edited.title,
           readIndex().map((e) => e.title),
         );
-  const copy = createLibraryDiagram({ ...preserveUnknown(edited, source), title }, getSaveTarget(slug), identity, {
-    sourceSlug: slug,
-    private: newDiagramsPrivate.get(),
-  });
-  exampleCopies.set(identity, { source: slug, slug: copy });
-  memoryTargets.delete(slug);
   const fresh = `example:${slug}:${randomHex(4)}`;
-  exampleIdentities.set(slug, fresh);
-  // Publish the replacement identity: another tab must reject late writes from the old source.
-  safeStorage.setItem(EXAMPLE_SESSION_PREFIX + slug, JSON.stringify(fresh));
-  safeStorage.removeItem(AUTOSAVE_PREFIX + slug);
+  const copy = createLibraryEntry(
+    { ...preserveUnknown(edited, source), title },
+    getSaveTarget(slug),
+    identity,
+    { sourceSlug: slug, private: newDiagramsPrivate.get() },
+    {
+      writes: [
+        [EXAMPLE_SESSION_PREFIX + slug, JSON.stringify(fresh)],
+        [AUTOSAVE_PREFIX + slug, null],
+      ],
+      beforePublish: (copy) => {
+        exampleCopies.set(identity, { source: slug, slug: copy });
+        memoryTargets.delete(slug);
+        exampleIdentities.set(slug, fresh);
+      },
+    },
+  );
   return { slug: copy, title };
 }
 

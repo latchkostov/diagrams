@@ -59,6 +59,22 @@ test("start card loads its example only when opened", async ({ page, consoleErro
   expectNoErrors(consoleErrors);
 });
 
+for (const action of ["open", "run"]) {
+  test(`gallery ${action} hands focus to the destination after a delayed download`, async ({ page }) => {
+    const download = await gate(page, kafkaChunk);
+    await page.goto("./");
+    await page.getByTestId("start-all-examples").click();
+    await page.getByTestId(`example-${action}-${kafka.slug}`).focus();
+    await page.keyboard.press("Enter");
+    await expect.poll(download.requested).toBe(true);
+    await expect(page.getByTestId("start-card")).toBeVisible();
+    download.release();
+    await expect(page.getByTestId(`node-${kafka.nodeIds[0]}`)).toBeVisible();
+    await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+    if (action === "run") await expect(page.getByTestId("live-controls")).toBeVisible();
+  });
+}
+
 test("example URL loads the full diagram and saved simulations", async ({ page, consoleErrors }) => {
   await page.goto(`./?example=${kafka.slug}`);
   await expect(page.getByTestId(`node-${kafka.nodeIds[0]}`)).toBeVisible();

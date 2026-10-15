@@ -51,3 +51,54 @@ binding with the identity, and publishing the fresh example identity to another 
   their source-specific rule configuration; those scratch artifacts were renamed out of the JavaScript
   and TypeScript file extensions before rerunning the final gate. No application lint errors or rule
   suppressions were involved.
+
+## Final review (round 3)
+
+The final report's three P1 and five P2 findings are all valid. They describe five issues; the
+privacy and cross-tab reports overlap and share fixes rather than independent implementations.
+
+| Findings                                                                           | Disposition and regression evidence                                                                                                                                                                                                                                                                                                                                                                      |
+| ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Correctness P1, security P1, architecture P2: pending-save privacy after promotion | Fixed with `resolveDocumentSession`, used for both privacy checks and Save binding. Promotion publishes its ownership mapping before notifying subscribers, and cloud completion rechecks cancellation. Production tests hold provider loading and bound uploads, then promote and mark Private both explicitly and by default. No upload, destination update, public URL or outside request is allowed. |
+| Architecture P1, security P2: other tabs' mounted sessions                         | Fixed with independent mounted identities and session-bound Save destinations. Future opens get a new identity and retained conversation snapshots; existing sessions keep their own identity. Two-tab unit and production tests retain pending edits, the mounted canvas and Undo/Redo, then promote each snapshot into a separate copy.                                                                |
+| Accessibility P2: focus after gallery selection                                    | Fixed with a request for the matching destination canvas, applied after dialog cleanup. Delayed Open and Run it tests assert canvas focus; existing dismissal tests retain opener focus.                                                                                                                                                                                                                 |
+| Performance P2: storage-failure retry storms                                       | Fixed with an immediate first attempt, debounced retries and one storage warning. A fake-clock production test counts attempts across eight changes, verifies the original notification stays mounted and recovers the latest edit after storage is restored.                                                                                                                                            |
+| Tests P2: storage failure after document creation                                  | Fixed with transactional document, library-entry, source-identity and autosave writes. Unit cases fail entry and source publication after the document write, assert rollback and no orphan, reload the module, reject the old autosave and retry successfully.                                                                                                                                          |
+
+Temporarily removing the fixes failed all eight targeted browser cases and the corresponding session
+and publication unit cases. Removing only notification deduplication separately failed the retained-toast
+assertion. Removing session-bound destinations and the blocked-storage identity fallback separately
+failed their unit regressions. All controls were restored before final validation.
+
+No finding was rejected. Forcing an already mounted tab to adopt the newly published source identity
+was rejected because it discards pending edits and Undo history. Ignoring failed publication was rejected
+because it leaves a partially promoted copy. An extra Retry control was unnecessary: the existing
+storage guidance, debounced edits and lifecycle flushes cover recovery without more chrome.
+
+The branch was rebased onto the toolchain update in master; both release-note entries were retained
+and the rebased commits were signed. No new showcase is required for these persistence and focus fixes.
+No output golden is intentionally changed or re-recorded in this round. The refreshed agent viewer's
+plugin version is 1.1.20, one patch above master.
+
+### Final-round validation
+
+- Rebased toolchain: Node 24.22.0, pnpm 12.11.2. The final full unit run passed 6,414 tests,
+  with four skipped and no type errors. The first rebased run hit the same existing five-second
+  import-test timeout recorded in the review report; its isolated run and the final full run passed
+  without changing a timeout, budget or application code.
+- Production browsers: 391 Chromium tests and five subpath tests passed, without retries, using
+  explicit ports 6250–6254. The selection includes privacy-audit, private-diagrams, share-chooser
+  and every picker-dependent spec; existing dev-only source-import exclusions remain in effect.
+  All servers stopped, with no listeners left on ports 6250–6259.
+- Parity: 797 Node tests and all 44 pinned Linux-browser tests passed; all 1,425 goldens match,
+  with none changed, added, missing or stale. An earlier pre-rebase run differed only in the
+  AWS serverless layout golden's viewport; the full rebased run passed without re-recording it.
+- Build and size passed: entry gzip 105.1 kB, within the 123.5 kB budget. The full unit run includes
+  the startup-chunk regression checks. i18n reported zero errors, with existing missing translations
+  and glossary warnings. The refreshed skill viewer matches a fresh build.
+- The first targeted positive run needed two fixture corrections: Playwright's clock applies to
+  the whole context, and a paused clock must resume before a lazy canvas reload. The corrected
+  tests passed before the deliberate reversions and in both full production sweeps.
+- Lint, typecheck and format check are the final gates after these edits, immediately before the
+  signed commit. Temporary tooling and the public-example test adapter live in the existing
+  ignored test-output directory.

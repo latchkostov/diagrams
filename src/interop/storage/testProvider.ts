@@ -44,6 +44,11 @@ const failing = (what: string) => {
  */
 const DELAY_KEY = "diagrams.test-storage.delay";
 async function slow(signal?: AbortSignal) {
+  if (localStorage.getItem("diagrams.test-storage.hold") === "1") {
+    const w = window as { __testStorageRelease?: () => void };
+    await new Promise<void>((resolve) => (w.__testStorageRelease = resolve));
+    delete w.__testStorageRelease;
+  }
   const ms = Number(localStorage.getItem(DELAY_KEY)) || 0;
   if (ms > 0) await new Promise((resolve) => setTimeout(resolve, ms));
   signal?.throwIfAborted();
