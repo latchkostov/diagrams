@@ -115,6 +115,8 @@ const offered: { family: string; d: DiagramFile }[] = [
 for (const [rev, convert] of Object.entries(REVISIONS))
   s.timing(`inspector planning per keystroke, ${rev}`, () => {
     for (const { family, d: original } of offered) {
+      // An example saved with a planning model of its own is measured as it is, never converted to another one.
+      if (original.planning && rev !== "legacy") continue;
       const base = convert(original);
       if (planningSignature(base) === undefined) continue;
       const w = workloadInfo(family, base.nodes.length, base);

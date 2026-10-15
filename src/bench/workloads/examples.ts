@@ -20,11 +20,15 @@ export function publicExamples(): { slug: string; diagram: DiagramFile }[] {
 }
 
 /**
- * Copies of the public examples, in turn, on a grid, ids prefixed per copy, until there are exactly `n` nodes (the
+ * Copies of the public (legacy, v1) examples, in turn, on a grid, ids prefixed per copy, until there are exactly `n` nodes (the
  * last copy cut short: its edges to nodes left out go too). Saved simulations are dropped: they name the original ids.
  */
 export function tiledExamples(n: number): DiagramFile {
-  const sources = publicExamples().map(({ diagram }) => diagram);
+  // The legacy (diagrams/v1) examples: a v2 example carries a planning model of its own (P3, autoscaling, shared
+  // quotas with document-wide ids) that one tiled document can't hold for every copy.
+  const sources = publicExamples()
+    .map(({ diagram }) => diagram)
+    .filter((d) => !d.planning);
   const perCopy = sources.reduce((sum, d) => sum + d.nodes.length, 0) / sources.length;
   const grid = blockGrid(Math.ceil(n / perCopy) + sources.length);
   const nodes: DiagramNode[] = [];

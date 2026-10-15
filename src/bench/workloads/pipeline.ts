@@ -181,19 +181,15 @@ function simulations(d: DiagramFile, lanes: Lane[]): Simulation[] {
       shape: { kind: "spike", baseRate: 5, peakRate: 40, atMs: 3_000, peakMs: 2_000, durationMs: 10_000 },
     })),
     timeline: [
-      ...hit
-        .slice(0, 10)
-        .map((lane) => ({
-          atMs: 2_000,
-          action: { do: "status" as const, node: lane.worker.id, status: "down" as const },
-        })),
+      ...hit.slice(0, 10).map((lane) => ({
+        atMs: 2_000,
+        action: { do: "status" as const, node: lane.worker.id, status: "down" as const },
+      })),
       { atMs: 2_500, action: { do: "note", text: "Ten workers are down; their queues back up." } },
-      ...hit
-        .slice(0, 10)
-        .map((lane) => ({
-          atMs: 6_000,
-          action: { do: "status" as const, node: lane.worker.id, status: "up" as const },
-        })),
+      ...hit.slice(0, 10).map((lane) => ({
+        atMs: 6_000,
+        action: { do: "status" as const, node: lane.worker.id, status: "up" as const },
+      })),
     ],
     expectations: [
       ...hit.slice(0, 10).map((lane, i) => ({
