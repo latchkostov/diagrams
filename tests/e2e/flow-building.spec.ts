@@ -1,3 +1,4 @@
+import { savedDiagram } from "./fixtures";
 import type { Locator, Page } from "@playwright/test";
 import {
   test,
@@ -60,7 +61,7 @@ async function seed(page: Page) {
 }
 
 /** The diagram as autosaved (written 300 ms after the last edit). */
-const saved = (page: Page) => page.evaluate((k) => JSON.parse(localStorage.getItem(k) ?? "null") as Saved | null, KEY);
+const saved = (page: Page) => savedDiagram(page) as Promise<Saved>;
 
 /** Polls the autosave until `check` holds, and returns it. */
 async function savedWhen(page: Page, check: (d: Saved) => boolean): Promise<Saved> {
@@ -810,29 +811,11 @@ test("gate: the right half of the Kafka example, keyboard only, in under 60 keys
   expect(keys.length).toBeLessThan(60);
 
   // The diagram it made, edge by edge: the topic fans out to three services, each writing to its store.
-  const graph = await page.waitForFunction(() => {
-    for (let i = 0; i < localStorage.length; i++) {
-      const raw = localStorage.getItem(localStorage.key(i) ?? "") ?? "";
-      if (!raw.includes("orders.created.v1")) continue;
-      try {
-        type Graph = {
-          nodes?: { id: string; label: string; stencil: string }[];
-          edges?: { from: string; to: string; label?: string }[];
-        };
-        // A diagram of your own is kept as { …, diagram }.
-        const stored = JSON.parse(raw) as Graph & { diagram?: Graph };
-        const d = stored.diagram ?? stored;
-        if (d.nodes?.length === 7 && d.edges?.length === 6 && d.edges.every((e) => e.label)) return d;
-      } catch {
-        // Not a diagram.
-      }
-    }
-    return null;
-  });
-  const built = (await graph.jsonValue()) as {
-    nodes: { id: string; label: string; stencil: string }[];
-    edges: { from: string; to: string; label?: string }[];
-  };
+  const built = await savedWhen(
+    page,
+    (diagram) =>
+      diagram.nodes.length === 7 && diagram.edges.length === 6 && diagram.edges.every((edge) => !!edge.label),
+  );
   const labelOf = (id: string) => built.nodes.find((n) => n.id === id)?.label;
   expect(built.edges.map((e) => [labelOf(e.from), labelOf(e.to), e.label]).sort()).toEqual(
     [

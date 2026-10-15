@@ -53,7 +53,7 @@ const str = (maxLength: number, description?: string) => ({
   ...(description ? { description } : {}),
 });
 
-function diagramSchema() {
+function diagramSchema(a1 = false) {
   const status = { type: "string", enum: ["up", "paused", "down"] };
   return {
     $schema: SCHEMA,
@@ -140,7 +140,16 @@ function diagramSchema() {
           props: { $ref: "#/$defs/NodeProps" },
         } satisfies Fields<DiagramNode>,
       },
-      NodeProps: nodeSimPropsSchema,
+      NodeProps: a1
+        ? nodeSimPropsSchema
+        : {
+            ...nodeSimPropsSchema,
+            properties: {
+              ...(nodeSimPropsSchema.properties as Record<string, JsonSchema>),
+              resources: { enum: [] },
+              autoscaling: { enum: [] },
+            },
+          },
       Edge: {
         type: "object",
         required: ["id", "from", "to"],
@@ -405,6 +414,7 @@ function diagramSchema() {
 }
 
 const readerSchema = diagramSchema();
+const a1Schema = diagramSchema(true);
 export const diagramV1Schema = {
   ...readerSchema,
   properties: {
@@ -417,5 +427,32 @@ export const diagramV2Schema = {
   $id: `${SITE}/schema/diagram.v2.json`,
   title: "Live Diagrams planning file (diagrams/v2)",
   required: [...readerSchema.required, "planning"],
-  properties: { ...readerSchema.properties, format: { const: "diagrams/v2" } },
+  properties: { ...a1Schema.properties, format: { const: "diagrams/v2" } },
+  $defs: {
+    ...a1Schema.$defs,
+    LegacyNodeProps: readerSchema.$defs.NodeProps,
+    LegacySimulation: JSON.parse(
+      JSON.stringify(readerSchema.$defs.Simulation).replaceAll("#/$defs/NodeProps", "#/$defs/LegacyNodeProps"),
+    ) as JsonSchema,
+  },
+  allOf: [
+    {
+      oneOf: [
+        {
+          additionalProperties: true,
+          properties: { planning: { additionalProperties: true, properties: { revision: { const: "p3-a1" } } } },
+        },
+        {
+          additionalProperties: true,
+          properties: {
+            planning: { additionalProperties: true, properties: { revision: { enum: ["p1", "p2", "p3"] } } },
+            nodes: {
+              items: { additionalProperties: true, properties: { props: { $ref: "#/$defs/LegacyNodeProps" } } },
+            },
+            simulations: { items: { $ref: "#/$defs/LegacySimulation" } },
+          },
+        },
+      ],
+    },
+  ],
 };

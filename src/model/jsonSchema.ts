@@ -7,6 +7,7 @@ export function checkJsonSchema(
   path = "input",
   definitions: Record<string, JsonSchema> = {},
 ): void {
+  for (const child of (schema.allOf ?? []) as JsonSchema[]) checkJsonSchema(value, child, path, definitions);
   if (schema.$ref) {
     const name = String(schema.$ref).split("/").pop()!;
     return checkJsonSchema(value, definitions[name], path, definitions);

@@ -4,7 +4,10 @@ import type { SimRole } from "../model/types";
 import { LiveController, structuralKey } from "./controller";
 import kafka from "../examples/kafka-order-pipeline.json";
 import { emptyInputs, freePlaySaveProps } from "./capacityModel";
+import { autoscalingFixture, sampledCpuBudgetFixture } from "../lab/autoscalingFixture";
+import { resourceLesson } from "../model/autoscaling";
 import * as admissions from "../sim/admission";
+import * as resourceBudgets from "../model/resourceBudget";
 
 const roles: Record<string, SimRole> = { src: "source", q: "queue", svc: "processor", db: "store" };
 const roleOf = (stencil: string) => roles[stencil] ?? "none";
@@ -642,4 +645,191 @@ it("a saved scale override cannot enable unsafe continuous sources; automatic sa
   expect(c.getState().traffic).toBe(true);
   expect(c.getState().snapshot.nodes.api.processed).toBeGreaterThan(1_000_000);
   expect(c.snapshot().nodes.api.processed).toBeLessThanOrEqual(60);
+});
+
+describe("A1 round 3 controller boundaries", () => {
+  it("refuses a combined over-budget draft before replacing the running simulation", () => {
+    const d = autoscalingFixture(),
+      worker = d.nodes[1];
+    d.edges = [];
+    d.nodes = Array.from({ length: 25 }, (_, i) => ({
+      ...structuredClone(worker),
+      id: `worker-${i}`,
+      props: { ...worker.props, replicas: 1000, autoscaling: { mode: "off" } },
+    }));
+    const c = new LiveController(d);
+    const sim: Simulation = { id: "valid", title: "Valid", traffic: [], durationMs: 10_000 };
+    expect(c.selectSimulation(sim)).toBe(true);
+    c.step(100);
+    const before = c.snapshot();
+    expect(
+      c.selectSimulation({
+        ...sim,
+        id: "draft",
+        timeline: [{ atMs: 1000, action: { do: "props", node: "worker-0", props: { replicas: 1001 } } }],
+      }),
+    ).toBe(false);
+    expect(c.getState().simulation).toEqual(sim);
+    expect(c.snapshot()).toEqual(before);
+    expect(c.getState().resourceError).toContain("100");
+    c.step(100);
+    expect(c.snapshot().time).toBeGreaterThan(before.time);
+    c.dispose();
+  });
+  it.each(["advance", "step", "seek"] as const)("recovers from runtime lifecycle refusal during %s", (action) => {
+    const c = new LiveController(autoscalingFixture());
+    c.selectSimulation({
+      id: "draft",
+      title: "Draft",
+      traffic: [],
+      durationMs: 10_000,
+      timeline: [{ atMs: 1000, action: { do: "props", node: "worker", props: { replicas: 2 } } }],
+    });
+    c.step(990);
+    c.setPlaying(true);
+    const before = c.snapshot();
+    const fleet = before.nodes.worker.fleet;
+    const budget = vi.spyOn(resourceBudgets, "resourceBudgetExceeded").mockReturnValue(true);
+    try {
+      expect(() => c[action](1100)).not.toThrow();
+      expect(c.getState().playing).toBe(false);
+      expect(c.getState().resourceError).toContain("100");
+      expect(c.snapshot().nodes.worker.fleet!.desired).toBe(fleet!.desired);
+      expect(c.snapshot()).toEqual(before);
+    } finally {
+      budget.mockRestore();
+    }
+    c.step(10);
+    expect(c.snapshot().time).toBe(1000);
+    expect(c.snapshot().nodes.worker.fleet!.desired).toBe(2);
+    c.restart();
+    expect(c.getState().resourceError).toBeUndefined();
+    c.setPlaying(true);
+    c.advance(100);
+    expect(c.snapshot().time).toBeGreaterThan(0);
+    c.dispose();
+  });
+  it("Continue handles lifecycle refusal and retries the pending action exactly once", () => {
+    const c = new LiveController(autoscalingFixture());
+    c.selectSimulation({
+      id: "continue",
+      title: "Continue",
+      scale: 1,
+      traffic: [],
+      durationMs: 10_000,
+      timeline: [
+        { atMs: 1000, action: { do: "note", text: "Wait", pause: true } },
+        { atMs: 1000, action: { do: "props", node: "worker", props: { replicas: 2 } } },
+        { atMs: 1000, action: { do: "inject", node: "source", count: 7 } },
+      ],
+    });
+    c.step(1000);
+    const before = c.snapshot(),
+      run = c.getState().run;
+    const budget = vi.spyOn(resourceBudgets, "resourceBudgetExceeded").mockReturnValue(true);
+    try {
+      expect(() => c.resume()).not.toThrow();
+      expect(c.getState().playing).toBe(false);
+      expect(c.getState().resourceError).toContain("100");
+      expect(c.getState().run).toEqual(run);
+      expect(c.snapshot()).toEqual(before);
+    } finally {
+      budget.mockRestore();
+    }
+    c.resume();
+    expect(c.getState().run?.waiting).toBe(false);
+    expect(c.snapshot().nodes.worker.fleet!.desired).toBe(2);
+    const after = c.snapshot();
+    expect(after.inSystem).toBe(before.inSystem + 7);
+    c.resume();
+    expect(c.snapshot()).toEqual(after);
+    c.dispose();
+  });
+  it("a refused slow-motion forecast stops and restores its sandbox without consuming the action", () => {
+    const c = new LiveController(autoscalingFixture());
+    c.selectSimulation({
+      id: "forecast",
+      title: "Forecast",
+      traffic: [],
+      durationMs: 10_000,
+      timeline: [{ atMs: 1000, action: { do: "props", node: "worker", props: { replicas: 2 } } }],
+    });
+    c.step(990);
+    const before = c.snapshot(),
+      sandbox = c.lookAhead();
+    const budget = vi.spyOn(resourceBudgets, "resourceBudgetExceeded").mockReturnValue(true);
+    try {
+      expect(sandbox.step(1100)).toBe(false);
+    } finally {
+      sandbox.restore();
+      budget.mockRestore();
+    }
+    expect(c.snapshot()).toEqual(before);
+    c.step(10);
+    expect(c.snapshot().time).toBe(1000);
+    expect(c.snapshot().nodes.worker.fleet!.desired).toBe(2);
+    c.dispose();
+  });
+  it("saving Capacity x folds the HPA policy without creating additional replicas", () => {
+    const d = autoscalingFixture(),
+      c = new LiveController(d, { replayDelayMs: 0 });
+    c.setInputs({ ...emptyInputs(), capacity: 2 });
+    c.setPlaying(true);
+    c.step(1000);
+    const before = c.snapshot();
+    const patches = freePlaySaveProps(d, c.getState().inputs);
+    const saved = { ...d, nodes: d.nodes.map((n) => ({ ...n, props: { ...n.props, ...patches[n.id] } })) };
+    c.commitInputs(null, saved);
+    expect(c.snapshot().nodes.worker).toEqual(before.nodes.worker);
+    expect(c.snapshot().time).toBe(before.time);
+    expect(c.getState().inputs).toEqual(emptyInputs());
+    c.dispose();
+  });
+  it("refuses an oversized setInputs atomically before creating startup cohorts", () => {
+    const d = autoscalingFixture(),
+      worker = d.nodes[1];
+    d.nodes = Array.from({ length: 11 }, (_, i) => ({
+      ...structuredClone(worker),
+      id: `w-${i}`,
+      props: {
+        ...worker.props,
+        autoscaling: { mode: "off" },
+        resources: { ...resourceLesson(), startup: { delayMs: 5000, jitterFraction: 0.5 } },
+      },
+    }));
+    d.edges = [];
+    const c = new LiveController(d, { replayDelayMs: 0 });
+    c.setPlaying(true);
+    c.step(100);
+    const before = c.snapshot(),
+      inputs = c.getState().inputs;
+    expect(() =>
+      c.setInputs({
+        ...emptyInputs(),
+        capacity: 2,
+        props: Object.fromEntries(d.nodes.map((n) => [n.id, { replicas: 10_000 }])),
+      }),
+    ).toThrow(/100/);
+    expect(c.getState().inputs).toEqual(inputs);
+    expect(c.snapshot()).toEqual(before);
+    c.dispose();
+  });
+});
+
+it("scripted sampled CPU budget refusal keeps work queued, announces recovery and survives checkpoints", () => {
+  const d = sampledCpuBudgetFixture();
+  const c = new LiveController(d);
+  c.selectSimulation(d.simulations![0]);
+  c.step(6000);
+  expect(c.getState().resourceError).toContain("New messages are waiting");
+  expect(c.snapshot().inSystem).toBe(200);
+  expect(c.snapshot().nodes.worker.backlog).toBeGreaterThan(0);
+  const before = c.snapshot();
+  const look = c.lookAhead();
+  look.step(100);
+  look.restore();
+  expect(c.snapshot()).toEqual(before);
+  c.restart();
+  expect(c.getState().resourceError).toBeUndefined();
+  c.dispose();
 });

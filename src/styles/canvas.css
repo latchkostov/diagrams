@@ -3611,3 +3611,31 @@ button.insp-input.dropdown-trigger {
 .ann-text[data-color="custom"] .ann-editor {
   color: var(--ann-text-ink, var(--text));
 }
+
+.autoscaling-controls,
+.autoscaling-controls > details[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.autoscaling-replicas {
+  table-layout: fixed;
+  inline-size: 100%;
+  font-size: 11px;
+  border-collapse: collapse;
+}
+.autoscaling-replicas th,
+.autoscaling-replicas td {
+  padding-block: 4px;
+  padding-inline: 3px;
+  overflow-wrap: anywhere;
+  text-align: start;
+}
+.autoscaling-replicas th:first-child {
+  inline-size: 12%;
+}
+
+/* Keep handles measured for routing while presentation hides editing affordances. */
+.is-presenting .dn .dn-handle {
+  visibility: hidden;
+}

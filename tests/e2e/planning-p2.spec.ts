@@ -1,3 +1,4 @@
+import { savedDiagram } from "./fixtures";
 import { spawnSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -62,10 +63,7 @@ test("P2: P1 legacy download stays accessible without applying the upgrade", asy
   const legacy = JSON.parse(readFileSync(path, "utf8")) as DiagramFile;
   expect(legacy.format).toBe("diagrams/v1");
   expect(legacy.planning).toBeUndefined();
-  const saved = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key) ?? "{}") as DiagramFile,
-    STORAGE_KEYS.autosavePrefix + slug,
-  );
+  const saved = await savedDiagram(page);
   expect(saved.planning?.revision).toBe("p1");
   expectNoErrors(consoleErrors);
 });

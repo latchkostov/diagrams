@@ -52,7 +52,7 @@ interface HostState {
   live: LiveHost | null;
   session: SessionHost | null;
   /** A simulation to start as soon as the live session is up. */
-  pendingRun: string | null;
+  pendingRun: { documentId: string | undefined; simulationId: string } | null;
 }
 
 let state: HostState = { canvas: null, live: null, session: null, pendingRun: null };
@@ -60,7 +60,20 @@ const listeners = new Set<() => void>();
 
 function set(patch: Partial<HostState>) {
   state = { ...state, ...patch };
+  drainRun();
   for (const l of listeners) l();
+}
+
+function drainRun() {
+  const request = state.pendingRun;
+  if (!request || state.canvas?.documentId !== request.documentId || !state.live) return;
+  if (!state.session) {
+    state.live.goLive();
+    return;
+  }
+  const session = state.session;
+  state = { ...state, pendingRun: null };
+  if (!session.disabledHint) session.run(request.simulationId);
 }
 
 /** Publishes `value` under `key` and returns the matching unpublish (a no-op if replaced since). */
@@ -78,17 +91,14 @@ export const paletteHost = {
     return () => listeners.delete(listener);
   },
   /** Replays a saved simulation, going live first when needed. False when live view isn't available. */
-  runSimulation(id: string): boolean {
-    if (state.session) {
-      if (state.session.disabledHint) return false;
-      state.session.run(id);
-      return true;
-    }
-    if (!state.live) return false;
-    // The session starts the pending run once it's up (it may be loading already).
-    set({ pendingRun: id });
-    state.live.goLive();
+  runSimulation(id: string, documentId = state.canvas?.documentId): boolean {
+    if (state.canvas?.documentId === documentId && state.session?.disabledHint) return false;
+    if (!state.live && documentId === undefined) return false;
+    set({ pendingRun: { documentId, simulationId: id } });
     return true;
+  },
+  cancelRun() {
+    if (state.pendingRun) set({ pendingRun: null });
   },
   /** Test seam and HMR safety: forget everything. */
   reset() {
@@ -111,11 +121,6 @@ export function useLiveSessionHost(
   useEffect(() => {
     if (!enabled) return;
     const off = publish("session", { run, disabledHint, ...(getState ? { state: getState } : {}) });
-    const pending = state.pendingRun;
-    if (pending) {
-      set({ pendingRun: null });
-      run(pending);
-    }
     return off;
   }, [run, enabled, disabledHint, getState]);
 }

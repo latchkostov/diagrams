@@ -1,3 +1,4 @@
+import { currentDiagram } from "./fixtures";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
@@ -30,7 +31,7 @@ async function importOwn(page: Page, title: string) {
     ),
   });
   await expect(page.getByTestId("diagram-title")).toHaveText(title);
-  return page.getByTestId("example-picker").inputValue();
+  return currentDiagram(page);
 }
 
 /** The chooser's own chunk (or its source module on the dev server). */
@@ -243,7 +244,7 @@ test("made private in another tab while Share… is open, its link rows go and t
     ),
   });
   await expect(page.getByTestId("diagram-title")).toHaveText("Turning plan");
-  const slug = await page.getByTestId("example-picker").inputValue();
+  const slug = await currentDiagram(page);
   await openShareChooser(page);
   await page.getByTestId("share-public-toggle").click();
   await page.getByTestId("share-option-link").focus();

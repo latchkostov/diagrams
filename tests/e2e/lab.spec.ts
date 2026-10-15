@@ -170,7 +170,7 @@ test.describe("lab", () => {
     await page.getByTestId("lab-open-editor").click();
     await expect(page.getByTestId("canvas-view")).toBeVisible();
     // A generated diagram becomes a new entry in Your diagrams.
-    await expect(page.getByTestId("example-picker")).toHaveValue(/^my-/);
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
     await expect(page.getByTestId("node-n1")).toBeVisible();
   });
 

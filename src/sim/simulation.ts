@@ -290,46 +290,63 @@ export function createSimulationRun(
     refresh();
   }
 
+  function checkpoint() {
+    const engineState = engine.checkpoint();
+    const saved = structuredClone({
+      multipliers,
+      speed,
+      cursor,
+      done,
+      waiting,
+      idleSince,
+      note,
+      expectations,
+      credits,
+      fired,
+      injectionCredits,
+    });
+    const manualState = manual.checkpoint();
+    const clock = scheduler.checkpoint();
+    const savedEpoch = epoch;
+    const token = Object.freeze({ time: metrics.time });
+    checkpoints.set(token, () => {
+      if (epoch !== savedEpoch) throw new Error("Checkpoint belongs to a previous run");
+      engine.restore(engineState);
+      const copy = structuredClone(saved);
+      ({ multipliers, speed, cursor, done, waiting, idleSince, note, expectations, credits, fired } = copy);
+      injectionCredits.clear();
+      for (const [key, value] of copy.injectionCredits) injectionCredits.set(key, value);
+      manual.restore(manualState);
+      scheduler.restore(clock);
+      metrics = engine.metrics();
+    });
+    return token;
+  }
+  function restore(checkpoint: SimulationRunCheckpoint) {
+    const restore = checkpoints.get(checkpoint);
+    if (!restore) throw new Error("Checkpoint belongs to another runner");
+    restore();
+  }
+
+  // Refusals depend only on allocation configuration, never on elapsed time or traffic.
+  // Validate the reachable edits before touching any caller-visible state.
+  function transaction(until: number, update: () => void) {
+    const allocations = [];
+    for (let i = cursor; i < timeline.length && timeline[i].atMs <= until; i++) {
+      const action = timeline[i].action;
+      if (action.do === "note" && action.pause) break;
+      if (action.do === "props" && ["resources", "replicas", "autoscaling"].some((key) => key in action.props))
+        allocations.push(action);
+    }
+    if (diagram.planning?.revision === "p3-a1" && allocations.length) engine.validateLifecycleActions(allocations);
+    update();
+  }
+
   restart();
   return {
     engine,
-    checkpoint() {
-      const engineState = engine.checkpoint();
-      const saved = structuredClone({
-        multipliers,
-        speed,
-        cursor,
-        done,
-        waiting,
-        idleSince,
-        note,
-        expectations,
-        credits,
-        fired,
-        injectionCredits,
-      });
-      const manualState = manual.checkpoint();
-      const clock = scheduler.checkpoint();
-      const savedEpoch = epoch;
-      const token = Object.freeze({ time: metrics.time });
-      checkpoints.set(token, () => {
-        if (epoch !== savedEpoch) throw new Error("Checkpoint belongs to a previous run");
-        engine.restore(engineState);
-        const copy = structuredClone(saved);
-        ({ multipliers, speed, cursor, done, waiting, idleSince, note, expectations, credits, fired } = copy);
-        injectionCredits.clear();
-        for (const [key, value] of copy.injectionCredits) injectionCredits.set(key, value);
-        manual.restore(manualState);
-        scheduler.restore(clock);
-        metrics = engine.metrics();
-      });
-      return token;
-    },
-    restore(checkpoint) {
-      const restore = checkpoints.get(checkpoint);
-      if (!restore) throw new Error("Checkpoint belongs to another runner");
-      restore();
-    },
+    checkpoint,
+    restore,
     units: {
       sampledFrame: () => engine.frame(),
       realFrame: () => realFrame(engine.frame()),
@@ -357,28 +374,31 @@ export function createSimulationRun(
     step(dtMs): void {
       if (waiting || done || !Number.isFinite(dtMs) || dtMs <= 0) return;
       // Keep fractional simulation ticks here; engine.step applies speed exactly once.
-      scheduler.advance(dtMs * speed, () => {
-        const from = metrics.time;
-        engine.step(TICK / speed);
-        const to = from + TICK;
-        actions(to);
-        if (!waiting) {
-          simulation.traffic.forEach((profile, index) => {
-            credits[index] += (trafficArea(profile.shape, from, to) * multipliers.traffic) / scale;
-            const count = Math.floor(credits[index] + 1e-9);
-            credits[index] -= count;
-            if (count > 0) engine.inject(profile.node, count, { type: profile.messageType });
-          });
-          bursts(to);
-        } else {
-          // The interval elapsed before the note was reached, so retain its traffic credit.
-          simulation.traffic.forEach((profile, index) => {
-            credits[index] += (trafficArea(profile.shape, from, to) * multipliers.traffic) / scale;
-          });
-        }
-        refresh();
-        return !waiting && !done;
-      });
+      const ticks = Math.floor((scheduler.checkpoint() + dtMs * speed + 1e-8) / TICK);
+      transaction(Math.min(metrics.time + ticks * TICK, Math.ceil(totalMs / TICK) * TICK), () =>
+        scheduler.advance(dtMs * speed, () => {
+          const from = metrics.time;
+          engine.step(TICK / speed);
+          const to = from + TICK;
+          actions(to);
+          if (!waiting) {
+            simulation.traffic.forEach((profile, index) => {
+              credits[index] += (trafficArea(profile.shape, from, to) * multipliers.traffic) / scale;
+              const count = Math.floor(credits[index] + 1e-9);
+              credits[index] -= count;
+              if (count > 0) engine.inject(profile.node, count, { type: profile.messageType });
+            });
+            bursts(to);
+          } else {
+            // The interval elapsed before the note was reached, so retain its traffic credit.
+            simulation.traffic.forEach((profile, index) => {
+              credits[index] += (trafficArea(profile.shape, from, to) * multipliers.traffic) / scale;
+            });
+          }
+          refresh();
+          return !waiting && !done;
+        }),
+      );
     },
     state: () => ({
       time: metrics.time,
@@ -393,17 +413,19 @@ export function createSimulationRun(
     }),
     resume(): void {
       if (!waiting || done) return;
-      waiting = false;
-      actions(metrics.time);
-      if (!waiting) {
-        simulation.traffic.forEach((profile, index) => {
-          const count = Math.floor(credits[index] + 1e-9);
-          credits[index] -= count;
-          if (count > 0) engine.inject(profile.node, count, { type: profile.messageType });
-        });
-        bursts(metrics.time);
-      }
-      refresh();
+      transaction(metrics.time, () => {
+        waiting = false;
+        actions(metrics.time);
+        if (!waiting) {
+          simulation.traffic.forEach((profile, index) => {
+            const count = Math.floor(credits[index] + 1e-9);
+            credits[index] -= count;
+            if (count > 0) engine.inject(profile.node, count, { type: profile.messageType });
+          });
+          bursts(metrics.time);
+        }
+        refresh();
+      });
     },
     restart,
   };

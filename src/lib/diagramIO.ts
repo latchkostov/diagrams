@@ -7,6 +7,7 @@ import { diagramThumb, isThumb, type Thumb } from "./thumbnail";
 import { isLocalOnly, privacyOf } from "./localOnly";
 import { newDiagramsPrivate } from "./privacyPrefs";
 import { AI_THREAD_PREFIX } from "./aiThreadKey";
+import { exampleIdentity, readConversation, withoutConversationSnapshots } from "./exampleConversations";
 
 // Where diagrams live in the browser.
 //
@@ -17,7 +18,7 @@ import { AI_THREAD_PREFIX } from "./aiThreadKey";
 // - A blank "new" diagram (DRAFT_SLUG) is not stored at all until its first edit, when it becomes a
 //   library entry in place: the entry takes the draft's identity, so the open canvas doesn't remount.
 // - A diagram opened from a share link lives in its own slot (SHARED_SLUG) until "Save a copy".
-// - Examples are built in; their edits are kept as autosaves.
+// - Examples are built in; the canvas keeps the first edit in a new library copy.
 //
 // Every read and write goes through safe storage: blocked or full storage never throws into the UI.
 
@@ -32,7 +33,6 @@ const LIBRARY_SLUG_PREFIX = "my-";
 const AUTOSAVE_PREFIX = "diagrams.autosave.v1:";
 const LEGACY_KEY = "diagrams.imported.v1";
 const SHARED_KEY = "diagrams.shared.v1";
-const BINDINGS_KEY = "diagrams.bindings.v1";
 export const LIBRARY_KEY = "diagrams.library.v1";
 // Each diagram owns one index record. Publishing it is a single atomic storage write;
 // tabs never overwrite a shared snapshot containing other diagrams' entries.
@@ -209,11 +209,40 @@ function promoteDraft(identity: string): string | undefined {
 
 // ---------------------------------------------------------------- identity and save destinations
 
+// Only pending Save operations follow a promotion, once. There is no shared identity redirect.
+const exampleCopyListeners = new Set<(source: string, copy: string) => void>();
+const exampleSaveSessions = new Map<string, number>();
+
+/** A pending save follows its initiating document into its first copy, even after navigation. */
+export function trackDocumentSession(source: string) {
+  let slug = source;
+  let identity = getDiagramIdentity(source);
+  const generation = exampleSaveSessions.get(source);
+  const onCopy = (from: string, copy: string) => {
+    if (from !== source || exampleSaveSessions.get(source) !== generation) return;
+    slug = copy;
+    identity = getDiagramIdentity(copy);
+    dispose();
+  };
+  const dispose = () => {
+    exampleCopyListeners.delete(onCopy);
+  };
+  if (examples.some((e) => e.slug === source)) exampleCopyListeners.add(onCopy);
+  return {
+    resolve: () => {
+      if (slug === source && exampleSaveSessions.get(source) !== generation) return undefined;
+      const owner = resolveDocumentSession(slug, identity);
+      return owner ? { slug: owner, identity } : undefined;
+    },
+    dispose,
+  };
+}
+
 /** Identity changes only when this document is replaced, never when another slot changes. */
 export function getDiagramIdentity(slug: string): string {
   if (slug === DRAFT_SLUG) return draftIdentity();
   const key = slotKey(slug);
-  if (!key) return `example:${slug}`;
+  if (!key) return exampleIdentity(slug);
   const stored = read<Partial<DocumentSession>>(key);
   // Legacy slots have no binding: old separately stored destinations cannot be trusted.
   return stored?.sessionFormat === SESSION_FORMAT && typeof stored.sessionId === "string"
@@ -240,6 +269,14 @@ function replaceDocument(slug: string, diagram: DiagramFile, target?: SaveTarget
   if (replaced !== sessionId) safeStorage.removeItem(AI_THREAD_PREFIX + replaced);
 }
 
+/** Destinations for examples live only for their initiating mounted canvas. */
+export function releaseExampleSaveTarget(slug: string): void {
+  if (examples.some((example) => example.slug === slug)) {
+    memoryTargets.delete(slug);
+    exampleSaveSessions.set(slug, (exampleSaveSessions.get(slug) ?? 0) + 1);
+  }
+}
+
 export function getSaveTarget(slug: string): SaveTarget | undefined {
   const sessionId = getDiagramIdentity(slug);
   const memory = memoryTargets.get(slug);
@@ -251,13 +288,20 @@ export function getSaveTarget(slug: string): SaveTarget | undefined {
       ? storedTarget(stored.target ?? stored.drive)
       : undefined;
   }
-  const stored = read<Record<string, { sessionId: string; target: unknown }>>(BINDINGS_KEY)?.[slug];
-  return stored?.sessionId === sessionId ? storedTarget(stored.target) : undefined;
+  return undefined;
+}
+
+/** Resolve an initiating session once for both asynchronous privacy checks and destination binding. */
+export function resolveDocumentSession(slug: string, identity: string): string | undefined {
+  const resolved = resolveSlug(slug);
+  return getDiagramIdentity(resolved) === identity ? resolved : undefined;
 }
 
 /** A completed asynchronous save may bind only the document that initiated it. */
 export function bindSaveTarget(slug: string, target: SaveTarget, expectedIdentity: string): boolean {
-  if (getDiagramIdentity(slug) !== expectedIdentity) return false;
+  const resolved = resolveDocumentSession(slug, expectedIdentity);
+  if (!resolved) return false;
+  slug = resolved;
   if (slug === DRAFT_SLUG) {
     // Saving a blank draft keeps it: it becomes a library entry, and the destination binds to that.
     let entry: string | undefined;
@@ -281,17 +325,10 @@ export function bindSaveTarget(slug: string, target: SaveTarget, expectedIdentit
     delete rest.drive;
     delete rest.target;
     storeSession(key, { ...rest, ...(inMemoryOnly(target) ? {} : { target }) });
-  } else {
-    const all = Object.fromEntries(
-      Object.entries(read<Record<string, { sessionId: string; target: unknown }>>(BINDINGS_KEY) ?? {}).filter(
-        ([key]) => key !== slug,
-      ),
-    );
-    if (!inMemoryOnly(target)) all[slug] = { sessionId: expectedIdentity, target };
-    safeStorage.setItem(BINDINGS_KEY, JSON.stringify(all)); // optional for examples
   }
   memoryTargets.delete(slug);
-  if (inMemoryOnly(target)) memoryTargets.set(slug, { sessionId: expectedIdentity, target });
+  // Example bindings also belong to this mounted session: another tab may bind its own destination.
+  if (inMemoryOnly(target) || !slotKey(slug)) memoryTargets.set(slug, { sessionId: expectedIdentity, target });
   return true;
 }
 
@@ -307,6 +344,8 @@ export function getOriginal(slug: string): DiagramFile | undefined {
 
 export function getAutosave(slug: string): DiagramFile | undefined {
   if (slug === DRAFT_SLUG) return undefined;
+  // Example autosaves are legacy input, read as-is without re-keying or deleting them.
+  if (!slotKey(slug)) return readDiagram(AUTOSAVE_PREFIX + slug);
   const raw = read<Partial<DocumentSession>>(AUTOSAVE_PREFIX + slug);
   // Existing example autosaves predate sessions and remain valid.
   return readDiagram(
@@ -513,12 +552,12 @@ function writeEntry(entry: StoredEntry): boolean {
 }
 
 /** Required writes publish together to subscribers; restore completed writes on failure. */
-function commitWrites(writes: [string, string | null][]): void {
+function commitWrites(writes: [string, string | null, string?][]): void {
   const completed: [string, string | null][] = [];
-  for (const [key, value] of writes) {
+  for (const [key, value, fallback] of writes) {
     const previous = safeStorage.getItem(key);
     const ok = value === null ? safeStorage.removeItem(key) : safeStorage.setItem(key, value);
-    if (!ok) {
+    if (!ok && !(fallback !== undefined && safeStorage.setItem(key, fallback))) {
       for (const [written, old] of completed.reverse()) {
         if (old === null) safeStorage.removeItem(written);
         else safeStorage.setItem(written, old);
@@ -644,6 +683,16 @@ export function createLibraryDiagram(
   sessionId?: string,
   provenance: PrivacyFlags & { sourceSlug?: string } = {},
 ): string {
+  return createLibraryEntry(input, target, sessionId, provenance);
+}
+
+function createLibraryEntry(
+  input: DiagramFile,
+  target: SaveTarget | undefined,
+  sessionId: string = randomHex(4),
+  provenance: PrivacyFlags & { sourceSlug?: string } = {},
+  promotion?: { conversation: string | null; beforePublish: (slug: string) => void },
+): string {
   const entries = readIndex();
   let slug: string;
   do slug = LIBRARY_SLUG_PREFIX + randomHex(2).slice(0, 12);
@@ -659,13 +708,29 @@ export function createLibraryDiagram(
     private: provenance.private || source.private || input.private === true,
     onDevice: provenance.onDevice || source.onDevice,
   };
-  replaceDocument(slug, d, target, sessionId);
   const r = validateDiagram(d);
-  if (!writeEntry(summarize(slug, r.ok ? r.diagram : d, Date.now(), undefined, flags))) {
-    safeStorage.removeItem(slotKey(slug)!);
-    memoryTargets.delete(slug);
-    throw new Error(STORAGE_FULL);
-  }
+  if (!r.ok) throw new Error(r.error);
+  const session: DocumentSession = {
+    sessionFormat: SESSION_FORMAT,
+    sessionId,
+    diagram: r.diagram,
+    ...(target && !inMemoryOnly(target) ? { target } : {}),
+  };
+  commitWrites([
+    [slotKey(slug)!, JSON.stringify(session)],
+    ...(promotion?.conversation
+      ? [
+          [
+            AI_THREAD_PREFIX + sessionId,
+            promotion.conversation,
+            withoutConversationSnapshots(promotion.conversation),
+          ] as [string, string, string],
+        ]
+      : []),
+    [entryKey(slug), JSON.stringify(summarize(slug, r.diagram, Date.now(), undefined, flags))],
+  ]);
+  if (target && inMemoryOnly(target)) memoryTargets.set(slug, { sessionId, target });
+  promotion?.beforePublish(slug);
   changed();
   warnIfNearlyFull();
   return slug;
@@ -678,6 +743,40 @@ export function copyTitle(title: string, taken: string[] = []): string {
     const candidate = n === 1 ? `${base} (copy)` : `${base} (copy ${n})`;
     if (!taken.includes(candidate)) return candidate;
   }
+}
+
+/** Keep the edited canvas and its undo history; reopening the example gets a fresh canvas. */
+export function copyEditedExample(
+  slug: string,
+  edited: DiagramFile,
+  identity: string,
+): { slug: string; title: string } | undefined {
+  if (!examples.some((e) => e.slug === slug) || getDiagramIdentity(slug) !== identity) return undefined;
+  const source = getOriginal(slug);
+  // An explicit name belongs to the person; don't append text beneath their typing cursor.
+  const title =
+    edited.title !== source?.title
+      ? edited.title.trim()
+        ? edited.title
+        : UNTITLED
+      : copyTitle(
+          edited.title,
+          readIndex().map((e) => e.title),
+        );
+  const copy = createLibraryEntry(
+    { ...preserveUnknown(edited, source), title },
+    getSaveTarget(slug),
+    undefined,
+    { sourceSlug: slug, private: newDiagramsPrivate.get() },
+    {
+      conversation: readConversation(identity),
+      beforePublish: (copy) => {
+        for (const listener of exampleCopyListeners) listener(slug, copy);
+      },
+    },
+  );
+  releaseExampleSaveTarget(slug);
+  return { slug: copy, title };
 }
 
 /** Duplicates an entry (its latest content, extension fields included) and returns the copy's slug. */
@@ -812,7 +911,7 @@ export function createDiagram(seed: Partial<DiagramFile> = {}): string {
 
 export const emptyDiagram = (): DiagramFile => ({
   format: "diagrams/v2",
-  planning: { revision: "p3" },
+  planning: { revision: "p3-a1" },
   title: UNTITLED,
   nodes: [],
   edges: [],

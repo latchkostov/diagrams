@@ -30,6 +30,8 @@ export interface Particle {
 
 /** Native engine message counts and rates are sampled units; time and replica counts are unscaled. */
 export interface NodeSimState {
+  resources?: import("./autoscaling").ResourceReadout;
+  fleet?: import("./autoscaling").FleetReadout;
   id: string;
   role: SimRole;
   status: NodeStatus;
@@ -127,6 +129,10 @@ export interface SimSnapshot {
 
 /** Per-node tunables. Read from DiagramNode.props on load; can be changed live via setNodeProps. */
 export interface NodeSimProps {
+  resources?: import("../model/autoscaling").ComputeResources;
+  autoscaling?: import("../model/autoscaling").AutoscalingConfig;
+  /** An authored replicas patch suspends HPA until this is explicitly true. */
+  resumeAutoscaling?: boolean;
   api?: import("../model/admission").ApiBehaviour;
   endpoints?: import("../model/admission").ApiEndpoint[];
   scaling?: "fixed" | "auto";
@@ -326,6 +332,7 @@ export interface EngineCheckpoint {
 export interface SimEngine {
   /** Message lineage: follow one message and its copies hop by hop. Its state is part of checkpoints. */
   readonly tracer: MessageTracer;
+  replicaPage(nodeId: string, page?: number): import("./autoscaling").ReplicaRow[];
   checkpoint(): EngineCheckpoint;
   restore(checkpoint: EngineCheckpoint): void;
   /** Detached raw properties currently used by the engine, including runtime overrides. */
@@ -352,10 +359,12 @@ export interface SimEngine {
   inject(nodeId: string, count: number, opts?: InjectOptions): void;
   setNodeStatus(nodeId: string, status: NodeStatus): void;
   setNodeProps(nodeId: string, patch: NodeSimProps): void;
+  /** Preflight ordered lifecycle edits without copying or mutating playback state. */
+  validateLifecycleActions(actions: readonly { node: string; props: NodeSimProps }[]): void;
   /** Apply patches and an optional capacity multiplier with one incremental allocation pass. */
   setNodePropsBatch(patches: Record<string, NodeSimProps>, capacityMultiplier?: number): void;
   /** Continuous sources are disabled when their sampled rate or per-run volume exceeds the safety budget. */
-  trafficLimit(): "rate" | "volume" | undefined;
+  trafficLimit(): "rate" | "volume" | "resources" | undefined;
   /** Continuous traffic from every source node at its ratePerSec, subject to trafficLimit(). */
   setTraffic(on: boolean): void;
   /** Time multiplier (0.25 – 8). Default 1. */
@@ -365,6 +374,8 @@ export interface SimEngine {
 }
 
 export interface EngineOptions {
+  /** Optional per-step diagnostic; excluded from ordinary playback. */
+  verifyResources?: (state: import("./resourceInvariants").ResourceState) => void;
   /** PRNG seed for deterministic runs (tests). Default random. */
   seed?: number;
   /** Resolve a stencil id to its sim role. Default uses the stencil registry. */

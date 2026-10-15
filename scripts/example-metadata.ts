@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import type { Plugin } from "vite";
 import type { DiagramFile } from "../src/model/types";
+import { exampleShows } from "./example-shows";
 import { diagramThumb } from "../src/lib/thumbnail";
 
 /** Generate small public registries without importing any diagram into the entry graph. */
@@ -33,7 +34,13 @@ export function exampleMetadataPlugin(): Plugin {
                       (x) => "node" in x.metric && x.metric.field === "deadLettered" && (x.op === ">" || x.op === ">="),
                     ),
                   }))
-                : { title: d.title, description: d.description, thumb: diagramThumb(d) },
+                : {
+                    title: d.title,
+                    description: d.description,
+                    thumb: diagramThumb(d),
+                    shows: exampleShows(d),
+                    simulation: d.simulations?.[0]?.id,
+                  },
             ];
           }),
       );

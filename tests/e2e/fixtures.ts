@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test as base, expect, type Locator, type Page } from "@playwright/test";
+import type { DiagramFile } from "../../src/model/types";
 
 /**
  * Shared helpers for every e2e spec. Selectors are data-testid only (owner's rule):
@@ -19,6 +20,37 @@ export const STORAGE_KEYS = {
   paletteCollapsed: "diagrams.paletteCollapsed.v1",
   labCustom: "diagrams.lab.custom.v1",
 } as const;
+
+/** Persisted content follows the picker into an owned copy; source keys are only for seeding. */
+export async function savedDiagram(page: Page): Promise<DiagramFile> {
+  let diagram: DiagramFile | undefined;
+  // Wait for persistence and the picker to publish the current document.
+  await expect
+    .poll(
+      async () => {
+        diagram = await page.getByTestId("example-picker").evaluate((picker, prefix) => {
+          const current = picker.getAttribute("data-diagram-slug");
+          if (!current) return undefined;
+          const originalKey = current.startsWith("my-")
+            ? "diagrams.doc.v1:" + current.slice(3)
+            : current === "imported"
+              ? "diagrams.imported.v1"
+              : current === "shared"
+                ? "diagrams.shared.v1"
+                : undefined;
+          const raw =
+            localStorage.getItem(prefix + current) ?? (originalKey ? localStorage.getItem(originalKey) : null);
+          const parsed = raw ? JSON.parse(raw) : undefined;
+          return parsed?.sessionFormat === "diagrams/session/v1" ? parsed.diagram : parsed;
+        }, STORAGE_KEYS.autosavePrefix);
+        return !!diagram && Array.isArray(diagram.nodes);
+      },
+      { message: "Expected a persisted diagram for the currently open document" },
+    )
+    .toBe(true);
+  if (!diagram) throw new Error("Expected a persisted diagram for the currently open document");
+  return diagram;
+}
 
 export interface PublicExample {
   slug: string;
@@ -47,6 +79,10 @@ export const publicExamples: PublicExample[] = (() => {
       };
     });
 })();
+
+/** Public-card assertions stay valid when the development catalog adds local entries. */
+export const publicExampleCards = (page: Page) =>
+  page.getByTestId(new RegExp(`^example-card-(${publicExamples.map((e) => e.slug).join("|")})$`));
 
 declare global {
   interface Window {
@@ -328,4 +364,27 @@ export async function labPresetIds(page: Page): Promise<string[]> {
     }),
   );
   return ids;
+}
+
+/** Opens a diagram without coupling callers to the picker's menu or gallery layout.
+ * Deliberately doesn't wait for the diagram download: lazy-load race tests control it.
+ */
+export async function openExample(page: Page, slug: string) {
+  await page.getByTestId("example-picker").click();
+  const own = page.getByTestId(`picker-option-${slug}`);
+  if (await own.count()) return own.click();
+  if (slug === "new") return page.getByTestId("picker-new").click();
+  if (slug === "imported" || /^my-[a-z0-9]{6,32}$/.test(slug)) {
+    await page.getByTestId("picker-library").click();
+    return page.getByTestId(`library-open-${slug}`).click();
+  }
+  await page.getByTestId("picker-browse-examples").click();
+  await page.getByTestId("examples-search").fill(slug);
+  await page.getByTestId(`example-open-${slug}`).click();
+}
+
+export async function currentDiagram(page: Page): Promise<string> {
+  const slug = await page.getByTestId("example-picker").getAttribute("data-diagram-slug");
+  if (!slug) throw new Error("No open diagram");
+  return slug;
 }

@@ -1,0 +1,27 @@
+{
+  "summary": "2 warnings, 0 suggestions.",
+  "findings": {
+    "capacity:uploads": { "title": "Image uploads can't keep up", "message": "At the diagram's own rates, it gets 80/s and handles 16/s (500%): its backlog only grows.", "rationale": "Demand above what a service can handle never drains: latency and backlog grow until something times out. Live view's Show capacity has the same numbers." },
+    "capacity:worker": {
+      "title": "Thumbnail workers: resource planning",
+      "message": "HPA needs 10 replicas at target; maximum 2. Verify startup and partition limits before raising max.",
+      "rationale": "Configured resource assumptions; steady state is not a burst guarantee.",
+      "shownMessage": "HPA needs 10 at target; maximum 2. Startup and partition limits still apply.",
+      "shownRationale": "Configured resource assumptions; this is a steady-state estimate, not a burst guarantee."
+    }
+  },
+  "agentReport": {
+    "findings": [
+      { "id": "capacity:uploads", "rule": "capacity", "severity": "warning", "title": "Image uploads can't keep up", "message": "At the diagram's own rates, it gets 80/s and handles 16/s (500%): its backlog only grows.", "targets": ["uploads"] },
+      { "id": "capacity:worker", "rule": "capacity", "severity": "warning", "title": "Thumbnail workers: resource planning", "message": "HPA needs 10 replicas at target; maximum 2. Verify startup and partition limits before raising max.", "targets": ["worker"] }
+    ],
+    "summary": "2 warnings, 0 suggestions."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      { "id": "capacity:uploads", "rule": "capacity", "severity": "warning", "title": "Image uploads can't keep up", "message": "At the diagram's own rates, it gets 80/s and handles 16/s (500%): its backlog only grows.", "targets": ["uploads"] },
+      { "id": "capacity:worker", "rule": "capacity", "severity": "warning", "title": "Thumbnail workers: resource planning", "message": "HPA needs 10 replicas at target; maximum 2. Verify startup and partition limits before raising max.", "targets": ["worker"] }
+    ],
+    "summary": "2 warnings, 0 suggestions."
+  }
+}

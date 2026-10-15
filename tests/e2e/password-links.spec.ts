@@ -1,3 +1,4 @@
+import { currentDiagram } from "./fixtures";
 import type { BrowserContext, Page } from "@playwright/test";
 import { test, expect, gotoCanvas, publicExamples, expectNoErrors, pageLoadTimeout, shareVia } from "./fixtures";
 
@@ -120,7 +121,7 @@ test.describe("password links", () => {
     await other.getByTestId("password-prompt-submit").click();
     await expect(prompt).toHaveCount(0, { timeout: 15_000 });
     await expect(other.getByTestId("shared-banner")).toBeVisible();
-    await expect(other.getByTestId("example-picker")).toHaveValue("shared");
+    await expect(other.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", "shared");
     await expect(other.getByTestId("diagram-title")).toHaveText(ex.title);
     for (const id of ex.nodeIds) await expect(other.getByTestId(`node-${id}`)).toBeVisible();
     for (const id of ex.edgeIds) await expect(other.getByTestId(`edge-${id}`)).toBeAttached();
@@ -227,7 +228,7 @@ test.describe("password links", () => {
     const other = await context.newPage();
     await other.goto(link);
     await expect(other.getByTestId("password-prompt")).toBeVisible({ timeout: pageLoadTimeout() });
-    const before = await other.getByTestId("example-picker").inputValue();
+    const before = await currentDiagram(other);
     for (const close of ["cancel", "escape"] as const) {
       if (close === "escape") {
         await other.reload();
@@ -243,7 +244,7 @@ test.describe("password links", () => {
       await release(other, "decrypt");
       await other.waitForTimeout(500);
       await expect(other.getByTestId("shared-banner")).toHaveCount(0);
-      await expect(other.getByTestId("example-picker")).toHaveValue(before);
+      await expect(other.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", before);
       await expect(other, "the link stays, so a reload asks again").toHaveURL(/#e=v1\./);
     }
 
@@ -312,7 +313,7 @@ test.describe("password links", () => {
       history.pushState(null, "", `?view=canvas&example=${slug}${location.hash}`);
       window.dispatchEvent(new PopStateEvent("popstate"));
     }, target.slug);
-    await expect(other.getByTestId("example-picker")).toHaveValue(target.slug);
+    await expect(other.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", target.slug);
     await expect.poll(() => requested).toBe(true);
 
     // The unlock finishes first: it says so and opens nothing.
@@ -321,7 +322,7 @@ test.describe("password links", () => {
       timeout: 15_000,
     });
     await expect(other.getByTestId("shared-banner")).toHaveCount(0);
-    await expect(other.getByTestId("example-picker")).toHaveValue(target.slug);
+    await expect(other.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", target.slug);
 
     // Then the diagram asked for arrives, and stays.
     arrive();
@@ -348,7 +349,7 @@ test.describe("password links", () => {
       history.pushState(null, "", `?view=canvas&example=${slug}${location.hash}`);
       window.dispatchEvent(new PopStateEvent("popstate"));
     }, target.slug);
-    await expect(other.getByTestId("example-picker")).toHaveValue(target.slug);
+    await expect(other.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", target.slug);
     // The picker shows a pending choice at once; the diagram opens once its example has downloaded (slow under load).
     await expect(other.getByTestId("diagram-title")).toHaveText(target.title, { timeout: pageLoadTimeout() });
     await release(other, "decrypt");
@@ -356,7 +357,7 @@ test.describe("password links", () => {
       timeout: 15_000,
     });
     await expect(other.getByTestId("shared-banner")).toHaveCount(0);
-    await expect(other.getByTestId("example-picker")).toHaveValue(target.slug);
+    await expect(other.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", target.slug);
     await expect(other).toHaveURL(/#e=v1\./);
   });
 
@@ -373,7 +374,7 @@ test.describe("password links", () => {
     const other = await context.newPage();
     await other.goto(link);
     await expect(other.getByTestId("password-prompt")).toBeVisible({ timeout: pageLoadTimeout() });
-    const before = await other.getByTestId("example-picker").inputValue();
+    const before = await currentDiagram(other);
     await other.evaluate(() => (window.__blockShared = true));
     await other.getByTestId("password-prompt-input").fill(PASSWORD);
     await other.getByTestId("password-prompt-submit").click();
@@ -381,7 +382,7 @@ test.describe("password links", () => {
     await expect(other.getByTestId("password-prompt")).toBeVisible();
     await expect(other).toHaveURL(/#e=v1\./);
     await expect(other.getByTestId("shared-banner")).toHaveCount(0);
-    await expect(other.getByTestId("example-picker")).toHaveValue(before);
+    await expect(other.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", before);
     // Storage recovers: the same prompt opens it.
     await other.evaluate(() => (window.__blockShared = false));
     await other.getByTestId("password-prompt-submit").click();

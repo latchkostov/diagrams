@@ -1,3 +1,5 @@
+import { resourcePlan, type ResourcePlan } from "./resourcePlanning";
+import { replicaRange, resourceCapacity } from "../model/autoscaling";
 import { englishAssignmentLabel, recordAssignment, type ConsumerAssignment, type BrokerSpec } from "../model/brokers";
 import type { DiagramFile, DiagramNode, SimRole, Simulation } from "../model/types";
 import { stencilRole } from "../stencils/roles";
@@ -18,6 +20,7 @@ import { iterationBound } from "./iterationBound";
 import { admissionCapacities } from "./admissionPlanning";
 
 export interface NodeCapacity {
+  resourcePlan?: ResourcePlan;
   managed?: boolean;
   status?: Exclude<NodeStatus, "up">;
   id: string;
@@ -79,9 +82,14 @@ const serviceRate = (entry: Entry, replicas = entry.active, endpointId?: string)
       entry.props.admission.endpoints.find((e) => e.id === endpointId)?.behaviour?.latencyMs ??
       entry.props.admission.api.latencyMs ??
       entry.props.latencyMs;
-    return slots === 0 ? 0 : time ? (slots * 1000) / time : Infinity;
+    const admission = slots === 0 ? 0 : time ? (slots * 1000) / time : Infinity;
+    return entry.props.resources
+      ? Math.min(admission, replicas * resourceCapacity(entry.props.resources, entry.props.concurrency, time))
+      : admission;
   }
   if (entry.role === "processor") {
+    if (entry.props.resources)
+      return replicas * resourceCapacity(entry.props.resources, entry.props.concurrency, entry.props.latencyMs);
     const slots = replicas * entry.props.concurrency;
     return !slots ? 0 : entry.props.latencyMs ? (slots * 1000) / entry.props.latencyMs : Infinity;
   }
@@ -167,6 +175,8 @@ function compatibleScale(demand: { rate: number; consumers: string[] }[], capaci
 }
 
 export interface CapacityOptions {
+  /** Current eligible fleet, only for resource-enabled live nodes. Omitted means configured initial capacity. */
+  readyReplicas?: Readonly<Record<string, number>>;
   /** Node statuses right now (a live run's chaos), overriding the setup's and the diagram's. */
   status?: Readonly<Record<string, NodeStatus | undefined>>;
 }
@@ -186,7 +196,12 @@ export function analyzeCapacity(
     const role = stencilRole(input.stencil);
     const raw = { ...input.props, ...simulation?.setup?.props?.[input.id] };
     const props = resolveProps(role, input.label, raw, input.stencil, diagram.planning);
-    const replicas = Math.max(1, Math.round(props.replicas * capacityMultiplier));
+    const replicas =
+      props.resources && options.readyReplicas?.[input.id] !== undefined
+        ? options.readyReplicas[input.id]
+        : props.autoscaling?.mode === "on"
+          ? replicaRange(props.autoscaling.controller, capacityMultiplier).initial
+          : Math.max(1, Math.min(props.resources ? 10_000 : Infinity, Math.round(props.replicas * capacityMultiplier)));
     const status = options.status?.[input.id] ?? simulation?.setup?.status?.[input.id] ?? raw.status;
     entries.set(input.id, {
       input,
@@ -226,7 +241,9 @@ export function analyzeCapacity(
             id,
             count,
             broker.props.broker?.partitioned &&
-              (diagram.planning?.revision === "p2" || diagram.planning?.revision === "p3")
+              (diagram.planning?.revision === "p2" ||
+                diagram.planning?.revision === "p3" ||
+                diagram.planning?.revision === "p3-a1")
               ? broker.props.broker
               : undefined,
           );
@@ -381,6 +398,7 @@ export function analyzeCapacity(
       label: entry.input.label,
       role: entry.role,
       ...(!entry.up ? { status: entry.down ? ("down" as const) : ("paused" as const) } : {}),
+      resourcePlan: resourcePlan(entry.props, offered, entry.active, capacityMultiplier),
       capacity,
       offered,
       utilization: ratio(offered, capacity),
@@ -426,6 +444,23 @@ export function analyzeCapacity(
   );
   for (const [id, capacity] of admissionCapacities(managed, diagram.planning)) {
     nodes[id].capacity = Math.min(nodes[id].capacity, capacity);
+    const entry = entries.get(id)!;
+    if (entry.props.resources && entry.up) {
+      const policy = entry.props.admission!;
+      const baseTime = policy.api.latencyMs ?? entry.props.latencyMs;
+      const duration = (incoming.get(id) ?? []).reduce(
+        (sum, edge) =>
+          sum +
+          (connections[edge.id] ?? 0) *
+            (policy.endpoints.find((e) => e.id === edge.endpointId)?.behaviour?.latencyMs ?? baseTime),
+        total(external.get(id)) * baseTime,
+      );
+      const meanTime = nodes[id].offered > 0 ? duration / nodes[id].offered : baseTime;
+      nodes[id].capacity = Math.min(
+        nodes[id].capacity,
+        entry.active * resourceCapacity(entry.props.resources, entry.props.concurrency, meanTime),
+      );
+    }
     nodes[id].utilization = ratio(nodes[id].offered, nodes[id].capacity);
   }
   // Prefer the service over its broker when their limits tie; it is the actionable diagnosis.
@@ -453,7 +488,9 @@ export function analyzeCapacity(
       const broker = constraint.broker;
       const desired = [...constraint.allocations.keys()].reduce((sum, id) => sum + entries.get(id)!.replicas, 0);
       suggestion =
-        diagram.planning?.revision === "p2" || diagram.planning?.revision === "p3"
+        diagram.planning?.revision === "p2" ||
+        diagram.planning?.revision === "p3" ||
+        diagram.planning?.revision === "p3-a1"
           ? `${broker.input.sublabel ?? broker.input.label}: ${englishAssignmentLabel(broker.props.broker)} → ${desired}`
           : `${bottleneck.label}: ${bottleneck.idleReplicas} of ${bottleneck.replicas} replicas idle - add partitions to ${broker.input.sublabel ?? broker.input.label} (${broker.props.partitions} -> ${desired})`;
     }

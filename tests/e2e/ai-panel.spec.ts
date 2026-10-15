@@ -1,16 +1,12 @@
-import { test, expect, gotoCanvas, expectNoErrors, STORAGE_KEYS } from "./fixtures";
+import { currentDiagram, openExample } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
 import { MOD, SLUG, must, nodeCount, openAdvanced, savedDiagram } from "./ai-helpers";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-/** Where "payments" is in flow coordinates: the saved edits, or the example as shipped when there are none. */
+/** Payments' persisted flow coordinate, following promotion into an owned copy. */
 async function paymentsX(page: import("@playwright/test").Page) {
-  const saved = (await savedDiagram(page))?.nodes.find((n) => n.id === "payments");
-  if (saved) return (saved as unknown as { x: number }).x;
-  const original = JSON.parse(readFileSync(join(process.cwd(), "src/examples/kafka-order-pipeline.json"), "utf8")) as {
-    nodes: { id: string; x: number }[];
-  };
   return must(
-    original.nodes.find((n) => n.id === "payments"),
+    (await savedDiagram(page)).nodes.find((node) => node.id === "payments"),
     "payments",
   ).x;
 }
@@ -169,14 +165,22 @@ test.describe("AI panel dock", () => {
     await openAdvanced(page);
     await applyTurn(page, "Add a billing worker", ADD_WORKER);
     // Corrupt this diagram's stored conversation: one turn with a broken snapshot, one not a turn at all.
-    await page.evaluate(() => {
-      const key = Object.keys(localStorage).find((k) => k.startsWith("diagrams.ai-thread.v1:"));
-      if (!key) throw new Error("no stored conversation");
-      localStorage.setItem(
-        key,
-        JSON.stringify({ turns: [{ id: "t1", request: "Old", kind: "change", after: { nodes: "oops" } }, 7] }),
-      );
-    });
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+    await page.evaluate(
+      (slug) => {
+        const session = JSON.parse(localStorage.getItem(`diagrams.doc.v1:${slug.slice(3)}`) ?? "null") as {
+          sessionId?: string;
+        } | null;
+        if (!session?.sessionId) throw new Error("no stored document session");
+        const key = `diagrams.ai-thread.v1:${session.sessionId}`;
+        if (!localStorage.getItem(key)) throw new Error("no stored conversation");
+        localStorage.setItem(
+          key,
+          JSON.stringify({ turns: [{ id: "t1", request: "Old", kind: "change", after: { nodes: "oops" } }, 7] }),
+        );
+      },
+      await currentDiagram(page),
+    );
     await page.reload();
     await expect(page.getByTestId("ai-turn-0")).toContainText("Old");
     await expect(page.getByTestId("ai-turn-1")).toHaveCount(0);
@@ -221,11 +225,11 @@ test.describe("AI panel dock", () => {
     await expect(page.getByTestId("ai-turn-0-undo")).toHaveCount(0);
 
     // Not in the diagram's saved file (so not in exports or share links).
-    const raw = await page.evaluate((key) => localStorage.getItem(key) ?? "", STORAGE_KEYS.autosavePrefix + SLUG);
+    const raw = JSON.stringify(await savedDiagram(page));
     expect(raw).not.toContain("Add a billing worker");
 
     // Another diagram has its own (empty) thread.
-    await page.getByTestId("example-picker").selectOption({ index: 1 });
+    await openExample(page, "aws-fanout");
     await expect(page.getByTestId("ai-empty")).toBeVisible();
     await page.goBack();
     await expect(page.getByTestId("ai-turn-0")).toBeVisible();

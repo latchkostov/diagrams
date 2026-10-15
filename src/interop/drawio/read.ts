@@ -653,8 +653,18 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
     }
   }
   const defaultName = /^page-\d+$/i.test(page.name);
+  let planning: DiagramFile["planning"];
+  if (meta.dg_planning) {
+    try {
+      // The import front door validates the revision with the rest of the document.
+      planning = JSON.parse(meta.dg_planning) as DiagramFile["planning"];
+    } catch {
+      warnings.push("Planning settings in this file couldn't be read and were dropped.");
+    }
+  }
   const diagram: DiagramFile = {
-    format: DIAGRAM_FORMAT,
+    format: planning && meta.dg_format === "diagrams/v2" ? "diagrams/v2" : DIAGRAM_FORMAT,
+    ...(planning ? { planning } : {}),
     title: defaultName ? fallbackTitle : page.name,
     ...(meta.dg_description ? { description: meta.dg_description } : {}),
     ...(isColorValue(meta.dg_color) ? { color: meta.dg_color } : {}),

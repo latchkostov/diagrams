@@ -41,7 +41,7 @@ describe("paletteHost", () => {
     expect(paletteHost.runSimulation("peak")).toBe(true);
     expect(live.goLive).toHaveBeenCalledTimes(1);
     expect(live.toggle).not.toHaveBeenCalled();
-    expect(paletteHost.get().pendingRun).toBe("peak");
+    expect(paletteHost.get().pendingRun).toEqual({ documentId: undefined, simulationId: "peak" });
     offLive();
   });
   it("can't run a simulation without a live view", () => {
@@ -49,4 +49,24 @@ describe("paletteHost", () => {
     expect(paletteHost.runSimulation("peak")).toBe(false);
     expect(paletteHost.get().pendingRun).toBeNull();
   });
+});
+
+it("a newer gallery request supersedes a palette run during session loading", () => {
+  paletteHost.reset();
+  const goLive = vi.fn();
+  publish("live", { toggle: vi.fn(), goLive });
+  expect(paletteHost.runSimulation("palette-run")).toBe(true);
+  expect(paletteHost.runSimulation("gallery-run")).toBe(true);
+  const run = vi.fn();
+  publish("session", { run });
+  expect(run.mock.calls).toEqual([["gallery-run"]]);
+  expect(paletteHost.get().pendingRun).toBeNull();
+});
+it("cancels a document-scoped gallery request before an unrelated session publishes", () => {
+  paletteHost.reset();
+  paletteHost.runSimulation("gallery-run", "example:target");
+  paletteHost.cancelRun();
+  const run = vi.fn();
+  publish("session", { run });
+  expect(run).not.toHaveBeenCalled();
 });

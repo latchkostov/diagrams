@@ -1,3 +1,4 @@
+import { resourcesSchema, autoscalingSchema, checkAutoscaling } from "./autoscalingSchema";
 import { checkJsonSchema, type JsonSchema } from "./jsonSchema";
 import type { NodeSimProps, EdgeSimProps } from "../sim/types";
 import { apiSchema, endpointsSchema, callerSchema, checkEndpoints, checkApi } from "./admissionSchema";
@@ -34,6 +35,9 @@ const time = { type: "number", minimum: 0, maximum: SIM_LIMITS.timeMs };
 const fraction = { type: "number", minimum: 0, maximum: 1 };
 // Field coverage is checked against the engine interfaces by TypeScript.
 const nodeProperties = {
+  resources: resourcesSchema,
+  autoscaling: autoscalingSchema,
+  resumeAutoscaling: { type: "boolean" },
   api: apiSchema,
   endpoints: endpointsSchema,
   scaling: { type: "string", enum: ["fixed", "auto"] },
@@ -161,6 +165,11 @@ export function propsProblem(value: unknown): string | undefined {
       if (Array.isArray(schema.enum)) return `${key} must be one of ${schema.enum.join(", ")}`;
       return `${key} must be ${schema.type === "number" ? "a number" : schema.type === "string" ? "text" : "a valid value"}`;
     }
+  }
+  try {
+    checkAutoscaling((value as Record<string, unknown>).resources, (value as Record<string, unknown>).autoscaling);
+  } catch (error) {
+    return error instanceof Error ? error.message : "Invalid autoscaling";
   }
   return undefined;
 }

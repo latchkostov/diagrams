@@ -16,6 +16,13 @@ pnpm parity sim checks # only parity files whose path contains "sim" or "checks"
 A filtered run skips the stale-golden check. The browser tier needs Docker running (see "Browser tier").
 Without it, `pnpm parity:node` still checks everything that doesn't need a browser.
 
+## Example gallery verification round (2026-10-15)
+
+These fixes change save-destination ownership, launch queuing, retained conversation memory and
+selection autosave scheduling. They deliberately change no diagram output. No golden is updated;
+the refreshed skill viewer's built script is already excluded from byte pinning, while its behavior
+remains covered by the existing viewer goldens.
+
 ## What's pinned
 
 Inputs are fixed: the public examples (`src/examples/*.json`, top level only: `src/examples/private/` is never listed
@@ -247,6 +254,60 @@ No simulation, check, export, import, layout or browser golden moved: every pinn
 and P3 keeps their behaviour exactly. The P3 corpus diagrams, the `rejected` counters and reasons, and the
 presets golden were added in the same change, so P3's own output is pinned from here on.
 
+### Autoscaling A1: what changed and why
+
+Rebasing A1 onto the harness changes only these existing goldens:
+
+- `node/skill/public-schemas.json`: `diagram.v1/v2.json` and `ops.v1.json` gain resource costs,
+  HPA configuration and the `p3-a1` revision; the v1 schema describes the optional properties while
+  native validation still requires the explicit v2/A1 opt-in for execution.
+- `node/agent/tools.json`: the real agent tools carry those same resource/HPA properties and revision.
+- `node/skill/files.json`: the generated format reference/spec describe A1; the generated stencil
+  reference's popularity order includes the added public example (browser, Kafka, Go workers and S3).
+- `node/i18n/catalogs.json`: English and all 37 catalogs gain A1 controls, resource/lifecycle readouts,
+  decision reasons and planning/check explanations; older messages retain their rendered output.
+- `node/skill/validate.txt`: six additional validation records, for the showcase and five frozen A1
+  diagrams. Earlier records and the deliberately invalid corpus results remain unchanged.
+
+No existing simulation, check, export, import, layout, browser or planning-upgrade golden changes.
+The first run caught a legacy arithmetic regression: multiplying replicas after dividing service
+time changed a rounding boundary and recommended 37 replicas instead of 36. The legacy operation
+order is restored and a negative-control regression test fails when the fix is removed.
+
+New goldens for `autoscaling-image-workers` cover all normal per-example surfaces, including its two
+saved bursts and free play, planning and explicit upgrade, checks and evidence, exports and round trips,
+agent scripts, traces, routes/layout and browser geometry. Its draw.io round trip also guards retention
+of the v2 planning revision. The only new geometry unit snapshot is this example's three connections.
+
+Five frozen `a1-*` corpus diagrams cover burst growth, the published 300 s scale-down stabilization
+window, maximum reached, eight replicas sharing three partitions, and an 8 s startup delay with backlog.
+They receive the normal corpus coverage. Seven additional `node/autoscaling/*` goldens (five corpus runs
+and two showcase simulations) pin every simulated second's desired/ready/starting/draining counts,
+active/idle replicas, backlog, completed work, controller decisions, actual English decision copy and
+configured resource explanations. The max scenario requires ten replicas at target with a maximum of
+two; its explanation cautions that startup and partitions still apply. The showcase's deliberately short
+sync/window/startup timings are saved in the input and disclosed in its description.
+
+### Autoscaling A1 round 2 review fixes (2026-10-15)
+
+All 1,552 goldens remain unchanged: legacy, non-autoscaling and A1 simulation, planning, export,
+import, agent, layout and browser outputs. No golden was re-recorded. Existing corpus scenarios do
+not exercise occupied-replica concurrency edits, retained resource retries through an outage,
+shrinking during a long startup, or invalid inspector/paste commits. Focused unit and production
+browser regressions cover those edge cases, plus numeric replica CPU readings. Operation-count
+negative controls cover sampled admission, startup hashing, drain readouts and page expansion.
+The released offline viewer is refreshed without changing its pinned legacy outputs or payloads.
+
+### Autoscaling A1 round 3 review fixes (2026-10-15)
+
+All 1,552 goldens match, with none changed, added, missing or stale. Legacy, non-autoscaling
+and A1 outputs retain their existing records. Frozen A1 runs do not save free-play inputs after advancing, pause individual lifecycle
+clocks, submit invalid editor/live batches or inspect paginated startup cohorts; dedicated
+regressions and deliberate reversions cover those cases. Memory and absolute CPU controller
+recommendations now have numerical tests at exact and sampled scales. The shared native/editor
+validator changes generated skill implementation code, which is deliberately not pinned; its
+public schemas, payloads and existing validation outputs remain unchanged.
+
 ### Adding an output
 
 Call `expectGolden` (data), `expectGoldenText` (text) or `expectGoldenBinary` (with a comparison)
@@ -289,3 +350,109 @@ volume and takes a few minutes). On CI, add the image pull and an install inside
   - the node card's gap 12 → 11 px (`src/styles/app.css`): 46 browser goldens (render, layout, SVG structure, PNG
     at 0.37%, the HTML viewer).
 - **Flake check:** five full runs in a row, no differences.
+
+## Autoscaling A1 round 4 (2026-10-15)
+
+Three shared contract/catalog goldens intentionally change:
+
+- `node/skill/public-schemas.json`: diagram v1/v2 schema hashes and the v2 definition list change.
+  Resource/autoscaling properties are forbidden before p3-a1, including simulation setup/timeline
+  patches. V2 adds legacy property/simulation definitions for its older revisions; the general patch
+  schema is unchanged.
+- `node/i18n/catalogs.json`: the A1 CPU-work refusal recovery message adds one English source key.
+  The per-language message count and autoscaling-area hash change, and untranslated languages count
+  its English fallback. No other language area changes.
+
+- `node/skill/current-stencils.json`: rebasing onto the six new master showcases regenerates the
+  current stencil usage ranking with the existing A1 showcase included. The old aggregate skill
+  inputs remain frozen at their existing 18 examples, so `skill/files.json` and `skill/validate.txt`
+  stay unchanged; the six new showcase validations keep master's individual coverage.
+
+Every simulation/controller, planning, check, trace, route, layout, export, import and browser golden
+is unchanged, including all A1 scenarios. The runtime fixes exercise edge cases outside the frozen
+runs; their failing-without-the-fix regressions and per-step invariants cover them separately. No
+simulation golden was re-recorded to accommodate a failure.
+
+## Autoscaling A1 final verification (2026-10-15)
+
+No golden changes: the CPU/admission and retained-retry corrections apply to failure paths outside
+the frozen corpus. Routing and endpoint duration regressions, equivalent real retry workloads at
+exact and sampled scales, and the expanded per-step seeded oracle cover these corrections. Each
+regression was checked with its fix temporarily removed. The resource-less p3-to-A1 compatibility
+test also rejects a deliberately broken upgrade playback path.
+
+The drain sweep, cached interval keys and indexed check targets preserve every existing output;
+operation-count regressions reject the old work patterns. The refreshed offline viewer carries the
+runtime corrections, while viewer implementation bytes are excluded from its semantic goldens as
+before. No output was re-recorded to make a failure pass.
+
+## Autoscaling A1 refusal recovery review (2026-10-15)
+
+### Final review follow-up
+
+Allocation-only preflight replaces full-state rollback checkpoints without changing recorded output.
+Operation-count tests reject checkpoints for unrelated edits and bound preflight to three allocation
+fields per node regardless of queued messages; the deep-graph regression rejects recursive cloning.
+The seeded refusal probe now edits replicas (an allocation input) rather than concurrency, retaining
+all no-op and next-step replay assertions. Fixed/overridden readiness completion and two-sided sampled
+memory bounds have focused regressions. No golden is re-recorded for these fixes.
+
+### Rebase onto Examples gallery and diagram picker (#118)
+
+Generated skill inputs and the marketplace started from master's files, then `pnpm schemas` and
+`pnpm skill:release` regenerated the combined feature set with plugin 1.1.23. Both documentation
+histories and both Lab fixtures are retained. Golden conflicts took master's complete files;
+none was hand-merged.
+
+The first full parity run found only `node/i18n/catalogs.json` different. `pnpm parity:update`
+re-records exactly that catalog summary: master's 1,689 messages become 1,757 in all 38 records
+through the 67 A1 messages and the Autoscaling gallery label. Only `admission`, `autoscaling` and
+`examples` hashes change. All 37 language catalogs translate the new label; fallback counts remain
+unchanged. The gallery's `shows` metadata derives the autoscaling tag from explicit A1 resources
+and enabled HPA, rather than vendor icons; this metadata does not alter exported diagrams.
+
+The other five shared metadata goldens already carrying A1 stay unchanged: public schemas retain
+the A1 resource/HPA and legacy revision contracts; agent tools carry the same properties; skill
+files retain the A1 format/spec and frozen stencil ranking; the current stencil ranking includes
+the A1 showcase; validation retains its six additional A1 records. All 127 A1-specific additions
+and every simulation, planning, check, trace, layout, import, export and browser golden remain
+unchanged. All 1,761 records remain present, including the eight existing browser deferrals.
+
+The pre-rebase run matches all 1,761 goldens, with none changed, added, missing or stale. These
+local fixes cover refused runner operations (including slow-motion forecast recovery), occupied concurrency reductions, replacement admission
+and staged editor identities outside the frozen corpus. The speech regression is covered by the
+production browser suite. Each fix has a failing deliberate-reversion regression. No golden was
+re-recorded for these fixes; the refreshed viewer changes implementation bytes only.
+
+### Rebase onto nested boundaries and zones (#115)
+
+Generated conflicts started from master's complete files, then `pnpm schemas` and `pnpm skill:release`
+rebuilt the combined contracts and viewer (plugin 1.1.22, one patch above master's 1.1.21). Golden
+conflicts took master's files whole; no golden was hand-merged. The first complete parity run found
+only `node/skill/public-schemas.json` and `node/i18n/catalogs.json` different, and `pnpm parity:update`
+re-recorded exactly those two. All 1,761 records remain present. No diagram-output golden changes,
+including every legacy diagram and all six master showcases; the eight existing browser deferrals
+remain exactly as recorded above.
+
+Relative to master, the six changed shared goldens are:
+
+- `node/skill/public-schemas.json`: combined schema hashes/sizes retain boundary and annotation parent
+  fields and add A1 resources, HPA and revision contracts. V1 and pre-A1 v2 revisions forbid resource
+  execution properties; v2 adds `LegacyNodeProps` and `LegacySimulation`. Ops retains A1 property patches.
+- `node/agent/tools.json`: agent tool contracts include the same resource/HPA properties and revision.
+- `node/i18n/catalogs.json`: 67 A1 English keys add the autoscaling area and increase message counts
+  from 1,672 to 1,739 in all 38 records (37 translated languages and the pseudo-locale). Fallback
+  counts stay unchanged: the new English-only CPU-budget message is offset by translating the existing
+  `admission.invalidNumber` message. Only the admission/autoscaling area hashes change; master's
+  edit/chrome messages and the per-message output golden remain intact.
+- `node/skill/files.json`: the generated format reference and spec include A1; the frozen stencil
+  reference ranks the original examples with the A1 showcase. Other pinned skill files are unchanged.
+- `node/skill/current-stencils.json`: the current public stencil ranking includes both master's six
+  showcases and the A1 showcase. The legacy aggregate inputs remain frozen.
+- `node/skill/validate.txt`: one valid A1 showcase and five valid frozen A1 corpus diagrams add six
+  validation records; existing records and invalid-input diagnostics are unchanged.
+
+The 127 A1-specific goldens added earlier in this PR remain unchanged by the rebase and review fixes.
+Released viewer and generated application implementation bytes remain outside semantic parity. The
+combined build folds the persisted-resource validator into the preloaded `groupHierarchy` chunk;
+startup tests pin its presence, keep controllers lazy and preserve the entry size budget.

@@ -1,5 +1,62 @@
 # Release notes
 
+## Example gallery integration with master (#118, 2026-10-15)
+
+- Rebased the gallery onto nested boundaries and zones (#115), the six showcases (#120) and the
+  nightly reliability fixes (#121). Both Lab presets and both sides of the design/release history remain.
+- Showcase metadata uses the existing tags: Partitions for partitions-vs-subscriptions and
+  shared-worker-pool, Network devices for contoso-dmz, and Rate limits for shared-api-quotas. Rate-limit
+  discovery now recognizes explicit positive API quotas as well as rate-limiter stencils. The measured
+  capacity and serverless concurrency examples stay untagged: none of the existing tags describes them.
+- Regenerated the agent skill and HTML viewer; plugin 1.1.22 is exactly one patch above master.
+- Parity: only `node/i18n/catalogs.json` changed. It combines both PRs' messages: 1,689 per language,
+  retaining master's nested-boundary `edit` hashes and adding the gallery's 17-message `examples` area
+  in all 38 languages. All other 1,633 goldens are unchanged; the eight existing browser deferrals remain.
+
+## Autoscaling A1 final review fixes (2026-10-15)
+
+- Timeline lifecycle edits preflight allocation configuration before advancing. Unrelated edits
+  take no rollback checkpoint; preflight retains only three allocation fields per node, independent
+  of queued traffic and graph depth. Refusal still preserves the entire caller-visible operation.
+- Scaling speech announces startup completion even for fixed fleets and manual replica overrides,
+  while coalescing intermediate jittered readiness changes. No controls or chrome were added.
+- Continue refusal recovery now has controller coverage, including an exactly-once retry. Sampled
+  retained-memory estimates must stay within 5% of exact memory in both directions.
+- These review fixes preserve every parity golden; deliberate regressions verify the new guards.
+- Rebased onto the Examples gallery and diagram picker (#118), retaining both features and both
+  documentation histories. Autoscaling now filters to the existing Kafka worker showcase, with
+  its label translated in all 37 catalogs. Regenerated from master's skill files and released
+  plugin 1.1.23, exactly one patch above master. The policy-persistence browser check follows the
+  gallery's owned copy after the first edit; the DLQ browser check waits for the live topology
+  reload before injecting, so the reload cannot discard its new traffic.
+- Rebase parity re-records only `node/i18n/catalogs.json`: 67 existing A1 messages plus the new
+  Autoscaling tag raise master's message count from 1,689 to 1,757; only admission, autoscaling and
+  examples hashes change, with fallback counts unchanged. The five other A1 metadata goldens
+  (public schemas, agent tools, skill files, current stencil ranking and validation records) and all
+  127 A1-specific additions remain unchanged. All diagram-output goldens match. See `docs/PARITY.md`.
+
+## Autoscaling A1 refusal recovery review fixes (2026-10-15)
+
+- Refused timeline edits and Continue actions restore the entire run before pausing. Correcting the
+  live inputs and trying again preserves pending actions, traffic credits and simulation time.
+  Slow-motion forecasting stops on refusal so its sandbox restores before publishing.
+- Lowering concurrency preserves sampled memory for existing reservations until they finish; new
+  work still respects the lower limit. The seeded oracle detects replacement admissions above it
+  and checks that refused actions are a no-op, including the next successful step.
+- Scaling speech updates at controller syncs instead of every readiness frame. Staged editor changes
+  preserve unchanged node and connection identities, avoiding whole-diagram updates while typing.
+- No parity goldens change for these fixes; frozen scenarios do not exercise these transitions.
+  Refreshed the offline viewer; plugin 1.1.22 is one patch above master. Both nested boundaries/zones
+  and A1 behaviour are retained. The startup assertion follows resource validation into the existing
+  preloaded hierarchy chunk, with the validator explicitly pinned and entry budget unchanged.
+- Rebase parity regenerated only `node/skill/public-schemas.json` (combined hierarchy/A1 schema
+  hashes, sizes and legacy definitions) and `node/i18n/catalogs.json` (A1 messages and the existing
+  numeric-error translation). Other shared changes relative to master remain A1's
+  `node/agent/tools.json` (resource/HPA contracts), `node/skill/files.json` (A1 format/spec and frozen
+  stencil ranking), `node/skill/current-stencils.json` (A1 showcase popularity), and
+  `node/skill/validate.txt` (six A1 validation records). All 127 A1-specific additions are unchanged;
+  no non-autoscaling diagram output changes, including the six master showcases. Details: `docs/PARITY.md`.
+
 ## Nested boundaries final verification (#115, 2026-10-15)
 
 - Removed boundary and annotation parents stay removed after autosave and library duplication.
@@ -36,6 +93,65 @@
   error adds one message in all 38 languages and updates their `edit` hashes.
   Diagram, simulation, layout, export and browser goldens remain unchanged.
 
+## Example gallery verification fixes (2026-10-15)
+
+- An example's completed Save destination belongs only to its mounted session and first owned copy.
+  Reopening the original asks for a new destination, including when the first copy is Private. Legacy
+  example bindings stay stored but are no longer reused: they cannot identify which copy owns the file.
+  Late saves from an unmounted original cannot attach to a reopened session.
+- Gallery and command-palette simulation launches share one document-scoped queue; the latest request
+  wins while Live loads. Navigation cancels requests for the previous diagram.
+- Example conversation snapshots and parsed threads share the four-entry memory cache. Mounted
+  conversations stay pinned; inactive entries reload from storage, including its snapshot-free fallback.
+- Selection-only changes no longer schedule an immediate example autosave. Gallery tests tolerate
+  additional local entries through a synthetic Lab catalog, and pending device/cloud saves are covered
+  through the actual controller. No new controls or chrome.
+- No parity goldens change. Diagram, simulation, layout, export, agent and language output is unchanged.
+  Refreshed the agent skill viewer; marketplace version remains 1.1.21 (one patch above master).
+
+Verification: 6,535 unit checks pass (four existing skips). The production browser sweep passed 398
+checks and found two old persistent-binding assertions; those assertions now check the owned file,
+and all 35 follow-up checks pass. Deliberate regressions fail for every finding. All 1,634 parity
+goldens match, with the eight previously documented browser deferrals.
+
+## Example gallery round 5: copy-only promotion (2026-10-15)
+
+- Promotion copies the current conversation into a new document with a fresh identity. It never
+  changes or deletes the example's conversation, session marker, autosave or destination. Examples
+  keep a stable identity; legacy keys are read-only fallbacks. Other tabs keep their work.
+- Removed session migration, its retries and identity caches, and promotion-time cleanup. Old entries
+  remain: they are small, and reclaiming them is unnecessary risk to live tabs. The canvas mount stays
+  separate from document identity, preserving Undo, unread AI counts, copy naming and gallery flows.
+- Conversation saves and promotion share the snapshot-dropping storage fallback. Failed publication
+  rolls back only the new copy; the existing storage notice and retry preserve pending edits. Pending
+  saves follow their first copy once, for the operation's lifetime; Private copies block cloud writes.
+- All six round-5 findings are addressed, consolidating the three reports of the same cross-tab loss.
+  Ownership rotation, conditional deletion, migration debouncing and cleanup timers were rejected in
+  favor of eliminating those transitions. The lazy-load race gate matches development and build URLs.
+- No parity goldens change: diagram, simulation, layout, export, agent and language outputs are unchanged.
+  The skill viewer is refreshed; plugin version 1.1.21 is exactly one patch above master.
+
+## Autoscaling A1 final verification fixes (2026-10-15)
+
+- Keyboard Save commits a valid focused autoscaling number before taking the document snapshot;
+  incomplete and refused drafts keep their existing validation and remain editable.
+- Admission settings and endpoint durations now intersect CPU execution capacity in routing and the
+  capacity overlay. Sampled in-place retries retain memory through backoff and repeated attempts.
+- Sampled downscales sweep removed cohorts once per attempt, and CPU intervals cache their budget
+  keys. Checks index resource-warning targets once. These performance fixes preserve output.
+- Run validates the complete simulation draft against its diagram before replacing the current run.
+  Runtime lifecycle refusals pause playback with the existing recoverable notice. Correcting a draft
+  or restarting remains available.
+- Queued insertions report their staged acceptance and commit their nodes and edges together. HPA
+  policy history records actual applied changes after reconciliation. Lowering concurrency preserves
+  existing reservations while gating new work, including under invariant verification.
+- Selected-node scaling announcements remain accessible with Live details closed, without adding
+  visible controls. The seeded fuzzer now checks CPU capacity with admission, retained retry memory
+  and concurrency edits; a resource-less p3-to-A1 regression covers exact and sampled playback.
+- Refreshed the offline skill viewer; plugin version remains one patch above master (1.1.21).
+- No parity goldens change. The frozen scenarios do not exercise these failure paths; focused
+  regressions, deliberate reversions and the expanded fuzzer cover them without re-recording output.
+
 ## Showcase review fixes (2026-10-15)
 
 - Phone Live menus and expectation summaries remain visible and usable with Inputs open. Inputs stays
@@ -58,6 +174,59 @@
   retains its per-key run counts. Cancellation tests keep the same traffic on a smaller canvas.
 - Application output is unchanged; no parity goldens changed.
 
+## Autoscaling A1 round 4 review fixes (2026-10-15)
+
+- HPA owns replica editing consistently in single and mixed bulk selections. Refused capacity inputs
+  announce recovery guidance and retain the previous accepted inputs.
+- Retry refusals release reservations; disabling resources clears working, queued and staged attempts.
+  Memory metrics include the final processing quantum, paused retries retain their backoff, and small
+  fleets make progress under fractional percentage downscale policies.
+- Sampled CPU accounting has a shared 20,000-part limit, checked before allocations and lifecycle
+  splits. Excess work waits without losing messages; the existing live notice explains recovery,
+  including scripted/manual bursts. Metric windows are cached until their actual membership changes;
+  readiness defers replica-index rebuilds until an inspector requests a page. Aggregate and per-replica
+  inspector readings share one clock when opened between live publications.
+- Persisted resource schemas now require p3-a1, including simulation setup and timeline patches.
+  The general edit-property schema remains separate. A 200-seed per-step invariant suite runs with
+  unit tests; nightly expands it to 5,000 seeds and failures print a reduced reproduction. Seed 3
+  additionally found a missing pause timestamp when resources are enabled on a paused service.
+- Three shared parity goldens change for A1 contracts/copy and the rebased example inventory: `node/skill/public-schemas.json`
+  records revision-aware diagram v1/v2 schemas; `node/i18n/catalogs.json` records the added A1 CPU
+  recovery message and its English fallbacks; `node/skill/current-stencils.json` combines the A1
+  showcase with six showcases from the rebase in the current stencil ranking. All diagram outputs,
+  including every A1 run, and all
+  browser goldens remain unchanged. Details: [round 4 review](research/autoscaling-a1-round4-review.md).
+
+## Autoscaling A1 round 3 review fixes (2026-10-15)
+
+- Saving Capacity × now applies the saved HPA policy and multiplier together, preserving the running
+  fleet. Paused services retain startup time and draining grace, including sampled work and checkpoints.
+- Node creation, paste, duplicate and property edits share persisted-resource validation with native
+  reads. Invalid null settings, older-model A1 properties and oversized merged fleets are refused;
+  a refused A1 paste offers the model-upgrade preview. Unrelated property typing skips resource
+  schemas and lifecycle-budget scans. Live overrides preflight the whole proposed allocation.
+- Model previews switch independently with accurate disclosure states. Replica pagination uses an
+  ID/rank index for jittered startup, avoiding repeated scans during inspector refresh.
+- No parity goldens changed: legacy, non-autoscaling and A1 outputs remain identical. Existing frozen
+  runs do not include these save/pause/invalid-edit cases; regression tests cover them separately.
+  The offline viewer is refreshed; plugin 1.1.20 is one patch above current master.
+
+## Example gallery round 4 review fixes (2026-10-15)
+
+- A failed conversation migration keeps the mounted canvas identity through storage recovery.
+  Pending edits, promotion, autosave, Undo and Redo survive without remounting the canvas.
+- Examples retain one durable reload conversation. Mounted tabs keep independent snapshots;
+  promotion transfers the conversation into its owned diagram. Abandoned generations are reclaimed,
+  while active tabs and library-owned conversations remain available. Clear and Delete reclaim their data.
+- Public gallery runs wait for their document's live session and cancel after navigation, so an earlier
+  run cannot replace another diagram's requested simulation. No controls or visible wording were added.
+- Browser persistence assertions share one reader that follows the current owned slug, unwraps sessions
+  and requires a diagram. Cross-tab coverage awaits the receiving storage event and rendered library update.
+- All nine review findings were confirmed, with duplicate reports consolidated into five fixes.
+  No findings were rejected. Durable example conversations avoid adding ownership leases or cleanup timers.
+- No parity goldens change in this round. The skill viewer was refreshed, with plugin version 1.1.20
+  (one patch above master); diagram, simulation, planning, layout, export, agent and language outputs stay unchanged.
+
 ## Toolchain review fixes (2026-10-15)
 
 - CI and nightly share pnpm/Node setup, dependency caching and frozen installs. `package.json` owns
@@ -66,6 +235,39 @@
   during dependency verification, without rewriting the lockfile. App output and parity goldens are unchanged.
 - Interactive HTML parity fits the settled viewer explicitly, avoiding a startup-framing race; its
   existing goldens remain unchanged.
+
+## Autoscaling A1 round 2 review fixes (2026-10-15)
+
+- Concurrency edits refresh replica availability, and work waits for a successful reservation.
+  Starting replicas cannot reverse a shrink recommendation into growth. Retained retries respect
+  delivery limits during outages without requiring CPU progress. Enabling resources queues existing
+  work that does not fit the new fleet.
+- Numeric and Advanced JSON edits validate complete resource/policy candidates. Incomplete optional
+  numbers preserve saved values with feedback, metric windows account for delay, and JSON stays
+  left to right in RTL languages. Paste, duplicate and single/bulk resource edits reject a merged
+  lifecycle budget that could not reopen, preserving queued edits and giving recovery guidance.
+- Sampled admissions avoid rescanning unchanged work, jitter hashes node identity once per fleet,
+  draining readouts use maintained counts, and replica pages expand only their fifty requested rows.
+  Exact replica CPU readings now match the aggregate before and after fifteen seconds.
+- All 1,552 parity goldens remain unchanged, including legacy, non-autoscaling and A1 outputs; none
+  were re-recorded. Existing corpus scenarios do not trigger these corrected edge cases. See
+  `docs/PARITY.md` and `docs/research/autoscaling-a1-round2-review.md` for the full accounting.
+- Refreshed the released offline viewer; plugin version is 1.1.19, one patch above merged master.
+
+## Autoscaling A1 review preparation (2026-10-14)
+
+- Added **Image workers absorb a burst**, a public Kafka/HPA example with two saved simulations.
+  Workers start, backlog builds and drains within ten simulated seconds; selected Live details show
+  replica history. Short controller timings are explicit teaching assumptions.
+- Restored exact legacy capacity arithmetic: workers without resources retain their replica
+  recommendations, including exact rounding boundaries. draw.io round trips now preserve a v2
+  A1 diagram's planning revision so reopening an A1 export keeps resource execution enabled.
+- Parity changes are confined to A1's public/agent schemas, skill format/spec and the example-driven
+  stencil ranking, i18n catalogs with A1 messages, and the validator's six new input records.
+  New goldens cover the public showcase and five frozen A1 scenarios, including per-second replica
+  counts and explanations for bursts, the five-minute downscale window, maximum reached, idle replicas
+  beyond partitions and delayed startup. All existing simulation, check, export, import, layout,
+  browser and planning-upgrade goldens remain unchanged. The full accounting is in `docs/PARITY.md`.
 
 ## Public feature showcases (2026-10-14)
 
@@ -90,6 +292,58 @@
   remain enabled. No existing browser case is excluded.
 - Refreshed the stale offline skill viewer; plugin 1.1.20 is one patch above master.
 
+## Example gallery final review fixes (2026-10-15)
+
+- Pending cloud saves follow their initiating session into its owned copy. Marking that copy Private,
+  including through New diagrams are private, cancels before provider loading or an upload can finish.
+  Privacy checks and destination binding use the same ownership resolver.
+- Each tab keeps an independent example session, Save destination, canvas and Undo history. Promoting
+  one tab preserves another tab's pending edits; each can keep its own copy. Reloads retain conversation
+  snapshots while assigning the new mounted session its own identity.
+- Copy creation, library publication and source-session rotation now roll back together on storage
+  failure. The first edit still saves immediately; failed retries debounce and show storage guidance once.
+- Open and Run it move keyboard focus to the destination canvas after downloading an example.
+  Dismissing the gallery still returns focus to its opener. No controls were added.
+- No output goldens change in this round. Diagram, simulation, layout, export, agent and language
+  outputs stay unchanged; the earlier gallery catalog golden change remains documented below.
+  The agent viewer is refreshed; plugin version is 1.1.20, one patch above master.
+
+## Example gallery review fixes (2026-10-15)
+
+- Editing an example keeps its existing device or cloud Save destination. A Save that finishes after
+  the edit binds to that owned copy, even after another example session has opened.
+- Legacy example conversations, including Revert snapshots, migrate together with retained autosaves
+  to a durable session. Reloading preserves the conversation; first-edit promotion carries it into
+  Your diagrams. Legacy cloud Save bindings migrate too. A failed migration retains the source data
+  and retries later; promotion publishes a fresh example identity so other tabs reject stale writes.
+- Shared work always has a picker row, and older saved work remains reachable through Your diagrams
+  overflow. Regression tests cover both paths and starting/restarting the currently mounted example.
+- The copy notice stacks inside the canvas clear of stencil controls and action toasts. Run it includes
+  its translated visible label in its accessible name. Ordinary autosaves reuse their serialized diagram.
+- These fixes change no output goldens. The gallery feature's existing catalog golden change is described
+  in the entry below; diagram, simulation, layout, export and agent outputs remain unchanged.
+  The agent viewer is refreshed; plugin version remains 1.1.19, one patch above master.
+
+## Example gallery (2026-10-14)
+
+- The diagram picker now focuses on Your diagrams, with New diagram and a separate Browse examples entry.
+  Recent work is capped, the current diagram stays visible, and the full library remains one step away.
+- Browse examples opens a lazy gallery from the picker or start card: thumbnails, short descriptions,
+  theme groups, search and a small translated Shows filter. Open edits a diagram; Run it starts its first
+  saved simulation in Live. Keyboard navigation, focus return and narrow layouts work in both themes.
+- An open original is labelled Example. Its first edit creates an owned copy in Your diagrams,
+  using “(copy)” unless you chose a new title. It keeps Undo/Redo and live playback, and shows a quiet notice without replacing an action's Undo toast.
+  Reloading a copy and returning to its source opens a pristine example; undone edits stay undone after reload.
+  A cleared title becomes an owned Untitled diagram while its input stays empty for typing. Slow example
+  downloads keep the edited copy mounted.
+- New gallery copy is translated in all 37 locale catalogs. The development-only catalog remains available
+  through its existing picker area and the gallery, using the generic catalog boundary. Its saved runs
+  start in memory without putting simulation identifiers in the URL, even transiently.
+- Output parity changes only `tests/parity/goldens/node/i18n/catalogs.json`: the 17 new gallery messages add
+  an `examples` area hash and increase the message count by 17 in each of the 38 languages, including the
+  pseudo-locale. Existing area hashes and fallback counts are unchanged. Diagram, simulation, export,
+  layout and agent output goldens are unchanged. The agent viewer is refreshed; plugin version is 1.1.19.
+
 ## Self-hosting review fixes (2026-10-14)
 
 - Cloudflare Pages preserves static assets through its native SPA fallback. Legacy and target header files
@@ -97,6 +351,17 @@
 - Embed code uses the prepared deployment base on deep routes; nginx redirects stay relative behind HTTPS proxies.
 - Hosting-only Docker settings reuse the compiled app layer. Concurrent smoke checks own their containers
   and assigned ports, and clean up only their own container IDs, including after a failed start.
+
+## Autoscaling A1: resources, replica lifecycle and HPA (2026-10-14)
+
+- Opt into resource costs and Kubernetes HPA with a lesson, target and replica range. CPU work and limits
+  affect execution; memory risks remain explicit. Other settings live under Advanced.
+- Replicas start and drain on simulation time. CPU/memory readouts, replica history and selected replica
+  pages explain current readiness and scaling decisions. Partition limits and managed allocation still apply.
+- Checks and planning share resource arithmetic, including max-reached and unfixable baseline-memory
+  explanations. Older diagrams keep their behaviour until an explicit, undoable model upgrade.
+- Native files, agent operations, clipboard and the offline viewer preserve A1. All new UI text is translated
+  into all 37 locales. KEDA, cloud adapters and scenario policy sizing are later milestones.
 
 ## Planning P3 final review fixes (2026-10-14)
 

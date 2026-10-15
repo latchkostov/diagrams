@@ -49,7 +49,7 @@ function DiagramNodeImpl({
 }: NodeProps<DiagramFlowNode>) {
   useLocale();
   const { nodeVariant } = useSettings();
-  const { rename, grow } = useDiagram();
+  const { rename, grow, presenting } = useDiagram();
   const single = useStore(selected && grow ? (s: ReactFlowState) => soleSelectedNode(s) === id : never);
   const stencil = getStencil(data.stencil);
   const unknown = stencil === FALLBACK_STENCIL;
@@ -71,7 +71,7 @@ function DiagramNodeImpl({
         stencilName={stencilLabel(stencil)}
         label={data.label}
         sublabel={data.sublabel}
-        selected={selected}
+        selected={selected && !presenting}
         unknown={unknown}
       />
       {SIDES.map((side) => (

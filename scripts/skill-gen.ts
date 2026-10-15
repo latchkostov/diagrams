@@ -49,6 +49,12 @@ const NODE_PROP_NOTES: Record<string, string> = {
   preset:
     "immutable preset id: processor-lesson (assumption) or device-size (existing approximate size preset); resolved values are pinned alongside",
   presetRevision: "pinned preset revision (1 for P1); unsupported revisions are refused",
+  resources:
+    "A1 measured/assumed CPU-ms per real attempt, CPU request/limit in millicores, memory in MiB, startup/grace; optional single container name; atomic replacement. Effective fleet <=10000 and authored document lifecycle budget <=100000. Requires planning revision p3-a1.",
+  autoscaling:
+    "A1 node-owned Kubernetes HPA resource controller; min/max/initial, metrics, tolerance and rolling behaviour; metric window plus delay <=600000 ms. Native serverless allocation remains P3-owned. Atomic replacement.",
+  resumeAutoscaling:
+    "repeatable command: true resumes HPA after an authored replicas patch enters fixed override; not retained in engine state",
   connections: "store connection ceiling, distinct from active query slots; planning metadata, not enforced in P1",
   ingestUnits:
     "broker provisioned ingest units, in the profile's native unit; metadata only, no vendor hard ingest ceiling in P2",

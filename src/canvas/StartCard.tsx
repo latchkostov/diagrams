@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Icon } from "../components/Icon";
 import { DiagramThumbnail } from "../components/DiagramThumbnail";
 import type { Thumb } from "../lib/thumbnail";
@@ -38,6 +37,7 @@ export interface StartOptions {
   onPaste: () => void;
   /** Opens the full "Your diagrams" list. */
   onLibrary: () => void;
+  onBrowseExamples: () => void;
 }
 
 /** Recent diagrams shown on the card; the rest are one click away in Your diagrams. */
@@ -51,12 +51,8 @@ const RECENT_MAX = 3;
 export function StartCard({ start, onBlank }: { start: StartOptions; onBlank: () => void }) {
   useLocale();
   const recent = start.recent.slice(0, RECENT_MAX);
-  const [allExamples, setAllExamples] = useState(false);
   const all = start.examples.flatMap((section) => section.items);
   const featured = all.filter((ex) => ex.featured);
-  // With nothing featured (or nothing more to show), the card simply lists every example.
-  const expandable = featured.length > 0 && featured.length < all.length;
-  const expanded = !expandable || allExamples;
   const exampleRow = (ex: StartExample) => (
     <StartRow
       key={ex.slug}
@@ -99,36 +95,13 @@ export function StartCard({ start, onBlank }: { start: StartOptions; onBlank: ()
 
       <div className="start-heading">
         <h3>{t("start.examples")}</h3>
-        {expandable && (
-          <button
-            className="link-btn start-all"
-            onClick={() => setAllExamples((v) => !v)}
-            aria-expanded={allExamples}
-            data-testid="start-all-examples"
-          >
-            {allExamples ? t("start.fewer") : t("start.allExamples")}
-            {!allExamples && <Icon name="chevron-right" size={12} />}
-          </button>
-        )}
+        <button className="link-btn start-all" onClick={start.onBrowseExamples} data-testid="start-all-examples">
+          {t("examples.browse")} <Icon name="chevron-right" size={12} />
+        </button>
       </div>
-
-      {expanded ? (
-        start.examples.map(({ theme, items }) => (
-          <div key={theme?.id ?? ""} className="start-section" data-testid={`start-theme-${theme?.id ?? "other"}`}>
-            {theme && <h4 className="start-theme">{theme.label}</h4>}
-            <ul
-              className={`start-examples${expandable ? " is-compact" : ""}`}
-              aria-label={theme?.label ?? t("start.examples")}
-            >
-              {items.map(exampleRow)}
-            </ul>
-          </div>
-        ))
-      ) : (
-        <ul className="start-examples" aria-label={t("start.featured")}>
-          {featured.map(exampleRow)}
-        </ul>
-      )}
+      <ul className="start-examples" aria-label={t("start.featured")}>
+        {(featured.length ? featured : all).map(exampleRow)}
+      </ul>
 
       {/* Teaches the infrastructure import in place (docs/research/imports.md): the one line it adds. */}
       <p className="start-note" data-testid="start-import-hint">

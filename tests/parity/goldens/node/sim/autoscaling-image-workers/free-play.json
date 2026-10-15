@@ -1,0 +1,207 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "replicas": [1, 1, 0] },
+        "uploads": { "lag": { "thumbnails": 0 }, "replicas": [1, 1, 0] },
+        "worker": { "replicas": [1, 1, 0] },
+        "images": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 2,
+      "nodes": {
+        "source": { "processed": 40, "throughput": 4.498078543015311, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 39,
+          "throughput": 3.538268275513526,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "worker": { "processed": 38, "inFlight": 1, "throughput": 3.573769286949732, "replicas": [1, 1, 0] },
+        "images": { "processed": 38, "throughput": 3.6826067650411773, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 2,
+      "nodes": {
+        "source": { "processed": 80, "throughput": 4.49828275546523, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 79,
+          "throughput": 3.538474540332686,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "worker": { "processed": 78, "inFlight": 1, "throughput": 3.574036797999521, "replicas": [1, 1, 0] },
+        "images": { "processed": 78, "throughput": 3.682882423015316, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 2,
+      "nodes": {
+        "source": { "processed": 120, "throughput": 4.4982827647364605, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 119,
+          "throughput": 3.5384745496970944,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "worker": { "processed": 118, "inFlight": 1, "throughput": 3.574036810144503, "replicas": [1, 1, 0] },
+        "images": { "processed": 118, "throughput": 3.6828824355301677, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 2,
+      "nodes": {
+        "source": { "processed": 160, "throughput": 4.498282764736878, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 159,
+          "throughput": 3.5384745496975167,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "worker": { "processed": 158, "inFlight": 1, "throughput": 3.574036810145053, "replicas": [1, 1, 0] },
+        "images": { "processed": 158, "throughput": 3.682882435530734, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 2,
+      "nodes": {
+        "source": { "processed": 200, "throughput": 4.498282764736878, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 199,
+          "throughput": 3.5384745496975167,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "worker": { "processed": 198, "inFlight": 1, "throughput": 3.574036810145053, "replicas": [1, 1, 0] },
+        "images": { "processed": 198, "throughput": 3.682882435530734, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 2,
+      "nodes": {
+        "source": { "processed": 240, "throughput": 4.498282764736878, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 239,
+          "throughput": 3.5384745496975167,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "worker": { "processed": 238, "inFlight": 1, "throughput": 3.574036810145053, "replicas": [1, 1, 0] },
+        "images": { "processed": 238, "throughput": 3.682882435530734, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 2,
+    "real": {
+      "source": { "processed": 240, "throughput": 4.498282764736878, "replicas": [1, 1, 0] },
+      "uploads": {
+        "processed": 239,
+        "throughput": 3.5384745496975167,
+        "lag": { "thumbnails": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "worker": { "processed": 238, "inFlight": 1, "throughput": 3.574036810145053, "replicas": [1, 1, 0] },
+      "images": { "processed": 238, "throughput": 3.682882435530734, "replicas": [1, 1, 0] }
+    },
+    "edges": { "publish": 239, "consume": 239, "save": 238 }
+  },
+  "events": {
+    "total": 1671,
+    "byKind": { "process": 955, "deliver": 716 },
+    "byNode": {
+      "source": { "process": 240 },
+      "uploads": { "deliver": 239, "process": 239 },
+      "worker": { "deliver": 239, "process": 238 },
+      "images": { "deliver": 238, "process": 238 }
+    },
+    "perSecond": [
+      "fc4072ba89a9",
+      "1363bb8af394",
+      "551ff6ce84cc",
+      "41f5431f36cf",
+      "67fe6de26ef6",
+      "800c611ccd74",
+      "bed28d5b1f3a",
+      "8a7f1c6b39d1",
+      "bff62df4b1a5",
+      "0f66eade2433",
+      "79b1af11e40c",
+      "8faf66570ff1",
+      "716416625b1f",
+      "29616f3d3a7a",
+      "73d8949ef1e5",
+      "5b3584c3d476",
+      "92902989c4d8",
+      "df158efb332f",
+      "25827bdfc201",
+      "0617165c2823",
+      "47a9ea73521a",
+      "c45b765ac099",
+      "8412651ae676",
+      "4a54d5bdfac8",
+      "dfda42f48603",
+      "9e6b1cd64dc0",
+      "78496c1cfc79",
+      "5354d3a64091",
+      "7e1a97ad2055",
+      "99e21f921fb8",
+      "8c4545e36929",
+      "4b7a0a59840c",
+      "77db3a20b0db",
+      "fd9b18f2f421",
+      "6b40f9e2572f",
+      "84678408a625",
+      "8693889462e1",
+      "31d89cbd90b5",
+      "939c7f895d89",
+      "222f1cca5bc7",
+      "5a148d2f8d0d",
+      "48b67d20f591",
+      "8ec6c7c10223",
+      "b1a387aa4a60",
+      "18afd635dd53",
+      "deb679b30da1",
+      "6aaf2aa0fc02",
+      "a86ebe8e3611",
+      "5fb31465df58",
+      "2388095950fd",
+      "3714fbd1e290",
+      "31a76f420dd5",
+      "e8f43c4dc7a0",
+      "bf6dcb77255a",
+      "81d3b12b5b84",
+      "1a6019753c36",
+      "b8c66977dbf2",
+      "a0c129c331c0",
+      "0846737d8ee6",
+      "a36ac729db61",
+      "41b8ba406137"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 238, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 238, "min": 300, "mean": 300, "p50": 300, "p90": 300, "max": 300 },
+    "waitMs": {
+      "worker": { "count": 238, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "images": { "count": 238, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    },
+    "processMs": {
+      "worker": { "count": 238, "min": 250, "mean": 250, "p50": 250, "p90": 250, "max": 250 },
+      "images": { "count": 238, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    }
+  }
+}

@@ -3,8 +3,9 @@ import { t } from "../i18n";
 import { kindLabel, relationNoun } from "../i18n/chrome";
 import { annotationGeometryMessage, relationChangeMessage } from "./editMessages";
 import { useLayoutEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { createResourceValidator } from "../model/resourceValidation";
 import { newPlanningProps } from "../model/planning";
-import { useReactFlow, type ReactFlowInstance } from "@xyflow/react";
+import { useReactFlow, useStoreApi, type ReactFlowInstance } from "@xyflow/react";
 import { flushSync } from "react-dom";
 import {
   annotationToFlow,
@@ -186,7 +187,13 @@ export interface EditorDeps {
 
 export function useEditor(deps: EditorDeps): EditorApi {
   const rf = useReactFlow<FlowNode, DiagramFlowEdge>();
-  const [editor] = useState(() => createEditor(rf, deps));
+  const store = useStoreApi<FlowNode, DiagramFlowEdge>();
+  const [editor] = useState(() =>
+    createEditor(rf, deps, {
+      getNodes: () => store.getState().nodes,
+      getEdges: () => store.getState().edges,
+    }),
+  );
   useLayoutEffect(() => {
     editor.updateDeps(rf, deps);
   });
@@ -214,9 +221,29 @@ function withGroup(n: FlowNode, group: string | undefined): FlowNode {
   return n;
 }
 
-export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, initialDeps: EditorDeps) {
+export function createEditor(
+  rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>,
+  initialDeps: EditorDeps,
+  committed: Pick<ReactFlowInstance<FlowNode, DiagramFlowEdge>, "getNodes" | "getEdges"> = rf,
+) {
   let latest = initialDeps;
-  const deps = () => latest;
+  // Stage editor updates in call order: React's node/edge queues may commit independently later.
+  let stagedNodes: FlowNode[] | undefined;
+  let stagedEdges: DiagramFlowEdge[] | undefined;
+  // Read the store arrays: React Flow's public getters clone every element. A render ends the batch.
+  const currentNodes = () => stagedNodes ?? committed.getNodes();
+  const currentEdges = () => stagedEdges ?? committed.getEdges();
+  const setNodes: EditorDeps["setNodes"] = (update) => {
+    const current = currentNodes();
+    stagedNodes = typeof update === "function" ? update(current) : update;
+    latest.setNodes(stagedNodes);
+  };
+  const setEdges: EditorDeps["setEdges"] = (update) => {
+    const current = currentEdges();
+    stagedEdges = typeof update === "function" ? update(current) : update;
+    latest.setEdges(stagedEdges);
+  };
+  const deps = () => ({ ...latest, setNodes, setEdges });
   const box = (n: FlowNode): Box => ({
     id: n.id,
     x: n.position.x,
@@ -224,6 +251,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     width: n.measured?.width ?? n.width ?? deps().nodeSize.width,
     height: n.measured?.height ?? n.height ?? deps().nodeSize.height,
   });
+  const pendingIds = new Set<string>();
   const diagram = () => fromFlow(deps().meta, rf.getNodes(), rf.getEdges());
   const directMembers = (groupId: string): FlowNode[] => rf.getNodes().filter((n) => n.data.group === groupId);
   const expandSelection = (sel: Partial<Selection>, allNodes: readonly FlowNode[]) => {
@@ -245,6 +273,45 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       nodeIds: [...nodeIds],
       flowIds,
     };
+  };
+
+  const validateResources = createResourceValidator();
+  const explainModelRequired = () =>
+    notify(t("autoscaling.modelRequired"), {
+      action: {
+        label: t("autoscaling.upgrade"),
+        testId: "toast-model-upgrade",
+        run: () => {
+          setSelected({});
+          deps().openInspector("autoscaling-upgrade-preview");
+        },
+      },
+    });
+  const acceptNodes = (nodes: FlowNode[]): boolean => {
+    const error = validateResources({
+      ...deps().meta,
+      nodes: nodes.filter(isDiagram).map((n) => ({ id: n.id, props: n.data.props })),
+    });
+    if (!error) return true;
+    if (error === t("autoscaling.modelRequired")) explainModelRequired();
+    else notify(error);
+    return false;
+  };
+  /** One preflight and queued transaction boundary for every insertion, including its edges. */
+  const commitNodes = (
+    update: (nodes: FlowNode[]) => FlowNode[],
+    updateEdges: (edges: DiagramFlowEdge[]) => DiagramFlowEdge[],
+  ): boolean => {
+    const current = currentNodes(),
+      candidate = update(current);
+    if (!acceptNodes(candidate)) return false;
+    const edges = updateEdges(currentEdges());
+    const existing = new Set([...current.map((n) => n.id), ...currentEdges().map((e) => e.id)]);
+    const reserved = [...candidate, ...edges].map((item) => item.id).filter((id) => !existing.has(id));
+    for (const id of reserved) pendingIds.add(id);
+    setNodes(candidate);
+    setEdges(edges);
+    return true;
   };
   const hint = (merge?: string) => deps().history.hint(merge);
   /**
@@ -290,10 +357,14 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
 
   /** Inserts a payload moved by `offset`, selected. Returns old flow id → new flow id (null: refused). */
   const insert = (p: ClipboardPayload, offset: XY): Map<string, string> | null => {
+    if (p.planning?.revision === "p3-a1" && deps().meta.planning?.revision !== "p3-a1") {
+      explainModelRequired();
+      return null;
+    }
     const ns = rf.getNodes();
     if (ns.filter(isAnnotation).length + (p.annotations?.length ?? 0) > ANNOTATION_LIMITS.maxAnnotations) return null;
     const taken = {
-      nodes: new Set(ns.filter(isPlaced).map((n) => n.id)),
+      nodes: takenIds(),
       groups: new Set(ns.filter(isGroup).map((n) => n.data.groupId)),
       edges: new Set(rf.getEdges().map((e) => e.id)),
     };
@@ -313,22 +384,22 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     const joining = new Set(
       [...nodes, ...notes].filter((n) => !(n.data.group && newGroups.has(n.data.group))).map((n) => n.id),
     );
-    deps().setNodes(
-      (cur) =>
-        settled(
-          [
-            ...notes.filter((n) => n.data.kind === "zone"),
-            ...cur.map((n) => (n.selected ? { ...n, selected: false } : n)),
-            ...groupNodes,
-            ...foregroundLayerOrder(r).map((id) => foreground.get(id)!),
-          ],
-          joining,
-        ).nodes,
-    );
-    deps().setEdges((cur) => [
-      ...cur.map((e) => (e.selected ? { ...e, selected: false } : e)),
-      ...r.edges.map(edgeToFlow),
-    ]);
+    if (
+      !commitNodes(
+        (cur) =>
+          settled(
+            [
+              ...notes.filter((n) => n.data.kind === "zone"),
+              ...cur.map((n) => (n.selected ? { ...n, selected: false } : n)),
+              ...groupNodes,
+              ...foregroundLayerOrder(r).map((id) => foreground.get(id)!),
+            ],
+            joining,
+          ).nodes,
+        (cur) => [...cur.map((e) => (e.selected ? { ...e, selected: false } : e)), ...r.edges.map(edgeToFlow)],
+      )
+    )
+      return null;
     const ids = new Map<string, string>();
     p.nodes.forEach((n, i) => ids.set(n.id, r.nodes[i].id));
     (p.annotations ?? []).forEach((a, i) => ids.set(a.id, r.annotations![i].id));
@@ -351,8 +422,14 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     ...p.groups.map((g) => ({ x: g.x, y: g.y, width: g.width, height: g.height })),
   ];
   /** Ids in use: nodes, notes, boundaries and connections share one id space (validateDiagram). */
-  const takenIds = () =>
-    new Set([...rf.getNodes().map((n) => (isGroup(n) ? n.data.groupId : n.id)), ...rf.getEdges().map((e) => e.id)]);
+  const takenIds = () => {
+    const committed = [
+      ...rf.getNodes().map((n) => (isGroup(n) ? n.data.groupId : n.id)),
+      ...rf.getEdges().map((e) => e.id),
+    ];
+    for (const id of committed) pendingIds.delete(id);
+    return new Set([...pendingIds, ...committed]);
+  };
   /**
    * What a copy stays off: cards, notes and shapes (not boundaries, zones or text, which things may sit
    * on) and the drawn edges. `skip` leaves out the copy itself: its nodes and the edges between them.
@@ -433,10 +510,11 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     return { nodes: changed ? nodes : ns, left: s.left };
   };
   /** Adds `node` (selected, the rest deselected), settled into the boundary around it (grown to hold it). */
-  const addSettled = (node: FlowNode) =>
-    deps().setNodes(
+  const addSettled = (node: FlowNode, edges: (cur: DiagramFlowEdge[]) => DiagramFlowEdge[]) =>
+    commitNodes(
       (cur) =>
         settled([...cur.map((n) => (n.selected ? { ...n, selected: false } : n)), node], new Set([node.id])).nodes,
+      edges,
     );
   /** One function for every annotation patch (one or many). */
   const patchAnnotation = (
@@ -667,8 +745,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
           props: newPlanningProps(s.simRole, deps().meta.planning, s.id),
         },
       };
-      addSettled(node);
-      deps().setEdges((cur) => cur.map((e) => (e.selected ? { ...e, selected: false } : e)));
+      addSettled(node, (cur) => cur.map((e) => (e.selected ? { ...e, selected: false } : e)));
       return id;
     },
 
@@ -753,8 +830,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     },
     setNodesProps: (ids, patch, opts) => {
       const set = new Set(ids);
-      hint(opts?.merge);
-      deps().setNodes((ns) =>
+      const update = (ns: FlowNode[]) =>
         ns.map((n) =>
           set.has(n.id) && isDiagram(n)
             ? {
@@ -768,8 +844,13 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
                 },
               }
             : n,
-        ),
-      );
+        );
+      if (!acceptNodes(update(rf.getNodes()))) return;
+      hint(opts?.merge);
+      deps().setNodes((ns) => {
+        const next = update(ns);
+        return acceptNodes(next) ? next : ns;
+      });
     },
     updateGroups: (ids, patch, opts) => {
       const set = new Set(ids);
@@ -783,10 +864,19 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       );
     },
     updateNode: (id, patch, opts) => {
+      if (
+        "props" in patch &&
+        !acceptNodes(
+          rf
+            .getNodes()
+            .map((n) => (n.id === id && isDiagram(n) ? { ...n, data: { ...n.data, props: patch.props } } : n)),
+        )
+      )
+        return;
       hint(opts?.merge);
       if (patch.stencil) reinferEdges(new Map([[id, patch.stencil]]));
-      deps().setNodes((ns) =>
-        ns.map((n) => {
+      deps().setNodes((ns) => {
+        const next = ns.map((n) => {
           if (n.id !== id || !isDiagram(n)) return n;
           const data = { ...n.data };
           if ("stencil" in patch && patch.stencil) data.stencil = patch.stencil;
@@ -798,19 +888,11 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
           const y = patch.y ?? n.position.y;
           const position = x === n.position.x && y === n.position.y ? n.position : { x, y };
           return { ...n, data, position };
-        }),
-      );
+        });
+        return "props" in patch && !acceptNodes(next) ? ns : next;
+      });
     },
-    setNodeProps: (id, patch, opts) => {
-      hint(opts?.merge);
-      deps().setNodes((ns) =>
-        ns.map((n) =>
-          n.id === id && isDiagram(n)
-            ? { ...n, data: { ...n.data, props: withoutUndefined({ ...n.data.props, ...patch }) } }
-            : n,
-        ),
-      );
-    },
+    setNodeProps: (id, patch, opts) => api.setNodesProps([id], patch, opts),
     updateEdge: (id, patch, opts) => api.updateEdges([id], patch, opts),
     updateEdges: (ids, patch, opts) => {
       const targets = new Set(ids);
@@ -977,8 +1059,8 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       const edge = newEdge(a, b, rf.getEdges());
       const merge = `new:${id}`;
       beginCreation(merge);
-      addSettled(node);
-      deps().setEdges((cur) => [...cur.map((e) => (e.selected ? { ...e, selected: false } : e)), edge]);
+      if (!addSettled(node, (cur) => [...cur.map((e) => (e.selected ? { ...e, selected: false } : e)), edge]))
+        return null;
       explainEdge(edge);
       return { id, edge: edge.id, merge };
     },
@@ -1018,8 +1100,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       if (!r) return null;
       const merge = `new:${id}`;
       beginCreation(merge);
-      addSettled(node);
-      deps().setEdges(r.edges.map((x) => (x.selected ? { ...x, selected: false } : x)));
+      if (!addSettled(node, () => r.edges.map((x) => (x.selected ? { ...x, selected: false } : x)))) return null;
       return { id, edge: null, merge };
     },
     nameNew: (make, fallback) => {
@@ -1592,6 +1673,8 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     updateDeps: (flow: ReactFlowInstance<FlowNode, DiagramFlowEdge>, next: EditorDeps) => {
       rf = flow;
       latest = next;
+      stagedNodes = undefined;
+      stagedEdges = undefined;
     },
   };
 }

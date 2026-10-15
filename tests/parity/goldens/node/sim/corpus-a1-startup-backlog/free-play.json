@@ -1,0 +1,192 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "replicas": [1, 1, 0] },
+        "uploads": { "lag": { "thumbnails": 0 }, "replicas": [1, 1, 0] },
+        "worker": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 2,
+      "nodes": {
+        "source": { "processed": 40, "throughput": 4.498078543015311, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 39,
+          "throughput": 3.538268275513526,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "worker": { "processed": 38, "inFlight": 1, "throughput": 3.573769286949732, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 2,
+      "nodes": {
+        "source": { "processed": 80, "throughput": 4.49828275546523, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 79,
+          "throughput": 3.538474540332686,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "worker": { "processed": 78, "inFlight": 1, "throughput": 3.574036797999521, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 2,
+      "nodes": {
+        "source": { "processed": 120, "throughput": 4.4982827647364605, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 119,
+          "throughput": 3.5384745496970944,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "worker": { "processed": 118, "inFlight": 1, "throughput": 3.574036810144503, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 2,
+      "nodes": {
+        "source": { "processed": 160, "throughput": 4.498282764736878, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 159,
+          "throughput": 3.5384745496975167,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "worker": { "processed": 158, "inFlight": 1, "throughput": 3.574036810145053, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 2,
+      "nodes": {
+        "source": { "processed": 200, "throughput": 4.498282764736878, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 199,
+          "throughput": 3.5384745496975167,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "worker": { "processed": 198, "inFlight": 1, "throughput": 3.574036810145053, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 2,
+      "nodes": {
+        "source": { "processed": 240, "throughput": 4.498282764736878, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 239,
+          "throughput": 3.5384745496975167,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "worker": { "processed": 238, "inFlight": 1, "throughput": 3.574036810145053, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 2,
+    "real": {
+      "source": { "processed": 240, "throughput": 4.498282764736878, "replicas": [1, 1, 0] },
+      "uploads": {
+        "processed": 239,
+        "throughput": 3.5384745496975167,
+        "lag": { "thumbnails": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "worker": { "processed": 238, "inFlight": 1, "throughput": 3.574036810145053, "replicas": [1, 1, 0] }
+    },
+    "edges": { "publish": 239, "consume": 239 }
+  },
+  "events": {
+    "total": 1195,
+    "byKind": { "process": 717, "deliver": 478 },
+    "byNode": {
+      "source": { "process": 240 },
+      "uploads": { "deliver": 239, "process": 239 },
+      "worker": { "deliver": 239, "process": 238 }
+    },
+    "perSecond": [
+      "655a51d2f1ce",
+      "1114aadcaf3c",
+      "d695a22030ff",
+      "c9ddd0bbad4a",
+      "c94307e155a4",
+      "343317436ee1",
+      "fe29bfc48f46",
+      "1e1430f45ac8",
+      "0380128d69e7",
+      "82fb9a7d57ad",
+      "2711ed33dd48",
+      "c434946a9630",
+      "82e3688dd1a5",
+      "362dec61c63a",
+      "1ca901a34bbd",
+      "2ee862dc4ec6",
+      "54bbe3c844d0",
+      "7563d6db940d",
+      "42c7927041d3",
+      "ca3cfb4bcab0",
+      "b9c7904f858e",
+      "564c67e993c9",
+      "adc435296d77",
+      "944e92d4892c",
+      "794d002af21d",
+      "ee89b2f39de1",
+      "87965fa51ba6",
+      "4a58245aaaad",
+      "0466ed7c60f8",
+      "e178f0179e37",
+      "2c63d9750c8f",
+      "04a604f9f183",
+      "aab09dc17332",
+      "0f6fd52dcd76",
+      "702da443077e",
+      "aab66a877273",
+      "e5ecb4c04dd9",
+      "c0c520473898",
+      "66bea8466b58",
+      "75e9bfe20640",
+      "003e1d840baa",
+      "fd72e940c327",
+      "d933f326cc9b",
+      "afaa85c5a684",
+      "c11957d06db8",
+      "5e9b6b819c01",
+      "ba25ecc09347",
+      "3692023f8196",
+      "81cc3b32cfd6",
+      "ed90c40b7841",
+      "5744cdffcd08",
+      "702c0975ffd9",
+      "f2055e72676f",
+      "18a44d4ed8ef",
+      "07a2d7613e2a",
+      "e874d83d43f3",
+      "477fd61dc3d5",
+      "7a52614c0a4c",
+      "ebdf2e0fdb09",
+      "b8bf4ce76f54",
+      "41b8ba406137"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 238, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 238, "min": 270, "mean": 270, "p50": 270, "p90": 270, "max": 270 },
+    "waitMs": { "worker": { "count": 238, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 } },
+    "processMs": { "worker": { "count": 238, "min": 250, "mean": 250, "p50": 250, "p90": 250, "max": 250 } }
+  }
+}

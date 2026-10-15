@@ -108,7 +108,11 @@ export function NodeBadges({
             cap={capacity?.nodes[n.id]}
             assignment={assignments.consumers.get(n.id)?.spec}
             brokerSpec={assignments.brokers.get(n.id)}
-            currentModel={diagram.planning?.revision === "p2" || diagram.planning?.revision === "p3"}
+            currentModel={
+              diagram.planning?.revision === "p2" ||
+              diagram.planning?.revision === "p3" ||
+              diagram.planning?.revision === "p3-a1"
+            }
             concurrency={props?.concurrency ?? 0}
             units={props?.device && props.device.ha !== "standalone" ? HA_LABEL[props.device.ha] : undefined}
             groups={
@@ -275,6 +279,10 @@ const NodeBadge = memo(function NodeBadge({
       style={style}
       data-testid={`node-badge-${node.id}`}
       data-status={s.status}
+      data-ready={s.fleet?.ready}
+      data-starting={s.fleet?.starting}
+      data-desired={s.fleet?.desired}
+      data-cpu={s.resources?.cpuRequestPct}
       data-processed={s.processed}
       data-backlog={s.backlog}
       data-inflight={s.inFlight}
@@ -311,7 +319,7 @@ const NodeBadge = memo(function NodeBadge({
         </div>
       )}
 
-      {(active || (cap && cap.level !== "idle") || !!s.idleReplicas) && (
+      {(active || (cap && cap.level !== "idle") || !!s.idleReplicas || !!s.fleet) && (
         <div className="lv-strip">
           {!showMetric ? null : broker ? (
             <span
@@ -351,6 +359,16 @@ const NodeBadge = memo(function NodeBadge({
           {s.failingOver && (
             <span className="lv-metric is-failover" data-testid={`node-failover-${node.id}`}>
               failing over
+            </span>
+          )}
+          {s.fleet && (
+            <span className="lv-metric" data-testid={`node-fleet-${node.id}`}>
+              {s.fleet.starting
+                ? t("autoscaling.startingBadge", s.fleet)
+                : s.fleet.draining
+                  ? t("autoscaling.drainingBadge", s.fleet)
+                  : t("autoscaling.badge", s.fleet)}
+              {s.fleet.decision?.reason === "max" && <> · {t("autoscaling.maxReached")}</>}
             </span>
           )}
           <IdleChip id={node.id} idle={s.idleReplicas ?? 0} replicas={s.replicas ?? 0} assignment={assignment} />

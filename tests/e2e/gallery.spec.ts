@@ -174,7 +174,8 @@ test.describe("gallery", () => {
     await page.getByTestId("stencil-tile-aws.sqs").click();
     await page.getByTestId("drawer-add").click();
     await expect(page.getByTestId("canvas-view")).toBeVisible();
-    await expect(page.getByTestId("diagram-title")).toHaveText("Kafka order pipeline");
+    // The current diagram is an example, so the first edit makes it your own copy.
+    await expect(page.getByTestId("diagram-title")).toHaveText("Kafka order pipeline (copy)");
     await expect(page.getByTestId("node-sqs-1")).toBeVisible();
     // A normal, undoable edit.
     await page.getByTestId("undo-button").click();

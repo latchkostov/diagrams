@@ -1,3 +1,4 @@
+import { publicExamplesOnly } from "./scripts/public-examples-only";
 import { defineConfig, type Plugin } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import { execSync } from "node:child_process";
@@ -131,6 +132,7 @@ export default defineConfig({
   // Relative base so the build can be served from any sub-path (e.g. latchkostov.com/tools/diagrams/).
   base: "./",
   plugins: [
+    ...(process.env.VITEST ? [publicExamplesOnly()] : []),
     // Messages inlined where they're used, each language a lazy catalog (src/i18n, docs/I18N.md).
     i18n(),
     exampleMetadataPlugin(),

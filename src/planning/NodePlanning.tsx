@@ -61,7 +61,10 @@ export function NodePlanning({
   );
   const state = provided ?? subscribed;
   const d = current.diagram ?? live?.controller.currentDiagram;
-  const observed = state?.snapshot.nodes[id];
+  const published = state?.snapshot.nodes[id];
+  // Replica rows read the current engine. Keep resource totals on that same clock when an inspector opens
+  // between UI publications; explicitly provided snapshots still retain their caller's observation time.
+  const observed = published?.resources && live && !provided ? live.controller.realSnapshot().nodes[id] : published;
   const configured = d ? configuredPlanning(d, state) : undefined;
   if (!configured && hover)
     return (
@@ -89,7 +92,14 @@ export function NodePlanning({
         <p className="insp-note" data-testid="planning-unavailable">
           {t("planning.analysisLimit")}
         </p>
-        {!hover && observed && d && <LiveDetails metrics={observed} diagram={d} />}
+        {!hover && observed && d && (
+          <LiveDetails
+            key={id}
+            metrics={observed}
+            diagram={d}
+            readPage={live ? (page) => live.controller.replicaPage(id, page) : undefined}
+          />
+        )}
       </>
     );
   const explanation = configured.explanation(id);
@@ -156,7 +166,14 @@ export function NodePlanning({
         </section>
       )}
       <PlanningConnections configured={configured} id={id} />
-      {observed && d && <LiveDetails metrics={observed} diagram={d} />}
+      {observed && d && (
+        <LiveDetails
+          key={id}
+          metrics={observed}
+          diagram={d}
+          readPage={live ? (page) => live.controller.replicaPage(id, page) : undefined}
+        />
+      )}
     </>
   );
 }

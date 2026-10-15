@@ -14,6 +14,12 @@ export const unseen = {
     counts.set(documentId, unseen.get(documentId) + 1);
     emit();
   },
+  copy(source: string, destination: string) {
+    const count = counts.get(source);
+    if (count === undefined) return;
+    counts.set(destination, count);
+    emit();
+  },
   clear(documentId: string) {
     if (!counts.delete(documentId)) return;
     emit();

@@ -1,3 +1,4 @@
+import { replicaRange } from "../model/autoscaling";
 import {
   createContext,
   memo,
@@ -97,6 +98,7 @@ export const CapacityPanel = memo(function CapacityPanel({
   disabledHint,
 }: Props) {
   const locale = useLocale();
+  const [inputError, setInputError] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [heldRows, setHeldRows] = useState<ReturnType<typeof selectRows> | null>(null);
   const [resetVersion, setResetVersion] = useState(0);
@@ -117,8 +119,13 @@ export const CapacityPanel = memo(function CapacityPanel({
 
   const set = (next: LiveInputs) => {
     if (disabledHint) return;
-    onChange?.();
-    c.setInputs(next);
+    try {
+      c.setInputs(next);
+      setInputError(null);
+      onChange?.();
+    } catch (error) {
+      setInputError(error instanceof Error ? error.message : String(error));
+    }
   };
   const setProp = (id: string, key: string, value: unknown) =>
     set({ ...inputs, props: { ...inputs.props, [id]: { ...inputs.props[id], [key]: value } } });
@@ -240,7 +247,9 @@ export const CapacityPanel = memo(function CapacityPanel({
                       className={`cap-preset${on ? " is-on" : ""}`}
                       aria-pressed={on}
                       title={
-                        diagram.planning?.revision === "p2" || diagram.planning?.revision === "p3"
+                        diagram.planning?.revision === "p2" ||
+                        diagram.planning?.revision === "p3" ||
+                        diagram.planning?.revision === "p3-a1"
                           ? p.id === "double-partitions"
                             ? `2 × ${assignmentLabels}`
                             : p.id === "normal"
@@ -252,7 +261,9 @@ export const CapacityPanel = memo(function CapacityPanel({
                       data-testid={`capacity-preset-${p.id}`}
                     >
                       {p.id === "double-partitions" &&
-                      (diagram.planning?.revision === "p2" || diagram.planning?.revision === "p3")
+                      (diagram.planning?.revision === "p2" ||
+                        diagram.planning?.revision === "p3" ||
+                        diagram.planning?.revision === "p3-a1")
                         ? `2 × ${assignmentLabels}`
                         : p.label}
                       {p.id === "black-friday" && <small>5×</small>}
@@ -335,6 +346,11 @@ export const CapacityPanel = memo(function CapacityPanel({
           </p>
         </div>
 
+        {inputError && (
+          <p className="cap-error" role="alert" data-testid="capacity-input-error">
+            {inputError}
+          </p>
+        )}
         {error && (
           <p className="cap-error" role="alert" data-testid="capacity-save-error">
             {error}
@@ -774,6 +790,18 @@ function ServiceRow({
   capacity: number;
   onProp: (key: string, value: unknown) => void;
 }) {
+  if (props.autoscaling?.mode === "on") {
+    const range = replicaRange(props.autoscaling.controller, capacity);
+    return (
+      <div className="cap-row" data-testid={`capacity-service-${node.id}`}>
+        <strong>{node.label}</strong>
+        <p data-testid={`capacity-hpa-range-${node.id}`}>
+          {t("autoscaling.range", { initial: range.initial, min: range.min, max: range.max })}
+        </p>
+        <small>{heat?.text}</small>
+      </div>
+    );
+  }
   const effective = Math.max(1, Math.round(props.replicas * capacity));
   return (
     <div

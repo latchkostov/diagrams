@@ -38,6 +38,7 @@ export interface CheckFixOption {
 }
 
 export interface Finding {
+  resourceFinding?: { name: string; kind: "memory" | "invalid" | "baseline" | "max"; needed: number; max: number };
   admissionRejection?: { text: string; rate: number };
   /** Neutral rationale descriptor; rationale stays English for workers and agents. */
   brokerRationale?: "no-reader";

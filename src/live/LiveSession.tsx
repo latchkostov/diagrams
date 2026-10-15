@@ -619,7 +619,7 @@ export function LiveSession({
   // a side panel's column, its height is the panel's business (trace.css).
   const cardRoom = useStore((s) => (state.trace && !panel.open ? roomUnderCard(s, presenting ? 392 : 352) : 0));
   // "Nothing has dead-lettered yet" is out of date once one has: the trace card takes over.
-  const shownNotice = notice === DEAD_LETTER_WAIT && state.trace?.current ? null : notice;
+  const shownNotice = state.resourceError ?? (notice === DEAD_LETTER_WAIT && state.trace?.current ? null : notice);
   const sendOne = useCallback(
     (nodeId: string) => controller.sendOne(nodeId, suggestedMessageType(getDiagram(), nodeId)),
     [controller, getDiagram],
@@ -667,13 +667,13 @@ export function LiveSession({
 
   const runDraft = useCallback(
     (sim: Simulation) => {
+      if (!controller.selectSimulation(sim)) return;
       const saved = simsRef.current.some((s) => s.id === sim.id && JSON.stringify(s) === JSON.stringify(sim));
       setDraft(saved ? null : sim);
       draftRef.current = saved ? null : sim;
       setTrace(null);
       controller.setTraffic(false);
       setCapacityError(null);
-      controller.selectSimulation(sim);
       controller.setPlaying(true);
     },
     [controller],
@@ -829,10 +829,17 @@ export function LiveSession({
     for (const [id, st] of JSON.parse(outageKey) as [string, NodeStatus][]) status[id] = st;
     return status;
   }, [outageKey, planDiagram]);
+  const fleetKey = JSON.stringify(
+    Object.entries(state.snapshot.nodes).flatMap(([id, n]) => (n.fleet ? [[id, n.fleet.ready]] : [])),
+  );
+  const readyReplicas = useMemo(() => Object.fromEntries(JSON.parse(fleetKey) as [string, number][]), [fleetKey]);
   // Recomputed only when the plan or an outage changes (sliders, saves, edits, chaos), never per frame.
   const { value: capacity } = useMemo(
-    () => ({ locale, value: showCapacity || capacityOpen ? capacityView(planDiagram, plan, runStatus) : null }),
-    [showCapacity, capacityOpen, planDiagram, plan, runStatus, locale],
+    () => ({
+      locale,
+      value: showCapacity || capacityOpen ? capacityView(planDiagram, plan, runStatus, readyReplicas) : null,
+    }),
+    [showCapacity, capacityOpen, planDiagram, plan, runStatus, readyReplicas, locale],
   );
 
   // The panel shows the heat map for this session only; leaving live view restores the preference.

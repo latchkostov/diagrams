@@ -1,3 +1,4 @@
+import { openExample } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, gotoLab, publicExamples, expectNoErrors } from "./fixtures";
@@ -46,7 +47,7 @@ test.describe("canvas", () => {
   test("example picker switches diagrams and updates the URL", async ({ page }) => {
     const [a, b] = publicExamples;
     await gotoCanvas(page, a.slug);
-    await page.getByTestId("example-picker").selectOption(b.slug);
+    await openExample(page, b.slug);
     await expect(page.getByTestId("diagram-title")).toHaveText(b.title);
     await expect(page.getByTestId(`node-${b.nodeIds[0]}`)).toBeVisible();
     await expect(page).toHaveURL(new RegExp(`example=${b.slug}`));
@@ -74,7 +75,7 @@ test.describe("canvas", () => {
     await page.getByTestId("import-input").setInputFiles(file);
     await expect(page.getByTestId("toast")).toContainText("Imported");
     // Imports land in Your diagrams as a new entry.
-    await expect(page.getByTestId("example-picker")).toHaveValue(/^my-/);
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
     await expect(page).toHaveURL(/example=my-/);
     await expect(page.getByTestId("diagram-title")).toHaveText(ex.title);
     for (const id of ex.nodeIds) await expect(page.getByTestId(`node-${id}`)).toBeVisible();
@@ -134,7 +135,7 @@ test.describe("canvas", () => {
       ),
     });
     await expect(page.getByTestId("toast")).toContainText("points at a node");
-    await expect(page.getByTestId("example-picker")).toHaveValue(ex.slug);
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", ex.slug);
   });
 
   test("theme toggle switches and persists", async ({ page }) => {

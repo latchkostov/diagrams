@@ -1,5 +1,22 @@
 # Design review
 
+## Autoscaling A1 final review gate (2026-10-15)
+
+The designer's scoped source/test review found no blocking UX concern. Scaling speech stays polite
+and atomic outside collapsed Live details; readiness completion updates fixed and overridden fleets
+without speaking every jittered readiness frame. No controls, focus behavior or chrome were added.
+Production browser regressions cover automatic coalescing and completion with suspended syncs.
+The gallery reuses its existing feature filter for the translated Autoscaling tag, backed by the
+explicit resource/HPA showcase rather than a vendor icon.
+
+## Gallery rebase integration review (#118, 2026-10-15)
+
+Scoped source review preserves both gallery session/copy behavior and nested-boundary membership,
+caption contrast and keyboard navigation. The Lab retains both fixtures. Showcase tags reuse the
+existing translated vocabulary and filter; no controls or chrome were added. API quotas support the
+Rate limits tag, while concurrency and measured capacity get no misleading tag. The regression checks
+all six showcases and combined search/filter behavior. Browser validation is recorded separately.
+
 ## Nested boundaries final verification (#115, 2026-10-15)
 
 The designer's scoped source review confirmed the shortcut, carried-descendant undo selection and
@@ -9,6 +26,75 @@ fills. Conversion retains the existing error treatment and gives translated reco
 oversized labels. No controls or chrome were added. Production browser regressions cover the shortcut,
 contrast and existing nested movement; the accessibility, groups, clipboard, layout and interop suites pass.
 
+## Example gallery verification gate (2026-10-15)
+
+The designer agent's scoped source/test review found no blocking UX issue. Reopening an example
+keeps its fresh-original/new-copy behavior, while promotion retains the canvas and Undo. Destination
+ownership follows the initiating mount; Private copies keep their own file. Gallery and palette runs
+share one latest-request queue. The synthetic catalog fixture stays in the Lab and exercises the
+additional local submenu with existing keyboard, Escape, autofocus and focus-return behavior.
+No production controls, layout changes or chrome were added.
+
+This was a source review, not a visual, browser or screen-reader walkthrough. Production Playwright
+separately checks the Private-copy save boundary, successful pending device/cloud saves, delayed
+mixed launches, selection serialization counts and synthetic local-catalog keyboard navigation.
+
+## Example gallery round 5 (2026-10-15)
+
+The designer agent's scoped source and test review found no blocking UX issue. Promotion copies the
+conversation and destination into a fresh document while preserving the mounted canvas and Undo.
+Other tabs retain their conversations and edits. Storage failure uses the existing Save/export notice
+and retry path; Private copies cancel pending cloud saves. No controls or chrome were added.
+This was a source review; production Playwright covers the browser flows separately.
+
+## Example gallery final review fixes (2026-10-15)
+
+The designer agent's scoped, read-only source review found no blocking UX issues. Open and Run it
+hand focus to the matching destination canvas after dialog cleanup, including delayed downloads;
+dismissal keeps opener restoration. Failed copy creation retains edits, debounces subsequent attempts
+and announces the existing save/export guidance once. Independent mounted sessions retain their
+canvas and Undo history. No controls, layout or global chrome were added. An extra retry button or
+confirmation would add unnecessary chrome; no further simplification was needed.
+
+This was a source review, not a browser, screen-reader or whole-app walkthrough. Production browser
+regressions verify delayed-download focus, dismissal, storage recovery, cross-tab edits and privacy.
+
+## Example gallery review fixes (2026-10-15)
+
+The designer agent's scoped, read-only code and test review found no blocking UX issues. The picker
+keeps eight direct choices, including the current and shared diagrams, with library overflow, New and
+Browse examples inside the existing menu budget. Hidden saved work opens through Your diagrams.
+Run it uses the translated visible action and example title for its accessible name. The noninteractive
+copy status lives inside the canvas notification stack, with action toasts above it, clear of stencil
+search and collapse controls. No global control was added.
+
+Production browser checks verify stencil-control separation, shared and overflow navigation, English
+and Arabic accessible names, and the gallery's existing theme, narrow-layout and axe checks. The
+designer review itself was a source review, not a browser or screen-reader walkthrough.
+
+## Autoscaling A1 round 2 review fixes (2026-10-15)
+
+Scoped designer source review found no blocking UX issues. The inspector preserves its four main
+fields, Advanced disclosure and existing chrome budget. Incomplete numeric drafts retain saved
+resource values and receive linked inline feedback; complete numeric and JSON policies use the same
+validation path. The metric-window maximum accounts for delay. Policy JSON reads left to right while
+translated labels and surrounding chrome retain RTL layout. Over-budget paste and resource edits
+report recovery guidance before committing.
+
+No additional controls were recommended. This was a scoped source review, not a whole-app browser
+walkthrough or screen-reader audit. The primary engineer also inspected the production light, dark Arabic
+and selected Live screenshots: the four-field disclosure and readable, selected-only resource table remain
+intact. Production browser regressions are reported separately.
+
+## A1 rebase and showcase review (2026-10-14)
+
+Scoped designer source review accepted the autoscaling showcase and preserved four-field disclosure,
+selected-only history and the existing chrome budget. The streaming pipeline teaches startup/backlog
+at 1 s and points to replica history at 7 s without pausing playback; its shortened controller timings
+are disclosed as teaching assumptions. No global controls or blocking source concerns were found.
+Production e2e and parity separately verify the observed ten-second story; this source review does not
+replace visual or screen-reader verification.
+
 ## Self-hosting review fixes (2026-10-14)
 
 Scoped source review found no blocking UX issues. Copied embed and share URLs use the prepared deployment
@@ -16,6 +102,37 @@ directory on deep fallback routes. Proxy redirects preserve the public path. No 
 focus targets were added; existing primary actions and chrome budgets remain intact. Hosting documentation
 explains native Pages fallback and its asset precedence. This was a source review; production browser
 regressions are verified separately.
+
+## Round 39 — Autoscaling A1 (2026-10-14)
+
+Designer review covered the synthetic Lab HPA service in light mode, dark German and dark Arabic at
+1280 × 800, selected live resource history/replica rows, and presentation. The main inspector has four fields:
+preset, target, minimum and maximum. Resource quantities, timing and behaviour stay under Advanced; the
+existing workload is folded separately. No toolbar control was added. All new strings have 37 translations.
+
+The review accepted the four-field disclosure, table density and RTL layout. Corrections distinguish the
+observed **Peak replicas** from the configured maximum, show percentage denominators and one decimal,
+retain invalid JSON drafts on blur, and hide node selection/connection handles in presentation. Live screenshots
+are fitted with the selected inspector open. The replica table is selected-only and paginated at 50 rows;
+the chart is backed by a numeric history summary and a visible solid/dashed legend.
+
+The final designer gate passed. Follow-up accessibility work keeps incomplete numeric drafts while typing,
+commits valid numbers on blur, themes enabled pagination arrows in dark mode, and gives the selected node a
+polite status message only when its fleet or decision changes. Inspector findings no longer extend past the
+scrollable body's width. The seven-angle review and regression dispositions are recorded in
+[the A1 review](research/autoscaling-a1-review.md).
+
+Rejected additions: permanent CPU/memory badges and global policy controls would spend chrome on details
+needed only for the selection. Treating slot utilization as CPU, inferring provider quotas, or automatically
+raising fixed replicas on an HPA node would misstate the model. KEDA activation, cloud adapters and verified
+scenario sizing belong to A2/A3; memory-limit enforcement/restarts require a separately scoped lifecycle.
+
+![Four main fields in light mode](design-review/round-39/a1-inspector-light.png)
+![Selected live resources and replica history](design-review/round-39/a1-live-resources.png)
+![Presentation retains fleet information](design-review/round-39/a1-presentation.png)
+![German inspector in dark mode](design-review/round-39/a1-inspector-de-dark.png)
+![Arabic inspector in dark mode](design-review/round-39/a1-inspector-ar-dark.png)
+![Bounded replica pagination in dark mode](design-review/round-39/a1-pagination-dark.png)
 
 ## Round 42: Planning P3 final review fixes (2026-10-14)
 
@@ -4063,3 +4180,96 @@ captures stay in ignored `tests/.output`; the curated Round 41 images above rema
 
 This was a scoped source/screenshot review, not an independent physical-touch, screen-reader or
 whole-app walkthrough. The eight precise browser parity deferrals remain recorded in `PARITY.md`.
+
+## Round 40 — Your diagrams and example gallery (2026-10-14)
+
+The mixed native select made built-in examples and saved work look like peers. The picker now names
+Your diagrams, marks the current work, and ends with one separated Browse examples entry. The start
+card retains its four featured examples and sends Browse examples to the same lazy gallery. A capped
+recent list plus the full library follows the menu's chrome budget; no global toolbar button was added.
+The development-only catalog retains a generic Examples submenu in its existing picker area.
+
+The gallery uses existing metadata thumbnails, short summaries and stable theme order. Search and one
+Shows select sit above the cards; Open is primary and Run it is secondary. The conservative vocabulary
+is Partitions, Rate limits and Network devices, computed from configured features and translated. We
+rejected an Autoscaling tag based merely on a serverless icon, extra top-bar controls, and an expanded
+wall of start-card examples. The gallery fits both target sizes; the narrow picker uses two rows instead
+of squeezing the current name into a horizontally scrolling toolbar.
+
+A quiet Example badge identifies originals. The first changed snapshot keeps a named copy without
+remounting the canvas. Explicit title edits keep the chosen name, so typing is never interrupted;
+structural edits get a generated “(copy)” name. First persistence is immediate, with later saves debounced.
+Its generated name is applied through history without creating another step or
+losing AI/check-fix tags. The copy notice sits below the picker so it cannot replace an Undo toast.
+Examples keep one stable identity across reloads and tabs; each copy gets its own fresh identity and autosave baseline.
+
+The designer-agent source and screenshot gate approved the gallery in light/dark at 1280 × 800 and
+390 × 844. Accepted review fixes: include older current work within the cap; calculate overflow from all
+choices; expose the visible title/Example state to assistive technology; handle arrows before the modal
+shell stops bubbling; mirror horizontal arrows in RTL; preserve direct-switch persistence coverage.
+The seven code-review angles also found the reload identity collision and title-first Undo persistence
+bugs; both received browser regressions. Temporarily restoring faulty filtering, capping, copy creation,
+history naming, identity/baseline and keyboard paths verifies the regression assertions.
+
+| View              | Before                                                              | After                                                     |
+| ----------------- | ------------------------------------------------------------------- | --------------------------------------------------------- |
+| Light, 1280 × 800 | [Start and mixed picker](research/example-gallery/before-light.png) | [Gallery](research/example-gallery/after-light.png)       |
+| Dark, 1280 × 800  | [Start and mixed picker](research/example-gallery/before-dark.png)  | [Gallery](research/example-gallery/after-dark.png)        |
+| Light, 390 × 844  | [Start](research/example-gallery/before-mobile.png)                 | [Gallery](research/example-gallery/after-mobile.png)      |
+| Dark, 390 × 844   | [Start](research/example-gallery/before-mobile-dark.png)            | [Gallery](research/example-gallery/after-mobile-dark.png) |
+
+Picker detail: [Your work and separate Browse entry](research/example-gallery/picker-light.png),
+[Example badge](research/example-gallery/example-light.png), [narrow top bar](research/example-gallery/example-mobile.png)
+and [narrow menu](research/example-gallery/picker-mobile.png). The last two are cropped to the reviewed chrome.
+
+Screenshots are steady frames from production bundles, after finite opening animations complete.
+Automated coverage supplies keyboard, focus-return, RTL, axe, live-launch and copy-persistence evidence;
+this is a scoped review, not a screen-reader or whole-app manual walkthrough. Output parity updates only
+the language catalog golden for the 17 added messages in 38 languages; existing diagram output stays fixed.
+
+Validation: the final CI-profile Vitest run (`CI=true pnpm test --maxWorkers=2`) passed 6,382 tests,
+with 4 skipped. The earlier default run had three timeout/load failures; a two-worker run had one
+remaining large-import timeout, which passed in isolation and in the final full run. Initial integration
+runs exposed copy-name history, immediate reload, simulation-save and identity/baseline bugs; fixes and
+deliberate regressions are described above. An earlier tooltip-focus failure passed on the later run.
+The final affected-spec run covered 298 checks across production Chromium, dev and subpath: 297 passed;
+one dev test's older synthetic registry omitted required thumbnail metadata. The fixture now supplies
+that metadata from the existing Lab fixture, and all seven tests in that spec pass on rerun. This was all
+22 specs that previously drove the picker, not the unrelated entire E2E suite. Final parity passes all
+1,425 goldens after the intentional language-catalog update. Production build, size (104.6 kB gzip entry
+against 123.5 kB), skill freshness and i18n validation pass; pre-existing translation gaps still warn.
+
+Final follow-ups: clearing a title immediately creates an owned Untitled diagram without inserting text
+into the field, and later edits persist on reload. When a switch flushes the first copy, the pending-view
+state now follows that copy, keeping its edited canvas mounted while the next example downloads.
+The new unnamed-title unit assertion and held-download browser assertion both failed with their faulty
+paths restored. The empty-title/AI/Live follow-up passed 46 checks, and the gallery/lazy-navigation
+follow-up passed 27. Across the original affected run and passing follow-ups, the current 301 checks
+(277 production Chromium, 19 dev, 5 subpath) are covered. The final full Vitest run passed 6,382 tests
+with 4 skipped; parity again passed 1,425 goldens. The first final-format pass found two files to reformat;
+those were corrected, and lint, typecheck and format are rerun immediately before the signed commit.
+
+A final synthetic privacy regression caught a transient history write when launching a development-only
+saved run from the gallery. These launches now wait for the matching canvas session in memory, with
+cancellation on navigation or unmount. The test records every history write, failed before the fix,
+and passes afterward; all eight synthetic privacy checks pass. No real local diagrams were inspected.
+The final launch/navigation/privacy follow-up passes 35 checks. Security re-review finds no further issue,
+and the full unit suite again passes 6,382 tests with 4 skipped.
+
+## Autoscaling A1 round 3 (2026-10-15)
+
+Designer review passed after correcting a stale upgrade focus request. A refused paste now explains
+model compatibility and opens the existing model-upgrade preview with focus. That request is consumed
+once; revisiting properties does not reopen it. A1 and legacy previews have distinct expanded states
+and disclosure targets, and selecting either switches directly to its content. No global chrome was
+added. Production browser checks cover switching, focus, revisiting, dark/translated inspectors and
+accessible replica pagination.
+
+## Autoscaling A1 refusal recovery review (2026-10-15)
+
+Scoped designer-agent UX gate passed: source and regression-test review of scaling announcements.
+Polite, atomic speech stays accessible with Live details closed, while readiness changes coalesce at
+controller syncs. Visible metrics remain live and no controls are added. Selection remounts the
+announcement, and language changes remain subscribed. Production fake-clock coverage checks startup
+readiness changing without repeated speech, followed by an update at the next sync. This review did
+not independently exercise assistive-technology playback or a whole-app visual walkthrough.

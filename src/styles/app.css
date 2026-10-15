@@ -1102,3 +1102,72 @@ kbd {
   :is(.ix-menu-desc, .ix-dialog-body, .ix-share-desc, .start-card p, .sc-row > span:first-child) {
   hyphens: auto;
 }
+
+.diagram-picker {
+  min-width: 0;
+  max-width: 320px;
+}
+.diagram-picker-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.example-badge {
+  flex: none;
+  font-size: 10px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  color: var(--text-2);
+  background: var(--surface-2);
+}
+@media (max-width: 600px) {
+  .app:has(.diagram-picker) {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .topbar:has(.diagram-picker) {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 10px;
+    overflow: visible;
+  }
+  .topbar:has(.diagram-picker) > .segmented {
+    flex: 1;
+  }
+  .topbar:has(.diagram-picker) > .topbar-spacer {
+    display: none;
+  }
+  .topbar:has(.diagram-picker) > .ix-save-status {
+    display: none;
+  }
+  .topbar:has(.diagram-picker) > .ix-shared {
+    order: 4;
+  }
+  .topbar:has(.diagram-picker) > .topbar-group {
+    order: 3;
+  }
+  .diagram-picker {
+    order: 2;
+    flex: 1;
+    min-width: 160px;
+    max-width: none;
+  }
+}
+
+.example-copy-notice {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  width: max-content;
+  max-width: min(440px, calc(100% - 32px));
+  padding: 10px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  box-shadow: var(--shadow-2);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.5;
+  pointer-events: none;
+}

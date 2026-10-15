@@ -27,6 +27,9 @@ export class Deque<T> {
     for (let i = this.head; i < this.items.length; i++) if (test(this.items[i] as T)) return this.items[i];
     return undefined;
   }
+  *[Symbol.iterator](): IterableIterator<T> {
+    for (let i = this.head; i < this.items.length; i++) yield this.items[i] as T;
+  }
   clear(): void {
     this.items = [];
     this.head = 0;

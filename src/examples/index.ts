@@ -35,6 +35,7 @@ const privateExamples: LocalExample[] = import.meta.env.DEV
         title: diagram.title,
         thumb: diagramThumb(diagram),
         description: diagram.description,
+        simulation: diagram.simulations?.[0]?.id,
         diagram,
         localOnly: true,
       }),
@@ -49,6 +50,11 @@ const publicExamples: PublicExample[] = (
       theme: "streaming",
       summary: "Consumer groups, local stores, payment events",
       featured: true,
+    },
+    {
+      slug: "autoscaling-image-workers",
+      theme: "streaming",
+      summary: "HPA startup, buffered uploads and replica history",
     },
     {
       slug: "cqrs-event-sourcing",

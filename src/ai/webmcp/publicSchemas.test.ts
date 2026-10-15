@@ -24,7 +24,7 @@ describe("public/schema", () => {
     const planning = JSON.parse(files["diagram.v2.json"]);
     expect(planning.properties.format).toEqual({ const: "diagrams/v2" });
     expect(planning.required).toContain("planning");
-    expect(planning.properties.planning.properties.revision).toEqual({ enum: ["p1", "p2", "p3"] });
+    expect(planning.properties.planning.properties.revision).toEqual({ enum: ["p1", "p2", "p3", "p3-a1"] });
     const ops = JSON.parse(files["ops.v1.json"]);
     expect(ops.required).toEqual(["ops"]);
     expect(Object.keys(ops.$tools)).toEqual([

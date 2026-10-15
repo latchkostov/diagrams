@@ -1,3 +1,5 @@
+import { autoscalingProblem, checkAutoscaling } from "../model/autoscalingSchema";
+import type { ComputeResources, AutoscalingConfig } from "../model/autoscaling";
 import type { DiagramFile, DiagramNode, SimRole } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import {
@@ -46,6 +48,9 @@ export interface ResolvedDevice {
 export type ResolvedProps = Required<
   Omit<
     NodeSimProps,
+    | "resources"
+    | "autoscaling"
+    | "resumeAutoscaling"
     | "api"
     | "endpoints"
     | "scaling"
@@ -60,6 +65,9 @@ export type ResolvedProps = Required<
   >
 > &
   Pick<NodeSimProps, "emits"> & {
+    resources?: ComputeResources;
+    autoscaling?: AutoscalingConfig;
+    autoscalingProblem?: string;
     healthChecks: boolean;
     /** Gateways with a throughput ceiling: network device stencils, or any gateway given `gbps`. */
     device?: ResolvedDevice;
@@ -85,8 +93,12 @@ export function resolveProps(
     !!planning && compatible
       ? resolvePreset(
           stencil,
-          props.preset ?? (planning.revision === "p3" ? admissionPresetFor(stencil) : undefined),
-          props.presetRevision ?? (planning.revision === "p3" && !props.preset ? ADMISSION_REVISION : undefined),
+          props.preset ??
+            (planning.revision === "p3" || planning.revision === "p3-a1" ? admissionPresetFor(stencil) : undefined),
+          props.presetRevision ??
+            ((planning.revision === "p3" || planning.revision === "p3-a1") && !props.preset
+              ? ADMISSION_REVISION
+              : undefined),
           props.size,
         )
       : undefined;
@@ -105,7 +117,7 @@ export function resolveProps(
   const ha = device?.ha ?? "standalone";
   const broker = brokerSpec(stencil, role, planning);
   const managed =
-    planning?.revision === "p3" &&
+    (planning?.revision === "p3" || planning?.revision === "p3-a1") &&
     ((compatible &&
       (profile?.family === "serverless" ||
         profile?.family === "external-api" ||
@@ -155,7 +167,31 @@ export function resolveProps(
     );
   const metadata = (key: string) =>
     typeof props[key] === "number" && Number.isFinite(props[key]) && props[key] > 0 ? props[key] : undefined;
+  const a1 =
+    planning?.revision === "p3-a1" &&
+    role === "processor" &&
+    ["service", "workflow", "stream-processor"].includes(profile?.family ?? "");
+  let validResources = true;
+  try {
+    checkAutoscaling(props.resources);
+  } catch {
+    validResources = false;
+  }
+  const problem =
+    planning?.revision === "p3-a1" && (props.resources || props.autoscaling)
+      ? a1
+        ? autoscalingProblem(props.resources, props.autoscaling)
+        : "Native managed allocation owns scaling; HPA requires a service workload."
+      : undefined;
   return {
+    autoscalingProblem: problem,
+    ...(a1
+      ? {
+          resources: validResources ? (props.resources as ComputeResources | undefined) : undefined,
+          autoscaling: problem ? undefined : (props.autoscaling as AutoscalingConfig | undefined),
+          autoscalingProblem: problem,
+        }
+      : {}),
     ...(managed
       ? {
           admission: {

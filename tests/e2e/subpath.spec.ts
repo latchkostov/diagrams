@@ -45,11 +45,9 @@ test.describe("production build under a sub-path", () => {
     const ex = publicExamples[0];
     await page.goto(`./?view=canvas&example=${ex.slug}`);
     for (const id of ex.nodeIds) await expect(page.getByTestId(`node-${id}`)).toBeVisible();
-    const options = await page
-      .getByTestId("example-picker")
-      .evaluate((el) => [...(el as HTMLSelectElement).options].map((o) => o.value));
-    // A fresh browser has none of your own diagrams: the picker lists exactly the public examples.
-    expect(options.sort()).toEqual(publicExamples.map((e) => e.slug).sort());
+    await page.getByTestId("example-picker").click();
+    await page.getByTestId("picker-browse-examples").click();
+    await expect(page.getByTestId(/^example-card-/)).toHaveCount(publicExamples.length);
     expectNoErrors(consoleErrors);
   });
 

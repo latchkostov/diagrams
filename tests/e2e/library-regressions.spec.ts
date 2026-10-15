@@ -1,3 +1,4 @@
+import { openExample } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, publicExamples } from "./fixtures";
 
@@ -63,6 +64,7 @@ test("concurrent tabs publish independent index entries, including autosave, del
   );
   expect(titles.sort()).toEqual([a, b].sort());
   for (const tab of [page, other]) {
+    await tab.getByTestId("example-picker").click();
     await expect(tab.getByTestId(`picker-option-${a}`)).toHaveCount(1);
     await expect(tab.getByTestId(`picker-option-${b}`)).toHaveText("Other tab edited");
   }
@@ -135,7 +137,7 @@ for (const action of ["delete", "duplicate"] as const)
   test(`${action} aborts on a failed flush and preserves unsaved edits`, async ({ page }) => {
     await gotoCanvas(page, publicExamples[0].slug);
     const [slug] = await seed(page, 1);
-    await page.getByTestId("example-picker").selectOption(slug);
+    await openExample(page, slug);
     await expect(page.getByTestId("diagram-title")).toHaveText("Diagram 0");
     await openLibrary(page);
     await page.evaluate(() => {
@@ -151,15 +153,17 @@ for (const action of ["delete", "duplicate"] as const)
     await page.getByTestId(`library-${action}-${slug}`).click();
     await expect(page.getByTestId("library-error")).toContainText("save");
     await expect(page.getByTestId(/^library-item-/)).toHaveCount(1);
-    await expect(page.getByTestId("example-picker")).toHaveValue(slug);
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", slug);
     await expect(page.getByTestId("diagram-title")).toHaveText("Unsaved edits");
   });
 
 test("autosaves refresh same-tab title, node count and palette after navigation", async ({ page }) => {
   await gotoCanvas(page, publicExamples[0].slug);
   const [a, b] = await seed(page);
+  await page.getByTestId("example-picker").click();
   await expect(page.getByTestId(`picker-option-${a}`)).toHaveText("Diagram 0");
   await expect(page.getByTestId(`picker-option-${b}`)).toHaveText("Diagram 1");
+  await page.keyboard.press("Escape");
   await page.evaluate(async (slug) => {
     const url = "/src/lib/diagramIO.ts";
     const io = (await import(url)) as typeof import("../../src/lib/diagramIO");
@@ -171,8 +175,10 @@ test("autosaves refresh same-tab title, node count and palette after navigation"
       nodes: [{ id: "fresh", stencil: "generic.service", label: "Fresh", x: 0, y: 0 }],
     });
   }, a);
-  await page.getByTestId("example-picker").selectOption(b);
+  await openExample(page, b);
+  await page.getByTestId("example-picker").click();
   await expect(page.getByTestId(`picker-option-${a}`)).toHaveText("Fresh title");
+  await page.keyboard.press("Escape");
   await page.keyboard.press("Control+k");
   await page.getByTestId("command-input").fill("Fresh title");
   await expect(page.getByTestId(`command-item-diagram:${a}`)).toHaveText(/Fresh title/);

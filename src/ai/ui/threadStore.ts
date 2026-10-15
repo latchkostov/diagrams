@@ -5,36 +5,21 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { capThread, loadThread, saveThread, turnId, type ThreadTurn } from "./thread";
 
-const cache = new Map<string, ThreadTurn[]>();
+import { cachedTurns, cacheTurns, cachedConversationCount, retainConversation } from "../../lib/exampleConversations";
+export { MAX_CACHED_THREADS } from "../../lib/exampleConversations";
 const listeners = new Map<string, Set<() => void>>();
 const EMPTY: ThreadTurn[] = [];
-/**
- * Threads kept in memory besides the ones on screen (subscribed, never evicted): a diagram visited a while
- * ago reloads from storage. A thread storage refused (full) lives only in memory, so it can go with eviction.
- */
-export const MAX_CACHED_THREADS = 4;
-
-/** Most recent last (a Map keeps insertion order); then the oldest unwatched threads go. */
-function touch(documentId: string, turns: ThreadTurn[]): void {
-  cache.delete(documentId);
-  cache.set(documentId, turns);
-  for (const id of cache.keys()) {
-    if (cache.size <= MAX_CACHED_THREADS) break;
-    if (id !== documentId && !listeners.has(id)) cache.delete(id);
-  }
-}
-
 export const threads = {
   get(documentId: string): ThreadTurn[] {
-    const cached = cache.get(documentId);
+    const cached = cachedTurns(documentId);
     if (cached) return cached;
     const turns = loadThread(documentId);
-    touch(documentId, turns);
+    cacheTurns(documentId, turns);
     return turns;
   },
   set(documentId: string, next: ThreadTurn[]): void {
     const capped = capThread(next);
-    touch(documentId, capped);
+    cacheTurns(documentId, capped);
     saveThread(documentId, capped);
     for (const l of listeners.get(documentId) ?? []) l();
   },
@@ -48,13 +33,15 @@ export const threads = {
     let set = listeners.get(documentId);
     if (!set) listeners.set(documentId, (set = new Set()));
     set.add(l);
+    const release = retainConversation(documentId);
     return () => {
+      release();
       set.delete(l);
       if (!set.size && listeners.get(documentId) === set) listeners.delete(documentId);
     };
   },
   /** For tests: how many threads are held in memory. */
-  cachedCount: () => cache.size,
+  cachedCount: cachedConversationCount,
 };
 
 /** The thread of one diagram (empty while there's no diagram). */
