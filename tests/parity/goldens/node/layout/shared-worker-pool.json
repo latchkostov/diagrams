@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "orders": [40, 40], "refunds": [40, 160], "order-log": [400, 40], "refund-log": [400, 160], "worker": [769, 100], "ledger": [1168, 100] },
+    "TB": { "orders": [40, 40], "refunds": [360, 40], "order-log": [40, 200], "refund-log": [360, 200], "worker": [200, 360], "ledger": [200, 520] }
+  },
+  "tidy": { "orders": [40, 40], "refunds": [360, 40], "order-log": [40, 200], "refund-log": [360, 200], "worker": [200, 360], "ledger": [200, 520] },
+  "arrange": {
+    "alignLeft": { "orders": [40, 40], "refunds": [40, 40], "order-log": [40, 200], "refund-log": [40, 200], "worker": [40, 360], "ledger": [40, 520] },
+    "alignMiddle": { "orders": [40, 280], "refunds": [360, 280], "order-log": [40, 280], "refund-log": [360, 280], "worker": [200, 280], "ledger": [200, 280] },
+    "distributeH": { "orders": [40, 40], "refunds": [304, 40], "order-log": [96, 200], "refund-log": [360, 200], "worker": [152, 360], "ledger": [248, 520] },
+    "distributeV": { "orders": [40, 40], "refunds": [360, 136], "order-log": [40, 232], "refund-log": [360, 328], "worker": [200, 424], "ledger": [200, 520] },
+    "spreadH": { "orders": [40, 40], "refunds": [1119, 40], "order-log": [300, 40], "refund-log": [1379, 40], "worker": [560, 40], "ledger": [859, 40] },
+    "boundaryAround": { "x": 0, "y": -24, "width": 620, "height": 656 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "orders": [40, 40], "refunds": [360, 40], "order-log": [40, 200], "refund-log": [360, 200], "worker": [200, 360], "ledger": [200, 520] },
+    "groups": {}
+  }
+}

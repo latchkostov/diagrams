@@ -1,0 +1,184 @@
+{
+  "withIcons": {
+    "sha256": "89c81d5f3eccb3e8b64cf15eb12dd03dd50b53280cf3ae005cf09966a42435cb",
+    "bytes": 22810,
+    "inlined": { "generic.queue": "generic-queue e831fa8bafcc6fa3", "generic.webhook": "generic-webhook 2a9d64776a349ed2", "postgres": "postgresql 5bc8dcc1fbb1ec10", "service.java": "java a7012363e0756258", "service.node": "nodejs ad81b1a87b698cc5" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Measured order capacity",
+        "description": "Northwind compares the pinned processor lesson with a measured one-second payment workload: today fits, but at three times traffic the two-slot payment worker saturates.",
+        "direction": "TB",
+        "nodes": [
+          {
+            "id": "orders",
+            "stencil": "generic.webhook",
+            "label": "Northwind orders",
+            "sublabel": "1 order/s today",
+            "x": 40,
+            "y": 40,
+            "props": { "ratePerSec": 1, "messageType": "OrderPlaced" }
+          },
+          {
+            "id": "intake",
+            "stencil": "service.node",
+            "label": "Order intake",
+            "sublabel": "Pinned lesson: 1 × 4 / 0.25 s",
+            "x": 40,
+            "y": 200,
+            "props": { "preset": "processor-lesson", "presetRevision": "1" }
+          },
+          {
+            "id": "queue",
+            "stencil": "generic.queue",
+            "label": "Payment jobs",
+            "sublabel": "Buffer before measured work",
+            "x": 40,
+            "y": 360,
+            "props": {}
+          },
+          {
+            "id": "payment-worker",
+            "stencil": "service.java",
+            "label": "Payment worker",
+            "sublabel": "Measured: 2 × 1 / 1 s = 2/s",
+            "x": 40,
+            "y": 520,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 1, "latencyMs": 1000, "jitter": 0, "failureRate": 0 }
+          },
+          {
+            "id": "ledger",
+            "stencil": "postgres",
+            "label": "Northwind ledger",
+            "sublabel": "Completed payments",
+            "x": 40,
+            "y": 680,
+            "props": { "latencyMs": 1 }
+          }
+        ],
+        "edges": [
+          {
+            "id": "submit",
+            "from": "orders",
+            "to": "intake",
+            "label": "Order",
+            "kind": "async",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "queue-payment",
+            "from": "intake",
+            "to": "queue",
+            "label": "Payment job",
+            "kind": "async",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "pay",
+            "from": "queue",
+            "to": "payment-worker",
+            "label": "Workers",
+            "kind": "async",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "record",
+            "from": "payment-worker",
+            "to": "ledger",
+            "label": "Record",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          }
+        ],
+        "simulations": [
+          {
+            "id": "today",
+            "title": "Measured baseline",
+            "description": "One order a second fits the measured two-per-second payment budget.",
+            "seed": 41,
+            "scale": 1,
+            "traffic": [
+              {
+                "id": "orders",
+                "node": "orders",
+                "messageType": "OrderPlaced",
+                "shape": { "kind": "constant", "ratePerSec": 1, "durationMs": 6000 }
+              }
+            ],
+            "timeline": [],
+            "expectations": [
+              {
+                "id": "ledger-processed-end",
+                "label": "ledger: processed == 6",
+                "metric": { "node": "ledger", "field": "processed" },
+                "op": "==",
+                "value": 6,
+                "when": "end"
+              },
+              {
+                "id": "queue-lag-end",
+                "label": "queue: lag == 0",
+                "metric": { "node": "queue", "field": "lag" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              }
+            ]
+          },
+          {
+            "id": "triple",
+            "title": "Three times the orders",
+            "description": "Traffic is multiplied by three, capacity stays fixed. The default intake has headroom; the measured payment worker is the bottleneck.",
+            "seed": 41,
+            "scale": 1,
+            "traffic": [
+              {
+                "id": "orders",
+                "node": "orders",
+                "messageType": "OrderPlaced",
+                "shape": { "kind": "constant", "ratePerSec": 1, "durationMs": 8000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 1000,
+                "action": { "do": "note", "text": "Three orders/s exceed the measured 2/s payment capacity. Show capacity or open Payment worker Properties to see the arithmetic.", "focus": ["payment-worker", "queue"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "queue-lag-at",
+                "label": "queue: lag > 0",
+                "metric": { "node": "queue", "field": "lag" },
+                "op": ">",
+                "value": 0,
+                "when": "at",
+                "atMs": 6000
+              },
+              {
+                "id": "ledger-processed-end",
+                "label": "ledger: processed == 24",
+                "metric": { "node": "ledger", "field": "processed" },
+                "op": "==",
+                "value": 24,
+                "when": "end"
+              },
+              {
+                "id": "queue-dropped-always",
+                "label": "queue: dropped == 0",
+                "metric": { "node": "queue", "field": "dropped" },
+                "op": "==",
+                "value": 0,
+                "when": "always"
+              }
+            ],
+            "multipliers": { "traffic": 3 }
+          }
+        ]
+      }
+    }
+  ]
+}

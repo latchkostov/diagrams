@@ -1,0 +1,357 @@
+{
+  "autoScale": { "freePlay": 1, "today": 1, "triple": 1 },
+  "brokerAssignments": { "brokers": {}, "consumers": { "payment-worker": { "count": 2 } } },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "payment-worker",
+      "suggestion": "Payment worker: 50% utilized",
+      "converged": true,
+      "iterations": 5,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "orders": ["Infinity", 1, 0, 1, 1, 0], "intake": [16, 1, 0.0625, 1, 1, 0], "queue": [2, 1, 0.5, 1, 1, 0], "payment-worker": [2, 1, 0.5, 2, 2, 0], "ledger": ["Infinity", 1, 0, 1, 1, 0] },
+      "connections": { "submit": 1, "queue-payment": 1, "pay": 1, "record": 1 },
+      "offeredTypes": { "orders": ["OrderPlaced"], "intake": ["OrderPlaced"], "queue": ["OrderPlaced"], "payment-worker": ["OrderPlaced"], "ledger": ["OrderPlaced"] }
+    },
+    "explanations": {
+      "intake": {
+        "id": "intake",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 16,
+        "offered": 1,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": 0.0625,
+        "growth": 0,
+        "contributors": [{ "edge": "submit", "node": "orders", "label": "Northwind orders", "rate": 1 }],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      },
+      "payment-worker": {
+        "id": "payment-worker",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 2,
+        "offered": 1,
+        "replicas": 2,
+        "baseReplicas": 2,
+        "omittedContributors": 0,
+        "activeReplicas": 2,
+        "assignments": [],
+        "slots": 1,
+        "seconds": 1,
+        "utilization": 0.5,
+        "growth": 0,
+        "contributors": [{ "edge": "pay", "node": "queue", "label": "Payment jobs", "rate": 1 }],
+        "target": 0.5,
+        "minimumReplicas": 2,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "intake": [{ "kind": "publishes", "edge": "queue-payment", "peer": "queue" }],
+      "payment-worker": [
+        { "kind": "consumes", "edge": "pay", "peer": "queue", "retry": "requeue", "retryBackoffMs": 0 },
+        { "kind": "calls", "edge": "record", "peer": "ledger" }
+      ]
+    },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "orders": {
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 1,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "OrderPlaced",
+        "healthChecks": false
+      },
+      "intake": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Order intake",
+        "healthChecks": false
+      },
+      "queue": {
+        "profile": { "family": "queue", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Payment jobs",
+        "healthChecks": false
+      },
+      "payment-worker": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 1000,
+        "concurrency": 1,
+        "replicas": 2,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Payment worker",
+        "healthChecks": false
+      },
+      "ledger": {
+        "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Northwind ledger",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "today": { "configured": "(same as edit)", "simulation": "today", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" },
+    "triple": {
+      "configured": "(same as edit)",
+      "simulation": "triple",
+      "analysis": {
+        "bottleneck": "payment-worker",
+        "suggestion": "Payment worker: raise replicas from 2 to 3.",
+        "converged": true,
+        "iterations": 5,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "orders": ["Infinity", 3, 0, 1, 1, 0], "intake": [16, 3, 0.1875, 1, 1, 0], "queue": [2, 3, 1.5, 1, 1, 0], "payment-worker": [2, 3, 1.5, 2, 2, 0], "ledger": ["Infinity", 3, 0, 1, 1, 0] },
+        "connections": { "submit": 3, "queue-payment": 3, "pay": 3, "record": 3 },
+        "offeredTypes": { "orders": ["OrderPlaced"], "intake": ["OrderPlaced"], "queue": ["OrderPlaced"], "payment-worker": ["OrderPlaced"], "ledger": ["OrderPlaced"] }
+      },
+      "explanations": {
+        "intake": {
+          "id": "intake",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 16,
+          "offered": 3,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 4,
+          "seconds": 0.25,
+          "utilization": 0.1875,
+          "growth": 0,
+          "contributors": [{ "edge": "submit", "node": "orders", "label": "Northwind orders", "rate": 3 }],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "payment-worker": {
+          "id": "payment-worker",
+          "role": "processor",
+          "status": "up",
+          "reason": "capacity",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 2,
+          "offered": 3,
+          "replicas": 2,
+          "baseReplicas": 2,
+          "omittedContributors": 0,
+          "activeReplicas": 2,
+          "assignments": [],
+          "slots": 1,
+          "seconds": 1,
+          "utilization": 1.5,
+          "growth": 1,
+          "contributors": [{ "edge": "pay", "node": "queue", "label": "Payment jobs", "rate": 3 }],
+          "target": 0.5,
+          "minimumReplicas": 3,
+          "targetReplicas": 6,
+          "changes": [{ "nodeId": "payment-worker", "key": "replicas", "from": 2, "to": 6 }],
+          "fixId": "capacity:payment-worker",
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": [{ "nodeId": "payment-worker", "key": "replicas", "from": 2, "to": 6 }],
+      "redundancy": {
+        "queue": { "replicas": 2, "enough": false },
+        "payment-worker": { "replicas": 6, "enough": true }
+      },
+      "resolved": "(same as edit)"
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "ok",
+          "top": "payment-worker",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Payment worker at 50% · 1/s of 2/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "orders": ["idle", "1/s · no limit", { "modeled": false }],
+            "intake": ["ok", "6% · 1/s of 16/s"],
+            "queue": ["ok", "50% · 1/s of 2/s"],
+            "payment-worker": ["ok", "50% · 1/s of 2/s"],
+            "ledger": ["idle", "1/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "over",
+          "top": "payment-worker",
+          "headline": "Payment worker and 1 more are over capacity",
+          "detail": "250% · 5/s of 2/s",
+          "fix": {
+            "changes": [
+              { "nodeId": "payment-worker", "key": "replicas", "from": 2, "to": 10, "label": "Payment worker" }
+            ],
+            "label": "Payment worker 2 → 10 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "orders": ["idle", "5/s · no limit", { "modeled": false }],
+            "intake": ["ok", "31% · 5/s of 16/s"],
+            "queue": ["over", "250% · 5/s of 2/s"],
+            "payment-worker": ["over", "250% · 5/s of 2/s"],
+            "ledger": ["idle", "5/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "hot",
+          "top": "payment-worker",
+          "headline": "Payment worker and 1 more are near capacity",
+          "detail": "100% · 1/s of 1/s",
+          "fix": {
+            "changes": [
+              { "nodeId": "payment-worker", "key": "replicas", "from": 2, "to": 4, "label": "Payment worker" }
+            ],
+            "label": "Payment worker 2 → 4 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "orders": ["idle", "1/s · no limit", { "modeled": false }],
+            "intake": ["ok", "6% · 1/s of 16/s"],
+            "queue": ["hot", "100% · 1/s of 1/s"],
+            "payment-worker": ["hot", "100% · 1/s of 1/s"],
+            "ledger": ["idle", "1/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "ok",
+          "top": "payment-worker",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Payment worker at 50% · 1/s of 2/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "orders": ["idle", "1/s · no limit", { "modeled": false }],
+            "intake": ["ok", "6% · 1/s of 16/s"],
+            "queue": ["ok", "50% · 1/s of 2/s"],
+            "payment-worker": ["ok", "50% · 1/s of 2/s"],
+            "ledger": ["idle", "1/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    },
+    "today": {
+      "tone": "ok",
+      "top": "payment-worker",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Payment worker at 50% · 1/s of 2/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "orders": ["idle", "1/s · no limit", { "modeled": false }],
+        "intake": ["ok", "6% · 1/s of 16/s"],
+        "queue": ["ok", "50% · 1/s of 2/s"],
+        "payment-worker": ["ok", "50% · 1/s of 2/s"],
+        "ledger": ["idle", "1/s · no limit", { "modeled": false }]
+      }
+    },
+    "triple": {
+      "tone": "over",
+      "top": "payment-worker",
+      "headline": "Payment worker and 1 more are over capacity",
+      "detail": "150% · 3/s of 2/s",
+      "fix": {
+        "changes": [{ "nodeId": "payment-worker", "key": "replicas", "from": 2, "to": 6, "label": "Payment worker" }],
+        "label": "Payment worker 2 → 6 replicas"
+      },
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "orders": ["idle", "3/s · no limit", { "modeled": false }],
+        "intake": ["ok", "19% · 3/s of 16/s"],
+        "queue": ["over", "150% · 3/s of 2/s"],
+        "payment-worker": ["over", "150% · 3/s of 2/s"],
+        "ledger": ["idle", "3/s · no limit", { "modeled": false }]
+      }
+    }
+  }
+}

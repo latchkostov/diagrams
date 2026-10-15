@@ -1,0 +1,153 @@
+{
+  "file": { "sha256": "5b38f3b759a485e9300fb89f478c51ffbdb4109baf2f2b3f1c18bbf74789386d", "bytes": 22732 },
+  "payload": {
+    "version": 1,
+    "diagram": {
+      "format": "diagrams/v2",
+      "planning": { "revision": "p3" },
+      "direction": "TB",
+      "title": "Measured order capacity",
+      "description": "Northwind compares the pinned processor lesson with a measured one-second payment workload: today fits, but at three times traffic the two-slot payment worker saturates.",
+      "nodes": [
+        {
+          "id": "orders",
+          "stencil": "generic.webhook",
+          "label": "Northwind orders",
+          "sublabel": "1 order/s today",
+          "props": { "ratePerSec": 1, "messageType": "OrderPlaced" },
+          "x": 40,
+          "y": 40
+        },
+        {
+          "id": "intake",
+          "stencil": "service.node",
+          "label": "Order intake",
+          "sublabel": "Pinned lesson: 1 × 4 / 0.25 s",
+          "props": { "preset": "processor-lesson", "presetRevision": "1" },
+          "x": 40,
+          "y": 200
+        },
+        {
+          "id": "queue",
+          "stencil": "generic.queue",
+          "label": "Payment jobs",
+          "sublabel": "Buffer before measured work",
+          "props": {},
+          "x": 40,
+          "y": 360
+        },
+        {
+          "id": "payment-worker",
+          "stencil": "service.java",
+          "label": "Payment worker",
+          "sublabel": "Measured: 2 × 1 / 1 s = 2/s",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 1, "latencyMs": 1000, "jitter": 0, "failureRate": 0 },
+          "x": 40,
+          "y": 520
+        },
+        {
+          "id": "ledger",
+          "stencil": "postgres",
+          "label": "Northwind ledger",
+          "sublabel": "Completed payments",
+          "props": { "latencyMs": 1 },
+          "x": 40,
+          "y": 680
+        }
+      ],
+      "edges": [
+        {
+          "id": "submit",
+          "from": "orders",
+          "to": "intake",
+          "label": "Order",
+          "kind": "async",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "queue-payment",
+          "from": "intake",
+          "to": "queue",
+          "label": "Payment job",
+          "kind": "async",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "pay",
+          "from": "queue",
+          "to": "payment-worker",
+          "label": "Workers",
+          "kind": "async",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "record",
+          "from": "payment-worker",
+          "to": "ledger",
+          "label": "Record",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        }
+      ],
+      "simulations": [
+        {
+          "id": "triple",
+          "title": "Three times the orders",
+          "description": "Traffic is multiplied by three, capacity stays fixed. The default intake has headroom; the measured payment worker is the bottleneck.",
+          "seed": 41,
+          "scale": 1,
+          "traffic": [
+            {
+              "id": "orders",
+              "node": "orders",
+              "messageType": "OrderPlaced",
+              "shape": { "kind": "constant", "ratePerSec": 1, "durationMs": 8000 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 1000,
+              "action": { "do": "note", "text": "Three orders/s exceed the measured 2/s payment capacity. Show capacity or open Payment worker Properties to see the arithmetic.", "focus": ["payment-worker", "queue"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "queue-lag-at",
+              "label": "queue: lag > 0",
+              "metric": { "node": "queue", "field": "lag" },
+              "op": ">",
+              "value": 0,
+              "when": "at",
+              "atMs": 6000
+            },
+            {
+              "id": "ledger-processed-end",
+              "label": "ledger: processed == 24",
+              "metric": { "node": "ledger", "field": "processed" },
+              "op": "==",
+              "value": 24,
+              "when": "end"
+            },
+            {
+              "id": "queue-dropped-always",
+              "label": "queue: dropped == 0",
+              "metric": { "node": "queue", "field": "dropped" },
+              "op": "==",
+              "value": 0,
+              "when": "always"
+            }
+          ],
+          "multipliers": { "traffic": 3 }
+        }
+      ]
+    },
+    "icons": {
+      "generic-queue": { "sha256": "63feee04fc08e8f77f5087efc0c1a72b5963c15b40f2a5c4205b280b773ea54c", "bytes": 543 },
+      "generic-webhook": { "sha256": "f73d0eda19274f25a80e339ef1119c82f8aed73222085462017cf001b6c0ebed", "bytes": 595 },
+      "java": { "sha256": "5267ef9b941ed3577d43b258c86bd6f218c30356da4c8edf6ef49a989845b337", "bytes": 2011 },
+      "nodejs": { "sha256": "5d31625856d847dbfd22e16f061e65622e638f5621e5b49b8fec1fdde933de7e", "bytes": 1848 },
+      "postgresql": { "sha256": "95779d4aab758053d1839595cc9716e1eedb1021a015a00331e54268a5daf5c0", "bytes": 7732 }
+    },
+    "options": { "theme": "dark", "banner": "Confidential: internal use only", "startSimulation": null, "exportedOn": "2026-01-01" }
+  }
+}

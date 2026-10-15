@@ -1,0 +1,284 @@
+{
+  "withIcons": {
+    "sha256": "a9963844375d12eedc8b13914db26432936627277aa60928a3c6605377b8c368",
+    "bytes": 16619,
+    "inlined": { "client.browser": "client-browser 0022934839e05a07", "service.node": "nodejs ad81b1a87b698cc5" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Serverless burst and buffer",
+        "description": "Contoso compares direct Lambda admission with an SQS buffer and bounded invoker: reserved concurrency rejects direct excess while paced async calls finish.",
+        "direction": "TB",
+        "nodes": [
+          {
+            "id": "requests",
+            "stencil": "client.browser",
+            "label": "Contoso requests",
+            "sublabel": "6 requests/s to each path",
+            "x": 200,
+            "y": 40,
+            "props": { "ratePerSec": 6, "messageType": "Job" }
+          },
+          {
+            "id": "gateway",
+            "stencil": "aws.api-gateway",
+            "label": "API Gateway",
+            "sublabel": "Managed account preset",
+            "x": 40,
+            "y": 200,
+            "props": {}
+          },
+          {
+            "id": "queue",
+            "stencil": "aws.sqs",
+            "label": "Async buffer",
+            "sublabel": "Wait here for a free worker",
+            "x": 360,
+            "y": 200,
+            "props": {}
+          },
+          {
+            "id": "direct",
+            "stencil": "aws.lambda",
+            "label": "Direct function",
+            "sublabel": "2 concurrent executions · 1 s each",
+            "x": 40,
+            "y": 360,
+            "props": {
+              "preset": "managed-measured",
+              "presetRevision": "2026-10-14",
+              "jitter": 0,
+              "failureRate": 0,
+              "scaling": "auto",
+              "maxConcurrency": 2,
+              "latencyMs": 1000,
+              "api": { "maxInFlight": 2 }
+            }
+          },
+          {
+            "id": "invoker",
+            "stencil": "service.node",
+            "label": "Bounded async invoker",
+            "sublabel": "2 slots · one-second pacing",
+            "x": 360,
+            "y": 360,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 1, "concurrency": 2, "latencyMs": 1000, "jitter": 0, "failureRate": 0 }
+          },
+          {
+            "id": "async",
+            "stencil": "aws.lambda",
+            "label": "Buffered function",
+            "sublabel": "2 concurrent executions · 250 ms",
+            "x": 360,
+            "y": 520,
+            "props": {
+              "preset": "managed-measured",
+              "presetRevision": "2026-10-14",
+              "jitter": 0,
+              "failureRate": 0,
+              "scaling": "auto",
+              "maxConcurrency": 2,
+              "latencyMs": 250,
+              "api": { "maxInFlight": 2 }
+            }
+          },
+          {
+            "id": "direct-results",
+            "stencil": "aws.dynamodb",
+            "label": "Direct results",
+            "sublabel": "Admitted requests only",
+            "x": 40,
+            "y": 520,
+            "props": { "latencyMs": 1 }
+          },
+          {
+            "id": "async-results",
+            "stencil": "aws.dynamodb",
+            "label": "Async results",
+            "sublabel": "Every queued job",
+            "x": 200,
+            "y": 680,
+            "props": { "latencyMs": 1 }
+          }
+        ],
+        "edges": [
+          {
+            "id": "direct-entry",
+            "from": "requests",
+            "to": "gateway",
+            "label": "Request",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "enqueue",
+            "from": "requests",
+            "to": "queue",
+            "label": "Enqueue",
+            "kind": "async",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "invoke",
+            "from": "gateway",
+            "to": "direct",
+            "label": "Invoke",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "consume",
+            "from": "queue",
+            "to": "invoker",
+            "label": "Pull when free",
+            "kind": "async",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "async-invoke",
+            "from": "invoker",
+            "to": "async",
+            "label": "Paced invoke",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "direct-save",
+            "from": "direct",
+            "to": "direct-results",
+            "label": "Write",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "async-save",
+            "from": "async",
+            "to": "async-results",
+            "label": "Write",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          }
+        ],
+        "simulations": [
+          {
+            "id": "burst",
+            "title": "Twenty jobs at once",
+            "description": "Direct calls exceed the reserved allocation. A bounded invoker pulls queued jobs at 2/s. This explicit pacing is not a model of SQS trigger retries; managed allocation is instant and cold starts are excluded.",
+            "seed": 41,
+            "scale": 1,
+            "traffic": [
+              {
+                "id": "requests",
+                "node": "requests",
+                "messageType": "Job",
+                "shape": { "kind": "burst", "count": 20, "atMs": 1000, "spreadMs": 200 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 2000,
+                "action": { "do": "note", "text": "Reserved concurrency is simultaneous executions, not requests per second. Direct excess is rejected; SQS waits behind a bounded invoker, which protects the async allocation.", "focus": ["direct", "queue", "invoker"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "direct-rejected-end",
+                "label": "direct: rejected > 0",
+                "metric": { "node": "direct", "field": "rejected" },
+                "op": ">",
+                "value": 0,
+                "when": "end"
+              },
+              {
+                "id": "queue-lag-at",
+                "label": "queue: lag > 0",
+                "metric": { "node": "queue", "field": "lag" },
+                "op": ">",
+                "value": 0,
+                "when": "at",
+                "atMs": 3000
+              },
+              {
+                "id": "async-results-processed-end",
+                "label": "async-results: processed == 20",
+                "metric": { "node": "async-results", "field": "processed" },
+                "op": "==",
+                "value": 20,
+                "when": "end"
+              },
+              {
+                "id": "async-rejected-end",
+                "label": "async: rejected == 0",
+                "metric": { "node": "async", "field": "rejected" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              },
+              {
+                "id": "queue-lag-end",
+                "label": "queue: lag == 0",
+                "metric": { "node": "queue", "field": "lag" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              }
+            ]
+          },
+          {
+            "id": "paced",
+            "title": "Paced requests fit",
+            "description": "One job a second stays inside both allocations.",
+            "seed": 41,
+            "scale": 1,
+            "traffic": [
+              {
+                "id": "requests",
+                "node": "requests",
+                "messageType": "Job",
+                "shape": { "kind": "constant", "ratePerSec": 1, "durationMs": 6000 }
+              }
+            ],
+            "timeline": [],
+            "expectations": [
+              {
+                "id": "direct-results-processed-end",
+                "label": "direct-results: processed == 6",
+                "metric": { "node": "direct-results", "field": "processed" },
+                "op": "==",
+                "value": 6,
+                "when": "end"
+              },
+              {
+                "id": "async-results-processed-end",
+                "label": "async-results: processed == 6",
+                "metric": { "node": "async-results", "field": "processed" },
+                "op": "==",
+                "value": 6,
+                "when": "end"
+              },
+              {
+                "id": "direct-rejected-end",
+                "label": "direct: rejected == 0",
+                "metric": { "node": "direct", "field": "rejected" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              },
+              {
+                "id": "async-rejected-end",
+                "label": "async: rejected == 0",
+                "metric": { "node": "async", "field": "rejected" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

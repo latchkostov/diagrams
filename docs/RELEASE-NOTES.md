@@ -19,6 +19,28 @@
   during dependency verification, without rewriting the lockfile. App output and parity goldens are unchanged.
 - Interactive HTML parity fits the settled viewer explicitly, avoiding a startup-framing race; its
   existing goldens remain unchanged.
+## Public feature showcases (2026-10-14)
+
+- Six new examples: **Partitions versus subscriptions**, **Shared API and token quotas**,
+  **Serverless burst and buffer**, **Measured order capacity**, **Contoso DMZ**, and
+  **Two inputs, one worker pool**. Each has two saved simulations and uses the current planning model.
+- Watch idle Kafka readers versus full subscriptions, separate admitted/rejected API calls, shared
+  model tokens, reserved function concurrency, measured bottlenecks, firewall blocks and shared worker
+  slots. Quotas are explicitly fictional; the async function path uses a bounded invoker, without
+  claiming vendor trigger retries. Examples remain lazy and use the existing themes and Lab.
+- Public examples increase from 17 to 23, with reviewed checks and light/dark desktop/mobile screenshots
+  in [Round 41](DESIGN-REVIEW.md#round-41--public-feature-showcases-2026-10-14).
+- Phone title cards wrap the title below Live and fold long descriptions, retaining checks/reset.
+  Playback controls stay in one row above the side rails, with Inputs clear of the bar.
+- Output parity adds 205 Node goldens (all six examples' output families, individual validation
+  transcripts and the updated skill stencil-reference fingerprint) and four stable browser renders:
+  partitions, measured capacity, serverless buffering and shared workers. The
+  [complete manifest](research/showcase-examples.md) explains every added file. Original aggregate
+  skill outputs retain their explicit 17-example input cohort; no existing golden changes.
+- Deferred eight new browser measurements pending `test/parity-browser-stable`: Contoso and quota
+  initial renders, plus auto-layout/tidy for all six. Their Node goldens and production Live tests
+  remain enabled. No existing browser case is excluded.
+- Refreshed the stale offline skill viewer; plugin 1.1.19 is one patch above master.
 
 ## Self-hosting review fixes (2026-10-14)
 

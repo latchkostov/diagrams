@@ -1,0 +1,107 @@
+{
+  "run": {
+    "time": 15250,
+    "totalMs": 18000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 3, "capacity": 1 },
+    "expectations": [
+      { "id": "queue-lag-at", "label": "queue: lag > 0", "status": "pass", "value": 0 },
+      { "id": "ledger-processed-end", "label": "ledger: processed == 24", "status": "pass", "value": 24 },
+      { "id": "queue-dropped-always", "label": "queue: dropped == 0", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "orders" },
+      { "atMs": 1000, "kind": "note", "label": "Three orders/s exceed the measured 2/s payment capacity. Show capacity or open Payment worker Properties to see the arithmetic." },
+      { "atMs": 8000, "kind": "traffic", "label": "orders ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "orders": { "replicas": [1, 1, 0] },
+        "intake": { "replicas": [1, 1, 0] },
+        "queue": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "payment-worker": { "replicas": [2, 2, 0] },
+        "ledger": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 8,
+      "nodes": {
+        "orders": { "processed": 24, "throughput": 0.4809133106944115, "replicas": [1, 1, 0] },
+        "intake": { "processed": 24, "throughput": 0.7410460483877329, "replicas": [1, 1, 0] },
+        "queue": {
+          "processed": 24,
+          "backlog": 4,
+          "throughput": 0.9051156874244703,
+          "lag": { "queue": 4 },
+          "replicas": [1, 1, 0]
+        },
+        "payment-worker": { "processed": 16, "backlog": 2, "inFlight": 2, "throughput": 1.7219470899096696, "replicas": [2, 2, 0] },
+        "ledger": { "processed": 16, "throughput": 2.124328345227919, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 15250,
+    "inSystem": 0,
+    "real": {
+      "orders": { "processed": 24, "throughput": 0.00252360144628023, "replicas": [1, 1, 0] },
+      "intake": { "processed": 24, "throughput": 0.0038886527735553945, "replicas": [1, 1, 0] },
+      "queue": { "processed": 24, "throughput": 0.0047496112231477485, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "payment-worker": { "processed": 24, "throughput": 0.4935086236751499, "replicas": [2, 2, 0] },
+      "ledger": { "processed": 24, "throughput": 0.6088307614274808, "replicas": [1, 1, 0] }
+    },
+    "edges": { "submit": 24, "queue-payment": 24, "pay": 24, "record": 24 }
+  },
+  "events": {
+    "total": 240,
+    "byKind": { "inject": 24, "process": 120, "deliver": 96 },
+    "byNode": {
+      "orders": { "inject": 24, "process": 24 },
+      "intake": { "deliver": 24, "process": 24 },
+      "queue": { "deliver": 24, "process": 24 },
+      "payment-worker": { "deliver": 24, "process": 24 },
+      "ledger": { "deliver": 24, "process": 24 }
+    },
+    "perSecond": [
+      "a248b0e2da48",
+      "5e83d9eae6a6",
+      "31ad23f3d0de",
+      "266f5dae0d04",
+      "6b4d051acc7f",
+      "5420f15e3e0d",
+      "971ba634c7d2",
+      "82de23f5bfc1",
+      "454f9134667b",
+      "66a52ca44cc3",
+      "9f5a0d9f3b79",
+      "f9f50b61bb34",
+      "7e8306d3055a",
+      "0ae5839bb00a",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 1000, "text": "Three orders/s exceed the measured 2/s payment capacity. Show capacity or open Payment worker Properties to see the arithmetic.", "focus": ["payment-worker", "queue"] }
+  ],
+  "latency": {
+    "journeys": { "done": 24, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 24, "min": 2080, "mean": 3925, "p50": 4080, "p90": 5440, "max": 5770 },
+    "waitMs": {
+      "intake": { "count": 24, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "payment-worker": { "count": 24, "min": 0, "mean": 685, "p50": 800, "p90": 800, "max": 800 },
+      "ledger": { "count": 24, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "intake": { "count": 24, "min": 210, "mean": 256.25, "p50": 260, "p90": 290, "max": 300 },
+      "payment-worker": { "count": 24, "min": 1000, "mean": 1000, "p50": 1000, "p90": 1000, "max": 1000 },
+      "ledger": { "count": 24, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    }
+  }
+}

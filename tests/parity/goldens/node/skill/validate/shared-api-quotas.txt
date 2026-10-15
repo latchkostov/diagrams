@@ -1,0 +1,2 @@
+exit 0
+VALID <repo>/src/examples/shared-api-quotas.json: 7 nodes, 5 edges, 2 simulations

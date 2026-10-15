@@ -1,0 +1,31 @@
+{
+  "viewport": "translate(214.438px, -0.674157px) scale(1.01685)",
+  "nodes": {
+    "requests": { "kind": "node", "box": "translate(200px, 40px) 235×72", "text": "Contoso requests 6 requests/s to each path" },
+    "gateway": { "kind": "node", "box": "translate(40px, 200px) 220×72", "text": "API Gateway Managed account preset" },
+    "queue": { "kind": "node", "box": "translate(360px, 200px) 247×72", "text": "Async buffer Wait here for a free worker" },
+    "direct": { "kind": "node", "box": "translate(40px, 360px) 260×72", "text": "Direct function 2 concurrent executions · 1 s each" },
+    "invoker": { "kind": "node", "box": "translate(360px, 360px) 247×72", "text": "Bounded async invoker 2 slots · one-second pacing" },
+    "async": { "kind": "node", "box": "translate(360px, 520px) 260×72", "text": "Buffered function 2 concurrent executions · 250 ms" },
+    "direct-results": { "kind": "node", "box": "translate(40px, 520px) 220×72", "text": "Direct results Admitted requests only" },
+    "async-results": { "kind": "node", "box": "translate(200px, 680px) 220×72", "text": "Async results Every queued job" }
+  },
+  "edges": {
+    "direct-entry": "M310.5,112 L310.5,146 Q310.5,156 300.5,156 L160,156 Q150,156 150,166 L150,200",
+    "enqueue": "M324.5,112 L324.5,146 Q324.5,156 334.5,156 L473.5,156 Q483.5,156 483.5,166 L483.5,200",
+    "invoke": "M150,272 L150,306 Q150,316 160,316 L160,316 Q170,316 170,326 L170,360",
+    "consume": "M483.5,272 L483.5,360",
+    "async-invoke": "M483.5,432 L483.5,472.8 Q483.5,476 486.8,476 L486.8,476 Q490,476 490,479.3 L490,520",
+    "direct-save": "M170,432 L170,466 Q170,476 160,476 L160,476 Q150,476 150,486 L150,520",
+    "async-save": "M490,592 L490,626 Q490,636 480,636 L320,636 Q310,636 310,646 L310,680"
+  },
+  "labels": {
+    "direct-entry": { "style": "transform: translate(-50%, -50%) translate(230.25px, 156px); --fe-w: 59px; --fe-h: 19px;", "text": "Request" },
+    "enqueue": { "style": "transform: translate(-50%, -50%) translate(404px, 156px); --fe-w: 59px; --fe-h: 19px;", "text": "Enqueue" },
+    "invoke": { "style": "transform: translate(-50%, -50%) translate(150px, 295px); --fe-w: 53px; --fe-h: 19px;", "text": "Invoke" },
+    "consume": { "style": "transform: translate(-50%, -50%) translate(483.5px, 310px); --fe-w: 101px; --fe-h: 19px;", "text": "Pull when free" },
+    "async-invoke": { "style": "transform: translate(-50%, -50%) translate(483.5px, 455px); --fe-w: 89px; --fe-h: 19px;", "text": "Paced invoke" },
+    "direct-save": { "style": "transform: translate(-50%, -50%) translate(170px, 455px); --fe-w: 47px; --fe-h: 19px;", "text": "Write" },
+    "async-save": { "style": "transform: translate(-50%, -50%) translate(400px, 636px); --fe-w: 47px; --fe-h: 19px;", "text": "Write" }
+  }
+}

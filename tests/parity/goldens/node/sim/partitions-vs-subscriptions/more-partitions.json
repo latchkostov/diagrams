@@ -1,0 +1,90 @@
+{
+  "run": {
+    "time": 8900,
+    "totalMs": 16000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "log-lag-end", "label": "log: lag == 0", "status": "pass", "value": 0 },
+      { "id": "log-readers-processed-end", "label": "log-readers: processed == 36", "status": "pass", "value": 36 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "publisher" },
+      { "atMs": 1000, "kind": "note", "label": "Only the Kafka partition count changed. SNS has no partition setting." },
+      { "atMs": 6000, "kind": "traffic", "label": "publisher ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "publisher": { "replicas": [1, 1, 0] },
+        "log": { "lag": { "orders": 0 }, "replicas": [1, 1, 0] },
+        "fanout": { "lag": { "receipts": 0, "audit": 0 }, "replicas": [1, 1, 0] },
+        "log-readers": { "replicas": [8, 8, 0] },
+        "receipts": { "replicas": [8, 8, 0] },
+        "audit": { "replicas": [8, 8, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 8900,
+    "inSystem": 0,
+    "real": {
+      "publisher": { "processed": 36, "throughput": 0.36044916592667164, "replicas": [1, 1, 0] },
+      "log": { "processed": 36, "throughput": 0.4358730088727191, "lag": { "orders": 0 }, "replicas": [1, 1, 0] },
+      "fanout": {
+        "processed": 36,
+        "throughput": 0.4358730088727191,
+        "lag": { "receipts": 0, "audit": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "log-readers": { "processed": 36, "throughput": 1.4471493529224029, "replicas": [8, 8, 0] },
+      "receipts": { "processed": 36, "throughput": 1.4471493529224029, "replicas": [8, 8, 0] },
+      "audit": { "processed": 36, "throughput": 1.4471493529224029, "replicas": [8, 8, 0] }
+    },
+    "edges": { "publish-log": 36, "publish-fanout": 36, "read-log": 36, "read-receipts": 36, "read-audit": 36 }
+  },
+  "events": {
+    "total": 432,
+    "byKind": { "inject": 36, "process": 216, "deliver": 180 },
+    "byNode": {
+      "publisher": { "inject": 36, "process": 36 },
+      "log": { "deliver": 36, "process": 36 },
+      "fanout": { "deliver": 36, "process": 36 },
+      "log-readers": { "deliver": 36, "process": 36 },
+      "receipts": { "deliver": 36, "process": 36 },
+      "audit": { "deliver": 36, "process": 36 }
+    },
+    "perSecond": [
+      "8a0bdb031a11",
+      "b484c1dcacec",
+      "bf69ec63d0b6",
+      "67f072daca9f",
+      "f644be2b6b3e",
+      "1d9b819a1d25",
+      "b0863f4fc61f",
+      "1dc9eb65a0be",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 1000, "text": "Only the Kafka partition count changed. SNS has no partition setting.", "focus": ["log", "fanout"] }
+  ],
+  "latency": {
+    "journeys": { "done": 36, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 36, "min": 1400, "mean": 1400, "p50": 1400, "p90": 1400, "max": 1400 },
+    "waitMs": {
+      "log-readers": { "count": 36, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "receipts": { "count": 36, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "audit": { "count": 36, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "log-readers": { "count": 36, "min": 1000, "mean": 1000, "p50": 1000, "p90": 1000, "max": 1000 },
+      "receipts": { "count": 36, "min": 1000, "mean": 1000, "p50": 1000, "p90": 1000, "max": 1000 },
+      "audit": { "count": 36, "min": 1000, "mean": 1000, "p50": 1000, "p90": 1000, "max": 1000 }
+    }
+  }
+}

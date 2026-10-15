@@ -1,0 +1,218 @@
+{
+  "file": { "sha256": "9824a7754348a0f1b452b2af1eb89a3c4916f2f2e97d42b6af339f0ba21c5955", "bytes": 26081 },
+  "payload": {
+    "version": 1,
+    "diagram": {
+      "format": "diagrams/v2",
+      "planning": { "revision": "p3" },
+      "direction": "TB",
+      "title": "Partitions versus subscriptions",
+      "description": "Northwind publishes the same events to a three-partition Kafka topic and SNS: five Kafka readers sit idle while both subscriptions use all eight workers.",
+      "nodes": [
+        {
+          "id": "publisher",
+          "stencil": "generic.webhook",
+          "label": "Northwind events",
+          "sublabel": "6 events/s to both brokers",
+          "props": { "ratePerSec": 6, "messageType": "OrderPlaced" },
+          "x": 360,
+          "y": 40
+        },
+        {
+          "id": "log",
+          "stencil": "kafka.topic",
+          "label": "Order log",
+          "sublabel": "3 partitions",
+          "props": { "partitions": 3 },
+          "x": 200,
+          "y": 200
+        },
+        {
+          "id": "fanout",
+          "stencil": "aws.sns",
+          "label": "Order notifications",
+          "sublabel": "Independent subscriptions",
+          "props": {},
+          "x": 520,
+          "y": 200
+        },
+        {
+          "id": "log-readers",
+          "stencil": "service.java",
+          "label": "Kafka readers",
+          "sublabel": "8 replicas · only 3 assigned",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 8, "concurrency": 1, "latencyMs": 1000, "jitter": 0, "failureRate": 0 },
+          "x": 40,
+          "y": 360
+        },
+        {
+          "id": "receipts",
+          "stencil": "service.node",
+          "label": "Receipt subscription",
+          "sublabel": "8 replicas · all available",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 8, "concurrency": 1, "latencyMs": 1000, "jitter": 0, "failureRate": 0 },
+          "x": 360,
+          "y": 360
+        },
+        {
+          "id": "audit",
+          "stencil": "service.go",
+          "label": "Audit subscription",
+          "sublabel": "8 replicas · independent copy",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 8, "concurrency": 1, "latencyMs": 1000, "jitter": 0, "failureRate": 0 },
+          "x": 680,
+          "y": 360
+        }
+      ],
+      "edges": [
+        {
+          "id": "publish-log",
+          "from": "publisher",
+          "to": "log",
+          "label": "Append",
+          "kind": "async",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "publish-fanout",
+          "from": "publisher",
+          "to": "fanout",
+          "label": "Publish",
+          "kind": "async",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "read-log",
+          "from": "log",
+          "to": "log-readers",
+          "label": "orders group",
+          "kind": "async",
+          "props": { "travelMs": 200, "group": "orders" }
+        },
+        {
+          "id": "read-receipts",
+          "from": "fanout",
+          "to": "receipts",
+          "label": "receipts",
+          "kind": "async",
+          "props": { "travelMs": 200, "group": "receipts" }
+        },
+        {
+          "id": "read-audit",
+          "from": "fanout",
+          "to": "audit",
+          "label": "audit",
+          "kind": "async",
+          "props": { "travelMs": 200, "group": "audit" }
+        }
+      ],
+      "simulations": [
+        {
+          "id": "compare",
+          "title": "Same events, different assignment",
+          "description": "Watch the Kafka lag and five idle readers; SNS delivers a full copy to each subscription.",
+          "seed": 41,
+          "scale": 1,
+          "traffic": [
+            {
+              "id": "publisher",
+              "node": "publisher",
+              "messageType": "OrderPlaced",
+              "shape": { "kind": "constant", "ratePerSec": 6, "durationMs": 6000 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 1000,
+              "action": { "do": "note", "text": "Kafka assigns three of eight replicas. Each SNS subscription can use all eight; subscriptions receive independent copies.", "focus": ["log-readers", "receipts", "audit"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "log-lag-at",
+              "label": "log: lag > 0",
+              "metric": { "node": "log", "field": "lag" },
+              "op": ">",
+              "value": 0,
+              "when": "at",
+              "atMs": 5000
+            },
+            {
+              "id": "log-readers-processed-end",
+              "label": "log-readers: processed == 36",
+              "metric": { "node": "log-readers", "field": "processed" },
+              "op": "==",
+              "value": 36,
+              "when": "end"
+            },
+            {
+              "id": "receipts-processed-end",
+              "label": "receipts: processed == 36",
+              "metric": { "node": "receipts", "field": "processed" },
+              "op": "==",
+              "value": 36,
+              "when": "end"
+            },
+            {
+              "id": "audit-processed-end",
+              "label": "audit: processed == 36",
+              "metric": { "node": "audit", "field": "processed" },
+              "op": "==",
+              "value": 36,
+              "when": "end"
+            }
+          ]
+        },
+        {
+          "id": "more-partitions",
+          "title": "Give every reader a partition",
+          "description": "Eight partitions remove the assignment bottleneck without changing the reader fleets.",
+          "seed": 41,
+          "scale": 1,
+          "traffic": [
+            {
+              "id": "publisher",
+              "node": "publisher",
+              "messageType": "OrderPlaced",
+              "shape": { "kind": "constant", "ratePerSec": 6, "durationMs": 6000 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 1000,
+              "action": { "do": "note", "text": "Only the Kafka partition count changed. SNS has no partition setting.", "focus": ["log", "fanout"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "log-lag-end",
+              "label": "log: lag == 0",
+              "metric": { "node": "log", "field": "lag" },
+              "op": "==",
+              "value": 0,
+              "when": "end"
+            },
+            {
+              "id": "log-readers-processed-end",
+              "label": "log-readers: processed == 36",
+              "metric": { "node": "log-readers", "field": "processed" },
+              "op": "==",
+              "value": 36,
+              "when": "end"
+            }
+          ],
+          "setup": { "props": { "log": { "partitions": 8 } } }
+        }
+      ]
+    },
+    "icons": {
+      "aws-sns": { "sha256": "9805176c950fdf2f6840101e64c822ae8b1b978871ccda85fa3eb766c563f509", "bytes": 3726 },
+      "generic-webhook": { "sha256": "f73d0eda19274f25a80e339ef1119c82f8aed73222085462017cf001b6c0ebed", "bytes": 595 },
+      "go": { "sha256": "f1f50429f38e0fa91b2c77cf600cee410845b58e30935a09cb206cfc88efff9c", "bytes": 2404 },
+      "java": { "sha256": "5267ef9b941ed3577d43b258c86bd6f218c30356da4c8edf6ef49a989845b337", "bytes": 2011 },
+      "kafka": { "sha256": "938a96212aef8da520eca3435f23c1a3304ce25fbfaf0e5712ce548353abc5ef", "bytes": 4092 },
+      "nodejs": { "sha256": "5d31625856d847dbfd22e16f061e65622e638f5621e5b49b8fec1fdde933de7e", "bytes": 1848 }
+    },
+    "options": { "theme": "light", "startSimulation": "compare", "exportedOn": "2026-01-01" }
+  }
+}

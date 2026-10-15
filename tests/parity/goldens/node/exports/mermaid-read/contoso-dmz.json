@@ -1,0 +1,33 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Contoso DMZ",
+    "direction": "TB",
+    "groups": [
+      { "id": "g_dmz", "label": "DMZ", "tone": "neutral", "x": 200, "y": 360, "width": 460, "height": 336 },
+      { "id": "g_trusted", "label": "Trusted services", "tone": "neutral", "x": 200, "y": 680, "width": 300, "height": 496 }
+    ],
+    "nodes": [
+      { "id": "firewall", "stencil": "generic.service", "label": "Firewall pair", "sublabel": "Allow web · deny admin", "x": 240, "y": 424, "group": "g_dmz" },
+      { "id": "adc", "stencil": "f5.bigip", "label": "BIG-IP pair", "sublabel": "Web VIP · active-standby", "x": 400, "y": 584, "group": "g_dmz" },
+      { "id": "switch", "stencil": "generic.service", "label": "Services switch", "sublabel": "Branch preset · active-active", "x": 240, "y": 744, "group": "g_trusted" },
+      { "id": "app", "stencil": "azure.app-service", "label": "Contoso web app", "sublabel": "2 replicas · 8 slots", "x": 240, "y": 904, "group": "g_trusted" },
+      { "id": "database", "stencil": "generic.database", "label": "Orders database", "sublabel": "Trusted zone", "x": 240, "y": 1064, "group": "g_trusted" },
+      { "id": "visitors", "stencil": "generic.service", "label": "Contoso visitors", "sublabel": "8 web requests/s", "x": 80, "y": 104 },
+      { "id": "probes", "stencil": "generic.service", "label": "Security exercise", "sublabel": "2 admin probes/s", "x": 400, "y": 104 },
+      { "id": "router", "stencil": "generic.router", "label": "Edge router pair", "sublabel": "Branch preset · active-active", "x": 240, "y": 264 },
+      { "id": "admin", "stencil": "generic.database", "label": "Admin database", "sublabel": "Denied probe destination", "x": 80, "y": 584 }
+    ],
+    "edges": [
+      { "id": "e1-visitors-router", "from": "visitors", "to": "router", "label": "Web", "kind": "sync" },
+      { "id": "e2-probes-router", "from": "probes", "to": "router", "label": "Probe", "kind": "sync" },
+      { "id": "e3-router-firewall", "from": "router", "to": "firewall", "label": "Inspect", "kind": "sync" },
+      { "id": "e4-firewall-adc", "from": "firewall", "to": "adc", "label": "Allow web", "kind": "sync" },
+      { "id": "e5-firewall-admin", "from": "firewall", "to": "admin", "label": "Deny admin", "kind": "sync" },
+      { "id": "e6-adc-switch", "from": "adc", "to": "switch", "label": "Forward", "kind": "sync" },
+      { "id": "e7-switch-app", "from": "switch", "to": "app", "label": "Web", "kind": "sync" },
+      { "id": "e8-app-database", "from": "app", "to": "database", "label": "Query", "kind": "sync" }
+    ]
+  }
+}

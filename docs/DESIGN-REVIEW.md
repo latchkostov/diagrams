@@ -4003,3 +4003,37 @@ are indexed once for managed capacity. Per-attempt invariant compilation is tick
 Caller retry/deadline execution remains deferred. Final results are reported with the pushed commit.
 
 The final designer follow-up also identified unfinished native numeric input clearing a saved cap. A production keyboard regression reproduced it; invalid intermediate text now stays uncommitted and blur restores the saved value.
+
+## Round 41 — Public feature showcases (2026-10-14)
+
+Designer-agent review covered the six new public examples, their source descriptions, and all 24
+production Live screenshots below. Desktop light/dark layouts have distinct paths, clear feature
+signals and no observed label/node collisions. Fictional token/payment budgets and the serverless
+bounded invoker are explicit. No controls were added by the examples themselves.
+
+**Gate passed (2026-10-15).** Replaced all 24 captures after responsive fixes. Phone titles wrap
+below Live; long descriptions no longer consume the canvas, and checks/reset remain reachable.
+Playback stays in one row across the screen above the collapsed rails; Inputs panels leave it clear.
+The final designer follow-up inspected all 12 mobile captures in both themes, including saved-run
+progress/expectations and shared-worker lag: no blocking visual findings remain. Earlier desktop
+review remains applicable; the responsive changes affect phones only.
+
+Production assertions cover feature signals, console errors, graph geometry, title height/text,
+control hit targets and actual Play/Inputs/More clicks. A mobile edit case checks warnings/reset and
+keyboard focus/scroll to topbar actions. All 116 requested/related Chromium cases passed. Removing
+the responsive fixes and restoring the old tooltip-audit selector made all seven targeted browser
+regressions fail. The screenshot/source designer review did not independently test physical touch,
+screen-reader output or interactive zoom; dense overview diagrams still need zoom for small labels.
+
+| Example                     | Light 1280×800                                                                | Dark 1280×800                                                                | Light 390×844                                                                | Dark 390×844                                                                |
+| --------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| partitions-vs-subscriptions | [Live](research/showcase-examples/partitions-vs-subscriptions-light-1280.png) | [Live](research/showcase-examples/partitions-vs-subscriptions-dark-1280.png) | [Live](research/showcase-examples/partitions-vs-subscriptions-light-390.png) | [Live](research/showcase-examples/partitions-vs-subscriptions-dark-390.png) |
+| shared-api-quotas           | [Live](research/showcase-examples/shared-api-quotas-light-1280.png)           | [Live](research/showcase-examples/shared-api-quotas-dark-1280.png)           | [Live](research/showcase-examples/shared-api-quotas-light-390.png)           | [Live](research/showcase-examples/shared-api-quotas-dark-390.png)           |
+| serverless-burst-buffer     | [Live](research/showcase-examples/serverless-burst-buffer-light-1280.png)     | [Live](research/showcase-examples/serverless-burst-buffer-dark-1280.png)     | [Live](research/showcase-examples/serverless-burst-buffer-light-390.png)     | [Live](research/showcase-examples/serverless-burst-buffer-dark-390.png)     |
+| measured-order-capacity     | [Live](research/showcase-examples/measured-order-capacity-light-1280.png)     | [Live](research/showcase-examples/measured-order-capacity-dark-1280.png)     | [Live](research/showcase-examples/measured-order-capacity-light-390.png)     | [Live](research/showcase-examples/measured-order-capacity-dark-390.png)     |
+| contoso-dmz                 | [Live](research/showcase-examples/contoso-dmz-light-1280.png)                 | [Live](research/showcase-examples/contoso-dmz-dark-1280.png)                 | [Live](research/showcase-examples/contoso-dmz-light-390.png)                 | [Live](research/showcase-examples/contoso-dmz-dark-390.png)                 |
+| shared-worker-pool          | [Live](research/showcase-examples/shared-worker-pool-light-1280.png)          | [Live](research/showcase-examples/shared-worker-pool-dark-1280.png)          | [Live](research/showcase-examples/shared-worker-pool-light-390.png)          | [Live](research/showcase-examples/shared-worker-pool-dark-390.png)          |
+
+Eight new browser parity cases are deferred with TODOs for test/parity-browser-stable; their Node
+coverage remains. Existing goldens are unchanged. [Inventory, rejected approaches, verification,
+exact deferrals and added-golden manifest](research/showcase-examples.md).

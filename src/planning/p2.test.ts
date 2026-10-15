@@ -399,13 +399,16 @@ describe("P2 broker assignment", () => {
       .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
       .map((entry) => {
         const d = JSON.parse(readFileSync(`src/examples/${entry.name}`, "utf8")) as DiagramFile;
+        // P2's migration gate covers older models. New P3 showcases pin their own findings.
+        if (d.planning?.revision === "p3") return undefined;
         const p1 = upgradePlanning(d);
         p1.planning = { revision: "p1" };
         const findings = (d: DiagramFile) =>
           runChecks(d, { rules: ["capacity", "single-point"] }).findings.map((f) => f.id);
         expect(findings(upgradePlanning(d))).toEqual(findings(p1));
         return { example: entry.name.slice(0, -5), before: findings(d), after: findings(upgradePlanning(d)) };
-      });
+      })
+      .filter((row) => row !== undefined);
     expect(rows.length).toBe(17);
     expect(rows.filter((r) => JSON.stringify(r.before) !== JSON.stringify(r.after))).toEqual([
       { example: "branch-to-datacentre", before: [], after: ["single-point:branch-router"] },

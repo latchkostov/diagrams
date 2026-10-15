@@ -1,0 +1,55 @@
+{
+  "summary": "1 warning, 0 suggestions.",
+  "findings": {
+    "capacity:log-readers": {
+      "title": "Kafka readers can't keep up",
+      "message": "At the diagram's own rates, it gets 6/s and handles 3/s (200%): its backlog only grows. Assigned instances: 3 / 8 · Partitions.",
+      "rationale": "Demand above what a service can handle never drains: latency and backlog grow until something times out. Live view's Show capacity has the same numbers.",
+      "fix": { "label": "Set replicas to 11 and Order log: Partitions → 11" },
+      "brokerAssignment": "Assigned instances: 3 / 8 · Partitions.",
+      "brokerChanges": ["Order log: Partitions → 11"]
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "capacity:log-readers",
+        "rule": "capacity",
+        "severity": "warning",
+        "title": "Kafka readers can't keep up",
+        "message": "At the diagram's own rates, it gets 6/s and handles 3/s (200%): its backlog only grows. Assigned instances: 3 / 8 · Partitions.",
+        "targets": ["log-readers"],
+        "fix": {
+          "label": "Set replicas to 11 and Order log: Partitions → 11",
+          "ops": [
+            { "op": "update", "target": "log-readers", "props": { "replicas": 11 } },
+            { "op": "update", "target": "log", "props": { "partitions": 11 } }
+          ]
+        }
+      }
+    ],
+    "summary": "1 warning, 0 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      {
+        "id": "capacity:log-readers",
+        "rule": "capacity",
+        "severity": "warning",
+        "title": "Kafka readers can't keep up",
+        "message": "At the diagram's own rates, it gets 6/s and handles 3/s (200%): its backlog only grows. Assigned instances: 3 / 8 · Partitions.",
+        "targets": ["log-readers"],
+        "fix": {
+          "label": "Set replicas to 11 and Order log: Partitions → 11",
+          "ops": [
+            { "op": "update", "target": "log-readers", "props": { "replicas": 11 } },
+            { "op": "update", "target": "log", "props": { "partitions": 11 } }
+          ]
+        }
+      }
+    ],
+    "summary": "1 warning, 0 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
+}

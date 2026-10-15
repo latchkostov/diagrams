@@ -706,6 +706,52 @@
   }
 }
 
+/* Phone canvases also have collapsed side rails. Use the screen's width for playback,
+   keeping its controls and popovers reachable without taking another row from the diagram. */
+@media (max-width: 640px) {
+  .app-main:has(.lv-hud) {
+    z-index: 7;
+  }
+
+  .canvas-view.is-live > .canvas-wrap {
+    z-index: 6;
+  }
+
+  .canvas-view.is-live .lv-panel {
+    position: fixed;
+    top: calc(var(--topbar-h) + 64px);
+    bottom: 80px;
+    inset-inline-end: 8px;
+    width: min(396px, calc(100vw - 16px));
+    max-width: calc(100vw - 16px);
+  }
+
+  .lv-hud .lv-bar,
+  .lv-hud.has-panel .lv-bar {
+    position: fixed;
+    inset-inline: 8px;
+    bottom: 12px;
+    width: calc(100vw - 16px);
+    transform: none;
+    animation: none;
+    gap: 2px;
+  }
+}
+
+@container live-bar (max-width: 400px) {
+  .lv-bar .lv-stat {
+    display: none;
+  }
+
+  .lv-bar .lv-sim {
+    min-width: 80px;
+  }
+
+  .lv-bar .lv-timeline {
+    min-width: 32px;
+  }
+}
+
 @keyframes lv-rise {
   from {
     opacity: 0;

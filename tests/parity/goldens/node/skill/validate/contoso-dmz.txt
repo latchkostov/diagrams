@@ -1,0 +1,2 @@
+exit 0
+VALID <repo>/src/examples/contoso-dmz.json: 9 nodes, 8 edges, 2 boundaries, 2 simulations

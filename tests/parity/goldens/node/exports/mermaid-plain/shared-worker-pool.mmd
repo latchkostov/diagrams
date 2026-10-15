@@ -1,0 +1,16 @@
+---
+title: Two inputs, one worker pool
+---
+flowchart TB
+  orders(["Acme orders<br/>3 orders/s"])
+  refunds(["Acme refunds<br/>3 refunds/s"])
+  order_log["Order events<br/>8 partitions"]
+  refund_log["Refund events<br/>8 partitions"]
+  worker["Ledger worker<br/>One shared pool: 1 × 4 / 1 s"]
+  ledger[("Acme ledger<br/>Orders and refunds")]
+  orders -.->|"Order"| order_log
+  refunds -.->|"Refund"| refund_log
+  order_log -.->|"order-posting"| worker
+  refund_log -.->|"refund-posting"| worker
+  worker -->|"Record"| ledger
+  linkStyle 0,1,2,3 stroke-dasharray: 6 4

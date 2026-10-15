@@ -8,7 +8,7 @@ If nothing fits, use a `generic.*` stencil and say what it is in the label or su
 
 ## Most used in the examples
 
-`kafka.topic`, `postgres`, `aws.lambda`, `aws.sqs`, `azure.functions`, `client.browser`, `service.java`, `aws.dynamodb`, `azure.service-bus.queue`, `service.dotnet`, `service.node`, `snowflake`, `generic.webhook`, `kafka.connect`, `redis.cache`, `service.go`, `aws.s3`, `azure.cosmos-db`, `azure.key-vault`, `azure.service-bus.topic`, `client.mobile`, `generic.queue`, `grafana`, `kafka.schema-registry`, `service.python`, `stripe`, `vault`, `airflow`, `arista.switch`, `aws.api-gateway`
+`kafka.topic`, `postgres`, `aws.lambda`, `client.browser`, `generic.webhook`, `service.java`, `service.node`, `aws.dynamodb`, `aws.sqs`, `azure.functions`, `service.dotnet`, `service.go`, `azure.service-bus.queue`, `snowflake`, `aws.api-gateway`, `generic.queue`, `kafka.connect`, `redis.cache`, `service.python`, `stripe`, `aws.s3`, `aws.sns`, `azure.cosmos-db`, `azure.key-vault`, `azure.service-bus.topic`, `client.mobile`, `client.team`, `grafana`, `kafka.schema-registry`, `openai`
 
 ## Azure
 

@@ -4,6 +4,10 @@ import { diagramThumb } from "../lib/thumbnail";
 import { examples, getLoadedExample, loadExample } from "./index";
 import { exampleMetadata } from "./metadata";
 import { labMetadata } from "./labMetadata";
+import { validateDiagram } from "../interop/native";
+import { createEngine } from "../sim/engine";
+import { createSimulationRun } from "../sim/simulation";
+import { analyzeCapacity } from "../sim/capacity";
 
 // Public fixtures only: this shallow glob never descends into local-only examples.
 const files = import.meta.glob<DiagramFile>("./*.json", { eager: true, import: "default" });
@@ -54,5 +58,102 @@ describe("example metadata and loading", () => {
     await expect(loadExample("missing-example")).rejects.toThrow("unavailable");
     await expect(loadExample("missing-example")).rejects.toThrow("unavailable");
     expect((await loadExample(publicExamples[0].slug)).title).toBe(publicExamples[0].title);
+  });
+});
+
+const showcases = [
+  "partitions-vs-subscriptions",
+  "shared-api-quotas",
+  "serverless-burst-buffer",
+  "measured-order-capacity",
+  "contoso-dmz",
+  "shared-worker-pool",
+];
+const diagram = (slug: string) => files[`./${slug}.json`];
+const freePlay = (slug: string) => {
+  const engine = createEngine({ seed: 7 });
+  engine.load(diagram(slug));
+  engine.setTraffic(true);
+  for (let step = 0; step < 800; step++) engine.step(10);
+  return engine.snapshot();
+};
+
+describe("recent-feature showcases", () => {
+  it.each(showcases)("%s validates, loads lazily and replays deterministically", async (slug) => {
+    const d = await loadExample(slug);
+    expect(validateDiagram(d)).toMatchObject({ ok: true });
+    for (const simulation of d.simulations ?? []) {
+      const replay = () => {
+        const run = createSimulationRun(d, simulation);
+        for (let step = 0; step < 6000 && !run.state().done; step++) run.step(10);
+        expect(run.state().done, simulation.id).toBe(true);
+        expect(
+          run.state().expectations.map((e) => e.status),
+          simulation.id,
+        ).toEqual(simulation.expectations?.map(() => "pass"));
+        return run.engine.snapshot();
+      };
+      expect(replay()).toEqual(replay());
+    }
+    expect(freePlay(slug)).toEqual(freePlay(slug));
+  });
+
+  it("three partitions leave five idle readers while both subscriptions use every replica", () => {
+    const s = freePlay("partitions-vs-subscriptions");
+    expect(s.nodes["log-readers"]).toMatchObject({ activeReplicas: 3, idleReplicas: 5 });
+    expect(s.nodes.receipts).toMatchObject({ activeReplicas: 8, idleReplicas: 0 });
+    expect(s.nodes.audit).toMatchObject({ activeReplicas: 8, idleReplicas: 0 });
+    expect(s.nodes.log.backlog).toBeGreaterThan(0);
+    expect(s.nodes.receipts.processed).toBeGreaterThan(s.nodes["log-readers"].processed);
+    expect(s.nodes.receipts.processed).toBe(s.nodes.audit.processed);
+  });
+
+  it("the shared token budget rejects before RPM; payments reject independently", () => {
+    const s = freePlay("shared-api-quotas");
+    for (const id of ["answer", "review", "payments"]) {
+      expect(s.nodes[id].processed).toBeGreaterThan(0);
+      expect(s.nodes[id].rejected).toBeGreaterThan(0);
+      expect(s.nodes[id].failed + s.nodes[id].dropped).toBe(0);
+    }
+    // One shared bucket, including eight seconds of simulated refill (100 tokens/s).
+    expect(s.nodes.answer.processed + s.nodes.review.processed).toBe(Math.floor((6000 + 8 * 100) / 500));
+    const reasons = Object.keys(s.nodes.answer.rejectionReasons ?? {}).join(" ");
+    expect(reasons).toContain("assistant-tokens");
+    expect(reasons).not.toContain("assistant-requests");
+  });
+
+  it("direct managed admission rejects excess but fixed queue consumers keep it buffered", () => {
+    const s = freePlay("serverless-burst-buffer");
+    expect(s.nodes.direct.rejected).toBeGreaterThan(0);
+    expect(s.nodes.async.rejected ?? 0).toBe(0);
+    expect(s.nodes.queue.backlog).toBeGreaterThan(0);
+    expect(s.nodes["async-results"].processed).toBeGreaterThan(0);
+  });
+
+  it("measured payment capacity fits today and saturates at three times demand", () => {
+    const d = diagram("measured-order-capacity");
+    const baseline = analyzeCapacity(d);
+    expect(baseline.nodes.intake.capacity).toBe(16);
+    expect(baseline.nodes["payment-worker"]).toMatchObject({ offered: 1, capacity: 2, utilization: 0.5 });
+    const triple = analyzeCapacity(d, d.simulations?.[1]);
+    expect(triple.nodes["payment-worker"]).toMatchObject({ offered: 3, capacity: 2, utilization: 1.5 });
+    expect(triple.bottleneck?.id).toBe("payment-worker");
+  });
+
+  it("the DMZ carries web requests and counts blocked probes separately", () => {
+    const s = freePlay("contoso-dmz");
+    expect(s.nodes.database.processed).toBeGreaterThan(0);
+    expect(s.nodes.firewall.blocked).toBeGreaterThan(0);
+    expect(s.nodes.firewall.failed + s.nodes.firewall.dropped).toBe(0);
+    expect(s.nodes.admin.processed).toBe(0);
+  });
+
+  it("two inputs offer six events/s to one four-slot pool", () => {
+    const d = diagram("shared-worker-pool");
+    expect(analyzeCapacity(d).nodes.worker).toMatchObject({ offered: 6, capacity: 4, utilization: 1.5 });
+    const s = freePlay("shared-worker-pool");
+    expect(s.nodes["order-log"].backlog).toBeGreaterThan(0);
+    expect(s.nodes["refund-log"].backlog).toBeGreaterThan(0);
+    expect(s.nodes.worker.inFlight).toBeLessThanOrEqual(4);
   });
 });

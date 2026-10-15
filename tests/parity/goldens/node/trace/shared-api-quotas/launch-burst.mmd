@@ -1,0 +1,17 @@
+---
+title: "Question #1 · 1.00 s end to end · 1 copy"
+---
+sequenceDiagram
+  participant questions as Acme help desk
+  participant gateway as Assistant gateway
+  participant assistant as Answer and review
+  participant answer as Answer model
+  participant review as Review model
+  questions->>gateway: Question (+0.00 s)
+  gateway-->>questions: reply (+0.26 s)
+  gateway->>assistant: Question (+0.26 s)<br/>Answer
+  assistant-->>gateway: reply (+0.56 s)
+  assistant->>answer: Question (+0.56 s)<br/>Generate
+  assistant->>review: Question (+0.56 s)<br/>Review
+  answer-->>assistant: reply (+1.00 s)
+  review-->>assistant: reply (+1.00 s)

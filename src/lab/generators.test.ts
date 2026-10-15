@@ -116,6 +116,11 @@ describe("other generators", () => {
 });
 
 describe("diagramProblems", () => {
+  it("accepts the current planning file format", () => {
+    expect(
+      diagramProblems({ format: "diagrams/v2", planning: { revision: "p3" }, title: "Planning", nodes: [], edges: [] }),
+    ).toEqual([]);
+  });
   it("reports duplicates and dangling references", () => {
     const d: DiagramFile = {
       format: "diagrams/v1",

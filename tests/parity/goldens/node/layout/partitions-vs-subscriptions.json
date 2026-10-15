@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "publisher": [40, 160], "log": [427, 100], "fanout": [427, 220], "log-readers": [808, 40], "receipts": [808, 160], "audit": [808, 280] },
+    "TB": { "publisher": [360, 40], "log": [200, 200], "fanout": [520, 200], "log-readers": [40, 360], "receipts": [360, 360], "audit": [680, 360] }
+  },
+  "tidy": { "publisher": [360, 40], "log": [200, 200], "fanout": [520, 200], "log-readers": [40, 360], "receipts": [360, 360], "audit": [680, 360] },
+  "arrange": {
+    "alignLeft": { "publisher": [40, 40], "log": [40, 200], "fanout": [40, 200], "log-readers": [40, 360], "receipts": [40, 360], "audit": [40, 360] },
+    "alignMiddle": { "publisher": [360, 200], "log": [200, 200], "fanout": [520, 200], "log-readers": [40, 200], "receipts": [360, 200], "audit": [680, 200] },
+    "distributeH": { "publisher": [289, 40], "log": [184, 200], "fanout": [554, 200], "log-readers": [40, 360], "receipts": [422, 360], "audit": [680, 360] },
+    "distributeV": { "publisher": [360, 40], "log": [200, 104], "fanout": [520, 168], "log-readers": [40, 232], "receipts": [360, 296], "audit": [680, 360] },
+    "spreadH": { "publisher": [599, 40], "log": [339, 40], "fanout": [1173, 40], "log-readers": [40, 40], "receipts": [886, 40], "audit": [1454, 40] },
+    "boundaryAround": { "x": 0, "y": -24, "width": 980, "height": 496 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "publisher": [360, 40], "log": [200, 200], "fanout": [520, 200], "log-readers": [40, 360], "receipts": [360, 360], "audit": [680, 360] },
+    "groups": {}
+  }
+}

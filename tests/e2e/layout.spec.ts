@@ -48,7 +48,10 @@ async function measure(page: Page) {
       },
     );
     return {
-      nodes: byPrefix("node-", /^node-editor/),
+      // Tooltip portals also use node-* ids; only graph cards belong in the geometry audit.
+      nodes: [...document.querySelectorAll('[data-testid^="rf__node-"] > [data-testid^="node-"]')]
+        .map((el) => box(el, (el.getAttribute("data-testid") ?? "").slice("node-".length)))
+        .filter((b) => b.width > 0 && b.height > 0),
       labels: byPrefix("edge-label-", /^edge-label-input$/),
       panels: panels.filter((b) => b.width > 0 && b.height > 0),
     };
@@ -59,6 +62,16 @@ async function measure(page: Page) {
 const PARTS = 8;
 const part = (i: number) => publicExamples.filter((_, j) => j % PARTS === i);
 const parts = Array.from({ length: PARTS }, (_, i) => i);
+
+test("the overlap audit measures graph cards while a tooltip is open", async ({ page }) => {
+  const example = publicExamples.find((e) => e.slug === "contoso-dmz");
+  if (!example) throw new Error("Missing DMZ example");
+  await page.goto(`./?view=canvas&example=${example.slug}`);
+  await settle(page);
+  await page.getByTestId("node-switch").hover();
+  await expect(page.getByTestId("node-tooltip")).toBeVisible();
+  expect((await measure(page)).nodes.map((n) => n.id).sort()).toEqual([...example.nodeIds].sort());
+});
 
 for (const theme of ["light", "dark"] as const) {
   test.describe(`layout audit (${theme})`, () => {

@@ -1,0 +1,441 @@
+{
+  "steps": [
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "topic-1",
+            "label": "parity.events",
+            "stencil": { "id": "kafka.topic", "label": "Kafka Topic", "confidence": "high", "alternatives": ["pulsar.topic", "confluent.cloud", "aws.msk"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-1", "from": "orders", "to": "topic-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+2 nodes, +2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "dotnet-1",
+            "label": "Parity reader",
+            "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-2", "from": "topic-1", "to": "dotnet-1" },
+          {
+            "i": 2,
+            "op": "add_node",
+            "id": "key-vault-1",
+            "label": "Parity secrets",
+            "stencil": { "id": "azure.key-vault", "label": "Key Vault", "confidence": "high", "alternatives": [] }
+          },
+          { "i": 3, "op": "connect", "id": "e-3", "from": "dotnet-1", "to": "key-vault-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +2 connections, −1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "insert_between",
+            "id": "queue-1",
+            "label": "buffer",
+            "stencil": { "id": "rabbitmq.queue", "label": "RabbitMQ Queue", "confidence": "high", "alternatives": ["aws.mq"] },
+            "from": "orders",
+            "to": "intake"
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "update", "id": "intake" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "update",
+            "id": "queue",
+            "stencil": { "id": "aws.lambda", "label": "AWS Lambda", "confidence": "high", "alternatives": [] }
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 boundary, 2 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_boundary", "id": "boundary-1", "label": "Parity zone" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 note",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_note", "id": "note-1" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "title or direction changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "set_meta" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "−1 node, −2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "remove", "ids": ["dotnet-1", "e-2", "e-3"] }]
+      }
+    },
+    {
+      "isError": true,
+      "output": {
+        "ok": false,
+        "i": 0,
+        "error": "Unknown reference \"no-such-node\".",
+        "ref": "no-such-node",
+        "candidates": [
+          { "id": "orders", "label": "Northwind orders", "stencil": "generic.webhook" },
+          { "id": "intake", "label": "Renamed by parity", "stencil": "service.node" },
+          { "id": "queue", "label": "Payment jobs", "stencil": "aws.lambda" },
+          { "id": "payment-worker", "label": "Payment worker", "stencil": "service.java" },
+          { "id": "ledger", "label": "Northwind ledger", "stencil": "postgres" },
+          { "id": "topic-1", "label": "parity.events", "stencil": "kafka.topic" },
+          { "id": "key-vault-1", "label": "Parity secrets", "stencil": "azure.key-vault" },
+          { "id": "queue-1", "label": "buffer", "stencil": "rabbitmq.queue" },
+          { "id": "note-1", "label": "Pinned by the parity harness" }
+        ],
+        "hint": "Use an id from candidates, or call describe_diagram.",
+        "applied": false
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "dryRun": true,
+        "summary": "+1 node",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "postgres-1",
+            "label": "Dry run only",
+            "stencil": { "id": "postgres", "label": "PostgreSQL", "confidence": "high", "alternatives": ["gcp.cloud-sql", "aws.aurora", "supabase"] }
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "isError": false,
+      "output": { "ok": true, "id": "sim-1", "title": "Parity rush", "summary": "Added simulation \"Parity rush\": 4 traffic, 2 events, 1 expectations.", "undo": "One undo step reverts this call.", "play": "The user plays it in live view (L), or from the command palette." }
+    },
+    {
+      "isError": true,
+      "output": { "ok": false, "error": "constant traffic needs ratePerSec.", "hint": "Check the input against the tool's schema and try again." }
+    }
+  ],
+  "applied": [
+    { "tool": "edit_diagram", "summary": "+1 node, +1 connection", "changed": ["topic-1", "e-1"] },
+    {
+      "tool": "edit_diagram",
+      "summary": "+2 nodes, +2 connections",
+      "changed": ["dotnet-1", "key-vault-1", "e-2", "e-3"],
+      "choices": [
+        {
+          "nodeId": "dotnet-1",
+          "kind": ".NET consumer",
+          "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] },
+          "node": {
+            "id": "dotnet-1",
+            "stencil": "service.dotnet",
+            "label": "Parity reader",
+            "x": 300,
+            "y": 344,
+            "props": { "replicas": 3 }
+          }
+        }
+      ]
+    },
+    { "tool": "edit_diagram", "summary": "+1 node, +2 connections, −1 connection", "changed": ["queue-1", "e-4", "e-5"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["intake"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["queue"] },
+    { "tool": "edit_diagram", "summary": "+1 boundary, 2 changed", "changed": ["boundary-1", "orders", "intake"] },
+    { "tool": "edit_diagram", "summary": "+1 note", "changed": ["note-1"] },
+    { "tool": "edit_diagram", "summary": "title or direction changed", "changed": [] },
+    { "tool": "edit_diagram", "summary": "−1 node, −2 connections", "changed": [] },
+    { "tool": "set_simulation", "summary": "Added simulation “Parity rush”", "changed": ["orders"] }
+  ],
+  "diagram": {
+    "format": "diagrams/v2",
+    "planning": { "revision": "p3" },
+    "direction": "TB",
+    "title": "Parity edit",
+    "description": "Northwind compares the pinned processor lesson with a measured one-second payment workload: today fits, but at three times traffic the two-slot payment worker saturates.",
+    "nodes": [
+      {
+        "id": "orders",
+        "stencil": "generic.webhook",
+        "label": "Northwind orders",
+        "sublabel": "1 order/s today",
+        "props": { "ratePerSec": 1, "messageType": "OrderPlaced" },
+        "x": 40,
+        "y": 40,
+        "group": "boundary-1"
+      },
+      {
+        "id": "intake",
+        "stencil": "service.node",
+        "label": "Renamed by parity",
+        "sublabel": "Pinned lesson: 1 × 4 / 0.25 s",
+        "props": { "preset": "processor-lesson", "presetRevision": "1", "latencyMs": 120 },
+        "x": 40,
+        "y": 200,
+        "group": "boundary-1"
+      },
+      {
+        "id": "queue",
+        "stencil": "aws.lambda",
+        "label": "Payment jobs",
+        "sublabel": "Buffer before measured work",
+        "props": {},
+        "x": 40,
+        "y": 360
+      },
+      {
+        "id": "payment-worker",
+        "stencil": "service.java",
+        "label": "Payment worker",
+        "sublabel": "Measured: 2 × 1 / 1 s = 2/s",
+        "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 1, "latencyMs": 1000, "jitter": 0, "failureRate": 0 },
+        "x": 40,
+        "y": 520
+      },
+      {
+        "id": "ledger",
+        "stencil": "postgres",
+        "label": "Northwind ledger",
+        "sublabel": "Completed payments",
+        "props": { "latencyMs": 1 },
+        "x": 40,
+        "y": 680
+      },
+      { "id": "topic-1", "stencil": "kafka.topic", "label": "parity.events", "x": 300, "y": 192 },
+      { "id": "key-vault-1", "stencil": "azure.key-vault", "label": "Parity secrets", "x": 40, "y": -96 },
+      { "id": "queue-1", "stencil": "rabbitmq.queue", "label": "buffer", "x": 560, "y": 192 }
+    ],
+    "edges": [
+      {
+        "id": "queue-payment",
+        "from": "intake",
+        "to": "queue",
+        "label": "Payment job",
+        "kind": "async",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "pay",
+        "from": "queue",
+        "to": "payment-worker",
+        "label": "Workers",
+        "kind": "async",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "record",
+        "from": "payment-worker",
+        "to": "ledger",
+        "label": "Record",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      { "id": "e-1", "from": "orders", "to": "topic-1", "kind": "async" },
+      {
+        "id": "e-4",
+        "from": "orders",
+        "to": "queue-1",
+        "kind": "async",
+        "label": "Order",
+        "props": { "travelMs": 200 }
+      },
+      { "id": "e-5", "from": "queue-1", "to": "intake", "kind": "async", "props": { "travelMs": 200 } }
+    ],
+    "simulations": [
+      {
+        "id": "today",
+        "title": "Measured baseline",
+        "description": "One order a second fits the measured two-per-second payment budget.",
+        "seed": 41,
+        "scale": 1,
+        "traffic": [
+          {
+            "id": "orders",
+            "node": "orders",
+            "messageType": "OrderPlaced",
+            "shape": { "kind": "constant", "ratePerSec": 1, "durationMs": 6000 }
+          }
+        ],
+        "timeline": [],
+        "expectations": [
+          {
+            "id": "ledger-processed-end",
+            "label": "ledger: processed == 6",
+            "metric": { "node": "ledger", "field": "processed" },
+            "op": "==",
+            "value": 6,
+            "when": "end"
+          },
+          {
+            "id": "queue-lag-end",
+            "label": "queue: lag == 0",
+            "metric": { "node": "queue", "field": "lag" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ]
+      },
+      {
+        "id": "triple",
+        "title": "Three times the orders",
+        "description": "Traffic is multiplied by three, capacity stays fixed. The default intake has headroom; the measured payment worker is the bottleneck.",
+        "seed": 41,
+        "scale": 1,
+        "traffic": [
+          {
+            "id": "orders",
+            "node": "orders",
+            "messageType": "OrderPlaced",
+            "shape": { "kind": "constant", "ratePerSec": 1, "durationMs": 8000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 1000,
+            "action": { "do": "note", "text": "Three orders/s exceed the measured 2/s payment capacity. Show capacity or open Payment worker Properties to see the arithmetic.", "focus": ["payment-worker", "queue"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "queue-lag-at",
+            "label": "queue: lag > 0",
+            "metric": { "node": "queue", "field": "lag" },
+            "op": ">",
+            "value": 0,
+            "when": "at",
+            "atMs": 6000
+          },
+          {
+            "id": "ledger-processed-end",
+            "label": "ledger: processed == 24",
+            "metric": { "node": "ledger", "field": "processed" },
+            "op": "==",
+            "value": 24,
+            "when": "end"
+          },
+          {
+            "id": "queue-dropped-always",
+            "label": "queue: dropped == 0",
+            "metric": { "node": "queue", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "always"
+          }
+        ],
+        "multipliers": { "traffic": 3 }
+      },
+      {
+        "id": "sim-1",
+        "title": "Parity rush",
+        "durationMs": 20000,
+        "traffic": [
+          {
+            "id": "traffic-1",
+            "node": "orders",
+            "shape": { "kind": "constant", "ratePerSec": 20, "fromMs": 0, "durationMs": 10000 }
+          },
+          {
+            "id": "traffic-2",
+            "node": "orders",
+            "shape": { "kind": "burst", "count": 50, "atMs": 5000, "spreadMs": 2000 },
+            "messageType": "ParityBurst"
+          },
+          {
+            "id": "traffic-3",
+            "node": "orders",
+            "shape": {
+              "kind": "ramp",
+              "fromMs": 0,
+              "startRate": 1,
+              "stages": [{ "durationMs": 8000, "targetRate": 30 }]
+            }
+          },
+          {
+            "id": "traffic-4",
+            "node": "orders",
+            "shape": { "kind": "spike", "baseRate": 5, "peakRate": 40, "atMs": 12000, "peakMs": 1000, "durationMs": 4000 }
+          }
+        ],
+        "timeline": [
+          { "atMs": 6000, "action": { "do": "status", "node": "queue", "status": "down" } },
+          { "atMs": 6000, "action": { "do": "note", "text": "It goes down", "focus": ["queue"] } }
+        ],
+        "expectations": [
+          {
+            "id": "expectation-1",
+            "label": "Nothing dropped",
+            "metric": { "node": "queue", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ],
+        "scale": 2
+      }
+    ],
+    "groups": [
+      { "id": "boundary-1", "label": "Parity zone", "tone": "neutral", "x": 0, "y": -24, "width": 340, "height": 336 }
+    ],
+    "annotations": [
+      { "id": "note-1", "kind": "note", "text": "Pinned by the parity harness", "x": 860, "y": 160, "width": 240, "height": 160 }
+    ]
+  }
+}

@@ -1,0 +1,525 @@
+{
+  "steps": [
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "topic-1",
+            "label": "parity.events",
+            "stencil": { "id": "kafka.topic", "label": "Kafka Topic", "confidence": "high", "alternatives": ["pulsar.topic", "confluent.cloud", "aws.msk"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-1", "from": "visitors", "to": "topic-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+2 nodes, +2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "dotnet-1",
+            "label": "Parity reader",
+            "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-2", "from": "topic-1", "to": "dotnet-1" },
+          {
+            "i": 2,
+            "op": "add_node",
+            "id": "key-vault-1",
+            "label": "Parity secrets",
+            "stencil": { "id": "azure.key-vault", "label": "Key Vault", "confidence": "high", "alternatives": [] }
+          },
+          { "i": 3, "op": "connect", "id": "e-3", "from": "dotnet-1", "to": "key-vault-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +2 connections, −1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "insert_between",
+            "id": "queue-1",
+            "label": "buffer",
+            "stencil": { "id": "rabbitmq.queue", "label": "RabbitMQ Queue", "confidence": "high", "alternatives": ["aws.mq"] },
+            "from": "visitors",
+            "to": "router"
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "update", "id": "probes" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "update",
+            "id": "router",
+            "stencil": { "id": "aws.lambda", "label": "AWS Lambda", "confidence": "high", "alternatives": [] }
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 boundary, 2 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_boundary", "id": "boundary-1", "label": "Parity zone" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 note",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_note", "id": "note-1" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "title or direction changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "set_meta" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "−1 node, −2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "remove", "ids": ["dotnet-1", "e-2", "e-3"] }]
+      }
+    },
+    {
+      "isError": true,
+      "output": {
+        "ok": false,
+        "i": 0,
+        "error": "Unknown reference \"no-such-node\".",
+        "ref": "no-such-node",
+        "candidates": [
+          { "id": "visitors", "label": "Contoso visitors", "stencil": "client.browser" },
+          { "id": "probes", "label": "Renamed by parity", "stencil": "client.team" },
+          { "id": "router", "label": "Edge router pair", "stencil": "aws.lambda" },
+          { "id": "firewall", "label": "Firewall pair", "stencil": "paloalto.ngfw" },
+          { "id": "adc", "label": "BIG-IP pair", "stencil": "f5.bigip" },
+          { "id": "switch", "label": "Services switch", "stencil": "cisco.nexus" },
+          { "id": "app", "label": "Contoso web app", "stencil": "service.dotnet" },
+          { "id": "database", "label": "Orders database", "stencil": "postgres" },
+          { "id": "admin", "label": "Admin database", "stencil": "postgres" },
+          { "id": "topic-1", "label": "parity.events", "stencil": "kafka.topic" },
+          { "id": "key-vault-1", "label": "Parity secrets", "stencil": "azure.key-vault" },
+          { "id": "queue-1", "label": "buffer", "stencil": "rabbitmq.queue" },
+          { "id": "note-1", "label": "Pinned by the parity harness" }
+        ],
+        "hint": "Use an id from candidates, or call describe_diagram.",
+        "applied": false
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "dryRun": true,
+        "summary": "+1 node",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "postgres-1",
+            "label": "Dry run only",
+            "stencil": { "id": "postgres", "label": "PostgreSQL", "confidence": "high", "alternatives": ["gcp.cloud-sql", "aws.aurora", "supabase"] }
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "isError": false,
+      "output": { "ok": true, "id": "sim-1", "title": "Parity rush", "summary": "Added simulation \"Parity rush\": 4 traffic, 2 events, 1 expectations.", "undo": "One undo step reverts this call.", "play": "The user plays it in live view (L), or from the command palette." }
+    },
+    {
+      "isError": true,
+      "output": { "ok": false, "error": "constant traffic needs ratePerSec.", "hint": "Check the input against the tool's schema and try again." }
+    }
+  ],
+  "applied": [
+    { "tool": "edit_diagram", "summary": "+1 node, +1 connection", "changed": ["topic-1", "e-1"] },
+    {
+      "tool": "edit_diagram",
+      "summary": "+2 nodes, +2 connections",
+      "changed": ["dotnet-1", "key-vault-1", "e-2", "e-3"],
+      "choices": [
+        {
+          "nodeId": "dotnet-1",
+          "kind": ".NET consumer",
+          "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] },
+          "node": {
+            "id": "dotnet-1",
+            "stencil": "service.dotnet",
+            "label": "Parity reader",
+            "x": 560,
+            "y": 344,
+            "props": { "replicas": 3 }
+          }
+        }
+      ]
+    },
+    { "tool": "edit_diagram", "summary": "+1 node, +2 connections, −1 connection", "changed": ["queue-1", "e-4", "e-5"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["probes"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["router"] },
+    { "tool": "edit_diagram", "summary": "+1 boundary, 2 changed", "changed": ["boundary-1", "visitors", "probes"] },
+    { "tool": "edit_diagram", "summary": "+1 note", "changed": ["note-1"] },
+    { "tool": "edit_diagram", "summary": "title or direction changed", "changed": [] },
+    { "tool": "edit_diagram", "summary": "−1 node, −2 connections", "changed": [] },
+    { "tool": "set_simulation", "summary": "Added simulation “Parity rush”", "changed": ["visitors"] }
+  ],
+  "diagram": {
+    "format": "diagrams/v2",
+    "planning": { "revision": "p3" },
+    "direction": "TB",
+    "title": "Parity edit",
+    "description": "Contoso web traffic crosses a router, firewall, BIG-IP and switch to the app and database; a separate probe is blocked at the firewall, never counted as a failure.",
+    "nodes": [
+      {
+        "id": "visitors",
+        "stencil": "client.browser",
+        "label": "Contoso visitors",
+        "sublabel": "8 web requests/s",
+        "props": { "ratePerSec": 8, "messageType": "WebRequest" },
+        "x": 40,
+        "y": 40,
+        "group": "boundary-1"
+      },
+      {
+        "id": "probes",
+        "stencil": "client.team",
+        "label": "Renamed by parity",
+        "sublabel": "2 admin probes/s",
+        "props": { "ratePerSec": 2, "messageType": "AdminProbe", "latencyMs": 120 },
+        "x": 360,
+        "y": 40,
+        "group": "boundary-1"
+      },
+      {
+        "id": "router",
+        "stencil": "aws.lambda",
+        "label": "Edge router pair",
+        "sublabel": "Branch preset · active-active",
+        "props": { "preset": "device-size", "presetRevision": "1", "size": "branch", "replicas": 2, "ha": "active-active", "jitter": 0 },
+        "x": 200,
+        "y": 200
+      },
+      {
+        "id": "firewall",
+        "stencil": "paloalto.ngfw",
+        "label": "Firewall pair",
+        "sublabel": "Allow web · deny admin",
+        "props": { "preset": "device-size", "presetRevision": "1", "size": "branch", "replicas": 2, "ha": "active-standby", "jitter": 0 },
+        "group": "dmz",
+        "x": 200,
+        "y": 360
+      },
+      {
+        "id": "adc",
+        "stencil": "f5.bigip",
+        "label": "BIG-IP pair",
+        "sublabel": "Web VIP · active-standby",
+        "props": { "preset": "device-size", "presetRevision": "1", "size": "branch", "replicas": 2, "ha": "active-standby", "jitter": 0 },
+        "group": "dmz",
+        "x": 40,
+        "y": 520
+      },
+      {
+        "id": "switch",
+        "stencil": "cisco.nexus",
+        "label": "Services switch",
+        "sublabel": "Branch preset · active-active",
+        "props": { "preset": "device-size", "presetRevision": "1", "size": "branch", "replicas": 2, "ha": "active-active", "jitter": 0 },
+        "group": "trusted",
+        "x": 200,
+        "y": 800
+      },
+      {
+        "id": "app",
+        "stencil": "service.dotnet",
+        "label": "Contoso web app",
+        "sublabel": "2 replicas · 8 slots",
+        "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 4, "latencyMs": 100, "jitter": 0, "failureRate": 0 },
+        "group": "trusted",
+        "x": 200,
+        "y": 960
+      },
+      {
+        "id": "database",
+        "stencil": "postgres",
+        "label": "Orders database",
+        "sublabel": "Trusted zone",
+        "props": { "latencyMs": 5 },
+        "group": "trusted",
+        "x": 200,
+        "y": 1120
+      },
+      {
+        "id": "admin",
+        "stencil": "postgres",
+        "label": "Admin database",
+        "sublabel": "Denied probe destination",
+        "props": { "latencyMs": 5 },
+        "x": 520,
+        "y": 480
+      },
+      { "id": "topic-1", "stencil": "kafka.topic", "label": "parity.events", "x": 560, "y": 192 },
+      { "id": "key-vault-1", "stencil": "azure.key-vault", "label": "Parity secrets", "x": -80, "y": 144 },
+      { "id": "queue-1", "stencil": "rabbitmq.queue", "label": "buffer", "x": 820, "y": 192 }
+    ],
+    "edges": [
+      {
+        "id": "probe-in",
+        "from": "probes",
+        "to": "router",
+        "label": "Probe",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "perimeter",
+        "from": "router",
+        "to": "firewall",
+        "label": "Inspect",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "allow-web",
+        "from": "firewall",
+        "to": "adc",
+        "label": "Allow web",
+        "kind": "sync",
+        "props": { "travelMs": 200, "filter": ["WebRequest"] }
+      },
+      {
+        "id": "deny-admin",
+        "from": "firewall",
+        "to": "admin",
+        "label": "Deny admin",
+        "kind": "sync",
+        "props": { "travelMs": 200, "filter": ["AdminProbe"], "deny": true }
+      },
+      {
+        "id": "to-switch",
+        "from": "adc",
+        "to": "switch",
+        "label": "Forward",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      { "id": "to-app", "from": "switch", "to": "app", "label": "Web", "kind": "sync", "props": { "travelMs": 200 } },
+      {
+        "id": "to-db",
+        "from": "app",
+        "to": "database",
+        "label": "Query",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      { "id": "e-1", "from": "visitors", "to": "topic-1", "kind": "async" },
+      {
+        "id": "e-4",
+        "from": "visitors",
+        "to": "queue-1",
+        "kind": "sync",
+        "label": "Web",
+        "props": { "travelMs": 200 }
+      },
+      { "id": "e-5", "from": "queue-1", "to": "router", "kind": "sync", "props": { "travelMs": 200 } }
+    ],
+    "simulations": [
+      {
+        "id": "web-and-probes",
+        "title": "Web and blocked probes",
+        "description": "Allowed web calls reach storage; admin probes stop at the firewall.",
+        "seed": 41,
+        "scale": 1,
+        "traffic": [
+          {
+            "id": "visitors",
+            "node": "visitors",
+            "messageType": "WebRequest",
+            "shape": { "kind": "constant", "ratePerSec": 8, "durationMs": 6000 }
+          },
+          {
+            "id": "probes",
+            "node": "probes",
+            "messageType": "AdminProbe",
+            "shape": { "kind": "constant", "ratePerSec": 2, "durationMs": 6000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 2000,
+            "action": { "do": "note", "text": "Blocked is a firewall decision, separate from processing failures and lost messages. All capacities here are illustrative device presets.", "focus": ["firewall", "admin"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "database-processed-end",
+            "label": "database: processed == 48",
+            "metric": { "node": "database", "field": "processed" },
+            "op": "==",
+            "value": 48,
+            "when": "end"
+          },
+          {
+            "id": "admin-processed-end",
+            "label": "admin: processed == 0",
+            "metric": { "node": "admin", "field": "processed" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          },
+          {
+            "id": "firewall-blocked-end",
+            "label": "firewall: blocked == 12",
+            "metric": { "node": "firewall", "field": "blocked" },
+            "op": "==",
+            "value": 12,
+            "when": "end"
+          },
+          {
+            "id": "firewall-dropped-always",
+            "label": "firewall: dropped == 0",
+            "metric": { "node": "firewall", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "always"
+          }
+        ]
+      },
+      {
+        "id": "web-only",
+        "title": "Web-only baseline",
+        "description": "The same path carries normal web requests with no blocked traffic.",
+        "seed": 41,
+        "scale": 1,
+        "traffic": [
+          {
+            "id": "visitors",
+            "node": "visitors",
+            "messageType": "WebRequest",
+            "shape": { "kind": "constant", "ratePerSec": 8, "durationMs": 6000 }
+          }
+        ],
+        "timeline": [],
+        "expectations": [
+          {
+            "id": "database-processed-end",
+            "label": "database: processed == 48",
+            "metric": { "node": "database", "field": "processed" },
+            "op": "==",
+            "value": 48,
+            "when": "end"
+          },
+          {
+            "id": "firewall-blocked-end",
+            "label": "firewall: blocked == 0",
+            "metric": { "node": "firewall", "field": "blocked" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ]
+      },
+      {
+        "id": "sim-1",
+        "title": "Parity rush",
+        "durationMs": 20000,
+        "traffic": [
+          {
+            "id": "traffic-1",
+            "node": "visitors",
+            "shape": { "kind": "constant", "ratePerSec": 20, "fromMs": 0, "durationMs": 10000 }
+          },
+          {
+            "id": "traffic-2",
+            "node": "visitors",
+            "shape": { "kind": "burst", "count": 50, "atMs": 5000, "spreadMs": 2000 },
+            "messageType": "ParityBurst"
+          },
+          {
+            "id": "traffic-3",
+            "node": "visitors",
+            "shape": {
+              "kind": "ramp",
+              "fromMs": 0,
+              "startRate": 1,
+              "stages": [{ "durationMs": 8000, "targetRate": 30 }]
+            }
+          },
+          {
+            "id": "traffic-4",
+            "node": "visitors",
+            "shape": { "kind": "spike", "baseRate": 5, "peakRate": 40, "atMs": 12000, "peakMs": 1000, "durationMs": 4000 }
+          }
+        ],
+        "timeline": [
+          { "atMs": 6000, "action": { "do": "status", "node": "router", "status": "down" } },
+          { "atMs": 6000, "action": { "do": "note", "text": "It goes down", "focus": ["router"] } }
+        ],
+        "expectations": [
+          {
+            "id": "expectation-1",
+            "label": "Nothing dropped",
+            "metric": { "node": "router", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ],
+        "scale": 2
+      }
+    ],
+    "groups": [
+      { "id": "dmz", "label": "DMZ", "tone": "onprem", "x": 0, "y": 296, "width": 462, "height": 336 },
+      { "id": "trusted", "label": "Trusted services", "tone": "onprem", "x": 160, "y": 736, "width": 340, "height": 496 },
+      { "id": "boundary-1", "label": "Parity zone", "tone": "neutral", "x": 0, "y": -24, "width": 620, "height": 176 }
+    ],
+    "annotations": [
+      { "id": "note-1", "kind": "note", "text": "Pinned by the parity harness", "x": 1120, "y": 160, "width": 240, "height": 160 }
+    ]
+  }
+}

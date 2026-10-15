@@ -1,0 +1,23 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Two inputs, one worker pool",
+    "direction": "TB",
+    "nodes": [
+      { "id": "orders", "stencil": "generic.service", "label": "Acme orders", "sublabel": "3 orders/s", "x": 40, "y": 40 },
+      { "id": "refunds", "stencil": "generic.service", "label": "Acme refunds", "sublabel": "3 refunds/s", "x": 360, "y": 40 },
+      { "id": "order_log", "stencil": "generic.topic", "label": "Order events", "sublabel": "8 partitions", "x": 40, "y": 200 },
+      { "id": "refund_log", "stencil": "generic.topic", "label": "Refund events", "sublabel": "8 partitions", "x": 360, "y": 200 },
+      { "id": "worker", "stencil": "generic.service", "label": "Ledger worker", "sublabel": "One shared pool: 1 × 4 / 1 s", "x": 200, "y": 360 },
+      { "id": "ledger", "stencil": "generic.database", "label": "Acme ledger", "sublabel": "Orders and refunds", "x": 200, "y": 520 }
+    ],
+    "edges": [
+      { "id": "e1-orders-order_log", "from": "orders", "to": "order_log", "label": "Order", "kind": "async" },
+      { "id": "e2-refunds-refund_log", "from": "refunds", "to": "refund_log", "label": "Refund", "kind": "async" },
+      { "id": "e3-order_log-worker", "from": "order_log", "to": "worker", "label": "order-posting", "kind": "async" },
+      { "id": "e4-refund_log-worker", "from": "refund_log", "to": "worker", "label": "refund-posting", "kind": "async" },
+      { "id": "e5-worker-ledger", "from": "worker", "to": "ledger", "label": "Record", "kind": "sync" }
+    ]
+  }
+}

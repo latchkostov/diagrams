@@ -1,0 +1,336 @@
+{
+  "layout": {
+    "status": 0,
+    "stdout": "<tmp>/laid.json: placed 7 nodes.\n",
+    "nodes": { "questions": [40, 40], "gateway": [40, 200], "assistant": [200, 360], "answer": [40, 520], "review": [360, 520], "billing": [360, 40], "payments": [360, 200] },
+    "groups": {}
+  },
+  "shareLink": {
+    "status": 0,
+    "prefix": "https://www.livediagrams.dev/#d=",
+    "decoded": { "sha256": "9c405236983594d3c7102b4e01d2acfdaf932d363bdf1cb371b631fd0138af3b", "bytes": 6209 },
+    "sameAsFile": true,
+    "warned": false
+  },
+  "exportHtml": {
+    "status": 0,
+    "stdout": "<tmp>/export.html (<size>, plays \"Assistant launch burst\" when opened)\nPrivate: it works offline and makes no network requests, and only people who have the file can open it. Share it where your team already controls access.\n",
+    "stderr": "",
+    "payload": {
+      "version": 1,
+      "diagram": {
+        "format": "diagrams/v2",
+        "planning": {
+          "revision": "p3",
+          "sharedQuotas": [
+            { "id": "assistant-tokens", "unit": "tokens", "amount": 6000, "windowMs": 60000, "algorithm": "token-bucket" },
+            { "id": "assistant-requests", "unit": "requests", "amount": 60, "windowMs": 60000, "algorithm": "token-bucket" }
+          ]
+        },
+        "direction": "TB",
+        "title": "Shared API and token quotas",
+        "description": "Acme answers and reviews questions against one fictional 6,000-token/minute project budget, while billing calls meet a separate five-request/second payment cap.",
+        "nodes": [
+          {
+            "id": "questions",
+            "stencil": "client.browser",
+            "label": "Acme help desk",
+            "sublabel": "2 questions/s",
+            "props": { "ratePerSec": 2, "messageType": "Question" },
+            "x": 40,
+            "y": 40
+          },
+          {
+            "id": "gateway",
+            "stencil": "aws.api-gateway",
+            "label": "Assistant gateway",
+            "sublabel": "Account preset · assumed latency",
+            "props": {},
+            "x": 40,
+            "y": 200
+          },
+          {
+            "id": "assistant",
+            "stencil": "service.python",
+            "label": "Answer and review",
+            "sublabel": "Each question makes two model calls",
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 4, "latencyMs": 100, "jitter": 0, "failureRate": 0 },
+            "x": 200,
+            "y": 360
+          },
+          {
+            "id": "answer",
+            "stencil": "openai",
+            "label": "Answer model",
+            "sublabel": "500 tokens/call · shared project",
+            "props": {
+              "preset": "managed-measured",
+              "presetRevision": "2026-10-14",
+              "jitter": 0,
+              "failureRate": 0,
+              "latencyMs": 250,
+              "api": {
+                "maxInFlight": 20,
+                "costPerRequest": { "tokens": 500 },
+                "quotas": [
+                  { "id": "assistant-tokens", "unit": "tokens", "amount": 6000, "windowMs": 60000, "algorithm": "token-bucket", "sharedGroup": "assistant-tokens" },
+                  { "id": "assistant-requests", "unit": "requests", "amount": 60, "windowMs": 60000, "algorithm": "token-bucket", "sharedGroup": "assistant-requests" }
+                ]
+              }
+            },
+            "x": 40,
+            "y": 520
+          },
+          {
+            "id": "review",
+            "stencil": "openai",
+            "label": "Review model",
+            "sublabel": "Same 6,000 TPM / 60 RPM budget",
+            "props": {
+              "preset": "managed-measured",
+              "presetRevision": "2026-10-14",
+              "jitter": 0,
+              "failureRate": 0,
+              "latencyMs": 250,
+              "api": {
+                "maxInFlight": 20,
+                "costPerRequest": { "tokens": 500 },
+                "quotas": [
+                  { "id": "assistant-tokens", "unit": "tokens", "amount": 6000, "windowMs": 60000, "algorithm": "token-bucket", "sharedGroup": "assistant-tokens" },
+                  { "id": "assistant-requests", "unit": "requests", "amount": 60, "windowMs": 60000, "algorithm": "token-bucket", "sharedGroup": "assistant-requests" }
+                ]
+              }
+            },
+            "x": 360,
+            "y": 520
+          },
+          {
+            "id": "billing",
+            "stencil": "generic.webhook",
+            "label": "Acme billing",
+            "sublabel": "12 payment calls/s",
+            "props": { "ratePerSec": 12, "messageType": "Payment" },
+            "x": 360,
+            "y": 40
+          },
+          {
+            "id": "payments",
+            "stencil": "stripe",
+            "label": "Payment API",
+            "sublabel": "Fictional local cap: 5 requests/s",
+            "props": {
+              "preset": "stripe-live",
+              "presetRevision": "2026-10-14",
+              "latencyMs": 250,
+              "jitter": 0,
+              "api": {
+                "maxInFlight": 50,
+                "sharedConcurrency": "stripe-live-account",
+                "quotas": [
+                  { "id": "local-rate", "unit": "requests", "amount": 5, "windowMs": 1000, "algorithm": "token-bucket" },
+                  { "id": "global-rate", "unit": "requests", "amount": 100, "windowMs": 1000, "algorithm": "token-bucket", "sharedGroup": "stripe-live-account" }
+                ]
+              }
+            },
+            "x": 360,
+            "y": 200
+          }
+        ],
+        "edges": [
+          {
+            "id": "ask",
+            "from": "questions",
+            "to": "gateway",
+            "label": "Question",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "assist",
+            "from": "gateway",
+            "to": "assistant",
+            "label": "Answer",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "generate",
+            "from": "assistant",
+            "to": "answer",
+            "label": "Generate",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "review-answer",
+            "from": "assistant",
+            "to": "review",
+            "label": "Review",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "charge",
+            "from": "billing",
+            "to": "payments",
+            "label": "Charge",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          }
+        ],
+        "simulations": [
+          {
+            "id": "launch-burst",
+            "title": "Assistant launch burst",
+            "description": "The shared token budget binds before RPM. Payment calls have their own rate budget. These are fictional contracts, not vendor tier defaults.",
+            "seed": 41,
+            "scale": 1,
+            "traffic": [
+              {
+                "id": "questions",
+                "node": "questions",
+                "messageType": "Question",
+                "shape": { "kind": "burst", "count": 24, "atMs": 1000, "spreadMs": 200 }
+              },
+              {
+                "id": "billing",
+                "node": "billing",
+                "messageType": "Payment",
+                "shape": { "kind": "burst", "count": 30, "atMs": 1000, "spreadMs": 200 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 2000,
+                "action": { "do": "note", "text": "Two model boxes spend one project budget. Rejected is separate from failed; no upstream timeout or retry is simulated.", "focus": ["answer", "review", "payments"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "answer-rejected-end",
+                "label": "answer: rejected > 0",
+                "metric": { "node": "answer", "field": "rejected" },
+                "op": ">",
+                "value": 0,
+                "when": "end"
+              },
+              {
+                "id": "review-rejected-end",
+                "label": "review: rejected > 0",
+                "metric": { "node": "review", "field": "rejected" },
+                "op": ">",
+                "value": 0,
+                "when": "end"
+              },
+              {
+                "id": "payments-rejected-end",
+                "label": "payments: rejected > 0",
+                "metric": { "node": "payments", "field": "rejected" },
+                "op": ">",
+                "value": 0,
+                "when": "end"
+              },
+              {
+                "id": "answer-failed-end",
+                "label": "answer: failed == 0",
+                "metric": { "node": "answer", "field": "failed" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              },
+              {
+                "id": "payments-failed-end",
+                "label": "payments: failed == 0",
+                "metric": { "node": "payments", "field": "failed" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              }
+            ]
+          },
+          {
+            "id": "within-budget",
+            "title": "A small batch fits",
+            "description": "Four questions spend 4,000 shared tokens; three payment calls fit the local bucket.",
+            "seed": 41,
+            "scale": 1,
+            "traffic": [
+              {
+                "id": "questions",
+                "node": "questions",
+                "messageType": "Question",
+                "shape": { "kind": "burst", "count": 4, "atMs": 1000, "spreadMs": 200 }
+              },
+              {
+                "id": "billing",
+                "node": "billing",
+                "messageType": "Payment",
+                "shape": { "kind": "burst", "count": 3, "atMs": 1000, "spreadMs": 200 }
+              }
+            ],
+            "timeline": [],
+            "expectations": [
+              {
+                "id": "answer-processed-end",
+                "label": "answer: processed == 4",
+                "metric": { "node": "answer", "field": "processed" },
+                "op": "==",
+                "value": 4,
+                "when": "end"
+              },
+              {
+                "id": "review-processed-end",
+                "label": "review: processed == 4",
+                "metric": { "node": "review", "field": "processed" },
+                "op": "==",
+                "value": 4,
+                "when": "end"
+              },
+              {
+                "id": "payments-processed-end",
+                "label": "payments: processed == 3",
+                "metric": { "node": "payments", "field": "processed" },
+                "op": "==",
+                "value": 3,
+                "when": "end"
+              },
+              {
+                "id": "answer-rejected-end",
+                "label": "answer: rejected == 0",
+                "metric": { "node": "answer", "field": "rejected" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              },
+              {
+                "id": "review-rejected-end",
+                "label": "review: rejected == 0",
+                "metric": { "node": "review", "field": "rejected" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              },
+              {
+                "id": "payments-rejected-end",
+                "label": "payments: rejected == 0",
+                "metric": { "node": "payments", "field": "rejected" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              }
+            ]
+          }
+        ]
+      },
+      "icons": {
+        "aws-api-gateway": { "sha256": "ba50151d29b0ff766b5f5dc174fc1062d6ea07ec5187db2bbdfce8ed00398637", "bytes": 1924 },
+        "client-browser": { "sha256": "c66b629864dc684d451c1c280107fe74cdd69ffb9d17be64673c90c7c92434f7", "bytes": 476 },
+        "generic-webhook": { "sha256": "f73d0eda19274f25a80e339ef1119c82f8aed73222085462017cf001b6c0ebed", "bytes": 595 },
+        "openai": { "sha256": "b5abb28ccb95207d8d9df053abb48d32e2ca0b49da7eb6438405a1b1810eee3a", "bytes": 1940 },
+        "python": { "sha256": "24ad742e3267f1dbf1cdd067693d7972380f3982a63e0142dd2f6e2a08bde610", "bytes": 1797 },
+        "stripe": { "sha256": "d73033ac5105145a1a5dc226c8c4a9b744369e2c0ae7234e97671c799656fd31", "bytes": 738 }
+      },
+      "options": { "theme": "dark", "startSimulation": "launch-burst", "exportedOn": "2026-01-01" }
+    }
+  }
+}

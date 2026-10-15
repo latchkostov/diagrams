@@ -133,6 +133,36 @@ const publicExamples: PublicExample[] = (
       theme: "reliability",
       summary: "Routers, a firewall pair, spine and leaf, an ADC",
     },
+    {
+      slug: "partitions-vs-subscriptions",
+      theme: "streaming",
+      summary: "Three partitions, eight readers, independent subscriptions",
+    },
+    {
+      slug: "shared-worker-pool",
+      theme: "streaming",
+      summary: "Two inputs share four worker slots",
+    },
+    {
+      slug: "shared-api-quotas",
+      theme: "data",
+      summary: "Shared model tokens and payment rate limits",
+    },
+    {
+      slug: "serverless-burst-buffer",
+      theme: "cloud",
+      summary: "Reserved concurrency rejects; a queue buffers",
+    },
+    {
+      slug: "measured-order-capacity",
+      theme: "reliability",
+      summary: "Pinned defaults versus measured payment capacity",
+    },
+    {
+      slug: "contoso-dmz",
+      theme: "reliability",
+      summary: "A compact DMZ with allowed web and blocked probes",
+    },
   ] as const
 ).map((example) => ({ ...example, ...exampleMetadata[example.slug] }));
 

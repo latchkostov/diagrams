@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "orders": [40, 40], "intake": [400, 40], "queue": [800, 40], "payment-worker": [1193, 40], "ledger": [1586, 40] },
+    "TB": { "orders": [40, 40], "intake": [40, 200], "queue": [40, 360], "payment-worker": [40, 520], "ledger": [40, 680] }
+  },
+  "tidy": { "orders": [40, 40], "intake": [40, 200], "queue": [40, 360], "payment-worker": [40, 520], "ledger": [40, 680] },
+  "arrange": {
+    "alignLeft": { "orders": [40, 40], "intake": [40, 200], "queue": [40, 360], "payment-worker": [40, 520], "ledger": [40, 680] },
+    "alignMiddle": { "orders": [40, 360], "intake": [40, 360], "queue": [40, 360], "payment-worker": [40, 360], "ledger": [40, 360] },
+    "distributeH": { "orders": [40, 40], "intake": [14, 200], "queue": [27, 360], "payment-worker": [34, 520], "ledger": [40, 680] },
+    "distributeV": { "orders": [40, 40], "intake": [40, 200], "queue": [40, 360], "payment-worker": [40, 520], "ledger": [40, 680] },
+    "spreadH": { "orders": [40, 40], "intake": [300, 40], "queue": [600, 40], "payment-worker": [893, 40], "ledger": [1186, 40] },
+    "boundaryAround": { "x": 0, "y": -24, "width": 340, "height": 816 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "orders": [40, 40], "intake": [40, 200], "queue": [40, 360], "payment-worker": [40, 520], "ledger": [40, 680] },
+    "groups": {}
+  }
+}

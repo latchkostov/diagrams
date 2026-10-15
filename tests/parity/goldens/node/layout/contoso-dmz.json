@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "visitors": [40, 40], "probes": [40, 160], "router": [400, 100], "firewall": [800, 100], "admin": [1162, 40], "adc": [1162, 160], "switch": [1536, 100], "app": [1936, 100], "database": [2296, 100] },
+    "TB": { "visitors": [40, 40], "probes": [360, 40], "router": [200, 200], "firewall": [200, 360], "adc": [40, 520], "admin": [360, 520], "switch": [200, 680], "app": [200, 840], "database": [200, 1000] }
+  },
+  "tidy": { "visitors": [40, 40], "probes": [360, 40], "router": [200, 200], "firewall": [200, 360], "adc": [40, 520], "switch": [200, 680], "app": [200, 840], "database": [200, 1000], "admin": [360, 520] },
+  "arrange": {
+    "alignLeft": { "visitors": [40, 40], "probes": [40, 40], "router": [40, 200], "firewall": [40, 360], "adc": [40, 520], "switch": [40, 800], "app": [40, 960], "database": [40, 1120], "admin": [40, 480] },
+    "alignMiddle": { "visitors": [40, 580], "probes": [360, 580], "router": [200, 580], "firewall": [200, 580], "adc": [40, 580], "switch": [200, 580], "app": [200, 580], "database": [200, 580], "admin": [520, 580] },
+    "distributeH": { "visitors": [40, 40], "probes": [472, 40], "router": [150, 200], "firewall": [238, 360], "adc": [88, 520], "switch": [288, 800], "app": [376, 960], "database": [424, 1120], "admin": [520, 480] },
+    "distributeV": { "visitors": [40, 40], "probes": [360, 175], "router": [200, 310], "firewall": [200, 445], "adc": [40, 715], "switch": [200, 850], "app": [200, 985], "database": [200, 1120], "admin": [520, 580] },
+    "spreadH": { "visitors": [40, 40], "probes": [1956, 40], "router": [574, 40], "firewall": [874, 40], "adc": [300, 40], "switch": [1136, 40], "app": [1436, 40], "database": [1696, 40], "admin": [2216, 40] },
+    "boundaryAround": { "x": 0, "y": -24, "width": 794, "height": 1256 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": ["dmz", "trusted"],
+    "placedNotes": [],
+    "nodes": { "visitors": [40, 40], "probes": [360, 40], "router": [200, 200], "firewall": [200, 360], "adc": [40, 520], "switch": [200, 680], "app": [200, 840], "database": [200, 1000], "admin": [520, 480] },
+    "groups": { "dmz": [0, 296, 462, 336], "trusted": [160, 616, 340, 496] }
+  }
+}
