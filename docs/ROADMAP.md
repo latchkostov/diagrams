@@ -1,17 +1,15 @@
 # Roadmap
 
-The plan for the coming week, in execution order. Each item ships as reviewed PRs: an independent code review, every fix covered by a test that fails without it, and CI on the production build. The research behind each item is linked. Last updated 2026-10-14.
+The plan for the coming week, in execution order. Each item ships as reviewed PRs: an independent code review, every fix covered by a test that fails without it, and CI on the production build. The research behind each item is linked. Last updated 2026-10-15.
 
 ## In flight
 
-| Item                            | What it is                                                                                                                                                                       | Research                                           |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| Planning P3 (sim item 8)        | Serverless concurrency; rate limits for external APIs and models that reject; unknown limits stay unknown                                                                        | [planning-model](research/planning-model.md)       |
-| Output-parity harness           | Golden outputs (simulation, checks, exports, imports, agent tools, layout, i18n) that every refactor must reproduce exactly                                                      | to be written: `docs/PARITY.md`                    |
-| Benchmarks                      | Workloads of 100–5,000 nodes; load, render, typing, live tick, checks, planning, memory, render counts and bundle size. Robust CI gates, a committed baseline and a hotspot list | to be written: `docs/BENCHMARKS.md`                |
-| Self-hosting kit                | Docker image, Kubernetes manifest and Helm chart, templates for static hosts, an air-gapped bundle, a header verifier, and a rewritten guide                                     | [SELF-HOSTING](SELF-HOSTING.md)                    |
-| Research: C4 multi-level views  | One model, viewed at Context, Container and Component level                                                                                                                      | to be written: `research/c4-views.md`              |
-| Research: competitive landscape | A sourced feature matrix against about 15 tools, plus the top opportunities                                                                                                      | to be written: `research/competitive-landscape.md` |
+| Item           | What it is                                                                                                                                                                       | Research                               |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| Autoscaling A1 | Per-message CPU and memory, the replica lifecycle (starting, ready, draining) and the Kubernetes HPA                                                                             | [autoscaling](research/autoscaling.md) |
+| Benchmarks     | Workloads of 100–5,000 nodes; load, render, typing, live tick, checks, planning, memory, render counts and bundle size. Robust CI gates, a committed baseline and a hotspot list | to be written: `docs/BENCHMARKS.md`    |
+
+Shipped since the last update: Planning P3 (#105), the output-parity harness (#111, see [PARITY](PARITY.md)), the self-hosting kit (#110), and research on C4 views (#109) and the competitive landscape (#108).
 
 ## Next, in order
 
@@ -45,10 +43,12 @@ The plan for the coming week, in execution order. Each item ships as reviewed PR
    - Agent `connect` into Key Vault without a relation.
    - Infrastructure imports don't mark inferred relations.
    - Dependency outages aren't simulated.
+   - The zoom a diagram opens at depends on timing and drifts slightly under load. The parity harness found it, and it doesn't pin it yet.
+   - `sim-truth` "the continuous source volume budget announces its stop" depends on runner speed. It failed on every retry once on CI and passed on re-run. Make it deterministic.
 
 ## Waiting for the owner's decision
 
 - The import picker: the default pick size, and the wording for Strimzi-made secrets.
 - Network batches 2–4 (more vendors, WAN links and rulebases, wireless and DNS/IPAM) and vendor logo badges.
 - Languages: startup size, first-visit loading, and number grouping in English.
-- Competitive opportunities, such as collaboration options that keep the no-backend privacy, diagrams-as-code, and Confluence, Notion or VS Code integrations. These follow once the landscape research is in.
+- Competitive opportunities, such as collaboration options that keep the no-backend privacy, diagrams-as-code, and Confluence, Notion or VS Code integrations. The landscape research is in ([competitive-landscape](research/competitive-landscape.md)). The recommendation is a runnable patterns gallery and portable review comments now; diagram-as-code and VS Code, GitHub, Confluence or Notion integrations after C4.
