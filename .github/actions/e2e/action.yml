@@ -28,10 +28,15 @@ runs:
   using: composite
   steps:
     - uses: pnpm/action-setup@v6
+      with:
+        version: 12.11.2
     - uses: actions/setup-node@v7
       with:
         node-version-file: .nvmrc
         cache: pnpm
+        cache-dependency-path: |
+          pnpm-lock.yaml
+          pnpm-workspace.yaml
     - run: pnpm install --frozen-lockfile
       shell: bash
     - name: Playwright version
