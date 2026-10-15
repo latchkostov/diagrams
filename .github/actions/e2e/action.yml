@@ -27,18 +27,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: pnpm/action-setup@v6
-      with:
-        version: 12.11.2
-    - uses: actions/setup-node@v7
-      with:
-        node-version-file: .nvmrc
-        cache: pnpm
-        cache-dependency-path: |
-          pnpm-lock.yaml
-          pnpm-workspace.yaml
-    - run: pnpm install --frozen-lockfile
-      shell: bash
+    - uses: ./.github/actions/toolchain
     - uses: ./.github/actions/chromium-cache
     # The builds the servers use run while apt installs Chromium's system libraries: the production build
     # (the subpath project, every target) and, for the build target, the e2e build with test hooks.

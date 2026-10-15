@@ -19,7 +19,7 @@ Standards: strict TypeScript, ESLint (typescript-eslint strict, react-hooks, jsx
 | Tool               | Pin                                                                                                           |
 | ------------------ | ------------------------------------------------------------------------------------------------------------- |
 | Node               | 24.22.0 in `.nvmrc` (CI/nightly); `engines` requires Node 24; Docker uses `node:24-alpine`                    |
-| pnpm               | 12.11.2 in `packageManager` and every `pnpm/action-setup` input                                               |
+| pnpm               | 12.11.2 in `packageManager`; the shared `.github/actions/toolchain` action reads that pin                     |
 | Type checker       | TypeScript 7.0.2 as `@typescript/native`; its `tsc` runs `typecheck`, builds and Vitest's type checks         |
 | TypeScript API     | `typescript` aliases `@typescript/typescript6` 6.0.2 (reports compiler 6.0.3); `tsc6` runs `typecheck:legacy` |
 | Test/browser tools | Vitest + coverage 5.0.4, Playwright 1.64.1; browser parity uses the corresponding `-noble` image              |

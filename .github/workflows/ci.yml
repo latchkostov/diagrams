@@ -100,17 +100,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 12.11.2
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: |
-            pnpm-lock.yaml
-            pnpm-workspace.yaml
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/toolchain
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check
@@ -131,17 +121,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 12.11.2
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: |
-            pnpm-lock.yaml
-            pnpm-workspace.yaml
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/toolchain
       - name: Type-check the harness
         run: pnpm exec tsc --noEmit -p tests/parity
       # The Node tier runs here; the browser tier in Playwright's Linux image for the installed version, through
@@ -214,17 +194,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 12.11.2
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: |
-            pnpm-lock.yaml
-            pnpm-workspace.yaml
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/toolchain
       - uses: actions/download-artifact@v8
         with:
           pattern: blob-report-*
@@ -248,17 +218,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 12.11.2
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: |
-            pnpm-lock.yaml
-            pnpm-workspace.yaml
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/toolchain
       - uses: ./.github/actions/chromium-cache
       - name: Install system dependencies for container smoke test
         run: pnpm exec playwright install-deps chromium

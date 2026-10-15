@@ -1,5 +1,12 @@
 # Release notes
 
+## Toolchain review fixes (2026-10-15)
+
+- CI and nightly share pnpm/Node setup, dependency caching and frozen installs. `package.json` owns
+  the pnpm version, so upgrades no longer require matching workflow pins.
+- Dependency-policy tests prove synchronized commands work and stale commands fail specifically
+  during dependency verification, without rewriting the lockfile. App output and parity goldens are unchanged.
+
 ## Self-hosting review fixes (2026-10-14)
 
 - Cloudflare Pages preserves static assets through its native SPA fallback. Legacy and target header files

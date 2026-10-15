@@ -83,17 +83,7 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 12.11.2
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: |
-            pnpm-lock.yaml
-            pnpm-workspace.yaml
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/toolchain
       - run: pnpm skill:check
 
   # Opens the `nightly-failure` issue, or updates the open one (its body is the latest failure, and a
