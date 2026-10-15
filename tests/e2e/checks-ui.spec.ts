@@ -1,6 +1,15 @@
 import { readFileSync } from "node:fs";
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, waitForStableViewport } from "./fixtures";
+import {
+  test,
+  performanceTest,
+  pageLoadTimeout,
+  expect,
+  gotoCanvas,
+  expectNoErrors,
+  waitForStableViewport,
+} from "./fixtures";
+import { typingWork, median } from "./typing-work";
 
 // Architecture checks in the editor: the count under the title, the Checks card (from the count, the canvas
 // right-click, Ctrl+K and the View menu), fixes, Ignore and Turn off (kept in the file), markers while the card
@@ -298,12 +307,7 @@ const runStats = (page: Page) =>
 const holdChecks = (page: Page, held: boolean) =>
   page.evaluate((h) => void ((window as unknown as { __checks: CheckRunStats }).__checks.held = h), held);
 
-const median = (xs: number[]) => {
-  const s = [...xs].sort((a, b) => a - b);
-  return s.length ? s[Math.floor(s.length / 2)] : 0;
-};
-
-test("typing a label is as responsive while checks run as with them held", async ({ page }, info) => {
+performanceTest("typing a label is as responsive while checks run as with them held", async ({ page }, info) => {
   test.setTimeout(120_000);
   // 1,500 nodes in 100 pipelines, each with a loop of requests: every check runs, and capacity's fixed point
   // runs to its bound (the slowest case), in the worker.
@@ -324,7 +328,7 @@ test("typing a label is as responsive while checks run as with them held", async
     mimeType: "application/json",
     buffer: Buffer.from(JSON.stringify(diagram)),
   });
-  await expect(page.getByTestId("diagram-title")).toHaveText("Large");
+  await expect(page.getByTestId("diagram-title")).toHaveText("Large", { timeout: pageLoadTimeout() });
   await expect(page.getByTestId("checks-count")).toHaveText(/\d+ warnings/, { timeout: 60_000 });
 
   // Select a node through its finding (the diagram is far bigger than the view), then close the card.
@@ -348,22 +352,7 @@ test("typing a label is as responsive while checks run as with them held", async
     await cdp.send("Emulation.setCPUThrottlingRate", { rate: Number(process.env.CHECKS_CPU) });
   }
 
-  // Event Timing, one sample per keystroke (its longest event); under the 16 ms threshold it isn't reported.
-  await page.evaluate(() => {
-    const w = window as unknown as { __keys: Map<number, number> };
-    w.__keys = new Map();
-    new PerformanceObserver((list) => {
-      for (const e of list.getEntries() as (PerformanceEntry & { interactionId?: number })[])
-        if (e.interactionId) w.__keys.set(e.interactionId, Math.max(w.__keys.get(e.interactionId) ?? 0, e.duration));
-    }).observe({ type: "event", durationThreshold: 16, buffered: false } as PerformanceObserverInit);
-  });
-  const takeSamples = () =>
-    page.evaluate(() => {
-      const w = window as unknown as { __keys: Map<number, number> };
-      const out = [...w.__keys.values()];
-      w.__keys.clear();
-      return out;
-    });
+  const work = await typingWork(page);
 
   // Each check run as it comes due (started, or held back), told at once: `started` and `skipped` become setters
   // that call out to the test before the run goes on. (A poll couldn't hear of a run on the main thread until it
@@ -400,30 +389,26 @@ test("typing a label is as responsive while checks run as with them held", async
    * Types `text` a key at a time, each as the last one's check run comes due (the edits paused for the debounce, and
    * the page went idle): so every key but the first meets a run as it starts. Not a pause in ms: a busy page goes
    * idle later, and a key typed before then put the run off again (nightly #78: 3 runs for 10 keys). The last key's
-   * run coming due is the phase's end: by then (the debounce alone is 400 ms) its Event Timing entry is in.
+   * run coming due is the sample's end; its main-thread work is included, even if it blocks input.
    */
   async function phase(held: boolean, text: string) {
     await holdChecks(page, held);
     // A run left over from the last phase finishes first.
     await expect.poll(async () => (await runStats(page)).started - (await runStats(page)).finished).toBe(0);
-    await takeSamples();
     const before = await runStats(page);
+    const samples: number[] = [];
     for (const ch of text) {
       const due = nextDue();
-      await page.keyboard.type(ch);
-      await due;
+      samples.push(await work.key(ch, () => due));
     }
     const after = await runStats(page);
-    const samples = await takeSamples();
-    // Keystrokes under the reporting threshold took under 16 ms.
-    while (samples.length < text.length) samples.push(16);
     return { samples, started: after.started - before.started };
   }
-  // Alternating, so the two see the same page in the same state: held, running, held, running.
+  // Three alternating phases of each kind on the same page.
   const held: number[] = [];
   const running: number[] = [];
   let runs = 0;
-  for (const [i, kind] of ["h", "r", "h", "r"].entries()) {
+  for (const [i, kind] of ["h", "r", "h", "r", "h", "r"].entries()) {
     const p = await phase(kind === "h", ` ${kind}${i}xyz`);
     if (kind === "h") {
       expect(p.started, "checks held: none ran").toBe(0);
@@ -434,20 +419,17 @@ test("typing a label is as responsive while checks run as with them held", async
     }
   }
   await holdChecks(page, false);
-  await expect(label).toHaveValue(`${LONG} h0xyz r1xyz h2xyz r3xyz`);
+  await expect(label).toHaveValue(`${LONG} h0xyz r1xyz h2xyz r3xyz h4xyz r5xyz`);
   expect(
     await page.evaluate(() => ({
       ...(window as unknown as { __planning: { reads: number; analyses: number; explanations: number } }).__planning,
     })),
   ).toEqual(planningBefore);
-  info.annotations.push({ type: "event-timing", description: JSON.stringify({ held, running, runs }) });
+  info.annotations.push({ type: "typing-cpu", description: JSON.stringify({ held, running, runs }) });
   // Checks ran while the second set was typed: one after every key.
-  expect(runs).toBeGreaterThanOrEqual(12);
+  expect(runs).toBeGreaterThanOrEqual(18);
   // They ran in the checks worker, not on this thread.
   expect(page.workers().length, "the checks worker").toBeGreaterThan(0);
-  // And typing was no slower for it: the same median keystroke, give or take noise. The slack is relative to the
-  // held phase (a busy machine slows both alike), and at least two steps of Event Timing's 8 ms resolution above
-  // its 16 ms floor. Checks on the main thread (capacity's loop alone runs to its bound here) would add their whole
-  // run, many times that, to the keystrokes they meet.
-  expect(median(running)).toBeLessThanOrEqual(Math.max(median(held) * 1.5, median(held) + 16));
+  await work.close();
+  expect(median(running), JSON.stringify({ held, running })).toBeLessThanOrEqual(median(held) * 1.5);
 });

@@ -1,5 +1,16 @@
 # Release notes
 
+## Nightly reliability (#114, 2026-10-15)
+
+- Dev tests wait for lazy tools, live sessions, file messages and export templates, intercept the dev image module as well
+  as the production chunk, and split repeated navigation sweeps into smaller tests. Large imports use
+  the navigation deadline. Vite reloads now fail explicitly, and dev-server output stays in CI logs.
+- Typing regressions compare same-run main-thread CPU work through paint, excluding worker CPU contention
+  and frame scheduling noise. Stress measurements omit DOM trace snapshots and retain the 1,500-node
+  diagram and 1.5× ratio. Simulation samples start after worker progress arrives; the checks test
+  retains its per-key run counts. Cancellation tests keep the same traffic on a smaller canvas.
+- Application output is unchanged; no parity goldens changed.
+
 ## Toolchain review fixes (2026-10-15)
 
 - CI and nightly share pnpm/Node setup, dependency caching and frozen installs. `package.json` owns

@@ -129,6 +129,7 @@ test.describe("polish", () => {
   });
 
   test("React Flow's credit stays visible, clear of the live bar and the first-run hint", async ({ page }) => {
+    test.slow(); // Two cold canvas and live-session loads.
     for (const width of [1440, 1024]) {
       await page.setViewportSize({ width, height: 900 });
       await gotoCanvas(page, KAFKA);
@@ -137,7 +138,7 @@ test.describe("polish", () => {
       const hint = page.getByTestId("first-run-hint");
       if (await hint.count()) expect(overlaps(await box(credit), await box(hint))).toBe(false);
       await page.keyboard.press("l");
-      await expect(page.getByTestId("live-controls")).toBeVisible();
+      await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
       await expect(credit).toBeVisible();
       expect(overlaps(await box(credit), await box(page.getByTestId("live-controls")))).toBe(false);
       const minimap = page.getByTestId("canvas-minimap");

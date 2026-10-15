@@ -7,6 +7,7 @@ import {
   gotoLive,
   expectNoErrors,
   waitForStableViewport,
+  waitForStableBox,
   pauseClock,
   STORAGE_KEYS,
 } from "./fixtures";
@@ -60,6 +61,8 @@ async function firstWord(field: Locator) {
  * after a word with it, and a textarea's line its line break, as they do everywhere on that platform.
  */
 async function expectNativeSelection(page: Page, field: Locator, word: string, line: string) {
+  // Opening an in-canvas editor can refit the viewport after focus has already arrived.
+  await waitForStableBox(field);
   const at = await firstWord(field);
   await page.mouse.dblclick(at.x, at.y);
   await expect(field).toBeFocused();
@@ -603,6 +606,7 @@ test.describe("renaming in the inspector", () => {
   });
 
   test("presenting live and read-only embeds open no editor on a double-click", async ({ page }) => {
+    test.slow(); // Seeded canvas, live session and a second cold embed navigation.
     await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1`);
     await page.getByTestId("present-toggle").click();
     await expect(page.getByTestId("present-exit")).toBeVisible();

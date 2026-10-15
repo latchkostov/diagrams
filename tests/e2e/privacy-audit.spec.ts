@@ -57,7 +57,7 @@ async function importDiagram(page: Page, diagram: object) {
 /** Goes live and plays the diagram's simulation from the live bar's picker. */
 async function playSimulation(page: Page) {
   await page.getByTestId("live-toggle").click();
-  await expect(page.getByTestId("live-controls")).toBeVisible();
+  await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
   await page.getByTestId("live-sim-picker").selectOption(SIM_ID);
   await expect(page.getByTestId("live-sim-picker")).toHaveValue(SIM_ID);
 }
@@ -271,6 +271,7 @@ test.describe("this browser's storage", () => {
     context,
     consoleErrors,
   }) => {
+    test.slow(); // Both tabs navigate before and after the wipe.
     await gotoCanvas(page, SLUG);
     const slug = await importDiagram(page, work({ private: true }));
     // An AI conversation that names it (the panel keeps one per diagram).
@@ -284,19 +285,21 @@ test.describe("this browser's storage", () => {
     // Another tab, on the stencil library (its pending stencils wait for a canvas), that can't download any more of
     // the app's code: stopping and starting over needs none.
     const other = await context.newPage();
-    await other.goto("./?view=gallery");
-    await expect(other.getByTestId("gallery-view")).toBeVisible();
+    await gotoGallery(other);
     await other.route(/(clearDevice|dialogs|clearOnPrivate)[-.][^/]*$/, (route) => route.abort());
     await seedSession(other);
 
     await openClearDevice(page);
     // Cancel is the default.
     await expect(page.getByTestId("clear-device-cancel")).toBeFocused();
-    const otherReloads = other.waitForEvent("load");
-    await Promise.all([page.waitForEvent("load"), page.getByTestId("clear-device-confirm").click()]);
+    const otherReloads = other.waitForEvent("domcontentloaded", { timeout: pageLoadTimeout() });
+    await Promise.all([
+      page.waitForEvent("domcontentloaded", { timeout: pageLoadTimeout() }),
+      page.getByTestId("clear-device-confirm").click(),
+    ]);
     await otherReloads;
-    await expect(page.getByTestId("canvas-view")).toBeVisible();
-    await expect(other.getByTestId("gallery-view")).toBeVisible();
+    await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
+    await expect(other.getByTestId("gallery-view")).toBeVisible({ timeout: pageLoadTimeout() });
     // The app starts over on a blank diagram, and nothing of the old one is anywhere in storage; each tab's session
     // storage loses the app's keys and keeps another app's.
     expect(page.url()).not.toContain(slug);
@@ -320,6 +323,7 @@ test.describe("this browser's storage", () => {
     page,
     context,
   }) => {
+    test.slow(); // Both tabs start over, then the foreground tab imports new work.
     // A tab that misses both signals (a busy or throttled background tab): it learns at its next write.
     const late = await context.newPage();
     await late.addInitScript(() => {
@@ -367,19 +371,24 @@ test.describe("this browser's storage", () => {
     page,
     context,
   }) => {
+    test.slow(); // Both tabs navigate before and after the wipe.
     await gotoCanvas(page, SLUG);
     const other = await context.newPage();
     // Only the storage event can reach this tab.
     await other.addInitScript(() => ((window as { BroadcastChannel?: unknown }).BroadcastChannel = undefined));
-    await other.goto("./?view=gallery");
-    await expect(other.getByTestId("gallery-view")).toBeVisible();
+    await gotoGallery(other);
     // Fill the browser's storage for this site with an app key, to the last character.
     const full = await fillStorage(page);
     expect(full).toBe(true);
     await openClearDevice(page);
-    const otherReloads = other.waitForEvent("load");
-    await Promise.all([page.waitForEvent("load"), page.getByTestId("clear-device-confirm").click()]);
+    const otherReloads = other.waitForEvent("domcontentloaded", { timeout: pageLoadTimeout() });
+    await Promise.all([
+      page.waitForEvent("domcontentloaded", { timeout: pageLoadTimeout() }),
+      page.getByTestId("clear-device-confirm").click(),
+    ]);
     await otherReloads;
+    await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
+    await expect(other.getByTestId("gallery-view")).toBeVisible({ timeout: pageLoadTimeout() });
     expect(await page.evaluate(() => localStorage.getItem("diagrams.generation"))).not.toBeNull();
     expect(await page.evaluate(() => Object.keys(localStorage).some((k) => k.startsWith("diagrams.filler")))).toBe(
       false,
