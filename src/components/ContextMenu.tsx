@@ -10,6 +10,7 @@ import {
   useState,
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
+  type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
 import type { MenuItem, MenuNode } from "../editor/actions";
@@ -52,6 +53,10 @@ export interface ContextMenuProps {
   /** Accessible name. */
   label?: string;
   testId?: string;
+  /** ID of the root menu, for its trigger's aria-controls. */
+  menuId?: string;
+  /** The trigger toggles its own menu instead of dismissing it on pointer-down. */
+  triggerRef?: RefObject<HTMLElement | null>;
 }
 
 export function ContextMenu({
@@ -65,6 +70,8 @@ export function ContextMenu({
   searchable,
   label = t("chrome.contextMenu"),
   testId = "context-menu",
+  menuId,
+  triggerRef,
 }: ContextMenuProps) {
   useLocale();
   const layer = useRef<HTMLDivElement>(null);
@@ -93,6 +100,7 @@ export function ContextMenu({
   useEffect(() => {
     const previousFocus = invoker.current;
     const outside = (e: Event) => {
+      if (e.type === "pointerdown" && triggerRef?.current?.contains(e.target as Node)) return;
       if (!layer.current?.contains(e.target as Node)) closeRef.current();
     };
     const close = () => closeRef.current();
@@ -111,7 +119,7 @@ export function ContextMenu({
           previousFocus.focus({ preventScroll: true });
       });
     };
-  }, []);
+  }, [triggerRef]);
 
   return createPortal(
     <div ref={layer} className="cm-layer" data-editor-overlay onContextMenu={(e) => e.preventDefault()}>
@@ -127,6 +135,7 @@ export function ContextMenu({
         onBack={() => closeRef.current()}
         label={label}
         testId={testId}
+        menuId={menuId}
       />
     </div>,
     document.body,
@@ -146,6 +155,7 @@ interface ListProps {
   onBack: () => void;
   label: string;
   testId: string;
+  menuId?: string;
 }
 
 const selectable = (n: MenuNode | undefined): n is MenuItem => !!n && n.type === "item" && !n.disabled;
@@ -421,6 +431,7 @@ function MenuList(p: ListProps) {
     <>
       <div
         ref={ref}
+        id={!p.searchable ? p.menuId : undefined}
         className={`cm${p.searchable ? " cm-searchable" : ""}`}
         role={p.searchable ? undefined : "menu"}
         aria-label={p.label}
@@ -460,7 +471,7 @@ function MenuList(p: ListProps) {
               role="searchbox"
               aria-autocomplete="list"
               aria-haspopup="menu"
-              aria-controls={`${id}-items`}
+              aria-controls={p.menuId ?? `${id}-items`}
               aria-activedescendant={activeId}
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -474,7 +485,7 @@ function MenuList(p: ListProps) {
           </div>
         )}
         <div
-          id={`${id}-items`}
+          id={p.searchable ? (p.menuId ?? `${id}-items`) : `${id}-items`}
           className="cm-items"
           role={p.searchable ? "menu" : undefined}
           aria-label={p.searchable ? p.label : undefined}
@@ -568,7 +579,7 @@ const MenuRow = memo(function MenuRow({
       onKeyDown={onKeyDown}
       onClick={() => onClick(index)}
     >
-      <span className="cm-lead">
+      <span className="cm-lead" data-testid={`context-menu-icon-${n.id}`}>
         {stencil ? (
           <span className="cm-tile" style={{ "--accent": stencil.accent } as CSSProperties}>
             <StencilIcon stencil={stencil} size={14} />

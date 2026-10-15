@@ -1,6 +1,7 @@
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { Dropdown, type DropdownItem } from "./Dropdown";
+import { RELATION_GLYPHS } from "./relationGlyphs";
 
 describe("Dropdown component", () => {
   const items: DropdownItem<string>[] = [
@@ -36,6 +37,8 @@ describe("Dropdown component", () => {
     expect(html).toContain('aria-expanded="false"');
     expect(html).toContain("Secret");
     expect(html).toContain("dropdown-lead fe-rel-secret");
+    expect(html).toContain(`d="${RELATION_GLYPHS["rel-secret"]}"`);
+    expect(html).toContain("aria-describedby=");
   });
 
   it("renders placeholder when value is undefined", () => {
@@ -45,12 +48,14 @@ describe("Dropdown component", () => {
         onChange={() => undefined}
         items={items}
         placeholder="Mixed"
+        aria-label="Relationship of 2 edges"
         testId="inspector-field-relation"
       />,
     );
     expect(html).toContain('data-testid="inspector-field-relation"');
     expect(html).toContain('value=""');
     expect(html).toContain("Mixed");
+    expect(html).toContain("aria-describedby=");
   });
 
   it("renders custom trigger when renderTrigger is provided", () => {
@@ -59,10 +64,12 @@ describe("Dropdown component", () => {
         value="message"
         onChange={() => undefined}
         items={items}
+        aria-label="Relationship"
         renderTrigger={(selected) => <span className="custom-trigger">{selected?.label}</span>}
       />,
     );
     expect(html).toContain('class="custom-trigger"');
     expect(html).toContain("Message");
+    expect(html).toMatch(/<span id="[^"]+" class="sr-only">Message<\/span>/);
   });
 });

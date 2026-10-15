@@ -117,6 +117,7 @@ export function Dropdown<T extends string = string>({
   const [anchor, setAnchor] = useState<{ x: number; y: number; minWidth: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuId = useId();
+  const valueId = useId();
 
   const selected = useMemo(() => findSelectedOption(items, value), [items, value]);
 
@@ -152,6 +153,7 @@ export function Dropdown<T extends string = string>({
         value={value ?? ""}
         data-testid={testId}
         aria-label={ariaLabel}
+        aria-describedby={ariaLabel ? valueId : undefined}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
@@ -159,13 +161,23 @@ export function Dropdown<T extends string = string>({
         onKeyDown={handleKeyDown}
       >
         {renderTrigger ? (
-          renderTrigger(selected)
+          <>
+            <span id={valueId} className="sr-only">
+              {selected ? selected.label : (placeholder ?? "")}
+            </span>
+            {renderTrigger(selected)}
+          </>
         ) : (
           <>
-            <span className={`dropdown-lead${selected?.className ? ` ${selected.className}` : ""}`}>
+            <span
+              className={`dropdown-lead${selected?.className ? ` ${selected.className}` : ""}`}
+              data-testid={testId ? `${testId}-icon` : undefined}
+            >
               {selected?.icon && <Icon name={selected.icon} size={14} />}
             </span>
-            <span className="dropdown-label">{selected ? selected.label : (placeholder ?? "")}</span>
+            <span id={valueId} className="dropdown-label">
+              {selected ? selected.label : (placeholder ?? "")}
+            </span>
             <span className="dropdown-chevron">
               <Icon name="chevron-down" size={14} />
             </span>
@@ -177,10 +189,12 @@ export function Dropdown<T extends string = string>({
           x={anchor.x}
           y={anchor.y}
           minWidth={anchor.minWidth}
-          label={ariaLabel ?? placeholder ?? "Dropdown"}
+          label={ariaLabel ?? placeholder}
           testId={testId ? `${testId}-menu` : "dropdown-menu"}
           items={menuNodes}
           onClose={closeMenu}
+          menuId={menuId}
+          triggerRef={triggerRef}
         />
       )}
     </>

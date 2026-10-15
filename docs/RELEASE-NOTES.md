@@ -1,5 +1,17 @@
 # Release notes
 
+## Relationship dropdown review fixes (#122, 2026-10-15)
+
+- Removing an inert edge setting returns keyboard focus to Label, and Tab reaches the relationship
+  trigger in the same position as the previous select. Collapsible sections still return to their heading.
+- The relationship dropdown announces its selected value (including Mixed), links to its actual menu,
+  and closes on a second trigger click. Keyboard selection and Escape return focus to the trigger;
+  outside clicks keep focus on the control clicked. Message and Request keep async/sync in hints only.
+- Browser regressions cover keyboard selection/cancellation, popup accessibility, repeated trigger
+  clicks, bulk Mixed values and the actual SVG paths for every relationship glyph.
+- Refreshed the stale agent skill viewer; plugin 1.1.24 is one patch above master. No parity goldens
+  change: this review changes inspector interaction, not diagram output.
+
 ## Example gallery integration with master (#118, 2026-10-15)
 
 - Rebased the gallery onto nested boundaries and zones (#115), the six showcases (#120) and the

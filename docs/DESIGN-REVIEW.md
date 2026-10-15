@@ -1,5 +1,17 @@
 # Design review
 
+## Relationship dropdown review gate (#122, 2026-10-15)
+
+The designer agent's scoped source/test review approved the existing inspector placement and eight
+grouped choices; no global controls were added. Its simplification keeps Message and Request as the
+labels and async/sync solely as hints. The trigger exposes its current value and controls the rendered
+popup. Trigger clicks dismiss consistently, keyboard selection and Escape restore focus, and outside
+clicks retain their chosen focus. Removing an inert edge value returns focus to Label; disclosure
+headers remain the target inside collapsible sections.
+
+This was a source and regression-test review, not an independent whole-app visual walkthrough or
+screen-reader session. Production browser checks cover the changed interactions and accessibility.
+
 ## Autoscaling A1 final review gate (2026-10-15)
 
 The designer's scoped source/test review found no blocking UX concern. Scaling speech stays polite

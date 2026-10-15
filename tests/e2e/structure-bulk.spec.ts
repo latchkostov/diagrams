@@ -332,6 +332,38 @@ test.describe("bulk edit and Select similar (D11)", () => {
     expect(d.edges.find((e) => e.id === "a-c")?.label).toBe("Ship order");
   });
 
+  test("a mixed relationship dropdown announces Mixed and applies one keyboard choice to both edges", async ({
+    page,
+  }) => {
+    await seed(
+      page,
+      { width: 1440, height: 900 },
+      {
+        ...SEED,
+        edges: [
+          { ...SEED.edges[0], kind: "async" },
+          { ...SEED.edges[2], kind: "sync" },
+        ],
+      },
+    );
+    await page.getByTestId("edge-label-a-w").click();
+    await page.getByTestId("edge-label-a-c").click({ modifiers: [MOD] });
+    const trigger = page.getByTestId("inspector-field-relation");
+    await expect(trigger).toHaveAccessibleName("Relationship of 2 edges");
+    await expect(trigger).toHaveAccessibleDescription("Mixed");
+    await trigger.focus();
+    await trigger.press("Enter");
+    const menu = page.getByTestId("inspector-field-relation-menu");
+    await expect(menu).toBeFocused();
+    await menu.press("Home");
+    await menu.press("ArrowDown");
+    await menu.press("Enter");
+    await expect(menu).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    await expect(trigger).toHaveAccessibleDescription("Request");
+    for (const id of ["a-w", "a-c"]) await expect(page.getByTestId(`edge-${id}`)).toHaveAttribute("class", /fe-sync/);
+  });
+
   test("the menus stay within budget with Select similar and Tidy up", async ({ page }) => {
     await seed(page);
     for (const open of [

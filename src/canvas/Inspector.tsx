@@ -67,7 +67,7 @@ const RELATION_DROPDOWN_ITEMS: readonly DropdownItem<RelationChoiceId>[] = [
     label: "Flow",
     options: RELATION_CHOICES.filter((c) => c.relation === "flow").map((c) => ({
       value: c.id,
-      label: `${c.label} (${c.kind})`,
+      label: c.label,
       icon: c.icon,
       hint: c.kind,
     })),
@@ -938,7 +938,7 @@ function InertNote({ name, text, onRemove }: { name: string; text: string; onRem
           if (document.activeElement === event.currentTarget) {
             const section = event.currentTarget.closest("section");
             const target =
-              section?.querySelector<HTMLElement>("button[aria-expanded]") ??
+              section?.querySelector<HTMLElement>(":scope > h3 > button[aria-expanded]") ??
               section?.querySelector<HTMLElement>("input:not(:disabled), select:not(:disabled)");
             target?.focus();
           }
