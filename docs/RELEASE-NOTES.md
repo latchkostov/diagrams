@@ -1,5 +1,13 @@
 # Release notes
 
+## Phone playback follow-up (#120, 2026-10-15)
+
+- Expanded AI docks reserve space for phone playback, keeping the footer and keyboard focus visible.
+  Opening viewport-wide Live panels folds the dock, including when resizing into the phone layout.
+- Production regressions check exposed playback/footer controls and Inputs folding independently;
+  removing either fix fails its check. The designer review found no added chrome or blocking issue.
+- All parity goldens remain unchanged; this corrects the phone layout without changing diagram output.
+
 ## Boundary and caption follow-ups (#115, 2026-10-15)
 
 - Custom captions use renderer roots in the editor, Lab and overlap audit. Adjacent fills stay
