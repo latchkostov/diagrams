@@ -242,7 +242,7 @@ jobs:
       - name: Install browser for container smoke test
         run: pnpm exec playwright install --with-deps chromium
       - run: pnpm self-host:smoke
-      - uses: azure/setup-helm@v4.3.1
+      - uses: azure/setup-helm@v5.0.1
       - run: helm lint deploy/self-host/helm
       - run: helm template diagrams deploy/self-host/helm --set ingress.enabled=true --set ingress.tls.enabled=true
 
