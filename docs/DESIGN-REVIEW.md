@@ -11,6 +11,15 @@ headers remain the target inside collapsible sections.
 
 This was a source and regression-test review, not an independent whole-app visual walkthrough or
 screen-reader session. Production browser checks cover the changed interactions and accessibility.
+## Measured fits and nested-boundary integration (2026-10-15)
+
+Primary engineer's scoped source review: Auto-layout retains membership and refits enclosing
+boundaries around the complete measured hierarchy, including annotations. The final fit stays
+behind the existing measurement gate; later fit requests cannot discard layout commands.
+Example-copy notification, save behavior and caption-contrast fixes from master are retained.
+No production controls, focus targets or wording are added. The regression fixture lives in the
+Lab. Production browser checks cover the affected geometry and held-measurement flows separately;
+this source review is not a whole-app accessibility audit.
 
 ## Review follow-ups 1 UX gate (2026-10-15)
 

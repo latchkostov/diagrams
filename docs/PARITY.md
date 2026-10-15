@@ -16,6 +16,50 @@ pnpm parity sim checks # only parity files whose path contains "sim" or "checks"
 A filtered run skips the stale-golden check. The browser tier needs Docker running (see "Browser tier").
 Without it, `pnpm parity:node` still checks everything that doesn't need a browser.
 
+## Browser parity integration with master (2026-10-15)
+
+Rebased onto `1486840b` (#115, #118, #117 and #123), retaining both documentation histories,
+master's complete autosave/example-copy/CopyNotice flow, and measured fits without timer-driven
+opening or Auto-layout fits. The latest master defers exactly the same eight showcase cases;
+all are restored. Relative to master, the only golden differences remain the eight additions
+and the two Tidy input corrections detailed in "Restoring showcase coverage" below. No golden
+was re-recorded during this integration, including after the nested-boundary adaptation.
+
+Auto-layout now indexes the unified element hierarchy and refits children before parents, using
+measured cards and annotations and the newly computed child-boundary boxes. Empty boundaries
+stay valid and membership is unchanged. Parent-first and child-first unit regressions both fail
+when the refit is temporarily reverted. The production browser regression holds ResizeObserver
+deliveries across a three-level, initially empty hierarchy, queues Auto-layout then Fit view,
+and checks every resulting boundary and an unchanged subsequent fit. The fixture is in the Lab.
+
+The parity reader also accepts explicitly zero-sized boundaries, still recording them and
+independently checking descendants. Reverting only that reader change makes its dedicated
+regression fail to settle; no assertion or golden output is removed. The task queue and measured
+gate need no hierarchy-specific fallback or new timing budget.
+
+### Integration verification
+
+- Eight consecutive Docker browser-tier passes: three with `PARITY_WORKERS=24`, three with
+  `PARITY_CPU_THROTTLE=10 PARITY_WORKERS=8`, and two with
+  `PARITY_CPU_THROTTLE=4 PARITY_WORKERS=16`. Each passed all 65 tests and compared all 84 browser
+  goldens with zero differences, missing or stale records and no retries. The first built fresh;
+  repeats reused that production bundle. Production e2e ran alongside much of this stress sweep.
+- Two subsequent fresh `pnpm parity` runs each compare all 1,769 goldens with zero changes,
+  additions, missing or stale files. No golden was re-recorded during the rebase or verification.
+- `pnpm test --maxWorkers=2`: 532 files passed, 7,184 tests passed, four existing skips, no type
+  errors. Production build and entry budget pass (105.7/123.5 kB gzip). The released viewer is
+  fresh at plugin 1.1.25; `pnpm i18n check` reports zero errors with existing gaps and warnings.
+- Production Chromium on explicit ports 6205–6209: all 161 checks pass across fit-settled,
+  layout, round13-polish, CSP, examples-picker, zones-boundaries and showcase-examples. The first
+  expanded sweep passed 159 and failed two tests that started counting saves or measuring a drag
+  before the opening fit settled. Both now await `settledCanvas`; all six focused repeats pass.
+  Temporarily restoring the old waits reproduces the nested drag failure in all three repeats.
+  The selection race appeared only in the initial full-load run. The waits ensure the existing
+  assertions start from the finished opening fit.
+- Final lint found six non-null assertions in the new browser regression; explicit checks replace
+  them. Its added annotation-membership check compares by id because normalization draws zones
+  before notes; the initial order-sensitive assertion failed, and the corrected targeted run passes.
+
 ## Example gallery verification round (2026-10-15)
 
 These fixes change save-destination ownership, launch queuing, retained conversation memory and

@@ -1,8 +1,10 @@
-import { test, expect } from "./fixtures";
+import { test, expect, savedDiagram } from "./fixtures";
 import { command, readCanvas, settledCanvas } from "../parity/browser/canvas";
 import type { Drawn } from "../parity/browser/canvas";
 import layout from "../parity/goldens/browser/layout/aws-fanout.json" with { type: "json" };
 import example from "../../src/examples/aws-fanout.json" with { type: "json" };
+import { measuredHierarchyFixture } from "../../src/lab/nestedBoundariesFixture";
+import { boundaryAround } from "../../src/editor/arrange";
 
 // Pin the mutation itself before comparing fits: two identical drawings could both be
 // the original, unlaid-out document. Positions are platform-independent; card fonts aren't.
@@ -300,3 +302,59 @@ for (const [width, height] of [
     expectLaidOut(await settledCanvas(page));
   });
 }
+
+test("nested empty boundaries refit measured descendants before a later Fit view", async ({ page }) => {
+  await page.addInitScript(holdResizeObservers, false);
+  await page.goto("./?view=canvas&example=aws-fanout");
+  await settledCanvas(page);
+  await page.evaluate(() => window.dispatchEvent(new Event("hold-resize-observers")));
+  await page.getByTestId("import-input").setInputFiles({
+    name: "measured-hierarchy.diagram.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(measuredHierarchyFixture)),
+  });
+  await expect(page.getByTestId("diagram-title")).toHaveText(measuredHierarchyFixture.title);
+  await command(page, "Auto-layout", "canvas.auto-layout");
+  await page.getByTestId("fit-view-button").click();
+  await page.clock.install();
+  await page.clock.runFor(1000);
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-fit-pending", "true");
+  await page.evaluate(() => window.dispatchEvent(new Event("release-resize-observers")));
+  await page.clock.resume();
+  const laidOut = await settledCanvas(page);
+  const saved = await savedDiagram(page);
+  const savedGroups = saved.groups ?? [];
+  const originalGroups = measuredHierarchyFixture.groups ?? [];
+  expect(savedGroups).toHaveLength(originalGroups.length);
+  expect(Object.fromEntries((saved.annotations ?? []).map((a) => [a.id, a.group]))).toEqual(
+    Object.fromEntries((measuredHierarchyFixture.annotations ?? []).map((a) => [a.id, a.group])),
+  );
+  for (const group of savedGroups) {
+    if (group.id === "empty") {
+      expect(group.width).toBe(0);
+      expect(group.height).toBe(0);
+      continue;
+    }
+    const ids = [
+      ...saved.nodes,
+      ...savedGroups.map((g) => ({ ...g, id: `group:${g.id}` })),
+      ...(saved.annotations ?? []),
+    ]
+      .filter((n) => n.group === group.id)
+      .map((n) => n.id);
+    const boxes = await page.getByTestId("canvas-wrap").evaluate(
+      (scope, ids) =>
+        ids.map((id) => {
+          const el = scope.querySelector<HTMLElement>(`[data-testid="rf__node-${id}"]`);
+          if (!el) throw new Error(`Missing measured member: ${id}`);
+          const position = new DOMMatrix(el.style.transform);
+          return { id, x: position.e, y: position.f, width: el.offsetWidth, height: el.offsetHeight };
+        }),
+      ids,
+    );
+    expect({ x: group.x, y: group.y, width: group.width, height: group.height }).toEqual(boundaryAround(boxes));
+  }
+  expect(savedGroups.map((g) => [g.id, g.group])).toEqual(originalGroups.map((g) => [g.id, g.group]));
+  await page.getByTestId("fit-view-button").click();
+  expect(await settledCanvas(page)).toEqual(laidOut);
+});

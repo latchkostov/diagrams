@@ -1652,21 +1652,49 @@ export function createEditor(
         const d = diagram();
         const pos = layeredLayout({ nodes: d.nodes, edges: d.edges, direction: d.direction });
         movePositions(pos);
-        // Refit boundaries around their (moved) members.
-        const { width, height } = deps().nodeSize;
-        for (const g of d.groups ?? []) {
-          const boxes = d.nodes
-            .filter((n) => n.group === g.id && pos.has(n.id))
-            .map((n) => {
-              const measured = rf.getNode(n.id);
-              return {
-                id: n.id,
-                ...pos.get(n.id)!,
-                width: measured?.measured?.width ?? width,
-                height: measured?.measured?.height ?? height,
-              };
-            });
-          if (boxes.length) api.updateGroup(g.id, boundaryAround(boxes));
+        // Refit direct contents bottom-up: parents use each child's new box, never its old
+        // measurement. Index once, so file order and hierarchy depth do not change the work.
+        const moved = currentNodes();
+        const groups = new Map(moved.filter(isGroup).map((n) => [n.data.groupId, n]));
+        const members = new Map<string, FlowNode[]>();
+        const boxes = new Map(moved.map((n) => [n.id, box(n)]));
+        const remaining = new Map([...groups.keys()].map((id) => [id, 0]));
+        for (const n of moved) {
+          const parent = n.data.group;
+          if (!parent || !groups.has(parent)) continue;
+          const list = members.get(parent) ?? [];
+          list.push(n);
+          members.set(parent, list);
+          if (isGroup(n)) remaining.set(parent, remaining.get(parent)! + 1);
+        }
+        const ready = [...groups.keys()].filter((id) => remaining.get(id) === 0);
+        const refits = new Map<string, ReturnType<typeof boundaryAround>>();
+        while (ready.length) {
+          const id = ready.pop()!;
+          const group = groups.get(id)!;
+          const contents = members.get(id) ?? [];
+          if (contents.length) {
+            const bounds = boundaryAround(contents.map((n) => boxes.get(n.id)!));
+            boxes.set(group.id, { id: group.id, ...bounds });
+            refits.set(group.id, bounds);
+          }
+          const parent = group.data.group;
+          if (parent && remaining.has(parent)) {
+            const left = remaining.get(parent)! - 1;
+            remaining.set(parent, left);
+            if (!left) ready.push(parent);
+          }
+        }
+        if (refits.size) {
+          hint();
+          deps().setNodes((ns) =>
+            ns.map((n) => {
+              const bounds = refits.get(n.id);
+              return bounds
+                ? { ...n, position: { x: bounds.x, y: bounds.y }, width: bounds.width, height: bounds.height }
+                : n;
+            }),
+          );
         }
         deps().fit();
       };

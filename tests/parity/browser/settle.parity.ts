@@ -1,6 +1,20 @@
 import { test, expect } from "./fixtures";
 import { openExample, settledCanvas } from "./canvas";
 
+test("an explicitly empty boundary settles and remains in the recorded drawing", async ({ page }) => {
+  await page.setContent(`<div data-testid="canvas-wrap">
+    <div data-testid="rf__node-group:empty" style="width:0px;height:50px;visibility:hidden">
+      <div data-testid="group-empty">Empty</div>
+    </div>
+    <div data-testid="rf__node-card" style="width:220px;height:72px">
+      <div data-testid="node-card">Measured card</div>
+    </div>
+  </div>`);
+  const drawn = await settledCanvas(page);
+  expect((drawn.nodes["group:empty"] as { box: string }).box).toBe(" 0×50");
+  expect((drawn.nodes.card as { box: string }).box).toBe(" 220×72");
+});
+
 test("changing badge text cannot prevent geometric convergence; text is still recorded", async ({ page }) => {
   await openExample(page, "aws-fanout");
   await page.getByTestId("rf__node-client").evaluate((node) => {

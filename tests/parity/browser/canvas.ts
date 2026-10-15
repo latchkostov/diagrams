@@ -72,15 +72,21 @@ export async function settledCanvas(page: Page, root = "canvas-wrap"): Promise<D
               requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() => r()))),
             ),
         );
-        const ready = await page
-          .getByTestId(root)
-          .evaluate(
-            (scope) =>
-              scope.dataset.fitPending !== "true" &&
-              [...scope.querySelectorAll<HTMLElement>('[data-testid^="rf__node-"]')].every(
-                (el) => el.offsetWidth > 0 && el.offsetHeight > 0 && getComputedStyle(el).visibility === "visible",
-              ),
-          );
+        const ready = await page.getByTestId(root).evaluate(
+          (scope) =>
+            scope.dataset.fitPending !== "true" &&
+            [...scope.querySelectorAll<HTMLElement>('[data-testid^="rf__node-"]')].every((el) => {
+              // A saved empty boundary has no measurable area; its descendants are checked
+              // independently. Do not confuse it with a card whose measurement is still missing.
+              const emptyBoundary =
+                el.firstElementChild?.getAttribute("data-testid")?.startsWith("group-") &&
+                (el.style.width === "0px" || el.style.height === "0px");
+              return (
+                emptyBoundary ||
+                (el.offsetWidth > 0 && el.offsetHeight > 0 && getComputedStyle(el).visibility === "visible")
+              );
+            }),
+        );
         drawn = await readCanvas(page, root);
         // Text is still pinned in the returned golden. Readiness depends on geometry: live
         // badges/counters can keep changing their words without moving a single box or route.
