@@ -31,10 +31,8 @@ export function ResourceEstimate({ plan: p }: { plan: ResourcePlan }) {
 export function ResourceDetails({
   metrics: s,
   readPage,
-  name,
 }: {
   metrics: RealNodeMetrics;
-  name?: string;
   readPage?: (page: number) => ReplicaRow[];
 }) {
   const [page, setPage] = useState(0);
@@ -53,16 +51,6 @@ export function ResourceDetails({
     history.map((p) => `${((p.time - start) / span) * 260},${65 - (p[key] / max) * 60}`).join(" ");
   return (
     <div data-testid="autoscaling-live-details">
-      <div
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        className="sr-only"
-        data-testid="autoscaling-announcement"
-      >
-        {name ?? s.id} · {t("autoscaling.badge", f)}
-        {decision && <> · {t("autoscaling.reason", { reason: decision.reason })}</>}
-      </div>
       <p data-testid="autoscaling-counts">{t("autoscaling.counts", f)}</p>
       <p data-testid="autoscaling-cpu">
         {t("autoscaling.cpu", {

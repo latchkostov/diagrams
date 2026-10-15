@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { makePayload } from "../../src/editor/clipboard";
 import { hpaLesson } from "../../src/model/autoscaling";
@@ -76,6 +77,15 @@ async function seed(
         props: { ...worker.props, replicas: 1000, autoscaling: { mode: "off" } },
       })),
     ];
+    d.simulations = [
+      {
+        id: "budget",
+        title: "Budget",
+        traffic: [],
+        durationMs: 10_000,
+        timeline: [{ atMs: 1000, action: { do: "props", node: "worker", props: { replicas: 1000 } } }],
+      },
+    ];
   }
   if (older) d.planning = { revision: "p3" };
   await page.addInitScript(
@@ -99,6 +109,64 @@ async function seed(
     await page.getByTestId("live-play").click();
   }
 }
+
+test("A1: keyboard Save flushes a focused numeric draft before downloading", async ({ page }, info) => {
+  await page.addInitScript(() =>
+    Object.defineProperty(window, "showSaveFilePicker", { configurable: true, value: undefined }),
+  );
+  await seed(page);
+  await page.getByTestId("node-worker").click();
+  const field = page.getByTestId("autoscaling-max");
+  await field.fill("14");
+  await expect(field).toBeFocused();
+  const [download] = await Promise.all([page.waitForEvent("download"), field.press("Control+s")]);
+  const path = info.outputPath("keyboard-save.json");
+  await download.saveAs(path);
+  const saved = JSON.parse(readFileSync(path, "utf8"));
+  expect(saved.nodes.find((n: { id: string }) => n.id === "worker").props.autoscaling.controller.maxReplicas).toBe(14);
+  await expect(field).toBeFocused();
+});
+
+test("A1: scaling announcements remain in the accessibility tree with Live details closed", async ({ page }) => {
+  await seed(page, { live: true });
+  await page.getByTestId("node-worker").dblclick();
+  await expect(page.getByTestId("planning-live-details")).not.toHaveAttribute("open");
+  const status = page.getByTestId("autoscaling-announcement");
+  await expect(status).toMatchAriaSnapshot('- status: "Orders · Ready: 1 → Desired: 1"');
+  await page.clock.runFor(15_500);
+  await expect(status).toContainText("Desired: 2");
+  expect(await status.ariaSnapshot()).toContain("Desired: 2");
+  await expect(page.getByTestId("planning-live-details")).not.toHaveAttribute("open");
+});
+
+test("A1: running an over-budget draft preserves the previous run and recovers after correction", async ({
+  page,
+  consoleErrors,
+}) => {
+  await seed(page, { live: true, budget: true });
+  await page.getByTestId("live-sim-picker").selectOption("budget");
+  await page.clock.runFor(300);
+  await page.getByTestId("live-more").click();
+  await page.getByTestId("live-edit-sims").click();
+  await expect(page.getByTestId("sim-panel-title")).toHaveValue("Budget");
+  await page.getByTestId("sim-panel-section-timeline-toggle").click();
+  const field = page.getByTestId("sim-panel-step-0-value");
+  await field.fill("1001");
+  await page.getByTestId("live-play").click();
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
+  const clock = page.getByTestId("live-clock"),
+    before = await clock.getAttribute("data-ms");
+  await page.getByTestId("sim-panel-run").click();
+  await expect(page.getByTestId("live-notice")).toContainText("Resource lifecycle budget exceeded");
+  await expect(clock).toHaveAttribute("data-ms", before ?? "");
+  await expect(page.getByTestId("live-sim-picker")).toHaveValue("budget");
+  await field.fill("999");
+  await page.getByTestId("sim-panel-run").click();
+  await expect(page.getByTestId("live-notice")).toHaveCount(0);
+  await page.clock.runFor(1500);
+  await expect(page.getByTestId("node-badge-worker")).toHaveAttribute("data-desired", "999");
+  expectNoErrors(consoleErrors);
+});
 
 test("A1: four main fields, explicit lesson, Advanced policy validation and undo", async ({
   page,

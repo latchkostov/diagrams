@@ -217,7 +217,23 @@ function withGroup(n: FlowNode, group: string | undefined): FlowNode {
 
 export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, initialDeps: EditorDeps) {
   let latest = initialDeps;
-  const deps = () => latest;
+  // Stage editor updates in call order: React's node/edge queues may commit independently later.
+  let stagedNodes: FlowNode[] | undefined;
+  let stagedEdges: DiagramFlowEdge[] | undefined;
+  // React Flow's getters clone their results. A render, not array identity, ends the batch.
+  const currentNodes = () => stagedNodes ?? rf.getNodes();
+  const currentEdges = () => stagedEdges ?? rf.getEdges();
+  const setNodes: EditorDeps["setNodes"] = (update) => {
+    const current = currentNodes();
+    stagedNodes = typeof update === "function" ? update(current) : update;
+    latest.setNodes(stagedNodes);
+  };
+  const setEdges: EditorDeps["setEdges"] = (update) => {
+    const current = currentEdges();
+    stagedEdges = typeof update === "function" ? update(current) : update;
+    latest.setEdges(stagedEdges);
+  };
+  const deps = () => ({ ...latest, setNodes, setEdges });
   const box = (n: FlowNode): Box => ({
     id: n.id,
     x: n.position.x,
@@ -276,22 +292,15 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     update: (nodes: FlowNode[]) => FlowNode[],
     updateEdges: (edges: DiagramFlowEdge[]) => DiagramFlowEdge[],
   ): boolean => {
-    const current = rf.getNodes(),
+    const current = currentNodes(),
       candidate = update(current);
     if (!acceptNodes(candidate)) return false;
-    const existing = new Set([...current.map((n) => n.id), ...rf.getEdges().map((e) => e.id)]);
-    const reserved = [...candidate, ...updateEdges(rf.getEdges())]
-      .map((item) => item.id)
-      .filter((id) => !existing.has(id));
+    const edges = updateEdges(currentEdges());
+    const existing = new Set([...current.map((n) => n.id), ...currentEdges().map((e) => e.id)]);
+    const reserved = [...candidate, ...edges].map((item) => item.id).filter((id) => !existing.has(id));
     for (const id of reserved) pendingIds.add(id);
-    let accepted = false;
-    deps().setNodes((cur) => {
-      const next = update(cur);
-      accepted = acceptNodes(next);
-      if (!accepted) for (const id of reserved) pendingIds.delete(id);
-      return accepted ? next : cur;
-    });
-    deps().setEdges((cur) => (accepted ? updateEdges(cur) : cur));
+    setNodes(candidate);
+    setEdges(edges);
     return true;
   };
   const hint = (merge?: string) => deps().history.hint(merge);
@@ -1652,6 +1661,8 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     updateDeps: (flow: ReactFlowInstance<FlowNode, DiagramFlowEdge>, next: EditorDeps) => {
       rf = flow;
       latest = next;
+      stagedNodes = undefined;
+      stagedEdges = undefined;
     },
   };
 }

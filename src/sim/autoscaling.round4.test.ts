@@ -111,7 +111,9 @@ it("percentage downscale progresses for small fleets", () => {
   const evaluate = (time: number) => {
     f.samples.push({ at: time, cpu: 0, occupancy: 0, ready: f.ready });
     const result = fleets.evaluateHpa(f, c, r, time);
+    const previous = f.desired;
     fleets.reconcileFleet(f, result.desired, r, time, 42, "worker");
+    fleets.commitScalingChange(f, previous, time);
     return result;
   };
   expect(evaluate(1000)).toMatchObject({ raw: 1, desired: 2 });

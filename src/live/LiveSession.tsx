@@ -667,13 +667,13 @@ export function LiveSession({
 
   const runDraft = useCallback(
     (sim: Simulation) => {
+      if (!controller.selectSimulation(sim)) return;
       const saved = simsRef.current.some((s) => s.id === sim.id && JSON.stringify(s) === JSON.stringify(sim));
       setDraft(saved ? null : sim);
       draftRef.current = saved ? null : sim;
       setTrace(null);
       controller.setTraffic(false);
       setCapacityError(null);
-      controller.selectSimulation(sim);
       controller.setPlaying(true);
     },
     [controller],

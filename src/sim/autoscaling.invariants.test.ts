@@ -6,6 +6,8 @@ import { autoscalingFixture } from "../lab/autoscalingFixture";
 import { createEngine } from "./engine";
 import { mulberry32 } from "./rng";
 import { assertResourceInvariants } from "./resourceInvariants";
+import { analyzeCapacity } from "./capacity";
+import { resolveNodeProps } from "./defaults";
 
 type Action = { ms: number } & (
   | { do: "burst"; count: number }
@@ -24,7 +26,8 @@ function generate(seed: number) {
   }
   const resources = {
     ...resourceLesson(),
-    cpuMsPerMessage: pick([0, 10, 100]),
+    cpuMsPerMessage: pick([0, 10, 100, 1000]),
+    cpuLimitMilli: pick([50, 1000]),
     baselineMemoryMiB: pick([0, 100]),
     memoryMiBPerMessage: pick([1, 10, 100]),
     startup: { delayMs: pick([0, 30, 200]), jitterFraction: pick([0, 0.5]) },
@@ -64,7 +67,7 @@ function generate(seed: number) {
     autoscaling: pick([hpa(), { mode: "off" as const }]),
     failureRate: pick([0, 0.5, 1]),
     retry: "inplace",
-    retryBackoffMs: pick([0, 100, 300]),
+    retryBackoffMs: pick([0, 100, 300, 5000]),
     ...(pick([true, false]) ? { api: admission() } : {}),
   };
   // Small fan-outs exercise the run-wide budget and independent fleets too.
@@ -76,7 +79,7 @@ function generate(seed: number) {
   const actions: Action[] = [];
   for (let i = 0; i < 70; i++) {
     const ms = pick([10, 30, 100, 300]);
-    switch (pick([0, 1, 2, 3, 4, 5, 6, 7])) {
+    switch (pick([0, 1, 2, 3, 4, 5, 6, 7, 8])) {
       case 0:
       case 1:
         actions.push({ do: "burst", count: pick([1, 3, 8, 20]), ms });
@@ -100,8 +103,15 @@ function generate(seed: number) {
       case 6:
         actions.push({ do: "props", props: { autoscaling: { mode: "off" }, replicas: pick([1, 2, 3, 5]) }, ms });
         break;
+      case 7:
+        actions.push({ do: "props", props: { concurrency: pick([1, 2, 4]) }, ms });
+        break;
       default:
-        actions.push({ do: "props", props: { failureRate: pick([0, 1]), retryBackoffMs: pick([0, 100, 300]) }, ms });
+        actions.push({
+          do: "props",
+          props: { failureRate: pick([0, 1]), retryBackoffMs: pick([0, 100, 300, 5000]) },
+          ms,
+        });
     }
   }
   return {
@@ -122,6 +132,22 @@ function replay(d: DiagramFile, seed: number, scale: number, actions: Action[]) 
   try {
     const e = createEngine({ seed, scale, verifyResources: assertResourceInvariants });
     e.load(d);
+    const checkCapacity = () => {
+      const configuration = e.configuration();
+      const current = { ...d, nodes: d.nodes.map((n) => ({ ...n, props: configuration[n.id] })) };
+      const analysis = analyzeCapacity(current);
+      for (const node of current.nodes) {
+        const r = resolveNodeProps(current, node).resources;
+        const milli = r?.cpuLimitMilli ?? r?.availableCpuMilli;
+        if (
+          r?.cpuMsPerMessage &&
+          milli !== undefined &&
+          analysis.nodes[node.id].capacity > (analysis.nodes[node.id].activeReplicas * milli) / r.cpuMsPerMessage + 1e-8
+        )
+          throw new Error(`${node.id}: capacity ignores CPU execution limit`);
+      }
+    };
+    checkCapacity();
     for (const action of actions) {
       if (action.do === "burst") e.inject("source", action.count);
       else if (action.do === "status") e.setNodeStatus("worker", action.status);
@@ -131,6 +157,7 @@ function replay(d: DiagramFile, seed: number, scale: number, actions: Action[]) 
           ...Object.fromEntries((action.unset ?? []).map((key) => [key, undefined])),
         });
       e.step(action.ms); // The diagnostic runs after EVERY internal 10 ms step.
+      checkCapacity();
     }
     return undefined;
   } catch (error) {

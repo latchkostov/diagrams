@@ -1,6 +1,7 @@
 import type { DiagramFile } from "./types";
 /** Lifecycle objects are independent of the particle budget. Reject the whole configuration, never a partial run. */
 export const MAX_LIFECYCLE_REPLICAS = 100_000;
+export class LifecycleBudgetError extends Error {}
 export type ResourceCandidate = Pick<DiagramFile, "planning" | "simulations"> & {
   nodes: readonly { id: string; props?: Record<string, unknown> }[];
 };

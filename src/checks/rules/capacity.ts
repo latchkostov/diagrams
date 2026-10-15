@@ -94,11 +94,12 @@ export const capacity: CheckRule = {
         },
       ];
     });
+    const resourceTargets = new Set(resourceFindings.map((finding) => finding.target));
     const order = new Map(ctx.diagram.nodes.map((n, i) => [n.id, i]));
     const candidates = Object.values(analysis.nodes)
       .filter(
         (n) =>
-          !resourceFindings.some((finding) => finding.target === n.id) &&
+          !resourceTargets.has(n.id) &&
           n.offered > 0 &&
           n.utilization >= 1 &&
           (n.role === "processor" || !!n.device || !!n.managed || (isBroker(ctx, n.id) && ctx.routes(n.id).length > 0)),

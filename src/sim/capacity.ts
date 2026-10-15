@@ -82,7 +82,10 @@ const serviceRate = (entry: Entry, replicas = entry.active, endpointId?: string)
       entry.props.admission.endpoints.find((e) => e.id === endpointId)?.behaviour?.latencyMs ??
       entry.props.admission.api.latencyMs ??
       entry.props.latencyMs;
-    return slots === 0 ? 0 : time ? (slots * 1000) / time : Infinity;
+    const admission = slots === 0 ? 0 : time ? (slots * 1000) / time : Infinity;
+    return entry.props.resources
+      ? Math.min(admission, replicas * resourceCapacity(entry.props.resources, entry.props.concurrency, time))
+      : admission;
   }
   if (entry.role === "processor") {
     if (entry.props.resources)
@@ -441,6 +444,23 @@ export function analyzeCapacity(
   );
   for (const [id, capacity] of admissionCapacities(managed, diagram.planning)) {
     nodes[id].capacity = Math.min(nodes[id].capacity, capacity);
+    const entry = entries.get(id)!;
+    if (entry.props.resources && entry.up) {
+      const policy = entry.props.admission!;
+      const baseTime = policy.api.latencyMs ?? entry.props.latencyMs;
+      const duration = (incoming.get(id) ?? []).reduce(
+        (sum, edge) =>
+          sum +
+          (connections[edge.id] ?? 0) *
+            (policy.endpoints.find((e) => e.id === edge.endpointId)?.behaviour?.latencyMs ?? baseTime),
+        total(external.get(id)) * baseTime,
+      );
+      const meanTime = nodes[id].offered > 0 ? duration / nodes[id].offered : baseTime;
+      nodes[id].capacity = Math.min(
+        nodes[id].capacity,
+        entry.active * resourceCapacity(entry.props.resources, entry.props.concurrency, meanTime),
+      );
+    }
     nodes[id].utilization = ratio(nodes[id].offered, nodes[id].capacity);
   }
   // Prefer the service over its broker when their limits tie; it is the actionable diagnosis.

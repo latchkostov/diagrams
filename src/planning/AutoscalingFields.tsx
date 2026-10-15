@@ -2,6 +2,7 @@ import { formatNumber } from "../i18n/format";
 import { profileOf } from "../stencils/profiles";
 import { checkAutoscaling } from "../model/autoscalingSchema";
 import { useId, useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import { hpaLesson, resourceLesson, type ComputeResources } from "../model/autoscaling";
 import type { NodeSimProps } from "../sim/types";
 import { t, useLocale } from "../i18n";
@@ -345,6 +346,25 @@ function NumberField({
   const [invalid, setInvalid] = useState(false);
   const [badInput, setBadInput] = useState(false);
   const feedback = useId();
+  const commitInput = (input: HTMLInputElement) => {
+    if (input.validity.badInput || badInput) {
+      setInvalid(true);
+    } else if (optional && input.value === "") {
+      if (value !== undefined && change(undefined) === false) {
+        setInvalid(true);
+        return;
+      }
+      setDraft(null);
+      setInvalid(false);
+    } else if (input.validity.valid && input.value !== "" && Number.isFinite(input.valueAsNumber)) {
+      if (!Object.is(value, input.valueAsNumber) && change(input.valueAsNumber) === false) {
+        setInvalid(true);
+        return;
+      }
+      setDraft(null);
+      setInvalid(false);
+    } else setInvalid(true);
+  };
   return (
     <label className="insp-field">
       <span className="insp-label">{label}</span>
@@ -361,25 +381,10 @@ function NumberField({
         onFocus={() => {
           if (draft === null) setDraft(value === undefined ? "" : String(value));
         }}
-        onBlur={(e) => {
-          const input = e.currentTarget;
-          if (input.validity.badInput || badInput) {
-            setInvalid(true);
-          } else if (optional && input.value === "") {
-            if (value !== undefined && change(undefined) === false) {
-              setInvalid(true);
-              return;
-            }
-            setDraft(null);
-            setInvalid(false);
-          } else if (input.validity.valid && input.value !== "" && Number.isFinite(input.valueAsNumber)) {
-            if (!Object.is(value, input.valueAsNumber) && change(input.valueAsNumber) === false) {
-              setInvalid(true);
-              return;
-            }
-            setDraft(null);
-            setInvalid(false);
-          } else setInvalid(true);
+        onBlur={(e) => commitInput(e.currentTarget)}
+        onKeyDown={(e) => {
+          // The window Save shortcut snapshots the document later in this same event.
+          if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") flushSync(() => commitInput(e.currentTarget));
         }}
         placeholder={t("admission.unknownShort")}
         onChange={(e) => {

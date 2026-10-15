@@ -542,7 +542,6 @@ export function evaluateHpa(
   }
   if (raw > range.max) reason = "max";
   desired = Math.max(range.min, Math.min(range.max, desired));
-  if (desired !== f.desired) f.changes.push({ at: now, delta: desired - f.desired });
   f.nextSync = now + c.settings.syncMs;
   return (f.decision = {
     at: now,
@@ -557,6 +556,10 @@ export function evaluateHpa(
     metricDelayMs: binding?.metricDelayMs,
     nextAt: f.nextSync,
   });
+}
+/** Only successfully reconciled proposals consume the controller's scaling policy budget. */
+export function commitScalingChange(f: Fleet, previous: number, now: number): void {
+  if (f.desired !== previous) f.changes.push({ at: now, delta: f.desired - previous });
 }
 export function resourceReadout(
   f: Fleet,

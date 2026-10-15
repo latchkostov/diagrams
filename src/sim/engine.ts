@@ -1,5 +1,5 @@
 import { clearResourceWork, shiftWorkDeadlines, createCpuPartBudget } from "./resourceWork";
-import { resourceBudgetExceeded, MAX_LIFECYCLE_REPLICAS } from "../model/resourceBudget";
+import { resourceBudgetExceeded, MAX_LIFECYCLE_REPLICAS, LifecycleBudgetError } from "../model/resourceBudget";
 import { t } from "../i18n/core";
 import {
   sampledParts,
@@ -8,7 +8,6 @@ import {
   retainSampledDrains,
   releaseSampledDrains,
   sampledOwners,
-  partKey,
   type CpuPart,
 } from "./sampledResources";
 import {
@@ -21,6 +20,7 @@ import {
   chargeCpu,
   integrateResources,
   evaluateHpa,
+  commitScalingChange,
   resourceReadout,
   fleetReadout,
   replicaPage,
@@ -533,7 +533,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         next,
       )
     )
-      throw new Error(t("autoscaling.budget", { limit: MAX_LIFECYCLE_REPLICAS }));
+      throw new LifecycleBudgetError(t("autoscaling.budget", { limit: MAX_LIFECYCLE_REPLICAS }));
     capacityMultiplier = next;
     const reconcile = new Set<Node>();
     const initialized = new Set<Node>();
@@ -1131,9 +1131,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         : node.activeReplicas;
       work.cpuParts = sampledParts(f, eligible, work.cpuRemaining, node.working);
       if (!work.cpuParts) return false;
-      const cores = (r.cpuLimitMilli ?? r.availableCpuMilli ?? Infinity) / 1000;
-      const residence = Math.max(STEP, node.props.latencyMs, (r.cpuMsPerMessage * node.props.concurrency) / cores);
-      f.memoryCredit += scale * residence;
+      creditSampledMemory(node, Math.max(0, (work.cpuBackoffUntil ?? time) - time));
     }
     const occupancy =
       work.replica === undefined
@@ -1142,6 +1140,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (r.memoryLimitMiB !== undefined && r.baselineMemoryMiB + occupancy * r.memoryMiBPerMessage > r.memoryLimitMiB)
       f.unsafe = true;
     return true;
+  }
+  function creditSampledMemory(node: Node, backoff: number): void {
+    const r = node.props.resources!;
+    const cores = (r.cpuLimitMilli ?? r.availableCpuMilli ?? Infinity) / 1000;
+    const residence = Math.max(STEP, node.props.latencyMs, (r.cpuMsPerMessage * node.props.concurrency) / cores);
+    node.fleet!.memoryCredit += scale * (backoff + residence);
   }
   function endResources(node: Node, work: Work): void {
     if (!node.fleet) return;
@@ -1282,14 +1286,16 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         const f = node.fleet,
           r = node.props.resources;
         const cpuBudgets = f && r ? new Map<number | string, { remaining: number; count: number }>() : undefined;
+        let retained = 0;
         if (f && r) {
           const milli = r.cpuLimitMilli ?? r.availableCpuMilli ?? Infinity;
           for (const work of node.working) {
+            if (work.cpuParts && work.cpuBackoffUntil !== undefined) retained += scale;
             if (work.cpuRemaining === undefined || (work.cpuBackoffUntil ?? 0) > time) continue;
             if (work.cpuParts) {
               for (const p of work.cpuParts)
                 if (p.cpu > 0) {
-                  const key = partKey(p),
+                  const key = p.key,
                     budget = cpuBudgets?.get(key) ?? {
                       remaining: (milli / 1000) * STEP * (p.last - p.first + 1),
                       count: 0,
@@ -1305,7 +1311,18 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             }
           }
         }
-        const occupancy = f && r ? (scale === 1 ? f.active : Math.min(f.memoryCredit / STEP, slots(node))) : 0;
+        // Retained attempts own memory throughout backoff and every retry, even after their
+        // original service-time credit runs out. Ordinary sampled work keeps its residence estimate.
+        const occupancy =
+          f && r
+            ? scale === 1
+              ? f.active
+              : Math.min(
+                  Math.max(f.memoryCredit / STEP, retained),
+                  slots(node),
+                  (f.ready + f.draining) * node.props.concurrency,
+                )
+            : 0;
         let keep = 0;
         for (const work of node.working) {
           if (work.retryAdmissionAt !== undefined && time >= work.retryAdmissionAt && node.status === "up") {
@@ -1323,7 +1340,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             if (work.cpuParts) {
               for (const p of work.cpuParts)
                 if (p.cpu > 0) {
-                  const budget = cpuBudgets?.get(partKey(p));
+                  const budget = cpuBudgets?.get(p.key);
                   if (!budget) continue;
                   const spent = Math.min(p.cpu, budget.remaining / budget.count);
                   p.cpu -= spent;
@@ -1377,12 +1394,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           const a = node.props.autoscaling;
           if (a?.mode === "on" && !f.override && time >= f.nextSync && node.status === "up") {
             const decision = evaluateHpa(f, a.controller, r, time, capacityMultiplier, scale);
+            const previous = f.desired;
             if (!reconcileResources(node, decision.desired)) {
-              // Evaluation records applied changes. A refused split leaves the fleet untouched.
-              if (decision.desired !== f.desired) f.changes.pop();
               decision.desired = f.desired;
               decision.reason = "policy";
-            }
+            } else commitScalingChange(f, previous, time);
             if (advanceFleet(f, time, node.working) || node.replicas !== f.ready) fleetChanges.add(node.id);
           }
         }

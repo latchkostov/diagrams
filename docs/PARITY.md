@@ -372,3 +372,16 @@ Every simulation/controller, planning, check, trace, route, layout, export, impo
 is unchanged, including all A1 scenarios. The runtime fixes exercise edge cases outside the frozen
 runs; their failing-without-the-fix regressions and per-step invariants cover them separately. No
 simulation golden was re-recorded to accommodate a failure.
+
+## Autoscaling A1 final verification (2026-10-15)
+
+No golden changes: the CPU/admission and retained-retry corrections apply to failure paths outside
+the frozen corpus. Routing and endpoint duration regressions, equivalent real retry workloads at
+exact and sampled scales, and the expanded per-step seeded oracle cover these corrections. Each
+regression was checked with its fix temporarily removed. The resource-less p3-to-A1 compatibility
+test also rejects a deliberately broken upgrade playback path.
+
+The drain sweep, cached interval keys and indexed check targets preserve every existing output;
+operation-count regressions reject the old work patterns. The refreshed offline viewer carries the
+runtime corrections, while viewer implementation bytes are excluded from its semantic goldens as
+before. No output was re-recorded to make a failure pass.

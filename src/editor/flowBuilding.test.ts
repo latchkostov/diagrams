@@ -44,9 +44,9 @@ function setup(marks: EdgeMark[] = [], diagram: DiagramFile = BASE) {
   const queue: (() => void)[] = [];
   const commit = () => queue.splice(0).forEach((f) => f());
   const rf = {
-    getNodes: () => nodes,
+    getNodes: () => nodes.map((n) => ({ ...n })),
     getNode: (id: string) => nodes.find((n) => n.id === id),
-    getEdges: () => edges,
+    getEdges: () => edges.map((e) => ({ ...e })),
   } as unknown as ReactFlowInstance<FlowNode, DiagramFlowEdge>;
   const reveal = vi.fn();
   const hint = vi.fn();
@@ -395,6 +395,18 @@ describe("A1 editor precommit invariants", () => {
     expect(t.nodes()).toHaveLength(10);
     expect(t.edges()).toHaveLength(action === "connected" ? 1 : 0);
     expect(validateDiagram(t.api.getDiagram()).ok).toBe(true);
+  });
+  it("returns the staged result of queued connected insertions before starting naming", () => {
+    const d = diagram(9),
+      t = setup([], d);
+    const first = t.api.createConnected({ from: "worker-0", clone: true });
+    const second = t.api.createConnected({ from: "worker-1", clone: true });
+    expect(first).not.toBeNull();
+    expect(second).toBeNull();
+    t.commit();
+    expect(t.api.getNode(first!.id)).toBeDefined();
+    expect(t.edges()).toHaveLength(1);
+    expect(t.nodes()).toHaveLength(10);
   });
   it.each(["resources", "autoscaling"])("rejects null %s, allowing undefined deletion", (key) => {
     const d = diagram(1),

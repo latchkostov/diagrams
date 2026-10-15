@@ -86,6 +86,26 @@ goldens match, with the eight previously documented browser deferrals.
   favor of eliminating those transitions. The lazy-load race gate matches development and build URLs.
 - No parity goldens change: diagram, simulation, layout, export, agent and language outputs are unchanged.
   The skill viewer is refreshed; plugin version 1.1.21 is exactly one patch above master.
+## Autoscaling A1 final verification fixes (2026-10-15)
+
+- Keyboard Save commits a valid focused autoscaling number before taking the document snapshot;
+  incomplete and refused drafts keep their existing validation and remain editable.
+- Admission settings and endpoint durations now intersect CPU execution capacity in routing and the
+  capacity overlay. Sampled in-place retries retain memory through backoff and repeated attempts.
+- Sampled downscales sweep removed cohorts once per attempt, and CPU intervals cache their budget
+  keys. Checks index resource-warning targets once. These performance fixes preserve output.
+- Run validates the complete simulation draft against its diagram before replacing the current run.
+  Runtime lifecycle refusals pause playback with the existing recoverable notice. Correcting a draft
+  or restarting remains available.
+- Queued insertions report their staged acceptance and commit their nodes and edges together. HPA
+  policy history records actual applied changes after reconciliation. Lowering concurrency preserves
+  existing reservations while gating new work, including under invariant verification.
+- Selected-node scaling announcements remain accessible with Live details closed, without adding
+  visible controls. The seeded fuzzer now checks CPU capacity with admission, retained retry memory
+  and concurrency edits; a resource-less p3-to-A1 regression covers exact and sampled playback.
+- Refreshed the offline skill viewer; plugin version remains one patch above master (1.1.21).
+- No parity goldens change. The frozen scenarios do not exercise these failure paths; focused
+  regressions, deliberate reversions and the expanded fuzzer cover them without re-recording output.
 
 ## Showcase review fixes (2026-10-15)
 

@@ -35,38 +35,56 @@ export function LiveDetails({
   const node = d.nodes.find((n) => n.id === s.id);
   const broker = node ? resolveNodeProps(d, node).broker : undefined;
   return (
-    <details className="insp-section" data-testid="planning-live-details">
-      <summary data-testid="planning-live-details-toggle">{t("planning.liveDetails")}</summary>
-      <p data-testid="planning-live-counters">
-        {t("planning.liveCounters", {
-          throughput: formatRate(s.throughput),
-          processed: formatNumber(s.processed),
-          waiting: formatNumber(s.backlog),
-          inFlight: formatNumber(s.inFlight),
-          failed: formatNumber(s.failed),
-          deadLettered: formatNumber(s.deadLettered),
-          dropped: formatNumber(s.dropped),
-          blocked: formatNumber(s.blocked ?? 0),
-        })}
-      </p>
-      <ResourceDetails name={d.nodes.find((n) => n.id === s.id)?.label} metrics={s} readPage={readPage} />
-      {s.rejected !== undefined && (
-        <p data-testid="planning-live-rejected">
-          {t("admission.rejected")} · {formatNumber(s.rejected)}
-        </p>
+    <>
+      {s.resources && s.fleet && (
+        <div
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className="sr-only"
+          data-testid="autoscaling-announcement"
+        >
+          {node?.label ?? s.id} · {t("autoscaling.badge", s.fleet)}
+          {s.fleet.decision && <> · {t("autoscaling.reason", { reason: s.fleet.decision.reason })}</>}
+        </div>
       )}
-      {Object.entries(s.lag).map(([group, lag]) => (
-        <p key={group} data-testid={`planning-live-lag-${group}`}>
-          {broker?.partitioned === false
-            ? t("broker.waiting", {
-                kind: groupLabel(broker),
-                name: group,
-                readers: formatList(groups.get(group) ?? []),
-                count: lag,
-              })
-            : t("planning.liveLag", { group, consumers: formatList(groups.get(group) ?? []), lag: formatNumber(lag) })}
+      <details className="insp-section" data-testid="planning-live-details">
+        <summary data-testid="planning-live-details-toggle">{t("planning.liveDetails")}</summary>
+        <p data-testid="planning-live-counters">
+          {t("planning.liveCounters", {
+            throughput: formatRate(s.throughput),
+            processed: formatNumber(s.processed),
+            waiting: formatNumber(s.backlog),
+            inFlight: formatNumber(s.inFlight),
+            failed: formatNumber(s.failed),
+            deadLettered: formatNumber(s.deadLettered),
+            dropped: formatNumber(s.dropped),
+            blocked: formatNumber(s.blocked ?? 0),
+          })}
         </p>
-      ))}
-    </details>
+        <ResourceDetails metrics={s} readPage={readPage} />
+        {s.rejected !== undefined && (
+          <p data-testid="planning-live-rejected">
+            {t("admission.rejected")} · {formatNumber(s.rejected)}
+          </p>
+        )}
+        {Object.entries(s.lag).map(([group, lag]) => (
+          <p key={group} data-testid={`planning-live-lag-${group}`}>
+            {broker?.partitioned === false
+              ? t("broker.waiting", {
+                  kind: groupLabel(broker),
+                  name: group,
+                  readers: formatList(groups.get(group) ?? []),
+                  count: lag,
+                })
+              : t("planning.liveLag", {
+                  group,
+                  consumers: formatList(groups.get(group) ?? []),
+                  lag: formatNumber(lag),
+                })}
+          </p>
+        ))}
+      </details>
+    </>
   );
 }

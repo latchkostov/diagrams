@@ -211,10 +211,13 @@ a production build, at a CPU and network throttle (`--cold`: each on a fresh pag
 `src/sim/resourceInvariants.ts` is an opt-in ownership oracle. Ordinary playback does not execute it.
 `autoscaling.invariants.test.ts` checks every internal 10 ms simulation step across 200 deterministic
 small diagrams/event sequences: bursts, broker retries and refusals, pause/resume, live resource
-removal/re-enabling, HPA edits and fractional downscale. It independently counts ready/starting/draining
+removal/re-enabling, concurrency edits, HPA edits and fractional downscale. It independently counts ready/starting/draining
 identities, checks reservations against live attempts, exact-fleet baseline plus in-flight memory,
 queued/staged cleanup, finite metrics, preserved paused deadlines and the run-wide sampled CPU-part
-budget. Sampled memory is a declared time-integrated estimate; its numerical state must stay finite.
+budget. Sampled memory is a declared time-integrated estimate; its numerical state must stay finite,
+and continuous retained retries must retain their memory occupancy through backoff and subsequent
+attempts. The generator also compares planning capacity to an independently computed CPU execution
+ceiling, including services with admission settings.
 
 Failures print the seed, scale, diagram and reduced events (including explicit `unset` keys). Reduction
 removes event chunks, then individual events, then unneeded nodes. Events are 1-minimal for the failing

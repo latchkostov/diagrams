@@ -15,8 +15,14 @@ export interface ResourceState {
   nodes: Iterable<{
     id: string;
     status: string;
+    activeReplicas: number;
     fleet?: Fleet;
-    props: { concurrency: number; resources?: ComputeResources; autoscaling?: AutoscalingConfig };
+    props: {
+      concurrency: number;
+      resources?: ComputeResources;
+      autoscaling?: AutoscalingConfig;
+      admission?: { slots?: number; api: { maxInFlight?: number } };
+    };
     working: readonly Work[];
     pending: Iterable<Work>;
   }>;
@@ -25,6 +31,11 @@ const pausedClocks = new WeakMap<
   Fleet,
   { time: number; pausedAt: number; cpu: number; deadlines: Map<Work, { cpu?: number; admission?: number }> }
 >();
+const memoryClocks = new WeakMap<
+  Fleet,
+  { published: number; occupancy: number; retained: Set<Work>; up: boolean; capacity: number }
+>();
+const reservationCounts = new WeakMap<Fleet, Map<number, number>>();
 /** Opt-in diagnostic: independent ownership/counting oracle, never run in ordinary playback. */
 export function assertResourceInvariants(state: ResourceState) {
   const check = (ok: boolean, message: string) => {
@@ -107,7 +118,6 @@ export function assertResourceInvariants(state: ResourceState) {
       queued.every((w) => w.replica === undefined && w.cpuParts === undefined),
       "queued work owns a reservation",
     );
-    fail(f.active <= f.ready * node.props.concurrency, "reserved slots exceed ready capacity");
     const reservations = new Map<number, number>();
     for (const work of node.working) {
       if (state.scale === 1) fail(work.replica !== undefined, "working attempt has no reservation");
@@ -117,15 +127,46 @@ export function assertResourceInvariants(state: ResourceState) {
       for (const p of work.cpuParts ?? [])
         fail(p.first <= p.last && p.cpu >= -1e-8 && Number.isFinite(p.cpu), "invalid sampled CPU part");
     }
+    if (state.scale > 1) {
+      const retained = new Set(node.working.filter((w) => w.cpuParts?.length && w.cpuBackoffUntil !== undefined));
+      const previous = memoryClocks.get(f);
+      const capacity = Math.min(
+        node.activeReplicas * node.props.concurrency,
+        node.props.admission?.slots ?? Infinity,
+        node.props.admission?.api.maxInFlight ?? Infinity,
+      );
+      if (previous?.up && node.status === "up") {
+        const continuous = [...retained].filter((w) => previous.retained.has(w)).length;
+        const occupancy = Math.min(continuous * state.scale, capacity, previous.capacity);
+        const integrated =
+          f.lastPublish === previous.published
+            ? f.occupancy - previous.occupancy
+            : (f.samples.at(-1)?.occupancy ?? 0) * (f.lastPublish - previous.published) -
+              previous.occupancy +
+              f.occupancy;
+        fail(integrated + 1e-6 >= occupancy * 10, "retained retry lost sampled memory residence");
+      }
+      memoryClocks.set(f, {
+        published: f.lastPublish,
+        occupancy: f.occupancy,
+        retained,
+        up: node.status === "up",
+        capacity,
+      });
+    }
     let active = 0,
       memory = 0;
     const r = node.props.resources;
+    const previousCounts = reservationCounts.get(f);
     for (const [id, p] of f.busy) {
       fail(p.count >= 0 && p.count === (reservations.get(id) ?? 0), "orphan or negative reservation");
       // Lowering concurrency may leave existing attempts draining naturally; no new acquisition may overbook.
+      if (previousCounts && p.count > (previousCounts.get(id) ?? 0))
+        fail(p.count <= node.props.concurrency, "new reservation exceeds replica concurrency");
       if (p.drainAt === undefined) active += p.count;
       memory += r.baselineMemoryMiB + p.count * r.memoryMiBPerMessage;
     }
+    reservationCounts.set(f, new Map([...f.busy].map(([id, p]) => [id, p.count])));
     fail(active === f.active && active >= 0, "active reservation count disagrees");
     if (state.scale === 1) {
       fail(

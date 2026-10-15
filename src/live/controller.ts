@@ -8,7 +8,8 @@
 // `state.snapshot` is converted once to real messages for every number people read, and manual
 // injections take real counts (fractions of a dot carry over to the next injection).
 
-import { resourceBudgetExceeded, MAX_LIFECYCLE_REPLICAS } from "../model/resourceBudget";
+import { resourceBudgetExceeded, MAX_LIFECYCLE_REPLICAS, LifecycleBudgetError } from "../model/resourceBudget";
+import { simulationProblem, validateDiagram } from "../interop/native";
 import { flowEdges, edgeSemanticSignature } from "../model/relations";
 import type { DiagramFile, Simulation } from "../model/types";
 import { createRealCountInjector } from "../sim/injection";
@@ -162,6 +163,7 @@ export class LiveController {
   private tweaks = new Map<string, NodeTweak>();
   private listeners = new Set<() => void>();
   private state!: LiveState;
+  private resourceError?: string;
   private structKey: string;
   private nodeProps = new Map<string, string>();
 
@@ -224,7 +226,8 @@ export class LiveController {
       else this.tweaks.delete(id);
     }
     this.state = {
-      ...(this.engine.trafficLimit() === "resources" ? { resourceError: t("autoscaling.cpuBudget") } : {}),
+      resourceError:
+        this.resourceError ?? (this.engine.trafficLimit() === "resources" ? t("autoscaling.cpuBudget") : undefined),
       scale: resolveScale(snapshot.scale),
       playing: this.playing,
       speed: this.speed,
@@ -396,7 +399,7 @@ export class LiveController {
   advance(wallMs: number): void {
     if (!this.playing || this.held || this.replayTarget !== null || !(wallMs > 0)) return;
     if (this.runner) {
-      this.runner.step(wallMs);
+      if (!this.advanceRunner(wallMs)) return;
       this.captureCheckpoint();
       this.dirty = true;
       this.snapshot();
@@ -407,6 +410,20 @@ export class LiveController {
     } else {
       this.engine.step(wallMs);
       this.dirty = true;
+    }
+  }
+  /** A refused timeline edit leaves the previous fleet intact and the session renderable. */
+  private advanceRunner(wallMs: number): boolean {
+    try {
+      this.runner?.step(wallMs);
+      return true;
+    } catch (error) {
+      if (!(error instanceof LifecycleBudgetError)) throw error;
+      this.resourceError = error.message;
+      this.playing = false;
+      this.dirty = true;
+      this.publish();
+      return false;
     }
   }
 
@@ -454,7 +471,7 @@ export class LiveController {
     const wall = simMs / this.speed;
     if (this.runner) {
       if (this.runState?.waiting || this.runState?.done) return;
-      this.runner.step(wall);
+      if (!this.advanceRunner(wall)) return;
       this.captureCheckpoint();
     } else this.engine.step(wall);
     this.dirty = true;
@@ -512,7 +529,7 @@ export class LiveController {
         continue;
       }
       const before = s.time;
-      this.runner.step(Math.min(1000, target - s.time) / this.speed);
+      if (!this.advanceRunner(Math.min(1000, target - s.time) / this.speed)) return;
       this.captureCheckpoint();
       if (this.runner.state().time <= before && !this.runner.state().waiting) break;
     }
@@ -521,13 +538,27 @@ export class LiveController {
   }
 
   /** Switch between free play (null) and a saved simulation. Rebuilds, keeps play / pause, clears inputs. */
-  selectSimulation(sim: Simulation | null): void {
+  selectSimulation(sim: Simulation | null): boolean {
+    if (sim && this.diagram.planning?.revision === "p3-a1") {
+      const candidate = {
+        ...this.diagram,
+        simulations: [...(this.diagram.simulations ?? []).filter((s) => s.id !== sim.id), sim],
+      };
+      const validated = validateDiagram(candidate);
+      const error = simulationProblem(sim) ?? (!validated.ok ? validated.error : undefined);
+      if (error) {
+        this.resourceError = error;
+        this.publish();
+        return false;
+      }
+    }
     this.cancelReplay();
     this.base = sim;
     this.inputs = emptyInputs();
     this.sim = sim;
     this.build();
     this.publish();
+    return true;
   }
 
   // ---------------------------------------------------------------- inputs & capacity
@@ -880,6 +911,7 @@ export class LiveController {
   }
 
   private build(): void {
+    this.resourceError = undefined;
     const engineOpts = { roleOf: this.opts.roleOf, maxParticles: this.opts.maxParticles, traceHistory: TRACE_HISTORY };
     if (this.sim) {
       // No saved dot scale: pick one from the traffic (the 1/2/5 series, about 60 dots a second at
