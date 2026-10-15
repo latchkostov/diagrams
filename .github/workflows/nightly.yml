@@ -20,7 +20,7 @@ env:
 jobs:
   e2e:
     name: ${{ matrix.label }} ${{ matrix.shard }}/${{ matrix.total }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -78,17 +78,12 @@ jobs:
   # it with `pnpm skill:release` when users should get the latest viewer.
   skill-viewer:
     name: Skill viewer freshness
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     continue-on-error: true
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/toolchain
       - run: pnpm skill:check
 
   # Opens the `nightly-failure` issue, or updates the open one (its body is the latest failure, and a
@@ -97,7 +92,7 @@ jobs:
     name: Report failure
     needs: e2e
     if: failure() && needs.e2e.result == 'failure'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:
       contents: read
@@ -106,6 +101,9 @@ jobs:
       - uses: actions/checkout@v7
         with:
           sparse-checkout: scripts
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
       - uses: actions/download-artifact@v8
         with:
           pattern: nightly-results-*
