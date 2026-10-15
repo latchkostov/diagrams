@@ -44,6 +44,8 @@ export interface EditOptions {
    * undo step. Use it for per-keystroke edits, e.g. `inspector:node:${id}:label`.
    */
   merge?: string;
+  /** Whether resizing a boundary should apply membership rules and adopt/release nodes. */
+  adopt?: boolean;
 }
 
 export interface EditorPrefs {

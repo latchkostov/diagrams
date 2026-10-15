@@ -880,7 +880,10 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
             },
           };
         });
-        if (patch.width !== undefined || patch.height !== undefined) {
+        const shouldAdopt =
+          opts?.adopt ??
+          (patch.x === undefined && patch.y === undefined && (patch.width !== undefined || patch.height !== undefined));
+        if (shouldAdopt) {
           const r = membershipAfterResize(id, memberBoxes(nextNodes), groupRects(nextNodes));
           if (r.group.size) {
             return nextNodes.map((n) => (r.group.has(n.id) ? withGroup(n, r.group.get(n.id)) : n));

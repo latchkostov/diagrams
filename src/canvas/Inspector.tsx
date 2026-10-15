@@ -1165,7 +1165,7 @@ function GroupPanel({ group, editor, groups }: InspectorProps & { group: GroupFl
             value={group.width ?? group.measured?.width ?? 0}
             min={160}
             testId="inspector-field-width"
-            onCommit={(width) => editor.updateGroup(id, { width })}
+            onCommit={(width) => editor.updateGroup(id, { width }, { adopt: true })}
           />
           <span aria-hidden>{"×"}</span>
           <SizeInput
@@ -1173,7 +1173,7 @@ function GroupPanel({ group, editor, groups }: InspectorProps & { group: GroupFl
             value={group.height ?? group.measured?.height ?? 0}
             min={100}
             testId="inspector-field-height"
-            onCommit={(height) => editor.updateGroup(id, { height })}
+            onCommit={(height) => editor.updateGroup(id, { height }, { adopt: true })}
           />
         </div>
       </Field>
