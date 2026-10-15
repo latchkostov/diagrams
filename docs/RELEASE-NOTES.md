@@ -35,6 +35,7 @@
   draw.io and the offline agent checker share the same lossless colour contract.
 - Thanks to **Heiner Morales** for the custom colours, palette picker and background tint design in
   [PR #102](https://github.com/latchkostov/diagrams/pull/102).
+
 ## Planning P3: managed compute and external limits (2026-10-14)
 
 - Functions and external/model APIs process duration and errors and refuse calls that exceed

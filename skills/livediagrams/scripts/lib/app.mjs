@@ -39,6 +39,205 @@ function checkJsonSchema(value, schema, path = "input", definitions = {}) {
 	}
 }
 //#endregion
+//#region src/model/admission.ts
+/** P3 admission uses real units. Missing budgets mean unknown, never unlimited. */
+var QUOTA_UNITS = [
+	"requests",
+	"tokens",
+	"inputTokens",
+	"outputTokens",
+	"costPoints",
+	"bytes"
+];
+//#endregion
+//#region src/model/admissionSchema.ts
+var id = {
+	type: "string",
+	minLength: 1,
+	maxLength: 200
+};
+var quantity$1 = {
+	type: "number",
+	minimum: 0,
+	maximum: 0xe8d4a51000
+};
+var positive = {
+	type: "number",
+	minimum: 1e-6,
+	maximum: 0xe8d4a51000
+};
+var time$2 = {
+	type: "number",
+	minimum: 0,
+	maximum: 6e5
+};
+var quotaSchema = {
+	type: "object",
+	additionalProperties: false,
+	required: [
+		"id",
+		"unit",
+		"amount",
+		"windowMs",
+		"algorithm"
+	],
+	properties: {
+		id,
+		unit: { enum: QUOTA_UNITS },
+		amount: positive,
+		windowMs: {
+			type: "number",
+			minimum: 1,
+			maximum: 864e5
+		},
+		algorithm: {
+			type: "string",
+			enum: ["token-bucket"]
+		},
+		burst: quantity$1,
+		sharedGroup: id
+	}
+};
+var allocationSchema = {
+	type: "object",
+	additionalProperties: false,
+	required: ["id", "maxInFlight"],
+	properties: {
+		id,
+		maxInFlight: quantity$1
+	}
+};
+var apiSchema = {
+	type: "object",
+	additionalProperties: false,
+	properties: {
+		quotas: {
+			type: "array",
+			maxItems: 32,
+			items: quotaSchema
+		},
+		maxInFlight: quantity$1,
+		sharedConcurrency: id,
+		latencyMs: time$2,
+		errorRate: {
+			type: "number",
+			minimum: 0,
+			maximum: 1
+		},
+		costPerRequest: {
+			type: "object",
+			additionalProperties: false,
+			properties: Object.fromEntries(QUOTA_UNITS.map((unit) => [unit, unit === "requests" ? {
+				type: "number",
+				minimum: 1,
+				maximum: 1
+			} : quantity$1]))
+		}
+	}
+};
+var endpointsSchema = {
+	type: "array",
+	maxItems: 500,
+	items: {
+		type: "object",
+		additionalProperties: false,
+		required: [
+			"id",
+			"method",
+			"path"
+		],
+		properties: {
+			id,
+			method: { enum: [
+				"GET",
+				"POST",
+				"PUT",
+				"PATCH",
+				"DELETE",
+				"HEAD",
+				"OPTIONS",
+				"TRACE"
+			] },
+			path: {
+				type: "string",
+				minLength: 1,
+				maxLength: 2e3,
+				pattern: "^/"
+			},
+			behaviour: apiSchema
+		}
+	}
+};
+var callerSchema = {
+	type: "object",
+	additionalProperties: false,
+	properties: {
+		deadlineMs: time$2,
+		retry: {
+			type: "object",
+			additionalProperties: false,
+			required: [
+				"maxAttempts",
+				"backoffMs",
+				"strategy",
+				"retryOn"
+			],
+			properties: {
+				maxAttempts: {
+					type: "integer",
+					minimum: 1,
+					maximum: 1e3
+				},
+				backoffMs: time$2,
+				strategy: { enum: ["fixed", "exponential"] },
+				jitter: {
+					type: "number",
+					minimum: 0,
+					maximum: 1
+				},
+				retryOn: {
+					type: "array",
+					maxItems: 3,
+					uniqueItems: true,
+					items: { enum: [
+						"throttled",
+						"transient",
+						"timeout"
+					] }
+				},
+				idempotent: { type: "boolean" }
+			}
+		},
+		poolConnections: {
+			type: "integer",
+			minimum: 1,
+			maximum: 1e4
+		}
+	}
+};
+var planningSchema = {
+	type: "object",
+	required: ["revision"],
+	additionalProperties: false,
+	properties: {
+		revision: { enum: [
+			"p1",
+			"p2",
+			"p3"
+		] },
+		sharedQuotas: {
+			type: "array",
+			maxItems: 128,
+			items: quotaSchema
+		},
+		sharedAllocations: {
+			type: "array",
+			maxItems: 128,
+			items: allocationSchema
+		}
+	}
+};
+//#endregion
 //#region src/model/simProps.ts
 /**
 * The file format's bounds on simulation settings, which every place that edits them uses too (the inspector, the
@@ -50,11 +249,20 @@ var SIM_LIMITS = {
 	count: 1e4,
 	timeMs: 6e5
 };
+var ADMISSION_PRESET_IDS = [
+	"lambda-account",
+	"stripe-live",
+	"stripe-sandbox",
+	"api-gateway-account",
+	"managed-measured"
+];
+var ADMISSION_REVISION = "2026-10-14";
 /** Compatibility is shared by files and clipboard fragments, including saved patches. */
 function unsupportedPreset(props) {
 	if (!props || typeof props !== "object" || Array.isArray(props)) return false;
 	const p = props;
 	if (p.preset === void 0 && p.presetRevision === void 0) return false;
+	if (typeof p.preset === "string" && ADMISSION_PRESET_IDS.includes(p.preset)) return p.presetRevision !== ADMISSION_REVISION;
 	return p.preset !== "processor-lesson" && p.preset !== "device-size" || p.presetRevision !== "1";
 }
 var rate$1 = {
@@ -83,13 +291,24 @@ var fraction = {
 	maximum: 1
 };
 var nodeProperties = {
+	api: apiSchema,
+	endpoints: endpointsSchema,
+	scaling: {
+		type: "string",
+		enum: ["fixed", "auto"]
+	},
+	maxConcurrency: quantity,
 	preset: {
 		type: "string",
-		enum: ["processor-lesson", "device-size"]
+		enum: [
+			"processor-lesson",
+			"device-size",
+			...ADMISSION_PRESET_IDS
+		]
 	},
 	presetRevision: {
 		type: "string",
-		enum: ["1"]
+		enum: ["1", ADMISSION_REVISION]
 	},
 	connections: cardinality,
 	querySlots: cardinality,
@@ -142,6 +361,12 @@ var nodeProperties = {
 	healthChecks: { type: "boolean" }
 };
 var edgeProperties = {
+	endpointId: {
+		type: "string",
+		minLength: 1,
+		maxLength: 200
+	},
+	caller: callerSchema,
 	group: { type: "string" },
 	groupOrigin: {
 		type: "string",
@@ -565,7 +790,7 @@ function validateDiagram(data) {
 			error: err instanceof Error ? err.message : String(err)
 		};
 	}
-	if (raw.format === "diagrams/v2" && (!isObj$1(raw.planning) || raw.planning.revision !== "p1" && raw.planning.revision !== "p2")) return {
+	if (raw.format === "diagrams/v2" && (!isObj$1(raw.planning) || raw.planning.revision !== "p1" && raw.planning.revision !== "p2" && raw.planning.revision !== "p3")) return {
 		ok: false,
 		error: t`Unsupported planning revision. Reload Live Diagrams to open this file; its playback has not been changed.`
 	};
@@ -573,6 +798,21 @@ function validateDiagram(data) {
 		ok: false,
 		error: t`Planning documents require diagrams/v2. Remove planning to retain legacy playback, or export with a current reader.`
 	};
+	if (raw.planning !== void 0) try {
+		checkJsonSchema(raw.planning, planningSchema);
+		for (const field of ["sharedQuotas", "sharedAllocations"]) {
+			const values = raw.planning[field];
+			if (Array.isArray(values) && new Set(values.map((v) => v.id)).size !== values.length) return {
+				ok: false,
+				error: t`Limits unknown; enter measured or contracted values.`
+			};
+		}
+	} catch {
+		return {
+			ok: false,
+			error: t`Limits unknown; enter measured or contracted values.`
+		};
+	}
 	if (!Array.isArray(raw.nodes)) return {
 		ok: false,
 		error: "The diagram needs both a nodes and an edges list."
@@ -619,13 +859,13 @@ function validateDiagram(data) {
 			const props = isObj$1(sim.setup) && isObj$1(sim.setup.props) ? sim.setup.props : {};
 			for (const [id, value] of Object.entries(props)) if (unsupportedPreset(value)) return {
 				ok: false,
-				error: t(1055, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
+				error: t(1077, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
 			};
 			if (Array.isArray(sim.timeline)) for (const step of sim.timeline) {
 				const action = isObj$1(step) && isObj$1(step.action) ? step.action : void 0;
 				if (action?.do === "props" && unsupportedPreset(action.props)) return {
 					ok: false,
-					error: t(1055, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
+					error: t(1077, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
 				};
 			}
 		}
@@ -727,7 +967,7 @@ function validateDiagram(data) {
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
 		if (unsupportedPreset(out.props)) return {
 			ok: false,
-			error: t(1055, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
+			error: t(1077, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
 		};
 		const problem = out.props === void 0 ? void 0 : propsProblem(out.props);
 		if (problem) return {
@@ -804,7 +1044,7 @@ function validateDiagram(data) {
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
 		if (invalidPlanningDelay(out.props)) return {
 			ok: false,
-			error: t(1e3, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
+			error: t(1022, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
 				id: e.id,
 				limit: SIM_LIMITS.timeMs
 			})
@@ -921,6 +1161,7 @@ var METRICS = /* @__PURE__ */ new Set([
 	"deadLettered",
 	"dropped",
 	"blocked",
+	"rejected",
 	"throughput",
 	"lag"
 ]);
