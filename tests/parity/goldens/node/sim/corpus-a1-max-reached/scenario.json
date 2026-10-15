@@ -1,0 +1,164 @@
+{
+  "run": {
+    "time": 48000,
+    "totalMs": 48000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "burst" },
+      { "atMs": 6000, "kind": "traffic", "label": "burst ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "replicas": [1, 1, 0] },
+        "uploads": { "lag": { "thumbnails": 0 }, "replicas": [1, 1, 0] },
+        "worker": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 214,
+      "nodes": {
+        "source": { "processed": 480, "throughput": 1.4836530247415634, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 480,
+          "backlog": 204,
+          "throughput": 1.4836530247415634,
+          "lag": { "thumbnails": 204 },
+          "replicas": [1, 1, 0]
+        },
+        "worker": { "processed": 266, "inFlight": 8, "throughput": 30.862458633210977, "replicas": [2, 2, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 480, "throughput": 0.00006735774311516859, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 480,
+          "throughput": 0.00006735774311516859,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "worker": { "processed": 480, "throughput": 1.1201774907488526, "replicas": [2, 2, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 480, "throughput": 3.0580368063883268e-9, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 480,
+          "throughput": 3.0580368063883268e-9,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "worker": { "processed": 480, "throughput": 0.00005085597940151722, "replicas": [2, 2, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 480, "throughput": 1.3883465622113114e-13, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 480,
+          "throughput": 1.3883465622113114e-13,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "worker": { "processed": 480, "throughput": 2.308857892831377e-9, "replicas": [2, 2, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 48000,
+    "inSystem": 0,
+    "real": {
+      "source": { "processed": 480, "throughput": 4.6573838619884435e-17, "replicas": [1, 1, 0] },
+      "uploads": {
+        "processed": 480,
+        "throughput": 4.6573838619884435e-17,
+        "lag": { "thumbnails": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "worker": { "processed": 480, "throughput": 7.745355361827011e-13, "replicas": [1, 1, 0] }
+    },
+    "edges": { "publish": 480, "consume": 480 }
+  },
+  "events": {
+    "total": 2880,
+    "byKind": { "inject": 480, "process": 1440, "deliver": 960 },
+    "byNode": {
+      "source": { "inject": 480, "process": 480 },
+      "uploads": { "deliver": 480, "process": 480 },
+      "worker": { "deliver": 480, "process": 480 }
+    },
+    "perSecond": [
+      "885b1b066361",
+      "db696ac8a6da",
+      "f45f6ecf8136",
+      "b978e4010c2b",
+      "24f6f8ca02a1",
+      "45f0063651b1",
+      "db2babd157cb",
+      "517d0dea9190",
+      "702c7f088803",
+      "0749e44728da",
+      "94d8ad94182d",
+      "d09f24a1fff3",
+      "ea94f854002a",
+      "95b5aecab605",
+      "79fa3f4dc5fd",
+      "ee2cdef803a2",
+      "4255c1411106",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 207, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 207, "min": 270, "mean": 5706.859903381643, "p50": 5320, "p90": 9520, "max": 10570 },
+    "waitMs": { "worker": { "count": 207, "min": 0, "mean": 62.270531400966185, "p50": 20, "p90": 180, "max": 220 } },
+    "processMs": { "worker": { "count": 207, "min": 250, "mean": 250, "p50": 250, "p90": 250, "max": 250 } }
+  }
+}

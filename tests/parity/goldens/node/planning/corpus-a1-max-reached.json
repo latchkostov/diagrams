@@ -1,0 +1,313 @@
+{
+  "autoScale": { "freePlay": 2, "scenario": 2 },
+  "brokerAssignments": {
+    "brokers": {
+      "uploads": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+    },
+    "consumers": {
+      "worker": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      }
+    }
+  },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "worker",
+      "suggestion": "Thumbnail workers: raise replicas from 1 to 5.",
+      "converged": true,
+      "iterations": 3,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": {
+        "source": ["Infinity", 80, 0, 1, 1, 0],
+        "uploads": [16, 80, 5, 1, 1, 0],
+        "worker": [
+          16,
+          80,
+          5,
+          1,
+          1,
+          0,
+          {
+            "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+          }
+        ]
+      },
+      "connections": { "publish": 80, "consume": 80 },
+      "offeredTypes": { "source": ["Upload clients"], "uploads": ["Upload clients"], "worker": ["Upload clients"] }
+    },
+    "explanations": {
+      "worker": {
+        "resources": { "perReplica": 16, "initial": 1, "min": 1, "max": 2, "initialCapacity": 16, "maxCapacity": 32, "targetReplicas": 10, "cpuRequestPct": 640, "memoryPeakMiB": 136, "memoryRisk": false, "baselineAboveTarget": false, "partitionLimited": false, "startupMs": 2000, "cpuUnbounded": false },
+        "id": "worker",
+        "role": "processor",
+        "status": "up",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 16,
+        "offered": 80,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "uploads",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 6
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": 5,
+        "growth": 64,
+        "contributors": [{ "edge": "consume", "node": "uploads", "label": "Image uploads", "rate": 80 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "source": [{ "kind": "publishes", "edge": "publish", "peer": "uploads" }],
+      "worker": [
+        {
+          "kind": "consumes",
+          "edge": "consume",
+          "peer": "uploads",
+          "group": "thumbnails",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ]
+    },
+    "sizing": null,
+    "redundancy": { "uploads": { "replicas": 2, "enough": false }, "worker": { "replicas": 2, "enough": false } },
+    "resolved": {
+      "source": {
+        "profile": { "family": "client", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "ratePerSec": 80,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Upload clients",
+        "healthChecks": false
+      },
+      "uploads": {
+        "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+        "profile": { "family": "log", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 6,
+        "messageType": "Image uploads",
+        "healthChecks": false
+      },
+      "worker": {
+        "resources": {
+          "preset": "io-service",
+          "presetRevision": "1",
+          "cpuMsPerMessage": 40,
+          "baselineMemoryMiB": 128,
+          "memoryMiBPerMessage": 2,
+          "cpuRequestMilli": 500,
+          "cpuLimitMilli": 1000,
+          "memoryRequestMiB": 256,
+          "memoryLimitMiB": 512,
+          "startup": { "delayMs": 2000, "jitterFraction": 0 },
+          "terminationGraceMs": 30000
+        },
+        "autoscaling": {
+          "mode": "on",
+          "modelRevision": "a1",
+          "preset": "hpa-service",
+          "presetRevision": "1",
+          "controller": {
+            "kind": "hpa",
+            "minReplicas": 1,
+            "maxReplicas": 2,
+            "initialReplicas": 1,
+            "settings": {
+              "syncMs": 1000,
+              "tolerance": 0.1,
+              "initialReadinessDelayMs": 0,
+              "cpuInitializationPeriodMs": 0,
+              "metrics": [
+                {
+                  "source": { "kind": "resource", "resource": "cpu" },
+                  "target": { "kind": "utilization", "percentOfRequest": 70 },
+                  "windowMs": 1000,
+                  "metricDelayMs": 0
+                }
+              ],
+              "up": {
+                "stabilizationMs": 0,
+                "selectPolicy": "Max",
+                "policies": [
+                  { "type": "Pods", "value": 4, "periodMs": 15000 },
+                  { "type": "Percent", "value": 100, "periodMs": 15000 }
+                ]
+              },
+              "down": {
+                "stabilizationMs": 30000,
+                "selectPolicy": "Max",
+                "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+              }
+            }
+          }
+        },
+        "profile": { "family": "service", "revision": "p3-a1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Thumbnail workers",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "scenario": {
+      "configured": "(same as edit)",
+      "simulation": "scenario",
+      "analysis": {
+        "bottleneck": "worker",
+        "suggestion": "Thumbnail workers: raise replicas from 1 to 5.",
+        "converged": true,
+        "iterations": 3,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": {
+          "source": ["Infinity", 80, 0, 1, 1, 0],
+          "uploads": [16, 80, 5, 1, 1, 0],
+          "worker": [
+            16,
+            80,
+            5,
+            1,
+            1,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ]
+        },
+        "connections": { "publish": 80, "consume": 80 },
+        "offeredTypes": { "source": ["ImageUploaded"], "uploads": ["ImageUploaded"], "worker": ["ImageUploaded"] }
+      },
+      "explanations": "(same as edit)",
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": "(same as edit)"
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "over",
+          "top": "worker",
+          "headline": "Thumbnail workers and 1 more are over capacity",
+          "detail": "500% · 80/s of 16/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "80/s · no limit", { "modeled": false }],
+            "uploads": ["over", "500% · 80/s of 16/s"],
+            "worker": ["over", "500% · 80/s of 16/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "over",
+          "top": "worker",
+          "headline": "Thumbnail workers and 1 more are over capacity",
+          "detail": "25× · 400/s of 16/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "400/s · no limit", { "modeled": false }],
+            "uploads": ["over", "25× · 400/s of 16/s"],
+            "worker": ["over", "25× · 400/s of 16/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "over",
+          "top": "worker",
+          "headline": "Thumbnail workers and 1 more are over capacity",
+          "detail": "500% · 80/s of 16/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "80/s · no limit", { "modeled": false }],
+            "uploads": ["over", "500% · 80/s of 16/s"],
+            "worker": ["over", "500% · 80/s of 16/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": { "uploads": { "partitions": 12 } }, "rates": {} },
+        "view": {
+          "tone": "over",
+          "top": "worker",
+          "headline": "Thumbnail workers and 1 more are over capacity",
+          "detail": "500% · 80/s of 16/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "80/s · no limit", { "modeled": false }],
+            "uploads": ["over", "500% · 80/s of 16/s"],
+            "worker": ["over", "500% · 80/s of 16/s"]
+          }
+        },
+        "partitionsNotes": { "uploads": "All configured reader instances already have an assignment." }
+      }
+    },
+    "scenario": {
+      "tone": "over",
+      "top": "worker",
+      "headline": "Thumbnail workers and 1 more are over capacity",
+      "detail": "500% · 80/s of 16/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "source": ["idle", "80/s · no limit", { "modeled": false }],
+        "uploads": ["over", "500% · 80/s of 16/s"],
+        "worker": ["over", "500% · 80/s of 16/s"]
+      }
+    }
+  }
+}

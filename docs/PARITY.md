@@ -254,6 +254,40 @@ No simulation, check, export, import, layout or browser golden moved: every pinn
 and P3 keeps their behaviour exactly. The P3 corpus diagrams, the `rejected` counters and reasons, and the
 presets golden were added in the same change, so P3's own output is pinned from here on.
 
+### Autoscaling A1: what changed and why
+
+Rebasing A1 onto the harness changes only these existing goldens:
+
+- `node/skill/public-schemas.json`: `diagram.v1/v2.json` and `ops.v1.json` gain resource costs,
+  HPA configuration and the `p3-a1` revision; the v1 schema describes the optional properties while
+  native validation still requires the explicit v2/A1 opt-in for execution.
+- `node/agent/tools.json`: the real agent tools carry those same resource/HPA properties and revision.
+- `node/skill/files.json`: the generated format reference/spec describe A1; the generated stencil
+  reference's popularity order includes the added public example (browser, Kafka, Go workers and S3).
+- `node/i18n/catalogs.json`: English and all 37 catalogs gain A1 controls, resource/lifecycle readouts,
+  decision reasons and planning/check explanations; older messages retain their rendered output.
+- `node/skill/validate.txt`: six additional validation records, for the showcase and five frozen A1
+  diagrams. Earlier records and the deliberately invalid corpus results remain unchanged.
+
+No existing simulation, check, export, import, layout, browser or planning-upgrade golden changes.
+The first run caught a legacy arithmetic regression: multiplying replicas after dividing service
+time changed a rounding boundary and recommended 37 replicas instead of 36. The legacy operation
+order is restored and a negative-control regression test fails when the fix is removed.
+
+New goldens for `autoscaling-image-workers` cover all normal per-example surfaces, including its two
+saved bursts and free play, planning and explicit upgrade, checks and evidence, exports and round trips,
+agent scripts, traces, routes/layout and browser geometry. Its draw.io round trip also guards retention
+of the v2 planning revision. The only new geometry unit snapshot is this example's three connections.
+
+Five frozen `a1-*` corpus diagrams cover burst growth, the published 300 s scale-down stabilization
+window, maximum reached, eight replicas sharing three partitions, and an 8 s startup delay with backlog.
+They receive the normal corpus coverage. Seven additional `node/autoscaling/*` goldens (five corpus runs
+and two showcase simulations) pin every simulated second's desired/ready/starting/draining counts,
+active/idle replicas, backlog, completed work, controller decisions, actual English decision copy and
+configured resource explanations. The max scenario requires ten replicas at target with a maximum of
+two; its explanation cautions that startup and partitions still apply. The showcase's deliberately short
+sync/window/startup timings are saved in the input and disclosed in its description.
+
 ### Adding an output
 
 Call `expectGolden` (data), `expectGoldenText` (text) or `expectGoldenBinary` (with a comparison)

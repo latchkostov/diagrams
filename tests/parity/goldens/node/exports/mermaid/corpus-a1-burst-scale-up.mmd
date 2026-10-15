@@ -1,0 +1,11 @@
+---
+title: burst-scale-up
+---
+flowchart LR
+  source(["Upload clients"])
+  uploads["Image uploads<br/>6 partitions"]
+  worker["Thumbnail workers"]
+  source -.-> uploads
+  uploads -.-> worker
+  linkStyle 0,1 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"An invented image-processing pipeline: a Kafka topic buffers uploads while HPA starts workers. The saved burst shows backlog building, replicas becoming ready and the backlog draining within ten simulated seconds. This teaching model explicitly uses a 1 s sync, 1 s metric window, 2 s startup and 30 s downscale stabilization; these are not Kubernetes defaults. Open a worker’s Live details for replica history.","nodes":{"source":["source","client.browser"],"uploads":["uploads","kafka.topic"],"worker":["worker","service.go"]},"edges":["publish","consume"],"relations":{}}

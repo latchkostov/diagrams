@@ -1,0 +1,175 @@
+{
+  "trace": { "rootId": 1, "type": "Upload clients", "origin": "source", "startedAt": 0, "done": true, "partial": false, "truncated": false, "steps": 14, "endedAt": 300 },
+  "steps": [
+    { "t": 0, "kind": "emit", "id": 1, "type": "Upload clients", "node": "source" },
+    { "t": 0, "kind": "done", "id": 1, "type": "Upload clients", "node": "source" },
+    { "t": 0, "kind": "send", "id": 1, "type": "Upload clients", "node": "source", "edge": "publish", "via": "message", "until": 10 },
+    { "t": 10, "kind": "arrive", "id": 1, "type": "Upload clients", "node": "uploads", "edge": "publish" },
+    { "t": 10, "kind": "done", "id": 1, "type": "Upload clients", "node": "uploads" },
+    { "t": 10, "kind": "send", "id": 1, "type": "Upload clients", "node": "uploads", "edge": "consume", "via": "message", "until": 20 },
+    { "t": 20, "kind": "arrive", "id": 1, "type": "Upload clients", "node": "worker", "edge": "consume" },
+    { "t": 20, "kind": "start", "id": 1, "type": "Upload clients", "node": "worker" },
+    { "t": 270, "kind": "done", "id": 1, "type": "Upload clients", "node": "worker" },
+    { "t": 270, "kind": "send", "id": 1, "type": "Upload clients", "node": "worker", "edge": "save", "via": "message", "until": 280 },
+    { "t": 280, "kind": "arrive", "id": 1, "type": "Upload clients", "node": "images", "edge": "save" },
+    { "t": 290, "kind": "start", "id": 1, "type": "Upload clients", "node": "images" },
+    { "t": 300, "kind": "done", "id": 1, "type": "Upload clients", "node": "images" },
+    { "t": 300, "kind": "end", "id": 1, "type": "Upload clients", "node": "images", "reason": "stored" }
+  ],
+  "journey": {
+    "rootId": 1,
+    "type": "Upload clients",
+    "origin": "source",
+    "startedAt": 0,
+    "totalMs": 300,
+    "done": true,
+    "partial": false,
+    "truncated": false,
+    "rows": [
+      { "key": "0", "kind": "origin", "t": 0, "id": 1, "type": "Upload clients", "node": "source", "copy": false },
+      { "key": "3", "kind": "hop", "t": 10, "id": 1, "type": "Upload clients", "node": "uploads", "from": "source", "edge": "publish", "sync": false, "latencyMs": 10, "waitMs": 0, "travelMs": 10, "renamed": false, "copy": false },
+      { "key": "6", "kind": "hop", "t": 20, "id": 1, "type": "Upload clients", "node": "worker", "from": "uploads", "edge": "consume", "sync": false, "latencyMs": 10, "waitMs": 0, "travelMs": 10, "renamed": false, "copy": false },
+      { "key": "10", "kind": "hop", "t": 280, "id": 1, "type": "Upload clients", "node": "images", "from": "worker", "edge": "save", "sync": false, "latencyMs": 260, "waitMs": 0, "processMs": 250, "travelMs": 10, "renamed": false, "copy": false }
+    ],
+    "visits": [
+      { "id": 1, "node": "source", "at": 0, "done": 0, "left": 0 },
+      { "id": 1, "node": "uploads", "at": 10, "done": 10, "left": 10 },
+      { "id": 1, "node": "worker", "at": 20, "start": 20, "done": 270, "left": 270 },
+      { "id": 1, "node": "images", "at": 280, "start": 290, "done": 300 }
+    ],
+    "ids": [1],
+    "copies": 0,
+    "retries": 0,
+    "failures": 0,
+    "deadLettered": 0,
+    "dropped": 0,
+    "blocked": 0,
+    "kept": [],
+    "nodes": ["source", "uploads", "worker", "images"],
+    "edges": ["publish", "consume", "save"],
+    "rowOf": { "0": "0", "3": "3", "6": "6", "10": "10" }
+  },
+  "sequence": {
+    "title": "Upload clients #1",
+    "summary": "300 ms end to end",
+    "participants": [
+      { "id": "source", "label": "Upload clients" },
+      { "id": "uploads", "label": "Image uploads" },
+      { "id": "worker", "label": "Thumbnail workers" },
+      { "id": "images", "label": "Thumbnails" }
+    ],
+    "items": [
+      { "kind": "arrow", "t": 0, "until": 10, "from": "source", "to": "uploads", "style": "async", "label": "Upload clients", "id": 1, "type": "Upload clients" },
+      { "kind": "arrow", "t": 10, "until": 20, "from": "uploads", "to": "worker", "style": "async", "label": "Upload clients", "id": 1, "type": "Upload clients" },
+      { "kind": "gap", "t": 20, "ms": 250, "text": "250 ms at Thumbnail workers: processing", "node": "worker" },
+      { "kind": "arrow", "t": 270, "until": 280, "from": "worker", "to": "images", "style": "async", "label": "Upload clients", "id": 1, "type": "Upload clients" }
+    ],
+    "totalMs": 300,
+    "done": true,
+    "partial": false,
+    "truncated": false
+  },
+  "mermaidPlain": "---\ntitle: \"Upload clients #1 · 300 ms end to end\"\n---\nsequenceDiagram\n  participant source as Upload clients\n  participant uploads as Image uploads\n  participant worker as Thumbnail workers\n  participant images as Thumbnails\n  source-)uploads: Upload clients (+0.00 s)\n  uploads-)worker: Upload clients (+0.01 s)\n  Note over source,images: ⏱ 250 ms at Thumbnail workers: processing\n  worker-)images: Upload clients (+0.27 s)\n",
+  "svg": {
+    "light": { "sha256": "992d181f218710c307e0f848354556c6033de5b7a8d49811c31aa7ebfd63cbc1", "bytes": 6224, "width": 685, "height": 356, "headerHeight": 142 },
+    "dark": { "sha256": "2fa134f2a654b60dfaebb2ee51d518074016a3c5182d612cd8b30c668c70f175", "bytes": 6223, "width": 685, "height": 356, "headerHeight": 142 }
+  },
+  "slowMotion": {
+    "rootId": 1,
+    "type": "Upload clients",
+    "origin": "source",
+    "beats": [
+      {
+        "kind": "establish",
+        "msg": 1,
+        "type": "Upload clients",
+        "node": "source",
+        "anchor": { "edge": "publish", "end": 0 },
+        "start": 0,
+        "duration": 800,
+        "realFrom": 0,
+        "realTo": 0,
+        "caption": "Upload clients sends Upload clients",
+        "rowKey": "0",
+        "i": 0,
+        "color": "#e85d75",
+        "tone": "plain"
+      },
+      { "kind": "travel", "msg": 1, "type": "Upload clients", "edge": "publish", "reverse": false, "start": 800, "duration": 1000, "realFrom": 0, "realTo": 10, "caption": "Upload clients", "tone": "plain", "i": 1, "color": "#e85d75", "rowKey": "3" },
+      {
+        "kind": "append",
+        "msg": 1,
+        "type": "Upload clients",
+        "node": "uploads",
+        "anchor": { "edge": "publish", "end": 1 },
+        "start": 1800,
+        "duration": 450,
+        "realFrom": 10,
+        "realTo": 10,
+        "caption": "appended to Image uploads",
+        "i": 2,
+        "color": "#e85d75",
+        "tone": "plain"
+      },
+      { "kind": "travel", "msg": 1, "type": "Upload clients", "edge": "consume", "reverse": false, "start": 2250, "duration": 1000, "realFrom": 10, "realTo": 20, "caption": "Upload clients", "tone": "plain", "i": 3, "color": "#e85d75", "rowKey": "6" },
+      {
+        "kind": "process",
+        "msg": 1,
+        "type": "Upload clients",
+        "node": "worker",
+        "anchor": { "edge": "consume", "end": 1 },
+        "start": 3250,
+        "duration": 1311.0749561002053,
+        "realFrom": 20,
+        "realTo": 270,
+        "caption": "Thumbnail workers · processing · 250 ms",
+        "i": 4,
+        "color": "#e85d75",
+        "tone": "plain",
+        "short": "processing · 250 ms"
+      },
+      { "kind": "travel", "msg": 1, "type": "Upload clients", "edge": "save", "reverse": false, "start": 4561.074956100205, "duration": 1000, "realFrom": 270, "realTo": 280, "caption": "Upload clients", "tone": "plain", "i": 5, "color": "#e85d75", "rowKey": "10" },
+      {
+        "kind": "write",
+        "msg": 1,
+        "type": "Upload clients",
+        "node": "images",
+        "anchor": { "edge": "save", "end": 1 },
+        "start": 5561.074956100205,
+        "duration": 956.7939019774532,
+        "realFrom": 290,
+        "realTo": 300,
+        "caption": "Thumbnails · write Upload clients · 10 ms",
+        "sink": 300,
+        "i": 6,
+        "color": "#e85d75",
+        "tone": "plain",
+        "short": "write Upload clients · 10 ms"
+      },
+      { "kind": "end", "msg": 1, "type": "Upload clients", "node": "images", "start": 6517.868858077658, "duration": 1200, "realFrom": 300, "realTo": 300, "caption": "Done · 300 ms · 1 write", "tone": "done", "i": 7, "color": "#e85d75" }
+    ],
+    "duration": 7717.868858077658,
+    "realTotal": 300,
+    "stops": [0, 800, 2250, 4561, 6518],
+    "nodes": ["source", "uploads", "worker", "images"],
+    "edges": ["publish", "consume", "save"],
+    "hiddenCopies": 0,
+    "unfinished": false,
+    "summary": "Done · 300 ms · 1 write",
+    "reduced": false,
+    "rowStart": { "0": 0, "3": 800, "6": 2250, "10": 4561.074956100205 }
+  },
+  "slowMotionReduced": {
+    "duration": 12000,
+    "beats": [
+      ["establish", 0, 1500],
+      ["travel", 1500, 1500],
+      ["append", 3000, 1500],
+      ["travel", 4500, 1500],
+      ["process", 6000, 1500],
+      ["travel", 7500, 1500],
+      ["write", 9000, 1500],
+      ["end", 10500, 1500]
+    ]
+  }
+}

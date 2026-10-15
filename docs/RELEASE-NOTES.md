@@ -133,6 +133,20 @@ goldens match, with the eight previously documented browser deferrals.
   during dependency verification, without rewriting the lockfile. App output and parity goldens are unchanged.
 - Interactive HTML parity fits the settled viewer explicitly, avoiding a startup-framing race; its
   existing goldens remain unchanged.
+## Autoscaling A1 review preparation (2026-10-14)
+
+- Added **Image workers absorb a burst**, a public Kafka/HPA example with two saved simulations.
+  Workers start, backlog builds and drains within ten simulated seconds; selected Live details show
+  replica history. Short controller timings are explicit teaching assumptions.
+- Restored exact legacy capacity arithmetic: workers without resources retain their replica
+  recommendations, including exact rounding boundaries. draw.io round trips now preserve a v2
+  A1 diagram's planning revision so reopening an A1 export keeps resource execution enabled.
+- Parity changes are confined to A1's public/agent schemas, skill format/spec and the example-driven
+  stencil ranking, i18n catalogs with A1 messages, and the validator's six new input records.
+  New goldens cover the public showcase and five frozen A1 scenarios, including per-second replica
+  counts and explanations for bursts, the five-minute downscale window, maximum reached, idle replicas
+  beyond partitions and delayed startup. All existing simulation, check, export, import, layout,
+  browser and planning-upgrade goldens remain unchanged. The full accounting is in `docs/PARITY.md`.
 
 ## Public feature showcases (2026-10-14)
 
@@ -216,6 +230,7 @@ goldens match, with the eight previously documented browser deferrals.
 - Embed code uses the prepared deployment base on deep routes; nginx redirects stay relative behind HTTPS proxies.
 - Hosting-only Docker settings reuse the compiled app layer. Concurrent smoke checks own their containers
   and assigned ports, and clean up only their own container IDs, including after a failed start.
+
 ## Autoscaling A1: resources, replica lifecycle and HPA (2026-10-14)
 
 - Opt into resource costs and Kubernetes HPA with a lesson, target and replica range. CPU work and limits

@@ -22,6 +22,7 @@ const bySlug = Object.fromEntries(
 );
 
 const EXPECTED: Record<string, string[]> = {
+  "autoscaling-image-workers": [],
   "aks-app-config-key-vault": [],
   "aws-fanout": ["suggestion dead-letter:archive-q", "suggestion dead-letter:receipt-q", "suggestion no-reader:dlq"],
   "aws-serverless-orders": [],
@@ -57,7 +58,7 @@ const EXPECTED: Record<string, string[]> = {
 };
 
 describe("checks on the public examples", () => {
-  it("covers exactly the 23 public examples", () => {
+  it("covers every public example", () => {
     expect(Object.keys(bySlug).sort()).toEqual(Object.keys(EXPECTED).sort());
   });
 

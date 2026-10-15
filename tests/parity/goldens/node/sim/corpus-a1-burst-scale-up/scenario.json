@@ -1,0 +1,163 @@
+{
+  "run": {
+    "time": 48000,
+    "totalMs": 48000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "burst" },
+      { "atMs": 6000, "kind": "traffic", "label": "burst ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "replicas": [1, 1, 0] },
+        "uploads": { "lag": { "thumbnails": 0 }, "replicas": [1, 1, 0] },
+        "worker": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 288, "throughput": 0.8944938235012062, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 288,
+          "throughput": 0.8944938235012062,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "worker": { "processed": 288, "throughput": 12.300328461506847, "replicas": [5, 5, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 288, "throughput": 0.00004060995675993355, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 288,
+          "throughput": 0.00004060995675993355,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "worker": { "processed": 288, "throughput": 0.0005584340482079341, "replicas": [5, 5, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 288, "throughput": 1.8436891845586246e-9, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 288,
+          "throughput": 1.8436891845586246e-9,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "worker": { "processed": 288, "throughput": 2.5352866565621615e-8, "replicas": [5, 5, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 288, "throughput": 8.3703359482819e-14, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 288,
+          "throughput": 8.3703359482819e-14,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "worker": { "processed": 288, "throughput": 1.1510183613569319e-12, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 48000,
+    "inSystem": 0,
+    "real": {
+      "source": { "processed": 288, "throughput": 2.807934893637634e-17, "replicas": [1, 1, 0] },
+      "uploads": {
+        "processed": 288,
+        "throughput": 2.807934893637634e-17,
+        "lag": { "thumbnails": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "worker": { "processed": 288, "throughput": 3.8612364426485597e-16, "replicas": [1, 1, 0] }
+    },
+    "edges": { "publish": 288, "consume": 288 }
+  },
+  "events": {
+    "total": 1728,
+    "byKind": { "inject": 288, "process": 864, "deliver": 576 },
+    "byNode": {
+      "source": { "inject": 288, "process": 288 },
+      "uploads": { "deliver": 288, "process": 288 },
+      "worker": { "deliver": 288, "process": 288 }
+    },
+    "perSecond": [
+      "acb6da85d52f",
+      "95cea373f939",
+      "27026f3c98e6",
+      "c1a5dee16b5d",
+      "7f21df954354",
+      "27be80d658c6",
+      "7d904b178754",
+      "f0c16872d61f",
+      "81a9258cafee",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 288, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 288, "min": 270, "mean": 2468.125, "p50": 2650, "p90": 3040, "max": 3220 },
+    "waitMs": { "worker": { "count": 288, "min": 0, "mean": 46.5625, "p50": 30, "p90": 150, "max": 200 } },
+    "processMs": { "worker": { "count": 288, "min": 250, "mean": 250, "p50": 250, "p90": 250, "max": 250 } }
+  }
+}

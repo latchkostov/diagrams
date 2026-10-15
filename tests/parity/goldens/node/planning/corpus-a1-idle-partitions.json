@@ -1,0 +1,344 @@
+{
+  "autoScale": { "freePlay": 1, "scenario": 1 },
+  "brokerAssignments": {
+    "brokers": {
+      "uploads": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+    },
+    "consumers": {
+      "worker": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      }
+    }
+  },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "worker",
+      "suggestion": "6 partitions: Partitions → 8",
+      "converged": true,
+      "iterations": 3,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": {
+        "source": ["Infinity", 4, 0, 1, 1, 0],
+        "uploads": [48, 4, 0.08333333333333333, 1, 1, 0],
+        "worker": [
+          48,
+          4,
+          0.08333333333333333,
+          8,
+          3,
+          5,
+          {
+            "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+          }
+        ]
+      },
+      "connections": { "publish": 4, "consume": 4 },
+      "offeredTypes": { "source": ["Upload clients"], "uploads": ["Upload clients"], "worker": ["Upload clients"] }
+    },
+    "explanations": {
+      "worker": {
+        "resources": { "perReplica": 16, "initial": 8, "min": 8, "max": 10, "initialCapacity": 48, "maxCapacity": 160, "targetReplicas": 8, "cpuRequestPct": 10.666666666666668, "memoryPeakMiB": 136, "memoryRisk": false, "baselineAboveTarget": false, "partitionLimited": true, "startupMs": 2000, "cpuUnbounded": false },
+        "id": "worker",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 48,
+        "offered": 4,
+        "replicas": 8,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 3,
+        "assignments": [
+          {
+            "broker": "uploads",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": 0.08333333333333333,
+        "growth": 0,
+        "contributors": [{ "edge": "consume", "node": "uploads", "label": "Image uploads", "rate": 4 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "source": [{ "kind": "publishes", "edge": "publish", "peer": "uploads" }],
+      "worker": [
+        {
+          "kind": "consumes",
+          "edge": "consume",
+          "peer": "uploads",
+          "group": "thumbnails",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ]
+    },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "source": {
+        "profile": { "family": "client", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "ratePerSec": 4,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Upload clients",
+        "healthChecks": false
+      },
+      "uploads": {
+        "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+        "profile": { "family": "log", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Image uploads",
+        "healthChecks": false
+      },
+      "worker": {
+        "resources": {
+          "preset": "io-service",
+          "presetRevision": "1",
+          "cpuMsPerMessage": 40,
+          "baselineMemoryMiB": 128,
+          "memoryMiBPerMessage": 2,
+          "cpuRequestMilli": 500,
+          "cpuLimitMilli": 1000,
+          "memoryRequestMiB": 256,
+          "memoryLimitMiB": 512,
+          "startup": { "delayMs": 2000, "jitterFraction": 0 },
+          "terminationGraceMs": 30000
+        },
+        "autoscaling": {
+          "mode": "on",
+          "modelRevision": "a1",
+          "preset": "hpa-service",
+          "presetRevision": "1",
+          "controller": {
+            "kind": "hpa",
+            "minReplicas": 8,
+            "maxReplicas": 10,
+            "initialReplicas": 8,
+            "settings": {
+              "syncMs": 1000,
+              "tolerance": 0.1,
+              "initialReadinessDelayMs": 0,
+              "cpuInitializationPeriodMs": 0,
+              "metrics": [
+                {
+                  "source": { "kind": "resource", "resource": "cpu" },
+                  "target": { "kind": "utilization", "percentOfRequest": 70 },
+                  "windowMs": 1000,
+                  "metricDelayMs": 0
+                }
+              ],
+              "up": {
+                "stabilizationMs": 0,
+                "selectPolicy": "Max",
+                "policies": [
+                  { "type": "Pods", "value": 4, "periodMs": 15000 },
+                  { "type": "Percent", "value": 100, "periodMs": 15000 }
+                ]
+              },
+              "down": {
+                "stabilizationMs": 30000,
+                "selectPolicy": "Max",
+                "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+              }
+            }
+          }
+        },
+        "profile": { "family": "service", "revision": "p3-a1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Thumbnail workers",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "scenario": {
+      "configured": "(same as edit)",
+      "simulation": "scenario",
+      "analysis": {
+        "bottleneck": "worker",
+        "suggestion": "6 partitions: Partitions → 8",
+        "converged": true,
+        "iterations": 3,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": {
+          "source": ["Infinity", 48, 0, 1, 1, 0],
+          "uploads": [48, 48, 1, 1, 1, 0],
+          "worker": [
+            48,
+            48,
+            1,
+            8,
+            3,
+            5,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ]
+        },
+        "connections": { "publish": 48, "consume": 48 },
+        "offeredTypes": { "source": ["ImageUploaded"], "uploads": ["ImageUploaded"], "worker": ["ImageUploaded"] }
+      },
+      "explanations": {
+        "worker": {
+          "resources": { "perReplica": 16, "initial": 8, "min": 8, "max": 10, "initialCapacity": 48, "maxCapacity": 160, "targetReplicas": 8, "cpuRequestPct": 128, "memoryPeakMiB": 136, "memoryRisk": false, "baselineAboveTarget": false, "partitionLimited": true, "startupMs": 2000, "cpuUnbounded": false },
+          "id": "worker",
+          "role": "processor",
+          "status": "up",
+          "reason": "capacity",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 48,
+          "offered": 48,
+          "replicas": 8,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 3,
+          "assignments": [
+            {
+              "broker": "uploads",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 3
+            }
+          ],
+          "slots": 4,
+          "seconds": 0.25,
+          "utilization": 1,
+          "growth": 0,
+          "contributors": [{ "edge": "consume", "node": "uploads", "label": "Image uploads", "rate": 48 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": { "uploads": { "replicas": 2, "enough": false }, "worker": { "replicas": 2, "enough": false } },
+      "resolved": "(same as edit)"
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "ok",
+          "top": "worker",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Thumbnail workers at 8% · 4/s of 48/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "4/s · no limit", { "modeled": false }],
+            "uploads": ["ok", "8% · 4/s of 48/s"],
+            "worker": ["ok", "8% · 4/s of 48/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "ok",
+          "top": "worker",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Thumbnail workers at 42% · 20/s of 48/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "20/s · no limit", { "modeled": false }],
+            "uploads": ["ok", "42% · 20/s of 48/s"],
+            "worker": ["ok", "42% · 20/s of 48/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "ok",
+          "top": "worker",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Thumbnail workers at 8% · 4/s of 48/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "4/s · no limit", { "modeled": false }],
+            "uploads": ["ok", "8% · 4/s of 48/s"],
+            "worker": ["ok", "8% · 4/s of 48/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": { "uploads": { "partitions": 6 } }, "rates": {} },
+        "view": {
+          "tone": "ok",
+          "top": "worker",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Thumbnail workers at 4% · 4/s of 96/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "4/s · no limit", { "modeled": false }],
+            "uploads": ["ok", "4% · 4/s of 96/s"],
+            "worker": ["ok", "4% · 4/s of 96/s"]
+          }
+        },
+        "partitionsNotes": { "uploads": "All configured reader instances already have an assignment." }
+      }
+    },
+    "scenario": {
+      "tone": "hot",
+      "top": "worker",
+      "headline": "Thumbnail workers: 5 of 8 replicas idle",
+      "detail": "Assigned instances: 3 / 8 · Partitions. 100% · 48/s of 48/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "source": ["idle", "48/s · no limit", { "modeled": false }],
+        "uploads": ["hot", "100% · 48/s of 48/s"],
+        "worker": ["hot", "100% · 48/s of 48/s"]
+      }
+    }
+  }
+}

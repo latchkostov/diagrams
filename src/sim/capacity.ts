@@ -85,7 +85,10 @@ const serviceRate = (entry: Entry, replicas = entry.active, endpointId?: string)
     return slots === 0 ? 0 : time ? (slots * 1000) / time : Infinity;
   }
   if (entry.role === "processor") {
-    return replicas * resourceCapacity(entry.props.resources, entry.props.concurrency, entry.props.latencyMs);
+    if (entry.props.resources)
+      return replicas * resourceCapacity(entry.props.resources, entry.props.concurrency, entry.props.latencyMs);
+    const slots = replicas * entry.props.concurrency;
+    return !slots ? 0 : entry.props.latencyMs ? (slots * 1000) / entry.props.latencyMs : Infinity;
   }
   // A network device's ceiling: per unit, times the units carrying traffic (one in an active-standby pair).
   const device = entry.role === "gateway" ? entry.props.device : undefined;

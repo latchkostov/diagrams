@@ -62,6 +62,14 @@ search and collapse controls. No global control was added.
 Production browser checks verify stencil-control separation, shared and overflow navigation, English
 and Arabic accessible names, and the gallery's existing theme, narrow-layout and axe checks. The
 designer review itself was a source review, not a browser or screen-reader walkthrough.
+## A1 rebase and showcase review (2026-10-14)
+
+Scoped designer source review accepted the autoscaling showcase and preserved four-field disclosure,
+selected-only history and the existing chrome budget. The streaming pipeline teaches startup/backlog
+at 1 s and points to replica history at 7 s without pausing playback; its shortened controller timings
+are disclosed as teaching assumptions. No global controls or blocking source concerns were found.
+Production e2e and parity separately verify the observed ten-second story; this source review does not
+replace visual or screen-reader verification.
 
 ## Self-hosting review fixes (2026-10-14)
 
@@ -70,6 +78,7 @@ directory on deep fallback routes. Proxy redirects preserve the public path. No 
 focus targets were added; existing primary actions and chrome budgets remain intact. Hosting documentation
 explains native Pages fallback and its asset precedence. This was a source review; production browser
 regressions are verified separately.
+
 ## Round 39 — Autoscaling A1 (2026-10-14)
 
 Designer review covered the synthetic Lab HPA service in light mode, dark German and dark Arabic at

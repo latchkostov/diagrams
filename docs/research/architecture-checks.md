@@ -1254,3 +1254,14 @@ the HPA maximum. CPU execution capacity uses the same arithmetic in checks, conf
 The maximum estimate explicitly precedes partition/admission constraints; it is not a burst guarantee.
 Fixed-replica sizing never edits an HPA node, and managed/serverless profiles retain their P3 allocation owner.
 No new architecture rule or severity was introduced.
+
+### A1 showcase precision check
+
+The eighteenth public example, **Image workers absorb a burst**, is an invented upload pipeline:
+clients publish to six Kafka partitions, HPA starts thumbnail workers, and completed images reach S3.
+At its saved free-play rate (4/s), `runChecks` reports **no findings**: target demand fits the maximum,
+memory stays within the configured limit, every topic has a reader, and no failed-delivery route is needed
+without a failure policy. Both saved bursts finish all 192 uploads with no unexpected losses; transient
+startup backlog is intentional and is not a static capacity warning. The example tests pin the empty
+finding list and simulation evidence, and production e2e checks startup and drainage within ten simulated
+seconds. The six previously reviewed P2 upgrade differences and all earlier example findings are unchanged.

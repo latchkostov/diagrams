@@ -1,0 +1,21 @@
+{
+  "ran": [
+    "dead-letter",
+    "no-reader",
+    "sync-cycle",
+    "sync-chain",
+    "shared-database",
+    "entry-gateway",
+    "capacity",
+    "single-point",
+    "secret-identity",
+    "schema-registry"
+  ],
+  "off": [],
+  "findings": [
+    { "id": "capacity:uploads", "rule": "capacity", "severity": "warning", "target": "uploads", "elements": ["uploads"] },
+    { "id": "capacity:worker", "rule": "capacity", "severity": "warning", "target": "worker", "elements": ["worker"] }
+  ],
+  "ignored": [],
+  "fixes": {}
+}

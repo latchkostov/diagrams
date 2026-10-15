@@ -1,5 +1,6 @@
 exit 1
 VALID <repo>/src/examples/aks-app-config-key-vault.json: 11 nodes, 10 edges, 2 boundaries, 2 simulations
+VALID <repo>/src/examples/autoscaling-image-workers.json: 4 nodes, 3 edges, 2 simulations
 VALID <repo>/src/examples/aws-fanout.json: 16 nodes, 15 edges, 1 boundary, 2 simulations
 VALID <repo>/src/examples/aws-serverless-orders.json: 16 nodes, 17 edges, 1 boundary, 2 simulations
 VALID <repo>/src/examples/azure-service-bus-integration.json: 14 nodes, 14 edges, 1 boundary, 2 simulations
@@ -18,6 +19,11 @@ VALID <repo>/src/examples/notification-fanout.json: 15 nodes, 15 edges, 1 bounda
 VALID <repo>/src/examples/outbox-saga-checkout.json: 18 nodes, 20 edges, 1 boundary, 2 simulations
 VALID <repo>/src/examples/rag-assistant.json: 13 nodes, 14 edges, 2 simulations
 VALID <repo>/src/examples/webhook-ingestion.json: 13 nodes, 13 edges, 1 boundary, 2 simulations
+VALID <repo>/tests/parity/corpus/a1-burst-scale-up.diagram.json: 3 nodes, 2 edges, 1 simulation
+VALID <repo>/tests/parity/corpus/a1-downscale-stabilization.diagram.json: 3 nodes, 2 edges, 1 simulation
+VALID <repo>/tests/parity/corpus/a1-idle-partitions.diagram.json: 3 nodes, 2 edges, 1 simulation
+VALID <repo>/tests/parity/corpus/a1-max-reached.diagram.json: 3 nodes, 2 edges, 1 simulation
+VALID <repo>/tests/parity/corpus/a1-startup-backlog.diagram.json: 3 nodes, 2 edges, 1 simulation
 VALID <repo>/tests/parity/corpus/annotation-course.diagram.json: 6 nodes, 4 edges
 VALID <repo>/tests/parity/corpus/back-edges.diagram.json: 6 nodes, 8 edges
   warning: edges[7] "self": it connects "retry" to itself.

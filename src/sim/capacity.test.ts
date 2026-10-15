@@ -35,6 +35,17 @@ const traffic = (rates: Record<string, number>, patch: Partial<Simulation> = {})
 });
 
 describe("capacity routing regressions", () => {
+  it("preserves legacy arithmetic at an exact replica recommendation boundary", () => {
+    const d = diagram(
+      [node("source", "client.browser"), node("worker", undefined, { replicas: 3, concurrency: 1, latencyMs: 180 })],
+      [edge("source", "worker")],
+    );
+    const result = analyzeCapacity(d, traffic({ source: 200 }));
+    expect(result.nodes.worker.capacity).toBe(3000 / 180);
+    expect(result.nodes.worker.utilization).toBe(12);
+    expect(result.suggestion).toBe("worker: raise replicas from 3 to 36.");
+  });
+
   it.each(["generic.queue", "kafka.topic", "azure.event-hubs"])(
     "%s excludes incompatible consumers and preserves blocked demand",
     (stencil) => {

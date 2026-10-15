@@ -212,3 +212,30 @@ test("A1: a large selected fleet has accessible pagination and stable decision a
   await waitForStableViewport(page);
   await page.screenshot({ path: info.outputPath("a1-pagination-dark.png") });
 });
+
+test("A1: public Kafka showcase starts workers and drains its burst within ten simulated seconds", async ({
+  page,
+  consoleErrors,
+}) => {
+  await page.clock.install();
+  await gotoLive(page, "./?view=canvas&example=autoscaling-image-workers&live=1&sim=upload-burst&paused=1");
+  await pauseClock(page);
+  await page.getByTestId("live-play").click();
+  await page.clock.runFor(2000);
+  const worker = page.getByTestId("node-badge-worker");
+  const topic = page.getByTestId("node-badge-uploads");
+  await expect(worker).toHaveAttribute("data-ready", "1");
+  await expect(worker).toHaveAttribute("data-starting", "1");
+  await expect.poll(async () => Number(await topic.getAttribute("data-backlog"))).toBeGreaterThan(0);
+  await page.clock.runFor(4000);
+  await expect.poll(async () => Number(await worker.getAttribute("data-ready"))).toBeGreaterThan(1);
+  await page.clock.runFor(4000);
+  await expect(topic).toHaveAttribute("data-backlog", "0");
+  await expect(worker).toHaveAttribute("data-backlog", "0");
+  await page.getByTestId("node-worker").dblclick();
+  await page.getByTestId("planning-live-details-toggle").click();
+  await expect(page.getByTestId("autoscaling-chart")).toBeVisible();
+  await expect(page.getByTestId("autoscaling-history-summary")).toContainText("Peak replicas");
+  await expect(page.getByTestId("autoscaling-counts")).toContainText("Ready: 5");
+  expectNoErrors(consoleErrors);
+});

@@ -52,6 +52,11 @@ const publicExamples: PublicExample[] = (
       featured: true,
     },
     {
+      slug: "autoscaling-image-workers",
+      theme: "streaming",
+      summary: "HPA startup, buffered uploads and replica history",
+    },
+    {
       slug: "cqrs-event-sourcing",
       theme: "streaming",
       summary: "Event store, projections, rebuildable read models",
