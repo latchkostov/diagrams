@@ -82,6 +82,7 @@
     "journeys": { "done": 120, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
     "endToEndMs": { "count": 120, "min": 1450, "mean": 1514.5833333333333, "p50": 1520, "p90": 1550, "max": 1560 },
     "waitMs": {
+      "sql": { "count": 120, "min": 0, "mean": 0.08333333333333333, "p50": 0, "p90": 0, "max": 10 },
       "debezium": { "count": 120, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
       "processor": { "count": 120, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
       "search": { "count": 120, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },

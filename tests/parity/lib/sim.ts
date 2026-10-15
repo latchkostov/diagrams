@@ -34,7 +34,8 @@ function counters(node: NodeSimState): Record<string, unknown> {
     "throughput",
   ] as const) {
     const value = node[key];
-    if (value) out[key] = value;
+    // Zero and absent are left out; anything else is kept, NaN included (it must not read as zero).
+    if (value !== 0 && value !== undefined) out[key] = value;
   }
   if (Object.keys(node.lag).length) out.lag = { ...node.lag };
   if (node.noConsumer) out.noConsumer = true;
@@ -119,7 +120,8 @@ class Latencies {
     const started = new Map<string, number>();
     for (const step of trace.steps) {
       const key = `${step.id}@${step.node}`;
-      if (step.kind === "arrive") arrived.set(key, step.t);
+      // A message waits from when it arrives, or, at its origin, from when it's created there.
+      if (step.kind === "arrive" || step.kind === "emit") arrived.set(key, step.t);
       else if (step.kind === "start" && step.node) {
         started.set(key, step.t);
         const at = arrived.get(key);

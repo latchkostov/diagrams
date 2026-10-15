@@ -165,7 +165,7 @@
       "balances-db": { "count": 254, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
       "statements": { "count": 193, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
       "balance-proj": { "count": 68, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
-      "statement-proj": { "count": 68, "min": 0, "mean": 433.8235294117647, "p50": 10, "p90": 2870, "max": 2950 },
+      "statement-proj": { "count": 193, "min": 0, "mean": 947.6683937823834, "p50": 600, "p90": 2940, "max": 4480 },
       "fraud": { "count": 68, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
     },
     "processMs": {

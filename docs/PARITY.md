@@ -72,8 +72,8 @@ default change below, since every public example sets its latencies.
   (`routeInputFromStore`: notes and shapes are obstacles, shapes take edges).
 - **Languages** (`node/i18n/`): in every language and the pseudo-locale: a dozen messages through the real runtime
   (plain, plurals at 0, 1, 2, 5, 21 and 1000, selects, numbers, a rich message rendered to HTML) and the number,
-  percent, rate, duration, list, byte and date formatters; and every message of every catalog, rendered with sample
-  values, as one hash per language and area, with the count that falls back to English.
+  percent, rate, duration, list, byte and date formatters; and every message of every catalog, each select option and
+  plural category rendered with sample values, as one hash per language and area, with the count that falls back to English.
 - **Canvas** (`browser/render/`, `browser/layout/`): every example opened on the production build: each node's box
   (position and measured size) and text, each edge's path, each label's placement and the fitted view; then after
   Auto-layout, and after Tidy up of everything.

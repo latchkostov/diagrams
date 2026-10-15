@@ -102,9 +102,31 @@ function samples(parts: Part[], out: Record<string, unknown> = {}): Record<strin
 
 const flat = (value: unknown): string => (Array.isArray(value) ? value.map(flat).join("") : String(value));
 
+/** Plural values that reach every category some language uses (zero, one, two, few, many, other) and the = forms. */
+const COUNTS = [0, 1, 2, 3, 5, 11, 21, 22, 101, 1000, 1.5];
+
+/**
+ * Value sets that reach every branch: the sample values, then each select option and each count in turn for one
+ * argument at a time (nested branches included, since every argument is found wherever it is).
+ */
+function variants(parts: Part[]): Record<string, unknown>[] {
+  const base = samples(parts);
+  const out = [base];
+  const visit = (list: Part[]) => {
+    for (const p of list) {
+      if (p.type === "select") for (const option of Object.keys(p.options)) out.push({ ...base, [p.name]: option });
+      if (p.type === "plural") for (const n of COUNTS) out.push({ ...base, [p.name]: n });
+      if (p.type === "plural" || p.type === "select") for (const branch of Object.values(p.options)) visit(branch);
+      if (p.type === "tag") visit(p.children);
+    }
+  };
+  visit(parts);
+  return out;
+}
+
 /**
  * Every message of every language, as the runtime looks it up (by English text for plain messages, by position in
- * the sorted English keys otherwise: scripts/i18n-plugin.ts) and renders it with sample values. Recorded as one hash
+ * the sorted English keys otherwise: scripts/i18n-plugin.ts) and renders every branch of it with sample values. Recorded as one hash
  * per language and area (the key's prefix) so a changed message names its language and area, and as counts of the
  * messages that fall back to English.
  */
@@ -123,7 +145,14 @@ it("every message in every language", async () => {
         : undefined;
       const entry = catalog[i] ?? (english !== undefined ? catalog[english] : undefined);
       if (entry === undefined) fallback++;
-      const text = entry === undefined ? "(English)" : typeof entry === "string" ? entry : flat(entry(samples(parts)));
+      const text =
+        entry === undefined
+          ? "(English)"
+          : typeof entry === "string"
+            ? entry
+            : variants(parts)
+                .map((values) => flat(entry(values)))
+                .join("");
       const area = key.slice(0, key.indexOf("."));
       const list = areas.get(area) ?? [];
       list.push(`${key}\u0000${text}`);

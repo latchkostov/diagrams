@@ -225,6 +225,7 @@
     "journeys": { "done": 189, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
     "endToEndMs": { "count": 189, "min": 3660, "mean": 5689.73544973545, "p50": 4680, "p90": 8600, "max": 9910 },
     "waitMs": {
+      "accounts-db": { "count": 20, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
       "segment-cache": { "count": 75, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
       "webhook-receiver": { "count": 94, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
       "checkout": { "count": 75, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },

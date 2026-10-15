@@ -215,6 +215,7 @@
     "journeys": { "done": 30, "retried": 30, "deadLettered": 30, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
     "endToEndMs": { "count": 30, "min": 3510, "mean": 3590.3333333333335, "p50": 3590, "p90": 3660, "max": 3680 },
     "waitMs": {
+      "ingest": { "count": 30, "min": 0, "mean": 0.3333333333333333, "p50": 0, "p90": 0, "max": 10 },
       "workflow": { "count": 30, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
       "worker": { "count": 30, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
       "blob": { "count": 30, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }

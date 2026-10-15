@@ -115,7 +115,8 @@
     "journeys": { "done": 294, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
     "endToEndMs": { "count": 294, "min": 540, "mean": 2595.816326530612, "p50": 2340, "p90": 4680, "max": 5910 },
     "waitMs": {
-      "airbyte": { "count": 174, "min": 0, "mean": 1401.3218390804598, "p50": 1360, "p90": 2540, "max": 3310 }
+      "airbyte": { "count": 174, "min": 0, "mean": 1401.3218390804598, "p50": 1360, "p90": 2540, "max": 3310 },
+      "dbt": { "count": 120, "min": 0, "mean": 2617.5833333333335, "p50": 2640, "p90": 4890, "max": 5360 }
     },
     "processMs": {
       "airbyte": { "count": 174, "min": 210, "mean": 259.5977011494253, "p50": 260, "p90": 300, "max": 300 },
