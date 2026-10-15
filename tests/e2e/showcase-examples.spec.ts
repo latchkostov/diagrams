@@ -1,6 +1,4 @@
-import { mkdirSync } from "node:fs";
-import { join } from "node:path";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { test, expect, gotoCanvas, gotoLive, pauseClock, waitForStableViewport, expectNoErrors } from "./fixtures";
 
 const showcases = [
@@ -16,6 +14,20 @@ async function positive(page: Page, node: string, field: string) {
   const badge = page.getByTestId(`node-badge-${node}`);
   await expect(badge).toBeVisible();
   await expect.poll(async () => Number(await badge.getAttribute(`data-${field}`))).toBeGreaterThan(0);
+}
+
+async function expectExposed(control: Locator) {
+  await expect(control).toBeInViewport({ ratio: 1 });
+  await expect
+    .poll(() =>
+      control.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return [0.2, 0.5, 0.8].every((x) =>
+          [0.2, 0.5, 0.8].every((y) => el.contains(document.elementFromPoint(r.x + r.width * x, r.y + r.height * y))),
+        );
+      }),
+    )
+    .toBe(true);
 }
 
 // Read the actual rendered node and label boxes; only data-testid selectors.
@@ -121,10 +133,8 @@ for (const theme of ["light", "dark"] as const)
           if (showcase.slug === "shared-worker-pool") await positive(page, "refund-log", "backlog");
           expect(await overlaps(page)).toEqual([]);
           const filename = `${showcase.slug}-${theme}-${viewport.width}.png`;
-          const folder = join(process.cwd(), "docs/research/showcase-examples");
-          mkdirSync(folder, { recursive: true });
           await page.mouse.move(0, 0);
-          const body = await page.screenshot({ path: join(folder, filename) });
+          const body = await page.screenshot({ path: info.outputPath(filename) });
           await info.attach(filename, { body, contentType: "image/png" });
           if (viewport.width === 390) {
             // Exercise the controls after capturing the normal opening state: Inputs enables the heat map.
@@ -164,5 +174,73 @@ test.describe("mobile title card", () => {
       expect(bounds.x, id).toBeGreaterThanOrEqual(-0.5);
       expect(bounds.x + bounds.width, id).toBeLessThanOrEqual(390.5);
     }
+  });
+});
+
+test.describe("phone live panels", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("Inputs stays visible and editable above playback", async ({ page }, info) => {
+    await page.clock.install();
+    await gotoLive(page, "./?view=canvas&example=partitions-vs-subscriptions&live=1&sim=compare");
+    await expect(page.getByTestId("live-note")).toBeVisible();
+    await pauseClock(page);
+    await page.getByTestId("live-capacity").click();
+    const panel = page.getByTestId("capacity-panel");
+    await expect(panel).toBeInViewport({ ratio: 1 });
+    await expectExposed(page.getByTestId("capacity-heading"));
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("live-events-toggle").click();
+    await expect(page.getByTestId("live-events")).toBeVisible();
+    await expectExposed(panel);
+    await expect
+      .poll(async () => {
+        const bounds = await panel.boundingBox();
+        const bar = await page.getByTestId("live-controls").boundingBox();
+        return !!bounds && !!bar && bounds.y + bounds.height <= bar.y;
+      })
+      .toBe(true);
+    const input = page.getByTestId("capacity-traffic-mult");
+    await expectExposed(input);
+    await input.focus();
+    await input.press("End");
+    await expect(input).toHaveAttribute("data-value", "10");
+    await expect(page.getByTestId("capacity-traffic-mult-value")).toHaveText("10×");
+    await expect(page.getByTestId("capacity-dirty")).toBeVisible();
+    await page.screenshot({ path: info.outputPath("phone-inputs-narration-log.png") });
+    await page.getByTestId("capacity-close").click();
+    await expect(panel).toHaveCount(0);
+    await expectExposed(page.getByTestId("diagram-card"));
+  });
+
+  test("More stays exposed with Inputs open", async ({ page }, info) => {
+    await gotoLive(page, "./?view=canvas&example=partitions-vs-subscriptions&live=1");
+    await page.getByTestId("live-capacity").click();
+    await expect(page.getByTestId("capacity-panel")).toBeInViewport({ ratio: 1 });
+    await page.getByTestId("live-more").click();
+    await expectExposed(page.getByTestId("live-more-menu"));
+    await expectExposed(page.getByTestId("live-traffic"));
+    await page.getByTestId("live-traffic").click();
+    await expect(page.getByTestId("live-traffic")).toHaveAttribute("aria-checked", "false");
+    await page.getByTestId("live-traffic").focus();
+    await page.getByTestId("live-traffic").press("Space");
+    await expect(page.getByTestId("live-traffic")).toHaveAttribute("aria-checked", "true");
+    await page.screenshot({ path: info.outputPath("phone-inputs-more.png") });
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("capacity-close").click();
+  });
+
+  test("expectations stay exposed with Inputs open", async ({ page }, info) => {
+    await gotoLive(page, "./?view=canvas&example=partitions-vs-subscriptions&live=1&sim=compare");
+    await page.getByTestId("live-capacity").click();
+    await expect(page.getByTestId("capacity-panel")).toBeInViewport({ ratio: 1 });
+    await page.getByTestId("live-expectations-summary").click();
+    await expectExposed(page.getByTestId("live-expectations-list"));
+    await page.screenshot({ path: info.outputPath("phone-inputs-expectations.png") });
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("live-expectations-list")).toHaveCount(0);
+    await expect(page.getByTestId("live-expectations-summary")).toBeFocused();
+    await expect(page.getByTestId("capacity-panel")).toBeVisible();
+    await page.getByTestId("capacity-close").click();
   });
 });

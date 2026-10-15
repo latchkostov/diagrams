@@ -43,6 +43,45 @@ async function download(page: Page): Promise<{ download: Download; path: string;
 }
 
 test.describe("Interactive HTML export", () => {
+  test("phone playback stays inside the viewer canvas above its wrapped footer", async ({ page, context }, info) => {
+    await gotoCanvas(page, KAFKA);
+    await openHtmlExport(page);
+    await page.getByTestId("html-export-options-toggle").click();
+    await page.getByTestId("html-export-banner").fill(BANNER);
+    const { path } = await download(page);
+    const viewer = await watchedPage(context);
+    await viewer.page.setViewportSize({ width: 390, height: 844 });
+    await viewer.page.goto(pathToFileURL(path).href);
+    const controls = viewer.page.getByTestId("live-controls");
+    await expect(controls).toBeVisible();
+    await expect(viewer.page.getByTestId("viewer-banner")).toHaveText(BANNER);
+    await expect(viewer.page.getByTestId("viewer-footer")).toContainText("Read-only");
+    await expect
+      .poll(async () => {
+        const bar = await controls.boundingBox();
+        const canvas = await viewer.page.getByTestId("viewer-canvas").boundingBox();
+        const footer = await viewer.page.getByTestId("viewer-footer").boundingBox();
+        return (
+          !!bar &&
+          !!canvas &&
+          !!footer &&
+          bar.x >= canvas.x &&
+          bar.y >= canvas.y &&
+          bar.x + bar.width <= canvas.x + canvas.width &&
+          bar.y + bar.height <= canvas.y + canvas.height &&
+          bar.y + bar.height <= footer.y
+        );
+      })
+      .toBe(true);
+    await viewer.page.getByTestId("live-play").click();
+    await expect(viewer.page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
+    await viewer.page.getByTestId("live-play").click();
+    await expect(viewer.page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+    await viewer.page.screenshot({ path: info.outputPath("phone-viewer-playback.png") });
+    expect(viewer.errors).toEqual([]);
+    await viewer.page.close();
+  });
+
   for (const theme of ["light", "dark"] as const) {
     test(`custom background tint survives presentation and offline HTML export in ${theme}`, async ({
       page,

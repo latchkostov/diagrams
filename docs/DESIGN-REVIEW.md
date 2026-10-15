@@ -4037,3 +4037,20 @@ screen-reader output or interactive zoom; dense overview diagrams still need zoo
 Eight new browser parity cases are deferred with TODOs for test/parity-browser-stable; their Node
 coverage remains. Existing goldens are unchanged. [Inventory, rejected approaches, verification,
 exact deferrals and added-golden manifest](research/showcase-examples.md).
+
+### PR #120 review follow-up (2026-10-15)
+
+**Scoped UX gate passed.** The designer agent reviewed source and four fresh production captures at
+390×844. Inputs' heading, editable controls and actions are unobscured; More and expectations open
+above the panel. Narration and event cards stay beneath Inputs. The diagram title yields while the
+full-width phone panel is open and returns on close. Viewer playback stays inside its canvas above
+the wrapped read-only footer. No chrome was added.
+
+The review caught the initial whole-HUD lift putting narration/log cards over Inputs, and the title
+chip still covering its heading. Direct heading and panel exposure assertions now guard those
+cases, alongside a real traffic edit, close, title restoration, popover pointer/keyboard use and
+Escape focus restoration. The regression failed with the earlier layering rules. All regression
+captures stay in ignored `tests/.output`; the curated Round 41 images above remain unchanged.
+
+This was a scoped source/screenshot review, not an independent physical-touch, screen-reader or
+whole-app walkthrough. The eight precise browser parity deferrals remain recorded in `PARITY.md`.

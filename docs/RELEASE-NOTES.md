@@ -1,5 +1,16 @@
 # Release notes
 
+## Showcase review fixes (2026-10-15)
+
+- Phone Live menus and expectation summaries remain visible and usable with Inputs open. Inputs stays
+  above playback and supports changing traffic and closing the panel at 390×844.
+- Viewport-wide phone controls belong to the app shell; Interactive HTML playback stays inside its
+  canvas above the export date and read-only footer. Refreshed the offline skill viewer for this fix.
+- Regression screenshots now go to ignored `tests/.output` paths. Only the curated Round 41 captures
+  remain in the showcase documentation; routine tests never refresh them.
+- Recorded the exact eight temporary browser parity deferrals in `docs/PARITY.md`, to restore after
+  `test/parity-browser-stable` lands. All 1,634 parity goldens match; these review fixes change none.
+
 ## Nightly reliability (#114, 2026-10-15)
 
 - Dev tests wait for lazy tools, live sessions, file messages and export templates, intercept the dev image module as well
@@ -19,6 +30,7 @@
   during dependency verification, without rewriting the lockfile. App output and parity goldens are unchanged.
 - Interactive HTML parity fits the settled viewer explicitly, avoiding a startup-framing race; its
   existing goldens remain unchanged.
+
 ## Public feature showcases (2026-10-14)
 
 - Six new examples: **Partitions versus subscriptions**, **Shared API and token quotas**,
@@ -40,7 +52,7 @@
 - Deferred eight new browser measurements pending `test/parity-browser-stable`: Contoso and quota
   initial renders, plus auto-layout/tidy for all six. Their Node goldens and production Live tests
   remain enabled. No existing browser case is excluded.
-- Refreshed the stale offline skill viewer; plugin 1.1.19 is one patch above master.
+- Refreshed the stale offline skill viewer; plugin 1.1.20 is one patch above master.
 
 ## Self-hosting review fixes (2026-10-14)
 

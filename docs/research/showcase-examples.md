@@ -43,6 +43,62 @@ payment account preset. None of these examples calls a real API.
 Verification and the complete added-golden manifest are recorded below; screenshots and the UX review
 are in [Round 41](../DESIGN-REVIEW.md#round-41--public-feature-showcases-2026-10-14).
 
+## PR #120 review triage — 2026-10-15
+
+The eight findings in `.reviews/20261015-071645/REPORT.md` were verified after rebasing onto
+`origin/master` with the Node 24 / pnpm 12 / TypeScript 7 toolchain. Both sides of documentation
+conflicts were retained; the lockfile and e2e timings came from master.
+
+| Finding (report order)                               | Decision and evidence                                                                                                                                                                                                                                                                                                                                                       |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P1: side panels cover live popovers                  | Confirmed. Let phone playback escape the HUD stacking context and rise above sibling panels; keep narration/log cards below Inputs. The title yields to a full-width phone panel until closed. Separate 390×844 tests sample hit targets across More and expectations with Inputs open, click/toggle traffic by pointer and keyboard, and dismiss expectations with Escape. |
+| P2: playback above the viewer footer (accessibility) | Confirmed; same cause as findings 3 and 5. Scope viewport-fixed playback and panel positioning to `.app-main`. The exported viewer keeps canvas-relative playback. A real offline HTML download at 390×844 asserts containment above the wrapped footer, with a banner, and clicks Pause/Play.                                                                              |
+| P2: app-shell layout ownership (architecture)        | Confirmed duplicate of finding 2; fixed by the same host scope.                                                                                                                                                                                                                                                                                                             |
+| P2: regression artifact ownership (architecture)     | Confirmed. A baseline showcase run changed a committed PNG. Restored the curated capture; routine screenshots now use `info.outputPath()` plus attachments under ignored `tests/.output`.                                                                                                                                                                                   |
+| P2: exported playback containment (correctness)      | Confirmed duplicate of finding 2; covered by the offline viewer regression.                                                                                                                                                                                                                                                                                                 |
+| P2: test screenshots in documentation (tests)        | Confirmed duplicate of finding 4. Repeated showcase runs must leave curated documentation unchanged. No implicit documentation refresh mode remains.                                                                                                                                                                                                                        |
+| P2: phone Inputs usability assertion                 | Confirmed coverage gap. A 390×844 test holds a saved-run narration with a fake clock, opens the event log too, asserts the whole panel is in view, exposed and above playback, samples the traffic input's hit targets, changes it to 10× through the keyboard, verifies the value/dirty state, and closes via `capacity-close`.                                            |
+| P2: browser layout coverage                          | Valid temporary gap. Immediate restoration is deferred while `test/parity-browser-stable` remains in flight, as requested. `docs/PARITY.md` now records exactly two opening renders and six combined Auto-layout/Tidy cases, including the measured geometry/routes/labels to record once fixed. Existing cases remain enabled.                                             |
+
+No finding was rejected as a false positive. A portal or new overlay container was unnecessary: the
+existing playback bar can stack above phone panels without lifting narration or event cards, intercepting empty space, or adding chrome.
+The UX gate also exposed the title covering the Inputs heading and the overly broad initial HUD lift; the expanded panel exposure test failed on that initial fix. No browser golden is re-recorded to conceal the measurement race. All four new browser regressions
+failed when the corresponding layout rules were temporarily removed (including the pre-existing
+phone panel positioning), and the fixes were then restored. The earlier verification below records
+the original showcase batch; this review uses the full standard unit configuration instead.
+
+The 24 images linked from Round 41 are curated review evidence. Test and regression screenshots belong
+only in `tests/.output`; ordinary or repeated e2e runs must not regenerate documentation images.
+
+### Review verification
+
+- Full standard unit configuration (`pnpm test --maxWorkers=4`): **494 files passed, 6,465 tests
+  passed, four skipped, no type errors**. An isolated serial full run also passed. No unit test,
+  timeout, growth limit or configuration was changed. Earlier contended runs hit five timeouts and
+  two existing growth guards. One intermediate run overlapped viewer regeneration and failed two
+  skill-export comparisons; verification was repeated with stable inputs.
+- Final production Chromium sweep: **238 passed, one failed** across showcase, live, sim-truth,
+  HTML export/skill viewer, host embeds, capacity, viewport, polish, CSP, lazy examples, picker,
+  layout, gallery and presentation specs. The failure was `net::ERR_NO_BUFFER_SPACE` in the initial
+  navigation of the unchanged lazy-example presentation test; **all three isolated reruns passed**.
+  The showcase suite then passed **all 56 cases across two repeats**, including the direct heading,
+  saved-run Inputs editing, More and expectations regressions at 390×844. Used the production
+  `VITE_E2E=1` bundle on explicit E2E ports 6260–6264.
+- Repeated showcase runs followed by `git diff --exit-code -- docs/research/showcase-examples`
+  passed: curated captures are unchanged. The baseline run with the old screenshot destination
+  dirtied a tracked PNG, which was restored before implementing the output-path fix.
+- Final build, size and i18n checks passed: **103.9 / 123.5 kB gzip** entry budget, zero i18n errors
+  (existing missing translations/warnings remain). The released skill viewer matches a fresh build;
+  plugin **1.1.20** is exactly one patch above rebased master.
+- Final `pnpm parity` passed: **1,634 goldens, zero changed/added/missing/stale**, 930 Node tests and
+  48 browser cases passed, exactly eight documented cases deferred. An earlier run mismatched the
+  existing Azure Service Bus opening render's measured card widths; its unchanged golden passed on
+  the final isolated run. No golden was re-recorded or changed by these review fixes.
+- Scoped designer-agent UX gate passed after inspecting the final production captures; see the
+  Round 41 follow-up. Lint, TypeScript 7 typecheck and format check run last before the signed commit.
+  The final format gate caught spacing between preserved backlog merge sections; corrected it
+  without dropping either entry and repeated all three final checks.
+
 ## Completion verification — 2026-10-15
 
 Rebased cleanly onto origin/master at 886cfdf (CI pins and deterministic test fixes). No document

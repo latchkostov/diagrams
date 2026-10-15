@@ -713,11 +713,13 @@
     z-index: 7;
   }
 
-  .canvas-view.is-live > .canvas-wrap {
+  .app-main .canvas-view.is-live > .canvas-wrap {
     z-index: 6;
   }
 
-  .canvas-view.is-live .lv-panel {
+  /* The viewport-wide panel and playback belong to the app shell. Embeds and HTML
+     viewers keep controls anchored to their own canvas, clear of banners/footers. */
+  .app-main .canvas-view.is-live .lv-panel {
     position: fixed;
     top: calc(var(--topbar-h) + 64px);
     bottom: 80px;
@@ -726,8 +728,24 @@
     max-width: calc(100vw - 16px);
   }
 
-  .lv-hud .lv-bar,
-  .lv-hud.has-panel .lv-bar {
+  /* Let playback escape the HUD's stacking context, above the sibling panel at 7.
+     Other HUD cards keep their old layer, below Inputs, including narration and logs. */
+  .app-main .lv-hud {
+    z-index: auto;
+  }
+
+  .app-main .lv-hud > * {
+    z-index: 6;
+  }
+
+  /* The title is outside React Flow's stacking context. Full-width phone panels
+     take its place until closed, so the chip cannot obscure their headings. */
+  .app-main .canvas-view.is-live:has(.lv-panel) .diagram-card {
+    visibility: hidden;
+  }
+
+  .app-main .lv-hud .lv-bar,
+  .app-main .lv-hud.has-panel .lv-bar {
     position: fixed;
     inset-inline: 8px;
     bottom: 12px;
@@ -735,6 +753,7 @@
     transform: none;
     animation: none;
     gap: 2px;
+    z-index: 8;
   }
 }
 

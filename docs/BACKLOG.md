@@ -14,6 +14,7 @@ Review findings and ideas not yet scheduled. Remove items when they land.
 - **P2: import-layout complexity sampling.** `src/interop/infra/layout.test.ts`'s custom fastest-run
   sampler failed at ratio 25.49 against 24 on unchanged master. Convert to the shared interleaved
   `growth()` helper and verify a deliberate quadratic regression, preserving the existing limit.
+
 ## draw.io planning preservation (showcase review, 2026-10-15)
 
 - The adapter emits v1 and drops v2 planning revision and shared quota definitions. Node/workload
