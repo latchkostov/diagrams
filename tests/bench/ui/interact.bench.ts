@@ -92,8 +92,8 @@ const FAMILIES: [string, number[]][] = [
   // The mesh at 5,000 nodes takes minutes to open and seconds a frame to drag (routing): its load is measured, its
   // interactions stop at 1,500.
   ["mesh", [100, 500, 1_500]],
+  // Not the Kubernetes import: at 1,500 nodes it takes minutes to show its first node (routing), see load.bench.ts.
   ["annotated", [1_500]],
-  ["k8s", [1_500]],
 ];
 
 for (const [family, sizes] of FAMILIES)

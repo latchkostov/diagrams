@@ -191,10 +191,13 @@ export class Bench {
   async settle(quietMs = 1_000, maxMs = 120_000): Promise<number> {
     const until = Date.now() + maxMs;
     for (;;) {
-      const { last, now } = await this.page.evaluate(() => ({
-        last: Math.max(window.__bench.firstNode, ...window.__bench.loaf.map((f) => f.start + f.duration)),
-        now: performance.now(),
-      }));
+      const { last, now } = await this.page.evaluate(() => {
+        window.__bench.flush();
+        return {
+          last: Math.max(window.__bench.firstNode, ...window.__bench.loaf.map((f) => f.start + f.duration)),
+          now: performance.now(),
+        };
+      });
       if (now - last >= quietMs || Date.now() > until) return last;
       await this.page.waitForTimeout(Math.min(250, quietMs - (now - last) + 20));
     }
@@ -231,6 +234,7 @@ export class Bench {
   async mark() {
     await this.page.evaluate(() => {
       const b = window.__bench;
+      b.flush();
       b.events.length = 0;
       b.loaf.length = 0;
       b.longtasks.length = 0;
@@ -241,6 +245,7 @@ export class Bench {
   async entries() {
     return this.page.evaluate(() => {
       const b = window.__bench;
+      b.flush();
       return { events: b.events, loaf: b.loaf, longtasks: b.longtasks, paints: b.paints, firstNode: b.firstNode };
     });
   }

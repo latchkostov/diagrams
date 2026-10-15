@@ -35,8 +35,8 @@ for (const family of FAMILIES)
               .until(() => ((window as AppHooks).__checks?.finished ?? 0) > 0)
               .then((t) => (win.__checksAt = t));
           });
-          // A load that shows nothing in ten minutes is a result too (the mesh at 5,000 nodes, today).
-          const LIMIT = 600_000;
+          // A load that shows nothing in five minutes is a result too (the mesh at 5,000 nodes, today).
+          const LIMIT = 300_000;
           const opened = await b.open(w, { timeoutMs: LIMIT }).then(
             () => true,
             () => false,

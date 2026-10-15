@@ -41,10 +41,15 @@ export const OBSERVERS = `(() => {
       const el = document.querySelector('[data-testid="' + testId + '"]');
       return !!el && (!test || test(el));
     }, maxMs);
+  // Observers deliver their entries in a later, low-priority task: flush() takes what's pending at once, so a reading
+  // right after a long frame sees it.
+  const observers = [];
+  bench.flush = () => { for (const [o, push] of observers) for (const e of o.takeRecords()) push(e); };
   const observe = (type, push, extra) => {
     try {
-      new PerformanceObserver((list) => { for (const e of list.getEntries()) push(e); })
-        .observe({ type, buffered: true, ...extra });
+      const o = new PerformanceObserver((list) => { for (const e of list.getEntries()) push(e); });
+      o.observe({ type, buffered: true, ...extra });
+      observers.push([o, push]);
     } catch {}
   };
   observe("event", (e) => bench.events.push({ name: e.name, start: e.startTime, duration: e.duration, id: e.interactionId || 0 }), { durationThreshold: 16 });
@@ -141,6 +146,7 @@ declare global {
       stopFrames(): number[];
       when(testId: string, test?: (el: Element) => boolean, maxMs?: number): Promise<number>;
       until(ready: () => boolean, maxMs?: number): Promise<number>;
+      flush(): void;
     };
     __benchRenders?: {
       start(): void;
