@@ -16,6 +16,44 @@ pnpm parity sim checks # only parity files whose path contains "sim" or "checks"
 A filtered run skips the stale-golden check. The browser tier needs Docker running (see "Browser tier").
 Without it, `pnpm parity:node` still checks everything that doesn't need a browser.
 
+## Final P2 review follow-up (2026-10-15)
+
+- Opening checks still run independently, but the optional title-card warning count renders only
+  after the first viewport is computed, or the person takes control. The browser harness neither
+  hides the count nor clicks Fit. Holding real node measurements and worker results independently,
+  then releasing them in both orders, gives the same opening viewport and the existing golden.
+  Reverting the app gate produces `scale(1.12414)` versus `scale(1.14674)` in that regression.
+- The measurement gate disconnects its ResizeObserver and clears its element map when idle.
+  Late deliveries cannot repopulate that map. The count regression checks zero retained observations
+  after opening and deletion, then verifies new registrations and cleanup on the next Fit.
+  Restoring the old gate retains 23 observations immediately after opening.
+- Folded title cards cache their expanded footprint across padding and hover notifications.
+  Content, available width, font completion and presentation typography invalidate the metrics.
+  The count regression delivers twelve resize notifications without another clone, then checks
+  content/font/style/width invalidation separately. Restoring the old code clones repeatedly.
+- Every context-created parity page awaits its own CDP throttle command before navigation,
+  including exported HTML viewers. The regression exports and opens a real viewer and checks
+  the configured rate on both targets while each is still at `about:blank`. Restoring per-page
+  throttling leaves the viewer's rate absent and fails the regression.
+
+UX review: no new control or blank warning row, no extra delay before checks run, and no viewport
+takeover on warning delivery. Warning counts remain discoverable after an interrupted opening.
+A harness-only warning override was rejected because it would preserve the race for people.
+An async page-event callback alone was rejected because navigation could outrun its CDP command.
+No golden was re-recorded. Initial count-test fixtures needed to await selection's own measurement
+transaction and change the flex basis to exercise available width; those were corrected without
+loosening the assertions. The refreshed skill viewer remains at 1.1.26, one patch above master.
+
+Final verification: six Docker passes on the final fresh bundle alternate three `PARITY_WORKERS=24`
+runs with three `PARITY_CPU_THROTTLE=10 PARITY_WORKERS=8` runs. Each passes all 70 tests and checks
+all 84 browser goldens unchanged, with no retries. An earlier six-pass matrix also passes unchanged.
+Two fresh `pnpm parity` runs each check all 1,769 goldens with zero changed, added, missing or stale.
+No update command was run. The full unit suite passes twice: 534 files, 7,201 tests, four existing
+skips, no type errors. Production Chromium passes all 138 tests in the five branch-touched e2e
+specs plus CSP, then all six repeats of the two count regressions. Explicit ports are 6205–6209;
+all servers stop. Build, entry budget (105.7/123.5 kB gzip), skill freshness and i18n pass; existing
+translation gaps and warnings remain. Master is still `66583484`, so no further rebase is needed.
+
 ## Measurement review follow-up (2026-10-15)
 
 Rebased onto `feca7852`, preserving both documentation histories and regenerating the viewer

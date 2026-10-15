@@ -493,7 +493,12 @@ function CanvasInner({
 
   // Fit-view keeps content out from under the title card, minimap, controls and live bar.
   const fitView_ = useOverlayFit(wrapper, { style: edgeStyle, direction: meta.direction ?? "LR" });
-  const { request: afterMeasured, whenReady, interrupt: interruptFit } = useMeasuredTask(wrapper, nodes, edges);
+  const { request: afterMeasured, whenReady, interrupt: interruptMeasuredFit } = useMeasuredTask(wrapper, nodes, edges);
+  const [openingFitDone, setOpeningFitDone] = useState(false);
+  const interruptFit = useCallback(() => {
+    interruptMeasuredFit();
+    setOpeningFitDone(true);
+  }, [interruptMeasuredFit]);
   const fitStarting = useRef<object | null>(null);
   const firstFit = useRef(false);
   /** True while the view is a fit (the whole diagram in view), false once the user pans or zooms. */
@@ -506,6 +511,9 @@ function CanvasInner({
         const own = {};
         fitStarting.current = own;
         const finished = fitView_(o);
+        // Checks run independently of fonts/measurements. Their optional warning row arrives
+        // after the opening viewport is computed, whichever asynchronous result wins the race.
+        setOpeningFitDone(true);
         void Promise.resolve(finished).then(() => {
           if (fitStarting.current === own) fitStarting.current = null;
         });
@@ -2542,6 +2550,7 @@ function CanvasInner({
               <DiagramCardMeta
                 store={checks}
                 open={checksCard}
+                showWarnings={openingFitDone}
                 reset={
                   modified &&
                   !ownDiagram && (

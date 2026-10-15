@@ -3,29 +3,10 @@ import { join } from "node:path";
 import { test, expect } from "./fixtures";
 import { checksChrome, command, openExample, settledCanvas } from "./canvas";
 import { GOLDENS } from "../lib/golden";
+import { holdChecks, holdResizeObservers } from "./holdReadiness";
 
 test("layout waits for background warning chrome, even when its worker result is delayed", async ({ page }) => {
-  await page.addInitScript(() => {
-    const Native = window.Worker;
-    let held = true;
-    const pending: (() => void)[] = [];
-    window.Worker = class extends Native {
-      constructor(url: string | URL, options?: WorkerOptions) {
-        super(url, options);
-        if (options?.name !== "checks") return;
-        this.addEventListener("message", (event) => {
-          if (!held) return;
-          event.stopImmediatePropagation();
-          pending.push(() => this.dispatchEvent(new MessageEvent("message", { data: event.data })));
-        });
-      }
-    };
-    Object.assign(window, { heldChecks: () => pending.length });
-    window.addEventListener("release-checks", () => {
-      held = false;
-      pending.splice(0).forEach((run) => run());
-    });
-  });
+  await page.addInitScript(holdChecks);
   await openExample(page, "shared-api-quotas");
   await expect
     .poll(() => page.evaluate(() => (window as unknown as { heldChecks(): number }).heldChecks()))
@@ -48,4 +29,34 @@ test("layout waits for background warning chrome, even when its worker result is
     autoLayout: unknown;
   };
   expect(drawn).toEqual(golden.autoLayout);
+});
+
+test("opening fit remains deterministic across delayed warning delivery", async ({ page, context }) => {
+  const viewports: string[] = [];
+  for (const [target, checksFirst] of [
+    [page, true],
+    [await context.newPage(), false],
+  ] as const) {
+    await target.addInitScript(holdChecks);
+    await target.addInitScript(holdResizeObservers, true);
+    await target.goto("./?view=canvas&example=shared-api-quotas");
+    await expect(target.getByTestId("diagram-title")).toBeVisible();
+    await expect(target.getByTestId("canvas-wrap")).toHaveAttribute("data-fit-pending", "true");
+    await expect
+      .poll(() => target.evaluate(() => (window as unknown as { heldChecks(): number }).heldChecks()))
+      .toBeGreaterThan(0);
+    if (checksFirst) await target.evaluate(() => window.dispatchEvent(new Event("release-checks")));
+    await target.evaluate(() => window.dispatchEvent(new Event("release-resize-observers")));
+    const opening = await settledCanvas(target);
+    if (!checksFirst) await target.evaluate(() => window.dispatchEvent(new Event("release-checks")));
+    await checksChrome(target, "shared-api-quotas");
+    // Warning delivery must neither change the opening target nor trigger a corrective fit.
+    expect((await settledCanvas(target)).viewport).toBe(opening.viewport);
+    viewports.push(opening.viewport);
+  }
+  expect(viewports[0]).toBe(viewports[1]);
+  const golden = JSON.parse(readFileSync(join(GOLDENS, "browser/render/shared-api-quotas.json"), "utf8")) as {
+    viewport: string;
+  };
+  expect(viewports[0]).toBe(golden.viewport);
 });

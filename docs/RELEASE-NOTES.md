@@ -60,6 +60,22 @@
 
 ## Browser parity integration with master (2026-10-15)
 
+- Final P2 follow-up: the title-card warning count waits until the opening viewport is computed
+  (or the person takes control). Checks still run independently; delayed fonts, measurements and
+  worker delivery produce the same opening view without a harness override or a blank warning row.
+- Measurement transactions disconnect their ResizeObserver and clear retained elements when idle,
+  then register current targets on the next request. Folded cards reuse their expanded footprint
+  across padding/hover notifications, invalidating it for content and available-width changes.
+- CPU stress now awaits throttling before every context-created page is returned, including offline
+  exported viewers. A page-event-only callback was rejected because navigation could race its CDP command.
+- All four regressions fail with their respective fixes temporarily reverted: different opening
+  viewports, retained idle observations, repeated expanded-card clones and an unthrottled viewer.
+  No golden is re-recorded for these fixes; no controls or reserved blank chrome are added.
+- Final P2 verification: six final-build Docker stress passes (24 workers alternating with 10× CPU
+  and eight workers), two fresh full-parity passes with all 1,769 goldens unchanged, 7,201 unit passes
+  (four existing skips), 138 production Chromium passes and six positive regression repeats.
+  Build, size, i18n and the refreshed 1.1.26 skill viewer pass; initial fixture corrections and
+  negative-control evidence are recorded in `docs/PARITY.md`.
 - Review fixes: Undo cancels Auto-layout while measurements are pending, preserving the prior
   document and history. Other edits/replacements invalidate that waiting layout in the editor.
 - User viewport movement cancels interrupted fits and releases the measurement observer without

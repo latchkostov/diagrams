@@ -205,7 +205,15 @@ export function useCovered(
     const base = root.current;
     if (!enabled || !el || !base) return;
     let full: { w: number; h: number } | null = null;
-    const measure = () => {
+    let availableWidth = 0;
+    let appearance = "";
+    const measure = (invalidate = false) => {
+      const width = base.clientWidth;
+      const expandedAppearance = el.className.replace(/\bis-compact\b/g, "");
+      // Folding/hover animates padding, but not the expanded footprint. Keep that footprint
+      // until the content's metrics (including presentation style/fonts) or available width change.
+      if (el.dataset.collapsed && full && width === availableWidth && appearance === expandedAppearance && !invalidate)
+        return;
       // Text/reset rows can change while folded. Measure an unpainted expanded copy in
       // the same containing block, so the next fit never uses the old expanded footprint.
       let expanded = el;
@@ -219,6 +227,8 @@ export function useCovered(
         el.parentElement?.append(expanded);
       }
       full = { w: expanded.offsetWidth, h: expanded.offsetHeight };
+      availableWidth = width;
+      appearance = expandedAppearance;
       if (expanded !== el) expanded.remove();
       // Fit-view avoids the expanded card even while it's folded (see overlayRects).
       el.dataset.overlayWidth = String(full.w);
@@ -267,11 +277,15 @@ export function useCovered(
             check();
           });
     ro?.observe(el, { box: "border-box" });
-    const content = new MutationObserver(() => {
-      measure();
+    ro?.observe(base, { box: "border-box" });
+    const contentChanged = () => {
+      measure(true);
       check();
-    });
+    };
+    const content = new MutationObserver(contentChanged);
     content.observe(el, { subtree: true, childList: true, characterData: true });
+    document.fonts.addEventListener("loadingdone", contentChanged);
+    document.fonts.addEventListener("loadingerror", contentChanged);
     check();
     // The store changes many times a frame while dragging, zooming or measuring; checking on each
     // forced a layout (two rect reads) every time. Once per frame, at the frame's own layout, is enough.
@@ -288,6 +302,8 @@ export function useCovered(
       cancelAnimationFrame(frame);
       ro?.disconnect();
       content.disconnect();
+      document.fonts.removeEventListener("loadingdone", contentChanged);
+      document.fonts.removeEventListener("loadingerror", contentChanged);
     };
   }, [card, root, store, enabled]);
   return enabled && covered;

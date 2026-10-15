@@ -1,10 +1,11 @@
 import { test, expect, savedDiagram, pauseClock } from "./fixtures";
-import { command, readCanvas, settledCanvas } from "../parity/browser/canvas";
+import { checksChrome, command, readCanvas, settledCanvas } from "../parity/browser/canvas";
 import type { Drawn } from "../parity/browser/canvas";
 import layout from "../parity/goldens/browser/layout/aws-fanout.json" with { type: "json" };
 import example from "../../src/examples/aws-fanout.json" with { type: "json" };
 import { measuredHierarchyFixture } from "../../src/lab/nestedBoundariesFixture";
 import { boundaryAround } from "../../src/editor/arrange";
+import { holdResizeObservers } from "../parity/browser/holdReadiness";
 
 // Pin the mutation itself before comparing fits: two identical drawings could both be
 // the original, unlaid-out document. Positions are platform-independent; card fonts aren't.
@@ -15,45 +16,6 @@ function expectLaidOut(drawn: Drawn) {
     expect(actual.slice(0, actual.indexOf(")") + 1)).toBe(position);
   }
   expect((drawn.nodes["group:aws"] as { box: string }).box).toBe("translate(0px, -24px) 2726×536");
-}
-
-// Hold real ResizeObserver deliveries until the test releases them. Unlike a slow CPU,
-// this guarantees that timers can run before React Flow and the floating chrome measure.
-function holdResizeObservers(initiallyHeld: boolean) {
-  const Native = window.ResizeObserver;
-  const pending = new Map<ResizeObserver, Map<Element, ResizeObserverEntry>>();
-  const callbacks = new Map<ResizeObserver, ResizeObserverCallback>();
-  let held = initiallyHeld;
-  window.ResizeObserver = class extends Native {
-    constructor(callback: ResizeObserverCallback) {
-      super((entries, observer) => {
-        const deliver = () => callback(entries, observer);
-        if (held) {
-          const batch = pending.get(observer) ?? new Map<Element, ResizeObserverEntry>();
-          for (const entry of entries) batch.set(entry.target, entry);
-          pending.set(observer, batch);
-          callbacks.set(observer, callback);
-        } else deliver();
-      });
-    }
-  };
-  window.addEventListener("release-resize-observers", () => {
-    held = false;
-    for (const [observer, entries] of pending) callbacks.get(observer)?.([...entries.values()], observer);
-    pending.clear();
-  });
-  window.addEventListener("hold-resize-observers", () => {
-    held = true;
-  });
-  window.addEventListener("release-node-measurements", () => {
-    for (const [observer, batch] of pending) {
-      const entries = [...batch.values()].filter((entry) =>
-        (entry.target as HTMLElement).dataset.testid?.startsWith("rf__node-"),
-      );
-      if (entries.length) callbacks.get(observer)?.(entries, observer);
-      for (const entry of entries) batch.delete(entry.target);
-    }
-  });
 }
 
 test("a failed font download settles using measured fallback fonts", async ({ page }) => {
@@ -77,6 +39,152 @@ test("a decorative node animation does not block fitting the chrome", async ({ p
   });
   await page.getByTestId("fit-view-button").click();
   await expect(canvas).toHaveAttribute("data-fit-pending", "false");
+});
+
+test("measurement transactions release all node observations while idle and register again on request", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const Native = window.ResizeObserver;
+    const targets = new Map<ResizeObserver, Set<Element>>();
+    const gates = new Set<ResizeObserver>();
+    let registrations = 0;
+    window.ResizeObserver = class extends Native {
+      observe(target: Element, options?: ResizeObserverOptions) {
+        const own = targets.get(this) ?? new Set<Element>();
+        own.add(target);
+        targets.set(this, own);
+        if (
+          [...own].some((el) => el.getAttribute("data-testid") === "canvas-wrap") &&
+          [...own].some((el) => el.getAttribute("data-testid")?.startsWith("rf__node-"))
+        ) {
+          gates.add(this);
+          registrations++;
+        }
+        super.observe(target, options);
+      }
+      unobserve(target: Element) {
+        targets.get(this)?.delete(target);
+        super.unobserve(target);
+      }
+      disconnect() {
+        targets.get(this)?.clear();
+        super.disconnect();
+      }
+    };
+    Object.assign(window, {
+      nodeObservations: () => ({
+        registrations,
+        retained: [...gates].reduce((count, gate) => count + (targets.get(gate)?.size ?? 0), 0),
+      }),
+    });
+  });
+  const observations = () =>
+    page.evaluate(() =>
+      (window as unknown as { nodeObservations(): { registrations: number; retained: number } }).nodeObservations(),
+    );
+  await page.goto("./?view=canvas&example=aws-fanout");
+  await settledCanvas(page);
+  const opened = await observations();
+  expect(opened.registrations).toBeGreaterThan(0);
+  expect(opened.retained).toBe(0);
+  await page.getByTestId("rf__node-client").click();
+  await page.keyboard.press("Delete");
+  await expect(page.getByTestId("rf__node-client")).toHaveCount(0);
+  await settledCanvas(page);
+  expect((await observations()).retained).toBe(0);
+  await page.getByTestId("fit-view-button").click();
+  await settledCanvas(page);
+  const fitted = await observations();
+  expect(fitted.registrations).toBeGreaterThan(opened.registrations);
+  expect(fitted.retained).toBe(0);
+});
+
+test("a folded title card caches its expanded footprint across resize notifications", async ({ page }) => {
+  await page.addInitScript(() => {
+    const Native = window.ResizeObserver;
+    const observers = new Map<ResizeObserver, { callback: ResizeObserverCallback; targets: Set<Element> }>();
+    window.ResizeObserver = class extends Native {
+      constructor(callback: ResizeObserverCallback) {
+        super(callback);
+        observers.set(this, { callback, targets: new Set() });
+      }
+      observe(target: Element, options?: ResizeObserverOptions) {
+        observers.get(this)?.targets.add(target);
+        super.observe(target, options);
+      }
+      disconnect() {
+        observers.get(this)?.targets.clear();
+        super.disconnect();
+      }
+    };
+    let clones = 0;
+    const cloneNode = HTMLElement.prototype.cloneNode;
+    HTMLElement.prototype.cloneNode = function (deep) {
+      if (this.dataset.testid === "diagram-card") clones++;
+      return cloneNode.call(this, deep);
+    };
+    Object.assign(window, {
+      titleClones: () => clones,
+      resizeTitle: (count: number) => {
+        for (let i = 0; i < count; i++)
+          for (const [observer, { callback, targets }] of observers)
+            if ([...targets].some((el) => el.getAttribute("data-testid") === "diagram-card")) callback([], observer);
+        return clones;
+      },
+    });
+  });
+  await page.goto("./?view=canvas&example=aws-fanout");
+  await settledCanvas(page);
+  await checksChrome(page, "aws-fanout");
+  const card = page.getByTestId("diagram-card");
+  const box = await card.boundingBox();
+  const node = await page.getByTestId("rf__node-client").boundingBox();
+  if (!box || !node) throw new Error("Expected the title and client boxes");
+  await page.mouse.move(800, 500);
+  await page.mouse.wheel(node.x - box.x - 20, node.y - box.y - 20);
+  await expect(card).toHaveAttribute("data-collapsed", "1");
+  const clones = () => page.evaluate(() => (window as unknown as { titleClones(): number }).titleClones());
+  const before = await page.evaluate(() =>
+    (window as unknown as { resizeTitle(count: number): number }).resizeTitle(1),
+  );
+  // A transition can deliver any number of notifications. Count the expensive work directly.
+  const repeated = await page.evaluate(() =>
+    (window as unknown as { resizeTitle(count: number): number }).resizeTitle(12),
+  );
+  expect(repeated).toBe(before);
+  const height = Number(await card.getAttribute("data-overlay-height"));
+  await card.evaluate((el) => {
+    const row = document.createElement("div");
+    row.dataset.testid = "extra-title-row";
+    row.style.height = "50px";
+    row.textContent = "New content";
+    el.append(row);
+  });
+  await expect.poll(clones).toBe(before + 1);
+  await expect.poll(async () => Number(await card.getAttribute("data-overlay-height"))).toBeGreaterThan(height);
+  const fontReady = await page.evaluate(() => {
+    const probe = window as unknown as { titleClones(): number };
+    const before = probe.titleClones();
+    document.fonts.dispatchEvent(new Event("loadingdone"));
+    return { before, after: probe.titleClones() };
+  });
+  expect(fontReady.after).toBe(fontReady.before + 1);
+  const presenting = await card.evaluate((el) => {
+    const probe = window as unknown as { resizeTitle(count: number): number; titleClones(): number };
+    const before = probe.titleClones();
+    el.classList.add("is-large");
+    return { before, after: probe.resizeTitle(12) };
+  });
+  expect(presenting.after).toBe(presenting.before + 1);
+  const resized = await page.getByTestId("canvas-wrap").evaluate((el) => {
+    const probe = window as unknown as { resizeTitle(count: number): number; titleClones(): number };
+    const before = probe.titleClones();
+    el.style.flex = "0 0 300px";
+    el.style.width = "300px";
+    return { before, after: probe.resizeTitle(12) };
+  });
+  expect(resized.after).toBe(resized.before + 1);
 });
 
 test("Auto-layout commits before fitting even when React's deferred work is held", async ({ page }) => {

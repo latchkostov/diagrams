@@ -110,7 +110,11 @@ function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlow
     (pending) => {
       isPending = pending;
       if (pending && root) mutations?.observe(root, { subtree: true, childList: true, attributes: true });
-      else mutations?.disconnect();
+      else {
+        mutations?.disconnect();
+        observer?.disconnect();
+        observed.clear();
+      }
       if (root) root.dataset.fitPending = String(pending);
     },
   );
@@ -145,7 +149,8 @@ function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlow
     },
     connect() {
       observer = new ResizeObserver((entries) => {
-        for (const entry of entries) observed.set(entry.target, size(entry.target as HTMLElement));
+        for (const entry of entries)
+          if (observed.has(entry.target)) observed.set(entry.target, size(entry.target as HTMLElement));
         queue.wake();
       });
       mutations = new MutationObserver(queue.wake);

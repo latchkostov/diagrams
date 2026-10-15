@@ -98,3 +98,26 @@ for (const slug of EXAMPLES) {
     await viewer.close();
   });
 }
+
+test.describe("CPU stress", () => {
+  test.use({ cpuThrottleRate: 10 });
+  test("CPU throttle applies to exported viewer pages before navigation", async ({
+    page,
+    context,
+    cpuThrottle,
+  }, info) => {
+    expect(page.url()).toBe("about:blank");
+    expect(cpuThrottle.get(page)).toBe(10);
+    await openExample(page, "kafka-order-pipeline");
+    const file = info.outputPath("throttled-viewer.html");
+    writeFileSync(file, withFixedDate(await exportHtml(page)));
+    const viewer = await context.newPage();
+    expect(viewer.url()).toBe("about:blank");
+    expect(cpuThrottle.get(viewer)).toBe(10);
+    expect(cpuThrottle.size).toBe(2);
+    await viewer.goto(pathToFileURL(file).href);
+    await expect(viewer.getByTestId("html-viewer")).toBeVisible();
+    await settledCanvas(viewer);
+    await viewer.close();
+  });
+});
