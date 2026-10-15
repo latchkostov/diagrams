@@ -4,6 +4,7 @@ import {
   annotationCoordinate,
   annotationText,
   isColorValue,
+  isHexColor,
 } from "../../model/annotations";
 import {
   DIAGRAM_FORMAT,
@@ -452,6 +453,7 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
     const id = groupId(c.data.dg_id ?? c.id);
     groupIdByCell.set(c.id, id);
     const tone =
+      (isHexColor(c.data.dg_tone) ? c.data.dg_tone : undefined) ??
       (["azure", "aws", "gcp", "k8s", "onprem", "neutral"] as const).find((t) => t === c.data.dg_tone) ??
       toneFromStyle(c.style, label);
     groups.push({

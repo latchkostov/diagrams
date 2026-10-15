@@ -853,6 +853,8 @@
   "menu.addBoundary": "Tambahkan batas",
   "menu.colour": "Warna",
   "menu.fitToContents": "Sesuai dengan isinya",
+  "menu.convertToZone": "Konversi ke zona",
+  "menu.convertToBoundary": "Konversi ke batas",
   "menu.removeBoundary": "Hapus batas",
   "menu.deleteBoundaryAndNodes": "Hapus batas dan node",
   "menu.noMatches": "Tidak ada kecocokan",

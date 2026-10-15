@@ -76,7 +76,7 @@ import {
   withRovingFocus,
   type DiagramMeta,
 } from "./convert";
-import { previewMembership, type GroupRect, type MemberBox } from "./membership";
+import { groupAtPoint, previewMembership, type GroupRect, type MemberBox } from "./membership";
 import { nearestInDirection, readingOrder, stepInOrder, tabOrder, type NavBox } from "./keyboardNav";
 import { DiagramContext, type DiagramUi, type InlineEdit, type RenameTarget } from "./DiagramContext";
 import { revealPan, useCovered, useKeepSelectionInView, useOverlayFit, useOverlayTestIds } from "./useOverlayFit";
@@ -90,7 +90,7 @@ import {
   annotationTitle,
   parseAnnotationDrag,
 } from "./annotations";
-import { toneColor } from "./groupTones";
+import { resolveGroupTone } from "./groupTones";
 import { EdgeMarkers, FlowEdge } from "./edges/FlowEdge";
 import { Palette, STENCIL_DND_MIME } from "./Palette";
 import { Inspector } from "./Inspector";
@@ -1234,13 +1234,25 @@ function CanvasInner({
    */
   const droppedNodes = useCallback((dragged: FlowNode[], copies: Map<string, string> | null) => {
     const carriers = new Set(dragged.filter(isGroupNode).map((g) => g.data.groupId));
-    const carried = (n: DiagramFlowNode) => {
+    let expanded = true;
+    while (expanded) {
+      expanded = false;
+      for (const n of dragged) {
+        if (isGroupNode(n) && n.data.group && carriers.has(n.data.group) && !carriers.has(n.data.groupId)) {
+          carriers.add(n.data.groupId);
+          expanded = true;
+        }
+      }
+    }
+    const carried = (n: FlowNode) => {
       // An Alt-drag's copy belongs to the copy of its boundary, the original's to the original.
       const g = n.data.group;
       return !!g && carriers.has(g);
     };
     return dragged
-      .filter((n): n is DiagramFlowNode => isDiagramNode(n) && !carried(n))
+      .filter(
+        (n): n is DiagramFlowNode | AnnotationFlowNode => (isDiagramNode(n) || isAnnotationNode(n)) && !carried(n),
+      )
       .map((n) => copies?.get(n.id) ?? n.id);
   }, []);
   const watchMembership = useCallback(
@@ -1382,6 +1394,7 @@ function CanvasInner({
       const copies = altCopies.current;
       altCopies.current = null;
       // Members a dragged boundary carries stay in it; every other dropped node settles where it landed.
+      const draggedGroups = dragged.filter(isGroupNode);
       const ids = droppedNodes(dragged, copies);
       // Once the drop has rendered: a copy dropped onto something moves to the nearest free place (nothing
       // overlaps by default), then the dropped nodes settle into the boundaries around them, which grow to hold
@@ -1394,12 +1407,36 @@ function CanvasInner({
             groupIds: made.filter((id) => id.startsWith(GROUP_PREFIX)).map((id) => id.slice(GROUP_PREFIX.length)),
           });
         }
-        if (!ids.length) return;
-        const left = editor.settleMembership(ids);
-        if (!copies && editGestures) sayLeft(left);
+        if (!ids.length && !draggedGroups.length) return;
+        if (ids.length) {
+          const left = editor.settleMembership(ids);
+          if (!copies && editGestures) sayLeft(left);
+        }
+        if (draggedGroups.length) {
+          const ns = store.getState().nodes;
+          const otherGroups = ns
+            .filter((n): n is GroupFlowNode => isGroupNode(n) && !dragged.some((d) => d.id === n.id))
+            .map((g) => ({
+              id: g.data.groupId,
+              x: g.position.x,
+              y: g.position.y,
+              width: g.width ?? g.measured?.width ?? 0,
+              height: g.height ?? g.measured?.height ?? 0,
+            }));
+          for (const g of draggedGroups) {
+            const gw = g.width ?? g.measured?.width ?? 0;
+            const gh = g.height ?? g.measured?.height ?? 0;
+            const gc = { x: g.position.x + gw / 2, y: g.position.y + gh / 2 };
+            const validOuters = otherGroups.filter((og) => og.width * og.height > gw * gh);
+            const outerId = groupAtPoint(validOuters, gc.x, gc.y);
+            if (g.data.group !== outerId) {
+              editor.updateGroup(g.data.groupId, { group: outerId });
+            }
+          }
+        }
       });
     },
-    [editor, guides, editGestures, sayLeft, droppedNodes],
+    [editor, guides, editGestures, sayLeft, droppedNodes, store],
   );
 
   // ---------------------------------------------------------------- Space, Alt and the middle button (D4, D9)
@@ -1940,7 +1977,9 @@ function CanvasInner({
         ns.filter((n) => !isGroupNode(n)).map(navBox),
         ns.filter(isGroupNode).map((g) => ({
           ...navBox(g),
-          members: ns.filter((m) => isDiagramNode(m) && m.data.group === g.data.groupId).map((m) => m.id),
+          members: ns
+            .filter((m) => (isDiagramNode(m) || isAnnotationNode(m)) && m.data.group === g.data.groupId)
+            .map((m) => m.id),
         })),
         direction,
       ),
@@ -2011,7 +2050,9 @@ function CanvasInner({
           announce(`${nodeAriaLabel(n.data)}${inGroup ? `, in ${inGroup}` : ""}. ${at}. ${edges}.${deps}`);
         } else if (isAnnotationNode(n)) announce(`${annotationAriaLabel(n.data)}. ${at}.`);
         else {
-          const members = ns.filter((m) => isDiagramNode(m) && m.data.group === (n as GroupFlowNode).data.groupId);
+          const members = ns.filter(
+            (m) => (isDiagramNode(m) || isAnnotationNode(m)) && m.data.group === (n as GroupFlowNode).data.groupId,
+          );
           announce(`${labelOf(id)}, boundary, ${members.length === 1 ? "1 node" : `${members.length} nodes`}. ${at}.`);
         }
         return true;
@@ -2383,7 +2424,7 @@ function CanvasInner({
                 }
                 nodeStrokeColor={(n) =>
                   n.type === "boundary"
-                    ? toneColor[(n as GroupFlowNode).data.tone]
+                    ? resolveGroupTone((n as GroupFlowNode).data.tone)
                     : n.type === "annotation" && (n as AnnotationFlowNode).data.kind !== "note"
                       ? resolveAnnotationColor(
                           (n as AnnotationFlowNode).data.color,

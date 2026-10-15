@@ -855,6 +855,8 @@
     "menu.addBoundary": "c82d8192",
     "menu.colour": "2ecca61d",
     "menu.fitToContents": "7cbc2e29",
+    "menu.convertToZone": "01a3cef9",
+    "menu.convertToBoundary": "5d5a7c05",
     "menu.removeBoundary": "73d23bf9",
     "menu.deleteBoundaryAndNodes": "bac062dc",
     "menu.noMatches": "d29421ef",

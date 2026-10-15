@@ -3531,8 +3531,18 @@ select.insp-input {
 
 /* Custom tints span the full spectrum. Theme ink stays readable on the quiet fills above,
    including transparent colours; the chosen hue still belongs to paper and outlines. */
-.ann[data-color="custom"] .ann-content,
+.ann:not(.ann-text)[data-color="custom"] .ann-content,
 .ann[data-color="custom"] .ann-zone-label,
-.ann[data-color="custom"] .ann-editor {
+.ann:not(.ann-text)[data-color="custom"] .ann-editor {
   color: var(--text);
+}
+
+.ann-text[data-color="custom"] .ann-content,
+.ann-text[data-color="custom"] .ann-editor {
+  color: var(--ann-text-ink-light, var(--text));
+}
+
+[data-theme="dark"] .ann-text[data-color="custom"] .ann-content,
+[data-theme="dark"] .ann-text[data-color="custom"] .ann-editor {
+  color: var(--ann-text-ink-dark, var(--text));
 }

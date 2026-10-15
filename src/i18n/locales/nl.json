@@ -853,6 +853,8 @@
   "menu.addBoundary": "grens toevoegen",
   "menu.colour": "Kleur",
   "menu.fitToContents": "Passend bij de inhoud",
+  "menu.convertToZone": "Converteren naar zone",
+  "menu.convertToBoundary": "Converteren naar grens",
   "menu.removeBoundary": "grens verwijderen",
   "menu.deleteBoundaryAndNodes": "grens en knooppunt verwijderen",
   "menu.noMatches": "Geen overeenkomsten",
@@ -1392,6 +1394,7 @@
   "stencil.subtitleSecurityGateway": "veiligheid gateway",
   "stencil.juniperSrxDescription": "SRX-firewalls en beveiligde routers (SRX345-tak naar SRX4600-datacentrum).",
   "stencil.subtitleFirewall": "firewall",
+  "stencil.genericAdcDescription": "Applicatie-leveringscontroller: een hardware of virtueel load balancer dat de gezondheid...controles zijn doelen.",
   "stencil.f5BigipDescription": "BIG-IP Local Traffic Manager op rSeries (r2600 tot r10900), VELOS of virtuele edities.",
   "stencil.netscalerAdcDescription": "NetScaler (voorheen Citrix ADC) op MPX, SDX of VPX (MPX 9210 tot 17000Z).",
   "stencil.grafanaDescription": "Dashboards en waarschuwingen over maatstaven, logs en sporen.",
@@ -1493,6 +1496,7 @@
   "stencil.genericWebhookName": "Webhook",
   "stencil.genericWebhookDescription": "Inbound HTTP terugroep van een ander systeem.",
   "stencil.subtitleWebhook": "webhook",
+  "stencil.genericLlmName": "LLM API",
   "stencil.genericLlmDescription": "Elk gehost of zelfgehost groottaalmodel eindpunt.",
   "stencil.genericServiceName": "Service",
   "stencil.genericServiceDescription": "Een generieke microservice.",
@@ -1563,7 +1567,5 @@
   "stencil.vendorGeneric": "Generiek",
   "stencil.vendorClient": "Client",
   "stencil.unknownName": "Onbekend",
-  "stencil.unknownDescription": "Stencil is niet te vinden in deze versie van de catalogus.",
-  "stencil.genericAdcDescription": "Applicatie-leveringscontroller: een hardware of virtueel load balancer dat de gezondheid...controles zijn doelen.",
-  "stencil.genericLlmName": "LLM API"
+  "stencil.unknownDescription": "Stencil is niet te vinden in deze versie van de catalogus."
 }

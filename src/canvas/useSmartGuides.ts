@@ -207,10 +207,23 @@ export function useSmartGuides({
         dragged.filter((n): n is GroupFlowNode => n.type === "boundary").map((n) => n.data.groupId),
       );
       const followers = new Map<string, XY>();
-      if (groups.size)
-        for (const n of s.nodes)
-          if (n.type === "diagram" && n.data.group && groups.has(n.data.group) && !originals.has(n.id))
+      if (groups.size) {
+        let expanded = true;
+        while (expanded) {
+          expanded = false;
+          for (const n of s.nodes) {
+            if (n.type === "boundary" && n.data.group && groups.has(n.data.group) && !groups.has(n.data.groupId)) {
+              groups.add(n.data.groupId);
+              expanded = true;
+            }
+          }
+        }
+        for (const n of s.nodes) {
+          if (n.data.group && groups.has(n.data.group) && !originals.has(n.id)) {
             followers.set(copies?.get(n.id) ?? n.id, { ...n.position });
+          }
+        }
+      }
       // Candidates: what's in view, not moving, and not a backdrop (boundaries and zones). An Alt-drag's
       // originals stay put, so its copies line up with them.
       const view = { x: -tx / k, y: -ty / k, width: s.width / k, height: s.height / k };
@@ -220,7 +233,7 @@ export function useSmartGuides({
           const u = n.internals.userNode;
           if (n.hidden || isBackdrop(u) || startPos.has(n.id) || followers.has(n.id)) continue;
           if (!copies && originals.has(n.id)) continue;
-          if (u.type === "diagram" && u.data.group && groups.has(u.data.group)) continue;
+          if ((u.type === "diagram" || u.type === "annotation") && u.data.group && groups.has(u.data.group)) continue;
           const w = n.measured?.width ?? n.width ?? 0;
           const h = n.measured?.height ?? n.height ?? 0;
           const p = n.internals.positionAbsolute;

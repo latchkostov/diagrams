@@ -853,6 +853,8 @@
   "menu.addBoundary": "Pridėti riba",
   "menu.colour": "Spalva",
   "menu.fitToContents": "Pritaikyti prie turinio",
+  "menu.convertToZone": "Konvertuoti į zoną",
+  "menu.convertToBoundary": "Konvertuoti į ribą",
   "menu.removeBoundary": "Pašalinkite riba",
   "menu.deleteBoundaryAndNodes": "Ištrinti riba ir mazgas",
   "menu.noMatches": "Atitikčių nėra",
@@ -1200,6 +1202,7 @@
   "stencil.kafkaSchemaRegistryName": "Schemų registras",
   "stencil.kafkaSchemaRegistryDescription": "Centrinis Avro/Protobuf/JSON schemų saugyklas, naudojamas Kafka tema.",
   "stencil.subtitleSchemas": "schema",
+  "stencil.kafkaKsqldbDescription": "Žr. SQL variklis, kuris filtruoja, jungia ir sudedina Kafka tema.",
   "stencil.subtitleStreamProcessor": "srauto procesorius",
   "stencil.azureServiceBusQueueName": "Service Bus Eilė",
   "stencil.azureServiceBusQueueDescription": "Lygiai tvarus eilė su sesijomis, Nepristatytų pranešimų eilė ir konkuruojantis gavėjas.",
@@ -1237,6 +1240,7 @@
   "stencil.mqttBrokerName": "MQTT Brokeris",
   "stencil.mqttBrokerDescription": "Lengvas pub/sub įrenginiams (Mosquitto, EMQX, HiveMQ); kiekvienas tema abonentas gauna kopiją.",
   "stencil.awsMskDescription": "Valdomas Apache Kafka srautas: AWS valdomos Kafka grupės.",
+  "stencil.awsMqDescription": "Gaminamas ActiveMQ ir RabbitMQ brokeris JMS ir AMQP darbo krūvis.",
   "stencil.azureFunctionsDescription": "Įvykis valdomi serveriai be funkcijų.",
   "stencil.subtitleFunction": "funkcijos",
   "stencil.azureAppServiceDescription": "Valdomas tinklalapių ir API tinklalapių prieglobsymas.",
@@ -1354,6 +1358,7 @@
   "stencil.linkerdDescription": "Greitas aptarnavimo tinklas su automatine mTLS ir kartoti.",
   "stencil.traefikDescription": "Cloud-naturinis atvirkštinis proxy ir įėjimo valdiklis su automatiniu atradimu.",
   "stencil.subtitleIngress": "įtraukimas",
+  "stencil.haproxyDescription": "Aukštos veiklos TCP/HTTP apkrovos balansavimo priemonė ir atvirkštinio įgaliotinio.",
   "stencil.subtitleLoadBalancer": "apkrovos balansavimo priemonė",
   "stencil.genericCdnDescription": "Edge talpykla, teikiantis turinį arti vartotojų.",
   "stencil.subtitleEdge": "kraštas",
@@ -1562,8 +1567,5 @@
   "stencil.vendorGeneric": "Bendrieji",
   "stencil.vendorClient": "Klientas",
   "stencil.unknownName": "Nepažįstamas",
-  "stencil.unknownDescription": "Trafaretas nėra šiame katalogo versijoje.",
-  "stencil.kafkaKsqldbDescription": "Žr. SQL variklis, kuris filtruoja, jungia ir sudedina Kafka tema.",
-  "stencil.awsMqDescription": "Gaminamas ActiveMQ ir RabbitMQ brokeris JMS ir AMQP darbo krūvis.",
-  "stencil.haproxyDescription": "Aukštos veiklos TCP/HTTP apkrovos balansavimo priemonė ir atvirkštinio įgaliotinio."
+  "stencil.unknownDescription": "Trafaretas nėra šiame katalogo versijoje."
 }

@@ -853,6 +853,8 @@
   "menu.addBoundary": "Adja hozzá a határ-t",
   "menu.colour": "Szín",
   "menu.fitToContents": "Illeszkedés a tartalomhoz",
+  "menu.convertToZone": "Átalakítás zónává",
+  "menu.convertToBoundary": "Átalakítás határrá",
   "menu.removeBoundary": "Távolítsa el a határ-t",
   "menu.deleteBoundaryAndNodes": "határ és csomópont törlése",
   "menu.noMatches": "Nincs találat",
@@ -1457,6 +1459,7 @@
   "stencil.genericExternalApiName": "Külső API",
   "stencil.genericExternalApiDescription": "Egy külső harmadik fél HTTP API hívott a rendszer.",
   "stencil.iterableDescription": "Az ügyfelek részvételét API a esemény számára, a felhasználói profilokat és a csatornaokon átnyúló kampányokat.",
+  "stencil.subtitleEngagementAPI": "Cselekedetek API",
   "stencil.brazeDescription": "Ügyfélkötelezettség API a felhasználói frissítések, a esemény és az üzenetküldő kampányok esetében.",
   "stencil.segmentDescription": "Az ügyfelek adatait a API gyűjti össze, és a esemény-t a csatlakoztatott célállomásokra irányítja.",
   "stencil.subtitleCustomerDataAPI": "ügyfélszámlák API",
@@ -1564,6 +1567,5 @@
   "stencil.vendorGeneric": "Általános",
   "stencil.vendorClient": "Kliens",
   "stencil.unknownName": "Nem ismert",
-  "stencil.unknownDescription": "A Rajzsablon nem található a katalógus ezen változatában.",
-  "stencil.subtitleEngagementAPI": "Cselekedetek API"
+  "stencil.unknownDescription": "A Rajzsablon nem található a katalógus ezen változatában."
 }

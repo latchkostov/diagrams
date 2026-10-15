@@ -109,16 +109,28 @@ export type AnnotationShape = "rect" | "rounded" | "ellipse" | "diamond" | "cyli
 export type AnnotationColor = "white" | "neutral" | "yellow" | "green" | "blue" | "purple" | "red";
 export type AnnotationTextSize = "s" | "m" | "l" | "xl";
 
-export interface DiagramAnnotation {
+// ---------- Elements & Annotations ----------
+
+/** Base interface for any placed visual canvas element (nodes, boundaries, annotations). */
+export interface DiagramElement {
   id: string;
+  /** Top-left position in canvas pixels. */
+  x: number;
+  y: number;
+  /** Optional id of an enclosing boundary this element visually sits inside. */
+  group?: string;
+}
+
+/** Canvas element with explicit width and height bounding box. */
+export interface DiagramBoxElement extends DiagramElement {
+  width: number;
+  height: number;
+}
+
+export interface DiagramAnnotation extends DiagramBoxElement {
   kind: AnnotationKind;
   /** Multi-line text ("\n" separates lines). A zone's text is its label. */
   text: string;
-  /** Top-left position and size in canvas pixels. */
-  x: number;
-  y: number;
-  width: number;
-  height: number;
   /** Kind "shape" only. Default "rect". */
   shape?: AnnotationShape;
   /** Default per kind: note yellow, zone blue, text and shape neutral. Can also be a hex string (#rrggbb). */
@@ -206,18 +218,12 @@ export interface Expectation {
   atMs?: number;
 }
 
-export interface DiagramNode {
-  id: string;
+export interface DiagramNode extends DiagramElement {
   /** Stencil id; unknown ids render with a generic fallback rather than failing. */
   stencil: string;
   label: string;
   /** Secondary line, e.g. topic name "orders.created" or "consumer group: billing". */
   sublabel?: string;
-  /** Top-left position in canvas pixels (absolute, not relative to group). */
-  x: number;
-  y: number;
-  /** Optional id of a group this node visually sits inside. */
-  group?: string;
   /** Free-form properties for the simulation / future features (partitions, rate, etc.). */
   props?: Record<string, unknown>;
 }
@@ -258,13 +264,10 @@ export interface DiagramEdge {
 
 export type Side = "top" | "right" | "bottom" | "left";
 
-export interface DiagramGroup {
-  id: string;
+export type GroupTone = "azure" | "aws" | "gcp" | "k8s" | "onprem" | "neutral";
+
+export interface DiagramGroup extends DiagramBoxElement {
   label: string;
-  /** Visual tone of the boundary box. */
-  tone?: "azure" | "aws" | "gcp" | "k8s" | "onprem" | "neutral";
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+  /** Visual tone or custom hex colour of the boundary box. */
+  tone?: GroupTone | string;
 }

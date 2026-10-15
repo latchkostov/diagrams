@@ -57,6 +57,7 @@ const STARTUP_CHUNKS = [
   "catalog",
   "checks",
   "codec",
+  "colors",
   "examples",
   "i18n",
   "index",

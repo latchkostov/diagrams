@@ -853,6 +853,8 @@
   "menu.addBoundary": "Pridať hranicu",
   "menu.colour": "Farba",
   "menu.fitToContents": "Prispôsobiť obsahu",
+  "menu.convertToZone": "Previesť na zónu",
+  "menu.convertToBoundary": "Previesť na hranicu",
   "menu.removeBoundary": "Odstrániť hranicu",
   "menu.deleteBoundaryAndNodes": "Odstrániť hranicu a uzly",
   "menu.noMatches": "Žiadne zhody",
@@ -1238,6 +1240,7 @@
   "stencil.mqttBrokerName": "MQTT Broker",
   "stencil.mqttBrokerDescription": "Ľahký pub/sub pre zariadenia (Mosquitto, EMQX, HiveMQ); každý účastník téma dostane kópiu.",
   "stencil.awsMskDescription": "Správnené streamovanie pre Apache Kafka: AWS prevádzkované Kafka klastry.",
+  "stencil.awsMqDescription": "Správa ActiveMQ a RabbitMQ broker pre JMS a AMQP pracovné zaťaženia.",
   "stencil.azureFunctionsDescription": "Udalosť-poháňané bezserverové funkcie.",
   "stencil.subtitleFunction": "funkcia",
   "stencil.azureAppServiceDescription": "Managovaný hosting pre webové aplikácie a API.",
@@ -1355,6 +1358,7 @@
   "stencil.linkerdDescription": "Ľahká servisná sieť s automatickými mTLS a skúsiť znova.",
   "stencil.traefikDescription": "Cloud-nativný reverzný proxy a vstupný ovládač s automatickým odhalením.",
   "stencil.subtitleIngress": "vstup",
+  "stencil.haproxyDescription": "Vysoký výkon TCP/HTTP vyrovnávač zaťaženia a reverzný zástupca.",
   "stencil.subtitleLoadBalancer": "vyrovnávač zaťaženia",
   "stencil.genericCdnDescription": "Edge vyrovnávacia pamäť, ktorý slúži obsahu blízko používateľov.",
   "stencil.subtitleEdge": "okraj",
@@ -1563,7 +1567,5 @@
   "stencil.vendorGeneric": "Všeobecné",
   "stencil.vendorClient": "Klient",
   "stencil.unknownName": "Neznáme",
-  "stencil.unknownDescription": "Vzorkovnica sa nenachádza v tejto verzii katalógu.",
-  "stencil.awsMqDescription": "Správa ActiveMQ a RabbitMQ broker pre JMS a AMQP pracovné zaťaženia.",
-  "stencil.haproxyDescription": "Vysoký výkon TCP/HTTP vyrovnávač zaťaženia a reverzný zástupca."
+  "stencil.unknownDescription": "Vzorkovnica sa nenachádza v tejto verzii katalógu."
 }

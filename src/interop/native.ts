@@ -4,6 +4,7 @@ import { propsProblem, SIM_LIMITS, unsupportedPreset, invalidPlanningDelay } fro
 // The simulation settings' bounds, for the editors that share this chunk (the inspector, the Inputs panel).
 export { SIM_LIMITS };
 import { ANNOTATION_LIMITS, isColorValue, normalizeAnnotation } from "../model/annotations";
+import { isHexColor } from "../model/colors";
 import type { DiagramAnnotation } from "../model/types";
 import { isDependency, isEdgeRelation, isRelationOrigin, sanitizeSettings } from "../model/relations";
 import { sanitizeChecks } from "../model/checks";
@@ -224,12 +225,16 @@ export function validateDiagram(data: unknown): NativeResult {
         }
         const out = { ...g };
         if (typeof out.label !== "string") out.label = typeof out.label === "number" ? String(out.label) : "";
-        if (out.tone !== undefined && !TONES.has(out.tone as string)) delete out.tone;
+        if (out.tone !== undefined && !TONES.has(out.tone as string) && !isHexColor(out.tone)) delete out.tone;
+        if (out.group !== undefined && (typeof out.group !== "string" || !out.group.trim())) delete out.group;
         groups.push(out);
       });
     }
   }
   const groupIds = new Set(groups.map((g) => g.id as string));
+  for (const g of groups) {
+    if (g.group !== undefined && (!groupIds.has(g.group as string) || g.group === g.id)) delete g.group;
+  }
   if (groups.length) d.groups = groups;
   else delete d.groups;
 
@@ -284,6 +289,7 @@ export function validateDiagram(data: unknown): NativeResult {
           return;
         }
         out.id = claim(out.id);
+        if (out.group !== undefined && !groupIds.has(out.group)) delete out.group;
         annotationIds.add(out.id);
         if (out.kind === "shape") shapeIds.add(out.id);
         annotations.push(out);

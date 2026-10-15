@@ -27,8 +27,9 @@ export type Membership =
   /** A member pokes out, but growing would land on another boundary or a node: dashed, and it won't grow. */
   | "blocked";
 
-const centre = (r: Rect) => ({ x: r.x + r.width / 2, y: r.y + r.height / 2 });
-const contains = (r: Rect, x: number, y: number) => x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height;
+export const centre = (r: Rect) => ({ x: r.x + r.width / 2, y: r.y + r.height / 2 });
+export const contains = (r: Rect, x: number, y: number) =>
+  x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height;
 const overlaps = (a: Rect, b: Rect) =>
   a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 

@@ -281,4 +281,25 @@ describe("annotation colors", () => {
     const textFallback = resolveAnnotationColor("invalid-color", "text");
     expect(textFallback.presetKey).toBe("neutral");
   });
+
+  it("calculates WCAG contrast and provides fallback for illegible text colors", async () => {
+    const { accessibleColor, relativeLuminance } = await import("../model/colors");
+    // Light background (white, luminance = 1)
+    const whiteLum = relativeLuminance(255, 255, 255);
+    // Dark color (#000000) has contrast 21:1 against white -> returns color
+    expect(accessibleColor("#000000", whiteLum, "#0f172a")).toBe("#000000");
+    // Very light yellow (#ffffcc) has low contrast against white -> returns fallback
+    expect(accessibleColor("#ffffcc", whiteLum, "#0f172a")).toBe("#0f172a");
+
+    // Dark background (luminance = 0)
+    const darkLum = relativeLuminance(0, 0, 0);
+    // Very dark blue (#000033) has low contrast against dark -> returns fallback
+    expect(accessibleColor("#000033", darkLum, "#f8fafc")).toBe("#f8fafc");
+    // Pure white (#ffffff) has high contrast against dark -> returns color
+    expect(accessibleColor("#ffffff", darkLum, "#f8fafc")).toBe("#ffffff");
+
+    // Transparent / invalid hex -> returns fallback
+    expect(accessibleColor("#00000000", whiteLum, "#0f172a")).toBe("#0f172a");
+    expect(accessibleColor("not-a-color", whiteLum, "#0f172a")).toBe("#0f172a");
+  });
 });

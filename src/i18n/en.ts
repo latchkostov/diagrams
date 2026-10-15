@@ -1061,6 +1061,8 @@ const en = {
   "menu.addBoundary": "Add boundary",
   "menu.colour": "Colour",
   "menu.fitToContents": "Fit to contents",
+  "menu.convertToZone": "Convert to zone",
+  "menu.convertToBoundary": "Convert to boundary",
   "menu.removeBoundary": "Remove boundary",
   "menu.deleteBoundaryAndNodes": "Delete boundary and nodes",
   "menu.noMatches": "No matches",

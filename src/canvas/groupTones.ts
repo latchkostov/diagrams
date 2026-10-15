@@ -1,4 +1,7 @@
 import type { GroupTone } from "./types";
+import { isHexColor } from "../model/colors";
+
+export const GROUP_TONES: GroupTone[] = ["azure", "aws", "gcp", "k8s", "onprem", "neutral"];
 
 export const toneColor: Record<GroupTone, string> = {
   azure: "#2f80ed",
@@ -17,3 +20,14 @@ export const toneLabel: Record<GroupTone, string> = {
   onprem: "On-premises",
   neutral: "Neutral",
 };
+
+export function resolveGroupTone(tone?: string): string {
+  if (!tone) return toneColor.neutral;
+  if (tone in toneColor) return toneColor[tone as GroupTone];
+  if (isHexColor(tone)) return tone;
+  return toneColor.neutral;
+}
+
+export function isPresetGroupTone(tone?: string): tone is GroupTone {
+  return typeof tone === "string" && tone in toneColor;
+}

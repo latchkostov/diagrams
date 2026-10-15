@@ -853,6 +853,8 @@
   "menu.addBoundary": "Přidejte hranice",
   "menu.colour": "Barva",
   "menu.fitToContents": "Přizpůsobit obsahu",
+  "menu.convertToZone": "Převést na zónu",
+  "menu.convertToBoundary": "Převést na hranici",
   "menu.removeBoundary": "Odebrat hranice",
   "menu.deleteBoundaryAndNodes": "Smazat hranice a uzel",
   "menu.noMatches": "Žádné zápasy",
@@ -1539,12 +1541,14 @@
   "stencil.airbyteDescription": "Otevřený zdroj ELT konektor, který kopíruje SaaS tabulka a databázi tabulka do datový sklad.",
   "stencil.snowflakeSnowpipeDescription": "Neustále zatíží řádky do Snowflake tabulka, například z Snowflake Kafka konektor.",
   "stencil.subtitleLoader": "načítání",
+  "stencil.genericReverseEtlName": "Odvrátit ETL",
   "stencil.genericReverseEtlDescription": "Synchronizuje datový sklad tabulka zpět na operační nástroje a téma (Hightouch, Census).",
   "stencil.subtitleSync": "synchronizace",
   "stencil.gcpCloudStorageDescription": "Uložení objektů bucket na Google Cloud.",
   "stencil.lookerDescription": "BI desky a semantický model.",
   "stencil.tableauDescription": "BI palubní desky a vizuální analýzy.",
   "stencil.awsRoute53Description": "DNS s zdravým kontroly a latence, vážené nebo zřícené směry přes regiony.",
+  "stencil.azureTrafficManagerDescription": "DNS-na základě globálního provozu s zdravím koncových bodů kontroly.",
   "stencil.subtitleGlobalRouting": "celosvětové směrování",
   "stencil.gcpCloudLoadBalancingDescription": "Globální vysílání nástroj pro vyrovnávání zatížení před regionálními zázemími.",
   "stencil.subtitleGlobalLB": "globální LB",
@@ -1563,7 +1567,5 @@
   "stencil.vendorGeneric": "Obecné",
   "stencil.vendorClient": "Klient",
   "stencil.unknownName": "Neznámé",
-  "stencil.unknownDescription": "Vzorník se nenalezl v této verzi katalogu.",
-  "stencil.genericReverseEtlName": "Odvrátit ETL",
-  "stencil.azureTrafficManagerDescription": "DNS-na základě globálního provozu s zdravím koncových bodů kontroly."
+  "stencil.unknownDescription": "Vzorník se nenalezl v této verzi katalogu."
 }

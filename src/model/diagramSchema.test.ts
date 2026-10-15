@@ -68,6 +68,7 @@ const group: Required<DiagramGroup> = {
   y: 0,
   width: 800,
   height: 400,
+  group: "region",
 };
 const annotation: Required<DiagramAnnotation> = {
   id: "shape",
@@ -80,6 +81,7 @@ const annotation: Required<DiagramAnnotation> = {
   shape: "cylinder",
   color: "purple",
   textSize: "l",
+  group: "cloud",
 };
 const traffic: Required<TrafficProfile> = {
   id: "t1",

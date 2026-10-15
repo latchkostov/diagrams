@@ -853,6 +853,8 @@
   "menu.addBoundary": "Begrenzung hinzufügen",
   "menu.colour": "Farbe",
   "menu.fitToContents": "Passend zum Inhalt",
+  "menu.convertToZone": "In Zone umwandeln",
+  "menu.convertToBoundary": "In Begrenzung umwandeln",
   "menu.removeBoundary": "Begrenzung entfernen",
   "menu.deleteBoundaryAndNodes": "Löschen Sie Begrenzung und Knoten",
   "menu.noMatches": "Keine Übereinstimmungen",
@@ -1238,6 +1240,7 @@
   "stencil.mqttBrokerName": "MQTT Broker",
   "stencil.mqttBrokerDescription": "Leichtgewicht pub/sub für Geräte (Mosquitto, EMQX, HiveMQ); jeder Abonnent eines Topic erhält eine Kopie.",
   "stencil.awsMskDescription": "Verwaltetes Streaming für Apache Kafka: AWS-getriebene Kafka-Cluster.",
+  "stencil.awsMqDescription": "Verwaltung ActiveMQ und RabbitMQ Broker für JMS und AMQP Arbeitsbelastung.",
   "stencil.azureFunctionsDescription": "Event-getriebene serverlose Funktionen.",
   "stencil.subtitleFunction": "Funktion",
   "stencil.azureAppServiceDescription": "Managed Hosting für Web-Apps und APIs.",
@@ -1391,6 +1394,7 @@
   "stencil.subtitleSecurityGateway": "Sicherheitsgateway",
   "stencil.juniperSrxDescription": "SRX-Firewalls und sichere Router (SRX345-Niederlassung zum SRX4600-Rechenzentrum).",
   "stencil.subtitleFirewall": "Firewall",
+  "stencil.genericAdcDescription": "Controller für die Bereitstellung von Anwendungen: Hardware oder virtuell Load Balancer Die Gesundheit...Prüfungen Ihre Ziele.",
   "stencil.f5BigipDescription": "BIG-IP Local Traffic Manager auf rSeries (r2600 bis r10900), VELOS oder virtuellen Ausgaben.",
   "stencil.netscalerAdcDescription": "NetScaler (ehemals Citrix ADC) auf MPX, SDX oder VPX (MPX 9210 bis 17000Z).",
   "stencil.grafanaDescription": "Dashboards und Warnungen über Metriken, Logs und Spuren.",
@@ -1492,6 +1496,7 @@
   "stencil.genericWebhookName": "Webhook",
   "stencil.genericWebhookDescription": "Aufruf von HTTP aus einem anderen System.",
   "stencil.subtitleWebhook": "Webhook",
+  "stencil.genericLlmName": "LLM API",
   "stencil.genericLlmDescription": "Jeder gehostete oder selbst gehostete große Sprachmodell-Endpunkt.",
   "stencil.genericServiceName": "Dienst",
   "stencil.genericServiceDescription": "Ein generischer Microservice.",
@@ -1562,8 +1567,5 @@
   "stencil.vendorGeneric": "Allgemein",
   "stencil.vendorClient": "Client",
   "stencil.unknownName": "Unbekannt",
-  "stencil.unknownDescription": "Schablone ist nicht in dieser Version des Katalogs zu finden.",
-  "stencil.awsMqDescription": "Verwaltung ActiveMQ und RabbitMQ Broker für JMS und AMQP Arbeitsbelastung.",
-  "stencil.genericAdcDescription": "Controller für die Bereitstellung von Anwendungen: Hardware oder virtuell Load Balancer Die Gesundheit...Prüfungen Ihre Ziele.",
-  "stencil.genericLlmName": "LLM API"
+  "stencil.unknownDescription": "Schablone ist nicht in dieser Version des Katalogs zu finden."
 }

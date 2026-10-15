@@ -298,9 +298,11 @@ function normalizeAnnotation(value, usedIds = /* @__PURE__ */ new Set(), warn = 
 	delete out.shape;
 	delete out.color;
 	delete out.textSize;
+	delete out.group;
 	if (kind === "shape" && member(ANNOTATION_SHAPES, a.shape)) out.shape = a.shape;
 	if (isColorValue(a.color)) out.color = a.color;
 	if (member(ANNOTATION_TEXT_SIZES, a.textSize)) out.textSize = a.textSize;
+	if (typeof a.group === "string" && a.group) out.group = a.group;
 	return out;
 }
 var geometryDiagnostics = {
@@ -619,13 +621,13 @@ function validateDiagram(data) {
 			const props = isObj$1(sim.setup) && isObj$1(sim.setup.props) ? sim.setup.props : {};
 			for (const [id, value] of Object.entries(props)) if (unsupportedPreset(value)) return {
 				ok: false,
-				error: t(1055, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
+				error: t(1057, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
 			};
 			if (Array.isArray(sim.timeline)) for (const step of sim.timeline) {
 				const action = isObj$1(step) && isObj$1(step.action) ? step.action : void 0;
 				if (action?.do === "props" && unsupportedPreset(action.props)) return {
 					ok: false,
-					error: t(1055, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
+					error: t(1057, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
 				};
 			}
 		}
@@ -693,11 +695,13 @@ function validateDiagram(data) {
 			}
 			const out = { ...g };
 			if (typeof out.label !== "string") out.label = typeof out.label === "number" ? String(out.label) : "";
-			if (out.tone !== void 0 && !TONES.has(out.tone)) delete out.tone;
+			if (out.tone !== void 0 && !TONES.has(out.tone) && !isHexColor(out.tone)) delete out.tone;
+			if (out.group !== void 0 && (typeof out.group !== "string" || !out.group.trim())) delete out.group;
 			groups.push(out);
 		});
 	}
 	const groupIds = new Set(groups.map((g) => g.id));
+	for (const g of groups) if (g.group !== void 0 && (!groupIds.has(g.group) || g.group === g.id)) delete g.group;
 	if (groups.length) d.groups = groups;
 	else delete d.groups;
 	const nodes = [];
@@ -727,7 +731,7 @@ function validateDiagram(data) {
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
 		if (unsupportedPreset(out.props)) return {
 			ok: false,
-			error: t(1055, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
+			error: t(1057, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
 		};
 		const problem = out.props === void 0 ? void 0 : propsProblem(out.props);
 		if (problem) return {
@@ -751,6 +755,7 @@ function validateDiagram(data) {
 				return;
 			}
 			out.id = claim(out.id);
+			if (out.group !== void 0 && !groupIds.has(out.group)) delete out.group;
 			annotationIds.add(out.id);
 			if (out.kind === "shape") shapeIds.add(out.id);
 			annotations.push(out);
@@ -804,7 +809,7 @@ function validateDiagram(data) {
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
 		if (invalidPlanningDelay(out.props)) return {
 			ok: false,
-			error: t(1e3, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
+			error: t(1002, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
 				id: e.id,
 				limit: SIM_LIMITS.timeMs
 			})

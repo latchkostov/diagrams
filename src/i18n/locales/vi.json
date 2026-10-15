@@ -853,6 +853,8 @@
   "menu.addBoundary": "Thêm ranh giới",
   "menu.colour": "Màu",
   "menu.fitToContents": "Vừa nội dung",
+  "menu.convertToZone": "Chuyển thành vùng",
+  "menu.convertToBoundary": "Chuyển thành ranh giới",
   "menu.removeBoundary": "Bỏ ranh giới",
   "menu.deleteBoundaryAndNodes": "Xóa ranh giới và nút",
   "menu.noMatches": "Không có kết quả",
@@ -1223,6 +1225,7 @@
   "stencil.awsKinesisDescription": "Một dữ liệu thời gian thực luồng chia thành Shard.",
   "stencil.subtitleStream": "luồng",
   "stencil.gcpPubsubDescription": "Một dịch vụ nhắn tin pub/sub được quản lý trên toàn cầu.",
+  "stencil.natsSubjectName": "NATS Subject",
   "stencil.natsSubjectDescription": "pub/sub nhẹ dựa trên các đối tượng (có thể được lưu trữ liên tục bằng cách sử dụng JetStream).",
   "stencil.subtitleSubject": "subject",
   "stencil.redisStreamName": "Redis luồng",
@@ -1453,6 +1456,7 @@
   "stencil.clientTeamName": "Nhóm",
   "stencil.clientTeamDescription": "Một nhóm người dùng, chẳng hạn như các nhà khai thác, nhân viên hỗ trợ hoặc một phân khúc khách hàng.",
   "stencil.subtitleUsers": "người dùng",
+  "stencil.genericExternalApiName": "API bên ngoài",
   "stencil.genericExternalApiDescription": "Một bên thứ ba bên ngoài HTTP API gọi bởi hệ thống của bạn.",
   "stencil.iterableDescription": "Tiếp xúc với khách hàng API cho sự kiện, hồ sơ người dùng và các chiến dịch xuyên kênh.",
   "stencil.subtitleEngagementAPI": "sự tham gia API",
@@ -1563,7 +1567,5 @@
   "stencil.vendorGeneric": "Chung",
   "stencil.vendorClient": "Máy khách",
   "stencil.unknownName": "Không biết",
-  "stencil.unknownDescription": "Mẫu hình không được tìm thấy trong phiên bản này của danh mục.",
-  "stencil.natsSubjectName": "NATS Subject",
-  "stencil.genericExternalApiName": "API bên ngoài"
+  "stencil.unknownDescription": "Mẫu hình không được tìm thấy trong phiên bản này của danh mục."
 }

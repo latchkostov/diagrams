@@ -855,6 +855,8 @@
     "menu.addBoundary": "c82d8192",
     "menu.colour": "2ecca61d",
     "menu.fitToContents": "7cbc2e29",
+    "menu.convertToZone": "01a3cef9",
+    "menu.convertToBoundary": "5d5a7c05",
     "menu.removeBoundary": "73d23bf9",
     "menu.deleteBoundaryAndNodes": "bac062dc",
     "menu.noMatches": "d29421ef",
@@ -1225,6 +1227,7 @@
     "stencil.awsKinesisDescription": "8f70d262",
     "stencil.subtitleStream": "5f6f6d65",
     "stencil.gcpPubsubDescription": "cb371ff9",
+    "stencil.natsSubjectName": "273068f5",
     "stencil.natsSubjectDescription": "2df33f63",
     "stencil.subtitleSubject": "891cfe4f",
     "stencil.redisStreamName": "189ab5e4",
@@ -1239,6 +1242,7 @@
     "stencil.mqttBrokerName": "3ecd21c0",
     "stencil.mqttBrokerDescription": "1229bb6e",
     "stencil.awsMskDescription": "9356f6b3",
+    "stencil.awsMqDescription": "bebb8d20",
     "stencil.azureFunctionsDescription": "a589a8e7",
     "stencil.subtitleFunction": "9ed64249",
     "stencil.azureAppServiceDescription": "37431d0f",
@@ -1321,6 +1325,7 @@
     "stencil.gcpCloudSqlDescription": "79213923",
     "stencil.gcpFirestoreDescription": "3e42c2a1",
     "stencil.subtitleDocuments": "009017e5",
+    "stencil.awsRedshiftDescription": "5114ab02",
     "stencil.awsAuroraDescription": "f270db29",
     "stencil.cassandraDescription": "9ddefd36",
     "stencil.subtitleKeyspace": "6c147af2",
@@ -1455,6 +1460,7 @@
     "stencil.subtitleUsers": "5e7cc513",
     "stencil.genericExternalApiName": "c800ee4a",
     "stencil.genericExternalApiDescription": "e0d62221",
+    "stencil.iterableDescription": "a956dbab",
     "stencil.subtitleEngagementAPI": "1f3ce50e",
     "stencil.brazeDescription": "3991904f",
     "stencil.segmentDescription": "79303d9a",
@@ -1563,10 +1569,6 @@
     "stencil.vendorGeneric": "8275cb9a",
     "stencil.vendorClient": "d5a6163e",
     "stencil.unknownName": "cc200e59",
-    "stencil.unknownDescription": "5dd8d63e",
-    "stencil.natsSubjectName": "273068f5",
-    "stencil.awsMqDescription": "bebb8d20",
-    "stencil.awsRedshiftDescription": "5114ab02",
-    "stencil.iterableDescription": "a956dbab"
+    "stencil.unknownDescription": "5dd8d63e"
   }
 }

@@ -51,9 +51,20 @@ export function makePayload(
   isPrivate = false,
 ): ClipboardPayload | null {
   const gs = new Set(groupIds);
+  let expanded = true;
+  while (expanded) {
+    expanded = false;
+    for (const g of d.groups ?? []) {
+      if (g.group && gs.has(g.group) && !gs.has(g.id)) {
+        gs.add(g.id);
+        expanded = true;
+      }
+    }
+  }
   const groups = (d.groups ?? []).filter((g) => gs.has(g.id));
   const ns = new Set(nodeIds);
   for (const n of d.nodes) if (n.group && gs.has(n.group)) ns.add(n.id);
+  for (const a of d.annotations ?? []) if (a.group && gs.has(a.group)) ns.add(a.id);
   const nodes = clipboardNodes(d).filter((n) => ns.has(n.id));
   const annotations = (d.annotations ?? []).filter((a) => ns.has(a.id));
   if (!nodes.length && !groups.length && !annotations.length) return null;
@@ -167,7 +178,8 @@ export function remapPayload(p: ClipboardPayload, taken: TakenIds, offset: { x: 
     const id = uniqueId(g.id, used);
     used.add(id);
     gmap.set(g.id, id);
-    return { ...g, id, x: g.x + offset.x, y: g.y + offset.y };
+    const group = g.group ? (gmap.get(g.group) ?? g.group) : undefined;
+    return { ...g, id, group, x: g.x + offset.x, y: g.y + offset.y };
   });
   const nodes = p.nodes.map((n) => {
     const id = uniqueId(n.id, used);
@@ -180,9 +192,11 @@ export function remapPayload(p: ClipboardPayload, taken: TakenIds, offset: { x: 
     const id = uniqueId(a.id, used);
     used.add(id);
     nmap.set(a.id, id);
+    const group = a.group ? (gmap.get(a.group) ?? a.group) : undefined;
     return {
       ...structuredClone(a),
       id,
+      group,
       x: annotationCoordinate(a.x + offset.x),
       y: annotationCoordinate(a.y + offset.y),
     };

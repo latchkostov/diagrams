@@ -855,6 +855,8 @@
     "menu.addBoundary": "c82d8192",
     "menu.colour": "2ecca61d",
     "menu.fitToContents": "7cbc2e29",
+    "menu.convertToZone": "01a3cef9",
+    "menu.convertToBoundary": "5d5a7c05",
     "menu.removeBoundary": "73d23bf9",
     "menu.deleteBoundaryAndNodes": "bac062dc",
     "menu.noMatches": "d29421ef",
@@ -1394,6 +1396,7 @@
     "stencil.subtitleSecurityGateway": "0c76758d",
     "stencil.juniperSrxDescription": "be8c4edc",
     "stencil.subtitleFirewall": "ee0bd7f1",
+    "stencil.genericAdcDescription": "909e4103",
     "stencil.f5BigipDescription": "a8ec3eca",
     "stencil.netscalerAdcDescription": "4ca07145",
     "stencil.grafanaDescription": "d7807eda",
@@ -1495,6 +1498,7 @@
     "stencil.genericWebhookName": "bac3fbc6",
     "stencil.genericWebhookDescription": "ebf1fe69",
     "stencil.subtitleWebhook": "a0ebd926",
+    "stencil.genericLlmName": "4b8f46b8",
     "stencil.genericLlmDescription": "4aaba87e",
     "stencil.genericServiceName": "b643c704",
     "stencil.genericServiceDescription": "5efb64e2",
@@ -1565,8 +1569,6 @@
     "stencil.vendorGeneric": "8275cb9a",
     "stencil.vendorClient": "d5a6163e",
     "stencil.unknownName": "cc200e59",
-    "stencil.unknownDescription": "5dd8d63e",
-    "stencil.genericAdcDescription": "909e4103",
-    "stencil.genericLlmName": "4b8f46b8"
+    "stencil.unknownDescription": "5dd8d63e"
   }
 }

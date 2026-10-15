@@ -853,6 +853,8 @@
   "menu.addBoundary": "Agregar límite",
   "menu.colour": "Color",
   "menu.fitToContents": "Ajustar al contenido",
+  "menu.convertToZone": "Convertir a zona",
+  "menu.convertToBoundary": "Convertir a límite",
   "menu.removeBoundary": "Eliminar límite",
   "menu.deleteBoundaryAndNodes": "Eliminar límite y nodo",
   "menu.noMatches": "No hay coincidencias",

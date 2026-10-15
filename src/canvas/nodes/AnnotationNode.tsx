@@ -9,6 +9,7 @@ import {
 } from "react";
 import { Handle, NodeResizeControl, ResizeControlVariant, useReactFlow, type NodeProps } from "@xyflow/react";
 import { ANNOTATION_LIMITS, annotationSize, annotationText } from "../../model/annotations";
+import { accessibleColor, isHexColor } from "../../model/colors";
 import type { AnnotationKind, AnnotationShape } from "../../model/types";
 import { resolveAnnotationColor, isConnectable, isObstacle, kindLabel, minSize } from "../annotations";
 import { useSelectOnMount } from "../../components/useSelectOnMount";
@@ -94,10 +95,23 @@ function AnnotationNodeImpl({
     </div>
   );
 
+  const inkLight = isHexColor(resolved.hex) ? accessibleColor(resolved.hex, 1.0, "var(--text)") : undefined;
+  const inkDark = isHexColor(resolved.hex) ? accessibleColor(resolved.hex, 0.02, "var(--text)") : undefined;
+
   return (
     <div
       className={`ann ann-${kind} ann-s-${data.textSize ?? "m"}${selected ? " is-selected" : ""}${isEditing ? " is-editing" : ""}`}
-      style={{ "--ann": resolved.hex } as CSSProperties}
+      style={
+        {
+          "--ann": resolved.hex,
+          ...(kind === "text"
+            ? {
+                "--ann-text-ink-light": inkLight,
+                "--ann-text-ink-dark": inkDark,
+              }
+            : {}),
+        } as CSSProperties
+      }
       data-testid={`annotation-${id}`}
       data-kind={kind}
       data-shape={kind === "shape" ? (data.shape ?? "rect") : undefined}

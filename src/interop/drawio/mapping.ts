@@ -1,4 +1,5 @@
 import type { DiagramGroup } from "../../model/types";
+import { isHexColor } from "../../model/colors";
 
 // Stencil <-> draw.io shape mapping. Export uses draw.io's own built-in shapes where one exists
 // (Azure: the `img/lib/azure2/...` icon set; AWS: `mxgraph.aws4.resourceIcon`; Kubernetes:
@@ -112,7 +113,7 @@ export const TONE_COLORS: Record<NonNullable<DiagramGroup["tone"]>, string> = {
 };
 
 export function groupStyle(tone: NonNullable<DiagramGroup["tone"]>): string {
-  const c = TONE_COLORS[tone];
+  const c = isHexColor(tone) ? tone : (TONE_COLORS[tone as keyof typeof TONE_COLORS] ?? TONE_COLORS.neutral);
   const base = `container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=${c};strokeColor=${c};`;
   if (tone === "aws")
     return `points=[];outlineConnect=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud_alt;spacingLeft=30;dashed=0;${base}`;

@@ -853,6 +853,8 @@
   "menu.addBoundary": "Dodajte meja",
   "menu.colour": "Barva",
   "menu.fitToContents": "Prilagoditev vsebini",
+  "menu.convertToZone": "Pretvori v cono",
+  "menu.convertToBoundary": "Pretvori v mejo",
   "menu.removeBoundary": "Odstranite meja",
   "menu.deleteBoundaryAndNodes": "Izbriši meja in vozlišče",
   "menu.noMatches": "Ni ujemanja",
@@ -1346,6 +1348,7 @@
   "stencil.subtitleReverseProxy": "obrnjeni zastopnik",
   "stencil.kongDescription": "API prehod z dodatki za avt, omejitev hitrosti in usmerjanje.",
   "stencil.subtitleApiGateway": "api prehod",
+  "stencil.cloudflareDescription": "Redijo na robu: CDN, WAF, DNS in Workers.",
   "stencil.loadBalancerName": "Izravnalnik obremenitve",
   "stencil.loadBalancerDescription": "Razdelila je promet v različnih primerih.",
   "stencil.envoyDescription": "L7 proxy in sidecar, ki se uporablja za servisne mreže in rob prehod.",
@@ -1564,6 +1567,5 @@
   "stencil.vendorGeneric": "Splošno",
   "stencil.vendorClient": "Odjemalec",
   "stencil.unknownName": "Nepoznano",
-  "stencil.unknownDescription": "Šablona ni na voljo v tej različici kataloga.",
-  "stencil.cloudflareDescription": "Redijo na robu: CDN, WAF, DNS in Workers."
+  "stencil.unknownDescription": "Šablona ni na voljo v tej različici kataloga."
 }

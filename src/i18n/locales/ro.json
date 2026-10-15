@@ -853,6 +853,8 @@
   "menu.addBoundary": "Adăugați o limită",
   "menu.colour": "Culoare",
   "menu.fitToContents": "Ajustați la conținut",
+  "menu.convertToZone": "Conversie în zonă",
+  "menu.convertToBoundary": "Conversie în limită",
   "menu.removeBoundary": "Eliminați limita",
   "menu.deleteBoundaryAndNodes": "Ștergeți limita și nodurile",
   "menu.noMatches": "Niciun rezultat",
@@ -1223,6 +1225,7 @@
   "stencil.awsKinesisDescription": "O dată în timp real flux împărțită în Sharduri.",
   "stencil.subtitleStream": "flux",
   "stencil.gcpPubsubDescription": "Un serviciu de mesaje pub/sub gestionat la nivel global.",
+  "stencil.natsSubjectName": "NATS Subject",
   "stencil.natsSubjectDescription": "pub/sub uşor pe bază de subiecţi (opţional stocat în mod persistent folosind JetStream).",
   "stencil.subtitleSubject": "subject",
   "stencil.redisStreamName": "Redis flux",
@@ -1252,6 +1255,7 @@
   "stencil.subtitleService": "serviciu",
   "stencil.awsStepFunctionsDescription": "Orchestrarea fără server a fluxurilor de lucru folosind automate de stări.",
   "stencil.subtitleStateMachine": "automat de stări",
+  "stencil.k8sPodName": "Kubernetes Pod",
   "stencil.k8sPodDescription": "Cea mai mică unitate deploiabilă: unul sau mai mulți containeri localizați împreună.",
   "stencil.subtitlePod": "Pod",
   "stencil.k8sDeploymentName": "Kubernetes Deployment",
@@ -1563,7 +1567,5 @@
   "stencil.vendorGeneric": "Generic",
   "stencil.vendorClient": "Client",
   "stencil.unknownName": "Necunoscut",
-  "stencil.unknownDescription": "Șablon nu se găsește în această versiune a catalogului.",
-  "stencil.natsSubjectName": "NATS Subject",
-  "stencil.k8sPodName": "Kubernetes Pod"
+  "stencil.unknownDescription": "Șablon nu se găsește în această versiune a catalogului."
 }

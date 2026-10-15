@@ -855,6 +855,8 @@
     "menu.addBoundary": "c82d8192",
     "menu.colour": "2ecca61d",
     "menu.fitToContents": "7cbc2e29",
+    "menu.convertToZone": "01a3cef9",
+    "menu.convertToBoundary": "5d5a7c05",
     "menu.removeBoundary": "73d23bf9",
     "menu.deleteBoundaryAndNodes": "bac062dc",
     "menu.noMatches": "d29421ef",
@@ -1205,6 +1207,7 @@
     "stencil.kafkaKsqldbDescription": "981ac827",
     "stencil.subtitleStreamProcessor": "c69f0111",
     "stencil.azureServiceBusQueueName": "09ae5579",
+    "stencil.azureServiceBusQueueDescription": "c0a5d290",
     "stencil.subtitleQueue": "f4dfb8b8",
     "stencil.azureServiceBusTopicName": "b9ed8ec9",
     "stencil.azureServiceBusTopicDescription": "854655c1",
@@ -1216,6 +1219,7 @@
     "stencil.rabbitmqExchangeDescription": "f8d97baa",
     "stencil.subtitleExchange": "64e3eb60",
     "stencil.rabbitmqQueueName": "b86fe3dc",
+    "stencil.rabbitmqQueueDescription": "9e8a9db2",
     "stencil.awsSqsDescription": "d5179489",
     "stencil.awsSnsDescription": "57529926",
     "stencil.awsEventbridgeDescription": "3e91df87",
@@ -1455,6 +1459,7 @@
     "stencil.clientTeamDescription": "45c59580",
     "stencil.subtitleUsers": "5e7cc513",
     "stencil.genericExternalApiName": "c800ee4a",
+    "stencil.genericExternalApiDescription": "e0d62221",
     "stencil.iterableDescription": "a956dbab",
     "stencil.subtitleEngagementAPI": "1f3ce50e",
     "stencil.brazeDescription": "3991904f",
@@ -1564,9 +1569,6 @@
     "stencil.vendorGeneric": "8275cb9a",
     "stencil.vendorClient": "d5a6163e",
     "stencil.unknownName": "cc200e59",
-    "stencil.unknownDescription": "5dd8d63e",
-    "stencil.azureServiceBusQueueDescription": "c0a5d290",
-    "stencil.rabbitmqQueueDescription": "9e8a9db2",
-    "stencil.genericExternalApiDescription": "e0d62221"
+    "stencil.unknownDescription": "5dd8d63e"
   }
 }

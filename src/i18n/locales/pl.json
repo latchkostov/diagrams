@@ -853,6 +853,8 @@
   "menu.addBoundary": "Dodaj granica",
   "menu.colour": "Kolor",
   "menu.fitToContents": "Dopasuj do zawartości",
+  "menu.convertToZone": "Konwertuj na strefę",
+  "menu.convertToBoundary": "Konwertuj na granicę",
   "menu.removeBoundary": "Usuń granica",
   "menu.deleteBoundaryAndNodes": "Usuń granica i węzeł",
   "menu.noMatches": "Brak dopasowań",
@@ -1247,6 +1249,7 @@
   "stencil.azureAksDescription": "Azure Kubernetes Service — zarządzane klastry Kubernetes.",
   "stencil.azureLogicAppsDescription": "Niższy kod przepływów pracy i integracji z setkami łączy.",
   "stencil.subtitleWorkflow": "przepływ pracy",
+  "stencil.azureSignalrDescription": "Zarządzanie w czasie rzeczywistym WebSocket przekazywanie wiadomości klientom.",
   "stencil.awsLambdaDescription": "Funkcje bez serwera wywołane przez zdarzenie.",
   "stencil.awsEcsDescription": "Zarządzana orkiestrzacja kontenerów (EC2 lub Fargate).",
   "stencil.subtitleService": "usługa",
@@ -1453,6 +1456,7 @@
   "stencil.clientTeamName": "Zespół",
   "stencil.clientTeamDescription": "Grupa użytkowników, np. operatorzy, personel obsługi lub segment klientów.",
   "stencil.subtitleUsers": "użytkownicy",
+  "stencil.genericExternalApiName": "Zewnętrzny interfejs API",
   "stencil.genericExternalApiDescription": "Zewnętrzna strona trzecia HTTP API powołana przez twój system.",
   "stencil.iterableDescription": "Zaangażowanie klientów API dla zdarzenie, profily użytkowników i kampanie między kanałami.",
   "stencil.subtitleEngagementAPI": "zaangażowanie API",
@@ -1563,7 +1567,5 @@
   "stencil.vendorGeneric": "Ogólne",
   "stencil.vendorClient": "Klient",
   "stencil.unknownName": "Nieznane",
-  "stencil.unknownDescription": "Wzornik nie znajduje się w tej wersji katalogu.",
-  "stencil.azureSignalrDescription": "Zarządzanie w czasie rzeczywistym WebSocket przekazywanie wiadomości klientom.",
-  "stencil.genericExternalApiName": "Zewnętrzny interfejs API"
+  "stencil.unknownDescription": "Wzornik nie znajduje się w tej wersji katalogu."
 }
