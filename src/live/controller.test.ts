@@ -7,7 +7,8 @@ import { emptyInputs, freePlaySaveProps } from "./capacityModel";
 import { autoscalingFixture, sampledCpuBudgetFixture } from "../lab/autoscalingFixture";
 import { resourceLesson } from "../model/autoscaling";
 import * as admissions from "../sim/admission";
-import * as resourceBudgets from "../model/resourceBudget";
+import * as allocations from "../sim/allocation";
+import { LifecycleBudgetError } from "../model/resourceBudget";
 
 const roles: Record<string, SimRole> = { src: "source", q: "queue", svc: "processor", db: "store" };
 const roleOf = (stencil: string) => roles[stencil] ?? "none";
@@ -689,7 +690,9 @@ describe("A1 round 3 controller boundaries", () => {
     c.setPlaying(true);
     const before = c.snapshot();
     const fleet = before.nodes.worker.fleet;
-    const budget = vi.spyOn(resourceBudgets, "resourceBudgetExceeded").mockReturnValue(true);
+    const budget = vi.spyOn(allocations, "validateAllocationActions").mockImplementation(() => {
+      throw new LifecycleBudgetError("Resource lifecycle budget exceeded: 100000");
+    });
     try {
       expect(() => c[action](1100)).not.toThrow();
       expect(c.getState().playing).toBe(false);
@@ -726,7 +729,9 @@ describe("A1 round 3 controller boundaries", () => {
     c.step(1000);
     const before = c.snapshot(),
       run = c.getState().run;
-    const budget = vi.spyOn(resourceBudgets, "resourceBudgetExceeded").mockReturnValue(true);
+    const budget = vi.spyOn(allocations, "validateAllocationActions").mockImplementation(() => {
+      throw new LifecycleBudgetError("Resource lifecycle budget exceeded: 100000");
+    });
     try {
       expect(() => c.resume()).not.toThrow();
       expect(c.getState().playing).toBe(false);
@@ -757,7 +762,9 @@ describe("A1 round 3 controller boundaries", () => {
     c.step(990);
     const before = c.snapshot(),
       sandbox = c.lookAhead();
-    const budget = vi.spyOn(resourceBudgets, "resourceBudgetExceeded").mockReturnValue(true);
+    const budget = vi.spyOn(allocations, "validateAllocationActions").mockImplementation(() => {
+      throw new LifecycleBudgetError("Resource lifecycle budget exceeded: 100000");
+    });
     try {
       expect(sandbox.step(1100)).toBe(false);
     } finally {

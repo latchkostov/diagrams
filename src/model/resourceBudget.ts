@@ -2,6 +2,10 @@ import type { DiagramFile } from "./types";
 /** Lifecycle objects are independent of the particle budget. Reject the whole configuration, never a partial run. */
 export const MAX_LIFECYCLE_REPLICAS = 100_000;
 export class LifecycleBudgetError extends Error {}
+/** The same contribution for a current configuration and a saved-run maximum. */
+export function resourceAllocationCount(enabled: boolean, count: number, capacityMultiplier: number): number {
+  return enabled ? Math.max(1, Math.min(10_000, Math.round(count * Math.max(4, capacityMultiplier)))) : 0;
+}
 export type ResourceCandidate = Pick<DiagramFile, "planning" | "simulations"> & {
   nodes: readonly { id: string; props?: Record<string, unknown> }[];
 };
@@ -30,7 +34,7 @@ export function resourceBudgetExceeded(d: ResourceCandidate, capacityMultiplier 
   }
   let total = 0;
   for (const { enabled, count } of nodes.values()) {
-    if (enabled) total += Math.max(1, Math.min(10_000, Math.round(count * multiplier)));
+    total += resourceAllocationCount(enabled, count, multiplier);
     if (total > MAX_LIFECYCLE_REPLICAS) return true;
   }
   return false;
