@@ -106,7 +106,8 @@ latencies.
   produces.
 - **Pixel-exact PNGs.** Rasterisers differ between CPUs; see "Browser tier".
 - **The automatic fit on opening.** Its framing depends on timing (see "App behaviour found" below); the harness
-  pins Fit view instead.
+  pins Fit view instead. The Interactive HTML viewer waits for fonts and layout, then zooms and fits explicitly;
+  omitting that fit fails deterministically instead of depending on startup timing.
 
 ## Determinism
 

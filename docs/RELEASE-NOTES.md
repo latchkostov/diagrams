@@ -6,6 +6,8 @@
   the pnpm version, so upgrades no longer require matching workflow pins.
 - Dependency-policy tests prove synchronized commands work and stale commands fail specifically
   during dependency verification, without rewriting the lockfile. App output and parity goldens are unchanged.
+- Interactive HTML parity fits the settled viewer explicitly, avoiding a startup-framing race; its
+  existing goldens remain unchanged.
 
 ## Self-hosting review fixes (2026-10-14)
 
