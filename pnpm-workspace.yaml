@@ -1,0 +1,12 @@
+# Only esbuild's install script was permitted before the pnpm 11/12 migration.
+allowBuilds:
+  esbuild: true
+# Commands must use the explicit install's dependencies, never silently install another set.
+verifyDepsBeforeRun: error
+# Requested patches published on 2026-10-14; keep the one-day default for all other packages.
+minimumReleaseAgeExclude:
+  - "@playwright/test@1.64.1"
+  - "playwright@1.64.1"
+  - "playwright-core@1.64.1"
+  - "react@19.3.1"
+  - "react-dom@19.3.1"

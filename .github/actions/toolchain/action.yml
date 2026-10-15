@@ -1,0 +1,15 @@
+name: Toolchain
+description: Set up pnpm and Node from the repository pins, cache the store, and install locked dependencies. Check out the repository first.
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v6
+    - uses: actions/setup-node@v7
+      with:
+        node-version-file: .nvmrc
+        cache: pnpm
+        cache-dependency-path: |
+          pnpm-lock.yaml
+          pnpm-workspace.yaml
+    - run: pnpm install --frozen-lockfile
+      shell: bash

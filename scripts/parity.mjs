@@ -92,6 +92,7 @@ function browserInContainer() {
   const pkg = join(ROOT, "node_modules/@playwright/test/package.json");
   if (!existsSync(pkg)) fail("install the dependencies first (pnpm install)");
   const version = JSON.parse(readFileSync(pkg, "utf8")).version;
+  const packageManager = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")).packageManager;
   const image = `mcr.microsoft.com/playwright:v${version}-noble`;
   if (spawnSync("docker", ["version", "--format", "{{.Server.Version}}"], { stdio: "ignore" }).status !== 0)
     fail(
@@ -101,7 +102,7 @@ function browserInContainer() {
   const owner = typeof process.getuid === "function" ? `${process.getuid()}:${process.getgid()}` : "";
   const inside = [
     "set -e",
-    "corepack enable >/dev/null 2>&1 || npm install -g pnpm@10 >/dev/null",
+    `corepack enable >/dev/null 2>&1 || npm install -g ${packageManager} >/dev/null`,
     "export COREPACK_ENABLE_DOWNLOAD_PROMPT=0",
     "pnpm install --frozen-lockfile --prefer-offline --reporter=silent",
     "status=0",
@@ -126,7 +127,7 @@ function browserInContainer() {
       "-v",
       "livediagrams-parity-pnpm-store:/pnpm-store",
       "-e",
-      "npm_config_store_dir=/pnpm-store",
+      "pnpm_config_store_dir=/pnpm-store",
       "-w",
       "/work",
       "-e",

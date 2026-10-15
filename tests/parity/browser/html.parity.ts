@@ -90,6 +90,15 @@ for (const slug of EXAMPLES) {
     const viewer = await context.newPage();
     await viewer.goto(pathToFileURL(file).href);
     await expect(viewer.getByTestId("html-viewer")).toBeVisible();
+    await viewer.evaluate(async () => {
+      await document.fonts.ready;
+    });
+    await settledCanvas(viewer);
+    // Pin Fit view with fonts and chrome in place, as openExample does for the app. Starting zoomed
+    // makes a missing refit fail deterministically instead of depending on the automatic fit's timing.
+    await viewer.getByTestId("viewer-zoom-in").click();
+    await settledCanvas(viewer);
+    await viewer.getByTestId("viewer-fit").click();
     expectGolden(`html/${slug}.dark.drawn.json`, await settledCanvas(viewer));
     // How it looks, banner and footer included: the viewer's own CSS isn't in the file's golden (it's build output).
     await expectGoldenPng(page, `html/${slug}.dark.png`, await viewer.screenshot({ fullPage: true }));

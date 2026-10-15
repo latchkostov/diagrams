@@ -1,0 +1,19 @@
+name: Cached Chromium
+description: Restore Chromium for the installed Playwright version. The caller installs system dependencies.
+runs:
+  using: composite
+  steps:
+    - name: Playwright version
+      id: pw
+      shell: bash
+      run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+    - name: Cache Playwright browsers
+      id: cache
+      uses: actions/cache@v6
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.pw.outputs.version }}
+    - name: Install Chromium
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: pnpm exec playwright install chromium

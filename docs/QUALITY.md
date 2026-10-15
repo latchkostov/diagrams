@@ -14,6 +14,29 @@ Every feature batch goes through the same gates before the next one starts:
 Standards: strict TypeScript, ESLint (typescript-eslint strict, react-hooks, jsx-a11y), Prettier,
 `data-testid` selectors, deterministic tests, coverage reported in CI (`pnpm test:coverage`).
 
+## Toolchain
+
+| Tool               | Pin                                                                                                           |
+| ------------------ | ------------------------------------------------------------------------------------------------------------- |
+| Node               | 24.22.0 in `.nvmrc` (CI/nightly); `engines` requires Node 24; Docker uses `node:24-alpine`                    |
+| pnpm               | 12.11.2 in `packageManager`; the shared `.github/actions/toolchain` action reads that pin                     |
+| Type checker       | TypeScript 7.0.2 as `@typescript/native`; its `tsc` runs `typecheck`, builds and Vitest's type checks         |
+| TypeScript API     | `typescript` aliases `@typescript/typescript6` 6.0.2 (reports compiler 6.0.3); `tsc6` runs `typecheck:legacy` |
+| Test/browser tools | Vitest + coverage 5.0.4, Playwright 1.64.1; browser parity uses the corresponding `-noble` image              |
+| App/lint/build     | React 19.3.1, typescript-eslint 8.71.2; Vite resolves to 8.3.4 in the lockfile                                |
+| CI OS              | `ubuntu-26.04`, explicitly pinned in CI and nightly                                                           |
+
+Bump these separately: measure first, update the manifest and regenerate the lockfile, then test a
+clean `pnpm install --frozen-lockfile` on CI. Keep the API compiler within typescript-eslint's peer
+range; run `pnpm typecheck:legacy` when changing either compiler. The compiler regression test checks
+valid/invalid code and no emit with both. `pnpm-workspace.yaml` owns build permissions (`esbuild` only)
+and makes stale installs fail before commands run; pnpm 12's isolated hoisting defaults stay unchanged.
+The one-day release-age default remains, with exact-version exceptions for the requested patches
+published on 2026-10-14; remove those once aged. Cache the path from `pnpm store path` (currently store
+v11), not an assumed v10 location. Change Node in `.nvmrc`, `engines` and Docker together. Run full
+parity without rewriting goldens, check bundle size, and refresh the skill viewer if `skill:check`
+warns. Measurements and migration decisions: [toolchain modernization](TOOLCHAIN-MODERNIZATION.md).
+
 ## E2E projects and ports
 
 `pnpm test:e2e` starts its own servers and runs three Playwright projects:
@@ -61,17 +84,19 @@ build that bundles the test storage provider, so `pnpm build` on CI proves produ
 
 `.github/workflows/ci.yml` (all jobs start together unless noted):
 
+- Runs on master pushes, `ci/**` pushes (platform trials without opening a PR), and pull requests.
 - **Detect changes:** reads the changed files through the GitHub API (no checkout). It skips the e2e
   matrix when a pull request or push touches only `docs/**`, `*.md` or `LICENSE`, and on a push to
   `master` whose tree a pull request run already passed (a squash merge of a PR tested against the current
   `master`). If `master` moved in between, the tree differs and everything runs.
-- **Types, lint, unit, build:** `tsc`, `pnpm lint`, `pnpm format:check`, `pnpm test:coverage`, `pnpm build`
+- **Types, lint, unit, build:** `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm test:coverage`, `pnpm build`
   (with the test-hook and private-example guards), then `pnpm size`. Runs on every event, beside e2e.
 - **E2E 1/6 … 6/6** (after Detect changes): the Playwright suite in six shards of whole spec files, three
   workers each (the runners have 4 vCPUs). The local action `.github/actions/e2e` (shared with the nightly
   workflow, so both test the same setup) builds the e2e and production bundles while apt installs Chromium's
-  system libraries, then runs the shard with `E2E_PREBUILT=1`. The pnpm store is cached by lockfile and
-  Chromium by Playwright version. Each shard writes its slowest tests, slowest spec files and any test that
+  system libraries (on cache hits and misses), then runs the shard with `E2E_PREBUILT=1`. The pnpm store
+  is cached by lockfile and workspace policy, Chromium by Playwright version, OS and architecture through
+  `.github/actions/chromium-cache` (also used by self-host smoke tests). Each shard writes its slowest tests, slowest spec files and any test that
   needed a retry to the job summary, and uploads the JSON report (`e2e-durations-<n>`, 30 days) for
   timing analysis. On failure it uploads its HTML report and traces (`playwright-output-<n>`), and
   **Merged E2E report** merges every shard's blob report into one (`playwright-report-merged`).
@@ -79,6 +104,8 @@ build that bundles the test storage provider, so `pnpm build` on CI proves produ
   (simulations, checks, exports, imports, agent tools, layout, languages, the canvas, images, Interactive HTML)
   against committed goldens. The browser tier runs in Playwright's Linux image through Docker, as it does locally.
   Update the goldens with `pnpm parity:update` when a change means to alter output.
+- **Self-host image and chart:** the root and subpath Docker smoke tests, Caddy validation, `helm lint`
+  and an ingress/TLS chart render. Uses the same cached Chromium as the e2e shards.
 - **CI:** the one check to require for merging. It passes when every job that had to run passed; a
   skipped e2e matrix counts as passed. On a passing pull request run it uploads a
   `ci-tested-tree-<tree>` marker, which the merge's push run looks up to skip the matrix.
