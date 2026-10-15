@@ -1,0 +1,380 @@
+{
+  "autoScale": { "freePlay": 1, "wake-on-burst": 2 },
+  "brokerAssignments": {
+    "brokers": {
+      "uploads": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+    },
+    "consumers": {
+      "worker": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      }
+    }
+  },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "worker",
+      "suggestion": "3 partitions: Partitions → 8",
+      "converged": true,
+      "iterations": 3,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": {
+        "source": ["Infinity", 2, 0, 1, 1, 0],
+        "uploads": [48, 2, 0.041666666666666664, 1, 1, 0],
+        "worker": [
+          48,
+          2,
+          0.041666666666666664,
+          8,
+          3,
+          5,
+          {
+            "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+          }
+        ]
+      },
+      "connections": { "publish": 2, "consume": 2 },
+      "offeredTypes": { "source": ["Poster studio"], "uploads": ["Poster studio"], "worker": ["Poster studio"] }
+    },
+    "explanations": {
+      "worker": {
+        "resources": {
+          "keda": { "pollingMs": 1000, "cooldownMs": 2000, "lagBeforePoll": 0, "offered": 2 },
+          "perReplica": 16,
+          "initial": 8,
+          "min": 8,
+          "max": 10,
+          "initialCapacity": 48,
+          "maxCapacity": 160,
+          "cpuRequestPct": 5.333333333333334,
+          "memoryPeakMiB": 136,
+          "memoryRisk": false,
+          "baselineAboveTarget": false,
+          "partitionLimited": true,
+          "startupMs": 1000,
+          "cpuUnbounded": false
+        },
+        "id": "worker",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 48,
+        "offered": 2,
+        "replicas": 8,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 3,
+        "assignments": [
+          {
+            "broker": "uploads",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": 0.041666666666666664,
+        "growth": 0,
+        "contributors": [{ "edge": "consume", "node": "uploads", "label": "Render requests", "rate": 2 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "source": [{ "kind": "publishes", "edge": "publish", "peer": "uploads" }],
+      "worker": [
+        {
+          "kind": "consumes",
+          "edge": "consume",
+          "peer": "uploads",
+          "group": "renders",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ]
+    },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "source": {
+        "profile": { "family": "client", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Poster studio",
+        "healthChecks": false
+      },
+      "uploads": {
+        "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+        "profile": { "family": "log", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Render requests",
+        "healthChecks": false
+      },
+      "worker": {
+        "resources": {
+          "preset": "io-service",
+          "presetRevision": "1",
+          "cpuMsPerMessage": 40,
+          "baselineMemoryMiB": 128,
+          "memoryMiBPerMessage": 2,
+          "cpuRequestMilli": 500,
+          "cpuLimitMilli": 1000,
+          "memoryRequestMiB": 256,
+          "memoryLimitMiB": 512,
+          "startup": { "delayMs": 1000, "jitterFraction": 0 },
+          "terminationGraceMs": 30000
+        },
+        "autoscaling": {
+          "mode": "on",
+          "modelRevision": "a2",
+          "preset": "keda-kafka",
+          "presetRevision": "1",
+          "controller": {
+            "kind": "keda",
+            "minReplicas": 8,
+            "maxReplicas": 10,
+            "initialReplicas": 8,
+            "pollingMs": 1000,
+            "cooldownMs": 2000,
+            "initialCooldownMs": 0,
+            "triggers": [
+              {
+                "type": "kafka",
+                "source": { "node": "uploads", "group": "renders" },
+                "target": 10,
+                "activation": 0,
+                "useCachedMetrics": false,
+                "allowIdleConsumers": true
+              }
+            ],
+            "settings": {
+              "syncMs": 1000,
+              "tolerance": 0.1,
+              "initialReadinessDelayMs": 0,
+              "cpuInitializationPeriodMs": 0,
+              "metrics": [],
+              "up": {
+                "stabilizationMs": 0,
+                "selectPolicy": "Max",
+                "policies": [
+                  { "type": "Pods", "value": 4, "periodMs": 15000 },
+                  { "type": "Percent", "value": 100, "periodMs": 15000 }
+                ]
+              },
+              "down": {
+                "stabilizationMs": 300000,
+                "selectPolicy": "Max",
+                "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+              }
+            }
+          }
+        },
+        "profile": { "family": "service", "revision": "p3-a1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Poster workers",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "wake-on-burst": {
+      "configured": "(same as edit)",
+      "simulation": "wake-on-burst",
+      "analysis": {
+        "bottleneck": "worker",
+        "suggestion": "3 partitions: Partitions → 8",
+        "converged": true,
+        "iterations": 3,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": {
+          "source": ["Infinity", 80, 0, 1, 1, 0],
+          "uploads": [48, 80, 1.6666666666666667, 1, 1, 0],
+          "worker": [
+            48,
+            80,
+            1.6666666666666667,
+            8,
+            3,
+            5,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ]
+        },
+        "connections": { "publish": 80, "consume": 80 },
+        "offeredTypes": { "source": ["Poster studio"], "uploads": ["Poster studio"], "worker": ["Poster studio"] }
+      },
+      "explanations": {
+        "worker": {
+          "resources": {
+            "keda": { "pollingMs": 1000, "cooldownMs": 2000, "lagBeforePoll": 0, "offered": 80 },
+            "perReplica": 16,
+            "initial": 8,
+            "min": 8,
+            "max": 10,
+            "initialCapacity": 48,
+            "maxCapacity": 160,
+            "cpuRequestPct": 213.33333333333334,
+            "memoryPeakMiB": 136,
+            "memoryRisk": false,
+            "baselineAboveTarget": false,
+            "partitionLimited": true,
+            "startupMs": 1000,
+            "cpuUnbounded": false
+          },
+          "id": "worker",
+          "role": "processor",
+          "status": "up",
+          "reason": "capacity",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 48,
+          "offered": 80,
+          "replicas": 8,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 3,
+          "assignments": [
+            {
+              "broker": "uploads",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 3
+            }
+          ],
+          "slots": 4,
+          "seconds": 0.25,
+          "utilization": 1.6666666666666667,
+          "growth": 32,
+          "contributors": [{ "edge": "consume", "node": "uploads", "label": "Render requests", "rate": 80 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": { "uploads": { "replicas": 2, "enough": false }, "worker": { "replicas": 2, "enough": false } },
+      "resolved": "(same as edit)"
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "ok",
+          "top": "worker",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Poster workers at 4% · 2/s of 48/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "2/s · no limit", { "modeled": false }],
+            "uploads": ["ok", "4% · 2/s of 48/s"],
+            "worker": ["ok", "4% · 2/s of 48/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "ok",
+          "top": "worker",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Poster workers at 21% · 10/s of 48/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "10/s · no limit", { "modeled": false }],
+            "uploads": ["ok", "21% · 10/s of 48/s"],
+            "worker": ["ok", "21% · 10/s of 48/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "ok",
+          "top": "worker",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Poster workers at 4% · 2/s of 48/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "2/s · no limit", { "modeled": false }],
+            "uploads": ["ok", "4% · 2/s of 48/s"],
+            "worker": ["ok", "4% · 2/s of 48/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": { "uploads": { "partitions": 6 } }, "rates": {} },
+        "view": {
+          "tone": "ok",
+          "top": "worker",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Poster workers at 2% · 2/s of 96/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "2/s · no limit", { "modeled": false }],
+            "uploads": ["ok", "2% · 2/s of 96/s"],
+            "worker": ["ok", "2% · 2/s of 96/s"]
+          }
+        },
+        "partitionsNotes": { "uploads": "All configured reader instances already have an assignment." }
+      }
+    },
+    "wake-on-burst": {
+      "tone": "over",
+      "top": "worker",
+      "headline": "Poster workers: 5 of 8 replicas idle",
+      "detail": "Assigned instances: 3 / 8 · Partitions. 167% · 80/s of 48/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "source": ["idle", "80/s · no limit", { "modeled": false }],
+        "uploads": ["over", "167% · 80/s of 48/s"],
+        "worker": ["over", "167% · 80/s of 48/s"]
+      }
+    }
+  }
+}

@@ -309,10 +309,11 @@ export function createEditor(
         },
       },
     });
-  const acceptNodes = (nodes: FlowNode[]): boolean => {
+  const acceptNodes = (nodes: FlowNode[], edges = currentEdges()): boolean => {
     const error = validateResources({
       ...deps().meta,
-      nodes: nodes.filter(isDiagram).map((n) => ({ id: n.id, props: n.data.props })),
+      nodes: nodes.filter(isDiagram).map((n) => ({ id: n.id, stencil: n.data.stencil, props: n.data.props })),
+      edges: edges.map((e) => ({ id: e.id, from: e.source, to: e.target, ...e.data })),
     });
     if (!error) return true;
     if (error === t("autoscaling.modelRequired")) explainModelRequired();
@@ -326,8 +327,8 @@ export function createEditor(
   ): boolean => {
     const current = currentNodes(),
       candidate = update(current);
-    if (!acceptNodes(candidate)) return false;
     const edges = updateEdges(currentEdges());
+    if (!acceptNodes(candidate, edges)) return false;
     const existing = new Set([...current.map((n) => n.id), ...currentEdges().map((e) => e.id)]);
     const reserved = [...candidate, ...edges].map((item) => item.id).filter((id) => !existing.has(id));
     for (const id of reserved) pendingIds.add(id);

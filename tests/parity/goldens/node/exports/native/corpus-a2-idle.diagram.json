@@ -1,0 +1,163 @@
+{
+  "format": "diagrams/v2",
+  "planning": {
+    "revision": "p3-a1"
+  },
+  "title": "a2-idle",
+  "description": "An invented poster-rendering pipeline. KEDA observes real Kafka group lag, wakes from zero, and sends the active fleet through HPA. The burst drains and workers return to zero within ten simulated seconds. Teaching timings: 1 s polling and HPA sync, 1 s startup, 2 s final-zero cooldown; these are deliberately shorter than the published 30/15/300 s defaults. Kafka offset history starts empty and rebalance delay is not simulated.",
+  "nodes": [
+    {
+      "id": "source",
+      "stencil": "client.browser",
+      "label": "Poster studio",
+      "x": 80,
+      "y": 180,
+      "props": {
+        "ratePerSec": 2
+      }
+    },
+    {
+      "id": "uploads",
+      "stencil": "kafka.topic",
+      "label": "Render requests",
+      "sublabel": "3 partitions",
+      "x": 420,
+      "y": 180,
+      "props": {
+        "partitions": 3
+      }
+    },
+    {
+      "id": "worker",
+      "stencil": "service.go",
+      "label": "Poster workers",
+      "x": 780,
+      "y": 180,
+      "props": {
+        "replicas": 1,
+        "concurrency": 4,
+        "latencyMs": 250,
+        "jitter": 0,
+        "resources": {
+          "preset": "io-service",
+          "presetRevision": "1",
+          "cpuMsPerMessage": 40,
+          "baselineMemoryMiB": 128,
+          "memoryMiBPerMessage": 2,
+          "cpuRequestMilli": 500,
+          "cpuLimitMilli": 1000,
+          "memoryRequestMiB": 256,
+          "memoryLimitMiB": 512,
+          "startup": {
+            "delayMs": 1000,
+            "jitterFraction": 0
+          },
+          "terminationGraceMs": 30000
+        },
+        "autoscaling": {
+          "mode": "on",
+          "modelRevision": "a2",
+          "preset": "keda-kafka",
+          "presetRevision": "1",
+          "controller": {
+            "kind": "keda",
+            "minReplicas": 8,
+            "maxReplicas": 10,
+            "initialReplicas": 8,
+            "pollingMs": 1000,
+            "cooldownMs": 2000,
+            "initialCooldownMs": 0,
+            "triggers": [
+              {
+                "type": "kafka",
+                "source": {
+                  "node": "uploads",
+                  "group": "renders"
+                },
+                "target": 10,
+                "activation": 0,
+                "useCachedMetrics": false,
+                "allowIdleConsumers": true
+              }
+            ],
+            "settings": {
+              "syncMs": 1000,
+              "tolerance": 0.1,
+              "initialReadinessDelayMs": 0,
+              "cpuInitializationPeriodMs": 0,
+              "metrics": [],
+              "up": {
+                "stabilizationMs": 0,
+                "selectPolicy": "Max",
+                "policies": [
+                  {
+                    "type": "Pods",
+                    "value": 4,
+                    "periodMs": 15000
+                  },
+                  {
+                    "type": "Percent",
+                    "value": 100,
+                    "periodMs": 15000
+                  }
+                ]
+              },
+              "down": {
+                "stabilizationMs": 300000,
+                "selectPolicy": "Max",
+                "policies": [
+                  {
+                    "type": "Percent",
+                    "value": 100,
+                    "periodMs": 15000
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "publish",
+      "from": "source",
+      "to": "uploads",
+      "kind": "async",
+      "props": {
+        "travelMs": 10
+      }
+    },
+    {
+      "id": "consume",
+      "from": "uploads",
+      "to": "worker",
+      "kind": "async",
+      "props": {
+        "travelMs": 10,
+        "group": "renders"
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "wake-on-burst",
+      "title": "Wake on a burst",
+      "seed": 7,
+      "scale": 1,
+      "durationMs": 10000,
+      "traffic": [
+        {
+          "id": "burst",
+          "node": "source",
+          "shape": {
+            "kind": "burst",
+            "count": 80,
+            "atMs": 1000
+          }
+        }
+      ]
+    }
+  ]
+}

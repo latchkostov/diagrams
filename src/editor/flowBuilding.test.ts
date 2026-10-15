@@ -6,6 +6,8 @@ import type { EdgeMark } from "../canvas/edgeMarks";
 import { createEditor, type EditorDeps } from "./useEditor";
 import type { DiagramFile } from "../model/types";
 import { hpaLesson, resourceLesson } from "../model/autoscaling";
+import { kedaLesson } from "../model/autoscaling";
+import { kedaFixture } from "../lab/kedaFixture";
 import * as validation from "../model/resourceValidation";
 import * as planningDefaults from "../model/planning";
 import * as resourceSchemas from "../model/autoscalingSchema";
@@ -24,6 +26,49 @@ import { validateDiagram } from "../interop/native";
 
 type Box = { x: number; y: number; width: number; height: number };
 const SIZE = { width: 220, height: 72 };
+
+it.each(["add", "named", "rail", "connected", "insert"])("validates KEDA binding defaults at %s creation", (action) => {
+  const d = kedaFixture(),
+    t = setup([], d),
+    a = kedaLesson("kafka", { node: "missing", group: "renders" });
+  const defaults = vi
+    .spyOn(planningDefaults, "newPlanningProps")
+    .mockReturnValue({ resources: resourceLesson(), autoscaling: a });
+  try {
+    if (action === "add") t.api.addNode("service.go");
+    if (action === "named") t.api.addNamed("service.go", { x: 0, y: 1000 });
+    if (action === "rail") t.api.addStencil("service.go");
+    if (action === "connected") t.api.createConnected({ from: "worker", stencil: "service.go" });
+    if (action === "insert") t.api.insertNode("consume", "service.go");
+    t.commit();
+    expect(t.api.getDiagram()).toEqual(d);
+  } finally {
+    defaults.mockRestore();
+  }
+});
+it.each(["paste", "duplicate", "connected"])("preserves KEDA bindings through %s", (action) => {
+  const d = kedaFixture(),
+    t = setup([], d);
+  if (action === "paste") t.api.pastePayload(makePayload(d, ["uploads", "worker"])!);
+  if (action === "duplicate") t.api.duplicate({ nodeIds: ["uploads", "worker"] });
+  if (action === "connected") t.api.createConnected({ from: "worker", clone: true });
+  t.commit();
+  expect(t.nodes().length).toBeGreaterThan(d.nodes.length);
+  expect(validateDiagram(t.api.getDiagram()).ok).toBe(true);
+});
+it("refuses pasted and edited KEDA references before mutation", () => {
+  const d = kedaFixture(),
+    t = setup([], d),
+    a = kedaLesson("kafka", { node: "missing", group: "renders" });
+  t.api.setNodeProps("worker", { autoscaling: a });
+  t.commit();
+  expect(t.api.getDiagram()).toEqual(d);
+  const copy = makePayload(d, ["worker"])!;
+  copy.nodes[0].props!.autoscaling = a;
+  t.api.pastePayload(copy);
+  t.commit();
+  expect(t.api.getDiagram()).toEqual(d);
+});
 
 const BASE: DiagramFile = {
   format: "diagrams/v1",

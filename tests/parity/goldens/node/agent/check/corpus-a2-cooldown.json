@@ -1,0 +1,42 @@
+{
+  "all": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "capacity:uploads", "rule": "capacity", "severity": "warning", "title": "Render requests can't keep up", "message": "At the diagram's own rates, it gets 2/s and can't handle any: its backlog only grows.", "targets": ["uploads"] },
+        { "id": "capacity:worker", "rule": "capacity", "severity": "suggestion", "title": "Poster workers: resource planning", "message": "At 2/s, up to 60 messages arrive before the 30 s poll, plus 1 s startup. Lower polling interval or raise minimum replicas. This is a configured estimate.", "targets": ["worker"] }
+      ],
+      "summary": "1 warning, 1 suggestion."
+    }
+  },
+  "warnings": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "capacity:uploads", "rule": "capacity", "severity": "warning", "title": "Render requests can't keep up", "message": "At the diagram's own rates, it gets 2/s and can't handle any: its backlog only grows.", "targets": ["uploads"] }
+      ],
+      "summary": "1 warning, 1 suggestion."
+    }
+  },
+  "oneRule": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "capacity:uploads", "rule": "capacity", "severity": "warning", "title": "Render requests can't keep up", "message": "At the diagram's own rates, it gets 2/s and can't handle any: its backlog only grows.", "targets": ["uploads"] },
+        { "id": "capacity:worker", "rule": "capacity", "severity": "suggestion", "title": "Poster workers: resource planning", "message": "At 2/s, up to 60 messages arrive before the 30 s poll, plus 1 s startup. Lower polling interval or raise minimum replicas. This is a configured estimate.", "targets": ["worker"] }
+      ],
+      "summary": "1 warning, 1 suggestion."
+    }
+  },
+  "simulations": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "capacity:uploads", "rule": "capacity", "severity": "warning", "title": "Render requests can't keep up", "message": "At the diagram's own rates, it gets 2/s and can't handle any: its backlog only grows.", "targets": ["uploads"] },
+        { "id": "capacity:worker", "rule": "capacity", "severity": "suggestion", "title": "Poster workers: resource planning", "message": "At 2/s, up to 60 messages arrive before the 30 s poll, plus 1 s startup. Lower polling interval or raise minimum replicas. This is a configured estimate.", "targets": ["worker"] }
+      ],
+      "summary": "1 warning, 1 suggestion.",
+      "simulations": "Played 1 saved simulation (at most 60 s each; some stopped there)."
+    }
+  }
+}

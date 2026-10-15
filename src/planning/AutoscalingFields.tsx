@@ -1,9 +1,14 @@
+import { createResourceValidator } from "../model/resourceValidation";
+import { brokerChoices } from "../model/kedaBindings";
+import { scalingReasonCode } from "../model/scalingReason";
+import { resourceWorkload } from "../model/autoscaling";
+import type { DiagramFile } from "../model/types";
 import { formatNumber } from "../i18n/format";
 import { profileOf } from "../stencils/profiles";
 import { checkAutoscaling } from "../model/autoscalingSchema";
 import { useId, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
-import { hpaLesson, resourceLesson, type ComputeResources } from "../model/autoscaling";
+import { hpaLesson, kedaLesson, resourceLesson, type ComputeResources, type KedaTrigger } from "../model/autoscaling";
 import type { NodeSimProps } from "../sim/types";
 import { t, useLocale } from "../i18n";
 
@@ -13,18 +18,23 @@ export function AutoscalingFields({
   set,
   children,
   stencil,
+  readDiagram,
+  nodeId = "",
 }: {
+  readDiagram?: () => DiagramFile;
+  nodeId?: string;
   stencil: string;
   props: Record<string, unknown>;
   set: (patch: Partial<NodeSimProps>, key?: string) => void;
   children: ReactNode;
 }) {
   useLocale();
+  const [pending, setPending] = useState<KedaTrigger["type"] | null>(null);
   const [policyDraft, setPolicyDraft] = useState<string | null>(null);
   const [policyInvalid, setPolicyInvalid] = useState(false);
   const family = profileOf(stencil)?.family;
-  if (!["service", "workflow", "stream-processor"].includes(family ?? "")) return children;
   const a = props.autoscaling as NodeSimProps["autoscaling"];
+  if (!resourceWorkload(stencil, family, a?.mode === "on" ? a.modelRevision : "a2")) return children;
   const r = props.resources as ComputeResources | undefined;
   let valid = true;
   try {
@@ -37,6 +47,14 @@ export function AutoscalingFields({
     try {
       const next = { ...props, ...candidate };
       checkAutoscaling(next.resources, next.autoscaling);
+      const diagram = readDiagram?.();
+      if (diagram) {
+        const error = createResourceValidator()({
+          ...diagram,
+          nodes: diagram.nodes.map((node) => (node.id === nodeId ? { ...node, props: next } : node)),
+        });
+        if (error) return false;
+      }
       set(candidate, key);
       return true;
     } catch {
@@ -55,6 +73,38 @@ export function AutoscalingFields({
     return commit({ autoscaling: next }, key);
   };
   const metric = c?.settings.metrics[0];
+  const trigger = c?.kind === "keda" ? c.triggers[0] : undefined;
+  const choices = brokerChoices(readDiagram?.(), nodeId, pending ?? trigger?.type ?? "kafka");
+  const selectSource = (key: string) => {
+    const choice = choices.find((v) => v.key === key);
+    if (!choice) return;
+    if (pending) {
+      commit({ resources: resourceLesson(), autoscaling: kedaLesson(pending, choice.source) });
+      setPending(null);
+    } else
+      patch((n) => {
+        if (n.kind === "keda") n.triggers[0].source = choice.source;
+      }, "source");
+  };
+  const sourceField = (
+    <label className="insp-field">
+      <span className="insp-label">{t("autoscaling.source")}</span>
+      <select
+        className="insp-input"
+        data-testid="autoscaling-source-select"
+        disabled={choices.length === 0}
+        value={pending ? "" : JSON.stringify([trigger?.source.node, trigger?.source.group])}
+        onChange={(e) => selectSource(e.currentTarget.value)}
+      >
+        <option value="">{t("autoscaling.source")}</option>
+        {choices.map((v) => (
+          <option key={v.key} value={v.key}>
+            {v.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
   const resource = (key: keyof ComputeResources, label: string, min = 0) => (
     <NumberField
       name={key}
@@ -72,42 +122,96 @@ export function AutoscalingFields({
         <select
           className="insp-input"
           data-testid="autoscaling-preset"
-          value={c ? "hpa-service" : a?.mode === "unsupported" ? "unsupported" : "fixed"}
+          value={
+            pending
+              ? `keda-${pending}`
+              : c?.kind === "keda"
+                ? `keda-${trigger?.type ?? "kafka"}`
+                : c
+                  ? "hpa-service"
+                  : a?.mode === "unsupported"
+                    ? "unsupported"
+                    : "fixed"
+          }
           onChange={(e) => {
             setPolicyDraft(null);
             setPolicyInvalid(false);
+            const value = e.currentTarget.value;
+            if (value.startsWith("keda-")) {
+              const type = value.slice(5) as KedaTrigger["type"];
+              const sources = brokerChoices(readDiagram?.(), nodeId, type);
+              if (sources.length === 1) {
+                commit({ resources: resourceLesson(), autoscaling: kedaLesson(type, sources[0].source) });
+                setPending(null);
+              } else setPending(type);
+              return;
+            }
+            setPending(null);
             commit(
               e.currentTarget.value === "fixed"
                 ? { autoscaling: { mode: "off" }, resources: undefined }
-                : { resources: resourceLesson(), autoscaling: hpaLesson() },
+                : {
+                    resources: resourceLesson(),
+                    autoscaling: stencil === "k8s.deployment" ? { ...hpaLesson(), modelRevision: "a2" } : hpaLesson(),
+                  },
             );
           }}
         >
           <option value="fixed">{t("admission.fixed")}</option>
           <option value="hpa-service">{t("autoscaling.lesson")}</option>
+          {(
+            [
+              ["kafka", "Kafka"],
+              ["azure-servicebus", "Service Bus"],
+              ["aws-sqs-queue", "SQS"],
+              ["rabbitmq", "RabbitMQ"],
+            ] as const
+          ).map(([type, broker]) => (
+            <option key={type} value={`keda-${type}`}>
+              {t("autoscaling.kedaPreset", { broker })}
+            </option>
+          ))}
           {a?.mode === "unsupported" && <option value="unsupported">{t("autoscaling.unsupported")}</option>}
         </select>
       </label>
       {!valid && <p data-testid="autoscaling-invalid">{t("autoscaling.checkInvalid")}</p>}
-      {a?.mode === "unsupported" && <p className="insp-note">{t("autoscaling.unsupported")}</p>}
-      {c && r && metric ? (
+      {a?.mode === "unsupported" && (
+        <p className="insp-note">{t("importDetail.scalingReason", { reason: scalingReasonCode(a.reason) })}</p>
+      )}
+      {pending && (
+        <details open data-testid="autoscaling-binding">
+          <summary data-testid="autoscaling-binding-toggle">{t("ai.advanced")}</summary>
+          <p role="status">{t("autoscaling.bindingRequired")}</p>
+          {sourceField}
+        </details>
+      )}
+      {c && r && (metric || trigger) && !pending ? (
         <>
           <NumberField
             name="target"
             label={
-              metric.target.kind === "averageValue"
-                ? t("autoscaling.absoluteTarget", { unit: metric.source.resource === "cpu" ? "m" : "MiB" })
-                : metric.source.resource === "cpu"
-                  ? t("autoscaling.cpuTarget")
-                  : t("autoscaling.memoryTarget")
+              trigger
+                ? t("autoscaling.brokerTarget")
+                : metric!.target.kind === "averageValue"
+                  ? t("autoscaling.absoluteTarget", { unit: metric!.source.resource === "cpu" ? "m" : "MiB" })
+                  : metric!.source.resource === "cpu"
+                    ? t("autoscaling.cpuTarget")
+                    : t("autoscaling.memoryTarget")
             }
-            value={metric.target.kind === "utilization" ? metric.target.percentOfRequest : metric.target.value}
+            value={
+              trigger?.target ??
+              (metric!.target.kind === "utilization" ? metric!.target.percentOfRequest : metric!.target.value)
+            }
             min={0.000001}
             change={(value) =>
               value !== undefined &&
               patch((n) => {
+                if (n.kind === "keda") {
+                  n.triggers[0].target = value;
+                  return;
+                }
                 n.settings.metrics[0].target =
-                  metric.target.kind === "utilization"
+                  metric!.target.kind === "utilization"
                     ? { kind: "utilization", percentOfRequest: value }
                     : { kind: "averageValue", value };
               }, "target")
@@ -117,7 +221,7 @@ export function AutoscalingFields({
             name="min"
             label={t("autoscaling.min")}
             value={c.minReplicas}
-            min={1}
+            min={c.kind === "keda" ? 0 : 1}
             max={c.maxReplicas}
             integer
             change={(v) =>
@@ -144,28 +248,99 @@ export function AutoscalingFields({
           <p className="insp-note" data-testid="autoscaling-assumption">
             {t("autoscaling.assumption")}
           </p>
+          {trigger && (
+            <p className="insp-note" data-testid="autoscaling-binding-hint">
+              {t("autoscaling.sourceHint", {
+                name:
+                  readDiagram?.().nodes.find((node) => node.id === trigger.source.node)?.label ?? trigger.source.node,
+                group: trigger.source.group ?? t("stencil.subtitleQueue"),
+              })}
+            </p>
+          )}
           <details data-testid="autoscaling-advanced">
             <summary data-testid="autoscaling-advanced-toggle">{t("ai.advanced")}</summary>
-            <label className="insp-field">
-              <span className="insp-label">{t("autoscaling.metric")}</span>
-              <select
-                className="insp-input"
-                data-testid="autoscaling-metric"
-                value={metric.source.resource}
-                onChange={(e) =>
-                  patch((n) => {
-                    n.settings.metrics[0] = {
-                      ...n.settings.metrics[0],
-                      source: { kind: "resource", resource: e.currentTarget.value === "memory" ? "memory" : "cpu" },
-                      target: { kind: "utilization", percentOfRequest: 70 },
-                    };
-                  }, "metric")
-                }
-              >
-                <option value="cpu">{t("autoscaling.cpuName")}</option>
-                <option value="memory">{t("autoscaling.memory")}</option>
-              </select>
-            </label>
+            {metric && (
+              <label className="insp-field">
+                <span className="insp-label">{t("autoscaling.metric")}</span>
+                <select
+                  className="insp-input"
+                  data-testid="autoscaling-metric"
+                  value={metric!.source.resource}
+                  onChange={(e) =>
+                    patch((n) => {
+                      n.settings.metrics[0] = {
+                        ...n.settings.metrics[0],
+                        source: { kind: "resource", resource: e.currentTarget.value === "memory" ? "memory" : "cpu" },
+                        target: { kind: "utilization", percentOfRequest: 70 },
+                      };
+                    }, "metric")
+                  }
+                >
+                  <option value="cpu">{t("autoscaling.cpuName")}</option>
+                  <option value="memory">{t("autoscaling.memory")}</option>
+                </select>
+              </label>
+            )}
+            {trigger && c.kind === "keda" && (
+              <>
+                {sourceField}
+                {(
+                  [
+                    ["polling", "pollingMs", t("autoscaling.polling")],
+                    ["cooldown", "cooldownMs", t("autoscaling.cooldown")],
+                    ["initialCooldown", "initialCooldownMs", t("autoscaling.initialCooldown")],
+                  ] as const
+                ).map(([name, key, label]) => (
+                  <NumberField
+                    key={name}
+                    name={name}
+                    label={label}
+                    value={c[key]}
+                    min={key === "pollingMs" ? 1000 : 0}
+                    integer
+                    change={(v) =>
+                      v !== undefined &&
+                      patch((n) => {
+                        if (n.kind === "keda") n[key] = v;
+                      }, key)
+                    }
+                  />
+                ))}
+                <NumberField
+                  name="activation"
+                  label={t("autoscaling.activation")}
+                  value={trigger.activation}
+                  change={(v) =>
+                    v !== undefined &&
+                    patch((n) => {
+                      if (n.kind === "keda") n.triggers[0].activation = v;
+                    }, "activation")
+                  }
+                />
+              </>
+            )}
+            {r.preset === "kubernetes-unmeasured" && (
+              <>
+                <p>{t("autoscaling.unmeasured")}</p>
+                <button
+                  className="btn"
+                  data-testid="autoscaling-use-lesson"
+                  onClick={() =>
+                    commit({
+                      resources: {
+                        ...r,
+                        preset: "io-service",
+                        cpuMsPerMessage: 40,
+                        baselineMemoryMiB: 128,
+                        memoryMiBPerMessage: 2,
+                      },
+                    })
+                  }
+                >
+                  {t("autoscaling.useLesson")}
+                </button>
+              </>
+            )}
             {resource("cpuMsPerMessage", t("autoscaling.cpuCost"))}
             {resource("cpuRequestMilli", t("autoscaling.cpuRequest"), 0.000001)}
             {resource("cpuLimitMilli", t("autoscaling.cpuLimit"), 0.000001)}
@@ -229,20 +404,22 @@ export function AutoscalingFields({
                 }, "tolerance")
               }
             />
-            <NumberField
-              name="window"
-              label={t("autoscaling.window")}
-              value={metric.windowMs}
-              min={1000}
-              max={600_000 - metric.metricDelayMs}
-              integer
-              change={(v) =>
-                v !== undefined &&
-                patch((n) => {
-                  n.settings.metrics[0].windowMs = v;
-                }, "window")
-              }
-            />
+            {metric && (
+              <NumberField
+                name="window"
+                label={t("autoscaling.window")}
+                value={metric!.windowMs}
+                min={1000}
+                max={600_000 - metric!.metricDelayMs}
+                integer
+                change={(v) =>
+                  v !== undefined &&
+                  patch((n) => {
+                    n.settings.metrics[0].windowMs = v;
+                  }, "window")
+                }
+              />
+            )}
             <NumberField
               name="up"
               label={t("autoscaling.upWindow")}
@@ -275,7 +452,7 @@ export function AutoscalingFields({
                 dir="ltr"
                 rows={5}
                 aria-invalid={policyInvalid}
-                value={policyDraft ?? JSON.stringify(c.settings, null, 2)}
+                value={policyDraft ?? JSON.stringify(c.kind === "keda" ? c : c.settings, null, 2)}
                 onBlur={() => {
                   if (!policyInvalid) setPolicyDraft(null);
                 }}
@@ -284,11 +461,11 @@ export function AutoscalingFields({
                   setPolicyDraft(raw);
                   try {
                     const value: unknown = JSON.parse(raw);
-                    if (!value || typeof value !== "object" || !("up" in value) || !("down" in value))
-                      throw new Error("Invalid policy");
+                    if (!value || typeof value !== "object") throw new Error("Invalid policy");
                     const next = structuredClone(a);
                     if (next?.mode !== "on") return;
-                    next.controller.settings = value as typeof next.controller.settings;
+                    if (next.controller.kind === "keda") next.controller = value as typeof next.controller;
+                    else next.controller.settings = value as typeof next.controller.settings;
                     if (!commit({ autoscaling: next }, "behaviour")) throw new Error("Invalid policy");
                     setPolicyInvalid(false);
                   } catch {

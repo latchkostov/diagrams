@@ -1,11 +1,11 @@
 {
   "ar": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "f257b025e328",
       "ai": "271de21ad5b1",
-      "autoscaling": "628fc60ddff5",
+      "autoscaling": "2f8709ae9355",
       "broker": "f5d42b383610",
       "canvas": "254825751491",
       "chrome": "8e07f737faff",
@@ -26,7 +26,7 @@
       "gallery": "edee7bb2df39",
       "htmlExport": "b475090d5db2",
       "imageDialog": "2ad5aab6d9df",
-      "importDetail": "2536e2ab89dd",
+      "importDetail": "00b548f1f4fc",
       "importKind": "6202ba6eb95d",
       "importReason": "a6b4bacce1f6",
       "importReport": "32f19f47b007",
@@ -54,12 +54,12 @@
     }
   },
   "bg": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "339cd5287f25",
       "ai": "be21a15fe0c2",
-      "autoscaling": "3dcbd3033d02",
+      "autoscaling": "843dbd50a9ae",
       "broker": "c2285b4b209f",
       "canvas": "2e2ddf5140f6",
       "chrome": "faeb004300d3",
@@ -80,7 +80,7 @@
       "gallery": "c216c75d4bea",
       "htmlExport": "0a72cc739829",
       "imageDialog": "ba5ba55b2b6a",
-      "importDetail": "67803ecd3cbc",
+      "importDetail": "459a36329ccb",
       "importKind": "3b0c40ef1bb7",
       "importReason": "af75b5a407d6",
       "importReport": "bb814218e63c",
@@ -108,12 +108,12 @@
     }
   },
   "cs": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "c8683cb1d947",
       "ai": "cdac78f5eabc",
-      "autoscaling": "e45846dde08f",
+      "autoscaling": "528e9b80e109",
       "broker": "acab48ce0be7",
       "canvas": "4e14fd49b2df",
       "chrome": "6788b2936556",
@@ -134,7 +134,7 @@
       "gallery": "e5293750a59d",
       "htmlExport": "0f29d5ebaf27",
       "imageDialog": "4d9e9a71326f",
-      "importDetail": "7a972652f3c4",
+      "importDetail": "f92c88974ddf",
       "importKind": "30b5f1af4fd0",
       "importReason": "a0f689138648",
       "importReport": "69f8fe8713e9",
@@ -162,12 +162,12 @@
     }
   },
   "da": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "2309322c7e25",
       "ai": "30c366fbcaa3",
-      "autoscaling": "c1e34fa2fe4c",
+      "autoscaling": "4f1ac314cbe9",
       "broker": "8b204714298e",
       "canvas": "35cf7853d643",
       "chrome": "f5a18566a59c",
@@ -188,7 +188,7 @@
       "gallery": "5261baa92a8b",
       "htmlExport": "03574a01a0d2",
       "imageDialog": "b7af44adcb7e",
-      "importDetail": "611a1d9d9ce2",
+      "importDetail": "00ac78d816ea",
       "importKind": "f253df5cacb4",
       "importReason": "7737aebaf176",
       "importReport": "803744d59ce3",
@@ -216,12 +216,12 @@
     }
   },
   "de": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "866ad98895eb",
       "ai": "857638035ad7",
-      "autoscaling": "442400293c21",
+      "autoscaling": "abcff0b70019",
       "broker": "74ee3d884708",
       "canvas": "3cdfa621c3bf",
       "chrome": "85d0245a1dac",
@@ -242,7 +242,7 @@
       "gallery": "0e8e62861cd8",
       "htmlExport": "e0c94d7cea6a",
       "imageDialog": "6df46c22def2",
-      "importDetail": "dbed82407eea",
+      "importDetail": "d9d450a84e10",
       "importKind": "dfb5e987e202",
       "importReason": "723ea6978997",
       "importReport": "b9ddd23d33a7",
@@ -270,12 +270,12 @@
     }
   },
   "el": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "c85e9b1328ba",
       "ai": "c7556c1b9ccf",
-      "autoscaling": "54ea1b406195",
+      "autoscaling": "419131c93362",
       "broker": "276c35a5cf51",
       "canvas": "21c0b554744f",
       "chrome": "41fc0f38ba6d",
@@ -296,7 +296,7 @@
       "gallery": "d0a5682fa4f5",
       "htmlExport": "3fd73a429aa3",
       "imageDialog": "7f9507b64d6b",
-      "importDetail": "b82ba9cb972c",
+      "importDetail": "fa733e62924c",
       "importKind": "6030273c4e17",
       "importReason": "6f4bc2216ffb",
       "importReport": "259fce50869e",
@@ -324,12 +324,12 @@
     }
   },
   "en-XA": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 0,
     "areas": {
       "admission": "0235ad03f4ed",
       "ai": "cc0c727703b3",
-      "autoscaling": "10342552d562",
+      "autoscaling": "f192559980ae",
       "broker": "dd16f518c35c",
       "canvas": "eaad7f668ee2",
       "chrome": "771bd1db57ec",
@@ -350,7 +350,7 @@
       "gallery": "e7f49ccb2650",
       "htmlExport": "7e0aee41daf0",
       "imageDialog": "db4901f04261",
-      "importDetail": "70dea2a9d686",
+      "importDetail": "79731c902292",
       "importKind": "619367915da2",
       "importReason": "35ec39315f96",
       "importReport": "26d34de11c7f",
@@ -378,12 +378,12 @@
     }
   },
   "es": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "8275061ad675",
       "ai": "5f18f254b452",
-      "autoscaling": "937f47adc709",
+      "autoscaling": "1de285538b5e",
       "broker": "a4567406a078",
       "canvas": "b14e6391fc52",
       "chrome": "fe32b51451b8",
@@ -404,7 +404,7 @@
       "gallery": "a4f37d761aa9",
       "htmlExport": "5b428a70b2b0",
       "imageDialog": "19d7ba114de8",
-      "importDetail": "fa210bb3fe6a",
+      "importDetail": "99e5bb621ec7",
       "importKind": "29493b8a9281",
       "importReason": "eb7f86261584",
       "importReport": "e7780c63e01e",
@@ -432,12 +432,12 @@
     }
   },
   "et": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "bcda9d352f6d",
       "ai": "d66d3769adc9",
-      "autoscaling": "1ab968bdac18",
+      "autoscaling": "98d1cb144d6f",
       "broker": "0c94c40fa2b5",
       "canvas": "417d954ff382",
       "chrome": "07a1081231f5",
@@ -458,7 +458,7 @@
       "gallery": "fed32b157076",
       "htmlExport": "16df3b62e54b",
       "imageDialog": "5f051340a9c1",
-      "importDetail": "df064a04e680",
+      "importDetail": "b824a64f76b0",
       "importKind": "b00e4eec1402",
       "importReason": "b3bd32be30e8",
       "importReport": "d072b512e127",
@@ -486,12 +486,12 @@
     }
   },
   "fi": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "639abadda530",
       "ai": "e9b23cd51b4e",
-      "autoscaling": "66de6caed82d",
+      "autoscaling": "9fe33a69c449",
       "broker": "c9a0598fa964",
       "canvas": "40e087ce9690",
       "chrome": "2ad5463c7a19",
@@ -512,7 +512,7 @@
       "gallery": "22a46969248f",
       "htmlExport": "030552e27432",
       "imageDialog": "192043c3611c",
-      "importDetail": "cff973da7dd0",
+      "importDetail": "3d653a8fc067",
       "importKind": "2dacfbb1db6c",
       "importReason": "24e52195e223",
       "importReport": "19f5463b1f2b",
@@ -540,12 +540,12 @@
     }
   },
   "fr": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "c0da5634d917",
       "ai": "8372266af473",
-      "autoscaling": "56a468a4b25e",
+      "autoscaling": "eb76b53f6dbb",
       "broker": "ddd1d83d8edf",
       "canvas": "a6bbc82dec09",
       "chrome": "cddd8d1b1923",
@@ -566,7 +566,7 @@
       "gallery": "4daf220f49de",
       "htmlExport": "eeee20f9e648",
       "imageDialog": "23885e080e01",
-      "importDetail": "2ef4d344fff1",
+      "importDetail": "ed838f8fb59b",
       "importKind": "3b54d3def36f",
       "importReason": "4f00b557c4a2",
       "importReport": "0352fad74c2f",
@@ -594,12 +594,12 @@
     }
   },
   "he": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "60a5b99830c3",
       "ai": "1c4de3ee24a5",
-      "autoscaling": "73db9111f806",
+      "autoscaling": "32b0294a4270",
       "broker": "2c29042b4c08",
       "canvas": "bab60d0efa1e",
       "chrome": "570cdeb63723",
@@ -620,7 +620,7 @@
       "gallery": "bc4f4b9bfce5",
       "htmlExport": "6f503d6ef305",
       "imageDialog": "147a94bded4c",
-      "importDetail": "9ae9765dcdd1",
+      "importDetail": "3533da3751ea",
       "importKind": "66df2d09e8f7",
       "importReason": "44390442866e",
       "importReport": "e362436529dd",
@@ -648,12 +648,12 @@
     }
   },
   "hi": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "81b5998e2d74",
       "ai": "c2134710abdb",
-      "autoscaling": "2552987e7e57",
+      "autoscaling": "cddc1da7bde3",
       "broker": "48608388990e",
       "canvas": "335963b5e4ee",
       "chrome": "5ce5d564b088",
@@ -674,7 +674,7 @@
       "gallery": "1ca6cdbb550e",
       "htmlExport": "91689a5d442e",
       "imageDialog": "552ae7207a5b",
-      "importDetail": "7be66f1dac72",
+      "importDetail": "853b241ce45e",
       "importKind": "6a92e008030d",
       "importReason": "8865b99d3ee2",
       "importReport": "68e87d537d7b",
@@ -702,12 +702,12 @@
     }
   },
   "hr": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "250278672ecf",
       "ai": "41b8c5bd02f8",
-      "autoscaling": "e3191d422dfe",
+      "autoscaling": "97ea630495d3",
       "broker": "33c20c340aa9",
       "canvas": "487af354a55e",
       "chrome": "7a31dcc54ee9",
@@ -728,7 +728,7 @@
       "gallery": "d899fb279a09",
       "htmlExport": "1a3a0aa45c8d",
       "imageDialog": "2ab1477607cb",
-      "importDetail": "9b74bb0e1efc",
+      "importDetail": "f4933e919621",
       "importKind": "84082af5edfb",
       "importReason": "4c0408bb9208",
       "importReport": "f724ff3384c8",
@@ -756,12 +756,12 @@
     }
   },
   "hu": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "a173caaa787a",
       "ai": "999015b453fc",
-      "autoscaling": "b732795de084",
+      "autoscaling": "1e9c7da68fbe",
       "broker": "11712e341b05",
       "canvas": "81a382db8d62",
       "chrome": "dd2e05640945",
@@ -782,7 +782,7 @@
       "gallery": "5c41c601348a",
       "htmlExport": "a5829b5ccd18",
       "imageDialog": "164d765fd495",
-      "importDetail": "d80f634e501c",
+      "importDetail": "f89748b4cda2",
       "importKind": "b49d012104a1",
       "importReason": "3cac1b100d55",
       "importReport": "364a7c24b7ce",
@@ -810,12 +810,12 @@
     }
   },
   "id": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "93080e86188c",
       "ai": "7508253d3643",
-      "autoscaling": "3ecbd0682f1a",
+      "autoscaling": "ac826f76e7fb",
       "broker": "b80cb9b38721",
       "canvas": "2fda290dc14c",
       "chrome": "727c8b8c9e14",
@@ -836,7 +836,7 @@
       "gallery": "4a4e4a1c5a4c",
       "htmlExport": "87896e91f766",
       "imageDialog": "f7f473026a9f",
-      "importDetail": "02e8a953f30b",
+      "importDetail": "f83bf56ba22a",
       "importKind": "018888eb58ad",
       "importReason": "f3ffa2785a93",
       "importReport": "e7eb7b68e182",
@@ -864,12 +864,12 @@
     }
   },
   "it": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "9016b7c98d05",
       "ai": "b1bdb1b943f2",
-      "autoscaling": "bed274696ffd",
+      "autoscaling": "133406584f7f",
       "broker": "1e1b6beffa1a",
       "canvas": "e2c9a91a0072",
       "chrome": "f498b3334257",
@@ -890,7 +890,7 @@
       "gallery": "10765a5eb5ac",
       "htmlExport": "4f61a8715fc7",
       "imageDialog": "cd3a39e75ea1",
-      "importDetail": "a5f241fb894e",
+      "importDetail": "bdad572cc77a",
       "importKind": "55894c77e1d3",
       "importReason": "c62567450d11",
       "importReport": "7f6893a78ad9",
@@ -918,12 +918,12 @@
     }
   },
   "ja": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "03ac6ff46fda",
       "ai": "16916e4a6466",
-      "autoscaling": "07705ce1ffa1",
+      "autoscaling": "be3d0c1f3e20",
       "broker": "c8f5a8b68f7e",
       "canvas": "9da9d2835a24",
       "chrome": "e1ee64604c6f",
@@ -944,7 +944,7 @@
       "gallery": "318d55d1b2ea",
       "htmlExport": "d75f2a55c213",
       "imageDialog": "f5ab53347711",
-      "importDetail": "5b2530b1de7b",
+      "importDetail": "ff977cb933af",
       "importKind": "46d84457df23",
       "importReason": "3ae10b616e19",
       "importReport": "36c664bcdbdf",
@@ -972,12 +972,12 @@
     }
   },
   "ko": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "9668a36595b4",
       "ai": "b9713b0ebc36",
-      "autoscaling": "d53bc716a030",
+      "autoscaling": "be9935990f91",
       "broker": "47886d6b6de4",
       "canvas": "14bf51cdb387",
       "chrome": "ded6f1709661",
@@ -998,7 +998,7 @@
       "gallery": "571d7b46b1ca",
       "htmlExport": "2e5783225adb",
       "imageDialog": "8e46def03502",
-      "importDetail": "b2ac15497ec6",
+      "importDetail": "0762db906bda",
       "importKind": "58e9a602cf8d",
       "importReason": "f17776b7adb1",
       "importReport": "6ed2fc80be59",
@@ -1026,12 +1026,12 @@
     }
   },
   "lt": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "d340551a2a22",
       "ai": "a60d18c72aca",
-      "autoscaling": "01d44d51d34d",
+      "autoscaling": "d43e4ae870f6",
       "broker": "a6b34ba75b3b",
       "canvas": "55234b234890",
       "chrome": "2f8f3f9b19d2",
@@ -1052,7 +1052,7 @@
       "gallery": "6e02d5912590",
       "htmlExport": "742cfde5efbe",
       "imageDialog": "4a2701f72fd8",
-      "importDetail": "e73a59f71c56",
+      "importDetail": "28e3573836d1",
       "importKind": "f02d19e6b828",
       "importReason": "cc9fcd7338d2",
       "importReport": "ca56c34f145c",
@@ -1080,12 +1080,12 @@
     }
   },
   "lv": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "78e387261dc3",
       "ai": "7abcc8e0fca5",
-      "autoscaling": "5e592506ca6c",
+      "autoscaling": "2a4f2050aa02",
       "broker": "32c2f016e0b9",
       "canvas": "56c202d22f57",
       "chrome": "45d1aa25b746",
@@ -1106,7 +1106,7 @@
       "gallery": "7675374fb8c8",
       "htmlExport": "c710b39bede7",
       "imageDialog": "fcebefeae897",
-      "importDetail": "5bcdd2aa9742",
+      "importDetail": "c00c10f108d2",
       "importKind": "21fc592c3c97",
       "importReason": "108533338e85",
       "importReport": "7385218f7557",
@@ -1134,12 +1134,12 @@
     }
   },
   "nb": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "4c2373a03104",
       "ai": "1f5a7dd90494",
-      "autoscaling": "8969b9087392",
+      "autoscaling": "1df45b2b6dd9",
       "broker": "3531a562d619",
       "canvas": "89484ca81ced",
       "chrome": "a9a41654eabb",
@@ -1160,7 +1160,7 @@
       "gallery": "09d55b55bb59",
       "htmlExport": "53face158656",
       "imageDialog": "d485c8b2a3e6",
-      "importDetail": "571928b8fd73",
+      "importDetail": "11b3ad1872f1",
       "importKind": "905538cd1b63",
       "importReason": "e30add87850a",
       "importReport": "0caa740f8ebd",
@@ -1188,12 +1188,12 @@
     }
   },
   "nl": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "9dca014cc22e",
       "ai": "9c887bebfb5c",
-      "autoscaling": "a5247f2e7403",
+      "autoscaling": "d82d3ebc9a9b",
       "broker": "d508f900c835",
       "canvas": "0d55c0be3737",
       "chrome": "9da856b81b22",
@@ -1214,7 +1214,7 @@
       "gallery": "1c66abfd76f8",
       "htmlExport": "b990f8192912",
       "imageDialog": "9417113a5812",
-      "importDetail": "23b7e49b09bc",
+      "importDetail": "dc90888a112d",
       "importKind": "8038c24695e7",
       "importReason": "2d07b9dc2b7d",
       "importReport": "502b7f96cebb",
@@ -1242,12 +1242,12 @@
     }
   },
   "pl": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "570713cc3f9c",
       "ai": "0076fec882b3",
-      "autoscaling": "355230200e39",
+      "autoscaling": "fe9ead984d81",
       "broker": "30921f4bdb9c",
       "canvas": "4df13e6160ea",
       "chrome": "9bbad062ca76",
@@ -1268,7 +1268,7 @@
       "gallery": "80894eca31d8",
       "htmlExport": "b006e3323986",
       "imageDialog": "39cd4056d845",
-      "importDetail": "1ac9c4a89eba",
+      "importDetail": "dc0d20ec97dd",
       "importKind": "02585f754efc",
       "importReason": "b680de9cf76b",
       "importReport": "09bf85848632",
@@ -1296,12 +1296,12 @@
     }
   },
   "pt-BR": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "b1b3aa0fdcce",
       "ai": "a599e0c7104c",
-      "autoscaling": "4141c173c93d",
+      "autoscaling": "cb4b3a0caa14",
       "broker": "44f9a3fc6f78",
       "canvas": "6dfc0a02461e",
       "chrome": "107211b339fd",
@@ -1322,7 +1322,7 @@
       "gallery": "354d692f2673",
       "htmlExport": "a91ef5437b3d",
       "imageDialog": "2f4194a30e53",
-      "importDetail": "9f3b161815be",
+      "importDetail": "8e458442539f",
       "importKind": "cacae83e286f",
       "importReason": "25a78aeac87c",
       "importReport": "dda45f892033",
@@ -1350,12 +1350,12 @@
     }
   },
   "pt-PT": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "269f381da119",
       "ai": "da44ea732c3a",
-      "autoscaling": "6685293e00e5",
+      "autoscaling": "6aaa33ed87fb",
       "broker": "7e73bb2c945f",
       "canvas": "ad9e85bff0c6",
       "chrome": "0da3cabef78a",
@@ -1376,7 +1376,7 @@
       "gallery": "1d5428374cbb",
       "htmlExport": "26b5fb37811a",
       "imageDialog": "2f4194a30e53",
-      "importDetail": "7b4252de73b3",
+      "importDetail": "edb82dc7f32b",
       "importKind": "05a7d69ed974",
       "importReason": "4c335d4449aa",
       "importReport": "e93687627b9d",
@@ -1404,12 +1404,12 @@
     }
   },
   "ro": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "2fc367bfb234",
       "ai": "690dd0af944f",
-      "autoscaling": "e5eec259ba7a",
+      "autoscaling": "7c9f6a6841bf",
       "broker": "c88ed99d2904",
       "canvas": "588812a1de8a",
       "chrome": "ce4d3d06f5c6",
@@ -1430,7 +1430,7 @@
       "gallery": "ab2923e983d0",
       "htmlExport": "db30789fc6ee",
       "imageDialog": "f4653476499a",
-      "importDetail": "d379b2edbf31",
+      "importDetail": "a30fd9298330",
       "importKind": "4a42dc1d1086",
       "importReason": "70d995786b05",
       "importReport": "78a94e7d01b1",
@@ -1458,12 +1458,12 @@
     }
   },
   "ru": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "dd2155d35792",
       "ai": "419829673723",
-      "autoscaling": "6b11a79eb484",
+      "autoscaling": "1ff02222a832",
       "broker": "defa09e14bed",
       "canvas": "15b578745447",
       "chrome": "8dbb54b845f3",
@@ -1484,7 +1484,7 @@
       "gallery": "d2ec5671d6d2",
       "htmlExport": "a45e7b99402a",
       "imageDialog": "187fec2c427b",
-      "importDetail": "b53a0e82293a",
+      "importDetail": "dd866cc10942",
       "importKind": "33bf4198fe20",
       "importReason": "cfca8434c810",
       "importReport": "f1737256df92",
@@ -1512,12 +1512,12 @@
     }
   },
   "sk": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "de282cafe657",
       "ai": "b584a1750e62",
-      "autoscaling": "1f158ef3ed88",
+      "autoscaling": "77cda0b2845c",
       "broker": "e44f86fe31c7",
       "canvas": "d86828a10d00",
       "chrome": "e8a4bb80dd95",
@@ -1538,7 +1538,7 @@
       "gallery": "9bfd6bd1555c",
       "htmlExport": "3530ffc52c82",
       "imageDialog": "629bc24542f6",
-      "importDetail": "a36f8188a6a3",
+      "importDetail": "42380b4a7edf",
       "importKind": "2a866d959c83",
       "importReason": "985d014b07b4",
       "importReport": "4942aaf9049f",
@@ -1566,12 +1566,12 @@
     }
   },
   "sl": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "46736cefd0aa",
       "ai": "844c5fe53eda",
-      "autoscaling": "c28c0848a147",
+      "autoscaling": "797f75df719a",
       "broker": "24fea16334a8",
       "canvas": "93728f084a27",
       "chrome": "c67ddef1a67d",
@@ -1592,7 +1592,7 @@
       "gallery": "99ea5837833f",
       "htmlExport": "40a3396579a5",
       "imageDialog": "4782529edfac",
-      "importDetail": "9a57c97f4105",
+      "importDetail": "e0b56aadada1",
       "importKind": "5520f7054f25",
       "importReason": "28c65ddfa471",
       "importReport": "b48daa5796b3",
@@ -1620,12 +1620,12 @@
     }
   },
   "sr-Latn": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "b1f254245925",
       "ai": "571bcb1e2693",
-      "autoscaling": "1acd88f55b26",
+      "autoscaling": "8a34a94a4030",
       "broker": "9efdaa7c4c65",
       "canvas": "7ce51a2e614f",
       "chrome": "6619ae699a55",
@@ -1646,7 +1646,7 @@
       "gallery": "6fde93629621",
       "htmlExport": "e88dfab563a2",
       "imageDialog": "880c7a0efdca",
-      "importDetail": "d3207faf8ded",
+      "importDetail": "e18df070c1c3",
       "importKind": "4cad33f585f6",
       "importReason": "85d29350b118",
       "importReport": "9f666e934e89",
@@ -1674,12 +1674,12 @@
     }
   },
   "sv": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "a1faad44500b",
       "ai": "488379e2ee77",
-      "autoscaling": "88b9623206af",
+      "autoscaling": "e821133e2398",
       "broker": "bb3004dcedcf",
       "canvas": "e229cb2a101d",
       "chrome": "b0a40182f183",
@@ -1700,7 +1700,7 @@
       "gallery": "98774c428905",
       "htmlExport": "d2fd1dc2628b",
       "imageDialog": "9e0e52e29043",
-      "importDetail": "60db14164523",
+      "importDetail": "94800cc9f826",
       "importKind": "65033a7960b6",
       "importReason": "fc029fcbb1e9",
       "importReport": "6aa35891bcb5",
@@ -1728,12 +1728,12 @@
     }
   },
   "th": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "4c7152546e6f",
       "ai": "25e5a5758e0a",
-      "autoscaling": "74bafadd932e",
+      "autoscaling": "dcda54d4c8f6",
       "broker": "006f226776f8",
       "canvas": "f96766d37a59",
       "chrome": "8dd51bf64c1a",
@@ -1754,7 +1754,7 @@
       "gallery": "49a02932b5db",
       "htmlExport": "3fc59b541a42",
       "imageDialog": "750210d66881",
-      "importDetail": "22e2ef6b4a3b",
+      "importDetail": "70a6f5da4635",
       "importKind": "b65dc92d977c",
       "importReason": "c5f64d8ce4b1",
       "importReport": "9d736a8bf9fc",
@@ -1782,12 +1782,12 @@
     }
   },
   "tr": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "c9ba84e9fc81",
       "ai": "2c45c177a3eb",
-      "autoscaling": "3be35952103d",
+      "autoscaling": "bba3e72a7bc4",
       "broker": "6ac7d93b8b69",
       "canvas": "40a1775f62b9",
       "chrome": "815c1609dabd",
@@ -1808,7 +1808,7 @@
       "gallery": "df3514c2de76",
       "htmlExport": "efdb23346eea",
       "imageDialog": "19bf6a127de5",
-      "importDetail": "045be0e3d057",
+      "importDetail": "95108136d662",
       "importKind": "348206668e18",
       "importReason": "415812faafee",
       "importReport": "7e1d5a0c53ef",
@@ -1836,12 +1836,12 @@
     }
   },
   "uk": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "01c3b2a9ea61",
       "ai": "00c91ebd48c1",
-      "autoscaling": "b1258d7783c5",
+      "autoscaling": "2aa0244af0fa",
       "broker": "43024a75a936",
       "canvas": "6fcccf14826e",
       "chrome": "2055e4f65ceb",
@@ -1862,7 +1862,7 @@
       "gallery": "57df82d765f7",
       "htmlExport": "b1a1364a59e7",
       "imageDialog": "85d16aa1a39d",
-      "importDetail": "aaf5e3d48bc9",
+      "importDetail": "4ab2f634c339",
       "importKind": "3019a95d5a21",
       "importReason": "19d49343e6fb",
       "importReport": "d2cb89bfc04b",
@@ -1890,12 +1890,12 @@
     }
   },
   "vi": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "e4040b83feb7",
       "ai": "88456409d7c5",
-      "autoscaling": "691531cf75fd",
+      "autoscaling": "4dc2ea78c797",
       "broker": "29be0d811866",
       "canvas": "b2cbedf2595c",
       "chrome": "389b1f55ad43",
@@ -1916,7 +1916,7 @@
       "gallery": "1c1d503441ba",
       "htmlExport": "669c249a3dcc",
       "imageDialog": "9f8d2894e3e9",
-      "importDetail": "d47d72bb6217",
+      "importDetail": "1cdf1181ae8b",
       "importKind": "08beb4edcccc",
       "importReason": "19c889e47e2f",
       "importReport": "2dad651c96bf",
@@ -1944,12 +1944,12 @@
     }
   },
   "zh-CN": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "320934d4f256",
       "ai": "3ef50488a156",
-      "autoscaling": "447c164ada3b",
+      "autoscaling": "6a8d2eb9b796",
       "broker": "d2e8c8d65536",
       "canvas": "aed4ac3fbf38",
       "chrome": "c3c08743294b",
@@ -1970,7 +1970,7 @@
       "gallery": "1d27969164ad",
       "htmlExport": "a92fe8446161",
       "imageDialog": "8a48728ceb4c",
-      "importDetail": "033b4e88e44c",
+      "importDetail": "b3793125cef1",
       "importKind": "5d9f6e4e8987",
       "importReason": "49d9e68eb5f1",
       "importReport": "b3398bcbf488",
@@ -1998,12 +1998,12 @@
     }
   },
   "zh-TW": {
-    "messages": 1757,
+    "messages": 1774,
     "fallback": 78,
     "areas": {
       "admission": "b8f5dc48650d",
       "ai": "aa167b14e4aa",
-      "autoscaling": "c292177d425c",
+      "autoscaling": "7954febcf096",
       "broker": "4a47ec750e03",
       "canvas": "9e0b62a504f7",
       "chrome": "9f0a1135818d",
@@ -2024,7 +2024,7 @@
       "gallery": "e20102938723",
       "htmlExport": "946a64424e9f",
       "imageDialog": "a9b8b4aae90e",
-      "importDetail": "23feadddf7f0",
+      "importDetail": "6f448e804486",
       "importKind": "ac5f51aa420d",
       "importReason": "7cbc1b3d3e80",
       "importReport": "2ad0369d3d9a",

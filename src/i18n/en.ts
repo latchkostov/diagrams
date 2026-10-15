@@ -1884,6 +1884,30 @@ const en = {
   "autoscaling.cpuBudget":
     "Too much simultaneous CPU work. New messages are waiting. Reduce traffic or restart with smaller fleets or less startup jitter.",
   "autoscaling.budget": "Resource lifecycle budget exceeded: {limit, number}. Reduce configured fleets or Capacity ×.",
+  "autoscaling.bindingRequired":
+    "Connect a compatible broker and consumer group, then choose its source in Advanced. This preset is not saved until a source is selected.",
+  "autoscaling.useLesson": "Use service workload lesson",
+  "autoscaling.kedaPreset": "KEDA {broker} worker",
+  "autoscaling.brokerTarget": "Target (messages per worker)",
+  "autoscaling.source": "Broker source",
+  "autoscaling.sourceHint": "Observes {name} · {group}",
+  "autoscaling.polling": "Polling interval (ms)",
+  "autoscaling.cooldown": "Cooldown to zero (ms)",
+  "autoscaling.initialCooldown": "Initial cooldown (ms)",
+  "autoscaling.activation": "Activation threshold (strictly greater than)",
+  "autoscaling.kedaReason":
+    "{reason, select, activation {Active trigger; starting workers} inactive {Inactive; scale to zero} cooldown {Waiting for cooldown to zero} partitions {Limited by Kafka partitions} fallback {Metric unavailable; using fallback} other {Waiting for a trigger}}",
+  "autoscaling.kedaTiming":
+    "At {rate}/s, up to {lag} messages arrive before the {poll} s poll, plus {startup} s startup. Lower polling interval or raise minimum replicas. This is a configured estimate.",
+  "autoscaling.kedaObserved":
+    "Broker metric: {metric} messages · activation {active, select, true {active} other {inactive}} · zero eligible at {time} s.",
+  "autoscaling.unmeasured":
+    "Imported resource requests and limits are known; CPU and memory per message are unmeasured. Choose a workload lesson before resource predictions.",
+  "importDetail.scalingUnsupported": "Scaling is not simulated: {reason}. Choose a supported preset.",
+  "importDetail.scalingReason":
+    "{reason, select, job {Job execution is not simulated} conflict {Controller ownership is ambiguous; choose one policy} container {Multi-container resources need an explicit workload lesson} bounds {Settings exceed simulator bounds} binding {An exact local broker, group and known history are required} visibility {Delayed broker visibility is not simulated} version {The imported API version is unsupported} fields {Unsupported fields require a deliberate policy choice} other {This metric or scaling mode is unsupported}}",
+  "importDetail.scalingMapped":
+    "Executable {kind} policy imported. Controller timings and workload costs are assumptions; inspect Advanced.",
   "autoscaling.lesson": "HPA service",
   "autoscaling.unsupported": "Scaling is not simulated for this policy. Choose a supported preset.",
   "autoscaling.min": "Minimum replicas",

@@ -6,6 +6,8 @@ import { MAX_COUNT, sizingFix } from "../../sim/capacityPlanning";
 import { brokerFeeds } from "../../sim/topology";
 import { formatRate, isBroker, type CheckContext } from "../context";
 import { SIZE_LABEL } from "../../stencils/netDevices";
+import { bindingValidator } from "../../model/kedaBindings";
+
 import type { Finding, CheckFix, CheckRule } from "../types";
 
 // 7. capacity: the busiest processor or broker can't keep up at the diagram's own (free-play) rates: the
@@ -56,41 +58,58 @@ export const capacity: CheckRule = {
     "Uses Show capacity's analysis at free-play rates (each source's rate), and reports the busiest service or broker.",
   detect(ctx) {
     const analysis = ctx.capacity();
+    const bindings = bindingValidator(ctx.diagram.nodes, ctx.diagram.edges);
     const resourceFindings: Finding[] = ctx.diagram.nodes.flatMap((node) => {
       const p = analysis.resolved[node.id],
         plan = analysis.nodes[node.id].resourcePlan;
       const kind = p.autoscalingProblem
         ? "invalid"
-        : plan?.memoryRisk
-          ? "memory"
-          : plan?.baselineAboveTarget
-            ? "baseline"
-            : plan?.max && (plan.targetReplicas ?? 0) > plan.max
-              ? "max"
-              : undefined;
+        : !bindings(p.autoscaling)
+          ? "binding"
+          : plan?.memoryRisk
+            ? "memory"
+            : plan?.baselineAboveTarget
+              ? "baseline"
+              : plan?.max && (plan.targetReplicas ?? 0) > plan.max
+                ? "max"
+                : plan?.keda && plan.initial === 0 && plan.keda.offered > 0
+                  ? "keda"
+                  : undefined;
       if (!kind) return [];
       const name = ctx.name(node.id),
         needed = plan?.targetReplicas ?? 0,
         max = plan?.max ?? 0;
-      const message =
-        kind === "invalid"
-          ? p.autoscalingProblem!
-          : kind === "memory"
-            ? "Configured peak memory exceeds its limit; OOM/restart is not simulated."
-            : kind === "baseline"
-              ? "Baseline memory exceeds the target; more replicas cannot reduce it."
-              : `HPA needs ${needed} replicas at target; maximum ${max}. Verify startup and partition limits before raising max.`;
+      const keda =
+        kind === "keda" && plan?.keda
+          ? {
+              rate: plan.keda.offered,
+              lag: plan.keda.lagBeforePoll,
+              poll: plan.keda.pollingMs / 1000,
+              startup: plan.startupMs / 1000,
+            }
+          : undefined;
+      const message = keda
+        ? `At ${keda.rate}/s, up to ${keda.lag} messages arrive before the ${keda.poll} s poll, plus ${keda.startup} s startup. Lower polling interval or raise minimum replicas. This is a configured estimate.`
+        : kind === "binding"
+          ? "KEDA needs a compatible local broker and an existing named group; an unknown metric cannot wake zero replicas."
+          : kind === "invalid"
+            ? p.autoscalingProblem!
+            : kind === "memory"
+              ? "Configured peak memory exceeds its limit; OOM/restart is not simulated."
+              : kind === "baseline"
+                ? "Baseline memory exceeds the target; more replicas cannot reduce it."
+                : `HPA needs ${needed} replicas at target; maximum ${max}. Verify startup and partition limits before raising max.`;
       return [
         {
           id: `capacity:${node.id}`,
           rule: "capacity",
-          severity: "warning",
+          severity: kind === "keda" ? "suggestion" : "warning",
           target: node.id,
           elements: [node.id],
           title: `${name}: resource planning`,
           message,
           rationale: "Configured resource assumptions; steady state is not a burst guarantee.",
-          resourceFinding: { name, kind, needed, max },
+          resourceFinding: { name, kind, needed, max, ...(keda ? { keda } : {}) },
         },
       ];
     });

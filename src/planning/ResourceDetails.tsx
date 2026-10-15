@@ -8,6 +8,7 @@ import { formatNumber } from "../i18n/format";
 export function ResourceEstimate({ plan: p }: { plan: ResourcePlan }) {
   return (
     <div data-testid="autoscaling-estimate">
+      {p.unmeasured && <p>{t("autoscaling.unmeasured")}</p>}
       <p>
         {t("autoscaling.configured", {
           initial: formatNumber(p.initialCapacity),
@@ -25,6 +26,16 @@ export function ResourceEstimate({ plan: p }: { plan: ResourcePlan }) {
         </p>
       )}
       {p.memoryRisk && <p>{t("autoscaling.checkMemory")}</p>}
+      {p.keda && p.initial === 0 && (
+        <p data-testid="autoscaling-polling-estimate">
+          {t("autoscaling.kedaTiming", {
+            rate: formatNumber(p.keda.offered),
+            lag: formatNumber(p.keda.lagBeforePoll),
+            poll: formatNumber(p.keda.pollingMs / 1000),
+            startup: formatNumber(p.startupMs / 1000),
+          })}
+        </p>
+      )}
     </div>
   );
 }
@@ -51,6 +62,7 @@ export function ResourceDetails({
     history.map((p) => `${((p.time - start) / span) * 260},${65 - (p[key] / max) * 60}`).join(" ");
   return (
     <div data-testid="autoscaling-live-details">
+      {r.unmeasured && <p>{t("autoscaling.unmeasured")}</p>}
       <p data-testid="autoscaling-counts">{t("autoscaling.counts", f)}</p>
       <p data-testid="autoscaling-cpu">
         {t("autoscaling.cpu", {
@@ -79,15 +91,30 @@ export function ResourceDetails({
               next: formatNumber(decision.nextAt / 1000),
             })}
           </p>
-          <p>{t("autoscaling.reason", { reason: decision.reason })}</p>
+          <p>
+            {["activation", "inactive", "cooldown", "partitions", "fallback"].includes(decision.reason)
+              ? t("autoscaling.kedaReason", { reason: decision.reason })
+              : t("autoscaling.reason", { reason: decision.reason })}
+          </p>
+          {decision.broker !== undefined && (
+            <p data-testid="autoscaling-broker-metric">
+              {t("autoscaling.kedaObserved", {
+                metric: decision.metric === undefined ? t("admission.unknownShort") : formatNumber(decision.metric),
+                active: String(decision.active),
+                time: formatNumber((decision.cooldownUntil ?? 0) / 1000),
+              })}
+            </p>
+          )}
           {decision.metric !== undefined && (
             <p data-testid="autoscaling-metric">
               {t("autoscaling.metric")}: {formatNumber(decision.metric, { maximumFractionDigits: 1 })} ·{" "}
-              {decision.targetKind === "averageValue"
-                ? t("autoscaling.absoluteTarget", { unit: decision.resource === "cpu" ? "m" : "MiB" })
-                : decision.resource === "cpu"
-                  ? t("autoscaling.cpuTarget")
-                  : t("autoscaling.memoryTarget")}
+              {decision.broker
+                ? t("autoscaling.brokerTarget")
+                : decision.targetKind === "averageValue"
+                  ? t("autoscaling.absoluteTarget", { unit: decision.resource === "cpu" ? "m" : "MiB" })
+                  : decision.resource === "cpu"
+                    ? t("autoscaling.cpuTarget")
+                    : t("autoscaling.memoryTarget")}
               : {formatNumber(decision.target ?? 0)}
             </p>
           )}

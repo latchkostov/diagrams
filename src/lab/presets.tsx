@@ -1,3 +1,4 @@
+import { kedaFixture } from "./kedaFixture";
 import { measuredHierarchyFixture, nestedBoundariesFixture } from "./nestedBoundariesFixture";
 import { captionContrastFixture } from "./captionContrastFixture";
 import { GalleryCatalogLab } from "./GalleryCatalogLab";
@@ -431,6 +432,13 @@ const playgroundPresets: Preset[] = [
     title: t("autoscaling.lesson"),
     group: "Playground",
     diagram: () => autoscalingFixture(),
+  },
+  {
+    kind: "diagram",
+    id: "autoscaling-a2",
+    title: t("autoscaling.kedaPreset", { broker: "Kafka" }),
+    group: "Playground",
+    diagram: () => kedaFixture(),
   },
   {
     kind: "diagram",

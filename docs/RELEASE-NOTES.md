@@ -1,5 +1,6 @@
 # Release notes
 
+<<<<<<< HEAD
 ## Relationship dropdown review fixes (#122, 2026-10-15)
 
 - Removing an inert edge setting returns keyboard focus to Label, and Tab reaches the relationship
@@ -13,6 +14,33 @@
   change: this review changes inspector interaction, not diagram output.
 - Merged the latest master without rewriting collaborator history, retaining both documentation
   histories and the follow-up fixes in #123.
+=======
+## Autoscaling A2 — KEDA and Kubernetes import (2026-10-15)
+
+- KEDA 2.18 ScaledObject lessons observe actual Kafka group lag, Service Bus queue/subscription messages,
+  SQS visible/in-flight messages and RabbitMQ ready/unacknowledged messages. Strict activation, cold starts,
+  per-trigger caching, polling, independent final-zero cooldown and fallback feed A1's HPA and lifecycle.
+  Kafka's controller cap remains separate from partition assignment; spare workers can serve other inputs.
+- Kubernetes manifests now persist resource quantities, HPA targets/behavior and executable KEDA settings.
+  Exact namespace/kind/version and ownership checks prevent double controllers. Unsupported fields,
+  visibility, multi-container accounting and ScaledJob execution are explicitly diagnosed; conflicting
+  policies retain safe bounded summaries. Workload costs remain unmeasured until explicitly acknowledged.
+- Four main inspector fields, translated Advanced settings and shared planning/check explanations disclose
+  polling backlog and startup. The new public **Render workers sleep between bursts** example is tagged
+  Autoscaling and demonstrates zero → burst activation → drain → zero within ten simulated seconds.
+- The expanded per-step seeded oracle also found and fixed stale retry retention that could return the
+  same work twice and make broker lag negative. A larger 5,000-seed run also exposed sampled retained-retry
+  memory being clipped by ready-only admission during replica drain; both exact and sampled memory
+  integrals now retain those attempts through the drain.
+  KEDA activation no longer consumes HPA's growth budget.
+- Parity: existing legacy/A1 diagram outputs are unchanged. New goldens cover the three frozen A2 diagrams,
+  the public showcase and synthetic import. Seven existing goldens change deliberately: `node/agent/tools.json`
+  and `node/skill/public-schemas.json` add A2 schema support; `node/skill/files.json` updates format/spec hashes;
+  `node/skill/current-stencils.json` reflects example popularity; `node/skill/validate.txt` lists the new corpus;
+  `node/i18n/catalogs.json` adds seventeen translated messages; `node/imports/kubernetes.json` gains executable
+  KEDA/resource settings and the policy note while retaining the range summary. See `docs/PARITY.md`.
+- Refreshed the offline skill viewer and released plugin 1.1.25, one patch above origin/master.
+>>>>>>> bd77d0c2 (Add KEDA activation and Kubernetes autoscaling import)
 
 ## Autoscaling preflight follow-ups (#117, 2026-10-15)
 

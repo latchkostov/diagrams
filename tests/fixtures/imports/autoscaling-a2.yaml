@@ -1,0 +1,59 @@
+# Synthetic workload and controllers, written for the importer contract.
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: renderer, namespace: studio }
+spec:
+  replicas: 0
+  template:
+    metadata: { labels: { app: renderer } }
+    spec:
+      containers:
+        - name: renderer
+          image: example.invalid/render-worker:1
+          resources:
+            requests: { cpu: 500m, memory: 256Mi }
+            limits: { cpu: "1", memory: 512Mi }
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata: { name: render-jobs, namespace: studio }
+spec: { partitions: 3 }
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata: { name: renderer, namespace: studio, uid: scaler-1 }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: renderer }
+  pollingInterval: 30
+  cooldownPeriod: 300
+  initialCooldownPeriod: 60
+  minReplicaCount: 0
+  maxReplicaCount: 20
+  fallback: { failureThreshold: 3, replicas: 4, behavior: currentReplicasIfHigher }
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 120
+          selectPolicy: Min
+          policies: [{ type: Pods, value: 2, periodSeconds: 30 }]
+  triggers:
+    - type: kafka
+      useCachedMetrics: true
+      authenticationRef: { name: kafka-auth }
+      metadata:
+        topic: render-jobs
+        consumerGroup: renderers
+        lagThreshold: "10"
+        activationLagThreshold: "5"
+        allowIdleConsumers: "true"
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: keda-hpa-renderer
+  namespace: studio
+  ownerReferences: [{ apiVersion: keda.sh/v1alpha1, kind: ScaledObject, name: renderer, uid: scaler-1 }]
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: renderer }
+  maxReplicas: 20

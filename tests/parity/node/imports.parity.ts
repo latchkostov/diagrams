@@ -75,6 +75,7 @@ const cases: [string, () => Promise<ImportOutcome>][] = [
       () => importFiles(files(`${IMPORTS}/asyncapi`, [name])),
     ]),
   ["asyncapi-joined", () => importFiles(files(`${IMPORTS}/asyncapi`))],
+  ["kubernetes-autoscaling-a2", () => importFiles(files(IMPORTS, ["autoscaling-a2.yaml"]))],
   ["kubernetes", () => importFiles(files(`${IMPORTS}/k8s`))],
   ["kubernetes-orders-api", () => importFiles(files(`${IMPORTS}/k8s`, ["orders-api.yaml"]))],
   ["terraform-aws-plan", () => importFiles(files(`${IMPORTS}/terraform`, ["aws-plan.json"]))],

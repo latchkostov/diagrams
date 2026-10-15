@@ -364,11 +364,615 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 600000
+            },
+            "requestDefaults": {
+              "type": "array",
+              "maxItems": 2,
+              "items": {
+                "enum": [
+                  "cpu",
+                  "memory"
+                ]
+              }
             }
           }
         },
         "autoscaling": {
           "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "mode",
+                "modelRevision",
+                "preset",
+                "presetRevision",
+                "controller"
+              ],
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "on"
+                  ]
+                },
+                "modelRevision": {
+                  "enum": [
+                    "a2"
+                  ]
+                },
+                "preset": {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                "presetRevision": {
+                  "enum": [
+                    "1"
+                  ]
+                },
+                "controller": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "kind",
+                    "minReplicas",
+                    "maxReplicas",
+                    "initialReplicas",
+                    "pollingMs",
+                    "cooldownMs",
+                    "initialCooldownMs",
+                    "settings",
+                    "triggers"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "keda"
+                      ]
+                    },
+                    "minReplicas": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "maxReplicas": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 10000
+                    },
+                    "initialReplicas": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "pollingMs": {
+                      "type": "integer",
+                      "minimum": 1000,
+                      "maximum": 600000
+                    },
+                    "cooldownMs": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 600000
+                    },
+                    "initialCooldownMs": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 600000
+                    },
+                    "idleReplicas": {
+                      "enum": [
+                        0
+                      ]
+                    },
+                    "settings": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "syncMs",
+                        "tolerance",
+                        "initialReadinessDelayMs",
+                        "cpuInitializationPeriodMs",
+                        "metrics",
+                        "up",
+                        "down"
+                      ],
+                      "properties": {
+                        "syncMs": {
+                          "type": "integer",
+                          "minimum": 1000,
+                          "maximum": 600000
+                        },
+                        "tolerance": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "initialReadinessDelayMs": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 600000
+                        },
+                        "cpuInitializationPeriodMs": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 600000
+                        },
+                        "metrics": {
+                          "type": "array",
+                          "minItems": 0,
+                          "maxItems": 16,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "source",
+                              "target",
+                              "windowMs",
+                              "metricDelayMs"
+                            ],
+                            "properties": {
+                              "source": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                  "kind",
+                                  "resource"
+                                ],
+                                "properties": {
+                                  "kind": {
+                                    "enum": [
+                                      "resource"
+                                    ]
+                                  },
+                                  "resource": {
+                                    "enum": [
+                                      "cpu",
+                                      "memory"
+                                    ]
+                                  },
+                                  "container": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  }
+                                }
+                              },
+                              "target": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": [
+                                      "kind",
+                                      "percentOfRequest"
+                                    ],
+                                    "properties": {
+                                      "kind": {
+                                        "enum": [
+                                          "utilization"
+                                        ]
+                                      },
+                                      "percentOfRequest": {
+                                        "type": "number",
+                                        "minimum": 0.000001,
+                                        "maximum": 1000000000
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": [
+                                      "kind",
+                                      "value"
+                                    ],
+                                    "properties": {
+                                      "kind": {
+                                        "enum": [
+                                          "averageValue"
+                                        ]
+                                      },
+                                      "value": {
+                                        "type": "number",
+                                        "minimum": 0.000001,
+                                        "maximum": 1000000000
+                                      }
+                                    }
+                                  }
+                                ]
+                              },
+                              "windowMs": {
+                                "type": "integer",
+                                "minimum": 1000,
+                                "maximum": 600000
+                              },
+                              "metricDelayMs": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 600000
+                              }
+                            }
+                          }
+                        },
+                        "up": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "stabilizationMs",
+                            "selectPolicy",
+                            "policies"
+                          ],
+                          "properties": {
+                            "stabilizationMs": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 600000
+                            },
+                            "selectPolicy": {
+                              "enum": [
+                                "Max",
+                                "Min",
+                                "Disabled"
+                              ]
+                            },
+                            "policies": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 8,
+                              "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                  "type",
+                                  "value",
+                                  "periodMs"
+                                ],
+                                "properties": {
+                                  "type": {
+                                    "enum": [
+                                      "Pods",
+                                      "Percent"
+                                    ]
+                                  },
+                                  "value": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 10000
+                                  },
+                                  "periodMs": {
+                                    "type": "integer",
+                                    "minimum": 1000,
+                                    "maximum": 600000
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "down": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "stabilizationMs",
+                            "selectPolicy",
+                            "policies"
+                          ],
+                          "properties": {
+                            "stabilizationMs": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 600000
+                            },
+                            "selectPolicy": {
+                              "enum": [
+                                "Max",
+                                "Min",
+                                "Disabled"
+                              ]
+                            },
+                            "policies": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 8,
+                              "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                  "type",
+                                  "value",
+                                  "periodMs"
+                                ],
+                                "properties": {
+                                  "type": {
+                                    "enum": [
+                                      "Pods",
+                                      "Percent"
+                                    ]
+                                  },
+                                  "value": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 10000
+                                  },
+                                  "periodMs": {
+                                    "type": "integer",
+                                    "minimum": 1000,
+                                    "maximum": 600000
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "triggers": {
+                      "type": "array",
+                      "minItems": 1,
+                      "maxItems": 16,
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "source",
+                              "target",
+                              "activation",
+                              "useCachedMetrics",
+                              "type",
+                              "allowIdleConsumers"
+                            ],
+                            "properties": {
+                              "source": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                  "node"
+                                ],
+                                "properties": {
+                                  "node": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  },
+                                  "group": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  }
+                                }
+                              },
+                              "target": {
+                                "type": "number",
+                                "minimum": 0.000001,
+                                "maximum": 1000000000
+                              },
+                              "activation": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1000000000
+                              },
+                              "useCachedMetrics": {
+                                "type": "boolean"
+                              },
+                              "type": {
+                                "enum": [
+                                  "kafka"
+                                ]
+                              },
+                              "allowIdleConsumers": {
+                                "type": "boolean"
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "source",
+                              "target",
+                              "activation",
+                              "useCachedMetrics",
+                              "type"
+                            ],
+                            "properties": {
+                              "source": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                  "node"
+                                ],
+                                "properties": {
+                                  "node": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  },
+                                  "group": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  }
+                                }
+                              },
+                              "target": {
+                                "type": "number",
+                                "minimum": 0.000001,
+                                "maximum": 1000000000
+                              },
+                              "activation": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1000000000
+                              },
+                              "useCachedMetrics": {
+                                "type": "boolean"
+                              },
+                              "type": {
+                                "enum": [
+                                  "azure-servicebus"
+                                ]
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "source",
+                              "target",
+                              "activation",
+                              "useCachedMetrics",
+                              "type",
+                              "scaleOnInFlight",
+                              "scaleOnDelayed"
+                            ],
+                            "properties": {
+                              "source": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                  "node"
+                                ],
+                                "properties": {
+                                  "node": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  },
+                                  "group": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  }
+                                }
+                              },
+                              "target": {
+                                "type": "number",
+                                "minimum": 0.000001,
+                                "maximum": 1000000000
+                              },
+                              "activation": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1000000000
+                              },
+                              "useCachedMetrics": {
+                                "type": "boolean"
+                              },
+                              "type": {
+                                "enum": [
+                                  "aws-sqs-queue"
+                                ]
+                              },
+                              "scaleOnInFlight": {
+                                "type": "boolean"
+                              },
+                              "scaleOnDelayed": {
+                                "enum": [
+                                  false
+                                ]
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "source",
+                              "target",
+                              "activation",
+                              "useCachedMetrics",
+                              "type",
+                              "protocol",
+                              "excludeUnacknowledged"
+                            ],
+                            "properties": {
+                              "source": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                  "node"
+                                ],
+                                "properties": {
+                                  "node": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  },
+                                  "group": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  }
+                                }
+                              },
+                              "target": {
+                                "type": "number",
+                                "minimum": 0.000001,
+                                "maximum": 1000000000
+                              },
+                              "activation": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1000000000
+                              },
+                              "useCachedMetrics": {
+                                "type": "boolean"
+                              },
+                              "type": {
+                                "enum": [
+                                  "rabbitmq"
+                                ]
+                              },
+                              "protocol": {
+                                "enum": [
+                                  "http",
+                                  "amqp"
+                                ]
+                              },
+                              "excludeUnacknowledged": {
+                                "type": "boolean"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "fallback": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "failureThreshold",
+                        "replicas",
+                        "behavior"
+                      ],
+                      "properties": {
+                        "failureThreshold": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 600
+                        },
+                        "replicas": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 10000
+                        },
+                        "behavior": {
+                          "enum": [
+                            "static",
+                            "currentReplicas",
+                            "currentReplicasIfHigher",
+                            "currentReplicasIfLower"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
             {
               "type": "object",
               "additionalProperties": false,
@@ -404,6 +1008,41 @@
                 "reason": {
                   "type": "string",
                   "maxLength": 1000
+                },
+                "controllers": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "kind"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "enum": [
+                          "HPA",
+                          "ScaledObject",
+                          "ScaledJob"
+                        ]
+                      },
+                      "minReplicas": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100000
+                      },
+                      "maxReplicas": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100000
+                      }
+                    }
+                  }
+                },
+                "controllersOmitted": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 10000
                 }
               }
             },
@@ -425,7 +1064,8 @@
                 },
                 "modelRevision": {
                   "enum": [
-                    "a1"
+                    "a1",
+                    "a2"
                   ]
                 },
                 "preset": {

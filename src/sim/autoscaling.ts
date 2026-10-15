@@ -8,7 +8,19 @@ export interface ScalingDecision {
   at: number;
   raw: number;
   desired: number;
-  reason: "target" | "tolerance" | "missing" | "stabilization" | "policy" | "max" | "override";
+  reason:
+    | "target"
+    | "tolerance"
+    | "missing"
+    | "stabilization"
+    | "policy"
+    | "max"
+    | "override"
+    | "activation"
+    | "inactive"
+    | "cooldown"
+    | "partitions"
+    | "fallback";
   nextAt: number;
   metric?: number;
   target?: number;
@@ -16,6 +28,11 @@ export interface ScalingDecision {
   targetKind?: "utilization" | "averageValue";
   windowMs?: number;
   metricDelayMs?: number;
+  broker?: string;
+  group?: string;
+  active?: boolean;
+  cooldownUntil?: number;
+  pollingMs?: number;
 }
 export interface FleetPoint {
   time: number;
@@ -29,6 +46,7 @@ export interface FleetReadout extends Omit<FleetPoint, "time"> {
   history: readonly FleetPoint[];
 }
 export interface ResourceReadout {
+  unmeasured?: true;
   /** All resource values already describe real work, irrespective of dot weight. */
   units: "real";
   cpuRequestPct?: number;
@@ -62,6 +80,7 @@ interface BusyReplica {
 }
 /** No idle-pod objects: ranges describe identical ready/starting replicas. Only admitted identities expand. */
 export interface Fleet {
+  keda?: import("./keda").KedaState;
   partBudget: CpuPartBudget;
   desired: number;
   ready: number;
@@ -281,7 +300,7 @@ export function reconcileFleet(
   seed: number,
   node: string,
 ): void {
-  desired = Number.isFinite(desired) ? Math.max(1, Math.min(10_000, Math.round(desired))) : f.desired;
+  desired = Number.isFinite(desired) ? Math.max(0, Math.min(10_000, Math.round(desired))) : f.desired;
   f.desired = desired;
   let delta = desired - f.ready - f.starting;
   const lifecycleChanged = delta !== 0;
@@ -468,12 +487,13 @@ export function evaluateHpa(
   now: number,
   multiplier = 1,
   scale = 1,
+  external: { raw: number; missing: boolean; metric?: number; target?: number } | undefined = undefined,
 ): ScalingDecision {
   const range = replicaRange(c, multiplier);
-  let raw = 0,
-    missing = false,
-    metric: number | undefined,
-    target: number | undefined;
+  let raw = external?.raw ?? 0,
+    missing = external?.missing ?? false,
+    metric: number | undefined = external?.metric,
+    target: number | undefined = external?.target;
   let binding: ScalingMetric | undefined;
   for (const m of c.settings.metrics) {
     const value = metricValue(f, r, m, now, scale);
@@ -598,6 +618,9 @@ export function resourceReadout(
     executedCpuMs: f.totalCpu,
     unsafe,
     estimated: scale > 1,
+    ...(r.preset === "kubernetes-unmeasured"
+      ? { unmeasured: true as const, cpuRequestPct: undefined, memoryRequestPct: undefined, memoryLimitPct: undefined }
+      : {}),
   };
 }
 const historyCache = new WeakMap<Fleet, { last?: FleetPoint; points: readonly FleetPoint[] }>();
@@ -656,6 +679,14 @@ export function replicaPage(f: Fleet, r: ComputeResources, now: number, scale: n
       memoryRequestPct: r.memoryRequestMiB ? (memory / r.memoryRequestMiB) * 100 : undefined,
       memoryLimitPct: r.memoryLimitMiB ? (memory / r.memoryLimitMiB) * 100 : undefined,
       unsafe: r.memoryLimitMiB !== undefined && memory > r.memoryLimitMiB,
+      ...(r.preset === "kubernetes-unmeasured"
+        ? {
+            unmeasured: true as const,
+            cpuRequestPct: undefined,
+            memoryRequestPct: undefined,
+            memoryLimitPct: undefined,
+          }
+        : {}),
     };
   });
 }

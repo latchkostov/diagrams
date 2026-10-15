@@ -1,5 +1,6 @@
 import { explanationRate } from "../planning/format";
 import { t } from "../i18n/core";
+import { formatNumber } from "../i18n/number";
 import { assignmentLabel } from "../stencils/brokerVocabulary";
 import type { Finding } from "./types";
 
@@ -11,13 +12,22 @@ export function presentFinding(finding: Finding): Finding {
       ...finding,
       title: t("autoscaling.checkTitle", { name: resource.name }),
       message:
-        resource.kind === "invalid"
-          ? t("autoscaling.checkInvalid")
-          : resource.kind === "memory"
-            ? t("autoscaling.checkMemory")
-            : resource.kind === "baseline"
-              ? t("autoscaling.baselineRisk")
-              : t("autoscaling.checkMax", { needed: resource.needed, max: resource.max }),
+        resource.kind === "binding"
+          ? t("autoscaling.bindingRequired")
+          : resource.keda
+            ? t("autoscaling.kedaTiming", {
+                rate: formatNumber(resource.keda.rate),
+                lag: formatNumber(resource.keda.lag),
+                poll: formatNumber(resource.keda.poll),
+                startup: formatNumber(resource.keda.startup),
+              })
+            : resource.kind === "invalid"
+              ? t("autoscaling.checkInvalid")
+              : resource.kind === "memory"
+                ? t("autoscaling.checkMemory")
+                : resource.kind === "baseline"
+                  ? t("autoscaling.baselineRisk")
+                  : t("autoscaling.checkMax", { needed: resource.needed, max: resource.max }),
       rationale: t("autoscaling.checkWhy"),
     };
   const note = finding.brokerAssignment;

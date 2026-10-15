@@ -43,12 +43,13 @@ describe("example gallery", () => {
     expect(tags("branch-to-datacentre")).toEqual(["networkDevices"]);
     expect(tags("notification-fanout")).toEqual(["partitions", "rateLimits"]);
     expect(tags("nightly-batch-elt")).toEqual([]);
+    expect(tags("keda-render-workers")).toEqual(["partitions", "autoscaling"]);
     expect(tags("autoscaling-image-workers")).toEqual(["partitions", "autoscaling"]);
     expect(
       filterExamples(publicItems, "", "autoscaling")
         .flatMap((s) => s.items)
         .map((e) => e.slug),
-    ).toEqual(["autoscaling-image-workers"]);
+    ).toEqual(["keda-render-workers", "autoscaling-image-workers"]);
   });
   it("tags each showcase only with features its configuration demonstrates", () => {
     const expected: Record<string, string[]> = {

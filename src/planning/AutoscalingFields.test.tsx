@@ -1,6 +1,7 @@
 import { createEngine } from "../sim/engine";
 import { realNodeMetrics } from "../sim/units";
 import { ResourceDetails, ResourceEstimate } from "./ResourceDetails";
+import { kedaFixture } from "../lab/kedaFixture";
 import { autoscalingFixture } from "../lab/autoscalingFixture";
 import { analyzeCapacity } from "../sim/capacity";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -45,4 +46,23 @@ it("keeps a rolling history spread over the chart after ten minutes", () => {
     ],
   };
   expect(renderToStaticMarkup(<ResourceDetails metrics={s} />)).toMatch(/points="0,[^"]*260,/);
+});
+
+it("does not turn an unavailable fallback broker metric into zero", () => {
+  const d = kedaFixture();
+  const e = createEngine();
+  e.load(d);
+  const s = realNodeMetrics(e.frame().nodes.worker);
+  s.fleet!.decision = {
+    at: 1000,
+    nextAt: 2000,
+    raw: 3,
+    desired: 3,
+    reason: "fallback",
+    broker: "uploads",
+    active: false,
+  };
+  const html = renderToStaticMarkup(<ResourceDetails metrics={s} />);
+  expect(html).toContain("Broker metric: Unknown messages");
+  expect(html).not.toContain("Broker metric: 0 messages");
 });

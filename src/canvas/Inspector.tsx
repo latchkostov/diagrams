@@ -620,6 +620,8 @@ function NodePanel({
           />
         ) : simFields.length ? (
           <AutoscalingWorkload
+            readDiagram={readDiagram}
+            nodeId={node.id}
             stencil={node.data.stencil}
             enabled={meta.planning?.revision === "p3-a1" && role === "processor"}
             props={props}
@@ -2687,7 +2689,11 @@ function AutoscalingWorkload({
   set,
   children,
   stencil,
+  readDiagram,
+  nodeId,
 }: {
+  readDiagram?: () => DiagramFile;
+  nodeId: string;
   stencil: string;
   enabled: boolean;
   props: Record<string, unknown>;
@@ -2695,7 +2701,7 @@ function AutoscalingWorkload({
   children: ReactNode;
 }) {
   return enabled ? (
-    <AutoscalingFields stencil={stencil} props={props} set={set}>
+    <AutoscalingFields readDiagram={readDiagram} nodeId={nodeId} stencil={stencil} props={props} set={set}>
       {children}
     </AutoscalingFields>
   ) : (

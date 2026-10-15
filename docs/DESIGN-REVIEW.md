@@ -22,6 +22,28 @@ headers remain the target inside collapsible sections.
 
 This was a source and regression-test review, not an independent whole-app visual walkthrough or
 screen-reader session. Production browser checks cover the changed interactions and accessibility.
+## Round 42 — Autoscaling A2 (2026-10-15)
+
+The designer reviewed A2 against `UX-PRINCIPLES.md` using source, regression tests and the captures below.
+The first pass found a false-zero fallback readout, repeated source-group labels, incomplete empty-source
+recovery and screenshots that hid the controls. These are corrected: unavailable metrics say Unknown;
+source labels appear once; a pending preset explains connecting a compatible broker/group and remains
+unsaved until a source is selected. An empty source selector is disabled. The follow-up found no remaining
+blocking UX issues.
+
+The default inspector keeps four controls: preset, message target, minimum and maximum. Source, activation,
+polling, cooldown, resources and full controller policy remain in Advanced; ordinary workload settings are
+folded. No global chrome or scaler stencil is added. The synthetic public showcase discloses its shortened
+teaching timings and shows Kafka's partition cap separately from cold-start readiness.
+
+![Four main fields in the light inspector](screenshots/autoscaling-a2/inspector-light.png)
+![Four main fields in the dark inspector](screenshots/autoscaling-a2/inspector-dark.png)
+![Live worker lifecycle and partition explanation](screenshots/autoscaling-a2/live.png)
+
+Production Chromium KEDA tests cover keyboard editing/Undo, axe WCAG 2.0/2.1 A/AA on the controls in both
+themes, Arabic JSON direction, explicit multi-source binding, import recovery and zero/wake/drain playback.
+The designer's review was read-only: no independent browser interaction or test execution, no exhaustive
+translation-language audit, and no claim of screen-reader or complete expanded-Advanced verification.
 
 ## Measured fits and nested-boundary integration (2026-10-15)
 

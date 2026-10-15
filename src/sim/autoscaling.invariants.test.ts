@@ -4,7 +4,7 @@ import { createSimulationRun } from "./simulation";
 import { describe, expect, it, vi } from "vitest";
 import type { DiagramFile } from "../model/types";
 import type { NodeSimProps, NodeStatus } from "./types";
-import { hpaLesson, resourceLesson } from "../model/autoscaling";
+import { hpaLesson, kedaLesson, resourceLesson } from "../model/autoscaling";
 import { autoscalingFixture } from "../lab/autoscalingFixture";
 import { createEngine } from "./engine";
 import { mulberry32 } from "./rng";
@@ -22,7 +22,8 @@ function generate(seed: number) {
   const random = mulberry32(seed),
     pick = <T>(values: T[]) => values[Math.floor(random() * values.length)];
   const d = autoscalingFixture();
-  const broker = pick([true, false]);
+  const keda = seed % 3 === 0;
+  const broker = keda || pick([true, false]);
   if (broker) {
     d.nodes[0].stencil = pick(["kafka.topic", "aws.sqs"]);
     d.nodes[0].props = { partitions: pick([1, 2, 4]), maxDeliveryCount: 4 };
@@ -50,6 +51,22 @@ function generate(seed: number) {
     };
     return a;
   };
+  const scaler = () => {
+    if (!keda) return hpa();
+    const a = kedaLesson(d.nodes[0].stencil === "aws.sqs" ? "aws-sqs-queue" : "kafka", {
+      node: "source",
+      ...(d.nodes[0].stencil === "aws.sqs" ? {} : { group: "requests" }),
+    });
+    Object.assign(a.controller, {
+      pollingMs: 1000,
+      cooldownMs: pick([0, 1000, 3000]),
+      initialCooldownMs: pick([0, 1000]),
+      maxReplicas: 5,
+    });
+    a.controller.triggers[0].activation = pick([0, 1, 5]);
+    a.controller.settings.syncMs = 1000;
+    return a;
+  };
   const admission = () => ({
     quotas: [
       {
@@ -68,7 +85,7 @@ function generate(seed: number) {
     concurrency: pick([1, 2]),
     latencyMs: pick([10, 100, 500]),
     resources,
-    autoscaling: pick([hpa(), { mode: "off" as const }]),
+    autoscaling: pick([scaler(), { mode: "off" as const }]),
     failureRate: pick([0, 0.5, 1]),
     retry: "inplace",
     retryBackoffMs: pick([0, 100, 300, 5000]),
@@ -88,7 +105,7 @@ function generate(seed: number) {
     { do: "burst", count: 8, ms: 100 },
   ];
   for (let i = 0; i < 70; i++) {
-    const ms = pick([10, 30, 100, 300]);
+    const ms = pick(keda ? [10, 100, 1000, 3000] : [10, 30, 100, 300]);
     switch (pick([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])) {
       case 9:
         actions.push({ do: "refuse", ms });
@@ -108,7 +125,7 @@ function generate(seed: number) {
         });
         break;
       case 4:
-        actions.push({ do: "props", props: { autoscaling: hpa() }, ms });
+        actions.push({ do: "props", props: { autoscaling: scaler() }, ms });
         break;
       case 5:
         actions.push({ do: "props", props: { api: pick([admission(), undefined]) }, ms });
@@ -237,7 +254,7 @@ describe("A1 seeded ownership invariants", () => {
   const cases = process.env.A1_FUZZ_NIGHTLY ? 5000 : 200;
   const seeds = process.env.A1_FUZZ_SEED
     ? [Number(process.env.A1_FUZZ_SEED)]
-    : Array.from({ length: cases }, (_, i) => i + 1);
+    : [...new Set([...Array.from({ length: cases }, (_, i) => i + 1), 505, 1724])];
   it.each(seeds)("seed %i", (seed) => {
     const { d, scale, actions } = generate(seed);
     const failure = replay(d, seed, scale, actions);

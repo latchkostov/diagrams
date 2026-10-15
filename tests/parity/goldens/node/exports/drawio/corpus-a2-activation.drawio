@@ -1,0 +1,37 @@
+<mxfile host="Diagrams" agent="Diagrams" version="24.0.0" type="device">
+  <diagram id="dg-100owvh" name="a2-activation">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <object id="0" dg_format="diagrams/v2" dg_description="An invented poster-rendering pipeline. KEDA observes real Kafka group lag, wakes from zero, and sends the active fleet through HPA. The burst drains and workers return to zero within ten simulated seconds. Teaching timings: 1 s polling and HPA sync, 1 s startup, 2 s final-zero cooldown; these are deliberately shorter than the published 30/15/300 s defaults. Kafka offset history starts empty and rebalance delay is not simulated." dg_simulations="[{&quot;id&quot;:&quot;wake-on-burst&quot;,&quot;title&quot;:&quot;Wake on a burst&quot;,&quot;seed&quot;:7,&quot;scale&quot;:1,&quot;durationMs&quot;:10000,&quot;traffic&quot;:[{&quot;id&quot;:&quot;burst&quot;,&quot;node&quot;:&quot;source&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;burst&quot;,&quot;count&quot;:80,&quot;atMs&quot;:1000}}]}]" dg_planning="{&quot;revision&quot;:&quot;p3-a1&quot;}">
+          <mxCell />
+        </object>
+        <mxCell id="1" parent="0" />
+        <object id="dg-n-source" label="Poster studio" dg_id="source" dg_stencil="client.browser" dg_props="{&quot;ratePerSec&quot;:2}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#6366F11A;strokeColor=#6366F1;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="100" y="186" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-uploads" label="Render requests&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;3 partitions&lt;/span&gt;" dg_id="uploads" dg_stencil="kafka.topic" dg_props="{&quot;partitions&quot;:3}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="440" y="186" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-worker" label="Poster workers" dg_id="worker" dg_stencil="service.go" dg_props="{&quot;replicas&quot;:1,&quot;concurrency&quot;:4,&quot;latencyMs&quot;:250,&quot;jitter&quot;:0,&quot;resources&quot;:{&quot;preset&quot;:&quot;io-service&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;cpuMsPerMessage&quot;:40,&quot;baselineMemoryMiB&quot;:128,&quot;memoryMiBPerMessage&quot;:2,&quot;cpuRequestMilli&quot;:500,&quot;cpuLimitMilli&quot;:1000,&quot;memoryRequestMiB&quot;:256,&quot;memoryLimitMiB&quot;:512,&quot;startup&quot;:{&quot;delayMs&quot;:1000,&quot;jitterFraction&quot;:0},&quot;terminationGraceMs&quot;:30000},&quot;autoscaling&quot;:{&quot;mode&quot;:&quot;on&quot;,&quot;modelRevision&quot;:&quot;a2&quot;,&quot;preset&quot;:&quot;keda-kafka&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;controller&quot;:{&quot;kind&quot;:&quot;keda&quot;,&quot;minReplicas&quot;:0,&quot;maxReplicas&quot;:6,&quot;initialReplicas&quot;:0,&quot;pollingMs&quot;:1000,&quot;cooldownMs&quot;:2000,&quot;initialCooldownMs&quot;:0,&quot;triggers&quot;:[{&quot;type&quot;:&quot;kafka&quot;,&quot;source&quot;:{&quot;node&quot;:&quot;uploads&quot;,&quot;group&quot;:&quot;renders&quot;},&quot;target&quot;:10,&quot;activation&quot;:0,&quot;useCachedMetrics&quot;:false,&quot;allowIdleConsumers&quot;:false}],&quot;settings&quot;:{&quot;syncMs&quot;:1000,&quot;tolerance&quot;:0.1,&quot;initialReadinessDelayMs&quot;:0,&quot;cpuInitializationPeriodMs&quot;:0,&quot;metrics&quot;:[],&quot;up&quot;:{&quot;stabilizationMs&quot;:0,&quot;selectPolicy&quot;:&quot;Max&quot;,&quot;policies&quot;:[{&quot;type&quot;:&quot;Pods&quot;,&quot;value&quot;:4,&quot;periodMs&quot;:15000},{&quot;type&quot;:&quot;Percent&quot;,&quot;value&quot;:100,&quot;periodMs&quot;:15000}]},&quot;down&quot;:{&quot;stabilizationMs&quot;:300000,&quot;selectPolicy&quot;:&quot;Max&quot;,&quot;policies&quot;:[{&quot;type&quot;:&quot;Percent&quot;,&quot;value&quot;:100,&quot;periodMs&quot;:15000}]}}}}}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#00ADD81A;strokeColor=#00ADD8;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="800" y="186" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-publish" label="" dg_id="publish" dg_kind="async" dg_props="{&quot;travelMs&quot;:10}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-source" target="dg-n-uploads">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-consume" label="" dg_id="consume" dg_kind="async" dg_props="{&quot;travelMs&quot;:10,&quot;group&quot;:&quot;renders&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-uploads" target="dg-n-worker">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

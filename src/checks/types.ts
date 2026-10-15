@@ -38,7 +38,13 @@ export interface CheckFixOption {
 }
 
 export interface Finding {
-  resourceFinding?: { name: string; kind: "memory" | "invalid" | "baseline" | "max"; needed: number; max: number };
+  resourceFinding?: {
+    name: string;
+    kind: "memory" | "invalid" | "baseline" | "max" | "keda" | "binding";
+    needed: number;
+    max: number;
+    keda?: { rate: number; lag: number; poll: number; startup: number };
+  };
   admissionRejection?: { text: string; rate: number };
   /** Neutral rationale descriptor; rationale stays English for workers and agents. */
   brokerRationale?: "no-reader";

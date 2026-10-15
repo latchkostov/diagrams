@@ -1,4 +1,11 @@
 /** A1 is opt-in. CPU work is CPU-ms per real attempt, never elapsed latency. */
+export function resourceWorkload(stencil: string | undefined, family: string | undefined, revision = "a1"): boolean {
+  // A Deployment remains infrastructure in older profile evidence. Explicit resource execution is compute.
+  return (
+    (stencil === "k8s.deployment" && revision === "a2") ||
+    ["service", "workflow", "stream-processor"].includes(family ?? "")
+  );
+}
 export interface ComputeResources {
   preset: string;
   presetRevision: "1";
@@ -14,6 +21,8 @@ export interface ComputeResources {
   memoryLimitMiB?: number;
   startup: { delayMs: number; jitterFraction: number };
   terminationGraceMs: number;
+  /** Imported request defaulting from a limit; all other supplied denominators came from requests. */
+  requestDefaults?: ("cpu" | "memory")[];
 }
 export interface DirectionBehaviour {
   stabilizationMs: number;
@@ -43,10 +52,68 @@ export interface HpaController {
   initialReplicas: number;
   settings: HpaSettings;
 }
+export interface BrokerBinding {
+  node: string;
+  /** Named consumer group/subscription. Queues use their single `queue` group. */
+  group?: string;
+}
+interface TriggerBase {
+  source: BrokerBinding;
+  target: number;
+  activation: number;
+  useCachedMetrics: boolean;
+}
+export type KedaTrigger = TriggerBase &
+  (
+    | { type: "kafka"; allowIdleConsumers: boolean }
+    | { type: "azure-servicebus" }
+    | { type: "aws-sqs-queue"; scaleOnInFlight: boolean; scaleOnDelayed: false }
+    | { type: "rabbitmq"; protocol: "http" | "amqp"; excludeUnacknowledged: boolean }
+  );
+export interface KedaController extends Omit<HpaController, "kind"> {
+  kind: "keda";
+  pollingMs: number;
+  cooldownMs: number;
+  initialCooldownMs: number;
+  idleReplicas?: 0;
+  triggers: KedaTrigger[];
+  fallback?: {
+    failureThreshold: number;
+    replicas: number;
+    behavior: "static" | "currentReplicas" | "currentReplicasIfHigher" | "currentReplicasIfLower";
+  };
+}
+export type HpaConfig = {
+  mode: "on";
+  modelRevision: "a1";
+  preset: string;
+  presetRevision: "1";
+  controller: HpaController;
+};
+export type KedaConfig = {
+  mode: "on";
+  modelRevision: "a2";
+  preset: string;
+  presetRevision: "1";
+  controller: KedaController;
+};
 export type AutoscalingConfig =
   | { mode: "off" }
-  | { mode: "on"; modelRevision: "a1"; preset: string; presetRevision: "1"; controller: HpaController }
-  | { mode: "unsupported"; provider: string; reason: string };
+  | HpaConfig
+  | (Omit<HpaConfig, "modelRevision"> & { modelRevision: "a2" })
+  | KedaConfig
+  | {
+      mode: "unsupported";
+      provider: string;
+      reason: string;
+      controllers?: ScalingSummary[];
+      controllersOmitted?: number;
+    };
+export interface ScalingSummary {
+  kind: "HPA" | "ScaledObject" | "ScaledJob";
+  minReplicas?: number;
+  maxReplicas?: number;
+}
 
 export const RESOURCE_LESSONS: Readonly<Record<string, ComputeResources>> = {
   "io-service": {
@@ -89,7 +156,7 @@ export function resourceLesson(id = "io-service"): ComputeResources {
   return base;
 }
 /** Published Kubernetes defaults; the lesson explicitly chooses 70%, min 1/max 10. */
-export function hpaLesson(): AutoscalingConfig & { mode: "on" } {
+export function hpaLesson(): HpaConfig {
   return {
     mode: "on",
     modelRevision: "a1",
@@ -130,8 +197,41 @@ export function hpaLesson(): AutoscalingConfig & { mode: "on" } {
     },
   };
 }
-export function replicaRange(controller: HpaController, multiplier = 1) {
-  const count = (n: number) => Math.max(1, Math.min(10_000, Math.round(n * multiplier)));
+export function kedaLesson(type: KedaTrigger["type"] = "kafka", source: BrokerBinding = { node: "" }): KedaConfig {
+  const trigger: KedaTrigger = {
+    source,
+    target: type === "kafka" ? 10 : type === "rabbitmq" ? 20 : 5,
+    activation: 0,
+    useCachedMetrics: false,
+    ...(type === "kafka"
+      ? { type, allowIdleConsumers: false }
+      : type === "aws-sqs-queue"
+        ? { type, scaleOnInFlight: true, scaleOnDelayed: false }
+        : type === "rabbitmq"
+          ? { type, protocol: "amqp", excludeUnacknowledged: true }
+          : { type }),
+  };
+  return {
+    mode: "on",
+    modelRevision: "a2",
+    preset: `keda-${type}`,
+    presetRevision: "1",
+    controller: {
+      kind: "keda",
+      minReplicas: 0,
+      initialReplicas: 0,
+      maxReplicas: 100,
+      pollingMs: 30_000,
+      cooldownMs: 300_000,
+      initialCooldownMs: 0,
+      triggers: [trigger],
+      settings: { ...hpaLesson().controller.settings, metrics: [] },
+    },
+  };
+}
+export function replicaRange(controller: HpaController | KedaController, multiplier = 1) {
+  const count = (n: number) =>
+    Math.max(controller.kind === "keda" ? 0 : 1, Math.min(10_000, Math.round(n * multiplier)));
   return {
     min: count(controller.minReplicas),
     max: count(controller.maxReplicas),

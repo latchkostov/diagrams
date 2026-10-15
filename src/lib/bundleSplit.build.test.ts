@@ -35,6 +35,7 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
   ["recording", /[/\\]src[/\\]live[/\\]record[/\\]Recorder\.tsx$/],
   ["slow motion", /[/\\]src[/\\]live[/\\]slowmo[/\\]/],
   ["autoscaling execution", /[/\\]src[/\\]sim[/\\]autoscaling\.ts$/],
+  ["KEDA execution", /[/\\]src[/\\]sim[/\\]keda\.ts$/],
   ["the simulation engine", /[/\\]src[/\\]sim[/\\]engine\.ts$/],
   ["the architecture checks", /[/\\]src[/\\]checks[/\\]/],
   ["the AI panel", /[/\\]src[/\\]ai[/\\]ui[/\\]AiPanel\.tsx$/],
@@ -56,8 +57,6 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
  */
 const STARTUP_CHUNKS = [
   "annotations",
-  // Bounded A1 configuration validation is required by the startup native reader; controllers stay lazy.
-  "autoscalingSchema",
   "catalog",
   "checks",
   "codec",
@@ -69,6 +68,8 @@ const STARTUP_CHUNKS = [
   "i18n",
   "index",
   "jsx-runtime",
+  // Native broker-binding validation shares this chunk with the resource schema; execution remains lazy.
+  "kedaBindings",
   "native",
   "preload-helper",
   "react",

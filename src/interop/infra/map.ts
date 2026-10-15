@@ -1,3 +1,4 @@
+import { remapScaler } from "../../model/kedaBindings";
 import { diagnostic } from "./graph";
 import { t as tr } from "../../i18n";
 import {
@@ -108,6 +109,7 @@ export function graphToDiagram(g: ImportGraph, total?: number): { diagram: Diagr
       ...(c.props ? { props: { ...c.props } } : {}),
     };
   });
+  for (const n of nodes) remapScaler(n.props, ids);
   const labelOf = new Map(g.components.map((c) => [c.key, rowLabel(c)]));
   const inferred: ReportConnection[] = [];
   /** Inferred connections past MAX_REPORT_LINES: counted in a note, not listed. */
@@ -176,7 +178,10 @@ export function graphToDiagram(g: ImportGraph, total?: number): { diagram: Diagr
       }
     : undefined;
   const diagram = layoutImport({
-    format: DIAGRAM_FORMAT,
+    format: nodes.some((n) => n.props?.resources || n.props?.autoscaling) ? "diagrams/v2" : DIAGRAM_FORMAT,
+    ...(nodes.some((n) => n.props?.resources || n.props?.autoscaling)
+      ? { planning: { revision: "p3-a1" as const } }
+      : {}),
     title: g.title,
     direction: "LR",
     ...(groups.length ? { groups } : {}),
