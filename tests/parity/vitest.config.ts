@@ -23,7 +23,8 @@ function publicExamplesOnly(): Plugin {
       return code.replace(PRIVATE_GLOB, "{}");
     },
     load(id) {
-      if (/[/\\]examples[/\\]private[/\\]/.test(id)) this.error("the parity harness must not load src/examples/private");
+      if (/[/\\]examples[/\\]private[/\\]/.test(id))
+        this.error("the parity harness must not load src/examples/private");
       return undefined;
     },
   };
