@@ -98,16 +98,16 @@ it("preserves ordered document commands across coalesced fits and nested request
   const t = setup();
   const ran: string[] = [];
   const stale = vi.fn();
-  t.queue.enqueue(() => {
+  t.queue.whenReady(() => {
     ran.push("layout one");
     t.queue.request(stale);
-    t.queue.enqueue(() => {
+    t.queue.whenReady(() => {
       ran.push("nested command");
       t.queue.request(() => ran.push("final fit"));
     });
   });
   t.queue.request(stale);
-  t.queue.enqueue(() => ran.push("layout two"));
+  t.queue.whenReady(() => ran.push("layout two"));
   t.queue.request(() => ran.push("superseded fit"));
   t.measure("ready");
   for (let i = 0; i < 4; i++) {
@@ -119,7 +119,7 @@ it("preserves ordered document commands across coalesced fits and nested request
   expect(ran).toEqual(["layout one", "layout two", "nested command", "final fit"]);
   expect(stale).not.toHaveBeenCalled();
   expect(t.pending).toHaveBeenLastCalledWith(false);
-  t.queue.enqueue(stale);
+  t.queue.whenReady(stale);
   t.queue.dispose();
   t.frame();
   expect(stale).not.toHaveBeenCalled();
@@ -133,7 +133,7 @@ it("runs document commands and their final fit even if an interrupted viewport a
   t.frame();
   const layout = vi.fn(() => t.queue.request(fit));
   const fit = vi.fn();
-  t.queue.enqueue(layout);
+  t.queue.whenReady(layout);
   t.frame();
   t.frame();
   await Promise.resolve();
@@ -143,5 +143,67 @@ it("runs document commands and their final fit even if an interrupted viewport a
   t.frame();
   await Promise.resolve();
   expect(fit).toHaveBeenCalledOnce();
+  expect(t.pending).toHaveBeenLastCalledWith(false);
+});
+
+it("settles an interrupted final viewport transition without another request", async () => {
+  const t = setup();
+  let finish!: () => void;
+  t.queue.request(
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  t.measure("ready");
+  t.frame();
+  t.frame();
+  expect(t.pending).toHaveBeenLastCalledWith(true);
+  t.queue.interrupt();
+  expect(t.pending).toHaveBeenLastCalledWith(false);
+  expect(t.frames.size).toBe(0);
+  // A superseded promise completing later must not settle the new transition.
+  t.queue.request(() => new Promise(() => {}));
+  t.frame();
+  t.frame();
+  finish();
+  await Promise.resolve();
+  expect(t.pending).toHaveBeenLastCalledWith(true);
+});
+
+it("interrupts viewport work while preserving measurement subscribers and their cancellation", async () => {
+  const t = setup();
+  const layout = vi.fn();
+  const cancelled = vi.fn();
+  t.queue.request(() => new Promise(() => {}));
+  t.measure("ready");
+  t.frame();
+  t.frame();
+  t.measure(null);
+  t.queue.whenReady(layout);
+  const unsubscribe = t.queue.whenReady(cancelled);
+  t.queue.request(vi.fn());
+  t.queue.interrupt();
+  unsubscribe();
+  expect(t.pending).toHaveBeenLastCalledWith(true);
+  t.measure("ready again");
+  t.frame();
+  t.frame();
+  await Promise.resolve();
+  expect(layout).toHaveBeenCalledOnce();
+  expect(cancelled).not.toHaveBeenCalled();
+  expect(t.pending).toHaveBeenLastCalledWith(false);
+});
+
+it("unsubscribes between stable samples without running a stale frame", () => {
+  const t = setup();
+  const run = vi.fn();
+  const unsubscribe = t.queue.whenReady(run);
+  t.measure("ready");
+  t.frame();
+  unsubscribe();
+  expect(t.frames.size).toBe(0);
+  t.frame();
+  expect(run).not.toHaveBeenCalled();
   expect(t.pending).toHaveBeenLastCalledWith(false);
 });

@@ -28,20 +28,25 @@ it("Auto-layout waits for measured cards before refitting boundaries and request
     getNode: (id: string) => nodes.find((n) => n.id === id),
     getEdges: () => flow.edges,
   } as unknown as ReactFlowInstance<FlowNode, DiagramFlowEdge>;
-  const { api } = createEditor(rf, {
+  const deps = {
     meta: flow.meta,
     setNodes,
+    setEdges: vi.fn(),
     nodeSize: { width: 220, height: 72 },
     history: { hint: vi.fn() },
     fit,
     afterMeasured: (run: () => void) => {
       ready = run;
     },
-  } as unknown as EditorDeps);
+  } as unknown as EditorDeps;
+  const { api, updateDeps } = createEditor(rf, deps);
   api.autoLayout();
   expect(nodes).toBe(flow.nodes);
   expect(fit).not.toHaveBeenCalled();
+  // Selection is not a document edit and must not invalidate the waiting layout.
+  api.select({ nodeIds: ["a"] });
   nodes = nodes.map((n) => (n.type === "diagram" ? { ...n, measured: { width: 260, height: 72 } } : n));
+  updateDeps(rf, deps); // The measurement delivery commits the staged selection.
   ready();
   const want = boundaryAround(
     nodes
@@ -103,3 +108,51 @@ it.each([false, true])("refits nested boundaries bottom-up, independent of file 
   expect(nodes.find((n) => n.id === "group:empty")).toBe(original.find((n) => n.id === "group:empty"));
   expect(fit).toHaveBeenCalledOnce();
 });
+
+it.each(["undo", "redo", "replacement", "edit"] as const)(
+  "%s cancels a measurement-held Auto-layout without changing earlier history",
+  (command) => {
+    const flow = toFlow(measuredHierarchyFixture);
+    let nodes = flow.nodes;
+    let release!: () => void;
+    const cancel = vi.fn();
+    const undo = vi.fn();
+    const redo = vi.fn();
+    const replace = vi.fn();
+    const fit = vi.fn();
+    const rf = {
+      getNodes: () => nodes,
+      getEdges: () => flow.edges,
+    } as unknown as ReactFlowInstance<FlowNode, DiagramFlowEdge>;
+    const { api } = createEditor(rf, {
+      meta: flow.meta,
+      setNodes: (update: Parameters<EditorDeps["setNodes"]>[0]) => {
+        nodes = typeof update === "function" ? update(nodes) : update;
+      },
+      nodeSize: { width: 220, height: 72 },
+      history: { hint: vi.fn(), undo, redo, replace, canUndo: true, canRedo: true },
+      fit,
+      afterMeasured: (run: () => void) => {
+        release = run;
+        return cancel;
+      },
+    } as unknown as EditorDeps);
+    api.autoLayout();
+    expect(api.canUndo()).toBe(true);
+    expect(api.canRedo()).toBe(false);
+    if (command === "undo") api.undo();
+    if (command === "redo") api.redo();
+    if (command === "replacement") api.applyDiagram({ ...measuredHierarchyFixture, title: "Replacement" });
+    if (command === "edit") api.updateNode("a", { label: "Edited" });
+    const afterCommand = nodes;
+    release(); // Even a late readiness delivery cannot resurrect a cancelled document command.
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(nodes).toBe(afterCommand);
+    expect(fit).not.toHaveBeenCalled();
+    expect(undo).not.toHaveBeenCalled();
+    expect(redo).toHaveBeenCalledTimes(command === "redo" ? 1 : 0);
+    expect(replace).toHaveBeenCalledTimes(command === "replacement" ? 1 : 0);
+    expect(api.canUndo()).toBe(true);
+    expect(api.canRedo()).toBe(true);
+  },
+);

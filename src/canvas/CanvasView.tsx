@@ -493,7 +493,8 @@ function CanvasInner({
 
   // Fit-view keeps content out from under the title card, minimap, controls and live bar.
   const fitView_ = useOverlayFit(wrapper, { style: edgeStyle, direction: meta.direction ?? "LR" });
-  const { request: afterMeasured, enqueue: afterMeasuredCommand } = useMeasuredTask(wrapper, nodes, edges);
+  const { request: afterMeasured, whenReady, interrupt: interruptFit } = useMeasuredTask(wrapper, nodes, edges);
+  const fitStarting = useRef<object | null>(null);
   const firstFit = useRef(false);
   /** True while the view is a fit (the whole diagram in view), false once the user pans or zooms. */
   const showingAll = useRef(true);
@@ -502,7 +503,13 @@ function CanvasInner({
       const runFit = () => {
         showingAll.current = true;
         firstFit.current = true;
-        return fitView_(o);
+        const own = {};
+        fitStarting.current = own;
+        const finished = fitView_(o);
+        void Promise.resolve(finished).then(() => {
+          if (fitStarting.current === own) fitStarting.current = null;
+        });
+        return finished;
       };
       afterMeasured(() => {
         // The reset row belongs to this edit's chrome, not the later debounced storage write.
@@ -567,7 +574,7 @@ function CanvasInner({
     pointer: () => (pointer.current ? screenToFlowPosition(pointer.current) : undefined),
     edgeMarks: () => edgeMarks(wrapper.current),
     fit,
-    afterMeasured: afterMeasuredCommand,
+    afterMeasured: whenReady,
     nodeSize: getNodeVariant(nodeVariant).size,
     // Zoom to selection: never past 125% (no huge single node), clear of the panels.
     zoomTo: (only, onlyEdges) => fitView_({ only, onlyEdges, maxZoom: 1.25, margin: 64, duration: 300 }),
@@ -1416,6 +1423,8 @@ function CanvasInner({
     (e, _node, dragged) => {
       if (dragActive.current) return;
       dragActive.current = true;
+      interruptFit();
+      showingAll.current = false;
       setMenu(null);
       hideTip();
       const only = dragged.length === 1 ? dragged[0] : undefined;
@@ -1434,7 +1443,7 @@ function CanvasInner({
       guides.start(e, dragged, altCopies.current);
       if (editGestures) watchMembership(dragged, altCopies.current);
     },
-    [hideTip, editGestures, editor, guides, store, watchInsert, watchMembership],
+    [hideTip, editGestures, editor, guides, store, watchInsert, watchMembership, interruptFit],
   );
   const onNodeDragStop: OnNodeDrag<FlowNode> = useCallback(
     (e, _node, dragged) => {
@@ -2337,7 +2346,20 @@ function CanvasInner({
               hideTip();
               // A pan or zoom by hand (an event), or by a command such as Shift+0 (no event, and not
               // our own fit starting), means the view is the user's now, not a fit.
-              if (e || wrapper.current?.dataset.fitPending !== "true") showingAll.current = false;
+              if (e || !fitStarting.current) {
+                interruptFit();
+                showingAll.current = false;
+              }
+              fitStarting.current = null;
+            }}
+            onMove={(e) => {
+              // Wheel input can interrupt a running transition without another move-start.
+              // Only actual viewport movement counts; scrolling a panel or embed page does not.
+              if (e) {
+                fitStarting.current = null;
+                interruptFit();
+                showingAll.current = false;
+              }
             }}
             onNodeMouseEnter={(e, node) => {
               hovered.current = node.type === "boundary" ? undefined : node.id;
@@ -2412,7 +2434,7 @@ function CanvasInner({
                 </ControlButton>
                 <ControlButton
                   onClick={editor.undo}
-                  disabled={!history.canUndo}
+                  disabled={!editor.canUndo()}
                   title={undoTitle}
                   aria-label={tr("ai.undo")}
                   data-testid="undo-button"
@@ -2421,7 +2443,7 @@ function CanvasInner({
                 </ControlButton>
                 <ControlButton
                   onClick={editor.redo}
-                  disabled={!history.canRedo}
+                  disabled={!editor.canRedo()}
                   title={redoTitle}
                   aria-label={tr("shortcuts.redo")}
                   data-testid="redo-button"

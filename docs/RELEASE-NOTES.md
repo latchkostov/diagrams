@@ -60,6 +60,16 @@
 
 ## Browser parity integration with master (2026-10-15)
 
+- Review fixes: Undo cancels Auto-layout while measurements are pending, preserving the prior
+  document and history. Other edits/replacements invalidate that waiting layout in the editor.
+- User viewport movement cancels interrupted fits and releases the measurement observer without
+  discarding measurement subscribers. Rendered zero-axis boundaries include sub-pixel dimensions;
+  their descendants still measure normally. Delayed Checks coverage matches dev and built URLs.
+- Each review regression fails with its fix temporarily removed. Every parity golden remains
+  unchanged in this follow-up: zero changed or added; none were re-recorded.
+- Final review verification: six clean Docker stress passes, 1,769 unchanged parity goldens,
+  7,201 unit passes (four existing skips), 136 production and 18 dev browser passes. Build, size,
+  i18n and skill freshness pass; early harness/resource failures are recorded in `docs/PARITY.md`.
 - Rebased the deterministic fits onto nested boundaries (#115), the example picker/gallery (#118)
   and Autoscaling A1 (#117), including the subsequent review follow-ups (#123). Autosave,
   example-copy promotion and CopyNotice are retained alongside the measured fit gate. Both
@@ -71,7 +81,7 @@
 - Parity readiness accepts an explicitly zero-sized boundary while still measuring its descendants
   and recording the boundary. No rendered output is omitted or loosened.
 - Gallery save-count and nested-drag regressions wait for the measured opening fit before sampling.
-- Regenerated the released viewer from master's copy; plugin 1.1.25 is one patch above master.
+- Regenerated the released viewer from master's copy; plugin 1.1.26 is one patch above master.
 - The eight showcase additions and the two complete-selection Tidy corrections are described under
   Deterministic canvas fits below. No other existing golden is intentionally changed.
 - Verification: eight Docker stress passes, two fresh full-parity passes (1,769 goldens each),

@@ -80,7 +80,7 @@ export async function settledCanvas(page: Page, root = "canvas-wrap"): Promise<D
               // independently. Do not confuse it with a card whose measurement is still missing.
               const emptyBoundary =
                 el.firstElementChild?.getAttribute("data-testid")?.startsWith("group-") &&
-                (el.style.width === "0px" || el.style.height === "0px");
+                (!el.offsetWidth || !el.offsetHeight);
               return (
                 emptyBoundary ||
                 (el.offsetWidth > 0 && el.offsetHeight > 0 && getComputedStyle(el).visibility === "visible")

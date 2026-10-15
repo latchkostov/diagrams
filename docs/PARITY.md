@@ -16,6 +16,50 @@ pnpm parity sim checks # only parity files whose path contains "sim" or "checks"
 A filtered run skips the stale-golden check. The browser tier needs Docker running (see "Browser tier").
 Without it, `pnpm parity:node` still checks everything that doesn't need a browser.
 
+## Measurement review follow-up (2026-10-15)
+
+Rebased onto `feca7852`, preserving both documentation histories and regenerating the viewer
+from master's template. Plugin 1.1.26 is exactly one patch above master's 1.1.25. Every golden
+is byte-for-byte unchanged from `35bdd142`; no update command was run for these review fixes.
+
+- **Command order:** the editor owns the cancellable pending layout. Undo cancels it before
+  touching earlier history; edits and replacements invalidate it. Selection alone preserves it.
+  The held-ResizeObserver browser regression compares all original node/boundary boxes after Undo
+  and release, then checks normal completed-layout Undo/Redo. Removing Undo cancellation fails
+  the box comparison. Unit regressions cover Redo, replacement, edits and late readiness delivery.
+- **Interrupted fits:** readiness subscribers and the active viewport transition are separate.
+  Actual user viewport movement/node drags cancel viewport work, preserving subscribers. The
+  real wheel regression interrupts an animation and requests no further fit, then checks pending
+  state, zero connected mutation observers and unchanged callback/record counts over 20 frames.
+  Disabling interruption fails with pending still true; unit tests cover stale completions,
+  preserved subscribers and cancellation between stable samples.
+- **Sub-pixel boundaries:** delivered DOM axes that round to zero count as empty, while descendants
+  still measure. Imports with width 0.1, height 0.4 and both axes pass opening, Fit and Auto-layout.
+  Restoring the exact-zero check fails all three. The parity reader records these boundaries;
+  restoring its old check independently fails its three new fractional cases.
+- **Delayed Checks:** the held route matches hashed assets and dev TSX URLs, including queries.
+  The existing test keeps the card absent until release, then verifies its final fit. Restoring
+  the production-only route fails the dev request assertion.
+
+Final verification: a fresh `pnpm parity` compares all 1,769 goldens with zero changed, added,
+missing or stale. Six consecutive Docker browser passes alternate three `PARITY_WORKERS=24`
+runs with three `PARITY_CPU_THROTTLE=10 PARITY_WORKERS=8` runs: 68 tests and 84 unchanged goldens
+per pass, no retries. These reuse the fresh production bundle. Unit tests pass 7,201 with four
+existing skips across 534 files (`pnpm test --maxWorkers=2`). Production build and entry budget
+pass (105.7/123.5 kB gzip). Production Chromium passes all 136 tests in every touched e2e spec
+plus CSP; the final dev fit-settled run passes all 18. Both use explicit ports 6205–6209, and
+all servers stop. Skill freshness and i18n pass; existing translation gaps/warnings remain.
+
+Early runs caught a test-fixture omission, invalid void unions and an unnecessary offscreen drag;
+these were corrected. The interruption negative control initially passed because the pointer was
+still over Fit's button; moving it onto the canvas makes the reverted cleanup fail as intended.
+An early four-worker dev run hit Chromium's `ERR_NO_BUFFER_SPACE` at navigation; the final
+isolated two-worker run is clean. No timeout or assertion was loosened to cover these failures.
+The scoped designer review rejected broad wheel capture because panel/text/embed-page scrolling
+is not viewport takeover; actual React Flow move events handle cancellation instead. Undo
+cancellation avoids waiting indefinitely behind unavailable measurements. No timing fallback
+or golden re-recording was introduced.
+
 ## Browser parity integration with master (2026-10-15)
 
 Rebased onto `1486840b` (#115, #118, #117 and #123), retaining both documentation histories,

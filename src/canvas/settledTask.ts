@@ -1,18 +1,26 @@
 /** A task runs only after two rendered samples agree. Missing measurements wait for a signal,
- * rather than a timeout or a frame-count fallback. Document commands run in order before
- * the latest viewport request; only viewport requests can replace each other. */
+ * rather than a timeout or a frame-count fallback. Readiness subscribers are independent
+ * of replaceable viewport requests and their interruptible transitions. */
 export function settledTask(
   read: () => string | null,
   frame: (run: () => void) => () => void,
   pending: (value: boolean) => void,
 ) {
   let task: (() => unknown) | undefined;
-  const commands: (() => unknown)[] = [];
+  const waiters = new Set<() => unknown>();
   let cancel: (() => void) | undefined;
   let last: string | null = null;
-  let version = 0;
+  let active: object | undefined;
+  const updatePending = () => {
+    if (!task && !waiters.size) {
+      cancel?.();
+      cancel = undefined;
+      last = null;
+    }
+    pending(!!task || !!waiters.size || !!active);
+  };
   const wake = () => {
-    if ((!task && !commands.length) || cancel) return;
+    if ((!task && !waiters.size) || cancel) return;
     cancel = frame(() => {
       cancel = undefined;
       const next = read();
@@ -25,13 +33,16 @@ export function settledTask(
         wake();
         return;
       }
-      const command = commands.shift();
-      const run = command ?? task!;
-      if (!command) task = undefined;
-      const own = ++version;
+      const waiter = waiters.values().next().value;
+      const run = waiter ?? task!;
+      if (waiter) waiters.delete(waiter);
+      else task = undefined;
+      const own = {};
+      if (!waiter) active = own;
       last = null;
       void Promise.resolve(run()).then(() => {
-        if (own === version && !commands.length && !task) pending(false);
+        if (active === own) active = undefined;
+        updatePending();
       });
       // Do not wait for a viewport animation's promise before running the next command:
       // React Flow may leave that promise unresolved when a drag interrupts its transition.
@@ -41,23 +52,32 @@ export function settledTask(
   return {
     wake,
     request(run: () => unknown) {
-      version++;
+      active = undefined;
       task = run;
       last = null;
       pending(true);
       wake();
     },
-    enqueue(run: () => unknown) {
-      version++;
-      commands.push(run);
+    whenReady(run: () => unknown) {
+      waiters.add(run);
       last = null;
       pending(true);
       wake();
+      return () => {
+        waiters.delete(run);
+        updatePending();
+      };
+    },
+    interrupt() {
+      active = undefined;
+      task = undefined;
+      last = null;
+      updatePending();
     },
     dispose() {
-      version++;
+      active = undefined;
       task = undefined;
-      commands.length = 0;
+      waiters.clear();
       cancel?.();
       cancel = undefined;
       pending(false);

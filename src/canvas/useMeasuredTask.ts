@@ -77,9 +77,9 @@ function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlow
         if (n.hidden) continue;
         // Native files allow a boundary with an empty axis. React Flow does not initialise
         // its measurement; it has no area to fit. Its members still have to be measured.
-        if (n.type === "boundary" && (n.width === 0 || n.height === 0)) continue;
         const internal = s.nodeLookup.get(n.id);
         const dom = nodeElements.get(n.id);
+        if (n.type === "boundary" && dom && (!dom.offsetWidth || !dom.offsetHeight)) continue;
         if (
           !dom ||
           !internal?.measured?.width ||
@@ -114,10 +114,9 @@ function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlow
       if (root) root.dataset.fitPending = String(pending);
     },
   );
-  const request = (run: () => unknown, ordered: boolean) => {
+  const request = (run: () => unknown, readinessOnly: boolean) => {
     fontsReady = false;
-    const schedule = ordered ? queue.enqueue : queue.request;
-    schedule(() => {
+    const measuredRun = () => {
       // Commit this task's React updates before the next task can sample.
       // This runs in our frame callback, never during a React effect/render.
       let result: unknown;
@@ -125,13 +124,17 @@ function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlow
         result = run();
       });
       return result;
-    });
+    };
+    let cancel: (() => void) | undefined;
+    if (readinessOnly) cancel = queue.whenReady(measuredRun);
+    else queue.request(measuredRun);
     const loaded = () => {
       fontsReady = true;
       queue.wake();
     };
     // Failed web fonts have final fallback metrics too; parity still requires loaded fonts.
     if (root) void readyFonts(root).then(loaded, loaded);
+    return cancel;
   };
   return {
     ...queue,
@@ -166,8 +169,8 @@ function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlow
     request(run: () => unknown) {
       request(run, false);
     },
-    enqueue(run: () => unknown) {
-      request(run, true);
+    whenReady(run: () => unknown) {
+      return request(run, true);
     },
   };
 }

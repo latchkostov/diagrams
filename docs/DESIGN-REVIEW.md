@@ -1,5 +1,16 @@
 # Design review
 
+## Deferred layout and interrupted-fit review (2026-10-15)
+
+The designer agent's scoped source/regression review found no added chrome, wording or focus targets.
+Undo cancels a layout that has not mutated the document, leaving earlier history available. Fit
+cancellation preserves measurement subscribers and sub-pixel boundaries retain descendant checks.
+The review flagged broad wheel capture because scrolling Checks, text editors or an embed's host page
+is not viewport takeover. Cancellation now follows actual viewport move events and node drags;
+programmatic fit starts have their own transition token. Browser regressions cover the real wheel
+interruption and count observer work after cleanup. This was a scoped source review backed by browser
+regressions, not a whole-app visual or assistive-technology walkthrough.
+
 ## Relationship dropdown review gate (#122, 2026-10-15)
 
 The designer agent's scoped source/test review approved the existing inspector placement and eight
@@ -11,6 +22,7 @@ headers remain the target inside collapsible sections.
 
 This was a source and regression-test review, not an independent whole-app visual walkthrough or
 screen-reader session. Production browser checks cover the changed interactions and accessibility.
+
 ## Measured fits and nested-boundary integration (2026-10-15)
 
 Primary engineer's scoped source review: Auto-layout retains membership and refits enclosing
