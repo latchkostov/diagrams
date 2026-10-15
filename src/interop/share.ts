@@ -88,8 +88,8 @@ export function clearUrlFragment(): boolean {
   return true;
 }
 
-/** The app's base URL (works under a sub-path such as /tools/diagrams/). */
-export function appBaseUrl(loc: Pick<Location, "origin" | "pathname"> = window.location): string {
+/** The prepared deployment base, or the current document URL when no base tag is installed. */
+export function appBaseUrl(loc: Pick<Location, "origin" | "pathname"> = new URL(document.baseURI)): string {
   return `${loc.origin}${loc.pathname}`;
 }
 

@@ -14,7 +14,7 @@ import {
 import { archiveTar, offlineBuildEnv, stageOffline } from "../../scripts/offline-package";
 import { prepareSite } from "../../scripts/prepare-site";
 import { imageBuildArgs } from "../../scripts/self-host-image";
-import { selfHostCsp, selfHostFlatCsp, selfHostHeadersFor } from "../../scripts/self-host-headers";
+import { headersFile, selfHostCsp, selfHostFlatCsp, selfHostHeadersFor } from "../../scripts/self-host-headers";
 import { hostingBase, hostingTemplates, nginxServer } from "../../scripts/self-host-templates";
 import { verifyInstance } from "../../scripts/self-host-verify";
 
@@ -94,6 +94,37 @@ describe("self-host kit", () => {
     });
     // All add_header directives stay at server level: no location silently drops security headers.
     expect(conf).not.toMatch(/\blocation\s+[^{}]+\{[^}]*add_header/s);
+  });
+
+  it("leaves Cloudflare static assets to Pages native SPA routing", () => {
+    for (const base of ["/", options.base]) {
+      const redirects = hostingTemplates({ base })["cloudflare/_redirects"];
+      expect(redirects.split("\n").filter((line) => line.trim() && !line.startsWith("#"))).toEqual([]);
+    }
+  });
+
+  it("shares base-aware header routes between legacy and Cloudflare output", () => {
+    const legacy = headersFile(options);
+    expect(legacy).toContain("\n/tools/diagrams/*\n");
+    expect(legacy).toContain("\n/tools/diagrams/embed/*\n  Access-Control-Allow-Origin: *");
+    expect(legacy).not.toContain("\n/embed/*\n");
+    expect(hostingTemplates(options)["cloudflare/_headers"]).toContain(legacy);
+  });
+
+  it("keeps nginx redirects relative behind an HTTPS proxy", () => {
+    expect(nginxServer(options)).toContain("absolute_redirect off;");
+    expect(nginxServer(options)).toContain("return 308 /tools/diagrams/$is_args$args;");
+  });
+
+  it("keeps hosting-only Docker arguments after application compilation", () => {
+    const dockerfile = read("Dockerfile");
+    const build = dockerfile.indexOf("RUN node scripts/build-container.mjs");
+    const prepare = dockerfile.indexOf("RUN pnpm self-host:prepare");
+    for (const arg of ["BASE_PATH", "FRAME_ANCESTORS"]) {
+      const declaration = dockerfile.indexOf(`ARG ${arg}=`);
+      expect(declaration).toBeGreaterThan(build);
+      expect(declaration).toBeLessThan(prepare);
+    }
   });
 
   it("retains provider resource permissions on flat hosts even with a framing allowlist", () => {
@@ -289,12 +320,7 @@ describe("deployed header verification", () => {
   });
 
   it("rejects weakened CSP, incorrect embed framing, duplicate directives and auth COOP", async () => {
-    for (const replacement of [
-      "script-src 'self' 'unsafe-inline'",
-      "frame-ancestors *",
-      "connect-src *",
-      "script-src 'none'; script-src 'self'",
-    ]) {
+    for (const replacement of ["script-src 'self' 'unsafe-inline'", "script-src 'none'; script-src 'self'"]) {
       const mock = fetcher((headers) => {
         headers["Content-Security-Policy"] = headers["Content-Security-Policy"].replace(
           /script-src [^;]+/,
@@ -323,6 +349,32 @@ describe("deployed header verification", () => {
       const problems = await verifyInstance("https://diagrams.example.com/", options, loose);
       expect(problems.some((problem) => problem.includes("unexpected CSP directive"))).toBe(true);
     }
+  });
+
+  it("rejects wildcard embed frame-ancestors with otherwise valid CSP", async () => {
+    const mock = fetcher((headers, url) => {
+      if (url.searchParams.has("embed"))
+        headers["Content-Security-Policy"] = headers["Content-Security-Policy"].replace(
+          /frame-ancestors [^;]+/,
+          "frame-ancestors *",
+        );
+    });
+    expect(await verifyInstance("https://diagrams.example.com/", options, mock)).toEqual([
+      "/?embed=1&host=1: CSP frame-ancestors differs (expected 'self' https://wiki.example.com)",
+    ]);
+  });
+
+  it("rejects wildcard connect-src with otherwise valid CSP", async () => {
+    const mock = fetcher((headers, url) => {
+      if (!url.search && url.pathname === "/")
+        headers["Content-Security-Policy"] = headers["Content-Security-Policy"].replace(
+          /connect-src [^;]+/,
+          "connect-src *",
+        );
+    });
+    expect(await verifyInstance("https://diagrams.example.com/", options, mock)).toEqual([
+      "/: CSP connect-src differs (expected 'self')",
+    ]);
   });
 
   it("supports explicitly declared flat-host framing and reports redirects, HTML modules and unreachable hosts", async () => {

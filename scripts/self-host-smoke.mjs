@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { runnerImport } from "vite";
 import { spawnSync } from "node:child_process";
 import process from "node:process";
 import console from "node:console";
@@ -7,6 +9,10 @@ import { URL } from "node:url";
 import { chromium, expect } from "@playwright/test";
 
 const fetch = globalThis.fetch;
+const { withSmokeContainer } = (
+  await runnerImport(path.resolve("scripts/self-host-container.ts"), { configFile: false, logLevel: "error" })
+).module;
+const invocation = randomUUID();
 
 const run = (command, args, capture = false) => {
   const result = spawnSync(command, args, { encoding: "utf8", stdio: capture ? "pipe" : "inherit" });
@@ -27,12 +33,11 @@ run("docker", [
   "--adapter",
   "caddyfile",
 ]);
-for (const [base, port, tag] of [
-  ["/", 6225, "root"],
-  ["/tools/diagrams/", 6226, "subpath"],
+for (const [base, tag] of [
+  ["/", "root"],
+  ["/tools/diagrams/", "subpath"],
 ]) {
-  const image = `live-diagrams-smoke:${tag}`;
-  const name = `live-diagrams-smoke-${tag}`;
+  const image = `live-diagrams-smoke:${invocation}-${tag}`;
   run("docker", [
     "build",
     "--build-arg",
@@ -49,26 +54,11 @@ for (const [base, port, tag] of [
     image,
     ".",
   ]);
-  try {
-    run("docker", [
-      "run",
-      "-d",
-      "--name",
-      name,
-      "--read-only",
-      "--tmpfs",
-      "/tmp:uid=101,gid=101",
-      "--cap-drop=ALL",
-      "--security-opt",
-      "no-new-privileges:true",
-      "-p",
-      `127.0.0.1:${port}:8080`,
-      image,
-    ]);
+  await withSmokeContainer(run, image, async ({ id, origin }) => {
     let ready = false;
     for (let attempt = 0; attempt < 60; attempt++) {
       try {
-        ready = (await fetch(`http://127.0.0.1:${port}/healthz`)).ok;
+        ready = (await fetch(`${origin}/healthz`)).ok;
       } catch {
         /* startup */
       }
@@ -76,10 +66,10 @@ for (const [base, port, tag] of [
       await setTimeout(500);
     }
     if (!ready) throw new Error("Container did not become ready");
-    const user = run("docker", ["exec", name, "id", "-u"], true).trim();
+    const user = run("docker", ["exec", id, "id", "-u"], true).trim();
     if (user === "0") throw new Error("Container runs as root");
-    run("docker", ["exec", name, "nginx", "-t"]);
-    const url = `http://127.0.0.1:${port}${base}`;
+    run("docker", ["exec", id, "nginx", "-t"]);
+    const url = `${origin}${base}`;
     // Exercise curl as well as the full verifier, including the module's CORS response.
     const curl = process.platform === "win32" ? "curl.exe" : "curl";
     const headers = run(
@@ -151,7 +141,15 @@ for (const [base, port, tag] of [
           throw new Error("Deep fallback startup asset cannot load");
       }
     }
-    if (base !== "/" && (await fetch(`http://127.0.0.1:${port}/`)).status !== 404)
+    if (base !== "/") {
+      const redirect = await fetch(`${origin}${base.slice(0, -1)}?keep=1`, {
+        redirect: "manual",
+        headers: { Host: "diagrams.example.com", "X-Forwarded-Proto": "https" },
+      });
+      expect(redirect.status).toBe(308);
+      expect(redirect.headers.get("location")).toBe(`${base}?keep=1`);
+    }
+    if (base !== "/" && (await fetch(`${origin}/`)).status !== 404)
       throw new Error("Sub-path image exposes root unexpectedly");
     const browser = await chromium.launch();
     try {
@@ -173,13 +171,18 @@ for (const [base, port, tag] of [
       await expect(page.getByTestId("share-chooser")).toBeVisible();
       await expect(page.getByTestId("share-public-toggle")).toHaveCount(0);
       await expect(page.getByTestId("share-option-password")).toHaveCount(0);
+      await page.getByTestId("share-option-embed").click();
+      const snippet = await page.getByTestId("embed-snippet").inputValue();
+      const scriptUrl = snippet.match(/<script type="module" src="([^"]+)"/)?.[1];
+      expect(scriptUrl).toBe(new URL("embed/live-diagram.js", url).href);
+      const module = await fetch(scriptUrl);
+      expect(module.ok).toBe(true);
+      expect(module.headers.get("Content-Type")).toMatch(/javascript/);
       expect(outside).toEqual([]);
       expect(errors).toEqual([]);
     } finally {
       await browser.close();
     }
     console.log(`PASS ${tag}: non-root, CSP/CORS, cache, gzip, fallback and path routing`);
-  } finally {
-    run("docker", ["rm", "-f", name]);
-  }
+  });
 }

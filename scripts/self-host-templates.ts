@@ -1,16 +1,11 @@
 import { AUTH_OPENER_POLICY, COMMON_HEADERS, EMBED_SCRIPT_HEADERS, OPENER_POLICY } from "./security-headers";
-import { headersFile, selfHostCsp, selfHostFlatCsp, type SelfHostOptions } from "./self-host-headers";
+import { hostingBase, headersFile, selfHostCsp, selfHostFlatCsp, type SelfHostOptions } from "./self-host-headers";
 
 export interface HostingOptions extends SelfHostOptions {
   base?: string;
 }
 
-/** Only directory segments: this value is inserted into server configuration, never evaluated. */
-export function hostingBase(base = "/"): string {
-  if (!/^\/(?:[a-zA-Z0-9_-]+\/)*$/.test(base))
-    throw new Error("base must start and end with / and contain only letters, digits, _ or -");
-  return base;
-}
+export { hostingBase } from "./self-host-headers";
 
 const json = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;
 const pairs = (headers: Record<string, string>) => Object.entries(headers).map(([key, value]) => ({ key, value }));
@@ -62,6 +57,7 @@ server {
     root /usr/share/nginx/html;
     index index.html;
     server_tokens off;
+    absolute_redirect off;
     gzip on;
     gzip_vary on;
     gzip_types text/css application/javascript application/json image/svg+xml application/wasm;
@@ -128,9 +124,7 @@ ${base === "/" ? "" : `        redir ${base.slice(0, -1)} ${base}?{http.request.
 export function hostingTemplates(o: HostingOptions = {}): Record<string, string> {
   const base = hostingBase(o.base);
   const flat = flatHeaders(o);
-  const blocks = headersFile(o)
-    .replace(/^\/\*/m, `${base}*`)
-    .replace(/^\/embed\/\*/m, `${base}embed/*`);
+  const blocks = headersFile(o);
   const query = [{ type: "query", key: "embed" }];
   const vercel = {
     $schema: "https://openapi.vercel.sh/vercel.json",
@@ -174,7 +168,8 @@ export function hostingTemplates(o: HostingOptions = {}): Record<string, string>
     "netlify/netlify.toml": `[build]\ncommand = "pnpm build:internal"\npublish = "dist"\n\n${tomlBlock(`${base}*`, Object.fromEntries(Object.entries(flat).filter(([k]) => k !== "Cache-Control")))}\n${tomlBlock(base, { "Cache-Control": "no-cache" })}\n${tomlBlock(`${base}index.html`, { "Cache-Control": "no-cache" })}\n${tomlBlock(`${base}assets/*`, { "Cache-Control": IMMUTABLE })}\n${tomlBlock(`${base}embed/*.js`, EMBED_SCRIPT_HEADERS)}\n${tomlBlock(`${base}auth.html`, { "Cross-Origin-Opener-Policy": AUTH_OPENER_POLICY })}\n[[redirects]]\nfrom = "${base}*"\nto = "${base}index.html"\nstatus = 200\n`,
     "vercel/vercel.json": json(vercel),
     "cloudflare/_headers": `${blocks}${base}assets/*\n  Cache-Control: ${IMMUTABLE}\n${base}\n  Cache-Control: no-cache\n${base}index.html\n  Cache-Control: no-cache\n${base}auth.html\n  ! Cross-Origin-Opener-Policy\n`,
-    "cloudflare/_redirects": `${base}* ${base}index.html 200\n`,
+    "cloudflare/_redirects":
+      "# Use Pages native SPA fallback (no top-level 404.html).\n# Proxy catch-alls override existing assets and must not be added here.\n",
     "github-pages/meta-csp.html": `<meta http-equiv="Content-Security-Policy" content="${meta.replaceAll('"', "&quot;")}">\n`,
     "azure/staticwebapp.config.json": json({
       globalHeaders: flat,

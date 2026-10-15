@@ -198,7 +198,12 @@ otherwise drops inherited ones.
    branch restriction.
 4. Cloudflare Pages: copy `_headers` and `_redirects` from generated `cloudflare/` into `dist/` before deploying.
    For a connected build, append header generation and these copy steps to `pnpm build:internal`. These files
-   apply to static assets; Pages Functions need their own response headers.
+   apply to static assets; Pages Functions need their own response headers. The generated `_redirects` contains
+   comments only: [native SPA fallback](https://developers.cloudflare.com/pages/configuration/serving-pages/#single-page-application-spa-rendering)
+   preserves existing assets. Keep the root `index.html` and omit a top-level `404.html`; never add a blanket
+   proxy to `index.html`, which overrides real assets. Native fallback serves the root document, so a Pages
+   directory mount also needs that root document prepared with the deployment prefix; `--base` alone does not
+   relocate files or change Pages' fallback target.
 5. Enable HTTPS and your platform's access gate, then verify. For directory mounts, put files beneath that
    prefix and regenerate with `--base`; nginx/Caddy are the tested directory deployment options.
 

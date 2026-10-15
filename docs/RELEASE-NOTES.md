@@ -1,5 +1,13 @@
 # Release notes
 
+## Self-hosting review fixes (2026-10-14)
+
+- Cloudflare Pages preserves static assets through its native SPA fallback. Legacy and target header files
+  share directory-aware routes, so cross-origin embed modules keep their CORS headers under a prefix.
+- Embed code uses the prepared deployment base on deep routes; nginx redirects stay relative behind HTTPS proxies.
+- Hosting-only Docker settings reuse the compiled app layer. Concurrent smoke checks own their containers
+  and assigned ports, and clean up only their own container IDs, including after a failed start.
+
 ## Planning P3 final review fixes (2026-10-14)
 
 - Planning and playback share normalized admission requirements. Imports reject duplicate quota IDs

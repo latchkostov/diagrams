@@ -15,9 +15,11 @@ ARG VITE_DISABLE_ONDEVICE
 ARG VITE_PRIVATE_BY_DEFAULT
 ARG VITE_BRAND_NAME
 ARG VITE_LOCALES
+RUN node scripts/build-container.mjs
+
+# Hosting configuration changes reuse the compiled app layer.
 ARG BASE_PATH=/
 ARG FRAME_ANCESTORS=
-RUN node scripts/build-container.mjs
 RUN pnpm self-host:prepare --base "$BASE_PATH" \
     && pnpm headers:self-host --base "$BASE_PATH" --frame-ancestors "$FRAME_ANCESTORS" --out /headers \
     && mkdir -p "/site${BASE_PATH}" && cp -R dist/. "/site${BASE_PATH}"
