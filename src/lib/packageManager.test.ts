@@ -8,11 +8,9 @@ it("refuses to run with stale dependencies without silently rewriting the lockfi
   const output = resolve("tests/.output");
   mkdirSync(output, { recursive: true });
   const fixture = mkdtempSync(join(output, "pnpm-policy-"));
-  const manifest = JSON.parse(readFileSync("package.json", "utf8")) as { packageManager: string };
   const pkg = {
     name: "install-policy-probe",
     private: true,
-    packageManager: manifest.packageManager,
     dependencies: { probe: "file:./dependency" },
   };
   const run = (args: string[]) =>
@@ -23,6 +21,9 @@ it("refuses to run with stale dependencies without silently rewriting the lockfi
         ...Object.fromEntries(
           Object.entries(process.env).filter(([name]) => name.toLowerCase() !== "pnpm_config_verify_deps_before_run"),
         ),
+        // No manager pin in this fixture: exercise the running binary without registry metadata.
+        pnpm_config_cache_dir: join(fixture, "cache"),
+        pnpm_config_store_dir: join(fixture, "store"),
         CI: "true",
       },
     });
