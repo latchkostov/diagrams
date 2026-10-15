@@ -8,6 +8,7 @@
 // `state.snapshot` is converted once to real messages for every number people read, and manual
 // injections take real counts (fractions of a dot carry over to the next injection).
 
+import { resourceBudgetExceeded, MAX_LIFECYCLE_REPLICAS } from "../model/resourceBudget";
 import { flowEdges, edgeSemanticSignature } from "../model/relations";
 import type { DiagramFile, Simulation } from "../model/types";
 import { createRealCountInjector } from "../sim/injection";
@@ -537,6 +538,32 @@ export class LiveController {
    * after the last change (or immediately with `replayDelayMs: 0`).
    */
   setInputs(inputs: LiveInputs): void {
+    const simulation = this.base ? effectiveSimulation(this.base, inputs) : undefined;
+    const props = simulation?.setup?.props ?? freePlayProps(this.diagram, inputs);
+    const previous = this.sim?.setup?.props ?? this.freeApplied;
+    if (
+      this.diagram.planning?.revision === "p3-a1" &&
+      resourceBudgetExceeded(
+        {
+          ...this.diagram,
+          nodes: this.diagram.nodes.map((n) => ({
+            ...n,
+            props: {
+              ...this.engine.effectiveProps(n.id),
+              ...Object.fromEntries(
+                Object.keys(previous[n.id] ?? {})
+                  .filter((key) => !(key in (props[n.id] ?? {})))
+                  .map((key) => [key, this.diagramProp(n.id, key)]),
+              ),
+              ...props[n.id],
+            },
+          })),
+          simulations: simulation ? [simulation] : undefined,
+        },
+        simulation?.multipliers?.capacity ?? inputs.capacity,
+      )
+    )
+      throw new Error(t("autoscaling.budget", { limit: MAX_LIFECYCLE_REPLICAS }));
     this.inputs = inputs;
     this.applyInputs();
   }
@@ -610,6 +637,7 @@ export class LiveController {
   private patchProps(
     before: Record<string, Record<string, unknown>>,
     after: Record<string, Record<string, unknown>>,
+    multiplier?: number,
   ): void {
     const patches: Record<string, NodeSimProps> = {};
     for (const id of new Set([...Object.keys(before), ...Object.keys(after)])) {
@@ -620,7 +648,7 @@ export class LiveController {
         if (valueKey(a[key]) !== valueKey(b[key])) delta[key] = key in b ? b[key] : this.diagramProp(id, key);
       if (Object.keys(delta).length) patches[id] = delta as NodeSimProps;
     }
-    this.engine.setNodePropsBatch(patches);
+    this.engine.setNodePropsBatch(patches, multiplier);
   }
 
   private patchRun(prev: Simulation, next: Simulation): void {
@@ -634,9 +662,8 @@ export class LiveController {
 
   private patchFree(): void {
     const props = freePlayProps(this.diagram, this.inputs);
-    this.patchProps(this.freeApplied, props);
+    this.patchProps(this.freeApplied, props, this.inputs.capacity ?? 1);
     this.freeApplied = props;
-    this.engine.setCapacityMultiplier(this.inputs.capacity ?? 1);
   }
 
   private scheduleReplay(): void {
@@ -862,8 +889,7 @@ export class LiveController {
       this.freeScale = freePlayScale(this.diagram, this.inputs);
       this.engine.setScale(this.freeScale);
       this.freeApplied = freePlayProps(this.diagram, this.inputs);
-      this.engine.setNodePropsBatch(this.freeApplied as Record<string, NodeSimProps>);
-      this.engine.setCapacityMultiplier(this.inputs.capacity ?? 1);
+      this.engine.setNodePropsBatch(this.freeApplied as Record<string, NodeSimProps>, this.inputs.capacity ?? 1);
     }
     this.applySpeed();
     this.engine.setTraffic(this.traffic);

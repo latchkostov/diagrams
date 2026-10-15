@@ -517,6 +517,22 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function setNodePropsBatch(patches: Record<string, NodeSimProps>, multiplier?: number): void {
+    const next = resolveMultiplier(multiplier, capacityMultiplier);
+    const multiplierChanged = next !== capacityMultiplier;
+    if (
+      planning?.revision === "p3-a1" &&
+      resourceBudgetExceeded(
+        {
+          planning,
+          nodes: [...nodes.values()].map((n) => ({ id: n.id, props: { ...n.rawProps, ...patches[n.id] } })),
+        },
+        next,
+      )
+    )
+      throw new Error(t("autoscaling.budget", { limit: MAX_LIFECYCLE_REPLICAS }));
+    capacityMultiplier = next;
+    const reconcile = new Set<Node>();
+    const initialized = new Set<Node>();
     const changed = new Set<string>(),
       limits = new Set<Group>();
     const units = new Map<Node, number>();
@@ -543,14 +559,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if ("replicas" in patch) units.set(node, node.props.replicas);
       if (node.fleet && patch.replicas !== undefined) {
         node.fleet.override = true;
-        reconcileResources(node, Math.max(1, Math.round(patch.replicas * capacityMultiplier)));
-        node.fleet.decision = {
-          at: time,
-          raw: patch.replicas,
-          desired: node.fleet.desired,
-          reason: "override",
-          nextAt: time,
-        };
+        reconcile.add(node);
         changed.add(id);
       }
       if (node.fleet && patch.resumeAutoscaling) {
@@ -584,6 +593,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           }
         } else if (!node.fleet || time === 0) {
           initializeFleet(node);
+          initialized.add(node);
           const working = node.working;
           node.working = [];
           for (const work of working) {
@@ -602,13 +612,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           f.changes = [];
           f.decision = undefined;
           f.nextSync = time + (a?.mode === "on" ? a.controller.settings.syncMs : 15_000);
-          const range = a?.mode === "on" ? replicaRange(a.controller, capacityMultiplier) : undefined;
-          reconcileResources(
-            node,
-            range
-              ? Math.max(range.min, Math.min(range.max, f.desired))
-              : Math.max(1, Math.round(node.props.replicas * capacityMultiplier)),
-          );
+          reconcile.add(node);
         }
         changed.add(id);
       }
@@ -624,27 +628,35 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         for (const group of groupsByConsumer.get(id) ?? []) limits.add(group);
     }
     if (admissionChanges.length) reconfigureAdmission(admission, admissionChanges, planning, time);
-    const next = resolveMultiplier(multiplier, capacityMultiplier);
-    if (next !== capacityMultiplier) {
-      capacityMultiplier = next;
-      for (const node of nodes.values()) {
-        if (node.fleet && node.props.resources) {
-          const f = node.fleet,
-            a = node.props.autoscaling;
-          const c = a?.mode === "on" && !f.override ? a.controller : undefined;
-          const range = c ? replicaRange(c, next) : undefined;
-          const desired = range
-            ? time === 0
-              ? range.initial
-              : Math.max(range.min, Math.min(range.max, f.desired))
-            : Math.max(1, Math.round(node.props.replicas * next));
+    for (const node of nodes.values()) {
+      if (node.fleet && node.props.resources && (multiplierChanged || reconcile.has(node))) {
+        const f = node.fleet,
+          a = node.props.autoscaling;
+        const c = a?.mode === "on" && !f.override ? a.controller : undefined;
+        const range = c ? replicaRange(c, next) : undefined;
+        const desired = range
+          ? time === 0
+            ? range.initial
+            : Math.max(range.min, Math.min(range.max, f.desired))
+          : Math.max(1, Math.round(node.props.replicas * next));
+        if (!initialized.has(node)) {
           if (time === 0) {
             node.fleet = createFleet(desired, c?.settings.syncMs);
             node.fleet.override = f.override;
           } else reconcileResources(node, desired);
         }
-        if (Math.max(1, Math.round(node.props.replicas * next)) !== node.replicas || node.fleet) changed.add(node.id);
+        if (patches[node.id]?.replicas !== undefined && node.fleet.override)
+          node.fleet.decision = {
+            at: time,
+            raw: patches[node.id].replicas!,
+            desired: node.fleet.desired,
+            reason: "override",
+            nextAt: time,
+          };
+        changed.add(node.id);
       }
+      if (multiplierChanged && Math.max(1, Math.round(node.props.replicas * next)) !== node.replicas)
+        changed.add(node.id);
     }
     if (changed.size) assignReplicas(changed);
     for (const group of limits) {
@@ -1083,8 +1095,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const f = node.fleet!,
       r = node.props.resources!;
     const before = scale > 1 ? f.ranges.slice(f.rangeHead).map((c) => ({ ...c })) : [];
-    reconcileFleet(f, desired, r, time, seed, node.id);
-    if (scale > 1) retainSampledDrains(f, before, node.working, time + r.terminationGraceMs);
+    // Live overrides made during a pause start on the same frozen lifecycle clock.
+    const lifecycleTime = node.status === "paused" ? (f.pausedAt ?? 0) : time;
+    reconcileFleet(f, desired, r, lifecycleTime, seed, node.id);
+    if (scale > 1) retainSampledDrains(f, before, node.working, lifecycleTime + r.terminationGraceMs);
   }
   function startResources(node: Node, work: Work): boolean {
     if (!node.fleet || !node.props.resources) return true;
@@ -1732,10 +1746,20 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const node = nodes.get(nodeId);
       if (!node || node.status === status) return;
       if (node.fleet) {
-        node.fleet.paused = status === "paused";
-        if (node.status === "paused" && status === "up")
-          node.fleet.nextSync =
+        const f = node.fleet;
+        if (node.status === "paused") {
+          const duration = time - (f.pausedAt ?? 0);
+          for (const c of f.starts) c.at += duration;
+          for (const c of f.sampledDrains) c.at += duration;
+          for (const busy of f.busy.values()) if (busy.drainAt !== undefined) busy.drainAt += duration;
+          for (const work of node.working)
+            for (const part of work.cpuParts ?? []) if (part.drainAt !== undefined) part.drainAt += duration;
+          f.pausedAt = undefined;
+          f.nextSync =
             time + (node.props.autoscaling?.mode === "on" ? node.props.autoscaling.controller.settings.syncMs : 15_000);
+        }
+        f.paused = status === "paused";
+        if (f.paused) f.pausedAt = time;
       }
       node.status = status;
       log("status", node, undefined, status);

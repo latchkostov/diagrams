@@ -108,6 +108,19 @@ goldens match, with the eight previously documented browser deferrals.
   diagram and 1.5× ratio. Simulation samples start after worker progress arrives; the checks test
   retains its per-key run counts. Cancellation tests keep the same traffic on a smaller canvas.
 - Application output is unchanged; no parity goldens changed.
+## Autoscaling A1 round 3 review fixes (2026-10-15)
+
+- Saving Capacity × now applies the saved HPA policy and multiplier together, preserving the running
+  fleet. Paused services retain startup time and draining grace, including sampled work and checkpoints.
+- Node creation, paste, duplicate and property edits share persisted-resource validation with native
+  reads. Invalid null settings, older-model A1 properties and oversized merged fleets are refused;
+  a refused A1 paste offers the model-upgrade preview. Unrelated property typing skips resource
+  schemas and lifecycle-budget scans. Live overrides preflight the whole proposed allocation.
+- Model previews switch independently with accurate disclosure states. Replica pagination uses an
+  ID/rank index for jittered startup, avoiding repeated scans during inspector refresh.
+- No parity goldens changed: legacy, non-autoscaling and A1 outputs remain identical. Existing frozen
+  runs do not include these save/pause/invalid-edit cases; regression tests cover them separately.
+  The offline viewer is refreshed; plugin 1.1.20 is one patch above current master.
 
 ## Example gallery round 4 review fixes (2026-10-15)
 
@@ -133,6 +146,7 @@ goldens match, with the eight previously documented browser deferrals.
   during dependency verification, without rewriting the lockfile. App output and parity goldens are unchanged.
 - Interactive HTML parity fits the settled viewer explicitly, avoiding a startup-framing race; its
   existing goldens remain unchanged.
+
 ## Autoscaling A1 round 2 review fixes (2026-10-15)
 
 - Concurrency edits refresh replica availability, and work waits for a successful reservation.

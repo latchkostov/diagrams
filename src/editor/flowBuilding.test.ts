@@ -6,7 +6,13 @@ import type { EdgeMark } from "../canvas/edgeMarks";
 import { createEditor, type EditorDeps } from "./useEditor";
 import type { DiagramFile } from "../model/types";
 import { hpaLesson, resourceLesson } from "../model/autoscaling";
-import { makePayload } from "./clipboard";
+import * as validation from "../model/resourceValidation";
+import * as planningDefaults from "../model/planning";
+import * as resourceSchemas from "../model/autoscalingSchema";
+import * as resourceBudget from "../model/resourceBudget";
+import * as convert from "../canvas/convert";
+import * as toasts from "../interop/ui/toast";
+import { parsePayload, makePayload } from "./clipboard";
 import { validateDiagram } from "../interop/native";
 
 // Flow building (batch 3): the next node one gap beside a node, connected the right way (D3), the selection-
@@ -52,6 +58,7 @@ function setup(marks: EdgeMark[] = [], diagram: DiagramFile = BASE) {
     edgeMarks: () => marks,
     setEditing: vi.fn(),
     rename: vi.fn(),
+    openInspector: vi.fn(),
     reveal,
     setNodes: (u: Parameters<EditorDeps["setNodes"]>[0]) =>
       void queue.push(() => (nodes = typeof u === "function" ? u(nodes) : u)),
@@ -67,7 +74,7 @@ function setup(marks: EdgeMark[] = [], diagram: DiagramFile = BASE) {
   const hits = (a: Box, b: Box) =>
     a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
   const overlapsAny = (id: string) => nodes.filter((n) => n.id !== id).some((n) => hits(boxOf(id), boxOf(n.id)));
-  return { api, boxOf, overlapsAny, edges: () => edges, nodes: () => nodes, reveal, hint, commit };
+  return { api, boxOf, overlapsAny, edges: () => edges, nodes: () => nodes, reveal, hint, commit, deps };
 }
 
 describe("the next node (Alt+arrow, the +)", () => {
@@ -334,6 +341,132 @@ describe("A1 editor precommit invariants", () => {
     t.commit();
     expect(t.api.getDiagram()).toEqual(d);
     validateDiagram(t.api.getDiagram());
+  });
+  it("uses the native reader's persisted-resource validator at editor boundaries", () => {
+    const shared = vi.spyOn(validation, "createResourceValidator");
+    try {
+      expect(validateDiagram(diagram(1)).ok).toBe(true);
+      expect(shared).toHaveBeenCalledTimes(1);
+      const t = setup([], diagram(1));
+      expect(shared).toHaveBeenCalledTimes(2);
+      t.api.setNodeProps("worker-0", { resources: null });
+      t.commit();
+      expect(t.api.getNode("worker-0")!.props!.resources).toEqual(resourceLesson());
+    } finally {
+      shared.mockRestore();
+    }
+  });
+  it.each(["add", "named", "rail", "connected", "insert"])(
+    "guards resource-bearing defaults through %s creation",
+    (action) => {
+      const d = diagram(10);
+      d.edges = [{ id: "e", from: "worker-0", to: "worker-1", kind: "async" }];
+      const t = setup([], d);
+      const defaults = vi.spyOn(planningDefaults, "newPlanningProps").mockReturnValue(d.nodes[0].props);
+      try {
+        if (action === "add") t.api.addNode("service.go");
+        if (action === "named") t.api.addNamed("service.go", { x: 0, y: 1000 });
+        if (action === "rail") t.api.addStencil("service.go");
+        if (action === "connected") t.api.createConnected({ from: "worker-0", stencil: "service.go" });
+        if (action === "insert") t.api.insertNode("e", "service.go");
+        t.commit();
+        expect(t.api.getDiagram()).toEqual(d);
+      } finally {
+        defaults.mockRestore();
+      }
+    },
+  );
+  it("refuses connected cloning at the lifecycle limit without adding its edge", () => {
+    const d = diagram(10),
+      t = setup([], d);
+    expect(validateDiagram(d).ok).toBe(true);
+    expect(t.api.createConnected({ from: "worker-0", clone: true })).toBeNull();
+    t.commit();
+    expect(t.api.getDiagram()).toEqual(d);
+  });
+  it.each(["paste", "connected"])("validates queued %s creation before committing its nodes and edges", (action) => {
+    const d = diagram(9),
+      t = setup([], d);
+    for (const id of ["worker-0", "worker-1"]) {
+      if (action === "connected") t.api.createConnected({ from: id, clone: true });
+      else t.api.pastePayload(makePayload(d, [id])!);
+    }
+    t.commit();
+    expect(t.nodes()).toHaveLength(10);
+    expect(t.edges()).toHaveLength(action === "connected" ? 1 : 0);
+    expect(validateDiagram(t.api.getDiagram()).ok).toBe(true);
+  });
+  it.each(["resources", "autoscaling"])("rejects null %s, allowing undefined deletion", (key) => {
+    const d = diagram(1),
+      t = setup([], d);
+    t.api.setNodeProps("worker-0", { [key]: null });
+    t.commit();
+    expect(t.api.getDiagram()).toEqual(d);
+    t.api.setNodeProps("worker-0", { [key]: undefined });
+    t.commit();
+    expect(t.api.getNode("worker-0")!.props).not.toHaveProperty(key);
+    expect(validateDiagram(t.api.getDiagram()).ok).toBe(true);
+  });
+  it.each(["p1", "p2", "p3", undefined] as const)("rejects A1 edits in revision %s", (revision) => {
+    const d = diagram(1);
+    d.planning = revision ? { revision } : undefined;
+    d.format = revision ? "diagrams/v2" : "diagrams/v1";
+    delete d.nodes[0].props;
+    const t = setup([], d);
+    t.api.setNodeProps("worker-0", { resources: resourceLesson() });
+    t.commit();
+    expect(t.api.getDiagram()).toEqual(d);
+    t.api.updateNode("worker-0", { props: { autoscaling: hpaLesson() } });
+    t.commit();
+    expect(t.api.getDiagram()).toEqual(d);
+  });
+  it("rejects unmarked A1 clipboard JSON and explains marked paste refusal with an upgrade route", () => {
+    const d = diagram(1),
+      p = makePayload(d, ["worker-0"])!;
+    expect(parsePayload(JSON.stringify({ ...p, format: "diagrams/clip-v1", planning: undefined }))).toBeNull();
+    const t = setup();
+    const notify = vi.spyOn(toasts, "notify").mockImplementation(() => 0);
+    try {
+      t.api.pastePayload(p);
+      t.commit();
+      expect(t.api.getDiagram()).toEqual(BASE);
+      expect(notify).toHaveBeenCalled();
+      const [message, options] = notify.mock.calls.at(-1)!;
+      expect(message).toContain("Preview");
+      expect(options?.action?.testId).toBe("toast-model-upgrade");
+      options?.action?.run();
+      t.commit();
+      expect(t.deps.openInspector).toHaveBeenCalledWith("autoscaling-upgrade-preview");
+    } finally {
+      notify.mockRestore();
+    }
+  });
+  it("does no resource schema, lifecycle budget or graph conversion work for unrelated property keystrokes", () => {
+    const d = diagram(1000);
+    for (const n of d.nodes) n.props!.autoscaling = hpaLesson();
+    const t = setup([], d);
+    t.api.setNodeProps("worker-0", { custom: "warm" });
+    t.commit();
+    const schema = vi.spyOn(resourceSchemas, "checkAutoscaling"),
+      budget = vi.spyOn(resourceBudget, "resourceBudgetExceeded"),
+      graph = vi.spyOn(convert, "fromFlow");
+    try {
+      for (let i = 0; i < 20; i++) {
+        t.api.setNodeProps("worker-0", { custom: String(i) });
+        t.commit();
+      }
+      expect(schema).not.toHaveBeenCalled();
+      expect(budget).not.toHaveBeenCalled();
+      expect(graph).not.toHaveBeenCalled();
+      t.api.setNodeProps("worker-0", { resources: { ...resourceLesson(), cpuMsPerMessage: 41 } });
+      t.commit();
+      expect(schema).toHaveBeenCalledTimes(1);
+      expect(budget).toHaveBeenCalledTimes(1);
+    } finally {
+      schema.mockRestore();
+      budget.mockRestore();
+      graph.mockRestore();
+    }
   });
   it("preserves queued edits when merging resource properties", () => {
     const t = setup([], diagram(1));

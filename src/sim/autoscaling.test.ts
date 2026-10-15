@@ -676,3 +676,155 @@ describe("A1 CPU and fleet execution", () => {
     expect(values).not.toHaveBeenCalled();
   });
 });
+
+describe("round 3 runtime regressions", () => {
+  it("applies saved HPA policy and capacity atomically after time has advanced", () => {
+    const e = engine();
+    e.setCapacityMultiplier(2);
+    e.step(1000);
+    const before = e.frame().nodes.worker.fleet!;
+    const a = hpaLesson();
+    Object.assign(a.controller, { minReplicas: 2, initialReplicas: 2, maxReplicas: 20 });
+    e.setNodePropsBatch({ worker: { autoscaling: a } }, 1);
+    expect(e.frame().nodes.worker.fleet).toMatchObject({ desired: before.desired, ready: before.ready, starting: 0 });
+  });
+  it.each([false, true])("freezes startup through pause and restore (created while paused: %s)", (duringPause) => {
+    const e = engine();
+    e.step(10);
+    if (!duringPause) e.setNodeProps("worker", { replicas: 2 });
+    e.step(1000);
+    e.setNodeStatus("worker", "paused");
+    e.step(3000);
+    if (duringPause) e.setNodeProps("worker", { replicas: 2 });
+    e.step(7000);
+    const checkpoint = e.checkpoint();
+    const resume = () => {
+      e.setNodeStatus("worker", "up");
+      e.step(duringPause ? 4990 : 3990);
+      expect(e.frame().nodes.worker.fleet).toMatchObject({ ready: 1, starting: 1 });
+      e.step(10);
+      expect(e.frame().nodes.worker.fleet).toMatchObject({ ready: 2, starting: 0 });
+    };
+    resume();
+    e.restore(checkpoint);
+    resume();
+  });
+  it.each([1, 10])("freezes draining grace at scale %s", (scale) => {
+    const run = (pause: boolean) => {
+      const d = fixed(0);
+      Object.assign(d.nodes[1].props!, { replicas: 2, concurrency: 1 });
+      (d.nodes[1].props!.resources as ReturnType<typeof resourceLesson>).terminationGraceMs = 500;
+      const e = engine(d, scale);
+      e.inject("source", 2);
+      e.step(scale === 1 ? 20 : 1260);
+      e.setNodeProps("worker", { replicas: 1 });
+      expect(e.frame().nodes.worker.fleet!.draining).toBeGreaterThan(0);
+      if (pause) {
+        e.setNodeStatus("worker", "paused");
+        e.step(10_000);
+        e.setNodeStatus("worker", "up");
+      }
+      e.step(3000);
+      const { processed, failed, dropped, fleet } = e.frame().nodes.worker;
+      return { processed, failed, dropped, draining: fleet!.draining };
+    };
+    const baseline = run(false);
+    expect(baseline.failed).toBe(0);
+    expect(run(true)).toEqual(baseline);
+  });
+  it("preflights a whole live override batch before allocating any startup cohorts", () => {
+    const d = fixed(40),
+      worker = d.nodes[1];
+    d.nodes = Array.from({ length: 11 }, (_, i) => ({ ...structuredClone(worker), id: `worker-${i}` }));
+    d.edges = [];
+    for (const n of d.nodes) (n.props!.resources as ReturnType<typeof resourceLesson>).startup.jitterFraction = 0.5;
+    const e = engine(d);
+    e.step(100);
+    const before = e.snapshot(),
+      configuration = e.effectiveProps("worker-0");
+    expect(() => e.setNodePropsBatch(Object.fromEntries(d.nodes.map((n) => [n.id, { replicas: 10_000 }])), 2)).toThrow(
+      /100/,
+    );
+    expect(e.snapshot()).toEqual(before);
+    expect(e.effectiveProps("worker-0")).toEqual(configuration);
+  });
+  it("indexes jittered starting cohorts before paginating, including after readiness and cancellation", () => {
+    const f = createFleet(1),
+      r = resourceLesson();
+    r.startup.jitterFraction = 0.5;
+    reconcileFleet(f, 10_000, r, 0, 42, "worker");
+    const check = () => {
+      const expected = [...f.ranges.slice(f.rangeHead), ...f.starts]
+        .flatMap((c) => Array.from({ length: c.last - c.first + 1 }, (_, i) => c.first + i))
+        .sort((a, b) => a - b)
+        .slice(5000, 5050);
+      let reads = 0;
+      const starts = f.starts,
+        ranges = f.ranges,
+        index = f.replicaIndex;
+      const track = <T extends object>(array: T[]) =>
+        new Proxy(array, {
+          get(target, key, receiver) {
+            if (typeof key === "string" && /^\d+$/.test(key)) reads++;
+            return Reflect.get(target, key, receiver) as unknown;
+          },
+        });
+      f.starts = track(starts);
+      f.ranges = track(ranges);
+      f.replicaIndex = track(index);
+      try {
+        const rows = fleets.replicaPage(f, r, 0, 1, 100);
+        expect(rows.map((row) => row.id)).toEqual(expected);
+        // Only a page's intervals, irrespective of thousands of ready/starting cohorts.
+        expect(reads).toBeLessThanOrEqual(50);
+      } finally {
+        f.starts = starts;
+        f.ranges = ranges;
+        f.replicaIndex = index;
+      }
+    };
+    check();
+    advanceFleet(f, 5000);
+    check();
+    reconcileFleet(f, 6000, r, 5000, 42, "worker");
+    check();
+  });
+  it.each([1, 10])("memory recommendation wins over low CPU at scale %s", (scale) => {
+    const f = createFleet(4),
+      c = hpaLesson().controller,
+      r = resourceLesson();
+    r.baselineMemoryMiB = 128;
+    r.memoryRequestMiB = 256;
+    r.memoryMiBPerMessage = 32;
+    c.settings.metrics[0].windowMs = 1000;
+    c.settings.metrics.push({
+      ...structuredClone(c.settings.metrics[0]),
+      source: { kind: "resource", resource: "memory" },
+      target: { kind: "utilization", percentOfRequest: 50 },
+    });
+    chargeCpu(f, undefined, 100);
+    integrateResources(f, 4, 15_000, 15_000);
+    expect(evaluateHpa(f, c, r, 15_000, 1, scale)).toMatchObject({
+      metric: 62.5,
+      raw: 5,
+      desired: 5,
+      resource: "memory",
+    });
+  });
+  it("absolute CPU target works without a CPU request", () => {
+    const f = createFleet(4),
+      c = hpaLesson().controller,
+      r = resourceLesson();
+    delete r.cpuRequestMilli;
+    c.settings.metrics[0].target = { kind: "averageValue", value: 250 };
+    c.settings.metrics[0].windowMs = 1000;
+    f.samples.push({ at: 15_000, cpu: 2000, occupancy: 0, ready: 4 });
+    expect(evaluateHpa(f, c, r, 15_000)).toMatchObject({
+      metric: 500,
+      raw: 8,
+      desired: 8,
+      resource: "cpu",
+      targetKind: "averageValue",
+    });
+  });
+});

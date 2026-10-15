@@ -1988,7 +1988,7 @@ function BulkSwatches<T extends string>({
   );
 }
 
-function DiagramPanel({ editor, meta, counts }: InspectorProps) {
+function DiagramPanel({ editor, meta, counts, focus, takeFocus }: InspectorProps) {
   const [pickerAnchor, setPickerAnchor] = useState<{ rect: DOMRect; merge: string } | null>(null);
   const color = meta.color;
   const isCustomColor = !!color && !ANNOTATION_COLOR_IDS.includes(color as (typeof ANNOTATION_COLOR_IDS)[number]);
@@ -1996,7 +1996,13 @@ function DiagramPanel({ editor, meta, counts }: InspectorProps) {
 
   return (
     <>
-      <PlanningUpgrade editor={editor} planning={meta.planning} />
+      <PlanningUpgrade
+        editor={editor}
+        planning={meta.planning}
+        key={focus?.seq ?? "default"}
+        initialPreview={focus?.name === "autoscaling-upgrade-preview"}
+        takePreviewFocus={focus ? () => takeFocus?.(focus.seq) ?? true : undefined}
+      />
       <Section>
         <Field label="Title">
           <input

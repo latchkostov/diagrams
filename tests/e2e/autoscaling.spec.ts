@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { makePayload } from "../../src/editor/clipboard";
 import { hpaLesson } from "../../src/model/autoscaling";
 import { autoscalingFixture } from "../../src/lab/autoscalingFixture";
 import {
@@ -16,7 +17,16 @@ import {
 const slug = "kafka-order-pipeline";
 async function seed(
   page: Page,
-  { live = false, fixed = false, locale = "en", dark = false, older = false, replicas = 1, cpuProbe = false } = {},
+  {
+    live = false,
+    fixed = false,
+    locale = "en",
+    dark = false,
+    older = false,
+    replicas = 1,
+    cpuProbe = false,
+    readinessDelay = 0,
+  } = {},
 ) {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.emulateMedia({ colorScheme: dark ? "dark" : "light" });
@@ -49,9 +59,14 @@ async function seed(
     { key: STORAGE_KEYS.autosavePrefix + slug, d, locale },
   );
   if (live) await page.clock.install();
-  if (live) await gotoLive(page, `./?view=canvas&example=${slug}&live=1`);
+  if (live) await gotoLive(page, `./?view=canvas&example=${slug}&live=1&paused=1`);
   else await gotoCanvas(page, slug);
   await waitForStableViewport(page);
+  if (live) {
+    await pauseClock(page);
+    if (readinessDelay) await page.clock.runFor(readinessDelay);
+    await page.getByTestId("live-play").click();
+  }
 }
 
 test("A1: four main fields, explicit lesson, Advanced policy validation and undo", async ({
@@ -344,4 +359,61 @@ test("A1: exact replica CPU reflects aggregate work before and after fifteen sec
   await check();
   await page.clock.runFor(11_000);
   await check();
+});
+
+test("A1 startup timing is independent of page readiness", async ({ page }) => {
+  await seed(page, { live: true, readinessDelay: 30_000 });
+  const badge = page.getByTestId("node-badge-worker");
+  await expect(badge).toHaveAttribute("data-ready", "1");
+  await expect(badge).toHaveAttribute("data-starting", "0");
+  await page.clock.runFor(15_500);
+  await expect(badge).toHaveAttribute("data-ready", "1");
+  await expect.poll(async () => Number(await badge.getAttribute("data-starting"))).toBeGreaterThan(0);
+  await page.clock.runFor(6000);
+  await expect.poll(async () => Number(await badge.getAttribute("data-ready"))).toBeGreaterThan(1);
+});
+
+test("A1 model disclosures switch to the requested preview and expose their own state", async ({ page }) => {
+  await seed(page, { fixed: true, older: true });
+  await page.keyboard.press("Control+k");
+  await page.keyboard.type("diagram properties");
+  await page.keyboard.press("Enter");
+  const a1 = page.getByTestId("autoscaling-upgrade-preview"),
+    legacy = page.getByTestId("planning-preview");
+  await a1.click();
+  await expect(a1).toHaveAttribute("aria-expanded", "true");
+  await expect(legacy).toHaveAttribute("aria-expanded", "false");
+  await expect(a1).toHaveAttribute("aria-controls", "planning-a1-content");
+  await expect(legacy).toHaveAttribute("aria-controls", "planning-legacy-content");
+  await legacy.click();
+  await expect(page.getByTestId("planning-legacy-preview")).toBeVisible();
+  await expect(page.getByTestId("planning-upgrade-preview")).toHaveCount(0);
+  await expect(a1).toHaveAttribute("aria-expanded", "false");
+  await expect(legacy).toHaveAttribute("aria-expanded", "true");
+  await a1.click();
+  await expect(page.getByTestId("planning-upgrade-preview")).toBeVisible();
+  await expect(page.getByTestId("planning-legacy-preview")).toHaveCount(0);
+  await a1.click();
+  await expect(a1).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByTestId("planning-upgrade-preview")).toHaveCount(0);
+});
+
+test("A1 refused paste announces model compatibility and opens the upgrade preview", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await seed(page, { fixed: true, older: true });
+  const payload = makePayload(autoscalingFixture(), ["worker"]);
+  if (!payload) throw new Error("Missing A1 clipboard fixture");
+  await page.evaluate((text) => navigator.clipboard.writeText(text), JSON.stringify(payload));
+  await page.getByTestId("node-worker").click();
+  await page.keyboard.press("Control+v");
+  await expect(page.getByTestId("toast-model-upgrade")).toBeVisible();
+  await page.getByTestId("toast-model-upgrade").click();
+  await expect(page.getByTestId("planning-upgrade-preview")).toBeVisible();
+  await expect(page.getByTestId("autoscaling-upgrade-preview")).toBeFocused();
+  await page.getByTestId("node-worker").click();
+  await page.keyboard.press("Control+k");
+  await page.keyboard.type("diagram properties");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("autoscaling-upgrade-preview")).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByTestId("planning-upgrade-preview")).toHaveCount(0);
 });

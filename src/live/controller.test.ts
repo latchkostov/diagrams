@@ -4,6 +4,8 @@ import type { SimRole } from "../model/types";
 import { LiveController, structuralKey } from "./controller";
 import kafka from "../examples/kafka-order-pipeline.json";
 import { emptyInputs, freePlaySaveProps } from "./capacityModel";
+import { autoscalingFixture } from "../lab/autoscalingFixture";
+import { resourceLesson } from "../model/autoscaling";
 import * as admissions from "../sim/admission";
 
 const roles: Record<string, SimRole> = { src: "source", q: "queue", svc: "processor", db: "store" };
@@ -642,4 +644,51 @@ it("a saved scale override cannot enable unsafe continuous sources; automatic sa
   expect(c.getState().traffic).toBe(true);
   expect(c.getState().snapshot.nodes.api.processed).toBeGreaterThan(1_000_000);
   expect(c.snapshot().nodes.api.processed).toBeLessThanOrEqual(60);
+});
+
+describe("A1 round 3 controller boundaries", () => {
+  it("saving Capacity x folds the HPA policy without creating additional replicas", () => {
+    const d = autoscalingFixture(),
+      c = new LiveController(d, { replayDelayMs: 0 });
+    c.setInputs({ ...emptyInputs(), capacity: 2 });
+    c.setPlaying(true);
+    c.step(1000);
+    const before = c.snapshot();
+    const patches = freePlaySaveProps(d, c.getState().inputs);
+    const saved = { ...d, nodes: d.nodes.map((n) => ({ ...n, props: { ...n.props, ...patches[n.id] } })) };
+    c.commitInputs(null, saved);
+    expect(c.snapshot().nodes.worker).toEqual(before.nodes.worker);
+    expect(c.snapshot().time).toBe(before.time);
+    expect(c.getState().inputs).toEqual(emptyInputs());
+    c.dispose();
+  });
+  it("refuses an oversized setInputs atomically before creating startup cohorts", () => {
+    const d = autoscalingFixture(),
+      worker = d.nodes[1];
+    d.nodes = Array.from({ length: 11 }, (_, i) => ({
+      ...structuredClone(worker),
+      id: `w-${i}`,
+      props: {
+        ...worker.props,
+        autoscaling: { mode: "off" },
+        resources: { ...resourceLesson(), startup: { delayMs: 5000, jitterFraction: 0.5 } },
+      },
+    }));
+    d.edges = [];
+    const c = new LiveController(d, { replayDelayMs: 0 });
+    c.setPlaying(true);
+    c.step(100);
+    const before = c.snapshot(),
+      inputs = c.getState().inputs;
+    expect(() =>
+      c.setInputs({
+        ...emptyInputs(),
+        capacity: 2,
+        props: Object.fromEntries(d.nodes.map((n) => [n.id, { replicas: 10_000 }])),
+      }),
+    ).toThrow(/100/);
+    expect(c.getState().inputs).toEqual(inputs);
+    expect(c.snapshot()).toEqual(before);
+    c.dispose();
+  });
 });

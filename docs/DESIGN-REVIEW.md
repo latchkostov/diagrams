@@ -4245,3 +4245,11 @@ cancellation on navigation or unmount. The test records every history write, fai
 and passes afterward; all eight synthetic privacy checks pass. No real local diagrams were inspected.
 The final launch/navigation/privacy follow-up passes 35 checks. Security re-review finds no further issue,
 and the full unit suite again passes 6,382 tests with 4 skipped.
+## Autoscaling A1 round 3 (2026-10-15)
+
+Designer review passed after correcting a stale upgrade focus request. A refused paste now explains
+model compatibility and opens the existing model-upgrade preview with focus. That request is consumed
+once; revisiting properties does not reopen it. A1 and legacy previews have distinct expanded states
+and disclosure targets, and selecting either switches directly to its content. No global chrome was
+added. Production browser checks cover switching, focus, revisiting, dark/translated inspectors and
+accessible replica pagination.

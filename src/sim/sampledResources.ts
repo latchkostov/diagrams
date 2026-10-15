@@ -59,6 +59,7 @@ export function retainSampledDrains(f: Fleet, before: Cohort[], working: Sampled
         }
     }
     if (occupied) {
+      f.replicaIndexDirty = true;
       f.sampledDrains.push({ first, last: old.last, at: deadline });
       f.draining += old.last - first + 1;
     }
@@ -73,7 +74,10 @@ export function releaseSampledDrains(f: Fleet, working: SampledWork[]) {
     if (occupied.has(partKey(c))) next.push(c);
     else f.draining -= size(c);
   }
-  if (next.length !== f.sampledDrains.length) f.assignmentChanged = true;
+  if (next.length !== f.sampledDrains.length) {
+    f.assignmentChanged = true;
+    f.replicaIndexDirty = true;
+  }
   f.sampledDrains = next;
 }
 /** Union size for partition ownership; overlapping weighted attempts reserve each identity once. */

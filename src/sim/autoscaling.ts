@@ -73,6 +73,9 @@ export interface Fleet {
   ranges: Cohort[];
   rangeHead: number;
   starts: Cohort[];
+  replicaIndex: (Cohort & { state: ReplicaRow["state"] })[];
+  replicaRanks: number[];
+  replicaIndexDirty: boolean;
   sampledDrains: Cohort[];
   free: number[];
   partial: Set<number>;
@@ -84,6 +87,7 @@ export interface Fleet {
   lastPublish: number;
   nextSync: number;
   paused: boolean;
+  pausedAt?: number;
   override: boolean;
   recommendations: { at: number; count: number }[];
   changes: { at: number; delta: number }[];
@@ -110,6 +114,9 @@ export function createFleet(count: number, syncMs = 15_000): Fleet {
     ranges: count ? [{ first: 1, last: count, at: 0 }] : [],
     rangeHead: 0,
     starts: [],
+    replicaIndex: count ? [{ first: 1, last: count, at: 0, state: "ready" }] : [],
+    replicaRanks: count ? [count] : [],
+    replicaIndexDirty: false,
     sampledDrains: [],
     free: [],
     partial: new Set(),
@@ -176,6 +183,7 @@ function upperBound(ids: number[], id: number): number {
   return lo;
 }
 function forgetReplica(f: Fleet, id: number) {
+  f.replicaIndexDirty = true;
   f.busy.delete(id);
   f.busyIds.splice(upperBound(f.busyIds, id) - 1, 1);
 }
@@ -231,6 +239,37 @@ function startupSeed(f: Fleet, seed: number, node: string, id: number) {
   }
   return mulberry32(f.startupHash ^ id)();
 }
+/** All identities, including reservations: acquisition changes ownership, never this index's membership.
+ * Rebuild at lifecycle transitions; a drain released between transitions marks it dirty once. */
+function indexReplicas(f: Fleet) {
+  const intervals = [
+    ...f.ranges
+      .slice(f.rangeHead)
+      .filter((c) => c.first <= c.last)
+      .map((c) => ({ ...c, state: "ready" as const })),
+    ...f.sampledDrains.map((c) => ({ ...c, state: "draining" as const })),
+    ...f.starts.map((c) => ({ ...c, state: "starting" as const })),
+    ...f.busyIds.map((id) => ({
+      first: id,
+      last: id,
+      at: 0,
+      state: f.busy.get(id)?.drainAt === undefined ? ("ready" as const) : ("draining" as const),
+    })),
+  ].sort((a, b) => a.first - b.first);
+  const index: Fleet["replicaIndex"] = [];
+  for (const c of intervals) {
+    const previous = index.at(-1);
+    if (previous && previous.state === c.state && previous.last + 1 === c.first) previous.last = c.last;
+    else index.push(c);
+  }
+  f.replicaIndex = index;
+  let count = 0;
+  f.replicaRanks = index.map((c) => {
+    count += c.last - c.first + 1;
+    return count;
+  });
+  f.replicaIndexDirty = false;
+}
 export function reconcileFleet(
   f: Fleet,
   desired: number,
@@ -242,6 +281,7 @@ export function reconcileFleet(
   desired = Number.isFinite(desired) ? Math.max(1, Math.min(10_000, Math.round(desired))) : f.desired;
   f.desired = desired;
   let delta = desired - f.ready - f.starting;
+  const lifecycleChanged = delta !== 0;
   if (delta > 0) {
     const first = f.nextId;
     f.nextId += delta;
@@ -299,6 +339,7 @@ export function reconcileFleet(
       f.ready--;
       delta++;
     }
+  if (lifecycleChanged) indexReplicas(f);
 }
 /** Readiness jitter stops fragmenting idle work; active sampled boundaries keep their CPU budgets. */
 export function compactReadyRanges(f: Fleet, working: readonly SampledWork[]) {
@@ -334,6 +375,7 @@ export function advanceFleet(f: Fleet, now: number, working: readonly SampledWor
   if (changed) {
     f.rangesDirty = true;
     compactReadyRanges(f, working);
+    indexReplicas(f);
   }
   return changed;
 }
@@ -538,43 +580,21 @@ export function fleetReadout(f: Fleet): FleetReadout {
 /** Only the selected inspector requests a page. Idle ranges never expand in live frames. */
 export function replicaPage(f: Fleet, r: ComputeResources, now: number, scale: number, page = 0): ReplicaRow[] {
   const start = Math.max(0, Math.floor(page)) * 50;
-  const sources: [readonly Cohort[], number, ReplicaRow["state"]][] = [
-    [f.ranges, f.rangeHead, "ready"],
-    [f.sampledDrains, 0, "draining"],
-    [f.starts, 0, "starting"],
-  ];
-  const countThrough = (id: number) => {
-    let count = upperBound(f.busyIds, id);
-    for (const [ranges, head] of sources)
-      for (let i = head; i < ranges.length; i++)
-        count += Math.max(0, Math.min(id, ranges[i].last) - ranges[i].first + 1);
-    return count;
-  };
-  // Find the page boundary by rank without expanding the preceding identities.
-  let lo = 1,
-    hi = f.nextId;
+  if (f.replicaIndexDirty) indexReplicas(f);
+  let lo = 0,
+    hi = f.replicaRanks.length;
   while (lo < hi) {
-    const mid = Math.floor((lo + hi) / 2);
-    if (countThrough(mid) <= start) lo = mid + 1;
+    const mid = (lo + hi) >>> 1;
+    if (f.replicaRanks[mid] <= start) lo = mid + 1;
     else hi = mid;
   }
   const rows: { id: number; state: ReplicaRow["state"] }[] = [];
-  let cursor = lo;
-  while (rows.length < 50) {
-    let id = f.busyIds[upperBound(f.busyIds, cursor - 1)] ?? Infinity;
-    let state: ReplicaRow["state"] = f.busy.get(id)?.drainAt === undefined ? "ready" : "draining";
-    for (const [ranges, head, rangeState] of sources)
-      for (let i = head; i < ranges.length; i++) {
-        const c = ranges[i],
-          candidate = Math.max(cursor, c.first);
-        if (candidate <= c.last && candidate < id) {
-          id = candidate;
-          state = rangeState;
-        }
-      }
-    if (!Number.isFinite(id)) break;
-    rows.push({ id, state });
-    cursor = id + 1;
+  let skip = start - (f.replicaRanks[lo - 1] ?? 0);
+  for (let i = lo; i < f.replicaIndex.length && rows.length < 50; i++) {
+    const cohort = f.replicaIndex[i];
+    for (let id = cohort.first + skip; id <= cohort.last && rows.length < 50; id++)
+      rows.push({ id, state: cohort.state });
+    skip = 0;
   }
   const estimated = scale > 1 ? resourceReadout(f, r, 0, now, scale) : undefined;
   return rows.map(({ id, state }) => {

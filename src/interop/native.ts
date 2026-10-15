@@ -1,4 +1,4 @@
-import { resourceBudgetExceeded, MAX_LIFECYCLE_REPLICAS } from "../model/resourceBudget";
+import { createResourceValidator } from "../model/resourceValidation";
 import { DIAGRAM_FORMAT, type Simulation, type DiagramFile } from "../model/types";
 import {
   propsProblem,
@@ -443,21 +443,8 @@ export function validateDiagram(data: unknown): NativeResult {
     else delete d.checks;
   }
   const authored = d as unknown as DiagramFile;
-  if (authored.planning?.revision !== "p3-a1") {
-    const a1Props = (p: Record<string, unknown> | undefined) =>
-      p?.resources !== undefined || p?.autoscaling !== undefined;
-    if (
-      authored.nodes.some((n) => a1Props(n.props)) ||
-      (authored.simulations ?? []).some(
-        (s) =>
-          Object.values(s.setup?.props ?? {}).some(a1Props) ||
-          (s.timeline ?? []).some((step) => step.action.do === "props" && a1Props(step.action.props)),
-      )
-    )
-      return { ok: false, error: t("autoscaling.modelRequired") };
-  }
-  if (resourceBudgetExceeded(authored))
-    return { ok: false, error: t("autoscaling.budget", { limit: MAX_LIFECYCLE_REPLICAS }) };
+  const resourceError = createResourceValidator()(authored);
+  if (resourceError) return { ok: false, error: resourceError };
   return { ok: true, diagram: authored, warnings };
 }
 

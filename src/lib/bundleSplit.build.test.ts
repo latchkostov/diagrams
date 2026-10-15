@@ -75,6 +75,8 @@ const STARTUP_CHUNKS = [
   "registry",
   // Shared native/engine preflight only; no controller execution at startup.
   "resourceBudget",
+  // Shared persisted-resource validation, with immutable editor caching; no execution code.
+  "resourceValidation",
   "size",
   "storage",
   "toast",

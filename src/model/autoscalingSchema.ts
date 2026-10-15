@@ -106,8 +106,8 @@ export const autoscalingSchema: JsonSchema = {
   ],
 };
 export function checkAutoscaling(resources?: unknown, autoscaling?: unknown): void {
-  if (resources !== undefined && resources !== null) checkJsonSchema(resources, resourcesSchema, "resources");
-  if (autoscaling === undefined || autoscaling === null) return;
+  if (resources !== undefined) checkJsonSchema(resources, resourcesSchema, "resources");
+  if (autoscaling === undefined) return;
   checkJsonSchema(autoscaling, autoscalingSchema, "autoscaling");
   const a = autoscaling as AutoscalingConfig;
   if (a.mode !== "on") return;

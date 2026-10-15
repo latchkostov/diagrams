@@ -6,6 +6,7 @@ import {
   type DiagramGroup,
   type DiagramNode,
 } from "../model/types";
+import { createResourceValidator } from "../model/resourceValidation";
 import { filterLayerOrder } from "../model/layers";
 import { expandGroupIds, sanitizeGroupParents } from "../model/groupHierarchy";
 import { isPresetGroupTone } from "../canvas/groupTones";
@@ -119,6 +120,13 @@ export function parsePayload(text: string): ClipboardPayload | null {
       isObj(n) && typeof n.id === "string" && typeof n.stencil === "string" && isCoordinate(n.x) && isCoordinate(n.y),
   );
   if (nodes.some((n) => n.props !== undefined && (unsupportedPreset(n.props) || propsProblem(n.props)))) return null;
+  if (
+    createResourceValidator()({
+      nodes,
+      planning: isObj(data.planning) && data.planning.revision === "p3-a1" ? { revision: "p3-a1" } : undefined,
+    })
+  )
+    return null;
   const used = new Set(nodes.map((n) => n.id));
   const annotations: DiagramAnnotation[] = [];
   for (const raw of Array.isArray(data.annotations) ? data.annotations : []) {

@@ -298,6 +298,16 @@ browser regressions cover those edge cases, plus numeric replica CPU readings. O
 negative controls cover sampled admission, startup hashing, drain readouts and page expansion.
 The released offline viewer is refreshed without changing its pinned legacy outputs or payloads.
 
+### Autoscaling A1 round 3 review fixes (2026-10-15)
+
+All 1,552 goldens match, with none changed, added, missing or stale. Legacy, non-autoscaling
+and A1 outputs retain their existing records. Frozen A1 runs do not save free-play inputs after advancing, pause individual lifecycle
+clocks, submit invalid editor/live batches or inspect paginated startup cohorts; dedicated
+regressions and deliberate reversions cover those cases. Memory and absolute CPU controller
+recommendations now have numerical tests at exact and sampled scales. The shared native/editor
+validator changes generated skill implementation code, which is deliberately not pinned; its
+public schemas, payloads and existing validation outputs remain unchanged.
+
 ### Adding an output
 
 Call `expectGolden` (data), `expectGoldenText` (text) or `expectGoldenBinary` (with a comparison)
