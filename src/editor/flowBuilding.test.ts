@@ -212,6 +212,34 @@ it("does no graph preflight for presentation metadata and still checks planning 
   }
 });
 
+it.each(["setup", "timeline"] as const)("refuses invalid saved-simulation %s metadata atomically", (kind) => {
+  const t = setup([], kedaFixture());
+  const before = structuredClone(t.api.getDiagram());
+  const simulations = (source: string): NonNullable<DiagramFile["simulations"]> => {
+    const props = { autoscaling: kedaLesson("kafka", { node: source, group: "renders" }) };
+    return [
+      {
+        id: "binding",
+        title: "Binding",
+        traffic: [],
+        ...(kind === "setup"
+          ? { setup: { props: { worker: props } } }
+          : {
+              timeline: [{ atMs: 1000, action: { do: "props", node: "worker", props } }],
+            }),
+      },
+    ];
+  };
+  t.api.updateMeta({ title: "Refused with simulations", simulations: simulations("missing-source") });
+  t.commit();
+  expect(t.api.getDiagram()).toEqual(before);
+  const valid = simulations("uploads");
+  t.api.updateMeta({ title: "Saved with simulations", simulations: valid });
+  t.commit();
+  expect(t.api.getDiagram()).toEqual({ ...before, title: "Saved with simulations", simulations: valid });
+  expect(validateDiagram(t.api.getDiagram()).ok).toBe(true);
+});
+
 const BASE: DiagramFile = {
   format: "diagrams/v1",
   title: "t",

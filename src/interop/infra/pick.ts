@@ -33,11 +33,12 @@ interface Share {
 /** Policy references are graph dependencies too, even across namespace boundaries. */
 function dependenciesOf(g: ImportGraph) {
   const existing = new Set(g.components.map((c) => c.key));
-  const dependencies = new Map<string, Set<string>>();
-  const routes = new Map<string, Map<string, Set<string>>>();
+  // A broker/group is one shared vertex, never a copy of its readers per scaler.
+  const dependencies = new Map<string, Set<Set<string>>>();
+  const routes = new Map<string, Map<string | undefined, Set<string>>>();
   for (const l of g.links) {
     if (l.relation !== "flow" || l.props?.deny || l.props?.dlq || typeof l.props?.group !== "string") continue;
-    const groups = routes.get(l.from) ?? new Map<string, Set<string>>();
+    const groups = routes.get(l.from) ?? new Map<string | undefined, Set<string>>();
     const targets = groups.get(l.props.group) ?? new Set<string>();
     targets.add(l.to);
     groups.set(l.props.group, targets);
@@ -46,19 +47,99 @@ function dependenciesOf(g: ImportGraph) {
   for (const c of g.components) {
     const a = c.props?.autoscaling as AutoscalingConfig | undefined;
     if (a?.mode !== "on" || a.controller.kind !== "keda") continue;
-    const required = new Set<string>();
+    const required = new Set<Set<string>>();
     for (const t of a.controller.triggers) {
-      required.add(t.source.node);
-      if (t.source.group)
-        for (const target of routes.get(t.source.node)?.get(t.source.group) ?? []) required.add(target);
+      const groups = routes.get(t.source.node) ?? new Map<string | undefined, Set<string>>();
+      const group = t.source.group || undefined;
+      const targets = groups.get(group) ?? new Set<string>();
+      targets.add(t.source.node);
+      groups.set(group, targets);
+      routes.set(t.source.node, groups);
+      required.add(targets);
     }
     dependencies.set(c.key, required);
   }
-  return (kept: Set<string>) => {
-    // Set iteration also visits newly added dependencies, including chained policies and cycles.
-    for (const key of kept)
-      for (const dependency of dependencies.get(key) ?? []) if (existing.has(dependency)) kept.add(dependency);
-    return kept;
+  return { existing, dependencies };
+}
+
+/** Bound automatic closure caching and candidate expansion across the whole import, not per boundary. */
+export const MAX_DEPENDENCY_WORK = MAX_DRAWN * 24;
+
+function dependencyPicker(g: ImportGraph) {
+  const { existing, dependencies } = dependenciesOf(g);
+  const cache = new Map<
+    Set<string>,
+    | {
+        nodes: Set<string>;
+        vertices: Set<Set<string>>;
+        pending?: { generation: number; nodes: Set<string> };
+      }
+    | undefined
+  >();
+  const drawn = new Set<string>();
+  const expanded = new Set<Set<string>>();
+  let work = 0;
+  let generation = 0;
+  return (roots: Set<string>, limit: number): boolean => {
+    const added = new Set<string>();
+    const vertices = new Set<Set<string>>();
+    for (const key of roots) {
+      if (!drawn.has(key)) added.add(key);
+      for (const vertex of dependencies.get(key) ?? []) vertices.add(vertex);
+      if (++work > MAX_DEPENDENCY_WORK || drawn.size + added.size > limit) return false;
+    }
+    for (const vertex of vertices) {
+      if (expanded.has(vertex)) continue;
+      if (!cache.has(vertex)) {
+        const nodes = new Set<string>();
+        const reachable = new Set([vertex]);
+        let complete = true;
+        // Iterative traversal handles chained policies and cycles without recursive stack growth.
+        for (const next of reachable) {
+          for (const key of next) {
+            if (++work > MAX_DEPENDENCY_WORK) {
+              complete = false;
+              break;
+            }
+            if (!existing.has(key)) continue;
+            nodes.add(key);
+            if (nodes.size > Math.min(limit, MAX_DRAWN)) {
+              complete = false;
+              break;
+            }
+            for (const ref of dependencies.get(key) ?? []) reachable.add(ref);
+          }
+          if (!complete) break;
+        }
+        cache.set(vertex, complete ? { nodes, vertices: reachable } : undefined);
+      }
+      const closure = cache.get(vertex);
+      // The closure alone cannot fit: reject without scanning it again for each boundary.
+      if (!closure || closure.nodes.size > limit) return false;
+      // Cache the intersection with the current drawing too: a nearly fitting shared route must
+      // not scan all its already drawn readers again for every rejected workload.
+      if (closure.pending?.generation !== generation) {
+        const nodes = new Set<string>();
+        for (const key of closure.nodes) {
+          if (++work > MAX_DEPENDENCY_WORK) return false;
+          if (!drawn.has(key)) nodes.add(key);
+        }
+        closure.pending = { generation, nodes };
+      }
+      if (drawn.size + closure.pending.nodes.size > limit) return false;
+      for (const key of closure.pending.nodes) {
+        if (++work > MAX_DEPENDENCY_WORK) return false;
+        if (!drawn.has(key)) added.add(key);
+        if (drawn.size + added.size > limit) return false;
+      }
+    }
+    if (added.size) generation++;
+    for (const key of added) drawn.add(key);
+    for (const vertex of vertices) {
+      const closure = cache.get(vertex);
+      if (closure) for (const ref of closure.vertices) expanded.add(ref);
+    }
+    return true;
   };
 }
 
@@ -112,16 +193,10 @@ export function defaultPick(g: ImportGraph, budget = PICK_OVER): string[] | unde
   if (g.components.length <= budget) return undefined;
   const shares = sharesOf(g).sort(byFlows);
   if (shares.length < 2) return undefined;
-  const drawn = new Set<string>();
   const chosen: string[] = [];
-  const close = dependenciesOf(g);
+  const include = dependencyPicker(g);
   for (const s of shares) {
-    const included = close(s.loose);
-    let added = 0;
-    for (const k of included) if (!drawn.has(k)) added++;
-    if (drawn.size + added > (chosen.length ? budget : MAX_DRAWN)) continue;
-    chosen.push(s.key);
-    for (const k of included) drawn.add(k);
+    if (include(s.loose, chosen.length ? budget : MAX_DRAWN)) chosen.push(s.key);
   }
   return chosen;
 }
@@ -144,7 +219,14 @@ export function pickGraph(g: ImportGraph, keys: readonly string[]): ImportGraph 
   }
   for (const k of brought) kept.add(k);
   const beforeScaling = kept.size;
-  dependenciesOf(g)(kept);
+  const { existing, dependencies } = dependenciesOf(g);
+  const expanded = new Set<Set<string>>();
+  for (const key of kept)
+    for (const vertex of dependencies.get(key) ?? []) {
+      if (expanded.has(vertex)) continue;
+      expanded.add(vertex);
+      for (const dependency of vertex) if (existing.has(dependency)) kept.add(dependency);
+    }
   const groups = new Set(g.components.filter((c) => kept.has(c.key)).map((c) => c.group));
   return {
     ...g,

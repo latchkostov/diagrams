@@ -1,5 +1,16 @@
 # Release notes
 
+## Autoscaling A2 final import review (#125, 2026-10-15)
+
+- Import selection indexes shared KEDA broker/group routes once and caches their dependency closures
+  across boundary candidates, including cycles. Automatic selection stops oversized candidates early
+  and caps total expansion work; remaining boundaries stay available in the import report.
+- Operation-count regressions cover eightfold shared-route growth, the total work cap, deduplicated
+  counts and selections just below, at and above both picker budgets. Saved simulation setup and
+  timeline patches with missing metric sources are rejected atomically; valid patches persist.
+- UX review: existing selection, counts and recovery flow stay in the import report; no chrome added.
+- This performance fix preserves existing output goldens; no golden is re-recorded for the fix.
+
 ## Autoscaling A2 round 2 review fixes (#125, 2026-10-15)
 
 - Large and selected namespace imports retain KEDA broker and consumer-group dependencies within

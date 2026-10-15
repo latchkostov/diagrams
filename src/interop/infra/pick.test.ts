@@ -2,12 +2,22 @@ import { kedaLesson, resourceLesson, type AutoscalingConfig } from "../../model/
 import { validateDiagram } from "../native";
 import { mulberry32 } from "../../sim/rng";
 import { formatImportMessage } from "../ui/importMessages";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { DiagramFile } from "../../model/types";
 import type { ImportOutcome } from "../formats";
 import type { ImportGraph, ImportReport } from "./graph";
 import { importKubernetes, outcomeOf, replayOutcome } from "./pipeline";
-import { defaultPick, MAX_DRAWN, PICK_OVER, pickGraph, pickGroups, pickedNodes, UNGROUPED } from "./pick";
+import {
+  defaultPick,
+  MAX_DEPENDENCY_WORK,
+  MAX_DRAWN,
+  PICK_OVER,
+  pickGraph,
+  pickGroups,
+  pickedNodes,
+  UNGROUPED,
+} from "./pick";
+import { GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
 
 // Big imports (docs/research/imports.md § UX, "Big imports"): past PICK_OVER nodes, an import with boundaries draws
 // the ones with the most flows, and the report lists every boundary to draw another set as a new diagram.
@@ -300,16 +310,13 @@ function scalingGraph(workers = 1): ImportGraph {
         group: "workers",
         props: {
           resources: { ...resourceLesson(), modelRevision: "a2" },
-          autoscaling:
-            i === 0
-              ? {
-                  ...kedaLesson("kafka", { node: "topic", group: "readers" }),
-                  controller: {
-                    ...kedaLesson("kafka", { node: "topic", group: "readers" }).controller,
-                    maxReplicas: 2,
-                  },
-                }
-              : { mode: "off" },
+          autoscaling: {
+            ...kedaLesson("kafka", { node: "topic", group: "readers" }),
+            controller: {
+              ...kedaLesson("kafka", { node: "topic", group: "readers" }).controller,
+              maxReplicas: 2,
+            },
+          },
         },
       })),
       { key: "topic", label: "Topic", hint: { name: "topic" }, stencil: "kafka.topic", group: "brokers" },
@@ -347,10 +354,174 @@ it.each(["automatic", "selected"])("keeps cross-namespace KEDA sources and group
   );
   expect(graph).toEqual(before);
 });
-it("counts shared scaling dependencies once, including at the drawing cap", () => {
-  const graph = scalingGraph(MAX_DRAWN - 1);
-  expect(defaultPick(graph, 1)).not.toContain("workers");
-  expect(pickedNodes(graph, ["workers"])).toBe(MAX_DRAWN + 1);
+it.each([-1, 0, 1])("deduplicates shared KEDA dependencies at picker budgets (offset %s)", (offset) => {
+  for (const budget of [PICK_OVER, MAX_DRAWN]) {
+    const graph = scalingGraph(budget + offset - 2);
+    // A higher-ranked unrelated boundary consumes one slot when testing the ordinary budget.
+    if (budget === PICK_OVER) {
+      graph.groups.unshift({ key: "first", label: "First" });
+      graph.components.push({ key: "first", label: "First", hint: { name: "first" }, group: "first" });
+      graph.groups.push({ key: "extra", label: "Extra" });
+      graph.components.push(
+        ...Array.from({ length: 10 }, (_, i) => ({
+          key: `extra-${i}`,
+          label: "Extra",
+          hint: { name: "extra" },
+          group: "extra",
+        })),
+      );
+      graph.links.push(
+        ...Array.from({ length: budget + 1 }, () => ({
+          from: "first",
+          to: "first",
+          relation: "flow" as const,
+          evidence: { source: "spec" as const },
+        })),
+      );
+    }
+    expect(pickedNodes(graph, ["workers"])).toBe(budget + offset);
+    const keys = defaultPick(graph, budget === MAX_DRAWN ? 1 : budget + 1)!;
+    expect(keys.includes("workers")).toBe(offset <= 0);
+    expect(pickedNodes(graph, keys)).toBeLessThanOrEqual(budget === MAX_DRAWN ? MAX_DRAWN : budget + 1);
+  }
+});
+
+function setVisits(run: () => void): number {
+  let visits = 0;
+  const iterator = Set.prototype[Symbol.iterator];
+  const spy = vi.spyOn(Set.prototype, Symbol.iterator).mockImplementation(function* (
+    this: Set<unknown>,
+  ): Generator<unknown, undefined, unknown> {
+    for (const value of { [Symbol.iterator]: () => iterator.call(this) }) {
+      visits++;
+      yield value;
+    }
+  });
+  try {
+    run();
+  } finally {
+    spy.mockRestore();
+  }
+  return visits;
+}
+
+it.each(
+  (["group-cycle", "group-readers", "broker"] as const).flatMap((kind) => [
+    { kind, automatic: false },
+    { kind, automatic: true },
+  ]),
+)("bounds shared $kind dependency expansion at 8x size (automatic: $automatic)", ({ kind, automatic }) => {
+  const count = (size: number, automatic: boolean) => {
+    const graph = scalingGraph(size);
+    // Keep the broker with one scaler: after drawing the separate readers, each other
+    // workload fits alone but cannot also bring its one still-missing dependency.
+    graph.components.find((component) => component.key === "topic")!.group = "worker-0";
+    const workers = graph.components.slice(0, size);
+    for (const worker of workers) {
+      worker.group = worker.key;
+      graph.groups.push({ key: worker.key, label: worker.key });
+      if (kind === "broker") worker.props!.autoscaling = kedaLesson("aws-sqs-queue", { node: "topic" });
+    }
+    graph.links =
+      kind === "broker"
+        ? []
+        : (kind === "group-cycle"
+            ? workers
+            : Array.from({ length: size }, (_, i) => {
+                const reader = { key: `reader-${i}`, label: "Reader", hint: { name: "reader" }, group: "readers" };
+                graph.components.push(reader);
+                return reader;
+              })
+          ).map((worker) => ({
+            from: "topic",
+            to: worker.key,
+            relation: "flow",
+            props: { group: "readers" },
+            evidence: { source: "spec" },
+          }));
+    let nodes = 0;
+    if (automatic)
+      for (let i = 0; i < size + 5; i++) {
+        const key = `extra-${i}`;
+        graph.groups.push({ key, label: `zz extra ${i}` });
+        graph.components.push({ key, label: "Extra", hint: { name: "extra" }, group: key });
+      }
+    const visits = setVisits(() => {
+      const keys = automatic ? defaultPick(graph, size + 2)! : workers.map((worker) => worker.key);
+      nodes = pickedNodes(graph, keys);
+    });
+    expect(nodes).toBeLessThanOrEqual(MAX_DRAWN);
+    expect(nodes).toBeGreaterThan(0);
+    return visits;
+  };
+  const small = count(40, automatic),
+    large = count(40 * GROWTH_FACTOR, automatic);
+  expect(large / small).toBeLessThan(LINEAR_LIMIT);
+  expect(large).toBeLessThan(MAX_DEPENDENCY_WORK);
+});
+
+it("reuses an oversized shared closure without expanding it per boundary", () => {
+  const graph = scalingGraph(MAX_DRAWN);
+  for (const worker of graph.components.slice(0, MAX_DRAWN)) {
+    worker.group = worker.key;
+    graph.groups.push({ key: worker.key, label: worker.key });
+    graph.links.push({
+      from: "topic",
+      to: worker.key,
+      relation: "flow",
+      props: { group: "readers" },
+      evidence: { source: "spec" },
+    });
+  }
+  const keys = defaultPick(graph, 1)!;
+  expect(keys.some((key) => key.startsWith("worker-"))).toBe(false);
+  expect(pickedNodes(graph, keys)).toBeLessThanOrEqual(MAX_DRAWN);
+});
+
+it("bounds total closure expansion even across distinct overlapping routes", () => {
+  const graph = scalingGraph(200);
+  graph.components = graph.components.slice(0, 200);
+  graph.groups = [];
+  graph.links = [];
+  for (let i = 0; i < 800; i++) {
+    graph.components.push({ key: `reader-${i}`, label: "Reader", hint: { name: "reader" }, group: "readers" });
+  }
+  graph.groups.push({ key: "readers", label: "Readers" });
+  for (const worker of graph.components.slice(0, 200)) {
+    worker.group = worker.key;
+    const source = `source-${worker.key}`;
+    worker.props!.autoscaling = kedaLesson("kafka", { node: source, group: "readers" });
+    graph.groups.push({ key: worker.key, label: worker.key });
+    graph.components.push({ key: source, label: "Topic", hint: { name: "topic" }, group: worker.key });
+    for (let i = 0; i < 800; i++)
+      graph.links.push({
+        from: source,
+        to: `reader-${i}`,
+        relation: "flow",
+        props: { group: "readers" },
+        evidence: { source: "spec" },
+      });
+  }
+  graph.groups.push({ key: "extra", label: "Extra" });
+  graph.components.push(
+    ...Array.from({ length: 4000 }, (_, i) => ({
+      key: `extra-${i}`,
+      label: "Extra",
+      hint: { name: "extra" },
+      group: "extra",
+    })),
+  );
+  // Exclude the linear share-index pass; the cap applies to closure work after indexing.
+  const indexing = setVisits(() => {
+    pickGroups(graph, []);
+  });
+  let keys: string[] = [];
+  const visits = setVisits(() => {
+    keys = defaultPick(graph, MAX_DRAWN - 1)!;
+  });
+  expect(keys).toBeDefined();
+  expect(visits - indexing).toBeLessThan(MAX_DEPENDENCY_WORK + graph.components.length * 4);
+  expect(pickedNodes(graph, keys)).toBeLessThanOrEqual(MAX_DRAWN);
 });
 it.each(["source", "route"])(
   "reports an omitted KEDA %s without refusing the import or retaining an orphan policy",
