@@ -16,6 +16,7 @@
 // PARITY_PORT picks the preview server's port (default 6200).
 
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import console from "node:console";
 import process from "node:process";
 import { appendFileSync, existsSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
@@ -38,7 +39,21 @@ const tierArg = tierAt >= 0 ? args[tierAt + 1] : "all";
 const filters = args.filter((a, i) => !a.startsWith("--") && !(tierAt >= 0 && i === tierAt + 1));
 if (!["node", "browser", "all"].includes(tierArg)) fail(`--tier must be node, browser or all, not "${tierArg}"`);
 if (update && process.env.CI) fail("pnpm parity:update is refused on CI: goldens are updated on purpose, locally.");
-const tiers = inner ? ["browser"] : tierArg === "all" ? ["node", "browser"] : [tierArg];
+/** A tier's parity files, as repository paths (what Vitest and Playwright match a filter against). */
+function tierFiles(tier) {
+  const dir = join(ROOT, "tests/parity", tier);
+  return existsSync(dir)
+    ? readdirSync(dir)
+        .filter((f) => f.endsWith(".parity.ts"))
+        .map((f) => `tests/parity/${tier}/${f}`)
+    : [];
+}
+// With filters, only the tiers that have a matching file run (Playwright fails when nothing matches); a filter that
+// matches nothing at all is an error.
+const matches = (tier) => !filters.length || tierFiles(tier).some((f) => filters.some((x) => f.includes(x)));
+const requested = inner ? ["browser"] : tierArg === "all" ? ["node", "browser"] : [tierArg];
+const tiers = requested.filter(matches);
+if (!tiers.length) fail(`no parity file under tests/parity/{${requested.join(",")}} matches ${filters.join(", ")}`);
 
 function fail(message) {
   console.error(`parity: ${message}`);
@@ -103,9 +118,10 @@ function browserInContainer() {
       "--ipc=host",
       "-v",
       `${ROOT}:/work`,
-      // Linux's node_modules and pnpm store, kept between runs (this checkout's own are for this machine).
+      // Linux's node_modules, kept between runs, one volume per checkout (two checkouts may run at once with different
+      // lockfiles); the pnpm store, content-addressed, is shared.
       "-v",
-      "livediagrams-parity-node-modules:/work/node_modules",
+      `livediagrams-parity-node-modules-${createHash("sha256").update(ROOT).digest("hex").slice(0, 12)}:/work/node_modules`,
       // Outside the mount: pnpm would otherwise put its store beside the checkout (.pnpm-store).
       "-v",
       "livediagrams-parity-pnpm-store:/pnpm-store",

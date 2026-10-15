@@ -312,5 +312,5 @@
     "net-switch": { "sha256": "23de7dbb72699dcf30420accfa5876b36b3931d3649b3015558e5ccc871c12c6", "bytes": 561 },
     "postgresql": { "sha256": "95779d4aab758053d1839595cc9716e1eedb1021a015a00331e54268a5daf5c0", "bytes": 7732 }
   },
-  "options": { "theme": "dark", "banner": "Confidential: internal use only", "startSimulation": null, "exportedOn": "«today»" }
+  "options": { "theme": "dark", "banner": "Confidential: internal use only", "startSimulation": null, "exportedOn": "2026-01-01" }
 }

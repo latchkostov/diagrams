@@ -452,5 +452,5 @@
     "prometheus": { "sha256": "2b147486fae92dd21bfe25b3a06203ddfb3145861cd736c5a3235c020f158ee8", "bytes": 1233 },
     "redis": { "sha256": "985d03e20de4a6caf7eccc34ba6b73e2a5bab3aa1dc1b0d3e0613b5342a1e30e", "bytes": 3257 }
   },
-  "options": { "theme": "dark", "banner": "Confidential: internal use only", "startSimulation": null, "exportedOn": "«today»" }
+  "options": { "theme": "dark", "banner": "Confidential: internal use only", "startSimulation": null, "exportedOn": "2026-01-01" }
 }

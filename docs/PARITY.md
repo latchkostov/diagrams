@@ -10,10 +10,10 @@ pnpm parity            # check everything: the Node tier, then the browser tier 
 pnpm parity:node       # the Node tier alone (about 15 s)
 pnpm parity:browser    # the browser tier alone (about 45 s, a few minutes the first time)
 pnpm parity:update     # re-record the goldens and print what changed (refused on CI)
-pnpm parity sim checks # only the parity files whose path contains "sim" or "checks" (no stale check)
+pnpm parity sim checks # only parity files whose path contains "sim" or "checks", in the tiers that have one
 ```
 
-The browser tier needs Docker running (see "Browser tier"). Without it, `pnpm parity:node` still checks everything
+A filtered run skips the stale-golden check. The browser tier needs Docker running (see "Browser tier"). Without it, `pnpm parity:node` still checks everything
 that doesn't need a browser.
 
 ## What's pinned
@@ -136,7 +136,7 @@ Text measures differently on each operating system: the same build drew a card 2
 on Linux, which moves routes, labels and the fit. So the browser tier always runs in one environment:
 Playwright's own Linux image for the installed Playwright version (`mcr.microsoft.com/playwright:v<version>-noble`),
 through Docker, on a laptop and on CI alike (`scripts/parity.mjs` starts it with the checkout mounted; Linux's
-`node_modules` and pnpm store live in Docker volumes, not in the checkout). Inside it, the harness builds the
+`node_modules`, one volume per checkout, and the pnpm store live in Docker volumes, not in the checkout). Inside it, the harness builds the
 production bundle (`vite build`, no test hooks) and serves it with `vite preview` on port 6200.
 
 In that image, two runs give identical numbers and pixel-identical images, so the canvas and SVG goldens compare
