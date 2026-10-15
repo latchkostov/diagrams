@@ -15,3 +15,11 @@ it("offers the full library when a draft adds a ninth choice to eight saved diag
   expect(workChoices(saved).overflow).toBe(false);
   expect(workChoices([yours("new"), ...saved], "new").overflow).toBe(true);
 });
+it("keeps inactive shared work reachable because library overflow cannot open it", () => {
+  const saved = Array.from({ length: 9 }, (_, i) => yours(`my-${i}`));
+  const choices = workChoices([...saved, yours("shared")], "my-0");
+  expect(choices.items.map((o) => o.slug)).toEqual(["my-0", "shared", "my-1", "my-2", "my-3", "my-4", "my-5", "my-6"]);
+  expect(choices.items).toHaveLength(8);
+  expect(choices.overflow).toBe(true);
+  expect(workChoices([yours("shared"), ...saved], "shared").items.filter((o) => o.slug === "shared")).toHaveLength(1);
+});

@@ -33,7 +33,6 @@ interface Props {
   example?: string;
   onExample: (slug: string) => void;
   onBrowseExamples: () => void;
-  copyNotice?: string;
   /** Import / export / storage controller (src/interop). */
   interop: Omit<Interop, "layer">;
   /** Set while a diagram from a share link is open: offers to keep it. */
@@ -174,11 +173,6 @@ export function TopBar(p: Props) {
         />
       )}
 
-      {canvas && p.copyNotice && (
-        <div className="example-copy-notice" role="status" data-testid="example-copy-notice">
-          {p.copyNotice}
-        </div>
-      )}
       {canvas && p.shared && <SharedChip {...p.shared} />}
       {canvas && !p.shared && <SaveStatus binding={p.interop.binding} />}
 

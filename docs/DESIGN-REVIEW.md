@@ -9,6 +9,19 @@ fills. Conversion retains the existing error treatment and gives translated reco
 oversized labels. No controls or chrome were added. Production browser regressions cover the shortcut,
 contrast and existing nested movement; the accessibility, groups, clipboard, layout and interop suites pass.
 
+## Example gallery review fixes (2026-10-15)
+
+The designer agent's scoped, read-only code and test review found no blocking UX issues. The picker
+keeps eight direct choices, including the current and shared diagrams, with library overflow, New and
+Browse examples inside the existing menu budget. Hidden saved work opens through Your diagrams.
+Run it uses the translated visible action and example title for its accessible name. The noninteractive
+copy status lives inside the canvas notification stack, with action toasts above it, clear of stencil
+search and collapse controls. No global control was added.
+
+Production browser checks verify stencil-control separation, shared and overflow navigation, English
+and Arabic accessible names, and the gallery's existing theme, narrow-layout and axe checks. The
+designer review itself was a source review, not a browser or screen-reader walkthrough.
+
 ## Self-hosting review fixes (2026-10-14)
 
 Scoped source review found no blocking UX issues. Copied embed and share URLs use the prepared deployment

@@ -90,6 +90,22 @@
   remain enabled. No existing browser case is excluded.
 - Refreshed the stale offline skill viewer; plugin 1.1.20 is one patch above master.
 
+## Example gallery review fixes (2026-10-15)
+
+- Editing an example keeps its existing device or cloud Save destination. A Save that finishes after
+  the edit binds to that owned copy, even after another example session has opened.
+- Legacy example conversations, including Revert snapshots, migrate together with retained autosaves
+  to a durable session. Reloading preserves the conversation; first-edit promotion carries it into
+  Your diagrams. Legacy cloud Save bindings migrate too. A failed migration retains the source data
+  and retries later; promotion publishes a fresh example identity so other tabs reject stale writes.
+- Shared work always has a picker row, and older saved work remains reachable through Your diagrams
+  overflow. Regression tests cover both paths and starting/restarting the currently mounted example.
+- The copy notice stacks inside the canvas clear of stencil controls and action toasts. Run it includes
+  its translated visible label in its accessible name. Ordinary autosaves reuse their serialized diagram.
+- These fixes change no output goldens. The gallery feature's existing catalog golden change is described
+  in the entry below; diagram, simulation, layout, export and agent outputs remain unchanged.
+  The agent viewer is refreshed; plugin version remains 1.1.19, one patch above master.
+
 ## Example gallery (2026-10-14)
 
 - The diagram picker now focuses on Your diagrams, with New diagram and a separate Browse examples entry.

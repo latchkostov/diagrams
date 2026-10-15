@@ -1155,9 +1155,12 @@ kbd {
 
 .example-copy-notice {
   position: absolute;
-  inset-block-start: calc(100% + 8px);
-  inset-inline-start: 16px;
-  max-width: min(440px, calc(100vw - 32px));
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  width: max-content;
+  max-width: min(440px, calc(100% - 32px));
   padding: 10px 14px;
   border: 1px solid var(--line-strong);
   border-radius: 8px;

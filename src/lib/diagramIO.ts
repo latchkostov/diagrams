@@ -210,19 +210,49 @@ function promoteDraft(identity: string): string | undefined {
 // ---------------------------------------------------------------- identity and save destinations
 
 const exampleIdentities = new Map<string, string>();
+const EXAMPLE_SESSION_PREFIX = "diagrams.example-session.v1:";
+// A save picker/provider may finish after its example became an owned copy.
+const exampleCopies = new Map<string, { source: string; slug: string }>();
+
+/** Keep conversation ownership durable until the first edit transfers this session to Your diagrams. */
+function exampleIdentity(slug: string): string {
+  const key = EXAMPLE_SESSION_PREFIX + slug;
+  const stored = read<unknown>(key);
+  if (typeof stored === "string" && !exampleCopies.has(stored)) return stored;
+  const cached = exampleIdentities.get(slug);
+  const identity = cached ?? `example:${slug}:${randomHex(4)}`;
+  const legacyIdentity = `example:${slug}`;
+  const legacyThreadKey = AI_THREAD_PREFIX + legacyIdentity;
+  const legacyThread = safeStorage.getItem(legacyThreadKey);
+  const autosaveKey = AUTOSAVE_PREFIX + slug;
+  const autosave = readDiagram(autosaveKey);
+  const writes: [string, string | null][] = [[key, JSON.stringify(identity)]];
+  const bindings = read<Record<string, { sessionId: string; target: unknown }>>(BINDINGS_KEY);
+  const binding = bindings?.[slug];
+  if (binding?.sessionId === legacyIdentity && storedTarget(binding.target))
+    writes.push([BINDINGS_KEY, JSON.stringify({ ...bindings, [slug]: { ...binding, sessionId: identity } })]);
+  if (autosave)
+    writes.push([
+      autosaveKey,
+      JSON.stringify({ sessionFormat: SESSION_FORMAT, sessionId: identity, diagram: autosave }),
+    ]);
+  if (legacyThread !== null) writes.push([AI_THREAD_PREFIX + identity, legacyThread], [legacyThreadKey, null]);
+  try {
+    commitWrites(writes);
+  } catch {
+    // A failed migration keeps its source keys readable and can retry on the next visit.
+    if (legacyThread === null) exampleIdentities.set(slug, identity);
+    return legacyThread !== null ? `example:${slug}` : identity;
+  }
+  exampleIdentities.set(slug, identity);
+  return identity;
+}
 
 /** Identity changes only when this document is replaced, never when another slot changes. */
 export function getDiagramIdentity(slug: string): string {
   if (slug === DRAFT_SLUG) return draftIdentity();
   const key = slotKey(slug);
-  if (!key) {
-    let identity = exampleIdentities.get(slug);
-    if (!identity) {
-      identity = `example:${slug}:${randomHex(4)}`;
-      exampleIdentities.set(slug, identity);
-    }
-    return identity;
-  }
+  if (!key) return exampleIdentity(slug);
   const stored = read<Partial<DocumentSession>>(key);
   // Legacy slots have no binding: old separately stored destinations cannot be trusted.
   return stored?.sessionFormat === SESSION_FORMAT && typeof stored.sessionId === "string"
@@ -266,6 +296,8 @@ export function getSaveTarget(slug: string): SaveTarget | undefined {
 
 /** A completed asynchronous save may bind only the document that initiated it. */
 export function bindSaveTarget(slug: string, target: SaveTarget, expectedIdentity: string): boolean {
+  const copy = exampleCopies.get(expectedIdentity);
+  if (copy?.source === slug) slug = copy.slug;
   if (getDiagramIdentity(slug) !== expectedIdentity) return false;
   if (slug === DRAFT_SLUG) {
     // Saving a blank draft keeps it: it becomes a library entry, and the destination binds to that.
@@ -707,11 +739,16 @@ export function copyEditedExample(
           edited.title,
           readIndex().map((e) => e.title),
         );
-  const copy = createLibraryDiagram({ ...preserveUnknown(edited, source), title }, undefined, identity, {
+  const copy = createLibraryDiagram({ ...preserveUnknown(edited, source), title }, getSaveTarget(slug), identity, {
     sourceSlug: slug,
     private: newDiagramsPrivate.get(),
   });
-  exampleIdentities.set(slug, `example:${slug}:${randomHex(4)}`);
+  exampleCopies.set(identity, { source: slug, slug: copy });
+  memoryTargets.delete(slug);
+  const fresh = `example:${slug}:${randomHex(4)}`;
+  exampleIdentities.set(slug, fresh);
+  // Publish the replacement identity: another tab must reject late writes from the old source.
+  safeStorage.setItem(EXAMPLE_SESSION_PREFIX + slug, JSON.stringify(fresh));
   safeStorage.removeItem(AUTOSAVE_PREFIX + slug);
   return { slug: copy, title };
 }

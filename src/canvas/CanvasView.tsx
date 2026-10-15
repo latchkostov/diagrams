@@ -145,6 +145,7 @@ import { useBelow } from "./checks/useBelow";
 import { PresentFullscreen } from "./PresentFullscreen";
 import { useFullscreen } from "../lib/fullscreen";
 import { t as tr, useLocale } from "../i18n";
+import { CopyNotice } from "./CopyNotice";
 
 const nodeTypes: NodeTypes = canvasNodeTypes;
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
@@ -221,6 +222,7 @@ interface Props {
   /** Told the title as it's edited (the picker follows it without waiting for the autosave). */
   onTitleChange?: (title: string) => void;
   onExampleCopy?: (source: string, copy: string, title: string) => void;
+  copyNotice?: string;
   /** The exported HTML viewer (src/export/viewer): read-only, plus the options below. */
   viewer?: CanvasViewerOptions;
 }
@@ -290,6 +292,7 @@ function CanvasInner({
   start,
   onTitleChange,
   onExampleCopy,
+  copyNotice,
   viewer,
 }: Props) {
   const locale = useLocale();
@@ -605,7 +608,7 @@ function CanvasInner({
       if (readOnly) return undefined;
       const { meta, nodes, edges, slug } = latest.current;
       let d = override ?? fromFlow(meta, nodes, edges);
-      const json = JSON.stringify(d);
+      let json = JSON.stringify(d);
       if (json === lastSaved.current) return undefined;
       const mod = json !== saveBaseline.current;
       // Only the editable app promotes examples; embeds and exported viewers never save.
@@ -619,6 +622,7 @@ function CanvasInner({
             copiedExample.current = copy.slug;
             saveBaseline.current = JSON.stringify({ ...d, title: copy.title });
             d = { ...d, title: canvasTitle };
+            json = JSON.stringify(d);
             latest.current = { ...latest.current, slug: copy.slug, meta: toFlow(d).meta };
             setMeta((current) => ({ ...current, title: canvasTitle }));
             copyCallback.current(slug, copy.slug, original.title);
@@ -628,7 +632,7 @@ function CanvasInner({
           return mod;
         }
       }
-      if (writeAutosave(copiedExample.current ?? slug, mod ? d : null, identity)) lastSaved.current = JSON.stringify(d);
+      if (writeAutosave(copiedExample.current ?? slug, mod ? d : null, identity)) lastSaved.current = json;
       return mod;
     },
     [readOnly, identity, renameHistoryTitle, original.title],
@@ -2292,6 +2296,7 @@ function CanvasInner({
           onDrop={onDrop}
         >
           <EdgeMarkers />
+          {!hideChrome && copyNotice && <CopyNotice text={copyNotice} />}
           <ReactFlow<FlowNode, DiagramFlowEdge>
             nodes={ariaNodes}
             // Focus brings a node into view clear of the chrome (revealFocused above).

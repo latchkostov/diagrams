@@ -1,5 +1,79 @@
 import AxeBuilder from "@axe-core/playwright";
-import { test, expect, publicExamples, expectNoErrors, openExample, currentDiagram, pageLoadTimeout } from "./fixtures";
+import {
+  test,
+  expect,
+  publicExamples,
+  expectNoErrors,
+  openExample,
+  currentDiagram,
+  pageLoadTimeout,
+  pauseClock,
+} from "./fixtures";
+
+import type { Page } from "@playwright/test";
+
+async function seedWork(page: Page, shared = false) {
+  await page.addInitScript((shared) => {
+    const entries = Array.from({ length: 9 }, (_, i) => {
+      const slug = `my-${String(i).padStart(6, "0")}`;
+      const title = `Saved work ${i}`;
+      const diagram = {
+        format: "diagrams/v1",
+        title,
+        nodes: [{ id: "worker", stencil: "generic.service", label: "Worker", x: 0, y: 0 }],
+        edges: [],
+      };
+      localStorage.setItem(`diagrams.doc.v1:${slug.slice(3)}`, JSON.stringify(diagram));
+      if (shared && i === 0)
+        localStorage.setItem("diagrams.shared.v1", JSON.stringify({ ...diagram, title: "Shared work" }));
+      return { slug, title, createdAt: i, updatedAt: i, nodes: 1 };
+    });
+    localStorage.setItem("diagrams.library.v1", JSON.stringify({ format: "diagrams/library/v1", entries }));
+  }, shared);
+}
+
+test("opens older saved work through picker overflow", async ({ page }) => {
+  await seedWork(page);
+  await page.goto("./");
+  await expect(page.getByTestId("diagram-title")).toHaveText("Saved work 8");
+  await openExample(page, "my-000000");
+  await expect(page.getByTestId("diagram-title")).toHaveText("Saved work 0");
+  expect(await currentDiagram(page)).toBe("my-000000");
+});
+
+test("inactive shared work stays reachable with an overflowing library", async ({ page }) => {
+  await seedWork(page, true);
+  await page.goto("./");
+  await expect(page.getByTestId("diagram-title")).toHaveText("Saved work 8");
+  await openExample(page, "shared");
+  await expect(page.getByTestId("diagram-title")).toHaveText("Shared work");
+  expect(await currentDiagram(page)).toBe("shared");
+});
+
+test("ordinary autosaves serialize the diagram once and reuse that result", async ({ page }) => {
+  await seedWork(page);
+  await page.goto("./");
+  await page.getByTestId("node-worker").click();
+  await page.clock.install();
+  await pauseClock(page);
+  await page.getByTestId("inspector-field-label").fill("Edited worker");
+  const serializations = await page.evaluate(() => {
+    const stringify = JSON.stringify;
+    let calls = 0;
+    JSON.stringify = function (...args: Parameters<typeof stringify>) {
+      const value = args[0] as { format?: string; title?: string } | null;
+      if (value?.format === "diagrams/v1" && value.title === "Saved work 8") calls++;
+      return stringify(...args);
+    };
+    try {
+      window.dispatchEvent(new PageTransitionEvent("pagehide"));
+      return calls;
+    } finally {
+      JSON.stringify = stringify;
+    }
+  });
+  expect(serializations).toBe(1);
+});
 
 /** Every public example's intended theme, in display order (src/examples/themes.ts and index.ts). */
 const BY_THEME: Record<string, string[]> = {
@@ -84,6 +158,56 @@ test("start card opens the gallery; feature filter and Run it start a saved simu
   await expect(page).toHaveURL(/live=1/);
   expectNoErrors(consoleErrors);
 });
+
+test("Run it starts and restarts the currently open example", async ({ page }) => {
+  await page.goto(`./?example=${SLUG}`);
+  await expect(page.getByTestId("example-badge")).toBeVisible();
+  await page.clock.install();
+  await pauseClock(page);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await page.getByTestId("example-picker").click();
+    await page.getByTestId("picker-browse-examples").click();
+    await page.getByTestId(`example-run-${SLUG}`).click();
+    await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
+    await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+    await expect(page.getByTestId("live-clock")).toHaveAttribute("data-ms", "0");
+    await page.clock.runFor(1000);
+    await expect
+      .poll(async () => Number(await page.getByTestId("live-clock").getAttribute("data-ms")))
+      .toBeGreaterThan(0);
+    await page.getByTestId("live-play").click();
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
+  }
+});
+
+test("copy notice stays clear of expanded stencil controls", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(`./?example=${SLUG}`);
+  await page.getByTestId("node-shopper").click();
+  await page.getByTestId("inspector-field-label").fill("My storefront");
+  const notice = page.getByTestId("example-copy-notice");
+  await expect(notice).toBeVisible();
+  const search = page.getByTestId("palette-search");
+  if (!(await search.isVisible())) await page.getByTestId("palette-toggle").click();
+  await expect(search).toBeVisible();
+  for (const control of [search, page.getByTestId("palette-toggle")]) {
+    const a = await notice.boundingBox();
+    const b = await control.boundingBox();
+    if (!a || !b) throw new Error("Missing notification or stencil control");
+    expect(a.x >= b.x + b.width || b.x >= a.x + a.width || a.y >= b.y + b.height || b.y >= a.y + a.height).toBe(true);
+  }
+});
+
+for (const locale of ["en", "ar"])
+  test(`Run it includes its visible action in the accessible name: ${locale}`, async ({ page }) => {
+    await page.addInitScript((locale) => localStorage.setItem("diagrams.locale", locale), locale);
+    await page.goto("./");
+    await page.getByTestId("start-all-examples").click();
+    const run = page.getByTestId(`example-run-${SLUG}`);
+    await expect(run).toBeVisible();
+    await expect(run).toHaveAccessibleName(`${await run.innerText()} Kafka order pipeline`);
+  });
 
 test("first edit creates your named copy, preserves undo and leaves the deep-linked example pristine", async ({
   page,

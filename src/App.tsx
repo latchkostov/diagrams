@@ -447,7 +447,6 @@ function MainApp() {
           onView={goTo}
           exampleOptions={options}
           example={targetSlug}
-          copyNotice={copyNotice ? t("fileToast.savedACopyOfValue0ToYour", { value0: copyNotice }) : undefined}
           onExample={(example) => setUrl({ example })}
           onBrowseExamples={() => setExamplesOpen(true)}
           interop={interop}
@@ -485,6 +484,7 @@ function MainApp() {
                   onExitPresent={() => setUrl({ present: false })}
                   start={start}
                   onTitleChange={onTitleChange}
+                  copyNotice={copyNotice ? t("fileToast.savedACopyOfValue0ToYour", { value0: copyNotice }) : undefined}
                   onExampleCopy={
                     examples.some((e) => e.slug === slug)
                       ? (source, copy, title) => {

@@ -132,9 +132,9 @@ export function ExamplesDialog({
                           data-example-action
                           onKeyDownCapture={navigate}
                           onClick={() => onOpen(ex.slug, ex.simulation)}
-                          aria-label={t("examples.runNamed", { title: ex.title })}
+                          aria-labelledby={`example-run-label-${ex.slug} example-title-${ex.slug}`}
                         >
-                          {t("examples.run")}
+                          <span id={`example-run-label-${ex.slug}`}>{t("examples.run")}</span>
                         </button>
                       )}
                     </div>

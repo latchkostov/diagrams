@@ -626,6 +626,110 @@ it("Your diagrams keep relationships and settings through save, autosave and dup
 });
 
 describe("first example edit", () => {
+  it("publishes a fresh source identity to another tab after promotion", async () => {
+    const { loadExample } = await import("../examples");
+    const source = "kafka-order-pipeline";
+    const original = await loadExample(source);
+    const identity = io.getDiagramIdentity(source);
+    vi.resetModules();
+    const otherTab = await import("./diagramIO");
+    await (await import("../examples")).loadExample(source);
+    expect(otherTab.getDiagramIdentity(source)).toBe(identity);
+    const copy = otherTab.copyEditedExample(source, original, identity)!;
+    expect(io.getDiagramIdentity(source)).not.toBe(identity);
+    expect(io.getDiagramIdentity(copy.slug)).toBe(identity);
+    expect(io.writeAutosave(source, good, identity)).toBe(false);
+  });
+  it("migrates a legacy cloud Save binding with its example conversation and owned copy", async () => {
+    const { loadExample } = await import("../examples");
+    const source = "kafka-order-pipeline";
+    const original = await loadExample(source);
+    const target = { providerId: "gdrive", ref: { id: "legacy-file" }, name: "Existing file" };
+    storage.setItem("diagrams.bindings.v1", JSON.stringify({ [source]: { sessionId: `example:${source}`, target } }));
+    const identity = io.getDiagramIdentity(source);
+    expect(io.getSaveTarget(source)).toEqual(target);
+    const copy = io.copyEditedExample(source, original, identity)!;
+    expect(io.getSaveTarget(copy.slug)).toEqual(target);
+    expect(io.getSaveTarget(source)).toBeUndefined();
+  });
+  it.each([device, { providerId: "gdrive", ref: { id: "saved-example" }, name: "Saved example" }])(
+    "transfers a completed $providerId Save destination to the owned copy",
+    async (target) => {
+      const { loadExample } = await import("../examples");
+      const source = "kafka-order-pipeline";
+      const original = await loadExample(source);
+      const identity = io.getDiagramIdentity(source);
+      expect(io.bindSaveTarget(source, target, identity)).toBe(true);
+      const copy = io.copyEditedExample(source, original, identity)!;
+      expect(io.getSaveTarget(copy.slug)).toEqual(target);
+      if (target.providerId === "device") expect(io.getSaveTarget(copy.slug)?.ref).toBe(handle);
+      expect(io.getSaveTarget(source)).toBeUndefined();
+    },
+  );
+  it("routes saves that finish after promotion to their own copy, never a reopened example", async () => {
+    const { loadExample } = await import("../examples");
+    const source = "kafka-order-pipeline";
+    const original = await loadExample(source);
+    const identity = io.getDiagramIdentity(source);
+    const copy = io.copyEditedExample(source, original, identity)!;
+    const nextIdentity = io.getDiagramIdentity(source);
+    const nextCopy = io.copyEditedExample(source, original, nextIdentity)!;
+    expect(io.bindSaveTarget(source, device, identity)).toBe(true);
+    expect(io.getSaveTarget(copy.slug)).toEqual(device);
+    expect(io.getSaveTarget(nextCopy.slug)).toBeUndefined();
+    io.deleteLibraryDiagram(copy.slug);
+    expect(io.bindSaveTarget(source, device, identity)).toBe(false);
+  });
+  it.each([true, false])(
+    "migrates legacy conversations and snapshots (autosave: %s) across reload and promotion",
+    async (withAutosave) => {
+      const { loadExample } = await import("../examples");
+      const { loadThread } = await import("../ai/ui/thread");
+      const source = "kafka-order-pipeline";
+      const original = await loadExample(source);
+      const edited = { ...original, title: "My retained work" };
+      const thread = {
+        turns: [{ id: "old-turn", at: 1, request: "Keep this", kind: "change", changed: [], after: edited }],
+      };
+      const oldKey = `diagrams.ai-thread.v1:example:${source}`;
+      const autosaveKey = `diagrams.autosave.v1:${source}`;
+      storage.setItem(oldKey, JSON.stringify(thread));
+      if (withAutosave) storage.setItem(autosaveKey, JSON.stringify(edited));
+      const identity = io.getDiagramIdentity(source);
+      expect(loadThread(identity)).toEqual(thread.turns);
+      expect(storage.getItem(oldKey)).toBeNull();
+      if (withAutosave) expect(io.getCurrent(source)).toEqual(edited);
+      vi.resetModules();
+      const reopened = await import("./diagramIO");
+      await (await import("../examples")).loadExample(source);
+      expect(reopened.getDiagramIdentity(source)).toBe(identity);
+      const copy = reopened.copyEditedExample(source, edited, identity)!;
+      expect(loadThread(reopened.getDiagramIdentity(copy.slug))).toEqual(thread.turns);
+      expect(storage.getItem(autosaveKey)).toBeNull();
+      expect(loadThread(reopened.getDiagramIdentity(source))).toEqual([]);
+      expect(reopened.getCurrent(source)).toEqual(original);
+    },
+  );
+  it("retains legacy source keys when conversation migration runs out of storage, then retries", async () => {
+    const source = "kafka-order-pipeline";
+    const oldKey = `diagrams.ai-thread.v1:example:${source}`;
+    const autosaveKey = `diagrams.autosave.v1:${source}`;
+    const thread = JSON.stringify({ turns: [{ id: "kept", request: "Keep me", kind: "explain", changed: [] }] });
+    storage.setItem(oldKey, thread);
+    storage.setItem(autosaveKey, JSON.stringify(good));
+    storage.beforeWrite = (key) => {
+      if (key.startsWith("diagrams.ai-thread.v1:example:") && key !== oldKey) storage.failKey = key;
+    };
+    expect(io.getDiagramIdentity(source)).toBe(`example:${source}`);
+    expect(storage.getItem(oldKey)).toBe(thread);
+    expect(storage.getItem(autosaveKey)).toBe(JSON.stringify(good));
+    storage.beforeWrite = undefined;
+    storage.failKey = undefined;
+    const identity = io.getDiagramIdentity(source);
+    expect(identity).not.toBe(`example:${source}`);
+    expect(storage.getItem(`diagrams.ai-thread.v1:${identity}`)).toBe(thread);
+    expect(io.getCurrent(source)?.title).toBe("Good");
+  });
   it("creates a named copy with the same canvas identity and leaves a fresh original", async () => {
     const { loadExample } = await import("../examples");
     const source = "kafka-order-pipeline";

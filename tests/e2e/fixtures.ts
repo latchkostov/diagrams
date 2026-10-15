@@ -338,6 +338,10 @@ export async function openExample(page: Page, slug: string) {
   const own = page.getByTestId(`picker-option-${slug}`);
   if (await own.count()) return own.click();
   if (slug === "new") return page.getByTestId("picker-new").click();
+  if (slug === "imported" || /^my-[a-z0-9]{6,32}$/.test(slug)) {
+    await page.getByTestId("picker-library").click();
+    return page.getByTestId(`library-open-${slug}`).click();
+  }
   await page.getByTestId("picker-browse-examples").click();
   await page.getByTestId("examples-search").fill(slug);
   await page.getByTestId(`example-open-${slug}`).click();
