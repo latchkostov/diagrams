@@ -5,7 +5,7 @@ import "../styles/capacity.css";
 import type { DiagramFile, Simulation } from "../model/types";
 import type { EditorApi } from "../editor/types";
 import { isEditableTarget } from "../editor/shortcuts";
-import { useLiveHost } from "../palette/host";
+import { paletteHost, useLiveHost } from "../palette/host";
 import { lazyComponent, whenIdle } from "../lib/lazyLoad";
 import { readLiveParams, writeLiveParams, type LiveParams } from "./urlParams";
 import { capacityOverlay, useCapacityOverlay } from "./capacityOverlay";
@@ -92,7 +92,10 @@ export function LiveView(props: LiveViewProps) {
   }));
   const [live, setLive] = useState(enabled && (params.live || !!props.alwaysOn));
   const [firstSession, setFirstSession] = useState(true);
-  const toggle = useCallback(() => setLive((l) => !l), []);
+  const toggle = useCallback(() => {
+    paletteHost.cancelRun();
+    setLive((l) => !l);
+  }, []);
   const goLive = useCallback(() => setLive(true), []);
   // "Toggle live" and "Run simulation" in the command palette.
   useLiveHost(toggle, goLive, enabled && !props.alwaysOn && !!props.editor);
@@ -190,7 +193,10 @@ export function LiveView(props: LiveViewProps) {
         <LiveSession
           {...props}
           params={firstSession ? params : { ...params, live: true, sim: null, speed: null, paused: false }}
-          onExit={() => setLive(false)}
+          onExit={() => {
+            paletteHost.cancelRun();
+            setLive(false);
+          }}
           onSession={props.onHandle ? setSession : undefined}
         />
       )}

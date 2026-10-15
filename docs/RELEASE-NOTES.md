@@ -1,5 +1,14 @@
 # Release notes
 
+## Gallery launch and Save follow-ups (#118, 2026-10-15)
+
+- Returning to editing cancels a simulation queued while Live downloads. Host publication only
+  consumes a ready request; the matching owner activates Live once per launch.
+- Regression coverage now makes cancelled requests consumable and checks fresh Save destinations
+  after leaving an unedited example, including late picker completion and the reopened copy.
+  Existing unmount cleanup was correct and is retained.
+- Production gallery/picker/interop checks and deliberate reversions pass. No parity golden changes.
+
 ## Example gallery integration with master (#118, 2026-10-15)
 
 - Rebased the gallery onto nested boundaries and zones (#115), the six showcases (#120) and the

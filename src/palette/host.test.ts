@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { placeNextTo } from "./canvasHost";
-import { paletteHost, publish } from "./host";
+import { paletteHost, publish, type CanvasHost } from "./host";
 
 const box = (x: number, y: number, width = 100, height = 50) => ({ x, y, width, height });
 
@@ -62,10 +62,34 @@ it("a newer gallery request supersedes a palette run during session loading", ()
   expect(run.mock.calls).toEqual([["gallery-run"]]);
   expect(paletteHost.get().pendingRun).toBeNull();
 });
-it("cancels a document-scoped gallery request before an unrelated session publishes", () => {
+it("a cancelled run cannot execute when its target publishes", () => {
   paletteHost.reset();
   paletteHost.runSimulation("gallery-run", "example:target");
   paletteHost.cancelRun();
+  const run = vi.fn();
+  publish("canvas", { documentId: "example:target", live: false } as CanvasHost);
+  publish("live", { toggle: vi.fn(), goLive: vi.fn() });
+  paletteHost.activateRun();
+  publish("session", { run });
+  expect(paletteHost.get().pendingRun).toBeNull();
+  expect(run).not.toHaveBeenCalled();
+});
+
+it("host publications never activate Live; the matching owner activates once", () => {
+  paletteHost.reset();
+  paletteHost.runSimulation("peak", "example:target");
+  const canvas = { documentId: "example:target", live: false } as CanvasHost;
+  const goLive = vi.fn();
+  publish("canvas", canvas);
+  publish("live", { toggle: vi.fn(), goLive });
+  expect(goLive).not.toHaveBeenCalled();
+  paletteHost.activateRun();
+  publish("canvas", { ...canvas, live: true });
+  paletteHost.activateRun();
+  expect(goLive).toHaveBeenCalledTimes(1);
+  paletteHost.cancelRun();
+  publish("canvas", canvas);
+  paletteHost.activateRun();
   const run = vi.fn();
   publish("session", { run });
   expect(run).not.toHaveBeenCalled();
