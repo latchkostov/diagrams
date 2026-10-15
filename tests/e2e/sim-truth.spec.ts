@@ -488,15 +488,31 @@ test("the continuous source volume budget announces its stop and Restart clears 
   page,
   consoleErrors,
 }) => {
+  // Explicit CPU stress stretches wall time, while the simulation still uses the page clock.
+  test.slow(!!process.env.SIM_TRUTH_CPU);
   await page.clock.install();
   await seed(page, simReviewTrafficFixture(10_000));
   await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1&sim=budget&paused=1&speed=8`);
   await pauseClock(page);
+  if (process.env.SIM_TRUTH_CPU) {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: Number(process.env.SIM_TRUTH_CPU) });
+  }
   await page.getByTestId("live-more").click();
   await page.getByTestId("live-traffic").click();
   await page.getByTestId("live-play").click();
-  // Advance the fake clock through 200,000 samples at 10,000/s and 8x playback, plus a publication.
-  await page.clock.runFor(((200_000 / 10_000) * 1_000) / 8 + 100);
+  // The frame and UI publication clocks need not line up with the source's 200,000th sample.
+  // Step until the published count reaches the stop, leaving the clock paused for the notice:
+  // each step is shorter than its lifetime, so the step that shows it cannot dismiss it too.
+  await expect
+    .poll(
+      async () => {
+        await page.clock.runFor(250);
+        return processed(page, "web");
+      },
+      { intervals: [0], timeout: test.info().timeout },
+    )
+    .toBe(200_000);
   await expect(page.getByTestId("live-notice")).toContainText("200,000 sampled-message budget");
   await expect(page.getByTestId("node-badge-web")).toHaveAttribute("data-processed", "200000");
   await page.getByTestId("live-more").click();

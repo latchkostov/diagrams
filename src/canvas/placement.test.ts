@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
+import { countingReads, growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 import {
   boundsOf,
   clearOffset,
@@ -235,15 +235,20 @@ describe("findClearTranslation (the one free-place search)", () => {
   });
 
   it("indexes obstacles once: hundreds of boxes against thousands of far obstacles stay fast", () => {
-    // Eight times the boxes and the far obstacles against an eighth: indexed once, about 8 times the work; each box
-    // tested against every obstacle, 64. A ratio, not a budget in ms.
+    // Count reads of both boxes and obstacles: once per search grows 8x with the scene;
+    // scanning or indexing all obstacles per box grows 64x, without a timing measurement.
     const scene = (n: number) => {
-      const boxes = Array.from({ length: n }, (_, i) => box((i % 20) * 300, Math.floor(i / 20) * 200));
+      const boxes = countingReads(Array.from({ length: n }, (_, i) => box((i % 20) * 300, Math.floor(i / 20) * 200)));
       const far = Array.from({ length: n * 25 }, (_, i) => box(50_000 + (i % 100) * 300, (i / 100) * 200));
       const blocker = box(-100, -100, 7000, 400);
-      return () => findClearTranslation(boxes, [...far, blocker]);
+      const obstacles = countingReads([...far, blocker]);
+      expect(findClearTranslation(boxes.items, obstacles.items)).not.toBeNull();
+      // The reach filter scans the input once; placements then query only the nearby index.
+      expect(obstacles.reads()).toBe(far.length + 1);
+      return boxes.reads() + obstacles.reads();
     };
-    expect(scene(200)()).not.toBeNull();
-    expect(growth(scene(25), scene(25 * GROWTH_FACTOR))).toBeLessThan(LINEAR_LIMIT);
+    const small = scene(25);
+    expect(small).toBeGreaterThan(0);
+    expect(scene(25 * GROWTH_FACTOR) / small).toBeLessThan(LINEAR_LIMIT);
   });
 });

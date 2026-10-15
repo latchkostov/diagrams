@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
+import { GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 import {
   BOUNDARY_LABEL_ROOM,
   BOUNDARY_PAD,
@@ -230,19 +230,27 @@ describe("Tidy up's boundary check (planKeep)", () => {
 
 describe("the drag's preview stays within a frame on a big diagram", () => {
   it("5,000 members of one boundary, moved together, in linear time", () => {
-    // Against an eighth of the members: linear is about 8 times the work, a pass over every pair 64. A ratio, not a
-    // frame's 16 ms, so a busy machine (CI with coverage) doesn't fail it.
+    // Count member property reads, including passes over internal buckets of those members.
+    // At 8x size, a pass over every pair costs 64x; grouping once stays linear under coverage too.
     const big: GroupRect = { id: "big", x: 0, y: 0, width: 100_000, height: 100_000 };
     const moving = (n: number) =>
       Array.from({ length: n }, (_, i) => card(`n${i}`, (i % 100) * 300, Math.floor(i / 100) * 200, "big"));
-    const small = moving(625);
-    const large = moving(625 * GROWTH_FACTOR);
-    expect(previewMembership(large, [big], []).get("big")).toBe("hold");
-    expect(
-      growth(
-        () => previewMembership(small, [big], []),
-        () => previewMembership(large, [big], []),
-      ),
-    ).toBeLessThan(LINEAR_LIMIT);
+    const reads = (n: number) => {
+      let count = 0;
+      const members = moving(n).map(
+        (member) =>
+          new Proxy(member, {
+            get(target, key, receiver) {
+              count++;
+              return Reflect.get(target, key, receiver) as unknown;
+            },
+          }),
+      );
+      expect(previewMembership(members, [big], []).get("big")).toBe("hold");
+      return count;
+    };
+    const small = reads(625);
+    expect(small).toBeGreaterThan(0);
+    expect(reads(625 * GROWTH_FACTOR) / small).toBeLessThan(LINEAR_LIMIT);
   });
 });

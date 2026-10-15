@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { guideIndex, nudgeOnGrid, snapMove, type Box, type SnapOptions } from "./guides";
-import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
+import { countingReads, growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 
 const card = (x: number, y: number, width = 120, height = 40): Box => ({ x, y, width, height });
 const opts: SnapOptions = { threshold: 6, reach: 600, guides: true, grid: 10 };
@@ -157,18 +157,20 @@ describe("guideIndex", () => {
   });
 
   it("snaps each move in linear time: no pass over every pair of nodes", () => {
-    // A move reads the cards along its lines and the gaps between neighbours: eight times the cards, about eight
-    // times the work per move. Comparing every pair of cards to find equal gaps would be sixty-four. A ratio, not
-    // the old "under a millisecond", so a busy machine doesn't fail it.
-    const small = guideIndex(grid(150));
-    const large = guideIndex(grid(150 * GROWTH_FACTOR));
-    expect(
-      growth(
-        () => drag(small),
-        () => drag(large),
-        { samples: 3 },
-      ),
-    ).toBeLessThan(LINEAR_LIMIT);
+    // Count the cards and sorted lines read across the same drag, including lazy neighbour searches.
+    // Comparing every pair instead would grow 64x at 8x size, independent of coverage overhead.
+    const reads = (n: number) => {
+      const boxes = countingReads(grid(n));
+      const index = guideIndex(boxes.items);
+      const xs = countingReads([...index.xs]);
+      const ys = countingReads([...index.ys]);
+      const before = boxes.reads();
+      drag({ ...index, xs: xs.items, ys: ys.items });
+      return boxes.reads() - before + xs.reads() + ys.reads();
+    };
+    const small = reads(150);
+    expect(small).toBeGreaterThan(0);
+    expect(reads(150 * GROWTH_FACTOR) / small).toBeLessThan(LINEAR_LIMIT);
   });
 });
 
