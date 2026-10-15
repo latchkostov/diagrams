@@ -211,7 +211,9 @@ a production build, at a CPU and network throttle (`--cold`: each on a fresh pag
 `src/sim/resourceInvariants.ts` is an opt-in ownership oracle. Ordinary playback does not execute it.
 `autoscaling.invariants.test.ts` checks every internal 10 ms simulation step across 200 deterministic
 small diagrams/event sequences: bursts, broker retries and refusals, pause/resume, live resource
-removal/re-enabling, concurrency edits, HPA edits and fractional downscale. It independently counts ready/starting/draining
+removal/re-enabling, concurrency edits (including saturated lowering/replacement attempts), HPA edits and fractional downscale.
+Refused timeline actions are a no-op: runner and engine state stay identical, and the next successful
+step matches a checkpoint replay without the refused attempt. It independently counts ready/starting/draining
 identities, checks reservations against live attempts, exact-fleet baseline plus in-flight memory,
 queued/staged cleanup, finite metrics, preserved paused deadlines and the run-wide sampled CPU-part
 budget. Sampled memory is a declared time-integrated estimate; its numerical state must stay finite,

@@ -348,9 +348,15 @@ export class LiveController {
         const before = time();
         if (runner) {
           if (runner.state().done) return false;
-          // Several pausing notes can share a moment: pass them all before stepping.
-          for (let guard = 0; runner.state().waiting && guard < 1000; guard++) runner.resume();
-          runner.step(simMs / this.speed);
+          try {
+            // Several pausing notes can share a moment: pass them all before stepping.
+            for (let guard = 0; runner.state().waiting && guard < 1000; guard++) runner.resume();
+            runner.step(simMs / this.speed);
+          } catch (error) {
+            if (!(error instanceof LifecycleBudgetError)) throw error;
+            // Stop the forecast; its caller restores the sandbox before publishing anything.
+            return false;
+          }
         } else engine.step(simMs / this.speed);
         return time() > before;
       },
@@ -399,7 +405,7 @@ export class LiveController {
   advance(wallMs: number): void {
     if (!this.playing || this.held || this.replayTarget !== null || !(wallMs > 0)) return;
     if (this.runner) {
-      if (!this.advanceRunner(wallMs)) return;
+      if (!this.updateRunner(() => this.runner?.step(wallMs))) return;
       this.captureCheckpoint();
       this.dirty = true;
       this.snapshot();
@@ -413,9 +419,9 @@ export class LiveController {
     }
   }
   /** A refused timeline edit leaves the previous fleet intact and the session renderable. */
-  private advanceRunner(wallMs: number): boolean {
+  private updateRunner(update: () => void): boolean {
     try {
-      this.runner?.step(wallMs);
+      update();
       return true;
     } catch (error) {
       if (!(error instanceof LifecycleBudgetError)) throw error;
@@ -471,7 +477,7 @@ export class LiveController {
     const wall = simMs / this.speed;
     if (this.runner) {
       if (this.runState?.waiting || this.runState?.done) return;
-      if (!this.advanceRunner(wall)) return;
+      if (!this.updateRunner(() => this.runner?.step(wall))) return;
       this.captureCheckpoint();
     } else this.engine.step(wall);
     this.dirty = true;
@@ -481,7 +487,7 @@ export class LiveController {
   /** Continue after a pausing note. */
   resume(): void {
     if (this.held) return;
-    this.runner?.resume();
+    if (!this.updateRunner(() => this.runner?.resume())) return;
     this.dirty = true;
     this.publish();
   }
@@ -525,11 +531,11 @@ export class LiveController {
       const s = this.runner.state();
       if (s.done || s.time >= target - 5) break;
       if (s.waiting) {
-        this.runner.resume();
+        if (!this.updateRunner(() => this.runner?.resume())) return;
         continue;
       }
       const before = s.time;
-      if (!this.advanceRunner(Math.min(1000, target - s.time) / this.speed)) return;
+      if (!this.updateRunner(() => this.runner?.step(Math.min(1000, target - s.time) / this.speed))) return;
       this.captureCheckpoint();
       if (this.runner.state().time <= before && !this.runner.state().waiting) break;
     }

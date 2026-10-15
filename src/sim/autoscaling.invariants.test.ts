@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import * as resourceBudgets from "../model/resourceBudget";
+import { createSimulationRun } from "./simulation";
+import { describe, expect, it, vi } from "vitest";
 import type { DiagramFile } from "../model/types";
 import type { NodeSimProps, NodeStatus } from "./types";
 import { hpaLesson, resourceLesson } from "../model/autoscaling";
@@ -10,6 +12,7 @@ import { analyzeCapacity } from "./capacity";
 import { resolveNodeProps } from "./defaults";
 
 type Action = { ms: number } & (
+  | { do: "refuse" }
   | { do: "burst"; count: number }
   | { do: "status"; status: NodeStatus }
   | { do: "props"; props: NodeSimProps; unset?: string[] }
@@ -76,10 +79,19 @@ function generate(seed: number) {
     d.nodes.push(node);
     d.edges.push({ ...d.edges[0], id: `extra-edge-${i}`, to: node.id });
   }
-  const actions: Action[] = [];
+  // Saturate at the old concurrency before lowering it; subsequent bursts try replacements.
+  const actions: Action[] = [
+    { do: "props", props: { concurrency: 4 }, ms: 10 },
+    { do: "burst", count: 20, ms: 30 },
+    { do: "props", props: { concurrency: 1 }, ms: 100 },
+    { do: "burst", count: 8, ms: 100 },
+  ];
   for (let i = 0; i < 70; i++) {
     const ms = pick([10, 30, 100, 300]);
-    switch (pick([0, 1, 2, 3, 4, 5, 6, 7, 8])) {
+    switch (pick([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])) {
+      case 9:
+        actions.push({ do: "refuse", ms });
+        break;
       case 0:
       case 1:
         actions.push({ do: "burst", count: pick([1, 3, 8, 20]), ms });
@@ -131,7 +143,19 @@ function generate(seed: number) {
 function replay(d: DiagramFile, seed: number, scale: number, actions: Action[]) {
   try {
     const e = createEngine({ seed, scale, verifyResources: assertResourceInvariants });
-    e.load(d);
+    let at = 0;
+    const timeline = actions.flatMap((a) => {
+      const time = at + 10;
+      at += a.ms;
+      return a.do === "refuse"
+        ? [{ atMs: time, action: { do: "props" as const, node: "worker", props: { concurrency: 2 } } }]
+        : [];
+    });
+    const run = createSimulationRun(
+      d,
+      { id: "fuzz", title: "Fuzz", seed, scale, durationMs: at + 1000, traffic: [], timeline },
+      { engine: e },
+    );
     const checkCapacity = () => {
       const configuration = e.configuration();
       const current = { ...d, nodes: d.nodes.map((n) => ({ ...n, props: configuration[n.id] })) };
@@ -151,12 +175,29 @@ function replay(d: DiagramFile, seed: number, scale: number, actions: Action[]) 
     for (const action of actions) {
       if (action.do === "burst") e.inject("source", action.count);
       else if (action.do === "status") e.setNodeStatus("worker", action.status);
-      else
+      else if (action.do === "props")
         e.setNodeProps("worker", {
           ...action.props,
           ...Object.fromEntries((action.unset ?? []).map((key) => [key, undefined])),
         });
-      e.step(action.ms); // The diagnostic runs after EVERY internal 10 ms step.
+      if (action.do === "refuse") {
+        const cp = run.checkpoint(),
+          before = e.snapshot(),
+          state = run.state();
+        const budget = vi.spyOn(resourceBudgets, "resourceBudgetExceeded").mockReturnValueOnce(true);
+        try {
+          expect(() => run.step(action.ms)).toThrow(resourceBudgets.LifecycleBudgetError);
+        } finally {
+          budget.mockRestore();
+        }
+        expect(run.state(), "refusal changes runner state").toEqual(state);
+        expect(e.snapshot(), "refusal changes engine state").toEqual(before);
+        run.step(action.ms);
+        const next = { state: run.state(), snapshot: e.snapshot() };
+        run.restore(cp);
+        run.step(action.ms);
+        expect({ state: run.state(), snapshot: e.snapshot() }, "refusal changes next step").toEqual(next);
+      } else run.step(action.ms); // The diagnostic runs after EVERY internal 10 ms step.
       checkCapacity();
     }
     return undefined;

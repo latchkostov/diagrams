@@ -65,7 +65,7 @@ function setup(marks: EdgeMark[] = [], diagram: DiagramFile = BASE) {
     setEdges: (u: Parameters<EditorDeps["setEdges"]>[0]) =>
       void queue.push(() => (edges = typeof u === "function" ? u(edges) : u)),
   } as unknown as EditorDeps;
-  const { api } = createEditor(rf, deps);
+  const { api } = createEditor(rf, deps, { getNodes: () => nodes, getEdges: () => edges });
   const boxOf = (id: string): Box => {
     const n = nodes.find((x) => x.id === id);
     if (!n) throw new Error(`no node ${id}`);
@@ -87,6 +87,21 @@ describe("the next node (Alt+arrow, the +)", () => {
     t.api.updateNode("a", { x: before.x + 10 });
     t.commit();
     expect(t.nodes().find((n) => n.id === "a")!.position).toEqual({ x: before.x + 10, y: before.y });
+  });
+  it("staged edits preserve every untouched node and edge identity", () => {
+    const d = structuredClone(BASE);
+    d.edges.push({ id: "ha", from: "hub", to: "a", kind: "async" });
+    const t = setup([], d);
+    const nodes = t.nodes(),
+      edges = t.edges();
+    t.api.updateNode("a", { label: "Orders" });
+    t.api.updateNode("b", { label: "Database" });
+    t.api.updateEdge("ab", { label: "stores" });
+    t.commit();
+    expect(t.nodes()[0]).toBe(nodes[0]);
+    expect(t.nodes()[1].data).toMatchObject({ label: "Orders" });
+    expect(t.nodes()[2].data).toMatchObject({ label: "Database" });
+    expect(t.edges()[1]).toBe(edges[1]);
   });
   it("lands one gap that way, connected from the node for → and ↓, into it for ← and ↑", () => {
     const hub = { x: 1000, y: 400, width: 220, height: 72 };

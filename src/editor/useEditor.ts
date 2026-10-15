@@ -5,7 +5,7 @@ import { annotationGeometryMessage, relationChangeMessage } from "./editMessages
 import { useLayoutEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { createResourceValidator } from "../model/resourceValidation";
 import { newPlanningProps } from "../model/planning";
-import { useReactFlow, type ReactFlowInstance } from "@xyflow/react";
+import { useReactFlow, useStoreApi, type ReactFlowInstance } from "@xyflow/react";
 import { flushSync } from "react-dom";
 import {
   annotationToFlow,
@@ -187,7 +187,13 @@ export interface EditorDeps {
 
 export function useEditor(deps: EditorDeps): EditorApi {
   const rf = useReactFlow<FlowNode, DiagramFlowEdge>();
-  const [editor] = useState(() => createEditor(rf, deps));
+  const store = useStoreApi<FlowNode, DiagramFlowEdge>();
+  const [editor] = useState(() =>
+    createEditor(rf, deps, {
+      getNodes: () => store.getState().nodes,
+      getEdges: () => store.getState().edges,
+    }),
+  );
   useLayoutEffect(() => {
     editor.updateDeps(rf, deps);
   });
@@ -215,14 +221,18 @@ function withGroup(n: FlowNode, group: string | undefined): FlowNode {
   return n;
 }
 
-export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, initialDeps: EditorDeps) {
+export function createEditor(
+  rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>,
+  initialDeps: EditorDeps,
+  committed: Pick<ReactFlowInstance<FlowNode, DiagramFlowEdge>, "getNodes" | "getEdges"> = rf,
+) {
   let latest = initialDeps;
   // Stage editor updates in call order: React's node/edge queues may commit independently later.
   let stagedNodes: FlowNode[] | undefined;
   let stagedEdges: DiagramFlowEdge[] | undefined;
-  // React Flow's getters clone their results. A render, not array identity, ends the batch.
-  const currentNodes = () => stagedNodes ?? rf.getNodes();
-  const currentEdges = () => stagedEdges ?? rf.getEdges();
+  // Read the store arrays: React Flow's public getters clone every element. A render ends the batch.
+  const currentNodes = () => stagedNodes ?? committed.getNodes();
+  const currentEdges = () => stagedEdges ?? committed.getEdges();
   const setNodes: EditorDeps["setNodes"] = (update) => {
     const current = currentNodes();
     stagedNodes = typeof update === "function" ? update(current) : update;
@@ -371,7 +381,9 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     const notes = (r.annotations ?? []).map((a) => ({ ...annotationToFlow(a), selected: true }));
     const foreground = new Map([...nodes, ...notes.filter((n) => n.data.kind !== "zone")].map((n) => [n.id, n]));
     // A copy landing in a boundary already there joins it, and the boundary grows to hold it (D12).
-    const joining = new Set([...nodes, ...notes].filter((n) => !(n.data.group && newGroups.has(n.data.group))).map((n) => n.id));
+    const joining = new Set(
+      [...nodes, ...notes].filter((n) => !(n.data.group && newGroups.has(n.data.group))).map((n) => n.id),
+    );
     if (
       !commitNodes(
         (cur) =>

@@ -1,3 +1,5 @@
+import { createSimulationRun } from "./simulation";
+import { LifecycleBudgetError } from "../model/resourceBudget";
 import { expect, it, vi } from "vitest";
 import { autoscalingFixture } from "../lab/autoscalingFixture";
 import { hpaLesson, resourceLesson } from "../model/autoscaling";
@@ -194,6 +196,55 @@ it("the ownership oracle accepts old reservations but rejects new acquisitions a
   expect(() => assertResourceInvariants(state)).toThrow("new reservation exceeds replica concurrency");
 });
 
+it("rejects replacement admission above lowered concurrency", () => {
+  const f = fleets.createFleet(1);
+  f.ranges = [];
+  f.active = 4;
+  f.busy.set(1, { count: 4, cpu: 0, samples: [] });
+  const node = {
+    id: "worker",
+    status: "up",
+    activeReplicas: 1,
+    fleet: f,
+    props: { concurrency: 4, resources: resourceLesson() },
+    working: Array.from({ length: 4 }, () => ({ replica: 1 })),
+    pending: [],
+  };
+  const state: ResourceState = { time: 10, scale: 1, capacityMultiplier: 1, partBudget: f.partBudget, nodes: [node] };
+  assertResourceInvariants(state);
+  node.props.concurrency = 2;
+  expect(() => assertResourceInvariants(state)).not.toThrow();
+  node.working[0] = { replica: 1 };
+  expect(() => assertResourceInvariants(state)).toThrow("new reservation exceeds replica concurrency");
+});
+
+it("sampled reservations retain memory after concurrency is lowered until they finish", () => {
+  const run = (scale: number) => {
+    const d = fixed();
+    Object.assign(d.nodes[1].props!, {
+      replicas: 10,
+      concurrency: 4,
+      latencyMs: 1000,
+      api: { maxInFlight: 40 },
+      resources: { ...resourceLesson(), cpuMsPerMessage: 0, baselineMemoryMiB: 0, memoryMiBPerMessage: 100 },
+    });
+    const e = load(d, scale);
+    e.inject("source", 40 / scale);
+    e.step(100);
+    expect(realFrame(e.frame()).nodes.worker.inFlight).toBe(40);
+    e.setNodeProps("worker", { concurrency: 1 });
+    e.step(900);
+    const memory = e.frame().nodes.worker.resources!.memoryMiB;
+    expect(memory).toBeGreaterThan(380);
+    e.step(16_000);
+    expect(e.frame().nodes.worker.inFlight).toBe(0);
+    expect(e.frame().nodes.worker.resources!.memoryMiB).toBe(0);
+    return memory;
+  };
+  const exact = run(1);
+  for (const scale of [2, 10]) expect(run(scale) / exact).toBeGreaterThan(0.95);
+});
+
 it.each([1, 10])("resource-less A1 upgrade preserves p3 playback at scale %s", (scale) => {
   const d = fixed();
   d.planning = { revision: "p3" };
@@ -218,4 +269,55 @@ it.each([1, 10])("resource-less A1 upgrade preserves p3 playback at scale %s", (
   b.step(30_000);
   expect(b.snapshot()).toEqual(a.snapshot());
   expect(b.frame().inSystem).toBe(0);
+});
+
+it.each([false, true])(
+  "refused runner operations preserve the next step including credit and timeline (resume=%s)",
+  (resume) => {
+    const d = fixed();
+    d.nodes = [
+      ...d.nodes,
+      ...Array.from({ length: 24 }, (_, i) => ({ ...structuredClone(d.nodes[1]), id: `extra-${i}` })),
+    ];
+    for (const n of d.nodes.slice(1)) n.props!.replicas = 900;
+    const make = () =>
+      createSimulationRun(d, {
+        id: "refusal",
+        title: "Refusal",
+        seed: 42,
+        scale: 10,
+        durationMs: 5000,
+        traffic: [{ id: "input", node: "source", shape: { kind: "constant", ratePerSec: 137, durationMs: 5000 } }],
+        timeline: [
+          ...(resume ? [{ atMs: 1000, action: { do: "note" as const, text: "Wait", pause: true } }] : []),
+          { atMs: 1000, action: { do: "inject", node: "source", count: 7 } },
+          { atMs: 1000, action: { do: "props", node: "worker", props: { replicas: 2000 } } },
+        ],
+      });
+    const a = make(),
+      b = make();
+    for (const run of [a, b]) {
+      run.setSpeed(2);
+      run.step(resume ? 500 : 497); // Keep a fractional tick in the non-note case.
+      run.engine.setNodePropsBatch({ "extra-0": { replicas: 2000 }, "extra-1": { replicas: 2000 } });
+    }
+    const before = { state: a.state(), snapshot: a.engine.snapshot() };
+    expect(() => (resume ? a.resume() : a.step(37))).toThrow(LifecycleBudgetError);
+    expect({ state: a.state(), snapshot: a.engine.snapshot() }).toEqual(before);
+    for (const run of [a, b]) {
+      run.engine.setNodeProps("extra-0", { replicas: 900 });
+      if (resume) run.resume();
+      run.step(37);
+    }
+    expect(a.state()).toEqual(b.state());
+    expect(a.engine.snapshot()).toEqual(b.engine.snapshot());
+    expect(a.engine.frame().nodes.worker.fleet!.desired).toBe(2000);
+  },
+);
+
+it("ordinary runner ticks do not checkpoint when no property action is reachable", () => {
+  const run = createSimulationRun(fixed(), { id: "plain", title: "Plain", traffic: [], durationMs: 1000 });
+  const checkpoint = vi.spyOn(run.engine, "checkpoint");
+  run.step(500);
+  expect(checkpoint).not.toHaveBeenCalled();
 });

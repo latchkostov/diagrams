@@ -11,12 +11,15 @@ export const createCpuPartBudget = (): CpuPartBudget => ({ used: 0, blocked: fal
 /** Resource ownership belongs to an attempt, whether working, queued or staged. */
 export interface ResourceWork extends SampledWork {
   replica?: number;
+  /** Sampled memory allowance retained when concurrency is lowered on an existing attempt. */
+  memorySlots?: number;
   cpuRemaining?: number;
   cpuBackoffUntil?: number;
   retryAdmissionAt?: number;
 }
 export function clearResourceWork(work: ResourceWork) {
   work.replica = undefined;
+  work.memorySlots = undefined;
   work.cpuParts = undefined;
   work.cpuRemaining = undefined;
   work.cpuBackoffUntil = undefined;

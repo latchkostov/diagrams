@@ -139,6 +139,23 @@ test("A1: scaling announcements remain in the accessibility tree with Live detai
   await expect(page.getByTestId("planning-live-details")).not.toHaveAttribute("open");
 });
 
+test("A1: jittered readiness does not repeat scaling speech between controller syncs", async ({ page }) => {
+  await seed(page, { live: true });
+  await page.getByTestId("node-worker").dblclick();
+  await page.clock.runFor(15_500);
+  const status = page.getByTestId("autoscaling-announcement"),
+    badge = page.getByTestId("node-badge-worker");
+  await expect(status).toContainText("Desired: 2");
+  const announcement = await status.textContent();
+  if (!announcement) throw new Error("Missing scaling announcement");
+  await expect(badge).toHaveAttribute("data-ready", "1");
+  await page.clock.runFor(6000);
+  await expect(badge).toHaveAttribute("data-ready", "2");
+  await expect(status).toHaveText(announcement);
+  await page.clock.runFor(9000);
+  await expect(status).not.toHaveText(announcement);
+});
+
 test("A1: running an over-budget draft preserves the previous run and recovers after correction", async ({
   page,
   consoleErrors,

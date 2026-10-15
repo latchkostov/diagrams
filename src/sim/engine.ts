@@ -107,6 +107,7 @@ interface Delivery {
   original: Message;
 }
 interface Work {
+  memorySlots?: number;
   cpuParts?: CpuPart[];
   replica?: number;
   cpuRemaining?: number;
@@ -572,6 +573,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           time + (node.props.autoscaling?.mode === "on" ? node.props.autoscaling.controller.settings.syncMs : 15_000);
       }
       const previous = node.props;
+      const memorySlots = node.fleet
+        ? Math.min(slots(node), (node.fleet.ready + node.fleet.draining) * previous.concurrency)
+        : 0;
       for (const [key, value] of Object.entries(patch)) {
         if (key === "resumeAutoscaling") continue;
         if (value === undefined) Reflect.deleteProperty(node.rawProps, key);
@@ -586,7 +590,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         planning,
         admissionChanged ? undefined : previous.admission,
       );
-      if (node.fleet) configureConcurrency(node.fleet, node.props.concurrency);
+      if (node.fleet) {
+        if (scale > 1 && node.props.concurrency < previous.concurrency)
+          for (const work of node.working)
+            if (work.cpuParts) work.memorySlots = Math.max(work.memorySlots ?? 0, memorySlots);
+        configureConcurrency(node.fleet, node.props.concurrency);
+      }
       if ("resources" in patch || "autoscaling" in patch) {
         if (!node.props.resources) {
           for (const work of nodeWork(node)) {
@@ -1151,6 +1160,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (!node.fleet) return;
     releaseReplica(node.fleet, work.replica, node.props.concurrency);
     work.replica = undefined;
+    work.memorySlots = undefined;
     releaseCpuParts(node.fleet, work);
   }
   function admitPending(node: Node): void {
@@ -1286,11 +1296,18 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         const f = node.fleet,
           r = node.props.resources;
         const cpuBudgets = f && r ? new Map<number | string, { remaining: number; count: number }>() : undefined;
-        let retained = 0;
+        let retained = 0,
+          priorSlots = 0,
+          priorOccupancy = 0;
         if (f && r) {
           const milli = r.cpuLimitMilli ?? r.availableCpuMilli ?? Infinity;
           for (const work of node.working) {
-            if (work.cpuParts && work.cpuBackoffUntil !== undefined) retained += scale;
+            if (work.memorySlots !== undefined) {
+              priorSlots = Math.max(priorSlots, work.memorySlots);
+              priorOccupancy += scale;
+            }
+            if (work.cpuParts && (work.cpuBackoffUntil !== undefined || work.memorySlots !== undefined))
+              retained += scale;
             if (work.cpuRemaining === undefined || (work.cpuBackoffUntil ?? 0) > time) continue;
             if (work.cpuParts) {
               for (const p of work.cpuParts)
@@ -1319,8 +1336,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
               ? f.active
               : Math.min(
                   Math.max(f.memoryCredit / STEP, retained),
-                  slots(node),
-                  (f.ready + f.draining) * node.props.concurrency,
+                  Math.max(
+                    Math.min(slots(node), (f.ready + f.draining) * node.props.concurrency),
+                    Math.min(priorSlots, priorOccupancy),
+                  ),
                 )
             : 0;
         let keep = 0;

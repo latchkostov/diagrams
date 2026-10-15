@@ -4253,3 +4253,12 @@ once; revisiting properties does not reopen it. A1 and legacy previews have dist
 and disclosure targets, and selecting either switches directly to its content. No global chrome was
 added. Production browser checks cover switching, focus, revisiting, dark/translated inspectors and
 accessible replica pagination.
+
+## Autoscaling A1 refusal recovery review (2026-10-15)
+
+Scoped designer-agent UX gate passed: source and regression-test review of scaling announcements.
+Polite, atomic speech stays accessible with Live details closed, while readiness changes coalesce at
+controller syncs. Visible metrics remain live and no controls are added. Selection remounts the
+announcement, and language changes remain subscribed. Production fake-clock coverage checks startup
+readiness changing without repeated speech, followed by an update at the next sync. This review did
+not independently exercise assistive-technology playback or a whole-app visual walkthrough.

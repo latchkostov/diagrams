@@ -12,6 +12,27 @@
 - Parity: only `node/i18n/catalogs.json` changed. It combines both PRs' messages: 1,689 per language,
   retaining master's nested-boundary `edit` hashes and adding the gallery's 17-message `examples` area
   in all 38 languages. All other 1,633 goldens are unchanged; the eight existing browser deferrals remain.
+## Autoscaling A1 refusal recovery review fixes (2026-10-15)
+
+- Refused timeline edits and Continue actions restore the entire run before pausing. Correcting the
+  live inputs and trying again preserves pending actions, traffic credits and simulation time.
+  Slow-motion forecasting stops on refusal so its sandbox restores before publishing.
+- Lowering concurrency preserves sampled memory for existing reservations until they finish; new
+  work still respects the lower limit. The seeded oracle detects replacement admissions above it
+  and checks that refused actions are a no-op, including the next successful step.
+- Scaling speech updates at controller syncs instead of every readiness frame. Staged editor changes
+  preserve unchanged node and connection identities, avoiding whole-diagram updates while typing.
+- No parity goldens change for these fixes; frozen scenarios do not exercise these transitions.
+  Refreshed the offline viewer; plugin 1.1.22 is one patch above master. Both nested boundaries/zones
+  and A1 behaviour are retained. The startup assertion follows resource validation into the existing
+  preloaded hierarchy chunk, with the validator explicitly pinned and entry budget unchanged.
+- Rebase parity regenerated only `node/skill/public-schemas.json` (combined hierarchy/A1 schema
+  hashes, sizes and legacy definitions) and `node/i18n/catalogs.json` (A1 messages and the existing
+  numeric-error translation). Other shared changes relative to master remain A1's
+  `node/agent/tools.json` (resource/HPA contracts), `node/skill/files.json` (A1 format/spec and frozen
+  stencil ranking), `node/skill/current-stencils.json` (A1 showcase popularity), and
+  `node/skill/validate.txt` (six A1 validation records). All 127 A1-specific additions are unchanged;
+  no non-autoscaling diagram output changes, including the six master showcases. Details: `docs/PARITY.md`.
 
 ## Nested boundaries final verification (#115, 2026-10-15)
 

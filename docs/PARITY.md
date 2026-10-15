@@ -385,3 +385,44 @@ The drain sweep, cached interval keys and indexed check targets preserve every e
 operation-count regressions reject the old work patterns. The refreshed offline viewer carries the
 runtime corrections, while viewer implementation bytes are excluded from its semantic goldens as
 before. No output was re-recorded to make a failure pass.
+
+## Autoscaling A1 refusal recovery review (2026-10-15)
+
+The pre-rebase run matches all 1,761 goldens, with none changed, added, missing or stale. These
+local fixes cover refused runner operations (including slow-motion forecast recovery), occupied concurrency reductions, replacement admission
+and staged editor identities outside the frozen corpus. The speech regression is covered by the
+production browser suite. Each fix has a failing deliberate-reversion regression. No golden was
+re-recorded for these fixes; the refreshed viewer changes implementation bytes only.
+
+### Rebase onto nested boundaries and zones (#115)
+
+Generated conflicts started from master's complete files, then `pnpm schemas` and `pnpm skill:release`
+rebuilt the combined contracts and viewer (plugin 1.1.22, one patch above master's 1.1.21). Golden
+conflicts took master's files whole; no golden was hand-merged. The first complete parity run found
+only `node/skill/public-schemas.json` and `node/i18n/catalogs.json` different, and `pnpm parity:update`
+re-recorded exactly those two. All 1,761 records remain present. No diagram-output golden changes,
+including every legacy diagram and all six master showcases; the eight existing browser deferrals
+remain exactly as recorded above.
+
+Relative to master, the six changed shared goldens are:
+
+- `node/skill/public-schemas.json`: combined schema hashes/sizes retain boundary and annotation parent
+  fields and add A1 resources, HPA and revision contracts. V1 and pre-A1 v2 revisions forbid resource
+  execution properties; v2 adds `LegacyNodeProps` and `LegacySimulation`. Ops retains A1 property patches.
+- `node/agent/tools.json`: agent tool contracts include the same resource/HPA properties and revision.
+- `node/i18n/catalogs.json`: 67 A1 English keys add the autoscaling area and increase message counts
+  from 1,672 to 1,739 in all 38 records (37 translated languages and the pseudo-locale). Fallback
+  counts stay unchanged: the new English-only CPU-budget message is offset by translating the existing
+  `admission.invalidNumber` message. Only the admission/autoscaling area hashes change; master's
+  edit/chrome messages and the per-message output golden remain intact.
+- `node/skill/files.json`: the generated format reference and spec include A1; the frozen stencil
+  reference ranks the original examples with the A1 showcase. Other pinned skill files are unchanged.
+- `node/skill/current-stencils.json`: the current public stencil ranking includes both master's six
+  showcases and the A1 showcase. The legacy aggregate inputs remain frozen.
+- `node/skill/validate.txt`: one valid A1 showcase and five valid frozen A1 corpus diagrams add six
+  validation records; existing records and invalid-input diagnostics are unchanged.
+
+The 127 A1-specific goldens added earlier in this PR remain unchanged by the rebase and review fixes.
+Released viewer and generated application implementation bytes remain outside semantic parity. The
+combined build folds the persisted-resource validator into the preloaded `groupHierarchy` chunk;
+startup tests pin its presence, keep controllers lazy and preserve the entry size budget.

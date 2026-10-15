@@ -687,21 +687,51 @@ describe("A1 round 3 controller boundaries", () => {
     });
     c.step(990);
     c.setPlaying(true);
-    const fleet = c.snapshot().nodes.worker.fleet;
+    const before = c.snapshot();
+    const fleet = before.nodes.worker.fleet;
     const budget = vi.spyOn(resourceBudgets, "resourceBudgetExceeded").mockReturnValue(true);
     try {
       expect(() => c[action](1100)).not.toThrow();
       expect(c.getState().playing).toBe(false);
       expect(c.getState().resourceError).toContain("100");
       expect(c.snapshot().nodes.worker.fleet!.desired).toBe(fleet!.desired);
+      expect(c.snapshot()).toEqual(before);
     } finally {
       budget.mockRestore();
     }
+    c.step(10);
+    expect(c.snapshot().time).toBe(1000);
+    expect(c.snapshot().nodes.worker.fleet!.desired).toBe(2);
     c.restart();
     expect(c.getState().resourceError).toBeUndefined();
     c.setPlaying(true);
     c.advance(100);
     expect(c.snapshot().time).toBeGreaterThan(0);
+    c.dispose();
+  });
+  it("a refused slow-motion forecast stops and restores its sandbox without consuming the action", () => {
+    const c = new LiveController(autoscalingFixture());
+    c.selectSimulation({
+      id: "forecast",
+      title: "Forecast",
+      traffic: [],
+      durationMs: 10_000,
+      timeline: [{ atMs: 1000, action: { do: "props", node: "worker", props: { replicas: 2 } } }],
+    });
+    c.step(990);
+    const before = c.snapshot(),
+      sandbox = c.lookAhead();
+    const budget = vi.spyOn(resourceBudgets, "resourceBudgetExceeded").mockReturnValue(true);
+    try {
+      expect(sandbox.step(1100)).toBe(false);
+    } finally {
+      sandbox.restore();
+      budget.mockRestore();
+    }
+    expect(c.snapshot()).toEqual(before);
+    c.step(10);
+    expect(c.snapshot().time).toBe(1000);
+    expect(c.snapshot().nodes.worker.fleet!.desired).toBe(2);
     c.dispose();
   });
   it("saving Capacity x folds the HPA policy without creating additional replicas", () => {

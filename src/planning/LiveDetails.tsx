@@ -3,11 +3,32 @@ import type { ReplicaRow } from "../sim/autoscaling";
 import { resolveNodeProps } from "../sim/defaults";
 import { groupLabel } from "../stencils/brokerVocabulary";
 import { compileTopology } from "../sim/topology";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import type { RealNodeMetrics } from "../sim/types";
 import type { DiagramFile } from "../model/types";
 import { t, useLocale } from "../i18n";
 import { formatList, formatNumber, formatRate } from "../i18n/format";
+
+// Latch readiness to controller publications. Jittered startup can change ready counts every
+// frame; speech needs at most one update per sync, while the visible metrics keep updating.
+const ScalingAnnouncement = memo(
+  function ScalingAnnouncement({ label, fleet }: { label: string; fleet: NonNullable<RealNodeMetrics["fleet"]> }) {
+    useLocale();
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+        data-testid="autoscaling-announcement"
+      >
+        {label} · {t("autoscaling.badge", fleet)}
+        {fleet.decision && <> · {t("autoscaling.reason", { reason: fleet.decision.reason })}</>}
+      </div>
+    );
+  },
+  (a, b) => a.label === b.label && a.fleet.decision?.at === b.fleet.decision?.at && a.fleet.desired === b.fleet.desired,
+);
 
 /** Full observed metrics remain reachable in Properties, even when the hover is compact. */
 export function LiveDetails({
@@ -36,18 +57,7 @@ export function LiveDetails({
   const broker = node ? resolveNodeProps(d, node).broker : undefined;
   return (
     <>
-      {s.resources && s.fleet && (
-        <div
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-          className="sr-only"
-          data-testid="autoscaling-announcement"
-        >
-          {node?.label ?? s.id} · {t("autoscaling.badge", s.fleet)}
-          {s.fleet.decision && <> · {t("autoscaling.reason", { reason: s.fleet.decision.reason })}</>}
-        </div>
-      )}
+      {s.resources && s.fleet && <ScalingAnnouncement label={node?.label ?? s.id} fleet={s.fleet} />}
       <details className="insp-section" data-testid="planning-live-details">
         <summary data-testid="planning-live-details-toggle">{t("planning.liveDetails")}</summary>
         <p data-testid="planning-live-counters">

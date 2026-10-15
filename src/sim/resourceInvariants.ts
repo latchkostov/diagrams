@@ -35,7 +35,7 @@ const memoryClocks = new WeakMap<
   Fleet,
   { published: number; occupancy: number; retained: Set<Work>; up: boolean; capacity: number }
 >();
-const reservationCounts = new WeakMap<Fleet, Map<number, number>>();
+const reservationAttempts = new WeakMap<Fleet, Map<Work, number>>();
 /** Opt-in diagnostic: independent ownership/counting oracle, never run in ordinary playback. */
 export function assertResourceInvariants(state: ResourceState) {
   const check = (ok: boolean, message: string) => {
@@ -119,25 +119,41 @@ export function assertResourceInvariants(state: ResourceState) {
       "queued work owns a reservation",
     );
     const reservations = new Map<number, number>();
+    const previousAttempts = reservationAttempts.get(f);
+    const acquired = new Set<number>();
     for (const work of node.working) {
       if (state.scale === 1) fail(work.replica !== undefined, "working attempt has no reservation");
-      if (work.replica !== undefined) reservations.set(work.replica, (reservations.get(work.replica) ?? 0) + 1);
+      if (work.replica !== undefined) {
+        reservations.set(work.replica, (reservations.get(work.replica) ?? 0) + 1);
+        if (previousAttempts && previousAttempts.get(work) !== work.replica) acquired.add(work.replica);
+      }
       fail((work.cpuRemaining ?? 0) >= -1e-8 && Number.isFinite(work.cpuRemaining ?? 0), "invalid CPU remaining");
       parts += work.cpuParts?.length ?? 0;
       for (const p of work.cpuParts ?? [])
         fail(p.first <= p.last && p.cpu >= -1e-8 && Number.isFinite(p.cpu), "invalid sampled CPU part");
     }
     if (state.scale > 1) {
-      const retained = new Set(node.working.filter((w) => w.cpuParts?.length && w.cpuBackoffUntil !== undefined));
       const previous = memoryClocks.get(f);
       const capacity = Math.min(
         node.activeReplicas * node.props.concurrency,
         node.props.admission?.slots ?? Infinity,
         node.props.admission?.api.maxInFlight ?? Infinity,
       );
+      const retained = new Set(
+        node.working.filter(
+          (w) => w.cpuParts?.length && (w.cpuBackoffUntil !== undefined || (w.memorySlots ?? 0) > capacity),
+        ),
+      );
+      const allowance = Math.max(
+        capacity,
+        Math.min(
+          node.working.length * state.scale,
+          node.working.reduce((max, w) => Math.max(max, w.memorySlots ?? 0), 0),
+        ),
+      );
       if (previous?.up && node.status === "up") {
         const continuous = [...retained].filter((w) => previous.retained.has(w)).length;
-        const occupancy = Math.min(continuous * state.scale, capacity, previous.capacity);
+        const occupancy = Math.min(continuous * state.scale, allowance, previous.capacity);
         const integrated =
           f.lastPublish === previous.published
             ? f.occupancy - previous.occupancy
@@ -151,22 +167,23 @@ export function assertResourceInvariants(state: ResourceState) {
         occupancy: f.occupancy,
         retained,
         up: node.status === "up",
-        capacity,
+        capacity: allowance,
       });
     }
     let active = 0,
       memory = 0;
     const r = node.props.resources;
-    const previousCounts = reservationCounts.get(f);
     for (const [id, p] of f.busy) {
       fail(p.count >= 0 && p.count === (reservations.get(id) ?? 0), "orphan or negative reservation");
       // Lowering concurrency may leave existing attempts draining naturally; no new acquisition may overbook.
-      if (previousCounts && p.count > (previousCounts.get(id) ?? 0))
-        fail(p.count <= node.props.concurrency, "new reservation exceeds replica concurrency");
+      if (acquired.has(id)) fail(p.count <= node.props.concurrency, "new reservation exceeds replica concurrency");
       if (p.drainAt === undefined) active += p.count;
       memory += r.baselineMemoryMiB + p.count * r.memoryMiBPerMessage;
     }
-    reservationCounts.set(f, new Map([...f.busy].map(([id, p]) => [id, p.count])));
+    reservationAttempts.set(
+      f,
+      new Map(node.working.flatMap((w) => (w.replica === undefined ? [] : [[w, w.replica] as const]))),
+    );
     fail(active === f.active && active >= 0, "active reservation count disagrees");
     if (state.scale === 1) {
       fail(
