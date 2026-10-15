@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import type { EditorApi } from "../editor/types";
 import type { LiveState } from "../live/controller";
+import { createRunQueue, type RunRequest } from "../live/runQueue";
 
 /**
  * What the command palette can act on. The palette is mounted by the app, outside the canvas, so
@@ -52,14 +53,15 @@ interface HostState {
   live: LiveHost | null;
   session: SessionHost | null;
   /** A simulation to start as soon as the live session is up. */
-  pendingRun: { documentId: string | undefined; simulationId: string } | null;
+  pendingRun: RunRequest | null;
 }
 
 let state: HostState = { canvas: null, live: null, session: null, pendingRun: null };
 const listeners = new Set<() => void>();
+const runQueue = createRunQueue();
 
-function set(patch: Partial<HostState>) {
-  state = { ...state, ...patch };
+function set(patch: Partial<Omit<HostState, "pendingRun">>) {
+  state = { ...state, ...patch, pendingRun: runQueue.pending };
   drainRun();
   for (const l of listeners) l();
 }
@@ -67,11 +69,9 @@ function set(patch: Partial<HostState>) {
 function drainRun() {
   const request = state.pendingRun;
   if (!request || state.canvas?.documentId !== request.documentId || !state.live) return;
-  if (!state.session) {
-    state.live.goLive();
-    return;
-  }
+  if (!state.session) return;
   const session = state.session;
+  runQueue.consume(state.canvas?.documentId);
   state = { ...state, pendingRun: null };
   if (!session.disabledHint) session.run(request.simulationId);
 }
@@ -94,21 +94,34 @@ export const paletteHost = {
   runSimulation(id: string, documentId = state.canvas?.documentId): boolean {
     if (state.canvas?.documentId === documentId && state.session?.disabledHint) return false;
     if (!state.live && documentId === undefined) return false;
-    set({ pendingRun: { documentId, simulationId: id } });
+    runQueue.request({ documentId, simulationId: id });
+    set({});
+    paletteHost.activateRun();
     return true;
   },
+  /** The matching canvas/live owner activates a queued gallery launch after mounting. */
+  activateRun() {
+    if (state.live) runQueue.activate(state.canvas?.documentId, state.live.goLive);
+  },
   cancelRun() {
-    if (state.pendingRun) set({ pendingRun: null });
+    runQueue.cancel();
+    if (state.pendingRun) set({});
   },
   /** Test seam and HMR safety: forget everything. */
   reset() {
-    set({ canvas: null, live: null, session: null, pendingRun: null });
+    runQueue.cancel();
+    set({ canvas: null, live: null, session: null });
   },
 };
 
 /** Called by the live view's toggle owner. */
 export function useLiveHost(toggle: () => void, goLive: () => void, enabled: boolean) {
-  useEffect(() => (enabled ? publish("live", { toggle, goLive }) : undefined), [toggle, goLive, enabled]);
+  useEffect(() => {
+    if (!enabled) return;
+    const off = publish("live", { toggle, goLive });
+    paletteHost.activateRun();
+    return off;
+  }, [toggle, goLive, enabled]);
 }
 
 /** Called by the running live session; also starts a simulation the palette asked for before going live. */

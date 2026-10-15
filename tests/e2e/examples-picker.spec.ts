@@ -2,6 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { openAdvanced } from "./ai-helpers";
 import {
   test,
+  gotoCanvas,
   expect,
   publicExamples,
   publicExampleCards,
@@ -710,3 +711,37 @@ test("gallery Run it supersedes a palette run while LiveSession loads", async ({
     release();
   }
 });
+
+for (const exit of ["toggle", "keyboard"] as const) {
+  test(`leaving Live via ${exit} cancels a launch during the session download`, async ({ page }) => {
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let requested = false;
+    await page.route(/\/(?:assets\/LiveSession-[\w-]+\.js|src\/live\/LiveSession\.tsx)(?:\?.*)?$/, async (route) => {
+      requested = true;
+      await held;
+      await route.continue();
+    });
+    try {
+      await gotoCanvas(page, SLUG);
+      await page.keyboard.press("Control+k");
+      await page.getByTestId("command-input").fill("black friday");
+      await page.getByTestId("command-item-sim:black-friday").click();
+      await expect.poll(() => requested).toBe(true);
+      const toggle = page.getByTestId("live-toggle");
+      await expect(toggle).toHaveAttribute("aria-pressed", "true");
+      if (exit === "toggle") await toggle.click();
+      else await page.keyboard.press("l");
+      await expect(toggle).toHaveAttribute("aria-pressed", "false");
+      release();
+      // Re-entering proves the cancelled request cannot replay when the session finally mounts.
+      await toggle.click();
+      await expect(page.getByTestId("live-hud")).toBeVisible();
+      await expect(page.getByTestId("live-sim-picker")).not.toHaveValue("black-friday");
+    } finally {
+      release();
+    }
+  });
+}

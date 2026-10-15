@@ -184,6 +184,34 @@ test.describe("mobile title card", () => {
 test.describe("phone live panels", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
+  test("playback leaves the expanded AI footer exposed and Inputs folds the dock", async ({ page }) => {
+    await gotoLive(page, "./?view=canvas&example=partitions-vs-subscriptions&live=1");
+    await page.getByTestId("ai-rail-open").click();
+    const advanced = page.getByTestId("ai-advanced-toggle");
+    await expectExposed(advanced);
+    await advanced.focus();
+    await expect(advanced).toBeFocused();
+    const footer = await advanced.boundingBox();
+    const bar = await page.getByTestId("live-controls").boundingBox();
+    expect(footer && bar && footer.y + footer.height < bar.y).toBe(true);
+    await expectExposed(page.getByTestId("live-play"));
+    await page.getByTestId("live-capacity").click();
+    await expect(page.getByTestId("ai-dock")).toHaveCount(0);
+    await expect(page.getByTestId("ai-rail-open")).toBeVisible();
+    await expectExposed(page.getByTestId("capacity-heading"));
+    await expectExposed(page.getByTestId("live-play"));
+  });
+
+  test("Inputs folds an already expanded AI dock", async ({ page }) => {
+    await gotoLive(page, "./?view=canvas&example=partitions-vs-subscriptions&live=1");
+    await page.getByTestId("ai-rail-open").click();
+    await expect(page.getByTestId("ai-panel")).toBeVisible();
+    await page.getByTestId("live-capacity").click();
+    await expect(page.getByTestId("ai-dock")).toHaveCount(0);
+    await expect(page.getByTestId("ai-rail-open")).toBeVisible();
+    await expectExposed(page.getByTestId("capacity-heading"));
+  });
+
   test("Inputs stays visible and editable above playback", async ({ page }, info) => {
     await page.clock.install();
     await gotoLive(page, "./?view=canvas&example=partitions-vs-subscriptions&live=1&sim=compare");

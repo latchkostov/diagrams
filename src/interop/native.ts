@@ -330,7 +330,11 @@ export function validateDiagram(data: unknown): NativeResult {
   for (const n of nodes) if (n.group !== undefined) n.group = groupIdFor.get(n.group);
   for (const g of groups) {
     if (g.group !== undefined) {
-      g.group = groupIdFor.get(g.group) ?? g.group;
+      const parent = groupIdFor.get(g.group);
+      if (parent === undefined) {
+        warnings.push(`Boundary "${g.id}" had an invalid or cyclic parent and was taken out of it.`);
+        delete g.group;
+      } else g.group = parent;
     }
   }
   for (const a of annotations) {

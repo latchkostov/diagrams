@@ -709,6 +709,10 @@
 /* Phone canvases also have collapsed side rails. Use the screen's width for playback,
    keeping its controls and popovers reachable without taking another row from the diagram. */
 @media (max-width: 640px) {
+  .app-body:has(.lv-hud) > .ai-dock {
+    padding-bottom: 76px;
+  }
+
   .app-main:has(.lv-hud) {
     z-index: 7;
   }

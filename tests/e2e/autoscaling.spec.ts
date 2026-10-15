@@ -33,12 +33,19 @@ async function seed(
     cpuBudget = false,
     manualReplicas = false,
     fixedResources = false,
+    partialReadiness = false,
   } = {},
 ) {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.emulateMedia({ colorScheme: dark ? "dark" : "light" });
   const d = cpuBudget ? sampledCpuBudgetFixture() : autoscalingFixture();
   const workload = d.nodes[1].props;
+  if (partialReadiness && workload?.resources) {
+    workload.resources = {
+      ...(workload.resources as ReturnType<typeof import("../../src/model/autoscaling").resourceLesson>),
+      startup: { delayMs: 5000, jitterFraction: 0.8 },
+    };
+  }
   if (fixedResources && workload) workload.autoscaling = { mode: "off" };
   if (manualReplicas)
     d.simulations = [
@@ -47,7 +54,9 @@ async function seed(
         title: "Manual replicas",
         traffic: [],
         durationMs: 30_000,
-        timeline: [{ atMs: 1000, action: { do: "props", node: "worker", props: { replicas: 3 } } }],
+        timeline: [
+          { atMs: 1000, action: { do: "props", node: "worker", props: { replicas: partialReadiness ? 8 : 3 } } },
+        ],
       },
     ];
   if (fixed && workload) {
@@ -153,23 +162,32 @@ test("A1: scaling announcements remain in the accessibility tree with Live detai
   await expect(page.getByTestId("planning-live-details")).not.toHaveAttribute("open");
 });
 
-test("A1: jittered readiness does not repeat scaling speech between controller syncs", async ({ page }) => {
-  await seed(page, { live: true });
+test("A1: coalesces partial jittered readiness until completion", async ({ page }) => {
+  await seed(page, { live: true, manualReplicas: true, partialReadiness: true });
   await page.getByTestId("node-worker").dblclick();
-  await page.clock.runFor(15_500);
+  await page.getByTestId("live-sim-picker").selectOption("manual");
+  await page.clock.runFor(1500);
   const status = page.getByTestId("autoscaling-announcement"),
     badge = page.getByTestId("node-badge-worker");
-  await expect(status).toContainText("Desired: 2");
+  await expect(status).toContainText("Desired: 8");
   const announcement = await status.textContent();
   if (!announcement) throw new Error("Missing scaling announcement");
   await expect(badge).toHaveAttribute("data-ready", "1");
-  await page.clock.runFor(1000);
+  // Advance by logical ticks, inspecting every publication until some, but not all, replicas are ready.
+  let partial = false;
+  for (let i = 0; i < 80; i++) {
+    await page.clock.runFor(100);
+    const ready = Number(await badge.getAttribute("data-ready"));
+    if (ready > 1 && ready < 8) {
+      partial = true;
+      break;
+    }
+  }
+  expect(partial).toBe(true);
   await expect(status).toHaveText(announcement);
-  await page.clock.runFor(5000);
-  await expect(badge).toHaveAttribute("data-ready", "2");
-  await expect(status).toContainText("Ready: 2");
-  await page.clock.runFor(9000);
-  await expect(status).not.toHaveText(announcement);
+  await page.clock.runFor(10_000);
+  await expect(badge).toHaveAttribute("data-ready", "8");
+  await expect(status).toContainText("Ready: 8 → Desired: 8");
 });
 
 for (const fixedResources of [false, true])

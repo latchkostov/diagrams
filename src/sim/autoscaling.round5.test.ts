@@ -1,6 +1,7 @@
 import { createSimulationRun } from "./simulation";
 import { LifecycleBudgetError } from "../model/resourceBudget";
 import * as resourceBudgets from "../model/resourceBudget";
+import * as allocations from "./allocation";
 import { expect, it, vi } from "vitest";
 import { autoscalingFixture } from "../lab/autoscalingFixture";
 import { hpaLesson, resourceLesson } from "../model/autoscaling";
@@ -327,7 +328,55 @@ it("ordinary runner ticks do not checkpoint when no property action is reachable
   expect(checkpoint).not.toHaveBeenCalled();
 });
 
-it.each(["p3", "p3-a1"] as const)("unrelated %s actions never checkpoint or preflight allocation", (revision) => {
+for (const kind of ["resources", "autoscaling"] as const)
+  it.each([false, true])(`${kind} allocation refusal preserves the whole operation (resume=%s)`, (resume) => {
+    const d = fixed();
+    d.nodes.push(...Array.from({ length: 24 }, (_, i) => ({ ...structuredClone(d.nodes[1]), id: `extra-${i}` })));
+    for (const n of d.nodes.slice(1)) n.props!.replicas = 900;
+    const props =
+      kind === "resources"
+        ? { resources: resourceLesson() }
+        : {
+            autoscaling: { ...hpaLesson(), controller: { ...hpaLesson().controller, maxReplicas: 2000 } },
+          };
+    if (kind === "resources") {
+      delete d.nodes[1].props!.resources;
+      d.nodes[1].props!.replicas = 2000;
+    }
+    const make = () =>
+      createSimulationRun(d, {
+        id: "replacement",
+        title: "Replacement",
+        seed: 42,
+        scale: 10,
+        durationMs: 5000,
+        traffic: [{ id: "input", node: "source", shape: { kind: "constant", ratePerSec: 137, durationMs: 5000 } }],
+        timeline: [
+          ...(resume ? [{ atMs: 1000, action: { do: "note" as const, text: "Wait", pause: true } }] : []),
+          { atMs: 1000, action: { do: "inject", node: "source", count: 7 } },
+          { atMs: 1000, action: { do: "props", node: "worker", props } },
+        ],
+      });
+    const a = make(),
+      b = make();
+    for (const run of [a, b]) {
+      run.step(resume ? 1000 : 997);
+      run.engine.setNodePropsBatch({ "extra-0": { replicas: 2000 }, "extra-1": { replicas: 2000 } });
+    }
+    const before = { state: a.state(), snapshot: a.engine.snapshot() };
+    expect(() => (resume ? a.resume() : a.step(37))).toThrow(LifecycleBudgetError);
+    expect({ state: a.state(), snapshot: a.engine.snapshot() }).toEqual(before);
+    for (const run of [a, b]) {
+      run.engine.setNodeProps("extra-0", { replicas: 900 });
+      if (resume) run.resume();
+      run.step(37);
+    }
+    expect(a.state()).toEqual(b.state());
+    expect(a.engine.snapshot()).toEqual(b.engine.snapshot());
+    expect(a.engine.effectiveProps("worker")[kind]).toEqual(props[kind]);
+  });
+
+it.each(["p3", "p3-a1"] as const)("the engine classifies unrelated %s actions without projecting nodes", (revision) => {
   const d = fixed();
   d.planning = { revision };
   if (revision === "p3") {
@@ -351,10 +400,13 @@ it.each(["p3", "p3-a1"] as const)("unrelated %s actions never checkpoint or pref
     ],
   });
   const checkpoint = vi.spyOn(run.engine, "checkpoint"),
-    validate = vi.spyOn(run.engine, "validateLifecycleActions");
+    validate = vi.spyOn(run.engine, "validateLifecycleActions"),
+    budget = vi.spyOn(resourceBudgets, "resourceAllocationCount");
   run.step(10);
   expect(checkpoint).not.toHaveBeenCalled();
-  expect(validate).not.toHaveBeenCalled();
+  expect(validate).toHaveBeenCalledWith([expect.objectContaining({ node: "worker" })]);
+  expect(budget).not.toHaveBeenCalled();
+  budget.mockRestore();
 });
 
 it("lifecycle preflight copies only three allocation fields per node, independent of queued work", () => {
@@ -367,17 +419,12 @@ it("lifecycle preflight copies only three allocation fields per node, independen
   });
   run.engine.inject("source", 50_000);
   const checkpoint = vi.spyOn(run.engine, "checkpoint"),
-    budget = vi.spyOn(resourceBudgets, "resourceBudgetExceeded"),
+    budget = vi.spyOn(allocations, "validateAllocationActions"),
     clone = vi.spyOn(globalThis, "structuredClone");
   try {
     run.step(10);
     expect(checkpoint).not.toHaveBeenCalled();
-    const candidate = budget.mock.calls[0][0];
-    expect(candidate.nodes).toHaveLength(2);
-    for (const node of candidate.nodes) {
-      expect(Object.keys(node)).toEqual(["id", "props"]);
-      expect(Object.keys(node.props!)).toEqual(["resources", "replicas", "autoscaling"]);
-    }
+    expect(budget).toHaveBeenCalled();
     // A scalar patch may be cloned; neither queued messages nor graph state may be.
     expect(clone.mock.calls.every(([value]) => typeof value !== "object")).toBe(true);
   } finally {
@@ -426,7 +473,9 @@ it("preflight stops at the actual tick, duration and pausing note boundaries", (
   const a = make(),
     b = make(true),
     c = make(false, 10);
-  const budget = vi.spyOn(resourceBudgets, "resourceBudgetExceeded").mockReturnValue(true);
+  const budget = vi.spyOn(allocations, "validateAllocationActions").mockImplementation(() => {
+    throw new LifecycleBudgetError("Budget");
+  });
   try {
     a.step(19);
     expect(a.state().time).toBe(10);

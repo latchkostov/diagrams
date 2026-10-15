@@ -331,14 +331,13 @@ export function createSimulationRun(
   // Refusals depend only on allocation configuration, never on elapsed time or traffic.
   // Validate the reachable edits before touching any caller-visible state.
   function transaction(until: number, update: () => void) {
-    const allocations = [];
+    const properties = [];
     for (let i = cursor; i < timeline.length && timeline[i].atMs <= until; i++) {
       const action = timeline[i].action;
       if (action.do === "note" && action.pause) break;
-      if (action.do === "props" && ["resources", "replicas", "autoscaling"].some((key) => key in action.props))
-        allocations.push(action);
+      if (action.do === "props") properties.push(action);
     }
-    if (diagram.planning?.revision === "p3-a1" && allocations.length) engine.validateLifecycleActions(allocations);
+    if (properties.length) engine.validateLifecycleActions(properties);
     update();
   }
 

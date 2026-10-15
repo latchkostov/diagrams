@@ -1,4 +1,5 @@
-import * as resourceBudgets from "../model/resourceBudget";
+import * as allocations from "../sim/allocation";
+import { LifecycleBudgetError } from "../model/resourceBudget";
 import { createSimulationRun } from "./simulation";
 import { describe, expect, it, vi } from "vitest";
 import type { DiagramFile } from "../model/types";
@@ -184,9 +185,11 @@ function replay(d: DiagramFile, seed: number, scale: number, actions: Action[]) 
         const cp = run.checkpoint(),
           before = e.snapshot(),
           state = run.state();
-        const budget = vi.spyOn(resourceBudgets, "resourceBudgetExceeded").mockReturnValueOnce(true);
+        const budget = vi.spyOn(allocations, "validateAllocationActions").mockImplementationOnce(() => {
+          throw new LifecycleBudgetError("Budget");
+        });
         try {
-          expect(() => run.step(action.ms)).toThrow(resourceBudgets.LifecycleBudgetError);
+          expect(() => run.step(action.ms)).toThrow(LifecycleBudgetError);
         } finally {
           budget.mockRestore();
         }

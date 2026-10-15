@@ -70,7 +70,7 @@ import { fitAvoiding, type Viewport } from "../canvas/geometry/fit";
 // Loaded on first use: the sequence generator, its SVG renderer and Mermaid writer.
 const SequenceDialog = lazy(() => import("./SequenceDialog").then((m) => ({ default: m.SequenceDialog })));
 import { buildJourney } from "../trace/journey";
-import { useAiDock } from "../ai/ui/dock";
+import { collapseDock, useAiDock } from "../ai/ui/dock";
 
 import type { LiveSessionHandle, LiveViewProps } from "./LiveView";
 
@@ -409,6 +409,16 @@ export function LiveSession({
   // The AI panel opened, closed or was resized: the pane changed width at its right edge. Refit the
   // same way, or half the diagram stayed past the pane's edge (slow motion keeps its own camera).
   const dock = useAiDock();
+  useEffect(() => {
+    if (!panel.open || !dock.open) return;
+    const phone = window.matchMedia("(max-width: 640px)");
+    const fold = () => {
+      if (phone.matches) collapseDock();
+    };
+    fold();
+    phone.addEventListener("change", fold);
+    return () => phone.removeEventListener("change", fold);
+  }, [panel.open, dock.open]);
   const dockKey = `${dock.open}:${dock.open ? Math.round(dock.width / 40) : 0}`;
   const dockFitted = useRef(dockKey);
   useEffect(() => {

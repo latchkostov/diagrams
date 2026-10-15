@@ -1,4 +1,5 @@
 import { nestedBoundariesFixture } from "./nestedBoundariesFixture";
+import { captionContrastFixture } from "./captionContrastFixture";
 import { GalleryCatalogLab } from "./GalleryCatalogLab";
 import { autoscalingFixture } from "./autoscalingFixture";
 import { ColourPickerLab } from "./ColourPickerLab";
@@ -314,6 +315,14 @@ const diagramPresets: Preset[] = [
     group: "Diagrams",
     description: "A child-first hierarchy with a node and note: move or wrap the selection, then follow it with Tab.",
     diagram: () => structuredClone(nestedBoundariesFixture),
+  },
+  {
+    kind: "diagram",
+    id: "caption-contrast",
+    title: "Caption contrast",
+    group: "Diagrams",
+    description: "Custom caption ink over separate boundary and zone fills.",
+    diagram: () => structuredClone(captionContrastFixture),
   },
   {
     kind: "diagram",
@@ -750,6 +759,7 @@ const capacityPresets: Preset[] = [
 // ---------- layout quality (routing, labels, overlap audit) ----------
 
 const auditSources: Record<string, { label: string; diagram: () => DiagramFile }> = {
+  "caption-contrast": { label: "Caption contrast", diagram: () => structuredClone(captionContrastFixture) },
   ...Object.fromEntries(examples.map((e) => [e.slug, { label: e.title, diagram: () => exampleDiagram(e.slug) }])),
   obstacles: { label: "Routing obstacle course", diagram: () => obstacleCourseDiagram() },
   "imported-compose": { label: "Imported: compose", diagram: importedCompose },

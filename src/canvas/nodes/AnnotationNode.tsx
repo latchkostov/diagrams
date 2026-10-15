@@ -103,6 +103,7 @@ function AnnotationNodeImpl({
         } as CSSProperties
       }
       data-testid={`annotation-${id}`}
+      data-caption-root={id}
       data-kind={kind}
       data-shape={kind === "shape" ? (data.shape ?? "rect") : undefined}
       data-color={resolved.presetKey ?? "custom"}
