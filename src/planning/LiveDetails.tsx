@@ -9,8 +9,8 @@ import type { DiagramFile } from "../model/types";
 import { t, useLocale } from "../i18n";
 import { formatList, formatNumber, formatRate } from "../i18n/format";
 
-// Latch readiness to controller publications. Jittered startup can change ready counts every
-// frame; speech needs at most one update per sync, while the visible metrics keep updating.
+// Coalesce jittered readiness at controller syncs and at startup completion. Completion
+// remains observable for fixed fleets and manual overrides, whose controller is suspended.
 const ScalingAnnouncement = memo(
   function ScalingAnnouncement({ label, fleet }: { label: string; fleet: NonNullable<RealNodeMetrics["fleet"]> }) {
     useLocale();
@@ -27,7 +27,11 @@ const ScalingAnnouncement = memo(
       </div>
     );
   },
-  (a, b) => a.label === b.label && a.fleet.decision?.at === b.fleet.decision?.at && a.fleet.desired === b.fleet.desired,
+  (a, b) =>
+    a.label === b.label &&
+    a.fleet.decision?.at === b.fleet.decision?.at &&
+    a.fleet.desired === b.fleet.desired &&
+    (a.fleet.starting === 0) === (b.fleet.starting === 0),
 );
 
 /** Full observed metrics remain reachable in Properties, even when the hover is compact. */

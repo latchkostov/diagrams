@@ -30,12 +30,25 @@ async function seed(
     twoWorkers = false,
     budget = false,
     cpuBudget = false,
+    manualReplicas = false,
+    fixedResources = false,
   } = {},
 ) {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.emulateMedia({ colorScheme: dark ? "dark" : "light" });
   const d = cpuBudget ? sampledCpuBudgetFixture() : autoscalingFixture();
   const workload = d.nodes[1].props;
+  if (fixedResources && workload) workload.autoscaling = { mode: "off" };
+  if (manualReplicas)
+    d.simulations = [
+      {
+        id: "manual",
+        title: "Manual replicas",
+        traffic: [],
+        durationMs: 30_000,
+        timeline: [{ atMs: 1000, action: { do: "props", node: "worker", props: { replicas: 3 } } }],
+      },
+    ];
   if (fixed && workload) {
     delete workload.resources;
     delete workload.autoscaling;
@@ -149,12 +162,27 @@ test("A1: jittered readiness does not repeat scaling speech between controller s
   const announcement = await status.textContent();
   if (!announcement) throw new Error("Missing scaling announcement");
   await expect(badge).toHaveAttribute("data-ready", "1");
-  await page.clock.runFor(6000);
-  await expect(badge).toHaveAttribute("data-ready", "2");
+  await page.clock.runFor(1000);
   await expect(status).toHaveText(announcement);
+  await page.clock.runFor(5000);
+  await expect(badge).toHaveAttribute("data-ready", "2");
+  await expect(status).toContainText("Ready: 2");
   await page.clock.runFor(9000);
   await expect(status).not.toHaveText(announcement);
 });
+
+for (const fixedResources of [false, true])
+  test(`A1: manual replicas announce completion with suspended syncs (fixed=${fixedResources})`, async ({ page }) => {
+    await seed(page, { live: true, manualReplicas: true, fixedResources });
+    await page.getByTestId("node-worker").dblclick();
+    await page.getByTestId("live-sim-picker").selectOption("manual");
+    await page.clock.runFor(1500);
+    const status = page.getByTestId("autoscaling-announcement");
+    await expect(status).toContainText("Ready: 1 → Desired: 3");
+    await page.clock.runFor(10_000);
+    await expect(page.getByTestId("node-badge-worker")).toHaveAttribute("data-ready", "3");
+    await expect(status).toContainText("Ready: 3 → Desired: 3");
+  });
 
 test("A1: running an over-budget draft preserves the previous run and recovers after correction", async ({
   page,

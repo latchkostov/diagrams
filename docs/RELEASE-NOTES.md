@@ -12,6 +12,17 @@
 - Parity: only `node/i18n/catalogs.json` changed. It combines both PRs' messages: 1,689 per language,
   retaining master's nested-boundary `edit` hashes and adding the gallery's 17-message `examples` area
   in all 38 languages. All other 1,633 goldens are unchanged; the eight existing browser deferrals remain.
+## Autoscaling A1 final review fixes (2026-10-15)
+
+- Timeline lifecycle edits preflight allocation configuration before advancing. Unrelated edits
+  take no rollback checkpoint; preflight retains only three allocation fields per node, independent
+  of queued traffic and graph depth. Refusal still preserves the entire caller-visible operation.
+- Scaling speech announces startup completion even for fixed fleets and manual replica overrides,
+  while coalescing intermediate jittered readiness changes. No controls or chrome were added.
+- Continue refusal recovery now has controller coverage, including an exactly-once retry. Sampled
+  retained-memory estimates must stay within 5% of exact memory in both directions.
+- These review fixes preserve every parity golden; deliberate regressions verify the new guards.
+
 ## Autoscaling A1 refusal recovery review fixes (2026-10-15)
 
 - Refused timeline edits and Continue actions restore the entire run before pausing. Correcting the

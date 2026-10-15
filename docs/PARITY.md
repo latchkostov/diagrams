@@ -388,6 +388,15 @@ before. No output was re-recorded to make a failure pass.
 
 ## Autoscaling A1 refusal recovery review (2026-10-15)
 
+### Final review follow-up
+
+Allocation-only preflight replaces full-state rollback checkpoints without changing recorded output.
+Operation-count tests reject checkpoints for unrelated edits and bound preflight to three allocation
+fields per node regardless of queued messages; the deep-graph regression rejects recursive cloning.
+The seeded refusal probe now edits replicas (an allocation input) rather than concurrency, retaining
+all no-op and next-step replay assertions. Fixed/overridden readiness completion and two-sided sampled
+memory bounds have focused regressions. No golden is re-recorded for these fixes.
+
 The pre-rebase run matches all 1,761 goldens, with none changed, added, missing or stale. These
 local fixes cover refused runner operations (including slow-motion forecast recovery), occupied concurrency reductions, replacement admission
 and staged editor identities outside the frozen corpus. The speech regression is covered by the

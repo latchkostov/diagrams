@@ -1,5 +1,6 @@
 import { createSimulationRun } from "./simulation";
 import { LifecycleBudgetError } from "../model/resourceBudget";
+import * as resourceBudgets from "../model/resourceBudget";
 import { expect, it, vi } from "vitest";
 import { autoscalingFixture } from "../lab/autoscalingFixture";
 import { hpaLesson, resourceLesson } from "../model/autoscaling";
@@ -242,7 +243,11 @@ it("sampled reservations retain memory after concurrency is lowered until they f
     return memory;
   };
   const exact = run(1);
-  for (const scale of [2, 10]) expect(run(scale) / exact).toBeGreaterThan(0.95);
+  for (const scale of [2, 10]) {
+    const ratio = run(scale) / exact;
+    expect(ratio).toBeGreaterThan(0.95);
+    expect(ratio).toBeLessThan(1.05);
+  }
 });
 
 it.each([1, 10])("resource-less A1 upgrade preserves p3 playback at scale %s", (scale) => {
@@ -320,4 +325,120 @@ it("ordinary runner ticks do not checkpoint when no property action is reachable
   const checkpoint = vi.spyOn(run.engine, "checkpoint");
   run.step(500);
   expect(checkpoint).not.toHaveBeenCalled();
+});
+
+it.each(["p3", "p3-a1"] as const)("unrelated %s actions never checkpoint or preflight allocation", (revision) => {
+  const d = fixed();
+  d.planning = { revision };
+  if (revision === "p3") {
+    delete d.nodes[1].props!.resources;
+    delete d.nodes[1].props!.autoscaling;
+  }
+  const run = createSimulationRun(d, {
+    id: "plain",
+    title: "Plain",
+    traffic: [],
+    durationMs: 1000,
+    timeline: [
+      {
+        atMs: 10,
+        action: {
+          do: "props",
+          node: "worker",
+          props: revision === "p3" ? { replicas: 2 } : { concurrency: 2, failureRate: 0.2 },
+        },
+      },
+    ],
+  });
+  const checkpoint = vi.spyOn(run.engine, "checkpoint"),
+    validate = vi.spyOn(run.engine, "validateLifecycleActions");
+  run.step(10);
+  expect(checkpoint).not.toHaveBeenCalled();
+  expect(validate).not.toHaveBeenCalled();
+});
+
+it("lifecycle preflight copies only three allocation fields per node, independent of queued work", () => {
+  const run = createSimulationRun(fixed(), {
+    id: "bounded",
+    title: "Bounded",
+    traffic: [],
+    durationMs: 1000,
+    timeline: [{ atMs: 10, action: { do: "props", node: "worker", props: { replicas: 2 } } }],
+  });
+  run.engine.inject("source", 50_000);
+  const checkpoint = vi.spyOn(run.engine, "checkpoint"),
+    budget = vi.spyOn(resourceBudgets, "resourceBudgetExceeded"),
+    clone = vi.spyOn(globalThis, "structuredClone");
+  try {
+    run.step(10);
+    expect(checkpoint).not.toHaveBeenCalled();
+    const candidate = budget.mock.calls[0][0];
+    expect(candidate.nodes).toHaveLength(2);
+    for (const node of candidate.nodes) {
+      expect(Object.keys(node)).toEqual(["id", "props"]);
+      expect(Object.keys(node.props!)).toEqual(["resources", "replicas", "autoscaling"]);
+    }
+    // A scalar patch may be cloned; neither queued messages nor graph state may be.
+    expect(clone.mock.calls.every(([value]) => typeof value !== "object")).toBe(true);
+  } finally {
+    budget.mockRestore();
+    clone.mockRestore();
+  }
+});
+
+it.each(["p3", "p3-a1"] as const)(
+  "a %s allocation action on a deep connected graph does not clone the graph",
+  (revision) => {
+    const d = fixed();
+    d.planning = { revision };
+    d.nodes = Array.from({ length: 2000 }, (_, i) => ({
+      id: `n${i}`,
+      stencil: "service.dotnet",
+      label: "Service",
+      x: 0,
+      y: 0,
+    }));
+    d.edges = d.nodes.slice(1).map((n, i) => ({ id: `e${i}`, from: `n${i}`, to: n.id }));
+    const run = createSimulationRun(d, {
+      id: "deep",
+      title: "Deep",
+      traffic: [],
+      durationMs: 100,
+      timeline: [{ atMs: 10, action: { do: "props", node: "n0", props: { replicas: 2 } } }],
+    });
+    expect(() => run.step(10)).not.toThrow();
+    expect(run.engine.effectiveProps("n0").replicas).toBe(2);
+  },
+);
+
+it("preflight stops at the actual tick, duration and pausing note boundaries", () => {
+  const make = (note = false, durationMs = 100) =>
+    createSimulationRun(fixed(), {
+      id: "boundaries",
+      title: "Boundaries",
+      traffic: [],
+      durationMs,
+      timeline: [
+        ...(note ? [{ atMs: 10, action: { do: "note" as const, text: "Wait", pause: true } }] : []),
+        { atMs: 20, action: { do: "props", node: "worker", props: { replicas: 2 } } },
+      ],
+    });
+  const a = make(),
+    b = make(true),
+    c = make(false, 10);
+  const budget = vi.spyOn(resourceBudgets, "resourceBudgetExceeded").mockReturnValue(true);
+  try {
+    a.step(19);
+    expect(a.state().time).toBe(10);
+    expect(() => a.step(1)).toThrow(LifecycleBudgetError);
+    expect(a.state().time).toBe(10);
+    expect(() => b.step(100)).not.toThrow();
+    expect(b.state().waiting).toBe(true);
+    expect(() => b.resume()).not.toThrow(); // The refused edit is still a future tick.
+    expect(() => b.step(10)).toThrow(LifecycleBudgetError);
+    expect(() => c.step(100)).not.toThrow();
+    expect(c.state().done).toBe(true);
+  } finally {
+    budget.mockRestore();
+  }
 });

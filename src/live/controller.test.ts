@@ -709,6 +709,42 @@ describe("A1 round 3 controller boundaries", () => {
     expect(c.snapshot().time).toBeGreaterThan(0);
     c.dispose();
   });
+  it("Continue handles lifecycle refusal and retries the pending action exactly once", () => {
+    const c = new LiveController(autoscalingFixture());
+    c.selectSimulation({
+      id: "continue",
+      title: "Continue",
+      scale: 1,
+      traffic: [],
+      durationMs: 10_000,
+      timeline: [
+        { atMs: 1000, action: { do: "note", text: "Wait", pause: true } },
+        { atMs: 1000, action: { do: "props", node: "worker", props: { replicas: 2 } } },
+        { atMs: 1000, action: { do: "inject", node: "source", count: 7 } },
+      ],
+    });
+    c.step(1000);
+    const before = c.snapshot(),
+      run = c.getState().run;
+    const budget = vi.spyOn(resourceBudgets, "resourceBudgetExceeded").mockReturnValue(true);
+    try {
+      expect(() => c.resume()).not.toThrow();
+      expect(c.getState().playing).toBe(false);
+      expect(c.getState().resourceError).toContain("100");
+      expect(c.getState().run).toEqual(run);
+      expect(c.snapshot()).toEqual(before);
+    } finally {
+      budget.mockRestore();
+    }
+    c.resume();
+    expect(c.getState().run?.waiting).toBe(false);
+    expect(c.snapshot().nodes.worker.fleet!.desired).toBe(2);
+    const after = c.snapshot();
+    expect(after.inSystem).toBe(before.inSystem + 7);
+    c.resume();
+    expect(c.snapshot()).toEqual(after);
+    c.dispose();
+  });
   it("a refused slow-motion forecast stops and restores its sandbox without consuming the action", () => {
     const c = new LiveController(autoscalingFixture());
     c.selectSimulation({

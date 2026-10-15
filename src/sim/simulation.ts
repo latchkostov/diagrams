@@ -1,4 +1,3 @@
-import { LifecycleBudgetError } from "../model/resourceBudget";
 import type { DiagramFile, Expectation, Simulation, TrafficShape } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { createRealCountInjector } from "./injection";
@@ -329,22 +328,18 @@ export function createSimulationRun(
     restore();
   }
 
-  // Only authored property actions can refuse a lifecycle allocation. Checkpoint their whole
-  // caller-visible operation, including scheduler credit, before advancing any clock or traffic.
+  // Refusals depend only on allocation configuration, never on elapsed time or traffic.
+  // Validate the reachable edits before touching any caller-visible state.
   function transaction(until: number, update: () => void) {
-    let saved: SimulationRunCheckpoint | undefined;
+    const allocations = [];
     for (let i = cursor; i < timeline.length && timeline[i].atMs <= until; i++) {
-      if (timeline[i].action.do === "props") {
-        saved = checkpoint();
-        break;
-      }
+      const action = timeline[i].action;
+      if (action.do === "note" && action.pause) break;
+      if (action.do === "props" && ["resources", "replicas", "autoscaling"].some((key) => key in action.props))
+        allocations.push(action);
     }
-    try {
-      update();
-    } catch (error) {
-      if (saved && error instanceof LifecycleBudgetError) restore(saved);
-      throw error;
-    }
+    if (diagram.planning?.revision === "p3-a1" && allocations.length) engine.validateLifecycleActions(allocations);
+    update();
   }
 
   restart();
@@ -379,7 +374,8 @@ export function createSimulationRun(
     step(dtMs): void {
       if (waiting || done || !Number.isFinite(dtMs) || dtMs <= 0) return;
       // Keep fractional simulation ticks here; engine.step applies speed exactly once.
-      transaction(metrics.time + dtMs * speed + TICK, () =>
+      const ticks = Math.floor((scheduler.checkpoint() + dtMs * speed + 1e-8) / TICK);
+      transaction(Math.min(metrics.time + ticks * TICK, Math.ceil(totalMs / TICK) * TICK), () =>
         scheduler.advance(dtMs * speed, () => {
           const from = metrics.time;
           engine.step(TICK / speed);

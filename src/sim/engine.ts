@@ -1511,6 +1511,32 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   lineage.setHistory(opts.traceHistory ?? 0);
   const engine: SimEngine = {
     tracer: lineage,
+    validateLifecycleActions(actions) {
+      if (planning?.revision !== "p3-a1" || !actions.length) return;
+      // Only allocation inputs: no queues, lifecycle objects or connected topology. Nested
+      // resource/controller objects are read-only references, replaced wholesale by patches.
+      const candidates = new Map<string, { id: string; props: Record<string, unknown> }>(
+        [...nodes].map(([id, node]) => [
+          id,
+          {
+            id,
+            props: {
+              resources: node.rawProps.resources,
+              replicas: node.rawProps.replicas,
+              autoscaling: node.rawProps.autoscaling,
+            },
+          },
+        ]),
+      );
+      for (const action of actions) {
+        const candidate = candidates.get(action.node);
+        if (!candidate) continue;
+        for (const key of ["resources", "replicas", "autoscaling"] as const)
+          if (key in action.props) Object.assign(candidate.props, { [key]: action.props[key] });
+        if (resourceBudgetExceeded({ planning, nodes: [...candidates.values()] }, capacityMultiplier))
+          throw new LifecycleBudgetError(t("autoscaling.budget", { limit: MAX_LIFECYCLE_REPLICAS }));
+      }
+    },
     checkpoint() {
       // structuredClone preserves the graph's shared/cyclic references. Deque methods are
       // reattached on restore; its queue contents and head are ordinary own properties.

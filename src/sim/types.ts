@@ -359,6 +359,8 @@ export interface SimEngine {
   inject(nodeId: string, count: number, opts?: InjectOptions): void;
   setNodeStatus(nodeId: string, status: NodeStatus): void;
   setNodeProps(nodeId: string, patch: NodeSimProps): void;
+  /** Preflight ordered lifecycle edits without copying or mutating playback state. */
+  validateLifecycleActions(actions: readonly { node: string; props: NodeSimProps }[]): void;
   /** Apply patches and an optional capacity multiplier with one incremental allocation pass. */
   setNodePropsBatch(patches: Record<string, NodeSimProps>, capacityMultiplier?: number): void;
   /** Continuous sources are disabled when their sampled rate or per-run volume exceeds the safety budget. */

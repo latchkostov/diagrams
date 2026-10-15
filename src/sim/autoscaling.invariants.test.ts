@@ -148,7 +148,7 @@ function replay(d: DiagramFile, seed: number, scale: number, actions: Action[]) 
       const time = at + 10;
       at += a.ms;
       return a.do === "refuse"
-        ? [{ atMs: time, action: { do: "props" as const, node: "worker", props: { concurrency: 2 } } }]
+        ? [{ atMs: time, action: { do: "props" as const, node: "worker", props: { replicas: 2 } } }]
         : [];
     });
     const run = createSimulationRun(
