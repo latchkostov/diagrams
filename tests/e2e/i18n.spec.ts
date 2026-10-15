@@ -799,6 +799,7 @@ for (const code of ["de", "ar", "en-XA"]) {
       return typeof compiled === "string" ? compiled : compiled(values);
     };
     const check = async (page: Page, id: string, title: keyof typeof en, values: Record<string, unknown> = {}) => {
+      await expect(page.getByTestId(id)).toBeVisible({ timeout: pageLoadTimeout() });
       await expect(page.getByTestId(`${id}-title`)).toHaveText(words(title, values));
       await expectNothingCut(page.getByTestId(id), `${code}: ${id}`);
       const box = await page.getByTestId(id).boundingBox();
@@ -925,7 +926,7 @@ for (const code of ["de", "ar", "en-XA"]) {
 
     test("cloud Open from, Save to and Save prompts", async ({ page, consoleErrors }) => {
       await page.goto(`./?view=canvas&example=${SLUG}&storage=test`);
-      await expect(page.getByTestId("canvas-view")).toBeVisible();
+      await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
       await file(page, "open-from-test", "file-open-from");
       await check(page, "storage-files-dialog", "storageDialog.title", { provider: "Test storage" });
       await expect(page.getByTestId("storage-files-empty")).toHaveText(
@@ -998,22 +999,21 @@ for (const code of ["de", "ar", "en-XA"]) {
       expectNoErrors(consoleErrors);
     });
 
-    test("cloud blocked sign-in, consent, admin, expiry and full-storage prompts", async ({ page, consoleErrors }) => {
-      for (const [scenario, key, values] of [
-        ["blocked", "cloud.theLabelSigninWindowWasBlockedAllow", { label: "OneDrive" }],
-        ["admin", "cloud.yourOrganizationsAdminHasToApproveLive", { label: "OneDrive" }],
-        ["denied", "cloud.labelAccessWasntGrantedSoLiveDiagrams", { label: "OneDrive" }],
-        ["expired", "cloud.signInExpired", { provider: "OneDrive", action: "download_the_file" }],
-        ["full", "cloud.storageFull", { provider: "OneDrive" }],
-      ] as const) {
+    for (const [scenario, key, values] of [
+      ["blocked", "cloud.theLabelSigninWindowWasBlockedAllow", { label: "OneDrive" }],
+      ["admin", "cloud.yourOrganizationsAdminHasToApproveLive", { label: "OneDrive" }],
+      ["denied", "cloud.labelAccessWasntGrantedSoLiveDiagrams", { label: "OneDrive" }],
+      ["expired", "cloud.signInExpired", { provider: "OneDrive", action: "download_the_file" }],
+      ["full", "cloud.storageFull", { provider: "OneDrive" }],
+    ] as const)
+      test(`cloud ${scenario} prompt`, async ({ page, consoleErrors }) => {
         await page.goto(`./?view=lab&preset=file-prompts&scenario=${scenario}`);
         await expect(page.getByTestId("file-prompts-message")).toHaveText(words(key, values), {
           timeout: pageLoadTimeout(),
         });
         await check(page, "file-prompts-dialog", "storageDialog.title", { provider: "OneDrive" });
-      }
-      expectNoErrors(consoleErrors);
-    });
+        expectNoErrors(consoleErrors);
+      });
   });
 }
 
@@ -1027,7 +1027,7 @@ async function gotoStart(page: Page) {
 async function openLanguage(page: Page) {
   await page.getByTestId("view-button").click();
   await page.getByTestId("view-language").click();
-  await expect(page.getByTestId("language-dialog")).toBeVisible();
+  await expect(page.getByTestId("language-dialog")).toBeVisible({ timeout: pageLoadTimeout() });
 }
 
 /** Starts the page in a language, as a remembered choice would. */
@@ -1060,6 +1060,7 @@ test.describe("choosing a language", () => {
     page,
     consoleErrors,
   }) => {
+    test.slow(); // Initial load and the reload each initialize the app and its language.
     await gotoStart(page);
     await expect(page.getByTestId("start-blank")).toHaveText("Start blank");
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
@@ -1109,7 +1110,7 @@ test.describe("choosing a language", () => {
     await expect(page.getByTestId("command-palette")).toBeVisible();
     await page.keyboard.type("language");
     await page.keyboard.press("Enter");
-    await expect(page.getByTestId("language-dialog")).toBeVisible();
+    await expect(page.getByTestId("language-dialog")).toBeVisible({ timeout: pageLoadTimeout() });
     // Back to the browser's language (English here).
     await page.getByTestId("language-option-browser").click();
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
@@ -1426,7 +1427,7 @@ test.describe("the pseudo-locale", () => {
 
     await page.getByTestId("view-button").click();
     await page.getByTestId("view-language").click();
-    await expect(page.getByTestId("language-dialog")).toBeVisible();
+    await expect(page.getByTestId("language-dialog")).toBeVisible({ timeout: pageLoadTimeout() });
     await expectNothingCut(page.getByTestId("language-dialog"), "Language dialog");
     await page.getByTestId("language-done").click();
     expectNoErrors(consoleErrors);
@@ -1476,6 +1477,7 @@ test.describe("the pseudo-locale", () => {
 });
 
 test("Clear everything forgets the language: the app comes back in the browser's", async ({ page, consoleErrors }) => {
+  test.slow(); // Both the translated page and the cleared app load from scratch.
   await gotoStart(page);
   await openLanguage(page);
   await page.getByTestId("language-option-de").click();

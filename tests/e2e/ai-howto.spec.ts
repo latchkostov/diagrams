@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
-import { SLUG, callTool, installFakeModelContext, openAiPanel } from "./ai-helpers";
+import { SLUG, toolNames, callTool, installFakeModelContext, openAiPanel } from "./ai-helpers";
 
 // The idle AI panel answers "how do I use this?": where to type (not here), the ways to use AI, and,
 // with WebMCP, an honest status and the tools the page publishes. Selectors are data-testid only.
@@ -91,6 +91,7 @@ test.describe("with WebMCP", () => {
   });
 
   test("with a conversation, the how-to folds to one link", async ({ page }) => {
+    await expect.poll(() => toolNames(page)).toContain("edit_diagram");
     await callTool(page, "edit_diagram", {
       ops: [{ op: "update", target: "shopper", props: { sublabel: "Web and mobile" } }],
       layout: "none",

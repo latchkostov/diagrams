@@ -318,6 +318,7 @@ test("the first Import report offers New diagrams are private, once, including a
 });
 
 test("Clear everything forgets the Import report's privacy offer", async ({ page, consoleErrors }) => {
+  test.slow(); // Initial canvas, the wipe's reload and another canvas navigation.
   await gotoCanvas(page, SLUG);
   await importCompose(page);
   await expect(page.getByTestId("import-report-offer")).toBeVisible();
@@ -415,11 +416,8 @@ test("Share… stays with its diagram: another one opening closes it, loaded or 
 }) => {
   const downloads: string[] = [];
   page.on("download", (d) => downloads.push(d.suggestedFilename()));
-  await gotoCanvas(page, SLUG);
-  await importOwn(page, "First plan");
-  await importOwn(page, "Second plan");
-
   // Its code still downloading: Back opens the first diagram, and Share… for the second never appears.
+  // Install before navigation: idle preloading may start while either diagram is being imported.
   let release!: () => void;
   const held = new Promise<void>((resolve) => (release = resolve));
   let requested = false;
@@ -428,10 +426,13 @@ test("Share… stays with its diagram: another one opening closes it, loaded or 
     await held;
     await route.continue();
   });
+  await gotoCanvas(page, SLUG);
+  await importOwn(page, "First plan");
+  await importOwn(page, "Second plan");
   await page.getByTestId("file-button").click();
   await page.getByTestId("file-share").click();
   await expect(page.getByTestId("lazy-dialog-loading")).toBeVisible();
-  expect(requested).toBe(true);
+  await expect.poll(() => requested).toBe(true);
   await page.goBack();
   await expect(page.getByTestId("diagram-title")).toHaveText("First plan");
   await expect(page.getByTestId("lazy-dialog")).toHaveCount(0);
@@ -458,6 +459,7 @@ test("a public embed closes when the diagram turns private in another tab: it ne
   context,
   consoleErrors,
 }) => {
+  test.slow(); // Two cold page loads, each with a lazy canvas and dialogs.
   await gotoCanvas(page, SLUG);
   const slug = await importOwn(page, "Public embed plan");
   await openShareChooser(page);
@@ -482,6 +484,7 @@ test("an embed supplied by your app stays open when another tab makes the diagra
   context,
   consoleErrors,
 }) => {
+  test.slow(); // Two cold page loads, each with a lazy canvas and dialogs.
   await gotoCanvas(page, SLUG);
   const slug = await importOwn(page, "Host-supplied embed plan");
 
