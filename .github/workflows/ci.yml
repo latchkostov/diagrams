@@ -22,7 +22,7 @@ jobs:
   # skipping the workflow would leave the `CI` gate check pending on a docs-only pull request.
   changes:
     name: Detect changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       actions: read
@@ -96,7 +96,7 @@ jobs:
   # Runs on every event (docs-only and already-tested trees included) and beside the e2e matrix.
   checks:
     name: Types, lint, unit, build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
@@ -122,7 +122,7 @@ jobs:
   # so a docs-only change can still move a golden.
   parity:
     name: Output parity
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
@@ -152,7 +152,7 @@ jobs:
     name: E2E ${{ matrix.shard }}/${{ strategy.job-total }}
     needs: changes
     if: needs.changes.outputs.e2e == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -200,7 +200,7 @@ jobs:
     needs: e2e
     # Only when a shard failed: one HTML report with every shard's failures and traces.
     if: failure() && needs.e2e.result == 'failure'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
@@ -229,7 +229,7 @@ jobs:
   # that `changes` skipped (docs only, or a tree a pull request run already passed) counts as passed.
   self-host:
     name: Self-host image and chart
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
@@ -250,7 +250,7 @@ jobs:
     name: CI
     needs: [changes, checks, parity, e2e, self-host]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Check results
