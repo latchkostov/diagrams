@@ -231,14 +231,14 @@ test.describe("editor", () => {
     await menuItem(page, "relation:message").click();
     await expect(page.getByTestId("edge-shopper-to-gateway")).toHaveAttribute("class", /fe-async/);
     await page.getByTestId("edge-label-shopper-to-gateway").click();
-    await expect(page.getByTestId("inspector-field-relation")).toHaveValue("message");
+    await expect(page.getByTestId("inspector-field-relation")).toContainText("Message");
     await page.getByTestId("edge-label-shopper-to-gateway").click({ button: "right" });
     await menuItem(page, "edge.relationship").click();
     await expect(menuItem(page, "relation:message")).toHaveAttribute("aria-checked", "true");
     // A pointer-opened submenu keeps focus on its parent: Escape closes that menu.
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("context-menu")).toHaveCount(0);
-    await expect(page.getByTestId("inspector-field-relation")).toHaveValue("message");
+    await expect(page.getByTestId("inspector-field-relation")).toContainText("Message");
     // Pin a side from the inspector (under "Advanced") and back to auto.
     await page.getByTestId("inspector-section-edge-advanced").click();
     await page.getByTestId("inspector-field-sourceSide").selectOption("bottom");

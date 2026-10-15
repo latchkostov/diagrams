@@ -87,6 +87,8 @@ export interface MenuItem {
    * never remembers it among recent commands for a private diagram (src/palette/recent.ts).
    */
   documentScoped?: boolean;
+  /** Optional custom CSS class for row styling (e.g. tints). */
+  className?: string;
 }
 
 export interface Action {

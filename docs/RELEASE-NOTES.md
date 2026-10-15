@@ -1,5 +1,19 @@
 # Release notes
 
+## Relationship dropdown review fixes (#122, 2026-10-15)
+
+- Removing an inert edge setting returns keyboard focus to Label, and Tab reaches the relationship
+  trigger in the same position as the previous select. Collapsible sections still return to their heading.
+- The relationship dropdown announces its selected value (including Mixed), links to its actual menu,
+  and closes on a second trigger click. Keyboard selection and Escape return focus to the trigger;
+  outside clicks keep focus on the control clicked. Message and Request keep async/sync in hints only.
+- Browser regressions cover keyboard selection/cancellation, popup accessibility, repeated trigger
+  clicks, bulk Mixed values and the actual SVG paths for every relationship glyph.
+- Refreshed the stale agent skill viewer; plugin 1.1.25 is one patch above master. No parity goldens
+  change: this review changes inspector interaction, not diagram output.
+- Merged the latest master without rewriting collaborator history, retaining both documentation
+  histories and the follow-up fixes in #123.
+
 ## Autoscaling preflight follow-ups (#117, 2026-10-15)
 
 - The engine classifies all reachable property actions. Shared allocation projection and patching

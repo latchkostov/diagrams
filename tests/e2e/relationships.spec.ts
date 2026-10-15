@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Locator, Page } from "@playwright/test";
 import { test, expect, gotoCanvas, gotoLab, expectNoErrors, gotoLive } from "./fixtures";
+import { RELATION_GLYPHS } from "../../src/components/relationGlyphs";
 
 /**
  * Relationships (docs/research/diagram-semantics.md): dependencies are dotted, carry a glyph and no
@@ -44,6 +45,102 @@ test.describe("relationships", () => {
   test.beforeEach(async ({ page }) => {
     await gotoCanvas(page, SLUG);
     await expect(page.getByTestId("node-api")).toBeVisible();
+  });
+
+  test("relationship dropdown exposes the selected value to screen readers", async ({ page }) => {
+    await page.getByTestId("edge-label-api-to-sb").click();
+    const trigger = page.getByTestId("inspector-field-relation");
+    await expect(trigger).toHaveAccessibleName("Relationship");
+    await expect(trigger).toHaveAccessibleDescription("Message");
+    await trigger.click();
+    await menuItem(page, "secret").click();
+    await expect(trigger).toHaveAccessibleDescription("Secret");
+  });
+
+  test("relationship dropdown supports keyboard selection and cancellation", async ({ page, consoleErrors }) => {
+    await page.getByTestId("edge-label-api-to-sb").click();
+    const trigger = page.getByTestId("inspector-field-relation");
+    const menu = page.getByTestId("inspector-field-relation-menu");
+    const edge = page.getByTestId("edge-api-to-sb");
+    await trigger.focus();
+    await trigger.press("ArrowDown");
+    await expect(menu).toBeFocused();
+    await expect(trigger).toHaveAttribute("aria-expanded", "true");
+    await expect(menu).toHaveAttribute("role", "menu");
+    const menuId = await menu.getAttribute("id");
+    if (!menuId) throw new Error("The relationship menu must have an ID");
+    await expect(trigger).toHaveAttribute("aria-controls", menuId);
+    await expect(menuItem(page, "message")).toHaveAttribute("aria-checked", "true");
+    await menu.press("ArrowDown");
+    await expect(menuItem(page, "message")).toHaveAttribute("data-active", "true");
+    await menu.press("ArrowDown");
+    await expect(menuItem(page, "request")).toHaveAttribute("data-active", "true");
+    await menu.press("Enter");
+    await expect(menu).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    await expect(trigger).toHaveAccessibleDescription("Request");
+    await expect(edge).toHaveAttribute("class", /fe-sync/);
+    await trigger.press("Enter");
+    await expect(menu).toBeFocused();
+    await menu.press("End");
+    await expect(menuItem(page, "depends")).toHaveAttribute("data-active", "true");
+    await menu.press("ArrowUp");
+    await expect(menuItem(page, "deploy")).toHaveAttribute("data-active", "true");
+    await expectNoViolations(page, "inspector-field-relation-menu");
+    await menu.press("Escape");
+    await expect(menu).toHaveCount(0);
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+    await expect(trigger).not.toHaveAttribute("aria-controls");
+    await expect(trigger).toBeFocused();
+    await expect(trigger).toHaveAccessibleDescription("Request");
+    await expect(edge).toHaveAttribute("class", /fe-sync/);
+    await expect(edge).not.toHaveAttribute("data-relation", /.+/);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("relationship dropdown trigger toggles closed and outside clicks keep their focus", async ({ page }) => {
+    await page.getByTestId("edge-label-api-to-sb").click();
+    const trigger = page.getByTestId("inspector-field-relation");
+    const menu = page.getByTestId("inspector-field-relation-menu");
+    await trigger.click();
+    await expect(menu).toBeFocused();
+    await trigger.click();
+    await expect(menu).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+    await trigger.click();
+    await expect(menu).toBeVisible();
+    const label = page.getByTestId("inspector-field-label");
+    await label.click();
+    await expect(menu).toHaveCount(0);
+    await expect(label).toBeFocused();
+  });
+
+  test("relationship dropdown renders matching trigger and option glyphs", async ({ page }) => {
+    await page.getByTestId("edge-label-api-to-sb").click();
+    const trigger = page.getByTestId("inspector-field-relation");
+    const triggerIcon = page.getByTestId("inspector-field-relation-icon");
+    const glyph = (icon: Locator) => icon.evaluate((el) => el.firstElementChild?.firstElementChild?.getAttribute("d"));
+    await expect.poll(() => glyph(triggerIcon)).toBe(RELATION_GLYPHS["rel-message"]);
+    await trigger.click();
+    for (const choice of [
+      "message",
+      "request",
+      "config",
+      "secret",
+      "identity",
+      "telemetry",
+      "deploy",
+      "depends",
+    ] as const)
+      await expect
+        .poll(() => glyph(page.getByTestId(`context-menu-icon-${choice}`)))
+        .toBe(RELATION_GLYPHS[`rel-${choice}`]);
+    await menuItem(page, "secret").click();
+    await expect.poll(() => glyph(triggerIcon)).toBe(RELATION_GLYPHS["rel-secret"]);
+    await trigger.click();
+    await menuItem(page, "request").click();
+    await expect.poll(() => glyph(triggerIcon)).toBe(RELATION_GLYPHS["rel-request"]);
   });
 
   test("the example draws dependencies dotted, with glyphs and derived labels", async ({ page, consoleErrors }) => {
@@ -124,7 +221,8 @@ test.describe("relationships", () => {
 
     // The inspector offers the same eight choices.
     await page.getByTestId("edge-label-api-to-sb").click();
-    await page.getByTestId("inspector-field-relation").selectOption("telemetry");
+    await page.getByTestId("inspector-field-relation").click();
+    await menuItem(page, "telemetry").click();
     await expect(page.getByTestId("edge-api-to-sb")).toHaveAttribute("data-relation", "telemetry");
     await expect(page.getByTestId("inspector-field-group")).toHaveCount(0);
     expectNoErrors(consoleErrors);
@@ -412,10 +510,12 @@ test("relationship-only changes invalidate edit capacity demand and bottleneck f
   await expect(page.getByTestId("capacity-label-worker")).toHaveAttribute("data-level", "over");
   await expect(page.getByTestId("bottleneck-fix")).toBeVisible();
   await page.getByTestId("edge-label-demand").click();
-  await page.getByTestId("inspector-field-relation").selectOption("secret");
+  await page.getByTestId("inspector-field-relation").click();
+  await menuItem(page, "secret").click();
   await expect(page.getByTestId("capacity-label-worker")).toHaveCount(0);
   await expect(page.getByTestId("bottleneck-fix")).toHaveCount(0);
-  await page.getByTestId("inspector-field-relation").selectOption("message");
+  await page.getByTestId("inspector-field-relation").click();
+  await menuItem(page, "message").click();
   await expect(page.getByTestId("capacity-label-worker")).toHaveAttribute("data-level", "over");
   expectNoErrors(consoleErrors);
 });

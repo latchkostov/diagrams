@@ -156,6 +156,11 @@ test.describe("the simulation tells the truth", () => {
     await page.keyboard.press("Enter");
     await expect(page.getByTestId("inspector-inert-group")).toHaveCount(0);
     await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+    // The replacement relationship trigger keeps the native select's Tab stop.
+    await page.keyboard.press("Tab");
+    await expect(page.getByTestId("inspector-field-relation")).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(page.getByTestId("inspector-field-label")).toBeFocused();
     // Out of a topic both are there.
     await page.getByTestId("edge-label-topic-billing").click();
     await expect(page.getByTestId("inspector-field-group")).toBeVisible();
