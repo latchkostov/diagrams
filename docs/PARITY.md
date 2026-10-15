@@ -229,7 +229,7 @@ the summary also fails on any mismatch in its ledger.
 
 The **Output parity** job in `.github/workflows/ci.yml` runs `pnpm parity` on every event (the skill's references
 are Markdown, so a docs-only change can move a golden) and the **CI** gate requires it. It type-checks the harness,
-runs the Node tier on Node 22, and the browser tier in the same Playwright image as a laptop. It fails on any
+runs the Node tier on Node 24, and the browser tier in the same Playwright image as a laptop. It fails on any
 difference, missing golden or stale golden; the diffs are in the log and in the job summary, and the actual outputs
 are uploaded on failure.
 
