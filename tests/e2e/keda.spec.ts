@@ -167,13 +167,97 @@ test("KEDA: imports a complete ScaledObject and owned HPA locally", async ({ pag
   await expect(page.getByTestId("autoscaling-min")).toHaveValue("0");
   await expect(page.getByTestId("autoscaling-max")).toHaveValue("20");
   await page.getByTestId("autoscaling-advanced-toggle").click();
-  await page.getByTestId("autoscaling-use-lesson").click();
+  await page.getByTestId("autoscaling-use-lesson").focus();
+  await page.getByTestId("autoscaling-use-lesson").press("Enter");
+  await expect(page.getByTestId("autoscaling-cpuMsPerMessage")).toBeFocused();
   await expect(page.getByTestId("autoscaling-cpuMsPerMessage")).toHaveValue("40");
   await expect(page.getByTestId("autoscaling-cpuRequestMilli")).toHaveValue("500");
   await expect(page.getByTestId("autoscaling-max")).toHaveValue("20");
   await page.getByTestId("autoscaling-preset").selectOption("fixed");
+  await page.getByTestId("autoscaling-advanced-toggle").click();
+  await expect(page.getByTestId("autoscaling-cpuRequestMilli")).toHaveValue("500");
   await expect
     .poll(async () => (await savedDiagram(page)).nodes.find((n) => n.id === "renderer")?.props)
     .toMatchObject({ autoscaling: { mode: "off" }, resources: { modelRevision: "a2", cpuRequestMilli: 500 } });
+  expectNoErrors(consoleErrors);
+});
+
+test("KEDA: an imported fixed Deployment keeps resource editing and the lesson focus target", async ({
+  page,
+  consoleErrors,
+}) => {
+  await page.addInitScript(() =>
+    localStorage.setItem("diagrams.inspector.open.v1", JSON.stringify({ "node-simulation": true })),
+  );
+  await gotoCanvas(page, "kafka-order-pipeline");
+  await page.getByTestId("import-input").setInputFiles({
+    name: "fixed.yaml",
+    mimeType: "application/yaml",
+    buffer: Buffer.from(readFileSync("tests/fixtures/imports/autoscaling-a2.yaml", "utf8").split("---")[0]),
+  });
+  await waitForStableViewport(page);
+  await page.getByTestId("node-renderer").click();
+  await expect(page.getByTestId("autoscaling-preset")).toHaveValue("fixed");
+  await page.getByTestId("autoscaling-advanced-toggle").click();
+  await expect(page.getByTestId("autoscaling-cpuRequestMilli")).toHaveValue("500");
+  await page.getByTestId("autoscaling-use-lesson").focus();
+  await page.getByTestId("autoscaling-use-lesson").press("Enter");
+  await expect(page.getByTestId("autoscaling-cpuMsPerMessage")).toBeFocused();
+  await expect(page.getByTestId("autoscaling-cpuMsPerMessage")).toHaveValue("40");
+  await expect(page.getByTestId("autoscaling-cpuRequestMilli")).toHaveValue("500");
+  await expect(page.getByTestId("autoscaling-target")).toHaveCount(0);
+  await page.getByTestId("autoscaling-cpuMsPerMessage").fill("60");
+  await page.getByTestId("autoscaling-cpuMsPerMessage").press("Tab");
+  await expect
+    .poll(async () => (await savedDiagram(page)).nodes.find((n) => n.id === "renderer")?.props?.resources)
+    .toMatchObject({ cpuMsPerMessage: 60, cpuRequestMilli: 500 });
+  expectNoErrors(consoleErrors);
+});
+
+test("KEDA: a large namespace pick includes its scaler source and explains the selected boundaries", async ({
+  page,
+  consoleErrors,
+}) => {
+  const yaml = readFileSync("tests/fixtures/imports/autoscaling-a2.yaml", "utf8")
+    .replace(
+      "name: render-jobs, namespace: studio",
+      "name: render-jobs, namespace: brokers, labels: {strimzi.io/cluster: events}",
+    )
+    .replace(
+      "topic: render-jobs",
+      "bootstrapServers: events-kafka-bootstrap.brokers.svc.cluster.local:9092\n        topic: render-jobs",
+    );
+  const filler = Array.from(
+    { length: 299 },
+    (_, i) => `---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: filler-${i}, namespace: studio}
+spec: {template: {spec: {containers: [{name: worker, image: example.invalid/worker:1}]}}}
+`,
+  ).join("\n");
+  await gotoCanvas(page, "kafka-order-pipeline");
+  await page.getByTestId("import-input").setInputFiles({
+    name: "namespaces.yaml",
+    mimeType: "application/yaml",
+    buffer: Buffer.from(yaml + "\n" + filler),
+  });
+  await page.getByTestId("toast-import-details").click();
+  await expect(page.getByTestId("import-report-pick")).toContainText("Boundaries (1 of 2 selected)");
+  await expect(page.getByTestId("import-report-note").filter({ hasText: "included automatically" })).toHaveCount(1);
+  await expect(page.getByTestId("import-report-pick-0")).toBeChecked();
+  await expect(page.getByTestId("import-report-pick-1")).not.toBeChecked();
+  await page.getByTestId("import-report-pick-1").check();
+  await expect(page.getByTestId("import-report-pick")).toContainText("Boundaries (2 of 2 selected)");
+  await page.getByTestId("import-report-pick-1").uncheck();
+  await expect(page.getByTestId("import-report-pick")).toContainText("Boundaries (1 of 2 selected)");
+  const d = await savedDiagram(page);
+  expect(d.nodes).toHaveLength(301);
+  const broker = d.nodes.find((n) => n.label === "render-jobs");
+  if (!broker) throw new Error("Imported scaler source is missing");
+  expect(d.nodes.find((n) => n.label === "renderer")?.props?.autoscaling).toMatchObject({
+    mode: "on",
+    controller: { triggers: [{ source: { node: broker.id, group: "renderers" } }] },
+  });
   expectNoErrors(consoleErrors);
 });

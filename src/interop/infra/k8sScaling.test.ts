@@ -1,3 +1,4 @@
+import { triggerValue } from "../../sim/keda";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { importHpa, importTrigger, kubernetesQuantity, workloadResources } from "./k8sScaling";
@@ -13,6 +14,31 @@ function imported(text = yaml) {
   return r;
 }
 describe("Kubernetes scaling mapping", () => {
+  it.each([undefined, "auto"])("resolves RabbitMQ protocol %s from HTTP(S) and AMQP(S) hosts", (protocol) => {
+    for (const scheme of ["http", "https", "amqp", "amqps"]) {
+      const trigger = importTrigger(
+        { type: "rabbitmq", metadata: { host: `${scheme}://broker/`, ...(protocol ? { protocol } : {}) } },
+        { node: "q" },
+      );
+      const http = scheme.startsWith("http");
+      expect(trigger).toMatchObject({ protocol: http ? "http" : "amqp", excludeUnacknowledged: !http });
+      expect(triggerValue(trigger, { pending: 0, outstanding: 20 })).toBe(http ? 20 : 0);
+    }
+  });
+  it("honors explicit RabbitMQ protocols and visibility and diagnoses unresolved hosts", () => {
+    expect(
+      importTrigger({ type: "rabbitmq", metadata: { protocol: "http", excludeUnacknowledged: "true" } }, { node: "q" }),
+    ).toMatchObject({ protocol: "http", excludeUnacknowledged: true });
+    for (const metadata of [
+      {},
+      { protocol: "auto", hostFromEnv: "BROKER" },
+      { host: "ftp://broker/" },
+      { protocol: "other" },
+    ]) {
+      expect(() => importTrigger({ type: "rabbitmq", metadata }, { node: "q" })).toThrow(/protocol.*resolved/);
+    }
+  });
+
   it("round trips zero, quantities, timing, Kafka binding, cache, fallback, behavior and generated ownership", () => {
     const r = imported(),
       d = r.diagram,
@@ -184,9 +210,9 @@ spec:
     expect(() => importTrigger({ type: "aws-sqs-queue", metadata: { scaleOnDelayed: "true" } }, { node: "q" })).toThrow(
       /Delayed/,
     );
-    expect(() => importTrigger({ type: "rabbitmq", metadata: { mode: "QueueLength" } }, { node: "q" })).toThrow(
-      /explicit/,
-    );
+    expect(() =>
+      importTrigger({ type: "rabbitmq", metadata: { mode: "QueueLength", host: "amqp://broker/" } }, { node: "q" }),
+    ).toThrow(/explicit/);
     expect(
       importTrigger(
         { type: "azure-servicebus", metadata: { topicName: "jobs", subscriptionName: "workers" } },

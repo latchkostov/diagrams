@@ -279,7 +279,20 @@ export function importTrigger(input: unknown, source: KedaTrigger["source"]): Ke
     );
     if (own(md, "mode") !== undefined && own(md, "mode") !== "QueueLength")
       unsupported("RabbitMQ rate mode is unsupported");
-    t.protocol = (str(own(md, "protocol")) ?? "amqp") as "http" | "amqp";
+    const protocol = str(own(md, "protocol")) ?? "auto";
+    const scheme = str(own(md, "host"))
+      ?.match(/^([a-z]+):\/\//i)?.[1]
+      .toLowerCase();
+    const resolved =
+      protocol === "auto"
+        ? scheme === "http" || scheme === "https"
+          ? "http"
+          : scheme === "amqp" || scheme === "amqps"
+            ? "amqp"
+            : undefined
+        : protocol;
+    if (resolved !== "http" && resolved !== "amqp") unsupported("RabbitMQ protocol cannot be resolved from host");
+    t.protocol = resolved;
     if (own(md, "value") === undefined && own(md, "mode") !== undefined)
       unsupported("Modern RabbitMQ QueueLength needs an explicit value");
     t.target = number(own(md, "value") ?? own(md, "queueLength"), 20);

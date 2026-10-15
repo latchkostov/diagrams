@@ -357,6 +357,11 @@ const en = {
     "Drew {nodes, plural, one {# node} other {# nodes}}{boundaries, plural, =0 { and } other {, }}{connections, plural, one {# connection} other {# connections}}{boundaries, plural, =0 {} one { and # boundary} other { and # boundaries}}.",
   "importReport.trafficDuration": "{rate} for {duration}",
   "importReport.aGuess": ", a guess",
+  "importReport.boundariesSelected": "Boundaries ({selected, number} of {total, number} selected)",
+  "importReport.scalingDependencies":
+    "Required scaling sources and consumer-group routes are included automatically, even outside the selected boundaries.",
+  "importDetail.scalingSourceOmitted":
+    "Scaling was not imported: its broker or consumer-group route is missing. Include them and import again, or choose a supported preset.",
   "importReport.boundariesDrawn": "Boundaries ({drawn, number} of {total, plural, one {# drawn} other {# drawn}})",
   "importReport.pickLede":
     "It has {count, plural, one {# nodes} other {# nodes}}, more than a diagram reads well, so only some boundaries are drawn. The ones with the most flows come first; tick others to draw them as a new diagram.",

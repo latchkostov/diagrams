@@ -3,6 +3,8 @@ import type { DiagramFile } from "../model/types";
 import { CLIP_FORMAT, makePayload, parsePayload, payloadOrigin, remapPayload } from "./clipboard";
 import { uniqueId } from "./ids";
 import { LIMITS, validateDiagram } from "../interop/native";
+import type { KedaConfig } from "../model/autoscaling";
+import { kedaFixture } from "../lab/kedaFixture";
 import { toFlow } from "../canvas/convert";
 
 const diagram: DiagramFile = {
@@ -21,6 +23,27 @@ const diagram: DiagramFile = {
 };
 
 describe("clipboard", () => {
+  it.each(["uploads", "worker"])("keeps colliding edge %s IDs out of endpoint and scaler mappings", (collision) => {
+    const d = kedaFixture();
+    // The edge ID is also the implicit Kafka group, so both namespaces must be remapped independently.
+    d.edges[0].id = collision;
+    delete d.edges[0].props!.group;
+    const a = d.nodes[1].props!.autoscaling as KedaConfig;
+    Object.assign(a.controller.triggers[0].source, { group: collision });
+    const payload = parsePayload(JSON.stringify({ ...makePayload(d, ["uploads", "worker"]), edges: d.edges }))!;
+    expect(payload).not.toBeNull();
+    const copy = remapPayload(
+      payload,
+      { nodes: new Set(["uploads", "worker"]), edges: new Set([collision]), groups: new Set() },
+      { x: 0, y: 0 },
+    );
+    expect(copy.edges[0]).toMatchObject({ from: copy.nodes[0].id, to: copy.nodes[1].id });
+    expect(copy.nodes[1].props!.autoscaling).toMatchObject({
+      controller: { triggers: [{ source: { node: copy.nodes[0].id, group: copy.edges[0].id } }] },
+    });
+    expect(validateDiagram({ ...d, nodes: copy.nodes, edges: copy.edges }).ok).toBe(true);
+  });
+
   it.each(["#fff0", "#abcd", "#11223344", "#abcdef00", "white"])(
     "preserves custom annotation colours through clipboard and whole-file paste: %s",
     (color) => {

@@ -5,6 +5,7 @@ import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 import type { EdgeMark } from "../canvas/edgeMarks";
 import { createEditor, type EditorDeps } from "./useEditor";
 import type { DiagramFile } from "../model/types";
+import type { AutoscalingConfig } from "../model/autoscaling";
 import { hpaLesson, resourceLesson } from "../model/autoscaling";
 import { kedaLesson } from "../model/autoscaling";
 import { kedaFixture } from "../lab/kedaFixture";
@@ -54,7 +55,27 @@ it.each(["paste", "duplicate", "connected"])("preserves KEDA bindings through %s
   if (action === "connected") t.api.createConnected({ from: "worker", clone: true });
   t.commit();
   expect(t.nodes().length).toBeGreaterThan(d.nodes.length);
-  expect(validateDiagram(t.api.getDiagram()).ok).toBe(true);
+  const result = t.api.getDiagram();
+  expect(validateDiagram(result).ok).toBe(true);
+  const worker = result.nodes.find((n) => n.id !== "worker" && n.stencil === d.nodes[1].stencil)!;
+  const broker =
+    action === "connected" ? d.nodes[0] : result.nodes.find((n) => n.id !== "uploads" && n.stencil === "kafka.topic")!;
+  const original = d.nodes[1].props!.autoscaling as Extract<AutoscalingConfig, { mode: "on" }>;
+  const policy = worker.props!.autoscaling as typeof original;
+  expect(policy).toEqual({
+    ...original,
+    controller: {
+      ...original.controller,
+      triggers:
+        original.controller.kind === "keda"
+          ? original.controller.triggers.map((trigger) => ({
+              ...trigger,
+              source: { ...trigger.source, node: broker.id },
+            }))
+          : [],
+    },
+  });
+  expect(result.nodes.find((n) => n.id === "worker")?.props?.autoscaling).toEqual(original);
 });
 it("refuses pasted and edited KEDA references before mutation", () => {
   const d = kedaFixture(),
@@ -70,40 +91,50 @@ it("refuses pasted and edited KEDA references before mutation", () => {
   expect(t.api.getDiagram()).toEqual(d);
 });
 
-it.each(["broker", "edge", "group", "stencil", "bulk-stencil", "relation", "dlq", "reconnect", "insert", "saved"])(
-  "keeps KEDA native/autosave state readable through %s edits",
-  (action) => {
-    const d = kedaFixture();
-    d.nodes.push({ id: "other", stencil: "kafka.topic", label: "Other", x: 10, y: 800 });
-    if (action === "saved") {
-      const a = d.nodes[1].props!.autoscaling;
-      d.nodes[1].props!.autoscaling = { mode: "off" };
-      d.simulations = [
-        {
-          id: "burst",
-          title: "Burst",
-          durationMs: 1000,
-          traffic: [],
-          setup: { props: { worker: { autoscaling: a } } },
-        },
-      ];
-    }
-    const t = setup([], d);
-    if (action === "broker") t.api.deleteElements({ nodeIds: ["uploads"] });
-    if (action === "edge" || action === "saved") t.api.deleteElements({ edgeIds: ["consume"] });
-    if (action === "group") t.api.setEdgeProps("consume", { group: "renamed" });
-    if (action === "stencil") t.api.updateNode("uploads", { stencil: "postgres" });
-    if (action === "bulk-stencil") t.api.updateNodes(["uploads"], { stencil: "postgres" });
-    if (action === "relation") t.api.updateEdge("consume", { relation: "depends" });
-    if (action === "dlq") t.api.setEdgeProps("consume", { dlq: true });
-    if (action === "reconnect") t.api.reconnectEdge("consume", "source", "other");
-    if (action === "insert") t.api.insertIntoEdge("consume", "other");
-    t.commit();
-    expect(validateDiagram(t.api.getDiagram()).ok).toBe(true);
-    if (action === "insert") expect(t.api.getDiagram()).not.toEqual(d);
-    else expect(t.api.getDiagram()).toEqual(d);
-  },
-);
+it.each([
+  "broker",
+  "edge",
+  "group",
+  "stencil",
+  "bulk-stencil",
+  "relation",
+  "dlq",
+  "reconnect",
+  "reverse",
+  "insert",
+  "saved",
+])("keeps KEDA native/autosave state readable through %s edits", (action) => {
+  const d = kedaFixture();
+  d.nodes.push({ id: "other", stencil: "kafka.topic", label: "Other", x: 10, y: 800 });
+  if (action === "saved") {
+    const a = d.nodes[1].props!.autoscaling;
+    d.nodes[1].props!.autoscaling = { mode: "off" };
+    d.simulations = [
+      {
+        id: "burst",
+        title: "Burst",
+        durationMs: 1000,
+        traffic: [],
+        setup: { props: { worker: { autoscaling: a } } },
+      },
+    ];
+  }
+  const t = setup([], d);
+  if (action === "broker") t.api.deleteElements({ nodeIds: ["uploads"] });
+  if (action === "edge" || action === "saved") t.api.deleteElements({ edgeIds: ["consume"] });
+  if (action === "group") t.api.setEdgeProps("consume", { group: "renamed" });
+  if (action === "stencil") t.api.updateNode("uploads", { stencil: "postgres" });
+  if (action === "bulk-stencil") t.api.updateNodes(["uploads"], { stencil: "postgres" });
+  if (action === "relation") t.api.updateEdge("consume", { relation: "depends" });
+  if (action === "dlq") t.api.setEdgeProps("consume", { dlq: true });
+  if (action === "reverse") t.api.reverseEdge("consume");
+  if (action === "reconnect") t.api.reconnectEdge("consume", "source", "other");
+  if (action === "insert") t.api.insertIntoEdge("consume", "other");
+  t.commit();
+  expect(validateDiagram(t.api.getDiagram()).ok).toBe(true);
+  if (action === "insert") expect(t.api.getDiagram()).not.toEqual(d);
+  else expect(t.api.getDiagram()).toEqual(d);
+});
 it("explains how to recover from a refused edit to an existing scaling source", () => {
   const d = kedaFixture();
   d.edges = [];
@@ -119,6 +150,66 @@ it("allows removing a KEDA source after explicitly disabling its policy in the s
   t.commit();
   expect(t.api.getDiagram().nodes).toHaveLength(1);
   expect(validateDiagram(t.api.getDiagram()).ok).toBe(true);
+});
+
+it("infers relationships from staged nodes across successive stencil edits", () => {
+  const t = setup();
+  t.api.updateNode("b", { stencil: "k8s.configmap" });
+  t.api.updateNode("b", { stencil: "postgres" });
+  t.commit();
+  expect(t.api.getNode("b")!.stencil).toBe("postgres");
+  expect(t.api.getEdge("ab")!.relation).toBeUndefined();
+});
+it("validates the fully patched node and inferred connection together once", () => {
+  const validate = validation.createResourceValidator();
+  const preflight = vi.fn(validate);
+  const factory = vi.spyOn(validation, "createResourceValidator").mockReturnValue(preflight);
+  try {
+    const d = kedaFixture(),
+      t = setup([], d);
+    t.api.updateNode("worker", { stencil: "k8s.configmap", props: { autoscaling: { mode: "off" } } });
+    t.commit();
+    expect(preflight).toHaveBeenCalledTimes(1);
+    const next = t.api.getDiagram();
+    expect(next.nodes[1]).toMatchObject({ stencil: "k8s.configmap", props: { autoscaling: { mode: "off" } } });
+    expect(next.edges[0]).toMatchObject({ relation: "config", relationOrigin: "inferred" });
+    expect(validateDiagram(next).ok).toBe(true);
+  } finally {
+    factory.mockRestore();
+  }
+});
+it.each(["single", "bulk", "props"])("preflights %s resource transactions only once", (action) => {
+  const preflight = vi.fn(validation.createResourceValidator());
+  const factory = vi.spyOn(validation, "createResourceValidator").mockReturnValue(preflight);
+  try {
+    const t = setup([], kedaFixture());
+    if (action === "single") t.api.updateNode("worker", { label: "Renamed" });
+    if (action === "bulk") t.api.updateNodes(["worker"], { stencil: "service.go" });
+    if (action === "props") t.api.setNodeProps("worker", { latencyMs: 50 });
+    t.commit();
+    expect(preflight).toHaveBeenCalledTimes(1);
+  } finally {
+    factory.mockRestore();
+  }
+});
+it("does no graph preflight for presentation metadata and still checks planning and simulations", () => {
+  const preflight = vi.fn(validation.createResourceValidator());
+  const factory = vi.spyOn(validation, "createResourceValidator").mockReturnValue(preflight);
+  try {
+    const t = setup([], kedaFixture());
+    t.api.updateMeta({ title: "Typing", description: "Text", direction: "TB", color: "#ff0000" });
+    t.commit();
+    expect(preflight).not.toHaveBeenCalled();
+    t.api.updateMeta({ planning: undefined });
+    t.commit();
+    expect(preflight).toHaveBeenCalledTimes(1);
+    expect(t.api.getDiagram().planning?.revision).toBe("p3-a1");
+    t.api.updateMeta({ simulations: [] });
+    t.commit();
+    expect(preflight).toHaveBeenCalledTimes(2);
+  } finally {
+    factory.mockRestore();
+  }
 });
 
 const BASE: DiagramFile = {
@@ -148,6 +239,10 @@ function setup(marks: EdgeMark[] = [], diagram: DiagramFile = BASE) {
   const hint = vi.fn();
   const deps = {
     meta: flow.meta,
+    setMeta: (u: Parameters<EditorDeps["setMeta"]>[0]) =>
+      void queue.push(() => {
+        deps.meta = typeof u === "function" ? u(deps.meta) : u;
+      }),
     history: { hint },
     nodeSize: SIZE,
     viewCenter: () => ({ x: 1110, y: 1000 }),

@@ -81,3 +81,25 @@ it.each([{ mode: "off" }, hpaLesson()])("does not copy a diagram to render fixed
   );
   expect(readDiagram).not.toHaveBeenCalled();
 });
+
+it.each([undefined, { mode: "off" }, { mode: "unsupported", provider: "Kubernetes", reason: "Unsupported metric" }])(
+  "keeps imported resources and the workload lesson accessible for %s scaling",
+  (autoscaling) => {
+    const resources = { ...resourceLesson(), modelRevision: "a2", preset: "kubernetes-unmeasured" };
+    const html = renderToStaticMarkup(
+      <AutoscalingFields stencil="k8s.deployment" props={{ resources, autoscaling }} set={() => {}}>
+        <span />
+      </AutoscalingFields>,
+    );
+    for (const testId of [
+      "autoscaling-advanced",
+      "autoscaling-use-lesson",
+      "autoscaling-cpuMsPerMessage",
+      "autoscaling-cpuRequestMilli",
+      "autoscaling-memoryLimitMiB",
+    ])
+      expect(html).toContain(`data-testid="${testId}"`);
+    expect(html).not.toContain('data-testid="autoscaling-target"');
+    expect(html).not.toContain('data-testid="autoscaling-policy"');
+  },
+);

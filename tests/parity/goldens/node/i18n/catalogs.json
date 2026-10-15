@@ -1,6 +1,6 @@
 {
   "ar": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "f257b025e328",
@@ -26,10 +26,10 @@
       "gallery": "edee7bb2df39",
       "htmlExport": "b475090d5db2",
       "imageDialog": "2ad5aab6d9df",
-      "importDetail": "00b548f1f4fc",
+      "importDetail": "94557e9482f1",
       "importKind": "6202ba6eb95d",
       "importReason": "a6b4bacce1f6",
-      "importReport": "32f19f47b007",
+      "importReport": "832a2024ef1f",
       "keys": "ff6e7f133e97",
       "language": "362b2582a8f0",
       "library": "83dbfbe40b57",
@@ -54,7 +54,7 @@
     }
   },
   "bg": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "339cd5287f25",
@@ -80,10 +80,10 @@
       "gallery": "c216c75d4bea",
       "htmlExport": "0a72cc739829",
       "imageDialog": "ba5ba55b2b6a",
-      "importDetail": "459a36329ccb",
+      "importDetail": "6c3b3f7e366c",
       "importKind": "3b0c40ef1bb7",
       "importReason": "af75b5a407d6",
-      "importReport": "bb814218e63c",
+      "importReport": "9c66cab9c795",
       "keys": "38a3cea839ac",
       "language": "2c2b795a53fa",
       "library": "4d192360f90a",
@@ -108,7 +108,7 @@
     }
   },
   "cs": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "c8683cb1d947",
@@ -134,10 +134,10 @@
       "gallery": "e5293750a59d",
       "htmlExport": "0f29d5ebaf27",
       "imageDialog": "4d9e9a71326f",
-      "importDetail": "f92c88974ddf",
+      "importDetail": "209854ad2212",
       "importKind": "30b5f1af4fd0",
       "importReason": "a0f689138648",
-      "importReport": "69f8fe8713e9",
+      "importReport": "49b036198046",
       "keys": "871387d1747e",
       "language": "5f5e97c9ffee",
       "library": "ef52fe194717",
@@ -162,7 +162,7 @@
     }
   },
   "da": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "2309322c7e25",
@@ -188,10 +188,10 @@
       "gallery": "5261baa92a8b",
       "htmlExport": "03574a01a0d2",
       "imageDialog": "b7af44adcb7e",
-      "importDetail": "00ac78d816ea",
+      "importDetail": "0e06463f1e13",
       "importKind": "f253df5cacb4",
       "importReason": "7737aebaf176",
-      "importReport": "803744d59ce3",
+      "importReport": "4dd84a569f6b",
       "keys": "7d24ef932439",
       "language": "fee416cd2a5e",
       "library": "bb69950075b4",
@@ -216,7 +216,7 @@
     }
   },
   "de": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "866ad98895eb",
@@ -242,10 +242,10 @@
       "gallery": "0e8e62861cd8",
       "htmlExport": "e0c94d7cea6a",
       "imageDialog": "6df46c22def2",
-      "importDetail": "d9d450a84e10",
+      "importDetail": "92ed57799017",
       "importKind": "dfb5e987e202",
       "importReason": "723ea6978997",
-      "importReport": "b9ddd23d33a7",
+      "importReport": "bb9607d0c688",
       "keys": "a38acef08ab8",
       "language": "0005fc23b80d",
       "library": "4ad44be9833b",
@@ -270,7 +270,7 @@
     }
   },
   "el": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "c85e9b1328ba",
@@ -296,10 +296,10 @@
       "gallery": "d0a5682fa4f5",
       "htmlExport": "3fd73a429aa3",
       "imageDialog": "7f9507b64d6b",
-      "importDetail": "fa733e62924c",
+      "importDetail": "67e69ed6bfd3",
       "importKind": "6030273c4e17",
       "importReason": "6f4bc2216ffb",
-      "importReport": "259fce50869e",
+      "importReport": "085672e29100",
       "keys": "e83765c40c72",
       "language": "fc569ff1b260",
       "library": "55e7f0a634c2",
@@ -324,7 +324,7 @@
     }
   },
   "en-XA": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 0,
     "areas": {
       "admission": "0235ad03f4ed",
@@ -350,10 +350,10 @@
       "gallery": "e7f49ccb2650",
       "htmlExport": "7e0aee41daf0",
       "imageDialog": "db4901f04261",
-      "importDetail": "79731c902292",
+      "importDetail": "f8c4e88f2d92",
       "importKind": "619367915da2",
       "importReason": "35ec39315f96",
-      "importReport": "26d34de11c7f",
+      "importReport": "f75855b3d89f",
       "keys": "89f0ecfc86ff",
       "language": "ef372da04b34",
       "library": "c8d2a2410442",
@@ -378,7 +378,7 @@
     }
   },
   "es": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "8275061ad675",
@@ -404,10 +404,10 @@
       "gallery": "a4f37d761aa9",
       "htmlExport": "5b428a70b2b0",
       "imageDialog": "19d7ba114de8",
-      "importDetail": "99e5bb621ec7",
+      "importDetail": "b88256b1f50a",
       "importKind": "29493b8a9281",
       "importReason": "eb7f86261584",
-      "importReport": "e7780c63e01e",
+      "importReport": "6f50d9f2c3a2",
       "keys": "0ee5bd37fe8a",
       "language": "552f2c696ee3",
       "library": "6fda3bb2b403",
@@ -432,7 +432,7 @@
     }
   },
   "et": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "bcda9d352f6d",
@@ -458,10 +458,10 @@
       "gallery": "fed32b157076",
       "htmlExport": "16df3b62e54b",
       "imageDialog": "5f051340a9c1",
-      "importDetail": "b824a64f76b0",
+      "importDetail": "4d599fb12855",
       "importKind": "b00e4eec1402",
       "importReason": "b3bd32be30e8",
-      "importReport": "d072b512e127",
+      "importReport": "e7930d5e5eaa",
       "keys": "208f1af3a986",
       "language": "fa29f5cc492e",
       "library": "48fb926522eb",
@@ -486,7 +486,7 @@
     }
   },
   "fi": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "639abadda530",
@@ -512,10 +512,10 @@
       "gallery": "22a46969248f",
       "htmlExport": "030552e27432",
       "imageDialog": "192043c3611c",
-      "importDetail": "3d653a8fc067",
+      "importDetail": "a26447440428",
       "importKind": "2dacfbb1db6c",
       "importReason": "24e52195e223",
-      "importReport": "19f5463b1f2b",
+      "importReport": "46dff6ac3f73",
       "keys": "926e4388a131",
       "language": "db0d5db48332",
       "library": "ca22e516d952",
@@ -540,7 +540,7 @@
     }
   },
   "fr": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "c0da5634d917",
@@ -566,10 +566,10 @@
       "gallery": "4daf220f49de",
       "htmlExport": "eeee20f9e648",
       "imageDialog": "23885e080e01",
-      "importDetail": "ed838f8fb59b",
+      "importDetail": "9d3662335a68",
       "importKind": "3b54d3def36f",
       "importReason": "4f00b557c4a2",
-      "importReport": "0352fad74c2f",
+      "importReport": "fc1099caeca4",
       "keys": "db597daf86e0",
       "language": "106cd400c2b9",
       "library": "d678088cfad1",
@@ -594,7 +594,7 @@
     }
   },
   "he": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "60a5b99830c3",
@@ -620,10 +620,10 @@
       "gallery": "bc4f4b9bfce5",
       "htmlExport": "6f503d6ef305",
       "imageDialog": "147a94bded4c",
-      "importDetail": "3533da3751ea",
+      "importDetail": "1283d9bfbb6c",
       "importKind": "66df2d09e8f7",
       "importReason": "44390442866e",
-      "importReport": "e362436529dd",
+      "importReport": "975b10d6416c",
       "keys": "525ffd141600",
       "language": "74f4de0fe69a",
       "library": "79bc8e2bb936",
@@ -648,7 +648,7 @@
     }
   },
   "hi": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "81b5998e2d74",
@@ -674,10 +674,10 @@
       "gallery": "1ca6cdbb550e",
       "htmlExport": "91689a5d442e",
       "imageDialog": "552ae7207a5b",
-      "importDetail": "853b241ce45e",
+      "importDetail": "d0303a353368",
       "importKind": "6a92e008030d",
       "importReason": "8865b99d3ee2",
-      "importReport": "68e87d537d7b",
+      "importReport": "cc41c0ce6065",
       "keys": "81ca74db2460",
       "language": "b049fecd436d",
       "library": "5394d4363f68",
@@ -702,7 +702,7 @@
     }
   },
   "hr": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "250278672ecf",
@@ -728,10 +728,10 @@
       "gallery": "d899fb279a09",
       "htmlExport": "1a3a0aa45c8d",
       "imageDialog": "2ab1477607cb",
-      "importDetail": "f4933e919621",
+      "importDetail": "832ff9d8fbe6",
       "importKind": "84082af5edfb",
       "importReason": "4c0408bb9208",
-      "importReport": "f724ff3384c8",
+      "importReport": "6ecc85be9c78",
       "keys": "b9e214889691",
       "language": "b24482152b77",
       "library": "ffde00a33a6e",
@@ -756,7 +756,7 @@
     }
   },
   "hu": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "a173caaa787a",
@@ -782,10 +782,10 @@
       "gallery": "5c41c601348a",
       "htmlExport": "a5829b5ccd18",
       "imageDialog": "164d765fd495",
-      "importDetail": "f89748b4cda2",
+      "importDetail": "fe844c32bd87",
       "importKind": "b49d012104a1",
       "importReason": "3cac1b100d55",
-      "importReport": "364a7c24b7ce",
+      "importReport": "cf0b073bc567",
       "keys": "20058d3f50b8",
       "language": "fe3cb3031080",
       "library": "2c5fbd3f130c",
@@ -810,7 +810,7 @@
     }
   },
   "id": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "93080e86188c",
@@ -836,10 +836,10 @@
       "gallery": "4a4e4a1c5a4c",
       "htmlExport": "87896e91f766",
       "imageDialog": "f7f473026a9f",
-      "importDetail": "f83bf56ba22a",
+      "importDetail": "7fe917503975",
       "importKind": "018888eb58ad",
       "importReason": "f3ffa2785a93",
-      "importReport": "e7eb7b68e182",
+      "importReport": "5161d54baf8c",
       "keys": "84264b0700b3",
       "language": "b289e5312980",
       "library": "6c0c6f7feb79",
@@ -864,7 +864,7 @@
     }
   },
   "it": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "9016b7c98d05",
@@ -890,10 +890,10 @@
       "gallery": "10765a5eb5ac",
       "htmlExport": "4f61a8715fc7",
       "imageDialog": "cd3a39e75ea1",
-      "importDetail": "bdad572cc77a",
+      "importDetail": "d9a69e338b42",
       "importKind": "55894c77e1d3",
       "importReason": "c62567450d11",
-      "importReport": "7f6893a78ad9",
+      "importReport": "27666bd96eb0",
       "keys": "c5f61ac4422e",
       "language": "563ebaf18327",
       "library": "a490b500a1f2",
@@ -918,7 +918,7 @@
     }
   },
   "ja": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "03ac6ff46fda",
@@ -944,10 +944,10 @@
       "gallery": "318d55d1b2ea",
       "htmlExport": "d75f2a55c213",
       "imageDialog": "f5ab53347711",
-      "importDetail": "ff977cb933af",
+      "importDetail": "05f7716af708",
       "importKind": "46d84457df23",
       "importReason": "3ae10b616e19",
-      "importReport": "36c664bcdbdf",
+      "importReport": "92d4c736f5f1",
       "keys": "07de05207c93",
       "language": "3eb9b936faaf",
       "library": "36e35fb154e6",
@@ -972,7 +972,7 @@
     }
   },
   "ko": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "9668a36595b4",
@@ -998,10 +998,10 @@
       "gallery": "571d7b46b1ca",
       "htmlExport": "2e5783225adb",
       "imageDialog": "8e46def03502",
-      "importDetail": "0762db906bda",
+      "importDetail": "54388cd54a3d",
       "importKind": "58e9a602cf8d",
       "importReason": "f17776b7adb1",
-      "importReport": "6ed2fc80be59",
+      "importReport": "108c5a036177",
       "keys": "7d676b779fed",
       "language": "144763da7443",
       "library": "809d2e360085",
@@ -1026,7 +1026,7 @@
     }
   },
   "lt": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "d340551a2a22",
@@ -1052,10 +1052,10 @@
       "gallery": "6e02d5912590",
       "htmlExport": "742cfde5efbe",
       "imageDialog": "4a2701f72fd8",
-      "importDetail": "28e3573836d1",
+      "importDetail": "60e35c1e6c37",
       "importKind": "f02d19e6b828",
       "importReason": "cc9fcd7338d2",
-      "importReport": "ca56c34f145c",
+      "importReport": "903ffce707f2",
       "keys": "25f01070644a",
       "language": "47b5005d8d0d",
       "library": "4cb340bcaac5",
@@ -1080,7 +1080,7 @@
     }
   },
   "lv": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "78e387261dc3",
@@ -1106,10 +1106,10 @@
       "gallery": "7675374fb8c8",
       "htmlExport": "c710b39bede7",
       "imageDialog": "fcebefeae897",
-      "importDetail": "c00c10f108d2",
+      "importDetail": "530e4d5c01b8",
       "importKind": "21fc592c3c97",
       "importReason": "108533338e85",
-      "importReport": "7385218f7557",
+      "importReport": "a81799157b98",
       "keys": "6eb761a6f5ab",
       "language": "afec9e38d8a0",
       "library": "3ca2a9dd957a",
@@ -1134,7 +1134,7 @@
     }
   },
   "nb": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "4c2373a03104",
@@ -1160,10 +1160,10 @@
       "gallery": "09d55b55bb59",
       "htmlExport": "53face158656",
       "imageDialog": "d485c8b2a3e6",
-      "importDetail": "11b3ad1872f1",
+      "importDetail": "73815e499f06",
       "importKind": "905538cd1b63",
       "importReason": "e30add87850a",
-      "importReport": "0caa740f8ebd",
+      "importReport": "d38db1611715",
       "keys": "df6f6e06924f",
       "language": "8bc8d54f69d4",
       "library": "783894421b6b",
@@ -1188,7 +1188,7 @@
     }
   },
   "nl": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "9dca014cc22e",
@@ -1214,10 +1214,10 @@
       "gallery": "1c66abfd76f8",
       "htmlExport": "b990f8192912",
       "imageDialog": "9417113a5812",
-      "importDetail": "dc90888a112d",
+      "importDetail": "123dda358626",
       "importKind": "8038c24695e7",
       "importReason": "2d07b9dc2b7d",
-      "importReport": "502b7f96cebb",
+      "importReport": "c8a8358f85fc",
       "keys": "ef1cd2ebadfb",
       "language": "7302fe174fd7",
       "library": "0a73c794507e",
@@ -1242,7 +1242,7 @@
     }
   },
   "pl": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "570713cc3f9c",
@@ -1268,10 +1268,10 @@
       "gallery": "80894eca31d8",
       "htmlExport": "b006e3323986",
       "imageDialog": "39cd4056d845",
-      "importDetail": "dc0d20ec97dd",
+      "importDetail": "81c7790f7254",
       "importKind": "02585f754efc",
       "importReason": "b680de9cf76b",
-      "importReport": "09bf85848632",
+      "importReport": "6d35c35dcf5a",
       "keys": "c1a475df02c9",
       "language": "f552f6c4ceed",
       "library": "47aaf115560a",
@@ -1296,7 +1296,7 @@
     }
   },
   "pt-BR": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "b1b3aa0fdcce",
@@ -1322,10 +1322,10 @@
       "gallery": "354d692f2673",
       "htmlExport": "a91ef5437b3d",
       "imageDialog": "2f4194a30e53",
-      "importDetail": "8e458442539f",
+      "importDetail": "c699b86686ee",
       "importKind": "cacae83e286f",
       "importReason": "25a78aeac87c",
-      "importReport": "dda45f892033",
+      "importReport": "66949b8d9fcf",
       "keys": "7218e0177d2f",
       "language": "e45cb13a2553",
       "library": "21b1d9baa7d2",
@@ -1350,7 +1350,7 @@
     }
   },
   "pt-PT": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "269f381da119",
@@ -1376,10 +1376,10 @@
       "gallery": "1d5428374cbb",
       "htmlExport": "26b5fb37811a",
       "imageDialog": "2f4194a30e53",
-      "importDetail": "edb82dc7f32b",
+      "importDetail": "48bf1cd1d801",
       "importKind": "05a7d69ed974",
       "importReason": "4c335d4449aa",
-      "importReport": "e93687627b9d",
+      "importReport": "42d58ac9be11",
       "keys": "f9352e69191b",
       "language": "d4459dad0bcc",
       "library": "86aa5f281697",
@@ -1404,7 +1404,7 @@
     }
   },
   "ro": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "2fc367bfb234",
@@ -1430,10 +1430,10 @@
       "gallery": "ab2923e983d0",
       "htmlExport": "db30789fc6ee",
       "imageDialog": "f4653476499a",
-      "importDetail": "a30fd9298330",
+      "importDetail": "af79c10e28a8",
       "importKind": "4a42dc1d1086",
       "importReason": "70d995786b05",
-      "importReport": "78a94e7d01b1",
+      "importReport": "466e8c2fbd52",
       "keys": "cdcfb5ceb551",
       "language": "fa1df566128d",
       "library": "9101f5639c67",
@@ -1458,7 +1458,7 @@
     }
   },
   "ru": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "dd2155d35792",
@@ -1484,10 +1484,10 @@
       "gallery": "d2ec5671d6d2",
       "htmlExport": "a45e7b99402a",
       "imageDialog": "187fec2c427b",
-      "importDetail": "dd866cc10942",
+      "importDetail": "92e22c6f2ad1",
       "importKind": "33bf4198fe20",
       "importReason": "cfca8434c810",
-      "importReport": "f1737256df92",
+      "importReport": "37d0a989d54a",
       "keys": "32b679a1b446",
       "language": "6ef2c227aaa4",
       "library": "96ebbaea0251",
@@ -1512,7 +1512,7 @@
     }
   },
   "sk": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "de282cafe657",
@@ -1538,10 +1538,10 @@
       "gallery": "9bfd6bd1555c",
       "htmlExport": "3530ffc52c82",
       "imageDialog": "629bc24542f6",
-      "importDetail": "42380b4a7edf",
+      "importDetail": "87dd95de577f",
       "importKind": "2a866d959c83",
       "importReason": "985d014b07b4",
-      "importReport": "4942aaf9049f",
+      "importReport": "9deffcc8f8c0",
       "keys": "39cd5b77337f",
       "language": "74843c58443c",
       "library": "245c2efac154",
@@ -1566,7 +1566,7 @@
     }
   },
   "sl": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "46736cefd0aa",
@@ -1592,10 +1592,10 @@
       "gallery": "99ea5837833f",
       "htmlExport": "40a3396579a5",
       "imageDialog": "4782529edfac",
-      "importDetail": "e0b56aadada1",
+      "importDetail": "83707c6f3a59",
       "importKind": "5520f7054f25",
       "importReason": "28c65ddfa471",
-      "importReport": "b48daa5796b3",
+      "importReport": "103b695d198b",
       "keys": "54e6e5227543",
       "language": "3b642ac3fe6e",
       "library": "89fe5b8bcbc0",
@@ -1620,7 +1620,7 @@
     }
   },
   "sr-Latn": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "b1f254245925",
@@ -1646,10 +1646,10 @@
       "gallery": "6fde93629621",
       "htmlExport": "e88dfab563a2",
       "imageDialog": "880c7a0efdca",
-      "importDetail": "e18df070c1c3",
+      "importDetail": "dbfd753b470b",
       "importKind": "4cad33f585f6",
       "importReason": "85d29350b118",
-      "importReport": "9f666e934e89",
+      "importReport": "3e3d368bfd01",
       "keys": "350d526df207",
       "language": "fb1fe0d64661",
       "library": "8905dc2a1fdf",
@@ -1674,7 +1674,7 @@
     }
   },
   "sv": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "a1faad44500b",
@@ -1700,10 +1700,10 @@
       "gallery": "98774c428905",
       "htmlExport": "d2fd1dc2628b",
       "imageDialog": "9e0e52e29043",
-      "importDetail": "94800cc9f826",
+      "importDetail": "b57b3aae949f",
       "importKind": "65033a7960b6",
       "importReason": "fc029fcbb1e9",
-      "importReport": "6aa35891bcb5",
+      "importReport": "22c511858aa6",
       "keys": "1d6bf10b0eb2",
       "language": "f8738a650ac3",
       "library": "50ce4cd0bf19",
@@ -1728,7 +1728,7 @@
     }
   },
   "th": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "4c7152546e6f",
@@ -1754,10 +1754,10 @@
       "gallery": "49a02932b5db",
       "htmlExport": "3fc59b541a42",
       "imageDialog": "750210d66881",
-      "importDetail": "70a6f5da4635",
+      "importDetail": "82c4cfcc4eed",
       "importKind": "b65dc92d977c",
       "importReason": "c5f64d8ce4b1",
-      "importReport": "9d736a8bf9fc",
+      "importReport": "302493cda154",
       "keys": "e4342a9f2b32",
       "language": "f38c0cf806f9",
       "library": "bdb9002f9f39",
@@ -1782,7 +1782,7 @@
     }
   },
   "tr": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "c9ba84e9fc81",
@@ -1808,10 +1808,10 @@
       "gallery": "df3514c2de76",
       "htmlExport": "efdb23346eea",
       "imageDialog": "19bf6a127de5",
-      "importDetail": "95108136d662",
+      "importDetail": "ac7498137ed9",
       "importKind": "348206668e18",
       "importReason": "415812faafee",
-      "importReport": "7e1d5a0c53ef",
+      "importReport": "fe72551c674e",
       "keys": "692667f46543",
       "language": "afe4ccec85ab",
       "library": "a9d0f1842afa",
@@ -1836,7 +1836,7 @@
     }
   },
   "uk": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "01c3b2a9ea61",
@@ -1862,10 +1862,10 @@
       "gallery": "57df82d765f7",
       "htmlExport": "b1a1364a59e7",
       "imageDialog": "85d16aa1a39d",
-      "importDetail": "4ab2f634c339",
+      "importDetail": "b4bc709a7ca9",
       "importKind": "3019a95d5a21",
       "importReason": "19d49343e6fb",
-      "importReport": "d2cb89bfc04b",
+      "importReport": "7f55b059b7db",
       "keys": "ec1a1d263431",
       "language": "52bdb9be0348",
       "library": "ae53ea1abd75",
@@ -1890,7 +1890,7 @@
     }
   },
   "vi": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "e4040b83feb7",
@@ -1916,10 +1916,10 @@
       "gallery": "1c1d503441ba",
       "htmlExport": "669c249a3dcc",
       "imageDialog": "9f8d2894e3e9",
-      "importDetail": "1cdf1181ae8b",
+      "importDetail": "bdd2c628b05c",
       "importKind": "08beb4edcccc",
       "importReason": "19c889e47e2f",
-      "importReport": "2dad651c96bf",
+      "importReport": "1d79ae5c0443",
       "keys": "d3458b454538",
       "language": "68f661659799",
       "library": "cab2c5f1f6b0",
@@ -1944,7 +1944,7 @@
     }
   },
   "zh-CN": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "320934d4f256",
@@ -1970,10 +1970,10 @@
       "gallery": "1d27969164ad",
       "htmlExport": "a92fe8446161",
       "imageDialog": "8a48728ceb4c",
-      "importDetail": "b3793125cef1",
+      "importDetail": "c6443118ea3a",
       "importKind": "5d9f6e4e8987",
       "importReason": "49d9e68eb5f1",
-      "importReport": "b3398bcbf488",
+      "importReport": "e8f30b76ff0d",
       "keys": "2f4746415f0c",
       "language": "ffd2ad28868c",
       "library": "7188ee065959",
@@ -1998,7 +1998,7 @@
     }
   },
   "zh-TW": {
-    "messages": 1775,
+    "messages": 1778,
     "fallback": 78,
     "areas": {
       "admission": "b8f5dc48650d",
@@ -2024,10 +2024,10 @@
       "gallery": "e20102938723",
       "htmlExport": "946a64424e9f",
       "imageDialog": "a9b8b4aae90e",
-      "importDetail": "6f448e804486",
+      "importDetail": "e4b2c971fdce",
       "importKind": "ac5f51aa420d",
       "importReason": "7cbc1b3d3e80",
-      "importReport": "2ad0369d3d9a",
+      "importReport": "ce74c42513c7",
       "keys": "c7ac3748040d",
       "language": "b956cdbfac11",
       "library": "139a8f80166e",

@@ -330,6 +330,7 @@ export function createEditor(
   const commitNodes = (
     update: (nodes: FlowNode[]) => FlowNode[],
     updateEdges: (edges: DiagramFlowEdge[]) => DiagramFlowEdge[],
+    opts?: { merge?: string },
   ): boolean => {
     const current = currentNodes(),
       candidate = update(current);
@@ -338,6 +339,7 @@ export function createEditor(
     const existing = new Set([...current.map((n) => n.id), ...currentEdges().map((e) => e.id)]);
     const reserved = [...candidate, ...edges].map((item) => item.id).filter((id) => !existing.has(id));
     for (const id of reserved) pendingIds.add(id);
+    if (opts) deps().history.hint(opts.merge);
     setNodes(candidate);
     setEdges(edges);
     return true;
@@ -643,21 +645,21 @@ export function createEditor(
    * (src/stencils/relations.ts, reinferRelations), and a toast says what changed, with Undo. A flow drawn into a
    * generic node that then became App Configuration turns Config, so no requests go through it in Live.
    */
-  const reinferEdges = (stencils: ReadonlyMap<string, string>) => {
-    if (!stencils.size) return true;
-    const current = new Map(
-      rf
-        .getNodes()
-        .filter(isDiagram)
-        .map((n) => [n.id, n.data.stencil]),
-    );
+  const inferEdges = (
+    nodes: readonly FlowNode[],
+    flowEdges: DiagramFlowEdge[],
+    stencils: ReadonlyMap<string, string>,
+  ) => {
+    const unchanged = { edges: flowEdges, changes: [] as ReturnType<typeof reinferRelations> };
+    if (!stencils.size) return unchanged;
+    const current = new Map(nodes.filter(isDiagram).map((n) => [n.id, n.data.stencil]));
     const changed = new Set(
       [...stencils].filter(([id, st]) => current.has(id) && current.get(id) !== st).map(([id]) => id),
     );
-    if (!changed.size) return true;
-    const edges = currentEdges().map((e) => ({ id: e.id, from: e.source, to: e.target, ...e.data }));
+    if (!changed.size) return unchanged;
+    const edges = flowEdges.map((e) => ({ id: e.id, from: e.source, to: e.target, ...e.data }));
     const changes = reinferRelations(edges, (id) => stencils.get(id) ?? current.get(id), changed);
-    if (!changes.length) return true;
+    if (!changes.length) return unchanged;
     const to = new Map(changes.map((c) => [c.id, c.to]));
     const update = (es: DiagramFlowEdge[]) =>
       es.map((e) => {
@@ -670,12 +672,19 @@ export function createEditor(
         } else Object.assign(data, { relation, relationOrigin: "inferred" });
         return { ...e, data };
       });
-    const candidateNodes = currentNodes().map((n) =>
-      isDiagram(n) && stencils.has(n.id) ? { ...n, data: { ...n.data, stencil: stencils.get(n.id)! } } : n,
-    );
-    const candidateEdges = update(currentEdges());
-    if (!acceptNodes(candidateNodes, candidateEdges)) return false;
-    deps().setEdges(candidateEdges);
+    return { edges: update(flowEdges), changes };
+  };
+  const commitNodeEdit = (nodes: FlowNode[], stencils: ReadonlyMap<string, string>, merge?: string) => {
+    const { edges, changes } = inferEdges(currentNodes(), currentEdges(), stencils);
+    if (
+      !commitNodes(
+        () => nodes,
+        () => edges,
+        { merge },
+      )
+    )
+      return;
+    if (!changes.length) return;
     notify(relationChangeMessage(changes), {
       action: {
         get label() {
@@ -686,7 +695,6 @@ export function createEditor(
         undoes: true,
       },
     });
-    return true;
   };
   /** The first time a relationship is inferred, a toast says what it means (with a way back to a flow). */
   const explainEdge = (edge: DiagramFlowEdge) => {
@@ -866,26 +874,14 @@ export function createEditor(
     },
     updateNodes: (ids, patch, opts) => {
       const set = new Set(ids);
-      hint(opts?.merge);
-      if (
-        patch.stencil &&
-        !acceptNodes(
-          currentNodes().map((n) =>
-            set.has(n.id) && isDiagram(n) ? { ...n, data: { ...n.data, stencil: patch.stencil! } } : n,
-          ),
-        )
-      )
-        return;
-      if (patch.stencil && !reinferEdges(new Map(ids.map((id) => [id, patch.stencil!])))) return;
-      deps().setNodes((ns) =>
-        ns.map((n) => {
-          if (!set.has(n.id) || !isDiagram(n)) return n;
-          const data = { ...n.data };
-          if (patch.stencil) data.stencil = patch.stencil;
-          if ("group" in patch) data.group = patch.group || undefined;
-          return data.stencil === n.data.stencil && data.group === n.data.group ? n : { ...n, data };
-        }),
-      );
+      const nodes = currentNodes().map((n) => {
+        if (!set.has(n.id) || !isDiagram(n)) return n;
+        const data = { ...n.data };
+        if (patch.stencil) data.stencil = patch.stencil;
+        if ("group" in patch) data.group = patch.group || undefined;
+        return data.stencil === n.data.stencil && data.group === n.data.group ? n : { ...n, data };
+      });
+      commitNodeEdit(nodes, new Map(patch.stencil ? ids.map((id) => [id, patch.stencil!]) : []), opts?.merge);
     },
     setNodesProps: (ids, patch, opts) => {
       const set = new Set(ids);
@@ -904,12 +900,7 @@ export function createEditor(
               }
             : n,
         );
-      if (!acceptNodes(update(rf.getNodes()))) return;
-      hint(opts?.merge);
-      deps().setNodes((ns) => {
-        const next = update(ns);
-        return acceptNodes(next) ? next : ns;
-      });
+      commitNodes(update, (edges) => edges, { merge: opts?.merge });
     },
     updateGroups: (ids, patch, opts) => {
       const set = new Set(ids);
@@ -923,43 +914,20 @@ export function createEditor(
       );
     },
     updateNode: (id, patch, opts) => {
-      if (
-        !acceptNodes(
-          currentNodes().map((n) =>
-            n.id === id && isDiagram(n)
-              ? {
-                  ...n,
-                  data: {
-                    ...n.data,
-                    ...("stencil" in patch && patch.stencil ? { stencil: patch.stencil } : {}),
-                    ...("label" in patch ? { label: patch.label ?? "" } : {}),
-                    ...("sublabel" in patch ? { sublabel: patch.sublabel || undefined } : {}),
-                    ...("props" in patch ? { props: patch.props } : {}),
-                  },
-                }
-              : n,
-          ),
-        )
-      )
-        return;
-      hint(opts?.merge);
-      if (patch.stencil && !reinferEdges(new Map([[id, patch.stencil]]))) return;
-      deps().setNodes((ns) => {
-        const next = ns.map((n) => {
-          if (n.id !== id || !isDiagram(n)) return n;
-          const data = { ...n.data };
-          if ("stencil" in patch && patch.stencil) data.stencil = patch.stencil;
-          if ("label" in patch) data.label = patch.label ?? "";
-          if ("sublabel" in patch) data.sublabel = patch.sublabel || undefined;
-          if ("group" in patch) data.group = patch.group || undefined;
-          if ("props" in patch) data.props = patch.props && withoutUndefined(patch.props);
-          const x = patch.x ?? n.position.x;
-          const y = patch.y ?? n.position.y;
-          const position = x === n.position.x && y === n.position.y ? n.position : { x, y };
-          return { ...n, data, position };
-        });
-        return "props" in patch && !acceptNodes(next) ? ns : next;
+      const nodes = currentNodes().map((n) => {
+        if (n.id !== id || !isDiagram(n)) return n;
+        const data = { ...n.data };
+        if ("stencil" in patch && patch.stencil) data.stencil = patch.stencil;
+        if ("label" in patch) data.label = patch.label ?? "";
+        if ("sublabel" in patch) data.sublabel = patch.sublabel || undefined;
+        if ("group" in patch) data.group = patch.group || undefined;
+        if ("props" in patch) data.props = patch.props && withoutUndefined(patch.props);
+        const x = patch.x ?? n.position.x;
+        const y = patch.y ?? n.position.y;
+        const position = x === n.position.x && y === n.position.y ? n.position : { x, y };
+        return { ...n, data, position };
       });
+      commitNodeEdit(nodes, new Map(patch.stencil ? [[id, patch.stencil]] : []), opts?.merge);
     },
     setNodeProps: (id, patch, opts) => api.setNodesProps([id], patch, opts),
     updateEdge: (id, patch, opts) => api.updateEdges([id], patch, opts),
@@ -1043,7 +1011,11 @@ export function createEditor(
       });
     },
     updateMeta: (patch, opts) => {
-      if (!acceptNodes(currentNodes(), currentEdges(), { ...deps().meta, ...patch })) return;
+      if (
+        ("planning" in patch || "simulations" in patch) &&
+        !acceptNodes(currentNodes(), currentEdges(), { ...deps().meta, ...patch })
+      )
+        return;
       hint(opts?.merge);
       deps().setMeta((m) => ({ ...m, ...patch }));
     },
@@ -1062,7 +1034,7 @@ export function createEditor(
       return edge.id;
     },
     reverseEdge: (id) => {
-      deps().setEdges((es) =>
+      commitEdges((es) =>
         es.map((e) =>
           e.id === id
             ? {

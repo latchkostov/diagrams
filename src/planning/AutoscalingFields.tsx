@@ -35,6 +35,7 @@ export function AutoscalingFields({
   const [validateResources] = useState(() => createResourceValidator());
   const [commitError, setCommitError] = useState<string | null>(null);
   const targetRef = useRef<HTMLInputElement>(null);
+  const cpuRef = useRef<HTMLInputElement>(null);
   const family = profileOf(stencil)?.family;
   const a = props.autoscaling as NodeSimProps["autoscaling"];
   const r = props.resources as ComputeResources | undefined;
@@ -128,6 +129,7 @@ export function AutoscalingFields({
   const resource = (key: keyof ComputeResources, label: string, min = 0) => (
     <NumberField
       name={key}
+      inputRef={key === "cpuMsPerMessage" ? cpuRef : undefined}
       label={label}
       value={r?.[key] as number | undefined}
       min={min}
@@ -135,6 +137,61 @@ export function AutoscalingFields({
       change={(value) => r && commit({ resources: { ...r, [key]: value } }, key)}
     />
   );
+  const resourceFields =
+    valid && r ? (
+      <>
+        {r.preset === "kubernetes-unmeasured" && (
+          <>
+            <p>{t("autoscaling.unmeasured")}</p>
+            <button
+              className="btn"
+              data-testid="autoscaling-use-lesson"
+              onClick={() => {
+                let accepted = false;
+                flushSync(() => {
+                  accepted = commit({
+                    resources: {
+                      ...r,
+                      preset: "io-service",
+                      cpuMsPerMessage: 40,
+                      baselineMemoryMiB: 128,
+                      memoryMiBPerMessage: 2,
+                    },
+                  });
+                });
+                if (accepted) cpuRef.current?.focus();
+              }}
+            >
+              {t("autoscaling.useLesson")}
+            </button>
+          </>
+        )}
+        {resource("cpuMsPerMessage", t("autoscaling.cpuCost"))}
+        {resource("cpuRequestMilli", t("autoscaling.cpuRequest"), 0.000001)}
+        {resource("cpuLimitMilli", t("autoscaling.cpuLimit"), 0.000001)}
+        {resource("availableCpuMilli", t("autoscaling.cpuAvailable"), 0.000001)}
+        {resource("baselineMemoryMiB", t("autoscaling.baseline"))}
+        {resource("memoryMiBPerMessage", t("autoscaling.memoryCost"))}
+        {resource("memoryRequestMiB", t("autoscaling.memoryRequest"), 0.000001)}
+        {resource("memoryLimitMiB", t("autoscaling.memoryLimit"), 0.000001)}
+        <NumberField
+          name="startup"
+          label={t("autoscaling.startup")}
+          value={r.startup.delayMs}
+          integer
+          change={(v) =>
+            v !== undefined && commit({ resources: { ...r, startup: { ...r.startup, delayMs: v } } }, "startup")
+          }
+        />
+        <NumberField
+          name="grace"
+          label={t("autoscaling.grace")}
+          value={r.terminationGraceMs}
+          integer
+          change={(v) => v !== undefined && commit({ resources: { ...r, terminationGraceMs: v } }, "grace")}
+        />
+      </>
+    ) : null;
   return (
     <div className="autoscaling-controls" data-testid="autoscaling-controls">
       <label className="insp-field">
@@ -345,52 +402,7 @@ export function AutoscalingFields({
                 />
               </>
             )}
-            {r.preset === "kubernetes-unmeasured" && (
-              <>
-                <p>{t("autoscaling.unmeasured")}</p>
-                <button
-                  className="btn"
-                  data-testid="autoscaling-use-lesson"
-                  onClick={() =>
-                    commit({
-                      resources: {
-                        ...r,
-                        preset: "io-service",
-                        cpuMsPerMessage: 40,
-                        baselineMemoryMiB: 128,
-                        memoryMiBPerMessage: 2,
-                      },
-                    })
-                  }
-                >
-                  {t("autoscaling.useLesson")}
-                </button>
-              </>
-            )}
-            {resource("cpuMsPerMessage", t("autoscaling.cpuCost"))}
-            {resource("cpuRequestMilli", t("autoscaling.cpuRequest"), 0.000001)}
-            {resource("cpuLimitMilli", t("autoscaling.cpuLimit"), 0.000001)}
-            {resource("availableCpuMilli", t("autoscaling.cpuAvailable"), 0.000001)}
-            {resource("baselineMemoryMiB", t("autoscaling.baseline"))}
-            {resource("memoryMiBPerMessage", t("autoscaling.memoryCost"))}
-            {resource("memoryRequestMiB", t("autoscaling.memoryRequest"), 0.000001)}
-            {resource("memoryLimitMiB", t("autoscaling.memoryLimit"), 0.000001)}
-            <NumberField
-              name="startup"
-              label={t("autoscaling.startup")}
-              value={r.startup.delayMs}
-              integer
-              change={(v) =>
-                v !== undefined && commit({ resources: { ...r, startup: { ...r.startup, delayMs: v } } }, "startup")
-              }
-            />
-            <NumberField
-              name="grace"
-              label={t("autoscaling.grace")}
-              value={r.terminationGraceMs}
-              integer
-              change={(v) => v !== undefined && commit({ resources: { ...r, terminationGraceMs: v } }, "grace")}
-            />
+            {resourceFields}
             <NumberField
               name="initial"
               label={t("autoscaling.initial")}
@@ -521,7 +533,15 @@ export function AutoscalingFields({
           </details>
         </>
       ) : (
-        children
+        <>
+          {resourceFields && (
+            <details data-testid="autoscaling-advanced">
+              <summary data-testid="autoscaling-advanced-toggle">{t("ai.advanced")}</summary>
+              {resourceFields}
+            </details>
+          )}
+          {children}
+        </>
       )}
     </div>
   );

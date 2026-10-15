@@ -217,6 +217,20 @@ gate need no hierarchy-specific fallback or new timing budget.
 - Final lint found six non-null assertions in the new browser regression; explicit checks replace
   them. Its added annotation-membership check compares by id because normalization draws zones
   before notes; the initial order-sensitive assertion failed, and the corrected targeted run passes.
+## Autoscaling A2 round 2 review (2026-10-15)
+
+The rebase retained master and A2 code and documentation; no golden was hand-merged. The full
+initial check compared 1,854 goldens and found exactly one intended difference from round 1:
+`node/i18n/catalogs.json`. Three translated import-report messages add the current selected-boundary
+count, explain automatic scaling dependency inclusion, and explain missing-source recovery. This
+changes catalog message counts and the `importReport`/`importDetail` area hashes (114 fields).
+
+Only that golden was re-recorded, with `pnpm parity:update --tier node i18n`, after inspecting the
+initial full-run difference. All other 1,853 goldens remain unchanged, including every simulation,
+planning, import, layout, renderer, native/export and skill output. The performance and transaction
+refactors introduce no output changes. The final full verification is recorded in
+[the round 2 review](research/autoscaling-a2-round2-review.md).
+
 ## Autoscaling A2 verification (2026-10-15)
 
 A2 adds frozen activation, published-cooldown and idle-reader diagrams, a public two-burst Kafka showcase,

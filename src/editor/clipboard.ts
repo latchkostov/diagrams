@@ -187,6 +187,7 @@ export function remapPayload(p: ClipboardPayload, taken: TakenIds, offset: { x: 
   const used = new Set([...taken.nodes, ...taken.edges, ...taken.groups]);
   const gmap = new Map<string, string>();
   const nmap = new Map<string, string>();
+  const emap = new Map<string, string>();
   const groupIds = p.groups.map((g) => {
     const id = uniqueId(g.id, used);
     used.add(id);
@@ -224,10 +225,10 @@ export function remapPayload(p: ClipboardPayload, taken: TakenIds, offset: { x: 
   const edges = p.edges.map((e) => {
     const id = uniqueId(e.id, used);
     used.add(id);
-    nmap.set(e.id, id);
+    emap.set(e.id, id);
     return { ...remapConnection(e, nmap), id };
   });
-  const scalerGroups = scalerGroupRemap(p.edges, nmap);
+  const scalerGroups = scalerGroupRemap(p.edges, nmap, emap);
   for (const n of nodes) remapScaler(n.props, nmap, scalerGroups);
   return {
     format: p.format,

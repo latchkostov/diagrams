@@ -1,5 +1,22 @@
 # Release notes
 
+## Autoscaling A2 round 2 review fixes (#125, 2026-10-15)
+
+- Large and selected namespace imports retain KEDA broker and consumer-group dependencies within
+  the picker budget. Missing sources produce an unsupported-policy recovery report. The report
+  explains automatic inclusion and counts the boundaries currently selected.
+- RabbitMQ imports infer omitted/auto protocol from HTTP(S) or AMQP(S) hosts. Connection reversal
+  rejects broken scaler bindings; colliding clipboard node/edge IDs keep distinct remappings.
+- Fixed scaling keeps resource editing and the workload lesson in Advanced. Applying the lesson
+  restores focus to CPU cost. Node/stencil patches and inferred connections validate together once;
+  title and description typing no longer validates the graph.
+- Copy tests assert exact policy/source identity; unavailable metrics cannot wake a sleeping fleet.
+  Rebased onto master, retained both documentation histories and regenerated the skill viewer at 1.1.26.
+- Round 2 changes only `node/i18n/catalogs.json`: three translated messages for current boundary
+  selection, automatic scaling-source inclusion and omitted-policy recovery update counts and hashes.
+  The other 1,853 goldens, including every simulation and export, are unchanged. Details and verification:
+  `docs/PARITY.md` and `docs/research/autoscaling-a2-round2-review.md`.
+
 ## Relationship dropdown review fixes (#122, 2026-10-15)
 
 - Removing an inert edge setting returns keyboard focus to Label, and Tab reaches the relationship

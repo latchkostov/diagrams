@@ -1,4 +1,5 @@
-import type { ImportGraph, PickGroup } from "./graph";
+import type { AutoscalingConfig } from "../../model/autoscaling";
+import { diagnostic, type ImportGraph, type PickGroup } from "./graph";
 
 // Big imports (docs/research/imports.md § UX, "Big imports"): past PICK_OVER nodes, an import with boundaries
 // (namespaces, Terraform modules or resource groups, AsyncAPI servers, compose networks) draws the boundaries with
@@ -29,6 +30,38 @@ interface Share {
   loose: Set<string>;
 }
 
+/** Policy references are graph dependencies too, even across namespace boundaries. */
+function dependenciesOf(g: ImportGraph) {
+  const existing = new Set(g.components.map((c) => c.key));
+  const dependencies = new Map<string, Set<string>>();
+  const routes = new Map<string, Map<string, Set<string>>>();
+  for (const l of g.links) {
+    if (l.relation !== "flow" || l.props?.deny || l.props?.dlq || typeof l.props?.group !== "string") continue;
+    const groups = routes.get(l.from) ?? new Map<string, Set<string>>();
+    const targets = groups.get(l.props.group) ?? new Set<string>();
+    targets.add(l.to);
+    groups.set(l.props.group, targets);
+    routes.set(l.from, groups);
+  }
+  for (const c of g.components) {
+    const a = c.props?.autoscaling as AutoscalingConfig | undefined;
+    if (a?.mode !== "on" || a.controller.kind !== "keda") continue;
+    const required = new Set<string>();
+    for (const t of a.controller.triggers) {
+      required.add(t.source.node);
+      if (t.source.group)
+        for (const target of routes.get(t.source.node)?.get(t.source.group) ?? []) required.add(target);
+    }
+    dependencies.set(c.key, required);
+  }
+  return (kept: Set<string>) => {
+    // Set iteration also visits newly added dependencies, including chained policies and cycles.
+    for (const key of kept)
+      for (const dependency of dependencies.get(key) ?? []) if (existing.has(dependency)) kept.add(dependency);
+    return kept;
+  };
+}
+
 function sharesOf(g: ImportGraph): Share[] {
   const groupOf = new Map(g.components.map((c) => [c.key, c.group]));
   const shares = new Map<string, Share>(
@@ -42,7 +75,10 @@ function sharesOf(g: ImportGraph): Share[] {
       continue;
     }
     const s = shares.get(c.group);
-    if (s) s.members++;
+    if (s) {
+      s.members++;
+      s.loose.add(c.key);
+    }
   }
   const shareOf = (key: string): Share | undefined => {
     const group = groupOf.get(key);
@@ -78,15 +114,14 @@ export function defaultPick(g: ImportGraph, budget = PICK_OVER): string[] | unde
   if (shares.length < 2) return undefined;
   const drawn = new Set<string>();
   const chosen: string[] = [];
-  let count = 0;
+  const close = dependenciesOf(g);
   for (const s of shares) {
-    // UNGROUPED's members are its loose set; a boundary's loose nodes may be drawn already.
-    let added = s.key === UNGROUPED ? 0 : s.members;
-    for (const k of s.loose) if (!drawn.has(k)) added++;
-    if (count + added > (chosen.length ? budget : MAX_DRAWN)) continue;
+    const included = close(s.loose);
+    let added = 0;
+    for (const k of included) if (!drawn.has(k)) added++;
+    if (drawn.size + added > (chosen.length ? budget : MAX_DRAWN)) continue;
     chosen.push(s.key);
-    count += added;
-    for (const k of s.loose) drawn.add(k);
+    for (const k of included) drawn.add(k);
   }
   return chosen;
 }
@@ -108,11 +143,15 @@ export function pickGraph(g: ImportGraph, keys: readonly string[]): ImportGraph 
     if (kept.has(l.to) && loose.has(l.from)) brought.add(l.from);
   }
   for (const k of brought) kept.add(k);
+  const beforeScaling = kept.size;
+  dependenciesOf(g)(kept);
+  const groups = new Set(g.components.filter((c) => kept.has(c.key)).map((c) => c.group));
   return {
     ...g,
+    notes: kept.size > beforeScaling ? [...g.notes, diagnostic("importReport.scalingDependencies")] : g.notes,
     components: g.components.filter((c) => kept.has(c.key)),
     links: g.links.filter((l) => kept.has(l.from) && kept.has(l.to)),
-    groups: g.groups.filter((gr) => chosen.has(gr.key)),
+    groups: g.groups.filter((gr) => groups.has(gr.key)),
     ...(g.traffic ? { traffic: g.traffic.filter((t) => kept.has(t.key)) } : {}),
   };
 }

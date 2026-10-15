@@ -4,6 +4,8 @@ import type { ImportList, ImportText, ReportLine } from "../infra/graph";
 
 // Literal keys let the build inline English without carrying the catalog or ICU parser.
 export const messages = {
+  "importDetail.scalingSourceOmitted": msg("importDetail.scalingSourceOmitted"),
+  "importReport.scalingDependencies": msg("importReport.scalingDependencies"),
   "importDetail.scalingReason": msg("importDetail.scalingReason"),
   "importDetail.scalingUnsupported": msg("importDetail.scalingUnsupported"),
   "importDetail.scalingMapped": msg("importDetail.scalingMapped"),

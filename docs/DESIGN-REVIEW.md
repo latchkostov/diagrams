@@ -10,6 +10,18 @@ is not viewport takeover. Cancellation now follows actual viewport move events a
 programmatic fit starts have their own transition token. Browser regressions cover the real wheel
 interruption and count observer work after cleanup. This was a scoped source review backed by browser
 regressions, not a whole-app visual or assistive-technology walkthrough.
+## Autoscaling A2 round 2 gate (#125, 2026-10-15)
+
+The designer agent reviewed the changed source and regression tests. Fixed workloads keep resources
+inside the existing Advanced disclosure; successful lesson application moves focus to CPU cost.
+No global chrome was added. Its first pass found unclear omitted-policy recovery and an inaccurate
+“drawn” heading for automatically included source boundaries. Follow-up also caught an initially
+stale selected count. The report now states what scaling was omitted, how to recover, and why
+required sources/routes come along automatically; its heading tracks explicit checkbox selections.
+Production regressions cover these interactions, enabled/Fixed lesson focus and retained resource values.
+
+This was a scoped source/test review, without an independent browser, screenshot or assistive-technology
+walkthrough. The full production test outcomes are recorded in the round 2 review report.
 
 ## Relationship dropdown review gate (#122, 2026-10-15)
 

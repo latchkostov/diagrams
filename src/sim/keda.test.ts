@@ -255,6 +255,39 @@ describe("KEDA activation and generated HPA", () => {
     evaluateKeda(f, c, resourceLesson(), 120_000, () => ({ pending: 50, outstanding: 0 }));
     expect(f.keda!.failures).toEqual([0]);
   });
+  it("fallback cannot wake an unavailable zero fleet", () => {
+    const d = kedaFixture();
+    const a = kedaLesson("kafka", { node: "uploads", group: "renders" });
+    Object.assign(a.controller, {
+      pollingMs: 1000,
+      fallback: { failureThreshold: 2, replicas: 4, behavior: "static" },
+    });
+    a.controller.triggers[0].activation = 5;
+    d.nodes[1].props!.autoscaling = a;
+    const e = createEngine();
+    e.load(d);
+    e.setNodeStatus("uploads", "down");
+    for (let poll = 1; poll <= 5; poll++) {
+      e.step(1000);
+      expect(e.frame().nodes.worker.fleet).toMatchObject({
+        desired: 0,
+        ready: 0,
+        starting: 0,
+        decision: { reason: "missing" },
+      });
+    }
+    e.setNodeStatus("uploads", "up");
+    e.inject("uploads", 6);
+    e.step(990);
+    expect(e.frame().nodes.worker.fleet).toMatchObject({ desired: 0, ready: 0, starting: 0 });
+    e.step(10);
+    expect(e.frame().nodes.worker.fleet).toMatchObject({
+      desired: 1,
+      ready: 0,
+      starting: 1,
+      decision: { reason: "activation" },
+    });
+  });
   it("keeps trigger reads bounded independently of queue size and only runs due clocks", () => {
     const c = kedaLesson().controller,
       f = createFleet(0);

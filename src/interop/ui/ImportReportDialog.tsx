@@ -365,8 +365,8 @@ function PickSection({ pick, onDraw }: { pick: ImportPick; onDraw: (keys: string
   return (
     <section className="ix-report-section" data-testid="import-report-pick">
       <h3>
-        {tr("importReport.boundariesDrawn", {
-          drawn: pick.groups.filter((g) => g.drawn).length,
+        {tr("importReport.boundariesSelected", {
+          selected: keys.length,
           total: pick.groups.length,
         })}
       </h3>

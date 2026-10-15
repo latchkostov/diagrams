@@ -1,4 +1,5 @@
-import { remapScaler } from "../../model/kedaBindings";
+import type { AutoscalingConfig } from "../../model/autoscaling";
+import { bindingValidator, remapScaler } from "../../model/kedaBindings";
 import { diagnostic } from "./graph";
 import { t as tr } from "../../i18n";
 import {
@@ -149,6 +150,19 @@ export function graphToDiagram(g: ImportGraph, total?: number): { diagram: Diagr
         ...(l.evidence.guess ? { guess: true } : {}),
       });
   }
+  // A partial/external graph must still open with a report if a source or its group route is absent.
+  const binding = bindingValidator(nodes, edges);
+  const omitted: ReportLine[] = [];
+  for (const n of nodes) {
+    const a = n.props?.autoscaling as AutoscalingConfig | undefined;
+    if (binding(a)) continue;
+    n.props!.autoscaling = {
+      mode: "unsupported",
+      provider: g.format,
+      reason: "KEDA source binding omitted from import; include its broker and consumer group route",
+    };
+    omitted.push({ name: n.label, reason: diagnostic("importDetail.scalingSourceOmitted") });
+  }
   const used = new Set(nodes.map((n) => n.group));
   const groups = g.groups
     .filter((gr) => used.has(groupIds.get(gr.key)))
@@ -211,7 +225,7 @@ export function graphToDiagram(g: ImportGraph, total?: number): { diagram: Diagr
       guesses,
       inferred,
       ...(g.connectionsTitle ? { connectionsTitle: g.connectionsTitle } : {}),
-      notDrawn: capped(g.notDrawn),
+      notDrawn: capped([...g.notDrawn, ...omitted]),
       unread: capped(g.unread),
       notes: [
         ...g.notes,

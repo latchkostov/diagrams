@@ -50,14 +50,18 @@ export function triggerFits(t: KedaTrigger["type"], stencil: string): boolean {
         : ["azure.service-bus.queue", "azure.service-bus.topic"].includes(stencil);
 }
 /** IDs, never labels. Used after allocation in clipboard and infrastructure mapping. */
-export function scalerGroupRemap(edges: readonly DiagramEdge[], ids: ReadonlyMap<string, string>) {
+export function scalerGroupRemap(
+  edges: readonly DiagramEdge[],
+  nodes: ReadonlyMap<string, string>,
+  edgesById: ReadonlyMap<string, string>,
+) {
   const groups = new Map<string, Map<string, string>>();
   for (const e of edges) {
     const before =
       e.props?.groupOrigin === "inferred" ? String(e.props.group) : e.props?.group === undefined ? e.id : undefined;
     if (before === undefined) continue;
     const byName = groups.get(e.from) ?? new Map<string, string>();
-    byName.set(before, ids.get(e.props?.groupOrigin === "inferred" ? e.to : e.id) ?? before);
+    byName.set(before, (e.props?.groupOrigin === "inferred" ? nodes.get(e.to) : edgesById.get(e.id)) ?? before);
     groups.set(e.from, byName);
   }
   return groups;
