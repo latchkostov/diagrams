@@ -1,3 +1,4 @@
+import { currentDiagram, openExample } from "./fixtures";
 import { test, expect, gotoCanvas, expectNoErrors, STORAGE_KEYS } from "./fixtures";
 import { MOD, SLUG, must, nodeCount, openAdvanced, savedDiagram } from "./ai-helpers";
 import { readFileSync } from "node:fs";
@@ -221,11 +222,14 @@ test.describe("AI panel dock", () => {
     await expect(page.getByTestId("ai-turn-0-undo")).toHaveCount(0);
 
     // Not in the diagram's saved file (so not in exports or share links).
-    const raw = await page.evaluate((key) => localStorage.getItem(key) ?? "", STORAGE_KEYS.autosavePrefix + SLUG);
+    const raw = await page.evaluate(
+      (key) => localStorage.getItem(key) ?? "",
+      STORAGE_KEYS.autosavePrefix + (await currentDiagram(page)),
+    );
     expect(raw).not.toContain("Add a billing worker");
 
     // Another diagram has its own (empty) thread.
-    await page.getByTestId("example-picker").selectOption({ index: 1 });
+    await openExample(page, "aws-fanout");
     await expect(page.getByTestId("ai-empty")).toBeVisible();
     await page.goBack();
     await expect(page.getByTestId("ai-turn-0")).toBeVisible();

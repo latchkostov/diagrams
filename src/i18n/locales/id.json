@@ -1592,5 +1592,22 @@
   "admission.source": "Sumber penyedia · diperiksa {date}",
   "admission.summary": "{name}: {capacity}; {offered} masuk.",
   "admission.rejectEstimate": "{rate} dapat ditolak.",
-  "admission.model": "p3 · penerimaan terkelola"
+  "admission.model": "p3 · penerimaan terkelola",
+  "examples.browse": "Jelajahi contoh…",
+  "examples.intro": "Jelajahi sistem, lalu sesuaikan untuk Anda. Edit pertama Anda menyimpan salinan.",
+  "examples.search": "Cari contoh",
+  "examples.shows": "Menampilkan",
+  "examples.allFeatures": "Semua fitur",
+  "examples.empty": "Tidak ada contoh yang cocok. Coba pencarian atau fitur lain.",
+  "examples.run": "Jalankan",
+  "examples.openNamed": "Buka {title}",
+  "examples.runNamed": "Jalankan {title}",
+  "examples.partitions": "Partisi",
+  "examples.rateLimits": "Batas laju",
+  "examples.networkDevices": "Perangkat jaringan",
+  "examples.themeStreaming": "Streaming event",
+  "examples.themeData": "Data & AI",
+  "examples.themeCloud": "Aplikasi cloud",
+  "examples.themeIntegration": "Integrasi",
+  "examples.themeReliability": "Keandalan"
 }

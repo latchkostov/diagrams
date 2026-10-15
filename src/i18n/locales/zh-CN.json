@@ -1592,5 +1592,22 @@
   "admission.source": "供应商来源 · 核实日期 {date}",
   "admission.summary": "{name}：{capacity}；输入 {offered}。",
   "admission.rejectEstimate": "{rate} 可能被拒绝。",
-  "admission.model": "p3 · 托管准入"
+  "admission.model": "p3 · 托管准入",
+  "examples.browse": "浏览示例…",
+  "examples.intro": "探索系统并按需修改。首次编辑会保存一个副本。",
+  "examples.search": "搜索示例",
+  "examples.shows": "展示",
+  "examples.allFeatures": "所有功能",
+  "examples.empty": "没有匹配的示例。请尝试其他搜索词或功能。",
+  "examples.run": "运行",
+  "examples.openNamed": "打开 {title}",
+  "examples.runNamed": "运行 {title}",
+  "examples.partitions": "分区",
+  "examples.rateLimits": "速率限制",
+  "examples.networkDevices": "网络设备",
+  "examples.themeStreaming": "事件流",
+  "examples.themeData": "数据与 AI",
+  "examples.themeCloud": "云应用",
+  "examples.themeIntegration": "集成",
+  "examples.themeReliability": "可靠性"
 }

@@ -1592,5 +1592,22 @@
   "admission.source": "Zdroj dodávateľa · overené {date}",
   "admission.summary": "{name}: {capacity}; prichádzajúce {offered}.",
   "admission.rejectEstimate": "{rate} môže byť odmietnuté.",
-  "admission.model": "p3 · spravované prijímanie"
+  "admission.model": "p3 · spravované prijímanie",
+  "examples.browse": "Prehľadávať príklady…",
+  "examples.intro": "Preskúmajte systém a prispôsobte si ho. Prvá úprava uloží kópiu.",
+  "examples.search": "Hľadať príklady",
+  "examples.shows": "Ukazuje",
+  "examples.allFeatures": "Všetky funkcie",
+  "examples.empty": "Žiadne príklady nezodpovedajú. Skúste iné hľadanie alebo funkciu.",
+  "examples.run": "Spustiť",
+  "examples.openNamed": "Otvoriť {title}",
+  "examples.runNamed": "Spustiť {title}",
+  "examples.partitions": "Partície",
+  "examples.rateLimits": "Limity frekvencie",
+  "examples.networkDevices": "Sieťové zariadenia",
+  "examples.themeStreaming": "Streamovanie udalostí",
+  "examples.themeData": "Dáta a AI",
+  "examples.themeCloud": "Cloudové aplikácie",
+  "examples.themeIntegration": "Integrácia",
+  "examples.themeReliability": "Spoľahlivosť"
 }

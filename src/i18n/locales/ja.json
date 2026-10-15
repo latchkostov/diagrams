@@ -1592,5 +1592,22 @@
   "admission.source": "ベンダーの資料 · 確認日 {date}",
   "admission.summary": "{name}：{capacity}、入力 {offered}。",
   "admission.rejectEstimate": "{rate} が拒否される可能性があります。",
-  "admission.model": "p3 · マネージド受付制御"
+  "admission.model": "p3 · マネージド受付制御",
+  "examples.browse": "サンプルを見る…",
+  "examples.intro": "システムを調べて、自分用に編集できます。最初の編集でコピーが保存されます。",
+  "examples.search": "サンプルを検索",
+  "examples.shows": "紹介する機能",
+  "examples.allFeatures": "すべての機能",
+  "examples.empty": "一致するサンプルがありません。別の検索や機能を試してください。",
+  "examples.run": "実行",
+  "examples.openNamed": "{title}を開く",
+  "examples.runNamed": "{title}を実行",
+  "examples.partitions": "パーティション",
+  "examples.rateLimits": "レート制限",
+  "examples.networkDevices": "ネットワーク機器",
+  "examples.themeStreaming": "イベントストリーミング",
+  "examples.themeData": "データとAI",
+  "examples.themeCloud": "クラウドアプリ",
+  "examples.themeIntegration": "連携",
+  "examples.themeReliability": "信頼性"
 }

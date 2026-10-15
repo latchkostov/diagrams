@@ -17,7 +17,7 @@ import { AI_THREAD_PREFIX } from "./aiThreadKey";
 // - A blank "new" diagram (DRAFT_SLUG) is not stored at all until its first edit, when it becomes a
 //   library entry in place: the entry takes the draft's identity, so the open canvas doesn't remount.
 // - A diagram opened from a share link lives in its own slot (SHARED_SLUG) until "Save a copy".
-// - Examples are built in; their edits are kept as autosaves.
+// - Examples are built in; the canvas keeps the first edit in a new library copy.
 //
 // Every read and write goes through safe storage: blocked or full storage never throws into the UI.
 
@@ -209,11 +209,20 @@ function promoteDraft(identity: string): string | undefined {
 
 // ---------------------------------------------------------------- identity and save destinations
 
+const exampleIdentities = new Map<string, string>();
+
 /** Identity changes only when this document is replaced, never when another slot changes. */
 export function getDiagramIdentity(slug: string): string {
   if (slug === DRAFT_SLUG) return draftIdentity();
   const key = slotKey(slug);
-  if (!key) return `example:${slug}`;
+  if (!key) {
+    let identity = exampleIdentities.get(slug);
+    if (!identity) {
+      identity = `example:${slug}:${randomHex(4)}`;
+      exampleIdentities.set(slug, identity);
+    }
+    return identity;
+  }
   const stored = read<Partial<DocumentSession>>(key);
   // Legacy slots have no binding: old separately stored destinations cannot be trusted.
   return stored?.sessionFormat === SESSION_FORMAT && typeof stored.sessionId === "string"
@@ -678,6 +687,33 @@ export function copyTitle(title: string, taken: string[] = []): string {
     const candidate = n === 1 ? `${base} (copy)` : `${base} (copy ${n})`;
     if (!taken.includes(candidate)) return candidate;
   }
+}
+
+/** Keep the edited canvas and its undo history; reopening the example gets a fresh canvas. */
+export function copyEditedExample(
+  slug: string,
+  edited: DiagramFile,
+  identity: string,
+): { slug: string; title: string } | undefined {
+  if (!examples.some((e) => e.slug === slug) || getDiagramIdentity(slug) !== identity) return undefined;
+  const source = getOriginal(slug);
+  // An explicit name belongs to the person; don't append text beneath their typing cursor.
+  const title =
+    edited.title !== source?.title
+      ? edited.title.trim()
+        ? edited.title
+        : UNTITLED
+      : copyTitle(
+          edited.title,
+          readIndex().map((e) => e.title),
+        );
+  const copy = createLibraryDiagram({ ...preserveUnknown(edited, source), title }, undefined, identity, {
+    sourceSlug: slug,
+    private: newDiagramsPrivate.get(),
+  });
+  exampleIdentities.set(slug, `example:${slug}:${randomHex(4)}`);
+  safeStorage.removeItem(AUTOSAVE_PREFIX + slug);
+  return { slug: copy, title };
 }
 
 /** Duplicates an entry (its latest content, extension fields included) and returns the copy's slug. */

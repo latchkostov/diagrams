@@ -35,6 +35,7 @@ const privateExamples: LocalExample[] = import.meta.env.DEV
         title: diagram.title,
         thumb: diagramThumb(diagram),
         description: diagram.description,
+        simulation: diagram.simulations?.[0]?.id,
         diagram,
         localOnly: true,
       }),

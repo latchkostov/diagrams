@@ -1,3 +1,5 @@
+import { currentDiagram } from "./fixtures";
+import { openExample } from "./fixtures";
 import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { Locator, Page } from "@playwright/test";
@@ -188,7 +190,7 @@ test.describe("interop", () => {
 
     await page.getByTestId("import-input").setInputFiles(file);
     await expect(page.getByTestId("toast")).toContainText("Imported");
-    await expect(page.getByTestId("example-picker")).toHaveValue(/^my-/);
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
     await expect(page.getByTestId("diagram-title")).toHaveText(ex.title);
     for (const id of ex.nodeIds) await expect(page.getByTestId(`node-${id}`)).toBeVisible();
     for (const id of ex.edgeIds) await expect(page.getByTestId(`edge-${id}`)).toBeAttached();
@@ -217,7 +219,7 @@ test.describe("interop", () => {
     await page.getByTestId("paste-submit").click();
     await expect(page.getByTestId("paste-dialog")).toHaveCount(0);
     await expect(page.getByTestId("toast")).toContainText("Imported");
-    await expect(page.getByTestId("example-picker")).toHaveValue(/^my-/);
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
     for (const id of ["web", "api", "bus", "fn", "db"]) await expect(page.getByTestId(`node-${id}`)).toBeVisible();
     // Laid out left to right.
     const a = await boxOf(page.getByTestId("node-web"));
@@ -261,18 +263,18 @@ test.describe("interop", () => {
     const other = await context.newPage();
     await other.goto(link);
     await expect(other.getByTestId("shared-banner")).toBeVisible();
-    await expect(other.getByTestId("example-picker")).toHaveValue("shared");
+    await expect(other.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", "shared");
     await expect(other.getByTestId("diagram-title")).toHaveText(ex.title);
     for (const id of ex.nodeIds) await expect(other.getByTestId(`node-${id}`)).toBeVisible();
     await expect(other).not.toHaveURL(/#d=/);
 
     // "Save a copy" adds it to Your diagrams.
     await other.getByTestId("shared-keep").click();
-    await expect(other.getByTestId("example-picker")).toHaveValue(/^my-/);
+    await expect(other.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
     await expect(other.getByTestId("shared-banner")).toHaveCount(0);
     await other.getByTestId("file-button").click();
     await other.getByTestId("file-library").click();
-    const copy = await other.getByTestId("example-picker").inputValue();
+    const copy = await currentDiagram(other);
     await expect(other.getByTestId(`library-title-${copy}`)).toHaveText(ex.title);
     expectNoErrors(consoleErrors);
   });
@@ -387,7 +389,7 @@ test.describe("interop", () => {
     // Switching diagrams drops them (simulation ids belong to a diagram).
     const other = publicExamples.find((e) => e.slug !== slug);
     if (!other) throw new Error("needs a second public example");
-    await page.getByTestId("example-picker").selectOption(other.slug);
+    await openExample(page, other.slug);
     await expect(page).not.toHaveURL(/sim=/);
   });
 
@@ -526,18 +528,21 @@ test.describe("interop review regressions", () => {
     await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(1);
     await expect(page.getByTestId("toast")).toContainText(`Saved “${NATIVE.title}” to saved-1.json`);
     // B is a separate diagram with no destination yet...
-    const b = await page.getByTestId("example-picker").inputValue();
+    const b = await currentDiagram(page);
     await saveFile(page);
     expect(await page.evaluate(() => window.__fs.pickerCalls)).toBe(2);
     // ...and A kept the one its own save chose.
+    await page.getByTestId("example-picker").click();
     const a = await page
-      .getByTestId("picker-group-yours")
-      .getByTestId(/^picker-option-/)
+      .getByTestId("diagram-menu")
+      .getByTestId(/^picker-option-.*(?<!-title)$/)
       .filter({ hasText: NATIVE.title })
-      .getAttribute("value");
+      .getAttribute("data-testid")
+      .then((id) => id?.slice("picker-option-".length));
     if (!a) throw new Error("A is missing from Your diagrams");
     expect(a).not.toBe(b);
-    await page.getByTestId("example-picker").selectOption(a);
+    await page.keyboard.press("Escape");
+    await openExample(page, a);
     await expect(page.getByTestId("diagram-title")).toHaveText(NATIVE.title);
     await page.keyboard.press("Control+s");
     await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(3);
@@ -556,7 +561,9 @@ test.describe("interop review regressions", () => {
       localStorage.setItem("diagrams.shared.v1", JSON.stringify(diagram));
       window.dispatchEvent(new StorageEvent("storage", { key: "diagrams.shared.v1" }));
     }, NATIVE);
-    await expect(page.getByTestId("example-picker")).toContainText(`${NATIVE.title} (shared)`);
+    await page.getByTestId("example-picker").click();
+    await expect(page.getByTestId("picker-option-shared")).toContainText(`${NATIVE.title} (shared)`);
+    await page.keyboard.press("Escape");
     await expect(page.getByTestId("canvas-view")).toHaveAttribute("data-test-instance", "kept");
     await expect(page.getByTestId("diagram-title")).toHaveText("Unsaved edit");
     await page.getByTestId("undo-button").click();

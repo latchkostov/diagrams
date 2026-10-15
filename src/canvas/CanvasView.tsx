@@ -54,6 +54,7 @@ import { useSettings } from "../harness/settings";
 import { getNodeVariant } from "../harness/nodeVariants";
 import {
   DRAFT_SLUG,
+  copyEditedExample,
   emptyDiagram,
   getAutosave,
   getDiagramIdentity,
@@ -219,6 +220,7 @@ interface Props {
   start?: StartOptions;
   /** Told the title as it's edited (the picker follows it without waiting for the autosave). */
   onTitleChange?: (title: string) => void;
+  onExampleCopy?: (source: string, copy: string, title: string) => void;
   /** The exported HTML viewer (src/export/viewer): read-only, plus the options below. */
   viewer?: CanvasViewerOptions;
 }
@@ -287,6 +289,7 @@ function CanvasInner({
   initial,
   start,
   onTitleChange,
+  onExampleCopy,
   viewer,
 }: Props) {
   const locale = useLocale();
@@ -578,6 +581,8 @@ function CanvasInner({
     revision: hostRevision,
   });
 
+  const renameHistoryTitle = history.renameTitle;
+
   // ---------------------------------------------------------------- autosave
   // Debounced while editing, and flushed whenever the canvas could go away before the timer fires:
   // on unmount (switching diagrams), on page hide (reload, close, navigation) and when the tab is
@@ -588,25 +593,58 @@ function CanvasInner({
     latest.current = { meta, nodes, edges, slug };
   });
   const lastSaved = useRef(loadedJson);
+  const saveBaseline = useRef(originalJson);
+  const copyCallback = useRef(onExampleCopy);
+  useLayoutEffect(() => {
+    copyCallback.current = onExampleCopy;
+  });
+  const copiedExample = useRef<string | null>(null);
   /** Returns whether the diagram differs from its original, or undefined when there was nothing to write. */
-  const flushSave = useCallback((): boolean | undefined => {
-    if (readOnly) return undefined;
-    const { meta, nodes, edges, slug } = latest.current;
-    const d = fromFlow(meta, nodes, edges);
-    const json = JSON.stringify(d);
-    if (json === lastSaved.current) return undefined;
-    const mod = json !== originalJson;
-    if (writeAutosave(slug, mod ? d : null, identity)) lastSaved.current = json;
-    return mod;
-  }, [readOnly, originalJson, identity]);
+  const flushSave = useCallback(
+    (override?: DiagramFile): boolean | undefined => {
+      if (readOnly) return undefined;
+      const { meta, nodes, edges, slug } = latest.current;
+      let d = override ?? fromFlow(meta, nodes, edges);
+      const json = JSON.stringify(d);
+      if (json === lastSaved.current) return undefined;
+      const mod = json !== saveBaseline.current;
+      // Only the editable app promotes examples; embeds and exported viewers never save.
+      if (mod && identity && copyCallback.current && !copiedExample.current) {
+        try {
+          const copy = copyEditedExample(slug, d, identity);
+          if (copy) {
+            const sourceTitle = d.title;
+            const canvasTitle = sourceTitle.trim() ? copy.title : sourceTitle;
+            renameHistoryTitle(sourceTitle, canvasTitle);
+            copiedExample.current = copy.slug;
+            saveBaseline.current = JSON.stringify({ ...d, title: copy.title });
+            d = { ...d, title: canvasTitle };
+            latest.current = { ...latest.current, slug: copy.slug, meta: toFlow(d).meta };
+            setMeta((current) => ({ ...current, title: canvasTitle }));
+            copyCallback.current(slug, copy.slug, original.title);
+          }
+        } catch {
+          notify(tr("library.storageFull"), { kind: "error" });
+          return mod;
+        }
+      }
+      if (writeAutosave(copiedExample.current ?? slug, mod ? d : null, identity)) lastSaved.current = JSON.stringify(d);
+      return mod;
+    },
+    [readOnly, identity, renameHistoryTitle, original.title],
+  );
+  const firstExampleEdit = onExampleCopy !== undefined;
   useEffect(() => {
     if (readOnly) return;
-    const t = setTimeout(() => {
-      const mod = flushSave();
-      if (mod !== undefined) setModified(mod);
-    }, 300);
+    const t = setTimeout(
+      () => {
+        const mod = flushSave();
+        if (mod !== undefined) setModified(mod);
+      },
+      firstExampleEdit ? 0 : 300,
+    );
     return () => clearTimeout(t);
-  }, [meta, nodes, edges, readOnly, flushSave]);
+  }, [meta, nodes, edges, readOnly, flushSave, firstExampleEdit]);
   useEffect(() => {
     if (readOnly) return;
     const onPageHide = () => void flushSave();
@@ -2432,9 +2470,8 @@ function CanvasInner({
                   readOnly
                     ? undefined
                     : (diagram) => {
-                        const mod = JSON.stringify(diagram) !== originalJson;
-                        writeAutosave(slug, mod ? diagram : null, identity);
-                        setModified(mod);
+                        const mod = flushSave(diagram);
+                        if (mod !== undefined) setModified(mod);
                       }
                 }
               />

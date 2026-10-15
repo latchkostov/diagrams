@@ -1592,5 +1592,22 @@
   "admission.source": "Източник на доставчика · проверен {date}",
   "admission.summary": "{name}: {capacity}; входящи {offered}.",
   "admission.rejectEstimate": "{rate} може да бъдат отхвърлени.",
-  "admission.model": "p3 · управляван прием"
+  "admission.model": "p3 · управляван прием",
+  "examples.browse": "Разгледайте примери…",
+  "examples.intro": "Разгледайте система и я направете своя. Първата Ви промяна запазва копие.",
+  "examples.search": "Търсене на примери",
+  "examples.shows": "Показва",
+  "examples.allFeatures": "Всички възможности",
+  "examples.empty": "Няма съответстващи примери. Опитайте друго търсене или възможност.",
+  "examples.run": "Стартиране",
+  "examples.openNamed": "Отваряне на {title}",
+  "examples.runNamed": "Стартиране на {title}",
+  "examples.partitions": "Партиции",
+  "examples.rateLimits": "Ограничения на честотата",
+  "examples.networkDevices": "Мрежови устройства",
+  "examples.themeStreaming": "Поток от събития",
+  "examples.themeData": "Данни и ИИ",
+  "examples.themeCloud": "Облачни приложения",
+  "examples.themeIntegration": "Интеграция",
+  "examples.themeReliability": "Надеждност"
 }

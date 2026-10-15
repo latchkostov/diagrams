@@ -26,6 +26,7 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
   ["password-link crypto", /[/\\]src[/\\]interop[/\\]shareCrypto\.ts$/],
   ["the password dialogs", /[/\\]src[/\\]interop[/\\]ui[/\\]passwordDialogs\.tsx$/],
   ["the import and export dialogs", /[/\\]src[/\\]interop[/\\]ui[/\\]dialogs\.tsx$/],
+  ["the examples gallery", /[/\\]src[/\\]components[/\\]ExamplesDialog\.tsx$/],
   ["Your diagrams", /[/\\]src[/\\]components[/\\]LibraryDialog\.tsx$/],
   ["the embed viewer", /[/\\]src[/\\]interop[/\\]embed[/\\]/],
   ["the Interactive HTML export", /[/\\]src[/\\]export[/\\]/],

@@ -1592,5 +1592,22 @@
   "admission.source": "Bron van leverancier · gecontroleerd {date}",
   "admission.summary": "{name}: {capacity}; {offered} inkomend.",
   "admission.rejectEstimate": "{rate} kunnen worden geweigerd.",
-  "admission.model": "p3 · beheerde toelating"
+  "admission.model": "p3 · beheerde toelating",
+  "examples.browse": "Voorbeelden bekijken…",
+  "examples.intro": "Verken een systeem en pas het aan. Je eerste bewerking slaat een kopie op.",
+  "examples.search": "Voorbeelden zoeken",
+  "examples.shows": "Toont",
+  "examples.allFeatures": "Alle functies",
+  "examples.empty": "Geen overeenkomende voorbeelden. Probeer een andere zoekopdracht of functie.",
+  "examples.run": "Uitvoeren",
+  "examples.openNamed": "{title} openen",
+  "examples.runNamed": "{title} uitvoeren",
+  "examples.partitions": "Partities",
+  "examples.rateLimits": "Snelheidslimieten",
+  "examples.networkDevices": "Netwerkapparaten",
+  "examples.themeStreaming": "Eventstreaming",
+  "examples.themeData": "Data en AI",
+  "examples.themeCloud": "Cloudapps",
+  "examples.themeIntegration": "Integratie",
+  "examples.themeReliability": "Betrouwbaarheid"
 }

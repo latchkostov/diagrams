@@ -1592,5 +1592,22 @@
   "admission.source": "Pakkuja allikas · kontrollitud {date}",
   "admission.summary": "{name}: {capacity}; saabub {offered}.",
   "admission.rejectEstimate": "{rate} võidakse tagasi lükata.",
-  "admission.model": "p3 · hallatud vastuvõtt"
+  "admission.model": "p3 · hallatud vastuvõtt",
+  "examples.browse": "Sirvi näiteid…",
+  "examples.intro": "Tutvuge süsteemiga ja kohandage seda. Esimene muudatus salvestab koopia.",
+  "examples.search": "Otsi näiteid",
+  "examples.shows": "Näitab",
+  "examples.allFeatures": "Kõik funktsioonid",
+  "examples.empty": "Sobivaid näiteid pole. Proovige muud otsingut või funktsiooni.",
+  "examples.run": "Käivita",
+  "examples.openNamed": "Ava {title}",
+  "examples.runNamed": "Käivita {title}",
+  "examples.partitions": "Partitsioonid",
+  "examples.rateLimits": "Sageduspiirangud",
+  "examples.networkDevices": "Võrguseadmed",
+  "examples.themeStreaming": "Sündmuste voogedastus",
+  "examples.themeData": "Andmed ja tehisintellekt",
+  "examples.themeCloud": "Pilverakendused",
+  "examples.themeIntegration": "Integratsioon",
+  "examples.themeReliability": "Töökindlus"
 }

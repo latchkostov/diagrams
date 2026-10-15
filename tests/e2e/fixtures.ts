@@ -329,3 +329,22 @@ export async function labPresetIds(page: Page): Promise<string[]> {
   );
   return ids;
 }
+
+/** Opens a diagram without coupling callers to the picker's menu or gallery layout.
+ * Deliberately doesn't wait for the diagram download: lazy-load race tests control it.
+ */
+export async function openExample(page: Page, slug: string) {
+  await page.getByTestId("example-picker").click();
+  const own = page.getByTestId(`picker-option-${slug}`);
+  if (await own.count()) return own.click();
+  if (slug === "new") return page.getByTestId("picker-new").click();
+  await page.getByTestId("picker-browse-examples").click();
+  await page.getByTestId("examples-search").fill(slug);
+  await page.getByTestId(`example-open-${slug}`).click();
+}
+
+export async function currentDiagram(page: Page): Promise<string> {
+  const slug = await page.getByTestId("example-picker").getAttribute("data-diagram-slug");
+  if (!slug) throw new Error("No open diagram");
+  return slug;
+}

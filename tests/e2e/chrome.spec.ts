@@ -12,7 +12,7 @@ async function openLibrary(page: Page) {
 test.describe("said once", () => {
   test("a blank diagram is named by the picker only; the title card waits for the first node", async ({ page }) => {
     await page.goto("./");
-    await expect(page.getByTestId("example-picker")).toHaveValue("new");
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", "new");
     await expect(page.getByTestId("start-card")).toBeVisible();
     await expect(page.getByTestId("diagram-card")).toBeHidden();
     await page.getByTestId("start-blank").click();

@@ -1,3 +1,4 @@
+import { openExample, pauseClock } from "./fixtures";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { deflateRawSync } from "node:zlib";
@@ -54,7 +55,7 @@ test("start card loads its example only when opened", async ({ page, consoleErro
   await expect(page.getByTestId("start-card")).toBeVisible();
   release();
   await expect(page.getByTestId(`node-${kafka.nodeIds[0]}`)).toBeVisible();
-  await expect(page.getByTestId("example-picker")).toHaveValue(kafka.slug);
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", kafka.slug);
   expectNoErrors(consoleErrors);
 });
 
@@ -82,14 +83,14 @@ test("a delayed example keeps the current canvas, and a failed load shows a toas
     await gate;
     await route.abort("failed");
   });
-  await page.getByTestId("example-picker").selectOption(kafka.slug);
+  await openExample(page, kafka.slug);
   await expect.poll(() => requested).toBe(true);
   await expect(currentNode).toBeVisible();
   await expect(page.getByTestId("start-card")).toHaveCount(0);
   release();
   await expect(page.getByTestId("toast")).toContainText("Couldn't load that example");
   await expect(currentNode).toBeVisible();
-  await expect(page.getByTestId("example-picker")).toHaveValue(other.slug);
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", other.slug);
   await expect(page).toHaveURL(new RegExp(`example=${other.slug}`));
 });
 
@@ -106,10 +107,10 @@ test("a late import cannot replace a newer navigation", async ({ page, consoleEr
     await gate;
     await route.continue();
   });
-  await page.getByTestId("example-picker").selectOption(kafka.slug);
+  await openExample(page, kafka.slug);
   await expect.poll(() => requested).toBe(true);
   // Navigate again while the first import is waiting.
-  await page.getByTestId("example-picker").selectOption(other.slug);
+  await openExample(page, other.slug);
   await expect(page).toHaveURL(new RegExp(`example=${other.slug}`));
   const downloaded = page.waitForResponse((response) => kafkaChunk.test(response.url()));
   release();
@@ -118,7 +119,7 @@ test("a late import cannot replace a newer navigation", async ({ page, consoleEr
   await page.evaluate(
     () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
   );
-  await expect(page.getByTestId("example-picker")).toHaveValue(other.slug);
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", other.slug);
   await expect(page.getByTestId(`node-${other.nodeIds[0]}`)).toBeVisible();
   expectNoErrors(consoleErrors);
 });
@@ -134,9 +135,9 @@ test("an older download cannot replace the canvas while a newer download is pend
   await expect(current).toBeVisible();
   const first = await gate(page, exampleChunk(kafka.slug));
   const second = await gate(page, exampleChunk(third.slug));
-  await page.getByTestId("example-picker").selectOption(kafka.slug);
+  await openExample(page, kafka.slug);
   await expect.poll(first.requested).toBe(true);
-  await page.getByTestId("example-picker").selectOption(third.slug);
+  await openExample(page, third.slug);
   await expect.poll(second.requested).toBe(true);
 
   // The first download finishes first: it must not open while the newer one is still pending.
@@ -146,7 +147,7 @@ test("an older download cannot replace the canvas while a newer download is pend
   await settle(page);
   await expect(current).toBeVisible();
   await expect(page.getByTestId(`node-${kafka.nodeIds[0]}`)).toHaveCount(0);
-  await expect(page.getByTestId("example-picker")).toHaveValue(third.slug);
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", third.slug);
 
   second.release();
   await expect(page.getByTestId(`node-${third.nodeIds[0]}`)).toBeVisible();
@@ -155,7 +156,7 @@ test("an older download cannot replace the canvas while a newer download is pend
   expectNoErrors(consoleErrors);
 });
 
-test("keyboard navigation in the picker moves on from the pending selection", async ({ page }) => {
+test("gallery navigation moves on from the pending selection", async ({ page }) => {
   // The first three event-streaming examples, in their picker order (src/examples/index.ts).
   const [next, afterNext] = ["cqrs-event-sourcing", "cdc-analytics"];
   await page.goto(`./?example=${kafka.slug}`);
@@ -164,14 +165,13 @@ test("keyboard navigation in the picker moves on from the pending selection", as
   const picker = page.getByTestId("example-picker");
   const gates = [await gate(page, exampleChunk(next)), await gate(page, exampleChunk(afterNext))];
 
-  await picker.focus();
-  await picker.press("ArrowDown");
-  await expect(picker).toHaveValue(next);
+  await openExample(page, next);
+  await expect(picker).toHaveAttribute("data-diagram-slug", next);
   await expect.poll(gates[0].requested).toBe(true);
   await expect(page.getByTestId("example-loading")).toContainText("Loading");
   // Still loading: the next ArrowDown continues from the pending selection.
-  await picker.press("ArrowDown");
-  await expect(picker).toHaveValue(afterNext);
+  await openExample(page, afterNext);
+  await expect(picker).toHaveAttribute("data-diagram-slug", afterNext);
   await expect.poll(gates[1].requested).toBe(true);
   await expect(current).toBeVisible();
 
@@ -179,7 +179,7 @@ test("keyboard navigation in the picker moves on from the pending selection", as
   gates[1].release();
   await expect(page).toHaveURL(new RegExp(`example=${afterNext}`));
   await expect(page.getByTestId("example-loading")).toHaveText("");
-  await expect(picker).toHaveValue(afterNext);
+  await expect(picker).toHaveAttribute("data-diagram-slug", afterNext);
 });
 
 test("a cold example URL downloads the canvas code alongside the example", async ({ page }) => {
@@ -241,7 +241,7 @@ async function startPendingSwitch(page: Page, { fail = false } = {}) {
   await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
   await expect.poll(() => query(page)).toEqual(onKafka("black-friday"));
   const pending = await gate(page, exampleChunk(other.slug), { fail });
-  await page.getByTestId("example-picker").selectOption(other.slug);
+  await openExample(page, other.slug);
   await expect.poll(pending.requested).toBe(true);
   await expect(page.getByTestId("example-loading")).toContainText("Loading");
   return pending;
@@ -250,7 +250,7 @@ async function startPendingSwitch(page: Page, { fail = false } = {}) {
 test("switching back before a pending example loads keeps the live link", async ({ page, consoleErrors }) => {
   const pending = await startPendingSwitch(page);
   const simPicker = page.getByTestId("live-sim-picker");
-  await page.getByTestId("example-picker").selectOption(kafka.slug);
+  await openExample(page, kafka.slug);
   await expect(page.getByTestId("example-loading")).toHaveText("");
   await expect(simPicker).toHaveValue("black-friday");
   await expect.poll(() => query(page)).toEqual(onKafka("black-friday"));
@@ -282,17 +282,17 @@ test("live changes while an example is pending stay with the diagram on screen",
   expect(query(page)).toEqual(pendingOther);
 
   // Back on the open diagram, the address describes it as it is now.
-  await page.getByTestId("example-picker").selectOption(kafka.slug);
+  await openExample(page, kafka.slug);
   await expect.poll(() => query(page)).toEqual(onKafka("payments-outage"));
 
   // Leaving live view while the switch is pending again: the switch back reflects that too.
-  await page.getByTestId("example-picker").selectOption(other.slug);
+  await openExample(page, other.slug);
   await expect.poll(() => query(page)).toEqual(pendingOther);
   await page.getByTestId("live-toggle").click();
   await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "false");
   await settle(page);
   expect(query(page)).toEqual(pendingOther);
-  await page.getByTestId("example-picker").selectOption(kafka.slug);
+  await openExample(page, kafka.slug);
   await expect.poll(() => query(page)).toEqual({ view: "canvas", example: kafka.slug });
   expectNoErrors(consoleErrors);
 });
@@ -304,11 +304,11 @@ test("Back during a pending example restores the open diagram's current live lin
   await expect(simPicker).toHaveValue("payments-outage");
   // The history entry still holds black-friday; the screen shows payments-outage.
   await page.goBack();
-  await expect(page.getByTestId("example-picker")).toHaveValue(kafka.slug);
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", kafka.slug);
   await expect.poll(() => query(page)).toEqual(onKafka("payments-outage"));
   await expect(simPicker).toHaveValue("payments-outage");
   await page.goForward();
-  await expect(page.getByTestId("example-picker")).toHaveValue(other.slug);
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", other.slug);
   await expect.poll(() => query(page)).toEqual(pendingOther);
   expectNoErrors(consoleErrors);
 });
@@ -332,7 +332,7 @@ test("a failed example download restores the open diagram's live link", async ({
   const pending = await startPendingSwitch(page, { fail: true });
   pending.release();
   await expect(page.getByTestId("toast")).toContainText("Couldn't load that example");
-  await expect(page.getByTestId("example-picker")).toHaveValue(kafka.slug);
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", kafka.slug);
   await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
   await expect.poll(() => query(page)).toEqual(onKafka("black-friday"));
 });
@@ -349,7 +349,7 @@ test("presentation toggled while an example is pending applies to the canvas on 
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("present-exit")).toHaveCount(0);
   await expect.poll(() => query(page)).toEqual(pendingOther);
-  await page.getByTestId("example-picker").selectOption(kafka.slug);
+  await openExample(page, kafka.slug);
   await expect.poll(() => query(page)).toEqual(onKafka("black-friday"));
   expectNoErrors(consoleErrors);
 });
@@ -370,4 +370,27 @@ test("production entry contains no full example JSON", () => {
   for (const match of html.matchAll(/<link\b[^>]*rel="modulepreload"[^>]*href="([^"]+)"/g)) {
     expect(readFileSync(join(dir, match[1].replace(/^\.?\//, "")), "utf8")).not.toContain(distinctive);
   }
+});
+
+test("a pending switch keeps the edited source canvas when the flush creates a copy", async ({ page }) => {
+  await page.clock.install();
+  await page.goto(`./?example=${other.slug}`);
+  const sourceNode = page.getByTestId(`node-${other.nodeIds[0]}`);
+  await expect(sourceNode).toBeVisible();
+  await sourceNode.click();
+  await pauseClock(page);
+  await page.getByTestId("inspector-field-label").fill("Kept during download");
+  await expect(sourceNode).toContainText("Kept during download");
+  await page.getByTestId("canvas-view").evaluate((el) => el.setAttribute("data-test-instance", "kept"));
+  const pending = await gate(page, kafkaChunk);
+  try {
+    await openExample(page, kafka.slug);
+    await expect.poll(pending.requested).toBe(true);
+    await expect(page.getByTestId("canvas-view")).toHaveAttribute("data-test-instance", "kept");
+    await expect(sourceNode).toContainText("Kept during download");
+  } finally {
+    pending.release();
+  }
+  await page.clock.resume();
+  await expect(page.getByTestId("diagram-title")).toHaveText(kafka.title);
 });

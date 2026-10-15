@@ -1592,5 +1592,22 @@
   "admission.source": "Zdroj dodavatele · ověřeno {date}",
   "admission.summary": "{name}: {capacity}; příchozí {offered}.",
   "admission.rejectEstimate": "{rate} může být odmítnuto.",
-  "admission.model": "p3 · spravované přijímání"
+  "admission.model": "p3 · spravované přijímání",
+  "examples.browse": "Procházet příklady…",
+  "examples.intro": "Prozkoumejte systém a upravte si ho. První úprava uloží kopii.",
+  "examples.search": "Hledat příklady",
+  "examples.shows": "Ukazuje",
+  "examples.allFeatures": "Všechny funkce",
+  "examples.empty": "Žádné příklady neodpovídají. Zkuste jiné hledání nebo funkci.",
+  "examples.run": "Spustit",
+  "examples.openNamed": "Otevřít {title}",
+  "examples.runNamed": "Spustit {title}",
+  "examples.partitions": "Oddíly",
+  "examples.rateLimits": "Limity četnosti",
+  "examples.networkDevices": "Síťová zařízení",
+  "examples.themeStreaming": "Streamování událostí",
+  "examples.themeData": "Data a AI",
+  "examples.themeCloud": "Cloudové aplikace",
+  "examples.themeIntegration": "Integrace",
+  "examples.themeReliability": "Spolehlivost"
 }

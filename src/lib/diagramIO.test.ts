@@ -624,3 +624,55 @@ it("Your diagrams keep relationships and settings through save, autosave and dup
       props: { settings: [{ key: "Stripe:ApiKey", secret: true }] },
     });
 });
+
+describe("first example edit", () => {
+  it("creates a named copy with the same canvas identity and leaves a fresh original", async () => {
+    const { loadExample } = await import("../examples");
+    const source = "kafka-order-pipeline";
+    const original = await loadExample(source);
+    const identity = io.getDiagramIdentity(source);
+    const edited = {
+      ...original,
+      nodes: original.nodes.map((n, i) => (i === 0 ? { ...n, label: "My edit" } : n)),
+      "x-owner": "team",
+    };
+    const copy = io.copyEditedExample(source, edited, identity);
+    expect(copy?.title).toBe(`${original.title} (copy)`);
+    expect(copy).toBeDefined();
+    if (!copy) throw new Error("Copy was not created");
+    expect(io.getCurrent(copy.slug)).toMatchObject({ title: copy.title, "x-owner": "team" });
+    expect(io.getCurrent(copy.slug)?.nodes[0].label).toBe("My edit");
+    expect(io.getDiagramIdentity(copy.slug)).toBe(identity);
+    expect(io.getDiagramIdentity(source)).not.toBe(identity);
+    expect(io.getCurrent(source)).toEqual(original);
+    expect(io.copyEditedExample(source, edited, identity)).toBeUndefined();
+    expect(io.listLibrary()).toHaveLength(1);
+  });
+  it("preserves an explicitly chosen name instead of appending text while typing", async () => {
+    const { loadExample } = await import("../examples");
+    const source = "kafka-order-pipeline";
+    const original = await loadExample(source);
+    const copy = io.copyEditedExample(source, { ...original, title: "My system" }, io.getDiagramIdentity(source));
+    expect(copy?.title).toBe("My system");
+    expect(copy && io.getCurrent(copy.slug)?.title).toBe("My system");
+  });
+  it("keeps a cleared name as an owned Untitled diagram", async () => {
+    const { loadExample } = await import("../examples");
+    const source = "kafka-order-pipeline";
+    const original = await loadExample(source);
+    const copy = io.copyEditedExample(source, { ...original, title: "" }, io.getDiagramIdentity(source));
+    expect(copy?.title).toBe(io.UNTITLED);
+    expect(copy && io.getCurrent(copy.slug)?.title).toBe(io.UNTITLED);
+  });
+  it("leaves the original session intact if storage refuses the copy", async () => {
+    const { loadExample } = await import("../examples");
+    const source = "kafka-order-pipeline";
+    const original = await loadExample(source);
+    const identity = io.getDiagramIdentity(source);
+    storage.quotaBytes = 1;
+    expect(() => io.copyEditedExample(source, original, identity)).toThrow();
+    expect(io.getDiagramIdentity(source)).toBe(identity);
+    expect(io.getCurrent(source)).toEqual(original);
+    expect(io.listLibrary()).toHaveLength(0);
+  });
+});

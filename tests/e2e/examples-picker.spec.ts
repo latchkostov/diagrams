@@ -1,9 +1,5 @@
-import type { Locator } from "@playwright/test";
-import { test, expect, publicExamples, expectNoErrors, pageLoadTimeout } from "./fixtures";
-
-// With 15+ examples, the picker and the start card group them by theme so neither becomes a wall of
-// titles: the picker has one group per theme, and the start card shows a few featured examples with
-// "All examples" for the rest.
+import AxeBuilder from "@axe-core/playwright";
+import { test, expect, publicExamples, expectNoErrors, openExample, currentDiagram, pageLoadTimeout } from "./fixtures";
 
 /** Every public example's intended theme, in display order (src/examples/themes.ts and index.ts). */
 const BY_THEME: Record<string, string[]> = {
@@ -32,91 +28,193 @@ const BY_THEME: Record<string, string[]> = {
     "contoso-dmz",
   ],
 };
-const THEMES = Object.keys(BY_THEME);
 
-/** The examples the collapsed start card offers, in order. */
-const FEATURED = ["kafka-order-pipeline", "event-driven-data-platform", "rag-assistant", "aws-serverless-orders"];
+const SLUG = "kafka-order-pipeline";
 
-/** The slugs behind the matching test IDs, in DOM order. */
-async function slugs(rows: Locator, prefix: string) {
-  const ids = await rows.evaluateAll((els) => els.map((el) => el.getAttribute("data-testid") ?? ""));
-  return ids.map((id) => id.slice(prefix.length));
-}
-
-const startRows = (scope: Locator) => scope.getByTestId(/^start-example-.*(?<!-thumb)$/);
-
-test.describe("examples by theme", () => {
-  test("every public example has an intended theme", () => {
-    expect(Object.values(BY_THEME).flat().sort()).toEqual(publicExamples.map((ex) => ex.slug).sort());
+test("picker contains your work and a separate gallery entry; gallery filters and opens examples", async ({
+  page,
+  consoleErrors,
+}) => {
+  const diagrams: string[] = [];
+  page.on("request", (request) => {
+    if (/assets\/kafka-order-pipeline-/.test(request.url())) diagrams.push(request.url());
   });
+  await page.goto("./");
+  await page.getByTestId("example-picker").click();
+  const menu = page.getByTestId("diagram-menu");
+  await expect(menu).toHaveAttribute("role", "menu");
+  await expect(menu.getByTestId(/^picker-option-.*(?<!-title)$/)).toHaveCount(1);
+  await expect(page.getByTestId(`picker-option-${SLUG}`)).toHaveCount(0);
+  await expect(page.getByTestId("picker-new")).toBeVisible();
+  await page.getByTestId("picker-browse-examples").click();
+  await expect(page.getByTestId("examples-search")).toBeFocused();
+  expect(diagrams).toEqual([]);
+  for (const [theme, slugs] of Object.entries(BY_THEME)) {
+    const cards = page.getByTestId(`examples-theme-${theme}`).getByTestId(/^example-card-/);
+    expect(
+      await cards.evaluateAll((elements) =>
+        elements.map((el) => el.getAttribute("data-testid")?.slice("example-card-".length)),
+      ),
+    ).toEqual(slugs);
+  }
+  await expect(page.getByTestId(/^example-card-/)).toHaveCount(publicExamples.length);
+  await page.getByTestId("examples-search").fill("no such system");
+  await expect(page.getByTestId("examples-empty")).toBeVisible();
+  await page.getByTestId("examples-search").fill("kafka order");
+  await expect(page.getByTestId(`example-card-${SLUG}`)).toBeVisible();
+  await page.getByTestId(`example-open-${SLUG}`).click();
+  await expect(page.getByTestId("examples-dialog")).toHaveCount(0);
+  await expect(page.getByTestId("diagram-title")).toHaveText("Kafka order pipeline");
+  await expect(page.getByTestId("example-badge")).toHaveText("Example");
+  expectNoErrors(consoleErrors);
+});
 
-  test("the picker groups every public example under exactly one theme", async ({ page, consoleErrors }) => {
-    await page.goto("./");
-    const picker = page.getByTestId("example-picker");
-    await expect(picker).toBeVisible();
-    // Your diagrams first, then the themes in order.
-    const groups = await slugs(picker.getByTestId(/^picker-group-/), "picker-group-");
-    expect(groups.filter((g) => g !== "examples")).toEqual(["yours", ...THEMES]);
+test("start card opens the gallery; feature filter and Run it start a saved simulation in live view", async ({
+  page,
+  consoleErrors,
+}) => {
+  await page.goto("./");
+  await page.getByTestId("start-all-examples").click();
+  await page.getByTestId("examples-feature").selectOption("rateLimits");
+  await expect(page.getByTestId(/^example-card-/)).toHaveCount(1);
+  await expect(page.getByTestId("example-card-notification-fanout")).toBeVisible();
+  await page.getByTestId("example-run-notification-fanout").click();
+  await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("live-sim-picker")).toHaveValue("shipping-wave");
+  await expect(page).toHaveURL(/live=1/);
+  expectNoErrors(consoleErrors);
+});
 
-    // Picking from a theme group opens that example.
-    const target = publicExamples.find((ex) => ex.slug === BY_THEME.reliability[0]);
-    if (!target) throw new Error("no reliability example");
-    await picker.selectOption(target.slug);
-    await expect(page.getByTestId(`node-${target.nodeIds[0]}`)).toBeVisible();
-    expectNoErrors(consoleErrors);
-  });
+test("first edit creates your named copy, preserves undo and leaves the deep-linked example pristine", async ({
+  page,
+  consoleErrors,
+}) => {
+  await page.goto(`./?example=${SLUG}`);
+  await expect(page.getByTestId("example-badge")).toBeVisible();
+  await page.getByTestId("canvas-view").evaluate((el) => el.setAttribute("data-test-instance", "kept"));
+  await page.getByTestId("node-shopper").click();
+  await page.getByTestId("inspector-field-label").fill("My storefront");
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+  const copy = await currentDiagram(page);
+  await expect(page.getByTestId("canvas-view")).toHaveAttribute("data-test-instance", "kept");
+  await expect(page.getByTestId("diagram-title")).toHaveText("Kafka order pipeline (copy)");
+  await expect(page.getByTestId("example-badge")).toHaveCount(0);
+  await expect(page.getByTestId("example-copy-notice")).toContainText("Your diagrams");
+  await page.getByTestId("undo-button").click();
+  await expect(page.getByTestId("node-shopper")).toContainText("Storefront");
+  await page.getByTestId("redo-button").click();
+  await expect(page.getByTestId("node-shopper")).toContainText("My storefront");
+  await openExample(page, SLUG);
+  await expect(page.getByTestId("diagram-title")).toHaveText("Kafka order pipeline");
+  await expect(page.getByTestId("node-shopper")).toContainText("Storefront");
+  await openExample(page, copy);
+  await expect(page.getByTestId("node-shopper")).toContainText("My storefront");
+  await page.reload();
+  await expect(page.getByTestId("node-shopper")).toContainText("My storefront");
+  await openExample(page, SLUG);
+  await expect(page.getByTestId("node-shopper")).toContainText("Storefront");
+  await expect(page.getByTestId("node-shopper")).not.toContainText("My storefront");
+  await expect(page.getByTestId("diagram-title")).toHaveText("Kafka order pipeline");
+  expectNoErrors(consoleErrors);
+});
 
-  test("examples appear under their intended themes", async ({ page, consoleErrors }) => {
-    await page.goto("./");
-    await expect(page.getByTestId("example-picker")).toBeVisible();
-    for (const theme of THEMES) {
-      const options = page.getByTestId(`picker-group-${theme}`).getByTestId(/^picker-option-/);
-      expect(await slugs(options, "picker-option-"), `picker: ${theme}`).toEqual(BY_THEME[theme]);
-    }
+test("a title-first edit can be undone and stays undone after the owned copy reloads", async ({ page }) => {
+  await page.goto(`./?example=${SLUG}`);
+  await page.getByTestId("inspector-toggle").click();
+  await page.getByTestId("inspector-field-title").fill("");
+  await expect(page.getByTestId("inspector-field-title")).toHaveValue("");
+  await page.getByTestId("inspector-field-title").pressSequentially("My renamed example");
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+  await expect(page.getByTestId("diagram-title")).toHaveText("My renamed example");
+  await expect(page.getByTestId("toast")).toHaveCount(0);
+  await page.getByTestId("undo-button").click();
+  await expect(page.getByTestId("diagram-title")).toHaveText("Kafka order pipeline");
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pagehide")));
+  await page.reload();
+  await expect(page.getByTestId("diagram-title")).toHaveText("Kafka order pipeline");
+  await expect(page.getByTestId("example-badge")).toHaveCount(0);
+});
 
-    const card = page.getByTestId("start-card");
-    await expect(card).toBeVisible();
-    await page.getByTestId("start-all-examples").click();
-    await expect(startRows(card)).toHaveCount(publicExamples.length);
-    expect(await slugs(card.getByTestId(/^start-theme-/), "start-theme-")).toEqual(THEMES);
-    for (const theme of THEMES) {
-      const rows = startRows(card.getByTestId(`start-theme-${theme}`));
-      expect(await slugs(rows, "start-example-"), `start card: ${theme}`).toEqual(BY_THEME[theme]);
-    }
-    expectNoErrors(consoleErrors);
-  });
+test("a cleared title keeps an owned copy and later edits survive reload", async ({ page }) => {
+  await page.goto(`./?example=${SLUG}`);
+  await page.getByTestId("inspector-toggle").click();
+  await page.getByTestId("inspector-field-title").fill("");
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+  await expect(page.getByTestId("inspector-field-title")).toHaveValue("");
+  await page.getByTestId("node-shopper").click();
+  await page.getByTestId("inspector-field-label").fill("Saved with no title");
+  await expect(page.getByTestId("node-shopper")).toContainText("Saved with no title");
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pagehide")));
+  await page.reload();
+  await expect(page.getByTestId("node-shopper")).toContainText("Saved with no title");
+  await expect(page.getByTestId("diagram-title")).toHaveText("Untitled diagram");
+});
 
-  test("the collapsed start card shows exactly the featured examples", async ({ page, consoleErrors }) => {
-    await page.goto("./");
-    const card = page.getByTestId("start-card");
-    await expect(card).toBeVisible();
-    const rows = startRows(card);
-    const notFeatured = publicExamples.map((ex) => ex.slug).filter((slug) => !FEATURED.includes(slug));
-    const expectFeaturedOnly = async () => {
-      await expect(rows).toHaveCount(FEATURED.length);
-      expect(await slugs(rows, "start-example-")).toEqual(FEATURED);
-      for (const slug of notFeatured) await expect(card.getByTestId(`start-example-${slug}`)).toHaveCount(0);
-    };
-    await expectFeaturedOnly();
+test("keyboard menu navigation, dialog arrows, Escape and focus return", async ({ page }) => {
+  await page.goto("./");
+  const picker = page.getByTestId("example-picker");
+  await picker.focus();
+  await picker.press("Enter");
+  await expect(page.getByTestId("picker-option-new")).toBeFocused();
+  await page.keyboard.press("End");
+  await expect(page.getByTestId("picker-browse-examples")).toBeFocused();
+  await page.keyboard.press("ArrowUp");
+  await expect(page.getByTestId("picker-new")).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("examples-search")).toBeFocused();
+  await page.getByTestId(`example-open-${SLUG}`).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByTestId(`example-run-${SLUG}`)).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("examples-dialog")).toHaveCount(0);
+  await expect(picker).toBeFocused();
+  await page.getByTestId("start-all-examples").click();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("start-all-examples")).toBeFocused();
+});
 
-    const all = page.getByTestId("start-all-examples");
-    await expect(all).toHaveAttribute("aria-expanded", "false");
-    await expect(all).toHaveText(/All examples/);
-    await all.click();
-    await expect(all).toHaveAttribute("aria-expanded", "true");
-    await expect(rows).toHaveCount(publicExamples.length);
-    // Fewer folds it back to the featured few.
-    await all.click();
-    await expectFeaturedOnly();
+for (const theme of ["light", "dark"] as const)
+  for (const mobile of [false, true])
+    test(`gallery fits and passes accessibility: ${theme} ${mobile ? "mobile" : "desktop"}`, async ({ page }) => {
+      await page.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1280, height: 800 });
+      await page.goto("./");
+      if (theme === "dark") await page.getByTestId("theme-toggle").click();
+      await page.getByTestId("start-all-examples").click();
+      const dialog = page.getByTestId("examples-dialog");
+      await expect(dialog).toBeVisible();
+      const rect = await dialog.boundingBox();
+      expect(rect).toBeTruthy();
+      if (!rect) throw new Error("No dialog");
+      const viewport = page.viewportSize();
+      expect(rect.x).toBeGreaterThanOrEqual(0);
+      expect(rect.y).toBeGreaterThanOrEqual(0);
+      expect(rect.x + rect.width).toBeLessThanOrEqual(viewport?.width ?? 0);
+      expect(rect.y + rect.height).toBeLessThanOrEqual(viewport?.height ?? 0);
+      expect(await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+      const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
+      expect(axe.violations).toEqual([]);
+      await page.getByTestId("examples-search").fill(SLUG);
+      await page.getByTestId(`example-open-${SLUG}`).click();
+      await expect(page.getByTestId("diagram-title")).toHaveText("Kafka order pipeline");
+      const trigger = page.getByTestId("example-picker");
+      const triggerBox = await trigger.boundingBox();
+      expect(triggerBox?.width).toBeGreaterThan(100);
+      expect(await page.getByTestId("topbar").evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+      await trigger.click();
+      await expect(page.getByTestId("picker-browse-examples")).toBeInViewport();
+    });
 
-    // A featured example opens from the card.
-    await card.getByTestId(`start-example-${FEATURED[1]}`).click();
-    await expect(page.getByTestId("example-picker")).toHaveValue(FEATURED[1]);
-    // Selection updates before its lazy diagram has arrived, especially during concurrent builds.
-    const selected = publicExamples.find((e) => e.slug === FEATURED[1]);
-    if (!selected) throw new Error("Missing featured example");
-    await expect(page.getByTestId(`node-${selected.nodeIds[0]}`)).toBeVisible({ timeout: pageLoadTimeout() });
-    await expect(page.getByTestId("start-card")).toHaveCount(0);
-    expectNoErrors(consoleErrors);
-  });
+test("gallery horizontal arrows follow the visual order in Arabic", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => localStorage.setItem("diagrams.locale", "ar"));
+  await page.goto("./");
+  await page.getByTestId("start-all-examples").click();
+  await expect.poll(() => page.evaluate(() => document.documentElement.dir)).toBe("rtl");
+  await page.getByTestId(`example-open-${SLUG}`).focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.getByTestId(`example-run-${SLUG}`)).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByTestId(`example-open-${SLUG}`)).toBeFocused();
+  expect(await page.getByTestId("examples-dialog").evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
 });

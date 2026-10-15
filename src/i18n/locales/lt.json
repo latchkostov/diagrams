@@ -1592,5 +1592,22 @@
   "admission.source": "Tiekėjo šaltinis · patikrinta {date}",
   "admission.summary": "{name}: {capacity}; gaunama {offered}.",
   "admission.rejectEstimate": "{rate} gali būti atmesta.",
-  "admission.model": "p3 · valdomas priėmimas"
+  "admission.model": "p3 · valdomas priėmimas",
+  "examples.browse": "Naršyti pavyzdžius…",
+  "examples.intro": "Išnagrinėkite sistemą ir pritaikykite sau. Pirmasis pakeitimas įrašo kopiją.",
+  "examples.search": "Ieškoti pavyzdžių",
+  "examples.shows": "Rodoma",
+  "examples.allFeatures": "Visos funkcijos",
+  "examples.empty": "Atitinkančių pavyzdžių nėra. Išbandykite kitą paiešką ar funkciją.",
+  "examples.run": "Paleisti",
+  "examples.openNamed": "Atidaryti {title}",
+  "examples.runNamed": "Paleisti {title}",
+  "examples.partitions": "Skaidiniai",
+  "examples.rateLimits": "Spartos ribos",
+  "examples.networkDevices": "Tinklo įrenginiai",
+  "examples.themeStreaming": "Įvykių srautai",
+  "examples.themeData": "Duomenys ir DI",
+  "examples.themeCloud": "Debesijos programos",
+  "examples.themeIntegration": "Integracija",
+  "examples.themeReliability": "Patikimumas"
 }

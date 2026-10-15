@@ -1,3 +1,4 @@
+import { currentDiagram } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { BrowserContext, Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors, openShareChooser, shareVia, waitForHtmlTemplate } from "./fixtures";
@@ -29,7 +30,7 @@ async function importDiagram(page: Page, title: string) {
     ),
   });
   await expect(page.getByTestId("diagram-title")).toHaveText(title);
-  return page.getByTestId("example-picker").inputValue();
+  return currentDiagram(page);
 }
 
 /** File ▸ Privacy ▸ Private diagram. */

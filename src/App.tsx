@@ -78,6 +78,10 @@ const LibraryDialog = lazyComponent(
     ),
   loadingDialog(() => t("topbar.yourDiagrams")),
 );
+const ExamplesDialog = lazyComponent(
+  () => import("./components/ExamplesDialog").then((m) => m.ExamplesDialog),
+  loadingDialog(() => t("topbar.examples")),
+);
 // ?embed=1 renders the read-only viewer only: no top bar, no editor.
 // Any `embed` parameter (the links say embed=1): the same rule as the CSP that lets other sites frame
 // embeds and nothing else (scripts/security-headers.ts), so no URL gets the app in a frame.
@@ -107,8 +111,17 @@ function MainApp() {
   useLocale();
   const [url, setUrl] = useUrlState();
   const canvasRef = useRef<CanvasHandle>(null);
+  const cancelGalleryRun = useRef<(() => void) | null>(null);
+  useEffect(() => () => cancelGalleryRun.current?.(), []);
   // Your diagrams and the shared slot, re-read when they change (here or in another tab).
   const library = useLibrary();
+  const [copyNotice, setCopyNotice] = useState<string | null>(null);
+  useEffect(() => {
+    if (!copyNotice) return;
+    const timer = setTimeout(() => setCopyNotice(null), 6000);
+    return () => clearTimeout(timer);
+  }, [copyNotice]);
+  const [examplesOpen, setExamplesOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [libraryError, setLibraryError] = useState<string | null>(null);
   const [libraryUndo, setLibraryUndo] = useState<{ message: string; run: () => void } | null>(null);
@@ -198,6 +211,7 @@ function MainApp() {
       slug: e.slug,
       title: e.title,
       group: "examples" as const,
+      localOnly: e.localOnly,
       theme: e.theme && themeInfo(e.theme),
     })),
   ];
@@ -421,6 +435,7 @@ function MainApp() {
     onOpenFile: () => void interop.openFile(),
     onPaste: interop.openPaste,
     onLibrary: openLibrary,
+    onBrowseExamples: () => setExamplesOpen(true),
   };
   const goTo = (view: View) => setUrl({ view, present: false });
 
@@ -432,7 +447,9 @@ function MainApp() {
           onView={goTo}
           exampleOptions={options}
           example={targetSlug}
+          copyNotice={copyNotice ? t("fileToast.savedACopyOfValue0ToYour", { value0: copyNotice }) : undefined}
           onExample={(example) => setUrl({ example })}
+          onBrowseExamples={() => setExamplesOpen(true)}
           interop={interop}
           shared={
             url.view === "canvas" && slug === SHARED_SLUG ? { onKeep: () => void interop.keepSharedCopy() } : undefined
@@ -468,6 +485,19 @@ function MainApp() {
                   onExitPresent={() => setUrl({ present: false })}
                   start={start}
                   onTitleChange={onTitleChange}
+                  onExampleCopy={
+                    examples.some((e) => e.slug === slug)
+                      ? (source, copy, title) => {
+                          setCopyNotice(title);
+                          setLoadedSlug((current) => (current === source ? copy : current));
+                          // A flush while leaving a diagram keeps the copy without replacing newer navigation.
+                          if (new URLSearchParams(window.location.search).get("example") === source) {
+                            showDiagram({ identity: canvasIdentity, example: copy });
+                            setUrl({ example: copy }, { replace: true });
+                          }
+                        }
+                      : undefined
+                  }
                 />
               )}
             </Suspense>
@@ -481,6 +511,52 @@ function MainApp() {
           ? `Loading ${examples.find((e) => e.slug === targetSlug)?.title ?? "the example"}…`
           : ""}
       </div>
+      {examplesOpen && (
+        <ExamplesDialog
+          onClose={() => setExamplesOpen(false)}
+          onOpen={(example, simulation) => {
+            cancelGalleryRun.current?.();
+            canvasRef.current?.flush();
+            setExamplesOpen(false);
+            setUrl({ view: "canvas", example, present: false });
+            if (simulation) {
+              const query = new URLSearchParams(window.location.search);
+              query.set("live", "1");
+              const localOnly = examples.some((entry) => entry.slug === example && entry.localOnly);
+              if (localOnly) query.delete("sim");
+              else query.set("sim", simulation);
+              window.history.replaceState(null, "", `${window.location.pathname}?${query}${window.location.hash}`);
+              if (localOnly) {
+                // Never serialize local simulation ids, even briefly. Wait for this canvas's
+                // session rather than leaving a pending run that could reach another diagram.
+                const identity = getDiagramIdentity(example);
+                const start = () => {
+                  const current = new URLSearchParams(window.location.search);
+                  if (current.get("view") !== "canvas" || current.get("example") !== example || !current.has("live")) {
+                    cancel();
+                    return;
+                  }
+                  const host = paletteHost.get();
+                  if (host.canvas?.documentId !== identity || !host.live) return;
+                  if (!host.session) {
+                    host.live.goLive();
+                    return;
+                  }
+                  cancel();
+                  if (!host.session.disabledHint) host.session.run(simulation);
+                };
+                const off = paletteHost.subscribe(start);
+                const cancel = () => {
+                  off();
+                  cancelGalleryRun.current = null;
+                };
+                cancelGalleryRun.current = cancel;
+                start();
+              } else if (example === slug) paletteHost.runSimulation(simulation);
+            }
+          }}
+        />
+      )}
       {interop.layer}
       {libraryOpen && (
         <LibraryDialog

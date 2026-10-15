@@ -1,3 +1,4 @@
+import { currentDiagram } from "./fixtures";
 import { readFileSync } from "node:fs";
 import { deflateRawSync } from "node:zlib";
 import type { Page } from "@playwright/test";
@@ -49,7 +50,7 @@ async function importDiagram(page: Page, diagram: object) {
     buffer: Buffer.from(JSON.stringify(diagram)),
   });
   await expect(page.getByTestId("diagram-title")).toHaveText("Quillfeather payroll");
-  const slug = await page.getByTestId("example-picker").inputValue();
+  const slug = await currentDiagram(page);
   expect(slug).toMatch(/^my-/);
   return slug;
 }

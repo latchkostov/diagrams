@@ -90,6 +90,26 @@
   remain enabled. No existing browser case is excluded.
 - Refreshed the stale offline skill viewer; plugin 1.1.20 is one patch above master.
 
+## Example gallery (2026-10-14)
+
+- The diagram picker now focuses on Your diagrams, with New diagram and a separate Browse examples entry.
+  Recent work is capped, the current diagram stays visible, and the full library remains one step away.
+- Browse examples opens a lazy gallery from the picker or start card: thumbnails, short descriptions,
+  theme groups, search and a small translated Shows filter. Open edits a diagram; Run it starts its first
+  saved simulation in Live. Keyboard navigation, focus return and narrow layouts work in both themes.
+- An open original is labelled Example. Its first edit creates an owned copy in Your diagrams,
+  using “(copy)” unless you chose a new title. It keeps Undo/Redo and live playback, and shows a quiet notice without replacing an action's Undo toast.
+  Reloading a copy and returning to its source opens a pristine example; undone edits stay undone after reload.
+  A cleared title becomes an owned Untitled diagram while its input stays empty for typing. Slow example
+  downloads keep the edited copy mounted.
+- New gallery copy is translated in all 37 locale catalogs. The development-only catalog remains available
+  through its existing picker area and the gallery, using the generic catalog boundary. Its saved runs
+  start in memory without putting simulation identifiers in the URL, even transiently.
+- Output parity changes only `tests/parity/goldens/node/i18n/catalogs.json`: the 17 new gallery messages add
+  an `examples` area hash and increase the message count by 17 in each of the 38 languages, including the
+  pseudo-locale. Existing area hashes and fallback counts are unchanged. Diagram, simulation, export,
+  layout and agent output goldens are unchanged. The agent viewer is refreshed; plugin version is 1.1.19.
+
 ## Self-hosting review fixes (2026-10-14)
 
 - Cloudflare Pages preserves static assets through its native SPA fallback. Legacy and target header files

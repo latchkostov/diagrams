@@ -1592,5 +1592,22 @@
   "admission.source": "Leverantörskälla · kontrollerad {date}",
   "admission.summary": "{name}: {capacity}; {offered} inkommande.",
   "admission.rejectEstimate": "{rate} kan avvisas.",
-  "admission.model": "p3 · hanterad antagning"
+  "admission.model": "p3 · hanterad antagning",
+  "examples.browse": "Bläddra bland exempel…",
+  "examples.intro": "Utforska ett system och anpassa det. Din första ändring sparar en kopia.",
+  "examples.search": "Sök exempel",
+  "examples.shows": "Visar",
+  "examples.allFeatures": "Alla funktioner",
+  "examples.empty": "Inga exempel matchar. Prova en annan sökning eller funktion.",
+  "examples.run": "Kör",
+  "examples.openNamed": "Öppna {title}",
+  "examples.runNamed": "Kör {title}",
+  "examples.partitions": "Partitioner",
+  "examples.rateLimits": "Hastighetsgränser",
+  "examples.networkDevices": "Nätverksenheter",
+  "examples.themeStreaming": "Händelseströmning",
+  "examples.themeData": "Data och AI",
+  "examples.themeCloud": "Molnappar",
+  "examples.themeIntegration": "Integration",
+  "examples.themeReliability": "Tillförlitlighet"
 }

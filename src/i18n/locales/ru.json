@@ -1592,5 +1592,22 @@
   "admission.source": "Источник поставщика · проверен {date}",
   "admission.summary": "{name}: {capacity}; входящий поток: {offered}.",
   "admission.rejectEstimate": "{rate} может быть отклонено.",
-  "admission.model": "p3 · управляемый допуск"
+  "admission.model": "p3 · управляемый допуск",
+  "examples.browse": "Обзор примеров…",
+  "examples.intro": "Изучите систему и измените её под себя. Первое изменение сохранит копию.",
+  "examples.search": "Поиск примеров",
+  "examples.shows": "Показывает",
+  "examples.allFeatures": "Все возможности",
+  "examples.empty": "Нет подходящих примеров. Попробуйте другой поиск или возможность.",
+  "examples.run": "Запустить",
+  "examples.openNamed": "Открыть {title}",
+  "examples.runNamed": "Запустить {title}",
+  "examples.partitions": "Партиции",
+  "examples.rateLimits": "Ограничения частоты",
+  "examples.networkDevices": "Сетевые устройства",
+  "examples.themeStreaming": "Потоковая обработка событий",
+  "examples.themeData": "Данные и ИИ",
+  "examples.themeCloud": "Облачные приложения",
+  "examples.themeIntegration": "Интеграция",
+  "examples.themeReliability": "Надёжность"
 }
