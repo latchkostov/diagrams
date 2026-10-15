@@ -1613,6 +1613,7 @@
   "examples.themeIntegration": "एकीकरण",
   "examples.themeReliability": "विश्वसनीयता",
   "autoscaling.budget": "संसाधन जीवनचक्र बजट पार हो गया: {limit, number}। कॉन्फ़िगर किए गए समूह या क्षमता गुणक कम करें।",
+  "autoscaling.bindingInvalid": "इस बदलाव से स्केलिंग स्रोत अमान्य हो जाएगा। पहले प्रभावित नोड या सहेजे गए सिमुलेशन की नीति बदलें या बंद करें।",
   "autoscaling.bindingRequired": "संगत ब्रोकर और कंज़्यूमर ग्रुप कनेक्ट करें, फिर उन्नत में स्रोत चुनें। स्रोत चुनने तक यह प्रीसेट सहेजा नहीं जाता।",
   "autoscaling.useLesson": "सेवा वर्कलोड धारणा उपयोग करें",
   "autoscaling.kedaPreset": "{broker} KEDA worker",

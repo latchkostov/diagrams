@@ -1613,6 +1613,7 @@
   "examples.themeIntegration": "אינטגרציה",
   "examples.themeReliability": "אמינות",
   "autoscaling.budget": "חריגה מתקציב מחזור חיי המשאבים: {limit, number}. יש להקטין את הקבוצות המוגדרות או את מכפיל הקיבולת.",
+  "autoscaling.bindingInvalid": "עריכה זו תפגע במקור לשינוי קנה מידה. יש לשנות או להשבית תחילה את המדיניות של הצומת המושפע או של הסימולציה השמורה.",
   "autoscaling.bindingRequired": "חברו ברוקר תואם וקבוצת צרכנים ובחרו מקור בהגדרות המתקדמות. ההגדרה המוכנה תישמר רק לאחר בחירת מקור.",
   "autoscaling.useLesson": "שימוש בהנחת עומס שירות",
   "autoscaling.kedaPreset": "worker של KEDA עבור {broker}",

@@ -107,7 +107,8 @@
             "baselineMemoryMiB": 0,
             "memoryMiBPerMessage": 0,
             "startup": { "delayMs": 5000, "jitterFraction": 0 },
-            "terminationGraceMs": 30000
+            "terminationGraceMs": 30000,
+            "modelRevision": "a2"
           },
           "autoscaling": {
             "mode": "on",

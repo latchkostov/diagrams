@@ -1613,6 +1613,7 @@
   "examples.themeIntegration": "Entegrasyon",
   "examples.themeReliability": "Güvenilirlik",
   "autoscaling.budget": "Kaynak yaşam döngüsü bütçesi aşıldı: {limit, number}. Yapılandırılan grupları veya kapasite çarpanını azaltın.",
+  "autoscaling.bindingInvalid": "Bu düzenleme bir ölçeklendirme kaynağını geçersiz kılar. Önce etkilenen düğümün veya kayıtlı simülasyonun ilkesini değiştirin ya da devre dışı bırakın.",
   "autoscaling.bindingRequired": "Uyumlu bir broker ve tüketici grubu bağlayın, ardından Gelişmiş bölümünde kaynağı seçin. Kaynak seçilene kadar bu ön ayar kaydedilmez.",
   "autoscaling.useLesson": "Hizmet iş yükü varsayımını kullan",
   "autoscaling.kedaPreset": "{broker} KEDA worker",

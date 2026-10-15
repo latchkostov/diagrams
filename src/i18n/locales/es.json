@@ -1613,6 +1613,7 @@
   "examples.themeIntegration": "Integración",
   "examples.themeReliability": "Fiabilidad",
   "autoscaling.budget": "Se superó el presupuesto del ciclo de vida de recursos: {limit, number}. Reduce las flotas configuradas o el multiplicador de capacidad.",
+  "autoscaling.bindingInvalid": "Esta edición invalidaría una fuente de escalado. Primero cambia o desactiva la política del nodo afectado o de la simulación guardada.",
   "autoscaling.bindingRequired": "Conecta un broker compatible y un grupo de consumidores y elige la fuente en Avanzado. Este preajuste no se guarda hasta seleccionar una fuente.",
   "autoscaling.useLesson": "Usar supuesto de carga de servicio",
   "autoscaling.kedaPreset": "Worker KEDA de {broker}",

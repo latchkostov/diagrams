@@ -1613,6 +1613,7 @@
   "examples.themeIntegration": "Integracija",
   "examples.themeReliability": "Zanesljivost",
   "autoscaling.budget": "Presežen je proračun življenjskega cikla virov: {limit, number}. Zmanjšajte nastavljene skupine ali množitelj zmogljivosti.",
+  "autoscaling.bindingInvalid": "Ta sprememba bi razveljavila vir skaliranja. Najprej spremenite ali onemogočite pravilnik prizadetega vozlišča ali shranjene simulacije.",
   "autoscaling.bindingRequired": "Povežite združljiv broker in consumer group, nato izberite vir v naprednih nastavitvah. Prednastavitev se shrani šele po izbiri vira.",
   "autoscaling.useLesson": "Uporabi predpostavko obremenitve storitve",
   "autoscaling.kedaPreset": "Worker KEDA za {broker}",

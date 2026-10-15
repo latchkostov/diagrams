@@ -295,6 +295,11 @@
                 "1"
               ]
             },
+            "modelRevision": {
+              "enum": [
+                "a2"
+              ]
+            },
             "container": {
               "type": "string",
               "minLength": 1,

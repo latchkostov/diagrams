@@ -9,6 +9,8 @@ export function resourceWorkload(stencil: string | undefined, family: string | u
 export interface ComputeResources {
   preset: string;
   presetRevision: "1";
+  /** Resource execution opt-in survives disabling a controller. */
+  modelRevision?: "a2";
   /** Optional identity of the one modelled container, for ContainerResource metrics. */
   container?: string;
   cpuMsPerMessage: number;
@@ -231,7 +233,7 @@ export function kedaLesson(type: KedaTrigger["type"] = "kafka", source: BrokerBi
 }
 export function replicaRange(controller: HpaController | KedaController, multiplier = 1) {
   const count = (n: number) =>
-    Math.max(controller.kind === "keda" ? 0 : 1, Math.min(10_000, Math.round(n * multiplier)));
+    Math.max(controller.kind === "keda" && n === 0 ? 0 : 1, Math.min(10_000, Math.round(n * multiplier)));
   return {
     min: count(controller.minReplicas),
     max: count(controller.maxReplicas),

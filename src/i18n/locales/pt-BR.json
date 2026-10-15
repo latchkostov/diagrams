@@ -1613,6 +1613,7 @@
   "examples.themeIntegration": "Integração",
   "examples.themeReliability": "Confiabilidade",
   "autoscaling.budget": "Orçamento do ciclo de vida dos recursos excedido: {limit, number}. Reduza os grupos configurados ou o multiplicador de capacidade.",
+  "autoscaling.bindingInvalid": "Esta edição invalidaria uma fonte de dimensionamento. Primeiro altere ou desative a política do nó afetado ou da simulação salva.",
   "autoscaling.bindingRequired": "Conecte um broker compatível e um grupo de consumidores e escolha a origem em Avançado. A predefinição só é salva após selecionar uma origem.",
   "autoscaling.useLesson": "Usar hipótese de carga do serviço",
   "autoscaling.kedaPreset": "Worker KEDA de {broker}",

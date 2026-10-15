@@ -1884,6 +1884,8 @@ const en = {
   "autoscaling.cpuBudget":
     "Too much simultaneous CPU work. New messages are waiting. Reduce traffic or restart with smaller fleets or less startup jitter.",
   "autoscaling.budget": "Resource lifecycle budget exceeded: {limit, number}. Reduce configured fleets or Capacity ×.",
+  "autoscaling.bindingInvalid":
+    "This edit would break a scaling source. Change or disable the affected node or saved-simulation policy first.",
   "autoscaling.bindingRequired":
     "Connect a compatible broker and consumer group, then choose its source in Advanced. This preset is not saved until a source is selected.",
   "autoscaling.useLesson": "Use service workload lesson",

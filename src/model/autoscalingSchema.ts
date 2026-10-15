@@ -19,6 +19,7 @@ export const resourcesSchema = object(
   {
     preset: { type: "string", maxLength: 100 },
     presetRevision: { enum: ["1"] },
+    modelRevision: { enum: ["a2"] },
     container: { type: "string", minLength: 1, maxLength: 100 },
     cpuMsPerMessage: quantity,
     baselineMemoryMiB: quantity,

@@ -84,10 +84,18 @@ it("opts imported Deployment HPAs into A2 without changing A1 Deployment playbac
   d.nodes[1].props = { resources: resourceLesson(), autoscaling: hpaLesson() };
   expect(resolveNodeProps(d, d.nodes[1]).autoscalingProblem).toBeDefined();
   d.nodes[1].props.autoscaling = { ...hpaLesson(), modelRevision: "a2" };
+  d.nodes[1].props.resources = { ...resourceLesson(), modelRevision: "a2", cpuMsPerMessage: 1000, cpuLimitMilli: 500 };
   expect(resolveNodeProps(d, d.nodes[1]).autoscalingProblem).toBeUndefined();
   const e = createEngine();
   e.load(d);
   expect(e.frame().nodes.worker.fleet).toBeDefined();
+  e.setNodeProps("worker", { autoscaling: { mode: "off" } });
+  e.inject("worker", 1);
+  e.step(1000);
+  expect(e.frame().nodes.worker.fleet).toBeDefined();
+  expect(e.frame().nodes.worker.processed).toBe(0);
+  expect(e.frame().nodes.worker.resources!.executedCpuMs).toBeGreaterThan(0);
+  expect(e.frame().nodes.worker.resources!.executedCpuMs).toBeLessThanOrEqual(500);
 });
 it("revalidates cached simulation bindings against a changed graph", () => {
   const d = kedaFixture(),
@@ -106,4 +114,13 @@ it("revalidates cached simulation bindings against a changed graph", () => {
   ];
   expect(validate(d)).toBeUndefined();
   expect(validate({ ...d, nodes: d.nodes.filter((n) => n.id !== "uploads"), edges: [] })).toBeDefined();
+});
+
+it("excludes inferred dead-letter routes from KEDA's exact group bindings", () => {
+  const d = kedaFixture();
+  d.nodes.push({ id: "dead", stencil: "postgres", label: "DLQ", x: 100, y: 800 });
+  d.edges[0].to = "dead";
+  expect(validateDiagram(d).ok).toBe(false);
+  d.edges[0].props!.dlq = false;
+  expect(validateDiagram(d).ok).toBe(true);
 });

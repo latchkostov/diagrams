@@ -1,3 +1,5 @@
+import { isDlqEdge } from "./brokerRoutes";
+import { stencilRole } from "../stencils/roles";
 import type { AutoscalingConfig, KedaTrigger } from "./autoscaling";
 import type { DiagramNode, DiagramEdge } from "./types";
 import type { DiagramFile } from "./types";
@@ -13,7 +15,12 @@ export function brokerChoices(d: DiagramFile | undefined, node: string, type: Ke
       e.to !== node ||
       !triggerFits(type, n.stencil) ||
       (e.relation && e.relation !== "flow") ||
-      e.props?.dlq === true ||
+      isDlqEdge(
+        e,
+        stencilRole(n.stencil),
+        nodes.get(e.to) ?? { label: "" },
+        stencilRole(nodes.get(e.to)?.stencil ?? ""),
+      ) ||
       e.props?.deny
     )
       continue;
@@ -70,11 +77,23 @@ export function remapScaler(
   props!.autoscaling = { ...a, controller: next };
 }
 /** Compile once per graph change. Per-candidate work is bounded by its sixteen bindings. */
-export function bindingValidator(nodes: readonly Pick<DiagramNode, "id" | "stencil">[], edges: readonly DiagramEdge[]) {
+export function bindingValidator(
+  nodes: readonly Pick<DiagramNode, "id" | "stencil" | "label" | "sublabel">[],
+  edges: readonly DiagramEdge[],
+) {
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const groups = new Map<string, Set<string>>();
   for (const e of edges) {
-    if ((e.relation && e.relation !== "flow") || e.props?.dlq === true || e.props?.deny) continue;
+    const source = byId.get(e.from),
+      target = byId.get(e.to);
+    if (
+      !source ||
+      !target ||
+      (e.relation && e.relation !== "flow") ||
+      e.props?.deny ||
+      isDlqEdge(e, stencilRole(source.stencil), target, stencilRole(target.stencil))
+    )
+      continue;
     const names = groups.get(e.from) ?? new Set<string>();
     names.add(typeof e.props?.group === "string" ? e.props.group : e.id);
     groups.set(e.from, names);

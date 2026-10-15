@@ -811,9 +811,10 @@ accounting and provider adapters remain unsupported; scenario cloud sizing and v
 A KEDA ScaledObject is a node-owned `autoscaling` policy with `modelRevision: "a2"` and
 `controller.kind: "keda"`, within the existing explicit `p3-a1` document revision. Older readers reject
 the new controller/revision union instead of silently playing it as HPA. A1 and resource-less diagrams
-retain their existing execution path and arithmetic. Imported HPA policies also carry `modelRevision: "a2"`,
-which explicitly enables resources on generic Kubernetes Deployments; older A1 Deployment policies retain
-their previous unsupported behavior. Resources and autoscaling remain atomic replacement
+retain their existing execution path and arithmetic. Imported and newly opted-in resources carry their own `modelRevision: "a2"`,
+which enables generic Kubernetes Deployment resources independently of the controller. Selecting Fixed or
+disabling scaling retains CPU limits, memory and lifecycle. Older unmarked A1 Deployment resources retain
+their previous unsupported behavior. Imported HPA policies also carry the A2 controller revision. Resources and autoscaling remain atomic replacement
 properties in native, agent, setup and timeline patches.
 
 The pinned profile is KEDA 2.18, not a claim about the newest KEDA release. Its defaults are 30 s polling,
@@ -870,7 +871,10 @@ Only successfully reconciled HPA changes enter its policy history; a refused zer
 The shared resource validator checks schema, complete node settings, document budget and broker/group
 references at native/editor/import/agent boundaries. Clipboard fragments keep external references for
 validation against the destination; copied broker IDs, implicit edge groups and inferred consumer groups
-are remapped after ID allocation in linear graph work. A label is never a binding identity.
+are remapped after ID allocation in linear graph work. A label is never a binding identity. Topology edits
+preflight the complete candidate, including saved-simulation policies; an edit that would break a source
+is refused with recovery guidance. Change or disable the affected policy before deleting its source.
+Binding validation and playback share inferred dead-letter classification.
 
 Kubernetes import resolves exact namespace, kind and API version. It maps single-container CPU/memory
 requests and limits (decimal and binary quantities stay distinct), resource/ContainerResource HPA targets,
@@ -901,8 +905,11 @@ idle Kafka consumer and returns it to zero within ten simulated seconds. Its exp
 Three frozen `a2-*` corpus diagrams pin activation, published cooldown and idle-reader behavior.
 The seeded per-step ownership oracle includes KEDA zero activation, strict threshold edges, cooldown,
 lag bursts, pause/resume, policy refusal and scaler disable/re-enable. It also checks nonnegative broker
-pending/outstanding counts, desired bounds and successful zero-transition eligibility. Twenty-one deliberate
-regression controls cover metric adapters, partition gates, clocks, fallback, imports and UI truth.
+pending/outstanding counts, desired bounds and successful zero-transition eligibility. Deliberate regression
+controls cover metric adapters, partition gates, clocks, fallback, imports, editing and UI truth.
+Successful cached metrics stay fixed between KEDA polls, independently of uncached triggers. The inspector
+keeps its validator cache and avoids graph snapshots for Fixed/HPA; a refused pending source remains visible
+with an accessible explanation, while an accepted binding focuses the surviving Target field.
 
 Sources: [ScaledObject specification](https://keda.sh/docs/2.18/reference/scaledobject-spec/),
 [Kafka scaler](https://keda.sh/docs/2.18/scalers/apache-kafka/),

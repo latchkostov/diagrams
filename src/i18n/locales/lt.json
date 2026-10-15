@@ -1613,6 +1613,7 @@
   "examples.themeIntegration": "Integracija",
   "examples.themeReliability": "Patikimumas",
   "autoscaling.budget": "Viršytas išteklių gyvavimo ciklo biudžetas: {limit, number}. Sumažinkite sukonfigūruotas grupes arba pajėgumo daugiklį.",
+  "autoscaling.bindingInvalid": "Šis pakeitimas padarytų mastelio keitimo šaltinį netinkamą. Pirmiausia pakeiskite arba išjunkite paveikto mazgo ar išsaugotos simuliacijos politiką.",
   "autoscaling.bindingRequired": "Prijunkite suderinamą brokerį ir gavėjų grupę, tada pasirinkite šaltinį išplėstinėse nuostatose. Išankstinė nuostata išsaugoma tik pasirinkus šaltinį.",
   "autoscaling.useLesson": "Naudoti paslaugos apkrovos prielaidą",
   "autoscaling.kedaPreset": "KEDA worker: {broker}",

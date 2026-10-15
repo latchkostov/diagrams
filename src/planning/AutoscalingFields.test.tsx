@@ -66,3 +66,18 @@ it("does not turn an unavailable fallback broker metric into zero", () => {
   expect(html).toContain("Broker metric: Unknown messages");
   expect(html).not.toContain("Broker metric: 0 messages");
 });
+
+it.each([{ mode: "off" }, hpaLesson()])("does not copy a diagram to render fixed/HPA controls", (autoscaling) => {
+  const readDiagram = vi.fn(() => kedaFixture());
+  renderToStaticMarkup(
+    <AutoscalingFields
+      stencil="service.dotnet"
+      props={{ resources: resourceLesson(), autoscaling }}
+      readDiagram={readDiagram}
+      set={() => {}}
+    >
+      <span />
+    </AutoscalingFields>,
+  );
+  expect(readDiagram).not.toHaveBeenCalled();
+});

@@ -366,6 +366,11 @@
                 "1"
               ]
             },
+            "modelRevision": {
+              "enum": [
+                "a2"
+              ]
+            },
             "container": {
               "type": "string",
               "minLength": 1,
@@ -2050,6 +2055,11 @@
                 "1"
               ]
             },
+            "modelRevision": {
+              "enum": [
+                "a2"
+              ]
+            },
             "container": {
               "type": "string",
               "minLength": 1,
@@ -3682,6 +3692,11 @@
                   "presetRevision": {
                     "enum": [
                       "1"
+                    ]
+                  },
+                  "modelRevision": {
+                    "enum": [
+                      "a2"
                     ]
                   },
                   "container": {
@@ -5366,6 +5381,11 @@
                   "presetRevision": {
                     "enum": [
                       "1"
+                    ]
+                  },
+                  "modelRevision": {
+                    "enum": [
+                      "a2"
                     ]
                   },
                   "container": {
@@ -7018,6 +7038,11 @@
                       "1"
                     ]
                   },
+                  "modelRevision": {
+                    "enum": [
+                      "a2"
+                    ]
+                  },
                   "container": {
                     "type": "string",
                     "minLength": 1,
@@ -8700,6 +8725,11 @@
                   "presetRevision": {
                     "enum": [
                       "1"
+                    ]
+                  },
+                  "modelRevision": {
+                    "enum": [
+                      "a2"
                     ]
                   },
                   "container": {
@@ -10346,6 +10376,11 @@
                       "1"
                     ]
                   },
+                  "modelRevision": {
+                    "enum": [
+                      "a2"
+                    ]
+                  },
                   "container": {
                     "type": "string",
                     "minLength": 1,
@@ -12028,6 +12063,11 @@
                   "presetRevision": {
                     "enum": [
                       "1"
+                    ]
+                  },
+                  "modelRevision": {
+                    "enum": [
+                      "a2"
                     ]
                   },
                   "container": {
@@ -13971,6 +14011,11 @@
                       "1"
                     ]
                   },
+                  "modelRevision": {
+                    "enum": [
+                      "a2"
+                    ]
+                  },
                   "container": {
                     "type": "string",
                     "minLength": 1,
@@ -15653,6 +15698,11 @@
                   "presetRevision": {
                     "enum": [
                       "1"
+                    ]
+                  },
+                  "modelRevision": {
+                    "enum": [
+                      "a2"
                     ]
                   },
                   "container": {
@@ -17460,6 +17510,11 @@
                       "1"
                     ]
                   },
+                  "modelRevision": {
+                    "enum": [
+                      "a2"
+                    ]
+                  },
                   "container": {
                     "type": "string",
                     "minLength": 1,
@@ -19142,6 +19197,11 @@
                   "presetRevision": {
                     "enum": [
                       "1"
+                    ]
+                  },
+                  "modelRevision": {
+                    "enum": [
+                      "a2"
                     ]
                   },
                   "container": {
@@ -20773,6 +20833,11 @@
                       "1"
                     ]
                   },
+                  "modelRevision": {
+                    "enum": [
+                      "a2"
+                    ]
+                  },
                   "container": {
                     "type": "string",
                     "minLength": 1,
@@ -22455,6 +22520,11 @@
                   "presetRevision": {
                     "enum": [
                       "1"
+                    ]
+                  },
+                  "modelRevision": {
+                    "enum": [
+                      "a2"
                     ]
                   },
                   "container": {
@@ -24070,6 +24140,11 @@
                       "1"
                     ]
                   },
+                  "modelRevision": {
+                    "enum": [
+                      "a2"
+                    ]
+                  },
                   "container": {
                     "type": "string",
                     "minLength": 1,
@@ -25752,6 +25827,11 @@
                   "presetRevision": {
                     "enum": [
                       "1"
+                    ]
+                  },
+                  "modelRevision": {
+                    "enum": [
+                      "a2"
                     ]
                   },
                   "container": {

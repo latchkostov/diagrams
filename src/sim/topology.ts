@@ -1,5 +1,5 @@
 import { isDenyRule } from "../stencils/netDevices";
-import type { DiagramEdge, DiagramFile, DiagramNode, SimRole } from "../model/types";
+import type { DiagramFile, SimRole } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { flowEdges } from "../model/relations";
 /**
@@ -7,17 +7,8 @@ import { flowEdges } from "../model/relations";
  * examples set by hand). Travel is animation, never a throughput limit: see the engine's pipeline allowance.
  */
 export const DEFAULT_TRAVEL_MS = { async: 300, sync: 200 } as const;
-export const brokerRole = (role: SimRole) => role === "queue" || role === "topic" || role === "stream";
-/** Explicit false wins; infer labels only on broker-to-broker/store paths. */
-export function isDlqEdge(edge: DiagramEdge, fromRole: SimRole, target: DiagramNode, toRole: SimRole): boolean {
-  return (
-    edge.props?.dlq === true ||
-    (edge.props?.dlq !== false &&
-      brokerRole(fromRole) &&
-      (brokerRole(toRole) || toRole === "store") &&
-      /dlq|dead.?letter/i.test(`${target.label} ${target.sublabel ?? ""}`))
-  );
-}
+import { brokerRole, isDlqEdge } from "../model/brokerRoutes";
+export { brokerRole, isDlqEdge } from "../model/brokerRoutes";
 /** Fair, stable partition assignment across distinct nodes in one consumer group. */
 export function allocateReplicas(members: { id: string; replicas: number }[], partitions: number): Map<string, number> {
   const unique = [...new Map(members.map((member) => [member.id, member])).values()];

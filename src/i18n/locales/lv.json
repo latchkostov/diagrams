@@ -1613,6 +1613,7 @@
   "examples.themeIntegration": "Integrācija",
   "examples.themeReliability": "Uzticamība",
   "autoscaling.budget": "Pārsniegts resursu dzīves cikla budžets: {limit, number}. Samaziniet konfigurētās grupas vai kapacitātes reizinātāju.",
+  "autoscaling.bindingInvalid": "Šis labojums padarītu mērogošanas avotu nederīgu. Vispirms mainiet vai atspējojiet skartā mezgla vai saglabātās simulācijas politiku.",
   "autoscaling.bindingRequired": "Pievienojiet saderīgu brokeri un patērētāju grupu, tad papildu iestatījumos izvēlieties avotu. Priekšiestatījums tiek saglabāts tikai pēc avota izvēles.",
   "autoscaling.useLesson": "Izmantot pakalpojuma slodzes pieņēmumu",
   "autoscaling.kedaPreset": "KEDA worker: {broker}",

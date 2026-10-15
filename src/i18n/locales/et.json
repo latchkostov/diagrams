@@ -1613,6 +1613,7 @@
   "examples.themeIntegration": "Integratsioon",
   "examples.themeReliability": "Töökindlus",
   "autoscaling.budget": "Ressursside elutsükli eelarve on ületatud: {limit, number}. Vähenda seadistatud rühmi või mahutavuse kordajat.",
+  "autoscaling.bindingInvalid": "See muudatus muudaks skaleerimisallika kehtetuks. Muuda või keela esmalt mõjutatud sõlme või salvestatud simulatsiooni reegel.",
   "autoscaling.bindingRequired": "Ühenda sobiv broker ja tarbijarühm, seejärel vali allikas täpsemates seadetes. Eelseadistus salvestatakse alles pärast allika valimist.",
   "autoscaling.useLesson": "Kasuta teenuse töökoormuse eeldust",
   "autoscaling.kedaPreset": "KEDA worker: {broker}",

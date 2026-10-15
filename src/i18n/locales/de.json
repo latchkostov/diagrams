@@ -1613,6 +1613,7 @@
   "examples.themeIntegration": "Integration",
   "examples.themeReliability": "Zuverlässigkeit",
   "autoscaling.budget": "Budget für den Ressourcenlebenszyklus überschritten: {limit, number}. Verkleinere die konfigurierten Flotten oder den Kapazitätsfaktor.",
+  "autoscaling.bindingInvalid": "Diese Änderung würde eine Skalierungsquelle ungültig machen. Ändere oder deaktiviere zuerst die Richtlinie des betroffenen Knotens oder der gespeicherten Simulation.",
   "autoscaling.bindingRequired": "Verbinden Sie einen kompatiblen Broker und eine Consumer Group. Wählen Sie dann die Quelle unter Erweitert. Diese Vorlage wird erst nach Auswahl einer Quelle gespeichert.",
   "autoscaling.useLesson": "Dienst-Workload-Annahme verwenden",
   "autoscaling.kedaPreset": "KEDA-Worker für {broker}",

@@ -6,7 +6,7 @@ import type { DiagramFile } from "../model/types";
 import { formatNumber } from "../i18n/format";
 import { profileOf } from "../stencils/profiles";
 import { checkAutoscaling } from "../model/autoscalingSchema";
-import { useId, useState, type ReactNode } from "react";
+import { useId, useState, useMemo, useRef, type Ref, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { hpaLesson, kedaLesson, resourceLesson, type ComputeResources, type KedaTrigger } from "../model/autoscaling";
 import type { NodeSimProps } from "../sim/types";
@@ -32,10 +32,22 @@ export function AutoscalingFields({
   const [pending, setPending] = useState<KedaTrigger["type"] | null>(null);
   const [policyDraft, setPolicyDraft] = useState<string | null>(null);
   const [policyInvalid, setPolicyInvalid] = useState(false);
+  const [validateResources] = useState(() => createResourceValidator());
+  const [commitError, setCommitError] = useState<string | null>(null);
+  const targetRef = useRef<HTMLInputElement>(null);
   const family = profileOf(stencil)?.family;
   const a = props.autoscaling as NodeSimProps["autoscaling"];
-  if (!resourceWorkload(stencil, family, a?.mode === "on" ? a.modelRevision : "a2")) return children;
   const r = props.resources as ComputeResources | undefined;
+  const sourceType =
+    pending ?? (a?.mode === "on" && a.controller?.kind === "keda" ? a.controller.triggers?.[0]?.type : undefined);
+  const sourceDiagram = useMemo(() => (sourceType ? readDiagram?.() : undefined), [sourceType, readDiagram]);
+  const choices = useMemo(
+    () => (sourceType ? brokerChoices(sourceDiagram, nodeId, sourceType) : []),
+    [sourceType, sourceDiagram, nodeId],
+  );
+  if (!resourceWorkload(stencil, family, r?.modelRevision ?? (a?.mode === "on" ? a.modelRevision : "a2")))
+    return children;
+  const lessonResources = () => ({ ...resourceLesson(), modelRevision: "a2" as const });
   let valid = true;
   try {
     checkAutoscaling(r, a);
@@ -49,15 +61,20 @@ export function AutoscalingFields({
       checkAutoscaling(next.resources, next.autoscaling);
       const diagram = readDiagram?.();
       if (diagram) {
-        const error = createResourceValidator()({
+        const error = validateResources({
           ...diagram,
           nodes: diagram.nodes.map((node) => (node.id === nodeId ? { ...node, props: next } : node)),
         });
-        if (error) return false;
+        if (error) {
+          setCommitError(error);
+          return false;
+        }
       }
       set(candidate, key);
+      setCommitError(null);
       return true;
     } catch {
+      setCommitError(t("autoscaling.checkInvalid"));
       return false;
     }
   };
@@ -74,13 +91,16 @@ export function AutoscalingFields({
   };
   const metric = c?.settings.metrics[0];
   const trigger = c?.kind === "keda" ? c.triggers[0] : undefined;
-  const choices = brokerChoices(readDiagram?.(), nodeId, pending ?? trigger?.type ?? "kafka");
   const selectSource = (key: string) => {
     const choice = choices.find((v) => v.key === key);
     if (!choice) return;
     if (pending) {
-      commit({ resources: resourceLesson(), autoscaling: kedaLesson(pending, choice.source) });
-      setPending(null);
+      let accepted = false;
+      flushSync(() => {
+        accepted = commit({ resources: lessonResources(), autoscaling: kedaLesson(pending, choice.source) });
+        if (accepted) setPending(null);
+      });
+      if (accepted) targetRef.current?.focus();
     } else
       patch((n) => {
         if (n.kind === "keda") n.triggers[0].source = choice.source;
@@ -141,17 +161,17 @@ export function AutoscalingFields({
               const type = value.slice(5) as KedaTrigger["type"];
               const sources = brokerChoices(readDiagram?.(), nodeId, type);
               if (sources.length === 1) {
-                commit({ resources: resourceLesson(), autoscaling: kedaLesson(type, sources[0].source) });
-                setPending(null);
+                if (commit({ resources: lessonResources(), autoscaling: kedaLesson(type, sources[0].source) }))
+                  setPending(null);
               } else setPending(type);
               return;
             }
             setPending(null);
             commit(
               e.currentTarget.value === "fixed"
-                ? { autoscaling: { mode: "off" }, resources: undefined }
+                ? { autoscaling: { mode: "off" }, resources: r?.modelRevision === "a2" ? r : undefined }
                 : {
-                    resources: resourceLesson(),
+                    resources: lessonResources(),
                     autoscaling: stencil === "k8s.deployment" ? { ...hpaLesson(), modelRevision: "a2" } : hpaLesson(),
                   },
             );
@@ -174,6 +194,11 @@ export function AutoscalingFields({
           {a?.mode === "unsupported" && <option value="unsupported">{t("autoscaling.unsupported")}</option>}
         </select>
       </label>
+      {commitError && (
+        <p role="status" data-testid="autoscaling-commit-error">
+          {commitError}
+        </p>
+      )}
       {!valid && <p data-testid="autoscaling-invalid">{t("autoscaling.checkInvalid")}</p>}
       {a?.mode === "unsupported" && (
         <p className="insp-note">{t("importDetail.scalingReason", { reason: scalingReasonCode(a.reason) })}</p>
@@ -189,6 +214,7 @@ export function AutoscalingFields({
         <>
           <NumberField
             name="target"
+            inputRef={targetRef}
             label={
               trigger
                 ? t("autoscaling.brokerTarget")
@@ -252,7 +278,7 @@ export function AutoscalingFields({
             <p className="insp-note" data-testid="autoscaling-binding-hint">
               {t("autoscaling.sourceHint", {
                 name:
-                  readDiagram?.().nodes.find((node) => node.id === trigger.source.node)?.label ?? trigger.source.node,
+                  sourceDiagram?.nodes.find((node) => node.id === trigger.source.node)?.label ?? trigger.source.node,
                 group: trigger.source.group ?? t("stencil.subtitleQueue"),
               })}
             </p>
@@ -501,6 +527,7 @@ export function AutoscalingFields({
   );
 }
 function NumberField({
+  inputRef,
   name,
   label,
   value,
@@ -510,6 +537,7 @@ function NumberField({
   integer = false,
   optional = false,
 }: {
+  inputRef?: Ref<HTMLInputElement>;
   name: string;
   label: string;
   value: number | undefined;
@@ -546,6 +574,7 @@ function NumberField({
     <label className="insp-field">
       <span className="insp-label">{label}</span>
       <input
+        ref={inputRef}
         className="insp-input mono"
         data-testid={`autoscaling-${name}`}
         type="number"

@@ -1613,6 +1613,7 @@
   "examples.themeIntegration": "Integracija",
   "examples.themeReliability": "Pouzdanost",
   "autoscaling.budget": "Prekoračen je proračun životnog ciklusa resursa: {limit, number}. Smanjite konfigurirane skupine ili množitelj kapaciteta.",
+  "autoscaling.bindingInvalid": "Ova bi izmjena narušila izvor skaliranja. Najprije promijenite ili isključite pravilo zahvaćenog čvora ili spremljene simulacije.",
   "autoscaling.bindingRequired": "Povežite kompatibilni broker i grupu potrošača (consumer group) pa odaberite izvor u naprednim postavkama. Predložak se sprema tek nakon odabira izvora.",
   "autoscaling.useLesson": "Koristi pretpostavku opterećenja usluge",
   "autoscaling.kedaPreset": "KEDA worker za {broker}",

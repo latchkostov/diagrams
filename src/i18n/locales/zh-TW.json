@@ -1613,6 +1613,7 @@
   "examples.themeIntegration": "整合",
   "examples.themeReliability": "可靠性",
   "autoscaling.budget": "資源生命週期預算已超出：{limit, number}。請減少設定的執行個體群組或容量倍數。",
+  "autoscaling.bindingInvalid": "此編輯會使自動擴縮來源失效。請先變更或停用受影響節點或已儲存模擬的原則。",
   "autoscaling.bindingRequired": "連接相容的Broker與消費者群組，再於進階設定選取來源。選取來源後才會儲存此預設。",
   "autoscaling.useLesson": "使用服務工作負載假設",
   "autoscaling.kedaPreset": "{broker} KEDA 工作程序",

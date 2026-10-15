@@ -1613,6 +1613,7 @@
   "examples.themeIntegration": "Integraatio",
   "examples.themeReliability": "Luotettavuus",
   "autoscaling.budget": "Resurssien elinkaaribudjetti ylittyi: {limit, number}. Pienennä määritettyjä ryhmiä tai kapasiteettikerrointa.",
+  "autoscaling.bindingInvalid": "Tämä muutos rikkoisi skaalauslähteen. Muuta ensin kyseisen solmun tai tallennetun simulaation käytäntöä tai poista se käytöstä.",
   "autoscaling.bindingRequired": "Yhdistä yhteensopiva broker ja kuluttajaryhmä ja valitse lähde lisäasetuksista. Esiasetus tallennetaan vasta, kun lähde on valittu.",
   "autoscaling.useLesson": "Käytä palvelun työkuormaoletusta",
   "autoscaling.kedaPreset": "KEDA-worker: {broker}",

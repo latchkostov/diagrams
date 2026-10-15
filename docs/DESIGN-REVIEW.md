@@ -22,6 +22,7 @@ headers remain the target inside collapsible sections.
 
 This was a source and regression-test review, not an independent whole-app visual walkthrough or
 screen-reader session. Production browser checks cover the changed interactions and accessibility.
+
 ## Round 42 — Autoscaling A2 (2026-10-15)
 
 The designer reviewed A2 against `UX-PRINCIPLES.md` using source, regression tests and the captures below.
@@ -30,6 +31,11 @@ recovery and screenshots that hid the controls. These are corrected: unavailable
 source labels appear once; a pending preset explains connecting a compatible broker/group and remains
 unsaved until a source is selected. An empty source selector is disabled. The follow-up found no remaining
 blocking UX issues.
+
+The code-review follow-up preserves Target focus after binding, retains rejected pending selections with
+an accessible localized status, and preserves A2 resources when choosing Fixed. Refused topology edits
+now explain changing or disabling the affected node or saved-simulation policy first; they no longer
+reuse the unsaved-preset guidance. The designer confirmed these behaviors by scoped source/test review.
 
 The default inspector keeps four controls: preset, message target, minimum and maximum. Source, activation,
 polling, cooldown, resources and full controller policy remain in Advanced; ordinary workload settings are

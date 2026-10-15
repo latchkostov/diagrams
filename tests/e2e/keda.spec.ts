@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { resourceLesson } from "../../src/model/autoscaling";
 import { kedaFixture } from "../../src/lab/kedaFixture";
 import {
   test,
@@ -15,7 +16,7 @@ import {
 } from "./fixtures";
 
 const slug = "keda-render-workers";
-async function seed(page: Page, { fixed = false, dark = false, locale = "en", multiple = false } = {}) {
+async function seed(page: Page, { fixed = false, dark = false, locale = "en", multiple = false, budget = false } = {}) {
   const d = kedaFixture();
   if (fixed) {
     const props = d.nodes[1].props;
@@ -27,6 +28,17 @@ async function seed(page: Page, { fixed = false, dark = false, locale = "en", mu
   if (multiple) {
     d.nodes.push({ ...d.nodes[0], id: "other-broker", label: "Other requests", y: 440 });
     d.edges.push({ ...d.edges[0], id: "other-consume", from: "other-broker" });
+  }
+  if (budget) {
+    for (const [i, replicas] of [...Array<number>(9).fill(2500), 2425].entries())
+      d.nodes.push({
+        id: `budget-${i}`,
+        stencil: "service.go",
+        label: `Pool ${i}`,
+        x: -700 + (i % 3) * 260,
+        y: Math.floor(i / 3) * 180,
+        props: { replicas, resources: resourceLesson() },
+      });
   }
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.emulateMedia({ colorScheme: dark ? "dark" : "light" });
@@ -73,6 +85,15 @@ test("KEDA: multiple sources require an explicit Advanced binding", async ({ pag
   expect((await savedDiagram(page)).nodes.find((n) => n.id === "worker")?.props?.autoscaling).toBeUndefined();
   await page.getByTestId("autoscaling-source-select").selectOption(JSON.stringify(["uploads", "renders"]));
   await expect(page.getByTestId("autoscaling-target")).toHaveValue("10");
+  await expect(page.getByTestId("autoscaling-target")).toBeFocused();
+});
+test("KEDA: a refused source binding announces the budget and keeps the pending choice", async ({ page }) => {
+  await seed(page, { fixed: true, multiple: true, budget: true });
+  await page.getByTestId("autoscaling-preset").selectOption("keda-kafka");
+  await page.getByTestId("autoscaling-source-select").selectOption(JSON.stringify(["uploads", "renders"]));
+  await expect(page.getByTestId("autoscaling-commit-error")).toContainText("Resource lifecycle budget exceeded");
+  await expect(page.getByTestId("autoscaling-binding")).toBeVisible();
+  expect((await savedDiagram(page)).nodes.find((n) => n.id === "worker")?.props?.autoscaling).toBeUndefined();
 });
 for (const dark of [false, true]) {
   test(`KEDA: ${dark ? "dark" : "light"} inspector fits and remains accessible`, async ({ page }, info) => {
@@ -150,5 +171,9 @@ test("KEDA: imports a complete ScaledObject and owned HPA locally", async ({ pag
   await expect(page.getByTestId("autoscaling-cpuMsPerMessage")).toHaveValue("40");
   await expect(page.getByTestId("autoscaling-cpuRequestMilli")).toHaveValue("500");
   await expect(page.getByTestId("autoscaling-max")).toHaveValue("20");
+  await page.getByTestId("autoscaling-preset").selectOption("fixed");
+  await expect
+    .poll(async () => (await savedDiagram(page)).nodes.find((n) => n.id === "renderer")?.props)
+    .toMatchObject({ autoscaling: { mode: "off" }, resources: { modelRevision: "a2", cpuRequestMilli: 500 } });
   expectNoErrors(consoleErrors);
 });

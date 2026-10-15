@@ -17,7 +17,12 @@ export function createResourceValidator({ fragment = false } = {}) {
       const config = a as AutoscalingConfig | undefined;
       if (fragment || config?.mode !== "on" || config.controller.kind !== "keda") return true;
       bindings ??= bindingValidator(
-        candidate.nodes.map((n) => ({ id: n.id, stencil: n.stencil ?? "" })),
+        candidate.nodes.map((n) => ({
+          id: n.id,
+          stencil: n.stencil ?? "",
+          label: n.label ?? "",
+          sublabel: n.sublabel,
+        })),
         candidate.edges ?? [],
       );
       return bindings(config);
@@ -33,7 +38,7 @@ export function createResourceValidator({ fragment = false } = {}) {
         return t("autoscaling.modelRequired");
       try {
         checkAutoscaling(props?.resources, props?.autoscaling);
-        if (!checkBindings(props?.autoscaling)) return t("autoscaling.bindingRequired");
+        if (!checkBindings(props?.autoscaling)) return t("autoscaling.bindingInvalid");
       } catch {
         return t("autoscaling.checkInvalid");
       }
@@ -55,7 +60,7 @@ export function createResourceValidator({ fragment = false } = {}) {
         const error = check(node.props);
         if (error) return error;
         budgetChanged = true;
-      } else if (!checkBindings(node.props?.autoscaling)) return t("autoscaling.bindingRequired");
+      } else if (!checkBindings(node.props?.autoscaling)) return t("autoscaling.bindingInvalid");
       if (old?.replicas !== entry.replicas) budgetChanged = true;
       next.set(node.id, entry);
     }
@@ -75,7 +80,7 @@ export function createResourceValidator({ fragment = false } = {}) {
           if (a?.mode === "on" && a.controller.kind === "keda") nextBindings.push(a);
         }
       }
-    } else for (const a of savedBindings) if (!checkBindings(a)) return t("autoscaling.bindingRequired");
+    } else for (const a of savedBindings) if (!checkBindings(a)) return t("autoscaling.bindingInvalid");
     budgetChanged ||= next.size !== previous.size;
     if (budgetChanged && resourceBudgetExceeded(candidate))
       return t("autoscaling.budget", { limit: MAX_LIFECYCLE_REPLICAS });

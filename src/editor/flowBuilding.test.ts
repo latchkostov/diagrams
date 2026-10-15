@@ -70,6 +70,57 @@ it("refuses pasted and edited KEDA references before mutation", () => {
   expect(t.api.getDiagram()).toEqual(d);
 });
 
+it.each(["broker", "edge", "group", "stencil", "bulk-stencil", "relation", "dlq", "reconnect", "insert", "saved"])(
+  "keeps KEDA native/autosave state readable through %s edits",
+  (action) => {
+    const d = kedaFixture();
+    d.nodes.push({ id: "other", stencil: "kafka.topic", label: "Other", x: 10, y: 800 });
+    if (action === "saved") {
+      const a = d.nodes[1].props!.autoscaling;
+      d.nodes[1].props!.autoscaling = { mode: "off" };
+      d.simulations = [
+        {
+          id: "burst",
+          title: "Burst",
+          durationMs: 1000,
+          traffic: [],
+          setup: { props: { worker: { autoscaling: a } } },
+        },
+      ];
+    }
+    const t = setup([], d);
+    if (action === "broker") t.api.deleteElements({ nodeIds: ["uploads"] });
+    if (action === "edge" || action === "saved") t.api.deleteElements({ edgeIds: ["consume"] });
+    if (action === "group") t.api.setEdgeProps("consume", { group: "renamed" });
+    if (action === "stencil") t.api.updateNode("uploads", { stencil: "postgres" });
+    if (action === "bulk-stencil") t.api.updateNodes(["uploads"], { stencil: "postgres" });
+    if (action === "relation") t.api.updateEdge("consume", { relation: "depends" });
+    if (action === "dlq") t.api.setEdgeProps("consume", { dlq: true });
+    if (action === "reconnect") t.api.reconnectEdge("consume", "source", "other");
+    if (action === "insert") t.api.insertIntoEdge("consume", "other");
+    t.commit();
+    expect(validateDiagram(t.api.getDiagram()).ok).toBe(true);
+    if (action === "insert") expect(t.api.getDiagram()).not.toEqual(d);
+    else expect(t.api.getDiagram()).toEqual(d);
+  },
+);
+it("explains how to recover from a refused edit to an existing scaling source", () => {
+  const d = kedaFixture();
+  d.edges = [];
+  const error = validation.createResourceValidator()(d);
+  expect(error).toContain("Change or disable");
+  expect(error).toContain("saved-simulation policy");
+  expect(error).not.toContain("preset is not saved");
+});
+it("allows removing a KEDA source after explicitly disabling its policy in the same batch", () => {
+  const t = setup([], kedaFixture());
+  t.api.setNodeProps("worker", { autoscaling: { mode: "off" } });
+  t.api.deleteElements({ nodeIds: ["uploads"] });
+  t.commit();
+  expect(t.api.getDiagram().nodes).toHaveLength(1);
+  expect(validateDiagram(t.api.getDiagram()).ok).toBe(true);
+});
+
 const BASE: DiagramFile = {
   format: "diagrams/v1",
   title: "t",

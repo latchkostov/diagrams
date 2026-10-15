@@ -824,6 +824,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
       const resources = c.props?.resources ?? {
         ...resourceLesson(),
         preset: "kubernetes-unmeasured",
+        modelRevision: "a2" as const,
         cpuMsPerMessage: 0,
         baselineMemoryMiB: 0,
         memoryMiBPerMessage: 0,

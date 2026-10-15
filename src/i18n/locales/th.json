@@ -1613,6 +1613,7 @@
   "examples.themeIntegration": "การผสานรวม",
   "examples.themeReliability": "ความน่าเชื่อถือ",
   "autoscaling.budget": "เกินงบประมาณวงจรชีวิตทรัพยากร: {limit, number} ลดกลุ่มที่กำหนดค่าหรือตัวคูณความจุ",
+  "autoscaling.bindingInvalid": "การแก้ไขนี้จะทำให้แหล่งข้อมูลการปรับขนาดใช้ไม่ได้ โปรดเปลี่ยนหรือปิดนโยบายของโหนดที่ได้รับผลกระทบหรือการจำลองที่บันทึกไว้ก่อน",
   "autoscaling.bindingRequired": "เชื่อมต่อโบรกเกอร์และconsumer groupที่รองรับ แล้วเลือกแหล่งที่มาในขั้นสูง พรีเซ็ตนี้จะบันทึกเมื่อเลือกแหล่งที่มาแล้วเท่านั้น",
   "autoscaling.useLesson": "ใช้สมมติฐานภาระงานของบริการ",
   "autoscaling.kedaPreset": "worker KEDA ของ {broker}",

@@ -50,7 +50,7 @@ const NODE_PROP_NOTES: Record<string, string> = {
     "immutable preset id: processor-lesson (assumption) or device-size (existing approximate size preset); resolved values are pinned alongside",
   presetRevision: "pinned preset revision (1 for P1); unsupported revisions are refused",
   resources:
-    "A1 measured/assumed CPU-ms per real attempt, CPU request/limit in millicores, memory in MiB, startup/grace; optional single container name; atomic replacement. Effective fleet <=10000 and authored document lifecycle budget <=100000. Requires planning revision p3-a1.",
+    "A1 measured/assumed CPU-ms per real attempt, CPU request/limit in millicores, memory in MiB, startup/grace; optional single container name; resources.modelRevision a2 opts generic Deployments into execution independently of controller mode, while unmarked A1 behavior stays fixed; atomic replacement. Effective fleet <=10000 and authored document lifecycle budget <=100000. Requires planning revision p3-a1.",
   autoscaling:
     "Node-owned HPA (a1) or KEDA 2.18 ScaledObject (a2) on p3-a1. KEDA broker bindings use node IDs plus exact groups; strict activation and separate poll/cooldown control zero, HPA owns 1-N. Kafka caps desired by partitions unless allowIdleConsumers. SQS delayed visibility and ScaledJob execution are unsupported. Per-trigger cache, fallback and rolling HPA behavior; <=16 triggers+metrics, intervals >=1000 ms. Atomic replacement; remap broker IDs on copy. Native serverless remains P3-owned.",
   resumeAutoscaling:

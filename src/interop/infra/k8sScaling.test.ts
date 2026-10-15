@@ -237,6 +237,16 @@ spec:
     ]);
     expect(validateDiagram(conflict.diagram)).toMatchObject({ ok: true });
   });
+  it("keeps topology importable when container lifecycle fields exceed supported bounds", () => {
+    const r = imported(
+      yaml.replace("      containers:", "      terminationGracePeriodSeconds: 900\n      containers:"),
+    );
+    expect(validateDiagram(r.diagram)).toMatchObject({ ok: true });
+    expect(r.diagram.nodes.find((n) => n.label === "renderer")?.props?.autoscaling).toMatchObject({
+      mode: "unsupported",
+    });
+    expect(r.report?.notes.map(formatImportMessage).join(" ")).toContain("not simulated");
+  });
   it("imports ScaledJob as unsupported execution and never invents a deployment HPA", () => {
     const r = imported(`apiVersion: keda.sh/v1alpha1
 kind: ScaledJob

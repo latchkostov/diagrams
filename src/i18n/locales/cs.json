@@ -1613,6 +1613,7 @@
   "examples.themeIntegration": "Integrace",
   "examples.themeReliability": "Spolehlivost",
   "autoscaling.budget": "Překročen rozpočet životního cyklu zdrojů: {limit, number}. Zmenšete nakonfigurované skupiny nebo násobek kapacity.",
+  "autoscaling.bindingInvalid": "Tato úprava naruší zdroj škálování. Nejprve změňte nebo vypněte zásady dotčeného uzlu nebo uložené simulace.",
   "autoscaling.bindingRequired": "Připojte kompatibilní broker a skupinu konzumentů a pak vyberte zdroj v pokročilých nastaveních. Předvolba se uloží až po výběru zdroje.",
   "autoscaling.useLesson": "Použít předpoklad zátěže služby",
   "autoscaling.kedaPreset": "KEDA worker pro {broker}",

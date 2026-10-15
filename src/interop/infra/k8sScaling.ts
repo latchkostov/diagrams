@@ -84,6 +84,7 @@ export function workloadResources(pod: unknown): ComputeResources | undefined {
   const result: ComputeResources = {
     preset: "kubernetes-unmeasured",
     presetRevision: "1",
+    modelRevision: "a2",
     container: str(own(c, "name")),
     cpuMsPerMessage: 0,
     baselineMemoryMiB: 0,
@@ -104,6 +105,7 @@ export function workloadResources(pod: unknown): ComputeResources | undefined {
     (result.memoryRequestMiB ?? 0) > (result.memoryLimitMiB ?? Infinity)
   )
     unsupported("Resource requests exceed limits");
+  checkAutoscaling(result);
   return result;
 }
 function behavior(value: unknown, defaults: HpaSettings): HpaSettings {

@@ -53,6 +53,7 @@
           "resources": {
             "preset": "kubernetes-unmeasured",
             "presetRevision": "1",
+            "modelRevision": "a2",
             "container": "renderer",
             "cpuMsPerMessage": 0,
             "baselineMemoryMiB": 0,

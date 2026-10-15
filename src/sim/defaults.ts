@@ -174,9 +174,7 @@ export function resolveProps(
     resourceWorkload(
       stencil,
       profile?.family,
-      (props.autoscaling as AutoscalingConfig | undefined)?.mode === "on"
-        ? (props.autoscaling as Extract<AutoscalingConfig, { mode: "on" }>).modelRevision
-        : "a1",
+      (props.resources as ComputeResources | undefined)?.modelRevision ?? "a1",
     );
   let validResources = true;
   try {

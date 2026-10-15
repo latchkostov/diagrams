@@ -1613,6 +1613,7 @@
   "examples.themeIntegration": "Integrazione",
   "examples.themeReliability": "Affidabilità",
   "autoscaling.budget": "Budget del ciclo di vita delle risorse superato: {limit, number}. Riduci i gruppi configurati o il moltiplicatore di capacità.",
+  "autoscaling.bindingInvalid": "Questa modifica renderebbe non valida una sorgente di scalabilità. Prima modifica o disattiva la politica del nodo interessato o della simulazione salvata.",
   "autoscaling.bindingRequired": "Collega un broker compatibile e un gruppo di consumer, poi scegli la sorgente nelle opzioni avanzate. La preimpostazione viene salvata solo dopo aver scelto una sorgente.",
   "autoscaling.useLesson": "Usa un’ipotesi di carico del servizio",
   "autoscaling.kedaPreset": "Worker KEDA {broker}",

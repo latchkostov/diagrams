@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { createEngine } from "./engine";
 import { createFleet } from "./autoscaling";
 import { evaluateKeda, resetKeda, triggerValue } from "./keda";
-import { kedaLesson, resourceLesson } from "../model/autoscaling";
+import { kedaLesson, resourceLesson, replicaRange } from "../model/autoscaling";
 import { kedaFixture } from "../lab/kedaFixture";
 import example from "../examples/keda-render-workers.json";
 import type { DiagramFile } from "../model/types";
@@ -204,6 +204,39 @@ describe("KEDA activation and generated HPA", () => {
         t.source.node === "failed" ? undefined : { pending: 50, outstanding: 0 },
       ),
     ).toMatchObject({ broker: "healthy", raw: 10, desired: 5, reason: "policy", metric: 50 });
+  });
+  it.each([0.1, 0.25, 0.49])("preserves authored zeros and positive bounds under Capacity × %s", (multiplier) => {
+    const c = kedaLesson().controller;
+    c.maxReplicas = 1;
+    expect(replicaRange(c, multiplier)).toEqual({ min: 0, initial: 0, max: 1 });
+    c.minReplicas = c.initialReplicas = 1;
+    expect(replicaRange(c, multiplier)).toEqual({ min: 1, initial: 1, max: 1 });
+  });
+  it("holds successful cached values until a poll while another trigger remains fresh", () => {
+    const c = kedaLesson("aws-sqs-queue", { node: "cached" }).controller;
+    c.triggers[0].useCachedMetrics = true;
+    c.triggers.push({ ...c.triggers[0], source: { node: "fresh" }, useCachedMetrics: false });
+    const f = createFleet(2);
+    resetKeda(f, c, 0);
+    const read = vi.fn((t: (typeof c.triggers)[number]) => ({
+      pending: t.source.node === "cached" ? cached : fresh,
+      outstanding: 0,
+    }));
+    let cached = 20,
+      fresh = 5;
+    expect(evaluateKeda(f, c, resourceLesson(), 30000, read)).toMatchObject({ metric: 20, raw: 4, broker: "cached" });
+    cached = 500;
+    fresh = 10;
+    read.mockClear();
+    expect(evaluateKeda(f, c, resourceLesson(), 45000, read)).toMatchObject({ metric: 20, raw: 4, broker: "cached" });
+    expect(read.mock.calls.map(([t]) => t.source.node)).toEqual(["fresh"]);
+    read.mockClear();
+    expect(evaluateKeda(f, c, resourceLesson(), 60000, read)).toMatchObject({
+      metric: 500,
+      raw: 100,
+      broker: "cached",
+    });
+    expect(read.mock.calls.map(([t]) => t.source.node)).toEqual(["cached", "fresh"]);
   });
   it("observes per-trigger cache, error safety, fallback and recovery", () => {
     const c = kedaLesson("aws-sqs-queue", { node: "q" }).controller;

@@ -7,7 +7,13 @@ export function resourceAllocationCount(enabled: boolean, count: number, capacit
   return enabled ? Math.max(1, Math.min(10_000, Math.round(count * Math.max(4, capacityMultiplier)))) : 0;
 }
 export type ResourceCandidate = Pick<DiagramFile, "planning" | "simulations"> & {
-  nodes: readonly { id: string; stencil?: string; props?: Record<string, unknown> }[];
+  nodes: readonly {
+    id: string;
+    stencil?: string;
+    label?: string;
+    sublabel?: string;
+    props?: Record<string, unknown>;
+  }[];
   edges?: DiagramFile["edges"];
 };
 export function resourceBudgetExceeded(d: ResourceCandidate, capacityMultiplier = 4): boolean {

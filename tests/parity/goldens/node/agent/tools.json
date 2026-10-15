@@ -48,6 +48,7 @@
                 "properties": {
                   "preset": { "type": "string", "maxLength": 100 },
                   "presetRevision": { "enum": ["1"] },
+                  "modelRevision": { "enum": ["a2"] },
                   "container": { "type": "string", "minLength": 1, "maxLength": 100 },
                   "cpuMsPerMessage": { "type": "number", "minimum": 0, "maximum": 1000000000 },
                   "baselineMemoryMiB": { "type": "number", "minimum": 0, "maximum": 1000000000 },
@@ -702,6 +703,7 @@
                 "properties": {
                   "preset": { "type": "string", "maxLength": 100 },
                   "presetRevision": { "enum": ["1"] },
+                  "modelRevision": { "enum": ["a2"] },
                   "container": { "type": "string", "minLength": 1, "maxLength": 100 },
                   "cpuMsPerMessage": { "type": "number", "minimum": 0, "maximum": 1000000000 },
                   "baselineMemoryMiB": { "type": "number", "minimum": 0, "maximum": 1000000000 },
@@ -1334,6 +1336,7 @@
                 "properties": {
                   "preset": { "type": "string", "maxLength": 100 },
                   "presetRevision": { "enum": ["1"] },
+                  "modelRevision": { "enum": ["a2"] },
                   "container": { "type": "string", "minLength": 1, "maxLength": 100 },
                   "cpuMsPerMessage": { "type": "number", "minimum": 0, "maximum": 1000000000 },
                   "baselineMemoryMiB": { "type": "number", "minimum": 0, "maximum": 1000000000 },
@@ -1988,6 +1991,7 @@
                 "properties": {
                   "preset": { "type": "string", "maxLength": 100 },
                   "presetRevision": { "enum": ["1"] },
+                  "modelRevision": { "enum": ["a2"] },
                   "container": { "type": "string", "minLength": 1, "maxLength": 100 },
                   "cpuMsPerMessage": { "type": "number", "minimum": 0, "maximum": 1000000000 },
                   "baselineMemoryMiB": { "type": "number", "minimum": 0, "maximum": 1000000000 },
@@ -2616,6 +2620,7 @@
                 "properties": {
                   "preset": { "type": "string", "maxLength": 100 },
                   "presetRevision": { "enum": ["1"] },
+                  "modelRevision": { "enum": ["a2"] },
                   "container": { "type": "string", "minLength": 1, "maxLength": 100 },
                   "cpuMsPerMessage": { "type": "number", "minimum": 0, "maximum": 1000000000 },
                   "baselineMemoryMiB": { "type": "number", "minimum": 0, "maximum": 1000000000 },
@@ -3270,6 +3275,7 @@
                 "properties": {
                   "preset": { "type": "string", "maxLength": 100 },
                   "presetRevision": { "enum": ["1"] },
+                  "modelRevision": { "enum": ["a2"] },
                   "container": { "type": "string", "minLength": 1, "maxLength": 100 },
                   "cpuMsPerMessage": { "type": "number", "minimum": 0, "maximum": 1000000000 },
                   "baselineMemoryMiB": { "type": "number", "minimum": 0, "maximum": 1000000000 },
@@ -4017,6 +4023,7 @@
                 "properties": {
                   "preset": { "type": "string", "maxLength": 100 },
                   "presetRevision": { "enum": ["1"] },
+                  "modelRevision": { "enum": ["a2"] },
                   "container": { "type": "string", "minLength": 1, "maxLength": 100 },
                   "cpuMsPerMessage": { "type": "number", "minimum": 0, "maximum": 1000000000 },
                   "baselineMemoryMiB": { "type": "number", "minimum": 0, "maximum": 1000000000 },
@@ -4671,6 +4678,7 @@
                 "properties": {
                   "preset": { "type": "string", "maxLength": 100 },
                   "presetRevision": { "enum": ["1"] },
+                  "modelRevision": { "enum": ["a2"] },
                   "container": { "type": "string", "minLength": 1, "maxLength": 100 },
                   "cpuMsPerMessage": { "type": "number", "minimum": 0, "maximum": 1000000000 },
                   "baselineMemoryMiB": { "type": "number", "minimum": 0, "maximum": 1000000000 },
@@ -5356,6 +5364,7 @@
                 "properties": {
                   "preset": { "type": "string", "maxLength": 100 },
                   "presetRevision": { "enum": ["1"] },
+                  "modelRevision": { "enum": ["a2"] },
                   "container": { "type": "string", "minLength": 1, "maxLength": 100 },
                   "cpuMsPerMessage": { "type": "number", "minimum": 0, "maximum": 1000000000 },
                   "baselineMemoryMiB": { "type": "number", "minimum": 0, "maximum": 1000000000 },
@@ -6010,6 +6019,7 @@
                 "properties": {
                   "preset": { "type": "string", "maxLength": 100 },
                   "presetRevision": { "enum": ["1"] },
+                  "modelRevision": { "enum": ["a2"] },
                   "container": { "type": "string", "minLength": 1, "maxLength": 100 },
                   "cpuMsPerMessage": { "type": "number", "minimum": 0, "maximum": 1000000000 },
                   "baselineMemoryMiB": { "type": "number", "minimum": 0, "maximum": 1000000000 },
@@ -6637,6 +6647,7 @@
                 "properties": {
                   "preset": { "type": "string", "maxLength": 100 },
                   "presetRevision": { "enum": ["1"] },
+                  "modelRevision": { "enum": ["a2"] },
                   "container": { "type": "string", "minLength": 1, "maxLength": 100 },
                   "cpuMsPerMessage": { "type": "number", "minimum": 0, "maximum": 1000000000 },
                   "baselineMemoryMiB": { "type": "number", "minimum": 0, "maximum": 1000000000 },
@@ -7291,6 +7302,7 @@
                 "properties": {
                   "preset": { "type": "string", "maxLength": 100 },
                   "presetRevision": { "enum": ["1"] },
+                  "modelRevision": { "enum": ["a2"] },
                   "container": { "type": "string", "minLength": 1, "maxLength": 100 },
                   "cpuMsPerMessage": { "type": "number", "minimum": 0, "maximum": 1000000000 },
                   "baselineMemoryMiB": { "type": "number", "minimum": 0, "maximum": 1000000000 },
@@ -7914,6 +7926,7 @@
                 "properties": {
                   "preset": { "type": "string", "maxLength": 100 },
                   "presetRevision": { "enum": ["1"] },
+                  "modelRevision": { "enum": ["a2"] },
                   "container": { "type": "string", "minLength": 1, "maxLength": 100 },
                   "cpuMsPerMessage": { "type": "number", "minimum": 0, "maximum": 1000000000 },
                   "baselineMemoryMiB": { "type": "number", "minimum": 0, "maximum": 1000000000 },
@@ -8568,6 +8581,7 @@
                 "properties": {
                   "preset": { "type": "string", "maxLength": 100 },
                   "presetRevision": { "enum": ["1"] },
+                  "modelRevision": { "enum": ["a2"] },
                   "container": { "type": "string", "minLength": 1, "maxLength": 100 },
                   "cpuMsPerMessage": { "type": "number", "minimum": 0, "maximum": 1000000000 },
                   "baselineMemoryMiB": { "type": "number", "minimum": 0, "maximum": 1000000000 },

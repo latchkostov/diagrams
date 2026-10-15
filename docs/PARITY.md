@@ -229,12 +229,12 @@ The update records **93 new goldens** and changes these **seven** existing share
 
 | Golden                             | Reason                                                                                                                                                                  |
 | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `node/agent/tools.json`            | Agent input schemas accept the bounded A2 controller, resource-default provenance and unsupported-controller summaries.                                                 |
+| `node/agent/tools.json`            | Agent input schemas accept the bounded A2 controller, resource-default provenance, independent resource execution revision and unsupported-controller summaries.        |
 | `node/skill/public-schemas.json`   | Hashes and sizes of the generated v2 diagram and v1 ops schemas reflect the same contracts.                                                                             |
 | `node/skill/files.json`            | Generated format reference and spec describe the new controller, trigger and import support.                                                                            |
 | `node/skill/current-stencils.json` | The new public example changes the generated “Most used in the examples” ordering; stencil definitions are unchanged.                                                   |
 | `node/skill/validate.txt`          | Validation transcript includes the three new frozen A2 corpus inputs.                                                                                                   |
-| `node/i18n/catalogs.json`          | Seventeen A2 autoscaling/import messages and their translations change the relevant catalog hashes.                                                                     |
+| `node/i18n/catalogs.json`          | Eighteen A2 autoscaling/import messages and their translations change the relevant catalog hashes.                                                                      |
 | `node/imports/kubernetes.json`     | The existing fixture now carries executable ScaledObject settings, unmeasured resource assumptions and an explicit policy note; its original range summary is retained. |
 
 The initial check found only these intentional differences and absent new-input goldens. Re-recording is

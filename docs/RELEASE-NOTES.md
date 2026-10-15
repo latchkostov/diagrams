@@ -1,6 +1,5 @@
 # Release notes
 
-<<<<<<< HEAD
 ## Relationship dropdown review fixes (#122, 2026-10-15)
 
 - Removing an inert edge setting returns keyboard focus to Label, and Tab reaches the relationship
@@ -14,7 +13,7 @@
   change: this review changes inspector interaction, not diagram output.
 - Merged the latest master without rewriting collaborator history, retaining both documentation
   histories and the follow-up fixes in #123.
-=======
+
 ## Autoscaling A2 — KEDA and Kubernetes import (2026-10-15)
 
 - KEDA 2.18 ScaledObject lessons observe actual Kafka group lag, Service Bus queue/subscription messages,
@@ -37,10 +36,15 @@
   the public showcase and synthetic import. Seven existing goldens change deliberately: `node/agent/tools.json`
   and `node/skill/public-schemas.json` add A2 schema support; `node/skill/files.json` updates format/spec hashes;
   `node/skill/current-stencils.json` reflects example popularity; `node/skill/validate.txt` lists the new corpus;
-  `node/i18n/catalogs.json` adds seventeen translated messages; `node/imports/kubernetes.json` gains executable
+  `node/i18n/catalogs.json` adds eighteen translated messages; `node/imports/kubernetes.json` gains executable
   KEDA/resource settings and the policy note while retaining the range summary. See `docs/PARITY.md`.
 - Refreshed the offline skill viewer and released plugin 1.1.25, one patch above origin/master.
->>>>>>> bd77d0c2 (Add KEDA activation and Kubernetes autoscaling import)
+
+- Review fixes preserve opted-in Deployment resources with Fixed scaling, reject topology edits that would
+  break node or saved-simulation metric bindings, retain positive replica bounds at fractional Capacity ×,
+  and keep unsupported resource imports recoverable. Accepted source bindings retain keyboard focus;
+  refused bindings remain visible with translated feedback. Fixed/HPA inspectors avoid broker graph copies.
+- Refreshed the offline skill viewer and released plugin 1.1.26, one patch above origin/master.
 
 ## Autoscaling preflight follow-ups (#117, 2026-10-15)
 

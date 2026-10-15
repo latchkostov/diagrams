@@ -1613,6 +1613,7 @@
   "examples.themeIntegration": "Integration",
   "examples.themeReliability": "Tillförlitlighet",
   "autoscaling.budget": "Budgeten för resursernas livscykel har överskridits: {limit, number}. Minska de konfigurerade grupperna eller kapacitetsfaktorn.",
+  "autoscaling.bindingInvalid": "Den här ändringen skulle göra en skalningskälla ogiltig. Ändra eller inaktivera först policyn för den berörda noden eller den sparade simuleringen.",
   "autoscaling.bindingRequired": "Anslut en kompatibel broker och konsumentgrupp och välj källan under Avancerat. Förinställningen sparas först när en källa har valts.",
   "autoscaling.useLesson": "Använd tjänstens arbetslastantagande",
   "autoscaling.kedaPreset": "KEDA-worker för {broker}",
