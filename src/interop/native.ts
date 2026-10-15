@@ -1,3 +1,4 @@
+import { createResourceValidator } from "../model/resourceValidation";
 import { DIAGRAM_FORMAT, type Simulation, type DiagramFile } from "../model/types";
 import {
   propsProblem,
@@ -122,7 +123,10 @@ export function validateDiagram(data: unknown): NativeResult {
   if (
     raw.format === "diagrams/v2" &&
     (!isObj(raw.planning) ||
-      (raw.planning.revision !== "p1" && raw.planning.revision !== "p2" && raw.planning.revision !== "p3"))
+      (raw.planning.revision !== "p1" &&
+        raw.planning.revision !== "p2" &&
+        raw.planning.revision !== "p3" &&
+        raw.planning.revision !== "p3-a1"))
   )
     return {
       ok: false,
@@ -438,7 +442,10 @@ export function validateDiagram(data: unknown): NativeResult {
     if (checks) d.checks = checks;
     else delete d.checks;
   }
-  return { ok: true, diagram: d as unknown as DiagramFile, warnings };
+  const authored = d as unknown as DiagramFile;
+  const resourceError = createResourceValidator()(authored);
+  if (resourceError) return { ok: false, error: resourceError };
+  return { ok: true, diagram: authored, warnings };
 }
 
 const DEPENDENCY_WHEN = new Set(["startup", "cached", "request", "never"]);

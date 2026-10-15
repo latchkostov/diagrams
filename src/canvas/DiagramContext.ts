@@ -26,6 +26,8 @@ export interface DiagramUi {
   /** Appearance changes invalidate custom caption contrast measured against the canvas. */
   theme?: "light" | "dark";
   canvasColor?: string;
+  /** Presentation retains selection for return to editing, but hides its affordances. */
+  presenting?: boolean;
   editing: InlineEdit | null;
   setEditing: (target: InlineEdit | null) => void;
   /** Edit or live (not presenting or read-only): a double-click names a node, connection or boundary in the inspector. */

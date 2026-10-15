@@ -6,6 +6,7 @@ import {
   type DiagramGroup,
   type DiagramNode,
 } from "../model/types";
+import { createResourceValidator } from "../model/resourceValidation";
 import { filterLayerOrder } from "../model/layers";
 import { expandGroupIds, sanitizeGroupParents } from "../model/groupHierarchy";
 import { isPresetGroupTone } from "../canvas/groupTones";
@@ -22,9 +23,11 @@ import { remapConnection } from "../model/connectionDefaults";
 // JSON that also pastes into another tab (or a text editor).
 
 export const CLIP_FORMAT = "diagrams/clip-v1" as const;
+export const CLIP_FORMAT_A1 = "diagrams/clip-v2" as const;
 
 export interface ClipboardPayload {
-  format: typeof CLIP_FORMAT;
+  format: typeof CLIP_FORMAT | typeof CLIP_FORMAT_A1;
+  planning?: { revision: "p3-a1" };
   /** Foreground ids, back to front, in the shared node/annotation namespace. */
   layerOrder?: string[];
   groups: DiagramGroup[];
@@ -63,7 +66,8 @@ export function makePayload(
   if (!nodes.length && !groups.length && !annotations.length) return null;
   const edges = d.edges.filter((e) => ns.has(e.from) && ns.has(e.to));
   return structuredClone({
-    format: CLIP_FORMAT,
+    format: d.planning?.revision === "p3-a1" ? CLIP_FORMAT_A1 : CLIP_FORMAT,
+    ...(d.planning?.revision === "p3-a1" ? { planning: { revision: "p3-a1" as const } } : {}),
     groups,
     nodes,
     edges,
@@ -87,9 +91,16 @@ export function parsePayload(text: string): ClipboardPayload | null {
   } catch {
     return null;
   }
-  if (!isObj(data) || (data.format !== CLIP_FORMAT && data.format !== DIAGRAM_FORMAT && data.format !== "diagrams/v2"))
+  if (
+    !isObj(data) ||
+    (data.format !== CLIP_FORMAT &&
+      data.format !== CLIP_FORMAT_A1 &&
+      data.format !== DIAGRAM_FORMAT &&
+      data.format !== "diagrams/v2")
+  )
     return null;
-  if (data.format !== CLIP_FORMAT) {
+  if (data.format === CLIP_FORMAT_A1 && (!isObj(data.planning) || data.planning.revision !== "p3-a1")) return null;
+  if (data.format !== CLIP_FORMAT && data.format !== CLIP_FORMAT_A1) {
     const result = validateDiagram(data);
     if (!result.ok) return null;
     data = { ...result.diagram, nodes: clipboardNodes(result.diagram), format: CLIP_FORMAT };
@@ -109,6 +120,13 @@ export function parsePayload(text: string): ClipboardPayload | null {
       isObj(n) && typeof n.id === "string" && typeof n.stencil === "string" && isCoordinate(n.x) && isCoordinate(n.y),
   );
   if (nodes.some((n) => n.props !== undefined && (unsupportedPreset(n.props) || propsProblem(n.props)))) return null;
+  if (
+    createResourceValidator()({
+      nodes,
+      planning: isObj(data.planning) && data.planning.revision === "p3-a1" ? { revision: "p3-a1" } : undefined,
+    })
+  )
+    return null;
   const used = new Set(nodes.map((n) => n.id));
   const annotations: DiagramAnnotation[] = [];
   for (const raw of Array.isArray(data.annotations) ? data.annotations : []) {
@@ -137,7 +155,8 @@ export function parsePayload(text: string): ClipboardPayload | null {
   );
   if (!nodes.length && !groups.length && !annotations.length) return null;
   return {
-    format: CLIP_FORMAT,
+    format: isObj(data.planning) && data.planning.revision === "p3-a1" ? CLIP_FORMAT_A1 : CLIP_FORMAT,
+    ...(isObj(data.planning) && data.planning.revision === "p3-a1" ? { planning: { revision: "p3-a1" as const } } : {}),
     groups: groups.map((g) => ({ ...g, tone: isPresetGroupTone(g.tone) || isHexColor(g.tone) ? g.tone : "neutral" })),
     nodes: nodes.map((n) => ({ ...n, label: n.label ?? "" })),
     edges,
@@ -207,7 +226,8 @@ export function remapPayload(p: ClipboardPayload, taken: TakenIds, offset: { x: 
     return { ...remapConnection(e, nmap), id };
   });
   return {
-    format: CLIP_FORMAT,
+    format: p.format,
+    ...(p.planning ? { planning: p.planning } : {}),
     groups,
     nodes,
     edges,

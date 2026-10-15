@@ -376,6 +376,7 @@ function CanvasInner({
   const takeInspectorFocus = useCallback((seq: number) => {
     if (inspectorFocusDone.current === seq) return false;
     inspectorFocusDone.current = seq;
+    setInspectorFocus((f) => (f?.seq === seq && f.name === "autoscaling-upgrade-preview" ? { ...f, name: "" } : f));
     return true;
   }, []);
   const openInspector = useCallback(
@@ -1756,6 +1757,7 @@ function CanvasInner({
       theme,
       canvasColor: meta.color,
       direction,
+      presenting,
       editing,
       setEditing: editGestures ? setEditing : () => {},
       rename: canOpenInspector ? renameIn : undefined,
@@ -1769,6 +1771,7 @@ function CanvasInner({
       theme,
       meta.color,
       direction,
+      presenting,
       editing,
       openEdgeMenu,
       settleText,

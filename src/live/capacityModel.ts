@@ -1,3 +1,4 @@
+import { replicaRange } from "../model/autoscaling";
 // Inputs & capacity: the pure model behind the "Inputs & capacity" panel and the capacity heat map.
 // No React, no DOM. It turns a diagram plus an optional saved simulation plus the panel's what-if
 // inputs into (a) the simulation to run, (b) a planning analysis per node, (c) a bottleneck headline
@@ -353,7 +354,8 @@ export function computeFix(
   const byId = new Map(d.nodes.map((n) => [n.id, n]));
   const changes: FixChange[] = sized.map((c) => ({ ...c, label: byId.get(c.nodeId)!.label }));
   const phrase = (c: FixChange) =>
-    c.key === "partitions" && (d.planning?.revision === "p2" || d.planning?.revision === "p3")
+    c.key === "partitions" &&
+    (d.planning?.revision === "p2" || d.planning?.revision === "p3" || d.planning?.revision === "p3-a1")
       ? t("broker.fix", {
           name: c.label,
           kind: assignmentLabel(baseProps(d, byId.get(c.nodeId)!, sim).broker),
@@ -386,8 +388,13 @@ function outageHeadline(out: NodeHeat[]): string {
  * `status` is the run's node statuses right now (chaos on the timeline, Kill / Pause), so the callout
  * reports an outage instead of a plan that assumes everything is up.
  */
-export function capacityView(d: DiagramFile, sim: Simulation, status?: RunStatus): CapacityView {
-  const analysis = analyzeCapacity(d, planningSimulation(d, sim), { status });
+export function capacityView(
+  d: DiagramFile,
+  sim: Simulation,
+  status?: RunStatus,
+  readyReplicas?: Readonly<Record<string, number>>,
+): CapacityView {
+  const analysis = analyzeCapacity(d, planningSimulation(d, sim), { status, readyReplicas });
   const byId = new Map(d.nodes.map((n) => [n.id, n]));
   const compiled = compileTopology(d);
   const routes = compiled.outgoing;
@@ -454,7 +461,7 @@ export function capacityView(d: DiagramFile, sim: Simulation, status?: RunStatus
     // Not "can't keep up": nothing reads it. Partitions only cap the consumers in a group, so they can't help.
     headline = `Nobody reads ${top.label}`;
     detail = keeps(top.role)
-      ? d.planning?.revision === "p2" || d.planning?.revision === "p3"
+      ? d.planning?.revision === "p2" || d.planning?.revision === "p3" || d.planning?.revision === "p3-a1"
         ? t("broker.noReader")
         : "It keeps what's published, but nothing consumes it. Partitions can't change that: add a consumer."
       : "Messages wait in it until a consumer takes them.";
@@ -546,7 +553,7 @@ export function partitionsNotes(d: DiagramFile, sim: Simulation | null, inputs: 
     if (!groups.length) {
       notes.set(
         node.id,
-        d.planning?.revision === "p2" || d.planning?.revision === "p3"
+        d.planning?.revision === "p2" || d.planning?.revision === "p3" || d.planning?.revision === "p3-a1"
           ? t("broker.noReader")
           : "Nobody reads it yet, so more partitions change nothing.",
       );
@@ -558,7 +565,7 @@ export function partitionsNotes(d: DiagramFile, sim: Simulation | null, inputs: 
     const which = groups.length > 1 ? "Its largest consumer group has" : "Its consumer group has";
     notes.set(
       node.id,
-      d.planning?.revision === "p2" || d.planning?.revision === "p3"
+      d.planning?.revision === "p2" || d.planning?.revision === "p3" || d.planning?.revision === "p3-a1"
         ? t("broker.assignmentNote")
         : `${which} ${most} ${most === 1 ? "replica" : "replicas"}: partitions past ${most} add no speed.`,
     );
@@ -754,8 +761,19 @@ export function freePlaySaveProps(d: DiagramFile, inputs: LiveInputs): Record<st
         (roleOf(n) !== "processor" && !props.device)
       )
         continue;
-      const replicas = Math.max(1, Math.round(props.replicas * capacity));
-      out[n.id] = { ...out[n.id], replicas };
+      if (props.autoscaling?.mode === "on") {
+        const autoscaling = structuredClone(props.autoscaling),
+          range = replicaRange(autoscaling.controller, capacity);
+        Object.assign(autoscaling.controller, {
+          minReplicas: range.min,
+          maxReplicas: range.max,
+          initialReplicas: range.initial,
+        });
+        out[n.id] = { ...out[n.id], autoscaling };
+      } else {
+        const replicas = Math.max(1, Math.round(props.replicas * capacity));
+        out[n.id] = { ...out[n.id], replicas };
+      }
     }
   return out;
 }

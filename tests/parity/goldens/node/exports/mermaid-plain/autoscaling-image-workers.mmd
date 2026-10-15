@@ -1,0 +1,12 @@
+---
+title: Image workers absorb a burst
+---
+flowchart LR
+  source(["Upload clients"])
+  uploads["Image uploads<br/>6 partitions"]
+  worker["Thumbnail workers"]
+  images[("Thumbnails")]
+  source -.-> uploads
+  uploads -.-> worker
+  worker -.-> images
+  linkStyle 0,1,2 stroke-dasharray: 6 4

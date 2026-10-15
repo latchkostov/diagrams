@@ -6,6 +6,7 @@ export const exampleFeatures = [
   { id: "partitions", label: msg("examples.partitions") },
   { id: "rateLimits", label: msg("examples.rateLimits") },
   { id: "networkDevices", label: msg("examples.networkDevices") },
+  { id: "autoscaling", label: msg("examples.autoscaling") },
 ];
 
 /** Every search word must match; labels are resolved in the current language. */

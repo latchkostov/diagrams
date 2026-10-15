@@ -6,7 +6,7 @@ import { MAX_COUNT, sizingFix } from "../../sim/capacityPlanning";
 import { brokerFeeds } from "../../sim/topology";
 import { formatRate, isBroker, type CheckContext } from "../context";
 import { SIZE_LABEL } from "../../stencils/netDevices";
-import type { CheckFix, CheckRule } from "../types";
+import type { Finding, CheckFix, CheckRule } from "../types";
 
 // 7. capacity: the busiest processor or broker can't keep up at the diagram's own (free-play) rates: the
 // same analysis as live view's Show capacity, without going live. Saved simulations aren't checked: most
@@ -31,7 +31,10 @@ function scaleFix(ctx: CheckContext, n: NodeCapacity): CheckFix | undefined {
   const brokerChanges: NonNullable<CheckFix["brokerChanges"]> = [];
   const words = changes.map((c) => {
     const spec =
-      c.key === "partitions" && (ctx.diagram.planning?.revision === "p2" || ctx.diagram.planning?.revision === "p3")
+      c.key === "partitions" &&
+      (ctx.diagram.planning?.revision === "p2" ||
+        ctx.diagram.planning?.revision === "p3" ||
+        ctx.diagram.planning?.revision === "p3-a1")
         ? resolveNodeProps(ctx.diagram, ctx.nodes.get(c.nodeId)!).broker
         : undefined;
     if (spec) {
@@ -53,10 +56,50 @@ export const capacity: CheckRule = {
     "Uses Show capacity's analysis at free-play rates (each source's rate), and reports the busiest service or broker.",
   detect(ctx) {
     const analysis = ctx.capacity();
+    const resourceFindings: Finding[] = ctx.diagram.nodes.flatMap((node) => {
+      const p = analysis.resolved[node.id],
+        plan = analysis.nodes[node.id].resourcePlan;
+      const kind = p.autoscalingProblem
+        ? "invalid"
+        : plan?.memoryRisk
+          ? "memory"
+          : plan?.baselineAboveTarget
+            ? "baseline"
+            : plan?.max && (plan.targetReplicas ?? 0) > plan.max
+              ? "max"
+              : undefined;
+      if (!kind) return [];
+      const name = ctx.name(node.id),
+        needed = plan?.targetReplicas ?? 0,
+        max = plan?.max ?? 0;
+      const message =
+        kind === "invalid"
+          ? p.autoscalingProblem!
+          : kind === "memory"
+            ? "Configured peak memory exceeds its limit; OOM/restart is not simulated."
+            : kind === "baseline"
+              ? "Baseline memory exceeds the target; more replicas cannot reduce it."
+              : `HPA needs ${needed} replicas at target; maximum ${max}. Verify startup and partition limits before raising max.`;
+      return [
+        {
+          id: `capacity:${node.id}`,
+          rule: "capacity",
+          severity: "warning",
+          target: node.id,
+          elements: [node.id],
+          title: `${name}: resource planning`,
+          message,
+          rationale: "Configured resource assumptions; steady state is not a burst guarantee.",
+          resourceFinding: { name, kind, needed, max },
+        },
+      ];
+    });
+    const resourceTargets = new Set(resourceFindings.map((finding) => finding.target));
     const order = new Map(ctx.diagram.nodes.map((n, i) => [n.id, i]));
     const candidates = Object.values(analysis.nodes)
       .filter(
         (n) =>
+          !resourceTargets.has(n.id) &&
           n.offered > 0 &&
           n.utilization >= 1 &&
           (n.role === "processor" || !!n.device || !!n.managed || (isBroker(ctx, n.id) && ctx.routes(n.id).length > 0)),
@@ -68,7 +111,7 @@ export const capacity: CheckRule = {
           order.get(a.id)! - order.get(b.id)!,
       );
     const top = candidates[0];
-    if (!top) return [];
+    if (!top) return resourceFindings;
     const sources = ctx.diagram.nodes.filter((n) => ctx.role(n.id) === "source");
     const unset = sources.filter((n) => typeof n.props?.ratePerSec !== "number");
     const rates = unset.length
@@ -83,6 +126,7 @@ export const capacity: CheckRule = {
       const waits = !!brokers;
       const where = (brokers ?? []).map((id) => ctx.name(id)).join(" and ");
       return [
+        ...resourceFindings,
         {
           id: `capacity:${top.id}`,
           rule: "capacity",
@@ -125,6 +169,7 @@ export const capacity: CheckRule = {
         }
       : undefined;
     return [
+      ...resourceFindings,
       {
         id: `capacity:${top.id}`,
         rule: "capacity",

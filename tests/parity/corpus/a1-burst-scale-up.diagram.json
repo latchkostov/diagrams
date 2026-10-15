@@ -1,0 +1,163 @@
+{
+  "format": "diagrams/v2",
+  "planning": {
+    "revision": "p3-a1"
+  },
+  "title": "burst-scale-up",
+  "description": "An invented image-processing pipeline: a Kafka topic buffers uploads while HPA starts workers. The saved burst shows backlog building, replicas becoming ready and the backlog draining within ten simulated seconds. This teaching model explicitly uses a 1 s sync, 1 s metric window, 2 s startup and 30 s downscale stabilization; these are not Kubernetes defaults. Open a worker’s Live details for replica history.",
+  "nodes": [
+    {
+      "id": "source",
+      "stencil": "client.browser",
+      "label": "Upload clients",
+      "x": 80,
+      "y": 180,
+      "props": {
+        "ratePerSec": 4
+      }
+    },
+    {
+      "id": "uploads",
+      "stencil": "kafka.topic",
+      "label": "Image uploads",
+      "sublabel": "6 partitions",
+      "x": 420,
+      "y": 180,
+      "props": {
+        "partitions": 6
+      }
+    },
+    {
+      "id": "worker",
+      "stencil": "service.go",
+      "label": "Thumbnail workers",
+      "x": 780,
+      "y": 180,
+      "props": {
+        "replicas": 1,
+        "concurrency": 4,
+        "latencyMs": 250,
+        "jitter": 0,
+        "resources": {
+          "preset": "io-service",
+          "presetRevision": "1",
+          "cpuMsPerMessage": 40,
+          "baselineMemoryMiB": 128,
+          "memoryMiBPerMessage": 2,
+          "cpuRequestMilli": 500,
+          "cpuLimitMilli": 1000,
+          "memoryRequestMiB": 256,
+          "memoryLimitMiB": 512,
+          "startup": {
+            "delayMs": 2000,
+            "jitterFraction": 0
+          },
+          "terminationGraceMs": 30000
+        },
+        "autoscaling": {
+          "mode": "on",
+          "modelRevision": "a1",
+          "preset": "hpa-service",
+          "presetRevision": "1",
+          "controller": {
+            "kind": "hpa",
+            "minReplicas": 1,
+            "maxReplicas": 6,
+            "initialReplicas": 1,
+            "settings": {
+              "syncMs": 1000,
+              "tolerance": 0.1,
+              "initialReadinessDelayMs": 0,
+              "cpuInitializationPeriodMs": 0,
+              "metrics": [
+                {
+                  "source": {
+                    "kind": "resource",
+                    "resource": "cpu"
+                  },
+                  "target": {
+                    "kind": "utilization",
+                    "percentOfRequest": 70
+                  },
+                  "windowMs": 1000,
+                  "metricDelayMs": 0
+                }
+              ],
+              "up": {
+                "stabilizationMs": 0,
+                "selectPolicy": "Max",
+                "policies": [
+                  {
+                    "type": "Pods",
+                    "value": 4,
+                    "periodMs": 15000
+                  },
+                  {
+                    "type": "Percent",
+                    "value": 100,
+                    "periodMs": 15000
+                  }
+                ]
+              },
+              "down": {
+                "stabilizationMs": 30000,
+                "selectPolicy": "Max",
+                "policies": [
+                  {
+                    "type": "Percent",
+                    "value": 100,
+                    "periodMs": 15000
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "publish",
+      "from": "source",
+      "to": "uploads",
+      "kind": "async",
+      "props": {
+        "travelMs": 10
+      }
+    },
+    {
+      "id": "consume",
+      "from": "uploads",
+      "to": "worker",
+      "kind": "async",
+      "props": {
+        "travelMs": 10,
+        "group": "thumbnails"
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "scenario",
+      "title": "burst-scale-up",
+      "seed": 42,
+      "scale": 1,
+      "durationMs": 48000,
+      "traffic": [
+        {
+          "id": "burst",
+          "node": "source",
+          "messageType": "ImageUploaded",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 48,
+            "durationMs": 6000
+          }
+        }
+      ],
+      "timeline": [],
+      "expectations": []
+    }
+  ]
+}

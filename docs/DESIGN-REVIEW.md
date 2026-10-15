@@ -1,5 +1,14 @@
 # Design review
 
+## Autoscaling A1 final review gate (2026-10-15)
+
+The designer's scoped source/test review found no blocking UX concern. Scaling speech stays polite
+and atomic outside collapsed Live details; readiness completion updates fixed and overridden fleets
+without speaking every jittered readiness frame. No controls, focus behavior or chrome were added.
+Production browser regressions cover automatic coalescing and completion with suspended syncs.
+The gallery reuses its existing feature filter for the translated Autoscaling tag, backed by the
+explicit resource/HPA showcase rather than a vendor icon.
+
 ## Gallery rebase integration review (#118, 2026-10-15)
 
 Scoped source review preserves both gallery session/copy behavior and nested-boundary membership,
@@ -63,6 +72,29 @@ Production browser checks verify stencil-control separation, shared and overflow
 and Arabic accessible names, and the gallery's existing theme, narrow-layout and axe checks. The
 designer review itself was a source review, not a browser or screen-reader walkthrough.
 
+## Autoscaling A1 round 2 review fixes (2026-10-15)
+
+Scoped designer source review found no blocking UX issues. The inspector preserves its four main
+fields, Advanced disclosure and existing chrome budget. Incomplete numeric drafts retain saved
+resource values and receive linked inline feedback; complete numeric and JSON policies use the same
+validation path. The metric-window maximum accounts for delay. Policy JSON reads left to right while
+translated labels and surrounding chrome retain RTL layout. Over-budget paste and resource edits
+report recovery guidance before committing.
+
+No additional controls were recommended. This was a scoped source review, not a whole-app browser
+walkthrough or screen-reader audit. The primary engineer also inspected the production light, dark Arabic
+and selected Live screenshots: the four-field disclosure and readable, selected-only resource table remain
+intact. Production browser regressions are reported separately.
+
+## A1 rebase and showcase review (2026-10-14)
+
+Scoped designer source review accepted the autoscaling showcase and preserved four-field disclosure,
+selected-only history and the existing chrome budget. The streaming pipeline teaches startup/backlog
+at 1 s and points to replica history at 7 s without pausing playback; its shortened controller timings
+are disclosed as teaching assumptions. No global controls or blocking source concerns were found.
+Production e2e and parity separately verify the observed ten-second story; this source review does not
+replace visual or screen-reader verification.
+
 ## Self-hosting review fixes (2026-10-14)
 
 Scoped source review found no blocking UX issues. Copied embed and share URLs use the prepared deployment
@@ -70,6 +102,37 @@ directory on deep fallback routes. Proxy redirects preserve the public path. No 
 focus targets were added; existing primary actions and chrome budgets remain intact. Hosting documentation
 explains native Pages fallback and its asset precedence. This was a source review; production browser
 regressions are verified separately.
+
+## Round 39 — Autoscaling A1 (2026-10-14)
+
+Designer review covered the synthetic Lab HPA service in light mode, dark German and dark Arabic at
+1280 × 800, selected live resource history/replica rows, and presentation. The main inspector has four fields:
+preset, target, minimum and maximum. Resource quantities, timing and behaviour stay under Advanced; the
+existing workload is folded separately. No toolbar control was added. All new strings have 37 translations.
+
+The review accepted the four-field disclosure, table density and RTL layout. Corrections distinguish the
+observed **Peak replicas** from the configured maximum, show percentage denominators and one decimal,
+retain invalid JSON drafts on blur, and hide node selection/connection handles in presentation. Live screenshots
+are fitted with the selected inspector open. The replica table is selected-only and paginated at 50 rows;
+the chart is backed by a numeric history summary and a visible solid/dashed legend.
+
+The final designer gate passed. Follow-up accessibility work keeps incomplete numeric drafts while typing,
+commits valid numbers on blur, themes enabled pagination arrows in dark mode, and gives the selected node a
+polite status message only when its fleet or decision changes. Inspector findings no longer extend past the
+scrollable body's width. The seven-angle review and regression dispositions are recorded in
+[the A1 review](research/autoscaling-a1-review.md).
+
+Rejected additions: permanent CPU/memory badges and global policy controls would spend chrome on details
+needed only for the selection. Treating slot utilization as CPU, inferring provider quotas, or automatically
+raising fixed replicas on an HPA node would misstate the model. KEDA activation, cloud adapters and verified
+scenario sizing belong to A2/A3; memory-limit enforcement/restarts require a separately scoped lifecycle.
+
+![Four main fields in light mode](design-review/round-39/a1-inspector-light.png)
+![Selected live resources and replica history](design-review/round-39/a1-live-resources.png)
+![Presentation retains fleet information](design-review/round-39/a1-presentation.png)
+![German inspector in dark mode](design-review/round-39/a1-inspector-de-dark.png)
+![Arabic inspector in dark mode](design-review/round-39/a1-inspector-ar-dark.png)
+![Bounded replica pagination in dark mode](design-review/round-39/a1-pagination-dark.png)
 
 ## Round 42: Planning P3 final review fixes (2026-10-14)
 
@@ -4192,3 +4255,21 @@ cancellation on navigation or unmount. The test records every history write, fai
 and passes afterward; all eight synthetic privacy checks pass. No real local diagrams were inspected.
 The final launch/navigation/privacy follow-up passes 35 checks. Security re-review finds no further issue,
 and the full unit suite again passes 6,382 tests with 4 skipped.
+
+## Autoscaling A1 round 3 (2026-10-15)
+
+Designer review passed after correcting a stale upgrade focus request. A refused paste now explains
+model compatibility and opens the existing model-upgrade preview with focus. That request is consumed
+once; revisiting properties does not reopen it. A1 and legacy previews have distinct expanded states
+and disclosure targets, and selecting either switches directly to its content. No global chrome was
+added. Production browser checks cover switching, focus, revisiting, dark/translated inspectors and
+accessible replica pagination.
+
+## Autoscaling A1 refusal recovery review (2026-10-15)
+
+Scoped designer-agent UX gate passed: source and regression-test review of scaling announcements.
+Polite, atomic speech stays accessible with Live details closed, while readiness changes coalesce at
+controller syncs. Visible metrics remain live and no controls are added. Selection remounts the
+announcement, and language changes remain subscribed. Production fake-clock coverage checks startup
+readiness changing without repeated speech, followed by an update at the next sync. This review did
+not independently exercise assistive-technology playback or a whole-app visual walkthrough.

@@ -1,5 +1,6 @@
 import { nestedBoundariesFixture } from "./nestedBoundariesFixture";
 import { GalleryCatalogLab } from "./GalleryCatalogLab";
+import { autoscalingFixture } from "./autoscalingFixture";
 import { ColourPickerLab } from "./ColourPickerLab";
 import { customColoursFixture } from "./customColoursFixture";
 import { planningP3Fixture, planningP3BulkFixture } from "./planningP3Fixture";
@@ -407,6 +408,13 @@ const playgroundPresets: Preset[] = [
         },
       ] satisfies Preset[])
     : []),
+  {
+    kind: "diagram",
+    id: "autoscaling-a1",
+    title: t("autoscaling.lesson"),
+    group: "Playground",
+    diagram: () => autoscalingFixture(),
+  },
   {
     kind: "diagram",
     id: "relationship-regressions",

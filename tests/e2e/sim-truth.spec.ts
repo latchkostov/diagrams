@@ -440,6 +440,9 @@ test("loss callout adds a broker DLQ in one undo step and exhausted messages rea
   expect(route).toMatchObject({ from: "q", kind: "async", props: { dlq: true } });
   if (!route) throw new Error("Expected the broker's dead-letter route");
   expect(d.nodes.find((n) => n.id === route.to)?.stencil).toBe("aws.sqs");
+  // Persistence can publish before the live editor's debounced topology reload. Inject
+  // only after the running engine acknowledges the new route, or that reload erases it.
+  await expect(page.getByTestId("live-notice")).toHaveText("The diagram changed, so the simulation restarted.");
   await waitForStableViewport(page);
   await injectTen(page, "q");
   await expect(page.getByTestId(`node-badge-${route.to}`)).toHaveAttribute("data-processed", "10");

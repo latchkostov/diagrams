@@ -16,9 +16,10 @@ import { fingerprint } from "../lib/hash";
 import { stencilsDoc } from "../../../scripts/skill-gen";
 
 const SKILL = join(ROOT, "skills/livediagrams");
-// Frozen inputs for the original aggregate outputs, independent of later additions or format upgrades.
+// Frozen inputs for the existing aggregate outputs (including A1), independent of later showcase additions.
 const ORIGINAL_EXAMPLES = [
   "aks-app-config-key-vault",
+  "autoscaling-image-workers",
   "aws-fanout",
   "aws-serverless-orders",
   "azure-service-bus-integration",

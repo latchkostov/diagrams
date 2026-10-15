@@ -75,7 +75,7 @@ import {
 import { formatCount } from "../live/format";
 import { DEFAULT_TRAVEL_MS } from "../sim/topology";
 import { managedKind } from "../model/admissionPresets";
-import { AdmissionFields, BulkAdmissionFields } from "../planning/lazy";
+import { AdmissionFields, BulkAdmissionFields, AutoscalingFields } from "../planning/lazy";
 import { nodeSimFields, edgeSimFields, inertNodeProps } from "./simFieldRules";
 import { SIM_LIMITS } from "../interop/native";
 import { t, useLocale } from "../i18n";
@@ -454,8 +454,9 @@ function NodePanel({
   const merge = (f: string) => ({ merge: `inspector:node:${node.id}:${f}` });
   const [picker, setPicker] = useState<{ x: number; y: number } | null>(null);
   const broker = brokerSpec(node.data.stencil, role, meta.planning);
-  const simFields = nodeSimFields(role, node.data.stencil, meta.planning);
-  const managed = meta.planning?.revision === "p3" && !!managedKind(node.data.stencil);
+  const simFields = nodeSimFields(role, node.data.stencil, meta.planning, props);
+  const managed =
+    (meta.planning?.revision === "p3" || meta.planning?.revision === "p3-a1") && !!managedKind(node.data.stencil);
   const device = role === "gateway" ? deviceSpec(node.data.stencil) : undefined;
   // What Custom properties leaves out: only the settings a control here shows.
   const hidden = !device ? SIM_KEYS : device.kind === "adc" ? ADC_KEYS : DEVICE_KEYS;
@@ -590,29 +591,38 @@ function NodePanel({
             set={(patch, key) => editor.setNodeProps(node.id, patch, key ? merge(key) : undefined)}
           />
         ) : simFields.length ? (
-          simFields.map((k) => (
-            <SimInput
-              key={k}
-              name={k}
-              field={
-                k === "partitions"
-                  ? {
-                      ...SIM_FIELDS[k]!,
-                      label: assignmentLabel(broker),
-                      hint: t("broker.assignmentHint"),
-                      note:
-                        meta.planning?.revision === "p2" || meta.planning?.revision === "p3"
-                          ? undefined
-                          : SIM_FIELDS[k]!.note,
-                    }
-                  : k === "replicas"
-                    ? { ...SIM_FIELDS[k]!, hint: t("broker.replicaHint") }
-                    : SIM_FIELDS[k]!
-              }
-              value={props[k]}
-              onChange={(v) => editor.setNodeProps(node.id, { [k]: v }, merge(k))}
-            />
-          ))
+          <AutoscalingWorkload
+            stencil={node.data.stencil}
+            enabled={meta.planning?.revision === "p3-a1" && role === "processor"}
+            props={props}
+            set={(patch, key) => editor.setNodeProps(node.id, patch, key ? merge(key) : undefined)}
+          >
+            {simFields.map((k) => (
+              <SimInput
+                key={k}
+                name={k}
+                field={
+                  k === "partitions"
+                    ? {
+                        ...SIM_FIELDS[k]!,
+                        label: assignmentLabel(broker),
+                        hint: t("broker.assignmentHint"),
+                        note:
+                          meta.planning?.revision === "p2" ||
+                          meta.planning?.revision === "p3" ||
+                          meta.planning?.revision === "p3-a1"
+                            ? undefined
+                            : SIM_FIELDS[k]!.note,
+                      }
+                    : k === "replicas"
+                      ? { ...SIM_FIELDS[k]!, hint: t("broker.replicaHint") }
+                      : SIM_FIELDS[k]!
+                }
+                value={props[k]}
+                onChange={(v) => editor.setNodeProps(node.id, { [k]: v }, merge(k))}
+              />
+            ))}
+          </AutoscalingWorkload>
         ) : isClusterWrapper(node.data.stencil) ? (
           <p className="insp-note" data-testid="broker-wrapper">
             {t("broker.wrapper")}
@@ -1582,7 +1592,7 @@ function BulkNodes({ editor, selectedNodes, groups, meta }: InspectorProps) {
   const stencil = typeof stencilId === "string" ? getStencil(stencilId) : null;
   const group = shared(selectedNodes, (n) => n.data.group ?? "");
   const fields = selectedNodes.map((n) =>
-    nodeSimFields(getStencil(n.data.stencil).simRole, n.data.stencil, meta.planning),
+    nodeSimFields(getStencil(n.data.stencil).simRole, n.data.stencil, meta.planning, n.data.props),
   );
   const simKeys = fields[0].filter((k) => fields.every((keys) => keys.includes(k)));
   const assignmentLabels = [
@@ -1593,7 +1603,9 @@ function BulkNodes({ editor, selectedNodes, groups, meta }: InspectorProps) {
     ),
   ].join(" / ");
   const mergeKey = ids.join(",");
-  const managed = meta.planning?.revision === "p3" && selectedNodes.every((node) => !!managedKind(node.data.stencil));
+  const managed =
+    (meta.planning?.revision === "p3" || meta.planning?.revision === "p3-a1") &&
+    selectedNodes.every((node) => !!managedKind(node.data.stencil));
   return (
     <>
       <Section title={plural(ids.length, "node", "nodes")}>
@@ -1967,7 +1979,7 @@ function BulkSwatches<T extends string>({
   );
 }
 
-function DiagramPanel({ editor, meta, counts }: InspectorProps) {
+function DiagramPanel({ editor, meta, counts, focus, takeFocus }: InspectorProps) {
   const [pickerAnchor, setPickerAnchor] = useState<{ rect: DOMRect; merge: string } | null>(null);
   const color = meta.color;
   const isCustomColor = !!color && !ANNOTATION_COLOR_IDS.includes(color as (typeof ANNOTATION_COLOR_IDS)[number]);
@@ -1975,7 +1987,13 @@ function DiagramPanel({ editor, meta, counts }: InspectorProps) {
 
   return (
     <>
-      <PlanningUpgrade editor={editor} planning={meta.planning} />
+      <PlanningUpgrade
+        editor={editor}
+        planning={meta.planning}
+        key={focus?.seq ?? "default"}
+        initialPreview={focus?.name === "autoscaling-upgrade-preview"}
+        takePreviewFocus={focus ? () => takeFocus?.(focus.seq) ?? true : undefined}
+      />
       <Section>
         <Field label="Title">
           <input
@@ -2668,5 +2686,27 @@ function PropsEditor({
         </button>
       </div>
     </div>
+  );
+}
+
+function AutoscalingWorkload({
+  enabled,
+  props,
+  set,
+  children,
+  stencil,
+}: {
+  stencil: string;
+  enabled: boolean;
+  props: Record<string, unknown>;
+  set: (patch: Partial<NodeSimProps>, key?: string) => void;
+  children: ReactNode;
+}) {
+  return enabled ? (
+    <AutoscalingFields stencil={stencil} props={props} set={set}>
+      {children}
+    </AutoscalingFields>
+  ) : (
+    children
   );
 }

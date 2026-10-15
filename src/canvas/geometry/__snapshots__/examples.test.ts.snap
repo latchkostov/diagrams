@@ -179,6 +179,50 @@ exports[`public examples route cleanly (estimated card sizes) > aks-app-config-k
 ]
 `;
 
+exports[`public examples route cleanly (estimated card sizes) > autoscaling-image-workers.json 1`] = `
+[
+  {
+    "id": "publish",
+    "points": [
+      {
+        "x": 300,
+        "y": 216,
+      },
+      {
+        "x": 420,
+        "y": 216,
+      },
+    ],
+  },
+  {
+    "id": "consume",
+    "points": [
+      {
+        "x": 640,
+        "y": 216,
+      },
+      {
+        "x": 780,
+        "y": 216,
+      },
+    ],
+  },
+  {
+    "id": "save",
+    "points": [
+      {
+        "x": 1000,
+        "y": 216,
+      },
+      {
+        "x": 1140,
+        "y": 216,
+      },
+    ],
+  },
+]
+`;
+
 exports[`public examples route cleanly (estimated card sizes) > aws-fanout.json 1`] = `
 [
   {

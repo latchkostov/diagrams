@@ -103,7 +103,7 @@ export function sizingFix(
   const changes: SizingChange[] = [];
   const devices = new Set<string>();
   for (const n of nodes) {
-    if (n.managed) continue;
+    if (n.managed || planProps(byId.get(n.id)!, sim, d).autoscaling?.mode === "on") continue;
     if (n.device && Number.isFinite(n.utilization) && n.utilization >= FIX_ABOVE && n.capacity) {
       const sized = deviceSizing(byId.get(n.id)!, sim, n, d, target);
       if (sized) {

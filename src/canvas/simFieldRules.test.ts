@@ -92,3 +92,12 @@ it.each(["openai", "anthropic.claude", "aws.lambda"])(
     expect(nodeSimFields("processor", stencil, { revision: "p2" })).toContain("replicas");
   },
 );
+
+it("HPA ownership excludes replicas for single and mixed bulk selections", () => {
+  const fields = (props: Record<string, unknown>) =>
+    nodeSimFields("processor", "service.dotnet", { revision: "p3-a1" }, props);
+  expect(fields({ autoscaling: { mode: "on" } })).not.toContain("replicas");
+  expect(fields({ autoscaling: { mode: "off" } })).toContain("replicas");
+  const selection = [fields({}), fields({ autoscaling: { mode: "on" } })];
+  expect(selection[0].filter((key) => selection.every((keys) => keys.includes(key)))).not.toContain("replicas");
+});

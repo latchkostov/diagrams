@@ -1,0 +1,10 @@
+---
+title: startup-backlog
+---
+flowchart LR
+  source(["Upload clients"])
+  uploads["Image uploads<br/>6 partitions"]
+  worker["Thumbnail workers"]
+  source -.-> uploads
+  uploads -.-> worker
+  linkStyle 0,1 stroke-dasharray: 6 4

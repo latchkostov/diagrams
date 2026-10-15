@@ -1,3 +1,4 @@
+import { ResourceEstimate } from "./ResourceDetails";
 import { assignmentLabel } from "../stencils/brokerVocabulary";
 import { useLayoutEffect, useRef } from "react";
 import { t, useLocale } from "../i18n";
@@ -69,23 +70,26 @@ export function ExplanationView({
             ? x.role !== "queue"
               ? t("planning.noReader", { name, rate: rate(x.offered) })
               : t("planning.noQueueReader", { name, rate: rate(x.offered) })
-            : x.managed
-              ? Number.isFinite(x.capacity)
-                ? t("admission.summary", { name, capacity: rate(x.capacity), offered: rate(x.offered) })
-                : t("admission.unknown")
-              : !Number.isFinite(x.capacity)
-                ? t("planning.instant", { name, offered: rate(x.offered) })
-                : Number.isFinite(x.slots)
-                  ? t("planning.summary", {
-                      name,
-                      capacity: rate(x.capacity),
-                      offered: rate(x.offered),
-                      replicas: x.activeReplicas,
-                      slots: x.slots,
-                      seconds: formatProcessingSeconds(x.seconds),
-                    })
-                  : t("planning.deviceSummary", { name, capacity: rate(x.capacity), offered: rate(x.offered) })}
+            : x.resources
+              ? t("admission.summary", { name, capacity: rate(x.capacity), offered: rate(x.offered) })
+              : x.managed
+                ? Number.isFinite(x.capacity)
+                  ? t("admission.summary", { name, capacity: rate(x.capacity), offered: rate(x.offered) })
+                  : t("admission.unknown")
+                : !Number.isFinite(x.capacity)
+                  ? t("planning.instant", { name, offered: rate(x.offered) })
+                  : Number.isFinite(x.slots)
+                    ? t("planning.summary", {
+                        name,
+                        capacity: rate(x.capacity),
+                        offered: rate(x.offered),
+                        replicas: x.activeReplicas,
+                        slots: x.slots,
+                        seconds: formatProcessingSeconds(x.seconds),
+                      })
+                    : t("planning.deviceSummary", { name, capacity: rate(x.capacity), offered: rate(x.offered) })}
       </p>
+      {x.resources && <ResourceEstimate plan={x.resources} />}
       {x.assignments.length > 0 && (
         <p data-testid="broker-assignment">
           {t("broker.assigned", { active: x.activeReplicas, configured: x.replicas })} ·{" "}
@@ -105,7 +109,7 @@ export function ExplanationView({
             : t("planning.growth", { rate: rate(x.growth) })}
         </p>
       )}
-      {x.reason !== "no-reader" && (
+      {x.reason !== "no-reader" && !x.resources && (
         <p data-testid="planning-target">
           {t("planning.target", { target: formatPercent(x.target) })}
           {sizing && <> {sizing}</>}

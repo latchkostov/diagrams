@@ -1,4 +1,5 @@
 import type { ApiBehaviour } from "../src/model/admission";
+import type { AutoscalingConfig } from "../src/model/autoscaling";
 import type { DiagramFile } from "../src/model/types";
 
 /** Metadata only: never modifies the diagram, simulation or exported content. */
@@ -13,5 +14,9 @@ export function exampleShows(d: DiagramFile): string[] {
       ? ["rateLimits"]
       : []),
     ...(d.nodes.some((n) => /^(cisco|juniper|paloalto|arista|f5)\./.test(n.stencil)) ? ["networkDevices"] : []),
+    ...(d.planning?.revision === "p3-a1" &&
+    d.nodes.some((n) => n.props?.resources && (n.props.autoscaling as AutoscalingConfig | undefined)?.mode === "on")
+      ? ["autoscaling"]
+      : []),
   ];
 }

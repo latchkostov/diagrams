@@ -1,3 +1,5 @@
+import { resourceLesson, hpaLesson } from "./autoscaling";
+import { parseNative } from "../interop/native";
 import { describe, expect, it } from "vitest";
 import { checkJsonSchema, type JsonSchema } from "./jsonSchema";
 import { diagramV1Schema, diagramV2Schema } from "./diagramSchema";
@@ -35,7 +37,9 @@ const check = (value: unknown, def?: string) =>
     value,
     def ? defs[def] : (value as DiagramFile).format === "diagrams/v2" ? planningSchema : schema,
     def ?? "file",
-    defs,
+    !def && (value as DiagramFile).format === "diagrams/v2"
+      ? (planningSchema.$defs as Record<string, JsonSchema>)
+      : defs,
   );
 
 const node: Required<DiagramNode> = {
@@ -200,3 +204,44 @@ describe("diagram.v1 schema", () => {
     expect(() => check(example)).not.toThrow();
   });
 });
+
+it.each([undefined, "p1", "p2", "p3", "p3-a1"] as const)(
+  "persisted resource schema agrees with native reader for %s",
+  (revision) => {
+    for (const props of [{ resources: resourceLesson() }, { autoscaling: hpaLesson() }]) {
+      for (const where of ["node", "setup", "timeline"]) {
+        const d: DiagramFile = {
+          format: revision ? "diagrams/v2" : "diagrams/v1",
+          ...(revision ? { planning: { revision } } : {}),
+          title: "Contract",
+          nodes: [
+            {
+              id: "worker",
+              stencil: "service.dotnet",
+              label: "Worker",
+              x: 0,
+              y: 0,
+              ...(where === "node" ? { props } : {}),
+            },
+          ],
+          edges: [],
+          simulations: [
+            {
+              id: "sim",
+              title: "Contract",
+              traffic: [],
+              ...(where === "setup" ? { setup: { props: { worker: props } } } : {}),
+              ...(where === "timeline"
+                ? { timeline: [{ atMs: 0, action: { do: "props", node: "worker", props } }] }
+                : {}),
+            },
+          ],
+        };
+        const accepted = revision === "p3-a1";
+        if (accepted) expect(() => check(d)).not.toThrow();
+        else expect(() => check(d)).toThrow();
+        expect(parseNative(JSON.stringify(d)).ok).toBe(accepted);
+      }
+    }
+  },
+);

@@ -173,6 +173,15 @@
       "type": "object",
       "additionalProperties": true,
       "properties": {
+        "resources": {
+          "enum": []
+        },
+        "autoscaling": {
+          "enum": []
+        },
+        "resumeAutoscaling": {
+          "type": "boolean"
+        },
         "api": {
           "type": "object",
           "additionalProperties": false,

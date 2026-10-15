@@ -1,0 +1,19 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Image workers absorb a burst",
+    "direction": "LR",
+    "nodes": [
+      { "id": "source", "stencil": "generic.service", "label": "Upload clients", "x": 40, "y": 40 },
+      { "id": "uploads", "stencil": "generic.service", "label": "Image uploads", "sublabel": "6 partitions", "x": 400, "y": 40 },
+      { "id": "worker", "stencil": "generic.service", "label": "Thumbnail workers", "x": 760, "y": 40 },
+      { "id": "images", "stencil": "generic.database", "label": "Thumbnails", "x": 1120, "y": 40 }
+    ],
+    "edges": [
+      { "id": "e1-source-uploads", "from": "source", "to": "uploads", "kind": "async" },
+      { "id": "e2-uploads-worker", "from": "uploads", "to": "worker", "kind": "async" },
+      { "id": "e3-worker-images", "from": "worker", "to": "images", "kind": "async" }
+    ]
+  }
+}

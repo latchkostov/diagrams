@@ -744,3 +744,64 @@ badges, scale, capacity and recordings never see it.
 P3 admission also accepts measured rates below one request per second: the local bucket can accumulate one request of credit. Live quota edits refill existing credit on simulation time before applying the new cap, without granting a fresh burst. Malformed admission data refuses requests instead of corrupting the simulation clock.
 
 P3 review corrections: outage termination releases concurrency reservations; existing retained consumer retries charge a new attempt budget after backoff. These are consumer attempts, not item 10 caller retries. Live quota changes take effect at their edit time. Capacity uses targeted endpoint duration, skips zero-demand calls, and treats conflicting shared definitions as unusable. Upgrading an earlier diagram selects measured behaviour rather than introducing vendor quotas; selecting a vendor preset is a separate action.
+
+## A1: resource execution and Kubernetes HPA (`p3-a1`)
+
+A1 is an explicit model revision. New diagrams select it; existing diagrams offer a preview and an undoable
+upgrade that materializes their existing workload. Upgrading never adds resource costs or a scaling policy.
+Absent resources, the preceding simulation path, sampling and results remain unchanged. Native files, agent
+operations, setup/timeline replacements, clipboard v2 and Interactive HTML preserve the new settings.
+
+`resources` pins a workload lesson and revision, CPU-ms per real attempt, baseline plus per-in-flight MiB,
+CPU/memory requests and limits, startup delay/jitter and termination grace. Requests are denominators, not
+throttles. CPU execution intersects slot/latency capacity with the CPU limit (or explicit available-CPU
+assumption); an absent CPU ceiling is unbounded, not an inferred request. Waiting and network travel consume
+no service CPU. Retry attempts consume new CPU after backoff. Memory above its limit marks an unsafe run;
+OOM, restart, GC, caches, queued payloads, sidecars and initialization CPU are not simulated.
+
+For resource-enabled runs, a 10 ms boundary advances due readiness and previous work, integrates resource
+windows, evaluates controllers in stable node order, reconciles the changed fleets and refreshes affected
+P2 assignments, then injects/delivers/pulls new work. Authored timeline actions precede these boundaries.
+CPU budgets last one quantum; unused CPU cannot accumulate. All controller state, weighted work, resource
+integrals, cohorts, stable IDs and deadlines are checkpointed on simulation time. Pause freezes a node and
+resume schedules one future sync, without replaying missed polls.
+
+The HPA lesson explicitly assumes CPU 70%, min/initial 1, max 10, warm initial replicas, 5 s startup and a
+15 s CPU window. Published defaults are sync 15 s, tolerance 10%, scale-up stabilization 0 with the larger
+of +4 pods or +100% per rolling 15 s, scale-down stabilization 300 s with up to 100% per 15 s, and termination
+grace 30 s. Readiness/initialization flags retain their documented 30/300 s defaults; startup CPU spikes are
+excluded, not fabricated. These flags are not mandatory waits after a replica becomes ready. Source:
+[Kubernetes HPA](https://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/).
+
+The controller takes the largest CPU/memory Resource recommendation, or a ContainerResource bound to the
+one explicitly named modelled container. Targets are percent of requests or absolute millicores/MiB.
+Missing/unready samples inhibit shrink; valid metrics can still grow. Recommendations use rolling
+stabilization history and actual changes within rolling rate-policy periods, then min/max clamping.
+An authored `replicas` action suspends the controller until `resumeAutoscaling: true`. Capacity × scales
+initial/min/max once; Save pins that effective range. It does not multiply CPU costs or targets.
+
+Increasing desired count creates starting replicas with no slots until their seeded readiness deadline.
+Scale-down removes empty IDs first, then drains occupied IDs in descending order. Draining replicas accept
+no new work, retain CPU and memory until work completes, and use existing failure/redelivery rules once
+at grace expiry. An increase starts replacements instead of reviving terminating IDs. Log partitions stay
+reserved during drain; surplus ready readers remain idle and still contribute baseline memory and idle CPU.
+P3 native managed/serverless allocation remains the sole owner on those profiles: HPA is unavailable there.
+
+Idle/starting replicas use counted ranges; exact busy identities expand only at sampling scale 1. Sampled
+attempts distribute their real CPU work across eligible homogeneous ranges and retain occupied ranges during
+drain. Per-replica sampled values are labelled estimates. Memory uses time-integrated occupancy credits,
+rather than placing a giant dot on one replica. History is bounded to 600 points, metrics to 600 one-second
+buckets, and the selected inspector requests at most 50 replica rows. Idle ticks do not visit every replica.
+Metric window plus delivery delay must fit the 600,000 ms history budget. Jittered ready ranges compact
+without merging active sampled CPU boundaries. Frames reuse detached, frozen history between publications.
+The native reader and engine preflight reject configurations whose worst authored fleet ranges exceed
+100,000 total lifecycle replicas (including scenario Capacity × and the free-play slider's range); each
+effective fleet remains capped at 10,000. Budget failures reject the run rather than simulating a partial fleet.
+
+Checks and configured analysis share CPU-limited capacity and resource feasibility arithmetic with the
+inspector. Estimates distinguish initial and maximum capacity before partitions/quotas and show required
+replicas, maximum reached, baseline-memory targets that cannot be fixed with replicas, and peak-memory risk.
+Live capacity follows ready replicas; playback explains its observed metric, raw recommendation, bounded
+desired count, reason and next sync. These steady-state estimates are not verified burst guarantees.
+KEDA/zero activation, external metrics, multi-container accounting and provider adapters remain A2; scenario
+cloud sizing and verified automatic policy edits remain A3.

@@ -112,6 +112,9 @@ Every setting is optional, and live view works without any. Node `props`:
 
 <!-- BEGIN GENERATED node-props -->
 
+- `resources` (object): A1 measured/assumed CPU-ms per real attempt, CPU request/limit in millicores, memory in MiB, startup/grace; optional single container name; atomic replacement. Effective fleet <=10000 and authored document lifecycle budget <=100000. Requires planning revision p3-a1.
+- `autoscaling` (string or map): A1 node-owned Kubernetes HPA resource controller; min/max/initial, metrics, tolerance and rolling behaviour; metric window plus delay <=600000 ms. Native serverless allocation remains P3-owned. Atomic replacement.
+- `resumeAutoscaling` (boolean): repeatable command: true resumes HPA after an authored replicas patch enters fixed override; not retained in engine state
 - `api` (object): P3 admission: typed token buckets, concurrent calls, scoped account sharing, duration/errors and per-request token/cost sizes. Unknown budgets stay unknown. Every applicable bucket is charged atomically in real units.
 - `endpoints` (string[]): P3 admission enforcement for optional endpoint records (id, method, path, behaviour). Endpoint budgets add to node/account budgets; authoring UI is deferred to P6.
 - `scaling` ("fixed" | "auto"): serverless fixed slots or auto within maxConcurrency; auto explicitly assumes instant scaling and excludes cold starts
