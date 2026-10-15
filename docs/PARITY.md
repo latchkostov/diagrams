@@ -13,8 +13,8 @@ pnpm parity:update     # re-record the goldens and print what changed (refused o
 pnpm parity sim checks # only parity files whose path contains "sim" or "checks", in the tiers that have one
 ```
 
-A filtered run skips the stale-golden check. The browser tier needs Docker running (see "Browser tier"). Without it, `pnpm parity:node` still checks everything
-that doesn't need a browser.
+A filtered run skips the stale-golden check. The browser tier needs Docker running (see "Browser tier").
+Without it, `pnpm parity:node` still checks everything that doesn't need a browser.
 
 ## What's pinned
 
