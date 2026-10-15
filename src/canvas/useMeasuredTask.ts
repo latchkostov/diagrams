@@ -13,7 +13,7 @@ export function useMeasuredTask(root: RefObject<HTMLElement | null>, nodes: Flow
   const [gate] = useState(() => measuredGate(store));
   useLayoutEffect(() => gate.commit(root.current, nodes, edges));
   useEffect(() => gate.connect(), [gate]);
-  return gate.request;
+  return gate;
 }
 
 function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>) {
@@ -21,6 +21,8 @@ function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlow
   let current = { nodes: [] as FlowNode[], edges: [] as DiagramFlowEdge[] };
   const observed = new Map<Element, string>();
   let observer: ResizeObserver | undefined;
+  let mutations: MutationObserver | undefined;
+  let isPending = false;
   let fontsReady = false;
   const animations = new WeakSet<Animation>();
   const size = (el: HTMLElement) => `${el.offsetWidth}:${el.offsetHeight}`;
@@ -73,6 +75,9 @@ function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlow
       const boxes = [];
       for (const n of current.nodes) {
         if (n.hidden) continue;
+        // Native files allow a boundary with an empty axis. React Flow does not initialise
+        // its measurement; it has no area to fit. Its members still have to be measured.
+        if (n.type === "boundary" && (n.width === 0 || n.height === 0)) continue;
         const internal = s.nodeLookup.get(n.id);
         const dom = nodeElements.get(n.id);
         if (
@@ -103,9 +108,31 @@ function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlow
       return () => cancelAnimationFrame(id);
     },
     (pending) => {
+      isPending = pending;
+      if (pending && root) mutations?.observe(root, { subtree: true, childList: true, attributes: true });
+      else mutations?.disconnect();
       if (root) root.dataset.fitPending = String(pending);
     },
   );
+  const request = (run: () => unknown, ordered: boolean) => {
+    fontsReady = false;
+    const schedule = ordered ? queue.enqueue : queue.request;
+    schedule(() => {
+      // Commit this task's React updates before the next task can sample.
+      // This runs in our frame callback, never during a React effect/render.
+      let result: unknown;
+      flushSync(() => {
+        result = run();
+      });
+      return result;
+    });
+    const loaded = () => {
+      fontsReady = true;
+      queue.wake();
+    };
+    // Failed web fonts have final fallback metrics too; parity still requires loaded fonts.
+    if (root) void readyFonts(root).then(loaded, loaded);
+  };
   return {
     ...queue,
     commit(el: HTMLElement | null, nodes: FlowNode[], edges: DiagramFlowEdge[]) {
@@ -118,8 +145,8 @@ function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlow
         for (const entry of entries) observed.set(entry.target, size(entry.target as HTMLElement));
         queue.wake();
       });
-      const mutations = new MutationObserver(queue.wake);
-      if (root) mutations.observe(root, { subtree: true, childList: true, attributes: true });
+      mutations = new MutationObserver(queue.wake);
+      if (isPending && root) mutations.observe(root, { subtree: true, childList: true, attributes: true });
       document.fonts.addEventListener("loadingdone", queue.wake);
       document.fonts.addEventListener("loadingerror", queue.wake);
       const unsubscribe = store.subscribe(queue.wake);
@@ -129,31 +156,18 @@ function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlow
         observer?.disconnect();
         observer = undefined;
         observed.clear();
-        mutations.disconnect();
+        mutations?.disconnect();
+        mutations = undefined;
         document.fonts.removeEventListener("loadingdone", queue.wake);
         document.fonts.removeEventListener("loadingerror", queue.wake);
         unsubscribe();
       };
     },
     request(run: () => unknown) {
-      fontsReady = false;
-      queue.request(() => {
-        // The next measured task may be the fit queued by Auto-layout or by the reset
-        // row's update. Commit this task's React updates before that task can sample.
-        // This runs in our frame callback, never during a React effect/render.
-        let result: unknown;
-        flushSync(() => {
-          result = run();
-        });
-        return result;
-      });
-      const loaded = () => {
-        fontsReady = true;
-        queue.wake();
-      };
-      // A failed web font has final fallback metrics too. The parity reader remains strict
-      // about loading fonts, but a person with a failed download must still get a fitted view.
-      if (root) void readyFonts(root).then(loaded, loaded);
+      request(run, false);
+    },
+    enqueue(run: () => unknown) {
+      request(run, true);
     },
   };
 }

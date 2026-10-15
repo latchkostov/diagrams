@@ -215,6 +215,9 @@ goldens match, with the eight previously documented browser deferrals.
 - Opening and Auto-layout fit the rendered, measured result after fonts and floating chrome settle. Boundaries use
   measured card sizes; the title card keeps an up-to-date expanded footprint while folded. Competing opening fits
   and guessed fit delays are removed.
+- Auto-layout commands run in order and survive later fit requests. Checks refits after its lazy card mounts;
+  zero-sized imported boundaries no longer block fits or Auto-layout. The canvas observes subtree mutations only
+  while measured work is pending, leaving idle drags and live decorations free of that observer.
 - Browser parity waits for fonts, measured nodes, pending fits and stable geometry; changing badge text cannot
   prevent convergence. CPU-throttle and parallel-worker stress options are documented in `docs/PARITY.md`.
 - Refreshed the Claude Code viewer with the same fit behavior; the plugin is 1.1.20.

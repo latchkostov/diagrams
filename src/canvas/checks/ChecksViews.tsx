@@ -44,7 +44,17 @@ export function DiagramCardMeta({ store, reset, open }: { store: ChecksStore; re
   );
 }
 
-export function ChecksCardView({ store, host, top }: { store: ChecksStore; host: ChecksHost; top: number }) {
+export function ChecksCardView({
+  store,
+  host,
+  top,
+  onMount,
+}: {
+  store: ChecksStore;
+  host: ChecksHost;
+  top: number;
+  onMount(): void;
+}) {
   const state = useChecksState(store);
   return (
     <ChecksCard
@@ -53,6 +63,7 @@ export function ChecksCardView({ store, host, top }: { store: ChecksStore; host:
       result={state.result}
       state={state}
       top={top}
+      onMount={onMount}
       onClose={() => checksPanel.close()}
       simulations={{ view: state.evidence, run: store.runSimulations, stop: store.stopSimulations }}
     />

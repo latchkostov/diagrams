@@ -93,3 +93,55 @@ it("replaces stale requests and cancels work on unmount", () => {
   expect(stale).not.toHaveBeenCalled();
   expect(t.frames.size).toBe(0);
 });
+
+it("preserves ordered document commands across coalesced fits and nested requests", async () => {
+  const t = setup();
+  const ran: string[] = [];
+  const stale = vi.fn();
+  t.queue.enqueue(() => {
+    ran.push("layout one");
+    t.queue.request(stale);
+    t.queue.enqueue(() => {
+      ran.push("nested command");
+      t.queue.request(() => ran.push("final fit"));
+    });
+  });
+  t.queue.request(stale);
+  t.queue.enqueue(() => ran.push("layout two"));
+  t.queue.request(() => ran.push("superseded fit"));
+  t.measure("ready");
+  for (let i = 0; i < 4; i++) {
+    t.frame();
+    t.frame();
+    if (i < 3) expect(t.pending).not.toHaveBeenLastCalledWith(false);
+    await Promise.resolve();
+  }
+  expect(ran).toEqual(["layout one", "layout two", "nested command", "final fit"]);
+  expect(stale).not.toHaveBeenCalled();
+  expect(t.pending).toHaveBeenLastCalledWith(false);
+  t.queue.enqueue(stale);
+  t.queue.dispose();
+  t.frame();
+  expect(stale).not.toHaveBeenCalled();
+});
+
+it("runs document commands and their final fit even if an interrupted viewport animation never resolves", async () => {
+  const t = setup();
+  t.queue.request(() => new Promise(() => {}));
+  t.measure("ready");
+  t.frame();
+  t.frame();
+  const layout = vi.fn(() => t.queue.request(fit));
+  const fit = vi.fn();
+  t.queue.enqueue(layout);
+  t.frame();
+  t.frame();
+  await Promise.resolve();
+  expect(layout).toHaveBeenCalledOnce();
+  expect(t.pending).not.toHaveBeenLastCalledWith(false);
+  t.frame();
+  t.frame();
+  await Promise.resolve();
+  expect(fit).toHaveBeenCalledOnce();
+  expect(t.pending).toHaveBeenLastCalledWith(false);
+});

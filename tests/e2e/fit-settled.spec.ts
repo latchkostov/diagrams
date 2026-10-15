@@ -1,5 +1,19 @@
 import { test, expect } from "./fixtures";
 import { command, readCanvas, settledCanvas } from "../parity/browser/canvas";
+import type { Drawn } from "../parity/browser/canvas";
+import layout from "../parity/goldens/browser/layout/aws-fanout.json" with { type: "json" };
+import example from "../../src/examples/aws-fanout.json" with { type: "json" };
+
+// Pin the mutation itself before comparing fits: two identical drawings could both be
+// the original, unlaid-out document. Positions are platform-independent; card fonts aren't.
+function expectLaidOut(drawn: Drawn) {
+  for (const [id, node] of Object.entries(layout.autoLayout.nodes)) {
+    const position = node.box.slice(0, node.box.indexOf(")") + 1);
+    const actual = (drawn.nodes[id] as { box: string }).box;
+    expect(actual.slice(0, actual.indexOf(")") + 1)).toBe(position);
+  }
+  expect((drawn.nodes["group:aws"] as { box: string }).box).toBe("translate(0px, -24px) 2726×536");
+}
 
 // Hold real ResizeObserver deliveries until the test releases them. Unlike a slow CPU,
 // this guarantees that timers can run before React Flow and the floating chrome measure.
@@ -97,11 +111,12 @@ test("Auto-layout commits before fitting even when React's deferred work is held
   await page.evaluate(() => window.dispatchEvent(new Event("release-react-work")));
   await page.clock.resume();
   const before = await settledCanvas(page);
+  expectLaidOut(before);
   await page.getByTestId("fit-view-button").click();
   expect(await settledCanvas(page)).toEqual(before);
 });
 
-for (const scenario of ["opening", "early Auto-layout", "Auto-layout chrome"]) {
+for (const scenario of ["opening", "early Auto-layout", "Auto-layout chrome", "Auto-layout then Fit view"]) {
   test(`fit waits for measurements: ${scenario}`, async ({ page }) => {
     const autoLayout = scenario !== "opening";
     await page.addInitScript(holdResizeObservers, scenario !== "Auto-layout chrome");
@@ -120,6 +135,7 @@ for (const scenario of ["opening", "early Auto-layout", "Auto-layout chrome"]) {
       });
     await page.clock.install();
     if (autoLayout) await command(page, "Auto-layout", "canvas.auto-layout");
+    if (scenario === "Auto-layout then Fit view") await page.getByTestId("fit-view-button").click();
     // Advance a fake clock past the old fit/autosave timers while measurements are held.
     await page.clock.runFor(1000);
     if (!autoLayout) {
@@ -132,9 +148,155 @@ for (const scenario of ["opening", "early Auto-layout", "Auto-layout chrome"]) {
     await page.evaluate(() => window.dispatchEvent(new Event("release-resize-observers")));
     await page.clock.resume();
     const before = await settledCanvas(page);
-    if (autoLayout) expect((before.nodes["group:aws"] as { box: string }).box).toContain("2726×");
+    if (autoLayout) expectLaidOut(before);
     await page.getByTestId("fit-view-button").click();
     const after = await settledCanvas(page);
     expect(after).toEqual(before);
+  });
+}
+
+test("opening Checks refits after its delayed UI chunk mounts", async ({ page }) => {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let requested = false;
+  await page.route(/\/assets\/ChecksCard-[\w-]+\.js$/, async (route) => {
+    requested = true;
+    await held;
+    await route.continue();
+  });
+  await page.goto("./?view=canvas&example=aws-fanout");
+  await settledCanvas(page);
+  await command(page, "Check diagram", "canvas.check-diagram");
+  await expect.poll(() => requested).toBe(true);
+  await expect(page.getByTestId("checks-card")).toHaveCount(0);
+  // Let the original open-triggered fit finish while the chunk is still held.
+  await settledCanvas(page);
+  release();
+  const card = page.getByTestId("checks-card");
+  await expect(card).toBeVisible();
+  await settledCanvas(page);
+  const covered = await card.evaluate((el) => {
+    const c = el.getBoundingClientRect();
+    return [...document.querySelectorAll<HTMLElement>('[data-testid^="node-"]')]
+      .filter((node) => {
+        const n = node.getBoundingClientRect();
+        return n.left < c.right && n.right > c.left && n.top < c.bottom && n.bottom > c.top;
+      })
+      .map((node) => node.dataset.testid);
+  });
+  expect(covered).toEqual([]);
+});
+
+test("the canvas mutation observer disconnects when idle and reconnects for nested fits", async ({ page }) => {
+  await page.addInitScript(() => {
+    const stats = { callbacks: 0, records: 0, observes: 0, active: 0 };
+    Object.assign(window, { canvasMutations: stats });
+    const watched = new WeakSet<MutationObserver>();
+    const connected = new WeakSet<MutationObserver>();
+    const Native = window.MutationObserver;
+    window.MutationObserver = class extends Native {
+      constructor(callback: MutationCallback) {
+        super((records, observer) => {
+          if (watched.has(observer)) {
+            stats.callbacks++;
+            stats.records += records.length;
+          }
+          callback(records, observer);
+        });
+      }
+      observe(target: Node, options?: MutationObserverInit) {
+        if (
+          target instanceof HTMLElement &&
+          target.dataset.testid === "canvas-wrap" &&
+          options?.subtree &&
+          options.attributes &&
+          options.childList
+        ) {
+          watched.add(this);
+          stats.observes++;
+          if (!connected.has(this)) stats.active++;
+          connected.add(this);
+        }
+        super.observe(target, options);
+      }
+      disconnect() {
+        if (connected.delete(this)) stats.active--;
+        super.disconnect();
+      }
+    };
+  });
+  const stats = () =>
+    page.evaluate(
+      () =>
+        (
+          window as Window & {
+            canvasMutations: { callbacks: number; records: number; observes: number; active: number };
+          }
+        ).canvasMutations,
+    );
+  await page.goto("./?view=canvas&example=aws-fanout");
+  await settledCanvas(page);
+  const opened = await stats();
+  expect(opened.observes).toBeGreaterThan(0);
+  await command(page, "Auto-layout", "canvas.auto-layout");
+  expectLaidOut(await settledCanvas(page));
+  await page.getByTestId("fit-view-button").click();
+  await settledCanvas(page);
+  const before = await stats();
+  const client = page.getByTestId("rf__node-client");
+  const position = await client.evaluate((el) => el.style.transform);
+  const node = page.getByTestId("node-client");
+  const box = await node.boundingBox();
+  if (!box) throw new Error("Expected the client card to be visible");
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 80, box.y + box.height / 2 + 40, { steps: 20 });
+  await page.mouse.up();
+  await expect.poll(() => client.evaluate((el) => el.style.transform)).not.toBe(position);
+  // Count frames, not elapsed time; exercise attributes and child lists like live decorations.
+  await node.evaluate(async (el) => {
+    for (let i = 0; i < 20; i++) {
+      el.dataset.liveFrame = String(i);
+      const decoration = document.createElement("span");
+      el.append(decoration);
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      decoration.remove();
+    }
+  });
+  const after = await stats();
+  expect(after.callbacks).toBe(before.callbacks);
+  expect(after.records).toBe(before.records);
+  expect(after.active).toBe(0);
+  expect(after.observes).toBeGreaterThan(opened.observes);
+});
+
+for (const [width, height] of [
+  [0, 536],
+  [2726, 0],
+  [0, 0],
+]) {
+  test(`an imported ${width}×${height} boundary does not block opening, Fit view or Auto-layout`, async ({ page }) => {
+    await page.goto("./?view=canvas&example=aws-fanout");
+    await settledCanvas(page);
+    const title = "Empty boundary import";
+    await page.getByTestId("import-input").setInputFiles({
+      name: "empty-boundary.diagram.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(
+        JSON.stringify({ ...example, title, groups: example.groups.map((g) => ({ ...g, width, height })) }),
+      ),
+    });
+    await expect(page.getByTestId("diagram-title")).toHaveText(title);
+    const canvas = page.getByTestId("canvas-wrap");
+    await expect(canvas).toHaveAttribute("data-fit-pending", "false");
+    const before = await readCanvas(page);
+    expect((before.nodes["group:aws"] as { box: string }).box).toContain(`${width}×${height}`);
+    await page.getByTestId("fit-view-button").click();
+    await expect(canvas).toHaveAttribute("data-fit-pending", "false");
+    expect(await readCanvas(page)).toEqual(before);
+    await command(page, "Auto-layout", "canvas.auto-layout");
+    expectLaidOut(await settledCanvas(page));
   });
 }

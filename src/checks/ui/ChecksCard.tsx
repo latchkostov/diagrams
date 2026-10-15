@@ -20,6 +20,8 @@ export interface ChecksCardProps extends RowHost {
   /** Distance from the canvas's top: just under the diagram card. */
   top: number;
   onClose(): void;
+  /** The lazy card is in the DOM, ready for an overlay-aware fit. */
+  onMount?(): void;
   /** Run simulations: absent where it doesn't apply. */
   simulations?: Omit<SimulationsHost, "name" | "reveal">;
 }
@@ -77,6 +79,8 @@ function useMaxHeight(card: RefObject<HTMLElement | null>, top: number): number 
 const PAGE = 40;
 
 export function ChecksCard(p: ChecksCardProps) {
+  const onMount = useRef(p.onMount);
+  useEffect(() => onMount.current?.(), []);
   const [foot, setFoot] = useState<"ignored" | "off" | "about" | null>(null);
   const [shown, setShown] = useState(PAGE);
   const self = useRef<HTMLElement>(null);

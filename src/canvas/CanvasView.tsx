@@ -492,7 +492,7 @@ function CanvasInner({
 
   // Fit-view keeps content out from under the title card, minimap, controls and live bar.
   const fitView_ = useOverlayFit(wrapper, { style: edgeStyle, direction: meta.direction ?? "LR" });
-  const afterMeasured = useMeasuredTask(wrapper, nodes, edges);
+  const { request: afterMeasured, enqueue: afterMeasuredCommand } = useMeasuredTask(wrapper, nodes, edges);
   const firstFit = useRef(false);
   /** True while the view is a fit (the whole diagram in view), false once the user pans or zooms. */
   const showingAll = useRef(true);
@@ -566,7 +566,7 @@ function CanvasInner({
     pointer: () => (pointer.current ? screenToFlowPosition(pointer.current) : undefined),
     edgeMarks: () => edgeMarks(wrapper.current),
     fit,
-    afterMeasured,
+    afterMeasured: afterMeasuredCommand,
     nodeSize: getNodeVariant(nodeVariant).size,
     // Zoom to selection: never past 125% (no huge single node), clear of the panels.
     zoomTo: (only, onlyEdges) => fitView_({ only, onlyEdges, maxZoom: 1.25, margin: 64, duration: 300 }),
@@ -1873,11 +1873,10 @@ function CanvasInner({
   }, [panelsKey]);
   // The Checks card opened over a diagram that was all in view: refit it clear of the card (the card is floating
   // chrome, data-canvas-overlay), once the card has drawn. A view the user panned or zoomed stays put.
-  useEffect(() => {
-    if (!checksCard || !showingAll.current || live || presenting) return;
+  const checksMounted = () => {
+    if (!showingAll.current || live || presenting) return;
     overlayFit({ maxZoom: FIT.maxZoom, margin: 40, duration: 250 });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the card opens
-  }, [checksCard]);
+  };
   // The AI panel opened, closed or was resized by more than a little: the pane changed size at its
   // right edge. A fit is refitted to the new pane; a view the user panned or zoomed keeps the selection
   // (or, with none, the diagram's centre) in view with a pan.
@@ -2540,7 +2539,9 @@ function CanvasInner({
             )}
           </div>
 
-          {checksOn && checksCard && <ChecksCardView store={checks} host={checksHost} top={checksTop} />}
+          {checksOn && checksCard && (
+            <ChecksCardView store={checks} host={checksHost} top={checksTop} onMount={checksMounted} />
+          )}
 
           {presenting && (
             <div className="present-bar">

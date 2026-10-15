@@ -166,7 +166,7 @@ export interface EditorDeps {
   /** Small boxes along the drawn edges (flow coordinates), so new things are placed off them. */
   edgeMarks?: () => EdgeMark[];
   fit: () => void;
-  /** Run after the current canvas commit and its measurements, before arranging measured cards. */
+  /** Queue a document command in order after the current canvas commit and its measurements. */
   afterMeasured?: (run: () => void) => void;
   /** Nominal node size for the current renderer (before React Flow has measured). */
   nodeSize: { width: number; height: number };
