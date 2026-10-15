@@ -74,6 +74,13 @@ INVALID <repo>/tests/parity/corpus/odd-nodes.diagram.json: 1 error
   warning: nodes[3] "long-sub": the sublabel is 97 characters; about 56 fit on two lines.
   warning: nodes[5] "empty-label": the label is empty.
   warning: Node "long-sub" (topic) has no consumer, so messages pile up there in live view.
+VALID <repo>/tests/parity/corpus/p3-api-gateway.diagram.json: 2 nodes, 1 edge
+VALID <repo>/tests/parity/corpus/p3-external-api.diagram.json: 2 nodes, 1 edge
+VALID <repo>/tests/parity/corpus/p3-lambda.diagram.json: 2 nodes, 1 edge
+VALID <repo>/tests/parity/corpus/p3-openai-shared.diagram.json: 3 nodes, 1 edge
+VALID <repo>/tests/parity/corpus/p3-openai.diagram.json: 2 nodes, 1 edge
+VALID <repo>/tests/parity/corpus/p3-shared-quota.diagram.json: 4 nodes, 2 edges, 3 simulations
+VALID <repo>/tests/parity/corpus/p3-stripe.diagram.json: 2 nodes, 1 edge, 1 simulation
 VALID <repo>/tests/parity/corpus/planning-connections.diagram.json: 6 nodes, 6 edges
   warning: Node "queue" (queue) has no consumer, so messages pile up there in live view.
 VALID <repo>/tests/parity/corpus/planning-many-groups.diagram.json: 26 nodes, 25 edges

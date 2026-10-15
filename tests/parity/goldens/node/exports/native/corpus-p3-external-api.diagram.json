@@ -1,0 +1,67 @@
+{
+  "format": "diagrams/v2",
+  "planning": {
+    "revision": "p3"
+  },
+  "title": "Managed admission",
+  "nodes": [
+    {
+      "id": "source",
+      "stencil": "client.browser",
+      "label": "Checkout",
+      "x": 0,
+      "y": 130,
+      "props": {
+        "ratePerSec": 20
+      }
+    },
+    {
+      "id": "api",
+      "stencil": "generic.external-api",
+      "label": "generic.external-api",
+      "x": 330,
+      "y": 130,
+      "props": {
+        "preset": "managed-measured",
+        "presetRevision": "2026-10-14",
+        "latencyMs": 1000,
+        "failureRate": 0,
+        "jitter": 0,
+        "api": {
+          "maxInFlight": 2,
+          "quotas": [
+            {
+              "id": "local-rate",
+              "unit": "requests",
+              "amount": 10,
+              "windowMs": 1000,
+              "algorithm": "token-bucket"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "call",
+      "from": "source",
+      "to": "api",
+      "kind": "sync",
+      "props": {
+        "travelMs": 0,
+        "caller": {
+          "deadlineMs": 1,
+          "retry": {
+            "maxAttempts": 3,
+            "strategy": "exponential",
+            "backoffMs": 100,
+            "retryOn": [
+              "throttled"
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

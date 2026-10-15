@@ -1,6 +1,6 @@
 {
   "format": "diagrams/v2",
-  "planning": { "revision": "p2" },
+  "planning": { "revision": "p3" },
   "nodeProps": {
     "users": { "ratePerSec": 20, "messageType": "Checkout", "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "healthChecks": false },
     "r53": { "latencyMs": 1, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Route 53", "healthChecks": false },
@@ -95,7 +95,7 @@
     "redundancy": {},
     "resolved": {
       "users": {
-        "profile": { "family": "client", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 20,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -110,7 +110,7 @@
         "healthChecks": false
       },
       "r53": {
-        "profile": { "family": "dns", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "dns", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -125,7 +125,7 @@
         "healthChecks": false
       },
       "alb-us": {
-        "profile": { "family": "proxy", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "proxy", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -140,7 +140,7 @@
         "healthChecks": false
       },
       "api-us": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 120,
         "concurrency": 32,
@@ -156,7 +156,7 @@
         "healthChecks": false
       },
       "table-us": {
-        "profile": { "family": "nosql", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "nosql", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -171,7 +171,7 @@
         "healthChecks": false
       },
       "alb-eu": {
-        "profile": { "family": "proxy", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "proxy", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -186,7 +186,7 @@
         "healthChecks": false
       },
       "api-eu": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 120,
         "concurrency": 32,
@@ -202,7 +202,7 @@
         "healthChecks": false
       },
       "table-eu": {
-        "profile": { "family": "nosql", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "nosql", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",

@@ -1,6 +1,6 @@
 {
   "format": "diagrams/v2",
-  "planning": { "revision": "p2" },
+  "planning": { "revision": "p3" },
   "nodeProps": {
     "sql": { "ratePerSec": 120, "latencyMs": 40, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Retail SQL Server", "healthChecks": false },
     "debezium": { "connector": "debezium-sqlserver", "source": true, "concurrency": 64, "latencyMs": 150, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Debezium SQL Server", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
@@ -224,7 +224,7 @@
     "redundancy": {},
     "resolved": {
       "sql": {
-        "profile": { "family": "sql", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 120,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -239,7 +239,7 @@
         "healthChecks": false
       },
       "debezium": {
-        "profile": { "family": "stream-processor", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "stream-processor", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 150,
         "concurrency": 64,
@@ -255,7 +255,7 @@
       },
       "orders-topic": {
         "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "log", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -271,7 +271,7 @@
       },
       "customers-topic": {
         "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "log", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -286,7 +286,7 @@
         "healthChecks": false
       },
       "processor": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 150,
         "concurrency": 64,
@@ -301,7 +301,7 @@
         "healthChecks": false
       },
       "search": {
-        "profile": { "family": "search", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "search", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -316,7 +316,7 @@
         "healthChecks": false
       },
       "warehouse": {
-        "profile": { "family": "warehouse", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "warehouse", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -331,7 +331,7 @@
         "healthChecks": false
       },
       "s3-sink": {
-        "profile": { "family": "stream-processor", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "stream-processor", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 150,
         "concurrency": 64,
@@ -346,7 +346,7 @@
         "healthChecks": false
       },
       "lake": {
-        "profile": { "family": "object", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "object", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -361,7 +361,7 @@
         "healthChecks": false
       },
       "registry": {
-        "profile": { "family": "dependency", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "dependency", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",

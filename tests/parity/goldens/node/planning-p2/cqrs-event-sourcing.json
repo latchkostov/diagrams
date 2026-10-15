@@ -1,9 +1,9 @@
 {
   "format": "diagrams/v2",
-  "planning": { "revision": "p2" },
+  "planning": { "revision": "p3" },
   "nodeProps": {
     "app": { "ratePerSec": 20, "messageType": "Deposit", "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "healthChecks": false },
-    "gateway": { "latencyMs": 2, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "API gateway", "healthChecks": false },
+    "gateway": { "latencyMs": 2, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "API gateway", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
     "command-handler": {
       "concurrency": 32,
       "latencyMs": 60,
@@ -35,6 +35,8 @@
     "format": "diagrams/v1",
     "losses": [
       "planning.revision",
+      "gateway.props.preset",
+      "gateway.props.presetRevision",
       "command-handler.props.preset",
       "command-handler.props.presetRevision",
       "publisher.props.preset",
@@ -140,6 +142,30 @@
       "offeredTypes": { "app": ["Deposit"], "gateway": ["Deposit"], "command-handler": ["Deposit"], "event-store": ["MoneyDeposited"], "publisher": ["MoneyDeposited"], "balance-proj": ["MoneyDeposited"], "statement-proj": ["MoneyDeposited"], "integration-topic": ["MoneyDeposited"], "balances-db": ["MoneyDeposited"], "statements": ["MoneyDeposited"], "fraud": ["MoneyDeposited"] }
     },
     "explanations": {
+      "gateway": {
+        "managed": "api",
+        "id": "gateway",
+        "role": "gateway",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": "Infinity",
+        "offered": 20,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0.002,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [{ "edge": "app-to-gateway", "node": "app", "label": "Banking app", "rate": 20 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
       "command-handler": {
         "id": "command-handler",
         "role": "processor",
@@ -382,7 +408,7 @@
     "redundancy": {},
     "resolved": {
       "app": {
-        "profile": { "family": "client", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 20,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -397,9 +423,10 @@
         "healthChecks": false
       },
       "gateway": {
-        "profile": { "family": "api-gateway", "revision": "p2", "evidence": [], "units": "real" },
+        "admission": { "api": {}, "endpoints": [] },
+        "profile": { "family": "api-gateway", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
-        "latencyMs": 0,
+        "latencyMs": 2,
         "concurrency": "Infinity",
         "replicas": 1,
         "jitter": 0.2,
@@ -412,7 +439,7 @@
         "healthChecks": false
       },
       "command-handler": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 60,
         "concurrency": 32,
@@ -429,7 +456,7 @@
       },
       "event-store": {
         "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "log", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -444,7 +471,7 @@
         "healthChecks": false
       },
       "publisher": {
-        "profile": { "family": "stream-processor", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "stream-processor", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 50,
         "concurrency": 32,
@@ -460,7 +487,7 @@
       },
       "integration-topic": {
         "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "log", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -475,7 +502,7 @@
         "healthChecks": false
       },
       "query-api": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 20,
         "concurrency": 64,
@@ -490,7 +517,7 @@
         "healthChecks": false
       },
       "balances-db": {
-        "profile": { "family": "sql", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -505,7 +532,7 @@
         "healthChecks": false
       },
       "statements": {
-        "profile": { "family": "search", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "search", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -520,7 +547,7 @@
         "healthChecks": false
       },
       "balance-proj": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 40,
         "concurrency": 32,
@@ -535,7 +562,7 @@
         "healthChecks": false
       },
       "statement-proj": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 80,
         "concurrency": 32,
@@ -550,7 +577,7 @@
         "healthChecks": false
       },
       "fraud": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 60,
         "concurrency": 32,
@@ -660,6 +687,30 @@
         }
       },
       "explanations": {
+        "gateway": {
+          "managed": "api",
+          "id": "gateway",
+          "role": "gateway",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 250,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.002,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [{ "edge": "app-to-gateway", "node": "app", "label": "Banking app", "rate": 250 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
         "command-handler": {
           "id": "command-handler",
           "role": "processor",
@@ -938,6 +989,30 @@
         }
       },
       "explanations": {
+        "gateway": {
+          "managed": "api",
+          "id": "gateway",
+          "role": "gateway",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 140,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.002,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [{ "edge": "app-to-gateway", "node": "app", "label": "Banking app", "rate": 140 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
         "command-handler": {
           "id": "command-handler",
           "role": "processor",
@@ -1139,7 +1214,7 @@
           "converged": true,
           "nodes": {
             "app": ["idle", "20/s · no limit", { "modeled": false }],
-            "gateway": ["idle", "20/s · no limit", { "modeled": false }],
+            "gateway": ["idle", "Limits unknown; enter measured or contracted values."],
             "command-handler": ["ok", "4% · 20/s of 533/s"],
             "event-store": ["ok", "5% · 20/s of 400/s"],
             "publisher": ["ok", "3% · 20/s of 640/s"],
@@ -1166,7 +1241,7 @@
           "converged": true,
           "nodes": {
             "app": ["idle", "100/s · no limit", { "modeled": false }],
-            "gateway": ["idle", "100/s · no limit", { "modeled": false }],
+            "gateway": ["idle", "Limits unknown; enter measured or contracted values."],
             "command-handler": ["ok", "19% · 100/s of 533/s"],
             "event-store": ["ok", "25% · 100/s of 400/s"],
             "publisher": ["ok", "16% · 100/s of 640/s"],
@@ -1193,7 +1268,7 @@
           "converged": true,
           "nodes": {
             "app": ["idle", "20/s · no limit", { "modeled": false }],
-            "gateway": ["idle", "20/s · no limit", { "modeled": false }],
+            "gateway": ["idle", "Limits unknown; enter measured or contracted values."],
             "command-handler": ["ok", "4% · 20/s of 533/s"],
             "event-store": ["ok", "5% · 20/s of 400/s"],
             "publisher": ["ok", "3% · 20/s of 640/s"],
@@ -1223,7 +1298,7 @@
           "converged": true,
           "nodes": {
             "app": ["idle", "20/s · no limit", { "modeled": false }],
-            "gateway": ["idle", "20/s · no limit", { "modeled": false }],
+            "gateway": ["idle", "Limits unknown; enter measured or contracted values."],
             "command-handler": ["ok", "4% · 20/s of 533/s"],
             "event-store": ["ok", "5% · 20/s of 400/s"],
             "publisher": ["ok", "3% · 20/s of 640/s"],
@@ -1249,7 +1324,7 @@
       "converged": true,
       "nodes": {
         "app": ["idle", "250/s · no limit", { "modeled": false }],
-        "gateway": ["idle", "250/s · no limit", { "modeled": false }],
+        "gateway": ["idle", "Limits unknown; enter measured or contracted values."],
         "command-handler": ["ok", "9% · 50/s of 533/s"],
         "event-store": ["ok", "13% · 50/s of 400/s"],
         "publisher": ["ok", "8% · 50/s of 640/s"],
@@ -1272,7 +1347,7 @@
       "converged": true,
       "nodes": {
         "app": ["idle", "140/s · no limit", { "modeled": false }],
-        "gateway": ["idle", "140/s · no limit", { "modeled": false }],
+        "gateway": ["idle", "Limits unknown; enter measured or contracted values."],
         "command-handler": ["ok", "8% · 40/s of 533/s"],
         "event-store": ["ok", "10% · 40/s of 400/s"],
         "publisher": ["ok", "6% · 40/s of 640/s"],

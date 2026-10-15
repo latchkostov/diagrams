@@ -1,0 +1,49 @@
+{
+  "withIcons": {
+    "sha256": "1daece424ef0402c1b99958fe74864f40be37aadd12fc6559bea608e43b34998",
+    "bytes": 4632,
+    "inlined": { "client.browser": "client-browser 0022934839e05a07", "openai": "openai b5f7c2d4f02ea1de" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Managed admission",
+        "nodes": [
+          {
+            "id": "source",
+            "stencil": "client.browser",
+            "label": "Checkout",
+            "x": 0,
+            "y": 130,
+            "props": { "ratePerSec": 20 }
+          },
+          {
+            "id": "api",
+            "stencil": "openai",
+            "label": "openai",
+            "x": 330,
+            "y": 130,
+            "props": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 1000, "failureRate": 0, "jitter": 0 }
+          }
+        ],
+        "edges": [
+          {
+            "id": "call",
+            "from": "source",
+            "to": "api",
+            "kind": "sync",
+            "props": {
+              "travelMs": 0,
+              "caller": {
+                "deadlineMs": 1,
+                "retry": { "maxAttempts": 3, "strategy": "exponential", "backoffMs": 100, "retryOn": ["throttled"] }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

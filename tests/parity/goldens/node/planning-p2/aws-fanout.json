@@ -1,25 +1,25 @@
 {
   "format": "diagrams/v2",
-  "planning": { "revision": "p2" },
+  "planning": { "revision": "p3" },
   "nodeProps": {
     "client": { "ratePerSec": 20, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Retail checkout", "healthChecks": false },
-    "api": { "ratePerSec": 2, "latencyMs": 60, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Orders API", "healthChecks": false },
-    "intake": { "concurrency": 64, "latencyMs": 150, "emits": "OrderPlaced", "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Create order", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
+    "api": { "ratePerSec": 2, "latencyMs": 60, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Orders API", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
+    "intake": { "concurrency": 64, "latencyMs": 150, "emits": "OrderPlaced", "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Create order", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
     "sns": { "partitions": 64, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "messageType": "order-events", "healthChecks": false },
     "fulfillment-q": { "visibilityTimeoutSec": 60, "maxDeliveryCount": 5, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "partitions": 3, "messageType": "fulfillment-orders", "healthChecks": false },
     "archive-q": { "batchSize": 100, "retentionDays": 14, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "order-archive", "healthChecks": false },
     "receipt-q": { "visibilityTimeoutSec": 30, "maxDeliveryCount": 5, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "partitions": 3, "messageType": "order-receipts", "healthChecks": false },
-    "fulfill": { "batchSize": 10, "concurrency": 64, "latencyMs": 150, "emits": "FulfillmentReserved", "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Reserve fulfillment", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
-    "archive": { "batchSize": 100, "concurrency": 64, "latencyMs": 150, "emits": "OrderArchived", "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Archive orders", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
-    "receipt": { "batchSize": 10, "concurrency": 64, "latencyMs": 150, "emits": "ReceiptPrepared", "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Prepare receipt", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
+    "fulfill": { "batchSize": 10, "concurrency": 64, "latencyMs": 150, "emits": "FulfillmentReserved", "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Reserve fulfillment", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
+    "archive": { "batchSize": 100, "concurrency": 64, "latencyMs": 150, "emits": "OrderArchived", "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Archive orders", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
+    "receipt": { "batchSize": 10, "concurrency": 64, "latencyMs": 150, "emits": "ReceiptPrepared", "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Prepare receipt", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
     "ddb": { "ratePerSec": 2, "latencyMs": 40, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Order state", "healthChecks": false },
     "s3": { "ratePerSec": 2, "latencyMs": 40, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Order archive", "healthChecks": false },
     "receipt-db": { "ratePerSec": 2, "latencyMs": 40, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Receipt state", "healthChecks": false },
     "schedule": { "ratePerSec": 0.0011111111111111111, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Reconcile schedule", "healthChecks": false },
-    "reconcile": { "concurrency": 64, "latencyMs": 150, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Reconcile orders", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
+    "reconcile": { "concurrency": 64, "latencyMs": 150, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Reconcile orders", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
     "dlq": { "isDeadLetter": true, "retentionDays": 14, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "fulfillment-orders-dlq", "healthChecks": false }
   },
-  "legacyExport": { "format": "diagrams/v1", "losses": ["planning.revision", "intake.props.preset", "intake.props.presetRevision", "fulfill.props.preset", "fulfill.props.presetRevision", "archive.props.preset", "archive.props.presetRevision", "receipt.props.preset", "receipt.props.presetRevision", "reconcile.props.preset", "reconcile.props.presetRevision"] },
+  "legacyExport": { "format": "diagrams/v1", "losses": ["planning.revision", "api.props.preset", "api.props.presetRevision", "intake.props.preset", "intake.props.presetRevision", "fulfill.props.preset", "fulfill.props.presetRevision", "archive.props.preset", "archive.props.presetRevision", "receipt.props.preset", "receipt.props.presetRevision", "reconcile.props.preset", "reconcile.props.presetRevision"] },
   "autoScale": { "freePlay": 1, "steady-spike": 2, "throttle": 1 },
   "brokerAssignments": {
     "brokers": {
@@ -59,14 +59,39 @@
         "s3": ["Infinity", 20, 0, 1, 1, 0],
         "receipt-db": ["Infinity", 20, 0, 1, 1, 0],
         "schedule": [426.6666666666667, 0, 0, 1, 1, 0],
-        "reconcile": [426.6666666666667, 0, 0, 1, 1, 0],
+        "reconcile": ["Infinity", 0, 0, 1, 1, 0],
         "dlq": [0, 0, 0, 1, 1, 0]
       },
       "connections": { "client-to-api": 20, "api-to-intake": 20, "intake-to-sns": 20, "sns-to-fulfillment-q": 20, "sns-to-archive-q": 20, "sns-to-receipt-q": 20, "fulfillment-q-to-fulfill": 20, "archive-q-to-archive": 20, "receipt-q-to-receipt": 20, "fulfill-to-ddb": 20, "archive-to-s3": 20, "receipt-to-receipt-db": 20 },
       "offeredTypes": { "client": ["Retail checkout"], "api": ["Retail checkout"], "intake": ["Retail checkout"], "sns": ["OrderPlaced"], "fulfillment-q": ["OrderPlaced"], "archive-q": ["OrderPlaced"], "receipt-q": ["OrderPlaced"], "fulfill": ["OrderPlaced"], "archive": ["OrderPlaced"], "receipt": ["OrderPlaced"], "ddb": ["FulfillmentReserved"], "s3": ["OrderArchived"], "receipt-db": ["ReceiptPrepared"] }
     },
     "explanations": {
+      "api": {
+        "managed": "api",
+        "id": "api",
+        "role": "gateway",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": "Infinity",
+        "offered": 20,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0.06,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [{ "edge": "client-to-api", "node": "client", "label": "Retail checkout", "rate": 20 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
       "intake": {
+        "managed": "serverless",
         "id": "intake",
         "role": "processor",
         "status": "up",
@@ -88,11 +113,11 @@
           { "edge": "api-to-intake", "node": "api", "label": "Retail checkout", "rate": 20, "via": "Orders API" }
         ],
         "target": 0.5,
-        "minimumReplicas": 1,
         "changes": null,
         "converged": true
       },
       "fulfill": {
+        "managed": "serverless",
         "id": "fulfill",
         "role": "processor",
         "status": "up",
@@ -114,11 +139,11 @@
           { "edge": "fulfillment-q-to-fulfill", "node": "fulfillment-q", "label": "fulfillment-orders", "rate": 20 }
         ],
         "target": 0.5,
-        "minimumReplicas": 1,
         "changes": null,
         "converged": true
       },
       "archive": {
+        "managed": "serverless",
         "id": "archive",
         "role": "processor",
         "status": "up",
@@ -138,11 +163,11 @@
         "growth": 0,
         "contributors": [{ "edge": "archive-q-to-archive", "node": "archive-q", "label": "order-archive", "rate": 20 }],
         "target": 0.5,
-        "minimumReplicas": 1,
         "changes": null,
         "converged": true
       },
       "receipt": {
+        "managed": "serverless",
         "id": "receipt",
         "role": "processor",
         "status": "up",
@@ -164,18 +189,18 @@
           { "edge": "receipt-q-to-receipt", "node": "receipt-q", "label": "order-receipts", "rate": 20 }
         ],
         "target": 0.5,
-        "minimumReplicas": 1,
         "changes": null,
         "converged": true
       },
       "reconcile": {
+        "managed": "serverless",
         "id": "reconcile",
         "role": "processor",
         "status": "up",
         "reason": "throughput",
         "evidence": "configured",
         "unit": "msg/s",
-        "capacity": 426.6666666666667,
+        "capacity": "Infinity",
         "offered": 0,
         "replicas": 1,
         "baseReplicas": 1,
@@ -188,7 +213,6 @@
         "growth": 0,
         "contributors": [],
         "target": 0.5,
-        "minimumReplicas": 1,
         "changes": null,
         "converged": true
       },
@@ -256,7 +280,7 @@
     "redundancy": {},
     "resolved": {
       "client": {
-        "profile": { "family": "client", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 20,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -271,9 +295,10 @@
         "healthChecks": false
       },
       "api": {
-        "profile": { "family": "api-gateway", "revision": "p2", "evidence": [], "units": "real" },
+        "admission": { "api": {}, "endpoints": [] },
+        "profile": { "family": "api-gateway", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
-        "latencyMs": 0,
+        "latencyMs": 60,
         "concurrency": "Infinity",
         "replicas": 1,
         "jitter": 0.2,
@@ -286,7 +311,8 @@
         "healthChecks": false
       },
       "intake": {
-        "profile": { "family": "serverless", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "admission": { "api": {}, "endpoints": [], "fixedSlotsPerReplica": 64 },
+        "profile": { "family": "serverless", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 150,
         "concurrency": 64,
@@ -303,7 +329,7 @@
       },
       "sns": {
         "broker": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "pubsub", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "pubsub", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -318,7 +344,7 @@
         "healthChecks": false
       },
       "fulfillment-q": {
-        "profile": { "family": "queue", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "queue", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -333,7 +359,7 @@
         "healthChecks": false
       },
       "archive-q": {
-        "profile": { "family": "queue", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "queue", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -348,7 +374,7 @@
         "healthChecks": false
       },
       "receipt-q": {
-        "profile": { "family": "queue", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "queue", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -363,7 +389,8 @@
         "healthChecks": false
       },
       "fulfill": {
-        "profile": { "family": "serverless", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "admission": { "api": {}, "endpoints": [], "fixedSlotsPerReplica": 64 },
+        "profile": { "family": "serverless", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 150,
         "concurrency": 64,
@@ -379,7 +406,8 @@
         "healthChecks": false
       },
       "archive": {
-        "profile": { "family": "serverless", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "admission": { "api": {}, "endpoints": [], "fixedSlotsPerReplica": 64 },
+        "profile": { "family": "serverless", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 150,
         "concurrency": 64,
@@ -395,7 +423,8 @@
         "healthChecks": false
       },
       "receipt": {
-        "profile": { "family": "serverless", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "admission": { "api": {}, "endpoints": [], "fixedSlotsPerReplica": 64 },
+        "profile": { "family": "serverless", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 150,
         "concurrency": 64,
@@ -411,7 +440,7 @@
         "healthChecks": false
       },
       "ddb": {
-        "profile": { "family": "nosql", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "nosql", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -426,7 +455,7 @@
         "healthChecks": false
       },
       "s3": {
-        "profile": { "family": "object", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "object", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -441,7 +470,7 @@
         "healthChecks": false
       },
       "receipt-db": {
-        "profile": { "family": "nosql", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "nosql", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -457,7 +486,7 @@
       },
       "schedule": {
         "broker": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "pubsub", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "pubsub", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 0.0011111111111111111,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -472,7 +501,8 @@
         "healthChecks": false
       },
       "reconcile": {
-        "profile": { "family": "serverless", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "admission": { "api": {}, "endpoints": [], "fixedSlotsPerReplica": 64 },
+        "profile": { "family": "serverless", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 150,
         "concurrency": 64,
@@ -487,7 +517,7 @@
         "healthChecks": false
       },
       "dlq": {
-        "profile": { "family": "queue", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "queue", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -527,14 +557,39 @@
           "s3": ["Infinity", 100, 0, 1, 1, 0],
           "receipt-db": ["Infinity", 100, 0, 1, 1, 0],
           "schedule": [426.6666666666667, 0, 0, 1, 1, 0],
-          "reconcile": [426.6666666666667, 0, 0, 1, 1, 0],
+          "reconcile": ["Infinity", 0, 0, 1, 1, 0],
           "dlq": [0, 0, 0, 1, 1, 0]
         },
         "connections": { "client-to-api": 100, "api-to-intake": 100, "intake-to-sns": 100, "sns-to-fulfillment-q": 100, "sns-to-archive-q": 100, "sns-to-receipt-q": 100, "fulfillment-q-to-fulfill": 100, "archive-q-to-archive": 100, "receipt-q-to-receipt": 100, "fulfill-to-ddb": 100, "archive-to-s3": 100, "receipt-to-receipt-db": 100 },
         "offeredTypes": { "client": ["OrderRequest"], "api": ["OrderRequest"], "intake": ["OrderRequest"], "sns": ["OrderPlaced"], "fulfillment-q": ["OrderPlaced"], "archive-q": ["OrderPlaced"], "receipt-q": ["OrderPlaced"], "fulfill": ["OrderPlaced"], "archive": ["OrderPlaced"], "receipt": ["OrderPlaced"], "ddb": ["FulfillmentReserved"], "s3": ["OrderArchived"], "receipt-db": ["ReceiptPrepared"] }
       },
       "explanations": {
+        "api": {
+          "managed": "api",
+          "id": "api",
+          "role": "gateway",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 100,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.06,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [{ "edge": "client-to-api", "node": "client", "label": "Retail checkout", "rate": 100 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
         "intake": {
+          "managed": "serverless",
           "id": "intake",
           "role": "processor",
           "status": "up",
@@ -556,11 +611,11 @@
             { "edge": "api-to-intake", "node": "api", "label": "Retail checkout", "rate": 100, "via": "Orders API" }
           ],
           "target": 0.5,
-          "minimumReplicas": 1,
           "changes": null,
           "converged": true
         },
         "fulfill": {
+          "managed": "serverless",
           "id": "fulfill",
           "role": "processor",
           "status": "up",
@@ -582,11 +637,11 @@
             { "edge": "fulfillment-q-to-fulfill", "node": "fulfillment-q", "label": "fulfillment-orders", "rate": 100 }
           ],
           "target": 0.5,
-          "minimumReplicas": 1,
           "changes": null,
           "converged": true
         },
         "archive": {
+          "managed": "serverless",
           "id": "archive",
           "role": "processor",
           "status": "up",
@@ -608,11 +663,11 @@
             { "edge": "archive-q-to-archive", "node": "archive-q", "label": "order-archive", "rate": 100 }
           ],
           "target": 0.5,
-          "minimumReplicas": 1,
           "changes": null,
           "converged": true
         },
         "receipt": {
+          "managed": "serverless",
           "id": "receipt",
           "role": "processor",
           "status": "up",
@@ -634,18 +689,18 @@
             { "edge": "receipt-q-to-receipt", "node": "receipt-q", "label": "order-receipts", "rate": 100 }
           ],
           "target": 0.5,
-          "minimumReplicas": 1,
           "changes": null,
           "converged": true
         },
         "reconcile": {
+          "managed": "serverless",
           "id": "reconcile",
           "role": "processor",
           "status": "up",
           "reason": "throughput",
           "evidence": "configured",
           "unit": "msg/s",
-          "capacity": 426.6666666666667,
+          "capacity": "Infinity",
           "offered": 0,
           "replicas": 1,
           "baseReplicas": 1,
@@ -658,7 +713,6 @@
           "growth": 0,
           "contributors": [],
           "target": 0.5,
-          "minimumReplicas": 1,
           "changes": null,
           "converged": true
         },
@@ -716,14 +770,39 @@
           "s3": ["Infinity", 50, 0, 1, 1, 0],
           "receipt-db": ["Infinity", 50, 0, 1, 1, 0],
           "schedule": [426.6666666666667, 0, 0, 1, 1, 0],
-          "reconcile": [426.6666666666667, 0, 0, 1, 1, 0],
+          "reconcile": ["Infinity", 0, 0, 1, 1, 0],
           "dlq": [0, 0, 0, 1, 1, 0]
         },
         "connections": { "client-to-api": 50, "api-to-intake": 50, "intake-to-sns": 50, "sns-to-fulfillment-q": 50, "sns-to-archive-q": 50, "sns-to-receipt-q": 50, "fulfillment-q-to-fulfill": 50, "archive-q-to-archive": 50, "receipt-q-to-receipt": 50, "fulfill-to-ddb": 50, "archive-to-s3": 50, "receipt-to-receipt-db": 50 },
         "offeredTypes": { "client": ["OrderRequest"], "api": ["OrderRequest"], "intake": ["OrderRequest"], "sns": ["OrderPlaced"], "fulfillment-q": ["OrderPlaced"], "archive-q": ["OrderPlaced"], "receipt-q": ["OrderPlaced"], "fulfill": ["OrderPlaced"], "archive": ["OrderPlaced"], "receipt": ["OrderPlaced"], "ddb": ["FulfillmentReserved"], "s3": ["OrderArchived"], "receipt-db": ["ReceiptPrepared"] }
       },
       "explanations": {
+        "api": {
+          "managed": "api",
+          "id": "api",
+          "role": "gateway",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 50,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.06,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [{ "edge": "client-to-api", "node": "client", "label": "Retail checkout", "rate": 50 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
         "intake": {
+          "managed": "serverless",
           "id": "intake",
           "role": "processor",
           "status": "up",
@@ -745,11 +824,11 @@
             { "edge": "api-to-intake", "node": "api", "label": "Retail checkout", "rate": 50, "via": "Orders API" }
           ],
           "target": 0.5,
-          "minimumReplicas": 1,
           "changes": null,
           "converged": true
         },
         "fulfill": {
+          "managed": "serverless",
           "id": "fulfill",
           "role": "processor",
           "status": "up",
@@ -771,11 +850,11 @@
             { "edge": "fulfillment-q-to-fulfill", "node": "fulfillment-q", "label": "fulfillment-orders", "rate": 50 }
           ],
           "target": 0.5,
-          "minimumReplicas": 1,
           "changes": null,
           "converged": true
         },
         "archive": {
+          "managed": "serverless",
           "id": "archive",
           "role": "processor",
           "status": "up",
@@ -797,11 +876,11 @@
             { "edge": "archive-q-to-archive", "node": "archive-q", "label": "order-archive", "rate": 50 }
           ],
           "target": 0.5,
-          "minimumReplicas": 1,
           "changes": null,
           "converged": true
         },
         "receipt": {
+          "managed": "serverless",
           "id": "receipt",
           "role": "processor",
           "status": "up",
@@ -823,18 +902,18 @@
             { "edge": "receipt-q-to-receipt", "node": "receipt-q", "label": "order-receipts", "rate": 50 }
           ],
           "target": 0.5,
-          "minimumReplicas": 1,
           "changes": null,
           "converged": true
         },
         "reconcile": {
+          "managed": "serverless",
           "id": "reconcile",
           "role": "processor",
           "status": "up",
           "reason": "throughput",
           "evidence": "configured",
           "unit": "msg/s",
-          "capacity": 426.6666666666667,
+          "capacity": "Infinity",
           "offered": 0,
           "replicas": 1,
           "baseReplicas": 1,
@@ -847,7 +926,6 @@
           "growth": 0,
           "contributors": [],
           "target": 0.5,
-          "minimumReplicas": 1,
           "changes": null,
           "converged": true
         },
@@ -897,7 +975,7 @@
           "converged": true,
           "nodes": {
             "client": ["idle", "20/s · no limit", { "modeled": false }],
-            "api": ["idle", "20/s · no limit", { "modeled": false }],
+            "api": ["idle", "Limits unknown; enter measured or contracted values."],
             "intake": ["ok", "5% · 20/s of 427/s"],
             "sns": ["idle", "20/s · no limit"],
             "fulfillment-q": ["ok", "5% · 20/s of 427/s"],
@@ -928,7 +1006,7 @@
           "converged": true,
           "nodes": {
             "client": ["idle", "100/s · no limit", { "modeled": false }],
-            "api": ["idle", "100/s · no limit", { "modeled": false }],
+            "api": ["idle", "Limits unknown; enter measured or contracted values."],
             "intake": ["ok", "23% · 100/s of 427/s"],
             "sns": ["idle", "100/s · no limit"],
             "fulfillment-q": ["ok", "23% · 100/s of 427/s"],
@@ -959,7 +1037,7 @@
           "converged": true,
           "nodes": {
             "client": ["idle", "20/s · no limit", { "modeled": false }],
-            "api": ["idle", "20/s · no limit", { "modeled": false }],
+            "api": ["idle", "Limits unknown; enter measured or contracted values."],
             "intake": ["ok", "5% · 20/s of 427/s"],
             "sns": ["idle", "20/s · no limit"],
             "fulfillment-q": ["ok", "5% · 20/s of 427/s"],
@@ -990,7 +1068,7 @@
           "converged": true,
           "nodes": {
             "client": ["idle", "20/s · no limit", { "modeled": false }],
-            "api": ["idle", "20/s · no limit", { "modeled": false }],
+            "api": ["idle", "Limits unknown; enter measured or contracted values."],
             "intake": ["ok", "5% · 20/s of 427/s"],
             "sns": ["idle", "20/s · no limit"],
             "fulfillment-q": ["ok", "5% · 20/s of 427/s"],
@@ -1020,7 +1098,7 @@
       "converged": true,
       "nodes": {
         "client": ["idle", "100/s · no limit", { "modeled": false }],
-        "api": ["idle", "100/s · no limit", { "modeled": false }],
+        "api": ["idle", "Limits unknown; enter measured or contracted values."],
         "intake": ["ok", "23% · 100/s of 427/s"],
         "sns": ["idle", "100/s · no limit"],
         "fulfillment-q": ["ok", "23% · 100/s of 427/s"],
@@ -1047,7 +1125,7 @@
       "converged": true,
       "nodes": {
         "client": ["idle", "50/s · no limit", { "modeled": false }],
-        "api": ["idle", "50/s · no limit", { "modeled": false }],
+        "api": ["idle", "Limits unknown; enter measured or contracted values."],
         "intake": ["ok", "12% · 50/s of 427/s"],
         "sns": ["idle", "50/s · no limit"],
         "fulfillment-q": ["ok", "12% · 50/s of 427/s"],

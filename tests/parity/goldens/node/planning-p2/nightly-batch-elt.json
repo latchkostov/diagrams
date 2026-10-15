@@ -1,11 +1,11 @@
 {
   "format": "diagrams/v2",
-  "planning": { "revision": "p2" },
+  "planning": { "revision": "p3" },
   "nodeProps": {
     "airflow": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Airflow", "healthChecks": false },
     "app-db": { "latencyMs": 0, "messageType": "AppTableBatch", "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "healthChecks": false },
-    "crm": { "messageType": "CrmObjectBatch", "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "healthChecks": false },
-    "billing": { "messageType": "BillingObjectBatch", "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "healthChecks": false },
+    "crm": { "messageType": "CrmObjectBatch", "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
+    "billing": { "messageType": "BillingObjectBatch", "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
     "airbyte": { "replicas": 3, "concurrency": 5, "latencyMs": 250, "emits": "RawBatch", "ratePerSec": 2, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Airbyte", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
     "raw": { "latencyMs": 0, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Raw tables", "healthChecks": false },
     "dbt": {
@@ -27,9 +27,9 @@
     },
     "marts": { "latencyMs": 0, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Marts", "healthChecks": false },
     "tableau": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Tableau", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
-    "slack": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "#data-alerts", "healthChecks": false }
+    "slack": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "#data-alerts", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" }
   },
-  "legacyExport": { "format": "diagrams/v1", "losses": ["planning.revision", "airbyte.props.preset", "airbyte.props.presetRevision", "dbt.props.preset", "dbt.props.presetRevision", "tableau.props.preset", "tableau.props.presetRevision"] },
+  "legacyExport": { "format": "diagrams/v1", "losses": ["planning.revision", "crm.props.preset", "crm.props.presetRevision", "billing.props.preset", "billing.props.presetRevision", "airbyte.props.preset", "airbyte.props.presetRevision", "dbt.props.preset", "dbt.props.presetRevision", "tableau.props.preset", "tableau.props.presetRevision", "slack.props.preset", "slack.props.presetRevision"] },
   "autoScale": { "freePlay": 1, "nightly-run": 10, "late-load": 10 },
   "brokerAssignments": { "brokers": {}, "consumers": {} },
   "edit": {
@@ -45,6 +45,54 @@
       "offeredTypes": { "airflow": ["Airflow"] }
     },
     "explanations": {
+      "crm": {
+        "managed": "api",
+        "id": "crm",
+        "role": "sink",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": "Infinity",
+        "offered": 0,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "billing": {
+        "managed": "api",
+        "id": "billing",
+        "role": "sink",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": "Infinity",
+        "offered": 0,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
       "airbyte": {
         "id": "airbyte",
         "role": "processor",
@@ -92,6 +140,30 @@
         "minimumReplicas": 1,
         "changes": null,
         "converged": true
+      },
+      "slack": {
+        "managed": "api",
+        "id": "slack",
+        "role": "sink",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": "Infinity",
+        "offered": 0,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
       }
     },
     "capabilities": {
@@ -103,7 +175,7 @@
     "redundancy": {},
     "resolved": {
       "airflow": {
-        "profile": { "family": "scheduler", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "scheduler", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -118,7 +190,7 @@
         "healthChecks": false
       },
       "app-db": {
-        "profile": { "family": "sql", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -133,7 +205,8 @@
         "healthChecks": false
       },
       "crm": {
-        "profile": { "family": "external-api", "revision": "p2", "evidence": [], "units": "real" },
+        "admission": { "api": {}, "endpoints": [] },
+        "profile": { "family": "external-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -148,7 +221,8 @@
         "healthChecks": false
       },
       "billing": {
-        "profile": { "family": "external-api", "revision": "p2", "evidence": [], "units": "real" },
+        "admission": { "api": {}, "endpoints": [] },
+        "profile": { "family": "external-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -163,7 +237,7 @@
         "healthChecks": false
       },
       "airbyte": {
-        "profile": { "family": "stream-processor", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "stream-processor", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 250,
         "concurrency": 5,
@@ -179,7 +253,7 @@
         "healthChecks": false
       },
       "raw": {
-        "profile": { "family": "warehouse", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "warehouse", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -194,7 +268,7 @@
         "healthChecks": false
       },
       "dbt": {
-        "profile": { "family": "stream-processor", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "stream-processor", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 400,
         "concurrency": 8,
@@ -210,7 +284,7 @@
         "healthChecks": false
       },
       "marts": {
-        "profile": { "family": "warehouse", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "warehouse", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -225,7 +299,7 @@
         "healthChecks": false
       },
       "tableau": {
-        "profile": { "family": "telemetry", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "telemetry", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -240,7 +314,8 @@
         "healthChecks": false
       },
       "slack": {
-        "profile": { "family": "external-api", "revision": "p2", "evidence": [], "units": "real" },
+        "admission": { "api": {}, "endpoints": [] },
+        "profile": { "family": "external-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -270,6 +345,54 @@
         "offeredTypes": { "app-db": ["AppTableBatch"], "crm": ["CrmObjectBatch"], "billing": ["BillingObjectBatch"], "dbt": ["DbtModel"], "airbyte": ["AppTableBatch", "CrmObjectBatch", "BillingObjectBatch"], "marts": ["MartTable"], "slack": ["TestFailed"], "raw": ["RawBatch"] }
       },
       "explanations": {
+        "crm": {
+          "managed": "api",
+          "id": "crm",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": "Infinity",
+          "offered": 50,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
+        "billing": {
+          "managed": "api",
+          "id": "billing",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": "Infinity",
+          "offered": 50,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
         "airbyte": {
           "id": "airbyte",
           "role": "processor",
@@ -325,6 +448,30 @@
           "changes": [{ "nodeId": "dbt", "key": "replicas", "from": 1, "to": 24 }],
           "fixId": "capacity:dbt",
           "converged": true
+        },
+        "slack": {
+          "managed": "api",
+          "id": "slack",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": "Infinity",
+          "offered": 12,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [{ "edge": "dbt-to-slack", "node": "dbt", "label": "dbt build", "rate": 12 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
         }
       },
       "capabilities": "(same as edit)",
@@ -348,6 +495,54 @@
         "offeredTypes": { "app-db": ["AppTableBatch"], "crm": ["CrmObjectBatch"], "billing": ["BillingObjectBatch"], "dbt": ["DbtModel"], "airbyte": ["AppTableBatch", "CrmObjectBatch", "BillingObjectBatch"], "marts": ["MartTable"], "slack": ["TestFailed"], "raw": ["RawBatch"] }
       },
       "explanations": {
+        "crm": {
+          "managed": "api",
+          "id": "crm",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": "Infinity",
+          "offered": 50,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
+        "billing": {
+          "managed": "api",
+          "id": "billing",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": "Infinity",
+          "offered": 50,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
         "airbyte": {
           "id": "airbyte",
           "role": "processor",
@@ -403,6 +598,30 @@
           "changes": [{ "nodeId": "dbt", "key": "replicas", "from": 1, "to": 24 }],
           "fixId": "capacity:dbt",
           "converged": true
+        },
+        "slack": {
+          "managed": "api",
+          "id": "slack",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": "Infinity",
+          "offered": 12,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [{ "edge": "dbt-to-slack", "node": "dbt", "label": "dbt build", "rate": 12 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
         }
       },
       "capabilities": "(same as edit)",
@@ -413,7 +632,7 @@
       "redundancy": { "airbyte": { "replicas": 66, "enough": true }, "dbt": { "replicas": 22, "enough": true } },
       "resolved": {
         "airflow": {
-          "profile": { "family": "scheduler", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "scheduler", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -428,7 +647,7 @@
           "healthChecks": false
         },
         "app-db": {
-          "profile": { "family": "sql", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -443,7 +662,8 @@
           "healthChecks": false
         },
         "crm": {
-          "profile": { "family": "external-api", "revision": "p2", "evidence": [], "units": "real" },
+          "admission": { "api": {}, "endpoints": [] },
+          "profile": { "family": "external-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -458,7 +678,8 @@
           "healthChecks": false
         },
         "billing": {
-          "profile": { "family": "external-api", "revision": "p2", "evidence": [], "units": "real" },
+          "admission": { "api": {}, "endpoints": [] },
+          "profile": { "family": "external-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -473,7 +694,7 @@
           "healthChecks": false
         },
         "airbyte": {
-          "profile": { "family": "stream-processor", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "stream-processor", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 900,
           "concurrency": 5,
@@ -489,7 +710,7 @@
           "healthChecks": false
         },
         "raw": {
-          "profile": { "family": "warehouse", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "warehouse", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -504,7 +725,7 @@
           "healthChecks": false
         },
         "dbt": {
-          "profile": { "family": "stream-processor", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "stream-processor", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 400,
           "concurrency": 8,
@@ -520,7 +741,7 @@
           "healthChecks": false
         },
         "marts": {
-          "profile": { "family": "warehouse", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "warehouse", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -535,7 +756,7 @@
           "healthChecks": false
         },
         "tableau": {
-          "profile": { "family": "telemetry", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "telemetry", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -550,7 +771,8 @@
           "healthChecks": false
         },
         "slack": {
-          "profile": { "family": "external-api", "revision": "p2", "evidence": [], "units": "real" },
+          "admission": { "api": {}, "endpoints": [] },
+          "profile": { "family": "external-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -582,14 +804,14 @@
           "nodes": {
             "airflow": ["idle", "2/s · no limit", { "modeled": false }],
             "app-db": ["idle", "", { "modeled": false }],
-            "crm": ["idle", "", { "modeled": false }],
-            "billing": ["idle", "", { "modeled": false }],
+            "crm": ["idle", ""],
+            "billing": ["idle", ""],
             "airbyte": ["idle", ""],
             "raw": ["idle", "", { "modeled": false }],
             "dbt": ["idle", ""],
             "marts": ["idle", "", { "modeled": false }],
             "tableau": ["idle", "", { "modeled": false }],
-            "slack": ["idle", "", { "modeled": false }]
+            "slack": ["idle", ""]
           }
         },
         "partitionsNotes": {}
@@ -607,14 +829,14 @@
           "nodes": {
             "airflow": ["idle", "10/s · no limit", { "modeled": false }],
             "app-db": ["idle", "", { "modeled": false }],
-            "crm": ["idle", "", { "modeled": false }],
-            "billing": ["idle", "", { "modeled": false }],
+            "crm": ["idle", ""],
+            "billing": ["idle", ""],
             "airbyte": ["idle", ""],
             "raw": ["idle", "", { "modeled": false }],
             "dbt": ["idle", ""],
             "marts": ["idle", "", { "modeled": false }],
             "tableau": ["idle", "", { "modeled": false }],
-            "slack": ["idle", "", { "modeled": false }]
+            "slack": ["idle", ""]
           }
         },
         "partitionsNotes": {}
@@ -632,14 +854,14 @@
           "nodes": {
             "airflow": ["idle", "2/s · no limit", { "modeled": false }],
             "app-db": ["idle", "", { "modeled": false }],
-            "crm": ["idle", "", { "modeled": false }],
-            "billing": ["idle", "", { "modeled": false }],
+            "crm": ["idle", ""],
+            "billing": ["idle", ""],
             "airbyte": ["idle", ""],
             "raw": ["idle", "", { "modeled": false }],
             "dbt": ["idle", ""],
             "marts": ["idle", "", { "modeled": false }],
             "tableau": ["idle", "", { "modeled": false }],
-            "slack": ["idle", "", { "modeled": false }]
+            "slack": ["idle", ""]
           }
         },
         "partitionsNotes": {}
@@ -657,14 +879,14 @@
           "nodes": {
             "airflow": ["idle", "2/s · no limit", { "modeled": false }],
             "app-db": ["idle", "", { "modeled": false }],
-            "crm": ["idle", "", { "modeled": false }],
-            "billing": ["idle", "", { "modeled": false }],
+            "crm": ["idle", ""],
+            "billing": ["idle", ""],
             "airbyte": ["idle", ""],
             "raw": ["idle", "", { "modeled": false }],
             "dbt": ["idle", ""],
             "marts": ["idle", "", { "modeled": false }],
             "tableau": ["idle", "", { "modeled": false }],
-            "slack": ["idle", "", { "modeled": false }]
+            "slack": ["idle", ""]
           }
         },
         "partitionsNotes": {}
@@ -687,14 +909,14 @@
       "nodes": {
         "airflow": ["idle", "", { "modeled": false }],
         "app-db": ["idle", "100/s · no limit", { "modeled": false }],
-        "crm": ["idle", "50/s · no limit", { "modeled": false }],
-        "billing": ["idle", "50/s · no limit", { "modeled": false }],
+        "crm": ["idle", "Limits unknown; enter measured or contracted values."],
+        "billing": ["idle", "Limits unknown; enter measured or contracted values."],
         "airbyte": ["over", "333% · 200/s of 60/s"],
         "raw": ["idle", "200/s · no limit", { "modeled": false }],
         "dbt": ["over", "12× · 240/s of 20/s"],
         "marts": ["idle", "240/s · no limit", { "modeled": false }],
         "tableau": ["idle", "", { "modeled": false }],
-        "slack": ["idle", "12/s · no limit", { "modeled": false }]
+        "slack": ["idle", "Limits unknown; enter measured or contracted values."]
       }
     },
     "late-load": {
@@ -714,14 +936,14 @@
       "nodes": {
         "airflow": ["idle", "", { "modeled": false }],
         "app-db": ["idle", "100/s · no limit", { "modeled": false }],
-        "crm": ["idle", "50/s · no limit", { "modeled": false }],
-        "billing": ["idle", "50/s · no limit", { "modeled": false }],
+        "crm": ["idle", "Limits unknown; enter measured or contracted values."],
+        "billing": ["idle", "Limits unknown; enter measured or contracted values."],
         "airbyte": ["over", "12× · 200/s of 17/s"],
         "raw": ["idle", "200/s · no limit", { "modeled": false }],
         "dbt": ["over", "12× · 240/s of 20/s"],
         "marts": ["idle", "240/s · no limit", { "modeled": false }],
         "tableau": ["idle", "", { "modeled": false }],
-        "slack": ["idle", "12/s · no limit", { "modeled": false }]
+        "slack": ["idle", "Limits unknown; enter measured or contracted values."]
       }
     }
   }

@@ -1,8 +1,9 @@
 {
   "ar": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "58812b84134d",
       "ai": "271de21ad5b1",
       "broker": "f5d42b383610",
       "canvas": "254825751491",
@@ -34,7 +35,7 @@
       "menu": "4541dd1fb963",
       "password": "068dd9151563",
       "passwordLink": "7a16c68a40ac",
-      "planning": "53dd90b8128e",
+      "planning": "7538c4f2f680",
       "present": "3d5f0eb4f358",
       "privacy": "31e1025258a5",
       "privateDialog": "a0d98567a0a1",
@@ -51,9 +52,10 @@
     }
   },
   "bg": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "b0809c92b18e",
       "ai": "be21a15fe0c2",
       "broker": "c2285b4b209f",
       "canvas": "2e2ddf5140f6",
@@ -85,7 +87,7 @@
       "menu": "27d905f2567f",
       "password": "4b05052dcc86",
       "passwordLink": "b92e14102041",
-      "planning": "53dd90b8128e",
+      "planning": "74840d5692e3",
       "present": "544556a1c227",
       "privacy": "edcbcf263c6a",
       "privateDialog": "f0142441734e",
@@ -102,9 +104,10 @@
     }
   },
   "cs": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "fd41c371b31a",
       "ai": "cdac78f5eabc",
       "broker": "acab48ce0be7",
       "canvas": "4e14fd49b2df",
@@ -136,7 +139,7 @@
       "menu": "b6d4c8f6b8a1",
       "password": "4b14b2c42ae6",
       "passwordLink": "bbf2ff16bb07",
-      "planning": "53dd90b8128e",
+      "planning": "51b047dc8b90",
       "present": "d4645533b38b",
       "privacy": "cfbbc22bbe3d",
       "privateDialog": "3b7aa92b839c",
@@ -153,9 +156,10 @@
     }
   },
   "da": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "0d36fed2a650",
       "ai": "30c366fbcaa3",
       "broker": "8b204714298e",
       "canvas": "35cf7853d643",
@@ -187,7 +191,7 @@
       "menu": "76ab8faa028b",
       "password": "bd3510bbd814",
       "passwordLink": "6a42e1f786b9",
-      "planning": "53dd90b8128e",
+      "planning": "c9198d0f3479",
       "present": "f6ac8576a457",
       "privacy": "58bdb376eaca",
       "privateDialog": "9523e0eb018e",
@@ -204,9 +208,10 @@
     }
   },
   "de": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "3201a3bc8b70",
       "ai": "857638035ad7",
       "broker": "74ee3d884708",
       "canvas": "3cdfa621c3bf",
@@ -238,7 +243,7 @@
       "menu": "6b60ecbc0de9",
       "password": "e418740edc3a",
       "passwordLink": "e10d63f0ae91",
-      "planning": "53dd90b8128e",
+      "planning": "1320199942f9",
       "present": "55522005b9b8",
       "privacy": "4b5a68920132",
       "privateDialog": "8fd96bedffcd",
@@ -255,9 +260,10 @@
     }
   },
   "el": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "a55f9c8e49f8",
       "ai": "c7556c1b9ccf",
       "broker": "276c35a5cf51",
       "canvas": "21c0b554744f",
@@ -289,7 +295,7 @@
       "menu": "b8104942ded5",
       "password": "81457aff5a51",
       "passwordLink": "c2bb58cf7cd3",
-      "planning": "53dd90b8128e",
+      "planning": "2d2bc79cca46",
       "present": "f553fe8c9964",
       "privacy": "71954363b5b2",
       "privateDialog": "0331c95b30df",
@@ -306,9 +312,10 @@
     }
   },
   "en-XA": {
-    "messages": 1639,
+    "messages": 1668,
     "fallback": 0,
     "areas": {
+      "admission": "0235ad03f4ed",
       "ai": "cc0c727703b3",
       "broker": "dd16f518c35c",
       "canvas": "eaad7f668ee2",
@@ -357,9 +364,10 @@
     }
   },
   "es": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "32f0f3fc982b",
       "ai": "5f18f254b452",
       "broker": "a4567406a078",
       "canvas": "b14e6391fc52",
@@ -391,7 +399,7 @@
       "menu": "59740eeafddf",
       "password": "c36d31030edc",
       "passwordLink": "8c884a7d8b3b",
-      "planning": "53dd90b8128e",
+      "planning": "25124554ef7a",
       "present": "dd3f7841729b",
       "privacy": "c892b2d48b3d",
       "privateDialog": "d40318dca761",
@@ -408,9 +416,10 @@
     }
   },
   "et": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "24a80c74c6b2",
       "ai": "d66d3769adc9",
       "broker": "0c94c40fa2b5",
       "canvas": "417d954ff382",
@@ -442,7 +451,7 @@
       "menu": "fe7db847c267",
       "password": "88b01c6f4404",
       "passwordLink": "e0137d76aa24",
-      "planning": "53dd90b8128e",
+      "planning": "8767192d6eeb",
       "present": "c23d74a1751a",
       "privacy": "33301a450779",
       "privateDialog": "c60fb3b61fb2",
@@ -459,9 +468,10 @@
     }
   },
   "fi": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "c70f1b059094",
       "ai": "e9b23cd51b4e",
       "broker": "c9a0598fa964",
       "canvas": "40e087ce9690",
@@ -493,7 +503,7 @@
       "menu": "5077c7c2d92a",
       "password": "d62fec5e7ce8",
       "passwordLink": "a1f1a770c916",
-      "planning": "53dd90b8128e",
+      "planning": "0786839fae2a",
       "present": "c9eaa999ef7f",
       "privacy": "8d4d6cf4538c",
       "privateDialog": "9d87e9dd313a",
@@ -510,9 +520,10 @@
     }
   },
   "fr": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "33d9a1db1727",
       "ai": "8372266af473",
       "broker": "ddd1d83d8edf",
       "canvas": "a6bbc82dec09",
@@ -544,7 +555,7 @@
       "menu": "8d76e35cf300",
       "password": "0c83314e320c",
       "passwordLink": "70a9a0c0df24",
-      "planning": "53dd90b8128e",
+      "planning": "65cfa2d63833",
       "present": "40a3ea0e3a59",
       "privacy": "4ed64debdbb8",
       "privateDialog": "892a96ae5d8d",
@@ -561,9 +572,10 @@
     }
   },
   "he": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "8dc118da41c0",
       "ai": "1c4de3ee24a5",
       "broker": "2c29042b4c08",
       "canvas": "bab60d0efa1e",
@@ -595,7 +607,7 @@
       "menu": "7256e92425b2",
       "password": "ef95ddfed6bb",
       "passwordLink": "4dfb74192a4e",
-      "planning": "53dd90b8128e",
+      "planning": "463522b2c5b5",
       "present": "07a77d721a50",
       "privacy": "0f024ce126b0",
       "privateDialog": "344bad5b5407",
@@ -612,9 +624,10 @@
     }
   },
   "hi": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "e388c934ceb1",
       "ai": "c2134710abdb",
       "broker": "48608388990e",
       "canvas": "335963b5e4ee",
@@ -646,7 +659,7 @@
       "menu": "07999c367e9d",
       "password": "7ae705ae6048",
       "passwordLink": "8933cb14921a",
-      "planning": "53dd90b8128e",
+      "planning": "9933bd01ec34",
       "present": "aa4e833f6074",
       "privacy": "03d63e7c1f7d",
       "privateDialog": "4e368e516b9e",
@@ -663,9 +676,10 @@
     }
   },
   "hr": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "1ab6ddd5637d",
       "ai": "41b8c5bd02f8",
       "broker": "33c20c340aa9",
       "canvas": "487af354a55e",
@@ -697,7 +711,7 @@
       "menu": "2ccf225cdd51",
       "password": "86e716c2ee33",
       "passwordLink": "f03537037dfe",
-      "planning": "53dd90b8128e",
+      "planning": "7d9d05fa6072",
       "present": "a4350e696e70",
       "privacy": "ebc8640fffb7",
       "privateDialog": "8d40e2884cef",
@@ -714,9 +728,10 @@
     }
   },
   "hu": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "ebb0adb1d697",
       "ai": "999015b453fc",
       "broker": "11712e341b05",
       "canvas": "81a382db8d62",
@@ -748,7 +763,7 @@
       "menu": "bd7f4865c559",
       "password": "02e3648c177e",
       "passwordLink": "ef6f603429cf",
-      "planning": "53dd90b8128e",
+      "planning": "cc640cfcc51d",
       "present": "d44e109ac827",
       "privacy": "11e14be93683",
       "privateDialog": "1583c2764b38",
@@ -765,9 +780,10 @@
     }
   },
   "id": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "e0d8b79cd3dc",
       "ai": "7508253d3643",
       "broker": "b80cb9b38721",
       "canvas": "2fda290dc14c",
@@ -799,7 +815,7 @@
       "menu": "f458ae3f063f",
       "password": "9daa6fc61156",
       "passwordLink": "bb7a3c57aefa",
-      "planning": "53dd90b8128e",
+      "planning": "61d294ee25ab",
       "present": "7b560d5f5ddb",
       "privacy": "c2368c2b933b",
       "privateDialog": "9834b93348a4",
@@ -816,9 +832,10 @@
     }
   },
   "it": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "52d637c4f6e4",
       "ai": "b1bdb1b943f2",
       "broker": "1e1b6beffa1a",
       "canvas": "e2c9a91a0072",
@@ -850,7 +867,7 @@
       "menu": "39aec192d441",
       "password": "2a7657d24f46",
       "passwordLink": "dff950e29f8f",
-      "planning": "53dd90b8128e",
+      "planning": "601b908fd920",
       "present": "f39106250f1f",
       "privacy": "62b1d2551919",
       "privateDialog": "6b4cf209e4b9",
@@ -867,9 +884,10 @@
     }
   },
   "ja": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "25a735d40cae",
       "ai": "16916e4a6466",
       "broker": "c8f5a8b68f7e",
       "canvas": "9da9d2835a24",
@@ -901,7 +919,7 @@
       "menu": "74eb63b41f3c",
       "password": "02685ad6d51b",
       "passwordLink": "58a99712a6eb",
-      "planning": "53dd90b8128e",
+      "planning": "beb2dd91a24c",
       "present": "defa59ea7528",
       "privacy": "00e7d81ed14d",
       "privateDialog": "8aa3a33f6046",
@@ -918,9 +936,10 @@
     }
   },
   "ko": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "d194bd5f09f0",
       "ai": "b9713b0ebc36",
       "broker": "47886d6b6de4",
       "canvas": "14bf51cdb387",
@@ -952,7 +971,7 @@
       "menu": "7835be70421a",
       "password": "5711beb20b99",
       "passwordLink": "1c2f88a7fcce",
-      "planning": "53dd90b8128e",
+      "planning": "ff9871be687b",
       "present": "496f68e2ebd0",
       "privacy": "d8963ae5d21d",
       "privateDialog": "fad117a7be0a",
@@ -969,9 +988,10 @@
     }
   },
   "lt": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "c2bbe8904767",
       "ai": "a60d18c72aca",
       "broker": "a6b34ba75b3b",
       "canvas": "55234b234890",
@@ -1003,7 +1023,7 @@
       "menu": "593d60eef45c",
       "password": "b0a96117c0b9",
       "passwordLink": "f3fb9bdd9fe1",
-      "planning": "53dd90b8128e",
+      "planning": "68613478fc51",
       "present": "1032852d442c",
       "privacy": "b86db1a0402d",
       "privateDialog": "bead71bd7154",
@@ -1020,9 +1040,10 @@
     }
   },
   "lv": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "4d1a93a8775c",
       "ai": "7abcc8e0fca5",
       "broker": "32c2f016e0b9",
       "canvas": "56c202d22f57",
@@ -1054,7 +1075,7 @@
       "menu": "44147adbe1f6",
       "password": "df62eb0a3f2f",
       "passwordLink": "2954383d56c9",
-      "planning": "53dd90b8128e",
+      "planning": "9e90f840505a",
       "present": "0117ef0c11e9",
       "privacy": "def37cecef2a",
       "privateDialog": "c85277e4d177",
@@ -1071,9 +1092,10 @@
     }
   },
   "nb": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "e717eea714b6",
       "ai": "1f5a7dd90494",
       "broker": "3531a562d619",
       "canvas": "89484ca81ced",
@@ -1105,7 +1127,7 @@
       "menu": "951e5098b5a4",
       "password": "348a608f9eaa",
       "passwordLink": "5a8c5299cf3f",
-      "planning": "53dd90b8128e",
+      "planning": "9890ca50c241",
       "present": "d5bfadb280b9",
       "privacy": "eba58ab988d6",
       "privateDialog": "8fe0924c025f",
@@ -1122,9 +1144,10 @@
     }
   },
   "nl": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "9bb86bc1656c",
       "ai": "9c887bebfb5c",
       "broker": "d508f900c835",
       "canvas": "0d55c0be3737",
@@ -1156,7 +1179,7 @@
       "menu": "c08745ce8642",
       "password": "a2194391250c",
       "passwordLink": "4f93cbda5827",
-      "planning": "53dd90b8128e",
+      "planning": "e949301055c1",
       "present": "063d9f1e2222",
       "privacy": "c15528cf26d0",
       "privateDialog": "5d46dfa227a7",
@@ -1173,9 +1196,10 @@
     }
   },
   "pl": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "d0f889a7ad5e",
       "ai": "0076fec882b3",
       "broker": "30921f4bdb9c",
       "canvas": "4df13e6160ea",
@@ -1207,7 +1231,7 @@
       "menu": "b3296be18621",
       "password": "14d3f4b36749",
       "passwordLink": "63e10082c6ad",
-      "planning": "53dd90b8128e",
+      "planning": "ab9825fb9d71",
       "present": "f6342cdc83e9",
       "privacy": "3d0631c6e30d",
       "privateDialog": "7b707d705bdc",
@@ -1224,9 +1248,10 @@
     }
   },
   "pt-BR": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "80f05da2d6d5",
       "ai": "a599e0c7104c",
       "broker": "44f9a3fc6f78",
       "canvas": "6dfc0a02461e",
@@ -1258,7 +1283,7 @@
       "menu": "3892b5babb79",
       "password": "13c51108c798",
       "passwordLink": "90db4d3f1641",
-      "planning": "53dd90b8128e",
+      "planning": "b46966254442",
       "present": "bcf5d7e1beb8",
       "privacy": "a7707ed47408",
       "privateDialog": "7140a0411411",
@@ -1275,9 +1300,10 @@
     }
   },
   "pt-PT": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "b0fc027b10ed",
       "ai": "da44ea732c3a",
       "broker": "7e73bb2c945f",
       "canvas": "ad9e85bff0c6",
@@ -1309,7 +1335,7 @@
       "menu": "718229f3bf0e",
       "password": "fdb8ca635391",
       "passwordLink": "ad1f6170b284",
-      "planning": "53dd90b8128e",
+      "planning": "95a7aee5dcdf",
       "present": "b3c14faad34f",
       "privacy": "b5a0f1e5f722",
       "privateDialog": "807ced27a39f",
@@ -1326,9 +1352,10 @@
     }
   },
   "ro": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "74e120e5b896",
       "ai": "690dd0af944f",
       "broker": "c88ed99d2904",
       "canvas": "588812a1de8a",
@@ -1360,7 +1387,7 @@
       "menu": "4cc5a9c51e55",
       "password": "c0727b77cb0e",
       "passwordLink": "ebf1f8da17d9",
-      "planning": "53dd90b8128e",
+      "planning": "4c94ae43256c",
       "present": "a18adf928e26",
       "privacy": "5764a710f480",
       "privateDialog": "98afeef7c9bb",
@@ -1377,9 +1404,10 @@
     }
   },
   "ru": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "f4a418d3add9",
       "ai": "419829673723",
       "broker": "defa09e14bed",
       "canvas": "15b578745447",
@@ -1411,7 +1439,7 @@
       "menu": "050e8c508d19",
       "password": "8ae907082dff",
       "passwordLink": "c0d96416d328",
-      "planning": "53dd90b8128e",
+      "planning": "de58dfe2802f",
       "present": "c81d849bf6f6",
       "privacy": "5e42a1dc03e0",
       "privateDialog": "c231593539bf",
@@ -1428,9 +1456,10 @@
     }
   },
   "sk": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "395ab5ee0595",
       "ai": "b584a1750e62",
       "broker": "e44f86fe31c7",
       "canvas": "d86828a10d00",
@@ -1462,7 +1491,7 @@
       "menu": "e8d6796fa224",
       "password": "0a5ea82e3b94",
       "passwordLink": "e22075f52077",
-      "planning": "53dd90b8128e",
+      "planning": "42a75fcf8397",
       "present": "c6db20ca92e6",
       "privacy": "4d7dc6be5744",
       "privateDialog": "3f1ea74de458",
@@ -1479,9 +1508,10 @@
     }
   },
   "sl": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "8de919f4e8db",
       "ai": "844c5fe53eda",
       "broker": "24fea16334a8",
       "canvas": "93728f084a27",
@@ -1513,7 +1543,7 @@
       "menu": "a78123ba2de9",
       "password": "e56565ab5b83",
       "passwordLink": "d1b8bdf4c23d",
-      "planning": "53dd90b8128e",
+      "planning": "0272eb6f759c",
       "present": "d883786dccfe",
       "privacy": "2ca45cb63bf1",
       "privateDialog": "90be98638d02",
@@ -1530,9 +1560,10 @@
     }
   },
   "sr-Latn": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "6764dc8e530b",
       "ai": "571bcb1e2693",
       "broker": "9efdaa7c4c65",
       "canvas": "7ce51a2e614f",
@@ -1564,7 +1595,7 @@
       "menu": "566879d53fbc",
       "password": "f44e4fd7a26f",
       "passwordLink": "28b6cb43783b",
-      "planning": "53dd90b8128e",
+      "planning": "ff6f797cfa15",
       "present": "1acdd49d9ce7",
       "privacy": "12e4dc2d911b",
       "privateDialog": "96cf497dab7f",
@@ -1581,9 +1612,10 @@
     }
   },
   "sv": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "b9af00ae0ba2",
       "ai": "488379e2ee77",
       "broker": "bb3004dcedcf",
       "canvas": "e229cb2a101d",
@@ -1615,7 +1647,7 @@
       "menu": "28901788f15c",
       "password": "8a772c85a5ec",
       "passwordLink": "dc752de66fcb",
-      "planning": "53dd90b8128e",
+      "planning": "f061a4c43c87",
       "present": "e292105cbbe5",
       "privacy": "212012b3d147",
       "privateDialog": "f33adc0afed2",
@@ -1632,9 +1664,10 @@
     }
   },
   "th": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "a11746e97cfe",
       "ai": "25e5a5758e0a",
       "broker": "006f226776f8",
       "canvas": "f96766d37a59",
@@ -1666,7 +1699,7 @@
       "menu": "f5f256d6a323",
       "password": "9802ac64252e",
       "passwordLink": "6a745e1f802f",
-      "planning": "53dd90b8128e",
+      "planning": "8d52c950969c",
       "present": "82a1a2b6638d",
       "privacy": "68c15f4cebd2",
       "privateDialog": "9d3fee36e3f5",
@@ -1683,9 +1716,10 @@
     }
   },
   "tr": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "1355d56a56e6",
       "ai": "2c45c177a3eb",
       "broker": "6ac7d93b8b69",
       "canvas": "40a1775f62b9",
@@ -1717,7 +1751,7 @@
       "menu": "029737a02a3a",
       "password": "d67e47c6eb31",
       "passwordLink": "8757e0524a80",
-      "planning": "53dd90b8128e",
+      "planning": "ef500567b6da",
       "present": "5281441fac56",
       "privacy": "c41f2e7cfaa7",
       "privateDialog": "6bceb4d2542a",
@@ -1734,9 +1768,10 @@
     }
   },
   "uk": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "a3ebfe42e137",
       "ai": "00c91ebd48c1",
       "broker": "43024a75a936",
       "canvas": "6fcccf14826e",
@@ -1768,7 +1803,7 @@
       "menu": "9e17a69e855c",
       "password": "0ee5c2f6f833",
       "passwordLink": "c495a44bee7c",
-      "planning": "53dd90b8128e",
+      "planning": "6083da414e55",
       "present": "2c41d84317c3",
       "privacy": "8f47427c927a",
       "privateDialog": "41d5d1755b63",
@@ -1785,9 +1820,10 @@
     }
   },
   "vi": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "19f7f6e44e3f",
       "ai": "88456409d7c5",
       "broker": "29be0d811866",
       "canvas": "b2cbedf2595c",
@@ -1819,7 +1855,7 @@
       "menu": "b4c657cd2ae4",
       "password": "129dba4c20a1",
       "passwordLink": "e4527ac7b40f",
-      "planning": "53dd90b8128e",
+      "planning": "47dedfed8097",
       "present": "e4641b28dbbc",
       "privacy": "b7dfca8d5bcb",
       "privateDialog": "e583a12d5828",
@@ -1836,9 +1872,10 @@
     }
   },
   "zh-CN": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "436e3307896b",
       "ai": "3ef50488a156",
       "broker": "d2e8c8d65536",
       "canvas": "aed4ac3fbf38",
@@ -1870,7 +1907,7 @@
       "menu": "593fa41a2f2f",
       "password": "d3d8e95a7bb6",
       "passwordLink": "0f7a98a25fae",
-      "planning": "53dd90b8128e",
+      "planning": "fb3f7ba95f49",
       "present": "fc5929be1d64",
       "privacy": "3869fbe7355c",
       "privateDialog": "3ea3ef3da3e0",
@@ -1887,9 +1924,10 @@
     }
   },
   "zh-TW": {
-    "messages": 1639,
-    "fallback": 72,
+    "messages": 1668,
+    "fallback": 78,
     "areas": {
+      "admission": "3430f231bcc8",
       "ai": "aa167b14e4aa",
       "broker": "4a47ec750e03",
       "canvas": "9e0b62a504f7",
@@ -1921,7 +1959,7 @@
       "menu": "32ac66ba5079",
       "password": "7cd06e7b6754",
       "passwordLink": "1f7ec0b23898",
-      "planning": "53dd90b8128e",
+      "planning": "b88c8af025d5",
       "present": "eb20a3dd7b2a",
       "privacy": "56d33c920781",
       "privateDialog": "b495d627fd6b",

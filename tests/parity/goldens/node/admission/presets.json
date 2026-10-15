@@ -1,0 +1,219 @@
+{
+  "revision": "2026-10-14",
+  "presets": {
+    "lambda-account": {
+      "scaling": "auto",
+      "maxConcurrency": 1000,
+      "latencyMs": 250,
+      "concurrency": 1,
+      "api": { "sharedConcurrency": "lambda-account-region", "maxInFlight": 1000 }
+    },
+    "stripe-live": {
+      "latencyMs": 250,
+      "api": {
+        "maxInFlight": 50,
+        "sharedConcurrency": "stripe-live-account",
+        "quotas": [
+          { "id": "global-rate", "unit": "requests", "amount": 100, "windowMs": 1000, "algorithm": "token-bucket", "sharedGroup": "stripe-live-account" }
+        ]
+      }
+    },
+    "stripe-sandbox": {
+      "latencyMs": 250,
+      "api": {
+        "quotas": [
+          { "id": "global-rate", "unit": "requests", "amount": 25, "windowMs": 1000, "algorithm": "token-bucket", "sharedGroup": "stripe-sandbox-account" }
+        ]
+      }
+    },
+    "api-gateway-account": {
+      "latencyMs": 60,
+      "api": {
+        "quotas": [
+          { "id": "global-rate", "unit": "requests", "amount": 10000, "burst": 5000, "windowMs": 1000, "algorithm": "token-bucket", "sharedGroup": "api-gateway-account-region" }
+        ]
+      }
+    },
+    "managed-measured": { "latencyMs": 250, "failureRate": 0 }
+  },
+  "stencils": {
+    "azure.functions": {
+      "kind": "serverless",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "aws.lambda": {
+      "kind": "serverless",
+      "preset": "lambda-account",
+      "newProps": {
+        "preset": "lambda-account",
+        "presetRevision": "2026-10-14",
+        "scaling": "auto",
+        "maxConcurrency": 1000,
+        "latencyMs": 250,
+        "concurrency": 1,
+        "api": { "sharedConcurrency": "lambda-account-region", "maxInFlight": 1000 }
+      }
+    },
+    "gcp.cloud-functions": {
+      "kind": "serverless",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "cloudflare.workers": {
+      "kind": "serverless",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "graphql": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "azure.api-management": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "aws.api-gateway": {
+      "kind": "api",
+      "preset": "api-gateway-account",
+      "newProps": {
+        "preset": "api-gateway-account",
+        "presetRevision": "2026-10-14",
+        "latencyMs": 60,
+        "api": {
+          "quotas": [
+            { "id": "global-rate", "unit": "requests", "amount": 10000, "burst": 5000, "windowMs": 1000, "algorithm": "token-bucket", "sharedGroup": "api-gateway-account-region" }
+          ]
+        }
+      }
+    },
+    "kong": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "generic.external-api": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "iterable": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "braze": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "segment": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "shopify": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "paypal": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "adyen": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "client.partner": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "stripe": {
+      "kind": "api",
+      "preset": "stripe-live",
+      "newProps": {
+        "preset": "stripe-live",
+        "presetRevision": "2026-10-14",
+        "latencyMs": 250,
+        "api": {
+          "maxInFlight": 50,
+          "sharedConcurrency": "stripe-live-account",
+          "quotas": [
+            { "id": "global-rate", "unit": "requests", "amount": 100, "windowMs": 1000, "algorithm": "token-bucket", "sharedGroup": "stripe-live-account" }
+          ]
+        }
+      }
+    },
+    "twilio": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "sendgrid": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "salesforce": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "hubspot": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "slack": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "openai": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "anthropic.claude": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "generic.email": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "generic.sms": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "generic.push": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "generic.marketing": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "generic.llm": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "generic.ml-model": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    }
+  }
+}

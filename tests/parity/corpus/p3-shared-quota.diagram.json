@@ -1,0 +1,196 @@
+{
+  "format": "diagrams/v2",
+  "planning": {
+    "revision": "p3",
+    "sharedQuotas": [
+      {
+        "id": "account-rate",
+        "unit": "requests",
+        "amount": 103,
+        "windowMs": 1000,
+        "algorithm": "token-bucket",
+        "sharedGroup": "acct"
+      }
+    ],
+    "sharedAllocations": [
+      {
+        "id": "pool",
+        "maxInFlight": 60
+      }
+    ]
+  },
+  "title": "Shared account quota and an endpoint budget",
+  "nodes": [
+    {
+      "id": "web",
+      "stencil": "client.browser",
+      "label": "Web",
+      "x": 0,
+      "y": 60,
+      "props": {
+        "ratePerSec": 40
+      }
+    },
+    {
+      "id": "batch",
+      "stencil": "client.browser",
+      "label": "Batch",
+      "x": 0,
+      "y": 260,
+      "props": {
+        "ratePerSec": 80
+      }
+    },
+    {
+      "id": "a",
+      "stencil": "generic.external-api",
+      "label": "Partner API a",
+      "x": 330,
+      "y": 60,
+      "props": {
+        "preset": "managed-measured",
+        "presetRevision": "2026-10-14",
+        "latencyMs": 100,
+        "jitter": 0,
+        "api": {
+          "maxInFlight": 40,
+          "quotas": [
+            {
+              "id": "account-rate",
+              "unit": "requests",
+              "amount": 103,
+              "windowMs": 1000,
+              "algorithm": "token-bucket",
+              "sharedGroup": "acct"
+            }
+          ]
+        },
+        "endpoints": [
+          {
+            "id": "refunds",
+            "method": "POST",
+            "path": "/refunds",
+            "behaviour": {
+              "quotas": [
+                {
+                  "id": "refund-rate",
+                  "unit": "requests",
+                  "amount": 5,
+                  "windowMs": 1000,
+                  "algorithm": "token-bucket"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "b",
+      "stencil": "generic.external-api",
+      "label": "Partner API b",
+      "x": 330,
+      "y": 260,
+      "props": {
+        "preset": "managed-measured",
+        "presetRevision": "2026-10-14",
+        "latencyMs": 100,
+        "jitter": 0,
+        "api": {
+          "maxInFlight": 40,
+          "quotas": [
+            {
+              "id": "account-rate",
+              "unit": "requests",
+              "amount": 103,
+              "windowMs": 1000,
+              "algorithm": "token-bucket",
+              "sharedGroup": "acct"
+            }
+          ],
+          "sharedConcurrency": "pool"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "web-a",
+      "from": "web",
+      "to": "a",
+      "kind": "sync",
+      "props": {
+        "travelMs": 0,
+        "endpointId": "refunds"
+      }
+    },
+    {
+      "id": "batch-b",
+      "from": "batch",
+      "to": "b",
+      "kind": "sync",
+      "props": {
+        "travelMs": 0
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "exact",
+      "title": "200 calls in 0.2 s at scale 1",
+      "seed": 3,
+      "scale": 1,
+      "durationMs": 8000,
+      "traffic": [
+        {
+          "id": "burst",
+          "node": "batch",
+          "messageType": "Charge",
+          "shape": {
+            "kind": "burst",
+            "count": 200,
+            "spreadMs": 200
+          }
+        }
+      ]
+    },
+    {
+      "id": "sampled",
+      "title": "200 calls in 0.2 s at scale 10",
+      "seed": 3,
+      "scale": 10,
+      "durationMs": 8000,
+      "traffic": [
+        {
+          "id": "burst",
+          "node": "batch",
+          "messageType": "Charge",
+          "shape": {
+            "kind": "burst",
+            "count": 200,
+            "spreadMs": 200
+          }
+        }
+      ]
+    },
+    {
+      "id": "refunds",
+      "title": "60 calls in 1 s at scale 1",
+      "seed": 3,
+      "scale": 1,
+      "durationMs": 8000,
+      "traffic": [
+        {
+          "id": "burst",
+          "node": "web",
+          "messageType": "Charge",
+          "shape": {
+            "kind": "burst",
+            "count": 60,
+            "spreadMs": 1000
+          }
+        }
+      ]
+    }
+  ]
+}

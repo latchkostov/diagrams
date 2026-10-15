@@ -1,0 +1,18 @@
+{
+  "ran": [
+    "dead-letter",
+    "no-reader",
+    "sync-cycle",
+    "sync-chain",
+    "shared-database",
+    "entry-gateway",
+    "capacity",
+    "single-point",
+    "secret-identity",
+    "schema-registry"
+  ],
+  "off": [],
+  "findings": [{ "id": "capacity:a", "rule": "capacity", "severity": "warning", "target": "a", "elements": ["a"] }],
+  "ignored": [],
+  "fixes": {}
+}

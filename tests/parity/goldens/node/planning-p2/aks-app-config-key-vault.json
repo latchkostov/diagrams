@@ -1,13 +1,13 @@
 {
   "format": "diagrams/v2",
-  "planning": { "revision": "p2" },
+  "planning": { "revision": "p3" },
   "nodeProps": {
     "web": { "ratePerSec": 20, "messageType": "PlaceOrder", "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "healthChecks": false },
     "fd": { "ratePerSec": 2, "latencyMs": 60, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Front Door", "healthChecks": false },
     "api": { "replicas": 3, "concurrency": 16, "latencyMs": 120, "emits": "OrderCreated", "ratePerSec": 2, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Orders API", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
     "sql": { "ratePerSec": 2, "latencyMs": 40, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "orders-db", "healthChecks": false },
     "sb": { "partitions": 16, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "messageType": "orders.created", "healthChecks": false },
-    "notify": { "concurrency": 32, "latencyMs": 150, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Order confirmation", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
+    "notify": { "concurrency": 32, "latencyMs": 150, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Order confirmation", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
     "ai": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Application Insights", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
     "appcfg": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "orders-config", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
     "kv": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "orders-kv", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
@@ -91,6 +91,7 @@
         "converged": true
       },
       "notify": {
+        "managed": "serverless",
         "id": "notify",
         "role": "processor",
         "status": "up",
@@ -110,7 +111,6 @@
         "growth": 0,
         "contributors": [{ "edge": "sb-to-notify", "node": "sb", "label": "orders.created", "rate": 20 }],
         "target": 0.5,
-        "minimumReplicas": 1,
         "changes": null,
         "converged": true
       }
@@ -138,7 +138,7 @@
     "redundancy": {},
     "resolved": {
       "web": {
-        "profile": { "family": "client", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 20,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -153,7 +153,7 @@
         "healthChecks": false
       },
       "fd": {
-        "profile": { "family": "edge", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "edge", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -168,7 +168,7 @@
         "healthChecks": false
       },
       "api": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 120,
         "concurrency": 16,
@@ -184,7 +184,7 @@
         "healthChecks": false
       },
       "sql": {
-        "profile": { "family": "sql", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -200,7 +200,7 @@
       },
       "sb": {
         "broker": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "pubsub", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "pubsub", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -215,7 +215,8 @@
         "healthChecks": false
       },
       "notify": {
-        "profile": { "family": "serverless", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "admission": { "api": {}, "endpoints": [], "fixedSlotsPerReplica": 32 },
+        "profile": { "family": "serverless", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 150,
         "concurrency": 32,
@@ -230,7 +231,7 @@
         "healthChecks": false
       },
       "ai": {
-        "profile": { "family": "telemetry", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "telemetry", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -245,7 +246,7 @@
         "healthChecks": false
       },
       "appcfg": {
-        "profile": { "family": "dependency", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "dependency", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -260,7 +261,7 @@
         "healthChecks": false
       },
       "kv": {
-        "profile": { "family": "dependency", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "dependency", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -275,7 +276,7 @@
         "healthChecks": false
       },
       "mi": {
-        "profile": { "family": "dependency", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "dependency", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -290,7 +291,7 @@
         "healthChecks": false
       },
       "entra": {
-        "profile": { "family": "dependency", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "dependency", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -359,6 +360,7 @@
           "converged": true
         },
         "notify": {
+          "managed": "serverless",
           "id": "notify",
           "role": "processor",
           "status": "up",
@@ -378,7 +380,6 @@
           "growth": 0,
           "contributors": [{ "edge": "sb-to-notify", "node": "sb", "label": "orders.created", "rate": 40 }],
           "target": 0.5,
-          "minimumReplicas": 1,
           "changes": null,
           "converged": true
         }
@@ -393,7 +394,7 @@
       "simulation": "flash-sale",
       "analysis": {
         "bottleneck": "notify",
-        "suggestion": "Order confirmation: raise replicas from 1 to 2.",
+        "suggestion": "Order confirmation: Increase allocation or Reduce calls.",
         "converged": true,
         "iterations": 5,
         "nodes [capacity, offered, utilization, replicas, active, idle]": {
@@ -440,6 +441,7 @@
           "converged": true
         },
         "notify": {
+          "managed": "serverless",
           "id": "notify",
           "role": "processor",
           "status": "up",
@@ -459,16 +461,13 @@
           "growth": 86.66666666666666,
           "contributors": [{ "edge": "sb-to-notify", "node": "sb", "label": "orders.created", "rate": 300 }],
           "target": 0.5,
-          "minimumReplicas": 2,
-          "targetReplicas": 3,
-          "changes": [{ "nodeId": "notify", "key": "replicas", "from": 1, "to": 3 }],
-          "fixId": "capacity:notify",
+          "changes": null,
           "converged": true
         }
       },
       "capabilities": "(same as edit)",
-      "sizing": [{ "nodeId": "notify", "key": "replicas", "from": 1, "to": 3 }],
-      "redundancy": { "sb": { "replicas": 2, "enough": false }, "notify": { "replicas": 3, "enough": true } },
+      "sizing": "(same as edit)",
+      "redundancy": { "sb": { "replicas": 2, "enough": false }, "notify": { "replicas": 2, "enough": false } },
       "resolved": "(same as edit)"
     }
   },
@@ -605,11 +604,8 @@
       "tone": "over",
       "top": "notify",
       "headline": "Order confirmation and 1 more are over capacity",
-      "detail": "141% · 300/s of 213/s",
-      "fix": {
-        "changes": [{ "nodeId": "notify", "key": "replicas", "from": 1, "to": 3, "label": "Order confirmation" }],
-        "label": "Order confirmation 1 → 3 replicas"
-      },
+      "detail": "141% · 300/s of 213/s. Reduce calls",
+      "fix": null,
       "addConsumer": null,
       "converged": true,
       "nodes": {

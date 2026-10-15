@@ -1,0 +1,78 @@
+{
+  "withIcons": {
+    "sha256": "bcb867cc57969f09e84137a00f64888d26ac791a7e520fef6db4ff5ca90fb42e",
+    "bytes": 4053,
+    "inlined": { "client.browser": "client-browser 0022934839e05a07", "stripe": "stripe 2a95514be7dd30ec" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Managed admission",
+        "nodes": [
+          {
+            "id": "source",
+            "stencil": "client.browser",
+            "label": "Checkout",
+            "x": 0,
+            "y": 130,
+            "props": { "ratePerSec": 20 }
+          },
+          {
+            "id": "api",
+            "stencil": "stripe",
+            "label": "Stripe",
+            "x": 330,
+            "y": 130,
+            "props": {
+              "preset": "stripe-live",
+              "presetRevision": "2026-10-14",
+              "latencyMs": 1000,
+              "api": {
+                "maxInFlight": 50,
+                "sharedConcurrency": "stripe-live-account",
+                "quotas": [
+                  { "id": "global-rate", "unit": "requests", "amount": 100, "windowMs": 1000, "algorithm": "token-bucket", "sharedGroup": "stripe-live-account" }
+                ]
+              },
+              "jitter": 0
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "call",
+            "from": "source",
+            "to": "api",
+            "kind": "sync",
+            "props": {
+              "travelMs": 0,
+              "caller": {
+                "deadlineMs": 1,
+                "retry": { "maxAttempts": 3, "strategy": "exponential", "backoffMs": 100, "retryOn": ["throttled"] }
+              }
+            }
+          }
+        ],
+        "simulations": [
+          {
+            "id": "rush",
+            "title": "300 calls in 1 s at scale 1",
+            "seed": 3,
+            "scale": 1,
+            "durationMs": 8000,
+            "traffic": [
+              {
+                "id": "burst",
+                "node": "source",
+                "messageType": "Charge",
+                "shape": { "kind": "burst", "count": 300, "spreadMs": 1000 }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

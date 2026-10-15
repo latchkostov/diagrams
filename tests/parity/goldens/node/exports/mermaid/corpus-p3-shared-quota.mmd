@@ -1,0 +1,11 @@
+---
+title: Shared account quota and an endpoint budget
+---
+flowchart LR
+  web(["Web"])
+  batch(["Batch"])
+  a(["Partner API a"])
+  b(["Partner API b"])
+  web --> a
+  batch --> b
+%% diagrams:{"v":1,"nodes":{"web":["web","client.browser"],"batch":["batch","client.browser"],"a":["a","generic.external-api"],"b":["b","generic.external-api"]},"edges":["web-a","batch-b"],"relations":{}}

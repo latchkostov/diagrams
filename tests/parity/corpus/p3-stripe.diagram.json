@@ -1,0 +1,87 @@
+{
+  "format": "diagrams/v2",
+  "planning": {
+    "revision": "p3"
+  },
+  "title": "Managed admission",
+  "nodes": [
+    {
+      "id": "source",
+      "stencil": "client.browser",
+      "label": "Checkout",
+      "x": 0,
+      "y": 130,
+      "props": {
+        "ratePerSec": 20
+      }
+    },
+    {
+      "id": "api",
+      "stencil": "stripe",
+      "label": "Stripe",
+      "x": 330,
+      "y": 130,
+      "props": {
+        "preset": "stripe-live",
+        "presetRevision": "2026-10-14",
+        "latencyMs": 1000,
+        "api": {
+          "maxInFlight": 50,
+          "sharedConcurrency": "stripe-live-account",
+          "quotas": [
+            {
+              "id": "global-rate",
+              "unit": "requests",
+              "amount": 100,
+              "windowMs": 1000,
+              "algorithm": "token-bucket",
+              "sharedGroup": "stripe-live-account"
+            }
+          ]
+        },
+        "jitter": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "call",
+      "from": "source",
+      "to": "api",
+      "kind": "sync",
+      "props": {
+        "travelMs": 0,
+        "caller": {
+          "deadlineMs": 1,
+          "retry": {
+            "maxAttempts": 3,
+            "strategy": "exponential",
+            "backoffMs": 100,
+            "retryOn": ["throttled"]
+          }
+        }
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "rush",
+      "title": "300 calls in 1 s at scale 1",
+      "seed": 3,
+      "scale": 1,
+      "durationMs": 8000,
+      "traffic": [
+        {
+          "id": "burst",
+          "node": "source",
+          "messageType": "Charge",
+          "shape": {
+            "kind": "burst",
+            "count": 300,
+            "spreadMs": 1000
+          }
+        }
+      ]
+    }
+  ]
+}

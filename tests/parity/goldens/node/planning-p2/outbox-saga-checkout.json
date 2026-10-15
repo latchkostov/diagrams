@@ -1,6 +1,6 @@
 {
   "format": "diagrams/v2",
-  "planning": { "revision": "p2" },
+  "planning": { "revision": "p3" },
   "nodeProps": {
     "client": { "ratePerSec": 5, "messageType": "PlaceOrder", "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "healthChecks": false },
     "order-api": {
@@ -40,7 +40,7 @@
       "preset": "processor-lesson",
       "presetRevision": "1"
     },
-    "email": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "SendGrid", "healthChecks": false },
+    "email": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "SendGrid", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
     "saga": {
       "concurrency": 64,
       "latencyMs": 50,
@@ -98,7 +98,7 @@
       "presetRevision": "1"
     },
     "inventory-db": { "latencyMs": 10, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Inventory database", "healthChecks": false },
-    "stripe": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Stripe", "healthChecks": false },
+    "stripe": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Stripe", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
     "vault": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Vault", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" }
   },
   "legacyExport": {
@@ -111,12 +111,16 @@
       "outbox-relay.props.presetRevision",
       "notifications.props.preset",
       "notifications.props.presetRevision",
+      "email.props.preset",
+      "email.props.presetRevision",
       "saga.props.preset",
       "saga.props.presetRevision",
       "inventory-svc.props.preset",
       "inventory-svc.props.presetRevision",
       "payment-svc.props.preset",
       "payment-svc.props.presetRevision",
+      "stripe.props.preset",
+      "stripe.props.presetRevision",
       "vault.props.preset",
       "vault.props.presetRevision"
     ]
@@ -341,6 +345,32 @@
         "changes": null,
         "converged": true
       },
+      "email": {
+        "managed": "api",
+        "id": "email",
+        "role": "sink",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": "Infinity",
+        "offered": 5,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [
+          { "edge": "notifications-to-email", "node": "notifications", "label": "Notification service", "rate": 5 }
+        ],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
       "saga": {
         "id": "saga",
         "role": "processor",
@@ -467,6 +497,32 @@
         "minimumReplicas": 1,
         "changes": null,
         "converged": true
+      },
+      "stripe": {
+        "managed": "api",
+        "id": "stripe",
+        "role": "sink",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": "Infinity",
+        "offered": 5,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [
+          { "edge": "payment-svc-to-stripe", "node": "payment-svc", "label": "Payment service", "rate": 5 }
+        ],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
       }
     },
     "capabilities": {
@@ -541,7 +597,7 @@
     "redundancy": {},
     "resolved": {
       "client": {
-        "profile": { "family": "client", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 5,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -556,7 +612,7 @@
         "healthChecks": false
       },
       "order-api": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 100,
         "concurrency": 32,
@@ -572,7 +628,7 @@
         "healthChecks": false
       },
       "orders-db": {
-        "profile": { "family": "sql", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -587,7 +643,7 @@
         "healthChecks": false
       },
       "outbox-relay": {
-        "profile": { "family": "stream-processor", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "stream-processor", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 80,
         "concurrency": 32,
@@ -603,7 +659,7 @@
       },
       "order-events": {
         "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "log", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -618,7 +674,7 @@
         "healthChecks": false
       },
       "notifications": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 100,
         "concurrency": 32,
@@ -634,7 +690,8 @@
         "healthChecks": false
       },
       "email": {
-        "profile": { "family": "external-api", "revision": "p2", "evidence": [], "units": "real" },
+        "admission": { "api": {}, "endpoints": [] },
+        "profile": { "family": "external-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -649,7 +706,7 @@
         "healthChecks": false
       },
       "saga": {
-        "profile": { "family": "workflow", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "workflow", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 50,
         "concurrency": 64,
@@ -665,7 +722,7 @@
         "healthChecks": false
       },
       "saga-db": {
-        "profile": { "family": "sql", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -681,7 +738,7 @@
       },
       "inventory-cmds": {
         "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "log", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -697,7 +754,7 @@
       },
       "saga-replies": {
         "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "log", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -713,7 +770,7 @@
       },
       "payment-cmds": {
         "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "log", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -729,7 +786,7 @@
       },
       "payments-dlq": {
         "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "log", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -744,7 +801,7 @@
         "healthChecks": false
       },
       "inventory-svc": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 100,
         "concurrency": 32,
@@ -760,7 +817,7 @@
         "healthChecks": false
       },
       "payment-svc": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 150,
         "concurrency": 32,
@@ -776,7 +833,7 @@
         "healthChecks": false
       },
       "inventory-db": {
-        "profile": { "family": "sql", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -791,7 +848,8 @@
         "healthChecks": false
       },
       "stripe": {
-        "profile": { "family": "external-api", "revision": "p2", "evidence": [], "units": "real" },
+        "admission": { "api": {}, "endpoints": [] },
+        "profile": { "family": "external-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -806,7 +864,7 @@
         "healthChecks": false
       },
       "vault": {
-        "profile": { "family": "dependency", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "dependency", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -1017,6 +1075,32 @@
           "changes": null,
           "converged": true
         },
+        "email": {
+          "managed": "api",
+          "id": "email",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 10,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [
+            { "edge": "notifications-to-email", "node": "notifications", "label": "Notification service", "rate": 10 }
+          ],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
         "saga": {
           "id": "saga",
           "role": "processor",
@@ -1143,6 +1227,32 @@
           "minimumReplicas": 1,
           "changes": null,
           "converged": true
+        },
+        "stripe": {
+          "managed": "api",
+          "id": "stripe",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 10,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [
+            { "edge": "payment-svc-to-stripe", "node": "payment-svc", "label": "Payment service", "rate": 10 }
+          ],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
         }
       },
       "capabilities": "(same as edit)",
@@ -1150,7 +1260,7 @@
       "redundancy": "(same as edit)",
       "resolved": {
         "client": {
-          "profile": { "family": "client", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 5,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -1165,7 +1275,7 @@
           "healthChecks": false
         },
         "order-api": {
-          "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 100,
           "concurrency": 32,
@@ -1181,7 +1291,7 @@
           "healthChecks": false
         },
         "orders-db": {
-          "profile": { "family": "sql", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -1196,7 +1306,7 @@
           "healthChecks": false
         },
         "outbox-relay": {
-          "profile": { "family": "stream-processor", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "stream-processor", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 80,
           "concurrency": 32,
@@ -1212,7 +1322,7 @@
         },
         "order-events": {
           "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-          "profile": { "family": "log", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -1227,7 +1337,7 @@
           "healthChecks": false
         },
         "notifications": {
-          "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 100,
           "concurrency": 32,
@@ -1243,7 +1353,8 @@
           "healthChecks": false
         },
         "email": {
-          "profile": { "family": "external-api", "revision": "p2", "evidence": [], "units": "real" },
+          "admission": { "api": {}, "endpoints": [] },
+          "profile": { "family": "external-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -1258,7 +1369,7 @@
           "healthChecks": false
         },
         "saga": {
-          "profile": { "family": "workflow", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "workflow", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 50,
           "concurrency": 64,
@@ -1274,7 +1385,7 @@
           "healthChecks": false
         },
         "saga-db": {
-          "profile": { "family": "sql", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -1290,7 +1401,7 @@
         },
         "inventory-cmds": {
           "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-          "profile": { "family": "log", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -1306,7 +1417,7 @@
         },
         "saga-replies": {
           "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-          "profile": { "family": "log", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -1322,7 +1433,7 @@
         },
         "payment-cmds": {
           "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-          "profile": { "family": "log", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -1338,7 +1449,7 @@
         },
         "payments-dlq": {
           "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-          "profile": { "family": "log", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -1353,7 +1464,7 @@
           "healthChecks": false
         },
         "inventory-svc": {
-          "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 100,
           "concurrency": 32,
@@ -1369,7 +1480,7 @@
           "healthChecks": false
         },
         "payment-svc": {
-          "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 150,
           "concurrency": 32,
@@ -1385,7 +1496,7 @@
           "healthChecks": false
         },
         "inventory-db": {
-          "profile": { "family": "sql", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -1400,7 +1511,8 @@
           "healthChecks": false
         },
         "stripe": {
-          "profile": { "family": "external-api", "revision": "p2", "evidence": [], "units": "real" },
+          "admission": { "api": {}, "endpoints": [] },
+          "profile": { "family": "external-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -1415,7 +1527,7 @@
           "healthChecks": false
         },
         "vault": {
-          "profile": { "family": "dependency", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "dependency", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -1451,7 +1563,7 @@
             "outbox-relay": ["ok", "3% · 10/s of 400/s"],
             "order-events": ["ok", "2% · 10/s of 640/s"],
             "notifications": ["ok", "2% · 5/s of 320/s"],
-            "email": ["idle", "5/s · no limit", { "modeled": false }],
+            "email": ["idle", "Limits unknown; enter measured or contracted values."],
             "saga": ["ok", "1% · 15/s of 1.3k/s"],
             "saga-db": ["idle", "15/s · no limit", { "modeled": false }],
             "inventory-cmds": ["ok", "2% · 5/s of 320/s"],
@@ -1461,7 +1573,7 @@
             "inventory-svc": ["ok", "2% · 5/s of 320/s"],
             "payment-svc": ["ok", "2% · 5/s of 213/s"],
             "inventory-db": ["idle", "5/s · no limit", { "modeled": false }],
-            "stripe": ["idle", "5/s · no limit", { "modeled": false }],
+            "stripe": ["idle", "Limits unknown; enter measured or contracted values."],
             "vault": ["idle", "", { "modeled": false }]
           }
         },
@@ -1484,7 +1596,7 @@
             "outbox-relay": ["ok", "13% · 50/s of 400/s"],
             "order-events": ["ok", "8% · 50/s of 640/s"],
             "notifications": ["ok", "8% · 25/s of 320/s"],
-            "email": ["idle", "25/s · no limit", { "modeled": false }],
+            "email": ["idle", "Limits unknown; enter measured or contracted values."],
             "saga": ["ok", "6% · 75/s of 1.3k/s"],
             "saga-db": ["idle", "75/s · no limit", { "modeled": false }],
             "inventory-cmds": ["ok", "8% · 25/s of 320/s"],
@@ -1494,7 +1606,7 @@
             "inventory-svc": ["ok", "8% · 25/s of 320/s"],
             "payment-svc": ["ok", "12% · 25/s of 213/s"],
             "inventory-db": ["idle", "25/s · no limit", { "modeled": false }],
-            "stripe": ["idle", "25/s · no limit", { "modeled": false }],
+            "stripe": ["idle", "Limits unknown; enter measured or contracted values."],
             "vault": ["idle", "", { "modeled": false }]
           }
         },
@@ -1517,7 +1629,7 @@
             "outbox-relay": ["ok", "3% · 10/s of 400/s"],
             "order-events": ["ok", "2% · 10/s of 640/s"],
             "notifications": ["ok", "2% · 5/s of 320/s"],
-            "email": ["idle", "5/s · no limit", { "modeled": false }],
+            "email": ["idle", "Limits unknown; enter measured or contracted values."],
             "saga": ["ok", "1% · 15/s of 1.3k/s"],
             "saga-db": ["idle", "15/s · no limit", { "modeled": false }],
             "inventory-cmds": ["ok", "2% · 5/s of 320/s"],
@@ -1527,7 +1639,7 @@
             "inventory-svc": ["ok", "2% · 5/s of 320/s"],
             "payment-svc": ["ok", "2% · 5/s of 213/s"],
             "inventory-db": ["idle", "5/s · no limit", { "modeled": false }],
-            "stripe": ["idle", "5/s · no limit", { "modeled": false }],
+            "stripe": ["idle", "Limits unknown; enter measured or contracted values."],
             "vault": ["idle", "", { "modeled": false }]
           }
         },
@@ -1559,7 +1671,7 @@
             "outbox-relay": ["ok", "3% · 10/s of 400/s"],
             "order-events": ["ok", "2% · 10/s of 640/s"],
             "notifications": ["ok", "2% · 5/s of 320/s"],
-            "email": ["idle", "5/s · no limit", { "modeled": false }],
+            "email": ["idle", "Limits unknown; enter measured or contracted values."],
             "saga": ["ok", "1% · 15/s of 1.3k/s"],
             "saga-db": ["idle", "15/s · no limit", { "modeled": false }],
             "inventory-cmds": ["ok", "2% · 5/s of 320/s"],
@@ -1569,7 +1681,7 @@
             "inventory-svc": ["ok", "2% · 5/s of 320/s"],
             "payment-svc": ["ok", "2% · 5/s of 213/s"],
             "inventory-db": ["idle", "5/s · no limit", { "modeled": false }],
-            "stripe": ["idle", "5/s · no limit", { "modeled": false }],
+            "stripe": ["idle", "Limits unknown; enter measured or contracted values."],
             "vault": ["idle", "", { "modeled": false }]
           }
         },
@@ -1591,7 +1703,7 @@
         "outbox-relay": ["ok", "3% · 10/s of 400/s"],
         "order-events": ["ok", "2% · 10/s of 640/s"],
         "notifications": ["ok", "2% · 5/s of 320/s"],
-        "email": ["idle", "5/s · no limit", { "modeled": false }],
+        "email": ["idle", "Limits unknown; enter measured or contracted values."],
         "saga": ["ok", "1% · 15/s of 1.3k/s"],
         "saga-db": ["idle", "15/s · no limit", { "modeled": false }],
         "inventory-cmds": ["ok", "2% · 5/s of 320/s"],
@@ -1601,7 +1713,7 @@
         "inventory-svc": ["ok", "2% · 5/s of 320/s"],
         "payment-svc": ["ok", "2% · 5/s of 213/s"],
         "inventory-db": ["idle", "5/s · no limit", { "modeled": false }],
-        "stripe": ["idle", "5/s · no limit", { "modeled": false }],
+        "stripe": ["idle", "Limits unknown; enter measured or contracted values."],
         "vault": ["idle", "", { "modeled": false }]
       }
     },
@@ -1620,7 +1732,7 @@
         "outbox-relay": ["ok", "5% · 20/s of 400/s"],
         "order-events": ["ok", "3% · 20/s of 640/s"],
         "notifications": ["ok", "3% · 10/s of 320/s"],
-        "email": ["idle", "10/s · no limit", { "modeled": false }],
+        "email": ["idle", "Limits unknown; enter measured or contracted values."],
         "saga": ["ok", "2% · 30/s of 1.3k/s"],
         "saga-db": ["idle", "30/s · no limit", { "modeled": false }],
         "inventory-cmds": ["ok", "3% · 10/s of 320/s"],
@@ -1630,7 +1742,7 @@
         "inventory-svc": ["ok", "3% · 10/s of 320/s"],
         "payment-svc": ["ok", "5% · 10/s of 213/s"],
         "inventory-db": ["idle", "10/s · no limit", { "modeled": false }],
-        "stripe": ["idle", "10/s · no limit", { "modeled": false }],
+        "stripe": ["idle", "Limits unknown; enter measured or contracted values."],
         "vault": ["idle", "", { "modeled": false }]
       }
     }

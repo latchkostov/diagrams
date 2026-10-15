@@ -1,9 +1,9 @@
 {
   "format": "diagrams/v2",
-  "planning": { "revision": "p2" },
+  "planning": { "revision": "p3" },
   "nodeProps": {
-    "partner": { "ratePerSec": 8, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Contoso ERP", "healthChecks": false },
-    "apim": { "ratePerSec": 2, "latencyMs": 60, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Partner API", "healthChecks": false },
+    "partner": { "ratePerSec": 8, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Contoso ERP", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
+    "apim": { "ratePerSec": 2, "latencyMs": 60, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Partner API", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
     "ingest": {
       "concurrency": 64,
       "latencyMs": 150,
@@ -18,8 +18,8 @@
       "partitions": 3,
       "messageType": "Invoice intake",
       "healthChecks": false,
-      "preset": "processor-lesson",
-      "presetRevision": "1"
+      "preset": "managed-measured",
+      "presetRevision": "2026-10-14"
     },
     "invoices": { "sessionEnabled": true, "partitions": 64, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "messageType": "invoices", "healthChecks": false },
     "approval-sub": { "filter": "amount > 10000", "maxDeliveryCount": 10, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "partitions": 3, "messageType": "approval-workflow", "healthChecks": false },
@@ -33,7 +33,26 @@
     "vault": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Integration secrets", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
     "insights": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Integration telemetry", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" }
   },
-  "legacyExport": { "format": "diagrams/v1", "losses": ["planning.revision", "ingest.props.preset", "ingest.props.presetRevision", "workflow.props.preset", "workflow.props.presetRevision", "worker.props.preset", "worker.props.presetRevision", "vault.props.preset", "vault.props.presetRevision", "insights.props.preset", "insights.props.presetRevision"] },
+  "legacyExport": {
+    "format": "diagrams/v1",
+    "losses": [
+      "planning.revision",
+      "partner.props.preset",
+      "partner.props.presetRevision",
+      "apim.props.preset",
+      "apim.props.presetRevision",
+      "ingest.props.preset",
+      "ingest.props.presetRevision",
+      "workflow.props.preset",
+      "workflow.props.presetRevision",
+      "worker.props.preset",
+      "worker.props.presetRevision",
+      "vault.props.preset",
+      "vault.props.presetRevision",
+      "insights.props.preset",
+      "insights.props.presetRevision"
+    ]
+  },
   "autoScale": { "freePlay": 1, "month-end": 2, "poison": 1 },
   "brokerAssignments": {
     "brokers": {
@@ -57,7 +76,7 @@
       "nodes [capacity, offered, utilization, replicas, active, idle]": {
         "partner": ["Infinity", 0, 0, 1, 1, 0],
         "apim": ["Infinity", 0, 0, 1, 1, 0],
-        "ingest": [426.6666666666667, 0, 0, 1, 1, 0],
+        "ingest": ["Infinity", 0, 0, 1, 1, 0],
         "invoices": ["Infinity", 0, 0, 1, 1, 0],
         "approval-sub": [426.6666666666667, 0, 0, 1, 1, 0],
         "posting-sub": [426.6666666666667, 0, 0, 1, 1, 0],
@@ -74,14 +93,63 @@
       "offeredTypes": {}
     },
     "explanations": {
+      "partner": {
+        "managed": "api",
+        "id": "partner",
+        "role": "sink",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": "Infinity",
+        "offered": 0,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "apim": {
+        "managed": "api",
+        "id": "apim",
+        "role": "gateway",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": "Infinity",
+        "offered": 0,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0.06,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
       "ingest": {
+        "managed": "serverless",
         "id": "ingest",
         "role": "processor",
         "status": "up",
         "reason": "throughput",
         "evidence": "configured",
         "unit": "req/s",
-        "capacity": 426.6666666666667,
+        "capacity": "Infinity",
         "offered": 0,
         "replicas": 1,
         "baseReplicas": 1,
@@ -94,7 +162,6 @@
         "growth": 0,
         "contributors": [],
         "target": 0.5,
-        "minimumReplicas": 1,
         "changes": null,
         "converged": true
       },
@@ -197,7 +264,8 @@
     "redundancy": {},
     "resolved": {
       "partner": {
-        "profile": { "family": "external-api", "revision": "p2", "evidence": [], "units": "real" },
+        "admission": { "api": {}, "endpoints": [] },
+        "profile": { "family": "external-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 8,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -212,9 +280,10 @@
         "healthChecks": false
       },
       "apim": {
-        "profile": { "family": "api-gateway", "revision": "p2", "evidence": [], "units": "real" },
+        "admission": { "api": {}, "endpoints": [] },
+        "profile": { "family": "api-gateway", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
-        "latencyMs": 0,
+        "latencyMs": 60,
         "concurrency": "Infinity",
         "replicas": 1,
         "jitter": 0.2,
@@ -227,7 +296,8 @@
         "healthChecks": false
       },
       "ingest": {
-        "profile": { "family": "serverless", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "admission": { "api": {}, "endpoints": [], "fixedSlotsPerReplica": 64 },
+        "profile": { "family": "serverless", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 150,
         "concurrency": 64,
@@ -244,7 +314,7 @@
       },
       "invoices": {
         "broker": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "pubsub", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "pubsub", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -259,7 +329,7 @@
         "healthChecks": false
       },
       "approval-sub": {
-        "profile": { "family": "queue", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "queue", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -274,7 +344,7 @@
         "healthChecks": false
       },
       "posting-sub": {
-        "profile": { "family": "queue", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "queue", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -289,7 +359,7 @@
         "healthChecks": false
       },
       "workflow": {
-        "profile": { "family": "workflow", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "workflow", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 150,
         "concurrency": 64,
@@ -305,7 +375,7 @@
         "healthChecks": false
       },
       "worker": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 150,
         "concurrency": 64,
@@ -321,7 +391,7 @@
         "healthChecks": false
       },
       "commands": {
-        "profile": { "family": "queue", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "queue", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -336,7 +406,7 @@
         "healthChecks": false
       },
       "dlq": {
-        "profile": { "family": "queue", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "queue", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -351,7 +421,7 @@
         "healthChecks": false
       },
       "cosmos": {
-        "profile": { "family": "nosql", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "nosql", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -366,7 +436,7 @@
         "healthChecks": false
       },
       "blob": {
-        "profile": { "family": "object", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "object", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -381,7 +451,7 @@
         "healthChecks": false
       },
       "vault": {
-        "profile": { "family": "dependency", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "dependency", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -396,7 +466,7 @@
         "healthChecks": false
       },
       "insights": {
-        "profile": { "family": "telemetry", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "telemetry", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -441,7 +511,56 @@
         "offeredTypes": { "ingest": ["InvoiceHighValue"], "invoices": ["InvoiceHighValue"], "blob": ["InvoiceHighValue"], "approval-sub": ["InvoiceHighValue"], "workflow": ["InvoiceHighValue"], "commands": ["PostInvoice"], "worker": ["PostInvoice"], "cosmos": ["InvoicePosted"] }
       },
       "explanations": {
+        "partner": {
+          "managed": "api",
+          "id": "partner",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": "Infinity",
+          "offered": 0,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
+        "apim": {
+          "managed": "api",
+          "id": "apim",
+          "role": "gateway",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 0,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.06,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
         "ingest": {
+          "managed": "serverless",
           "id": "ingest",
           "role": "processor",
           "status": "up",
@@ -461,7 +580,6 @@
           "growth": 0,
           "contributors": [],
           "target": 0.5,
-          "minimumReplicas": 1,
           "changes": null,
           "converged": true
         },
@@ -576,7 +694,56 @@
         "offeredTypes": { "ingest": ["InvoiceHighValue"], "invoices": ["InvoiceHighValue"], "blob": ["InvoiceHighValue"], "approval-sub": ["InvoiceHighValue"], "workflow": ["InvoiceHighValue"], "commands": ["PostInvoice"], "worker": ["PostInvoice"], "cosmos": ["InvoicePosted"] }
       },
       "explanations": {
+        "partner": {
+          "managed": "api",
+          "id": "partner",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": "Infinity",
+          "offered": 0,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
+        "apim": {
+          "managed": "api",
+          "id": "apim",
+          "role": "gateway",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 0,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.06,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
         "ingest": {
+          "managed": "serverless",
           "id": "ingest",
           "role": "processor",
           "status": "up",
@@ -596,7 +763,6 @@
           "growth": 0,
           "contributors": [],
           "target": 0.5,
-          "minimumReplicas": 1,
           "changes": null,
           "converged": true
         },
@@ -703,7 +869,8 @@
       "redundancy": "(same as edit)",
       "resolved": {
         "partner": {
-          "profile": { "family": "external-api", "revision": "p2", "evidence": [], "units": "real" },
+          "admission": { "api": {}, "endpoints": [] },
+          "profile": { "family": "external-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
           "ratePerSec": 8,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -718,9 +885,10 @@
           "healthChecks": false
         },
         "apim": {
-          "profile": { "family": "api-gateway", "revision": "p2", "evidence": [], "units": "real" },
+          "admission": { "api": {}, "endpoints": [] },
+          "profile": { "family": "api-gateway", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
           "ratePerSec": 2,
-          "latencyMs": 0,
+          "latencyMs": 60,
           "concurrency": "Infinity",
           "replicas": 1,
           "jitter": 0.2,
@@ -733,7 +901,8 @@
           "healthChecks": false
         },
         "ingest": {
-          "profile": { "family": "serverless", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "admission": { "api": {}, "endpoints": [], "fixedSlotsPerReplica": 64 },
+          "profile": { "family": "serverless", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 150,
           "concurrency": 64,
@@ -750,7 +919,7 @@
         },
         "invoices": {
           "broker": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
-          "profile": { "family": "pubsub", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "pubsub", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -765,7 +934,7 @@
           "healthChecks": false
         },
         "approval-sub": {
-          "profile": { "family": "queue", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "queue", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -780,7 +949,7 @@
           "healthChecks": false
         },
         "posting-sub": {
-          "profile": { "family": "queue", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "queue", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -795,7 +964,7 @@
           "healthChecks": false
         },
         "workflow": {
-          "profile": { "family": "workflow", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "workflow", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 150,
           "concurrency": 64,
@@ -811,7 +980,7 @@
           "healthChecks": false
         },
         "worker": {
-          "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 150,
           "concurrency": 64,
@@ -827,7 +996,7 @@
           "healthChecks": false
         },
         "commands": {
-          "profile": { "family": "queue", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "queue", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -842,7 +1011,7 @@
           "healthChecks": false
         },
         "dlq": {
-          "profile": { "family": "queue", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "queue", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -857,7 +1026,7 @@
           "healthChecks": false
         },
         "cosmos": {
-          "profile": { "family": "nosql", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "nosql", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -872,7 +1041,7 @@
           "healthChecks": false
         },
         "blob": {
-          "profile": { "family": "object", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "object", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -887,7 +1056,7 @@
           "healthChecks": false
         },
         "vault": {
-          "profile": { "family": "dependency", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "dependency", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -902,7 +1071,7 @@
           "healthChecks": false
         },
         "insights": {
-          "profile": { "family": "telemetry", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "telemetry", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -932,8 +1101,8 @@
           "addConsumer": null,
           "converged": true,
           "nodes": {
-            "partner": ["idle", "", { "modeled": false }],
-            "apim": ["idle", "", { "modeled": false }],
+            "partner": ["idle", ""],
+            "apim": ["idle", ""],
             "ingest": ["idle", ""],
             "invoices": ["idle", ""],
             "approval-sub": ["idle", ""],
@@ -961,8 +1130,8 @@
           "addConsumer": null,
           "converged": true,
           "nodes": {
-            "partner": ["idle", "", { "modeled": false }],
-            "apim": ["idle", "", { "modeled": false }],
+            "partner": ["idle", ""],
+            "apim": ["idle", ""],
             "ingest": ["idle", ""],
             "invoices": ["idle", ""],
             "approval-sub": ["idle", ""],
@@ -990,8 +1159,8 @@
           "addConsumer": null,
           "converged": true,
           "nodes": {
-            "partner": ["idle", "", { "modeled": false }],
-            "apim": ["idle", "", { "modeled": false }],
+            "partner": ["idle", ""],
+            "apim": ["idle", ""],
             "ingest": ["idle", ""],
             "invoices": ["idle", ""],
             "approval-sub": ["idle", ""],
@@ -1019,8 +1188,8 @@
           "addConsumer": null,
           "converged": true,
           "nodes": {
-            "partner": ["idle", "", { "modeled": false }],
-            "apim": ["idle", "", { "modeled": false }],
+            "partner": ["idle", ""],
+            "apim": ["idle", ""],
             "ingest": ["idle", ""],
             "invoices": ["idle", ""],
             "approval-sub": ["idle", ""],
@@ -1047,8 +1216,8 @@
       "addConsumer": null,
       "converged": true,
       "nodes": {
-        "partner": ["idle", "", { "modeled": false }],
-        "apim": ["idle", "", { "modeled": false }],
+        "partner": ["idle", ""],
+        "apim": ["idle", ""],
         "ingest": ["ok", "23% · 100/s of 427/s"],
         "invoices": ["idle", "100/s · no limit"],
         "approval-sub": ["ok", "23% · 100/s of 427/s"],
@@ -1072,8 +1241,8 @@
       "addConsumer": null,
       "converged": true,
       "nodes": {
-        "partner": ["idle", "", { "modeled": false }],
-        "apim": ["idle", "", { "modeled": false }],
+        "partner": ["idle", ""],
+        "apim": ["idle", ""],
         "ingest": ["ok", "7% · 30/s of 427/s"],
         "invoices": ["idle", "30/s · no limit"],
         "approval-sub": ["ok", "7% · 30/s of 427/s"],

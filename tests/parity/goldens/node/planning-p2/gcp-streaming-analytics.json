@@ -1,6 +1,6 @@
 {
   "format": "diagrams/v2",
-  "planning": { "revision": "p2" },
+  "planning": { "revision": "p3" },
   "nodeProps": {
     "app": { "ratePerSec": 50, "messageType": "ClickEvent", "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "healthChecks": false },
     "collector": { "concurrency": 400, "latencyMs": 40, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Event collector", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
@@ -122,7 +122,7 @@
     "redundancy": {},
     "resolved": {
       "app": {
-        "profile": { "family": "client", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 50,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -137,7 +137,7 @@
         "healthChecks": false
       },
       "collector": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 40,
         "concurrency": 400,
@@ -153,7 +153,7 @@
       },
       "pubsub-topic": {
         "broker": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "pubsub", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "pubsub", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -168,7 +168,7 @@
         "healthChecks": false
       },
       "dataflow": {
-        "profile": { "family": "stream-processor", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "stream-processor", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 40,
         "concurrency": 4,
@@ -184,7 +184,7 @@
         "healthChecks": false
       },
       "raw-archive": {
-        "profile": { "family": "object", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "object", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -199,7 +199,7 @@
         "healthChecks": false
       },
       "bigquery": {
-        "profile": { "family": "warehouse", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "warehouse", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -214,7 +214,7 @@
         "healthChecks": false
       },
       "looker": {
-        "profile": { "family": "telemetry", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "telemetry", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -230,7 +230,7 @@
       },
       "dead-letters": {
         "broker": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "pubsub", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "pubsub", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -245,7 +245,7 @@
         "healthChecks": false
       },
       "dead-bucket": {
-        "profile": { "family": "object", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "object", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -346,7 +346,7 @@
       },
       "resolved": {
         "app": {
-          "profile": { "family": "client", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 50,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -361,7 +361,7 @@
           "healthChecks": false
         },
         "collector": {
-          "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 40,
           "concurrency": 400,
@@ -377,7 +377,7 @@
         },
         "pubsub-topic": {
           "broker": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
-          "profile": { "family": "pubsub", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "pubsub", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -392,7 +392,7 @@
           "healthChecks": false
         },
         "dataflow": {
-          "profile": { "family": "stream-processor", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "stream-processor", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 40,
           "concurrency": 4,
@@ -408,7 +408,7 @@
           "healthChecks": false
         },
         "raw-archive": {
-          "profile": { "family": "object", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "object", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -423,7 +423,7 @@
           "healthChecks": false
         },
         "bigquery": {
-          "profile": { "family": "warehouse", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "warehouse", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -438,7 +438,7 @@
           "healthChecks": false
         },
         "looker": {
-          "profile": { "family": "telemetry", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "telemetry", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -454,7 +454,7 @@
         },
         "dead-letters": {
           "broker": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
-          "profile": { "family": "pubsub", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "pubsub", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -469,7 +469,7 @@
           "healthChecks": false
         },
         "dead-bucket": {
-          "profile": { "family": "object", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "object", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -559,7 +559,7 @@
       },
       "resolved": {
         "app": {
-          "profile": { "family": "client", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 50,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -574,7 +574,7 @@
           "healthChecks": false
         },
         "collector": {
-          "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 40,
           "concurrency": 400,
@@ -590,7 +590,7 @@
         },
         "pubsub-topic": {
           "broker": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
-          "profile": { "family": "pubsub", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "pubsub", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -605,7 +605,7 @@
           "healthChecks": false
         },
         "dataflow": {
-          "profile": { "family": "stream-processor", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "stream-processor", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 40,
           "concurrency": 4,
@@ -621,7 +621,7 @@
           "healthChecks": false
         },
         "raw-archive": {
-          "profile": { "family": "object", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "object", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -636,7 +636,7 @@
           "healthChecks": false
         },
         "bigquery": {
-          "profile": { "family": "warehouse", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "warehouse", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -651,7 +651,7 @@
           "healthChecks": false
         },
         "looker": {
-          "profile": { "family": "telemetry", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "telemetry", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -667,7 +667,7 @@
         },
         "dead-letters": {
           "broker": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
-          "profile": { "family": "pubsub", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "pubsub", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -682,7 +682,7 @@
           "healthChecks": false
         },
         "dead-bucket": {
-          "profile": { "family": "object", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "object", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",

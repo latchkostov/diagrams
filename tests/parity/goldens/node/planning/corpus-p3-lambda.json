@@ -1,0 +1,148 @@
+{
+  "autoScale": { "freePlay": 1 },
+  "brokerAssignments": { "brokers": {}, "consumers": {} },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "api",
+      "suggestion": "aws.lambda: 2% utilized",
+      "converged": true,
+      "iterations": 2,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": ["Infinity", 20, 0, 1, 1, 0], "api": [1000, 20, 0.02, 1, 1, 0] },
+      "connections": { "call": 20 },
+      "offeredTypes": { "source": ["Checkout"], "api": ["Checkout"] }
+    },
+    "explanations": {
+      "api": {
+        "managed": "serverless",
+        "id": "api",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 1000,
+        "offered": 20,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 1,
+        "seconds": 1,
+        "utilization": 0.02,
+        "growth": 0,
+        "contributors": [{ "edge": "call", "node": "source", "label": "Checkout", "rate": 20 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": { "source": [{ "kind": "calls", "edge": "call", "peer": "api" }] },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "source": {
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 20,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Checkout",
+        "healthChecks": false
+      },
+      "api": {
+        "admission": {
+          "api": { "sharedConcurrency": "lambda-account-region", "maxInFlight": 1000 },
+          "endpoints": [],
+          "slots": 1000,
+          "accountConcurrency": 1000
+        },
+        "profile": { "family": "serverless", "revision": "p3", "preset": "lambda-account", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 1000,
+        "concurrency": 1,
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "aws.lambda",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {},
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "ok",
+          "top": "api",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: aws.lambda at 2% · 20/s of 1k/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": { "source": ["idle", "20/s · no limit", { "modeled": false }], "api": ["ok", "2% · 20/s of 1k/s"] }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "ok",
+          "top": "api",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: aws.lambda at 10% · 100/s of 1k/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "100/s · no limit", { "modeled": false }],
+            "api": ["ok", "10% · 100/s of 1k/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "ok",
+          "top": "api",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: aws.lambda at 2% · 20/s of 1k/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": { "source": ["idle", "20/s · no limit", { "modeled": false }], "api": ["ok", "2% · 20/s of 1k/s"] }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "ok",
+          "top": "api",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: aws.lambda at 2% · 20/s of 1k/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": { "source": ["idle", "20/s · no limit", { "modeled": false }], "api": ["ok", "2% · 20/s of 1k/s"] }
+        },
+        "partitionsNotes": {}
+      }
+    }
+  }
+}

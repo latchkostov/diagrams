@@ -1,6 +1,6 @@
 {
   "format": "diagrams/v2",
-  "planning": { "revision": "p2" },
+  "planning": { "revision": "p3" },
   "nodeProps": {
     "customers": { "ratePerSec": 400, "messageType": "Checkout", "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "healthChecks": false },
     "staff": { "ratePerSec": 40, "messageType": "BackOffice", "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "healthChecks": false },
@@ -369,7 +369,7 @@
     "redundancy": {},
     "resolved": {
       "customers": {
-        "profile": { "family": "client", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 400,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -384,7 +384,7 @@
         "healthChecks": false
       },
       "staff": {
-        "profile": { "family": "client", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 40,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -399,7 +399,7 @@
         "healthChecks": false
       },
       "branch-router": {
-        "profile": { "family": "device", "revision": "p2", "preset": "device-size", "presetRevision": "1", "evidence": ["gbps", "latencyMs", "messageKB"], "units": "real" },
+        "profile": { "family": "device", "revision": "p3", "preset": "device-size", "presetRevision": "1", "evidence": ["gbps", "latencyMs", "messageKB"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -424,7 +424,7 @@
         }
       },
       "edge-router": {
-        "profile": { "family": "device", "revision": "p2", "preset": "device-size", "presetRevision": "1", "evidence": ["gbps", "latencyMs", "messageKB"], "units": "real" },
+        "profile": { "family": "device", "revision": "p3", "preset": "device-size", "presetRevision": "1", "evidence": ["gbps", "latencyMs", "messageKB"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -449,7 +449,7 @@
         }
       },
       "firewall": {
-        "profile": { "family": "device", "revision": "p2", "preset": "device-size", "presetRevision": "1", "evidence": ["gbps", "latencyMs", "messageKB"], "units": "real" },
+        "profile": { "family": "device", "revision": "p3", "preset": "device-size", "presetRevision": "1", "evidence": ["gbps", "latencyMs", "messageKB"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -474,7 +474,7 @@
         }
       },
       "spine-1": {
-        "profile": { "family": "device", "revision": "p2", "preset": "device-size", "presetRevision": "1", "evidence": ["gbps", "latencyMs", "messageKB"], "units": "real" },
+        "profile": { "family": "device", "revision": "p3", "preset": "device-size", "presetRevision": "1", "evidence": ["gbps", "latencyMs", "messageKB"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -499,7 +499,7 @@
         }
       },
       "spine-2": {
-        "profile": { "family": "device", "revision": "p2", "preset": "device-size", "presetRevision": "1", "evidence": ["gbps", "latencyMs", "messageKB"], "units": "real" },
+        "profile": { "family": "device", "revision": "p3", "preset": "device-size", "presetRevision": "1", "evidence": ["gbps", "latencyMs", "messageKB"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -524,7 +524,7 @@
         }
       },
       "leaf": {
-        "profile": { "family": "device", "revision": "p2", "preset": "device-size", "presetRevision": "1", "evidence": ["gbps", "latencyMs", "messageKB"], "units": "real" },
+        "profile": { "family": "device", "revision": "p3", "preset": "device-size", "presetRevision": "1", "evidence": ["gbps", "latencyMs", "messageKB"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -549,7 +549,7 @@
         }
       },
       "adc": {
-        "profile": { "family": "device", "revision": "p2", "preset": "device-size", "presetRevision": "1", "evidence": ["gbps", "latencyMs", "messageKB"], "units": "real" },
+        "profile": { "family": "device", "revision": "p3", "preset": "device-size", "presetRevision": "1", "evidence": ["gbps", "latencyMs", "messageKB"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -574,7 +574,7 @@
         }
       },
       "web-1": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 30,
         "concurrency": 16,
@@ -589,7 +589,7 @@
         "healthChecks": false
       },
       "web-2": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 30,
         "concurrency": 16,
@@ -604,7 +604,7 @@
         "healthChecks": false
       },
       "orders-db": {
-        "profile": { "family": "sql", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -619,7 +619,7 @@
         "healthChecks": false
       },
       "payments": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 40,
         "concurrency": 16,

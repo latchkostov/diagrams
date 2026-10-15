@@ -1,0 +1,214 @@
+{
+  "run": { "time": 60000, "scale": 2, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "web": { "replicas": [1, 1, 0] },
+        "batch": { "replicas": [1, 1, 0] },
+        "a": { "replicas": [1, 1, 0] },
+        "b": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 5,
+      "nodes": {
+        "web": { "processed": 200, "throughput": 20.40106029531822, "replicas": [1, 1, 0] },
+        "batch": { "processed": 400, "throughput": 40.39815253084028, "replicas": [1, 1, 0] },
+        "a": {
+          "processed": 27,
+          "rejected": 172,
+          "throughput": 2.870910417627777,
+          "rejectionReasons": { "refund-rate: requests": 172 },
+          "replicas": [1, 1, 0]
+        },
+        "b": { "processed": 396, "inFlight": 3, "throughput": 40.39795963091118, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 5,
+      "nodes": {
+        "web": { "processed": 400, "throughput": 20.40198650202273, "replicas": [1, 1, 0] },
+        "batch": { "processed": 800, "throughput": 40.39998660412771, "replicas": [1, 1, 0] },
+        "a": {
+          "processed": 52,
+          "rejected": 347,
+          "throughput": 2.8709330971617923,
+          "rejectionReasons": { "refund-rate: requests": 347 },
+          "replicas": [1, 1, 0]
+        },
+        "b": { "processed": 796, "inFlight": 3, "throughput": 40.399986595370066, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 5,
+      "nodes": {
+        "web": { "processed": 600, "throughput": 20.401986544072436, "replicas": [1, 1, 0] },
+        "batch": { "processed": 1200, "throughput": 40.39998668739452, "replicas": [1, 1, 0] },
+        "a": {
+          "processed": 77,
+          "rejected": 522,
+          "throughput": 2.8709330981914416,
+          "rejectionReasons": { "refund-rate: requests": 522 },
+          "replicas": [1, 1, 0]
+        },
+        "b": { "processed": 1196, "inFlight": 3, "throughput": 40.39998668739412, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 5,
+      "nodes": {
+        "web": { "processed": 800, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+        "batch": { "processed": 1600, "throughput": 40.399986687398226, "replicas": [1, 1, 0] },
+        "a": {
+          "processed": 102,
+          "rejected": 697,
+          "throughput": 2.870933098191486,
+          "rejectionReasons": { "refund-rate: requests": 697 },
+          "replicas": [1, 1, 0]
+        },
+        "b": { "processed": 1596, "inFlight": 3, "throughput": 40.399986687398226, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 5,
+      "nodes": {
+        "web": { "processed": 1000, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+        "batch": { "processed": 2000, "throughput": 40.399986687398226, "replicas": [1, 1, 0] },
+        "a": {
+          "processed": 127,
+          "rejected": 872,
+          "throughput": 2.870933098191486,
+          "rejectionReasons": { "refund-rate: requests": 872 },
+          "replicas": [1, 1, 0]
+        },
+        "b": { "processed": 1996, "inFlight": 3, "throughput": 40.399986687398226, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 5,
+      "nodes": {
+        "web": { "processed": 1200, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+        "batch": { "processed": 2400, "throughput": 40.399986687398226, "replicas": [1, 1, 0] },
+        "a": {
+          "processed": 152,
+          "rejected": 1047,
+          "throughput": 2.870933098191486,
+          "rejectionReasons": { "refund-rate: requests": 1047 },
+          "replicas": [1, 1, 0]
+        },
+        "b": { "processed": 2396, "inFlight": 3, "throughput": 40.399986687398226, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 5,
+    "real": {
+      "web": { "processed": 2400, "throughput": 40.80397308814855, "replicas": [1, 1, 0] },
+      "batch": { "processed": 4800, "throughput": 80.79997337479645, "replicas": [1, 1, 0] },
+      "a": {
+        "processed": 304,
+        "rejected": 2094,
+        "throughput": 5.741866196382972,
+        "rejectionReasons": { "refund-rate: requests": 2094 },
+        "replicas": [1, 1, 0]
+      },
+      "b": { "processed": 4792, "inFlight": 6, "throughput": 80.79997337479645, "replicas": [1, 1, 0] }
+    },
+    "edges": { "web-a": 1199, "batch-b": 2399 }
+  },
+  "events": {
+    "total": 10793,
+    "byKind": { "process": 6148, "deliver": 3598, "reject": 1047 },
+    "byNode": {
+      "batch": { "process": 2400 },
+      "b": { "deliver": 2399, "process": 2396 },
+      "web": { "process": 1200 },
+      "a": { "deliver": 1199, "process": 152, "reject": 1047 }
+    },
+    "perSecond": [
+      "e7ad1a0a8f8e",
+      "c51fb3918652",
+      "dbc8925ffb09",
+      "f2294aabf4b9",
+      "aed414cca071",
+      "ea39b23b82f8",
+      "1080bdb05e40",
+      "db01b7c712e8",
+      "9ed15689d79b",
+      "2d4ce44444e2",
+      "cc691616e267",
+      "4f9a5801442f",
+      "29a96780e689",
+      "b75bb308c598",
+      "1ecd0b4a5b6c",
+      "828fe433aafa",
+      "79d318ae143b",
+      "ed2351aaf33f",
+      "1dd0aec93a82",
+      "19a449231a30",
+      "2315c9f79222",
+      "6ac151b59670",
+      "b12b991ebfed",
+      "e793c52714cf",
+      "f683f84bb71d",
+      "3cc405490c14",
+      "24b6b096b6a8",
+      "48a0f4db84c4",
+      "f5b2bfc1042a",
+      "be8601168661",
+      "ab42feb823ee",
+      "2c5ddb300581",
+      "0e8576ee2b65",
+      "27f6a813bb9c",
+      "d7c7d10b7fc0",
+      "0fcea69a05d4",
+      "047443368891",
+      "c6c4edeab331",
+      "0c9e9c778312",
+      "4bd04f2ff07c",
+      "3484cca84637",
+      "3395621c349e",
+      "4a5423d88595",
+      "1d80c82a34d4",
+      "8012730f7726",
+      "849a2d52c3d9",
+      "1f6e6e5c2b7a",
+      "773e2c404267",
+      "5894e328a6a2",
+      "569f4ce091eb",
+      "3f776e5667f2",
+      "26b806598d18",
+      "6969f4196a2f",
+      "701f278a404a",
+      "88bea79f9a55",
+      "4392963df0ff",
+      "9f748b29005a",
+      "867ec04af86b",
+      "aa6771581446",
+      "4bba0149a679",
+      "e889a43572fb"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 3595, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0, "rejected": 1047 },
+    "endToEndMs": { "count": 3595, "min": 10, "mean": 73.78859527121001, "p50": 100, "p90": 100, "max": 100 },
+    "waitMs": {
+      "a": { "count": 152, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "b": { "count": 2396, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "a": { "count": 152, "min": 90, "mean": 90, "p50": 90, "p90": 90, "max": 90 },
+      "b": { "count": 2396, "min": 90, "mean": 90, "p50": 90, "p90": 90, "max": 90 }
+    }
+  }
+}

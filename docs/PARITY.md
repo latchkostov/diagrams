@@ -18,29 +18,33 @@ Without it, `pnpm parity:node` still checks everything that doesn't need a brows
 
 ## What's pinned
 
-Inputs are fixed: the public examples (`src/examples/*.json`, top level only: `src/examples/private/` is never
-listed or read), the import fixtures in `tests/fixtures` and `src/interop/drawio/fixtures`, and the harness's own
-corpus in `tests/parity/corpus`: diagrams frozen once from the Lab's fixtures and generators (planning P1 and P2,
-the export contract, relationships, layers, colours, text fields, edge kinds, sides and fan-outs, groups, cycles,
-the routing courses and the Lab's simulation scenarios), the three checks fixtures, a few diagrams that sit exactly
-on the checks' thresholds (a sync chain of 3 and of 4 hops, a service at 79%, 80%, 99% and 100% of its capacity),
-and Mermaid inputs. Freezing them keeps a Lab edit from moving a golden; the corpus is what caught the latency
-default change below, since every public example sets its latencies.
+Inputs are fixed: the public examples (`src/examples/*.json`, top level only: `src/examples/private/` is never listed
+or read), the import fixtures in `tests/fixtures` and `src/interop/drawio/fixtures`, and the harness's own corpus in
+`tests/parity/corpus`: diagrams frozen once from the Lab's fixtures and generators (planning P1 and P2, the export
+contract, relationships, layers, colours, text fields, edge kinds, sides and fan-outs, groups, cycles, the routing
+courses and the Lab's simulation scenarios), the three checks fixtures, a few diagrams that sit exactly on the checks'
+thresholds (a sync chain of 3 and of 4 hops, a service at 79%, 80%, 99% and 100% of its capacity), planning P3
+diagrams (Stripe, a generic external API, Lambda, API Gateway and OpenAI from the Lab's P3 fixture, two OpenAI callers
+with separate allocations and a token quota, and a shared account quota with an endpoint budget whose saved
+simulations burst 200 calls at scale 1 and at scale 10), and Mermaid inputs. Freezing them keeps a Lab edit from
+moving a golden; the corpus is what caught the latency default change below, since every public example sets its
+latencies.
 
 - **Simulation** (`node/sim/<diagram>/<simulation>.json`): each diagram played exactly as the live view plays it
   (`new LiveController(diagram)`, `src/live/LiveSession.tsx`): every saved simulation to its end, and free play
-  (traffic on, the automatic dot scale) for 60 simulated seconds. Per run: the run state (time, done, scale, multipliers,
-  expectations with their values, markers), the narration notes, per-node counters every 10 simulated seconds
-  (processed, failed, dropped, outage drops, blocked, dead-lettered, backlog, lag per group, in flight, throughput,
-  kept with no consumer, failing over, replicas configured/active/idle), the final counters in real units, edge
-  delivery totals, the whole event stream, and latency statistics (end to end, and wait and processing per node:
-  count, min, mean, p50, p90, max) from the message tracer.
+  (traffic on, the automatic dot scale) for 60 simulated seconds. Per run: the run state (time, done, scale,
+  multipliers, expectations with their values, markers), the narration notes, per-node counters every 10 simulated
+  seconds (processed, failed, dropped, outage drops, blocked, rejected by admission and why, dead-lettered, backlog,
+  lag per group, in flight, throughput, kept with no consumer, failing over, replicas configured/active/idle), the
+  final counters in real units, edge delivery totals, the whole event stream, and latency statistics (end to end, and
+  wait and processing per node: count, min, mean, p50, p90, max) from the message tracer.
 - **Capacity and planning** (`node/planning*/`): configured planning as the inspector and hover card read it
   (`configuredPlanning`), in edit mode and with each saved simulation selected: `analyzeCapacity` (per node and per
-  connection), the P1/P2 explanations (`explainNode`), capability rows, sizing and redundancy fixes, resolved
-  settings; broker assignments; automatic dot scales; the heat map and callout (`capacityView`) for every Inputs
-  preset; partition notes. Every example also upgraded to planning p2 (`upgradePlanning`) with the same records, and
-  its legacy export's losses. There is no P3 on master (it lives on `feat/planning-p3`).
+  connection), the P1–P3 explanations (`explainNode`, managed APIs and quotas included), capability rows, sizing and
+  redundancy fixes, resolved settings; broker assignments; automatic dot scales; the heat map and callout
+  (`capacityView`) for every Inputs preset; partition notes. Every example also upgraded (`upgradePlanning`, to p3
+  since P3) with the same records, and its legacy export's losses. P3's vendor presets: the published revision, each
+  preset's scoped budgets, and which stencils are managed and what a new one gets (`node/admission/`).
 - **Run simulations** (`node/evidence/`): `collectEvidence` with a fake clock, `withEvidence` (planned and counted
   losses), the agent report with simulations.
 - **Traces** (`node/trace/`): `traceOnce` in free play and in each saved simulation (and its first dead letter): the
@@ -73,7 +77,8 @@ default change below, since every public example sets its latencies.
 - **Languages** (`node/i18n/`): in every language and the pseudo-locale: a dozen messages through the real runtime
   (plain, plurals at 0, 1, 2, 5, 21 and 1000, selects, numbers, a rich message rendered to HTML) and the number,
   percent, rate, duration, list, byte and date formatters; and every message of every catalog, each select option and
-  plural category rendered with sample values, as one hash per language and area, with the count that falls back to English.
+  plural category rendered with sample values, as one hash per language and area, with the count that falls back to
+  English.
 - **Canvas** (`browser/render/`, `browser/layout/`): every example opened on the production build: each node's box
   (position and measured size) and text, each edge's path, each label's placement and the fitted view; then after
   Auto-layout, and after Tidy up of everything.
@@ -132,11 +137,11 @@ Every source of variation is removed at the input rather than tolerated at the o
 
 ### Browser tier
 
-Text measures differently on each operating system: the same build drew a card 230 px wide on Windows and 223 px
-on Linux, which moves routes, labels and the fit. So the browser tier always runs in one environment:
-Playwright's own Linux image for the installed Playwright version (`mcr.microsoft.com/playwright:v<version>-noble`),
-through Docker, on a laptop and on CI alike (`scripts/parity.mjs` starts it with the checkout mounted; Linux's
-`node_modules`, one volume per checkout, and the pnpm store live in Docker volumes, not in the checkout). Inside it, the harness builds the
+Text measures differently on each operating system: the same build drew a card 230 px wide on Windows and 223 px on
+Linux, which moves routes, labels and the fit. So the browser tier always runs in one environment: Playwright's own
+Linux image for the installed Playwright version (`mcr.microsoft.com/playwright:v<version>-noble`), through Docker, on
+a laptop and on CI alike (`scripts/parity.mjs` starts it with the checkout mounted; Linux's `node_modules`, one volume
+per checkout, and the pnpm store live in Docker volumes, not in the checkout). Inside it, the harness builds the
 production bundle (`vite build`, no test hooks) and serves it with `vite preview` on port 6200.
 
 In that image, two runs give identical numbers and pixel-identical images, so the canvas and SVG goldens compare
@@ -168,7 +173,7 @@ printer formats them).
   points).
 - **Images**: eight downscaled PNG references (six image exports, two viewer screenshots), the only binary goldens.
 
-There are about 1,310 goldens: 9.4 MB on disk, under 1 MB compressed, which is what a full re-record adds to the
+There are about 1,425 goldens: 11 MB on disk, 1.4 MB compressed, which is what a full re-record adds to the
 repository's history; a typical change rewrites a few files. Hashing everything would be smaller and unreadable;
 recording everything (each event, each rendered message) would be ten times the size for detail that the summaries
 point to anyway. On a failure, every actual output is written to `tests/.output/parity/actual/` and every diff to
@@ -188,7 +193,34 @@ Parity (update): 1310 goldens, 2 changed, 0 added, 0 missing, 0 removed
 A golden is never rewritten when it matches (a PNG within its tolerance stays as it is). Review the goldens' diff
 like code: it is exactly what the change does to the output. With `CI` set, `pnpm parity:update` refuses to run.
 
-Adding an output: call `expectGolden` (data), `expectGoldenText` (text) or `expectGoldenBinary` (with a comparison)
+### Updating goldens for a feature PR
+
+A pull request that changes output on purpose runs `pnpm parity:update` (Docker running, for the browser tier), commits
+the goldens with the code, and explains the diff in its description: which areas changed and why each change
+follows from the feature. Anything the description can't explain is a regression to fix, not a golden to accept.
+New behaviour gets new inputs (a corpus diagram, a saved simulation) so its output is pinned from the start. The
+example below is the first one.
+
+### Planning P3 (#105): what changed and why
+
+Rebasing this harness onto P3 changed 21 goldens and nothing else:
+
+- `node/planning-p2/*` (all 17): `upgradePlanning` now upgrades to revision p3, so every upgraded example says
+  `p3`, its managed nodes (gateways, external APIs, serverless, model APIs) get the `managed-measured` preset and
+  P3's managed fields, and their explanations, capacities and heat map follow from those.
+- `node/skill/public-schemas.json`, `node/skill/files.json`: the file format gained P3's fields (`api`, quotas,
+  endpoints, shared allocations, the new presets), so `diagram.v1/v2.json`, `ops.v1.json` and the skill's
+  `reference/format.md` changed.
+- `node/agent/tools.json`: the tools' schemas carry the same new node properties and presets.
+- `node/i18n/catalogs.json`: 29 new P3 messages in English and every catalog (some still fall back to English).
+
+No simulation, check, export, import, layout or browser golden moved: every pinned diagram was legacy, p1 or p2,
+and P3 keeps their behaviour exactly. The P3 corpus diagrams, the `rejected` counters and reasons, and the
+presets golden were added in the same change, so P3's own output is pinned from here on.
+
+### Adding an output
+
+Call `expectGolden` (data), `expectGoldenText` (text) or `expectGoldenBinary` (with a comparison)
 from a `*.parity.ts` file under `tests/parity/node` (Vitest) or `tests/parity/browser` (Playwright, importing `test`
 from `./fixtures`), then `pnpm parity:update`. Mismatches are collected and reported together after each test, and
 the summary also fails on any mismatch in its ledger.
@@ -203,7 +235,7 @@ are uploaded on failure.
 
 ## Runtime
 
-On a laptop: the Node tier about 15 s (1,240 goldens in parallel workers; simulations split over three files), the
+On a laptop: the Node tier about 15 s (1,355 goldens in parallel workers; simulations split over three files), the
 browser tier about 45 s with warm Docker volumes (70 goldens; the first run installs Linux dependencies into a
 volume and takes a few minutes). On CI, add the image pull and an install inside it.
 

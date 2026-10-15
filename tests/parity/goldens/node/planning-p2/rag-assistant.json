@@ -1,19 +1,19 @@
 {
   "format": "diagrams/v2",
-  "planning": { "revision": "p2" },
+  "planning": { "revision": "p3" },
   "nodeProps": {
     "user": { "ratePerSec": 2, "messageType": "Question", "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "healthChecks": false },
     "rag-api": { "concurrency": 200, "latencyMs": 120, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "RAG API", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
     "cache": { "latencyMs": 1, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Semantic cache", "healthChecks": false },
     "feedback": { "partitions": 6, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "messageType": "rag.feedback", "healthChecks": false },
-    "llm": { "concurrency": 200, "latencyMs": 1800, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Claude API", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
+    "llm": { "concurrency": 200, "latencyMs": 1800, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Claude API", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
     "vector-db": { "latencyMs": 1, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Vector index", "healthChecks": false },
     "eval-job": { "concurrency": 20, "latencyMs": 300, "emits": "EvalScore", "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Eval job", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
     "quality": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Answer quality", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
     "docs": { "ratePerSec": 0.2, "messageType": "PageChanged", "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "healthChecks": false },
     "ingest-q": { "maxDeliveryCount": 5, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "partitions": 3, "messageType": "Ingest jobs", "healthChecks": false },
     "embed-worker": { "replicas": 4, "concurrency": 4, "latencyMs": 200, "emits": "ChunkVectors", "ratePerSec": 2, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Chunk and embed", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
-    "embeddings": { "concurrency": 400, "latencyMs": 150, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Embeddings API", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
+    "embeddings": { "concurrency": 400, "latencyMs": 150, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Embeddings API", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
     "vault": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Vault", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" }
   },
   "legacyExport": {
@@ -53,8 +53,8 @@
     "configured": false,
     "simulation": "free-play",
     "analysis": {
-      "bottleneck": "llm",
-      "suggestion": "Claude API: 2% utilized",
+      "bottleneck": "eval-job",
+      "suggestion": "Eval job: 1% utilized",
       "converged": true,
       "iterations": 5,
       "nodes [capacity, offered, utilization, replicas, active, idle]": {
@@ -62,7 +62,7 @@
         "rag-api": [1666.6666666666667, 2, 0.0012, 1, 1, 0],
         "cache": ["Infinity", 2, 0, 1, 1, 0],
         "feedback": [66.66666666666667, 0.5, 0.0075, 1, 1, 0],
-        "llm": [111.11111111111111, 2.5, 0.0225, 1, 1, 0],
+        "llm": ["Infinity", 2.5, 0, 1, 1, 0],
         "vector-db": ["Infinity", 2.2, 0, 1, 1, 0],
         "eval-job": [
           66.66666666666667,
@@ -79,7 +79,7 @@
         "docs": ["Infinity", 0.2, 0, 1, 1, 0],
         "ingest-q": [80, 0.2, 0.0025, 1, 1, 0],
         "embed-worker": [80, 0.2, 0.0025, 4, 4, 0],
-        "embeddings": [2666.6666666666665, 0.2, 0.00007500000000000001, 1, 1, 0],
+        "embeddings": ["Infinity", 0.2, 0, 1, 1, 0],
         "vault": ["Infinity", 0, 0, 1, 1, 0]
       },
       "connections": { "user-to-rag-api": 2, "docs-to-ingest-q": 0.2, "rag-api-to-cache": 2, "rag-api-to-vector-db": 2, "rag-api-to-llm": 2, "rag-api-to-feedback": 0.5, "ingest-q-to-embed-worker": 0.2, "feedback-to-eval-job": 0.5, "embed-worker-to-embeddings": 0.2, "embed-worker-to-vector-db": 0.2, "eval-job-to-llm": 0.5, "eval-job-to-quality": 0.5 },
@@ -111,13 +111,14 @@
         "converged": true
       },
       "llm": {
+        "managed": "api",
         "id": "llm",
         "role": "processor",
         "status": "up",
         "reason": "throughput",
         "evidence": "configured",
         "unit": "req/s",
-        "capacity": 111.11111111111111,
+        "capacity": "Infinity",
         "offered": 2.5,
         "replicas": 1,
         "baseReplicas": 1,
@@ -126,14 +127,13 @@
         "assignments": [],
         "slots": 200,
         "seconds": 1.8,
-        "utilization": 0.0225,
+        "utilization": 0,
         "growth": 0,
         "contributors": [
           { "edge": "rag-api-to-llm", "node": "rag-api", "label": "RAG API", "rate": 2 },
           { "edge": "eval-job-to-llm", "node": "eval-job", "label": "Eval job", "rate": 0.5 }
         ],
         "target": 0.5,
-        "minimumReplicas": 1,
         "changes": null,
         "converged": true
       },
@@ -194,13 +194,14 @@
         "converged": true
       },
       "embeddings": {
+        "managed": "api",
         "id": "embeddings",
         "role": "processor",
         "status": "up",
         "reason": "throughput",
         "evidence": "configured",
         "unit": "req/s",
-        "capacity": 2666.6666666666665,
+        "capacity": "Infinity",
         "offered": 0.2,
         "replicas": 1,
         "baseReplicas": 1,
@@ -209,13 +210,12 @@
         "assignments": [],
         "slots": 400,
         "seconds": 0.15,
-        "utilization": 0.00007500000000000001,
+        "utilization": 0,
         "growth": 0,
         "contributors": [
           { "edge": "embed-worker-to-embeddings", "node": "embed-worker", "label": "Chunk and embed", "rate": 0.2 }
         ],
         "target": 0.5,
-        "minimumReplicas": 1,
         "changes": null,
         "converged": true
       }
@@ -251,7 +251,7 @@
     "redundancy": {},
     "resolved": {
       "user": {
-        "profile": { "family": "client", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -266,7 +266,7 @@
         "healthChecks": false
       },
       "rag-api": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 120,
         "concurrency": 200,
@@ -281,7 +281,7 @@
         "healthChecks": false
       },
       "cache": {
-        "profile": { "family": "cache", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "cache", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -297,7 +297,7 @@
       },
       "feedback": {
         "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "log", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -312,7 +312,8 @@
         "healthChecks": false
       },
       "llm": {
-        "profile": { "family": "model-api", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "admission": { "api": {}, "endpoints": [] },
+        "profile": { "family": "model-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 1800,
         "concurrency": 200,
@@ -327,7 +328,7 @@
         "healthChecks": false
       },
       "vector-db": {
-        "profile": { "family": "search", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "search", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -342,7 +343,7 @@
         "healthChecks": false
       },
       "eval-job": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 300,
         "concurrency": 20,
@@ -358,7 +359,7 @@
         "healthChecks": false
       },
       "quality": {
-        "profile": { "family": "telemetry", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "telemetry", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -373,7 +374,7 @@
         "healthChecks": false
       },
       "docs": {
-        "profile": { "family": "client", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 0.2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -388,7 +389,7 @@
         "healthChecks": false
       },
       "ingest-q": {
-        "profile": { "family": "queue", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "queue", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -403,7 +404,7 @@
         "healthChecks": false
       },
       "embed-worker": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 200,
         "concurrency": 4,
@@ -419,7 +420,8 @@
         "healthChecks": false
       },
       "embeddings": {
-        "profile": { "family": "model-api", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "admission": { "api": {}, "endpoints": [] },
+        "profile": { "family": "model-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 150,
         "concurrency": 400,
@@ -434,7 +436,7 @@
         "healthChecks": false
       },
       "vault": {
-        "profile": { "family": "dependency", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "dependency", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -455,8 +457,8 @@
       "configured": "(same as edit)",
       "simulation": "launch-day",
       "analysis": {
-        "bottleneck": "llm",
-        "suggestion": "Claude API: 45% utilized",
+        "bottleneck": "eval-job",
+        "suggestion": "Eval job: 15% utilized",
         "converged": true,
         "iterations": 5,
         "nodes [capacity, offered, utilization, replicas, active, idle]": {
@@ -464,7 +466,7 @@
           "rag-api": [1666.6666666666667, 40, 0.024, 1, 1, 0],
           "cache": ["Infinity", 40, 0, 1, 1, 0],
           "feedback": [66.66666666666667, 10, 0.15, 1, 1, 0],
-          "llm": [111.11111111111111, 50, 0.45, 1, 1, 0],
+          "llm": ["Infinity", 50, 0, 1, 1, 0],
           "vector-db": ["Infinity", 40, 0, 1, 1, 0],
           "eval-job": [
             66.66666666666667,
@@ -481,7 +483,7 @@
           "docs": ["Infinity", 0, 0, 1, 1, 0],
           "ingest-q": [80, 0, 0, 1, 1, 0],
           "embed-worker": [80, 0, 0, 4, 4, 0],
-          "embeddings": [2666.6666666666665, 0, 0, 1, 1, 0],
+          "embeddings": ["Infinity", 0, 0, 1, 1, 0],
           "vault": ["Infinity", 0, 0, 1, 1, 0]
         },
         "connections": { "user-to-rag-api": 40, "rag-api-to-cache": 40, "rag-api-to-vector-db": 40, "rag-api-to-llm": 40, "rag-api-to-feedback": 10, "feedback-to-eval-job": 10, "eval-job-to-llm": 10, "eval-job-to-quality": 10 },
@@ -513,13 +515,14 @@
           "converged": true
         },
         "llm": {
+          "managed": "api",
           "id": "llm",
           "role": "processor",
           "status": "up",
           "reason": "throughput",
           "evidence": "configured",
           "unit": "req/s",
-          "capacity": 111.11111111111111,
+          "capacity": "Infinity",
           "offered": 50,
           "replicas": 1,
           "baseReplicas": 1,
@@ -528,14 +531,13 @@
           "assignments": [],
           "slots": 200,
           "seconds": 1.8,
-          "utilization": 0.45,
+          "utilization": 0,
           "growth": 0,
           "contributors": [
             { "edge": "rag-api-to-llm", "node": "rag-api", "label": "RAG API", "rate": 40 },
             { "edge": "eval-job-to-llm", "node": "eval-job", "label": "Eval job", "rate": 10 }
           ],
           "target": 0.5,
-          "minimumReplicas": 1,
           "changes": null,
           "converged": true
         },
@@ -594,13 +596,14 @@
           "converged": true
         },
         "embeddings": {
+          "managed": "api",
           "id": "embeddings",
           "role": "processor",
           "status": "up",
           "reason": "throughput",
           "evidence": "configured",
           "unit": "req/s",
-          "capacity": 2666.6666666666665,
+          "capacity": "Infinity",
           "offered": 0,
           "replicas": 1,
           "baseReplicas": 1,
@@ -613,7 +616,6 @@
           "growth": 0,
           "contributors": [],
           "target": 0.5,
-          "minimumReplicas": 1,
           "changes": null,
           "converged": true
         }
@@ -636,7 +638,7 @@
           "rag-api": [1666.6666666666667, 20, 0.012, 1, 1, 0],
           "cache": ["Infinity", 20, 0, 1, 1, 0],
           "feedback": [66.66666666666667, 5, 0.075, 1, 1, 0],
-          "llm": [111.11111111111111, 25, 0.225, 1, 1, 0],
+          "llm": ["Infinity", 25, 0, 1, 1, 0],
           "vector-db": ["Infinity", 1220, 0, 1, 1, 0],
           "eval-job": [
             66.66666666666667,
@@ -653,7 +655,7 @@
           "docs": ["Infinity", 1200, 0, 1, 1, 0],
           "ingest-q": [80, 1200, 15, 1, 1, 0],
           "embed-worker": [80, 1200, 15, 4, 4, 0],
-          "embeddings": [2666.6666666666665, 1200, 0.45, 1, 1, 0],
+          "embeddings": ["Infinity", 1200, 0, 1, 1, 0],
           "vault": ["Infinity", 0, 0, 1, 1, 0]
         },
         "connections": { "user-to-rag-api": 20, "docs-to-ingest-q": 1200, "rag-api-to-cache": 20, "rag-api-to-vector-db": 20, "rag-api-to-llm": 20, "rag-api-to-feedback": 5, "ingest-q-to-embed-worker": 1200, "feedback-to-eval-job": 5, "embed-worker-to-embeddings": 1200, "embed-worker-to-vector-db": 1200, "eval-job-to-llm": 5, "eval-job-to-quality": 5 },
@@ -685,13 +687,14 @@
           "converged": true
         },
         "llm": {
+          "managed": "api",
           "id": "llm",
           "role": "processor",
           "status": "up",
           "reason": "throughput",
           "evidence": "configured",
           "unit": "req/s",
-          "capacity": 111.11111111111111,
+          "capacity": "Infinity",
           "offered": 25,
           "replicas": 1,
           "baseReplicas": 1,
@@ -700,14 +703,13 @@
           "assignments": [],
           "slots": 200,
           "seconds": 1.8,
-          "utilization": 0.225,
+          "utilization": 0,
           "growth": 0,
           "contributors": [
             { "edge": "rag-api-to-llm", "node": "rag-api", "label": "RAG API", "rate": 20 },
             { "edge": "eval-job-to-llm", "node": "eval-job", "label": "Eval job", "rate": 5 }
           ],
           "target": 0.5,
-          "minimumReplicas": 1,
           "changes": null,
           "converged": true
         },
@@ -770,13 +772,14 @@
           "converged": true
         },
         "embeddings": {
+          "managed": "api",
           "id": "embeddings",
           "role": "processor",
           "status": "up",
           "reason": "throughput",
           "evidence": "configured",
           "unit": "req/s",
-          "capacity": 2666.6666666666665,
+          "capacity": "Infinity",
           "offered": 1200,
           "replicas": 1,
           "baseReplicas": 1,
@@ -785,13 +788,12 @@
           "assignments": [],
           "slots": 400,
           "seconds": 0.15,
-          "utilization": 0.45,
+          "utilization": 0,
           "growth": 0,
           "contributors": [
             { "edge": "embed-worker-to-embeddings", "node": "embed-worker", "label": "Chunk and embed", "rate": 1200 }
           ],
           "target": 0.5,
-          "minimumReplicas": 1,
           "changes": null,
           "converged": true
         }
@@ -811,9 +813,9 @@
         "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
         "view": {
           "tone": "ok",
-          "top": "llm",
+          "top": "eval-job",
           "headline": "Healthy: every service has headroom",
-          "detail": "Busiest: Claude API at 2% · 2.5/s of 111/s",
+          "detail": "Busiest: Eval job at 1% · 0.5/s of 67/s",
           "fix": null,
           "addConsumer": null,
           "converged": true,
@@ -822,14 +824,14 @@
             "rag-api": ["ok", "0% · 2/s of 1.7k/s"],
             "cache": ["idle", "2/s · no limit", { "modeled": false }],
             "feedback": ["ok", "1% · 0.5/s of 67/s"],
-            "llm": ["ok", "2% · 2.5/s of 111/s"],
+            "llm": ["idle", "Limits unknown; enter measured or contracted values."],
             "vector-db": ["idle", "2.2/s · no limit", { "modeled": false }],
             "eval-job": ["ok", "1% · 0.5/s of 67/s"],
             "quality": ["idle", "0.5/s · no limit", { "modeled": false }],
             "docs": ["idle", "0.2/s · no limit", { "modeled": false }],
             "ingest-q": ["ok", "0% · 0.2/s of 80/s"],
             "embed-worker": ["ok", "0% · 0.2/s of 80/s"],
-            "embeddings": ["ok", "0% · 0.2/s of 2.7k/s"],
+            "embeddings": ["idle", "Limits unknown; enter measured or contracted values."],
             "vault": ["idle", "", { "modeled": false }]
           }
         },
@@ -839,9 +841,9 @@
         "inputs": { "props": {}, "rates": {}, "traffic": 5 },
         "view": {
           "tone": "ok",
-          "top": "llm",
+          "top": "eval-job",
           "headline": "Healthy: every service has headroom",
-          "detail": "Busiest: Claude API at 11% · 13/s of 111/s",
+          "detail": "Busiest: Eval job at 4% · 2.5/s of 67/s",
           "fix": null,
           "addConsumer": null,
           "converged": true,
@@ -850,14 +852,14 @@
             "rag-api": ["ok", "1% · 10/s of 1.7k/s"],
             "cache": ["idle", "10/s · no limit", { "modeled": false }],
             "feedback": ["ok", "4% · 2.5/s of 67/s"],
-            "llm": ["ok", "11% · 13/s of 111/s"],
+            "llm": ["idle", "Limits unknown; enter measured or contracted values."],
             "vector-db": ["idle", "11/s · no limit", { "modeled": false }],
             "eval-job": ["ok", "4% · 2.5/s of 67/s"],
             "quality": ["idle", "2.5/s · no limit", { "modeled": false }],
             "docs": ["idle", "1/s · no limit", { "modeled": false }],
             "ingest-q": ["ok", "1% · 1/s of 80/s"],
             "embed-worker": ["ok", "1% · 1/s of 80/s"],
-            "embeddings": ["ok", "0% · 1/s of 2.7k/s"],
+            "embeddings": ["idle", "Limits unknown; enter measured or contracted values."],
             "vault": ["idle", "", { "modeled": false }]
           }
         },
@@ -867,9 +869,9 @@
         "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
         "view": {
           "tone": "ok",
-          "top": "llm",
+          "top": "eval-job",
           "headline": "Healthy: every service has headroom",
-          "detail": "Busiest: Claude API at 2% · 2.5/s of 111/s",
+          "detail": "Busiest: Eval job at 1% · 0.5/s of 67/s",
           "fix": null,
           "addConsumer": null,
           "converged": true,
@@ -878,14 +880,14 @@
             "rag-api": ["ok", "0% · 2/s of 1.7k/s"],
             "cache": ["idle", "2/s · no limit", { "modeled": false }],
             "feedback": ["ok", "1% · 0.5/s of 67/s"],
-            "llm": ["ok", "2% · 2.5/s of 111/s"],
+            "llm": ["idle", "Limits unknown; enter measured or contracted values."],
             "vector-db": ["idle", "2.2/s · no limit", { "modeled": false }],
             "eval-job": ["ok", "1% · 0.5/s of 67/s"],
             "quality": ["idle", "0.5/s · no limit", { "modeled": false }],
             "docs": ["idle", "0.2/s · no limit", { "modeled": false }],
             "ingest-q": ["ok", "1% · 0.2/s of 40/s"],
             "embed-worker": ["ok", "1% · 0.2/s of 40/s"],
-            "embeddings": ["ok", "0% · 0.2/s of 2.7k/s"],
+            "embeddings": ["idle", "Limits unknown; enter measured or contracted values."],
             "vault": ["idle", "", { "modeled": false }]
           }
         },
@@ -895,9 +897,9 @@
         "inputs": { "props": { "feedback": { "partitions": 12 } }, "rates": {} },
         "view": {
           "tone": "ok",
-          "top": "llm",
+          "top": "eval-job",
           "headline": "Healthy: every service has headroom",
-          "detail": "Busiest: Claude API at 2% · 2.5/s of 111/s",
+          "detail": "Busiest: Eval job at 1% · 0.5/s of 67/s",
           "fix": null,
           "addConsumer": null,
           "converged": true,
@@ -906,14 +908,14 @@
             "rag-api": ["ok", "0% · 2/s of 1.7k/s"],
             "cache": ["idle", "2/s · no limit", { "modeled": false }],
             "feedback": ["ok", "1% · 0.5/s of 67/s"],
-            "llm": ["ok", "2% · 2.5/s of 111/s"],
+            "llm": ["idle", "Limits unknown; enter measured or contracted values."],
             "vector-db": ["idle", "2.2/s · no limit", { "modeled": false }],
             "eval-job": ["ok", "1% · 0.5/s of 67/s"],
             "quality": ["idle", "0.5/s · no limit", { "modeled": false }],
             "docs": ["idle", "0.2/s · no limit", { "modeled": false }],
             "ingest-q": ["ok", "0% · 0.2/s of 80/s"],
             "embed-worker": ["ok", "0% · 0.2/s of 80/s"],
-            "embeddings": ["ok", "0% · 0.2/s of 2.7k/s"],
+            "embeddings": ["idle", "Limits unknown; enter measured or contracted values."],
             "vault": ["idle", "", { "modeled": false }]
           }
         },
@@ -922,9 +924,9 @@
     },
     "launch-day": {
       "tone": "ok",
-      "top": "llm",
+      "top": "eval-job",
       "headline": "Healthy: every service has headroom",
-      "detail": "Busiest: Claude API at 45% · 50/s of 111/s",
+      "detail": "Busiest: Eval job at 15% · 10/s of 67/s",
       "fix": null,
       "addConsumer": null,
       "converged": true,
@@ -933,7 +935,7 @@
         "rag-api": ["ok", "2% · 40/s of 1.7k/s"],
         "cache": ["idle", "40/s · no limit", { "modeled": false }],
         "feedback": ["ok", "15% · 10/s of 67/s"],
-        "llm": ["ok", "45% · 50/s of 111/s"],
+        "llm": ["idle", "Limits unknown; enter measured or contracted values."],
         "vector-db": ["idle", "40/s · no limit", { "modeled": false }],
         "eval-job": ["ok", "15% · 10/s of 67/s"],
         "quality": ["idle", "10/s · no limit", { "modeled": false }],
@@ -960,14 +962,14 @@
         "rag-api": ["ok", "1% · 20/s of 1.7k/s"],
         "cache": ["idle", "20/s · no limit", { "modeled": false }],
         "feedback": ["ok", "8% · 5/s of 67/s"],
-        "llm": ["ok", "23% · 25/s of 111/s"],
+        "llm": ["idle", "Limits unknown; enter measured or contracted values."],
         "vector-db": ["idle", "1.2k/s · no limit", { "modeled": false }],
         "eval-job": ["ok", "8% · 5/s of 67/s"],
         "quality": ["idle", "5/s · no limit", { "modeled": false }],
         "docs": ["idle", "1.2k/s · no limit", { "modeled": false }],
         "ingest-q": ["over", "15× · 1.2k/s of 80/s"],
         "embed-worker": ["over", "15× · 1.2k/s of 80/s"],
-        "embeddings": ["ok", "45% · 1.2k/s of 2.7k/s"],
+        "embeddings": ["idle", "Limits unknown; enter measured or contracted values."],
         "vault": ["idle", "", { "modeled": false }]
       }
     }

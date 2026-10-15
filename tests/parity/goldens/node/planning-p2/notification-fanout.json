@@ -1,22 +1,22 @@
 {
   "format": "diagrams/v2",
-  "planning": { "revision": "p2" },
+  "planning": { "revision": "p3" },
   "nodeProps": {
     "carrier": { "ratePerSec": 10, "messageType": "ParcelScanned", "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "healthChecks": false },
     "shipping": { "concurrency": 200, "latencyMs": 50, "emits": "OrderShipped", "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Shipping service", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
     "events": { "partitions": 32, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "messageType": "order-events", "healthChecks": false },
     "preferences": { "latencyMs": 0, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Preferences", "healthChecks": false },
-    "router": { "concurrency": 400, "latencyMs": 60, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Notification router", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
+    "router": { "concurrency": 400, "latencyMs": 60, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Notification router", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
     "email-q": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "email", "healthChecks": false },
     "sms-q": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "sms", "healthChecks": false },
     "push-q": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "push", "healthChecks": false },
-    "email-sender": { "replicas": 10, "concurrency": 5, "latencyMs": 100, "emits": "EmailSent", "ratePerSec": 2, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Email sender", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
+    "email-sender": { "replicas": 10, "concurrency": 5, "latencyMs": 100, "emits": "EmailSent", "ratePerSec": 2, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Email sender", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
     "sms-limiter": { "replicas": 1, "concurrency": 5, "latencyMs": 100, "emits": "SmsSent", "ratePerSec": 2, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "SMS rate limiter", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
-    "push-sender": { "replicas": 10, "concurrency": 5, "latencyMs": 100, "emits": "PushSent", "ratePerSec": 2, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Push sender", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
-    "sendgrid": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "SendGrid", "healthChecks": false },
+    "push-sender": { "replicas": 10, "concurrency": 5, "latencyMs": 100, "emits": "PushSent", "ratePerSec": 2, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Push sender", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
+    "sendgrid": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "SendGrid", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
     "key-vault": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "notify-kv", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
-    "twilio": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Twilio", "healthChecks": false },
-    "push": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "FCM and APNs", "healthChecks": false }
+    "twilio": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Twilio", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
+    "push": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "FCM and APNs", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" }
   },
   "legacyExport": {
     "format": "diagrams/v1",
@@ -32,8 +32,14 @@
       "sms-limiter.props.presetRevision",
       "push-sender.props.preset",
       "push-sender.props.presetRevision",
+      "sendgrid.props.preset",
+      "sendgrid.props.presetRevision",
       "key-vault.props.preset",
-      "key-vault.props.presetRevision"
+      "key-vault.props.presetRevision",
+      "twilio.props.preset",
+      "twilio.props.presetRevision",
+      "push.props.preset",
+      "push.props.presetRevision"
     ]
   },
   "autoScale": { "freePlay": 1, "shipping-wave": 10, "sms-outage": 1 },
@@ -67,7 +73,7 @@
         "push-q": [500, 7, 0.014, 1, 1, 0],
         "email-sender": [500, 9, 0.018, 10, 10, 0],
         "sms-limiter": [50, 3, 0.06, 1, 1, 0],
-        "push-sender": [500, 7, 0.014, 10, 10, 0],
+        "push-sender": [500.00000000000006, 7, 0.013999999999999999, 10, 10, 0],
         "sendgrid": ["Infinity", 9, 0, 1, 1, 0],
         "key-vault": ["Infinity", 0, 0, 1, 1, 0],
         "twilio": ["Infinity", 3, 0, 1, 1, 0],
@@ -117,6 +123,7 @@
         "converged": true
       },
       "router": {
+        "managed": "serverless",
         "id": "router",
         "role": "processor",
         "status": "up",
@@ -136,11 +143,11 @@
         "growth": 0,
         "contributors": [{ "edge": "events-to-router", "node": "events", "label": "order-events", "rate": 10 }],
         "target": 0.5,
-        "minimumReplicas": 1,
         "changes": null,
         "converged": true
       },
       "email-sender": {
+        "managed": "serverless",
         "id": "email-sender",
         "role": "processor",
         "status": "up",
@@ -160,7 +167,6 @@
         "growth": 0,
         "contributors": [{ "edge": "email-q-to-email-sender", "node": "email-q", "label": "email", "rate": 9 }],
         "target": 0.5,
-        "minimumReplicas": 10,
         "changes": null,
         "converged": true
       },
@@ -189,13 +195,14 @@
         "converged": true
       },
       "push-sender": {
+        "managed": "serverless",
         "id": "push-sender",
         "role": "processor",
         "status": "up",
         "reason": "throughput",
         "evidence": "configured",
         "unit": "msg/s",
-        "capacity": 500,
+        "capacity": 500.00000000000006,
         "offered": 7,
         "replicas": 10,
         "baseReplicas": 10,
@@ -204,11 +211,86 @@
         "assignments": [],
         "slots": 5,
         "seconds": 0.1,
-        "utilization": 0.014,
+        "utilization": 0.013999999999999999,
         "growth": 0,
         "contributors": [{ "edge": "push-q-to-push-sender", "node": "push-q", "label": "push", "rate": 7 }],
         "target": 0.5,
-        "minimumReplicas": 10,
+        "changes": null,
+        "converged": true
+      },
+      "sendgrid": {
+        "managed": "api",
+        "id": "sendgrid",
+        "role": "sink",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": "Infinity",
+        "offered": 9,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [
+          { "edge": "email-sender-to-sendgrid", "node": "email-sender", "label": "Email sender", "rate": 9 }
+        ],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "twilio": {
+        "managed": "api",
+        "id": "twilio",
+        "role": "sink",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": "Infinity",
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [
+          { "edge": "sms-limiter-to-twilio", "node": "sms-limiter", "label": "SMS rate limiter", "rate": 3 }
+        ],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "push": {
+        "managed": "api",
+        "id": "push",
+        "role": "sink",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": "Infinity",
+        "offered": 7,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [{ "edge": "push-sender-to-push", "node": "push-sender", "label": "Push sender", "rate": 7 }],
+        "target": 0.5,
         "changes": null,
         "converged": true
       }
@@ -248,7 +330,7 @@
     "redundancy": {},
     "resolved": {
       "carrier": {
-        "profile": { "family": "client", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 10,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -263,7 +345,7 @@
         "healthChecks": false
       },
       "shipping": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 50,
         "concurrency": 200,
@@ -280,7 +362,7 @@
       },
       "events": {
         "broker": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "pubsub", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "pubsub", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -295,7 +377,7 @@
         "healthChecks": false
       },
       "preferences": {
-        "profile": { "family": "nosql", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "nosql", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -310,7 +392,8 @@
         "healthChecks": false
       },
       "router": {
-        "profile": { "family": "serverless", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "admission": { "api": {}, "endpoints": [], "fixedSlotsPerReplica": 400 },
+        "profile": { "family": "serverless", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 60,
         "concurrency": 400,
@@ -325,7 +408,7 @@
         "healthChecks": false
       },
       "email-q": {
-        "profile": { "family": "queue", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "queue", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -340,7 +423,7 @@
         "healthChecks": false
       },
       "sms-q": {
-        "profile": { "family": "queue", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "queue", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -355,7 +438,7 @@
         "healthChecks": false
       },
       "push-q": {
-        "profile": { "family": "queue", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "queue", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -370,7 +453,8 @@
         "healthChecks": false
       },
       "email-sender": {
-        "profile": { "family": "serverless", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "admission": { "api": {}, "endpoints": [], "fixedSlotsPerReplica": 5 },
+        "profile": { "family": "serverless", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 100,
         "concurrency": 5,
@@ -386,7 +470,7 @@
         "healthChecks": false
       },
       "sms-limiter": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 100,
         "concurrency": 5,
@@ -402,7 +486,8 @@
         "healthChecks": false
       },
       "push-sender": {
-        "profile": { "family": "serverless", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "admission": { "api": {}, "endpoints": [], "fixedSlotsPerReplica": 5 },
+        "profile": { "family": "serverless", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 100,
         "concurrency": 5,
@@ -418,7 +503,8 @@
         "healthChecks": false
       },
       "sendgrid": {
-        "profile": { "family": "external-api", "revision": "p2", "evidence": [], "units": "real" },
+        "admission": { "api": {}, "endpoints": [] },
+        "profile": { "family": "external-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -433,7 +519,7 @@
         "healthChecks": false
       },
       "key-vault": {
-        "profile": { "family": "dependency", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "dependency", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -448,7 +534,8 @@
         "healthChecks": false
       },
       "twilio": {
-        "profile": { "family": "external-api", "revision": "p2", "evidence": [], "units": "real" },
+        "admission": { "api": {}, "endpoints": [] },
+        "profile": { "family": "external-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -463,7 +550,8 @@
         "healthChecks": false
       },
       "push": {
-        "profile": { "family": "external-api", "revision": "p2", "evidence": [], "units": "real" },
+        "admission": { "api": {}, "endpoints": [] },
+        "profile": { "family": "external-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -551,6 +639,7 @@
           "converged": true
         },
         "router": {
+          "managed": "serverless",
           "id": "router",
           "role": "processor",
           "status": "up",
@@ -570,11 +659,11 @@
           "growth": 0,
           "contributors": [{ "edge": "events-to-router", "node": "events", "label": "order-events", "rate": 400 }],
           "target": 0.5,
-          "minimumReplicas": 1,
           "changes": null,
           "converged": true
         },
         "email-sender": {
+          "managed": "serverless",
           "id": "email-sender",
           "role": "processor",
           "status": "up",
@@ -594,7 +683,6 @@
           "growth": 0,
           "contributors": [{ "edge": "email-q-to-email-sender", "node": "email-q", "label": "email", "rate": 360 }],
           "target": 0.5,
-          "minimumReplicas": 10,
           "changes": null,
           "converged": true
         },
@@ -625,6 +713,7 @@
           "converged": true
         },
         "push-sender": {
+          "managed": "serverless",
           "id": "push-sender",
           "role": "processor",
           "status": "up",
@@ -644,7 +733,84 @@
           "growth": 0,
           "contributors": [{ "edge": "push-q-to-push-sender", "node": "push-q", "label": "push", "rate": 280 }],
           "target": 0.5,
-          "minimumReplicas": 10,
+          "changes": null,
+          "converged": true
+        },
+        "sendgrid": {
+          "managed": "api",
+          "id": "sendgrid",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 360,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [
+            { "edge": "email-sender-to-sendgrid", "node": "email-sender", "label": "Email sender", "rate": 360 }
+          ],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
+        "twilio": {
+          "managed": "api",
+          "id": "twilio",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 120,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [
+            { "edge": "sms-limiter-to-twilio", "node": "sms-limiter", "label": "SMS rate limiter", "rate": 120 }
+          ],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
+        "push": {
+          "managed": "api",
+          "id": "push",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 280,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [
+            { "edge": "push-sender-to-push", "node": "push-sender", "label": "Push sender", "rate": 280 }
+          ],
+          "target": 0.5,
           "changes": null,
           "converged": true
         }
@@ -673,7 +839,7 @@
           "push-q": [500, 28, 0.056, 1, 1, 0],
           "email-sender": [500, 36, 0.072, 10, 10, 0],
           "sms-limiter": [50, 12, 0.24, 1, 1, 0],
-          "push-sender": [500, 28, 0.056, 10, 10, 0],
+          "push-sender": [500.00000000000006, 28, 0.055999999999999994, 10, 10, 0],
           "sendgrid": ["Infinity", 36, 0, 1, 1, 0],
           "key-vault": ["Infinity", 0, 0, 1, 1, 0],
           "twilio": ["Infinity", 12, 0, 1, 1, 0],
@@ -725,6 +891,7 @@
           "converged": true
         },
         "router": {
+          "managed": "serverless",
           "id": "router",
           "role": "processor",
           "status": "up",
@@ -744,11 +911,11 @@
           "growth": 0,
           "contributors": [{ "edge": "events-to-router", "node": "events", "label": "order-events", "rate": 40 }],
           "target": 0.5,
-          "minimumReplicas": 1,
           "changes": null,
           "converged": true
         },
         "email-sender": {
+          "managed": "serverless",
           "id": "email-sender",
           "role": "processor",
           "status": "up",
@@ -768,7 +935,6 @@
           "growth": 0,
           "contributors": [{ "edge": "email-q-to-email-sender", "node": "email-q", "label": "email", "rate": 36 }],
           "target": 0.5,
-          "minimumReplicas": 10,
           "changes": null,
           "converged": true
         },
@@ -797,13 +963,14 @@
           "converged": true
         },
         "push-sender": {
+          "managed": "serverless",
           "id": "push-sender",
           "role": "processor",
           "status": "up",
           "reason": "throughput",
           "evidence": "configured",
           "unit": "msg/s",
-          "capacity": 500,
+          "capacity": 500.00000000000006,
           "offered": 28,
           "replicas": 10,
           "baseReplicas": 10,
@@ -812,11 +979,88 @@
           "assignments": [],
           "slots": 5,
           "seconds": 0.1,
-          "utilization": 0.056,
+          "utilization": 0.055999999999999994,
           "growth": 0,
           "contributors": [{ "edge": "push-q-to-push-sender", "node": "push-q", "label": "push", "rate": 28 }],
           "target": 0.5,
-          "minimumReplicas": 10,
+          "changes": null,
+          "converged": true
+        },
+        "sendgrid": {
+          "managed": "api",
+          "id": "sendgrid",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 36,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [
+            { "edge": "email-sender-to-sendgrid", "node": "email-sender", "label": "Email sender", "rate": 36 }
+          ],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
+        "twilio": {
+          "managed": "api",
+          "id": "twilio",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 12,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [
+            { "edge": "sms-limiter-to-twilio", "node": "sms-limiter", "label": "SMS rate limiter", "rate": 12 }
+          ],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
+        "push": {
+          "managed": "api",
+          "id": "push",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 28,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [
+            { "edge": "push-sender-to-push", "node": "push-sender", "label": "Push sender", "rate": 28 }
+          ],
+          "target": 0.5,
           "changes": null,
           "converged": true
         }
@@ -851,10 +1095,10 @@
             "email-sender": ["ok", "2% · 9/s of 500/s"],
             "sms-limiter": ["ok", "6% · 3/s of 50/s"],
             "push-sender": ["ok", "1% · 7/s of 500/s"],
-            "sendgrid": ["idle", "9/s · no limit", { "modeled": false }],
+            "sendgrid": ["idle", "Limits unknown; enter measured or contracted values."],
             "key-vault": ["idle", "", { "modeled": false }],
-            "twilio": ["idle", "3/s · no limit", { "modeled": false }],
-            "push": ["idle", "7/s · no limit", { "modeled": false }]
+            "twilio": ["idle", "Limits unknown; enter measured or contracted values."],
+            "push": ["idle", "Limits unknown; enter measured or contracted values."]
           }
         },
         "partitionsNotes": {}
@@ -881,10 +1125,10 @@
             "email-sender": ["ok", "9% · 45/s of 500/s"],
             "sms-limiter": ["ok", "30% · 15/s of 50/s"],
             "push-sender": ["ok", "7% · 35/s of 500/s"],
-            "sendgrid": ["idle", "45/s · no limit", { "modeled": false }],
+            "sendgrid": ["idle", "Limits unknown; enter measured or contracted values."],
             "key-vault": ["idle", "", { "modeled": false }],
-            "twilio": ["idle", "15/s · no limit", { "modeled": false }],
-            "push": ["idle", "35/s · no limit", { "modeled": false }]
+            "twilio": ["idle", "Limits unknown; enter measured or contracted values."],
+            "push": ["idle", "Limits unknown; enter measured or contracted values."]
           }
         },
         "partitionsNotes": {}
@@ -911,10 +1155,10 @@
             "email-sender": ["ok", "4% · 9/s of 250/s"],
             "sms-limiter": ["ok", "6% · 3/s of 50/s"],
             "push-sender": ["ok", "3% · 7/s of 250/s"],
-            "sendgrid": ["idle", "9/s · no limit", { "modeled": false }],
+            "sendgrid": ["idle", "Limits unknown; enter measured or contracted values."],
             "key-vault": ["idle", "", { "modeled": false }],
-            "twilio": ["idle", "3/s · no limit", { "modeled": false }],
-            "push": ["idle", "7/s · no limit", { "modeled": false }]
+            "twilio": ["idle", "Limits unknown; enter measured or contracted values."],
+            "push": ["idle", "Limits unknown; enter measured or contracted values."]
           }
         },
         "partitionsNotes": {}
@@ -941,10 +1185,10 @@
             "email-sender": ["ok", "2% · 9/s of 500/s"],
             "sms-limiter": ["ok", "6% · 3/s of 50/s"],
             "push-sender": ["ok", "1% · 7/s of 500/s"],
-            "sendgrid": ["idle", "9/s · no limit", { "modeled": false }],
+            "sendgrid": ["idle", "Limits unknown; enter measured or contracted values."],
             "key-vault": ["idle", "", { "modeled": false }],
-            "twilio": ["idle", "3/s · no limit", { "modeled": false }],
-            "push": ["idle", "7/s · no limit", { "modeled": false }]
+            "twilio": ["idle", "Limits unknown; enter measured or contracted values."],
+            "push": ["idle", "Limits unknown; enter measured or contracted values."]
           }
         },
         "partitionsNotes": {}
@@ -973,10 +1217,10 @@
         "email-sender": ["warn", "72% · 360/s of 500/s"],
         "sms-limiter": ["over", "240% · 120/s of 50/s"],
         "push-sender": ["ok", "56% · 280/s of 500/s"],
-        "sendgrid": ["idle", "360/s · no limit", { "modeled": false }],
+        "sendgrid": ["idle", "Limits unknown; enter measured or contracted values."],
         "key-vault": ["idle", "", { "modeled": false }],
-        "twilio": ["idle", "120/s · no limit", { "modeled": false }],
-        "push": ["idle", "280/s · no limit", { "modeled": false }]
+        "twilio": ["idle", "Limits unknown; enter measured or contracted values."],
+        "push": ["idle", "Limits unknown; enter measured or contracted values."]
       }
     },
     "sms-outage": {
@@ -999,10 +1243,10 @@
         "email-sender": ["ok", "7% · 36/s of 500/s"],
         "sms-limiter": ["ok", "24% · 12/s of 50/s"],
         "push-sender": ["ok", "6% · 28/s of 500/s"],
-        "sendgrid": ["idle", "36/s · no limit", { "modeled": false }],
+        "sendgrid": ["idle", "Limits unknown; enter measured or contracted values."],
         "key-vault": ["idle", "", { "modeled": false }],
-        "twilio": ["idle", "12/s · no limit", { "modeled": false }],
-        "push": ["idle", "28/s · no limit", { "modeled": false }]
+        "twilio": ["idle", "Limits unknown; enter measured or contracted values."],
+        "push": ["idle", "Limits unknown; enter measured or contracted values."]
       }
     }
   }

@@ -1,0 +1,59 @@
+{
+  "withIcons": {
+    "sha256": "2cc360a7f314259609e3efb44dc9ee1a1ed52a6fdefe5fbe2eeff71c84fdb922",
+    "bytes": 2971,
+    "inlined": { "client.browser": "client-browser 0022934839e05a07" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Managed admission",
+        "nodes": [
+          {
+            "id": "source",
+            "stencil": "client.browser",
+            "label": "Checkout",
+            "x": 0,
+            "y": 130,
+            "props": { "ratePerSec": 20 }
+          },
+          {
+            "id": "api",
+            "stencil": "aws.api-gateway",
+            "label": "aws.api-gateway",
+            "x": 330,
+            "y": 130,
+            "props": {
+              "preset": "api-gateway-account",
+              "presetRevision": "2026-10-14",
+              "latencyMs": 1000,
+              "api": {
+                "quotas": [
+                  { "id": "global-rate", "unit": "requests", "amount": 10000, "burst": 5000, "windowMs": 1000, "algorithm": "token-bucket", "sharedGroup": "api-gateway-account-region" }
+                ]
+              },
+              "jitter": 0
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "call",
+            "from": "source",
+            "to": "api",
+            "kind": "sync",
+            "props": {
+              "travelMs": 0,
+              "caller": {
+                "deadlineMs": 1,
+                "retry": { "maxAttempts": 3, "strategy": "exponential", "backoffMs": 100, "retryOn": ["throttled"] }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

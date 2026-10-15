@@ -28,6 +28,7 @@ function counters(node: NodeSimState): Record<string, unknown> {
     "dropped",
     "outageDropped",
     "blocked",
+    "rejected",
     "deadLettered",
     "backlog",
     "inFlight",
@@ -38,6 +39,9 @@ function counters(node: NodeSimState): Record<string, unknown> {
     if (value !== 0 && value !== undefined) out[key] = value;
   }
   if (Object.keys(node.lag).length) out.lag = { ...node.lag };
+  // P3 admission refusals by reason (rate, concurrency, tokens…), beside the rejected count.
+  if (node.rejectionReasons && Object.keys(node.rejectionReasons).length)
+    out.rejectionReasons = { ...node.rejectionReasons };
   if (node.noConsumer) out.noConsumer = true;
   if (node.failingOver) out.failingOver = true;
   if (node.replicas !== undefined)
@@ -95,7 +99,15 @@ class Latencies {
   private endToEnd: number[] = [];
   private wait = new Map<string, number[]>();
   private work = new Map<string, number[]>();
-  private outcomes = { done: 0, retried: 0, deadLettered: 0, dropped: 0, blocked: 0, partial: 0, truncated: 0 };
+  private outcomes: Record<string, number> = {
+    done: 0,
+    retried: 0,
+    deadLettered: 0,
+    dropped: 0,
+    blocked: 0,
+    partial: 0,
+    truncated: 0,
+  };
 
   read(engine: SimEngine): void {
     for (const summary of engine.tracer.recent()) {
@@ -113,6 +125,8 @@ class Latencies {
     if (summary.deadLettered) o.deadLettered++;
     if (summary.dropped) o.dropped++;
     if (summary.blocked) o.blocked++;
+    // Refused admission (P3): recorded only when it happens, so earlier goldens keep their shape.
+    if (summary.rejected) o.rejected = (o.rejected ?? 0) + 1;
     if (trace.partial) o.partial++;
     if (trace.truncated) o.truncated++;
     if (trace.endedAt !== undefined) this.endToEnd.push(trace.endedAt - trace.startedAt);

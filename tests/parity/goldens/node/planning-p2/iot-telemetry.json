@@ -1,6 +1,6 @@
 {
   "format": "diagrams/v2",
-  "planning": { "revision": "p2" },
+  "planning": { "revision": "p3" },
   "nodeProps": {
     "devices": { "ratePerSec": 2000, "messageType": "TelemetryReading", "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "healthChecks": false },
     "hub": { "partitions": 64, "retentionDays": 7, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "messageType": "plant.telemetry.v1", "healthChecks": false },
@@ -20,19 +20,19 @@
       "partitions": 3,
       "messageType": "Device state projector",
       "healthChecks": false,
-      "preset": "processor-lesson",
-      "presetRevision": "1"
+      "preset": "managed-measured",
+      "presetRevision": "2026-10-14"
     },
     "stream": { "group": "lake-stream", "checkpointIntervalSec": 30, "concurrency": 128, "latencyMs": 150, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Telemetry streaming", "healthChecks": false },
     "cosmos": { "ttlSec": 604800, "ratePerSec": 2, "latencyMs": 40, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Latest device state", "healthChecks": false },
     "blob": { "ratePerSec": 2, "latencyMs": 40, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Telemetry lake", "healthChecks": false },
     "alerts": { "retryTtlSec": 86400, "partitions": 64, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "messageType": "plant.alerts", "healthChecks": false },
     "delivery": { "concurrency": 128, "latencyMs": 150, "emits": "IncidentEmail", "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Alert delivery", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
-    "email": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Plant operations", "healthChecks": false },
+    "email": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Plant operations", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
     "grafana": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Plant health dashboard", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
     "metrics": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Streaming metrics", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" }
   },
-  "legacyExport": { "format": "diagrams/v1", "losses": ["planning.revision", "hot.props.preset", "hot.props.presetRevision", "delivery.props.preset", "delivery.props.presetRevision", "grafana.props.preset", "grafana.props.presetRevision", "metrics.props.preset", "metrics.props.presetRevision"] },
+  "legacyExport": { "format": "diagrams/v1", "losses": ["planning.revision", "hot.props.preset", "hot.props.presetRevision", "delivery.props.preset", "delivery.props.presetRevision", "email.props.preset", "email.props.presetRevision", "grafana.props.preset", "grafana.props.presetRevision", "metrics.props.preset", "metrics.props.presetRevision"] },
   "autoScale": { "freePlay": 50, "morning": 10, "hot-spot": 1 },
   "brokerAssignments": {
     "brokers": {
@@ -56,7 +56,7 @@
     "simulation": "free-play",
     "analysis": {
       "bottleneck": "hot",
-      "suggestion": "Device state projector: raise replicas from 1 to 3.",
+      "suggestion": "Device state projector: Increase allocation or Reduce calls.",
       "converged": true,
       "iterations": 4,
       "nodes [capacity, offered, utilization, replicas, active, idle]": {
@@ -97,6 +97,7 @@
     },
     "explanations": {
       "hot": {
+        "managed": "serverless",
         "id": "hot",
         "role": "processor",
         "status": "up",
@@ -122,10 +123,7 @@
         "growth": 1146.6666666666665,
         "contributors": [{ "edge": "hub-to-hot", "node": "hub", "label": "plant.telemetry.v1", "rate": 2000 }],
         "target": 0.5,
-        "minimumReplicas": 3,
-        "targetReplicas": 5,
-        "changes": [{ "nodeId": "hot", "key": "replicas", "from": 1, "to": 5 }],
-        "fixId": "capacity:hot",
+        "changes": null,
         "converged": true
       },
       "delivery": {
@@ -149,6 +147,30 @@
         "contributors": [],
         "target": 0.5,
         "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      },
+      "email": {
+        "managed": "api",
+        "id": "email",
+        "role": "sink",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": "Infinity",
+        "offered": 0,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
         "changes": null,
         "converged": true
       }
@@ -187,11 +209,11 @@
       ],
       "metrics": [{ "kind": "calls", "edge": "metrics-to-stream", "peer": "stream" }]
     },
-    "sizing": [{ "nodeId": "hot", "key": "replicas", "from": 1, "to": 5 }],
-    "redundancy": { "hub": { "replicas": 2, "enough": false }, "hot": { "replicas": 5, "enough": true } },
+    "sizing": null,
+    "redundancy": { "hub": { "replicas": 2, "enough": false }, "hot": { "replicas": 2, "enough": false } },
     "resolved": {
       "devices": {
-        "profile": { "family": "client", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2000,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -207,7 +229,7 @@
       },
       "hub": {
         "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "throughput-units", "producerSizeUnit": "kB" },
-        "profile": { "family": "log", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -222,7 +244,8 @@
         "healthChecks": false
       },
       "hot": {
-        "profile": { "family": "serverless", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "admission": { "api": {}, "endpoints": [], "fixedSlotsPerReplica": 128 },
+        "profile": { "family": "serverless", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 150,
         "concurrency": 128,
@@ -238,7 +261,7 @@
         "healthChecks": false
       },
       "stream": {
-        "profile": { "family": "warehouse", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "warehouse", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -253,7 +276,7 @@
         "healthChecks": false
       },
       "cosmos": {
-        "profile": { "family": "nosql", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "nosql", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -268,7 +291,7 @@
         "healthChecks": false
       },
       "blob": {
-        "profile": { "family": "object", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "object", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -284,7 +307,7 @@
       },
       "alerts": {
         "broker": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "pubsub", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "pubsub", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -299,7 +322,7 @@
         "healthChecks": false
       },
       "delivery": {
-        "profile": { "family": "workflow", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "workflow", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 150,
         "concurrency": 128,
@@ -315,7 +338,8 @@
         "healthChecks": false
       },
       "email": {
-        "profile": { "family": "external-api", "revision": "p2", "evidence": [], "units": "real" },
+        "admission": { "api": {}, "endpoints": [] },
+        "profile": { "family": "external-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -330,7 +354,7 @@
         "healthChecks": false
       },
       "grafana": {
-        "profile": { "family": "telemetry", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "telemetry", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -345,7 +369,7 @@
         "healthChecks": false
       },
       "metrics": {
-        "profile": { "family": "telemetry", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "telemetry", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -418,6 +442,7 @@
       },
       "explanations": {
         "hot": {
+          "managed": "serverless",
           "id": "hot",
           "role": "processor",
           "status": "up",
@@ -443,7 +468,6 @@
           "growth": 0,
           "contributors": [{ "edge": "hub-to-hot", "node": "hub", "label": "plant.telemetry.v1", "rate": 320 }],
           "target": 0.5,
-          "minimumReplicas": 1,
           "changes": null,
           "converged": true
         },
@@ -470,10 +494,34 @@
           "minimumReplicas": 1,
           "changes": null,
           "converged": true
+        },
+        "email": {
+          "managed": "api",
+          "id": "email",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": "Infinity",
+          "offered": 20,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [{ "edge": "delivery-to-email", "node": "delivery", "label": "Alert delivery", "rate": 20 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
         }
       },
       "capabilities": "(same as edit)",
-      "sizing": null,
+      "sizing": "(same as edit)",
       "redundancy": {},
       "resolved": "(same as edit)"
     },
@@ -523,6 +571,7 @@
       },
       "explanations": {
         "hot": {
+          "managed": "serverless",
           "id": "hot",
           "role": "processor",
           "status": "up",
@@ -548,7 +597,6 @@
           "growth": 43.333333333333336,
           "contributors": [{ "edge": "hub-to-hot", "node": "hub", "label": "plant.telemetry.v1", "rate": 50 }],
           "target": 0.5,
-          "minimumReplicas": 64,
           "changes": [{ "nodeId": "hub", "key": "partitions", "from": 1, "to": 64 }],
           "fixId": "capacity:hot",
           "converged": true
@@ -576,14 +624,38 @@
           "minimumReplicas": 1,
           "changes": null,
           "converged": true
+        },
+        "email": {
+          "managed": "api",
+          "id": "email",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": "Infinity",
+          "offered": 0,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
         }
       },
       "capabilities": "(same as edit)",
-      "sizing": [{ "nodeId": "hub", "key": "partitions", "from": 1, "to": 64 }],
-      "redundancy": { "hub": { "replicas": 2, "enough": false }, "hot": { "replicas": 2, "enough": false } },
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
       "resolved": {
         "devices": {
-          "profile": { "family": "client", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2000,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -599,7 +671,7 @@
         },
         "hub": {
           "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "throughput-units", "producerSizeUnit": "kB" },
-          "profile": { "family": "log", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -614,7 +686,8 @@
           "healthChecks": false
         },
         "hot": {
-          "profile": { "family": "serverless", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "admission": { "api": {}, "endpoints": [], "fixedSlotsPerReplica": 1 },
+          "profile": { "family": "serverless", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 150,
           "concurrency": 1,
@@ -630,7 +703,7 @@
           "healthChecks": false
         },
         "stream": {
-          "profile": { "family": "warehouse", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "warehouse", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -645,7 +718,7 @@
           "healthChecks": false
         },
         "cosmos": {
-          "profile": { "family": "nosql", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "nosql", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -660,7 +733,7 @@
           "healthChecks": false
         },
         "blob": {
-          "profile": { "family": "object", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "object", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -676,7 +749,7 @@
         },
         "alerts": {
           "broker": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
-          "profile": { "family": "pubsub", "revision": "p2", "evidence": [], "units": "real" },
+          "profile": { "family": "pubsub", "revision": "p3", "evidence": [], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -691,7 +764,7 @@
           "healthChecks": false
         },
         "delivery": {
-          "profile": { "family": "workflow", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "workflow", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 150,
           "concurrency": 128,
@@ -707,7 +780,8 @@
           "healthChecks": false
         },
         "email": {
-          "profile": { "family": "external-api", "revision": "p2", "evidence": [], "units": "real" },
+          "admission": { "api": {}, "endpoints": [] },
+          "profile": { "family": "external-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -722,7 +796,7 @@
           "healthChecks": false
         },
         "grafana": {
-          "profile": { "family": "telemetry", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "telemetry", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -737,7 +811,7 @@
           "healthChecks": false
         },
         "metrics": {
-          "profile": { "family": "telemetry", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "profile": { "family": "telemetry", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
           "ratePerSec": 2,
           "latencyMs": 0,
           "concurrency": "Infinity",
@@ -762,11 +836,8 @@
           "tone": "over",
           "top": "hot",
           "headline": "Device state projector and 1 more are over capacity",
-          "detail": "234% · 2k/s of 853/s",
-          "fix": {
-            "changes": [{ "nodeId": "hot", "key": "replicas", "from": 1, "to": 5, "label": "Device state projector" }],
-            "label": "Device state projector 1 → 5 replicas"
-          },
+          "detail": "234% · 2k/s of 853/s. Reduce calls",
+          "fix": null,
           "addConsumer": null,
           "converged": true,
           "nodes": {
@@ -778,7 +849,7 @@
             "blob": ["idle", "2k/s · no limit", { "modeled": false }],
             "alerts": ["idle", ""],
             "delivery": ["idle", ""],
-            "email": ["idle", "", { "modeled": false }],
+            "email": ["idle", ""],
             "grafana": ["idle", "", { "modeled": false }],
             "metrics": ["idle", "", { "modeled": false }]
           }
@@ -792,10 +863,7 @@
           "top": "hub",
           "headline": "plant.telemetry.v1 and 1 more are over capacity",
           "detail": "12× · 10k/s of 853/s",
-          "fix": {
-            "changes": [{ "nodeId": "hot", "key": "replicas", "from": 1, "to": 22, "label": "Device state projector" }],
-            "label": "Device state projector 1 → 22 replicas"
-          },
+          "fix": null,
           "addConsumer": null,
           "converged": true,
           "nodes": {
@@ -807,7 +875,7 @@
             "blob": ["idle", "10k/s · no limit", { "modeled": false }],
             "alerts": ["idle", ""],
             "delivery": ["idle", ""],
-            "email": ["idle", "", { "modeled": false }],
+            "email": ["idle", ""],
             "grafana": ["idle", "", { "modeled": false }],
             "metrics": ["idle", "", { "modeled": false }]
           }
@@ -820,11 +888,8 @@
           "tone": "over",
           "top": "hot",
           "headline": "Device state projector and 1 more are over capacity",
-          "detail": "234% · 2k/s of 853/s",
-          "fix": {
-            "changes": [{ "nodeId": "hot", "key": "replicas", "from": 1, "to": 10, "label": "Device state projector" }],
-            "label": "Device state projector 1 → 10 replicas"
-          },
+          "detail": "234% · 2k/s of 853/s. Reduce calls",
+          "fix": null,
           "addConsumer": null,
           "converged": true,
           "nodes": {
@@ -836,7 +901,7 @@
             "blob": ["idle", "2k/s · no limit", { "modeled": false }],
             "alerts": ["idle", ""],
             "delivery": ["idle", ""],
-            "email": ["idle", "", { "modeled": false }],
+            "email": ["idle", ""],
             "grafana": ["idle", "", { "modeled": false }],
             "metrics": ["idle", "", { "modeled": false }]
           }
@@ -849,11 +914,8 @@
           "tone": "over",
           "top": "hot",
           "headline": "Device state projector and 1 more are over capacity",
-          "detail": "234% · 2k/s of 853/s",
-          "fix": {
-            "changes": [{ "nodeId": "hot", "key": "replicas", "from": 1, "to": 5, "label": "Device state projector" }],
-            "label": "Device state projector 1 → 5 replicas"
-          },
+          "detail": "234% · 2k/s of 853/s. Reduce calls",
+          "fix": null,
           "addConsumer": null,
           "converged": true,
           "nodes": {
@@ -865,7 +927,7 @@
             "blob": ["idle", "2k/s · no limit", { "modeled": false }],
             "alerts": ["idle", ""],
             "delivery": ["idle", ""],
-            "email": ["idle", "", { "modeled": false }],
+            "email": ["idle", ""],
             "grafana": ["idle", "", { "modeled": false }],
             "metrics": ["idle", "", { "modeled": false }]
           }
@@ -890,7 +952,7 @@
         "blob": ["idle", "320/s · no limit", { "modeled": false }],
         "alerts": ["ok", "2% · 20/s of 853/s"],
         "delivery": ["ok", "2% · 20/s of 853/s"],
-        "email": ["idle", "20/s · no limit", { "modeled": false }],
+        "email": ["idle", "Limits unknown; enter measured or contracted values."],
         "grafana": ["idle", "", { "modeled": false }],
         "metrics": ["idle", "", { "modeled": false }]
       }
@@ -915,7 +977,7 @@
         "blob": ["idle", "50/s · no limit", { "modeled": false }],
         "alerts": ["idle", ""],
         "delivery": ["idle", ""],
-        "email": ["idle", "", { "modeled": false }],
+        "email": ["idle", ""],
         "grafana": ["idle", "", { "modeled": false }],
         "metrics": ["idle", "", { "modeled": false }]
       }

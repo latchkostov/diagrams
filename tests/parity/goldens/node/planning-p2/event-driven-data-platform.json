@@ -1,6 +1,6 @@
 {
   "format": "diagrams/v2",
-  "planning": { "revision": "p2" },
+  "planning": { "revision": "p3" },
   "nodeProps": {
     "billing-webhooks": { "ratePerSec": 5, "messageType": "InvoicePaid", "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "healthChecks": false },
     "storefront": { "ratePerSec": 20, "messageType": "CheckoutRequest", "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "healthChecks": false },
@@ -10,7 +10,7 @@
     "checkout": { "concurrency": 64, "latencyMs": 120, "emits": "OrderPlaced", "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Checkout service", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
     "debezium": { "ratePerSec": 10, "messageType": "AccountChanged", "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "healthChecks": false },
     "personalization": { "group": "personalization", "concurrency": 64, "latencyMs": 100, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Personalization service", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
-    "marketing": { "group": "marketing-sync", "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Marketing automation", "healthChecks": false },
+    "marketing": { "group": "marketing-sync", "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Marketing automation", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
     "billing-topic": { "partitions": 6, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "messageType": "billing.invoices.v1", "healthChecks": false },
     "orders-topic": { "partitions": 6, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "messageType": "orders.v1", "healthChecks": false },
     "accounts-topic": { "partitions": 6, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "messageType": "cdc.accounts.v1", "healthChecks": false },
@@ -67,6 +67,8 @@
       "checkout.props.presetRevision",
       "personalization.props.preset",
       "personalization.props.presetRevision",
+      "marketing.props.preset",
+      "marketing.props.presetRevision",
       "schema-registry.props.preset",
       "schema-registry.props.presetRevision",
       "snowpipe.props.preset",
@@ -285,6 +287,38 @@
         "changes": null,
         "converged": true
       },
+      "marketing": {
+        "managed": "api",
+        "id": "marketing",
+        "role": "sink",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": "Infinity",
+        "offered": 20,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "segments-topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 6
+          }
+        ],
+        "slots": "Infinity",
+        "seconds": 0,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [
+          { "edge": "segments-topic-to-marketing", "node": "segments-topic", "label": "customer-segments.v1", "rate": 20 }
+        ],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
       "snowpipe": {
         "id": "snowpipe",
         "role": "processor",
@@ -440,7 +474,7 @@
     "redundancy": {},
     "resolved": {
       "billing-webhooks": {
-        "profile": { "family": "client", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 5,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -455,7 +489,7 @@
         "healthChecks": false
       },
       "storefront": {
-        "profile": { "family": "client", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 20,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -470,7 +504,7 @@
         "healthChecks": false
       },
       "accounts-db": {
-        "profile": { "family": "sql", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -485,7 +519,7 @@
         "healthChecks": false
       },
       "segment-cache": {
-        "profile": { "family": "cache", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "cache", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -500,7 +534,7 @@
         "healthChecks": false
       },
       "webhook-receiver": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 80,
         "concurrency": 64,
@@ -515,7 +549,7 @@
         "healthChecks": false
       },
       "checkout": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 120,
         "concurrency": 64,
@@ -531,7 +565,7 @@
         "healthChecks": false
       },
       "debezium": {
-        "profile": { "family": "client", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 10,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -546,7 +580,7 @@
         "healthChecks": false
       },
       "personalization": {
-        "profile": { "family": "service", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 100,
         "concurrency": 64,
@@ -561,7 +595,8 @@
         "healthChecks": false
       },
       "marketing": {
-        "profile": { "family": "external-api", "revision": "p2", "evidence": [], "units": "real" },
+        "admission": { "api": {}, "endpoints": [] },
+        "profile": { "family": "external-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -577,7 +612,7 @@
       },
       "billing-topic": {
         "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "log", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -593,7 +628,7 @@
       },
       "orders-topic": {
         "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "log", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -609,7 +644,7 @@
       },
       "accounts-topic": {
         "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "log", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -625,7 +660,7 @@
       },
       "segments-topic": {
         "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-        "profile": { "family": "log", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -640,7 +675,7 @@
         "healthChecks": false
       },
       "schema-registry": {
-        "profile": { "family": "dependency", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "dependency", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -655,7 +690,7 @@
         "healthChecks": false
       },
       "snowpipe": {
-        "profile": { "family": "stream-processor", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "stream-processor", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 40,
         "concurrency": 4,
@@ -671,7 +706,7 @@
         "healthChecks": false
       },
       "reverse-etl": {
-        "profile": { "family": "stream-processor", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "stream-processor", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 1500,
         "concurrency": 400,
@@ -687,7 +722,7 @@
         "healthChecks": false
       },
       "raw": {
-        "profile": { "family": "warehouse", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "warehouse", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -702,7 +737,7 @@
         "healthChecks": false
       },
       "marts": {
-        "profile": { "family": "warehouse", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "warehouse", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -717,7 +752,7 @@
         "healthChecks": false
       },
       "airflow": {
-        "profile": { "family": "scheduler", "revision": "p2", "evidence": [], "units": "real" },
+        "profile": { "family": "scheduler", "revision": "p3", "evidence": [], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -732,7 +767,7 @@
         "healthChecks": false
       },
       "dbt": {
-        "profile": { "family": "stream-processor", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "stream-processor", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 2500,
         "concurrency": 3000,
@@ -748,7 +783,7 @@
         "healthChecks": false
       },
       "bi": {
-        "profile": { "family": "telemetry", "revision": "p2", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "profile": { "family": "telemetry", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
         "ratePerSec": 2,
         "latencyMs": 0,
         "concurrency": "Infinity",
@@ -922,6 +957,38 @@
           ],
           "target": 0.5,
           "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "marketing": {
+          "managed": "api",
+          "id": "marketing",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": "Infinity",
+          "offered": 1,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "segments-topic",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 6
+            }
+          ],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [
+            { "edge": "segments-topic-to-marketing", "node": "segments-topic", "label": "customer-segments.v1", "rate": 1 }
+          ],
+          "target": 0.5,
           "changes": null,
           "converged": true
         },
@@ -1207,6 +1274,38 @@
           "changes": null,
           "converged": true
         },
+        "marketing": {
+          "managed": "api",
+          "id": "marketing",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": "Infinity",
+          "offered": 200,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "segments-topic",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 6
+            }
+          ],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [
+            { "edge": "segments-topic-to-marketing", "node": "segments-topic", "label": "customer-segments.v1", "rate": 200 }
+          ],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
         "snowpipe": {
           "id": "snowpipe",
           "role": "processor",
@@ -1342,7 +1441,7 @@
             "checkout": ["ok", "4% · 20/s of 533/s"],
             "debezium": ["idle", "10/s · no limit", { "modeled": false }],
             "personalization": ["ok", "3% · 20/s of 640/s"],
-            "marketing": ["idle", "20/s · no limit", { "modeled": false }],
+            "marketing": ["idle", "Limits unknown; enter measured or contracted values."],
             "billing-topic": ["ok", "1% · 5/s of 600/s"],
             "orders-topic": ["ok", "3% · 20/s of 600/s"],
             "accounts-topic": ["ok", "2% · 10/s of 600/s"],
@@ -1378,7 +1477,7 @@
             "checkout": ["ok", "19% · 100/s of 533/s"],
             "debezium": ["idle", "50/s · no limit", { "modeled": false }],
             "personalization": ["ok", "16% · 100/s of 640/s"],
-            "marketing": ["idle", "100/s · no limit", { "modeled": false }],
+            "marketing": ["idle", "Limits unknown; enter measured or contracted values."],
             "billing-topic": ["ok", "4% · 25/s of 600/s"],
             "orders-topic": ["ok", "17% · 100/s of 600/s"],
             "accounts-topic": ["ok", "8% · 50/s of 600/s"],
@@ -1414,7 +1513,7 @@
             "checkout": ["ok", "4% · 20/s of 533/s"],
             "debezium": ["idle", "10/s · no limit", { "modeled": false }],
             "personalization": ["ok", "3% · 20/s of 640/s"],
-            "marketing": ["idle", "20/s · no limit", { "modeled": false }],
+            "marketing": ["idle", "Limits unknown; enter measured or contracted values."],
             "billing-topic": ["ok", "2% · 5/s of 300/s"],
             "orders-topic": ["ok", "7% · 20/s of 300/s"],
             "accounts-topic": ["ok", "3% · 10/s of 300/s"],
@@ -1458,7 +1557,7 @@
             "checkout": ["ok", "4% · 20/s of 533/s"],
             "debezium": ["idle", "10/s · no limit", { "modeled": false }],
             "personalization": ["ok", "3% · 20/s of 640/s"],
-            "marketing": ["idle", "20/s · no limit", { "modeled": false }],
+            "marketing": ["idle", "Limits unknown; enter measured or contracted values."],
             "billing-topic": ["ok", "1% · 5/s of 600/s"],
             "orders-topic": ["ok", "3% · 20/s of 600/s"],
             "accounts-topic": ["ok", "2% · 10/s of 600/s"],
@@ -1493,7 +1592,7 @@
         "checkout": ["ok", "0% · 1/s of 533/s"],
         "debezium": ["idle", "", { "modeled": false }],
         "personalization": ["ok", "0% · 1/s of 640/s"],
-        "marketing": ["idle", "1/s · no limit", { "modeled": false }],
+        "marketing": ["idle", "Limits unknown; enter measured or contracted values."],
         "billing-topic": ["idle", ""],
         "orders-topic": ["ok", "0% · 1/s of 600/s"],
         "accounts-topic": ["idle", ""],
@@ -1533,7 +1632,7 @@
         "checkout": ["ok", "38% · 200/s of 533/s"],
         "debezium": ["idle", "50/s · no limit", { "modeled": false }],
         "personalization": ["ok", "31% · 200/s of 640/s"],
-        "marketing": ["idle", "200/s · no limit", { "modeled": false }],
+        "marketing": ["idle", "Limits unknown; enter measured or contracted values."],
         "billing-topic": ["hot", "100% · 600/s of 600/s"],
         "orders-topic": ["ok", "33% · 200/s of 600/s"],
         "accounts-topic": ["ok", "8% · 50/s of 600/s"],
