@@ -20,7 +20,7 @@ env:
 jobs:
   e2e:
     name: ${{ matrix.label }} ${{ matrix.shard }}/${{ matrix.total }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -78,7 +78,7 @@ jobs:
   # it with `pnpm skill:release` when users should get the latest viewer.
   skill-viewer:
     name: Skill viewer freshness
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     continue-on-error: true
     steps:
@@ -102,7 +102,7 @@ jobs:
     name: Report failure
     needs: e2e
     if: failure() && needs.e2e.result == 'failure'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:
       contents: read
