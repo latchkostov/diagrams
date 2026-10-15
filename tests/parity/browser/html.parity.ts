@@ -6,11 +6,12 @@
 // - The payload (the diagram, its icons and the options) is pinned as data, its icons by hash.
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { expectGolden, expectGoldenText } from "../lib/golden";
 import { fingerprint } from "../lib/hash";
 import { openExample, settledCanvas } from "./canvas";
+import { expectGoldenPng } from "./png";
 
 const EXAMPLES = ["kafka-order-pipeline", "branch-to-datacentre"];
 
@@ -74,13 +75,15 @@ for (const slug of EXAMPLES) {
     const { shell, payload } = normalise(html);
     expectGoldenText(`html/${slug}.dark.html`, shell);
     expectGolden(`html/${slug}.dark.json`, payload);
+    // Opened with a fixed export date (its footer shows it), so what it draws doesn't change with the day.
     const file = info.outputPath(`${slug}.html`);
-    const { writeFileSync } = await import("node:fs");
-    writeFileSync(file, html);
+    writeFileSync(file, html.replace(/("exportedOn":")d{4}-d{2}-d{2}(")/, "$12026-01-01$2"));
     const viewer = await context.newPage();
     await viewer.goto(pathToFileURL(file).href);
     await expect(viewer.getByTestId("html-viewer")).toBeVisible();
     expectGolden(`html/${slug}.dark.drawn.json`, await settledCanvas(viewer));
+    // How it looks, banner and footer included: the viewer's own CSS isn't in the file's golden (it's build output).
+    await expectGoldenPng(page, `html/${slug}.dark.png`, await viewer.screenshot({ fullPage: true }));
     await viewer.close();
   });
 }

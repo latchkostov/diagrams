@@ -68,7 +68,8 @@ default change below, since every public example sets its latencies.
   `export-html.mjs` (its payload) on every example.
 - **Layout and routing** (`node/layout/`, `node/routes/`): on estimated card sizes: auto-layout in both directions,
   Tidy, align, distribute, spread, boundary around, the skill's layout, and every edge's route in each style (points,
-  sides, label placement, the SVG path by hash).
+  sides, label placement, the SVG path by hash), from the routing input the canvas itself builds
+  (`routeInputFromStore`: notes and shapes are obstacles, shapes take edges).
 - **Languages** (`node/i18n/`): in every language and the pseudo-locale: a dozen messages through the real runtime
   (plain, plurals at 0, 1, 2, 5, 21 and 1000, selects, numbers, a rich message rendered to HTML) and the number,
   percent, rate, duration, list, byte and date formatters; and every message of every catalog, rendered with sample
@@ -80,7 +81,8 @@ default change below, since every public example sets its latencies.
   line: data-testids, classes, text, geometry, a few visual properties, embedded data by hash) and the PNG (a tolerant
   image diff against a stored, downscaled reference).
 - **Interactive HTML** (`browser/html/`): the file the app downloads for two examples (defaults, and dark with a
-  banner, not playing), normalised (below), its payload, and what it draws opened from `file://`.
+  banner, not playing), normalised (below), its payload, and what it draws opened from `file://`: its geometry, and a
+  screenshot (the viewer's own CSS, its banner and footer) compared like the PNG export.
 
 ### Deliberately not pinned
 
@@ -111,6 +113,9 @@ Every source of variation is removed at the input rather than tolerated at the o
   Run simulations budget (`collectEvidence`) and `check_diagram`'s get a still clock, so a slow machine can't turn
   a played simulation into an unplayed one. Exports get a fixed date; the browser's export date is normalised.
 - **Ids** are counters in the app (`src/editor/ids.ts`, `src/model/ids.ts`), so nothing needs normalising.
+- **Private diagrams are never loaded.** Vitest runs with `DEV` set, where the examples registry imports
+  `src/examples/private` eagerly; the Node tier's config empties that glob and refuses any module from the folder
+  (`tests/parity/vitest.config.ts`). The browser tier serves a production build, which has none.
 - **Order** is the output's own (findings, nodes in an export, keys in a file). Records the harness builds follow
   diagram order.
 - **Language and time zone.** The Node tier resets the i18n state to English around every test; the i18n file sets
@@ -161,9 +166,9 @@ printer formats them).
   (a hash per simulated second, beside counters every 10 seconds: a diff says _when_ a run diverged and _what_
   diverged), catalogs (per language and area), sequence SVGs, embedded icons and fonts, route paths (beside their
   points).
-- **Images**: six downscaled PNG references, the only binary goldens.
+- **Images**: eight downscaled PNG references (six image exports, two viewer screenshots), the only binary goldens.
 
-There are about 1,300 goldens: 9.4 MB on disk, under 1 MB compressed, which is what a full re-record adds to the
+There are about 1,310 goldens: 9.4 MB on disk, under 1 MB compressed, which is what a full re-record adds to the
 repository's history; a typical change rewrites a few files. Hashing everything would be smaller and unreadable;
 recording everything (each event, each rendered message) would be ten times the size for detail that the summaries
 point to anyway. On a failure, every actual output is written to `tests/.output/parity/actual/` and every diff to
@@ -199,7 +204,7 @@ are uploaded on failure.
 ## Runtime
 
 On a laptop: the Node tier about 15 s (1,240 goldens in parallel workers; simulations split over three files), the
-browser tier about 45 s with warm Docker volumes (68 goldens; the first run installs Linux dependencies into a
+browser tier about 45 s with warm Docker volumes (70 goldens; the first run installs Linux dependencies into a
 volume and takes a few minutes). On CI, add the image pull and an install inside it.
 
 ## App behaviour found

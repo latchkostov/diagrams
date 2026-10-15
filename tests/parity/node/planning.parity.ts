@@ -28,6 +28,7 @@ import {
 import { autoScale } from "../../../src/sim/scale";
 import { planningDiagrams as allDiagrams, examples } from "../lib/corpus";
 import { expectGolden } from "../lib/golden";
+import { stable } from "../lib/stable";
 
 const mapToObject = <V>(map: Map<string, V>) => Object.fromEntries(map);
 
@@ -144,7 +145,8 @@ function sameAs<T extends Record<string, unknown>>(edit: T, other: T): Record<st
   return Object.fromEntries(
     Object.entries(other).map(([key, value]) => [
       key,
-      key !== "simulation" && JSON.stringify(value) === JSON.stringify(edit[key]) ? SAME : value,
+      // Compared as the goldens print them: JSON.stringify would call Infinity and NaN both null.
+      key !== "simulation" && stable(value) === stable(edit[key]) ? SAME : value,
     ]),
   );
 }

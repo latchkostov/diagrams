@@ -6,8 +6,11 @@ import { layeredLayout } from "../../../src/editor/layout";
 import { tidyLayout } from "../../../src/editor/tidy";
 import { align, boundaryAround, distribute, spreadOverlaps } from "../../../src/editor/arrange";
 import { estimateCardSize } from "../../../src/canvas/nodes/size";
-import { groupHeaderRect, Router, type RouteInput, type RouteStyle } from "../../../src/canvas/geometry/router";
-import { derivedLabel, isDependency } from "../../../src/model/relations";
+import type { InternalNode } from "@xyflow/react";
+import { Router, type RouteInput, type RouteStyle } from "../../../src/canvas/geometry/router";
+import { routeInputFromStore } from "../../../src/canvas/edges/useEdgeRoute";
+import { toFlow } from "../../../src/canvas/convert";
+import type { FlowNode } from "../../../src/canvas/types";
 import { layoutDiagram } from "../../../src/ai/skill/layout";
 import { allDiagrams } from "../lib/corpus";
 import { expectGolden } from "../lib/golden";
@@ -19,26 +22,18 @@ const positions = (p: Pos | null) => (p ? Object.fromEntries([...p].map(([id, { 
 const boxes = (d: DiagramFile) =>
   d.nodes.map((n) => ({ id: n.id, x: n.x, y: n.y, label: n.label, ...estimateCardSize(n.label, n.sublabel) }));
 
-/** What the canvas routes (src/canvas/geometry/examples.test.ts builds the same input). */
+/**
+ * The routing input exactly as the canvas builds it (routeInputFromStore, src/canvas/edges/useEdgeRoute.ts) from the
+ * canvas's own nodes (toFlow), with notes and shapes as obstacles and shapes as edge ends; React Flow's internal
+ * nodes carry absolute positions (no node has a parent) and no measured size, so cards take their estimated size.
+ */
 function routeInput(d: DiagramFile, style: RouteStyle): RouteInput {
-  return {
-    direction: d.direction ?? "LR",
+  const flow = toFlow(d);
+  const internal = flow.nodes.map((n) => ({ ...n, internals: { positionAbsolute: n.position } }));
+  return routeInputFromStore(internal as unknown as InternalNode<FlowNode>[], flow.edges, {
     style,
-    nodes: d.nodes.map((n) => ({ id: n.id, rect: { x: n.x, y: n.y, ...estimateCardSize(n.label, n.sublabel) } })),
-    groups: (d.groups ?? []).map((g) => {
-      const rect = { x: g.x, y: g.y, width: g.width, height: g.height };
-      return { id: g.id, rect, header: groupHeaderRect(rect, g.label) };
-    }),
-    edges: d.edges.map((e) => ({
-      id: e.id,
-      source: e.from,
-      target: e.to,
-      sourceSide: e.sourceSide,
-      targetSide: e.targetSide,
-      label: e.label ?? derivedLabel(e, d.edges),
-      glyph: isDependency(e) || undefined,
-    })),
-  };
+    direction: d.direction ?? "LR",
+  });
 }
 
 function routes(d: DiagramFile, style: RouteStyle) {
