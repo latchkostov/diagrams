@@ -19,7 +19,7 @@ import { profileOf, resolvePreset, FAMILIES, PROCESSOR_LESSON, type ResolutionEv
 import type { PlanningModel } from "../model/types";
 import type { AdmissionPolicy } from "./admission";
 import { admissionPresetFor, ADMISSION_REVISION } from "../model/admissionPresets";
-import { validAdmissionData } from "../interop/native";
+import { validAdmissionData } from "../model/admissionSchema";
 
 /** Only these roles spend service time, including paused and resumed work. */
 export const hasServiceTime = (role: SimRole): boolean =>
@@ -121,11 +121,8 @@ export function resolveProps(
   const allocation = metadataNumber(props.maxConcurrency);
   const fixedWorker = role === "processor" && profile?.family !== "model-api";
   const automatic = profile?.family === "serverless" && props.scaling === "auto";
-  const effectiveSlots = fixedWorker
-    ? automatic && allocation !== undefined
-      ? allocation
-      : Math.min(allocation ?? Infinity, number("replicas", 1) * number("concurrency", 4))
-    : undefined;
+  // Fleet slots are derived after capacity multiplication and partition assignment.
+  const effectiveSlots = fixedWorker ? allocation : undefined;
   const endpoints =
     !invalidAdmission && Array.isArray(props.endpoints)
       ? (props.endpoints as NonNullable<NodeSimProps["endpoints"]>)
@@ -161,9 +158,10 @@ export function resolveProps(
   return {
     ...(managed
       ? {
-          admission: previousAdmission ?? {
+          admission: {
             ...(invalidAdmission ? { invalid: true } : {}),
-            api,
+            requirementsPolicy: previousAdmission?.requirementsPolicy ?? previousAdmission,
+            api: previousAdmission?.api ?? api,
             endpoints: resolvedEndpoints,
             slots: effectiveSlots,
             fixedSlotsPerReplica: fixedWorker && !automatic ? number("concurrency", 4) : undefined,

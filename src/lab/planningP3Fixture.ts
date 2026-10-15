@@ -1,4 +1,5 @@
 import type { DiagramFile } from "../model/types";
+import { ADMISSION_REVISION } from "../model/admissionPresets";
 import { newPlanningProps } from "../model/planning";
 
 /** Public deterministic review fixture: slow calls exhaust account concurrency before RPS. */
@@ -53,4 +54,32 @@ export function planningP3Fixture(stencil = "stripe"): DiagramFile {
       },
     ],
   };
+}
+
+/** Public bulk-edit fixture with distinct account policies and mixed concurrent-call values. */
+export function planningP3BulkFixture(stencil = "openai"): DiagramFile {
+  const d = planningP3Fixture(stencil);
+  d.nodes[1].props = {
+    preset: "managed-measured",
+    presetRevision: ADMISSION_REVISION,
+    scaling: "auto",
+    maxConcurrency: 10,
+    api: {
+      maxInFlight: 2,
+      sharedConcurrency: "first",
+      quotas: [{ id: "tokens", unit: "tokens", amount: 10, windowMs: 1000, algorithm: "token-bucket" }],
+      costPerRequest: { tokens: 2 },
+    },
+  };
+  d.nodes.push({
+    ...d.nodes[1],
+    id: "other",
+    label: "Other",
+    y: 330,
+    props: {
+      ...d.nodes[1].props,
+      api: { ...(d.nodes[1].props.api as object), maxInFlight: 4, sharedConcurrency: "second" },
+    },
+  });
+  return d;
 }

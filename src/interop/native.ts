@@ -16,19 +16,7 @@ import { sanitizeChecks } from "../model/checks";
 import { idClaimer } from "../model/ids";
 import { t } from "../i18n/core";
 import { checkJsonSchema } from "../model/jsonSchema";
-import { apiSchema, checkEndpoints, planningSchema } from "../model/admissionSchema";
-
-/** Free-form editor properties use the same bounded admission contract as imported files.
- * Keep this in the already-preloaded validator, so Live adds no startup request. */
-export function validAdmissionData(api: unknown, endpoints: unknown): boolean {
-  try {
-    if (api !== undefined) checkJsonSchema(api, apiSchema);
-    if (endpoints !== undefined) checkEndpoints(endpoints);
-    return true;
-  } catch {
-    return false;
-  }
-}
+import { callerSchema, planningSchema } from "../model/admissionSchema";
 
 // The native format (diagrams/v1): versioned validation with friendly messages, a migration hook
 // for future formats, and preservation of fields this version doesn't know about (a newer app, or
@@ -367,6 +355,14 @@ export function validateDiagram(data: unknown): NativeResult {
     if (invalidPlanningDelay(out.props))
       return { ok: false, error: t("planning.delayInvalid", { id: e.id, limit: SIM_LIMITS.timeMs }) };
     if (invalidEndpointReference(out.props)) return { ok: false, error: t("admission.endpointInvalid", { id: e.id }) };
+    const caller = (out.props as Record<string, unknown> | undefined)?.caller;
+    if (caller !== undefined) {
+      try {
+        checkJsonSchema(caller, callerSchema, "caller");
+      } catch {
+        return { ok: false, error: `Edge "${e.id}": caller must be a valid bounded caller policy.` };
+      }
+    }
     // A deny rule fails closed: anything that isn't true or false is read as deny, never as allow, and said.
     const deny = (out.props as Record<string, unknown> | undefined)?.deny;
     if (deny !== undefined && typeof deny !== "boolean") {

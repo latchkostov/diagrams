@@ -1,7 +1,7 @@
 import { QUOTA_UNITS } from "./admission";
 import type { JsonSchema } from "./jsonSchema";
 import { checkJsonSchema } from "./jsonSchema";
-import type { ApiEndpoint } from "./admission";
+import type { ApiBehaviour, ApiEndpoint } from "./admission";
 const id = { type: "string", minLength: 1, maxLength: 200 };
 const quantity = { type: "number", minimum: 0, maximum: 1e12 };
 const positive = { type: "number", minimum: 0.000001, maximum: 1e12 };
@@ -63,6 +63,7 @@ export const endpointsSchema: JsonSchema = {
 export function checkEndpoints(value: unknown): void {
   checkJsonSchema(value, endpointsSchema);
   const endpoints = value as ApiEndpoint[];
+  for (const endpoint of endpoints) if (endpoint.behaviour) checkApi(endpoint.behaviour);
   if (new Set(endpoints.map((endpoint) => endpoint.id)).size !== endpoints.length)
     throw new Error("endpoints: endpoint ids must be unique within a node.");
 }
@@ -94,3 +95,22 @@ export const planningSchema: JsonSchema = {
     sharedAllocations: { type: "array", maxItems: 128, items: allocationSchema },
   },
 };
+
+/** Validate identities as well as the shape: differently configured duplicates are still duplicates. */
+export function checkApi(value: unknown): void {
+  checkJsonSchema(value, apiSchema);
+  const quotas = (value as ApiBehaviour).quotas ?? [];
+  if (new Set(quotas.map((quota) => quota.id)).size !== quotas.length)
+    throw new Error("api.quotas: quota ids must be unique within each API scope.");
+}
+
+/** Shared by runtime resolution and native/agent import validation. */
+export function validAdmissionData(api: unknown, endpoints: unknown): boolean {
+  try {
+    if (api !== undefined) checkApi(api);
+    if (endpoints !== undefined) checkEndpoints(endpoints);
+    return true;
+  } catch {
+    return false;
+  }
+}

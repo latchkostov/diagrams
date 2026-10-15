@@ -1,13 +1,21 @@
 import { useId, useState, type ReactNode } from "react";
 import type { NodeSimProps } from "../sim/types";
-import type { ApiBehaviour } from "../model/admission";
-import { localRateQuota } from "../model/admissionPresets";
+import { admissionFieldBindings } from "./admissionFieldBindings";
 import { ADMISSION_PRESETS, ADMISSION_REVISION, admissionPresetFor, managedKind } from "../model/admissionPresets";
 import { resolveProps } from "../sim/defaults";
 import { stencilRole } from "../stencils/roles";
 import { t, useLocale } from "../i18n";
 import { formatDuration, formatNumber } from "../i18n/format";
 import { explanationRate } from "./format";
+
+const admissionLabel = (name: ReturnType<typeof admissionFieldBindings>[number]["name"]) =>
+  ({
+    allocation: t("admission.allocation"),
+    rate: t("admission.rate"),
+    concurrency: t("admission.concurrency"),
+    latency: t("admission.latency"),
+    errors: t("admission.errors"),
+  })[name];
 
 /** One preset and four controls; scope/scaling details stay folded. Endpoint editing lands in P6. */
 export function AdmissionFields({
@@ -30,25 +38,14 @@ export function AdmissionFields({
       ? resolved.profile.preset
       : "managed-measured";
   const scaling = props.scaling ?? ADMISSION_PRESETS[chosen]?.scaling ?? "fixed";
-  const allocation =
-    typeof props.maxConcurrency === "number" ? props.maxConcurrency : ADMISSION_PRESETS[chosen]?.maxConcurrency;
   const vendor = admissionPresetFor(stencil);
   const presets = [
     ...new Set(
       ["managed-measured", vendor, ...(stencil === "stripe" ? ["stripe-sandbox"] : [])].filter((v): v is string => !!v),
     ),
   ];
-  const rate = api.quotas?.find((q) => q.id === "local-rate" && q.unit === "requests" && !q.sharedGroup);
   const accountRate = api.quotas?.find((q) => q.unit === "requests" && q.sharedGroup);
-  const patchApi = (patch: Partial<ApiBehaviour>, key: string) => set({ api: { ...api, ...patch } }, key);
-  const input = (
-    name: string,
-    label: string,
-    value: number | undefined,
-    change: (value: number | undefined) => void,
-    max: number,
-    step = 1,
-  ) => <AdmissionInput key={name} name={name} label={label} value={value} change={change} max={max} step={step} />;
+  const fields = admissionFieldBindings(stencil, { ...props, scaling }, resolved);
   return (
     <div data-testid="admission-controls">
       <label className="insp-field">
@@ -82,67 +79,27 @@ export function AdmissionFields({
           ))}
         </select>
       </label>
-      {serverless
-        ? input(
-            "allocation",
-            t("admission.allocation"),
-            allocation,
-            (value) => set({ maxConcurrency: value }, "allocation"),
-            10000,
-          )
-        : input(
-            "rate",
-            t("admission.rate"),
-            rate ? (rate.amount * 1000) / rate.windowMs : undefined,
-            (value) =>
-              patchApi(
-                {
-                  quotas: [
-                    ...(api.quotas ?? []).filter((q) => q.id !== "local-rate"),
-                    ...(value !== undefined && value > 0 ? [localRateQuota(value)] : []),
-                  ],
-                },
-                "rate",
-              ),
-            10000000,
-            0.1,
-          )}
+      {fields.slice(0, 1).map((field) => (
+        <AdmissionInput
+          key={field.name}
+          {...field}
+          label={admissionLabel(field.name)}
+          change={(value) => set(field.patch(value), field.name)}
+        />
+      ))}
       {accountRate && (
         <p className="insp-note" data-testid="admission-account-rate">
           {t("admission.scope")} · {explanationRate((accountRate.amount * 1000) / accountRate.windowMs, "req/s")}
         </p>
       )}
-      {serverless
-        ? scaling !== "auto" &&
-          input(
-            "concurrency",
-            t("admission.concurrency"),
-            resolved.concurrency * resolved.replicas,
-            (value) => set({ concurrency: value, replicas: 1 }, "concurrency"),
-            10000,
-          )
-        : input(
-            "concurrency",
-            t("admission.concurrency"),
-            api.maxInFlight,
-            (value) => patchApi({ maxInFlight: value }, "concurrency"),
-            10000,
-          )}
-      {input(
-        "latency",
-        t("admission.latency"),
-        api.latencyMs ?? resolved.latencyMs,
-        (value) => set({ latencyMs: value, api: { ...api, latencyMs: undefined } }, "latency"),
-        600000,
-      )}
-      {input(
-        "errors",
-        t("admission.errors"),
-        (api.errorRate ?? resolved.failureRate) * 100,
-        (value) => set({ failureRate: (value ?? 0) / 100, api: { ...api, errorRate: undefined } }, "errors"),
-        100,
-        0.1,
-      )}
+      {fields.slice(1).map((field) => (
+        <AdmissionInput
+          key={field.name}
+          {...field}
+          label={admissionLabel(field.name)}
+          change={(value) => set(field.patch(value), field.name)}
+        />
+      ))}
       {!(api.quotas?.length || api.maxInFlight !== undefined || props.maxConcurrency !== undefined) && (
         <p className="insp-note" data-testid="admission-unknown">
           {t("admission.unknown")}
@@ -209,6 +166,7 @@ function AdmissionInput({
   change,
   max,
   step,
+  mixed = false,
 }: {
   name: string;
   label: string;
@@ -216,6 +174,7 @@ function AdmissionInput({
   change: (value: number | undefined) => void;
   max: number;
   step: number;
+  mixed?: boolean;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const [invalid, setInvalid] = useState(false);
@@ -231,7 +190,7 @@ function AdmissionInput({
         max={max}
         step={name === "rate" ? "any" : step}
         value={draft ?? value ?? ""}
-        placeholder={t("admission.unknownShort")}
+        placeholder={mixed ? t("admission.mixed") : t("admission.unknownShort")}
         data-testid={`admission-${name}`}
         aria-invalid={invalid && draft !== null}
         aria-describedby={invalid ? feedbackId : undefined}
@@ -255,10 +214,52 @@ function AdmissionInput({
             min: formatNumber(min, { maximumFractionDigits: 6 }),
             max: formatNumber(max),
             step: name === "rate" ? "" : t("admission.step", { step: formatNumber(step) }),
-            value: value === undefined ? t("admission.unknownShort") : formatNumber(value),
+            value: mixed
+              ? t("admission.mixed")
+              : value === undefined
+                ? t("admission.unknownShort")
+                : formatNumber(value),
           })}
         </small>
       )}
     </label>
+  );
+}
+
+/** Shared applicable fields only; patches preserve each node's own quotas and account references. */
+export function BulkAdmissionFields({
+  nodes,
+  set,
+}: {
+  nodes: { id: string; stencil: string; props: Record<string, unknown> }[];
+  set: (patches: Record<string, Partial<NodeSimProps>>, key: string) => void;
+}) {
+  useLocale();
+  const bindings = nodes.map((node) => {
+    const resolved = resolveProps(stencilRole(node.stencil), "", node.props, node.stencil, { revision: "p3" });
+    const scaling = node.props.scaling ?? ADMISSION_PRESETS[resolved.profile.preset ?? ""]?.scaling ?? "fixed";
+    return admissionFieldBindings(node.stencil, { ...node.props, scaling }, resolved);
+  });
+  return (
+    <div data-testid="bulk-admission-controls">
+      {bindings[0]
+        .filter((field) => bindings.every((list) => list.some((item) => item.name === field.name)))
+        .map((field) => {
+          const fields = bindings.map((list) => list.find((item) => item.name === field.name)!);
+          const mixed = fields.some((item) => item.value !== field.value);
+          return (
+            <AdmissionInput
+              key={field.name}
+              {...field}
+              value={mixed ? undefined : field.value}
+              mixed={mixed}
+              label={admissionLabel(field.name)}
+              change={(value) =>
+                set(Object.fromEntries(nodes.map((node, i) => [node.id, fields[i].patch(value)])), field.name)
+              }
+            />
+          );
+        })}
+    </div>
   );
 }

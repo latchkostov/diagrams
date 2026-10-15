@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { planningP3Fixture } from "../../src/lab/planningP3Fixture";
+import { planningP3Fixture, planningP3BulkFixture } from "../../src/lab/planningP3Fixture";
 import {
   test,
   expect,
@@ -219,3 +219,79 @@ for (const locale of ["ar", "en-XA"])
     await page.screenshot({ path: info.outputPath(`p3-${locale}.png`) });
     expectNoErrors(consoleErrors);
   });
+
+test("P3: managed bulk editing uses applicable admission fields and preserves each account", async ({
+  page,
+  consoleErrors,
+}, info) => {
+  const d = planningP3BulkFixture();
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.addInitScript(
+    ({ key, d }) => {
+      localStorage.setItem(key, JSON.stringify(d));
+      localStorage.setItem("diagrams.inspector.open.v1", JSON.stringify({ "multi-simulation": true }));
+    },
+    { key: STORAGE_KEYS.autosavePrefix + slug, d },
+  );
+  await gotoCanvas(page, slug);
+  await waitForStableViewport(page);
+  await page.getByTestId("node-api").click();
+  await page.getByTestId("node-other").click({ modifiers: ["Shift"] });
+  await expect(page.getByTestId("bulk-admission-controls")).toBeVisible();
+  await expect(page.getByTestId("inspector-field-replicas")).toHaveCount(0);
+  await expect(page.getByTestId("inspector-field-concurrency")).toHaveCount(0);
+  await expect(page.getByTestId("admission-concurrency")).toHaveAttribute("placeholder", "Mixed");
+  await page.getByTestId("admission-concurrency").fill("10001");
+  await expect(page.getByTestId("admission-limit-concurrency")).toContainText("Kept: Mixed");
+  await page.getByTestId("admission-concurrency").fill("3");
+  await page.getByTestId("admission-concurrency").press("Tab");
+  await expect
+    .poll(async () => {
+      const saved = await page.evaluate(
+        (key) => JSON.parse(localStorage.getItem(key) ?? "null"),
+        STORAGE_KEYS.autosavePrefix + slug,
+      );
+      return saved.nodes
+        .filter((node: { id: string }) => node.id !== "source")
+        .map((node: { props: { api: object } }) => node.props.api);
+    })
+    .toEqual([
+      expect.objectContaining({ maxInFlight: 3, sharedConcurrency: "first", costPerRequest: { tokens: 2 } }),
+      expect.objectContaining({ maxInFlight: 3, sharedConcurrency: "second", costPerRequest: { tokens: 2 } }),
+    ]);
+  await page.screenshot({ path: info.outputPath("p3-bulk.png") });
+  await page.getByTestId("undo-button").click();
+  await expect(page.getByTestId("admission-concurrency")).toHaveAttribute("placeholder", "Mixed");
+  await expect
+    .poll(async () => {
+      const saved = await page.evaluate(
+        (key) => JSON.parse(localStorage.getItem(key) ?? "null"),
+        STORAGE_KEYS.autosavePrefix + slug,
+      );
+      return saved.nodes
+        .filter((node: { id: string }) => node.id !== "source")
+        .map((node: { props: { api: { maxInFlight: number } } }) => node.props.api.maxInFlight);
+    })
+    .toEqual([2, 4]);
+  expectNoErrors(consoleErrors);
+});
+test("P3: automatic function bulk selection hides fleet controls", async ({ page, consoleErrors }) => {
+  const d = planningP3BulkFixture("aws.lambda");
+  await page.addInitScript(
+    ({ key, d }) => {
+      localStorage.setItem(key, JSON.stringify(d));
+      localStorage.setItem("diagrams.inspector.open.v1", JSON.stringify({ "multi-simulation": true }));
+    },
+    { key: STORAGE_KEYS.autosavePrefix + slug, d },
+  );
+  await gotoCanvas(page, slug);
+  await waitForStableViewport(page);
+  await page.getByTestId("node-api").click();
+  await page.getByTestId("node-other").click({ modifiers: ["Shift"] });
+  await expect(page.getByTestId("bulk-admission-controls")).toBeVisible();
+  await expect(page.getByTestId("admission-allocation")).toHaveValue("10");
+  await expect(page.getByTestId("admission-concurrency")).toHaveCount(0);
+  await expect(page.getByTestId("inspector-field-replicas")).toHaveCount(0);
+  await expect(page.getByTestId("inspector-field-concurrency")).toHaveCount(0);
+  expectNoErrors(consoleErrors);
+});

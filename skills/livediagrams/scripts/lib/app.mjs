@@ -172,6 +172,7 @@ var endpointsSchema = {
 function checkEndpoints(value) {
 	checkJsonSchema(value, endpointsSchema);
 	const endpoints = value;
+	for (const endpoint of endpoints) if (endpoint.behaviour) checkApi(endpoint.behaviour);
 	if (new Set(endpoints.map((endpoint) => endpoint.id)).size !== endpoints.length) throw new Error("endpoints: endpoint ids must be unique within a node.");
 }
 var callerSchema = {
@@ -243,6 +244,12 @@ var planningSchema = {
 		}
 	}
 };
+/** Validate identities as well as the shape: differently configured duplicates are still duplicates. */
+function checkApi(value) {
+	checkJsonSchema(value, apiSchema);
+	const quotas = value.quotas ?? [];
+	if (new Set(quotas.map((quota) => quota.id)).size !== quotas.length) throw new Error("api.quotas: quota ids must be unique within each API scope.");
+}
 //#endregion
 //#region src/model/simProps.ts
 /**
@@ -445,8 +452,10 @@ function propsProblem(value) {
 		const schema = nodeProperties[key];
 		try {
 			if (key === "endpoints") checkEndpoints(field);
+			else if (key === "api") checkApi(field);
 			else checkJsonSchema(field, schema, key);
-		} catch {
+		} catch (error) {
+			if (error instanceof Error && error.message.includes("ids must be unique")) return error.message;
 			if (typeof field === "number" && typeof schema.maximum === "number" && field > schema.maximum) return `${key} ${number(field)} is over the ${number(schema.maximum)} limit`;
 			if (typeof field === "number" && typeof schema.minimum === "number" && field < schema.minimum) return `${key} ${number(field)} is under the minimum of ${number(schema.minimum)}`;
 			if (typeof field === "number" && !Number.isFinite(field)) return `${key} must be a finite number`;
@@ -877,13 +886,13 @@ function validateDiagram(data) {
 			const props = isObj$1(sim.setup) && isObj$1(sim.setup.props) ? sim.setup.props : {};
 			for (const [id, value] of Object.entries(props)) if (unsupportedPreset(value)) return {
 				ok: false,
-				error: t(1080, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
+				error: t(1084, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
 			};
 			if (Array.isArray(sim.timeline)) for (const step of sim.timeline) {
 				const action = isObj$1(step) && isObj$1(step.action) ? step.action : void 0;
 				if (action?.do === "props" && unsupportedPreset(action.props)) return {
 					ok: false,
-					error: t(1080, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
+					error: t(1084, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
 				};
 			}
 		}
@@ -985,7 +994,7 @@ function validateDiagram(data) {
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
 		if (unsupportedPreset(out.props)) return {
 			ok: false,
-			error: t(1080, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
+			error: t(1084, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
 		};
 		const problem = out.props === void 0 ? void 0 : propsProblem(out.props);
 		if (problem) return {
@@ -1062,7 +1071,7 @@ function validateDiagram(data) {
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
 		if (invalidPlanningDelay(out.props)) return {
 			ok: false,
-			error: t(1025, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
+			error: t(1029, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
 				id: e.id,
 				limit: SIM_LIMITS.timeMs
 			})
@@ -1071,6 +1080,15 @@ function validateDiagram(data) {
 			ok: false,
 			error: t(5, (v) => "Connection " + v.id + ": endpointId must be nonempty text of at most 200 characters.", { id: e.id })
 		};
+		const caller = out.props?.caller;
+		if (caller !== void 0) try {
+			checkJsonSchema(caller, callerSchema, "caller");
+		} catch {
+			return {
+				ok: false,
+				error: `Edge "${e.id}": caller must be a valid bounded caller policy.`
+			};
+		}
 		const deny = out.props?.deny;
 		if (deny !== void 0 && typeof deny !== "boolean") {
 			warnings.push(`Edge "${e.id}" had a deny rule that wasn't true or false (${String(JSON.stringify(deny)).slice(0, 40)}); it's read as deny, so what's routed there is blocked. Set it to false to allow.`);

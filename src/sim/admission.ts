@@ -1,11 +1,14 @@
 import type { ApiBehaviour, ApiEndpoint, Quota } from "../model/admission";
 import type { PlanningModel } from "../model/types";
-import { concurrencyKey, quotaKey, quotaSignature, sharedConcurrencyKey, slotsKey } from "./admissionPolicy";
+import { normalizeCall, quotaSignature, slotsKey, type CompiledCall } from "./admissionPolicy";
 
 export interface AdmissionPolicy {
   invalid?: boolean;
+  /** Scalar fleet edits share the immutable compiled requirements of this policy. */
+  requirementsPolicy?: AdmissionPolicy;
   api: ApiBehaviour;
   endpoints: ApiEndpoint[];
+  /** Allocation ceiling; multiplied/assigned fixed fleet capacity is applied separately. */
   slots?: number;
   accountConcurrency?: number;
   fixedSlotsPerReplica?: number;
@@ -15,18 +18,6 @@ interface Bucket {
   time: number;
   capacity: number;
   rate: number;
-}
-interface Requirement {
-  key: string;
-  quota: Quota;
-  cost: number;
-}
-interface CompiledCall {
-  rejected?: string;
-  requirements: Requirement[];
-  limits: Map<string, number>;
-  latencyMs?: number;
-  errorRate?: number;
 }
 interface CompiledNode {
   calls: Map<string | undefined, CompiledCall>;
@@ -126,66 +117,17 @@ function refill(bucket: Bucket, now: number) {
   bucket.tokens = Math.min(bucket.capacity, bucket.tokens + Math.max(0, now - bucket.time) * bucket.rate);
   bucket.time = now;
 }
-function compileCall(
-  state: AdmissionState,
-  node: string,
-  policy: AdmissionPolicy,
-  endpoint?: ApiEndpoint,
-): CompiledCall {
-  const behaviour = endpoint?.behaviour;
-  const call: CompiledCall = {
-    requirements: [],
-    limits: new Map(),
-    latencyMs: behaviour?.latencyMs ?? policy.api.latencyMs,
-    errorRate: behaviour?.errorRate ?? policy.api.errorRate,
-  };
-  if (policy.invalid) {
-    call.rejected = "invalid admission data";
-    return call;
-  }
-  const costs = { ...policy.api.costPerRequest, ...behaviour?.costPerRequest };
-  const requirements = new Map<string, Requirement>();
-  for (const [api, scope] of [
-    [policy.api, ["node"]],
-    [behaviour, ["endpoint", endpoint?.id ?? ""]],
-  ] as const) {
-    for (const declared of api?.quotas ?? []) {
-      if (declared.sharedGroup && state.conflicts.has(`quota:${declared.sharedGroup}`)) {
-        call.rejected = "conflicting shared quota";
-        return call;
-      }
-      const quota = (declared.sharedGroup ? state.sharedQuotas.get(declared.sharedGroup) : undefined) ?? declared;
-      if (quota.unit !== "requests" && costs[quota.unit] === undefined) {
-        call.rejected = `unknown ${quota.unit} cost`;
-        return call;
-      }
-      const key = quotaKey(node, scope, declared);
-      requirements.set(key, { key, quota, cost: costs[quota.unit] ?? 1 });
-    }
-    if (api?.maxInFlight !== undefined) call.limits.set(concurrencyKey(node, scope), api.maxInFlight);
-    if (api?.sharedConcurrency) {
-      const allocation = state.allocations.get(api.sharedConcurrency);
-      if (state.conflicts.has(`concurrency:${api.sharedConcurrency}`) || allocation === undefined) {
-        call.rejected = "unknown shared allocation";
-        return call;
-      }
-      call.limits.set(sharedConcurrencyKey(api.sharedConcurrency), allocation);
-    }
-  }
-  call.requirements = [...requirements.values()].sort(
-    (a, b) => Number(a.quota.unit === "requests") - Number(b.quota.unit === "requests"),
-  );
-  return call;
-}
 function compileNode(state: AdmissionState, node: string, policy: AdmissionPolicy): CompiledNode {
   const compiled: CompiledNode = {
     slots: slotsKey(node),
-    calls: new Map([[undefined, compileCall(state, node, policy)]]),
+    calls: new Map([[undefined, normalizeCall(state, node, policy)]]),
   };
-  for (const endpoint of policy.endpoints) compiled.calls.set(endpoint.id, compileCall(state, node, policy, endpoint));
-  const nodes = state.compiled.get(policy) ?? new Map<string, CompiledNode>();
+  for (const endpoint of policy.endpoints)
+    compiled.calls.set(endpoint.id, normalizeCall(state, node, policy, endpoint));
+  const cacheKey = policy.requirementsPolicy ?? policy;
+  const nodes = state.compiled.get(cacheKey) ?? new Map<string, CompiledNode>();
   nodes.set(node, compiled);
-  state.compiled.set(policy, nodes);
+  state.compiled.set(cacheKey, nodes);
   return compiled;
 }
 /** Apply only changed node definitions, and invalidate callers of changed shared definitions.
@@ -222,7 +164,7 @@ export function reconfigureAdmission(
     if (previous) {
       remember(previous);
       for (const key of register(state, previous, true)) touched.add(key);
-      state.compiled.delete(previous);
+      state.compiled.delete(previous.requirementsPolicy ?? previous);
       state.owners.delete(previous);
     }
     if (policy) {
@@ -237,7 +179,7 @@ export function reconfigureAdmission(
     resolveShared(state, key);
     if (before.get(key) !== sharedValue(key))
       for (const policy of state.definitions.get(key)?.keys() ?? []) {
-        state.compiled.delete(policy);
+        state.compiled.delete(policy.requirementsPolicy ?? policy);
         affected.add(policy);
       }
   }
@@ -271,7 +213,8 @@ export function attemptAdmission(
   weight: number,
   slots = policy.slots,
 ): { lease: AdmissionLease; latencyMs?: number; errorRate?: number } | { rejected: string } {
-  const compiled = state.compiled.get(policy)?.get(node) ?? compileNode(state, node, policy);
+  const compiled =
+    state.compiled.get(policy.requirementsPolicy ?? policy)?.get(node) ?? compileNode(state, node, policy);
   const call = compiled.calls.get(endpointId);
   if (!call) return { rejected: "unknown endpoint" };
   if (call.rejected) return { rejected: call.rejected };

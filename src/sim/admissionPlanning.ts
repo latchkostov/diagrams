@@ -1,6 +1,5 @@
 import { configureAdmission, emptyAdmission, type AdmissionPolicy } from "./admission";
-import { quotaKey, concurrencyKey, sharedConcurrencyKey, slotsKey, type AdmissionScope } from "./admissionPolicy";
-import type { Quota } from "../model/admission";
+import { normalizeCall, slotsKey } from "./admissionPolicy";
 import type { PlanningModel } from "../model/types";
 
 /** Common workload multiplier: account and endpoint constraints apply to the same offered workload.
@@ -36,55 +35,31 @@ export function admissionCapacities(
       result.set(entry.id, 0);
       continue;
     }
+    // Index declarations once and aggregate repeated targets before interpreting their requirements.
+    const endpoints = new Map(entry.policy.endpoints.map((endpoint) => [endpoint.id, endpoint]));
+    const rates = new Map<string | undefined, number>();
+    for (const call of entry.endpoints) if (call.rate > 0) rates.set(call.id, (rates.get(call.id) ?? 0) + call.rate);
     let seconds = 0;
-    for (const call of entry.endpoints) {
-      if (!(call.rate > 0)) continue;
-      const endpoint = call.id !== undefined ? entry.policy.endpoints.find((e) => e.id === call.id) : undefined;
-      if (call.id !== undefined && !endpoint) {
+    for (const [id, rate] of rates) {
+      const endpoint = id === undefined ? undefined : endpoints.get(id);
+      const call = normalizeCall(sharedState, entry.id, entry.policy, endpoint);
+      if ((id !== undefined && !endpoint) || call.rejected) {
         result.set(entry.id, 0);
         continue;
       }
-      const api = endpoint?.behaviour;
-      if (
-        [entry.policy.api, api].some(
-          (behaviour) =>
-            behaviour?.quotas?.some((q) => q.sharedGroup && sharedState.conflicts.has(`quota:${q.sharedGroup}`)) ||
-            (behaviour?.sharedConcurrency && sharedState.conflicts.has(`concurrency:${behaviour.sharedConcurrency}`)),
-        )
-      ) {
-        result.set(entry.id, 0);
-        continue;
+      const latency = call.latencyMs ?? entry.latencyMs;
+      seconds += (rate * latency) / 1000;
+      for (const { key, quota, cost } of call.requirements) {
+        if (cost > (quota.burst ?? quota.amount)) result.set(entry.id, 0);
+        add(key, (quota.amount * 1000) / quota.windowMs, rate * cost, entry.id);
       }
-      const latency = api?.latencyMs ?? entry.policy.api.latencyMs ?? entry.latencyMs;
-      seconds += (call.rate * latency) / 1000;
-      const costs = { ...entry.policy.api.costPerRequest, ...api?.costPerRequest };
-      const once = new Set<string>();
-      const quota = (q: Quota, scope: AdmissionScope) => {
-        const key = quotaKey(entry.id, scope, q);
-        if (once.has(key)) return;
-        once.add(key);
-        const cost = costs[q.unit] ?? (q.unit === "requests" ? 1 : undefined);
-        if (cost === undefined || cost > (q.burst ?? q.amount)) {
-          result.set(entry.id, 0);
-          return;
-        }
-        add(key, (q.amount * 1000) / q.windowMs, call.rate * cost, entry.id);
-      };
-      for (const q of entry.policy.api.quotas ?? []) quota(q, ["node"]);
-      for (const q of api?.quotas ?? []) quota(q, ["endpoint", call.id!]);
-      if (api?.maxInFlight !== undefined)
-        add(concurrencyKey(entry.id, ["endpoint", call.id!]), api.maxInFlight, (call.rate * latency) / 1000, entry.id);
-      const shared = new Map<string, number>();
-      for (const behaviour of [entry.policy.api, api]) {
-        if (!behaviour?.sharedConcurrency) continue;
-        const id = behaviour.sharedConcurrency;
-        const allocation = sharedState.allocations.get(id) ?? 0;
-        shared.set(id, allocation);
+      for (const [key, limit] of call.limits) {
+        if (limit === 0) result.set(entry.id, 0);
+        add(key, limit, (rate * latency) / 1000, entry.id);
       }
-      for (const [id, allocation] of shared)
-        add(sharedConcurrencyKey(id), allocation, (call.rate * latency) / 1000, entry.id);
     }
     const slots = Math.min(entry.policy.slots ?? Infinity, entry.policy.api.maxInFlight ?? Infinity);
+    if (slots === 0 && rates.size) result.set(entry.id, 0);
     if (slots < Infinity) add(slotsKey(entry.id), slots, seconds, entry.id);
   }
   for (const budget of budgets.values())

@@ -151,6 +151,66 @@ describe("layout.mjs", () => {
 });
 
 describe("validate.mjs", () => {
+  it.each([
+    { deadlineMs: -1 },
+    { poolConnections: 0 },
+    { retry: { maxAttempts: 0, backoffMs: 1, strategy: "fixed", retryOn: ["throttled"] } },
+    { retry: { maxAttempts: 2, backoffMs: 1, strategy: "bogus", retryOn: ["throttled"] } },
+    { retry: { maxAttempts: 2, backoffMs: 1, strategy: "fixed", retryOn: ["bogus"] } },
+  ])("native import rejects malformed caller policies (%j)", (caller) => {
+    const d = {
+      format: "diagrams/v2",
+      planning: { revision: "p3" },
+      title: "Caller",
+      nodes: [
+        { id: "a", stencil: "client.user", label: "Calls", x: 0, y: 0 },
+        { id: "b", stencil: "generic.external-api", label: "API", x: 300, y: 0 },
+      ],
+      edges: [{ id: "call", from: "a", to: "b", kind: "sync", props: { caller } }],
+    };
+    expect(parseNative(JSON.stringify(d))).toMatchObject({ ok: false, error: expect.stringContaining("caller") });
+    const r = run("validate.mjs", write(d));
+    expect(r.code, r.out).toBe(1);
+    expect(r.out).toContain("caller");
+  });
+  it("valid caller policies round-trip through native and generated skill validation", () => {
+    const d = {
+      format: "diagrams/v2",
+      planning: { revision: "p3" },
+      title: "Caller",
+      nodes: [
+        { id: "a", stencil: "client.user", label: "Calls", x: 0, y: 0 },
+        { id: "b", stencil: "generic.external-api", label: "API", x: 300, y: 0 },
+      ],
+      edges: [
+        {
+          id: "call",
+          from: "a",
+          to: "b",
+          kind: "sync",
+          props: {
+            caller: {
+              deadlineMs: 0,
+              poolConnections: 2,
+              retry: {
+                maxAttempts: 2,
+                backoffMs: 0,
+                strategy: "exponential",
+                retryOn: ["throttled", "transient", "timeout"],
+                jitter: 0.5,
+                idempotent: true,
+              },
+            },
+          },
+        },
+      ],
+    };
+    const parsed = parseNative(JSON.stringify(d));
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.diagram.edges[0].props?.caller).toEqual(d.edges[0].props.caller);
+    const r = run("validate.mjs", write(d));
+    expect(r.code, r.out).toBe(0);
+  });
   it("accepts every public example", () => {
     const r = run("validate.mjs", ...examples.map((e) => path.join(root, "src", "examples", `${e.slug}.json`)));
     expect(r.out).not.toMatch(/error:/);

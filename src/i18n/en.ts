@@ -1837,6 +1837,11 @@ const en = {
   "admission.invalidNumber": "Enter a number from {min} to {max}{step}. Kept: {value}.",
   "admission.step": " in steps of {step}",
   "admission.errors": "Errors (%)",
+  "admission.zeroCapacity": "No admission capacity · {rate} rejected",
+  "admission.zeroHeadline": "{label} rejects every call",
+  "admission.zeroDetail":
+    "The configured concurrency or quota budget admits no calls. Increase the limiting budget or reduce calls.",
+  "admission.mixed": "Mixed",
   "admission.unknownShort": "Unknown",
   "admission.unknown": "Limits unknown; enter measured or contracted values.",
   "admission.assumption": "Duration and unspecified burst behaviour are assumptions.",

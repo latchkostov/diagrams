@@ -309,6 +309,7 @@ function nodeText(n: NodeCapacity, status?: NodeHeat["status"], noReader = false
       ? `Nobody reads this yet · ${formatRate(n.offered)} kept`
       : `No consumer · ${formatRate(n.offered)} waiting`;
   if (n.capacity === Infinity) return n.managed ? t("admission.unknown") : `${formatRate(n.offered)} · no limit`;
+  if (n.managed && !Number.isFinite(n.utilization)) return t("admission.zeroCapacity", { rate: formatRate(n.offered) });
   if (!Number.isFinite(n.utilization)) return `No capacity · ${formatRate(n.offered)} waiting`;
   return `${formatUtilization(n.utilization)} · ${formatRate(n.offered)} of ${formatRate(n.capacity)}`;
 }
@@ -459,8 +460,8 @@ export function capacityView(d: DiagramFile, sim: Simulation, status?: RunStatus
       : "Messages wait in it until a consumer takes them.";
     addConsumer = top.id;
   } else if (!Number.isFinite(top.utilization)) {
-    headline = `${top.label} can't keep up at all`;
-    detail = "Its consumers can't take any of its messages.";
+    headline = top.managed ? t("admission.zeroHeadline", { label: top.label }) : `${top.label} can't keep up at all`;
+    detail = top.managed ? t("admission.zeroDetail") : "Its consumers can't take any of its messages.";
   } else if (top.idleReplicas > 0 && top.level !== "ok") {
     headline = `${top.label}: ${top.idleReplicas} of ${top.replicas} replicas idle`;
     detail = top.assignment
@@ -608,7 +609,7 @@ export function selectRows(
   const roleIds = (pred: (r: SimRole) => boolean) => d.nodes.filter((n) => pred(roleOf(n))).map((n) => n.id);
   return {
     entries: [...entries],
-    services: pick(roleIds((r) => r === "processor")).filter((id) => !view.nodes[id]?.managed),
+    services: pick(roleIds((r) => r === "processor").filter((id) => !view.nodes[id]?.managed)),
     brokers: pick(roleIds((r) => BROKERS.has(r))),
     hidden,
   };

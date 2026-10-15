@@ -9,8 +9,9 @@ import { resolveNodeProps } from "./defaults";
 import { analyzeCapacity } from "./capacity";
 import { sizingFix } from "./capacityPlanning";
 import { attemptAdmission, emptyAdmission, configureAdmission, releaseAdmission } from "./admission";
+import * as policyModule from "./admissionPolicy";
 import * as admissionModule from "./admission";
-import * as native from "../interop/native";
+import * as admissionSchema from "../model/admissionSchema";
 import { validateDiagram } from "../interop/native";
 import { buildJourney } from "../trace/journey";
 import { explainNode } from "../planning/explanation";
@@ -44,6 +45,168 @@ const load = (d: DiagramFile, scale = 1) => {
   return e;
 };
 describe("P3 managed admission", () => {
+  it.each(["node", "endpoint"])(
+    "duplicate quota ids in the %s API scope fail import and runtime validation",
+    (scope) => {
+      const d = diagram(scope === "node" ? { quotas: [q(1), q(100)] } : {});
+      if (scope === "endpoint")
+        d.nodes[0].props!.endpoints = [{ id: "a", method: "GET", path: "/", behaviour: { quotas: [q(1), q(100)] } }];
+      expect(validateDiagram(d)).toMatchObject({
+        ok: false,
+        error: expect.stringContaining("quota ids must be unique"),
+      });
+      const e = load(d);
+      e.inject("api", 3);
+      expect(e.snapshot().nodes.api).toMatchObject({ rejected: 3, inFlight: 0 });
+    },
+  );
+  it("opaque node and allocation ids cannot collide with local concurrency", () => {
+    const d = diagram({ maxInFlight: 1, sharedConcurrency: "node", latencyMs: 1000 });
+    d.nodes[0].id = "shared";
+    d.planning!.sharedAllocations = [{ id: "node", maxInFlight: 10 }];
+    expect(validateDiagram(d).ok).toBe(true);
+    const e = load(d);
+    e.inject("shared", 2);
+    expect(e.snapshot().nodes.shared).toMatchObject({ inFlight: 1, rejected: 1 });
+    expect(
+      admissionCapacities(
+        [
+          {
+            id: "shared",
+            policy: resolveNodeProps(d, d.nodes[0]).admission!,
+            offered: 2,
+            latencyMs: 1000,
+            endpoints: [{ rate: 2 }],
+          },
+        ],
+        d.planning,
+      ).get("shared"),
+    ).toBe(1);
+  });
+  it.each(["node", "endpoint", "shared", "slots"])(
+    "zero-duration calls respect a zero %s concurrency budget",
+    (scope) => {
+      const policy = {
+        api: {
+          latencyMs: 0,
+          ...(scope === "node" ? { maxInFlight: 0 } : {}),
+          ...(scope === "shared" ? { sharedConcurrency: "account" } : {}),
+        },
+        endpoints:
+          scope === "endpoint" ? [{ id: "a", method: "GET" as const, path: "/", behaviour: { maxInFlight: 0 } }] : [],
+        ...(scope === "slots" ? { slots: 0 } : {}),
+      };
+      const planning = { revision: "p3" as const, sharedAllocations: [{ id: "account", maxInFlight: 0 }] };
+      const endpoint = scope === "endpoint" ? "a" : undefined;
+      expect(
+        admissionCapacities(
+          [{ id: "api", policy, offered: 10, latencyMs: 0, endpoints: [{ id: endpoint, rate: 10 }] }],
+          planning,
+        ).get("api"),
+      ).toBe(0);
+      const state = emptyAdmission();
+      configureAdmission(state, [policy], planning);
+      expect(attemptAdmission(state, "api", policy, endpoint, planning, 0, 1)).toEqual({ rejected: "concurrency" });
+    },
+  );
+  it("capacity indexes declared endpoints before evaluating repeated incoming calls", () => {
+    const endpoints = countingReads(
+      Array.from({ length: 500 }, (_, i) => ({ id: String(i), method: "GET" as const, path: "/" })),
+    );
+    const capacity = admissionCapacities([
+      {
+        id: "api",
+        policy: { api: { maxInFlight: 10 }, endpoints: endpoints.items },
+        offered: 10000,
+        latencyMs: 1000,
+        endpoints: Array.from({ length: 10000 }, (_, i) => ({ id: String(i % 500), rate: 1 })),
+      },
+    ]);
+    expect(capacity.get("api")).toBe(10);
+    expect(endpoints.reads()).toBeLessThan(500 * 8);
+  });
+  it("checkpoint cloning contains only mutable admission buckets and reservations", () => {
+    const e = load(diagram({ quotas: [q(2)], maxInFlight: 1 }));
+    e.inject("api", 1);
+    const clone = vi.spyOn(globalThis, "structuredClone");
+    const saved = e.checkpoint();
+    const graph = clone.mock.calls.map(([value]) => value as { admission?: object }).find((value) => value.admission);
+    expect(Object.keys(graph!.admission!).sort()).toEqual(["buckets", "inFlight"]);
+    clone.mockRestore();
+    e.setNodeProps("api", { api: { quotas: [q(100)], maxInFlight: 10 } });
+    e.restore(saved);
+    e.inject("api", 1);
+    expect(e.snapshot().nodes.api).toMatchObject({ inFlight: 1, rejected: 1 });
+    e.step(1000);
+    e.inject("api", 1);
+    expect(e.snapshot().nodes.api.inFlight).toBe(1);
+  });
+  it("accepted time-zero scalar fleet timelines reuse validated endpoint requirements", () => {
+    const d = diagram({ quotas: Array.from({ length: 32 }, (_, i) => q(100, { id: String(i) })) }, "aws.lambda");
+    d.nodes[0].props!.endpoints = Array.from({ length: 500 }, (_, i) => ({ id: String(i), method: "GET", path: "/" }));
+    const sim = {
+      id: "scalar",
+      title: "Fleet edits",
+      traffic: [],
+      timeline: Array.from({ length: 1000 }, (_, i) => ({
+        atMs: 0,
+        action: { do: "props" as const, node: "api", props: { concurrency: (i % 2) + 1 } },
+      })),
+    };
+    d.simulations = [sim];
+    expect(validateDiagram(d).ok).toBe(true);
+    const validate = vi.spyOn(admissionSchema, "validAdmissionData");
+    const normalize = vi.spyOn(policyModule, "normalizeCall");
+    try {
+      createSimulationRun(d, sim);
+      expect(validate.mock.calls.length).toBeLessThanOrEqual(2);
+      expect(normalize.mock.calls.length).toBeLessThanOrEqual(2 * 501);
+    } finally {
+      validate.mockRestore();
+      normalize.mockRestore();
+    }
+  });
+  it("document shared quotas enforce matching references, charging parent and endpoint only once", () => {
+    const d = diagram({ quotas: [q(2, { sharedGroup: "account" })] });
+    d.planning!.sharedQuotas = [q(2, { id: "account" })];
+    d.nodes.push({ ...d.nodes[0], id: "other" });
+    const policies = d.nodes.map((n) => resolveNodeProps(d, n).admission!);
+    const entries = policies.map((policy, i) => ({
+      id: String(i),
+      policy,
+      offered: 10,
+      latencyMs: 100,
+      endpoints: [{ rate: 10 }],
+    }));
+    expect([...admissionCapacities(entries, d.planning).values()]).toEqual([1, 1]);
+    let e = load(d);
+    e.inject("api", 1);
+    e.inject("other", 2);
+    expect(e.snapshot().nodes.other).toMatchObject({ inFlight: 1, rejected: 1 });
+    d.planning!.sharedQuotas[0].amount = 3;
+    expect([...admissionCapacities(entries, d.planning).values()]).toEqual([0, 0]);
+    const state = emptyAdmission();
+    configureAdmission(state, policies, d.planning);
+    expect(attemptAdmission(state, "api", policies[0], undefined, d.planning, 0, 1)).toHaveProperty("rejected");
+    expect(state.buckets.size).toBe(0);
+    e = load(d);
+    e.inject("api", 1);
+    e.inject("other", 1);
+    expect(e.snapshot().nodes.api.rejected).toBe(1);
+    expect(e.snapshot().nodes.other.rejected).toBe(1);
+    d.planning!.sharedQuotas[0].amount = 2;
+    d.nodes[0].props!.endpoints = [
+      { id: "a", method: "GET", path: "/", behaviour: { quotas: [q(2, { sharedGroup: "account" })] } },
+    ];
+    const policy = resolveNodeProps(d, d.nodes[0]).admission!;
+    const shared = emptyAdmission();
+    configureAdmission(shared, [policy], d.planning);
+    expect(attemptAdmission(shared, "api", policy, "a", d.planning, 0, 1)).toHaveProperty("lease");
+    expect([...shared.buckets.values()].map((bucket) => bucket.tokens)).toEqual([1]);
+    expect(
+      admissionCapacities([{ ...entries[0], policy, endpoints: [{ id: "a", rate: 10 }] }], d.planning).get("0"),
+    ).toBe(2);
+  });
   it("endpoint quota namespaces agree between planning and playback", () => {
     const d = diagram({ quotas: [q(100)] });
     d.nodes[0].props!.endpoints = [{ id: "global", method: "GET", path: "/", behaviour: { quotas: [q(2)] } }];
@@ -107,26 +270,55 @@ describe("P3 managed admission", () => {
     e.step(4000);
     expect(e.snapshot().nodes.api).toMatchObject({ processed: 3, inFlight: 0, rejected: 0 });
   });
-  it("saving Capacity x on a fixed managed fleet preserves playback and its independent allocation", () => {
+  it.each([0.5, 2])(
+    "saving Capacity x %s on a fixed managed fleet preserves playback and its independent allocation",
+    (factor) => {
+      const d = diagram({}, "aws.lambda");
+      Object.assign(d.nodes[0].props!, {
+        scaling: "fixed",
+        replicas: 8,
+        concurrency: 1,
+        maxConcurrency: 100,
+        preset: "managed-measured",
+      });
+      const e = load(d);
+      e.setCapacityMultiplier(factor);
+      e.inject("api", 20);
+      expect(e.snapshot().nodes.api).toMatchObject({ inFlight: 8 * factor, rejected: 20 - 8 * factor });
+      const saved = freePlaySaveProps(d, { props: {}, rates: {}, capacity: factor });
+      expect(saved.api).toEqual({ replicas: 8 * factor });
+      Object.assign(d.nodes[0].props!, saved.api);
+      const restored = load(d);
+      restored.inject("api", 20);
+      expect(restored.snapshot().nodes.api).toMatchObject({ inFlight: 8 * factor, rejected: 20 - 8 * factor });
+      expect(d.nodes[0].props!.maxConcurrency).toBe(100);
+    },
+  );
+  it("fixed fleet capacity scales above the base in planning and after scalar edits", () => {
     const d = diagram({}, "aws.lambda");
     Object.assign(d.nodes[0].props!, {
+      preset: "managed-measured",
       scaling: "fixed",
-      replicas: 8,
+      replicas: 2,
       concurrency: 1,
       maxConcurrency: 100,
-      preset: "managed-measured",
+      latencyMs: 1000,
     });
+    d.nodes.push({ id: "source", stencil: "client.user", label: "Calls", x: 0, y: 0, props: { ratePerSec: 10 } });
+    d.edges.push({ id: "call", from: "source", to: "api", kind: "sync", props: { travelMs: 0 } });
+    expect(
+      analyzeCapacity(d, {
+        id: "double",
+        title: "Double",
+        traffic: [{ id: "load", node: "source", shape: { kind: "constant", ratePerSec: 10, durationMs: 1000 } }],
+        multipliers: { capacity: 2 },
+      }).nodes.api.capacity,
+    ).toBe(4);
     const e = load(d);
-    e.setCapacityMultiplier(0.5);
-    e.inject("api", 8);
-    expect(e.snapshot().nodes.api).toMatchObject({ inFlight: 4, rejected: 4 });
-    const saved = freePlaySaveProps(d, { props: {}, rates: {}, capacity: 0.5 });
-    expect(saved.api).toEqual({ replicas: 4 });
-    Object.assign(d.nodes[0].props!, saved.api);
-    const restored = load(d);
-    restored.inject("api", 8);
-    expect(restored.snapshot().nodes.api).toMatchObject({ inFlight: 4, rejected: 4 });
-    expect(d.nodes[0].props!.maxConcurrency).toBe(100);
+    e.setCapacityMultiplier(2);
+    e.setNodeProps("api", { concurrency: 2 });
+    e.inject("api", 9);
+    expect(e.snapshot().nodes.api).toMatchObject({ inFlight: 8, rejected: 1 });
   });
   it("unrelated managed edits and a source timeline do not revalidate or reconfigure admissions", () => {
     const d = diagram();
@@ -134,7 +326,7 @@ describe("P3 managed admission", () => {
     d.nodes.push({ id: "source", stencil: "client.user", label: "Calls", x: 0, y: 0 });
     const e = load(d);
     const configure = vi.spyOn(admissionModule, "reconfigureAdmission");
-    const validate = vi.spyOn(native, "validAdmissionData");
+    const validate = vi.spyOn(admissionSchema, "validAdmissionData");
     try {
       for (let i = 0; i < 24; i++) e.setNodeProps(String(i), { latencyMs: 50 });
       for (let i = 0; i < 1000; i++) e.setNodeProps("source", { ratePerSec: i });
@@ -152,7 +344,7 @@ describe("P3 managed admission", () => {
     // Compile/warm both execution paths before counting work.
     e.inject("0", 1);
     e.inject("1", 1);
-    const validate = vi.spyOn(native, "validAdmissionData");
+    const validate = vi.spyOn(admissionSchema, "validAdmissionData");
     const serialize = vi.spyOn(JSON, "stringify");
     try {
       e.setNodeProps("0", { api: { quotas: [q(20)] } });
@@ -569,7 +761,7 @@ describe("P3 managed admission", () => {
     expect(e.snapshot().nodes.api).toMatchObject({ inFlight: 3, rejected: 7 });
     expect(resolveNodeProps(d, d.nodes[0]).admission?.slots).toBe(3);
     Object.assign(d.nodes[0].props!, { scaling: "fixed", replicas: 2 });
-    expect(resolveNodeProps(d, d.nodes[0]).admission?.slots).toBe(2);
+    expect(resolveNodeProps(d, d.nodes[0]).admission).toMatchObject({ slots: 3, fixedSlotsPerReplica: 1 });
   });
   it("SNS workers use the full fleet rather than Kafka partition assignment", () => {
     const d = diagram({}, "service.node");

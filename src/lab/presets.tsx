@@ -1,6 +1,6 @@
 import { ColourPickerLab } from "./ColourPickerLab";
 import { customColoursFixture } from "./customColoursFixture";
-import { planningP3Fixture } from "./planningP3Fixture";
+import { planningP3Fixture, planningP3BulkFixture } from "./planningP3Fixture";
 import { planningP2Fixture } from "./planningP2Fixture";
 import { OnDeviceEvalsLab } from "./OnDeviceEvalsLab";
 import { relationshipFixture } from "./relationshipFixture";
@@ -934,6 +934,14 @@ const tracePresets: Preset[] = [
 ];
 
 export const presets: readonly Preset[] = [
+  {
+    kind: "render",
+    id: "planning-p3-bulk",
+    title: "Managed bulk editing",
+    group: "Playground",
+    description: "Mixed admission values with independent account budgets.",
+    render: () => <LiveLabStage diagram={planningP3BulkFixture()} />,
+  },
   {
     kind: "render",
     id: "planning-p3",

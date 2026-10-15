@@ -469,6 +469,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     for (const [id, patch] of Object.entries(patches)) {
       const node = nodes.get(id);
       if (!node) continue;
+      if (Object.entries(patch).every(([key, value]) => Object.is(node.rawProps[key], value))) continue;
       configuration = undefined;
       if ("replicas" in patch) units.set(node, node.props.replicas);
       const previous = node.props;
@@ -476,16 +477,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         if (value === undefined) Reflect.deleteProperty(node.rawProps, key);
         else node.rawProps[key] = structuredClone(value);
       }
-      const admissionChanged = [
-        "api",
-        "endpoints",
-        "preset",
-        "presetRevision",
-        "scaling",
-        "maxConcurrency",
-        "replicas",
-        "concurrency",
-      ].some((key) => key in patch);
+      const admissionChanged = ["api", "endpoints", "preset", "presetRevision"].some((key) => key in patch);
       node.props = resolveProps(
         node.role,
         node.label,
@@ -1116,7 +1108,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         drawnTrips,
         injections,
         events,
-        admission,
+        admission: { buckets: admission.buckets, inFlight: admission.inFlight },
         lineage: lineage.state,
       });
       const clock = {
@@ -1160,7 +1152,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         injections.splice(0, injections.length, ...copy.injections);
         events.splice(0, events.length, ...copy.events);
         lineage.state = copy.lineage;
-        admission = copy.admission;
+        admission = emptyAdmission();
+        reconfigureAdmission(
+          admission,
+          [...nodes.values()].flatMap((n) => (n.props.admission ? [{ id: n.id, policy: n.props.admission }] : [])),
+          planning,
+          clock.time,
+        );
+        admission.buckets = copy.admission.buckets;
+        admission.inFlight = copy.admission.inFlight;
         ({
           time,
           accumulator,

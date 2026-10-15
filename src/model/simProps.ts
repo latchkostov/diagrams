@@ -1,6 +1,6 @@
 import { checkJsonSchema, type JsonSchema } from "./jsonSchema";
 import type { NodeSimProps, EdgeSimProps } from "../sim/types";
-import { apiSchema, endpointsSchema, callerSchema, checkEndpoints } from "./admissionSchema";
+import { apiSchema, endpointsSchema, callerSchema, checkEndpoints, checkApi } from "./admissionSchema";
 
 /**
  * The file format's bounds on simulation settings, which every place that edits them uses too (the inspector, the
@@ -149,8 +149,10 @@ export function propsProblem(value: unknown): string | undefined {
     const schema: JsonSchema = nodeProperties[key as keyof typeof nodeProperties];
     try {
       if (key === "endpoints") checkEndpoints(field);
+      else if (key === "api") checkApi(field);
       else checkJsonSchema(field, schema, key);
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("ids must be unique")) return error.message;
       if (typeof field === "number" && typeof schema.maximum === "number" && field > schema.maximum)
         return `${key} ${number(field)} is over the ${number(schema.maximum)} limit`;
       if (typeof field === "number" && typeof schema.minimum === "number" && field < schema.minimum)

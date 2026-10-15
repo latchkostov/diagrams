@@ -1,5 +1,21 @@
 # Design review
 
+## Round 42: Planning P3 final review fixes (2026-10-14)
+
+The designer's scoped source review covered managed admission fields, bulk selection applicability,
+and Inputs & capacity wording. Single and bulk editing share applicable fields and patch mappings;
+differing values say Mixed, and controls absent from any selected managed node are hidden. Automatic
+functions hide fixed-fleet concurrency. Existing preset and Advanced placement remain, with no new
+global controls. Invalid mixed edits explicitly retain Mixed values. Managed services are excluded
+before row limits and hidden counts. Zero capacity describes rejected calls and the admission budget.
+
+No blocking source-review concerns were found. The 1280 × 800 production bulk screenshot keeps
+labels, fields, Emits and actions inside the existing inspector without overlap. Production browser
+verification is recorded in
+[the final review dispositions](research/planning-p3-final-review.md). This scoped review does not
+replace a screen-reader or whole-app walkthrough. Four new messages use the established English
+fallback outside English; existing translations are retained.
+
 ## Round 41: Planning P3 review fixes (2026-10-14)
 
 Scoped source and production screenshot review preserves the chrome budget: no toolbar controls

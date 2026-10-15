@@ -21,3 +21,5 @@ export const NodePlanning = lazyComponent(
 );
 export const PlanningUpgrade = lazyComponent(() => loadPlanning().then((m) => m.PlanningUpgrade));
 export const AdmissionFields = lazyComponent(() => loadPlanning().then((m) => m.AdmissionFields));
+
+export const BulkAdmissionFields = lazyComponent(() => loadPlanning().then((m) => m.BulkAdmissionFields));
