@@ -4003,3 +4003,54 @@ are indexed once for managed capacity. Per-attempt invariant compilation is tick
 Caller retry/deadline execution remains deferred. Final results are reported with the pushed commit.
 
 The final designer follow-up also identified unfinished native numeric input clearing a saved cap. A production keyboard regression reproduced it; invalid intermediate text now stays uncommitted and blur restores the saved value.
+
+## Round 41 — Public feature showcases (2026-10-14)
+
+Designer-agent review covered the six new public examples, their source descriptions, and all 24
+production Live screenshots below. Desktop light/dark layouts have distinct paths, clear feature
+signals and no observed label/node collisions. Fictional token/payment budgets and the serverless
+bounded invoker are explicit. No controls were added by the examples themselves.
+
+**Gate passed (2026-10-15).** Replaced all 24 captures after responsive fixes. Phone titles wrap
+below Live; long descriptions no longer consume the canvas, and checks/reset remain reachable.
+Playback stays in one row across the screen above the collapsed rails; Inputs panels leave it clear.
+The final designer follow-up inspected all 12 mobile captures in both themes, including saved-run
+progress/expectations and shared-worker lag: no blocking visual findings remain. Earlier desktop
+review remains applicable; the responsive changes affect phones only.
+
+Production assertions cover feature signals, console errors, graph geometry, title height/text,
+control hit targets and actual Play/Inputs/More clicks. A mobile edit case checks warnings/reset and
+keyboard focus/scroll to topbar actions. All 116 requested/related Chromium cases passed. Removing
+the responsive fixes and restoring the old tooltip-audit selector made all seven targeted browser
+regressions fail. The screenshot/source designer review did not independently test physical touch,
+screen-reader output or interactive zoom; dense overview diagrams still need zoom for small labels.
+
+| Example                     | Light 1280×800                                                                | Dark 1280×800                                                                | Light 390×844                                                                | Dark 390×844                                                                |
+| --------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| partitions-vs-subscriptions | [Live](research/showcase-examples/partitions-vs-subscriptions-light-1280.png) | [Live](research/showcase-examples/partitions-vs-subscriptions-dark-1280.png) | [Live](research/showcase-examples/partitions-vs-subscriptions-light-390.png) | [Live](research/showcase-examples/partitions-vs-subscriptions-dark-390.png) |
+| shared-api-quotas           | [Live](research/showcase-examples/shared-api-quotas-light-1280.png)           | [Live](research/showcase-examples/shared-api-quotas-dark-1280.png)           | [Live](research/showcase-examples/shared-api-quotas-light-390.png)           | [Live](research/showcase-examples/shared-api-quotas-dark-390.png)           |
+| serverless-burst-buffer     | [Live](research/showcase-examples/serverless-burst-buffer-light-1280.png)     | [Live](research/showcase-examples/serverless-burst-buffer-dark-1280.png)     | [Live](research/showcase-examples/serverless-burst-buffer-light-390.png)     | [Live](research/showcase-examples/serverless-burst-buffer-dark-390.png)     |
+| measured-order-capacity     | [Live](research/showcase-examples/measured-order-capacity-light-1280.png)     | [Live](research/showcase-examples/measured-order-capacity-dark-1280.png)     | [Live](research/showcase-examples/measured-order-capacity-light-390.png)     | [Live](research/showcase-examples/measured-order-capacity-dark-390.png)     |
+| contoso-dmz                 | [Live](research/showcase-examples/contoso-dmz-light-1280.png)                 | [Live](research/showcase-examples/contoso-dmz-dark-1280.png)                 | [Live](research/showcase-examples/contoso-dmz-light-390.png)                 | [Live](research/showcase-examples/contoso-dmz-dark-390.png)                 |
+| shared-worker-pool          | [Live](research/showcase-examples/shared-worker-pool-light-1280.png)          | [Live](research/showcase-examples/shared-worker-pool-dark-1280.png)          | [Live](research/showcase-examples/shared-worker-pool-light-390.png)          | [Live](research/showcase-examples/shared-worker-pool-dark-390.png)          |
+
+Eight new browser parity cases are deferred with TODOs for test/parity-browser-stable; their Node
+coverage remains. Existing goldens are unchanged. [Inventory, rejected approaches, verification,
+exact deferrals and added-golden manifest](research/showcase-examples.md).
+
+### PR #120 review follow-up (2026-10-15)
+
+**Scoped UX gate passed.** The designer agent reviewed source and four fresh production captures at
+390×844. Inputs' heading, editable controls and actions are unobscured; More and expectations open
+above the panel. Narration and event cards stay beneath Inputs. The diagram title yields while the
+full-width phone panel is open and returns on close. Viewer playback stays inside its canvas above
+the wrapped read-only footer. No chrome was added.
+
+The review caught the initial whole-HUD lift putting narration/log cards over Inputs, and the title
+chip still covering its heading. Direct heading and panel exposure assertions now guard those
+cases, alongside a real traffic edit, close, title restoration, popover pointer/keyboard use and
+Escape focus restoration. The regression failed with the earlier layering rules. All regression
+captures stay in ignored `tests/.output`; the curated Round 41 images above remain unchanged.
+
+This was a scoped source/screenshot review, not an independent physical-touch, screen-reader or
+whole-app walkthrough. The eight precise browser parity deferrals remain recorded in `PARITY.md`.

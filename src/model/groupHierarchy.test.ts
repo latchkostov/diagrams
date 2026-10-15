@@ -1,5 +1,7 @@
+import { countingReads, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 import { describe, expect, it } from "vitest";
 import {
+  planBoundaryDrop,
   descendantGroupIds,
   ancestorGroupIds,
   wouldCreateCycle,
@@ -149,5 +151,36 @@ describe("groupHierarchy planner", () => {
 
     expect([...eligibleParentGroupIds("g1", groups)]).toEqual(["g-other"]);
     expect([...eligibleParentGroupIds("g2", groups)].sort()).toEqual(["g-other", "g1"]);
+  });
+});
+
+describe("hierarchy operation counts", () => {
+  const chain = (size: number) =>
+    Array.from({ length: size }, (_, i) => ({
+      id: `g${i}`,
+      group: i ? `g${i - 1}` : undefined,
+      x: i,
+      y: i,
+      width: 1000 - i,
+      height: 1000 - i,
+    })).reverse();
+  it.each(["adoption", "drop"])("%s traverses child-first subtrees once at 8x size", (operation) => {
+    const work = (size: number) => {
+      const { items, reads } = countingReads(chain(size));
+      if (operation === "adoption") {
+        const plan = planBoundaryAdoption({
+          bounds: { x: -10, y: -10, width: 2000, height: 2000 },
+          existingGroups: items,
+          elements: [],
+        });
+        expect(plan.adoptedGroupIds).toEqual(["g0"]);
+      } else {
+        const middle = Math.floor(size / 2);
+        const plan = planBoundaryDrop(new Set([`g${middle}`]), items);
+        expect([...plan]).toEqual([[`g${middle}`, `g${middle - 1}`]]);
+      }
+      return reads();
+    };
+    expect(work(32 * GROWTH_FACTOR) / work(32)).toBeLessThan(LINEAR_LIMIT);
   });
 });

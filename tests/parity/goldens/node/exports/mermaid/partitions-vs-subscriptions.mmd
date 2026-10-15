@@ -1,0 +1,17 @@
+---
+title: Partitions versus subscriptions
+---
+flowchart TB
+  publisher(["Northwind events<br/>6 events/s to both brokers"])
+  log["Order log<br/>3 partitions"]
+  fanout["Order notifications<br/>Independent subscriptions"]
+  log_readers["Kafka readers<br/>8 replicas · only 3 assigned"]
+  receipts["Receipt subscription<br/>8 replicas · all available"]
+  audit["Audit subscription<br/>8 replicas · independent copy"]
+  publisher -.->|"Append"| log
+  publisher -.->|"Publish"| fanout
+  log -.->|"orders group"| log_readers
+  fanout -.->|"receipts"| receipts
+  fanout -.->|"audit"| audit
+  linkStyle 0,1,2,3,4 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"Northwind publishes the same events to a three-partition Kafka topic and SNS: five Kafka readers sit idle while both subscriptions use all eight workers.","nodes":{"publisher":["publisher","generic.webhook"],"log":["log","kafka.topic"],"fanout":["fanout","aws.sns"],"log_readers":["log-readers","service.java"],"receipts":["receipts","service.node"],"audit":["audit","service.go"]},"edges":["publish-log","publish-fanout","read-log","read-receipts","read-audit"],"relations":{}}

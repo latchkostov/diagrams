@@ -1,0 +1,519 @@
+{
+  "autoScale": { "freePlay": 1, "shared-slots": 1, "measured-faster": 1 },
+  "brokerAssignments": {
+    "brokers": {
+      "order-log": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+      "refund-log": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+    },
+    "consumers": {
+      "worker": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      }
+    }
+  },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "worker",
+      "suggestion": "Ledger worker: raise replicas from 1 to 2.",
+      "converged": true,
+      "iterations": 4,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": {
+        "orders": ["Infinity", 3, 0, 1, 1, 0],
+        "refunds": ["Infinity", 3, 0, 1, 1, 0],
+        "order-log": [4, 3, 0.75, 1, 1, 0],
+        "refund-log": [4, 3, 0.75, 1, 1, 0],
+        "worker": [
+          4,
+          6,
+          1.5,
+          1,
+          1,
+          0,
+          {
+            "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+          }
+        ],
+        "ledger": ["Infinity", 6, 0, 1, 1, 0]
+      },
+      "connections": { "order-publish": 3, "refund-publish": 3, "read-orders": 3, "read-refunds": 3, "save": 6 },
+      "offeredTypes": { "orders": ["OrderPlaced"], "refunds": ["RefundRequested"], "order-log": ["OrderPlaced"], "refund-log": ["RefundRequested"], "worker": ["OrderPlaced", "RefundRequested"], "ledger": ["OrderPlaced", "RefundRequested"] }
+    },
+    "explanations": {
+      "worker": {
+        "id": "worker",
+        "role": "processor",
+        "status": "up",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 4,
+        "offered": 6,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "order-log",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 8
+          },
+          {
+            "broker": "refund-log",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 8
+          }
+        ],
+        "slots": 4,
+        "seconds": 1,
+        "utilization": 1.5,
+        "growth": 2,
+        "contributors": [
+          { "edge": "read-orders", "node": "order-log", "label": "Order events", "rate": 3 },
+          { "edge": "read-refunds", "node": "refund-log", "label": "Refund events", "rate": 3 }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 2,
+        "targetReplicas": 3,
+        "changes": [{ "nodeId": "worker", "key": "replicas", "from": 1, "to": 3 }],
+        "fixId": "capacity:worker",
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "orders": [{ "kind": "publishes", "edge": "order-publish", "peer": "order-log" }],
+      "refunds": [{ "kind": "publishes", "edge": "refund-publish", "peer": "refund-log" }],
+      "worker": [
+        {
+          "kind": "consumes",
+          "edge": "read-orders",
+          "peer": "order-log",
+          "group": "order-posting",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        },
+        {
+          "kind": "consumes",
+          "edge": "read-refunds",
+          "peer": "refund-log",
+          "group": "refund-posting",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        },
+        { "kind": "calls", "edge": "save", "peer": "ledger" }
+      ]
+    },
+    "sizing": [{ "nodeId": "worker", "key": "replicas", "from": 1, "to": 3 }],
+    "redundancy": { "worker": { "replicas": 3, "enough": true } },
+    "resolved": {
+      "orders": {
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 3,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "OrderPlaced",
+        "healthChecks": false
+      },
+      "refunds": {
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 3,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "RefundRequested",
+        "healthChecks": false
+      },
+      "order-log": {
+        "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 8,
+        "messageType": "Order events",
+        "healthChecks": false
+      },
+      "refund-log": {
+        "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 8,
+        "messageType": "Refund events",
+        "healthChecks": false
+      },
+      "worker": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 1000,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Ledger worker",
+        "healthChecks": false
+      },
+      "ledger": {
+        "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Acme ledger",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "shared-slots": { "configured": "(same as edit)", "simulation": "shared-slots", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" },
+    "measured-faster": {
+      "configured": "(same as edit)",
+      "simulation": "measured-faster",
+      "analysis": {
+        "bottleneck": "worker",
+        "suggestion": "Ledger worker: 75% utilized",
+        "converged": true,
+        "iterations": 4,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": {
+          "orders": ["Infinity", 3, 0, 1, 1, 0],
+          "refunds": ["Infinity", 3, 0, 1, 1, 0],
+          "order-log": [8, 3, 0.375, 1, 1, 0],
+          "refund-log": [8, 3, 0.375, 1, 1, 0],
+          "worker": [
+            8,
+            6,
+            0.75,
+            1,
+            1,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ],
+          "ledger": ["Infinity", 6, 0, 1, 1, 0]
+        },
+        "connections": { "order-publish": 3, "refund-publish": 3, "read-orders": 3, "read-refunds": 3, "save": 6 },
+        "offeredTypes": { "orders": ["OrderPlaced"], "refunds": ["RefundRequested"], "order-log": ["OrderPlaced"], "refund-log": ["RefundRequested"], "worker": ["OrderPlaced", "RefundRequested"], "ledger": ["OrderPlaced", "RefundRequested"] }
+      },
+      "explanations": {
+        "worker": {
+          "id": "worker",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 8,
+          "offered": 6,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "order-log",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 8
+            },
+            {
+              "broker": "refund-log",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 8
+            }
+          ],
+          "slots": 4,
+          "seconds": 0.5,
+          "utilization": 0.75,
+          "growth": 0,
+          "contributors": [
+            { "edge": "read-orders", "node": "order-log", "label": "Order events", "rate": 3 },
+            { "edge": "read-refunds", "node": "refund-log", "label": "Refund events", "rate": 3 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": null,
+      "redundancy": {},
+      "resolved": {
+        "orders": {
+          "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+          "ratePerSec": 3,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "OrderPlaced",
+          "healthChecks": false
+        },
+        "refunds": {
+          "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+          "ratePerSec": 3,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "RefundRequested",
+          "healthChecks": false
+        },
+        "order-log": {
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 8,
+          "messageType": "Order events",
+          "healthChecks": false
+        },
+        "refund-log": {
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 8,
+          "messageType": "Refund events",
+          "healthChecks": false
+        },
+        "worker": {
+          "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 500,
+          "concurrency": 4,
+          "replicas": 1,
+          "jitter": 0,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "Ledger worker",
+          "healthChecks": false
+        },
+        "ledger": {
+          "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "Acme ledger",
+          "healthChecks": false
+        }
+      }
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "over",
+          "top": "worker",
+          "headline": "Ledger worker is over capacity",
+          "detail": "150% · 6/s of 4/s",
+          "fix": {
+            "changes": [{ "nodeId": "worker", "key": "replicas", "from": 1, "to": 3, "label": "Ledger worker" }],
+            "label": "Ledger worker 1 → 3 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "orders": ["idle", "3/s · no limit", { "modeled": false }],
+            "refunds": ["idle", "3/s · no limit", { "modeled": false }],
+            "order-log": ["warn", "75% · 3/s of 4/s"],
+            "refund-log": ["warn", "75% · 3/s of 4/s"],
+            "worker": ["over", "150% · 6/s of 4/s"],
+            "ledger": ["idle", "6/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "over",
+          "top": "worker",
+          "headline": "Ledger worker and 2 more are over capacity",
+          "detail": "750% · 30/s of 4/s",
+          "fix": {
+            "changes": [
+              { "nodeId": "worker", "key": "replicas", "from": 1, "to": 14, "label": "Ledger worker" },
+              { "nodeId": "order-log", "key": "partitions", "from": 8, "to": 14, "label": "Order events" },
+              { "nodeId": "refund-log", "key": "partitions", "from": 8, "to": 14, "label": "Refund events" }
+            ],
+            "label": "Ledger worker 1 → 14 replicas, Order events: Partitions → 14 and 1 more"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "orders": ["idle", "15/s · no limit", { "modeled": false }],
+            "refunds": ["idle", "15/s · no limit", { "modeled": false }],
+            "order-log": ["over", "375% · 15/s of 4/s"],
+            "refund-log": ["over", "375% · 15/s of 4/s"],
+            "worker": ["over", "750% · 30/s of 4/s"],
+            "ledger": ["idle", "30/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "over",
+          "top": "worker",
+          "headline": "Ledger worker is over capacity",
+          "detail": "150% · 6/s of 4/s",
+          "fix": {
+            "changes": [{ "nodeId": "worker", "key": "replicas", "from": 1, "to": 6, "label": "Ledger worker" }],
+            "label": "Ledger worker 1 → 6 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "orders": ["idle", "3/s · no limit", { "modeled": false }],
+            "refunds": ["idle", "3/s · no limit", { "modeled": false }],
+            "order-log": ["warn", "75% · 3/s of 4/s"],
+            "refund-log": ["warn", "75% · 3/s of 4/s"],
+            "worker": ["over", "150% · 6/s of 4/s"],
+            "ledger": ["idle", "6/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": { "order-log": { "partitions": 16 }, "refund-log": { "partitions": 16 } }, "rates": {} },
+        "view": {
+          "tone": "over",
+          "top": "worker",
+          "headline": "Ledger worker is over capacity",
+          "detail": "150% · 6/s of 4/s",
+          "fix": {
+            "changes": [{ "nodeId": "worker", "key": "replicas", "from": 1, "to": 3, "label": "Ledger worker" }],
+            "label": "Ledger worker 1 → 3 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "orders": ["idle", "3/s · no limit", { "modeled": false }],
+            "refunds": ["idle", "3/s · no limit", { "modeled": false }],
+            "order-log": ["warn", "75% · 3/s of 4/s"],
+            "refund-log": ["warn", "75% · 3/s of 4/s"],
+            "worker": ["over", "150% · 6/s of 4/s"],
+            "ledger": ["idle", "6/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": { "order-log": "All configured reader instances already have an assignment.", "refund-log": "All configured reader instances already have an assignment." }
+      }
+    },
+    "shared-slots": {
+      "tone": "over",
+      "top": "worker",
+      "headline": "Ledger worker is over capacity",
+      "detail": "150% · 6/s of 4/s",
+      "fix": {
+        "changes": [{ "nodeId": "worker", "key": "replicas", "from": 1, "to": 3, "label": "Ledger worker" }],
+        "label": "Ledger worker 1 → 3 replicas"
+      },
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "orders": ["idle", "3/s · no limit", { "modeled": false }],
+        "refunds": ["idle", "3/s · no limit", { "modeled": false }],
+        "order-log": ["warn", "75% · 3/s of 4/s"],
+        "refund-log": ["warn", "75% · 3/s of 4/s"],
+        "worker": ["over", "150% · 6/s of 4/s"],
+        "ledger": ["idle", "6/s · no limit", { "modeled": false }]
+      }
+    },
+    "measured-faster": {
+      "tone": "warn",
+      "top": "worker",
+      "headline": "Ledger worker is busy",
+      "detail": "75% · 6/s of 8/s. Still some headroom.",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "orders": ["idle", "3/s · no limit", { "modeled": false }],
+        "refunds": ["idle", "3/s · no limit", { "modeled": false }],
+        "order-log": ["ok", "38% · 3/s of 8/s"],
+        "refund-log": ["ok", "38% · 3/s of 8/s"],
+        "worker": ["warn", "75% · 6/s of 8/s"],
+        "ledger": ["idle", "6/s · no limit", { "modeled": false }]
+      }
+    }
+  }
+}

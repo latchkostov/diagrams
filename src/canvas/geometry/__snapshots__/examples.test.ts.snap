@@ -1541,6 +1541,171 @@ exports[`public examples route cleanly (estimated card sizes) > cdc-analytics.js
 ]
 `;
 
+exports[`public examples route cleanly (estimated card sizes) > contoso-dmz.json 1`] = `
+[
+  {
+    "id": "web-in",
+    "points": [
+      {
+        "x": 150,
+        "y": 112,
+      },
+      {
+        "x": 150,
+        "y": 156,
+      },
+      {
+        "x": 323,
+        "y": 156,
+      },
+      {
+        "x": 323,
+        "y": 200,
+      },
+    ],
+  },
+  {
+    "id": "probe-in",
+    "points": [
+      {
+        "x": 470,
+        "y": 112,
+      },
+      {
+        "x": 470,
+        "y": 156,
+      },
+      {
+        "x": 337,
+        "y": 156,
+      },
+      {
+        "x": 337,
+        "y": 200,
+      },
+    ],
+  },
+  {
+    "id": "perimeter",
+    "points": [
+      {
+        "x": 330,
+        "y": 272,
+      },
+      {
+        "x": 330,
+        "y": 318,
+      },
+      {
+        "x": 311,
+        "y": 318,
+      },
+      {
+        "x": 311,
+        "y": 360,
+      },
+    ],
+  },
+  {
+    "id": "allow-web",
+    "points": [
+      {
+        "x": 304,
+        "y": 432,
+      },
+      {
+        "x": 304,
+        "y": 484,
+      },
+      {
+        "x": 157,
+        "y": 484,
+      },
+      {
+        "x": 157,
+        "y": 520,
+      },
+    ],
+  },
+  {
+    "id": "deny-admin",
+    "points": [
+      {
+        "x": 318,
+        "y": 432,
+      },
+      {
+        "x": 318,
+        "y": 456,
+      },
+      {
+        "x": 637,
+        "y": 456,
+      },
+      {
+        "x": 637,
+        "y": 480,
+      },
+    ],
+  },
+  {
+    "id": "to-switch",
+    "points": [
+      {
+        "x": 157,
+        "y": 592,
+      },
+      {
+        "x": 157,
+        "y": 672,
+      },
+      {
+        "x": 330,
+        "y": 672,
+      },
+      {
+        "x": 330,
+        "y": 800,
+      },
+    ],
+  },
+  {
+    "id": "to-app",
+    "points": [
+      {
+        "x": 330,
+        "y": 872,
+      },
+      {
+        "x": 330,
+        "y": 916,
+      },
+      {
+        "x": 310,
+        "y": 916,
+      },
+      {
+        "x": 310,
+        "y": 960,
+      },
+    ],
+  },
+  {
+    "id": "to-db",
+    "points": [
+      {
+        "x": 310,
+        "y": 1032,
+      },
+      {
+        "x": 310,
+        "y": 1120,
+      },
+    ],
+  },
+]
+`;
+
 exports[`public examples route cleanly (estimated card sizes) > cqrs-event-sourcing.json 1`] = `
 [
   {
@@ -2757,6 +2922,87 @@ exports[`public examples route cleanly (estimated card sizes) > kafka-order-pipe
 ]
 `;
 
+exports[`public examples route cleanly (estimated card sizes) > measured-order-capacity.json 1`] = `
+[
+  {
+    "id": "submit",
+    "points": [
+      {
+        "x": 150,
+        "y": 112,
+      },
+      {
+        "x": 150,
+        "y": 156,
+      },
+      {
+        "x": 170,
+        "y": 156,
+      },
+      {
+        "x": 170,
+        "y": 200,
+      },
+    ],
+  },
+  {
+    "id": "queue-payment",
+    "points": [
+      {
+        "x": 170,
+        "y": 272,
+      },
+      {
+        "x": 170,
+        "y": 316,
+      },
+      {
+        "x": 166.5,
+        "y": 316,
+      },
+      {
+        "x": 166.5,
+        "y": 360,
+      },
+    ],
+  },
+  {
+    "id": "pay",
+    "points": [
+      {
+        "x": 166.5,
+        "y": 432,
+      },
+      {
+        "x": 166.5,
+        "y": 520,
+      },
+    ],
+  },
+  {
+    "id": "record",
+    "points": [
+      {
+        "x": 166.5,
+        "y": 592,
+      },
+      {
+        "x": 166.5,
+        "y": 636,
+      },
+      {
+        "x": 150,
+        "y": 636,
+      },
+      {
+        "x": 150,
+        "y": 680,
+      },
+    ],
+  },
+]
+`;
+
 exports[`public examples route cleanly (estimated card sizes) > multi-region-active-active.json 1`] = `
 [
   {
@@ -3647,6 +3893,116 @@ exports[`public examples route cleanly (estimated card sizes) > outbox-saga-chec
 ]
 `;
 
+exports[`public examples route cleanly (estimated card sizes) > partitions-vs-subscriptions.json 1`] = `
+[
+  {
+    "id": "publish-log",
+    "points": [
+      {
+        "x": 476.5,
+        "y": 112,
+      },
+      {
+        "x": 476.5,
+        "y": 156,
+      },
+      {
+        "x": 310,
+        "y": 156,
+      },
+      {
+        "x": 310,
+        "y": 200,
+      },
+    ],
+  },
+  {
+    "id": "publish-fanout",
+    "points": [
+      {
+        "x": 490.5,
+        "y": 112,
+      },
+      {
+        "x": 490.5,
+        "y": 156,
+      },
+      {
+        "x": 640.5,
+        "y": 156,
+      },
+      {
+        "x": 640.5,
+        "y": 200,
+      },
+    ],
+  },
+  {
+    "id": "read-log",
+    "points": [
+      {
+        "x": 310,
+        "y": 272,
+      },
+      {
+        "x": 310,
+        "y": 316,
+      },
+      {
+        "x": 169.5,
+        "y": 316,
+      },
+      {
+        "x": 169.5,
+        "y": 360,
+      },
+    ],
+  },
+  {
+    "id": "read-receipts",
+    "points": [
+      {
+        "x": 633.5,
+        "y": 272,
+      },
+      {
+        "x": 633.5,
+        "y": 316,
+      },
+      {
+        "x": 483.5,
+        "y": 316,
+      },
+      {
+        "x": 483.5,
+        "y": 360,
+      },
+    ],
+  },
+  {
+    "id": "read-audit",
+    "points": [
+      {
+        "x": 647.5,
+        "y": 272,
+      },
+      {
+        "x": 647.5,
+        "y": 316,
+      },
+      {
+        "x": 810,
+        "y": 316,
+      },
+      {
+        "x": 810,
+        "y": 360,
+      },
+    ],
+  },
+]
+`;
+
 exports[`public examples route cleanly (estimated card sizes) > rag-assistant.json 1`] = `
 [
   {
@@ -3904,6 +4260,354 @@ exports[`public examples route cleanly (estimated card sizes) > rag-assistant.js
       {
         "x": 1290,
         "y": 392,
+      },
+    ],
+  },
+]
+`;
+
+exports[`public examples route cleanly (estimated card sizes) > serverless-burst-buffer.json 1`] = `
+[
+  {
+    "id": "direct-entry",
+    "points": [
+      {
+        "x": 313.5,
+        "y": 112,
+      },
+      {
+        "x": 313.5,
+        "y": 156,
+      },
+      {
+        "x": 151,
+        "y": 156,
+      },
+      {
+        "x": 151,
+        "y": 200,
+      },
+    ],
+  },
+  {
+    "id": "enqueue",
+    "points": [
+      {
+        "x": 327.5,
+        "y": 112,
+      },
+      {
+        "x": 327.5,
+        "y": 156,
+      },
+      {
+        "x": 486.5,
+        "y": 156,
+      },
+      {
+        "x": 486.5,
+        "y": 200,
+      },
+    ],
+  },
+  {
+    "id": "invoke",
+    "points": [
+      {
+        "x": 151,
+        "y": 272,
+      },
+      {
+        "x": 151,
+        "y": 316,
+      },
+      {
+        "x": 170,
+        "y": 316,
+      },
+      {
+        "x": 170,
+        "y": 360,
+      },
+    ],
+  },
+  {
+    "id": "consume",
+    "points": [
+      {
+        "x": 486.5,
+        "y": 272,
+      },
+      {
+        "x": 486.5,
+        "y": 360,
+      },
+    ],
+  },
+  {
+    "id": "async-invoke",
+    "points": [
+      {
+        "x": 486.5,
+        "y": 432,
+      },
+      {
+        "x": 486.5,
+        "y": 476,
+      },
+      {
+        "x": 490,
+        "y": 476,
+      },
+      {
+        "x": 490,
+        "y": 520,
+      },
+    ],
+  },
+  {
+    "id": "direct-save",
+    "points": [
+      {
+        "x": 170,
+        "y": 432,
+      },
+      {
+        "x": 170,
+        "y": 476,
+      },
+      {
+        "x": 151,
+        "y": 476,
+      },
+      {
+        "x": 151,
+        "y": 520,
+      },
+    ],
+  },
+  {
+    "id": "async-save",
+    "points": [
+      {
+        "x": 490,
+        "y": 592,
+      },
+      {
+        "x": 490,
+        "y": 636,
+      },
+      {
+        "x": 310,
+        "y": 636,
+      },
+      {
+        "x": 310,
+        "y": 680,
+      },
+    ],
+  },
+]
+`;
+
+exports[`public examples route cleanly (estimated card sizes) > shared-api-quotas.json 1`] = `
+[
+  {
+    "id": "ask",
+    "points": [
+      {
+        "x": 150,
+        "y": 112,
+      },
+      {
+        "x": 150,
+        "y": 156,
+      },
+      {
+        "x": 170,
+        "y": 156,
+      },
+      {
+        "x": 170,
+        "y": 200,
+      },
+    ],
+  },
+  {
+    "id": "assist",
+    "points": [
+      {
+        "x": 170,
+        "y": 272,
+      },
+      {
+        "x": 170,
+        "y": 316,
+      },
+      {
+        "x": 330,
+        "y": 316,
+      },
+      {
+        "x": 330,
+        "y": 360,
+      },
+    ],
+  },
+  {
+    "id": "generate",
+    "points": [
+      {
+        "x": 323,
+        "y": 432,
+      },
+      {
+        "x": 323,
+        "y": 476,
+      },
+      {
+        "x": 170,
+        "y": 476,
+      },
+      {
+        "x": 170,
+        "y": 520,
+      },
+    ],
+  },
+  {
+    "id": "review-answer",
+    "points": [
+      {
+        "x": 337,
+        "y": 432,
+      },
+      {
+        "x": 337,
+        "y": 476,
+      },
+      {
+        "x": 490,
+        "y": 476,
+      },
+      {
+        "x": 490,
+        "y": 520,
+      },
+    ],
+  },
+  {
+    "id": "charge",
+    "points": [
+      {
+        "x": 470,
+        "y": 112,
+      },
+      {
+        "x": 470,
+        "y": 156,
+      },
+      {
+        "x": 490,
+        "y": 156,
+      },
+      {
+        "x": 490,
+        "y": 200,
+      },
+    ],
+  },
+]
+`;
+
+exports[`public examples route cleanly (estimated card sizes) > shared-worker-pool.json 1`] = `
+[
+  {
+    "id": "order-publish",
+    "points": [
+      {
+        "x": 150,
+        "y": 112,
+      },
+      {
+        "x": 150,
+        "y": 200,
+      },
+    ],
+  },
+  {
+    "id": "refund-publish",
+    "points": [
+      {
+        "x": 470,
+        "y": 112,
+      },
+      {
+        "x": 470,
+        "y": 200,
+      },
+    ],
+  },
+  {
+    "id": "read-orders",
+    "points": [
+      {
+        "x": 150,
+        "y": 272,
+      },
+      {
+        "x": 150,
+        "y": 316,
+      },
+      {
+        "x": 322.5,
+        "y": 316,
+      },
+      {
+        "x": 322.5,
+        "y": 360,
+      },
+    ],
+  },
+  {
+    "id": "read-refunds",
+    "points": [
+      {
+        "x": 470,
+        "y": 272,
+      },
+      {
+        "x": 470,
+        "y": 316,
+      },
+      {
+        "x": 336.5,
+        "y": 316,
+      },
+      {
+        "x": 336.5,
+        "y": 360,
+      },
+    ],
+  },
+  {
+    "id": "save",
+    "points": [
+      {
+        "x": 329.5,
+        "y": 432,
+      },
+      {
+        "x": 329.5,
+        "y": 476,
+      },
+      {
+        "x": 310,
+        "y": 476,
+      },
+      {
+        "x": 310,
+        "y": 520,
       },
     ],
   },

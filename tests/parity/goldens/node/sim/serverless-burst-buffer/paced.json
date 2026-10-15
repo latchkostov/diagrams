@@ -1,0 +1,97 @@
+{
+  "run": {
+    "time": 9550,
+    "totalMs": 16000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "direct-results-processed-end", "label": "direct-results: processed == 6", "status": "pass", "value": 6 },
+      { "id": "async-results-processed-end", "label": "async-results: processed == 6", "status": "pass", "value": 6 },
+      { "id": "direct-rejected-end", "label": "direct: rejected == 0", "status": "pass", "value": 0 },
+      { "id": "async-rejected-end", "label": "async: rejected == 0", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "requests" },
+      { "atMs": 6000, "kind": "traffic", "label": "requests ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "requests": { "replicas": [1, 1, 0] },
+        "gateway": { "replicas": [1, 1, 0] },
+        "queue": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "direct": { "replicas": [1, 1, 0] },
+        "invoker": { "replicas": [1, 1, 0] },
+        "async": { "replicas": [1, 1, 0] },
+        "direct-results": { "replicas": [1, 1, 0] },
+        "async-results": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 9550,
+    "inSystem": 0,
+    "real": {
+      "requests": { "processed": 6, "throughput": 0.04555647484411396, "replicas": [1, 1, 0] },
+      "gateway": { "processed": 6, "throughput": 0.0575760689904803, "replicas": [1, 1, 0] },
+      "queue": { "processed": 6, "throughput": 0.05508914887592744, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "direct": { "processed": 6, "throughput": 0.1892572143736005, "replicas": [1, 1, 0] },
+      "invoker": { "processed": 6, "throughput": 0.1829024154421184, "replicas": [1, 1, 0] },
+      "async": { "processed": 6, "throughput": 0.2839939007401359, "replicas": [1, 1, 0] },
+      "direct-results": { "processed": 6, "throughput": 0.23348247306124065, "replicas": [1, 1, 0] },
+      "async-results": { "processed": 6, "throughput": 0.35035704450463834, "replicas": [1, 1, 0] }
+    },
+    "edges": { "direct-entry": 6, "enqueue": 6, "invoke": 6, "consume": 6, "async-invoke": 6, "direct-save": 6, "async-save": 6 }
+  },
+  "events": {
+    "total": 96,
+    "byKind": { "inject": 6, "process": 48, "deliver": 42 },
+    "byNode": {
+      "requests": { "inject": 6, "process": 6 },
+      "gateway": { "deliver": 6, "process": 6 },
+      "queue": { "deliver": 6, "process": 6 },
+      "invoker": { "deliver": 6, "process": 6 },
+      "direct": { "deliver": 6, "process": 6 },
+      "async": { "deliver": 6, "process": 6 },
+      "direct-results": { "deliver": 6, "process": 6 },
+      "async-results": { "deliver": 6, "process": 6 }
+    },
+    "perSecond": [
+      "-",
+      "3a893d7a15b3",
+      "886d5e1bd787",
+      "f46374760492",
+      "d0690fab27b0",
+      "c1e10e922639",
+      "27035854940a",
+      "581a19bd95b5",
+      "d856635e3336",
+      "-"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 6, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 6, "min": 2050, "mean": 2050, "p50": 2050, "p90": 2050, "max": 2050 },
+    "waitMs": {
+      "gateway": { "count": 6, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "direct": { "count": 6, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "invoker": { "count": 6, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "async": { "count": 6, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "direct-results": { "count": 6, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "async-results": { "count": 6, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "gateway": { "count": 6, "min": 40, "mean": 53.333333333333336, "p50": 60, "p90": 60, "max": 60 },
+      "direct": { "count": 6, "min": 990, "mean": 990, "p50": 990, "p90": 990, "max": 990 },
+      "invoker": { "count": 6, "min": 1000, "mean": 1000, "p50": 1000, "p90": 1000, "max": 1000 },
+      "async": { "count": 6, "min": 240, "mean": 240, "p50": 240, "p90": 240, "max": 240 },
+      "direct-results": { "count": 6, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "async-results": { "count": 6, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    }
+  }
+}

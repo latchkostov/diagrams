@@ -188,6 +188,7 @@ export interface EditorApi {
    */
   settleMembership(ids: readonly string[]): Map<string, string[]>;
   /** A boundary resized by hand adopts the nodes now inside it and releases those now outside it. */
+  settleBoundaryMembership(ids: readonly string[]): void;
   adoptAfterResize(groupId: string): { adopted: string[]; released: string[] };
   /** Wraps nodes, annotations, and boundaries in a new boundary and starts renaming it. Returns the group id. */
   groupNodes(ids: string[], tone?: GroupTone): string | null;

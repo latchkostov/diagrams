@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, expectNoErrors, publicExamples, waitForStableBox } from "./fixtures";
+import { test, expect, expectNoErrors, publicExamples, waitForStableBox, pageLoadTimeout } from "./fixtures";
 
 /**
  * Overlap audit on the real canvas. Only public fixtures from src/examples/*.json,
@@ -48,7 +48,10 @@ async function measure(page: Page) {
       },
     );
     return {
-      nodes: byPrefix("node-", /^node-editor/),
+      // Tooltip portals also use node-* ids; only graph cards belong in the geometry audit.
+      nodes: [...document.querySelectorAll('[data-testid^="rf__node-"] > [data-testid^="node-"]')]
+        .map((el) => box(el, (el.getAttribute("data-testid") ?? "").slice("node-".length)))
+        .filter((b) => b.width > 0 && b.height > 0),
       labels: byPrefix("edge-label-", /^edge-label-input$/),
       panels: panels.filter((b) => b.width > 0 && b.height > 0),
     };
@@ -56,9 +59,19 @@ async function measure(page: Page) {
 }
 
 /** Each audit runs in this many tests (every PARTS-th fixture), so the shards' workers share them. */
-const PARTS = 4;
+const PARTS = 8;
 const part = (i: number) => publicExamples.filter((_, j) => j % PARTS === i);
 const parts = Array.from({ length: PARTS }, (_, i) => i);
+
+test("the overlap audit measures graph cards while a tooltip is open", async ({ page }) => {
+  const example = publicExamples.find((e) => e.slug === "contoso-dmz");
+  if (!example) throw new Error("Missing DMZ example");
+  await page.goto(`./?view=canvas&example=${example.slug}`);
+  await settle(page);
+  await page.getByTestId("node-switch").hover();
+  await expect(page.getByTestId("node-tooltip")).toBeVisible();
+  expect((await measure(page)).nodes.map((n) => n.id).sort()).toEqual([...example.nodeIds].sort());
+});
 
 for (const theme of ["light", "dark"] as const) {
   test.describe(`layout audit (${theme})`, () => {
@@ -73,7 +86,7 @@ for (const theme of ["light", "dark"] as const) {
         const problems: string[] = [];
         for (const { slug } of part(k)) {
           await page.goto(`./?view=canvas&example=${encodeURIComponent(slug)}`);
-          await expect(page.getByTestId("canvas-view")).toBeVisible();
+          await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
           if ((await page.getByTestId(/^node-(?!editor)/).count()) === 0) continue;
           await settle(page);
           const { nodes, labels, panels } = await measure(page);
@@ -137,27 +150,24 @@ test("the title card folds to a chip when nodes go under it", async ({ page }) =
   await expect(card).not.toHaveAttribute("data-collapsed", "1", { timeout: 3000 });
 });
 
-for (const k of parts)
-  test(`auto-layout never produces overlaps (part ${k + 1} of ${PARTS})`, async ({ page, consoleErrors }) => {
-    expect(part(k).length).toBeGreaterThan(0);
-    for (const ex of part(k)) {
-      await page.goto(`./?view=canvas&example=${encodeURIComponent(ex.slug)}`);
-      await settle(page);
-      const wrap = await page.getByTestId("canvas-wrap").boundingBox();
-      if (!wrap) throw new Error("canvas not visible");
-      // Empty pane: just above the bottom edge, left of the minimap and right of the controls.
-      await page.mouse.click(wrap.x + wrap.width * 0.55, wrap.y + wrap.height - 14, { button: "right" });
-      await page.getByTestId("context-menu-item-canvas.auto-layout").click();
-      await settle(page);
-      const { nodes, labels } = await measure(page);
-      const problems: string[] = [];
-      for (let i = 0; i < nodes.length; i++)
-        for (let j = i + 1; j < nodes.length; j++)
-          if (overlaps(nodes[i], nodes[j])) problems.push(`${ex.slug}: node ${nodes[i].id} overlaps ${nodes[j].id}`);
-      for (const l of labels)
-        for (const n of nodes) if (overlaps(l, n)) problems.push(`${ex.slug}: label of ${l.id} covers ${n.id}`);
-      expect(problems, problems.join("\n")).toEqual([]);
-    }
+for (const ex of publicExamples)
+  test(`auto-layout never produces overlaps (${ex.slug})`, async ({ page, consoleErrors }) => {
+    await page.goto(`./?view=canvas&example=${encodeURIComponent(ex.slug)}`);
+    await settle(page);
+    const wrap = await page.getByTestId("canvas-wrap").boundingBox();
+    if (!wrap) throw new Error("canvas not visible");
+    // Empty pane: just above the bottom edge, left of the minimap and right of the controls.
+    await page.mouse.click(wrap.x + wrap.width * 0.55, wrap.y + wrap.height - 14, { button: "right" });
+    await page.getByTestId("context-menu-item-canvas.auto-layout").click();
+    await settle(page);
+    const { nodes, labels } = await measure(page);
+    const problems: string[] = [];
+    for (let i = 0; i < nodes.length; i++)
+      for (let j = i + 1; j < nodes.length; j++)
+        if (overlaps(nodes[i], nodes[j])) problems.push(`${ex.slug}: node ${nodes[i].id} overlaps ${nodes[j].id}`);
+    for (const l of labels)
+      for (const n of nodes) if (overlaps(l, n)) problems.push(`${ex.slug}: label of ${l.id} covers ${n.id}`);
+    expect(problems, problems.join("\n")).toEqual([]);
     expectNoErrors(consoleErrors);
   });
 

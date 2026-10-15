@@ -1,0 +1,338 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "questions": { "replicas": [1, 1, 0] },
+        "gateway": { "replicas": [1, 1, 0] },
+        "assistant": { "replicas": [2, 2, 0] },
+        "answer": { "replicas": [1, 1, 0] },
+        "review": { "replicas": [1, 1, 0] },
+        "billing": { "replicas": [1, 1, 0] },
+        "payments": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 6,
+      "nodes": {
+        "questions": { "processed": 20, "throughput": 2.528714056021835, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 19, "throughput": 1.9854914214267227, "replicas": [1, 1, 0] },
+        "assistant": { "processed": 18, "inFlight": 1, "throughput": 1.6235880656459016, "replicas": [2, 2, 0] },
+        "answer": {
+          "processed": 7,
+          "rejected": 11,
+          "throughput": 0.035960555718285166,
+          "rejectionReasons": { "assistant-tokens: tokens": 11 },
+          "replicas": [1, 1, 0]
+        },
+        "review": {
+          "processed": 6,
+          "rejected": 12,
+          "throughput": 0.005913657179066192,
+          "rejectionReasons": { "assistant-tokens: tokens": 12 },
+          "replicas": [1, 1, 0]
+        },
+        "billing": { "processed": 120, "throughput": 12.483338066116414, "replicas": [1, 1, 0] },
+        "payments": {
+          "processed": 52,
+          "rejected": 64,
+          "inFlight": 1,
+          "throughput": 5.259779896346051,
+          "rejectionReasons": { "local-rate: requests": 64 },
+          "replicas": [1, 1, 0]
+        }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 6,
+      "nodes": {
+        "questions": { "processed": 40, "throughput": 2.528828859462367, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 39, "throughput": 1.9759941215272598, "replicas": [1, 1, 0] },
+        "assistant": { "processed": 38, "inFlight": 1, "throughput": 1.6212808502983989, "replicas": [2, 2, 0] },
+        "answer": {
+          "processed": 9,
+          "rejected": 29,
+          "throughput": 0.04987106296387273,
+          "rejectionReasons": { "assistant-tokens: tokens": 29 },
+          "replicas": [1, 1, 0]
+        },
+        "review": {
+          "processed": 6,
+          "rejected": 32,
+          "throughput": 2.684796205690341e-7,
+          "rejectionReasons": { "assistant-tokens: tokens": 32 },
+          "replicas": [1, 1, 0]
+        },
+        "billing": { "processed": 240, "throughput": 12.483904808787813, "replicas": [1, 1, 0] },
+        "payments": {
+          "processed": 102,
+          "rejected": 134,
+          "inFlight": 1,
+          "throughput": 5.259731575328271,
+          "rejectionReasons": { "local-rate: requests": 134 },
+          "replicas": [1, 1, 0]
+        }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 6,
+      "nodes": {
+        "questions": { "processed": 60, "throughput": 2.528828864674435, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 59, "throughput": 1.9810705954622747, "replicas": [1, 1, 0] },
+        "assistant": { "processed": 58, "inFlight": 1, "throughput": 1.6176205747810306, "replicas": [2, 2, 0] },
+        "answer": {
+          "processed": 11,
+          "rejected": 47,
+          "throughput": 0.030253651792464777,
+          "rejectionReasons": { "assistant-tokens: tokens": 47 },
+          "replicas": [1, 1, 0]
+        },
+        "review": {
+          "processed": 6,
+          "rejected": 52,
+          "throughput": 1.2188955916493377e-11,
+          "rejectionReasons": { "assistant-tokens: tokens": 52 },
+          "replicas": [1, 1, 0]
+        },
+        "billing": { "processed": 360, "throughput": 12.48390483451789, "replicas": [1, 1, 0] },
+        "payments": {
+          "processed": 152,
+          "rejected": 204,
+          "inFlight": 1,
+          "throughput": 5.2597315731345,
+          "rejectionReasons": { "local-rate: requests": 204 },
+          "replicas": [1, 1, 0]
+        }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 6,
+      "nodes": {
+        "questions": { "processed": 80, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 79, "throughput": 1.9870681883208783, "replicas": [1, 1, 0] },
+        "assistant": { "processed": 78, "inFlight": 1, "throughput": 1.625716478325472, "replicas": [2, 2, 0] },
+        "answer": {
+          "processed": 13,
+          "rejected": 65,
+          "throughput": 0.030250726462729617,
+          "rejectionReasons": { "assistant-tokens: tokens": 65 },
+          "replicas": [1, 1, 0]
+        },
+        "review": {
+          "processed": 6,
+          "rejected": 72,
+          "throughput": 5.533777424868528e-16,
+          "rejectionReasons": { "assistant-tokens: tokens": 72 },
+          "replicas": [1, 1, 0]
+        },
+        "billing": { "processed": 480, "throughput": 12.483904834519073, "replicas": [1, 1, 0] },
+        "payments": {
+          "processed": 202,
+          "rejected": 274,
+          "inFlight": 1,
+          "throughput": 5.259731573134398,
+          "rejectionReasons": { "local-rate: requests": 274 },
+          "replicas": [1, 1, 0]
+        }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 6,
+      "nodes": {
+        "questions": { "processed": 100, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 99, "throughput": 1.9819386741683307, "replicas": [1, 1, 0] },
+        "assistant": { "processed": 98, "inFlight": 1, "throughput": 1.6187923584680703, "replicas": [2, 2, 0] },
+        "answer": {
+          "processed": 15,
+          "rejected": 83,
+          "throughput": 0.030680717887745956,
+          "rejectionReasons": { "assistant-tokens: tokens": 83 },
+          "replicas": [1, 1, 0]
+        },
+        "review": {
+          "processed": 6,
+          "rejected": 92,
+          "throughput": 2.512331064102694e-20,
+          "rejectionReasons": { "assistant-tokens: tokens": 92 },
+          "replicas": [1, 1, 0]
+        },
+        "billing": { "processed": 600, "throughput": 12.483904834519073, "replicas": [1, 1, 0] },
+        "payments": {
+          "processed": 252,
+          "rejected": 344,
+          "inFlight": 1,
+          "throughput": 5.259731573134398,
+          "rejectionReasons": { "local-rate: requests": 344 },
+          "replicas": [1, 1, 0]
+        }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 6,
+      "nodes": {
+        "questions": { "processed": 120, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 119, "throughput": 1.972659476252312, "replicas": [1, 1, 0] },
+        "assistant": { "processed": 118, "inFlight": 1, "throughput": 1.6167795500038689, "replicas": [2, 2, 0] },
+        "answer": {
+          "processed": 17,
+          "rejected": 101,
+          "throughput": 0.030250745851500272,
+          "rejectionReasons": { "assistant-tokens: tokens": 101 },
+          "replicas": [1, 1, 0]
+        },
+        "review": {
+          "processed": 6,
+          "rejected": 112,
+          "throughput": 1.1405965385037735e-24,
+          "rejectionReasons": { "assistant-tokens: tokens": 112 },
+          "replicas": [1, 1, 0]
+        },
+        "billing": { "processed": 720, "throughput": 12.483904834519073, "replicas": [1, 1, 0] },
+        "payments": {
+          "processed": 302,
+          "rejected": 414,
+          "inFlight": 1,
+          "throughput": 5.259731573134398,
+          "rejectionReasons": { "local-rate: requests": 414 },
+          "replicas": [1, 1, 0]
+        }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 6,
+    "real": {
+      "questions": { "processed": 120, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+      "gateway": { "processed": 119, "throughput": 1.972659476252312, "replicas": [1, 1, 0] },
+      "assistant": { "processed": 118, "inFlight": 1, "throughput": 1.6167795500038689, "replicas": [2, 2, 0] },
+      "answer": {
+        "processed": 17,
+        "rejected": 101,
+        "throughput": 0.030250745851500272,
+        "rejectionReasons": { "assistant-tokens: tokens": 101 },
+        "replicas": [1, 1, 0]
+      },
+      "review": {
+        "processed": 6,
+        "rejected": 112,
+        "throughput": 1.1405965385037735e-24,
+        "rejectionReasons": { "assistant-tokens: tokens": 112 },
+        "replicas": [1, 1, 0]
+      },
+      "billing": { "processed": 720, "throughput": 12.483904834519073, "replicas": [1, 1, 0] },
+      "payments": {
+        "processed": 302,
+        "rejected": 414,
+        "inFlight": 1,
+        "throughput": 5.259731573134398,
+        "rejectionReasons": { "local-rate: requests": 414 },
+        "replicas": [1, 1, 0]
+      }
+    },
+    "edges": { "ask": 119, "assist": 119, "generate": 118, "review-answer": 118, "charge": 717 }
+  },
+  "events": {
+    "total": 3220,
+    "byKind": { "process": 1402, "deliver": 1191, "reject": 627 },
+    "byNode": {
+      "billing": { "process": 720 },
+      "payments": { "deliver": 717, "process": 302, "reject": 414 },
+      "questions": { "process": 120 },
+      "gateway": { "deliver": 119, "process": 119 },
+      "assistant": { "deliver": 119, "process": 118 },
+      "answer": { "deliver": 118, "process": 17, "reject": 101 },
+      "review": { "deliver": 118, "process": 6, "reject": 112 }
+    },
+    "perSecond": [
+      "843b1884fd96",
+      "2662853f803b",
+      "4f3b85843817",
+      "8816e6f19bfe",
+      "6e47d294041e",
+      "b001fc64a471",
+      "fb3af3027a6d",
+      "c88a2dc65c40",
+      "335ad510bf08",
+      "a88c006d5d3f",
+      "b7639932fbf4",
+      "e7b1bcf88781",
+      "d450a9fd7f3a",
+      "790e981b05c2",
+      "06d8129332e6",
+      "a433c0c359ac",
+      "03f962673926",
+      "d49af7d9e888",
+      "69b28fb7dd8c",
+      "ad04e388869f",
+      "a4da77b96887",
+      "590ae07b15db",
+      "d603d9385706",
+      "f4f89d7836a9",
+      "179718c11ba8",
+      "e33f296717d2",
+      "9994c828e5c2",
+      "091629e6ff38",
+      "d6340051edd8",
+      "61db50e7ce1f",
+      "61518abc0a28",
+      "10d76f2a01e2",
+      "5b08e61ae244",
+      "fd0d9a6d0af1",
+      "e9151988e13a",
+      "3caa3321e6fb",
+      "a98c076f9bb6",
+      "6e17c78b90a1",
+      "0768483d46fa",
+      "556c4b850eba",
+      "78b7a98d2b17",
+      "bb61a993c141",
+      "cff28818d148",
+      "dfc00945e04e",
+      "faf311c9930d",
+      "36d11a893640",
+      "ed24892a5a54",
+      "894b852b47a8",
+      "cb5bce037b31",
+      "85c79ce900a9",
+      "8df5482c62ff",
+      "a7a6bbc08836",
+      "58ca1c2a37b7",
+      "41cd367dd387",
+      "c1545793b7d7",
+      "c6e712c1253b",
+      "68f269c2fe31",
+      "3b636c9352ed",
+      "335597e6b7a2",
+      "a17ec56a48d9",
+      "c15d8e293fc0"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 834, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0, "rejected": 526 },
+    "endToEndMs": { "count": 834, "min": 200, "mean": 370.4196642685851, "p50": 440, "p90": 750, "max": 1010 },
+    "waitMs": {
+      "gateway": { "count": 118, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "assistant": { "count": 118, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "answer": { "count": 17, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "review": { "count": 6, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "payments": { "count": 302, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "gateway": { "count": 118, "min": 40, "mean": 55.67796610169491, "p50": 60, "p90": 70, "max": 70 },
+      "assistant": { "count": 118, "min": 100, "mean": 100, "p50": 100, "p90": 100, "max": 100 },
+      "answer": { "count": 17, "min": 240, "mean": 240, "p50": 240, "p90": 240, "max": 240 },
+      "review": { "count": 6, "min": 240, "mean": 240, "p50": 240, "p90": 240, "max": 240 },
+      "payments": { "count": 302, "min": 240, "mean": 240, "p50": 240, "p90": 240, "max": 240 }
+    }
+  }
+}

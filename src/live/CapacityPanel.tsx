@@ -177,7 +177,7 @@ export const CapacityPanel = memo(function CapacityPanel({
       >
         <header className="lv-panel-head">
           <LiveIcon name="gauge" size={16} />
-          <strong>Inputs &amp; capacity</strong>
+          <strong data-testid="capacity-heading">Inputs &amp; capacity</strong>
           {dirty && (
             <span className="lv-dirty" data-testid="capacity-dirty">
               unsaved

@@ -1,0 +1,21 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Measured order capacity",
+    "direction": "TB",
+    "nodes": [
+      { "id": "orders", "stencil": "generic.service", "label": "Northwind orders", "sublabel": "1 order/s today", "x": 40, "y": 40 },
+      { "id": "intake", "stencil": "generic.service", "label": "Order intake", "sublabel": "Pinned lesson: 1 × 4 / 0.25 s", "x": 40, "y": 200 },
+      { "id": "queue", "stencil": "generic.service", "label": "Payment jobs", "sublabel": "Buffer before measured work", "x": 40, "y": 360 },
+      { "id": "payment_worker", "stencil": "generic.service", "label": "Payment worker", "sublabel": "Measured: 2 × 1 / 1 s = 2/s", "x": 40, "y": 520 },
+      { "id": "ledger", "stencil": "generic.database", "label": "Northwind ledger", "sublabel": "Completed payments", "x": 40, "y": 680 }
+    ],
+    "edges": [
+      { "id": "e1-orders-intake", "from": "orders", "to": "intake", "label": "Order", "kind": "async" },
+      { "id": "e2-intake-queue", "from": "intake", "to": "queue", "label": "Payment job", "kind": "async" },
+      { "id": "e3-queue-payment_worker", "from": "queue", "to": "payment_worker", "label": "Workers", "kind": "async" },
+      { "id": "e4-payment_worker-ledger", "from": "payment_worker", "to": "ledger", "label": "Record", "kind": "sync" }
+    ]
+  }
+}

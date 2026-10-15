@@ -1,0 +1,178 @@
+{
+  "trace": { "rootId": 1, "type": "OrderPlaced", "origin": "orders", "startedAt": 340, "done": true, "partial": false, "truncated": false, "steps": 15, "endedAt": 1450 },
+  "steps": [
+    { "t": 340, "kind": "emit", "id": 1, "type": "OrderPlaced", "node": "orders" },
+    { "t": 340, "kind": "done", "id": 1, "type": "OrderPlaced", "node": "orders" },
+    { "t": 340, "kind": "send", "id": 1, "type": "OrderPlaced", "node": "orders", "edge": "order-publish", "via": "message", "until": 540 },
+    { "t": 540, "kind": "arrive", "id": 1, "type": "OrderPlaced", "node": "order-log", "edge": "order-publish" },
+    { "t": 540, "kind": "done", "id": 1, "type": "OrderPlaced", "node": "order-log" },
+    { "t": 540, "kind": "send", "id": 1, "type": "OrderPlaced", "node": "order-log", "edge": "read-orders", "via": "message", "until": 740 },
+    { "t": 740, "kind": "arrive", "id": 1, "type": "OrderPlaced", "node": "worker", "edge": "read-orders" },
+    { "t": 740, "kind": "start", "id": 1, "type": "OrderPlaced", "node": "worker" },
+    { "t": 1240, "kind": "done", "id": 1, "type": "OrderPlaced", "node": "worker" },
+    { "t": 1240, "kind": "send", "id": 1, "type": "OrderPlaced", "node": "worker", "edge": "save", "via": "message", "until": 1440 },
+    { "t": 1440, "kind": "arrive", "id": 1, "type": "OrderPlaced", "node": "ledger", "edge": "save" },
+    { "t": 1440, "kind": "start", "id": 1, "type": "OrderPlaced", "node": "ledger" },
+    { "t": 1450, "kind": "send", "id": 1, "type": "OrderPlaced", "node": "ledger", "edge": "save", "via": "reply", "until": 1650 },
+    { "t": 1450, "kind": "done", "id": 1, "type": "OrderPlaced", "node": "ledger" },
+    { "t": 1450, "kind": "end", "id": 1, "type": "OrderPlaced", "node": "ledger", "reason": "stored" }
+  ],
+  "journey": {
+    "rootId": 1,
+    "type": "OrderPlaced",
+    "origin": "orders",
+    "startedAt": 340,
+    "totalMs": 1110,
+    "done": true,
+    "partial": false,
+    "truncated": false,
+    "rows": [
+      { "key": "0", "kind": "origin", "t": 0, "id": 1, "type": "OrderPlaced", "node": "orders", "copy": false },
+      { "key": "3", "kind": "hop", "t": 200, "id": 1, "type": "OrderPlaced", "node": "order-log", "from": "orders", "edge": "order-publish", "sync": false, "latencyMs": 200, "waitMs": 0, "travelMs": 200, "renamed": false, "copy": false },
+      { "key": "6", "kind": "hop", "t": 400, "id": 1, "type": "OrderPlaced", "node": "worker", "from": "order-log", "edge": "read-orders", "sync": false, "latencyMs": 200, "waitMs": 0, "travelMs": 200, "renamed": false, "copy": false },
+      { "key": "10", "kind": "hop", "t": 1100, "id": 1, "type": "OrderPlaced", "node": "ledger", "from": "worker", "edge": "save", "sync": true, "latencyMs": 700, "waitMs": 0, "processMs": 500, "travelMs": 200, "renamed": false, "copy": false }
+    ],
+    "visits": [
+      { "id": 1, "node": "orders", "at": 0, "done": 0, "left": 0 },
+      { "id": 1, "node": "order-log", "at": 200, "done": 200, "left": 200 },
+      { "id": 1, "node": "worker", "at": 400, "start": 400, "done": 900, "left": 900 },
+      { "id": 1, "node": "ledger", "at": 1100, "start": 1100, "done": 1110 }
+    ],
+    "ids": [1],
+    "copies": 0,
+    "retries": 0,
+    "failures": 0,
+    "deadLettered": 0,
+    "dropped": 0,
+    "blocked": 0,
+    "kept": [],
+    "nodes": ["orders", "order-log", "worker", "ledger"],
+    "edges": ["order-publish", "read-orders", "save"],
+    "rowOf": { "0": "0", "3": "3", "6": "6", "10": "10" }
+  },
+  "sequence": {
+    "title": "OrderPlaced #1",
+    "summary": "1.11 s end to end",
+    "participants": [
+      { "id": "orders", "label": "Acme orders" },
+      { "id": "order-log", "label": "Order events" },
+      { "id": "worker", "label": "Ledger worker" },
+      { "id": "ledger", "label": "Acme ledger" }
+    ],
+    "items": [
+      { "kind": "arrow", "t": 0, "until": 200, "from": "orders", "to": "order-log", "style": "async", "label": "OrderPlaced", "detail": "Order", "id": 1, "type": "OrderPlaced" },
+      { "kind": "arrow", "t": 200, "until": 400, "from": "order-log", "to": "worker", "style": "async", "label": "OrderPlaced", "detail": "order-posting", "id": 1, "type": "OrderPlaced" },
+      { "kind": "gap", "t": 400, "ms": 500, "text": "500 ms at Ledger worker: processing", "node": "worker" },
+      { "kind": "arrow", "t": 900, "until": 1100, "from": "worker", "to": "ledger", "style": "sync", "label": "OrderPlaced", "detail": "Record", "id": 1, "type": "OrderPlaced" },
+      { "kind": "arrow", "t": 1110, "until": 1310, "from": "ledger", "to": "worker", "style": "reply", "label": "reply", "id": 1, "type": "OrderPlaced" }
+    ],
+    "totalMs": 1110,
+    "done": true,
+    "partial": false,
+    "truncated": false
+  },
+  "mermaidPlain": "---\ntitle: \"OrderPlaced #1 · 1.11 s end to end\"\n---\nsequenceDiagram\n  participant orders as Acme orders\n  participant order_log as Order events\n  participant worker as Ledger worker\n  participant ledger as Acme ledger\n  orders-)order_log: OrderPlaced (+0.00 s)<br/>Order\n  order_log-)worker: OrderPlaced (+0.20 s)<br/>order-posting\n  Note over orders,ledger: ⏱ 500 ms at Ledger worker: processing\n  worker->>ledger: OrderPlaced (+0.90 s)<br/>Record\n  ledger-->>worker: reply (+1.11 s)\n",
+  "svg": {
+    "light": { "sha256": "bf8f2421b447b7ae5aaa84c2fd3631194b970e361a947b1eb183c35f89d1a8ad", "bytes": 7928, "width": 649, "height": 430, "headerHeight": 142 },
+    "dark": { "sha256": "df246a8cfdf6152fdc1c0da0579536738c40c1bce904f5f9915e321f0437f266", "bytes": 7927, "width": 649, "height": 430, "headerHeight": 142 }
+  },
+  "slowMotion": {
+    "rootId": 1,
+    "type": "OrderPlaced",
+    "origin": "orders",
+    "beats": [
+      {
+        "kind": "establish",
+        "msg": 1,
+        "type": "OrderPlaced",
+        "node": "orders",
+        "anchor": { "edge": "order-publish", "end": 0 },
+        "start": 0,
+        "duration": 800,
+        "realFrom": 0,
+        "realTo": 0,
+        "caption": "Acme orders sends OrderPlaced",
+        "rowKey": "0",
+        "i": 0,
+        "color": "#309bd5",
+        "tone": "plain"
+      },
+      { "kind": "travel", "msg": 1, "type": "OrderPlaced", "edge": "order-publish", "reverse": false, "start": 800, "duration": 1000, "realFrom": 0, "realTo": 200, "caption": "OrderPlaced", "tone": "plain", "i": 1, "color": "#309bd5", "rowKey": "3" },
+      {
+        "kind": "append",
+        "msg": 1,
+        "type": "OrderPlaced",
+        "node": "order-log",
+        "anchor": { "edge": "order-publish", "end": 1 },
+        "start": 1800,
+        "duration": 450,
+        "realFrom": 200,
+        "realTo": 200,
+        "caption": "appended to Order events",
+        "i": 2,
+        "color": "#309bd5",
+        "tone": "plain"
+      },
+      { "kind": "travel", "msg": 1, "type": "OrderPlaced", "edge": "read-orders", "reverse": false, "start": 2250, "duration": 1000, "realFrom": 200, "realTo": 400, "caption": "OrderPlaced", "tone": "plain", "i": 3, "color": "#309bd5", "rowKey": "6" },
+      {
+        "kind": "process",
+        "msg": 1,
+        "type": "OrderPlaced",
+        "node": "worker",
+        "anchor": { "edge": "read-orders", "end": 1 },
+        "start": 3250,
+        "duration": 1516.3098330113273,
+        "realFrom": 400,
+        "realTo": 900,
+        "caption": "Ledger worker · order-posting · 500 ms",
+        "i": 4,
+        "color": "#309bd5",
+        "tone": "plain",
+        "short": "order-posting · 500 ms"
+      },
+      { "kind": "travel", "msg": 1, "type": "OrderPlaced", "edge": "save", "reverse": false, "start": 4766.309833011327, "duration": 1000, "realFrom": 900, "realTo": 1100, "caption": "OrderPlaced", "tone": "plain", "i": 5, "color": "#309bd5", "rowKey": "10" },
+      {
+        "kind": "write",
+        "msg": 1,
+        "type": "OrderPlaced",
+        "node": "ledger",
+        "anchor": { "edge": "save", "end": 1 },
+        "start": 5766.309833011327,
+        "duration": 956.7939019774532,
+        "realFrom": 1100,
+        "realTo": 1110,
+        "caption": "Acme ledger · write OrderPlaced · 10 ms",
+        "sink": 300,
+        "i": 6,
+        "color": "#309bd5",
+        "tone": "plain",
+        "short": "write OrderPlaced · 10 ms"
+      },
+      { "kind": "reply", "msg": 1, "type": "OrderPlaced", "edge": "save", "reverse": true, "start": 6723.10373498878, "duration": 600, "realFrom": 1110, "realTo": 1310, "i": 7, "color": "#309bd5", "tone": "plain" },
+      { "kind": "end", "msg": 1, "type": "OrderPlaced", "node": "ledger", "start": 7123.10373498878, "duration": 1200, "realFrom": 1110, "realTo": 1110, "caption": "Done · 1.11 s · 1 write", "tone": "done", "i": 8, "color": "#309bd5" }
+    ],
+    "duration": 8323.103734988781,
+    "realTotal": 1110,
+    "stops": [0, 800, 2250, 4766, 7123],
+    "nodes": ["orders", "order-log", "worker", "ledger"],
+    "edges": ["order-publish", "read-orders", "save"],
+    "hiddenCopies": 0,
+    "unfinished": false,
+    "summary": "Done · 1.11 s · 1 write",
+    "reduced": false,
+    "rowStart": { "0": 0, "3": 800, "6": 2250, "10": 4766.309833011327 }
+  },
+  "slowMotionReduced": {
+    "duration": 12000,
+    "beats": [
+      ["establish", 0, 1500],
+      ["travel", 1500, 1500],
+      ["append", 3000, 1500],
+      ["travel", 4500, 1500],
+      ["process", 6000, 1500],
+      ["travel", 7500, 1500],
+      ["write", 9000, 1500],
+      ["end", 10500, 1500]
+    ]
+  }
+}

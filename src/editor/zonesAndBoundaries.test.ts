@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ReactFlowInstance } from "@xyflow/react";
+import { toast } from "../interop/ui/toast";
+import { ANNOTATION_LIMITS } from "../model/annotations";
 import { toFlow } from "../canvas/convert";
 import type { AnnotationFlowNode, DiagramFlowEdge, DiagramFlowNode, FlowNode, GroupFlowNode } from "../canvas/types";
 import { createEditor, type EditorDeps } from "./useEditor";
@@ -508,6 +510,7 @@ describe("Zones and Boundaries conversion and grouping", () => {
       title: "Resize via inspector",
       groups: [{ id: "box", label: "Box", tone: "neutral", x: 0, y: 0, width: 200, height: 200 }],
       nodes: [{ id: "outside", stencil: "service.node", label: "Target", x: 300, y: 100 }],
+      annotations: [{ id: "outside-note", kind: "note", text: "Note", x: 300, y: 100, width: 100, height: 60 }],
       edges: [],
     };
 
@@ -522,6 +525,9 @@ describe("Zones and Boundaries conversion and grouping", () => {
 
     // Node is now adopted
     expect((getNodes().find((n) => n.id === "outside") as DiagramFlowNode).data.group).toBe("box");
+
+    // Resize keeps its existing node-only adoption policy; annotations settle when dragged.
+    expect(getNodes().find((n) => n.id === "outside-note")?.data.group).toBeUndefined();
 
     // Shrink width back to 200
     api.updateGroup("box", { width: 200 });
@@ -590,5 +596,82 @@ describe("Zones and Boundaries conversion and grouping", () => {
     api.updateGroups(["g1"], { tone: undefined });
     commit();
     expect((getNodes().find((n) => n.id === "group:g1") as GroupFlowNode).data.tone).toBe("neutral");
+  });
+});
+
+const nestedSelection: DiagramFile = {
+  format: "diagrams/v1",
+  title: "Selection hierarchy",
+  edges: [],
+  groups: [
+    { id: "child", label: "Child", x: 100, y: 100, width: 300, height: 250, group: "parent" },
+    { id: "parent", label: "Parent", x: 0, y: 0, width: 600, height: 500 },
+  ],
+  nodes: [{ id: "member", stencil: "service.node", label: "Member", x: 140, y: 150, group: "child" }],
+  annotations: [{ id: "note", kind: "note", text: "Note", x: 150, y: 250, width: 100, height: 60, group: "child" }],
+};
+
+describe("selection subtree regressions", () => {
+  it("wrapping a boundary and its selected contents preserves membership", () => {
+    const { api, commit, getNodes } = setup(nestedSelection);
+    const wrapper = api.groupNodes(["parent", "group:child", "member", "note"]);
+    commit();
+    expect(wrapper).toBeTruthy();
+    const parents = Object.fromEntries(getNodes().map((n) => [n.id, n.data.group]));
+    expect(parents).toMatchObject({ "group:parent": wrapper, "group:child": "parent", member: "child", note: "child" });
+  });
+
+  it("settling selected parent and child boundaries keeps their subtree links", () => {
+    const { api, commit, getNodes } = setup(nestedSelection);
+    api.settleBoundaryMembership(["parent", "child"]);
+    commit();
+    expect(getNodes().find((n) => n.id === "group:child")?.data.group).toBe("parent");
+    expect(getNodes().find((n) => n.id === "member")?.data.group).toBe("child");
+  });
+
+  it.each(["note", "shape", "text", "zone"] as const)(
+    "settles a dropped %s both into and out of a boundary",
+    (kind) => {
+      const diagram = structuredClone(nestedSelection);
+      diagram.annotations = [
+        { id: "note", kind, text: "Note", x: 800, y: 800, width: 100, height: 60, group: "child" },
+      ];
+      const { api, commit, getNodes } = setup(diagram);
+      expect(api.settleMembership(["note"]).get("child")).toEqual(["note"]);
+      commit();
+      expect(getNodes().find((n) => n.id === "note")?.data.group).toBeUndefined();
+      api.updateAnnotation("note", { x: 150, y: 250 });
+      commit();
+      api.settleMembership(["note"]);
+      commit();
+      expect(getNodes().find((n) => n.id === "note")?.data.group).toBe("child");
+    },
+  );
+
+  it.each([
+    { width: ANNOTATION_LIMITS.maxAnnotationSize + 1 },
+    { height: 0 },
+    { x: ANNOTATION_LIMITS.maxCoordinate + 1 },
+    { annotationCount: ANNOTATION_LIMITS.maxAnnotations },
+  ])("refuses a lossy boundary conversion: %j", ({ annotationCount, ...geometry }) => {
+    const diagram = structuredClone(nestedSelection);
+    Object.assign(diagram.groups![0], geometry);
+    if (annotationCount)
+      diagram.annotations = Array.from({ length: annotationCount }, (_, i) => ({
+        id: `note-${i}`,
+        kind: "note",
+        text: "Note",
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 60,
+      }));
+    const { api, commit, getNodes } = setup(diagram);
+    const before = structuredClone(getNodes());
+    toast.dismiss();
+    expect(api.convertGroupToZone("child")).toBeNull();
+    expect(toast.current?.kind).toBe("error");
+    commit();
+    expect(getNodes()).toEqual(before);
   });
 });

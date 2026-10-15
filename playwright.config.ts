@@ -114,7 +114,8 @@ const devWebServer = {
   url: `http://localhost:${devServer.port}`,
   reuseExistingServer: devServer.explicit || !CI,
   timeout: 60_000,
-  stdout: "ignore" as const,
+  // Keep optimizer/HMR diagnostics in CI logs: a reload must never look like a missing UI element.
+  stdout: "pipe" as const,
   stderr: "pipe" as const,
 };
 

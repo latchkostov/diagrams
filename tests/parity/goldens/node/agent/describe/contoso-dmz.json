@@ -1,0 +1,406 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"Contoso DMZ\" · direction TB · 9 nodes, 8 connections, 2 boundaries, 2 simulations\ndescription: \"Contoso web traffic crosses a router, firewall, BIG-IP and switch to the app and database; a separate probe is blocked at the firewall, never counted as a failure.\"\nnodes:\n  \"visitors\" \"client.browser\" (\"Web Browser\") \"Contoso visitors\" / \"8 web requests/s\" props={\"ratePerSec\":8,\"messageType\":\"WebRequest\"} capabilities=[{\"kind\":\"calls\",\"edge\":\"web-in\",\"peer\":\"router\"}] explanation=undefined\n  \"probes\" \"client.team\" (\"Team\") \"Security exercise\" / \"2 admin probes/s\" props={\"ratePerSec\":2,\"messageType\":\"AdminProbe\"} capabilities=[{\"kind\":\"calls\",\"edge\":\"probe-in\",\"peer\":\"router\"}] explanation=undefined\n  \"router\" \"cisco.isr\" (\"Cisco ISR\") \"Edge router pair\" / \"Branch preset · active-active\" props={\"preset\":\"device-size\",\"presetRevision\":\"1\",\"size\":\"branch\",\"replicas\":2,\"ha\":\"active-active\",\"jitter\":0} capabilities=[{\"kind\":\"calls\",\"edge\":\"perimeter\",\"peer\":\"firewall\"}] explanation={\"id\":\"router\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":3906.25,\"offered\":10,\"replicas\":2,\"baseReplicas\":2,\"omittedContributors\":0,\"activeReplicas\":2,\"assignments\":[],\"slots\":null,\"seconds\":0.00005,\"utilization\":0.00256,\"growth\":0,\"contributors\":[{\"edge\":\"web-in\",\"node\":\"visitors\",\"label\":\"Contoso visitors\",\"rate\":8},{\"edge\":\"probe-in\",\"node\":\"probes\",\"label\":\"Security exercise\",\"rate\":2}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"firewall\" \"paloalto.ngfw\" (\"Palo Alto NGFW\") \"Firewall pair\" / \"Allow web · deny admin\" props={\"preset\":\"device-size\",\"presetRevision\":\"1\",\"size\":\"branch\",\"replicas\":2,\"ha\":\"active-standby\",\"jitter\":0} in \"dmz\" capabilities=[{\"kind\":\"calls\",\"edge\":\"allow-web\",\"peer\":\"adc\",\"filter\":[\"WebRequest\"]}] explanation={\"id\":\"firewall\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":2343.75,\"offered\":10,\"replicas\":2,\"baseReplicas\":2,\"omittedContributors\":0,\"activeReplicas\":2,\"assignments\":[],\"slots\":null,\"seconds\":0.0005,\"utilization\":0.004266666666666667,\"growth\":0,\"contributors\":[{\"edge\":\"perimeter\",\"node\":\"router\",\"label\":\"Contoso visitors, Security exercise\",\"rate\":10,\"via\":\"Edge router pair\"}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"adc\" \"f5.bigip\" (\"F5 BIG-IP\") \"BIG-IP pair\" / \"Web VIP · active-standby\" props={\"preset\":\"device-size\",\"presetRevision\":\"1\",\"size\":\"branch\",\"replicas\":2,\"ha\":\"active-standby\",\"jitter\":0} in \"dmz\" capabilities=[{\"kind\":\"calls\",\"edge\":\"to-switch\",\"peer\":\"switch\"}] explanation={\"id\":\"adc\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":25390.625,\"offered\":8,\"replicas\":2,\"baseReplicas\":2,\"omittedContributors\":0,\"activeReplicas\":2,\"assignments\":[],\"slots\":null,\"seconds\":0.0002,\"utilization\":0.0003150769230769231,\"growth\":0,\"contributors\":[{\"edge\":\"allow-web\",\"node\":\"firewall\",\"label\":\"Edge router pair\",\"rate\":8,\"via\":\"Firewall pair\"}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"switch\" \"cisco.nexus\" (\"Cisco Nexus\") \"Services switch\" / \"Branch preset · active-active\" props={\"preset\":\"device-size\",\"presetRevision\":\"1\",\"size\":\"branch\",\"replicas\":2,\"ha\":\"active-active\",\"jitter\":0} in \"trusted\" capabilities=[{\"kind\":\"calls\",\"edge\":\"to-app\",\"peer\":\"app\"}] explanation={\"id\":\"switch\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":200000000,\"offered\":8,\"replicas\":2,\"baseReplicas\":2,\"omittedContributors\":0,\"activeReplicas\":2,\"assignments\":[],\"slots\":null,\"seconds\":0.000001,\"utilization\":4e-8,\"growth\":0,\"contributors\":[{\"edge\":\"to-switch\",\"node\":\"adc\",\"label\":\"Firewall pair\",\"rate\":8,\"via\":\"BIG-IP pair\"}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"app\" \"service.dotnet\" (\".NET Service\") \"Contoso web app\" / \"2 replicas · 8 slots\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":2,\"concurrency\":4,\"latencyMs\":100,\"jitter\":0,\"failureRate\":0} in \"trusted\" capabilities=[{\"kind\":\"calls\",\"edge\":\"to-db\",\"peer\":\"database\"}] explanation={\"id\":\"app\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":80,\"offered\":8,\"replicas\":2,\"baseReplicas\":2,\"omittedContributors\":0,\"activeReplicas\":2,\"assignments\":[],\"slots\":4,\"seconds\":0.1,\"utilization\":0.1,\"growth\":0,\"contributors\":[{\"edge\":\"to-app\",\"node\":\"switch\",\"label\":\"BIG-IP pair\",\"rate\":8,\"via\":\"Services switch\"}],\"target\":0.5,\"minimumReplicas\":2,\"targetReplicas\":2,\"changes\":null,\"converged\":true}\n  \"database\" \"postgres\" (\"PostgreSQL\") \"Orders database\" / \"Trusted zone\" props={\"latencyMs\":5} in \"trusted\" capabilities=[] explanation=undefined\n  \"admin\" \"postgres\" (\"PostgreSQL\") \"Admin database\" / \"Denied probe destination\" props={\"latencyMs\":5} capabilities=[] explanation=undefined\nconnections:\n  \"web-in\" \"visitors\" -> \"router\" sync \"Web\"\n  \"probe-in\" \"probes\" -> \"router\" sync \"Probe\"\n  \"perimeter\" \"router\" -> \"firewall\" sync \"Inspect\"\n  \"allow-web\" \"firewall\" -> \"adc\" sync \"Allow web\"\n  \"deny-admin\" \"firewall\" -> \"admin\" sync \"Deny admin\"\n  \"to-switch\" \"adc\" -> \"switch\" sync \"Forward\"\n  \"to-app\" \"switch\" -> \"app\" sync \"Web\"\n  \"to-db\" \"app\" -> \"database\" sync \"Query\"\nboundary \"dmz\" \"DMZ\" (onprem): \"firewall\", \"adc\"\nboundary \"trusted\" \"Trusted services\" (onprem): \"switch\", \"app\", \"database\"\nsimulation \"web-and-probes\" \"Web and blocked probes\": {\"kind\":\"constant\",\"ratePerSec\":8,\"durationMs\":6000} from \"visitors\"; {\"kind\":\"constant\",\"ratePerSec\":2,\"durationMs\":6000} from \"probes\"; timeline=[{\"atMs\":2000,\"action\":{\"do\":\"note\",\"text\":\"Blocked is a firewall decision, separate from processing failures and lost messages. All capacities here are illustrative device presets.\",\"focus\":[\"firewall\",\"admin\"]}}]; expectations=[{\"id\":\"database-processed-end\",\"label\":\"database: processed == 48\",\"metric\":{\"node\":\"database\",\"field\":\"processed\"},\"op\":\"==\",\"value\":48,\"when\":\"end\"},{\"id\":\"admin-processed-end\",\"label\":\"admin: processed == 0\",\"metric\":{\"node\":\"admin\",\"field\":\"processed\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"firewall-blocked-end\",\"label\":\"firewall: blocked == 12\",\"metric\":{\"node\":\"firewall\",\"field\":\"blocked\"},\"op\":\"==\",\"value\":12,\"when\":\"end\"},{\"id\":\"firewall-dropped-always\",\"label\":\"firewall: dropped == 0\",\"metric\":{\"node\":\"firewall\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]\nsimulation \"web-only\" \"Web-only baseline\": {\"kind\":\"constant\",\"ratePerSec\":8,\"durationMs\":6000} from \"visitors\"; timeline=[]; expectations=[{\"id\":\"database-processed-end\",\"label\":\"database: processed == 48\",\"metric\":{\"node\":\"database\",\"field\":\"processed\"},\"op\":\"==\",\"value\":48,\"when\":\"end\"},{\"id\":\"firewall-blocked-end\",\"label\":\"firewall: blocked == 0\",\"metric\":{\"node\":\"firewall\",\"field\":\"blocked\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"}]"
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "Contoso DMZ",
+      "description": "Contoso web traffic crosses a router, firewall, BIG-IP and switch to the app and database; a separate probe is blocked at the firewall, never counted as a failure.",
+      "direction": "TB",
+      "planning": { "revision": "p3" },
+      "nodes": [
+        {
+          "id": "visitors",
+          "stencil": "client.browser",
+          "label": "Contoso visitors",
+          "sublabel": "8 web requests/s",
+          "props": { "ratePerSec": 8, "messageType": "WebRequest" },
+          "x": 40,
+          "y": 40,
+          "capabilities": [{ "kind": "calls", "edge": "web-in", "peer": "router" }]
+        },
+        {
+          "id": "probes",
+          "stencil": "client.team",
+          "label": "Security exercise",
+          "sublabel": "2 admin probes/s",
+          "props": { "ratePerSec": 2, "messageType": "AdminProbe" },
+          "x": 360,
+          "y": 40,
+          "capabilities": [{ "kind": "calls", "edge": "probe-in", "peer": "router" }]
+        },
+        {
+          "id": "router",
+          "stencil": "cisco.isr",
+          "label": "Edge router pair",
+          "sublabel": "Branch preset · active-active",
+          "props": { "preset": "device-size", "presetRevision": "1", "size": "branch", "replicas": 2, "ha": "active-active", "jitter": 0 },
+          "x": 200,
+          "y": 200,
+          "capabilities": [{ "kind": "calls", "edge": "perimeter", "peer": "firewall" }],
+          "explanation": {
+            "id": "router",
+            "role": "gateway",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 3906.25,
+            "offered": 10,
+            "replicas": 2,
+            "baseReplicas": 2,
+            "omittedContributors": 0,
+            "activeReplicas": 2,
+            "assignments": [],
+            "slots": null,
+            "seconds": 0.00005,
+            "utilization": 0.00256,
+            "growth": 0,
+            "contributors": [
+              { "edge": "web-in", "node": "visitors", "label": "Contoso visitors", "rate": 8 },
+              { "edge": "probe-in", "node": "probes", "label": "Security exercise", "rate": 2 }
+            ],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "firewall",
+          "stencil": "paloalto.ngfw",
+          "label": "Firewall pair",
+          "sublabel": "Allow web · deny admin",
+          "props": { "preset": "device-size", "presetRevision": "1", "size": "branch", "replicas": 2, "ha": "active-standby", "jitter": 0 },
+          "group": "dmz",
+          "x": 200,
+          "y": 360,
+          "capabilities": [{ "kind": "calls", "edge": "allow-web", "peer": "adc", "filter": ["WebRequest"] }],
+          "explanation": {
+            "id": "firewall",
+            "role": "gateway",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 2343.75,
+            "offered": 10,
+            "replicas": 2,
+            "baseReplicas": 2,
+            "omittedContributors": 0,
+            "activeReplicas": 2,
+            "assignments": [],
+            "slots": null,
+            "seconds": 0.0005,
+            "utilization": 0.004266666666666667,
+            "growth": 0,
+            "contributors": [
+              { "edge": "perimeter", "node": "router", "label": "Contoso visitors, Security exercise", "rate": 10, "via": "Edge router pair" }
+            ],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "adc",
+          "stencil": "f5.bigip",
+          "label": "BIG-IP pair",
+          "sublabel": "Web VIP · active-standby",
+          "props": { "preset": "device-size", "presetRevision": "1", "size": "branch", "replicas": 2, "ha": "active-standby", "jitter": 0 },
+          "group": "dmz",
+          "x": 40,
+          "y": 520,
+          "capabilities": [{ "kind": "calls", "edge": "to-switch", "peer": "switch" }],
+          "explanation": {
+            "id": "adc",
+            "role": "gateway",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 25390.625,
+            "offered": 8,
+            "replicas": 2,
+            "baseReplicas": 2,
+            "omittedContributors": 0,
+            "activeReplicas": 2,
+            "assignments": [],
+            "slots": null,
+            "seconds": 0.0002,
+            "utilization": 0.0003150769230769231,
+            "growth": 0,
+            "contributors": [
+              { "edge": "allow-web", "node": "firewall", "label": "Edge router pair", "rate": 8, "via": "Firewall pair" }
+            ],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "switch",
+          "stencil": "cisco.nexus",
+          "label": "Services switch",
+          "sublabel": "Branch preset · active-active",
+          "props": { "preset": "device-size", "presetRevision": "1", "size": "branch", "replicas": 2, "ha": "active-active", "jitter": 0 },
+          "group": "trusted",
+          "x": 200,
+          "y": 800,
+          "capabilities": [{ "kind": "calls", "edge": "to-app", "peer": "app" }],
+          "explanation": {
+            "id": "switch",
+            "role": "gateway",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 200000000,
+            "offered": 8,
+            "replicas": 2,
+            "baseReplicas": 2,
+            "omittedContributors": 0,
+            "activeReplicas": 2,
+            "assignments": [],
+            "slots": null,
+            "seconds": 0.000001,
+            "utilization": 4e-8,
+            "growth": 0,
+            "contributors": [
+              { "edge": "to-switch", "node": "adc", "label": "Firewall pair", "rate": 8, "via": "BIG-IP pair" }
+            ],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "app",
+          "stencil": "service.dotnet",
+          "label": "Contoso web app",
+          "sublabel": "2 replicas · 8 slots",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 4, "latencyMs": 100, "jitter": 0, "failureRate": 0 },
+          "group": "trusted",
+          "x": 200,
+          "y": 960,
+          "capabilities": [{ "kind": "calls", "edge": "to-db", "peer": "database" }],
+          "explanation": {
+            "id": "app",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 80,
+            "offered": 8,
+            "replicas": 2,
+            "baseReplicas": 2,
+            "omittedContributors": 0,
+            "activeReplicas": 2,
+            "assignments": [],
+            "slots": 4,
+            "seconds": 0.1,
+            "utilization": 0.1,
+            "growth": 0,
+            "contributors": [
+              { "edge": "to-app", "node": "switch", "label": "BIG-IP pair", "rate": 8, "via": "Services switch" }
+            ],
+            "target": 0.5,
+            "minimumReplicas": 2,
+            "targetReplicas": 2,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "database",
+          "stencil": "postgres",
+          "label": "Orders database",
+          "sublabel": "Trusted zone",
+          "props": { "latencyMs": 5 },
+          "group": "trusted",
+          "x": 200,
+          "y": 1120,
+          "capabilities": []
+        },
+        {
+          "id": "admin",
+          "stencil": "postgres",
+          "label": "Admin database",
+          "sublabel": "Denied probe destination",
+          "props": { "latencyMs": 5 },
+          "x": 520,
+          "y": 480,
+          "capabilities": []
+        }
+      ],
+      "edges": [
+        {
+          "id": "web-in",
+          "from": "visitors",
+          "to": "router",
+          "label": "Web",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "probe-in",
+          "from": "probes",
+          "to": "router",
+          "label": "Probe",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "perimeter",
+          "from": "router",
+          "to": "firewall",
+          "label": "Inspect",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "allow-web",
+          "from": "firewall",
+          "to": "adc",
+          "label": "Allow web",
+          "kind": "sync",
+          "props": { "travelMs": 200, "filter": ["WebRequest"] }
+        },
+        {
+          "id": "deny-admin",
+          "from": "firewall",
+          "to": "admin",
+          "label": "Deny admin",
+          "kind": "sync",
+          "props": { "travelMs": 200, "filter": ["AdminProbe"], "deny": true }
+        },
+        {
+          "id": "to-switch",
+          "from": "adc",
+          "to": "switch",
+          "label": "Forward",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        { "id": "to-app", "from": "switch", "to": "app", "label": "Web", "kind": "sync", "props": { "travelMs": 200 } },
+        {
+          "id": "to-db",
+          "from": "app",
+          "to": "database",
+          "label": "Query",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        }
+      ],
+      "groups": [
+        { "id": "dmz", "label": "DMZ", "tone": "onprem", "x": 0, "y": 296, "width": 462, "height": 336 },
+        { "id": "trusted", "label": "Trusted services", "tone": "onprem", "x": 160, "y": 736, "width": 340, "height": 496 }
+      ],
+      "annotations": [],
+      "simulations": [
+        {
+          "id": "web-and-probes",
+          "title": "Web and blocked probes",
+          "description": "Allowed web calls reach storage; admin probes stop at the firewall.",
+          "seed": 41,
+          "scale": 1,
+          "traffic": [
+            {
+              "id": "visitors",
+              "node": "visitors",
+              "messageType": "WebRequest",
+              "shape": { "kind": "constant", "ratePerSec": 8, "durationMs": 6000 }
+            },
+            {
+              "id": "probes",
+              "node": "probes",
+              "messageType": "AdminProbe",
+              "shape": { "kind": "constant", "ratePerSec": 2, "durationMs": 6000 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 2000,
+              "action": { "do": "note", "text": "Blocked is a firewall decision, separate from processing failures and lost messages. All capacities here are illustrative device presets.", "focus": ["firewall", "admin"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "database-processed-end",
+              "label": "database: processed == 48",
+              "metric": { "node": "database", "field": "processed" },
+              "op": "==",
+              "value": 48,
+              "when": "end"
+            },
+            {
+              "id": "admin-processed-end",
+              "label": "admin: processed == 0",
+              "metric": { "node": "admin", "field": "processed" },
+              "op": "==",
+              "value": 0,
+              "when": "end"
+            },
+            {
+              "id": "firewall-blocked-end",
+              "label": "firewall: blocked == 12",
+              "metric": { "node": "firewall", "field": "blocked" },
+              "op": "==",
+              "value": 12,
+              "when": "end"
+            },
+            {
+              "id": "firewall-dropped-always",
+              "label": "firewall: dropped == 0",
+              "metric": { "node": "firewall", "field": "dropped" },
+              "op": "==",
+              "value": 0,
+              "when": "always"
+            }
+          ]
+        },
+        {
+          "id": "web-only",
+          "title": "Web-only baseline",
+          "description": "The same path carries normal web requests with no blocked traffic.",
+          "seed": 41,
+          "scale": 1,
+          "traffic": [
+            {
+              "id": "visitors",
+              "node": "visitors",
+              "messageType": "WebRequest",
+              "shape": { "kind": "constant", "ratePerSec": 8, "durationMs": 6000 }
+            }
+          ],
+          "timeline": [],
+          "expectations": [
+            {
+              "id": "database-processed-end",
+              "label": "database: processed == 48",
+              "metric": { "node": "database", "field": "processed" },
+              "op": "==",
+              "value": 48,
+              "when": "end"
+            },
+            {
+              "id": "firewall-blocked-end",
+              "label": "firewall: blocked == 0",
+              "metric": { "node": "firewall", "field": "blocked" },
+              "op": "==",
+              "value": 0,
+              "when": "end"
+            }
+          ]
+        }
+      ],
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"Contoso DMZ\" · direction TB · 2 nodes, 1 connections, 0 boundaries, 2 simulations\ndescription: \"Contoso web traffic crosses a router, firewall, BIG-IP and switch to the app and database; a separate probe is blocked at the firewall, never counted as a failure.\"\nnodes:\n  \"visitors\" \"client.browser\" (\"Web Browser\") \"Contoso visitors\" / \"8 web requests/s\" props={\"ratePerSec\":8,\"messageType\":\"WebRequest\"} capabilities=[{\"kind\":\"calls\",\"edge\":\"web-in\",\"peer\":\"router\"}] explanation=undefined\n  \"router\" \"cisco.isr\" (\"Cisco ISR\") \"Edge router pair\" / \"Branch preset · active-active\" props={\"preset\":\"device-size\",\"presetRevision\":\"1\",\"size\":\"branch\",\"replicas\":2,\"ha\":\"active-active\",\"jitter\":0} capabilities=[{\"kind\":\"calls\",\"edge\":\"perimeter\",\"peer\":\"firewall\"}] explanation={\"id\":\"router\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":3906.25,\"offered\":10,\"replicas\":2,\"baseReplicas\":2,\"omittedContributors\":0,\"activeReplicas\":2,\"assignments\":[],\"slots\":null,\"seconds\":0.00005,\"utilization\":0.00256,\"growth\":0,\"contributors\":[{\"edge\":\"web-in\",\"node\":\"visitors\",\"label\":\"Contoso visitors\",\"rate\":8},{\"edge\":\"probe-in\",\"node\":\"probes\",\"label\":\"Security exercise\",\"rate\":2}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"web-in\" \"visitors\" -> \"router\" sync \"Web\"\nsimulation \"web-and-probes\" \"Web and blocked probes\": {\"kind\":\"constant\",\"ratePerSec\":8,\"durationMs\":6000} from \"visitors\"; {\"kind\":\"constant\",\"ratePerSec\":2,\"durationMs\":6000} from \"probes\"; timeline=[{\"atMs\":2000,\"action\":{\"do\":\"note\",\"text\":\"Blocked is a firewall decision, separate from processing failures and lost messages. All capacities here are illustrative device presets.\",\"focus\":[\"firewall\",\"admin\"]}}]; expectations=[{\"id\":\"database-processed-end\",\"label\":\"database: processed == 48\",\"metric\":{\"node\":\"database\",\"field\":\"processed\"},\"op\":\"==\",\"value\":48,\"when\":\"end\"},{\"id\":\"admin-processed-end\",\"label\":\"admin: processed == 0\",\"metric\":{\"node\":\"admin\",\"field\":\"processed\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"firewall-blocked-end\",\"label\":\"firewall: blocked == 12\",\"metric\":{\"node\":\"firewall\",\"field\":\"blocked\"},\"op\":\"==\",\"value\":12,\"when\":\"end\"},{\"id\":\"firewall-dropped-always\",\"label\":\"firewall: dropped == 0\",\"metric\":{\"node\":\"firewall\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]\nsimulation \"web-only\" \"Web-only baseline\": {\"kind\":\"constant\",\"ratePerSec\":8,\"durationMs\":6000} from \"visitors\"; timeline=[]; expectations=[{\"id\":\"database-processed-end\",\"label\":\"database: processed == 48\",\"metric\":{\"node\":\"database\",\"field\":\"processed\"},\"op\":\"==\",\"value\":48,\"when\":\"end\"},{\"id\":\"firewall-blocked-end\",\"label\":\"firewall: blocked == 0\",\"metric\":{\"node\":\"firewall\",\"field\":\"blocked\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"}]"
+  }
+}

@@ -83,3 +83,21 @@ describe("Tab's order with boundaries", () => {
     ]);
   });
 });
+
+it.each(["LR", "TB"] as const)(
+  "Tab meets ancestors before descendants in %s even without direct node members",
+  (direction) => {
+    const items = [card("node", 0, 0)];
+    const child = { ...card("child", 100, 100), members: ["node"] };
+    const parent = { ...card("parent", 200, 200), members: ["child"] };
+    const emptyChild = { ...card("emptyChild", 400, 400), members: [] };
+    const emptyParent = { ...card("emptyParent", 500, 500), members: ["emptyChild"] };
+    expect(tabOrder(items, [child, parent, emptyChild, emptyParent], direction)).toEqual([
+      "parent",
+      "child",
+      "node",
+      "emptyParent",
+      "emptyChild",
+    ]);
+  },
+);

@@ -91,6 +91,19 @@ latencies.
 
 ### Deliberately not pinned
 
+**TODO (`test/parity-browser-stable`, PR #120):** once the browser measurement fix lands, remove the
+precise deferrals in `tests/parity/browser/render.parity.ts` and record the eight missing cases:
+
+- Opening canvas renders: `contoso-dmz`, `shared-api-quotas`.
+- Auto-layout **and** Tidy results for each of `contoso-dmz`, `measured-order-capacity`,
+  `partitions-vs-subscriptions`, `serverless-burst-buffer`, `shared-api-quotas`, `shared-worker-pool`
+  (six cases, each pinning both operations).
+
+Verify settled measured boxes, routed edges, text and labels before recording. The other four showcase
+opening renders, every existing browser case, all six showcases' Node goldens and production Live tests
+stay enabled. This is a temporary coverage gap, not a permanent output exclusion; do not re-record
+existing goldens to accept measurement drift.
+
 - **Built code.** Minified bundles, chunk names, the viewer's script and style, the skill's `app.mjs` and `inject.mjs`
   and the released viewer template: a refactor changes them by design. What they _do_ is pinned (the HTML file is
   opened in a browser, the skill's scripts are run). The skill's generated files are pinned as committed;
@@ -201,6 +214,15 @@ the goldens with the code, and explains the diff in its description: which areas
 follows from the feature. Anything the description can't explain is a regression to fix, not a golden to accept.
 New behaviour gets new inputs (a corpus diagram, a saved simulation) so its output is pinned from the start. The
 example below is the first one.
+
+### Nested boundaries review (#115): what changed and why
+
+The review fixes change only `node/i18n/catalogs.json`: `edit.annotationLimit` adds the
+boundary-to-zone annotation-count rejection and its recovery guidance. Every catalog's message
+count increases by one and the `edit` area hash changes; all 37 translated catalogs include the new
+message, so fallback counts stay unchanged. No diagram, simulation, layout, export, image or browser golden changes. The
+hierarchy traversal improvements preserve all recorded output. The refreshed skill viewer and plugin
+version are checked against the committed release without changing the skill reference goldens.
 
 ### Planning P3 (#105): what changed and why
 

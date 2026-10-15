@@ -1,0 +1,24 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Shared API and token quotas",
+    "direction": "TB",
+    "nodes": [
+      { "id": "questions", "stencil": "generic.service", "label": "Acme help desk", "sublabel": "2 questions/s", "x": 40, "y": 40 },
+      { "id": "gateway", "stencil": "generic.service", "label": "Assistant gateway", "sublabel": "Account preset · assumed latency", "x": 40, "y": 200 },
+      { "id": "assistant", "stencil": "generic.service", "label": "Answer and review", "sublabel": "Each question makes two model calls", "x": 200, "y": 360 },
+      { "id": "answer", "stencil": "generic.service", "label": "Answer model", "sublabel": "500 tokens/call · shared project", "x": 40, "y": 520 },
+      { "id": "review", "stencil": "generic.service", "label": "Review model", "sublabel": "Same 6,000 TPM / 60 RPM budget", "x": 360, "y": 520 },
+      { "id": "billing", "stencil": "generic.service", "label": "Acme billing", "sublabel": "12 payment calls/s", "x": 360, "y": 40 },
+      { "id": "payments", "stencil": "generic.service", "label": "Payment API", "sublabel": "Fictional local cap: 5 requests/s", "x": 360, "y": 200 }
+    ],
+    "edges": [
+      { "id": "e1-questions-gateway", "from": "questions", "to": "gateway", "label": "Question", "kind": "sync" },
+      { "id": "e2-gateway-assistant", "from": "gateway", "to": "assistant", "label": "Answer", "kind": "sync" },
+      { "id": "e3-assistant-answer", "from": "assistant", "to": "answer", "label": "Generate", "kind": "sync" },
+      { "id": "e4-assistant-review", "from": "assistant", "to": "review", "label": "Review", "kind": "sync" },
+      { "id": "e5-billing-payments", "from": "billing", "to": "payments", "label": "Charge", "kind": "sync" }
+    ]
+  }
+}

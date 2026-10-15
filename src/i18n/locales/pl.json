@@ -1169,6 +1169,7 @@
   "gallery.missingIcons": " {count, plural, few {{count} bez ikony} many {{count} bez ikony} one {{count} bez ikony} other {{count} bez ikony}}",
   "edit.finiteGeometry": "geometria musi być skończona.",
   "edit.coordinateBudget": "poza limitem współrzędnych. Przesuń zaznaczenie bliżej początku.",
+  "edit.annotationLimit": "Nie można przekształcić tej granicy: diagram zawiera już {limit} adnotacji. Usuń adnotację i spróbuj ponownie.",
   "edit.annotationSize": "rozmiar musi wynosić od 1 do {limit} pikseli. Wybierz mniejsze zaznaczenie.",
   "broker.partitions": "Partycje",
   "broker.shards": "Shardy",

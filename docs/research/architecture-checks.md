@@ -1209,7 +1209,7 @@ come from the existing migration materialising implicit counts, not a new P2 red
 
 ## Planning P3: precision gate (2026-10-14)
 
-The current repository has **17 public examples**, rather than the plan snapshot's 16. The complete
+At the P3 gate there were **17 public examples**, rather than the plan snapshot's 16. The complete
 legacy finding lists and simulation evidence remain pinned in `src/checks/examples.test.ts`.
 P3's additional precision assertion compares all findings and severities after applying p3 to the
 same materialized p2 document: no new findings. P2's reviewed six migration differences above remain
@@ -1219,3 +1219,25 @@ Managed admission is included in the shared capacity analysis and capacity check
 API budget can raise the existing capacity finding, but its message reports possible rejection rather
 than growing backlog. Sizing skips managed nodes; no SaaS replica fix is proposed. No new architecture
 rule or severity was added, and vendor presets are chosen separately from upgrading a public example.
+
+## Public showcases: precision gate (2026-10-14)
+
+There are now **23 public examples**: the original 17 plus six invented feature showcases. Their complete
+finding lists and played evidence are pinned in `src/checks/examples.test.ts`. The historical migration
+gates still cover the 17 legacy documents; the new p3 documents are not downgraded to test migrations.
+No check is disabled or ignored, and none of the original finding lists changed.
+
+| New public example          | Saved findings                                            | Precision assessment                                                                                                                                                                                                                                                              |
+| --------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| partitions-vs-subscriptions | warning `capacity:log-readers`                            | True: 6 events/s exceed three assigned one-slot readers at 1 s each (3/s). Five of eight replicas sit idle; both SNS subscriptions can use all eight. Saved partition expansion removes the bottleneck.                                                                           |
+| shared-api-quotas           | warning `capacity:answer`                                 | True: both model boxes spend the same fictional 6,000 TPM budget at 500 tokens/call. The token budget binds before the shared RPM budget. Playback also rejects payment calls above the independent fictional 5/s cap. This warning describes refusal, not SaaS backlog.          |
+| serverless-burst-buffer     | warning `capacity:direct`; suggestion `dead-letter:queue` | True: 6 direct calls/s exceed two one-second executions. The bounded invoker paces queued work at 2/s; its suggested DLQ is optional failure isolation, not a claim of lost jobs in the saved runs. The burst finishes all 20 queued jobs without managed rejection on that path. |
+| measured-order-capacity     | suggestion `dead-letter:queue`                            | No capacity warning at today's 1/s: measured payment capacity is 2/s. The 3× saved story intentionally overloads that worker and drains after input ends. The DLQ suggestion is optional hardening; no message is lost.                                                           |
+| contoso-dmz                 | none                                                      | Web requests reach storage; admin probes are blocked, not failed or dropped. Explicit two-unit HA device fleets and a two-replica app avoid false single-point claims. Device throughput presets remain illustrative.                                                             |
+| shared-worker-pool          | warning `capacity:worker`                                 | True: two 3/s input policies share four one-second slots (4/s total), with lag visible on both logs. More partitions cannot add processor slots. The second story measures faster work and drains both inputs.                                                                    |
+
+All four warnings are intentional, actionable bottlenecks: **4/4 would fix**, zero false-positive warnings.
+The two suggestions describe optional dead-letter routes and are retained, not hidden. The saved evidence
+adds no loss finding or planned-loss count. Free play exposes each default-pressure signal within eight
+simulated seconds; the measured example's overload is in its explicitly labelled 3× saved simulation.
+See [the feature inventory and verification](showcase-examples.md) and [Round 41](../DESIGN-REVIEW.md#round-41--public-feature-showcases-2026-10-14).

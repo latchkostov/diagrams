@@ -86,12 +86,15 @@ import {
   type MemberBox,
   type Rect,
 } from "../canvas/membership";
+import { memberBoxes as membershipBoxes } from "../canvas/memberBoxes";
 import { tidyLayout } from "./tidy";
 import { choiceOf } from "./relationActions";
 import { dependencyVisibility } from "../canvas/dependencyVisibility";
 import {
   planBoundaryAdoption,
-  descendantGroupIds,
+  expandGroupIds,
+  selectionSubtreeIds,
+  planBoundaryDrop,
   type GroupBox,
   type HierarchyElementBox,
 } from "../model/groupHierarchy";
@@ -224,17 +227,10 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
   const diagram = () => fromFlow(deps().meta, rf.getNodes(), rf.getEdges());
   const directMembers = (groupId: string): FlowNode[] => rf.getNodes().filter((n) => n.data.group === groupId);
   const expandSelection = (sel: Partial<Selection>, allNodes: readonly FlowNode[]) => {
-    const groupIds = new Set(sel.groupIds ?? []);
-    let expanded = true;
-    while (expanded) {
-      expanded = false;
-      for (const n of allNodes) {
-        if (isGroup(n) && n.data.group && groupIds.has(n.data.group) && !groupIds.has(n.data.groupId)) {
-          groupIds.add(n.data.groupId);
-          expanded = true;
-        }
-      }
-    }
+    const groupIds = expandGroupIds(
+      sel.groupIds ?? [],
+      allNodes.filter(isGroup).map((n) => ({ id: n.data.groupId, group: n.data.group })),
+    );
     const nodeIds = new Set(sel.nodeIds ?? []);
     for (const n of allNodes) {
       if (!isGroup(n) && n.data.group && groupIds.has(n.data.group)) {
@@ -404,8 +400,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       width: n.width ?? n.measured?.width ?? 0,
       height: n.height ?? n.measured?.height ?? 0,
     }));
-  const memberBoxes = (ns: readonly FlowNode[]): MemberBox[] =>
-    ns.filter(isDiagram).map((n) => ({ ...box(n), group: n.data.group }));
+  const memberBoxes = (ns: readonly FlowNode[]): MemberBox[] => membershipBoxes(ns, deps().nodeSize);
   /**
    * Nodes `ids` (at their new places) settled into boundaries (D12): each one in the boundary around its
    * centre, and that boundary grown to hold it when it pokes out (never onto another boundary or a node that
@@ -884,7 +879,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
           opts?.adopt ??
           (patch.x === undefined && patch.y === undefined && (patch.width !== undefined || patch.height !== undefined));
         if (shouldAdopt) {
-          const r = membershipAfterResize(id, memberBoxes(nextNodes), groupRects(nextNodes));
+          const r = membershipAfterResize(id, memberBoxes(nextNodes.filter(isDiagram)), groupRects(nextNodes));
           if (r.group.size) {
             return nextNodes.map((n) => (r.group.has(n.id) ? withGroup(n, r.group.get(n.id)) : n));
           }
@@ -1189,9 +1184,17 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       deps().setNodes((cur) => settled(cur, set).nodes);
       return left;
     },
+    settleBoundaryMembership: (ids) => {
+      const ns = rf.getNodes();
+      const groups = ns.filter(isGroup).map((n) => ({ ...box(n), id: n.data.groupId, group: n.data.group }));
+      const plan = planBoundaryDrop(new Set(ids), groups);
+      deps().setNodes((cur) =>
+        cur.map((n) => (isGroup(n) && plan.has(n.data.groupId) ? withGroup(n, plan.get(n.data.groupId)) : n)),
+      );
+    },
     adoptAfterResize: (groupId) => {
       const ns = rf.getNodes();
-      const r = membershipAfterResize(groupId, memberBoxes(ns), groupRects(ns));
+      const r = membershipAfterResize(groupId, memberBoxes(ns.filter(isDiagram)), groupRects(ns));
       if (!r.group.size) return { adopted: [], released: [] };
       deps().setNodes((cur) => cur.map((n) => (r.group.has(n.id) ? withGroup(n, r.group.get(n.id)) : n)));
       return { adopted: r.adopted, released: r.released };
@@ -1215,12 +1218,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
         group: g.data.group,
       }));
       const selectedGroupIds = new Set(nodes.filter(isGroup).map((g) => (g as GroupFlowNode).data.groupId));
-      const allSelectedAndDescendants = new Set(selectedGroupIds);
-      for (const gid of selectedGroupIds) {
-        for (const desc of descendantGroupIds(gid, existingGroups)) {
-          allSelectedAndDescendants.add(desc);
-        }
-      }
+      const allSelectedAndDescendants = selectionSubtreeIds(selectedGroupIds, existingGroups);
       const bArea = bounds.width * bounds.height;
       const bc = centre(bounds);
       const candidateParents = existingGroups.filter(
@@ -1244,7 +1242,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
             if (!n.data.group || !allSelectedAndDescendants.has(n.data.group)) {
               next = withGroup(n, id);
             }
-          } else if (isSelected(n)) {
+          } else if (isSelected(n) && (!n.data.group || !allSelectedAndDescendants.has(n.data.group))) {
             next = withGroup(n, id);
           }
           return next.selected ? { ...next, selected: false } : next;
@@ -1278,6 +1276,15 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       const id = uniqueId("zone", takenIds());
       const w = groupNode.width ?? groupNode.measured?.width ?? 0;
       const h = groupNode.height ?? groupNode.measured?.height ?? 0;
+      if (ns.filter(isAnnotation).length >= ANNOTATION_LIMITS.maxAnnotations) {
+        notify(t("edit.annotationLimit", { limit: ANNOTATION_LIMITS.maxAnnotations }), { kind: "error" });
+        return null;
+      }
+      const geometryError = annotationGeometryReason({ ...groupNode.position, width: w, height: h });
+      if (geometryError) {
+        notify(annotationGeometryMessage(geometryError), { kind: "error" });
+        return null;
+      }
       const tone = groupNode.data.tone;
       const toneToColor: Record<string, AnnotationColor> = {
         azure: "blue",

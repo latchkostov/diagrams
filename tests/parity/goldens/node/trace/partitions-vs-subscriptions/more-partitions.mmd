@@ -1,0 +1,15 @@
+---
+title: "OrderPlaced #1 · 1.40 s end to end · 2 copies"
+---
+sequenceDiagram
+  participant publisher as Northwind events
+  participant log as Order log
+  participant fanout as Order notifications
+  participant log_readers as Kafka readers
+  participant receipts as Receipt subscription
+  participant audit as Audit subscription
+  publisher-)log: OrderPlaced (+0.00 s)<br/>Append
+  publisher-)fanout: OrderPlaced (+0.00 s)<br/>Publish
+  log-)log_readers: OrderPlaced (+0.20 s)<br/>orders group
+  fanout-)receipts: OrderPlaced (+0.20 s)<br/>receipts
+  fanout-)audit: OrderPlaced (+0.20 s)<br/>audit

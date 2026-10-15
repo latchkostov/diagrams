@@ -1,0 +1,17 @@
+---
+title: Shared API and token quotas
+---
+flowchart TB
+  questions(["Acme help desk<br/>2 questions/s"])
+  gateway["Assistant gateway<br/>Account preset · assumed latency"]
+  assistant["Answer and review<br/>Each question makes two model calls"]
+  answer(["Answer model<br/>500 tokens/call · shared project"])
+  review(["Review model<br/>Same 6,000 TPM / 60 RPM budget"])
+  billing(["Acme billing<br/>12 payment calls/s"])
+  payments(["Payment API<br/>Fictional local cap: 5 requests/s"])
+  questions -->|"Question"| gateway
+  gateway -->|"Answer"| assistant
+  assistant -->|"Generate"| answer
+  assistant -->|"Review"| review
+  billing -->|"Charge"| payments
+%% diagrams:{"v":1,"description":"Acme answers and reviews questions against one fictional 6,000-token/minute project budget, while billing calls meet a separate five-request/second payment cap.","nodes":{"questions":["questions","client.browser"],"gateway":["gateway","aws.api-gateway"],"assistant":["assistant","service.python"],"answer":["answer","openai"],"review":["review","openai"],"billing":["billing","generic.webhook"],"payments":["payments","stripe"]},"edges":["ask","assist","generate","review-answer","charge"],"relations":{}}

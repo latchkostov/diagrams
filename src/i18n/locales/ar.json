@@ -1169,6 +1169,7 @@
   "gallery.missingIcons": " {count, plural, few {{count} بلا أيقونة} many {{count} بلا أيقونة} one {{count} بلا أيقونة} other {{count} بلا أيقونة} two {{count} بلا أيقونة} zero {{count} بلا أيقونة}}",
   "edit.finiteGeometry": "يجب أن تكون أبعادها وإحداثياتها محدودة.",
   "edit.coordinateBudget": "خارج نطاق الإحداثيات. انقل التحديد أقرب إلى نقطة الأصل.",
+  "edit.annotationLimit": "تعذر تحويل هذه الحدود: يحتوي المخطط بالفعل على {limit} تعليق توضيحي. احذف تعليقًا توضيحيًا وحاول مرة أخرى.",
   "edit.annotationSize": "يجب أن يكون حجمها بين 1 و{limit} بكسل. اختر تحديدًا أصغر.",
   "broker.partitions": "الأقسام",
   "broker.shards": "الأجزاء",

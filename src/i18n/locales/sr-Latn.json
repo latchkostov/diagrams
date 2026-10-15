@@ -1169,6 +1169,7 @@
   "gallery.missingIcons": " {count, plural, one {{count} bez ikone} few {{count} bez ikone} other {{count} bez ikone}}",
   "edit.finiteGeometry": "geometrija mora da bude konačna.",
   "edit.coordinateBudget": "van dozvoljenog opsega koordinata. Pomerite izbor bliže koordinatnom početku.",
+  "edit.annotationLimit": "Ova granica ne može da se konvertuje: dijagram već ima {limit} anotacija. Uklonite anotaciju i pokušajte ponovo.",
   "edit.annotationSize": "veličina mora da bude između 1 i {limit} piksela. Izaberite manju oblast.",
   "broker.partitions": "Particije",
   "broker.shards": "Shardovi",

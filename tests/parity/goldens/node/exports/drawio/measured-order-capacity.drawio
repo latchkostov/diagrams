@@ -1,0 +1,57 @@
+<mxfile host="Diagrams" agent="Diagrams" version="24.0.0" type="device">
+  <diagram id="dg-gpb7a3" name="Measured order capacity">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <object id="0" dg_format="diagrams/v2" dg_description="Northwind compares the pinned processor lesson with a measured one-second payment workload: today fits, but at three times traffic the two-slot payment worker saturates." dg_direction="TB" dg_simulations="[{&quot;id&quot;:&quot;today&quot;,&quot;title&quot;:&quot;Measured baseline&quot;,&quot;description&quot;:&quot;One order a second fits the measured two-per-second payment budget.&quot;,&quot;seed&quot;:41,&quot;scale&quot;:1,&quot;traffic&quot;:[{&quot;id&quot;:&quot;orders&quot;,&quot;node&quot;:&quot;orders&quot;,&quot;messageType&quot;:&quot;OrderPlaced&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:1,&quot;durationMs&quot;:6000}}],&quot;timeline&quot;:[],&quot;expectations&quot;:[{&quot;id&quot;:&quot;ledger-processed-end&quot;,&quot;label&quot;:&quot;ledger: processed == 6&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;ledger&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:6,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;queue-lag-end&quot;,&quot;label&quot;:&quot;queue: lag == 0&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;queue&quot;,&quot;field&quot;:&quot;lag&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;end&quot;}]},{&quot;id&quot;:&quot;triple&quot;,&quot;title&quot;:&quot;Three times the orders&quot;,&quot;description&quot;:&quot;Traffic is multiplied by three, capacity stays fixed. The default intake has headroom; the measured payment worker is the bottleneck.&quot;,&quot;seed&quot;:41,&quot;scale&quot;:1,&quot;traffic&quot;:[{&quot;id&quot;:&quot;orders&quot;,&quot;node&quot;:&quot;orders&quot;,&quot;messageType&quot;:&quot;OrderPlaced&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:1,&quot;durationMs&quot;:8000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:1000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Three orders/s exceed the measured 2/s payment capacity. Show capacity or open Payment worker Properties to see the arithmetic.&quot;,&quot;focus&quot;:[&quot;payment-worker&quot;,&quot;queue&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;queue-lag-at&quot;,&quot;label&quot;:&quot;queue: lag &gt; 0&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;queue&quot;,&quot;field&quot;:&quot;lag&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;at&quot;,&quot;atMs&quot;:6000},{&quot;id&quot;:&quot;ledger-processed-end&quot;,&quot;label&quot;:&quot;ledger: processed == 24&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;ledger&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:24,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;queue-dropped-always&quot;,&quot;label&quot;:&quot;queue: dropped == 0&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;queue&quot;,&quot;field&quot;:&quot;dropped&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;always&quot;}],&quot;multipliers&quot;:{&quot;traffic&quot;:3}}]">
+          <mxCell />
+        </object>
+        <mxCell id="1" parent="0" />
+        <object id="dg-n-orders" label="Northwind orders&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;1 order/s today&lt;/span&gt;" dg_id="orders" dg_stencil="generic.webhook" dg_props="{&quot;ratePerSec&quot;:1,&quot;messageType&quot;:&quot;OrderPlaced&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#EC48991A;strokeColor=#EC4899;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="60" y="46" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-intake" label="Order intake&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Pinned lesson: 1 × 4 / 0.25 s&lt;/span&gt;" dg_id="intake" dg_stencil="service.node" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#5FA04E1A;strokeColor=#5FA04E;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="60" y="206" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-queue" label="Payment jobs&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Buffer before measured work&lt;/span&gt;" dg_id="queue" dg_stencil="generic.queue" dg_props="{}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#F59E0B1A;strokeColor=#F59E0B;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="60" y="366" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-payment-worker" label="Payment worker&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Measured: 2 × 1 / 1 s = 2/s&lt;/span&gt;" dg_id="payment-worker" dg_stencil="service.java" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:2,&quot;concurrency&quot;:1,&quot;latencyMs&quot;:1000,&quot;jitter&quot;:0,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E76F001A;strokeColor=#E76F00;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="60" y="526" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-ledger" label="Northwind ledger&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Completed payments&lt;/span&gt;" dg_id="ledger" dg_stencil="postgres" dg_props="{&quot;latencyMs&quot;:1}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3367911A;strokeColor=#336791;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="60" y="686" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-submit" label="Order" dg_id="submit" dg_kind="async" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-orders" target="dg-n-intake">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-queue-payment" label="Payment job" dg_id="queue-payment" dg_kind="async" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-intake" target="dg-n-queue">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-pay" label="Workers" dg_id="pay" dg_kind="async" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-queue" target="dg-n-payment-worker">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-record" label="Record" dg_id="record" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-payment-worker" target="dg-n-ledger">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

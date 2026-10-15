@@ -70,13 +70,20 @@ function luminanceToRgbChannel(lum: number): number {
 }
 
 /** Returns the hex color if it meets AA contrast (>= 4.5) against the background luminance, or fallback if illegible. */
-export function accessibleColor(hex: string, bgLuminance: number, fallback: string): string {
+export function accessibleColor(
+  hex: string,
+  background: number | Pick<RgbaColor, "r" | "g" | "b">,
+  fallback: string,
+): string {
+  const bgLuminance =
+    typeof background === "number" ? background : relativeLuminance(background.r, background.g, background.b);
   const rgba = parseHexRgba(hex);
   if (!rgba) return fallback;
   const bg = luminanceToRgbChannel(bgLuminance);
-  const blendedR = Math.round(rgba.r * rgba.a + bg * (1 - rgba.a));
-  const blendedG = Math.round(rgba.g * rgba.a + bg * (1 - rgba.a));
-  const blendedB = Math.round(rgba.b * rgba.a + bg * (1 - rgba.a));
+  const channels = typeof background === "number" ? { r: bg, g: bg, b: bg } : background;
+  const blendedR = Math.round(rgba.r * rgba.a + channels.r * (1 - rgba.a));
+  const blendedG = Math.round(rgba.g * rgba.a + channels.g * (1 - rgba.a));
+  const blendedB = Math.round(rgba.b * rgba.a + channels.b * (1 - rgba.a));
   const lum = relativeLuminance(blendedR, blendedG, blendedB);
   return contrastRatio(lum, bgLuminance) >= 4.5 ? hex : fallback;
 }

@@ -1,0 +1,26 @@
+---
+title: Contoso DMZ
+---
+flowchart TB
+  subgraph g_dmz ["DMZ"]
+    firewall["Firewall pair<br/>Allow web · deny admin"]
+    adc["BIG-IP pair<br/>Web VIP · active-standby"]
+  end
+  subgraph g_trusted ["Trusted services"]
+    switch["Services switch<br/>Branch preset · active-active"]
+    app["Contoso web app<br/>2 replicas · 8 slots"]
+    database[("Orders database<br/>Trusted zone")]
+  end
+  visitors(["Contoso visitors<br/>8 web requests/s"])
+  probes(["Security exercise<br/>2 admin probes/s"])
+  router["Edge router pair<br/>Branch preset · active-active"]
+  admin[("Admin database<br/>Denied probe destination")]
+  visitors -->|"Web"| router
+  probes -->|"Probe"| router
+  router -->|"Inspect"| firewall
+  firewall -->|"Allow web"| adc
+  firewall -->|"Deny admin"| admin
+  adc -->|"Forward"| switch
+  switch -->|"Web"| app
+  app -->|"Query"| database
+%% diagrams:{"v":1,"description":"Contoso web traffic crosses a router, firewall, BIG-IP and switch to the app and database; a separate probe is blocked at the firewall, never counted as a failure.","nodes":{"visitors":["visitors","client.browser"],"probes":["probes","client.team"],"router":["router","cisco.isr"],"firewall":["firewall","paloalto.ngfw"],"adc":["adc","f5.bigip"],"switch":["switch","cisco.nexus"],"app":["app","service.dotnet"],"database":["database","postgres"],"admin":["admin","postgres"]},"groups":{"g_dmz":["dmz","onprem"],"g_trusted":["trusted","onprem"]},"edges":["web-in","probe-in","perimeter","allow-web","deny-admin","to-switch","to-app","to-db"],"relations":{}}

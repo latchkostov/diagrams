@@ -68,7 +68,10 @@ function Stage({ diagram }: { diagram: DiagramFile }) {
   const base = useContext(DiagramContext);
   const [editing, setEditing] = useState<unknown>(null);
   const direction = flow.meta.direction ?? "LR";
-  const ui = useMemo(() => ({ ...base, direction, editing, setEditing }) as Ui, [base, direction, editing]);
+  const ui = useMemo(
+    () => ({ ...base, theme, direction, editing, setEditing }) as Ui,
+    [base, theme, direction, editing],
+  );
   const opts = { style: edgeStyle, direction, captions: nodeVariant === "iconOnly" } as const;
 
   return (

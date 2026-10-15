@@ -1169,6 +1169,7 @@
   "gallery.missingIcons": " {count, plural, one {{count} का आइकन नहीं है} other {{count} का आइकन नहीं है}}",
   "edit.finiteGeometry": "इसकी ज्यामिति सीमित होनी चाहिए।",
   "edit.coordinateBudget": "यह निर्देशांक सीमा के बाहर है। चयन को मूल बिंदु के पास ले जाएँ।",
+  "edit.annotationLimit": "इस बाउंड्री को बदला नहीं जा सका: डायग्राम में पहले से {limit} एनोटेशन हैं। एक एनोटेशन हटाएँ और फिर से कोशिश करें।",
   "edit.annotationSize": "इसका आकार 1 से {limit} पिक्सेल के बीच होना चाहिए। छोटा चयन चुनें।",
   "broker.partitions": "पार्टिशन",
   "broker.shards": "शार्ड",

@@ -1,0 +1,224 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "visitors": { "replicas": [1, 1, 0] },
+        "probes": { "replicas": [1, 1, 0] },
+        "router": { "replicas": [2, 2, 0] },
+        "firewall": { "replicas": [2, 2, 0] },
+        "adc": { "replicas": [2, 2, 0] },
+        "switch": { "replicas": [2, 2, 0] },
+        "app": { "replicas": [2, 2, 0] },
+        "database": { "replicas": [1, 1, 0] },
+        "admin": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 12,
+      "nodes": {
+        "visitors": { "processed": 80, "throughput": 8.487516328774529, "replicas": [1, 1, 0] },
+        "probes": { "processed": 20, "throughput": 2.528714056021835, "replicas": [1, 1, 0] },
+        "router": { "processed": 97, "throughput": 10.046699766812242, "replicas": [2, 2, 0] },
+        "firewall": { "processed": 95, "blocked": 19, "throughput": 10.16896282606968, "replicas": [2, 2, 0] },
+        "adc": { "processed": 74, "inFlight": 1, "throughput": 7.527369926375533, "replicas": [2, 2, 0] },
+        "switch": { "processed": 73, "throughput": 8.197629524322517, "replicas": [2, 2, 0] },
+        "app": { "processed": 70, "inFlight": 1, "throughput": 7.602547160384957, "replicas": [2, 2, 0] },
+        "database": { "processed": 69, "throughput": 8.279432194509631, "replicas": [1, 1, 0] },
+        "admin": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 12,
+      "nodes": {
+        "visitors": { "processed": 160, "throughput": 8.487901661419711, "replicas": [1, 1, 0] },
+        "probes": { "processed": 40, "throughput": 2.528828859462367, "replicas": [1, 1, 0] },
+        "router": { "processed": 197, "throughput": 10.047316773728186, "replicas": [2, 2, 0] },
+        "firewall": { "processed": 195, "blocked": 39, "throughput": 10.169724013964721, "replicas": [2, 2, 0] },
+        "adc": { "processed": 154, "inFlight": 1, "throughput": 7.5280934310266705, "replicas": [2, 2, 0] },
+        "switch": { "processed": 153, "throughput": 8.1985220961369, "replicas": [2, 2, 0] },
+        "app": { "processed": 150, "inFlight": 1, "throughput": 7.603752006309996, "replicas": [2, 2, 0] },
+        "database": { "processed": 149, "throughput": 8.280918586492977, "replicas": [1, 1, 0] },
+        "admin": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 12,
+      "nodes": {
+        "visitors": { "processed": 240, "throughput": 8.48790167891379, "replicas": [1, 1, 0] },
+        "probes": { "processed": 60, "throughput": 2.528828864674435, "replicas": [1, 1, 0] },
+        "router": { "processed": 297, "throughput": 10.047316801740257, "replicas": [2, 2, 0] },
+        "firewall": { "processed": 295, "blocked": 59, "throughput": 10.169724048522601, "replicas": [2, 2, 0] },
+        "adc": { "processed": 234, "inFlight": 1, "throughput": 7.528093463873727, "replicas": [2, 2, 0] },
+        "switch": { "processed": 233, "throughput": 8.198522136659594, "replicas": [2, 2, 0] },
+        "app": { "processed": 230, "inFlight": 1, "throughput": 7.603752061009915, "replicas": [2, 2, 0] },
+        "database": { "processed": 229, "throughput": 8.28091865397507, "replicas": [1, 1, 0] },
+        "admin": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 12,
+      "nodes": {
+        "visitors": { "processed": 320, "throughput": 8.487901678914582, "replicas": [1, 1, 0] },
+        "probes": { "processed": 80, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "router": { "processed": 397, "throughput": 10.047316801741534, "replicas": [2, 2, 0] },
+        "firewall": { "processed": 395, "blocked": 79, "throughput": 10.169724048524174, "replicas": [2, 2, 0] },
+        "adc": { "processed": 314, "inFlight": 1, "throughput": 7.528093463875221, "replicas": [2, 2, 0] },
+        "switch": { "processed": 313, "throughput": 8.198522136661436, "replicas": [2, 2, 0] },
+        "app": { "processed": 310, "inFlight": 1, "throughput": 7.6037520610124005, "replicas": [2, 2, 0] },
+        "database": { "processed": 309, "throughput": 8.280918653978134, "replicas": [1, 1, 0] },
+        "admin": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 12,
+      "nodes": {
+        "visitors": { "processed": 400, "throughput": 8.487901678914582, "replicas": [1, 1, 0] },
+        "probes": { "processed": 100, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "router": { "processed": 497, "throughput": 10.047316801741534, "replicas": [2, 2, 0] },
+        "firewall": { "processed": 495, "blocked": 99, "throughput": 10.169724048524174, "replicas": [2, 2, 0] },
+        "adc": { "processed": 394, "inFlight": 1, "throughput": 7.528093463875221, "replicas": [2, 2, 0] },
+        "switch": { "processed": 393, "throughput": 8.198522136661436, "replicas": [2, 2, 0] },
+        "app": { "processed": 390, "inFlight": 1, "throughput": 7.6037520610124005, "replicas": [2, 2, 0] },
+        "database": { "processed": 389, "throughput": 8.280918653978134, "replicas": [1, 1, 0] },
+        "admin": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 12,
+      "nodes": {
+        "visitors": { "processed": 480, "throughput": 8.487901678914582, "replicas": [1, 1, 0] },
+        "probes": { "processed": 120, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "router": { "processed": 597, "throughput": 10.047316801741534, "replicas": [2, 2, 0] },
+        "firewall": { "processed": 595, "blocked": 119, "throughput": 10.169724048524174, "replicas": [2, 2, 0] },
+        "adc": { "processed": 474, "inFlight": 1, "throughput": 7.528093463875221, "replicas": [2, 2, 0] },
+        "switch": { "processed": 473, "throughput": 8.198522136661436, "replicas": [2, 2, 0] },
+        "app": { "processed": 470, "inFlight": 1, "throughput": 7.6037520610124005, "replicas": [2, 2, 0] },
+        "database": { "processed": 469, "throughput": 8.280918653978134, "replicas": [1, 1, 0] },
+        "admin": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 12,
+    "real": {
+      "visitors": { "processed": 480, "throughput": 8.487901678914582, "replicas": [1, 1, 0] },
+      "probes": { "processed": 120, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+      "router": { "processed": 597, "throughput": 10.047316801741534, "replicas": [2, 2, 0] },
+      "firewall": { "processed": 595, "blocked": 119, "throughput": 10.169724048524174, "replicas": [2, 2, 0] },
+      "adc": { "processed": 474, "inFlight": 1, "throughput": 7.528093463875221, "replicas": [2, 2, 0] },
+      "switch": { "processed": 473, "throughput": 8.198522136661436, "replicas": [2, 2, 0] },
+      "app": { "processed": 470, "inFlight": 1, "throughput": 7.6037520610124005, "replicas": [2, 2, 0] },
+      "database": { "processed": 469, "throughput": 8.280918653978134, "replicas": [1, 1, 0] },
+      "admin": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "web-in": 478, "probe-in": 119, "perimeter": 595, "allow-web": 475, "deny-admin": 0, "to-switch": 473, "to-app": 471, "to-db": 469 }
+  },
+  "events": {
+    "total": 6877,
+    "byKind": { "process": 3678, "deliver": 3080, "block": 119 },
+    "byNode": {
+      "visitors": { "process": 480 },
+      "router": { "deliver": 597, "process": 597 },
+      "probes": { "process": 120 },
+      "firewall": { "deliver": 595, "process": 595, "block": 119 },
+      "adc": { "deliver": 475, "process": 474 },
+      "switch": { "deliver": 473, "process": 473 },
+      "app": { "deliver": 471, "process": 470 },
+      "database": { "deliver": 469, "process": 469 }
+    },
+    "perSecond": [
+      "3b790fe6562c",
+      "473729c0ab0d",
+      "68b6aa156d37",
+      "e94d9e786f49",
+      "522da6ba6b86",
+      "dd97dd8e6680",
+      "366af6a85ea9",
+      "2661cee821e8",
+      "c81fce222b92",
+      "93ffe3ad56b6",
+      "eee51bcf7cab",
+      "9bbe16807aff",
+      "8b91d3261370",
+      "0712cf848182",
+      "f23bf283d765",
+      "75a6164a644b",
+      "618653482309",
+      "0d1219c1b777",
+      "5ada1b7ebee9",
+      "58fe52ccf8c6",
+      "2720f680ee1b",
+      "57e7e3c1df9c",
+      "b28f6f2b6088",
+      "6c1c3d9ac9f7",
+      "4d955413714a",
+      "a2741818a58c",
+      "f117947317f2",
+      "5ab0b124ad00",
+      "7e3e5de62938",
+      "a83f8f42c996",
+      "d9eb12f0dafa",
+      "b7fd4db12d02",
+      "1a6536f22e6d",
+      "002d64340d56",
+      "801f4252a186",
+      "d6129f13d615",
+      "aca93cd67119",
+      "6bb5912c00da",
+      "ace9f7348585",
+      "dde2521fc5b9",
+      "3dd85f431c78",
+      "999059c3ccee",
+      "44bf4b7ec23b",
+      "6590f77b3f7e",
+      "00f0f6f0ace2",
+      "88844554512c",
+      "aa0217f2d108",
+      "2afaad41dcbb",
+      "f62fef10e547",
+      "39b0a498ccd8",
+      "e0c24357a187",
+      "45e2f11b76e8",
+      "6a00e2b89dd1",
+      "2a8a24454454",
+      "43efb8629f17",
+      "d7ff61e27adb",
+      "99cd4a16edaf",
+      "5d0388952b50",
+      "73941bf7daa4",
+      "b84978570dba",
+      "f1242862dc50"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 588, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 119, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 588, "min": 420, "mean": 1161.7857142857142, "p50": 1350, "p90": 1350, "max": 1350 },
+    "waitMs": {
+      "router": { "count": 588, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "firewall": { "count": 588, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "adc": { "count": 469, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "switch": { "count": 469, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "app": { "count": 469, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "database": { "count": 469, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "router": { "count": 588, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "firewall": { "count": 588, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "adc": { "count": 469, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "switch": { "count": 469, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "app": { "count": 469, "min": 100, "mean": 100, "p50": 100, "p90": 100, "max": 100 },
+      "database": { "count": 469, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    }
+  }
+}

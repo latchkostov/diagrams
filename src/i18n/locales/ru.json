@@ -1169,6 +1169,7 @@
   "gallery.missingIcons": " {count, plural, few {{count} без значка} many {{count} без значка} one {{count} без значка} other {{count} без значка}}",
   "edit.finiteGeometry": "геометрия должна иметь конечные значения.",
   "edit.coordinateBudget": "за пределами диапазона координат. Переместите выделение ближе к началу координат.",
+  "edit.annotationLimit": "Не удалось преобразовать эту границу: в схеме уже {limit} аннотаций. Удалите аннотацию и повторите попытку.",
   "edit.annotationSize": "размер должен быть от 1 до {limit} пикселей. Выберите меньше элементов.",
   "broker.partitions": "Партиции",
   "broker.shards": "Шарды",

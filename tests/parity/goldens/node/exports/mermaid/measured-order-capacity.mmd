@@ -1,0 +1,15 @@
+---
+title: Measured order capacity
+---
+flowchart TB
+  orders(["Northwind orders<br/>1 order/s today"])
+  intake["Order intake<br/>Pinned lesson: 1 × 4 / 0.25 s"]
+  queue["Payment jobs<br/>Buffer before measured work"]
+  payment_worker["Payment worker<br/>Measured: 2 × 1 / 1 s = 2/s"]
+  ledger[("Northwind ledger<br/>Completed payments")]
+  orders -.->|"Order"| intake
+  intake -.->|"Payment job"| queue
+  queue -.->|"Workers"| payment_worker
+  payment_worker -->|"Record"| ledger
+  linkStyle 0,1,2 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"Northwind compares the pinned processor lesson with a measured one-second payment workload: today fits, but at three times traffic the two-slot payment worker saturates.","nodes":{"orders":["orders","generic.webhook"],"intake":["intake","service.node"],"queue":["queue","generic.queue"],"payment_worker":["payment-worker","service.java"],"ledger":["ledger","postgres"]},"edges":["submit","queue-payment","pay","record"],"relations":{}}

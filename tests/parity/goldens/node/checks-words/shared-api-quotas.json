@@ -1,0 +1,23 @@
+{
+  "summary": "1 warning, 0 suggestions.",
+  "findings": {
+    "capacity:answer": {
+      "title": "Answer model can't keep up",
+      "message": "At the diagram's own rates, it gets 2/s and handles 0.1/s (2000%): 1.9/s may be rejected.",
+      "rationale": "Demand above what a service can handle never drains: latency and backlog grow until something times out. Live view's Show capacity has the same numbers.",
+      "shownMessage": "At the diagram's own rates, it gets 2/s and handles 0.1/s (2000%): 1.9 req/s may be rejected."
+    }
+  },
+  "agentReport": {
+    "findings": [
+      { "id": "capacity:answer", "rule": "capacity", "severity": "warning", "title": "Answer model can't keep up", "message": "At the diagram's own rates, it gets 2/s and handles 0.1/s (2000%): 1.9/s may be rejected.", "targets": ["answer"] }
+    ],
+    "summary": "1 warning, 0 suggestions."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      { "id": "capacity:answer", "rule": "capacity", "severity": "warning", "title": "Answer model can't keep up", "message": "At the diagram's own rates, it gets 2/s and handles 0.1/s (2000%): 1.9/s may be rejected.", "targets": ["answer"] }
+    ],
+    "summary": "1 warning, 0 suggestions."
+  }
+}

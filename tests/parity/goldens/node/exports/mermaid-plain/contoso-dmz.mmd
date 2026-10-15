@@ -1,0 +1,25 @@
+---
+title: Contoso DMZ
+---
+flowchart TB
+  subgraph g_dmz ["DMZ"]
+    firewall["Firewall pair<br/>Allow web · deny admin"]
+    adc["BIG-IP pair<br/>Web VIP · active-standby"]
+  end
+  subgraph g_trusted ["Trusted services"]
+    switch["Services switch<br/>Branch preset · active-active"]
+    app["Contoso web app<br/>2 replicas · 8 slots"]
+    database[("Orders database<br/>Trusted zone")]
+  end
+  visitors(["Contoso visitors<br/>8 web requests/s"])
+  probes(["Security exercise<br/>2 admin probes/s"])
+  router["Edge router pair<br/>Branch preset · active-active"]
+  admin[("Admin database<br/>Denied probe destination")]
+  visitors -->|"Web"| router
+  probes -->|"Probe"| router
+  router -->|"Inspect"| firewall
+  firewall -->|"Allow web"| adc
+  firewall -->|"Deny admin"| admin
+  adc -->|"Forward"| switch
+  switch -->|"Web"| app
+  app -->|"Query"| database

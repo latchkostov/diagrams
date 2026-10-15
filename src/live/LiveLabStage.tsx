@@ -54,8 +54,8 @@ function Stage({ diagram, initial, presenting = false }: LiveLabStageProps) {
   const base = useContext(DiagramContext);
   const [editing, setEditing] = useState<InlineEdit | null>(null);
   const ui = useMemo(
-    () => ({ ...base, direction: flow.meta.direction ?? "LR", editing, setEditing }) as Ui,
-    [base, flow.meta.direction, editing],
+    () => ({ ...base, theme, direction: flow.meta.direction ?? "LR", editing, setEditing }) as Ui,
+    [base, theme, flow.meta.direction, editing],
   );
 
   return (

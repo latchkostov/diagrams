@@ -1169,6 +1169,7 @@
   "gallery.missingIcons": " {count, plural, one {{count} simge eksik} other {{count} simge eksik}}",
   "edit.finiteGeometry": "geometrisi sonlu olmalıdır.",
   "edit.coordinateBudget": "koordinat sınırının dışında. Seçimi başlangıç noktasına yaklaştırın.",
+  "edit.annotationLimit": "Bu sınır dönüştürülemiyor: diyagramda zaten {limit} ek açıklama var. Bir ek açıklamayı kaldırıp tekrar deneyin.",
   "edit.annotationSize": "boyutu 1 ile {limit} piksel arasında olmalıdır. Daha küçük bir seçim yapın.",
   "broker.partitions": "Partitionlar",
   "broker.shards": "Shard’lar",

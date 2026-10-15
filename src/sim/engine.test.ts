@@ -957,7 +957,12 @@ describe("real example smoke tests", () => {
     const snap = sim.snapshot();
     expect(
       Object.values(snap.nodes)
-        .filter((n) => n.role === "store" || n.role === "sink")
+        .filter(
+          (n) =>
+            n.role === "store" ||
+            n.role === "sink" ||
+            (n.role === "processor" && !input.edges.some((e) => e.from === n.id)),
+        )
         .reduce((sum, n) => sum + n.processed, 0),
     ).toBeGreaterThan(0);
     expect(snap.inSystem).toBeGreaterThanOrEqual(0);

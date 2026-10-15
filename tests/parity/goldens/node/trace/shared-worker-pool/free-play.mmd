@@ -1,0 +1,13 @@
+---
+title: "OrderPlaced #1 · 1.61 s end to end"
+---
+sequenceDiagram
+  participant orders as Acme orders
+  participant order_log as Order events
+  participant worker as Ledger worker
+  participant ledger as Acme ledger
+  orders-)order_log: OrderPlaced (+0.00 s)<br/>Order
+  order_log-)worker: OrderPlaced (+0.20 s)<br/>order-posting
+  Note over orders,ledger: ⏱ 1.00 s at Ledger worker: processing
+  worker->>ledger: OrderPlaced (+1.40 s)<br/>Record
+  ledger-->>worker: reply (+1.61 s)

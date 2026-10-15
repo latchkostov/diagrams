@@ -92,11 +92,48 @@ export async function livePaint(
 const IGNORED_CONSOLE = [/Download the React DevTools/i, /\[vite\]/i];
 
 type Fixtures = {
+  /** A Vite reload aborts in-flight actions; report the cause instead of a missing control. */
+  devReloads: undefined;
   /** Console errors + uncaught page errors collected during the test. Assert it's empty with expectNoErrors. */
   consoleErrors: string[];
 };
 
 export const test = base.extend<Fixtures>({
+  devReloads: [
+    async ({ context }, use) => {
+      const reloads: string[] = [];
+      const watch = (page: Page) => {
+        page.on("websocket", (socket) => {
+          socket.on("framereceived", ({ payload }) => {
+            let message: { type?: string; path?: string };
+            try {
+              message = JSON.parse(String(payload)) as typeof message;
+            } catch {
+              return;
+            }
+            if (message.type !== "full-reload") return;
+            const path = new URL(page.url()).pathname;
+            // Vite sends HTML changes to every page, but reloads only the matching document.
+            if (
+              !message.path?.endsWith(".html") ||
+              message.path === "/index.html" ||
+              message.path === path ||
+              `${path}index.html` === message.path
+            )
+              reloads.push(`${page.url()}: ${String(payload)}`);
+          });
+        });
+      };
+      for (const page of context.pages()) watch(page);
+      context.on("page", watch);
+      await use(undefined);
+      expect(
+        reloads,
+        "Vite reloaded a test page mid-test (dependency optimization or HMR); see dev-server stdout",
+      ).toEqual([]);
+    },
+    { auto: true },
+  ],
   consoleErrors: async ({ page }, use) => {
     const errors: string[] = [];
     page.on("console", (m) => {
@@ -107,6 +144,11 @@ export const test = base.extend<Fixtures>({
     page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
     await use(errors);
   },
+});
+
+/** DOM snapshots of the stress diagrams are test instrumentation, not application input work. */
+export const performanceTest = test.extend({
+  trace: { mode: "retain-on-failure", snapshots: false },
 });
 
 export { expect };

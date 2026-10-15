@@ -1368,7 +1368,7 @@ function AnnotationPanel({ note, editor, groups, onTextSettled }: InspectorProps
           </div>
         </Field>
       )}
-      <p className="insp-note">
+      <p className="insp-note" data-testid="inspector-annotation-hint">
         {kind === "zone"
           ? "A zone only marks an area: nodes don't move with it. Convert it to a boundary to group nodes and move them together."
           : "Annotations don't take part in the simulation."}

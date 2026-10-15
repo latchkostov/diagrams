@@ -1,0 +1,95 @@
+{
+  "run": {
+    "time": 8850,
+    "totalMs": 16000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "database-processed-end", "label": "database: processed == 48", "status": "pass", "value": 48 },
+      { "id": "firewall-blocked-end", "label": "firewall: blocked == 0", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "visitors" },
+      { "atMs": 6000, "kind": "traffic", "label": "visitors ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "visitors": { "replicas": [1, 1, 0] },
+        "probes": { "replicas": [1, 1, 0] },
+        "router": { "replicas": [2, 2, 0] },
+        "firewall": { "replicas": [2, 2, 0] },
+        "adc": { "replicas": [2, 2, 0] },
+        "switch": { "replicas": [2, 2, 0] },
+        "app": { "replicas": [2, 2, 0] },
+        "database": { "replicas": [1, 1, 0] },
+        "admin": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 8850,
+    "inSystem": 0,
+    "real": {
+      "visitors": { "processed": 48, "throughput": 0.494682066997084, "replicas": [1, 1, 0] },
+      "probes": { "replicas": [1, 1, 0] },
+      "router": { "processed": 48, "throughput": 0.6042060410426118, "replicas": [2, 2, 0] },
+      "firewall": { "processed": 48, "throughput": 0.7453957365275931, "replicas": [2, 2, 0] },
+      "adc": { "processed": 48, "throughput": 0.9195783661393874, "replicas": [2, 2, 0] },
+      "switch": { "processed": 48, "throughput": 1.13446365471703, "replicas": [2, 2, 0] },
+      "app": { "processed": 48, "throughput": 1.5313657561946419, "replicas": [2, 2, 0] },
+      "database": { "processed": 48, "throughput": 1.889212335186395, "replicas": [1, 1, 0] },
+      "admin": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "web-in": 48, "probe-in": 0, "perimeter": 48, "allow-web": 48, "deny-admin": 0, "to-switch": 48, "to-app": 48, "to-db": 48 }
+  },
+  "events": {
+    "total": 672,
+    "byKind": { "inject": 48, "process": 336, "deliver": 288 },
+    "byNode": {
+      "visitors": { "inject": 48, "process": 48 },
+      "router": { "deliver": 48, "process": 48 },
+      "firewall": { "deliver": 48, "process": 48 },
+      "adc": { "deliver": 48, "process": 48 },
+      "switch": { "deliver": 48, "process": 48 },
+      "app": { "deliver": 48, "process": 48 },
+      "database": { "deliver": 48, "process": 48 }
+    },
+    "perSecond": [
+      "cf7879d04e2e",
+      "be7e7a710c9d",
+      "9f0b02fb3acc",
+      "46cb42e286ac",
+      "e23beb0974a3",
+      "b3032331b190",
+      "a8169d692145",
+      "8208d240f81a",
+      "-"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 48, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 48, "min": 1350, "mean": 1350, "p50": 1350, "p90": 1350, "max": 1350 },
+    "waitMs": {
+      "router": { "count": 48, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "firewall": { "count": 48, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "adc": { "count": 48, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "switch": { "count": 48, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "app": { "count": 48, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "database": { "count": 48, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "router": { "count": 48, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "firewall": { "count": 48, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "adc": { "count": 48, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "switch": { "count": 48, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "app": { "count": 48, "min": 100, "mean": 100, "p50": 100, "p90": 100, "max": 100 },
+      "database": { "count": 48, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    }
+  }
+}

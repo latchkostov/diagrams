@@ -15,6 +15,13 @@ Review findings and ideas not yet scheduled. Remove items when they land.
   sampler failed at ratio 25.49 against 24 on unchanged master. Convert to the shared interleaved
   `growth()` helper and verify a deliberate quadratic regression, preserving the existing limit.
 
+## draw.io planning preservation (showcase review, 2026-10-15)
+
+- The adapter emits v1 and drops v2 planning revision and shared quota definitions. Node/workload
+  fields round-trip, but planning playback does not. Preserve the planning model in draw.io metadata
+  and report any losses; add a v2 round-trip regression and deliberately update the existing P3
+  parity corpus when implementing it. The showcase batch records this existing limitation explicitly.
+
 ## Managed admission performance (P3 review, 2026-10-14)
 
 - Compile endpoint lookups, quota authorities, signatures, keys and charge order once per configuration.

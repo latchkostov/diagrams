@@ -1,5 +1,44 @@
 # Release notes
 
+## Nested boundaries review fixes (2026-10-15)
+
+- Moving selected boundaries and wrapping them with their selected contents preserves their existing
+  nesting, including nodes and annotations. Tab reaches enclosing boundaries before their contents.
+- Boundary-to-zone conversion checks annotation geometry and count limits before changing anything,
+  with recovery guidance when refused. Annotation membership uses the same geometry in drag previews
+  and drop settlement.
+- Clipboard boundaries receive unique IDs, valid parent references and an acyclic hierarchy before
+  rendering. Indexed subtree traversal avoids repeated work during adoption, wrapping and drops;
+  operation-count regressions cover child-first hierarchies at eight times the input size.
+- Custom boundary names remain readable, with the chosen colour in the outline and swatch. Custom
+  caption colours are retained when they meet AA against the actual canvas, including theme, tint and
+  transparency; otherwise they use theme ink. Refreshed the agent viewer (plugin 1.1.21).
+- Parity: the only changed golden is `node/i18n/catalogs.json`: the new annotation-limit conversion
+  error adds one message in all 38 languages and updates their `edit` hashes.
+  Diagram, simulation, layout, export and browser goldens remain unchanged.
+
+## Showcase review fixes (2026-10-15)
+
+- Phone Live menus and expectation summaries remain visible and usable with Inputs open. Inputs stays
+  above playback and supports changing traffic and closing the panel at 390×844.
+- Viewport-wide phone controls belong to the app shell; Interactive HTML playback stays inside its
+  canvas above the export date and read-only footer. Refreshed the offline skill viewer for this fix.
+- Regression screenshots now go to ignored `tests/.output` paths. Only the curated Round 41 captures
+  remain in the showcase documentation; routine tests never refresh them.
+- Recorded the exact eight temporary browser parity deferrals in `docs/PARITY.md`, to restore after
+  `test/parity-browser-stable` lands. All 1,634 parity goldens match; these review fixes change none.
+
+## Nightly reliability (#114, 2026-10-15)
+
+- Dev tests wait for lazy tools, live sessions, file messages and export templates, intercept the dev image module as well
+  as the production chunk, and split repeated navigation sweeps into smaller tests. Large imports use
+  the navigation deadline. Vite reloads now fail explicitly, and dev-server output stays in CI logs.
+- Typing regressions compare same-run main-thread CPU work through paint, excluding worker CPU contention
+  and frame scheduling noise. Stress measurements omit DOM trace snapshots and retain the 1,500-node
+  diagram and 1.5× ratio. Simulation samples start after worker progress arrives; the checks test
+  retains its per-key run counts. Cancellation tests keep the same traffic on a smaller canvas.
+- Application output is unchanged; no parity goldens changed.
+
 ## Toolchain review fixes (2026-10-15)
 
 - CI and nightly share pnpm/Node setup, dependency caching and frozen installs. `package.json` owns
@@ -8,6 +47,29 @@
   during dependency verification, without rewriting the lockfile. App output and parity goldens are unchanged.
 - Interactive HTML parity fits the settled viewer explicitly, avoiding a startup-framing race; its
   existing goldens remain unchanged.
+
+## Public feature showcases (2026-10-14)
+
+- Six new examples: **Partitions versus subscriptions**, **Shared API and token quotas**,
+  **Serverless burst and buffer**, **Measured order capacity**, **Contoso DMZ**, and
+  **Two inputs, one worker pool**. Each has two saved simulations and uses the current planning model.
+- Watch idle Kafka readers versus full subscriptions, separate admitted/rejected API calls, shared
+  model tokens, reserved function concurrency, measured bottlenecks, firewall blocks and shared worker
+  slots. Quotas are explicitly fictional; the async function path uses a bounded invoker, without
+  claiming vendor trigger retries. Examples remain lazy and use the existing themes and Lab.
+- Public examples increase from 17 to 23, with reviewed checks and light/dark desktop/mobile screenshots
+  in [Round 41](DESIGN-REVIEW.md#round-41--public-feature-showcases-2026-10-14).
+- Phone title cards wrap the title below Live and fold long descriptions, retaining checks/reset.
+  Playback controls stay in one row above the side rails, with Inputs clear of the bar.
+- Output parity adds 205 Node goldens (all six examples' output families, individual validation
+  transcripts and the updated skill stencil-reference fingerprint) and four stable browser renders:
+  partitions, measured capacity, serverless buffering and shared workers. The
+  [complete manifest](research/showcase-examples.md) explains every added file. Original aggregate
+  skill outputs retain their explicit 17-example input cohort; no existing golden changes.
+- Deferred eight new browser measurements pending `test/parity-browser-stable`: Contoso and quota
+  initial renders, plus auto-layout/tidy for all six. Their Node goldens and production Live tests
+  remain enabled. No existing browser case is excluded.
+- Refreshed the stale offline skill viewer; plugin 1.1.20 is one patch above master.
 
 ## Self-hosting review fixes (2026-10-14)
 

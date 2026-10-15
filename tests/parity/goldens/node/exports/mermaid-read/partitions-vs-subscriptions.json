@@ -1,0 +1,23 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Partitions versus subscriptions",
+    "direction": "TB",
+    "nodes": [
+      { "id": "publisher", "stencil": "kafka.cluster", "label": "Northwind events", "sublabel": "6 events/s to both brokers", "x": 360, "y": 40 },
+      { "id": "log", "stencil": "generic.service", "label": "Order log", "sublabel": "3 partitions", "x": 200, "y": 200 },
+      { "id": "fanout", "stencil": "generic.email", "label": "Order notifications", "sublabel": "Independent subscriptions", "x": 520, "y": 200 },
+      { "id": "log_readers", "stencil": "kafka.topic", "label": "Kafka readers", "sublabel": "8 replicas · only 3 assigned", "x": 40, "y": 360 },
+      { "id": "receipts", "stencil": "generic.service", "label": "Receipt subscription", "sublabel": "8 replicas · all available", "x": 360, "y": 360 },
+      { "id": "audit", "stencil": "generic.service", "label": "Audit subscription", "sublabel": "8 replicas · independent copy", "x": 680, "y": 360 }
+    ],
+    "edges": [
+      { "id": "e1-publisher-log", "from": "publisher", "to": "log", "label": "Append", "kind": "async" },
+      { "id": "e2-publisher-fanout", "from": "publisher", "to": "fanout", "label": "Publish", "kind": "async" },
+      { "id": "e3-log-log_readers", "from": "log", "to": "log_readers", "label": "orders group", "kind": "async" },
+      { "id": "e4-fanout-receipts", "from": "fanout", "to": "receipts", "label": "receipts", "kind": "async" },
+      { "id": "e5-fanout-audit", "from": "fanout", "to": "audit", "label": "audit", "kind": "async" }
+    ]
+  }
+}

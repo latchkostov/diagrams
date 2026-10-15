@@ -239,3 +239,44 @@ it("filters, validates and remaps mixed foreground order through clipboard JSON"
   );
   expect(r.layerOrder).toEqual([r.annotations![0].id, r.nodes[0].id]);
 });
+
+describe("untrusted boundary clipboard hierarchy", () => {
+  const group = (id: string, parent: unknown) => ({
+    id,
+    label: id,
+    x: 0,
+    y: 0,
+    width: 200,
+    height: 100,
+    group: parent,
+  });
+  const paste = (groups: unknown[]) => {
+    const parsed = parsePayload(JSON.stringify({ format: CLIP_FORMAT, nodes: [], edges: [], groups }));
+    expect(parsed).not.toBeNull();
+    return remapPayload(parsed!, { nodes: new Set(), edges: new Set(), groups: new Set(["existing"]) }, { x: 0, y: 0 });
+  };
+  it.each([{ toString: null }, [], 42, "missing"])("clears unsafe parent %j before rendering", (parent) => {
+    expect(paste([group("boundary", parent)]).groups[0].group).toBeUndefined();
+  });
+  it.each([[group("a", "a")], [group("a", "b"), group("b", "c"), group("c", "a")]])(
+    "breaks cycles before insertion: %j",
+    (...groups) => {
+      const pasted = paste(groups);
+      for (const g of pasted.groups) {
+        const visited = new Set<string>();
+        let current: typeof g | undefined = g;
+        while (current) {
+          expect(visited.has(current.id)).toBe(false);
+          visited.add(current.id);
+          current = pasted.groups.find((next) => next.id === current?.group);
+        }
+      }
+    },
+  );
+  it("allocates a unique ID per duplicate boundary occurrence and deterministic references", () => {
+    const pasted = paste([group("dup", "existing"), group("dup", "existing"), group("child", "dup")]);
+    expect(new Set(pasted.groups.map((g) => g.id)).size).toBe(3);
+    expect(pasted.groups[2].group).toBe(pasted.groups[0].id);
+    expect(pasted.groups.slice(0, 2).map((g) => g.group)).toEqual(["existing", "existing"]);
+  });
+});

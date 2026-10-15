@@ -3,7 +3,7 @@ import { upgradePlanning } from "../../src/planning/migration";
 import { filePayload } from "./html-viewer";
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, openShareChooser, shareVia } from "./fixtures";
+import { waitForHtmlTemplate, test, expect, gotoCanvas, expectNoErrors, openShareChooser, shareVia } from "./fixtures";
 import {
   MOD,
   SLUG,
@@ -432,6 +432,7 @@ test("a share dialog left open closes when another tab makes the diagram private
   context,
   consoleErrors,
 }) => {
+  test.slow(); // Two cold canvases and their lazy sharing dialogs.
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await gotoCanvas(page, SLUG);
   const slug = await importDiagram(page, "Shared plan");
@@ -574,6 +575,7 @@ test("a private diagram gets no password link: the rows are off, and an open dia
   context,
   consoleErrors,
 }) => {
+  test.slow(); // Two cold page loads plus crypto and lazy sharing dialogs.
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   // Hold encryption (after PBKDF2) so the diagram can turn private while a link is being made.
   await context.addInitScript(() => {
@@ -631,6 +633,7 @@ test("Private P1 diagrams keep privacy through native, legacy and Interactive HT
   page,
   consoleErrors,
 }, info) => {
+  test.slow(); // Three export formats and three imports.
   await gotoCanvas(page, SLUG);
   const d = upgradePlanning(planningFixture());
   d.private = true;
@@ -660,7 +663,9 @@ test("Private P1 diagrams keep privacy through native, legacy and Interactive HT
   expect(JSON.parse(readFileSync(nativeFile, "utf8"))).toMatchObject({ format: "diagrams/v2", private: true });
   await page.getByTestId("file-button").click();
   await page.getByTestId("file-more-formats").click();
+  const template = waitForHtmlTemplate(page);
   await page.getByTestId("export-html").click();
+  await template;
   const [html] = await Promise.all([page.waitForEvent("download"), page.getByTestId("html-export-download").click()]);
   const htmlFile = info.outputPath("private-p1.html");
   await html.saveAs(htmlFile);

@@ -36,7 +36,7 @@ function AnnotationNodeImpl({
   positionAbsoluteX,
   positionAbsoluteY,
 }: NodeProps<AnnotationFlowNode>) {
-  const { editing, setEditing, settleText } = useDiagram();
+  const { editing, setEditing, settleText, theme, canvasColor } = useDiagram();
   const { updateNode, deleteElements } = useReactFlow<FlowNode>();
   const kind = data.kind;
   const resolved = resolveAnnotationColor(data.color, kind);
@@ -87,6 +87,26 @@ function AnnotationNodeImpl({
     if (needed > h + 1) updateNode(id, { height: annotationSize(needed) });
   }, [data.text, data.textSize, kind, h, id, updateNode]);
 
+  const backdrop = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = backdrop.current;
+    if (!el || kind !== "text" || !isHexColor(resolved.hex)) return;
+    // Theme tokens are applied by the app after React commits. Keep safe theme ink until
+    // the next frame, then measure the background the caption will actually be drawn on.
+    el.style.setProperty("--ann-text-ink", "var(--text)");
+    const frame = requestAnimationFrame(() => {
+      const canvas = el.closest('[data-testid="canvas-wrap"]');
+      const style = getComputedStyle(canvas ?? el);
+      const ctx = document.createElement("canvas").getContext("2d");
+      if (!ctx) return;
+      ctx.fillStyle = canvas ? style.backgroundColor : style.getPropertyValue("--bg");
+      ctx.fillRect(0, 0, 1, 1);
+      const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+      el.style.setProperty("--ann-text-ink", accessibleColor(resolved.hex, { r, g, b }, "var(--text)"));
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [kind, resolved.hex, theme, canvasColor]);
+
   const text = isEditing ? (
     <AnnotationEditor value={data.text} kind={kind} onDone={commit} />
   ) : (
@@ -95,21 +115,13 @@ function AnnotationNodeImpl({
     </div>
   );
 
-  const inkLight = isHexColor(resolved.hex) ? accessibleColor(resolved.hex, 1.0, "var(--text)") : undefined;
-  const inkDark = isHexColor(resolved.hex) ? accessibleColor(resolved.hex, 0.02, "var(--text)") : undefined;
-
   return (
     <div
+      ref={backdrop}
       className={`ann ann-${kind} ann-s-${data.textSize ?? "m"}${selected ? " is-selected" : ""}${isEditing ? " is-editing" : ""}`}
       style={
         {
           "--ann": resolved.hex,
-          ...(kind === "text"
-            ? {
-                "--ann-text-ink-light": inkLight,
-                "--ann-text-ink-dark": inkDark,
-              }
-            : {}),
         } as CSSProperties
       }
       data-testid={`annotation-${id}`}

@@ -1,0 +1,786 @@
+{
+  "format": "diagrams/v2",
+  "planning": {
+    "revision": "p3",
+    "sharedQuotas": [
+      { "id": "assistant-tokens", "unit": "tokens", "amount": 6000, "windowMs": 60000, "algorithm": "token-bucket" },
+      { "id": "assistant-requests", "unit": "requests", "amount": 60, "windowMs": 60000, "algorithm": "token-bucket" }
+    ]
+  },
+  "nodeProps": {
+    "questions": { "ratePerSec": 2, "messageType": "Question" },
+    "gateway": {},
+    "assistant": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 4, "latencyMs": 100, "jitter": 0, "failureRate": 0 },
+    "answer": {
+      "preset": "managed-measured",
+      "presetRevision": "2026-10-14",
+      "jitter": 0,
+      "failureRate": 0,
+      "latencyMs": 250,
+      "api": {
+        "maxInFlight": 20,
+        "costPerRequest": { "tokens": 500 },
+        "quotas": [
+          { "id": "assistant-tokens", "unit": "tokens", "amount": 6000, "windowMs": 60000, "algorithm": "token-bucket", "sharedGroup": "assistant-tokens" },
+          { "id": "assistant-requests", "unit": "requests", "amount": 60, "windowMs": 60000, "algorithm": "token-bucket", "sharedGroup": "assistant-requests" }
+        ]
+      }
+    },
+    "review": {
+      "preset": "managed-measured",
+      "presetRevision": "2026-10-14",
+      "jitter": 0,
+      "failureRate": 0,
+      "latencyMs": 250,
+      "api": {
+        "maxInFlight": 20,
+        "costPerRequest": { "tokens": 500 },
+        "quotas": [
+          { "id": "assistant-tokens", "unit": "tokens", "amount": 6000, "windowMs": 60000, "algorithm": "token-bucket", "sharedGroup": "assistant-tokens" },
+          { "id": "assistant-requests", "unit": "requests", "amount": 60, "windowMs": 60000, "algorithm": "token-bucket", "sharedGroup": "assistant-requests" }
+        ]
+      }
+    },
+    "billing": { "ratePerSec": 12, "messageType": "Payment" },
+    "payments": {
+      "preset": "stripe-live",
+      "presetRevision": "2026-10-14",
+      "latencyMs": 250,
+      "jitter": 0,
+      "api": {
+        "maxInFlight": 50,
+        "sharedConcurrency": "stripe-live-account",
+        "quotas": [
+          { "id": "local-rate", "unit": "requests", "amount": 5, "windowMs": 1000, "algorithm": "token-bucket" },
+          { "id": "global-rate", "unit": "requests", "amount": 100, "windowMs": 1000, "algorithm": "token-bucket", "sharedGroup": "stripe-live-account" }
+        ]
+      }
+    }
+  },
+  "legacyExport": { "format": "diagrams/v1", "losses": ["planning.revision", "assistant.props.preset", "assistant.props.presetRevision", "answer.props.preset", "answer.props.presetRevision", "answer.props.api", "review.props.preset", "review.props.presetRevision", "review.props.api", "payments.props.preset", "payments.props.presetRevision", "payments.props.api"] },
+  "autoScale": { "freePlay": 1, "launch-burst": 5, "within-budget": 1 },
+  "brokerAssignments": { "brokers": {}, "consumers": {} },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "answer",
+      "suggestion": "Answer model: Increase allocation or Reduce calls.",
+      "converged": true,
+      "iterations": 4,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "questions": ["Infinity", 2, 0, 1, 1, 0], "gateway": [10000, 2, 0.0002, 1, 1, 0], "assistant": [80, 2, 0.025, 2, 2, 0], "answer": [0.1, 2, 20, 1, 1, 0], "review": [0.1, 2, 20, 1, 1, 0], "billing": ["Infinity", 12, 0, 1, 1, 0], "payments": [5, 12, 2.4, 1, 1, 0] },
+      "connections": { "ask": 2, "charge": 12, "assist": 2, "generate": 2, "review-answer": 2 },
+      "offeredTypes": { "questions": ["Question"], "billing": ["Payment"], "gateway": ["Question"], "payments": ["Payment"], "assistant": ["Question"], "answer": ["Question"], "review": ["Question"] }
+    },
+    "explanations": {
+      "gateway": {
+        "managed": "api",
+        "id": "gateway",
+        "role": "gateway",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 10000,
+        "offered": 2,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0.06,
+        "utilization": 0.0002,
+        "growth": 0,
+        "contributors": [{ "edge": "ask", "node": "questions", "label": "Acme help desk", "rate": 2 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "assistant": {
+        "id": "assistant",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 80,
+        "offered": 2,
+        "replicas": 2,
+        "baseReplicas": 2,
+        "omittedContributors": 0,
+        "activeReplicas": 2,
+        "assignments": [],
+        "slots": 4,
+        "seconds": 0.1,
+        "utilization": 0.025,
+        "growth": 0,
+        "contributors": [
+          { "edge": "assist", "node": "gateway", "label": "Acme help desk", "rate": 2, "via": "Assistant gateway" }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 2,
+        "changes": null,
+        "converged": true
+      },
+      "answer": {
+        "managed": "api",
+        "id": "answer",
+        "role": "processor",
+        "status": "up",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 0.1,
+        "offered": 2,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": 20,
+        "growth": 1.9,
+        "contributors": [{ "edge": "generate", "node": "assistant", "label": "Answer and review", "rate": 2 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "review": {
+        "managed": "api",
+        "id": "review",
+        "role": "processor",
+        "status": "up",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 0.1,
+        "offered": 2,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": 20,
+        "growth": 1.9,
+        "contributors": [{ "edge": "review-answer", "node": "assistant", "label": "Answer and review", "rate": 2 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "payments": {
+        "managed": "api",
+        "id": "payments",
+        "role": "sink",
+        "status": "up",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 5,
+        "offered": 12,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0.25,
+        "utilization": 2.4,
+        "growth": 7,
+        "contributors": [{ "edge": "charge", "node": "billing", "label": "Acme billing", "rate": 12 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "questions": [{ "kind": "calls", "edge": "ask", "peer": "gateway" }],
+      "gateway": [{ "kind": "calls", "edge": "assist", "peer": "assistant" }],
+      "assistant": [
+        { "kind": "calls", "edge": "generate", "peer": "answer" },
+        { "kind": "calls", "edge": "review-answer", "peer": "review" }
+      ],
+      "billing": [{ "kind": "calls", "edge": "charge", "peer": "payments" }]
+    },
+    "sizing": null,
+    "redundancy": {
+      "answer": { "replicas": 2, "enough": false },
+      "review": { "replicas": 2, "enough": false },
+      "payments": { "replicas": 2, "enough": false }
+    },
+    "resolved": {
+      "questions": {
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Question",
+        "healthChecks": false
+      },
+      "gateway": {
+        "admission": {
+          "api": {
+            "quotas": [
+              { "id": "global-rate", "unit": "requests", "amount": 10000, "burst": 5000, "windowMs": 1000, "algorithm": "token-bucket", "sharedGroup": "api-gateway-account-region" }
+            ]
+          },
+          "endpoints": []
+        },
+        "profile": { "family": "api-gateway", "revision": "p3", "preset": "api-gateway-account", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 60,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Assistant gateway",
+        "healthChecks": false
+      },
+      "assistant": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 100,
+        "concurrency": 4,
+        "replicas": 2,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Answer and review",
+        "healthChecks": false
+      },
+      "answer": {
+        "admission": {
+          "api": {
+            "maxInFlight": 20,
+            "costPerRequest": { "tokens": 500 },
+            "quotas": [
+              { "id": "assistant-tokens", "unit": "tokens", "amount": 6000, "windowMs": 60000, "algorithm": "token-bucket", "sharedGroup": "assistant-tokens" },
+              { "id": "assistant-requests", "unit": "requests", "amount": 60, "windowMs": 60000, "algorithm": "token-bucket", "sharedGroup": "assistant-requests" }
+            ]
+          },
+          "endpoints": []
+        },
+        "profile": { "family": "model-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Answer model",
+        "healthChecks": false
+      },
+      "review": {
+        "admission": {
+          "api": {
+            "maxInFlight": 20,
+            "costPerRequest": { "tokens": 500 },
+            "quotas": [
+              { "id": "assistant-tokens", "unit": "tokens", "amount": 6000, "windowMs": 60000, "algorithm": "token-bucket", "sharedGroup": "assistant-tokens" },
+              { "id": "assistant-requests", "unit": "requests", "amount": 60, "windowMs": 60000, "algorithm": "token-bucket", "sharedGroup": "assistant-requests" }
+            ]
+          },
+          "endpoints": []
+        },
+        "profile": { "family": "model-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Review model",
+        "healthChecks": false
+      },
+      "billing": {
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 12,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Payment",
+        "healthChecks": false
+      },
+      "payments": {
+        "admission": {
+          "api": {
+            "maxInFlight": 50,
+            "sharedConcurrency": "stripe-live-account",
+            "quotas": [
+              { "id": "local-rate", "unit": "requests", "amount": 5, "windowMs": 1000, "algorithm": "token-bucket" },
+              { "id": "global-rate", "unit": "requests", "amount": 100, "windowMs": 1000, "algorithm": "token-bucket", "sharedGroup": "stripe-live-account" }
+            ]
+          },
+          "endpoints": [],
+          "accountConcurrency": 50
+        },
+        "profile": { "family": "external-api", "revision": "p3", "preset": "stripe-live", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Payment API",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "launch-burst": {
+      "configured": "(same as edit)",
+      "simulation": "launch-burst",
+      "analysis": {
+        "bottleneck": "answer",
+        "suggestion": "Answer model: Increase allocation or Reduce calls.",
+        "converged": true,
+        "iterations": 4,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "questions": ["Infinity", 120, 0, 1, 1, 0], "gateway": [10000, 120, 0.012, 1, 1, 0], "assistant": [80, 120, 1.5, 2, 2, 0], "answer": [0.1, 120, 1200, 1, 1, 0], "review": [0.1, 120, 1200, 1, 1, 0], "billing": ["Infinity", 150, 0, 1, 1, 0], "payments": [5, 150, 30, 1, 1, 0] },
+        "connections": { "ask": 120, "charge": 150, "assist": 120, "generate": 120, "review-answer": 120 },
+        "offeredTypes": { "questions": ["Question"], "billing": ["Payment"], "gateway": ["Question"], "payments": ["Payment"], "assistant": ["Question"], "answer": ["Question"], "review": ["Question"] }
+      },
+      "explanations": {
+        "gateway": {
+          "managed": "api",
+          "id": "gateway",
+          "role": "gateway",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 10000,
+          "offered": 120,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.06,
+          "utilization": 0.012,
+          "growth": 0,
+          "contributors": [{ "edge": "ask", "node": "questions", "label": "Acme help desk", "rate": 120 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
+        "assistant": {
+          "id": "assistant",
+          "role": "processor",
+          "status": "up",
+          "reason": "capacity",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 80,
+          "offered": 120,
+          "replicas": 2,
+          "baseReplicas": 2,
+          "omittedContributors": 0,
+          "activeReplicas": 2,
+          "assignments": [],
+          "slots": 4,
+          "seconds": 0.1,
+          "utilization": 1.5,
+          "growth": 40,
+          "contributors": [
+            { "edge": "assist", "node": "gateway", "label": "Acme help desk", "rate": 120, "via": "Assistant gateway" }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 3,
+          "targetReplicas": 6,
+          "changes": [{ "nodeId": "assistant", "key": "replicas", "from": 2, "to": 6 }],
+          "fixId": "capacity:assistant",
+          "converged": true
+        },
+        "answer": {
+          "managed": "api",
+          "id": "answer",
+          "role": "processor",
+          "status": "up",
+          "reason": "capacity",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 0.1,
+          "offered": 120,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 4,
+          "seconds": 0.25,
+          "utilization": 1200,
+          "growth": 119.9,
+          "contributors": [{ "edge": "generate", "node": "assistant", "label": "Answer and review", "rate": 120 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
+        "review": {
+          "managed": "api",
+          "id": "review",
+          "role": "processor",
+          "status": "up",
+          "reason": "capacity",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 0.1,
+          "offered": 120,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 4,
+          "seconds": 0.25,
+          "utilization": 1200,
+          "growth": 119.9,
+          "contributors": [{ "edge": "review-answer", "node": "assistant", "label": "Answer and review", "rate": 120 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
+        "payments": {
+          "managed": "api",
+          "id": "payments",
+          "role": "sink",
+          "status": "up",
+          "reason": "capacity",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 5,
+          "offered": 150,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.25,
+          "utilization": 30,
+          "growth": 145,
+          "contributors": [{ "edge": "charge", "node": "billing", "label": "Acme billing", "rate": 150 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": [{ "nodeId": "assistant", "key": "replicas", "from": 2, "to": 6 }],
+      "redundancy": {
+        "assistant": { "replicas": 6, "enough": true },
+        "answer": { "replicas": 2, "enough": false },
+        "review": { "replicas": 2, "enough": false },
+        "payments": { "replicas": 2, "enough": false }
+      },
+      "resolved": "(same as edit)"
+    },
+    "within-budget": {
+      "configured": "(same as edit)",
+      "simulation": "within-budget",
+      "analysis": {
+        "bottleneck": "answer",
+        "suggestion": "Answer model: Increase allocation or Reduce calls.",
+        "converged": true,
+        "iterations": 4,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "questions": ["Infinity", 20, 0, 1, 1, 0], "gateway": [10000, 20, 0.002, 1, 1, 0], "assistant": [80, 20, 0.25, 2, 2, 0], "answer": [0.1, 20, 200, 1, 1, 0], "review": [0.1, 20, 200, 1, 1, 0], "billing": ["Infinity", 15, 0, 1, 1, 0], "payments": [5, 15, 3, 1, 1, 0] },
+        "connections": { "ask": 20, "charge": 15, "assist": 20, "generate": 20, "review-answer": 20 },
+        "offeredTypes": { "questions": ["Question"], "billing": ["Payment"], "gateway": ["Question"], "payments": ["Payment"], "assistant": ["Question"], "answer": ["Question"], "review": ["Question"] }
+      },
+      "explanations": {
+        "gateway": {
+          "managed": "api",
+          "id": "gateway",
+          "role": "gateway",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 10000,
+          "offered": 20,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.06,
+          "utilization": 0.002,
+          "growth": 0,
+          "contributors": [{ "edge": "ask", "node": "questions", "label": "Acme help desk", "rate": 20 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
+        "assistant": {
+          "id": "assistant",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 80,
+          "offered": 20,
+          "replicas": 2,
+          "baseReplicas": 2,
+          "omittedContributors": 0,
+          "activeReplicas": 2,
+          "assignments": [],
+          "slots": 4,
+          "seconds": 0.1,
+          "utilization": 0.25,
+          "growth": 0,
+          "contributors": [
+            { "edge": "assist", "node": "gateway", "label": "Acme help desk", "rate": 20, "via": "Assistant gateway" }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 2,
+          "changes": null,
+          "converged": true
+        },
+        "answer": {
+          "managed": "api",
+          "id": "answer",
+          "role": "processor",
+          "status": "up",
+          "reason": "capacity",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 0.1,
+          "offered": 20,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 4,
+          "seconds": 0.25,
+          "utilization": 200,
+          "growth": 19.9,
+          "contributors": [{ "edge": "generate", "node": "assistant", "label": "Answer and review", "rate": 20 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
+        "review": {
+          "managed": "api",
+          "id": "review",
+          "role": "processor",
+          "status": "up",
+          "reason": "capacity",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 0.1,
+          "offered": 20,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 4,
+          "seconds": 0.25,
+          "utilization": 200,
+          "growth": 19.9,
+          "contributors": [{ "edge": "review-answer", "node": "assistant", "label": "Answer and review", "rate": 20 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
+        "payments": {
+          "managed": "api",
+          "id": "payments",
+          "role": "sink",
+          "status": "up",
+          "reason": "capacity",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 5,
+          "offered": 15,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.25,
+          "utilization": 3,
+          "growth": 10,
+          "contributors": [{ "edge": "charge", "node": "billing", "label": "Acme billing", "rate": 15 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": "(same as edit)"
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "over",
+          "top": "answer",
+          "headline": "Answer model and 2 more are over capacity",
+          "detail": "20× · 2/s of 0.1/s. Reduce calls",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "questions": ["idle", "2/s · no limit", { "modeled": false }],
+            "gateway": ["ok", "0% · 2/s of 10k/s"],
+            "assistant": ["ok", "3% · 2/s of 80/s"],
+            "answer": ["over", "20× · 2/s of 0.1/s"],
+            "review": ["over", "20× · 2/s of 0.1/s"],
+            "billing": ["idle", "12/s · no limit", { "modeled": false }],
+            "payments": ["over", "240% · 12/s of 5/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "over",
+          "top": "answer",
+          "headline": "Answer model and 2 more are over capacity",
+          "detail": "100× · 10/s of 0.1/s. Reduce calls",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "questions": ["idle", "10/s · no limit", { "modeled": false }],
+            "gateway": ["ok", "0% · 10/s of 10k/s"],
+            "assistant": ["ok", "13% · 10/s of 80/s"],
+            "answer": ["over", "100× · 10/s of 0.1/s"],
+            "review": ["over", "100× · 10/s of 0.1/s"],
+            "billing": ["idle", "60/s · no limit", { "modeled": false }],
+            "payments": ["over", "12× · 60/s of 5/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "over",
+          "top": "answer",
+          "headline": "Answer model and 2 more are over capacity",
+          "detail": "20× · 2/s of 0.1/s. Reduce calls",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "questions": ["idle", "2/s · no limit", { "modeled": false }],
+            "gateway": ["ok", "0% · 2/s of 10k/s"],
+            "assistant": ["ok", "5% · 2/s of 40/s"],
+            "answer": ["over", "20× · 2/s of 0.1/s"],
+            "review": ["over", "20× · 2/s of 0.1/s"],
+            "billing": ["idle", "12/s · no limit", { "modeled": false }],
+            "payments": ["over", "240% · 12/s of 5/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "over",
+          "top": "answer",
+          "headline": "Answer model and 2 more are over capacity",
+          "detail": "20× · 2/s of 0.1/s. Reduce calls",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "questions": ["idle", "2/s · no limit", { "modeled": false }],
+            "gateway": ["ok", "0% · 2/s of 10k/s"],
+            "assistant": ["ok", "3% · 2/s of 80/s"],
+            "answer": ["over", "20× · 2/s of 0.1/s"],
+            "review": ["over", "20× · 2/s of 0.1/s"],
+            "billing": ["idle", "12/s · no limit", { "modeled": false }],
+            "payments": ["over", "240% · 12/s of 5/s"]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    },
+    "launch-burst": {
+      "tone": "over",
+      "top": "answer",
+      "headline": "Answer model and 3 more are over capacity",
+      "detail": "1.2k× · 120/s of 0.1/s. Reduce calls",
+      "fix": {
+        "changes": [{ "nodeId": "assistant", "key": "replicas", "from": 2, "to": 6, "label": "Answer and review" }],
+        "label": "Answer and review 2 → 6 replicas"
+      },
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "questions": ["idle", "120/s · no limit", { "modeled": false }],
+        "gateway": ["ok", "1% · 120/s of 10k/s"],
+        "assistant": ["over", "150% · 120/s of 80/s"],
+        "answer": ["over", "1.2k× · 120/s of 0.1/s"],
+        "review": ["over", "1.2k× · 120/s of 0.1/s"],
+        "billing": ["idle", "150/s · no limit", { "modeled": false }],
+        "payments": ["over", "30× · 150/s of 5/s"]
+      }
+    },
+    "within-budget": {
+      "tone": "over",
+      "top": "answer",
+      "headline": "Answer model and 2 more are over capacity",
+      "detail": "200× · 20/s of 0.1/s. Reduce calls",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "questions": ["idle", "20/s · no limit", { "modeled": false }],
+        "gateway": ["ok", "0% · 20/s of 10k/s"],
+        "assistant": ["ok", "25% · 20/s of 80/s"],
+        "answer": ["over", "200× · 20/s of 0.1/s"],
+        "review": ["over", "200× · 20/s of 0.1/s"],
+        "billing": ["idle", "15/s · no limit", { "modeled": false }],
+        "payments": ["over", "300% · 15/s of 5/s"]
+      }
+    }
+  }
+}

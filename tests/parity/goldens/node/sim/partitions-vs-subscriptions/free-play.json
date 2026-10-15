@@ -1,0 +1,269 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "publisher": { "replicas": [1, 1, 0] },
+        "log": { "lag": { "orders": 0 }, "replicas": [1, 1, 0] },
+        "fanout": { "lag": { "receipts": 0, "audit": 0 }, "replicas": [1, 1, 0] },
+        "log-readers": { "replicas": [8, 3, 5] },
+        "receipts": { "replicas": [8, 8, 0] },
+        "audit": { "replicas": [8, 8, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 49,
+      "nodes": {
+        "publisher": { "processed": 60, "throughput": 6.50149458286941, "replicas": [1, 1, 0] },
+        "log": {
+          "processed": 58,
+          "backlog": 26,
+          "throughput": 5.690003341501128,
+          "lag": { "orders": 26 },
+          "replicas": [1, 1, 0]
+        },
+        "fanout": {
+          "processed": 58,
+          "throughput": 5.690003341501128,
+          "lag": { "receipts": 0, "audit": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "log-readers": { "processed": 27, "backlog": 1, "inFlight": 3, "throughput": 3.6615153275765024, "replicas": [8, 3, 5] },
+        "receipts": { "processed": 51, "inFlight": 6, "throughput": 5.881865645205299, "replicas": [8, 8, 0] },
+        "audit": { "processed": 51, "inFlight": 6, "throughput": 5.881865645205299, "replicas": [8, 8, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 79,
+      "nodes": {
+        "publisher": { "processed": 120, "throughput": 6.501789750266822, "replicas": [1, 1, 0] },
+        "log": {
+          "processed": 118,
+          "backlog": 56,
+          "throughput": 5.690363859774448,
+          "lag": { "orders": 56 },
+          "replicas": [1, 1, 0]
+        },
+        "fanout": {
+          "processed": 118,
+          "throughput": 5.690363859774448,
+          "lag": { "receipts": 0, "audit": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "log-readers": { "processed": 57, "backlog": 1, "inFlight": 3, "throughput": 3.66196722972017, "replicas": [8, 3, 5] },
+        "receipts": { "processed": 111, "inFlight": 6, "throughput": 5.883062608025501, "replicas": [8, 8, 0] },
+        "audit": { "processed": 111, "inFlight": 6, "throughput": 5.883062608025501, "replicas": [8, 8, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 109,
+      "nodes": {
+        "publisher": { "processed": 180, "throughput": 6.501789763667403, "replicas": [1, 1, 0] },
+        "log": {
+          "processed": 178,
+          "backlog": 86,
+          "throughput": 5.690363876141956,
+          "lag": { "orders": 86 },
+          "replicas": [1, 1, 0]
+        },
+        "fanout": {
+          "processed": 178,
+          "throughput": 5.690363876141956,
+          "lag": { "receipts": 0, "audit": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "log-readers": { "processed": 87, "backlog": 1, "inFlight": 3, "throughput": 3.6619672502364935, "replicas": [8, 3, 5] },
+        "receipts": { "processed": 171, "inFlight": 6, "throughput": 5.8830626623675295, "replicas": [8, 8, 0] },
+        "audit": { "processed": 171, "inFlight": 6, "throughput": 5.8830626623675295, "replicas": [8, 8, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 139,
+      "nodes": {
+        "publisher": { "processed": 240, "throughput": 6.501789763668005, "replicas": [1, 1, 0] },
+        "log": {
+          "processed": 238,
+          "backlog": 116,
+          "throughput": 5.690363876142691,
+          "lag": { "orders": 116 },
+          "replicas": [1, 1, 0]
+        },
+        "fanout": {
+          "processed": 238,
+          "throughput": 5.690363876142691,
+          "lag": { "receipts": 0, "audit": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "log-readers": { "processed": 117, "backlog": 1, "inFlight": 3, "throughput": 3.6619672502374283, "replicas": [8, 3, 5] },
+        "receipts": { "processed": 231, "inFlight": 6, "throughput": 5.883062662369993, "replicas": [8, 8, 0] },
+        "audit": { "processed": 231, "inFlight": 6, "throughput": 5.883062662369993, "replicas": [8, 8, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 169,
+      "nodes": {
+        "publisher": { "processed": 300, "throughput": 6.501789763668005, "replicas": [1, 1, 0] },
+        "log": {
+          "processed": 298,
+          "backlog": 146,
+          "throughput": 5.690363876142691,
+          "lag": { "orders": 146 },
+          "replicas": [1, 1, 0]
+        },
+        "fanout": {
+          "processed": 298,
+          "throughput": 5.690363876142691,
+          "lag": { "receipts": 0, "audit": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "log-readers": { "processed": 147, "backlog": 1, "inFlight": 3, "throughput": 3.6619672502374283, "replicas": [8, 3, 5] },
+        "receipts": { "processed": 291, "inFlight": 6, "throughput": 5.883062662369993, "replicas": [8, 8, 0] },
+        "audit": { "processed": 291, "inFlight": 6, "throughput": 5.883062662369993, "replicas": [8, 8, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 199,
+      "nodes": {
+        "publisher": { "processed": 360, "throughput": 6.501789763668005, "replicas": [1, 1, 0] },
+        "log": {
+          "processed": 358,
+          "backlog": 176,
+          "throughput": 5.690363876142691,
+          "lag": { "orders": 176 },
+          "replicas": [1, 1, 0]
+        },
+        "fanout": {
+          "processed": 358,
+          "throughput": 5.690363876142691,
+          "lag": { "receipts": 0, "audit": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "log-readers": { "processed": 177, "backlog": 1, "inFlight": 3, "throughput": 3.6619672502374283, "replicas": [8, 3, 5] },
+        "receipts": { "processed": 351, "inFlight": 6, "throughput": 5.883062662369993, "replicas": [8, 8, 0] },
+        "audit": { "processed": 351, "inFlight": 6, "throughput": 5.883062662369993, "replicas": [8, 8, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 199,
+    "real": {
+      "publisher": { "processed": 360, "throughput": 6.501789763668005, "replicas": [1, 1, 0] },
+      "log": {
+        "processed": 358,
+        "backlog": 176,
+        "throughput": 5.690363876142691,
+        "lag": { "orders": 176 },
+        "replicas": [1, 1, 0]
+      },
+      "fanout": {
+        "processed": 358,
+        "throughput": 5.690363876142691,
+        "lag": { "receipts": 0, "audit": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "log-readers": { "processed": 177, "backlog": 1, "inFlight": 3, "throughput": 3.6619672502374283, "replicas": [8, 3, 5] },
+      "receipts": { "processed": 351, "inFlight": 6, "throughput": 5.883062662369993, "replicas": [8, 8, 0] },
+      "audit": { "processed": 351, "inFlight": 6, "throughput": 5.883062662369993, "replicas": [8, 8, 0] }
+    },
+    "edges": { "publish-log": 358, "publish-fanout": 358, "read-log": 181, "read-receipts": 357, "read-audit": 357 }
+  },
+  "events": {
+    "total": 3566,
+    "byKind": { "process": 1955, "deliver": 1611 },
+    "byNode": {
+      "publisher": { "process": 360 },
+      "log": { "deliver": 358, "process": 358 },
+      "fanout": { "deliver": 358, "process": 358 },
+      "log-readers": { "deliver": 181, "process": 177 },
+      "receipts": { "deliver": 357, "process": 351 },
+      "audit": { "deliver": 357, "process": 351 }
+    },
+    "perSecond": [
+      "59c1f98bfc95",
+      "dbfcaf337d7e",
+      "c7c62ebe9bb3",
+      "1f2e6986b913",
+      "49748944bf7e",
+      "fcc082433245",
+      "1ecd0f950834",
+      "97cf5df398c8",
+      "ff914609a605",
+      "e75215fa8087",
+      "44053b9f24f8",
+      "727e55e74e06",
+      "758848115921",
+      "4c28bee1f01d",
+      "9cad2f12001f",
+      "2db634dddbf5",
+      "6f5d51e4506a",
+      "6f31ddb9b082",
+      "344137ef6d52",
+      "d03fb8b52e8b",
+      "ef385c16bff4",
+      "d0959ef98418",
+      "bf78785c7152",
+      "30bf6b42bedc",
+      "7b0e9413b257",
+      "aa7362e8f2a2",
+      "590841fc96df",
+      "48843ea43f43",
+      "1b022db02de4",
+      "2762c408960c",
+      "e09e83988b8e",
+      "49173c32fde3",
+      "70115df1fe30",
+      "a0f2e98796c5",
+      "f23fb107323f",
+      "b9639bee2545",
+      "796fb1ddafa7",
+      "7f4a791061e7",
+      "20219336fa8a",
+      "e9be59860c1d",
+      "f5dab67a18db",
+      "7fe994525bca",
+      "6a345a09e4cc",
+      "c44450717191",
+      "bcfaa5de604b",
+      "04d04185f6c7",
+      "cfd09f9eda55",
+      "b6a7c76f0a40",
+      "de625cae1ca5",
+      "2ffababc0591",
+      "7a2bfa1ea669",
+      "a8deb4025f43",
+      "042aff8e1470",
+      "853b69b7724e",
+      "55350635d545",
+      "d905cabc0c15",
+      "2ea2790067c3",
+      "2ebc661141e9",
+      "f28703b5df62",
+      "1fc7b06246b4",
+      "a2cde5654b0e"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 177, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 177, "min": 1400, "mean": 15900, "p50": 15900, "p90": 27900, "max": 30400 },
+    "waitMs": {
+      "log-readers": { "count": 177, "min": 0, "mean": 457.2316384180791, "p50": 630, "p90": 640, "max": 640 },
+      "receipts": { "count": 177, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "audit": { "count": 177, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "log-readers": { "count": 177, "min": 1000, "mean": 1000, "p50": 1000, "p90": 1000, "max": 1000 },
+      "receipts": { "count": 177, "min": 1000, "mean": 1000, "p50": 1000, "p90": 1000, "max": 1000 },
+      "audit": { "count": 177, "min": 1000, "mean": 1000, "p50": 1000, "p90": 1000, "max": 1000 }
+    }
+  }
+}

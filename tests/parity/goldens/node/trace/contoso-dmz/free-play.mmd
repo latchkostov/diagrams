@@ -1,0 +1,23 @@
+---
+title: "WebRequest #1 · 1.35 s end to end"
+---
+sequenceDiagram
+  participant visitors as Contoso visitors
+  participant router as Edge router pair
+  participant firewall as Firewall pair
+  participant adc as BIG-IP pair
+  participant switch as Services switch
+  participant app as Contoso web app
+  participant database as Orders database
+  visitors->>router: WebRequest (+0.00 s)<br/>Web
+  router-->>visitors: reply (+0.21 s)
+  router->>firewall: WebRequest (+0.21 s)<br/>Inspect
+  firewall-->>router: reply (+0.42 s)
+  firewall->>adc: WebRequest (+0.42 s)<br/>Allow web
+  adc-->>firewall: reply (+0.63 s)
+  adc->>switch: WebRequest (+0.63 s)<br/>Forward
+  switch-->>adc: reply (+0.84 s)
+  switch->>app: WebRequest (+0.84 s)<br/>Web
+  app-->>switch: reply (+1.14 s)
+  app->>database: WebRequest (+1.14 s)<br/>Query
+  database-->>app: reply (+1.35 s)

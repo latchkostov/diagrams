@@ -1,0 +1,16 @@
+---
+title: "OrderPlaced #1 · 2.10 s end to end"
+---
+sequenceDiagram
+  participant orders as Northwind orders
+  participant intake as Order intake
+  participant queue as Payment jobs
+  participant payment_worker as Payment worker
+  participant ledger as Northwind ledger
+  orders-)intake: OrderPlaced (+0.00 s)<br/>Order
+  Note over orders,ledger: ⏱ 290 ms at Order intake: processing
+  intake-)queue: OrderPlaced (+0.49 s)<br/>Payment job
+  queue-)payment_worker: OrderPlaced (+0.69 s)<br/>Workers
+  Note over orders,ledger: ⏱ 1.00 s at Payment worker: processing
+  payment_worker->>ledger: OrderPlaced (+1.89 s)<br/>Record
+  ledger-->>payment_worker: reply (+2.10 s)

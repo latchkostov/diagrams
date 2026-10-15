@@ -31,18 +31,59 @@ export interface BoundaryAdoptionPlan {
   adoptedElementIds: string[];
 }
 
+/** Expands several roots with one indexed traversal, regardless of input order. */
+export function expandGroupIds(
+  rootIds: Iterable<string>,
+  groups: readonly { id: string; group?: string }[],
+): Set<string> {
+  const children = new Map<string, string[]>();
+  for (const g of groups) {
+    if (!g.group) continue;
+    const list = children.get(g.group) ?? [];
+    list.push(g.id);
+    children.set(g.group, list);
+  }
+  const result = new Set(rootIds);
+  const pending = [...result];
+  while (pending.length) {
+    for (const id of children.get(pending.pop()!) ?? []) {
+      if (result.has(id)) continue;
+      result.add(id);
+      pending.push(id);
+    }
+  }
+  return result;
+}
+
 /** Recursively computes all descendant group IDs of `groupId`. */
 export function descendantGroupIds(groupId: string, groups: readonly { id: string; group?: string }[]): Set<string> {
-  const result = new Set<string>();
-  let expanded = true;
-  while (expanded) {
-    expanded = false;
-    for (const g of groups) {
-      if (g.group && (g.group === groupId || result.has(g.group)) && !result.has(g.id)) {
-        result.add(g.id);
-        expanded = true;
-      }
+  const result = expandGroupIds([groupId], groups);
+  result.delete(groupId);
+  return result;
+}
+
+/** Selected elements whose existing membership must survive wrapping or moving the selection. */
+export function selectionSubtreeIds(selectedGroupIds: Iterable<string>, groups: readonly GroupBox[]): Set<string> {
+  return expandGroupIds(selectedGroupIds, groups);
+}
+
+/** Reparent only moved subtree roots; all links inside a moved subtree stay intact. */
+export function planBoundaryDrop(
+  selectedGroupIds: ReadonlySet<string>,
+  groups: readonly GroupBox[],
+): Map<string, string | undefined> {
+  const subtrees = selectionSubtreeIds(selectedGroupIds, groups);
+  const candidates = groups.filter((g) => !subtrees.has(g.id));
+  const result = new Map<string, string | undefined>();
+  for (const g of groups) {
+    if (!selectedGroupIds.has(g.id) || (g.group && subtrees.has(g.group))) continue;
+    let best: GroupBox | undefined;
+    for (const parent of candidates) {
+      if (parent.width * parent.height <= g.width * g.height) continue;
+      if (!contains(parent, g.x + g.width / 2, g.y + g.height / 2)) continue;
+      if (!best || parent.width * parent.height < best.width * best.height) best = parent;
     }
+    result.set(g.id, best?.id);
   }
   return result;
 }
@@ -108,22 +149,12 @@ export function planBoundaryAdoption(params: PlanBoundaryAdoptionParams): Bounda
   }
 
   // 2. All descendants of enclosed groups are also part of the enclosed subtree.
-  const allEnclosedSubtreeGroupIds = new Set<string>(enclosedGroupIds);
-  for (const gid of enclosedGroupIds) {
-    for (const desc of descendantGroupIds(gid, existingGroups)) {
-      allEnclosedSubtreeGroupIds.add(desc);
-    }
-  }
+  const allEnclosedSubtreeGroupIds = expandGroupIds(enclosedGroupIds, existingGroups);
 
-  // 3. Adopted groups: To preserve existing nesting, only groups whose parent is NOT
-  // already in the enclosed subtree are adopted as direct children of the new boundary.
-  const adoptedGroupIds: string[] = [];
-  for (const gid of enclosedGroupIds) {
-    const g = existingGroups.find((x) => x.id === gid);
-    if (!g?.group || !allEnclosedSubtreeGroupIds.has(g.group)) {
-      adoptedGroupIds.push(gid);
-    }
-  }
+  // Preserve existing nesting: adopt only roots of the enclosed subtrees.
+  const adoptedGroupIds = existingGroups
+    .filter((g) => enclosedGroupIds.has(g.id) && (!g.group || !allEnclosedSubtreeGroupIds.has(g.group)))
+    .map((g) => g.id);
 
   // 4. Candidate parent groups: Must exclude all enclosed groups and their descendants.
   const parentCandidates = existingGroups.filter(
@@ -163,4 +194,32 @@ export function planBoundaryAdoption(params: PlanBoundaryAdoptionParams): Bounda
     adoptedGroupIds,
     adoptedElementIds,
   };
+}
+
+/** Clipboard parents are untrusted. Keep only existing references and break cycles before rendering. */
+export function sanitizeGroupParents<T extends { id: string; group?: string }>(
+  groups: readonly T[],
+  externalIds: ReadonlySet<string>,
+): T[] {
+  const ids = new Set([...externalIds, ...groups.map((g) => g.id)]);
+  const clean = groups.map((g) => ({
+    ...g,
+    group: typeof g.group === "string" && ids.has(g.group) ? g.group : undefined,
+  }));
+  const byId = new Map(clean.map((g) => [g.id, g]));
+  const done = new Set<string>();
+  for (const g of clean) {
+    const path = new Set<string>();
+    let cur: typeof g | undefined = g;
+    while (cur && !done.has(cur.id)) {
+      path.add(cur.id);
+      if (cur.group && path.has(cur.group)) {
+        cur.group = undefined;
+        break;
+      }
+      cur = cur.group ? byId.get(cur.group) : undefined;
+    }
+    for (const id of path) done.add(id);
+  }
+  return clean;
 }

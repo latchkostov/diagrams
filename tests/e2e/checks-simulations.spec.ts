@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
+import { test, performanceTest, expect, gotoCanvas, expectNoErrors, pageLoadTimeout } from "./fixtures";
+import { typingWork, median } from "./typing-work";
 
 // Run simulations in the Checks card (docs/research/architecture-checks.md, batch 5): the saved simulations play in a
 // worker, the card says which one it's on, counts land on the findings, Stop, Esc, closing the card and an edit stop
@@ -9,6 +10,7 @@ import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
 const card = (page: Page) => page.getByTestId("checks-card");
 const status = (page: Page) => page.getByTestId("checks-simulations-status");
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const RESPONSIVENESS = "typing is as responsive while simulations play as with none playing";
 
 /** An example as a file, changed by `edit`, imported over the canvas. */
 async function importExample(page: Page, slug: string, title: string, edit: (d: Diagram) => void) {
@@ -31,14 +33,14 @@ async function importDiagram(page: Page, d: Diagram) {
     mimeType: "application/json",
     buffer: Buffer.from(JSON.stringify({ format: "diagrams/v1", ...d })),
   });
-  await expect(page.getByTestId("diagram-title")).toHaveText(d.title);
+  await expect(page.getByTestId("diagram-title")).toHaveText(d.title, { timeout: pageLoadTimeout() });
 }
 
 /** Opens the Checks card from Ctrl+K (it works with or without warnings). */
 async function openChecks(page: Page) {
   await page.getByTestId("canvas-view").click({ position: { x: 900, y: 120 } });
-  await page.keyboard.press(`${MOD}+k`);
-  await page.keyboard.type("Check diagram");
+  await palette(page, "Check diagram");
+  await expect(page.getByTestId("command-item-action:canvas.check-diagram")).toBeVisible();
   await page.keyboard.press("Enter");
   await expect(card(page)).toBeVisible();
 }
@@ -61,12 +63,12 @@ type RunStats = { started: number; finished: number; stopped: number };
 const runStats = (page: Page) =>
   page.evaluate(() => ({ ...(window as unknown as { __simulations: RunStats }).__simulations }));
 
-/** The canvas right-click on empty canvas, right of a diagram laid out in one tall column. */
+/** The canvas right-click below the fitted diagram, clear of the minimap and controls. */
 async function canvasMenu(page: Page) {
   const wrap = page.getByTestId("canvas-wrap");
   const box = await wrap.boundingBox();
   if (!box) throw new Error("Expected the canvas on screen");
-  await wrap.click({ button: "right", position: { x: box.width - 200, y: box.height / 2 } });
+  await wrap.click({ button: "right", position: { x: box.width * 0.55, y: box.height - 14 } });
   await expect(page.getByTestId("context-menu")).toBeVisible();
 }
 
@@ -124,7 +126,7 @@ test("Run simulations: progress, counts on the finding, an edit hides them and U
   await importExample(page, "azure-service-bus-integration", "Invoices without a DLQ", (d) => {
     d.edges = d.edges.filter((e) => e.id !== "commands-to-dlq");
   });
-  await expect(page.getByTestId("checks-count")).toHaveText("2 warnings");
+  await expect(page.getByTestId("checks-count")).toHaveText("2 warnings", { timeout: pageLoadTimeout() });
   await page.getByTestId("checks-count").click();
   await expect(card(page)).toBeVisible();
   const texts = await recordStatus(page);
@@ -139,7 +141,7 @@ test("Run simulations: progress, counts on the finding, an edit hides them and U
   const evidence = page.getByTestId("check-evidence-dead-letter:commands");
   await expect(evidence).toHaveText("30 dropped in “Poison invoices”");
   // Evidence is never a warning of its own: the count under the title is the checks' own.
-  await expect(page.getByTestId("checks-count")).toHaveText("2 warnings");
+  await expect(page.getByTestId("checks-count")).toHaveText("2 warnings", { timeout: pageLoadTimeout() });
   // Focus stayed on the one button, now Run again.
   await expect(page.getByTestId("checks-run-simulations")).toBeFocused();
   await expect(page.getByTestId("checks-run-simulations")).toHaveText("Run again");
@@ -305,10 +307,10 @@ test("no saved simulations, no Run simulations; and none in live view", async ({
  * (180,000 messages, near the file format's 200,000). Each takes the worker seconds (a run of the three can reach the
  * wall-clock budget): long enough to stop it, and to type while it plays.
  */
-function heavy(): Diagram {
+function heavy(pipelines = 100): Diagram {
   const nodes: Diagram["nodes"] = [];
   const edges: Diagram["edges"] = [];
-  for (let p = 0; p < 100; p++)
+  for (let p = 0; p < pipelines; p++)
     for (let i = 0; i < 15; i++) {
       const id = `p${p}n${i}`;
       const queue = i % 3 === 1;
@@ -322,10 +324,10 @@ function heavy(): Diagram {
     id: `s${n}`,
     title: `Rush ${n}`,
     seed: n,
-    traffic: Array.from({ length: 100 }, (_, p) => ({
+    traffic: Array.from({ length: pipelines }, (_, p) => ({
       id: `t${p}`,
       node: `p${p}n0`,
-      shape: { kind: "constant", ratePerSec: 10, durationMs: 60_000 },
+      shape: { kind: "constant", ratePerSec: 1000 / pipelines, durationMs: 60_000 },
     })),
   });
   return { title: "Large, with simulations", nodes, edges, simulations: [sim(1), sim(2), sim(3)] };
@@ -334,9 +336,11 @@ function heavy(): Diagram {
 test.describe("a long run", () => {
   test.setTimeout(120_000);
 
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page }, info) => {
     await gotoCanvas(page, "aks-app-config-key-vault");
-    await importDiagram(page, heavy());
+    // Cancellation needs sustained worker traffic, not a costly 1,500-node live/editor remount.
+    // Keep the full UI stress fixture for the responsiveness measurement. Total traffic stays the same.
+    await importDiagram(page, heavy(info.title === RESPONSIVENESS ? 100 : 8));
     await openChecks(page);
     await expect(page.getByTestId("checks-summary")).toBeVisible({ timeout: 60_000 });
   });
@@ -451,7 +455,9 @@ test.describe("a long run", () => {
     expect(await runStats(page)).toMatchObject({ started: 4, finished: 1, stopped: 3 });
   });
 
-  test("typing is as responsive while simulations play as with none playing", async ({ page }, info) => {
+  performanceTest(RESPONSIVENESS, async ({ page }, info) => {
+    // The stress measurement must retain all 100 pipelines (1,500 nodes).
+    await expect(page.getByTestId("node-p99n14")).toBeAttached();
     // Type in a finding's Ignore box: it's in the card, which redraws as the run moves on, and it isn't an edit.
     const rowId = "dead-letter:p0n1";
     await page.getByTestId(`check-more-${rowId}`).click();
@@ -462,41 +468,39 @@ test.describe("a long run", () => {
       const cdp = await page.context().newCDPSession(page);
       await cdp.send("Emulation.setCPUThrottlingRate", { rate: Number(process.env.CHECKS_CPU) });
     }
+    // Worker creation precedes its dev module imports. Wait for its first progress message, so
+    // every playing sample overlaps execution rather than a still-downloading worker.
+    let progressed = 0;
+    await page.exposeFunction("__simulationProgress", () => progressed++);
     await page.evaluate(() => {
-      const w = window as unknown as { __keys: Map<number, number> };
-      w.__keys = new Map();
-      new PerformanceObserver((list) => {
-        for (const e of list.getEntries() as (PerformanceEntry & { interactionId?: number })[])
-          if (e.interactionId) w.__keys.set(e.interactionId, Math.max(w.__keys.get(e.interactionId) ?? 0, e.duration));
-      }).observe({ type: "event", durationThreshold: 16, buffered: false } as PerformanceObserverInit);
+      const NativeWorker = window.Worker;
+      window.Worker = class extends NativeWorker {
+        constructor(url: string | URL, options?: WorkerOptions) {
+          super(url, options);
+          if (/evidenceWorker/.test(String(url)))
+            this.addEventListener("message", (event: MessageEvent<{ type: string }>) => {
+              if (event.data.type === "progress")
+                void (window as unknown as { __simulationProgress(): Promise<void> }).__simulationProgress();
+            });
+        }
+      };
     });
-    const takeSamples = () =>
-      page.evaluate(() => {
-        const w = window as unknown as { __keys: Map<number, number> };
-        const out = [...w.__keys.values()];
-        w.__keys.clear();
-        return out;
-      });
-    const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] ?? 0;
+    const work = await typingWork(page);
 
     async function phase(playing: boolean, text: string) {
       if (playing) {
+        const before = progressed;
         await page.getByTestId("checks-run-simulations").click();
         await expect(status(page)).toHaveText(/^Playing/);
         // They play in the simulations worker, not on this thread.
-        await expect.poll(() => page.workers().some((w) => /evidenceWorker/.test(w.url())), "the worker").toBe(true);
+        await expect
+          .poll(() => progressed, { message: "the worker has begun playing", timeout: pageLoadTimeout() })
+          .toBeGreaterThan(before);
       }
       await box.click();
       await box.press("End");
-      await takeSamples();
-      for (const ch of text) {
-        await page.keyboard.type(ch);
-        await page.waitForTimeout(300);
-      }
-      // Event Timing reports a little after the paint.
-      await page.waitForTimeout(200);
-      const samples = await takeSamples();
-      while (samples.length < text.length) samples.push(16);
+      const samples: number[] = [];
+      for (const ch of text) samples.push(await work.key(ch));
       // Still playing when the typing ended: the whole phase was typed over a run.
       if (playing) {
         await expect(status(page)).toHaveText(/^Playing/);
@@ -507,16 +511,17 @@ test.describe("a long run", () => {
     }
     const idle: number[] = [];
     const playing: number[] = [];
-    // Alternating, so both see the same page in the same state; three of each for a steady median.
+    // Alternating, so both see the same page in the same state. Keep every sample, with enough keys
+    // per phase that the card's startup renders cannot dominate the steady-state typing median.
     for (const [i, kind] of ["i", "p", "i", "p", "i", "p"].entries())
-      (kind === "p" ? playing : idle).push(...(await phase(kind === "p", ` ${kind}${i}xyz`)));
-    await expect(box).toHaveValue(" i0xyz p1xyz i2xyz p3xyz i4xyz p5xyz");
-    info.annotations.push({ type: "event-timing", description: JSON.stringify({ idle, playing }) });
+      (kind === "p" ? playing : idle).push(...(await phase(kind === "p", ` ${kind}${i}abcdefghijkl`)));
+    await expect(box).toHaveValue(
+      " i0abcdefghijkl p1abcdefghijkl i2abcdefghijkl p3abcdefghijkl i4abcdefghijkl p5abcdefghijkl",
+    );
+    info.annotations.push({ type: "typing-cpu", description: JSON.stringify({ idle, playing }) });
     expect(await runStats(page)).toMatchObject({ started: 3, stopped: 3 });
-    // And typing was no slower for it: the same median keystroke, give or take noise. As the checks' typing test: the
-    // slack is relative to the idle phases (a busy machine slows both alike), and at least two steps of Event Timing's
-    // 8 ms resolution above its 16 ms floor. Played on the main thread, a minute of a 1,500-node simulation would
-    // hold a keystroke for seconds.
-    expect(median(playing)).toBeLessThanOrEqual(Math.max(median(idle) * 1.5, median(idle) + 16));
+    await work.close();
+    // Same-run CPU baseline: a busy worker must not move simulation work onto the input thread.
+    expect(median(playing), JSON.stringify({ idle, playing })).toBeLessThanOrEqual(median(idle) * 1.5);
   });
 });

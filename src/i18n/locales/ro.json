@@ -1169,6 +1169,7 @@
   "gallery.missingIcons": " {count, plural, one {{count} pictogramă lipsă} few {{count} pictograme lipsă} other {{count} de pictograme lipsă}}",
   "edit.finiteGeometry": "geometria trebuie să fie finită.",
   "edit.coordinateBudget": "depășește limita coordonatelor. Mutați selecția mai aproape de origine.",
+  "edit.annotationLimit": "Această limită nu poate fi convertită: diagrama are deja {limit} adnotări. Eliminați o adnotare și încercați din nou.",
   "edit.annotationSize": "dimensiunea trebuie să fie între 1 și {limit} pixeli. Alegeți o selecție mai mică.",
   "broker.partitions": "Partiții",
   "broker.shards": "Sharduri",

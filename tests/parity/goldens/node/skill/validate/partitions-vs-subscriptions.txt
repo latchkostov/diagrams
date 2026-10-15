@@ -1,0 +1,2 @@
+exit 0
+VALID <repo>/src/examples/partitions-vs-subscriptions.json: 6 nodes, 5 edges, 2 simulations

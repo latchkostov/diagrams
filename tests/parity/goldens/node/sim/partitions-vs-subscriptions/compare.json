@@ -1,0 +1,121 @@
+{
+  "run": {
+    "time": 14400,
+    "totalMs": 16000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "log-lag-at", "label": "log: lag > 0", "status": "pass", "value": 0 },
+      { "id": "log-readers-processed-end", "label": "log-readers: processed == 36", "status": "pass", "value": 36 },
+      { "id": "receipts-processed-end", "label": "receipts: processed == 36", "status": "pass", "value": 36 },
+      { "id": "audit-processed-end", "label": "audit: processed == 36", "status": "pass", "value": 36 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "publisher" },
+      { "atMs": 1000, "kind": "note", "label": "Kafka assigns three of eight replicas. Each SNS subscription can use all eight; subscriptions receive independent copies." },
+      { "atMs": 6000, "kind": "traffic", "label": "publisher ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "publisher": { "replicas": [1, 1, 0] },
+        "log": { "lag": { "orders": 0 }, "replicas": [1, 1, 0] },
+        "fanout": { "lag": { "receipts": 0, "audit": 0 }, "replicas": [1, 1, 0] },
+        "log-readers": { "replicas": [8, 3, 5] },
+        "receipts": { "replicas": [8, 8, 0] },
+        "audit": { "replicas": [8, 8, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 9,
+      "nodes": {
+        "publisher": { "processed": 36, "throughput": 0.11998310448008095, "replicas": [1, 1, 0] },
+        "log": {
+          "processed": 36,
+          "backlog": 4,
+          "throughput": 0.14508952081820572,
+          "lag": { "orders": 4 },
+          "replicas": [1, 1, 0]
+        },
+        "fanout": {
+          "processed": 36,
+          "throughput": 0.14508952081820572,
+          "lag": { "receipts": 0, "audit": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "log-readers": { "processed": 27, "backlog": 1, "inFlight": 3, "throughput": 3.6615153275765024, "replicas": [8, 3, 5] },
+        "receipts": { "processed": 36, "throughput": 0.48171417338025757, "replicas": [8, 8, 0] },
+        "audit": { "processed": 36, "throughput": 0.48171417338025757, "replicas": [8, 8, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 14400,
+    "inSystem": 0,
+    "real": {
+      "publisher": { "processed": 36, "throughput": 0.0014730733563273599, "replicas": [1, 1, 0] },
+      "log": { "processed": 36, "throughput": 0.001781313363458475, "lag": { "orders": 0 }, "replicas": [1, 1, 0] },
+      "fanout": {
+        "processed": 36,
+        "throughput": 0.001781313363458475,
+        "lag": { "receipts": 0, "audit": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "log-readers": { "processed": 36, "throughput": 0.9030244575540313, "replicas": [8, 3, 5] },
+      "receipts": { "processed": 36, "throughput": 0.005914168642715207, "replicas": [8, 8, 0] },
+      "audit": { "processed": 36, "throughput": 0.005914168642715207, "replicas": [8, 8, 0] }
+    },
+    "edges": { "publish-log": 36, "publish-fanout": 36, "read-log": 36, "read-receipts": 36, "read-audit": 36 }
+  },
+  "events": {
+    "total": 432,
+    "byKind": { "inject": 36, "process": 216, "deliver": 180 },
+    "byNode": {
+      "publisher": { "inject": 36, "process": 36 },
+      "log": { "deliver": 36, "process": 36 },
+      "fanout": { "deliver": 36, "process": 36 },
+      "log-readers": { "deliver": 36, "process": 36 },
+      "receipts": { "deliver": 36, "process": 36 },
+      "audit": { "deliver": 36, "process": 36 }
+    },
+    "perSecond": [
+      "8a0bdb031a11",
+      "c0389acdc942",
+      "ed390357b6e1",
+      "4f1de42bd266",
+      "b2358e16b175",
+      "6fa6507ec8ba",
+      "6114567d3f6d",
+      "ae88802caaae",
+      "c1eb5f7fdc97",
+      "614ae14ea487",
+      "db7fe88359c0",
+      "3209b939d81b",
+      "f606bed26a95",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 1000, "text": "Kafka assigns three of eight replicas. Each SNS subscription can use all eight; subscriptions receive independent copies.", "focus": ["log-readers", "receipts", "audit"] }
+  ],
+  "latency": {
+    "journeys": { "done": 36, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 36, "min": 1400, "mean": 4150, "p50": 4400, "p90": 6400, "max": 6900 },
+    "waitMs": {
+      "log-readers": { "count": 36, "min": 0, "mean": 420.27777777777777, "p50": 630, "p90": 640, "max": 640 },
+      "receipts": { "count": 36, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "audit": { "count": 36, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "log-readers": { "count": 36, "min": 1000, "mean": 1000, "p50": 1000, "p90": 1000, "max": 1000 },
+      "receipts": { "count": 36, "min": 1000, "mean": 1000, "p50": 1000, "p90": 1000, "max": 1000 },
+      "audit": { "count": 36, "min": 1000, "mean": 1000, "p50": 1000, "p90": 1000, "max": 1000 }
+    }
+  }
+}

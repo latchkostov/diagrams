@@ -1169,6 +1169,7 @@
   "gallery.missingIcons": " {count, plural, one {{count} mangler et ikon} other {{count} mangler et ikon}}",
   "edit.finiteGeometry": "geometrien skal være endelig.",
   "edit.coordinateBudget": "uden for koordinatgrænsen. Flyt markeringen tættere på udgangspunktet.",
+  "edit.annotationLimit": "Kan ikke konvertere denne afgrænsning: diagrammet har allerede {limit} annoteringer. Fjern en annotering, og prøv igen.",
   "edit.annotationSize": "størrelsen skal være mellem 1 og {limit} pixel. Vælg en mindre markering.",
   "broker.partitions": "Partitioner",
   "broker.shards": "Shards",

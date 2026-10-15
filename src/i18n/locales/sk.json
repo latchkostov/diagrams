@@ -1169,6 +1169,7 @@
   "gallery.missingIcons": " {count, plural, one {{count} bez ikony} few {{count} bez ikony} other {{count} bez ikony}}",
   "edit.finiteGeometry": "jeho geometria musí byť konečná.",
   "edit.coordinateBudget": "je mimo rozsahu súradníc. Presuňte výber bližšie k počiatku.",
+  "edit.annotationLimit": "Túto hranicu nemožno konvertovať: diagram už obsahuje {limit} anotácií. Odstráňte anotáciu a skúste to znova.",
   "edit.annotationSize": "veľkosť musí byť od 1 do {limit} pixelov. Zvoľte menší výber.",
   "broker.partitions": "Partície",
   "broker.shards": "Shardy",

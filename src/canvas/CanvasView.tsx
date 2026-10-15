@@ -66,7 +66,8 @@ import {
 import { privacyOf } from "../lib/localOnly";
 import { PRIVACY_REQUEST, usePrivacyFlags } from "../lib/usePrivacy";
 import type { AnnotationKind, AnnotationShape, DiagramFile } from "../model/types";
-import { wouldCreateCycle } from "../model/groupHierarchy";
+import { memberBoxes } from "./memberBoxes";
+import { expandGroupIds } from "../model/groupHierarchy";
 import {
   edgeAriaLabel,
   fromFlow,
@@ -77,7 +78,7 @@ import {
   withRovingFocus,
   type DiagramMeta,
 } from "./convert";
-import { groupAtPoint, previewMembership, type GroupRect, type MemberBox } from "./membership";
+import { previewMembership, type GroupRect, type MemberBox } from "./membership";
 import { nearestInDirection, readingOrder, stepInOrder, tabOrder, type NavBox } from "./keyboardNav";
 import { DiagramContext, type DiagramUi, type InlineEdit, type RenameTarget } from "./DiagramContext";
 import { revealPan, useCovered, useKeepSelectionInView, useOverlayFit, useOverlayTestIds } from "./useOverlayFit";
@@ -1233,29 +1234,28 @@ function CanvasInner({
    * The dragged nodes whose membership a drop decides (their copies' ids, for an Alt-drag): all of them but the
    * members of a boundary dragged with them, which it carries.
    */
-  const droppedNodes = useCallback((dragged: FlowNode[], copies: Map<string, string> | null) => {
-    const carriers = new Set(dragged.filter(isGroupNode).map((g) => g.data.groupId));
-    let expanded = true;
-    while (expanded) {
-      expanded = false;
-      for (const n of dragged) {
-        if (isGroupNode(n) && n.data.group && carriers.has(n.data.group) && !carriers.has(n.data.groupId)) {
-          carriers.add(n.data.groupId);
-          expanded = true;
-        }
-      }
-    }
-    const carried = (n: FlowNode) => {
-      // An Alt-drag's copy belongs to the copy of its boundary, the original's to the original.
-      const g = n.data.group;
-      return !!g && carriers.has(g);
-    };
-    return dragged
-      .filter(
-        (n): n is DiagramFlowNode | AnnotationFlowNode => (isDiagramNode(n) || isAnnotationNode(n)) && !carried(n),
-      )
-      .map((n) => copies?.get(n.id) ?? n.id);
-  }, []);
+  const droppedNodes = useCallback(
+    (dragged: FlowNode[], copies: Map<string, string> | null) => {
+      const carriers = expandGroupIds(
+        dragged.filter(isGroupNode).map((g) => g.data.groupId),
+        store
+          .getState()
+          .nodes.filter(isGroupNode)
+          .map((g) => ({ id: g.data.groupId, group: g.data.group })),
+      );
+      const carried = (n: FlowNode) => {
+        // An Alt-drag's copy belongs to the copy of its boundary, the original's to the original.
+        const g = n.data.group;
+        return !!g && carriers.has(g);
+      };
+      return dragged
+        .filter(
+          (n): n is DiagramFlowNode | AnnotationFlowNode => (isDiagramNode(n) || isAnnotationNode(n)) && !carried(n),
+        )
+        .map((n) => copies?.get(n.id) ?? n.id);
+    },
+    [store],
+  );
   const watchMembership = useCallback(
     (dragged: FlowNode[], copies: Map<string, string> | null) => {
       const s = store.getState();
@@ -1268,15 +1268,8 @@ function CanvasInner({
           width: g.width ?? g.measured?.width ?? 0,
           height: g.height ?? g.measured?.height ?? 0,
         }));
-      const sizeOf = (n: FlowNode) => ({
-        width: n.measured?.width ?? n.width ?? 0,
-        height: n.measured?.height ?? n.height ?? 0,
-      });
       const moving = new Set([...ids, ...dragged.map((n) => n.id)]);
-      const othersOf = (ns: readonly FlowNode[]): MemberBox[] =>
-        ns
-          .filter((n): n is DiagramFlowNode => isDiagramNode(n) && !moving.has(n.id))
-          .map((n) => ({ id: n.id, ...n.position, ...sizeOf(n), group: n.data.group }));
+      const othersOf = (ns: readonly FlowNode[]): MemberBox[] => memberBoxes(ns.filter((n) => !moving.has(n.id)));
       // Boundaries dragged along (with their members) move under the nodes: read them each frame then. Otherwise
       // the rest holds still, so it's read once.
       const live = dragged.some(isGroupNode);
@@ -1296,8 +1289,8 @@ function CanvasInner({
         for (const id of ids) {
           const n = st.nodeLookup.get(id);
           const u = n?.internals.userNode;
-          if (!n || !u || !isDiagramNode(u)) continue;
-          now.push({ id, ...n.internals.positionAbsolute, ...sizeOf(u), group: u.data.group });
+          if (!n || !u) continue;
+          now.push(...memberBoxes([{ ...u, position: n.internals.positionAbsolute }]));
         }
         const preview = previewMembership(now, groups, others);
         for (const [id, el] of marked)
@@ -1414,41 +1407,12 @@ function CanvasInner({
           if (!copies && editGestures) sayLeft(left);
         }
         if (draggedGroups.length) {
-          const ns = store.getState().nodes;
-          const targetFlowIds = copies
-            ? draggedGroups.map((g) => copies.get(g.id) ?? g.id)
-            : draggedGroups.map((g) => g.id);
-          const targetNodes = ns.filter((n): n is GroupFlowNode => isGroupNode(n) && targetFlowIds.includes(n.id));
-          const targetGroupIds = new Set(targetNodes.map((n) => n.data.groupId));
-          const otherGroups = ns
-            .filter(
-              (n): n is GroupFlowNode =>
-                isGroupNode(n) && !targetGroupIds.has(n.data.groupId) && !dragged.some((d) => d.id === n.id),
-            )
-            .map((g) => ({
-              id: g.data.groupId,
-              x: g.position.x,
-              y: g.position.y,
-              width: g.width ?? g.measured?.width ?? 0,
-              height: g.height ?? g.measured?.height ?? 0,
-              group: g.data.group,
-            }));
-          for (const g of targetNodes) {
-            const gw = g.width ?? g.measured?.width ?? 0;
-            const gh = g.height ?? g.measured?.height ?? 0;
-            const gc = { x: g.position.x + gw / 2, y: g.position.y + gh / 2 };
-            const validOuters = otherGroups.filter(
-              (og) => og.width * og.height > gw * gh && !wouldCreateCycle(g.data.groupId, og.id, otherGroups),
-            );
-            const outerId = groupAtPoint(validOuters, gc.x, gc.y);
-            if (g.data.group !== outerId) {
-              editor.updateGroup(g.data.groupId, { group: outerId });
-            }
-          }
+          const targetFlowIds = draggedGroups.map((g) => copies?.get(g.id) ?? g.id);
+          editor.settleBoundaryMembership(targetFlowIds.map((id) => id.slice(GROUP_PREFIX.length)));
         }
       });
     },
-    [editor, guides, editGestures, sayLeft, droppedNodes, store],
+    [editor, guides, editGestures, sayLeft, droppedNodes],
   );
 
   // ---------------------------------------------------------------- Space, Alt and the middle button (D4, D9)
@@ -1720,6 +1684,8 @@ function CanvasInner({
   );
   const ui = useMemo<DiagramUi>(
     () => ({
+      theme,
+      canvasColor: meta.color,
       direction,
       editing,
       setEditing: editGestures ? setEditing : () => {},
@@ -1731,6 +1697,8 @@ function CanvasInner({
       boundaryResized: editGestures ? boundaryResized : undefined,
     }),
     [
+      theme,
+      meta.color,
       direction,
       editing,
       openEdgeMenu,
@@ -1989,9 +1957,7 @@ function CanvasInner({
         ns.filter((n) => !isGroupNode(n)).map(navBox),
         ns.filter(isGroupNode).map((g) => ({
           ...navBox(g),
-          members: ns
-            .filter((m) => (isDiagramNode(m) || isAnnotationNode(m)) && m.data.group === g.data.groupId)
-            .map((m) => m.id),
+          members: ns.filter((m) => m.data.group === g.data.groupId).map((m) => m.id),
         })),
         direction,
       ),

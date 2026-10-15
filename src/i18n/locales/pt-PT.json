@@ -1169,6 +1169,7 @@
   "gallery.missingIcons": " {count, plural, one {{count} sem ícone} other {{count} sem ícone}}",
   "edit.finiteGeometry": "a geometria tem de ser finita.",
   "edit.coordinateBudget": "fora do limite de coordenadas. Mova a seleção para perto da origem.",
+  "edit.annotationLimit": "Não foi possível converter este limite: o diagrama já tem {limit} anotações. Remova uma anotação e tente novamente.",
   "edit.annotationSize": "o tamanho tem de estar entre 1 e {limit} píxeis. Escolha uma seleção mais pequena.",
   "broker.partitions": "Partições",
   "broker.shards": "Shards",

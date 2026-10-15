@@ -706,6 +706,71 @@
   }
 }
 
+/* Phone canvases also have collapsed side rails. Use the screen's width for playback,
+   keeping its controls and popovers reachable without taking another row from the diagram. */
+@media (max-width: 640px) {
+  .app-main:has(.lv-hud) {
+    z-index: 7;
+  }
+
+  .app-main .canvas-view.is-live > .canvas-wrap {
+    z-index: 6;
+  }
+
+  /* The viewport-wide panel and playback belong to the app shell. Embeds and HTML
+     viewers keep controls anchored to their own canvas, clear of banners/footers. */
+  .app-main .canvas-view.is-live .lv-panel {
+    position: fixed;
+    top: calc(var(--topbar-h) + 64px);
+    bottom: 80px;
+    inset-inline-end: 8px;
+    width: min(396px, calc(100vw - 16px));
+    max-width: calc(100vw - 16px);
+  }
+
+  /* Let playback escape the HUD's stacking context, above the sibling panel at 7.
+     Other HUD cards keep their old layer, below Inputs, including narration and logs. */
+  .app-main .lv-hud {
+    z-index: auto;
+  }
+
+  .app-main .lv-hud > * {
+    z-index: 6;
+  }
+
+  /* The title is outside React Flow's stacking context. Full-width phone panels
+     take its place until closed, so the chip cannot obscure their headings. */
+  .app-main .canvas-view.is-live:has(.lv-panel) .diagram-card {
+    visibility: hidden;
+  }
+
+  .app-main .lv-hud .lv-bar,
+  .app-main .lv-hud.has-panel .lv-bar {
+    position: fixed;
+    inset-inline: 8px;
+    bottom: 12px;
+    width: calc(100vw - 16px);
+    transform: none;
+    animation: none;
+    gap: 2px;
+    z-index: 8;
+  }
+}
+
+@container live-bar (max-width: 400px) {
+  .lv-bar .lv-stat {
+    display: none;
+  }
+
+  .lv-bar .lv-sim {
+    min-width: 80px;
+  }
+
+  .lv-bar .lv-timeline {
+    min-width: 32px;
+  }
+}
+
 @keyframes lv-rise {
   from {
     opacity: 0;

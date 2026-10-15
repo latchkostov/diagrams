@@ -284,6 +284,10 @@ describe("annotation colors", () => {
 
   it("calculates WCAG contrast and provides fallback for illegible text colors", async () => {
     const { accessibleColor, relativeLuminance } = await import("../model/colors");
+    const canvas = { r: 243, g: 245, b: 248 };
+    expect(accessibleColor("#767676", canvas, "theme ink")).toBe("theme ink");
+    expect(accessibleColor("#000000", canvas, "theme ink")).toBe("#000000");
+    expect(accessibleColor("#fff0", canvas, "theme ink")).toBe("theme ink");
     // Light background (white, luminance = 1)
     const whiteLum = relativeLuminance(255, 255, 255);
     // Dark color (#000000) has contrast 21:1 against white -> returns color

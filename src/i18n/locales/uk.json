@@ -1169,6 +1169,7 @@
   "gallery.missingIcons": " {count, plural, one {{count} без піктограми} few {{count} без піктограми} many {{count} без піктограми} other {{count} без піктограми}}",
   "edit.finiteGeometry": "його геометрія має бути скінченною.",
   "edit.coordinateBudget": "поза допустимим діапазоном координат. Перемістіть вибране ближче до початку координат.",
+  "edit.annotationLimit": "Не вдалося перетворити цю межу: діаграма вже містить {limit} анотацій. Видаліть анотацію та спробуйте ще раз.",
   "edit.annotationSize": "розмір має бути від 1 до {limit} пікселів. Виберіть меншу область.",
   "broker.partitions": "Партиції",
   "broker.shards": "Шарди",

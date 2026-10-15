@@ -1,0 +1,293 @@
+{
+  "format": "diagrams/v2",
+  "planning": {
+    "revision": "p3"
+  },
+  "direction": "TB",
+  "title": "Two inputs, one worker pool",
+  "description": "Acme merges orders and refunds into one four-slot worker: two consumer policies share capacity, so six events a second build lag despite plentiful partitions.",
+  "nodes": [
+    {
+      "id": "orders",
+      "stencil": "generic.webhook",
+      "label": "Acme orders",
+      "sublabel": "3 orders/s",
+      "props": {
+        "ratePerSec": 3,
+        "messageType": "OrderPlaced"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "refunds",
+      "stencil": "generic.webhook",
+      "label": "Acme refunds",
+      "sublabel": "3 refunds/s",
+      "props": {
+        "ratePerSec": 3,
+        "messageType": "RefundRequested"
+      },
+      "x": 360,
+      "y": 40
+    },
+    {
+      "id": "order-log",
+      "stencil": "kafka.topic",
+      "label": "Order events",
+      "sublabel": "8 partitions",
+      "props": {
+        "partitions": 8
+      },
+      "x": 40,
+      "y": 200
+    },
+    {
+      "id": "refund-log",
+      "stencil": "kafka.topic",
+      "label": "Refund events",
+      "sublabel": "8 partitions",
+      "props": {
+        "partitions": 8
+      },
+      "x": 360,
+      "y": 200
+    },
+    {
+      "id": "worker",
+      "stencil": "service.go",
+      "label": "Ledger worker",
+      "sublabel": "One shared pool: 1 × 4 / 1 s",
+      "props": {
+        "preset": "processor-lesson",
+        "presetRevision": "1",
+        "replicas": 1,
+        "concurrency": 4,
+        "latencyMs": 1000,
+        "jitter": 0,
+        "failureRate": 0
+      },
+      "x": 200,
+      "y": 360
+    },
+    {
+      "id": "ledger",
+      "stencil": "postgres",
+      "label": "Acme ledger",
+      "sublabel": "Orders and refunds",
+      "props": {
+        "latencyMs": 1
+      },
+      "x": 200,
+      "y": 520
+    }
+  ],
+  "edges": [
+    {
+      "id": "order-publish",
+      "from": "orders",
+      "to": "order-log",
+      "label": "Order",
+      "kind": "async",
+      "props": {
+        "travelMs": 200
+      }
+    },
+    {
+      "id": "refund-publish",
+      "from": "refunds",
+      "to": "refund-log",
+      "label": "Refund",
+      "kind": "async",
+      "props": {
+        "travelMs": 200
+      }
+    },
+    {
+      "id": "read-orders",
+      "from": "order-log",
+      "to": "worker",
+      "label": "order-posting",
+      "kind": "async",
+      "props": {
+        "travelMs": 200,
+        "group": "order-posting"
+      }
+    },
+    {
+      "id": "read-refunds",
+      "from": "refund-log",
+      "to": "worker",
+      "label": "refund-posting",
+      "kind": "async",
+      "props": {
+        "travelMs": 200,
+        "group": "refund-posting"
+      }
+    },
+    {
+      "id": "save",
+      "from": "worker",
+      "to": "ledger",
+      "label": "Record",
+      "kind": "sync",
+      "props": {
+        "travelMs": 200
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "shared-slots",
+      "title": "Six events, four slots",
+      "description": "Both inputs consume the same worker budget; extra partitions cannot create processor slots.",
+      "seed": 41,
+      "scale": 1,
+      "traffic": [
+        {
+          "id": "orders",
+          "node": "orders",
+          "messageType": "OrderPlaced",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 3,
+            "durationMs": 6000
+          }
+        },
+        {
+          "id": "refunds",
+          "node": "refunds",
+          "messageType": "RefundRequested",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 3,
+            "durationMs": 6000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 1500,
+          "action": {
+            "do": "note",
+            "text": "Properties shows two Consumes rows, but one 4/s pool. At 6/s total, waiting work grows by about 2/s.",
+            "focus": [
+              "worker",
+              "order-log",
+              "refund-log"
+            ]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "order-log-lag-at",
+          "label": "order-log: lag > 0",
+          "metric": {
+            "node": "order-log",
+            "field": "lag"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "at",
+          "atMs": 5000
+        },
+        {
+          "id": "refund-log-lag-at",
+          "label": "refund-log: lag > 0",
+          "metric": {
+            "node": "refund-log",
+            "field": "lag"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "at",
+          "atMs": 5000
+        },
+        {
+          "id": "ledger-processed-end",
+          "label": "ledger: processed == 36",
+          "metric": {
+            "node": "ledger",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 36,
+          "when": "end"
+        }
+      ]
+    },
+    {
+      "id": "measured-faster",
+      "title": "Measured faster work",
+      "description": "A 500 ms measured service time doubles the same four-slot pool to 8/s, above the combined 6/s demand.",
+      "seed": 41,
+      "scale": 1,
+      "traffic": [
+        {
+          "id": "orders",
+          "node": "orders",
+          "messageType": "OrderPlaced",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 3,
+            "durationMs": 6000
+          }
+        },
+        {
+          "id": "refunds",
+          "node": "refunds",
+          "messageType": "RefundRequested",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 3,
+            "durationMs": 6000
+          }
+        }
+      ],
+      "timeline": [],
+      "expectations": [
+        {
+          "id": "ledger-processed-end",
+          "label": "ledger: processed == 36",
+          "metric": {
+            "node": "ledger",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 36,
+          "when": "end"
+        },
+        {
+          "id": "order-log-lag-end",
+          "label": "order-log: lag == 0",
+          "metric": {
+            "node": "order-log",
+            "field": "lag"
+          },
+          "op": "==",
+          "value": 0,
+          "when": "end"
+        },
+        {
+          "id": "refund-log-lag-end",
+          "label": "refund-log: lag == 0",
+          "metric": {
+            "node": "refund-log",
+            "field": "lag"
+          },
+          "op": "==",
+          "value": 0,
+          "when": "end"
+        }
+      ],
+      "setup": {
+        "props": {
+          "worker": {
+            "latencyMs": 500
+          }
+        }
+      }
+    }
+  ]
+}

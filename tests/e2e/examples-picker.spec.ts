@@ -1,5 +1,5 @@
 import type { Locator } from "@playwright/test";
-import { test, expect, publicExamples, expectNoErrors } from "./fixtures";
+import { test, expect, publicExamples, expectNoErrors, pageLoadTimeout } from "./fixtures";
 
 // With 15+ examples, the picker and the start card group them by theme so neither becomes a wall of
 // titles: the picker has one group per theme, and the start card shows a few featured examples with
@@ -7,11 +7,30 @@ import { test, expect, publicExamples, expectNoErrors } from "./fixtures";
 
 /** Every public example's intended theme, in display order (src/examples/themes.ts and index.ts). */
 const BY_THEME: Record<string, string[]> = {
-  streaming: ["kafka-order-pipeline", "cqrs-event-sourcing", "cdc-analytics", "iot-telemetry"],
-  data: ["event-driven-data-platform", "nightly-batch-elt", "gcp-streaming-analytics", "rag-assistant"],
-  cloud: ["aws-serverless-orders", "aws-fanout", "aks-app-config-key-vault"],
+  streaming: [
+    "kafka-order-pipeline",
+    "cqrs-event-sourcing",
+    "cdc-analytics",
+    "iot-telemetry",
+    "partitions-vs-subscriptions",
+    "shared-worker-pool",
+  ],
+  data: [
+    "event-driven-data-platform",
+    "nightly-batch-elt",
+    "gcp-streaming-analytics",
+    "rag-assistant",
+    "shared-api-quotas",
+  ],
+  cloud: ["aws-serverless-orders", "aws-fanout", "aks-app-config-key-vault", "serverless-burst-buffer"],
   integration: ["webhook-ingestion", "notification-fanout", "azure-service-bus-integration"],
-  reliability: ["outbox-saga-checkout", "multi-region-active-active", "branch-to-datacentre"],
+  reliability: [
+    "outbox-saga-checkout",
+    "multi-region-active-active",
+    "branch-to-datacentre",
+    "measured-order-capacity",
+    "contoso-dmz",
+  ],
 };
 const THEMES = Object.keys(BY_THEME);
 
@@ -93,6 +112,10 @@ test.describe("examples by theme", () => {
     // A featured example opens from the card.
     await card.getByTestId(`start-example-${FEATURED[1]}`).click();
     await expect(page.getByTestId("example-picker")).toHaveValue(FEATURED[1]);
+    // Selection updates before its lazy diagram has arrived, especially during concurrent builds.
+    const selected = publicExamples.find((e) => e.slug === FEATURED[1]);
+    if (!selected) throw new Error("Missing featured example");
+    await expect(page.getByTestId(`node-${selected.nodeIds[0]}`)).toBeVisible({ timeout: pageLoadTimeout() });
     await expect(page.getByTestId("start-card")).toHaveCount(0);
     expectNoErrors(consoleErrors);
   });

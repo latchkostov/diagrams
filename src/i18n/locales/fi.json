@@ -1169,6 +1169,7 @@
   "gallery.missingIcons": " {count, plural, one {{count} ilman kuvaketta} other {{count} ilman kuvaketta}}",
   "edit.finiteGeometry": "geometrian on oltava äärellinen.",
   "edit.coordinateBudget": "koordinaattirajan ulkopuolella. Siirrä valinta lähemmäs origoa.",
+  "edit.annotationLimit": "Tätä rajaa ei voi muuntaa: kaaviossa on jo {limit} merkintää. Poista merkintä ja yritä uudelleen.",
   "edit.annotationSize": "koon on oltava 1–{limit} pikseliä. Valitse pienempi valinta.",
   "broker.partitions": "Osiot",
   "broker.shards": "Shardit",

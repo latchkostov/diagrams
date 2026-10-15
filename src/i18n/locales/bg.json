@@ -1169,6 +1169,7 @@
   "gallery.missingIcons": " {count, plural, one {{count} без икона} other {{count} без икона}}",
   "edit.finiteGeometry": "геометрията трябва да е крайна.",
   "edit.coordinateBudget": "извън ограниченията за координати. Преместете избраното по-близо до началото.",
+  "edit.annotationLimit": "Тази рамка не може да се преобразува: диаграмата вече има {limit} анотации. Премахнете анотация и опитайте отново.",
   "edit.annotationSize": "размерът трябва да е между 1 и {limit} пиксела. Изберете по-малка селекция.",
   "broker.partitions": "Партиции",
   "broker.shards": "Шардове",

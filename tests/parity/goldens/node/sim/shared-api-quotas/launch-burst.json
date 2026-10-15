@@ -1,0 +1,105 @@
+{
+  "run": {
+    "time": 3540,
+    "totalMs": 12000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "answer-rejected-end", "label": "answer: rejected > 0", "status": "pass", "value": 18 },
+      { "id": "review-rejected-end", "label": "review: rejected > 0", "status": "pass", "value": 18 },
+      { "id": "payments-rejected-end", "label": "payments: rejected > 0", "status": "pass", "value": 24 },
+      { "id": "answer-failed-end", "label": "answer: failed == 0", "status": "pass", "value": 0 },
+      { "id": "payments-failed-end", "label": "payments: failed == 0", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 1000, "kind": "traffic", "label": "questions" },
+      { "atMs": 1000, "kind": "traffic", "label": "billing" },
+      { "atMs": 1200, "kind": "traffic", "label": "questions ends" },
+      { "atMs": 1200, "kind": "traffic", "label": "billing ends" },
+      { "atMs": 2000, "kind": "note", "label": "Two model boxes spend one project budget. Rejected is separate from failed; no upstream timeout or retry is simulated." }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "questions": { "replicas": [1, 1, 0] },
+        "gateway": { "replicas": [1, 1, 0] },
+        "assistant": { "replicas": [2, 2, 0] },
+        "answer": { "replicas": [1, 1, 0] },
+        "review": { "replicas": [1, 1, 0] },
+        "billing": { "replicas": [1, 1, 0] },
+        "payments": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 3540,
+    "inSystem": 0,
+    "real": {
+      "questions": { "processed": 24, "throughput": 2.0956627076518317, "replicas": [1, 1, 0] },
+      "gateway": { "processed": 24, "throughput": 2.703190740421768, "replicas": [1, 1, 0] },
+      "assistant": { "processed": 24, "throughput": 3.77280521778231, "replicas": [2, 2, 0] },
+      "answer": {
+        "processed": 6,
+        "rejected": 18,
+        "throughput": 1.310236851073844,
+        "rejectionReasons": { "assistant-tokens: tokens": 18 },
+        "replicas": [1, 1, 0]
+      },
+      "review": {
+        "processed": 6,
+        "rejected": 18,
+        "throughput": 1.310236851073844,
+        "rejectionReasons": { "assistant-tokens: tokens": 18 },
+        "replicas": [1, 1, 0]
+      },
+      "billing": { "processed": 30, "throughput": 2.6194038479296857, "replicas": [1, 1, 0] },
+      "payments": {
+        "processed": 6,
+        "rejected": 24,
+        "throughput": 0.7691617405286049,
+        "rejectionReasons": { "local-rate: requests": 24 },
+        "replicas": [1, 1, 0]
+      }
+    },
+    "edges": { "ask": 24, "assist": 24, "generate": 24, "review-answer": 24, "charge": 30 }
+  },
+  "events": {
+    "total": 360,
+    "byKind": { "inject": 54, "process": 120, "deliver": 126, "reject": 60 },
+    "byNode": {
+      "questions": { "inject": 24, "process": 24 },
+      "billing": { "inject": 30, "process": 30 },
+      "gateway": { "deliver": 24, "process": 24 },
+      "payments": { "deliver": 30, "reject": 24, "process": 6 },
+      "assistant": { "deliver": 24, "process": 24 },
+      "answer": { "deliver": 24, "reject": 18, "process": 6 },
+      "review": { "deliver": 24, "reject": 18, "process": 6 }
+    },
+    "perSecond": ["-", "b94c52dfe4ed", "32c62c943308", "-"]
+  },
+  "notes": [
+    { "atMs": 2000, "text": "Two model boxes spend one project budget. Rejected is separate from failed; no upstream timeout or retry is simulated.", "focus": ["answer", "review", "payments"] }
+  ],
+  "latency": {
+    "journeys": { "done": 54, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0, "rejected": 42 },
+    "endToEndMs": { "count": 54, "min": 200, "mean": 514.074074074074, "p50": 440, "p90": 990, "max": 1000 },
+    "waitMs": {
+      "gateway": { "count": 24, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "assistant": { "count": 24, "min": 0, "mean": 31.666666666666668, "p50": 30, "p90": 70, "max": 80 },
+      "answer": { "count": 6, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "review": { "count": 6, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "payments": { "count": 6, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "gateway": { "count": 24, "min": 40, "mean": 55, "p50": 60, "p90": 60, "max": 70 },
+      "assistant": { "count": 24, "min": 100, "mean": 100, "p50": 100, "p90": 100, "max": 100 },
+      "answer": { "count": 6, "min": 240, "mean": 240, "p50": 240, "p90": 240, "max": 240 },
+      "review": { "count": 6, "min": 240, "mean": 240, "p50": 240, "p90": 240, "max": 240 },
+      "payments": { "count": 6, "min": 240, "mean": 240, "p50": 240, "p90": 240, "max": 240 }
+    }
+  }
+}

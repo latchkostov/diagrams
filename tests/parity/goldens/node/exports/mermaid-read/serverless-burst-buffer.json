@@ -1,0 +1,27 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Serverless burst and buffer",
+    "direction": "TB",
+    "nodes": [
+      { "id": "requests", "stencil": "generic.service", "label": "Contoso requests", "sublabel": "6 requests/s to each path", "x": 200, "y": 40 },
+      { "id": "gateway", "stencil": "aws.api-gateway", "label": "API Gateway", "sublabel": "Managed account preset", "x": 40, "y": 200 },
+      { "id": "queue", "stencil": "generic.service", "label": "Async buffer", "sublabel": "Wait here for a free worker", "x": 360, "y": 200 },
+      { "id": "direct", "stencil": "generic.service", "label": "Direct function", "sublabel": "2 concurrent executions · 1 s each", "x": 40, "y": 360 },
+      { "id": "invoker", "stencil": "generic.service", "label": "Bounded async invoker", "sublabel": "2 slots · one-second pacing", "x": 360, "y": 360 },
+      { "id": "async", "stencil": "generic.service", "label": "Buffered function", "sublabel": "2 concurrent executions · 250 ms", "x": 360, "y": 520 },
+      { "id": "direct_results", "stencil": "generic.database", "label": "Direct results", "sublabel": "Admitted requests only", "x": 40, "y": 520 },
+      { "id": "async_results", "stencil": "generic.database", "label": "Async results", "sublabel": "Every queued job", "x": 200, "y": 680 }
+    ],
+    "edges": [
+      { "id": "e1-requests-gateway", "from": "requests", "to": "gateway", "label": "Request", "kind": "sync" },
+      { "id": "e2-requests-queue", "from": "requests", "to": "queue", "label": "Enqueue", "kind": "async" },
+      { "id": "e3-gateway-direct", "from": "gateway", "to": "direct", "label": "Invoke", "kind": "sync" },
+      { "id": "e4-queue-invoker", "from": "queue", "to": "invoker", "label": "Pull when free", "kind": "async" },
+      { "id": "e5-invoker-async", "from": "invoker", "to": "async", "label": "Paced invoke", "kind": "sync" },
+      { "id": "e6-direct-direct_results", "from": "direct", "to": "direct_results", "label": "Write", "kind": "sync" },
+      { "id": "e7-async-async_results", "from": "async", "to": "async_results", "label": "Write", "kind": "sync" }
+    ]
+  }
+}

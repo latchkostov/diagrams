@@ -1,3 +1,4 @@
+import { nestedBoundariesFixture } from "./nestedBoundariesFixture";
 import { ColourPickerLab } from "./ColourPickerLab";
 import { customColoursFixture } from "./customColoursFixture";
 import { planningP3Fixture, planningP3BulkFixture } from "./planningP3Fixture";
@@ -303,6 +304,14 @@ const diagramPresets: Preset[] = [
     description: "A ring of services and topics; the last edge loops back.",
     controls: [{ type: "number", key: "size", label: "Nodes", default: 8, min: 2, max: 40 }],
     diagram: (v) => cycleDiagram(Number(v.size)),
+  },
+  {
+    kind: "diagram",
+    id: "nested-boundaries",
+    title: "Nested boundaries",
+    group: "Diagrams",
+    description: "A child-first hierarchy with a node and note: move or wrap the selection, then follow it with Tab.",
+    diagram: () => structuredClone(nestedBoundariesFixture),
   },
   {
     kind: "diagram",

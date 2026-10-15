@@ -3,6 +3,7 @@ import { join } from "node:path";
 import type { Locator, Page } from "@playwright/test";
 import {
   test,
+  pageLoadTimeout,
   expect,
   gotoCanvas,
   gotoGallery,
@@ -55,10 +56,13 @@ const NATIVE = {
 };
 
 test("a failed image export keeps the format in its error", async ({ page }) => {
-  await page.route(/\/assets\/image-[^/]+\.js(?:\?.*)?$/, (route) => route.abort());
+  test.slow(); // The canvas and its lazy failure messages load independently.
+  await page.route(/\/(?:assets\/image-[^/]+\.js|src\/interop\/image\.ts)(?:\?.*)?$/, (route) => route.abort());
   await gotoCanvas(page, publicExamples[0].slug);
   await fileItem(page, "export-png");
-  await expect(page.getByTestId("toast").filter({ hasText: "Couldn't export the PNG." })).toBeVisible();
+  await expect(page.getByTestId("toast").filter({ hasText: "Couldn't export the PNG." })).toBeVisible({
+    timeout: pageLoadTimeout(),
+  });
 });
 interface FsState {
   pickerCalls: number;

@@ -7,6 +7,7 @@ import {
   type DiagramNode,
 } from "../model/types";
 import { filterLayerOrder } from "../model/layers";
+import { sanitizeGroupParents } from "../model/groupHierarchy";
 import { uniqueId } from "./ids";
 import { normalizeAnnotation, annotationCoordinate } from "../model/annotations";
 import { LIMITS, exceedsDepth, validateDiagram } from "../interop/native";
@@ -174,16 +175,20 @@ export function remapPayload(p: ClipboardPayload, taken: TakenIds, offset: { x: 
   const used = new Set([...taken.nodes, ...taken.edges, ...taken.groups]);
   const gmap = new Map<string, string>();
   const nmap = new Map<string, string>();
-  for (const g of p.groups) {
+  const groupIds = p.groups.map((g) => {
     const id = uniqueId(g.id, used);
     used.add(id);
-    gmap.set(g.id, id);
-  }
-  const groups = p.groups.map((g) => {
-    const id = gmap.get(g.id)!;
-    const group = g.group ? (gmap.get(g.group) ?? g.group) : undefined;
-    return { ...g, id, group, x: g.x + offset.x, y: g.y + offset.y };
+    if (!gmap.has(g.id)) gmap.set(g.id, id);
+    return id;
   });
+  const groups = sanitizeGroupParents(
+    p.groups.map((g, i) => {
+      const id = groupIds[i];
+      const group = typeof g.group === "string" ? (gmap.get(g.group) ?? g.group) : undefined;
+      return { ...g, id, group, x: g.x + offset.x, y: g.y + offset.y };
+    }),
+    taken.groups,
+  );
   const nodes = p.nodes.map((n) => {
     const id = uniqueId(n.id, used);
     used.add(id);

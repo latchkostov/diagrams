@@ -1,0 +1,103 @@
+{
+  "run": {
+    "time": 8850,
+    "totalMs": 16000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "database-processed-end", "label": "database: processed == 48", "status": "pass", "value": 48 },
+      { "id": "admin-processed-end", "label": "admin: processed == 0", "status": "pass", "value": 0 },
+      { "id": "firewall-blocked-end", "label": "firewall: blocked == 12", "status": "pass", "value": 12 },
+      { "id": "firewall-dropped-always", "label": "firewall: dropped == 0", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "visitors" },
+      { "atMs": 0, "kind": "traffic", "label": "probes" },
+      { "atMs": 2000, "kind": "note", "label": "Blocked is a firewall decision, separate from processing failures and lost messages. All capacities here are illustrative device presets." },
+      { "atMs": 6000, "kind": "traffic", "label": "visitors ends" },
+      { "atMs": 6000, "kind": "traffic", "label": "probes ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "visitors": { "replicas": [1, 1, 0] },
+        "probes": { "replicas": [1, 1, 0] },
+        "router": { "replicas": [2, 2, 0] },
+        "firewall": { "replicas": [2, 2, 0] },
+        "adc": { "replicas": [2, 2, 0] },
+        "switch": { "replicas": [2, 2, 0] },
+        "app": { "replicas": [2, 2, 0] },
+        "database": { "replicas": [1, 1, 0] },
+        "admin": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 8850,
+    "inSystem": 0,
+    "real": {
+      "visitors": { "processed": 48, "throughput": 0.494682066997084, "replicas": [1, 1, 0] },
+      "probes": { "processed": 12, "throughput": 0.1473822785867996, "replicas": [1, 1, 0] },
+      "router": { "processed": 60, "throughput": 0.7842191626124584, "replicas": [2, 2, 0] },
+      "firewall": { "processed": 60, "blocked": 12, "throughput": 0.9674739751126383, "replicas": [2, 2, 0] },
+      "adc": { "processed": 48, "throughput": 0.9195783661393874, "replicas": [2, 2, 0] },
+      "switch": { "processed": 48, "throughput": 1.13446365471703, "replicas": [2, 2, 0] },
+      "app": { "processed": 48, "throughput": 1.5313657561946419, "replicas": [2, 2, 0] },
+      "database": { "processed": 48, "throughput": 1.889212335186395, "replicas": [1, 1, 0] },
+      "admin": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "web-in": 48, "probe-in": 12, "perimeter": 60, "allow-web": 48, "deny-admin": 0, "to-switch": 48, "to-app": 48, "to-db": 48 }
+  },
+  "events": {
+    "total": 756,
+    "byKind": { "inject": 60, "process": 372, "deliver": 312, "block": 12 },
+    "byNode": {
+      "visitors": { "inject": 48, "process": 48 },
+      "router": { "deliver": 60, "process": 60 },
+      "probes": { "inject": 12, "process": 12 },
+      "firewall": { "deliver": 60, "process": 60, "block": 12 },
+      "adc": { "deliver": 48, "process": 48 },
+      "switch": { "deliver": 48, "process": 48 },
+      "app": { "deliver": 48, "process": 48 },
+      "database": { "deliver": 48, "process": 48 }
+    },
+    "perSecond": [
+      "2b848180ae16",
+      "c8b199f748df",
+      "ec2b8b712e89",
+      "b334a0c0d488",
+      "b343b819ad1a",
+      "cd2768dd2e26",
+      "9588795446a6",
+      "fa6b8e26c6b5",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 2000, "text": "Blocked is a firewall decision, separate from processing failures and lost messages. All capacities here are illustrative device presets.", "focus": ["firewall", "admin"] }
+  ],
+  "latency": {
+    "journeys": { "done": 60, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 12, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 60, "min": 420, "mean": 1164, "p50": 1350, "p90": 1350, "max": 1350 },
+    "waitMs": {
+      "router": { "count": 60, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "firewall": { "count": 60, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "adc": { "count": 48, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "switch": { "count": 48, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "app": { "count": 48, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "database": { "count": 48, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "router": { "count": 60, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "firewall": { "count": 60, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "adc": { "count": 48, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "switch": { "count": 48, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "app": { "count": 48, "min": 100, "mean": 100, "p50": 100, "p90": 100, "max": 100 },
+      "database": { "count": 48, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    }
+  }
+}
