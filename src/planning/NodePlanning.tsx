@@ -89,7 +89,14 @@ export function NodePlanning({
         <p className="insp-note" data-testid="planning-unavailable">
           {t("planning.analysisLimit")}
         </p>
-        {!hover && observed && d && <LiveDetails metrics={observed} diagram={d} />}
+        {!hover && observed && d && (
+          <LiveDetails
+            key={id}
+            metrics={observed}
+            diagram={d}
+            readPage={live ? (page) => live.controller.replicaPage(id, page) : undefined}
+          />
+        )}
       </>
     );
   const explanation = configured.explanation(id);
@@ -156,7 +163,14 @@ export function NodePlanning({
         </section>
       )}
       <PlanningConnections configured={configured} id={id} />
-      {observed && d && <LiveDetails metrics={observed} diagram={d} />}
+      {observed && d && (
+        <LiveDetails
+          key={id}
+          metrics={observed}
+          diagram={d}
+          readPage={live ? (page) => live.controller.replicaPage(id, page) : undefined}
+        />
+      )}
     </>
   );
 }

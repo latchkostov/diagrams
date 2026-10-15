@@ -829,10 +829,17 @@ export function LiveSession({
     for (const [id, st] of JSON.parse(outageKey) as [string, NodeStatus][]) status[id] = st;
     return status;
   }, [outageKey, planDiagram]);
+  const fleetKey = JSON.stringify(
+    Object.entries(state.snapshot.nodes).flatMap(([id, n]) => (n.fleet ? [[id, n.fleet.ready]] : [])),
+  );
+  const readyReplicas = useMemo(() => Object.fromEntries(JSON.parse(fleetKey) as [string, number][]), [fleetKey]);
   // Recomputed only when the plan or an outage changes (sliders, saves, edits, chaos), never per frame.
   const { value: capacity } = useMemo(
-    () => ({ locale, value: showCapacity || capacityOpen ? capacityView(planDiagram, plan, runStatus) : null }),
-    [showCapacity, capacityOpen, planDiagram, plan, runStatus, locale],
+    () => ({
+      locale,
+      value: showCapacity || capacityOpen ? capacityView(planDiagram, plan, runStatus, readyReplicas) : null,
+    }),
+    [showCapacity, capacityOpen, planDiagram, plan, runStatus, readyReplicas, locale],
   );
 
   // The panel shows the heat map for this session only; leaving live view restores the preference.

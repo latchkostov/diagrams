@@ -1,3 +1,4 @@
+import { resourceBudgetExceeded, MAX_LIFECYCLE_REPLICAS } from "../model/resourceBudget";
 import { DIAGRAM_FORMAT, type Simulation, type DiagramFile } from "../model/types";
 import {
   propsProblem,
@@ -122,7 +123,10 @@ export function validateDiagram(data: unknown): NativeResult {
   if (
     raw.format === "diagrams/v2" &&
     (!isObj(raw.planning) ||
-      (raw.planning.revision !== "p1" && raw.planning.revision !== "p2" && raw.planning.revision !== "p3"))
+      (raw.planning.revision !== "p1" &&
+        raw.planning.revision !== "p2" &&
+        raw.planning.revision !== "p3" &&
+        raw.planning.revision !== "p3-a1"))
   )
     return {
       ok: false,
@@ -438,7 +442,23 @@ export function validateDiagram(data: unknown): NativeResult {
     if (checks) d.checks = checks;
     else delete d.checks;
   }
-  return { ok: true, diagram: d as unknown as DiagramFile, warnings };
+  const authored = d as unknown as DiagramFile;
+  if (authored.planning?.revision !== "p3-a1") {
+    const a1Props = (p: Record<string, unknown> | undefined) =>
+      p?.resources !== undefined || p?.autoscaling !== undefined;
+    if (
+      authored.nodes.some((n) => a1Props(n.props)) ||
+      (authored.simulations ?? []).some(
+        (s) =>
+          Object.values(s.setup?.props ?? {}).some(a1Props) ||
+          (s.timeline ?? []).some((step) => step.action.do === "props" && a1Props(step.action.props)),
+      )
+    )
+      return { ok: false, error: t("autoscaling.modelRequired") };
+  }
+  if (resourceBudgetExceeded(authored))
+    return { ok: false, error: t("autoscaling.budget", { limit: MAX_LIFECYCLE_REPLICAS }) };
+  return { ok: true, diagram: authored, warnings };
 }
 
 const DEPENDENCY_WHEN = new Set(["startup", "cached", "request", "never"]);

@@ -30,6 +30,8 @@ export interface Particle {
 
 /** Native engine message counts and rates are sampled units; time and replica counts are unscaled. */
 export interface NodeSimState {
+  resources?: import("./autoscaling").ResourceReadout;
+  fleet?: import("./autoscaling").FleetReadout;
   id: string;
   role: SimRole;
   status: NodeStatus;
@@ -127,6 +129,10 @@ export interface SimSnapshot {
 
 /** Per-node tunables. Read from DiagramNode.props on load; can be changed live via setNodeProps. */
 export interface NodeSimProps {
+  resources?: import("../model/autoscaling").ComputeResources;
+  autoscaling?: import("../model/autoscaling").AutoscalingConfig;
+  /** An authored replicas patch suspends HPA until this is explicitly true. */
+  resumeAutoscaling?: boolean;
   api?: import("../model/admission").ApiBehaviour;
   endpoints?: import("../model/admission").ApiEndpoint[];
   scaling?: "fixed" | "auto";
@@ -326,6 +332,7 @@ export interface EngineCheckpoint {
 export interface SimEngine {
   /** Message lineage: follow one message and its copies hop by hop. Its state is part of checkpoints. */
   readonly tracer: MessageTracer;
+  replicaPage(nodeId: string, page?: number): import("./autoscaling").ReplicaRow[];
   checkpoint(): EngineCheckpoint;
   restore(checkpoint: EngineCheckpoint): void;
   /** Detached raw properties currently used by the engine, including runtime overrides. */

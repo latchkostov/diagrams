@@ -6,7 +6,7 @@ import { RULES as ALL_RULES, runChecks } from "./run";
 import { buildContext } from "./context";
 import { collectEvidence } from "./evidence";
 import { withEvidence } from "./evidenceMerge";
-import { upgradePlanning } from "../planning/migration";
+import { upgradePlanning, upgradeAutoscaling } from "../planning/migration";
 
 const RULE_BY_ID = new Map(ALL_RULES.map((r) => [r.id, r]));
 
@@ -489,4 +489,14 @@ describe("batch 4 rules scale linearly", () => {
     const ratio = fastest(detect(big, [rule])) / fastest(detect(small, [rule]));
     expect(ratio, rule).toBeLessThan(24);
   });
+});
+
+it("A1 precision gate preserves findings and severities on all 17 public examples", () => {
+  for (const d of Object.values(bySlug)) {
+    const p3 = upgradePlanning(d),
+      a1 = upgradeAutoscaling(p3);
+    expect(runChecks(a1).findings.map((f) => [f.id, f.severity])).toEqual(
+      runChecks(p3).findings.map((f) => [f.id, f.severity]),
+    );
+  }
 });

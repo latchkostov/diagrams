@@ -216,6 +216,16 @@ goldens match, with the eight previously documented browser deferrals.
 - Embed code uses the prepared deployment base on deep routes; nginx redirects stay relative behind HTTPS proxies.
 - Hosting-only Docker settings reuse the compiled app layer. Concurrent smoke checks own their containers
   and assigned ports, and clean up only their own container IDs, including after a failed start.
+## Autoscaling A1: resources, replica lifecycle and HPA (2026-10-14)
+
+- Opt into resource costs and Kubernetes HPA with a lesson, target and replica range. CPU work and limits
+  affect execution; memory risks remain explicit. Other settings live under Advanced.
+- Replicas start and drain on simulation time. CPU/memory readouts, replica history and selected replica
+  pages explain current readiness and scaling decisions. Partition limits and managed allocation still apply.
+- Checks and planning share resource arithmetic, including max-reached and unfixable baseline-memory
+  explanations. Older diagrams keep their behaviour until an explicit, undoable model upgrade.
+- Native files, agent operations, clipboard and the offline viewer preserve A1. All new UI text is translated
+  into all 37 locales. KEDA, cloud adapters and scenario policy sizing are later milestones.
 
 ## Planning P3 final review fixes (2026-10-14)
 

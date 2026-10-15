@@ -17,6 +17,7 @@ function materialized(d: DiagramFile, node: DiagramFile["nodes"][number], props:
           key !== "profile" &&
           key !== "broker" &&
           key !== "admission" &&
+          key !== "autoscalingProblem" &&
           v !== undefined &&
           (typeof v !== "number" || Number.isFinite(v)),
       ),
@@ -94,6 +95,15 @@ export function upgradePlanning(d: DiagramFile): DiagramFile {
   return next;
 }
 
+/** Explicit A1 upgrade materializes every saved patch without adding workload costs. */
+export function upgradeAutoscaling(d: DiagramFile): DiagramFile {
+  const next =
+    d.planning?.revision === "p3-a1" || d.planning?.revision === "p3" ? normalizePersistence(d) : upgradePlanning(d);
+  next.format = "diagrams/v2";
+  next.planning = { ...next.planning, revision: "p3-a1" };
+  return next;
+}
+
 /** The same traversal strips metadata and records losses, including saved setup and timeline props. */
 export function legacyExport(d: DiagramFile): { diagram: DiagramFile; losses: string[] } {
   const diagram = normalizePersistence(d);
@@ -103,6 +113,9 @@ export function legacyExport(d: DiagramFile): { diagram: DiagramFile; losses: st
   diagram.format = "diagrams/v1";
   const strip = (props: Record<string, unknown> | undefined, path: string) => {
     for (const key of [
+      "resources",
+      "autoscaling",
+      "resumeAutoscaling",
       "preset",
       "presetRevision",
       "connections",

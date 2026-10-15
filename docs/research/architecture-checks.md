@@ -1241,3 +1241,16 @@ The two suggestions describe optional dead-letter routes and are retained, not h
 adds no loss finding or planned-loss count. Free play exposes each default-pressure signal within eight
 simulated seconds; the measured example's overload is in its explicitly labelled 3× saved simulation.
 See [the feature inventory and verification](showcase-examples.md) and [Round 41](../DESIGN-REVIEW.md#round-41--public-feature-showcases-2026-10-14).
+## Autoscaling A1: precision gate (2026-10-14)
+
+Rechecked all **17 top-level public examples**, as saved and after explicitly upgrading the materialized P3
+model to `p3-a1`. `src/checks/examples.test.ts` compares every finding, target and severity: **no A1 changes**.
+The six previously reviewed materialization differences in the P2 table remain unchanged. No example was
+rewritten and no resource lesson, vendor quota or autoscaler is inferred from a stencil or an upgrade.
+
+Configured resource assumptions can now contribute the existing capacity warning: invalid/incompatible
+policy, peak-memory risk, a baseline-memory target that replicas cannot reduce, or required replicas above
+the HPA maximum. CPU execution capacity uses the same arithmetic in checks, configured analysis and playback.
+The maximum estimate explicitly precedes partition/admission constraints; it is not a burst guarantee.
+Fixed-replica sizing never edits an HPA node, and managed/serverless profiles retain their P3 allocation owner.
+No new architecture rule or severity was introduced.

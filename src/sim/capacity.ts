@@ -1,3 +1,5 @@
+import { resourcePlan, type ResourcePlan } from "./resourcePlanning";
+import { replicaRange, resourceCapacity } from "../model/autoscaling";
 import { englishAssignmentLabel, recordAssignment, type ConsumerAssignment, type BrokerSpec } from "../model/brokers";
 import type { DiagramFile, DiagramNode, SimRole, Simulation } from "../model/types";
 import { stencilRole } from "../stencils/roles";
@@ -18,6 +20,7 @@ import { iterationBound } from "./iterationBound";
 import { admissionCapacities } from "./admissionPlanning";
 
 export interface NodeCapacity {
+  resourcePlan?: ResourcePlan;
   managed?: boolean;
   status?: Exclude<NodeStatus, "up">;
   id: string;
@@ -82,8 +85,7 @@ const serviceRate = (entry: Entry, replicas = entry.active, endpointId?: string)
     return slots === 0 ? 0 : time ? (slots * 1000) / time : Infinity;
   }
   if (entry.role === "processor") {
-    const slots = replicas * entry.props.concurrency;
-    return !slots ? 0 : entry.props.latencyMs ? (slots * 1000) / entry.props.latencyMs : Infinity;
+    return replicas * resourceCapacity(entry.props.resources, entry.props.concurrency, entry.props.latencyMs);
   }
   // A network device's ceiling: per unit, times the units carrying traffic (one in an active-standby pair).
   const device = entry.role === "gateway" ? entry.props.device : undefined;
@@ -167,6 +169,8 @@ function compatibleScale(demand: { rate: number; consumers: string[] }[], capaci
 }
 
 export interface CapacityOptions {
+  /** Current eligible fleet, only for resource-enabled live nodes. Omitted means configured initial capacity. */
+  readyReplicas?: Readonly<Record<string, number>>;
   /** Node statuses right now (a live run's chaos), overriding the setup's and the diagram's. */
   status?: Readonly<Record<string, NodeStatus | undefined>>;
 }
@@ -186,7 +190,12 @@ export function analyzeCapacity(
     const role = stencilRole(input.stencil);
     const raw = { ...input.props, ...simulation?.setup?.props?.[input.id] };
     const props = resolveProps(role, input.label, raw, input.stencil, diagram.planning);
-    const replicas = Math.max(1, Math.round(props.replicas * capacityMultiplier));
+    const replicas =
+      props.resources && options.readyReplicas?.[input.id] !== undefined
+        ? options.readyReplicas[input.id]
+        : props.autoscaling?.mode === "on"
+          ? replicaRange(props.autoscaling.controller, capacityMultiplier).initial
+          : Math.max(1, Math.min(props.resources ? 10_000 : Infinity, Math.round(props.replicas * capacityMultiplier)));
     const status = options.status?.[input.id] ?? simulation?.setup?.status?.[input.id] ?? raw.status;
     entries.set(input.id, {
       input,
@@ -226,7 +235,9 @@ export function analyzeCapacity(
             id,
             count,
             broker.props.broker?.partitioned &&
-              (diagram.planning?.revision === "p2" || diagram.planning?.revision === "p3")
+              (diagram.planning?.revision === "p2" ||
+                diagram.planning?.revision === "p3" ||
+                diagram.planning?.revision === "p3-a1")
               ? broker.props.broker
               : undefined,
           );
@@ -381,6 +392,7 @@ export function analyzeCapacity(
       label: entry.input.label,
       role: entry.role,
       ...(!entry.up ? { status: entry.down ? ("down" as const) : ("paused" as const) } : {}),
+      resourcePlan: resourcePlan(entry.props, offered, entry.active, capacityMultiplier),
       capacity,
       offered,
       utilization: ratio(offered, capacity),
@@ -453,7 +465,9 @@ export function analyzeCapacity(
       const broker = constraint.broker;
       const desired = [...constraint.allocations.keys()].reduce((sum, id) => sum + entries.get(id)!.replicas, 0);
       suggestion =
-        diagram.planning?.revision === "p2" || diagram.planning?.revision === "p3"
+        diagram.planning?.revision === "p2" ||
+        diagram.planning?.revision === "p3" ||
+        diagram.planning?.revision === "p3-a1"
           ? `${broker.input.sublabel ?? broker.input.label}: ${englishAssignmentLabel(broker.props.broker)} → ${desired}`
           : `${bottleneck.label}: ${bottleneck.idleReplicas} of ${bottleneck.replicas} replicas idle - add partitions to ${broker.input.sublabel ?? broker.input.label} (${broker.props.partitions} -> ${desired})`;
     }

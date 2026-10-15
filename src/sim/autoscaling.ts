@@ -1,0 +1,535 @@
+import type { SampledWork } from "./sampledResources";
+import type { ComputeResources, HpaController, ScalingMetric } from "../model/autoscaling";
+import { replicaRange } from "../model/autoscaling";
+import { mulberry32 } from "./rng";
+
+export interface ScalingDecision {
+  at: number;
+  raw: number;
+  desired: number;
+  reason: "target" | "tolerance" | "missing" | "stabilization" | "policy" | "max" | "override";
+  nextAt: number;
+  metric?: number;
+  target?: number;
+  resource?: "cpu" | "memory";
+  targetKind?: "utilization" | "averageValue";
+  windowMs?: number;
+  metricDelayMs?: number;
+}
+export interface FleetPoint {
+  time: number;
+  desired: number;
+  starting: number;
+  ready: number;
+  draining: number;
+}
+export interface FleetReadout extends Omit<FleetPoint, "time"> {
+  decision?: ScalingDecision;
+  history: readonly FleetPoint[];
+}
+export interface ResourceReadout {
+  /** All resource values already describe real work, irrespective of dot weight. */
+  units: "real";
+  cpuRequestPct?: number;
+  memoryRequestPct?: number;
+  memoryLimitPct?: number;
+  memoryMiB: number;
+  executedCpuMs: number;
+  unsafe: boolean;
+  estimated: boolean;
+}
+export interface ReplicaRow extends ResourceReadout {
+  id: number;
+  state: "ready" | "starting" | "draining";
+}
+export interface Cohort {
+  first: number;
+  last: number;
+  at: number;
+}
+interface Sample {
+  at: number;
+  cpu: number;
+  occupancy: number;
+  ready: number;
+}
+interface BusyReplica {
+  count: number;
+  cpu: number;
+  currentCpu: number;
+  lastCpu: number;
+  drainAt?: number;
+}
+/** No idle-pod objects: ranges describe identical ready/starting replicas. Only admitted identities expand. */
+export interface Fleet {
+  desired: number;
+  ready: number;
+  starting: number;
+  nextId: number;
+  assignmentChanged: boolean;
+  lastReadyAt: number;
+  active: number;
+  unsafe: boolean;
+  memoryCredit: number;
+  ranges: Cohort[];
+  rangeHead: number;
+  starts: Cohort[];
+  sampledDrains: Cohort[];
+  free: number[];
+  partial: Set<number>;
+  busy: Map<number, BusyReplica>;
+  samples: Sample[];
+  cpu: number;
+  occupancy: number;
+  totalCpu: number;
+  lastPublish: number;
+  nextSync: number;
+  paused: boolean;
+  override: boolean;
+  recommendations: { at: number; count: number }[];
+  changes: { at: number; delta: number }[];
+  decision?: ScalingDecision;
+  history: FleetPoint[];
+  /** Work counters for deterministic complexity assertions, never wall-clock timing. */
+  operations: number;
+}
+export function createFleet(count: number, syncMs = 15_000): Fleet {
+  count = Number.isFinite(count) ? Math.max(0, Math.min(10_000, Math.round(count))) : 0;
+  return {
+    desired: count,
+    ready: count,
+    starting: 0,
+    nextId: count + 1,
+    assignmentChanged: false,
+    lastReadyAt: -600_000,
+    active: 0,
+    unsafe: false,
+    memoryCredit: 0,
+    ranges: count ? [{ first: 1, last: count, at: 0 }] : [],
+    rangeHead: 0,
+    starts: [],
+    sampledDrains: [],
+    free: [],
+    partial: new Set(),
+    busy: new Map(),
+    samples: [],
+    cpu: 0,
+    occupancy: 0,
+    totalCpu: 0,
+    lastPublish: 0,
+    nextSync: syncMs,
+    paused: false,
+    override: false,
+    recommendations: [],
+    changes: [],
+    history: [],
+    operations: 0,
+  };
+}
+const before = (a: Cohort, b: Cohort) => a.at < b.at || (a.at === b.at && a.first < b.first);
+function pushDue(heap: Cohort[], item: Cohort) {
+  let i = heap.length;
+  heap.push(item);
+  while (i > 0) {
+    const p = (i - 1) >>> 1;
+    if (!before(item, heap[p])) break;
+    heap[i] = heap[p];
+    i = p;
+  }
+  heap[i] = item;
+}
+function popDue(heap: Cohort[]): Cohort {
+  const first = heap[0],
+    last = heap.pop()!;
+  if (heap.length) {
+    let i = 0;
+    while (i * 2 + 1 < heap.length) {
+      let c = i * 2 + 1;
+      if (c + 1 < heap.length && before(heap[c + 1], heap[c])) c++;
+      if (!before(heap[c], last)) break;
+      heap[i] = heap[c];
+      i = c;
+    }
+    heap[i] = last;
+  }
+  return first;
+}
+export function acquireReplica(f: Fleet, concurrency: number): number | undefined {
+  const partial = f.partial.values().next().value as number | undefined;
+  let id = partial ?? f.free.pop();
+  if (id === undefined) {
+    while (f.rangeHead < f.ranges.length && f.ranges[f.rangeHead].first > f.ranges[f.rangeHead].last) f.rangeHead++;
+    if (f.rangeHead > 512 && f.rangeHead * 2 > f.ranges.length) {
+      f.ranges.splice(0, f.rangeHead);
+      f.rangeHead = 0;
+    }
+    const range = f.ranges[f.rangeHead];
+    if (!range) return undefined;
+    id = range.first++;
+  }
+  const busy = f.busy.get(id) ?? { count: 0, cpu: 0, currentCpu: 0, lastCpu: 0 };
+  busy.count++;
+  f.active++;
+  f.busy.set(id, busy);
+  if (busy.count < concurrency) f.partial.add(id);
+  else f.partial.delete(id);
+  return id;
+}
+export function releaseReplica(f: Fleet, id: number | undefined, concurrency: number): void {
+  if (id === undefined) return;
+  const busy = f.busy.get(id);
+  if (!busy) return;
+  busy.count--;
+  if (busy.drainAt === undefined) f.active--;
+  if (busy.drainAt !== undefined) {
+    if (!busy.count) {
+      f.busy.delete(id);
+      f.assignmentChanged = true;
+    }
+  } else if (!busy.count) {
+    f.partial.delete(id);
+    f.free.push(id);
+  } else if (busy.count < concurrency) f.partial.add(id);
+}
+export function drainingCount(f: Fleet): number {
+  let count = f.sampledDrains.reduce((sum, c) => sum + c.last - c.first + 1, 0);
+  for (const replica of f.busy.values()) if (replica.drainAt !== undefined) count++;
+  return count;
+}
+function startupSeed(seed: number, node: string, id: number) {
+  let hash = seed ^ id;
+  for (let i = 0; i < node.length; i++) hash = Math.imul(hash ^ node.charCodeAt(i), 16777619);
+  return mulberry32(hash)();
+}
+export function reconcileFleet(
+  f: Fleet,
+  desired: number,
+  r: ComputeResources,
+  now: number,
+  seed: number,
+  node: string,
+): void {
+  desired = Number.isFinite(desired) ? Math.max(1, Math.min(10_000, Math.round(desired))) : f.desired;
+  f.desired = desired;
+  let delta = desired - f.ready - f.starting;
+  if (delta > 0) {
+    const first = f.nextId;
+    f.nextId += delta;
+    f.starting += delta;
+    if (!r.startup.jitterFraction) pushDue(f.starts, { first, last: first + delta - 1, at: now + r.startup.delayMs });
+    else
+      for (let id = first; id < first + delta; id++)
+        pushDue(f.starts, {
+          first: id,
+          last: id,
+          at:
+            now +
+            Math.ceil(
+              (r.startup.delayMs * (1 + (startupSeed(seed, node, id) * 2 - 1) * r.startup.jitterFraction)) / 10,
+            ) *
+              10,
+        });
+  }
+  // Cancel the latest unready requests before terminating ready work.
+  if (delta < 0 && f.starting) {
+    const sorted = f.starts.sort((a, b) => b.first - a.first);
+    f.starts = [];
+    for (const c of sorted) {
+      const remove = Math.min(-delta, c.last - c.first + 1);
+      delta += remove;
+      f.starting -= remove;
+      c.last -= remove;
+      if (c.last >= c.first) pushDue(f.starts, c);
+    }
+  }
+  // Empty identities first, then the stable highest busy ID. Counted idle ranges shrink in one operation.
+  for (let i = f.ranges.length - 1; delta < 0 && i >= f.rangeHead; i--) {
+    const range = f.ranges[i];
+    const remove = Math.min(-delta, Math.max(0, range.last - range.first + 1));
+    range.last -= remove;
+    f.ready -= remove;
+    delta += remove;
+    if (range.last < range.first) f.ranges.splice(i, 1);
+  }
+  f.rangeHead = Math.min(f.rangeHead, f.ranges.length);
+  while (delta < 0 && f.free.length) {
+    const id = f.free.pop()!;
+    f.busy.delete(id);
+    f.ready--;
+    delta++;
+  }
+  if (delta < 0)
+    for (const [id, busy] of [...f.busy].sort((a, b) => b[0] - a[0])) {
+      if (delta >= 0) break;
+      if (busy.drainAt !== undefined || !busy.count) continue;
+      busy.drainAt = now + r.terminationGraceMs;
+      f.active -= busy.count;
+      f.partial.delete(id);
+      f.ready--;
+      delta++;
+    }
+}
+/** Readiness jitter stops fragmenting idle work; active sampled boundaries keep their CPU budgets. */
+export function compactReadyRanges(f: Fleet, working: readonly SampledWork[]) {
+  if (f.ranges.length - f.rangeHead < 2) return;
+  const boundaries = new Set(working.flatMap((w) => (w.cpuParts ?? []).flatMap((p) => [p.first, p.last + 1])));
+  const ranges = f.ranges
+    .slice(f.rangeHead)
+    .filter((c) => c.first <= c.last)
+    .sort((a, b) => a.first - b.first);
+  const next: Cohort[] = [];
+  for (const range of ranges) {
+    const previous = next.at(-1);
+    if (previous && previous.last + 1 === range.first && !boundaries.has(range.first)) previous.last = range.last;
+    else next.push({ ...range });
+  }
+  f.ranges = next;
+  f.rangeHead = 0;
+}
+/** Constant idle-tick work. Startup heaps are visited only at due deadlines. Grace checks visit busy identities only. */
+export function advanceFleet(f: Fleet, now: number, working: readonly SampledWork[] = []): boolean {
+  f.operations++;
+  let changed = false;
+  while (f.starts.length && f.starts[0].at <= now) {
+    const c = popDue(f.starts);
+    f.ranges.push(c);
+    const count = c.last - c.first + 1;
+    f.ready += count;
+    f.starting -= count;
+    f.lastReadyAt = now;
+    changed = true;
+  }
+  if (changed) compactReadyRanges(f, working);
+  return changed;
+}
+export function chargeCpu(f: Fleet, id: number | undefined, amount: number, ready = true) {
+  f.totalCpu += amount;
+  const replica = id === undefined ? undefined : f.busy.get(id);
+  if (replica) {
+    replica.cpu += amount;
+    replica.currentCpu += amount;
+  }
+  if (ready && replica?.drainAt === undefined) f.cpu += amount;
+}
+export function integrateResources(f: Fleet, occupancy: number, now: number, step: number) {
+  f.occupancy += occupancy * step;
+  if (now - f.lastPublish < 1000) return;
+  f.samples.push({ at: now, cpu: f.cpu, occupancy: f.occupancy / (now - f.lastPublish), ready: f.ready });
+  if (f.samples.length > 600) f.samples.shift();
+  f.cpu = 0;
+  f.occupancy = 0;
+  f.lastPublish = now;
+  f.history.push({ time: now, desired: f.desired, ready: f.ready, starting: f.starting, draining: drainingCount(f) });
+  if (f.history.length > 600) f.history.shift();
+}
+function metricValue(f: Fleet, r: ComputeResources, m: ScalingMetric, now: number, scale: number): number | undefined {
+  const end = now - m.metricDelayMs;
+  if (end < m.windowMs || !f.ready) return undefined;
+  const samples = f.samples.filter((s) => s.at > end - m.windowMs && s.at <= end);
+  if (!samples.length) return undefined;
+  const cpu = samples.reduce((sum, s) => sum + s.cpu, 0) / (samples.length * 1000);
+  // Sampled occupancy is time integrated, distributed across the homogeneous eligible fleet.
+  const occupancy =
+    scale > 1 ? samples.reduce((sum, s) => sum + s.occupancy, 0) / samples.length : samples.at(-1)!.occupancy;
+  const absolute =
+    m.source.resource === "cpu"
+      ? (cpu * 1000) / f.ready
+      : r.baselineMemoryMiB + (occupancy / f.ready) * r.memoryMiBPerMessage;
+  if (m.target.kind === "averageValue") return absolute;
+  const denominator = m.source.resource === "cpu" ? r.cpuRequestMilli : r.memoryRequestMiB;
+  return denominator ? (absolute / denominator) * 100 : undefined;
+}
+/** Pure recommendation pipeline, shared by playback and numerical explanation tests. */
+export function evaluateHpa(
+  f: Fleet,
+  c: HpaController,
+  r: ComputeResources,
+  now: number,
+  multiplier = 1,
+  scale = 1,
+): ScalingDecision {
+  const range = replicaRange(c, multiplier);
+  let raw = 0,
+    missing = false,
+    metric: number | undefined,
+    target: number | undefined;
+  let binding: ScalingMetric | undefined;
+  for (const m of c.settings.metrics) {
+    const value = metricValue(f, r, m, now, scale);
+    const t = m.target.kind === "utilization" ? m.target.percentOfRequest : m.target.value;
+    if (value === undefined) {
+      missing = true;
+      continue;
+    }
+    const ratio = value / t;
+    const wanted = Math.abs(ratio - 1) <= c.settings.tolerance ? f.desired : Math.ceil(f.ready * ratio);
+    // Starting pods are missing samples, conservatively zero for growth and target for shrink.
+    const recommendation = wanted < f.desired ? wanted + f.starting : wanted;
+    if (recommendation >= raw) {
+      raw = recommendation;
+      metric = value;
+      target = t;
+      binding = m;
+    }
+  }
+  let reason: ScalingDecision["reason"] = raw === f.desired ? "tolerance" : "target";
+  if (
+    (missing ||
+      f.starting > 0 ||
+      now - f.lastReadyAt < Math.max(...c.settings.metrics.map((m) => m.windowMs + m.metricDelayMs))) &&
+    raw < f.desired
+  ) {
+    raw = f.desired;
+    reason = "missing";
+  }
+  raw = Math.max(range.min, raw);
+  f.recommendations.push({ at: now, count: raw });
+  const historyMs = Math.max(c.settings.up.stabilizationMs, c.settings.down.stabilizationMs);
+  f.recommendations = f.recommendations.filter((h) => h.at >= now - historyMs);
+  let desired = raw;
+  const up = desired > f.desired;
+  const behaviour = up ? c.settings.up : c.settings.down;
+  const history = f.recommendations.filter((h) => h.at >= now - behaviour.stabilizationMs).map((h) => h.count);
+  const stable = up ? Math.max(f.desired, Math.min(...history)) : Math.min(f.desired, Math.max(...history));
+  if (stable !== desired) {
+    desired = stable;
+    reason = "stabilization";
+  }
+  const period = Math.max(...c.settings.up.policies.concat(c.settings.down.policies).map((p) => p.periodMs));
+  f.changes = f.changes.filter((h) => h.at > now - period);
+  if (behaviour.selectPolicy === "Disabled") {
+    desired = f.desired;
+    reason = "policy";
+  } else if (desired !== f.desired) {
+    const bounds = behaviour.policies.map((p) => {
+      const changes = f.changes.filter((h) => h.at > now - p.periodMs);
+      const base = f.desired - changes.reduce((sum, h) => sum + h.delta, 0);
+      const count =
+        p.type === "Pods" ? p.value : up ? Math.ceil((base * p.value) / 100) : Math.floor((base * p.value) / 100);
+      return up ? base + count : Math.max(0, base - count);
+    });
+    const bound =
+      behaviour.selectPolicy === "Max"
+        ? up
+          ? Math.max(...bounds)
+          : Math.min(...bounds)
+        : up
+          ? Math.min(...bounds)
+          : Math.max(...bounds);
+    const limited = up ? Math.max(f.desired, Math.min(desired, bound)) : Math.min(f.desired, Math.max(desired, bound));
+    if (limited !== desired) reason = "policy";
+    desired = limited;
+  }
+  if (raw > range.max) reason = "max";
+  desired = Math.max(range.min, Math.min(range.max, desired));
+  if (desired !== f.desired) f.changes.push({ at: now, delta: desired - f.desired });
+  f.nextSync = now + c.settings.syncMs;
+  return (f.decision = {
+    at: now,
+    raw,
+    desired,
+    reason,
+    metric,
+    target,
+    resource: binding?.source.resource,
+    targetKind: binding?.target.kind,
+    windowMs: binding?.windowMs,
+    metricDelayMs: binding?.metricDelayMs,
+    nextAt: f.nextSync,
+  });
+}
+export function resourceReadout(
+  f: Fleet,
+  r: ComputeResources,
+  occupancy: number,
+  now: number,
+  scale: number,
+): ResourceReadout {
+  const metric = (resource: "cpu" | "memory") =>
+    metricValue(
+      f,
+      r,
+      {
+        source: { kind: "resource", resource },
+        target: { kind: "averageValue", value: 1 },
+        windowMs: Math.min(15_000, Math.max(1000, Math.floor(now / 1000) * 1000)),
+        metricDelayMs: 0,
+      },
+      now,
+      scale,
+    );
+  const cpu = metric("cpu");
+  const memory =
+    r.baselineMemoryMiB +
+    (scale > 1
+      ? (metric("memory") ?? r.baselineMemoryMiB) - r.baselineMemoryMiB
+      : (occupancy / Math.max(1, f.ready + drainingCount(f))) * r.memoryMiBPerMessage);
+  const unsafe = f.unsafe || (r.memoryLimitMiB !== undefined && memory > r.memoryLimitMiB);
+
+  return {
+    units: "real",
+    cpuRequestPct: cpu !== undefined && r.cpuRequestMilli ? (cpu / r.cpuRequestMilli) * 100 : undefined,
+    memoryMiB: memory,
+    memoryRequestPct: r.memoryRequestMiB ? (memory / r.memoryRequestMiB) * 100 : undefined,
+    memoryLimitPct: r.memoryLimitMiB ? (memory / r.memoryLimitMiB) * 100 : undefined,
+    executedCpuMs: f.totalCpu,
+    unsafe,
+    estimated: scale > 1,
+  };
+}
+const historyCache = new WeakMap<Fleet, { last?: FleetPoint; points: readonly FleetPoint[] }>();
+export function fleetReadout(f: Fleet): FleetReadout {
+  let cached = historyCache.get(f);
+  const last = f.history.at(-1);
+  if (!cached || cached.last !== last) {
+    cached = { last, points: Object.freeze(f.history.map((p) => Object.freeze({ ...p }))) };
+    historyCache.set(f, cached);
+  }
+  return {
+    desired: f.desired,
+    ready: f.ready,
+    starting: f.starting,
+    draining: drainingCount(f),
+    decision: f.decision && { ...f.decision },
+    history: cached.points,
+  };
+}
+
+/** Only the selected inspector requests a page. Idle ranges never expand in live frames. */
+export function replicaPage(f: Fleet, r: ComputeResources, now: number, scale: number, page = 0): ReplicaRow[] {
+  const start = Math.max(0, Math.floor(page)) * 50;
+  const rows: { id: number; state: ReplicaRow["state"] }[] = [];
+  for (const [id, p] of f.busy) rows.push({ id, state: p.drainAt === undefined ? "ready" : "draining" });
+  for (const range of f.ranges.slice(f.rangeHead))
+    for (let id = range.first; id <= Math.min(range.last, range.first + start + 50); id++)
+      rows.push({ id, state: "ready" });
+  for (const range of f.sampledDrains)
+    for (let id = range.first; id <= Math.min(range.last, range.first + start + 50); id++)
+      rows.push({ id, state: "draining" });
+  for (const range of f.starts)
+    for (let id = range.first; id <= Math.min(range.last, range.first + start + 50); id++)
+      rows.push({ id, state: "starting" });
+  const estimated = scale > 1 ? resourceReadout(f, r, 0, now, scale) : undefined;
+  return rows
+    .sort((a, b) => a.id - b.id)
+    .slice(start, start + 50)
+    .map(({ id, state }) => {
+      const busy = f.busy.get(id);
+      const memory = r.baselineMemoryMiB + (busy?.count ?? 0) * r.memoryMiBPerMessage;
+      const window = Math.max(1000, Math.min(now, 15_000));
+      const cpu = busy ? busy.lastCpu : 0;
+      if (estimated && state !== "starting") return { ...estimated, id, state };
+      return {
+        id,
+        state,
+        units: "real",
+        estimated: scale > 1,
+        executedCpuMs: busy?.cpu ?? 0,
+        memoryMiB: memory,
+        cpuRequestPct: r.cpuRequestMilli ? (((cpu / window) * 1000) / r.cpuRequestMilli) * 100 : undefined,
+        memoryRequestPct: r.memoryRequestMiB ? (memory / r.memoryRequestMiB) * 100 : undefined,
+        memoryLimitPct: r.memoryLimitMiB ? (memory / r.memoryLimitMiB) * 100 : undefined,
+        unsafe: r.memoryLimitMiB !== undefined && memory > r.memoryLimitMiB,
+      };
+    });
+}

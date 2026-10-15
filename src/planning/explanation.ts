@@ -12,6 +12,7 @@ export const explanationSimulation = (d: DiagramFile): Simulation => ({
   traffic: sourceTraffic(d),
 });
 export interface Explanation {
+  resources?: import("../sim/resourcePlanning").ResourcePlan;
   managed?: "serverless" | "api";
   status: NodeStatus;
   role: string;
@@ -111,7 +112,9 @@ export function explainNode(
       ),
     );
   const min =
-    !n.managed && n.role === "processor" && Number.isFinite(n.utilization) && n.capacity ? baseNeeded(1) : undefined;
+    !n.managed && !n.resourcePlan?.max && n.role === "processor" && Number.isFinite(n.utilization) && n.capacity
+      ? baseNeeded(1)
+      : undefined;
   const chosen = changes?.find((c) => c.nodeId === id && c.key === "replicas");
   const targetReplicas =
     chosen?.key === "replicas"
@@ -123,6 +126,7 @@ export function explainNode(
     ...(n.managed
       ? { managed: props.profile.family === "serverless" ? ("serverless" as const) : ("api" as const) }
       : {}),
+    resources: n.resourcePlan,
     id,
     role: n.role,
     status: n.status ?? "up",

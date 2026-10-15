@@ -290,6 +290,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
 
   /** Inserts a payload moved by `offset`, selected. Returns old flow id → new flow id (null: refused). */
   const insert = (p: ClipboardPayload, offset: XY): Map<string, string> | null => {
+    if (p.planning?.revision === "p3-a1" && deps().meta.planning?.revision !== "p3-a1") return null;
     const ns = rf.getNodes();
     if (ns.filter(isAnnotation).length + (p.annotations?.length ?? 0) > ANNOTATION_LIMITS.maxAnnotations) return null;
     const taken = {

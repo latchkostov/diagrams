@@ -5,6 +5,21 @@ import type { Finding } from "./types";
 
 /** Localize broker descriptors at render time, keeping cached and worker findings deterministic. */
 export function presentFinding(finding: Finding): Finding {
+  const resource = finding.resourceFinding;
+  if (resource)
+    return {
+      ...finding,
+      title: t("autoscaling.checkTitle", { name: resource.name }),
+      message:
+        resource.kind === "invalid"
+          ? t("autoscaling.checkInvalid")
+          : resource.kind === "memory"
+            ? t("autoscaling.checkMemory")
+            : resource.kind === "baseline"
+              ? t("autoscaling.baselineRisk")
+              : t("autoscaling.checkMax", { needed: resource.needed, max: resource.max }),
+      rationale: t("autoscaling.checkWhy"),
+    };
   const note = finding.brokerAssignment;
   const fix = finding.fix;
   const rejection = finding.admissionRejection;

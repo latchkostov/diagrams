@@ -1,3 +1,4 @@
+import { replicaRange } from "../model/autoscaling";
 import {
   createContext,
   memo,
@@ -240,7 +241,9 @@ export const CapacityPanel = memo(function CapacityPanel({
                       className={`cap-preset${on ? " is-on" : ""}`}
                       aria-pressed={on}
                       title={
-                        diagram.planning?.revision === "p2" || diagram.planning?.revision === "p3"
+                        diagram.planning?.revision === "p2" ||
+                        diagram.planning?.revision === "p3" ||
+                        diagram.planning?.revision === "p3-a1"
                           ? p.id === "double-partitions"
                             ? `2 × ${assignmentLabels}`
                             : p.id === "normal"
@@ -252,7 +255,9 @@ export const CapacityPanel = memo(function CapacityPanel({
                       data-testid={`capacity-preset-${p.id}`}
                     >
                       {p.id === "double-partitions" &&
-                      (diagram.planning?.revision === "p2" || diagram.planning?.revision === "p3")
+                      (diagram.planning?.revision === "p2" ||
+                        diagram.planning?.revision === "p3" ||
+                        diagram.planning?.revision === "p3-a1")
                         ? `2 × ${assignmentLabels}`
                         : p.label}
                       {p.id === "black-friday" && <small>5×</small>}
@@ -774,6 +779,18 @@ function ServiceRow({
   capacity: number;
   onProp: (key: string, value: unknown) => void;
 }) {
+  if (props.autoscaling?.mode === "on") {
+    const range = replicaRange(props.autoscaling.controller, capacity);
+    return (
+      <div className="cap-row" data-testid={`capacity-service-${node.id}`}>
+        <strong>{node.label}</strong>
+        <p data-testid={`capacity-hpa-range-${node.id}`}>
+          {t("autoscaling.range", { initial: range.initial, min: range.min, max: range.max })}
+        </p>
+        <small>{heat?.text}</small>
+      </div>
+    );
+  }
   const effective = Math.max(1, Math.round(props.replicas * capacity));
   return (
     <div

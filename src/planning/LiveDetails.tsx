@@ -1,3 +1,5 @@
+import { ResourceDetails } from "./ResourceDetails";
+import type { ReplicaRow } from "../sim/autoscaling";
 import { resolveNodeProps } from "../sim/defaults";
 import { groupLabel } from "../stencils/brokerVocabulary";
 import { compileTopology } from "../sim/topology";
@@ -8,7 +10,15 @@ import { t, useLocale } from "../i18n";
 import { formatList, formatNumber, formatRate } from "../i18n/format";
 
 /** Full observed metrics remain reachable in Properties, even when the hover is compact. */
-export function LiveDetails({ metrics: s, diagram: d }: { metrics: RealNodeMetrics; diagram: DiagramFile }) {
+export function LiveDetails({
+  metrics: s,
+  diagram: d,
+  readPage,
+}: {
+  metrics: RealNodeMetrics;
+  diagram: DiagramFile;
+  readPage?: (page: number) => ReplicaRow[];
+}) {
   useLocale();
   const groups = useMemo(() => {
     const labels = new Map(d.nodes.map((n) => [n.id, n.label]));
@@ -39,6 +49,7 @@ export function LiveDetails({ metrics: s, diagram: d }: { metrics: RealNodeMetri
           blocked: formatNumber(s.blocked ?? 0),
         })}
       </p>
+      <ResourceDetails name={d.nodes.find((n) => n.id === s.id)?.label} metrics={s} readPage={readPage} />
       {s.rejected !== undefined && (
         <p data-testid="planning-live-rejected">
           {t("admission.rejected")} · {formatNumber(s.rejected)}

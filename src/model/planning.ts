@@ -11,7 +11,7 @@ export function newPlanningProps(
 ): Record<string, unknown> | undefined {
   if (!planning) return undefined;
   const managed =
-    planning.revision === "p3"
+    planning.revision === "p3" || planning.revision === "p3-a1"
       ? (admissionPresetFor(stencil) ?? (stencil && managedKind(stencil) ? "managed-measured" : undefined))
       : undefined;
   if (managed)

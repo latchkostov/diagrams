@@ -1,3 +1,28 @@
+import { resourceBudgetExceeded, MAX_LIFECYCLE_REPLICAS } from "../model/resourceBudget";
+import { t } from "../i18n/core";
+import {
+  sampledParts,
+  retainSampledDrains,
+  releaseSampledDrains,
+  sampledOwners,
+  partKey,
+  type CpuPart,
+} from "./sampledResources";
+import {
+  createFleet,
+  acquireReplica,
+  releaseReplica,
+  reconcileFleet,
+  advanceFleet,
+  chargeCpu,
+  integrateResources,
+  evaluateHpa,
+  resourceReadout,
+  fleetReadout,
+  replicaPage,
+  type Fleet,
+} from "./autoscaling";
+import { replicaRange } from "../model/autoscaling";
 import type { DiagramFile, SimRole } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { messageColor } from "./colors";
@@ -60,6 +85,7 @@ interface Group {
   active: number;
   cursor: number;
   allocations: Map<string, number>;
+  drainOwners: Map<string, number>;
   activeByNode: Record<string, number>;
   /** Deliveries that arrived and hold one of the group's slots at each consumer (waiting or in work). */
   heldByNode: Map<string, number>;
@@ -77,6 +103,11 @@ interface Delivery {
   original: Message;
 }
 interface Work {
+  cpuParts?: CpuPart[];
+  replica?: number;
+  cpuRemaining?: number;
+  cpuBackoffUntil?: number;
+  terminating?: boolean;
   retryAdmissionAt?: number;
   lease?: AdmissionLease;
   errorRate?: number;
@@ -92,6 +123,7 @@ interface Work {
   slotted?: boolean;
 }
 interface Node {
+  fleet?: Fleet;
   id: string;
   label: string;
   stencil: string;
@@ -432,15 +464,37 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const targets = new Set(changed);
     for (const id of changed) {
       const node = nodes.get(id)!;
-      node.replicas = Math.max(1, Math.round(node.props.replicas * capacityMultiplier));
+      node.replicas = node.fleet?.ready ?? Math.max(1, Math.round(node.props.replicas * capacityMultiplier));
       for (const group of node.groups) affected.add(group);
       for (const group of groupsByConsumer.get(id) ?? []) affected.add(group);
+    }
+    for (const id of changed) {
+      const node = nodes.get(id)!;
+      if (!node.fleet) {
+        for (const group of groupsByConsumer.get(id) ?? []) group.drainOwners.delete(id);
+        continue;
+      }
+      const owners = new Map<Group, Set<number>>();
+      for (const work of node.working) {
+        if (!work.delivery || work.replica === undefined || node.fleet.busy.get(work.replica)?.drainAt === undefined)
+          continue;
+        const pods = owners.get(work.delivery.group) ?? new Set<number>();
+        pods.add(work.replica);
+        owners.set(work.delivery.group, pods);
+      }
+      for (const group of groupsByConsumer.get(id) ?? [])
+        group.drainOwners.set(
+          id,
+          scale > 1
+            ? sampledOwners(node.working.filter((w) => w.delivery?.group === group))
+            : (owners.get(group)?.size ?? 0),
+        );
     }
     for (const group of affected) {
       const broker = group.edges[0].from;
       group.allocations = allocateGroupReplicas(
         broker.role,
-        broker.props.partitions,
+        Math.max(0, broker.props.partitions - [...group.drainOwners.values()].reduce((sum, count) => sum + count, 0)),
         group.members.map((id) => {
           const node = nodes.get(id)!;
           return { id, role: node.role, replicas: node.replicas };
@@ -469,11 +523,43 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     for (const [id, patch] of Object.entries(patches)) {
       const node = nodes.get(id);
       if (!node) continue;
-      if (Object.entries(patch).every(([key, value]) => Object.is(node.rawProps[key], value))) continue;
+      if (patch.resumeAutoscaling && node.fleet) {
+        node.fleet.override = false;
+        node.fleet.decision = undefined;
+        node.fleet.nextSync =
+          time + (node.props.autoscaling?.mode === "on" ? node.props.autoscaling.controller.settings.syncMs : 15_000);
+        Reflect.deleteProperty(node.rawProps, "resumeAutoscaling");
+        configuration = undefined;
+      }
+      if (
+        !(node.fleet && patch.replicas !== undefined) &&
+        Object.entries(patch).every(
+          ([key, value]) => key === "resumeAutoscaling" || Object.is(node.rawProps[key], value),
+        )
+      )
+        continue;
       configuration = undefined;
       if ("replicas" in patch) units.set(node, node.props.replicas);
+      if (node.fleet && patch.replicas !== undefined) {
+        node.fleet.override = true;
+        reconcileResources(node, Math.max(1, Math.round(patch.replicas * capacityMultiplier)));
+        node.fleet.decision = {
+          at: time,
+          raw: patch.replicas,
+          desired: node.fleet.desired,
+          reason: "override",
+          nextAt: time,
+        };
+        changed.add(id);
+      }
+      if (node.fleet && patch.resumeAutoscaling) {
+        node.fleet.override = false;
+        node.fleet.nextSync =
+          time + (node.props.autoscaling?.mode === "on" ? node.props.autoscaling.controller.settings.syncMs : 15_000);
+      }
       const previous = node.props;
       for (const [key, value] of Object.entries(patch)) {
+        if (key === "resumeAutoscaling") continue;
         if (value === undefined) Reflect.deleteProperty(node.rawProps, key);
         else node.rawProps[key] = structuredClone(value);
       }
@@ -486,6 +572,34 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         planning,
         admissionChanged ? undefined : previous.admission,
       );
+      if ("resources" in patch || "autoscaling" in patch) {
+        if (!node.props.resources) {
+          node.fleet = undefined;
+          for (const work of node.working) {
+            work.replica = undefined;
+            work.cpuRemaining = undefined;
+            work.cpuParts = undefined;
+          }
+        } else if (!node.fleet || time === 0) {
+          initializeFleet(node);
+          for (const work of node.working) startResources(node, work);
+        } else {
+          const f = node.fleet,
+            a = node.props.autoscaling;
+          f.recommendations = [];
+          f.changes = [];
+          f.decision = undefined;
+          f.nextSync = time + (a?.mode === "on" ? a.controller.settings.syncMs : 15_000);
+          const range = a?.mode === "on" ? replicaRange(a.controller, capacityMultiplier) : undefined;
+          reconcileResources(
+            node,
+            range
+              ? Math.max(range.min, Math.min(range.max, f.desired))
+              : Math.max(1, Math.round(node.props.replicas * capacityMultiplier)),
+          );
+        }
+        changed.add(id);
+      }
       if (admissionChanged && (previous.admission || node.props.admission))
         admissionChanges.push({ id, policy: node.props.admission });
       if (node.role === "source") sourceRate += node.props.ratePerSec - previous.ratePerSec;
@@ -501,8 +615,24 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const next = resolveMultiplier(multiplier, capacityMultiplier);
     if (next !== capacityMultiplier) {
       capacityMultiplier = next;
-      for (const node of nodes.values())
-        if (Math.max(1, Math.round(node.props.replicas * next)) !== node.replicas) changed.add(node.id);
+      for (const node of nodes.values()) {
+        if (node.fleet && node.props.resources) {
+          const f = node.fleet,
+            a = node.props.autoscaling;
+          const c = a?.mode === "on" && !f.override ? a.controller : undefined;
+          const range = c ? replicaRange(c, next) : undefined;
+          const desired = range
+            ? time === 0
+              ? range.initial
+              : Math.max(range.min, Math.min(range.max, f.desired))
+            : Math.max(1, Math.round(node.props.replicas * next));
+          if (time === 0) {
+            node.fleet = createFleet(desired, c?.settings.syncMs);
+            node.fleet.override = f.override;
+          } else reconcileResources(node, desired);
+        }
+        if (Math.max(1, Math.round(node.props.replicas * next)) !== node.replicas || node.fleet) changed.add(node.id);
+      }
     }
     if (changed.size) assignReplicas(changed);
     for (const group of limits) {
@@ -556,7 +686,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   /** Slots a partitioned group may fill at `node`: its assignment. Queues and subscription fan-out use the node pool. */
   function groupUnits(group: Group, node: Node): number {
     if (!group.edges[0].from.props.broker?.partitioned) return Infinity;
-    return (group.allocations.get(node.id) ?? 0) * (node.role === "processor" ? node.props.concurrency : 1);
+    return (
+      ((group.allocations.get(node.id) ?? 0) + (group.drainOwners.get(node.id) ?? 0)) *
+      (node.role === "processor" ? node.props.concurrency : 1)
+    );
   }
 
   /**
@@ -581,6 +714,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
    * reassignment can leave a group no slots at a node while deliveries are on their way to it.
    */
   function hold(group: Group, node: Node, work: Work): boolean {
+    if (node.fleet && groupUnits(group, node) <= 0) return false;
     const held = group.heldByNode.get(node.id) ?? 0;
     if (held > 0 && held >= groupUnits(group, node)) return false;
     group.heldByNode.set(node.id, held + 1);
@@ -615,8 +749,16 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
    * group's too). Prefetched deliveries arriving at a down consumer can't all keep one: the rest go back to the broker.
    */
   function canRetain(node: Node, work: Work): boolean {
-    if (work.slotted) return true;
-    if (node.working.length >= slots(node)) return false;
+    if (work.terminating || work.cpuParts?.some((p) => p.drainAt !== undefined)) return false;
+    if (node.fleet && work.replica !== undefined && node.fleet.busy.get(work.replica)?.drainAt !== undefined)
+      return false;
+    if (work.slotted && (!node.fleet || work.replica !== undefined || work.cpuParts?.length)) return true;
+    if (
+      node.fleet
+        ? (scale === 1 ? node.fleet.active : node.working.length * scale) >= slots(node)
+        : node.working.length >= slots(node)
+    )
+      return false;
     return !work.delivery || !!work.held || hold(work.delivery.group, node, work);
   }
 
@@ -690,6 +832,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         canRetain(node, work)
       ) {
         work.remaining = node.props.retryBackoffMs + latency(node);
+        if (node.props.resources) {
+          work.cpuRemaining = node.props.resources.cpuMsPerMessage * scale;
+          work.cpuBackoffUntil = time + node.props.retryBackoffMs;
+          const count = work.cpuParts?.reduce((sum, p) => sum + p.last - p.first + 1, 0) ?? 0;
+          for (const p of work.cpuParts ?? []) p.cpu = (work.cpuRemaining * (p.last - p.first + 1)) / count;
+        }
         work.retained = true;
         if (node.props.admission) work.retryAdmissionAt = time + node.props.retryBackoffMs;
       } else {
@@ -786,6 +934,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       finish(node, work);
       // An in-place retry took a free slot (canRetain); the others went back to the broker.
       if (work.retained) {
+        startResources(node, work);
         node.working.push(work);
         work.slotted = true;
       }
@@ -802,8 +951,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
       if (!reserveAdmission(node, work)) return;
       if (node.status === "paused") node.pending.push(work);
-      else if (work.remaining <= 0) finish(node, work);
+      else if (work.remaining <= 0 && !node.props.resources?.cpuMsPerMessage) finish(node, work);
       else {
+        startResources(node, work);
         node.working.push(work);
         work.slotted = true;
         if (work.message.family.trace) step(work.message, "start", node.id);
@@ -898,8 +1048,98 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
   }
 
-  function tick(): void {
-    time += STEP;
+  function initializeFleet(node: Node): void {
+    if (!node.props.resources) {
+      node.fleet = undefined;
+      return;
+    }
+    const c = node.props.autoscaling?.mode === "on" ? node.props.autoscaling.controller : undefined;
+    node.fleet = createFleet(
+      c
+        ? replicaRange(c, capacityMultiplier).initial
+        : Math.max(1, Math.round(node.props.replicas * capacityMultiplier)),
+      c?.settings.syncMs,
+    );
+  }
+  function reconcileResources(node: Node, desired: number): void {
+    const f = node.fleet!,
+      r = node.props.resources!;
+    const before = scale > 1 ? f.ranges.slice(f.rangeHead).map((c) => ({ ...c })) : [];
+    reconcileFleet(f, desired, r, time, seed, node.id);
+    if (scale > 1) retainSampledDrains(f, before, node.working, time + r.terminationGraceMs);
+  }
+  function startResources(node: Node, work: Work): void {
+    if (!node.fleet || !node.props.resources) return;
+    work.cpuRemaining ??= node.props.resources.cpuMsPerMessage * scale;
+    if (scale === 1) work.replica = acquireReplica(node.fleet, node.props.concurrency);
+    const r = node.props.resources,
+      f = node.fleet;
+    if (scale > 1) {
+      const eligible = work.delivery?.broker.props.broker?.partitioned
+        ? Math.min(node.activeReplicas, work.delivery.group.allocations.get(node.id) ?? 0)
+        : node.activeReplicas;
+      work.cpuParts = sampledParts(f, eligible, work.cpuRemaining, node.working);
+      const cores = (r.cpuLimitMilli ?? r.availableCpuMilli ?? Infinity) / 1000;
+      const residence = Math.max(STEP, node.props.latencyMs, (r.cpuMsPerMessage * node.props.concurrency) / cores);
+      f.memoryCredit += scale * residence;
+    }
+    const occupancy =
+      work.replica === undefined
+        ? Math.min(scale, node.activeReplicas * node.props.concurrency) / Math.max(1, node.activeReplicas)
+        : (f.busy.get(work.replica)?.count ?? 0);
+    if (r.memoryLimitMiB !== undefined && r.baselineMemoryMiB + occupancy * r.memoryMiBPerMessage > r.memoryLimitMiB)
+      f.unsafe = true;
+  }
+  function endResources(node: Node, work: Work): void {
+    if (!node.fleet) return;
+    releaseReplica(node.fleet, work.replica, node.props.concurrency);
+    work.replica = undefined;
+    work.cpuParts = undefined;
+  }
+  function admitPending(node: Node): void {
+    const limit = node.role === "gateway" ? ceiling(node) : Infinity;
+    if (node.status !== "paused" && !held(node)) {
+      while (
+        node.pending.length &&
+        (node.status === "down" ||
+          (node.fleet && scale === 1 ? node.fleet.active : node.working.length) <
+            slots(node) / (node.fleet ? scale : 1))
+      ) {
+        // Brokers without consumers retain their messages until a new diagram is loaded.
+        if (isBroker(node) && !node.groups.length) break;
+        if (
+          node.status === "up" &&
+          ((!node.props.admission && node.role === "processor" && scale > 1 && node.props.latencyMs > 0) ||
+            limit < Infinity)
+        ) {
+          if (node.serviceCredit < 1 - 1e-9) break;
+          node.serviceCredit -= 1;
+        }
+        const work = node.pending.shift()!;
+        if (node.props.admission && !work.lease && node.status === "up" && !reserveAdmission(node, work)) continue;
+        if (
+          node.status === "down" ||
+          (work.remaining <= 0 && !node.props.resources?.cpuMsPerMessage) ||
+          isBroker(node) ||
+          node.role === "source"
+        ) {
+          finish(node, work);
+          if (work.retained) {
+            startResources(node, work);
+            node.working.push(work);
+            work.slotted = true;
+          }
+        } else {
+          startResources(node, work);
+          node.working.push(work);
+          work.slotted = true;
+          if (work.message.family.trace) step(work.message, "start", node.id);
+        }
+      }
+    }
+  }
+
+  function admitIncoming(): void {
     while (injections.length && injections[0].due <= time + 1e-8) {
       const batch = unschedule();
       emit(batch.node, batch.type, true);
@@ -938,6 +1178,24 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         });
       }
     }
+  }
+
+  function tick(): void {
+    time += STEP;
+    const fleetChanges = new Set<string>();
+    for (const node of nodes.values()) {
+      const f = node.fleet;
+      if (!f || node.status !== "up") continue;
+      if (advanceFleet(f, time, node.working)) fleetChanges.add(node.id);
+    }
+    if (fleetChanges.size) assignReplicas(fleetChanges);
+    let resourceClock = false;
+    for (const node of nodes.values())
+      if (node.fleet) {
+        resourceClock = true;
+        break;
+      }
+    if (!resourceClock) admitIncoming();
 
     for (const node of nodes.values()) {
       // A sampled dot consumes scale messages of service budget, while keeping per-message latency.
@@ -961,6 +1219,32 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         node.serviceCredit = Math.min(1 + perTick, node.serviceCredit + perTick);
       }
       if (node.status !== "paused" && !held(node)) {
+        const f = node.fleet,
+          r = node.props.resources;
+        const cpuBudgets = f && r ? new Map<number | string, { remaining: number; count: number }>() : undefined;
+        if (f && r) {
+          const milli = r.cpuLimitMilli ?? r.availableCpuMilli ?? Infinity;
+          for (const work of node.working) {
+            if (work.cpuRemaining === undefined || (work.cpuBackoffUntil ?? 0) > time) continue;
+            if (work.cpuParts) {
+              for (const p of work.cpuParts)
+                if (p.cpu > 0) {
+                  const key = partKey(p),
+                    budget = cpuBudgets?.get(key) ?? {
+                      remaining: (milli / 1000) * STEP * (p.last - p.first + 1),
+                      count: 0,
+                    };
+                  budget.count++;
+                  cpuBudgets?.set(key, budget);
+                }
+            } else {
+              const id = work.replica ?? 0;
+              const budget = cpuBudgets?.get(id) ?? { remaining: (milli / 1000) * STEP, count: 0 };
+              budget.count++;
+              cpuBudgets?.set(id, budget);
+            }
+          }
+        }
         let keep = 0;
         for (const work of node.working) {
           if (work.retryAdmissionAt !== undefined && time >= work.retryAdmissionAt && node.status === "up") {
@@ -973,41 +1257,80 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             }
           }
           work.remaining -= STEP;
-          if (work.remaining <= 0 || (node.status === "down" && !work.retained)) {
+          if (f && r && node.status === "up" && (work.cpuBackoffUntil ?? 0) <= time) {
+            if (work.cpuParts) {
+              for (const p of work.cpuParts)
+                if (p.cpu > 0) {
+                  const budget = cpuBudgets?.get(partKey(p));
+                  if (!budget) continue;
+                  const spent = Math.min(p.cpu, budget.remaining / budget.count);
+                  p.cpu -= spent;
+                  budget.remaining -= spent;
+                  budget.count--;
+                  chargeCpu(f, undefined, spent, p.drainAt === undefined);
+                }
+              work.cpuRemaining = work.cpuParts.reduce((sum, p) => sum + p.cpu, 0);
+            }
+            const budget = !work.cpuParts && cpuBudgets?.get(work.replica ?? 0);
+            if (budget && work.cpuRemaining !== undefined) {
+              const spent = Math.min(work.cpuRemaining, budget.remaining / budget.count);
+              work.cpuRemaining -= spent;
+              budget.remaining -= spent;
+              budget.count--;
+              chargeCpu(f, work.replica, spent);
+            }
+          }
+          const graceExpired =
+            f &&
+            ((work.replica !== undefined && (f.busy.get(work.replica)?.drainAt ?? Infinity) <= time) ||
+              work.cpuParts?.some((p) => (p.drainAt ?? Infinity) <= time));
+          if (graceExpired) {
+            work.retained = false;
+            work.terminating = true;
+            work.slotted = false;
+            endResources(node, work);
+            fail(node, work);
+          } else if (
+            (work.remaining <= 0 && (work.cpuRemaining ?? 0) <= 1e-8) ||
+            (node.status === "down" && !work.retained)
+          ) {
             work.retained = false;
             finish(node, work);
             if (work.retained) node.working[keep++] = work;
-            else work.slotted = false;
+            else {
+              work.slotted = false;
+              endResources(node, work);
+            }
           } else node.working[keep++] = work;
         }
         node.working.length = keep;
-        while (node.pending.length && (node.status === "down" || node.working.length < slots(node))) {
-          // Brokers without consumers retain their messages until a new diagram is loaded.
-          if (isBroker(node) && !node.groups.length) break;
-          if (
-            node.status === "up" &&
-            ((!node.props.admission && node.role === "processor" && scale > 1 && node.props.latencyMs > 0) ||
-              limit < Infinity)
-          ) {
-            if (node.serviceCredit < 1 - 1e-9) break;
-            node.serviceCredit -= 1;
+        if (f && r) {
+          if (scale > 1) releaseSampledDrains(f, node.working);
+          if (f.assignmentChanged) {
+            fleetChanges.add(node.id);
+            f.assignmentChanged = false;
           }
-          const work = node.pending.shift()!;
-          if (node.props.admission && !work.lease && node.status === "up" && !reserveAdmission(node, work)) continue;
-          if (node.status === "down" || work.remaining <= 0 || isBroker(node) || node.role === "source") {
-            finish(node, work);
-            if (work.retained) {
-              node.working.push(work);
-              work.slotted = true;
+          const occupancy = scale === 1 ? f.active : Math.min(f.memoryCredit / STEP, slots(node));
+          if (scale > 1) f.memoryCredit = Math.max(0, f.memoryCredit - occupancy * STEP);
+          integrateResources(f, occupancy, time, STEP);
+          if (time % 15_000 === 0)
+            for (const pod of f.busy.values()) {
+              pod.lastCpu = pod.currentCpu;
+              pod.currentCpu = 0;
             }
-          } else {
-            node.working.push(work);
-            work.slotted = true;
-            if (work.message.family.trace) step(work.message, "start", node.id);
+          const a = node.props.autoscaling;
+          if (a?.mode === "on" && !f.override && time >= f.nextSync && node.status === "up") {
+            const decision = evaluateHpa(f, a.controller, r, time, capacityMultiplier, scale);
+            reconcileResources(node, decision.desired);
+            if (advanceFleet(f, time, node.working) || node.replicas !== f.ready) fleetChanges.add(node.id);
           }
         }
       }
+      if (!node.fleet) admitPending(node);
     }
+    if (fleetChanges.size) assignReplicas(fleetChanges);
+    if (resourceClock) admitIncoming();
+    for (const node of nodes.values()) if (node.fleet) admitPending(node);
     for (const node of nodes.values()) {
       if (isBroker(node)) pull(node);
       node.throughput += EWMA_ALPHA * ((node.completedThisStep * 1000) / STEP - node.throughput);
@@ -1046,6 +1369,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     randomState = mulberry32(seed);
     lineage.reset();
     for (const node of nodes.values()) {
+      initializeFleet(node);
       node.pending.clear();
       node.staged = 0;
       node.working.length = 0;
@@ -1073,6 +1397,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         group.staged = new Map();
       }
     }
+    assignReplicas(new Set(nodes.keys()));
     for (const edge of edges) {
       edge.delivered = 0;
       edge.active = 0;
@@ -1193,6 +1518,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     configuration: () =>
       (configuration ??= Object.fromEntries([...nodes].map(([id, node]) => [id, structuredClone(node.rawProps)]))),
     metrics: () => ({ time, inSystem, pendingInjections: injections.length }),
+    replicaPage(nodeId, page) {
+      const n = nodes.get(nodeId);
+      return n?.fleet && n.props.resources ? replicaPage(n.fleet, n.props.resources, time, scale, page) : [];
+    },
     measure(metric) {
       if ("system" in metric) return inSystem;
       const node = nodes.get(metric.node);
@@ -1216,6 +1545,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       return node[metric.field];
     },
     load(diagram: DiagramFile): void {
+      if (resourceBudgetExceeded(diagram)) throw new Error(t("autoscaling.budget", { limit: MAX_LIFECYCLE_REPLICAS }));
       planning = diagram.planning;
       configuration = undefined;
       topology++;
@@ -1281,6 +1611,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           active: 0,
           cursor: 0,
           allocations: new Map(),
+          drainOwners: new Map(),
           activeByNode: Object.create(null),
           heldByNode: new Map(),
           staged: new Map(),
@@ -1288,7 +1619,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         }));
       }
       indexGroups();
-      assignReplicas(new Set(nodes.keys()));
       traffic = false;
       speed = 1;
       reset();
@@ -1338,6 +1668,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           ...(node.props.admission ? { rejected: node.rejected, rejectionReasons: { ...node.rejectionReasons } } : {}),
           ...(held(node) ? { failingOver: true } : {}),
           throughput: node.throughput,
+          ...(node.fleet && node.props.resources
+            ? {
+                fleet: fleetReadout(node.fleet),
+                resources: resourceReadout(node.fleet, node.props.resources, node.working.length * scale, time, scale),
+              }
+            : {}),
           replicas: node.replicas,
           activeReplicas: node.activeReplicas,
           idleReplicas: node.replicas - node.activeReplicas,
@@ -1370,6 +1706,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     setNodeStatus(nodeId: string, status: NodeStatus): void {
       const node = nodes.get(nodeId);
       if (!node || node.status === status) return;
+      if (node.fleet) {
+        node.fleet.paused = status === "paused";
+        if (node.status === "paused" && status === "up")
+          node.fleet.nextSync =
+            time + (node.props.autoscaling?.mode === "on" ? node.props.autoscaling.controller.settings.syncMs : 15_000);
+      }
       node.status = status;
       log("status", node, undefined, status);
     },

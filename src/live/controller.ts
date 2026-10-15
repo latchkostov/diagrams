@@ -545,7 +545,16 @@ export class LiveController {
   commitInputs(saved: Simulation | null, diagram?: DiagramFile): void {
     if (!saved && diagram) {
       // Fold saved base props and normalize the multiplier in ONE allocation pass.
-      const patches = Object.fromEntries(diagram.nodes.map((n) => [n.id, n.props ?? {}]));
+      const patches = Object.fromEntries(
+        diagram.nodes.map((n) => [
+          n.id,
+          n.props?.autoscaling && (n.props.autoscaling as { mode?: string }).mode === "on"
+            ? Object.fromEntries(
+                Object.entries(n.props).filter(([key]) => key !== "replicas" && key !== "resumeAutoscaling"),
+              )
+            : (n.props ?? {}),
+        ]),
+      );
       this.engine.setNodePropsBatch(patches, 1);
     }
     if (diagram) {
@@ -749,9 +758,21 @@ export class LiveController {
    * The diagram changed in the editor. Moving nodes does nothing; node prop edits are applied to
    * the running engine; topology / label / edge changes rebuild it (play state is kept).
    */
+  replicaPage(nodeId: string, page = 0) {
+    return this.engine.replicaPage(nodeId, page);
+  }
+
   updateDiagram(next: DiagramFile): DiagramUpdate {
     const key = structuralKey(next);
-    if (key !== this.structKey) {
+    const previousNodes = new Map(this.diagram.nodes.map((n) => [n.id, n]));
+    const resourceChanged = next.nodes.some((n) => {
+      const before = previousNodes.get(n.id);
+      return (
+        valueKey(before?.props?.resources) !== valueKey(n.props?.resources) ||
+        valueKey(before?.props?.autoscaling) !== valueKey(n.props?.autoscaling)
+      );
+    });
+    if (key !== this.structKey || resourceChanged) {
       this.cancelReplay();
       this.diagram = next;
       this.structKey = key;

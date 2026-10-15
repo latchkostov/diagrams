@@ -49,7 +49,8 @@ export function edgeSimFields(sourceRole: SimRole | undefined): { group: boolean
 
 /** Profile-aware fields; legacy files retain their old controls and semantics. */
 export function nodeSimFields(role: SimRole, stencil: string, planning?: PlanningModel): SimKey[] {
-  if (planning?.revision === "p3" && managedKind(stencil)) return role === "processor" ? ["emits"] : [];
+  if ((planning?.revision === "p3" || planning?.revision === "p3-a1") && managedKind(stencil))
+    return role === "processor" ? ["emits"] : [];
   return SIM_FIELDS_BY_ROLE[role].filter(
     (key) => key !== "partitions" || brokerSpec(stencil, role, planning)?.partitioned,
   );

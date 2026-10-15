@@ -70,6 +70,36 @@ directory on deep fallback routes. Proxy redirects preserve the public path. No 
 focus targets were added; existing primary actions and chrome budgets remain intact. Hosting documentation
 explains native Pages fallback and its asset precedence. This was a source review; production browser
 regressions are verified separately.
+## Round 39 — Autoscaling A1 (2026-10-14)
+
+Designer review covered the synthetic Lab HPA service in light mode, dark German and dark Arabic at
+1280 × 800, selected live resource history/replica rows, and presentation. The main inspector has four fields:
+preset, target, minimum and maximum. Resource quantities, timing and behaviour stay under Advanced; the
+existing workload is folded separately. No toolbar control was added. All new strings have 37 translations.
+
+The review accepted the four-field disclosure, table density and RTL layout. Corrections distinguish the
+observed **Peak replicas** from the configured maximum, show percentage denominators and one decimal,
+retain invalid JSON drafts on blur, and hide node selection/connection handles in presentation. Live screenshots
+are fitted with the selected inspector open. The replica table is selected-only and paginated at 50 rows;
+the chart is backed by a numeric history summary and a visible solid/dashed legend.
+
+The final designer gate passed. Follow-up accessibility work keeps incomplete numeric drafts while typing,
+commits valid numbers on blur, themes enabled pagination arrows in dark mode, and gives the selected node a
+polite status message only when its fleet or decision changes. Inspector findings no longer extend past the
+scrollable body's width. The seven-angle review and regression dispositions are recorded in
+[the A1 review](research/autoscaling-a1-review.md).
+
+Rejected additions: permanent CPU/memory badges and global policy controls would spend chrome on details
+needed only for the selection. Treating slot utilization as CPU, inferring provider quotas, or automatically
+raising fixed replicas on an HPA node would misstate the model. KEDA activation, cloud adapters and verified
+scenario sizing belong to A2/A3; memory-limit enforcement/restarts require a separately scoped lifecycle.
+
+![Four main fields in light mode](design-review/round-39/a1-inspector-light.png)
+![Selected live resources and replica history](design-review/round-39/a1-live-resources.png)
+![Presentation retains fleet information](design-review/round-39/a1-presentation.png)
+![German inspector in dark mode](design-review/round-39/a1-inspector-de-dark.png)
+![Arabic inspector in dark mode](design-review/round-39/a1-inspector-ar-dark.png)
+![Bounded replica pagination in dark mode](design-review/round-39/a1-pagination-dark.png)
 
 ## Round 42: Planning P3 final review fixes (2026-10-14)
 
