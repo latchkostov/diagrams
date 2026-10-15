@@ -1,5 +1,11 @@
 # Release notes
 
+## Competitive landscape research (2026-10-14)
+
+- Added a [sourced competitive landscape](research/competitive-landscape.md) covering diagram editors,
+  architecture modelling, cloud tools and recent system-design simulators, with explicit verification
+  limits, canvas comparisons and ranked opportunities. This is research; app behaviour is unchanged.
+
 ## Stencil catalog review fixes (2026-10-14)
 
 - Stencil details show the actual saved default under **New nodes say**, while catalog previews retain
