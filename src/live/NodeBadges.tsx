@@ -108,7 +108,7 @@ export function NodeBadges({
             cap={capacity?.nodes[n.id]}
             assignment={assignments.consumers.get(n.id)?.spec}
             brokerSpec={assignments.brokers.get(n.id)}
-            currentModel={diagram.planning?.revision === "p2"}
+            currentModel={diagram.planning?.revision === "p2" || diagram.planning?.revision === "p3"}
             concurrency={props?.concurrency ?? 0}
             units={props?.device && props.device.ha !== "standalone" ? HA_LABEL[props.device.ha] : undefined}
             groups={
@@ -253,7 +253,8 @@ const NodeBadge = memo(function NodeBadge({
   const problems = s.failed + s.deadLettered + s.dropped;
   // Blocked by a deny rule: on purpose, so never in the red count, and shown apart from it.
   const blocked = s.blocked ?? 0;
-  const active = s.processed > 0 || s.inFlight > 0 || s.backlog > 0 || problems > 0 || blocked > 0;
+  const rejected = s.rejected ?? 0;
+  const active = s.processed > 0 || s.inFlight > 0 || s.backlog > 0 || problems > 0 || blocked > 0 || rejected > 0;
   // One slot under the node: with the heat map on, its label (which carries the rate) replaces the
   // throughput readout; a broker keeps its lag only while something is waiting.
   const capShown = !!cap && cap.level !== "idle";
@@ -280,6 +281,7 @@ const NodeBadge = memo(function NodeBadge({
       data-failed={s.failed}
       data-dlq={s.deadLettered}
       data-blocked={blocked}
+      data-rejected={rejected}
     >
       {s.status !== "up" && <div className={`lv-ring is-${s.status}`} />}
       {cap && s.status === "up" && <CapacityRing heat={cap} />}
@@ -341,6 +343,11 @@ const NodeBadge = memo(function NodeBadge({
               <b className="mono">{formatCount(blocked)}</b> blocked
             </span>
           )}
+          {rejected > 0 && (
+            <span className="lv-metric is-blocked" data-testid={`node-rejected-${node.id}`}>
+              {t("admission.rejected")} · {formatCount(rejected)}
+            </span>
+          )}
           {s.failingOver && (
             <span className="lv-metric is-failover" data-testid={`node-failover-${node.id}`}>
               failing over
@@ -392,6 +399,7 @@ const NodeBadge = memo(function NodeBadge({
           {s.deadLettered > 0 && <Row label="Dead-lettered" value={formatCount(s.deadLettered)} bad />}
           {s.dropped > 0 && <Row label="Dropped" value={formatCount(s.dropped)} bad />}
           {blocked > 0 && <Row label="Blocked by a deny rule" value={formatCount(blocked)} />}
+          {rejected > 0 && <Row label={t("admission.rejected")} value={formatCount(rejected)} />}
           {groups && Object.keys(s.lag).length > 1 && (
             <div className="lv-lag-list">
               <div className="lv-lag-title">{currentModel ? groupLabel(brokerSpec) : "Lag by consumer group"}</div>

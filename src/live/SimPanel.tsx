@@ -1,3 +1,4 @@
+import { t as translate, useLocale } from "../i18n";
 import { flowEdges } from "../model/relations";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useStoreApi } from "@xyflow/react";
@@ -58,6 +59,7 @@ const FIELDS: { value: MetricField; label: string }[] = [
   { value: "deadLettered", label: "dead-lettered" },
   { value: "dropped", label: "dropped" },
   { value: "blocked", label: "blocked" },
+  { value: "rejected", label: "rejected" },
   { value: "throughput", label: "throughput" },
 ];
 const OPS: Expectation["op"][] = ["==", ">=", ">", "<=", "<"];
@@ -78,6 +80,7 @@ const num = (v: string) => (v.trim() === "" ? 0 : Number(v));
  * Save writes it through the editor (one undo step) and Run plays it immediately, saved or not.
  */
 export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onOpen, onDraftChange }: Props) {
+  useLocale();
   const ui = useLive();
   const diagram = ui.diagram();
   const [sim, setSim] = useState<Simulation | null>(() => (initial ? structuredClone(initial) : null));
@@ -1192,7 +1195,7 @@ function ExpectationRow({ index, exp, diagram, live, warnings, onChange, onRemov
           >
             {FIELDS.map((f) => (
               <option key={f.value} value={f.value}>
-                {f.label}
+                {f.value === "rejected" ? translate("admission.rejected") : f.label}
               </option>
             ))}
           </select>

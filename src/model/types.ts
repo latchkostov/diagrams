@@ -38,7 +38,9 @@ export interface Stencil {
 export const DIAGRAM_FORMAT = "diagrams/v1" as const;
 /** Immutable model revision. Absent means legacy playback, including omitted defaults. */
 export interface PlanningModel {
-  revision: "p1" | "p2";
+  revision: "p1" | "p2" | "p3";
+  sharedQuotas?: import("./admission").Quota[];
+  sharedAllocations?: import("./admission").SharedAllocation[];
 }
 
 /** The saved / imported file format. Plain JSON. */
@@ -190,7 +192,16 @@ export type TimelineAction =
   | { do: "trace"; node: string };
 
 export type MetricField =
-  "processed" | "backlog" | "inFlight" | "failed" | "deadLettered" | "dropped" | "blocked" | "throughput" | "lag";
+  | "processed"
+  | "backlog"
+  | "inFlight"
+  | "failed"
+  | "deadLettered"
+  | "dropped"
+  | "blocked"
+  | "rejected"
+  | "throughput"
+  | "lag";
 
 export interface Expectation {
   id: string;

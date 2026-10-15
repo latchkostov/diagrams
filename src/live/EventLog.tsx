@@ -1,3 +1,4 @@
+import { t, useLocale } from "../i18n";
 import { useMemo } from "react";
 import type { LiveState } from "./controller";
 import { useLive } from "./context";
@@ -18,6 +19,7 @@ const KIND_LABEL: Record<string, string> = {
 
 /** The engine's recent events (newest first), optionally filtered to one node. */
 export function EventLog({ state }: { state: LiveState }) {
+  useLocale();
   const ui = useLive();
   const nodeId = ui.events.nodeId;
   const d = ui.controller.currentDiagram;
@@ -72,7 +74,7 @@ export function EventLog({ state }: { state: LiveState }) {
           <li key={`${e.time}-${e.messageId ?? ""}-${e.kind}-${i}`} className={`ev-${e.kind}`} data-node={e.nodeId}>
             <span className="lv-ev-time">{(e.time / 1000).toFixed(2)}</span>
             <span className="lv-ev-kind" data-testid="live-event-kind">
-              {KIND_LABEL[e.kind] ?? e.kind}
+              {e.kind === "reject" ? t("admission.rejected") : (KIND_LABEL[e.kind] ?? e.kind)}
             </span>
             <span className="lv-ev-text">{e.text}</span>
           </li>

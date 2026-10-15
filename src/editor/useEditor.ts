@@ -723,7 +723,16 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       deps().setNodes((ns) =>
         ns.map((n) =>
           set.has(n.id) && isDiagram(n)
-            ? { ...n, data: { ...n.data, props: withoutUndefined({ ...n.data.props, ...patch }) } }
+            ? {
+                ...n,
+                data: {
+                  ...n.data,
+                  props: withoutUndefined({
+                    ...n.data.props,
+                    ...(typeof patch === "function" ? patch(n.data.props ?? {}, n.id) : patch),
+                  }),
+                },
+              }
             : n,
         ),
       );

@@ -1,3 +1,4 @@
+import { t, useLocale } from "../i18n";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import "../styles/trace.css";
 import type { DiagramFile } from "../model/types";
@@ -54,9 +55,10 @@ export interface SlowCard {
 function journeyStatus(
   j: Journey,
   diagram: DiagramLike,
-): { key: "flight" | "done" | "dlq" | "dropped" | "blocked" | "kept"; label: string; title?: string } {
+): { key: "flight" | "done" | "dlq" | "dropped" | "blocked" | "rejected" | "kept"; label: string; title?: string } {
   if (j.deadLettered) return { key: "dlq", label: "Dead-lettered" };
   if (!j.done) return { key: "flight", label: "In flight" };
+  if (j.rejected) return { key: "rejected", label: t("admission.rejected") };
   if (j.dropped) return { key: "dropped", label: "Dropped" };
   // A deny rule's block is on purpose: its own outcome, never a drop.
   if (j.blocked) return { key: "blocked", label: "Blocked", title: "A deny rule stopped it: on purpose, not lost" };
@@ -88,6 +90,7 @@ export function TraceCard({
   slowmo,
   waitingText,
 }: TraceCardProps) {
+  useLocale();
   const labels = useMemo(() => new Map(diagram.nodes.map((n) => [n.id, n.label || n.id])), [diagram]);
   const name = (id: string | undefined) => (id ? (labels.get(id) ?? id) : "");
   const current = trace.current;
@@ -404,6 +407,10 @@ function Hop({
     case "drop":
       main = name(row.node);
       sub = `dropped: ${row.reason ?? "lost"}`;
+      break;
+    case "rejected":
+      main = name(row.node);
+      sub = t("admission.rejected");
       break;
     case "blocked":
       main = name(row.node);

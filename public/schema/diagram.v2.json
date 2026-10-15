@@ -25,8 +25,91 @@
         "revision": {
           "enum": [
             "p1",
-            "p2"
+            "p2",
+            "p3"
           ]
+        },
+        "sharedQuotas": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "unit",
+              "amount",
+              "windowMs",
+              "algorithm"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "unit": {
+                "enum": [
+                  "requests",
+                  "tokens",
+                  "inputTokens",
+                  "outputTokens",
+                  "costPoints",
+                  "bytes"
+                ]
+              },
+              "amount": {
+                "type": "number",
+                "minimum": 0.000001,
+                "maximum": 1000000000000
+              },
+              "windowMs": {
+                "type": "number",
+                "minimum": 1,
+                "maximum": 86400000
+              },
+              "algorithm": {
+                "type": "string",
+                "enum": [
+                  "token-bucket"
+                ]
+              },
+              "burst": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000000000
+              },
+              "sharedGroup": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              }
+            }
+          }
+        },
+        "sharedAllocations": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "maxInFlight"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "maxInFlight": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000000000
+              }
+            }
+          }
         }
       }
     },
@@ -189,17 +272,313 @@
       "type": "object",
       "additionalProperties": true,
       "properties": {
+        "api": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "quotas": {
+              "type": "array",
+              "maxItems": 32,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "unit",
+                  "amount",
+                  "windowMs",
+                  "algorithm"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "unit": {
+                    "enum": [
+                      "requests",
+                      "tokens",
+                      "inputTokens",
+                      "outputTokens",
+                      "costPoints",
+                      "bytes"
+                    ]
+                  },
+                  "amount": {
+                    "type": "number",
+                    "minimum": 0.000001,
+                    "maximum": 1000000000000
+                  },
+                  "windowMs": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 86400000
+                  },
+                  "algorithm": {
+                    "type": "string",
+                    "enum": [
+                      "token-bucket"
+                    ]
+                  },
+                  "burst": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000000000000
+                  },
+                  "sharedGroup": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                }
+              }
+            },
+            "maxInFlight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1000000000000
+            },
+            "sharedConcurrency": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "latencyMs": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 600000
+            },
+            "errorRate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "costPerRequest": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "requests": {
+                  "type": "number",
+                  "minimum": 1,
+                  "maximum": 1
+                },
+                "tokens": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1000000000000
+                },
+                "inputTokens": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1000000000000
+                },
+                "outputTokens": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1000000000000
+                },
+                "costPoints": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1000000000000
+                },
+                "bytes": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1000000000000
+                }
+              }
+            }
+          }
+        },
+        "endpoints": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "method",
+              "path"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "method": {
+                "enum": [
+                  "GET",
+                  "POST",
+                  "PUT",
+                  "PATCH",
+                  "DELETE",
+                  "HEAD",
+                  "OPTIONS",
+                  "TRACE"
+                ]
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000,
+                "pattern": "^/"
+              },
+              "behaviour": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "quotas": {
+                    "type": "array",
+                    "maxItems": 32,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "id",
+                        "unit",
+                        "amount",
+                        "windowMs",
+                        "algorithm"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "unit": {
+                          "enum": [
+                            "requests",
+                            "tokens",
+                            "inputTokens",
+                            "outputTokens",
+                            "costPoints",
+                            "bytes"
+                          ]
+                        },
+                        "amount": {
+                          "type": "number",
+                          "minimum": 0.000001,
+                          "maximum": 1000000000000
+                        },
+                        "windowMs": {
+                          "type": "number",
+                          "minimum": 1,
+                          "maximum": 86400000
+                        },
+                        "algorithm": {
+                          "type": "string",
+                          "enum": [
+                            "token-bucket"
+                          ]
+                        },
+                        "burst": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1000000000000
+                        },
+                        "sharedGroup": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        }
+                      }
+                    }
+                  },
+                  "maxInFlight": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000000000000
+                  },
+                  "sharedConcurrency": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "latencyMs": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 600000
+                  },
+                  "errorRate": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "costPerRequest": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "requests": {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 1
+                      },
+                      "tokens": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1000000000000
+                      },
+                      "inputTokens": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1000000000000
+                      },
+                      "outputTokens": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1000000000000
+                      },
+                      "costPoints": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1000000000000
+                      },
+                      "bytes": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1000000000000
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "scaling": {
+          "type": "string",
+          "enum": [
+            "fixed",
+            "auto"
+          ]
+        },
+        "maxConcurrency": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000
+        },
         "preset": {
           "type": "string",
           "enum": [
             "processor-lesson",
-            "device-size"
+            "device-size",
+            "lambda-account",
+            "stripe-live",
+            "stripe-sandbox",
+            "api-gateway-account",
+            "managed-measured"
           ]
         },
         "presetRevision": {
           "type": "string",
           "enum": [
-            "1"
+            "1",
+            "2026-10-14"
           ]
         },
         "connections": {
@@ -405,6 +784,75 @@
       "type": "object",
       "additionalProperties": true,
       "properties": {
+        "endpointId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "caller": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "deadlineMs": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 600000
+            },
+            "retry": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "maxAttempts",
+                "backoffMs",
+                "strategy",
+                "retryOn"
+              ],
+              "properties": {
+                "maxAttempts": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1000
+                },
+                "backoffMs": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 600000
+                },
+                "strategy": {
+                  "enum": [
+                    "fixed",
+                    "exponential"
+                  ]
+                },
+                "jitter": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "retryOn": {
+                  "type": "array",
+                  "maxItems": 3,
+                  "uniqueItems": true,
+                  "items": {
+                    "enum": [
+                      "throttled",
+                      "transient",
+                      "timeout"
+                    ]
+                  }
+                },
+                "idempotent": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "poolConnections": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000
+            }
+          }
+        },
         "group": {
           "type": "string"
         },
@@ -991,6 +1439,7 @@
                           "deadLettered",
                           "dropped",
                           "blocked",
+                          "rejected",
                           "throughput",
                           "lag"
                         ]

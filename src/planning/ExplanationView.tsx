@@ -69,18 +69,22 @@ export function ExplanationView({
             ? x.role !== "queue"
               ? t("planning.noReader", { name, rate: rate(x.offered) })
               : t("planning.noQueueReader", { name, rate: rate(x.offered) })
-            : !Number.isFinite(x.capacity)
-              ? t("planning.instant", { name, offered: rate(x.offered) })
-              : Number.isFinite(x.slots)
-                ? t("planning.summary", {
-                    name,
-                    capacity: rate(x.capacity),
-                    offered: rate(x.offered),
-                    replicas: x.activeReplicas,
-                    slots: x.slots,
-                    seconds: formatProcessingSeconds(x.seconds),
-                  })
-                : t("planning.deviceSummary", { name, capacity: rate(x.capacity), offered: rate(x.offered) })}
+            : x.managed
+              ? Number.isFinite(x.capacity)
+                ? t("admission.summary", { name, capacity: rate(x.capacity), offered: rate(x.offered) })
+                : t("admission.unknown")
+              : !Number.isFinite(x.capacity)
+                ? t("planning.instant", { name, offered: rate(x.offered) })
+                : Number.isFinite(x.slots)
+                  ? t("planning.summary", {
+                      name,
+                      capacity: rate(x.capacity),
+                      offered: rate(x.offered),
+                      replicas: x.activeReplicas,
+                      slots: x.slots,
+                      seconds: formatProcessingSeconds(x.seconds),
+                    })
+                  : t("planning.deviceSummary", { name, capacity: rate(x.capacity), offered: rate(x.offered) })}
       </p>
       {x.assignments.length > 0 && (
         <p data-testid="broker-assignment">
@@ -95,7 +99,11 @@ export function ExplanationView({
         <p data-testid="planning-omitted">{t("planning.omittedContributors", { count: x.omittedContributors })}</p>
       )}
       {x.status === "up" && x.growth > 0 && x.reason !== "no-reader" && (
-        <p data-testid="planning-growth">{t("planning.growth", { rate: rate(x.growth) })}</p>
+        <p data-testid="planning-growth">
+          {x.managed
+            ? t("admission.rejectEstimate", { rate: rate(x.growth) })
+            : t("planning.growth", { rate: rate(x.growth) })}
+        </p>
       )}
       {x.reason !== "no-reader" && (
         <p data-testid="planning-target">
@@ -138,6 +146,11 @@ export function ExplanationView({
           </small>
         ) : null)}
       {disabledReason && <small>{disabledReason}</small>}
+      {x.managed && x.growth > 0 && (
+        <p data-testid="planning-recommendation">
+          {x.managed === "serverless" ? t("admission.increase") : t("admission.reduce")}
+        </p>
+      )}
     </div>
   );
 }

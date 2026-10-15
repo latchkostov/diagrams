@@ -1,10 +1,35 @@
 # Release notes
 
+## Planning P3 final review fixes (2026-10-14)
+
+- Planning and playback share normalized admission requirements. Imports reject duplicate quota IDs
+  within each API scope and malformed caller policies with clear messages; local and shared limits
+  use separate identities. Zero-duration calls still respect zero concurrency budgets.
+- Fixed managed fleets scale above their saved size up to their allocation, consistently before and
+  after Save. Scalar timeline edits reuse validated endpoint requirements, and checkpoints clone only
+  mutable admission state. Capacity analysis indexes and aggregates endpoint calls.
+- Bulk managed edits expose the same applicable controls as single selection and preserve each
+  node's account and quota settings. Managed services no longer hide editable Inputs rows or inflate
+  Show all counts. Zero admission capacity describes rejected calls and the limiting budget.
+- Refreshed the agent viewer and native validator; the plugin remains one patch above master (1.1.18).
+
 ## Competitive landscape research (2026-10-14)
 
 - Added a [sourced competitive landscape](research/competitive-landscape.md) covering diagram editors,
   architecture modelling, cloud tools and recent system-design simulators, with explicit verification
   limits, canvas comparisons and ranked opportunities. This is research; app behaviour is unchanged.
+
+## Planning P3 review fixes (2026-10-14)
+
+- Managed consumers respect each Kafka input group's partition assignment and drain prefetched work
+  as slots free. Saving Capacity × preserves fixed managed fleets without changing account allocations.
+- Capacity analysis and playback share quota identities and implicit account allocations. Endpoint
+  budgets cannot collide with parent budgets, and buckets too small for one request have zero capacity.
+- Live edits rebuild only affected admission policies; requests reuse compiled endpoint requirements.
+  Checks remain deterministic across languages and translate cached rejection estimates when displayed.
+- Managed processors retain **Emits** under **Advanced**. Admission fields explain invalid drafts and
+  the retained setting, and group Undo by field. Imports reject duplicate endpoint IDs and malformed
+  endpoint references; runtime references fail closed.
 
 ## Stencil catalog review fixes (2026-10-14)
 
@@ -35,6 +60,18 @@
   draw.io and the offline agent checker share the same lossless colour contract.
 - Thanks to **Heiner Morales** for the custom colours, palette picker and background tint design in
   [PR #102](https://github.com/latchkostov/diagrams/pull/102).
+
+## Planning P3: managed compute and external limits (2026-10-14)
+
+- Functions and external/model APIs process duration and errors and refuse calls that exceed
+  concurrency, rate or token/cost budgets. Live shows Rejected separately from failures and losses.
+- Versioned Lambda, Stripe and API Gateway presets cite scoped vendor quotas. Visual nodes share
+  account budgets; declared endpoint budgets apply alongside global budgets. Unknown limits stay unknown.
+- The inspector offers a preset and at most four main controls, with account scope and scaling details
+  under Advanced. Local rate edits preserve the account cap. Automatic function scaling is explicitly
+  a simplification; caller deadlines, retries and failure cascades remain deferred.
+- New diagrams use p3; earlier models keep their playback until an undoable upgrade. The new controls
+  are translated in all 37 additional languages, and offline agent exports use the same admission model.
 
 ## Planning P2 review fixes (2026-10-14)
 

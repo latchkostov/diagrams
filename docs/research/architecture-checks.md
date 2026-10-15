@@ -1206,3 +1206,16 @@ relative to the corresponding pinned p1 document.
 
 No new rule, severity, vendor limit or single-point heuristic was added. The six upgrade differences
 come from the existing migration materialising implicit counts, not a new P2 redundancy assumption.
+
+## Planning P3: precision gate (2026-10-14)
+
+The current repository has **17 public examples**, rather than the plan snapshot's 16. The complete
+legacy finding lists and simulation evidence remain pinned in `src/checks/examples.test.ts`.
+P3's additional precision assertion compares all findings and severities after applying p3 to the
+same materialized p2 document: no new findings. P2's reviewed six migration differences above remain
+unchanged; they come from pinning implicit counts, rather than new vendor quota assumptions.
+
+Managed admission is included in the shared capacity analysis and capacity check. A finite configured
+API budget can raise the existing capacity finding, but its message reports possible rejection rather
+than growing backlog. Sizing skips managed nodes; no SaaS replica fix is proposed. No new architecture
+rule or severity was added, and vendor presets are chosen separately from upgrading a public example.

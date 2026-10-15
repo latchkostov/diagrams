@@ -56,6 +56,7 @@ export function emittedType(emits: unknown, type: string): string {
 }
 
 export interface CompiledEdge {
+  endpointId?: string;
   id: string;
   from: string;
   to: string;
@@ -108,6 +109,12 @@ export function compileTopology(diagram: DiagramFile, roleOf = stencilRole): Com
       from: input.from,
       to: input.to,
       sync: input.kind === "sync",
+      endpointId:
+        input.kind !== "sync" || input.props?.endpointId === undefined
+          ? undefined
+          : typeof input.props.endpointId === "string"
+            ? input.props.endpointId
+            : "", // Invalid reference; never the untargeted API.
       dlq: (brokerRole(from) || from === "processor") && isDlqEdge(input, from, target, to),
       travelMs:
         typeof value === "number" && Number.isFinite(value)

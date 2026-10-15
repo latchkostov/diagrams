@@ -478,3 +478,47 @@ describe("entryCandidates", () => {
     expect(entryCandidates(d(["a", "b", "c", "d"], [])).map((n) => n.id)).toEqual(["a", "b", "c"]);
   });
 });
+
+describe("managed admission capacity UI", () => {
+  it.each([4, 5])("managed services never consume visible row slots or hidden counts (%s)", (count) => {
+    const d: DiagramFile = {
+      format: "diagrams/v2",
+      planning: { revision: "p3" },
+      title: "Rows",
+      nodes: [
+        { id: "source", stencil: "client.user", label: "Calls", x: 0, y: 0, props: { ratePerSec: 10 } },
+        ...Array.from({ length: count }, (_, i) => ({
+          id: `managed-${i}`,
+          stencil: "openai",
+          label: "Managed",
+          x: 0,
+          y: 0,
+          props: { api: { maxInFlight: 0 } },
+        })),
+        { id: "worker", stencil: "service.node", label: "Worker", x: 0, y: 0 },
+      ],
+      edges: Array.from({ length: count }, (_, i) => ({ id: String(i), from: "source", to: `managed-${i}` })),
+    };
+    const view = capacityView(d, freePlaySimulation(d, emptyInputs()));
+    expect(selectRows(d, view, [])).toMatchObject({ services: ["worker"], hidden: 0 });
+    d.nodes.pop();
+    expect(selectRows(d, view, [])).toMatchObject({ services: [], hidden: 0 });
+  });
+  it("zero managed capacity describes rejected calls and the configured limiting budget", () => {
+    const d: DiagramFile = {
+      format: "diagrams/v2",
+      planning: { revision: "p3" },
+      title: "Zero",
+      nodes: [
+        { id: "source", stencil: "client.user", label: "Calls", x: 0, y: 0, props: { ratePerSec: 10 } },
+        { id: "api", stencil: "generic.external-api", label: "API", x: 0, y: 0, props: { api: { maxInFlight: 0 } } },
+      ],
+      edges: [{ id: "call", from: "source", to: "api" }],
+    };
+    const view = capacityView(d, freePlaySimulation(d, emptyInputs()));
+    expect(view.nodes.api.text).toContain("rejected");
+    expect(view.nodes.api.text).not.toContain("waiting");
+    expect(view.headline).toBe("API rejects every call");
+    expect(view.detail).toContain("concurrency or quota budget");
+  });
+});

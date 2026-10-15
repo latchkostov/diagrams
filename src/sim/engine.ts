@@ -15,6 +15,14 @@ import {
   type CompiledTopology,
 } from "./topology";
 import { resolveScale, resolveMultiplier } from "./units";
+import {
+  attemptAdmission,
+  type AdmissionPolicy,
+  reconfigureAdmission,
+  emptyAdmission,
+  releaseAdmission,
+  type AdmissionLease,
+} from "./admission";
 import type {
   EngineOptions,
   EngineCheckpoint,
@@ -69,6 +77,9 @@ interface Delivery {
   original: Message;
 }
 interface Work {
+  retryAdmissionAt?: number;
+  lease?: AdmissionLease;
+  errorRate?: number;
   message: Message;
   via?: Edge;
   delivery?: Delivery;
@@ -106,6 +117,8 @@ interface Node {
   outageDropped: number;
   /** Stopped by a deny rule on an outgoing connection (on purpose, so never `dropped`). */
   blocked: number;
+  rejected: number;
+  rejectionReasons: Record<string, number>;
   throughput: number;
   completedThisStep: number;
   trafficCredit: number;
@@ -114,6 +127,7 @@ interface Node {
   holdUntil: number;
 }
 interface Edge {
+  endpointId?: string;
   id: string;
   from: Node;
   to: Node;
@@ -172,6 +186,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   };
   const nodes = new Map<string, Node>();
   let planning: DiagramFile["planning"];
+  let admission = emptyAdmission();
   let configuration: Record<string, Record<string, unknown>> | undefined;
   const edges: Edge[] = [];
   let trips: Trip[] = [];
@@ -281,7 +296,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   /** A message's journey ends at `node`: consumed ("end") or lost ("drop"). */
-  function gone(node: Node, message: Message, kind: "end" | "drop" | "block", reason: string): void {
+  function gone(node: Node, message: Message, kind: "end" | "drop" | "block" | "reject", reason: string): void {
     inSystem--;
     message.family.alive--;
     if (message.family.trace) {
@@ -344,6 +359,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function slots(node: Node): number {
+    if (node.props.admission) return node.props.admission.slots ?? node.props.admission.api.maxInFlight ?? Infinity;
     return node.role === "processor" ? node.activeReplicas * node.props.concurrency : node.props.concurrency;
   }
 
@@ -449,9 +465,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const changed = new Set<string>(),
       limits = new Set<Group>();
     const units = new Map<Node, number>();
+    const admissionChanges: { id: string; policy?: AdmissionPolicy }[] = [];
     for (const [id, patch] of Object.entries(patches)) {
       const node = nodes.get(id);
       if (!node) continue;
+      if (Object.entries(patch).every(([key, value]) => Object.is(node.rawProps[key], value))) continue;
       configuration = undefined;
       if ("replicas" in patch) units.set(node, node.props.replicas);
       const previous = node.props;
@@ -459,7 +477,17 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         if (value === undefined) Reflect.deleteProperty(node.rawProps, key);
         else node.rawProps[key] = structuredClone(value);
       }
-      node.props = resolveProps(node.role, node.label, node.rawProps, node.stencil, planning);
+      const admissionChanged = ["api", "endpoints", "preset", "presetRevision"].some((key) => key in patch);
+      node.props = resolveProps(
+        node.role,
+        node.label,
+        node.rawProps,
+        node.stencil,
+        planning,
+        admissionChanged ? undefined : previous.admission,
+      );
+      if (admissionChanged && (previous.admission || node.props.admission))
+        admissionChanges.push({ id, policy: node.props.admission });
       if (node.role === "source") sourceRate += node.props.ratePerSec - previous.ratePerSec;
       if (
         Math.max(1, Math.round(node.props.replicas * capacityMultiplier)) !== node.replicas ||
@@ -469,6 +497,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (node.props.concurrency !== previous.concurrency || node.props.latencyMs !== previous.latencyMs)
         for (const group of groupsByConsumer.get(id) ?? []) limits.add(group);
     }
+    if (admissionChanges.length) reconfigureAdmission(admission, admissionChanges, planning, time);
     const next = resolveMultiplier(multiplier, capacityMultiplier);
     if (next !== capacityMultiplier) {
       capacityMultiplier = next;
@@ -515,6 +544,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function acknowledge(work: Work): void {
+    releaseAdmission(admission, work.lease);
+    work.lease = undefined;
     if (work.delivery) {
       work.delivery.group.active--;
       work.delivery.group.activeByNode[work.delivery.edge.to.id]--;
@@ -660,7 +691,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       ) {
         work.remaining = node.props.retryBackoffMs + latency(node);
         work.retained = true;
+        if (node.props.admission) work.retryAdmissionAt = time + node.props.retryBackoffMs;
       } else {
+        releaseAdmission(admission, work.lease);
+        work.lease = undefined;
         release(work);
         travel(
           work.delivery.edge,
@@ -671,8 +705,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         );
       }
     } else {
+      releaseAdmission(admission, work.lease);
+      work.lease = undefined;
       reply(work);
-      drop(node, work.message, node.status === "down" ? "node down" : "processing failed");
+      if (node.props.admission && node.status !== "down") gone(node, work.message, "end", "processing failed");
+      else drop(node, work.message, node.status === "down" ? "node down" : "processing failed");
     }
   }
 
@@ -680,12 +717,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (node.status === "down") {
       if (work.delivery || node.role === "processor") fail(node, work);
       else {
+        acknowledge(work);
         reply(work);
         drop(node, work.message, "node down");
       }
       return;
     }
-    if (node.role === "processor" && random() < node.props.failureRate) {
+    if ((node.role === "processor" || node.props.admission) && random() < (work.errorRate ?? node.props.failureRate)) {
       fail(node, work);
       return;
     }
@@ -710,6 +748,39 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     } else forward(node, work.message);
   }
 
+  function reserveAdmission(node: Node, work: Work): boolean {
+    const policy = node.props.admission;
+    if (!policy) return true;
+    releaseAdmission(admission, work.lease);
+    work.lease = undefined;
+    const outcome = attemptAdmission(
+      admission,
+      node.id,
+      policy,
+      work.via?.endpointId,
+      planning,
+      time,
+      scale,
+      policy.fixedSlotsPerReplica === undefined
+        ? policy.slots
+        : Math.min(policy.slots ?? Infinity, node.activeReplicas * policy.fixedSlotsPerReplica),
+    );
+    if ("rejected" in outcome) {
+      node.rejected++;
+      node.rejectionReasons[outcome.rejected] = (node.rejectionReasons[outcome.rejected] ?? 0) + 1;
+      log("reject", node, work.message, outcome.rejected);
+      acknowledge(work);
+      reply(work);
+      gone(node, work.message, "reject", outcome.rejected);
+      return false;
+    }
+    work.lease = outcome.lease;
+    work.errorRate = outcome.errorRate;
+    if (outcome.latencyMs !== undefined)
+      work.remaining = outcome.latencyMs * (1 + (random() * 2 - 1) * node.props.jitter);
+    return true;
+  }
+
   function arrive(node: Node, work: Work): void {
     if (node.status === "down") {
       finish(node, work);
@@ -717,6 +788,25 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (work.retained) {
         node.working.push(work);
         work.slotted = true;
+      }
+      return;
+    }
+    if (node.props.admission) {
+      const group = work.delivery?.group;
+      if (group && !work.held && !hold(group, node, work)) {
+        let queue = group.staged.get(node.id);
+        if (!queue) group.staged.set(node.id, (queue = new Deque()));
+        queue.push(work);
+        node.staged++;
+        return;
+      }
+      if (!reserveAdmission(node, work)) return;
+      if (node.status === "paused") node.pending.push(work);
+      else if (work.remaining <= 0) finish(node, work);
+      else {
+        node.working.push(work);
+        work.slotted = true;
+        if (work.message.family.trace) step(work.message, "start", node.id);
       }
       return;
     }
@@ -851,7 +941,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
     for (const node of nodes.values()) {
       // A sampled dot consumes scale messages of service budget, while keeping per-message latency.
-      if (node.role === "processor" && scale > 1 && node.props.latencyMs > 0 && node.status === "up") {
+      if (
+        !node.props.admission &&
+        node.role === "processor" &&
+        scale > 1 &&
+        node.props.latencyMs > 0 &&
+        node.status === "up"
+      ) {
         node.serviceCredit = Math.min(
           Math.max(1, slots(node) / scale),
           node.serviceCredit + (slots(node) * STEP) / (node.props.latencyMs * scale),
@@ -867,6 +963,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (node.status !== "paused" && !held(node)) {
         let keep = 0;
         for (const work of node.working) {
+          if (work.retryAdmissionAt !== undefined && time >= work.retryAdmissionAt && node.status === "up") {
+            work.retryAdmissionAt = undefined;
+            work.retained = false;
+            work.remaining = latency(node);
+            if (!reserveAdmission(node, work)) {
+              work.slotted = false;
+              continue;
+            }
+          }
           work.remaining -= STEP;
           if (work.remaining <= 0 || (node.status === "down" && !work.retained)) {
             work.retained = false;
@@ -881,12 +986,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           if (isBroker(node) && !node.groups.length) break;
           if (
             node.status === "up" &&
-            ((node.role === "processor" && scale > 1 && node.props.latencyMs > 0) || limit < Infinity)
+            ((!node.props.admission && node.role === "processor" && scale > 1 && node.props.latencyMs > 0) ||
+              limit < Infinity)
           ) {
             if (node.serviceCredit < 1 - 1e-9) break;
             node.serviceCredit -= 1;
           }
           const work = node.pending.shift()!;
+          if (node.props.admission && !work.lease && node.status === "up" && !reserveAdmission(node, work)) continue;
           if (node.status === "down" || work.remaining <= 0 || isBroker(node) || node.role === "source") {
             finish(node, work);
             if (work.retained) {
@@ -914,6 +1021,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function reset(): void {
+    admission = emptyAdmission();
+    reconfigureAdmission(
+      admission,
+      [...nodes.values()].flatMap((n) => (n.props.admission ? [{ id: n.id, policy: n.props.admission }] : [])),
+      planning,
+      0,
+    );
     refreshSourceRate();
     time = 0;
     accumulator = 0;
@@ -943,6 +1057,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.dropped = 0;
       node.outageDropped = 0;
       node.blocked = 0;
+      node.rejected = 0;
+      node.rejectionReasons = Object.create(null);
       node.holdUntil = 0;
       node.throughput = 0;
       node.completedThisStep = 0;
@@ -985,7 +1101,16 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         for (const [id, family] of copy.lineage.store) family.trace = records.get(id);
         return copy;
       };
-      const graph = cloneGraph({ nodes, edges, trips, drawnTrips, injections, events, lineage: lineage.state });
+      const graph = cloneGraph({
+        nodes,
+        edges,
+        trips,
+        drawnTrips,
+        injections,
+        events,
+        admission: { buckets: admission.buckets, inFlight: admission.inFlight },
+        lineage: lineage.state,
+      });
       const clock = {
         time,
         accumulator,
@@ -1027,6 +1152,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         injections.splice(0, injections.length, ...copy.injections);
         events.splice(0, events.length, ...copy.events);
         lineage.state = copy.lineage;
+        admission = emptyAdmission();
+        reconfigureAdmission(
+          admission,
+          [...nodes.values()].flatMap((n) => (n.props.admission ? [{ id: n.id, policy: n.props.admission }] : [])),
+          planning,
+          clock.time,
+        );
+        admission.buckets = copy.admission.buckets;
+        admission.inFlight = copy.admission.inFlight;
         ({
           time,
           accumulator,
@@ -1115,6 +1249,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           dropped: 0,
           outageDropped: 0,
           blocked: 0,
+          rejected: 0,
+          rejectionReasons: Object.create(null),
           throughput: 0,
           completedThisStep: 0,
           trafficCredit: 0,
@@ -1199,6 +1335,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           dropped: node.dropped,
           ...(node.outageDropped ? { outageDropped: node.outageDropped } : {}),
           ...(node.blocked ? { blocked: node.blocked } : {}),
+          ...(node.props.admission ? { rejected: node.rejected, rejectionReasons: { ...node.rejectionReasons } } : {}),
           ...(held(node) ? { failingOver: true } : {}),
           throughput: node.throughput,
           replicas: node.replicas,

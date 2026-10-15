@@ -602,14 +602,16 @@ export class LiveController {
     before: Record<string, Record<string, unknown>>,
     after: Record<string, Record<string, unknown>>,
   ): void {
+    const patches: Record<string, NodeSimProps> = {};
     for (const id of new Set([...Object.keys(before), ...Object.keys(after)])) {
       const a = before[id] ?? {},
         b = after[id] ?? {};
       const delta: Record<string, unknown> = {};
       for (const key of new Set([...Object.keys(a), ...Object.keys(b)]))
         if (valueKey(a[key]) !== valueKey(b[key])) delta[key] = key in b ? b[key] : this.diagramProp(id, key);
-      if (Object.keys(delta).length) this.engine.setNodeProps(id, delta as NodeSimProps);
+      if (Object.keys(delta).length) patches[id] = delta as NodeSimProps;
     }
+    this.engine.setNodePropsBatch(patches);
   }
 
   private patchRun(prev: Simulation, next: Simulation): void {
@@ -759,6 +761,7 @@ export class LiveController {
       return "reloaded";
     }
     let patched = false;
+    const patches: Record<string, NodeSimProps> = {};
     for (const node of next.nodes) {
       const k = propsKey(node.props);
       if (this.nodeProps.get(node.id) === k) continue;
@@ -771,7 +774,7 @@ export class LiveController {
           .filter((p) => valueKey(after[p]) !== valueKey(before[p]) && !(p in covered))
           .map((p) => [p, after[p]]),
       );
-      this.engine.setNodeProps(node.id, delta as NodeSimProps);
+      patches[node.id] = delta as NodeSimProps;
       if (after.status !== before.status) {
         const s = after.status;
         this.engine.setNodeStatus(node.id, s === "paused" || s === "down" ? s : "up");
@@ -779,6 +782,7 @@ export class LiveController {
       this.nodeProps.set(node.id, k);
       patched = true;
     }
+    this.engine.setNodePropsBatch(patches);
     this.diagram = next;
     if (patched) {
       if (!this.sim) this.applyInputs();
@@ -837,7 +841,7 @@ export class LiveController {
       this.freeScale = freePlayScale(this.diagram, this.inputs);
       this.engine.setScale(this.freeScale);
       this.freeApplied = freePlayProps(this.diagram, this.inputs);
-      for (const [id, props] of Object.entries(this.freeApplied)) this.engine.setNodeProps(id, props as NodeSimProps);
+      this.engine.setNodePropsBatch(this.freeApplied as Record<string, NodeSimProps>);
       this.engine.setCapacityMultiplier(this.inputs.capacity ?? 1);
     }
     this.applySpeed();

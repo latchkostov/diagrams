@@ -1,6 +1,6 @@
 # The diagrams/v1 file format
 
-Planning files additionally support `diagrams/v2` with `planning: { "revision": "p2" }` (or `p1` for the previous model) and
+Planning files additionally support `diagrams/v2` with `planning: { "revision": "p3" }` (or `p1`/`p2` for earlier models) and
 <https://www.livediagrams.dev/schema/diagram.v2.json>. Legacy v1 retains legacy playback and omitted
 defaults. Never upgrade by merely changing the format marker: the app's explicit upgrade pins current
 effective values and previews compatibility. Presets store `preset` / `presetRevision`; unsupported
@@ -20,7 +20,7 @@ are published at <https://www.livediagrams.dev/schema/diagram.v1.json> (the file
 
 ## Top level
 
-- `format` (required): `"diagrams/v2"` with `planning: { "revision": "p2" }` for new planning diagrams; `"diagrams/v1"` for legacy playback.
+- `format` (required): `"diagrams/v2"` with `planning: { "revision": "p3" }` for new planning diagrams; `"diagrams/v1"` for legacy playback.
 - `title` (required) and an optional `description` of one or two sentences.
 - `color` (optional): the canvas background tint, using an annotation palette colour or hex (`#RGB`, `#RGBA`,
   `#RRGGBB` or `#RRGGBBAA`). Omit it for the theme's default background. Alpha is preserved.
@@ -112,8 +112,12 @@ Every setting is optional, and live view works without any. Node `props`:
 
 <!-- BEGIN GENERATED node-props -->
 
-- `preset` ("processor-lesson" | "device-size"): immutable preset id: processor-lesson (assumption) or device-size (existing approximate size preset); resolved values are pinned alongside
-- `presetRevision` ("1"): pinned preset revision (1 for P1); unsupported revisions are refused
+- `api` (object): P3 admission: typed token buckets, concurrent calls, scoped account sharing, duration/errors and per-request token/cost sizes. Unknown budgets stay unknown. Every applicable bucket is charged atomically in real units.
+- `endpoints` (string[]): P3 admission enforcement for optional endpoint records (id, method, path, behaviour). Endpoint budgets add to node/account budgets; authoring UI is deferred to P6.
+- `scaling` ("fixed" | "auto"): serverless fixed slots or auto within maxConcurrency; auto explicitly assumes instant scaling and excludes cold starts
+- `maxConcurrency` (number 0..10000): serverless allocated concurrent work, independent from source RPS; account allocation remains an additional cap
+- `preset` ("processor-lesson" | "device-size" | "lambda-account" | "stripe-live" | "stripe-sandbox" | "api-gateway-account" | "managed-measured"): immutable preset id: processor-lesson (assumption) or device-size (existing approximate size preset); resolved values are pinned alongside
+- `presetRevision` ("1" | "2026-10-14"): pinned preset revision (1 for P1); unsupported revisions are refused
 - `connections` (integer 1..10000): store connection ceiling, distinct from active query slots; planning metadata, not enforced in P1
 - `querySlots` (integer 1..10000): measured concurrent active queries; planning metadata, stores remain parallel in P1 playback
 - `ingestUnits` (integer 1..10000): broker provisioned ingest units, in the profile's native unit; metadata only, no vendor hard ingest ceiling in P2
@@ -142,6 +146,8 @@ Edge `props`:
 
 <!-- BEGIN GENERATED edge-props -->
 
+- `endpointId` (string): Request target endpoint id inside the target API node; dangling references reject rather than fall back
+- `caller` (object): reserved deadlineMs, retry policy and poolConnections contract; no caller waits, retries, deadlines or cascades execute in P3
 - `group` (string): consumer group (logs), subscription (pub/sub), or binding (exchange); each name gets a copy and readers sharing a name compete; queues always compete
 - `groupOrigin` ("inferred"): inferred: the default group follows the consumer node id when copied or reconnected; omit for authored group names
 - `share` (number 0..1): chance that this fan-out edge gets a copy
@@ -217,3 +223,11 @@ password…**. Don't build one, and never put a password in a link or in the sam
 
 Chat apps may cut off links longer than about 8,000 characters. For those, hand over the `.diagram.json` file:
 it opens at livediagrams.dev with **File > Open…**.
+
+P3 admission uses `api.quotas` token buckets with explicit real units/windows and per-request costs.
+Node and endpoint budgets apply together; matching `sharedGroup` definitions share one account budget.
+`api.maxInFlight` limits concurrent calls; `sharedConcurrency` shares account concurrency. Functions
+use `maxConcurrency` allocation and fixed/auto slots. Auto explicitly assumes instant scaling.
+Unknown limits stay unknown. Requests can target `endpointId`; missing targets reject. Refusals are
+`rejected`, separate from failed, dropped and blocked. Caller deadlines/retries are preserved contracts
+only; no caller waits, retries or cascades run. See the site's simulation semantics for preset sources.

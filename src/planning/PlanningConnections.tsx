@@ -1,7 +1,7 @@
 import { groupLabel } from "../stencils/brokerVocabulary";
 import { memo } from "react";
 import { t, useLocale } from "../i18n";
-import { formatDuration, formatList, formatPercent } from "../i18n/format";
+import { formatDuration, formatList, formatPercent, formatNumber } from "../i18n/format";
 import type { configuredPlanning } from "./cache";
 
 export const PlanningConnections = memo(function PlanningConnections({
@@ -14,13 +14,22 @@ export const PlanningConnections = memo(function PlanningConnections({
   useLocale();
   const { analysis, nodes } = configured;
   const rows = configured.rows(id);
+  const admission = analysis.resolved[id].admission;
+  const slots = admission?.slots ?? admission?.api.maxInFlight;
   return (
     <section className="insp-section" aria-label={t("planning.connections")} data-testid="planning-connections">
       <h3 className="insp-section-title">{t("planning.connections")}</h3>
-      {Number.isFinite(analysis.resolved[id].concurrency) && (
+      {admission && slots !== undefined ? (
         <p className="insp-note" data-testid="planning-pool">
-          {t("planning.pool", { replicas: analysis.nodes[id].replicas, slots: analysis.resolved[id].concurrency })}
+          {t("admission.allocation")} · {formatNumber(slots)}
         </p>
+      ) : (
+        !admission &&
+        Number.isFinite(analysis.resolved[id].concurrency) && (
+          <p className="insp-note" data-testid="planning-pool">
+            {t("planning.pool", { replicas: analysis.nodes[id].replicas, slots: analysis.resolved[id].concurrency })}
+          </p>
+        )
       )}
       {!rows.length && <p className="insp-note">{t("planning.noConnections")}</p>}
       {rows.map((row) => (

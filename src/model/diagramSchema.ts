@@ -14,6 +14,7 @@ import type {
   DiagramNode,
   Simulation,
 } from "./types";
+import { planningSchema } from "./admissionSchema";
 
 // Every field of the file format, its nodes, edges, boundaries, notes and simulations is listed here:
 // `satisfies Fields<T>` fails typecheck when a type gains a field the schema doesn't describe, and
@@ -31,6 +32,7 @@ const METRICS = [
   "deadLettered",
   "dropped",
   "blocked",
+  "rejected",
   "throughput",
   "lag",
 ];
@@ -62,12 +64,7 @@ function diagramSchema() {
     required: ["format", "title", "nodes", "edges"],
     properties: {
       format: { type: "string", enum: ["diagrams/v1", "diagrams/v2"] },
-      planning: {
-        type: "object",
-        required: ["revision"],
-        additionalProperties: false,
-        properties: { revision: { enum: ["p1", "p2"] } },
-      },
+      planning: planningSchema,
       title: str(200),
       description: str(2000),
       color: {

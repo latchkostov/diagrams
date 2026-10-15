@@ -1,5 +1,11 @@
 import { DIAGRAM_FORMAT, type Simulation, type DiagramFile } from "../model/types";
-import { propsProblem, SIM_LIMITS, unsupportedPreset, invalidPlanningDelay } from "../model/simProps";
+import {
+  propsProblem,
+  SIM_LIMITS,
+  unsupportedPreset,
+  invalidPlanningDelay,
+  invalidEndpointReference,
+} from "../model/simProps";
 
 // The simulation settings' bounds, for the editors that share this chunk (the inspector, the Inputs panel).
 export { SIM_LIMITS };
@@ -9,6 +15,8 @@ import { isDependency, isEdgeRelation, isRelationOrigin, sanitizeSettings } from
 import { sanitizeChecks } from "../model/checks";
 import { idClaimer } from "../model/ids";
 import { t } from "../i18n/core";
+import { checkJsonSchema } from "../model/jsonSchema";
+import { callerSchema, planningSchema } from "../model/admissionSchema";
 
 // The native format (diagrams/v1): versioned validation with friendly messages, a migration hook
 // for future formats, and preservation of fields this version doesn't know about (a newer app, or
@@ -111,7 +119,8 @@ export function validateDiagram(data: unknown): NativeResult {
   }
   if (
     raw.format === "diagrams/v2" &&
-    (!isObj(raw.planning) || (raw.planning.revision !== "p1" && raw.planning.revision !== "p2"))
+    (!isObj(raw.planning) ||
+      (raw.planning.revision !== "p1" && raw.planning.revision !== "p2" && raw.planning.revision !== "p3"))
   )
     return {
       ok: false,
@@ -122,6 +131,18 @@ export function validateDiagram(data: unknown): NativeResult {
       ok: false,
       error: t("planning.formatRequired"),
     };
+  if (raw.planning !== undefined) {
+    try {
+      checkJsonSchema(raw.planning, planningSchema);
+      for (const field of ["sharedQuotas", "sharedAllocations"]) {
+        const values = (raw.planning as Record<string, unknown>)[field];
+        if (Array.isArray(values) && new Set(values.map((v: { id: string }) => v.id)).size !== values.length)
+          return { ok: false, error: t("admission.unknown") };
+      }
+    } catch {
+      return { ok: false, error: t("admission.unknown") };
+    }
+  }
   if (!Array.isArray(raw.nodes)) return { ok: false, error: "The diagram needs both a nodes and an edges list." };
   const counts: [unknown, number, string][] = [
     [raw.nodes, LIMITS.maxNodes, "nodes"],
@@ -333,6 +354,15 @@ export function validateDiagram(data: unknown): NativeResult {
     if (out.props !== undefined && !isObj(out.props)) delete out.props;
     if (invalidPlanningDelay(out.props))
       return { ok: false, error: t("planning.delayInvalid", { id: e.id, limit: SIM_LIMITS.timeMs }) };
+    if (invalidEndpointReference(out.props)) return { ok: false, error: t("admission.endpointInvalid", { id: e.id }) };
+    const caller = (out.props as Record<string, unknown> | undefined)?.caller;
+    if (caller !== undefined) {
+      try {
+        checkJsonSchema(caller, callerSchema, "caller");
+      } catch {
+        return { ok: false, error: `Edge "${e.id}": caller must be a valid bounded caller policy.` };
+      }
+    }
     // A deny rule fails closed: anything that isn't true or false is read as deny, never as allow, and said.
     const deny = (out.props as Record<string, unknown> | undefined)?.deny;
     if (deny !== undefined && typeof deny !== "boolean") {
@@ -426,6 +456,7 @@ const METRICS = new Set([
   "deadLettered",
   "dropped",
   "blocked",
+  "rejected",
   "throughput",
   "lag",
 ]);

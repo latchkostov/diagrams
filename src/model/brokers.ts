@@ -73,7 +73,9 @@ export function brokerSpec(
   planning?: PlanningModel,
 ): BrokerSpec | undefined {
   if (role !== "topic" && role !== "stream") return undefined;
-  return planning?.revision === "p2" && stencil && Object.hasOwn(BROKERS, stencil) ? BROKERS[stencil] : log;
+  return (planning?.revision === "p2" || planning?.revision === "p3") && stencil && Object.hasOwn(BROKERS, stencil)
+    ? BROKERS[stencil]
+    : log;
 }
 /** Infrastructure, never a topic or an extra delivery hop. */
 export const isClusterWrapper = (stencil: string) => stencil === "kafka.cluster";

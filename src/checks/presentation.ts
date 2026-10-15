@@ -1,3 +1,4 @@
+import { explanationRate } from "../planning/format";
 import { t } from "../i18n/core";
 import { assignmentLabel } from "../stencils/brokerVocabulary";
 import type { Finding } from "./types";
@@ -6,15 +7,22 @@ import type { Finding } from "./types";
 export function presentFinding(finding: Finding): Finding {
   const note = finding.brokerAssignment;
   const fix = finding.fix;
+  const rejection = finding.admissionRejection;
+  const message = rejection
+    ? finding.message.replace(
+        rejection.text,
+        t("admission.rejectEstimate", { rate: explanationRate(rejection.rate, "req/s") }),
+      )
+    : finding.message;
   return {
     ...finding,
     rationale: finding.brokerRationale === "no-reader" ? t("broker.noReader") : finding.rationale,
     message: note
-      ? finding.message.replace(
+      ? message.replace(
           note.text,
           `${t("broker.assigned", { active: note.active, configured: note.configured })} · ${assignmentLabel(note.spec)}.`,
         )
-      : finding.message,
+      : message,
     ...(fix
       ? {
           fix: {

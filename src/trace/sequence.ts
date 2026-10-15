@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 // A finished trace (the whole fan-out tree from its root) as a sequence diagram: participants are the
 // nodes in path order, each message is an arrow (async open, sync solid, replies dashed), failures,
 // retries and dead letters are notes, and long quiet stretches become "gap" rows that say where the
@@ -133,6 +134,8 @@ export function buildSequence(trace: MessageTrace, diagram: DiagramLike, opts: S
       });
     } else if (step.kind === "drop") {
       items.push({ kind: "note", t, over: step.node!, text: `Dropped: ${step.reason ?? "lost"}`, tone: "danger" });
+    } else if (step.kind === "reject") {
+      items.push({ kind: "note", t, over: step.node!, text: tRejected(), tone: "neutral" });
     } else if (step.kind === "block") {
       items.push({ kind: "note", t, over: step.node!, text: "Blocked by a deny rule", tone: "neutral" });
     }
@@ -215,3 +218,5 @@ function explainGap(journey: Journey, next: SequenceItem, from: number, labels: 
   if (processing > 0) return `${time} at ${name}: processing`;
   return `${time} waiting in ${name}`;
 }
+
+const tRejected = () => t("admission.rejected");
