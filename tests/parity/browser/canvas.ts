@@ -6,6 +6,7 @@ import { expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ROOT } from "../lib/golden";
+import { readyFonts } from "../../../src/canvas/fonts";
 
 export interface Drawn {
   viewport: string;
@@ -57,6 +58,7 @@ export async function readCanvas(page: Page, root = "canvas-wrap"): Promise<Draw
 
 /** Reads until two reads a few frames apart agree: the measured sizes, routes and fit view have settled. */
 export async function settledCanvas(page: Page, root = "canvas-wrap"): Promise<Drawn> {
+  await page.getByTestId(root).evaluate(readyFonts);
   let last = "";
   let drawn: Drawn = { viewport: "", nodes: {}, edges: {}, labels: {} };
   await expect
@@ -68,9 +70,29 @@ export async function settledCanvas(page: Page, root = "canvas-wrap"): Promise<D
               requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() => r()))),
             ),
         );
+        const ready = await page
+          .getByTestId(root)
+          .evaluate(
+            (scope) =>
+              scope.dataset.fitPending !== "true" &&
+              [...scope.querySelectorAll<HTMLElement>('[data-testid^="rf__node-"]')].every(
+                (el) => el.offsetWidth > 0 && el.offsetHeight > 0 && getComputedStyle(el).visibility === "visible",
+              ),
+          );
         drawn = await readCanvas(page, root);
-        const text = JSON.stringify(drawn);
-        const same = text === last && Object.keys(drawn.nodes).length > 0;
+        // Text is still pinned in the returned golden. Readiness depends on geometry: live
+        // badges/counters can keep changing their words without moving a single box or route.
+        const geometry = {
+          ...drawn,
+          nodes: Object.fromEntries(
+            Object.entries(drawn.nodes).map(([id, n]) => {
+              const box = n as { kind: string; box: string };
+              return [id, { kind: box.kind, box: box.box }];
+            }),
+          ),
+        };
+        const text = JSON.stringify(geometry);
+        const same = ready && text === last && Object.keys(drawn.nodes).length > 0;
         last = text;
         return same;
       },
@@ -81,10 +103,8 @@ export async function settledCanvas(page: Page, root = "canvas-wrap"): Promise<D
 }
 
 /**
- * Opens a public example on the canvas and waits until every node and edge is drawn and settled, then fits the view
- * again. The automatic fit on opening keeps clear of the floating chrome that is on screen at that moment, and under
- * load some of it can arrive later, so its framing varies with timing (reported; docs/PARITY.md). Fit view, with the
- * chrome in place, doesn't.
+ * Opens a public example and waits for its measured, fitted drawing. Opening uses the same
+ * measurement gate as Fit view, so no corrective click is necessary.
  */
 export async function openExample(page: Page, slug: string): Promise<Drawn> {
   const file = exampleFile(slug);
@@ -95,8 +115,6 @@ export async function openExample(page: Page, slug: string): Promise<Drawn> {
     await expect(page.locator('g[data-testid^="edge-"]:not([data-testid^="edge-deny-"])')).toHaveCount(
       file.edges.length,
     );
-  await settledCanvas(page);
-  await page.getByTestId("fit-view-button").click();
   return settledCanvas(page);
 }
 

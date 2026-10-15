@@ -24,6 +24,7 @@ const overlaps = (a: Box, b: Box) =>
 
 /** Waits until the first node stops moving (fit-view animations done). */
 async function settle(page: Page) {
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-fit-pending", "false");
   const first = page.getByTestId(/^node-(?!editor)/).first();
   await expect(first).toBeVisible();
   await waitForStableBox(first);
@@ -141,13 +142,14 @@ test("the title card folds to a chip when nodes go under it", async ({ page }) =
   await page.keyboard.down(process.platform === "darwin" ? "Meta" : "Control");
   for (let i = 0; i < 5; i++) {
     await page.mouse.wheel(0, -300);
-    await page.waitForTimeout(80);
+    await waitForStableBox(page.getByTestId(/^node-(?!editor)/).first());
   }
   await page.keyboard.up(process.platform === "darwin" ? "Meta" : "Control");
   await expect(card).toHaveAttribute("data-collapsed", "1");
   // Fit again: the card has room and unfolds.
   await page.getByTestId("fit-view-button").click();
-  await expect(card).not.toHaveAttribute("data-collapsed", "1", { timeout: 3000 });
+  await settle(page);
+  await expect(card).not.toHaveAttribute("data-collapsed", "1");
 });
 
 for (const ex of publicExamples)

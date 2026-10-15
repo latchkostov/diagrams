@@ -125,9 +125,6 @@ existing goldens to accept measurement drift.
 - **The chrome.** Menus, dialogs, the inspector and toasts are the e2e suite's. This harness pins what a diagram
   produces.
 - **Pixel-exact PNGs.** Rasterisers differ between CPUs; see "Browser tier".
-- **The automatic fit on opening.** Its framing depends on timing (see "App behaviour found" below); the harness
-  pins Fit view instead. The Interactive HTML viewer waits for fonts and layout, then zooms and fits explicitly;
-  omitting that fit fails deterministically instead of depending on startup timing.
 
 ## Determinism
 
@@ -176,6 +173,23 @@ viewer's inline script and style (build output) and their hashes in the Content-
 pinned as data, icons by hash.
 
 `PARITY_BROWSER_HOST=1` runs the browser tier on the host instead, for debugging; expect differences off Linux.
+
+The reader explicitly loads every font face/weight used by rendered text (with its actual characters), then awaits
+`document.fonts.ready`. Every React Flow node must have dimensions and be visible (React Flow hides unmeasured
+nodes); the app's `data-fit-pending` must be false. Node boxes, edge paths, label placement and the viewport must
+agree across rendered frames. A pending fit includes its measurement transaction and viewport animation. Opening
+no longer gets a corrective Fit view click: the app's automatic fit uses those same final inputs.
+
+Readiness compares geometry, rather than a node's `innerText`: a live badge or timer can change every frame without
+moving anything, making text-based polling never converge. The full text is still returned and compared exactly in
+the golden; no text, path, box or viewport value is normalised away. `settle.parity.ts` exercises a badge that changes
+every frame and checks that its words are still read. This is not a way to record wall-clock live counters as goldens;
+those belong in the seeded Node tier.
+
+Stress options apply inside Docker too: `PARITY_CPU_THROTTLE=10 pnpm parity:browser` uses Chromium's CDP CPU throttle;
+`PARITY_WORKERS=40 pnpm parity:browser` increases parallelism. They never change expected output or enable retries.
+For repeated ad-hoc runs, use Playwright's `--repeat-each` inside the same image; the parity CLI intentionally rejects
+duplicate golden records within one ledger, so full `pnpm parity:browser` stress runs use separate invocations.
 
 ## Storage
 
@@ -329,12 +343,41 @@ On a laptop: the Node tier about 15 s (1,355 goldens in parallel workers; simula
 browser tier about 45 s with warm Docker volumes (70 goldens; the first run installs Linux dependencies into a
 volume and takes a few minutes). On CI, add the image pull and an install inside it.
 
-## App behaviour found
+## Fit timing fixed
 
-- **The automatic fit on opening depends on timing.** It keeps clear of the floating chrome on screen at that
-  moment, and under load some of it arrives later, so the same example opened twice can be framed differently
-  (webhook-ingestion: zoom 0.4036 in most runs, 0.4078 in one; cqrs-event-sourcing: 0.4751 and 0.4802). Not fixed
-  here (it's behaviour, not the harness's to change); the harness presses Fit view once the canvas has settled.
+Auto-layout used to refit boundaries from `measured ?? defaultSize`, then fit after 60 ms. Opening combined React
+Flow's automatic fit, a nodes-initialized fit and an 80 ms mode fit. None ensured that the pane, boundary dimensions,
+fonts or expanded floating chrome had finished measuring. The reset row arrived with the later autosave, and a
+folded title card could retain its previous expanded footprint. The first-run hint also has a delayed entrance
+animation: equal frames during its delay do not mean its final geometry is in place.
+
+Fits now share a signal-driven transaction: the React commit must match the React Flow store; every visible node's
+DOM dimensions must match React Flow's measured dimensions; ResizeObserver (border box, including padding
+transitions) must have delivered current sizes for the pane, nodes and overlays; used fonts must finish loading;
+finite chrome animations must finish; and the geometry
+must agree across frames. Auto-layout waits for measurements before moving/refitting boundaries, then requests a
+second transaction for the rendered result. The reset row is committed before fitting, and a folded card measures
+its expanded footprint in an unpainted copy when its content changes. Opening has one overlay-aware fit instead of
+competing automatic/timer fits. Each task's React updates commit synchronously in its frame callback before the
+next task can sample; equal frames alone cannot prove a queued React update committed. Viewport animation completion
+clears the pending-fit signal. Decorative node animations do not block fitting the chrome. Failed font downloads
+settle on measured fallback metrics in the app; the parity reader still requires successful font loading.
+
+`tests/e2e/fit-settled.spec.ts` holds real ResizeObserver notifications while advancing a fake clock past the old
+timers, then releases them. With the app fix reverted, all three early-layout repeats size the boundary at 2686 px
+instead of 2726 px. All three delayed-chrome repeats reproduce the CI viewport exactly:
+`translate(40px, 313.114px) scale(0.379747)`; after pressing Fit view it becomes the golden's
+`translate(40px, 332.701px) scale(0.374175)`. The fixed test requires that Fit view leave every drawn value unchanged,
+and also exercises opening with delayed measurements/entrance animation. The editor unit test fails with the app
+fix reverted too: Auto-layout acts before its measurement callback.
+
+A second init script holds React's `MessageChannel` work queue after opening. Without the commit barrier, two
+unchanged frames let a fit run before the queued layout commit: the final node boxes are laid out, but the viewport
+remains the opening fit (`0.395349`) until Fit view moves it to `0.374175`. The regression fails before the barrier
+and passes in all three repeats with it. Thus the frame comparison supplements commit/measurement signals; it does
+not replace them. The font-failure and decorative-animation tests also fail with their fixes removed.
+
+No golden was changed or loosened for this fix.
 
 ## How it was checked
 
@@ -456,3 +499,17 @@ The 127 A1-specific goldens added earlier in this PR remain unchanged by the reb
 Released viewer and generated application implementation bytes remain outside semantic parity. The
 combined build folds the persisted-resource validator into the preloaded `groupHierarchy` chunk;
 startup tests pin its presence, keep controllers lazy and preserve the entry size budget.
+
+## Browser fit verification (2026-10-15)
+
+- Twelve full browser-tier passes on the completed fix: ten with 12 workers, one with CDP CPU throttling at 10×
+  and 8 workers, and one with 40 workers (the Docker host reports 32 cores). Each checked all 70 browser goldens,
+  with zero changes, additions, missing or stale files. The first built production fresh; repeats reused that
+  same production bundle. During reproduction work, a full 20× CPU / 4-worker run also matched every golden.
+- Two fresh `pnpm parity` passes: 1,425 goldens each, all unchanged. No golden was re-recorded.
+- The production e2e fit, layout, polish and CSP specs: 37 passed on ports 6205–6209. The fit regressions also
+  passed all 18 tests under `--repeat-each=3`. The reverted app, held React queue and changing-text negative
+  controls failed as described above.
+- `pnpm test --maxWorkers=2`: 494 test files, 6,366 passed, 4 skipped, no type errors. Earlier runs alongside
+  builds/browser stress hit the existing local five-second test timeouts; the isolated run passed without changing
+  a timeout or assertion. Production build, entry bundle budget and the released viewer's freshness check passed.

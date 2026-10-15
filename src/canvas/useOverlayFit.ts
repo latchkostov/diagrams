@@ -84,7 +84,7 @@ export function useOverlayFit(root: RefObject<HTMLElement | null>, opts: { style
       overlayRects(el),
       o,
     );
-    if (v) void setViewport(v, { duration: motionMs(o.duration ?? 0) });
+    if (v) return setViewport(v, { duration: motionMs(o.duration ?? 0) });
   };
 }
 
@@ -206,8 +206,20 @@ export function useCovered(
     if (!enabled || !el || !base) return;
     let full: { w: number; h: number } | null = null;
     const measure = () => {
-      if (el.dataset.collapsed) return;
-      full = { w: el.offsetWidth, h: el.offsetHeight };
+      // Text/reset rows can change while folded. Measure an unpainted expanded copy in
+      // the same containing block, so the next fit never uses the old expanded footprint.
+      let expanded = el;
+      if (el.dataset.collapsed) {
+        expanded = el.cloneNode(true) as HTMLElement;
+        expanded.classList.remove("is-compact");
+        expanded.removeAttribute("data-canvas-overlay");
+        expanded.style.visibility = "hidden";
+        expanded.style.transition = "none";
+        expanded.inert = true;
+        el.parentElement?.append(expanded);
+      }
+      full = { w: expanded.offsetWidth, h: expanded.offsetHeight };
+      if (expanded !== el) expanded.remove();
       // Fit-view avoids the expanded card even while it's folded (see overlayRects).
       el.dataset.overlayWidth = String(full.w);
       el.dataset.overlayHeight = String(full.h);
@@ -251,11 +263,15 @@ export function useCovered(
       typeof ResizeObserver === "undefined"
         ? null
         : new ResizeObserver(() => {
-            if (el.dataset.collapsed) return;
             measure();
             check();
           });
-    ro?.observe(el);
+    ro?.observe(el, { box: "border-box" });
+    const content = new MutationObserver(() => {
+      measure();
+      check();
+    });
+    content.observe(el, { subtree: true, childList: true, characterData: true });
     check();
     // The store changes many times a frame while dragging, zooming or measuring; checking on each
     // forced a layout (two rect reads) every time. Once per frame, at the frame's own layout, is enough.
@@ -271,6 +287,7 @@ export function useCovered(
       unsubscribe();
       cancelAnimationFrame(frame);
       ro?.disconnect();
+      content.disconnect();
     };
   }, [card, root, store, enabled]);
   return enabled && covered;

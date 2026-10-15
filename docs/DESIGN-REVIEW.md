@@ -118,6 +118,14 @@ are disclosed as teaching assumptions. No global controls or blocking source con
 Production e2e and parity separately verify the observed ten-second story; this source review does not
 replace visual or screen-reader verification.
 
+## Deterministic canvas fits (2026-10-15)
+
+Scoped source and production-browser regression review: opening and Auto-layout retain one final fit clear of the
+existing floating chrome. A folded title card accounts for its updated expanded content without painting a second
+card. No controls, focus targets or wording were added. The pending fit tracks viewport animation completion; the
+first-run hint finishes its entrance before final framing. This review covers the affected flows, not a whole-app
+accessibility audit. Output parity verifies the settled drawing against the existing goldens.
+
 ## Self-hosting review fixes (2026-10-14)
 
 Scoped source review found no blocking UX issues. Copied embed and share URLs use the prepared deployment

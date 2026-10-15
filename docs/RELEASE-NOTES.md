@@ -210,6 +210,16 @@ goldens match, with the eight previously documented browser deferrals.
 - No parity goldens change. The frozen scenarios do not exercise these failure paths; focused
   regressions, deliberate reversions and the expanded fuzzer cover them without re-recording output.
 
+## Deterministic canvas fits and browser parity (2026-10-15)
+
+- Opening and Auto-layout fit the rendered, measured result after fonts and floating chrome settle. Boundaries use
+  measured card sizes; the title card keeps an up-to-date expanded footprint while folded. Competing opening fits
+  and guessed fit delays are removed.
+- Browser parity waits for fonts, measured nodes, pending fits and stable geometry; changing badge text cannot
+  prevent convergence. CPU-throttle and parallel-worker stress options are documented in `docs/PARITY.md`.
+- Refreshed the Claude Code viewer with the same fit behavior; the plugin is 1.1.19.
+- No parity golden changed: every node box, word, route, label, viewport, export and image keeps its existing contract.
+
 ## Showcase review fixes (2026-10-15)
 
 - Phone Live menus and expectation summaries remain visible and usable with Inputs open. Inputs stays

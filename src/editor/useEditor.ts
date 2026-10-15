@@ -166,6 +166,8 @@ export interface EditorDeps {
   /** Small boxes along the drawn edges (flow coordinates), so new things are placed off them. */
   edgeMarks?: () => EdgeMark[];
   fit: () => void;
+  /** Run after the current canvas commit and its measurements, before arranging measured cards. */
+  afterMeasured?: (run: () => void) => void;
   /** Nominal node size for the current renderer (before React Flow has measured). */
   nodeSize: { width: number; height: number };
   /** Fits these nodes (flow ids) in the view, clear of the panels. */
@@ -1646,26 +1648,30 @@ export function createEditor(
     openInspector: (field) => deps().openInspector(field),
     showShortcuts: () => deps().showShortcuts(),
     autoLayout: () => {
-      const d = diagram();
-      const pos = layeredLayout({ nodes: d.nodes, edges: d.edges, direction: d.direction });
-      movePositions(pos);
-      // Refit boundaries around their (moved) members.
-      const { width, height } = deps().nodeSize;
-      for (const g of d.groups ?? []) {
-        const boxes = d.nodes
-          .filter((n) => n.group === g.id && pos.has(n.id))
-          .map((n) => {
-            const measured = rf.getNode(n.id);
-            return {
-              id: n.id,
-              ...pos.get(n.id)!,
-              width: measured?.measured?.width ?? width,
-              height: measured?.measured?.height ?? height,
-            };
-          });
-        if (boxes.length) api.updateGroup(g.id, boundaryAround(boxes));
-      }
-      setTimeout(() => deps().fit(), 60);
+      const run = () => {
+        const d = diagram();
+        const pos = layeredLayout({ nodes: d.nodes, edges: d.edges, direction: d.direction });
+        movePositions(pos);
+        // Refit boundaries around their (moved) members.
+        const { width, height } = deps().nodeSize;
+        for (const g of d.groups ?? []) {
+          const boxes = d.nodes
+            .filter((n) => n.group === g.id && pos.has(n.id))
+            .map((n) => {
+              const measured = rf.getNode(n.id);
+              return {
+                id: n.id,
+                ...pos.get(n.id)!,
+                width: measured?.measured?.width ?? width,
+                height: measured?.measured?.height ?? height,
+              };
+            });
+          if (boxes.length) api.updateGroup(g.id, boundaryAround(boxes));
+        }
+        deps().fit();
+      };
+      if (deps().afterMeasured) deps().afterMeasured!(run);
+      else run();
     },
   };
   return {

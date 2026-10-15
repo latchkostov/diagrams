@@ -31,7 +31,6 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useEdgesState,
-  useNodesInitialized,
   useNodesState,
   useReactFlow,
   useStore,
@@ -148,12 +147,11 @@ import { PresentFullscreen } from "./PresentFullscreen";
 import { useFullscreen } from "../lib/fullscreen";
 import { t as tr, useLocale } from "../i18n";
 import { CopyNotice } from "./CopyNotice";
+import { useMeasuredTask } from "./useMeasuredTask";
 
 const nodeTypes: NodeTypes = canvasNodeTypes;
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
 // Pixel padding keeps the title card (top-left) from covering the diagram.
-/** A fit's viewport transition starts within this long (a frame, or a few under load). */
-const FIT_MOVE_MS = 250;
 const FIT: FitViewOptions = { padding: { top: "110px", right: "48px", bottom: "48px", left: "48px" }, maxZoom: 1.25 };
 const FIT_PRESENT: FitViewOptions = {
   padding: { top: "190px", right: "64px", bottom: "64px", left: "64px" },
@@ -302,8 +300,10 @@ function CanvasInner({
 }: Props) {
   const locale = useLocale();
   const { theme, nodeVariant, edgeStyle } = useSettings();
-  const { screenToFlowPosition, fitView, getNode, getNodes, getNodesBounds, getViewport, setCenter, setViewport } =
-    useReactFlow<FlowNode, DiagramFlowEdge>();
+  const { screenToFlowPosition, getNode, getNodes, getNodesBounds, getViewport, setCenter, setViewport } = useReactFlow<
+    FlowNode,
+    DiagramFlowEdge
+  >();
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const wrapper = useRef<HTMLDivElement>(null);
   useNoCanvasTextSelection(wrapper);
@@ -437,19 +437,84 @@ function CanvasInner({
     (direction, selection) => onHistoryStep.current(direction, selection),
   );
 
+  const latest = useRef({ meta, nodes, edges, slug });
+  useLayoutEffect(() => {
+    latest.current = { meta, nodes, edges, slug };
+  });
+  const lastSaved = useRef(loadedJson);
+  const saveBaseline = useRef(originalJson);
+  const copyCallback = useRef(onExampleCopy);
+  useLayoutEffect(() => {
+    copyCallback.current = onExampleCopy;
+  });
+  const copiedExample = useRef<{ slug: string; identity: string } | null>(null);
+  const exampleCopyFailed = useRef(false);
+  /** Returns whether the diagram differs from its original, or undefined when there was nothing to write. */
+  const flushSave = useCallback(
+    (override?: DiagramFile): boolean | undefined => {
+      if (readOnly) return undefined;
+      const { meta, nodes, edges, slug } = latest.current;
+      let d = override ?? fromFlow(meta, nodes, edges);
+      let json = JSON.stringify(d);
+      if (json === lastSaved.current) return undefined;
+      const mod = json !== saveBaseline.current;
+      // Only the editable app promotes examples; embeds and exported viewers never save.
+      if (mod && identity && copyCallback.current && !copiedExample.current) {
+        try {
+          const copy = copyEditedExample(slug, d, identity);
+          if (copy) {
+            const sourceTitle = d.title;
+            const canvasTitle = sourceTitle.trim() ? copy.title : sourceTitle;
+            renameHistoryTitle(sourceTitle, canvasTitle);
+            copiedExample.current = { slug: copy.slug, identity: getDiagramIdentity(copy.slug) };
+            saveBaseline.current = JSON.stringify({ ...d, title: copy.title });
+            d = { ...d, title: canvasTitle };
+            json = JSON.stringify(d);
+            latest.current = { ...latest.current, slug: copy.slug, meta: toFlow(d).meta };
+            setMeta((current) => ({ ...current, title: canvasTitle }));
+            copyCallback.current(slug, copy.slug, original.title);
+          }
+        } catch {
+          if (!exampleCopyFailed.current) notify(tr("library.storageFull"), { kind: "error" });
+          exampleCopyFailed.current = true;
+          return mod;
+        }
+      }
+      const destination = copiedExample.current?.slug ?? slug;
+      if (writeAutosave(destination, mod ? d : null, copiedExample.current?.identity ?? identity))
+        lastSaved.current = json;
+      return mod;
+    },
+    [readOnly, identity, renameHistoryTitle, original.title],
+  );
+  const firstExampleEdit = onExampleCopy !== undefined;
+  const saveRevision = history.stateKey;
+
   // Fit-view keeps content out from under the title card, minimap, controls and live bar.
   const fitView_ = useOverlayFit(wrapper, { style: edgeStyle, direction: meta.direction ?? "LR" });
+  const afterMeasured = useMeasuredTask(wrapper, nodes, edges);
+  const firstFit = useRef(false);
   /** True while the view is a fit (the whole diagram in view), false once the user pans or zooms. */
   const showingAll = useRef(true);
-  /** When the last whole-diagram fit started: its viewport move isn't the user's. */
-  const fitAt = useRef(0);
   const overlayFit = useCallback(
     (o?: Parameters<typeof fitView_>[0]) => {
-      showingAll.current = true;
-      fitAt.current = performance.now();
-      fitView_(o);
+      const runFit = () => {
+        showingAll.current = true;
+        firstFit.current = true;
+        return fitView_(o);
+      };
+      afterMeasured(() => {
+        // The reset row belongs to this edit's chrome, not the later debounced storage write.
+        const mod = flushSave();
+        if (mod !== undefined && mod !== modified) {
+          setModified(mod);
+          afterMeasured(runFit);
+          return;
+        }
+        return runFit();
+      });
     },
-    [fitView_],
+    [afterMeasured, fitView_, flushSave, modified],
   );
   const fit = useCallback(() => overlayFit({ maxZoom: 1.25, duration: 300 }), [overlayFit]);
   // Privacy: the diagram's provenance (Private switch, local-only example), re-read when the library changes.
@@ -501,6 +566,7 @@ function CanvasInner({
     pointer: () => (pointer.current ? screenToFlowPosition(pointer.current) : undefined),
     edgeMarks: () => edgeMarks(wrapper.current),
     fit,
+    afterMeasured,
     nodeSize: getNodeVariant(nodeVariant).size,
     // Zoom to selection: never past 125% (no huge single node), clear of the panels.
     zoomTo: (only, onlyEdges) => fitView_({ only, onlyEdges, maxZoom: 1.25, margin: 64, duration: 300 }),
@@ -597,58 +663,6 @@ function CanvasInner({
   // on unmount (switching diagrams), on page hide (reload, close, navigation) and when the tab is
   // hidden (mobile browsers may discard it). Writes the latest state, never a stale closure, and
   // drops the save again once the diagram matches the original.
-  const latest = useRef({ meta, nodes, edges, slug });
-  useLayoutEffect(() => {
-    latest.current = { meta, nodes, edges, slug };
-  });
-  const lastSaved = useRef(loadedJson);
-  const saveBaseline = useRef(originalJson);
-  const copyCallback = useRef(onExampleCopy);
-  useLayoutEffect(() => {
-    copyCallback.current = onExampleCopy;
-  });
-  const copiedExample = useRef<{ slug: string; identity: string } | null>(null);
-  const exampleCopyFailed = useRef(false);
-  /** Returns whether the diagram differs from its original, or undefined when there was nothing to write. */
-  const flushSave = useCallback(
-    (override?: DiagramFile): boolean | undefined => {
-      if (readOnly) return undefined;
-      const { meta, nodes, edges, slug } = latest.current;
-      let d = override ?? fromFlow(meta, nodes, edges);
-      let json = JSON.stringify(d);
-      if (json === lastSaved.current) return undefined;
-      const mod = json !== saveBaseline.current;
-      // Only the editable app promotes examples; embeds and exported viewers never save.
-      if (mod && identity && copyCallback.current && !copiedExample.current) {
-        try {
-          const copy = copyEditedExample(slug, d, identity);
-          if (copy) {
-            const sourceTitle = d.title;
-            const canvasTitle = sourceTitle.trim() ? copy.title : sourceTitle;
-            renameHistoryTitle(sourceTitle, canvasTitle);
-            copiedExample.current = { slug: copy.slug, identity: getDiagramIdentity(copy.slug) };
-            saveBaseline.current = JSON.stringify({ ...d, title: copy.title });
-            d = { ...d, title: canvasTitle };
-            json = JSON.stringify(d);
-            latest.current = { ...latest.current, slug: copy.slug, meta: toFlow(d).meta };
-            setMeta((current) => ({ ...current, title: canvasTitle }));
-            copyCallback.current(slug, copy.slug, original.title);
-          }
-        } catch {
-          if (!exampleCopyFailed.current) notify(tr("library.storageFull"), { kind: "error" });
-          exampleCopyFailed.current = true;
-          return mod;
-        }
-      }
-      const destination = copiedExample.current?.slug ?? slug;
-      if (writeAutosave(destination, mod ? d : null, copiedExample.current?.identity ?? identity))
-        lastSaved.current = json;
-      return mod;
-    },
-    [readOnly, identity, renameHistoryTitle, original.title],
-  );
-  const firstExampleEdit = onExampleCopy !== undefined;
-  const saveRevision = history.stateKey;
   useEffect(() => {
     if (readOnly) return;
     const t = setTimeout(
@@ -713,50 +727,30 @@ function CanvasInner({
     if (!el || el === document.body || !el.isConnected) wrapper.current?.focus({ preventScroll: true });
   }, [presenting]);
 
-  // Refit when chrome appears / disappears (presentation mode).
+  // Opening and mode changes share one fit, after the pane and floating chrome measure.
   useEffect(() => {
-    // Wait for React Flow's ResizeObserver to pick up the new pane size first.
-    const id = setTimeout(
-      () =>
-        overlayFit({
-          maxZoom: (presenting ? FIT_PRESENT : FIT).maxZoom,
-          margin: presenting ? 64 : 40,
-          insets: live ? { bottom: LIVE_BAR_SPACE } : undefined,
-          duration: 350,
-        }),
-      80,
-    );
-    return () => clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refit on mode changes only
-  }, [presenting, live, fitView]);
-  // Full screen on or off while presenting resizes the pane: a diagram shown whole is refitted to it.
+    overlayFit({
+      maxZoom: (presenting ? FIT_PRESENT : FIT).maxZoom,
+      margin: presenting ? 64 : 40,
+      insets: live ? { bottom: LIVE_BAR_SPACE } : undefined,
+      duration: firstFit.current ? 350 : 0,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- a fit request on opening or mode changes only
+  }, [presenting, live]);
   const fullscreen = useFullscreen();
   const lastFullscreen = useRef(fullscreen);
   useEffect(() => {
     if (lastFullscreen.current === fullscreen) return;
     lastFullscreen.current = fullscreen;
     if (!presenting || !showingAll.current) return;
-    const id = setTimeout(
-      () =>
-        overlayFit({
-          maxZoom: FIT_PRESENT.maxZoom,
-          margin: 64,
-          insets: live ? { bottom: LIVE_BAR_SPACE } : undefined,
-          duration: 350,
-        }),
-      80,
-    );
-    return () => clearTimeout(id);
+    overlayFit({
+      maxZoom: FIT_PRESENT.maxZoom,
+      margin: 64,
+      insets: live ? { bottom: LIVE_BAR_SPACE } : undefined,
+      duration: 350,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refit when full screen changes only
   }, [fullscreen]);
-  // First fit once every node is measured (React Flow's own fit can't see the overlays).
-  const nodesReady = useNodesInitialized();
-  const firstFit = useRef(false);
-  useEffect(() => {
-    if (!nodesReady || firstFit.current) return;
-    firstFit.current = true;
-    overlayFit({ maxZoom: (presenting ? FIT_PRESENT : FIT).maxZoom, margin: presenting ? 64 : 40 });
-  }, [nodesReady, overlayFit, presenting]);
   // The title card folds to a chip while nodes sit under it, so it never hides the diagram.
   const card = useRef<HTMLDivElement>(null);
   const cardCovers = useCovered(card, wrapper);
@@ -772,7 +766,7 @@ function CanvasInner({
     setMeta(f.meta);
     setNodes(f.nodes);
     setEdges(f.edges);
-    setTimeout(() => overlayFit({ maxZoom: FIT.maxZoom, duration: 350 }), 50);
+    overlayFit({ maxZoom: FIT.maxZoom, duration: 350 });
   };
 
   // Editing gestures (D4, D5): a drag on empty canvas draws the selection box, the wheel pans, and
@@ -1874,24 +1868,14 @@ function CanvasInner({
     if (lastPanels.current === panelsKey) return;
     lastPanels.current = panelsKey;
     if (!showingAll.current || live || presenting || !nothingSelected) return;
-    // After React Flow's ResizeObserver has the new pane size.
-    const id = setTimeout(() => overlayFit({ maxZoom: FIT.maxZoom, margin: 40, duration: 250 }), 80);
-    return () => clearTimeout(id);
+    overlayFit({ maxZoom: FIT.maxZoom, margin: 40, duration: 250 });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when a side panel opens or closes
   }, [panelsKey]);
   // The Checks card opened over a diagram that was all in view: refit it clear of the card (the card is floating
   // chrome, data-canvas-overlay), once the card has drawn. A view the user panned or zoomed stays put.
   useEffect(() => {
     if (!checksCard || !showingAll.current || live || presenting) return;
-    let frames = 60;
-    let id = 0;
-    const step = () => {
-      const drawn = wrapper.current?.querySelector('[data-testid="checks-card"]');
-      if (!drawn && --frames > 0) id = requestAnimationFrame(step);
-      else if (drawn) overlayFit({ maxZoom: FIT.maxZoom, margin: 40, duration: 250 });
-    };
-    id = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(id);
+    overlayFit({ maxZoom: FIT.maxZoom, margin: 40, duration: 250 });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the card opens
   }, [checksCard]);
   // The AI panel opened, closed or was resized by more than a little: the pane changed size at its
@@ -2355,7 +2339,7 @@ function CanvasInner({
               hideTip();
               // A pan or zoom by hand (an event), or by a command such as Shift+0 (no event, and not
               // our own fit starting), means the view is the user's now, not a fit.
-              if (e || performance.now() - fitAt.current > FIT_MOVE_MS) showingAll.current = false;
+              if (e || wrapper.current?.dataset.fitPending !== "true") showingAll.current = false;
             }}
             onNodeMouseEnter={(e, node) => {
               hovered.current = node.type === "boundary" ? undefined : node.id;
@@ -2376,8 +2360,6 @@ function CanvasInner({
             colorMode={theme}
             // Bottom-right, lifted above the minimap (canvas.css): never under the live bar or the hint.
             attributionPosition="bottom-right"
-            fitView
-            fitViewOptions={FIT}
             minZoom={0.15}
             maxZoom={2.5}
             snapToGrid={prefs.snap}
