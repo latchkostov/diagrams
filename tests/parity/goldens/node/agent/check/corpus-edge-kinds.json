@@ -1,0 +1,55 @@
+{
+  "all": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "no-reader:async-b",
+          "rule": "no-reader",
+          "severity": "warning",
+          "title": "Nobody reads async target",
+          "message": "async source publishes to async target, but nothing consumes it: it keeps every message, unread.",
+          "targets": ["async-b", "async-a"],
+          "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads async target, then add it and connect async-b to it." }
+        },
+        {
+          "id": "no-reader:labelled-b",
+          "rule": "no-reader",
+          "severity": "warning",
+          "title": "Nobody reads labelled target",
+          "message": "labelled source sends to labelled target, but nothing consumes it: messages pile up.",
+          "targets": ["labelled-b", "labelled-a"],
+          "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads labelled target, then add it and connect labelled-b to it." }
+        }
+      ],
+      "summary": "2 warnings, 0 suggestions."
+    }
+  },
+  "warnings": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "no-reader:async-b",
+          "rule": "no-reader",
+          "severity": "warning",
+          "title": "Nobody reads async target",
+          "message": "async source publishes to async target, but nothing consumes it: it keeps every message, unread.",
+          "targets": ["async-b", "async-a"],
+          "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads async target, then add it and connect async-b to it." }
+        },
+        {
+          "id": "no-reader:labelled-b",
+          "rule": "no-reader",
+          "severity": "warning",
+          "title": "Nobody reads labelled target",
+          "message": "labelled source sends to labelled target, but nothing consumes it: messages pile up.",
+          "targets": ["labelled-b", "labelled-a"],
+          "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads labelled target, then add it and connect labelled-b to it." }
+        }
+      ],
+      "summary": "2 warnings, 0 suggestions."
+    }
+  },
+  "oneRule": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 2 checks ran." } }
+}

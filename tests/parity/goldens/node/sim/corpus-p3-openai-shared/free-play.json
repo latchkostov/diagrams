@@ -1,0 +1,204 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "replicas": [1, 1, 0] },
+        "api": { "replicas": [1, 1, 0] },
+        "other": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 2,
+      "nodes": {
+        "source": { "processed": 200, "throughput": 20.40106029531822, "replicas": [1, 1, 0] },
+        "api": {
+          "processed": 53,
+          "rejected": 145,
+          "inFlight": 1,
+          "throughput": 5.000672325666158,
+          "rejectionReasons": { "concurrency": 19, "tokens: tokens": 126 },
+          "replicas": [1, 1, 0]
+        },
+        "other": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 2,
+      "nodes": {
+        "source": { "processed": 400, "throughput": 20.40198650202273, "replicas": [1, 1, 0] },
+        "api": {
+          "processed": 103,
+          "rejected": 295,
+          "inFlight": 1,
+          "throughput": 5.09388193691241,
+          "rejectionReasons": { "concurrency": 19, "tokens: tokens": 276 },
+          "replicas": [1, 1, 0]
+        },
+        "other": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 2,
+      "nodes": {
+        "source": { "processed": 600, "throughput": 20.401986544072436, "replicas": [1, 1, 0] },
+        "api": {
+          "processed": 153,
+          "rejected": 445,
+          "inFlight": 1,
+          "throughput": 4.948434437062047,
+          "rejectionReasons": { "concurrency": 19, "tokens: tokens": 426 },
+          "replicas": [1, 1, 0]
+        },
+        "other": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 2,
+      "nodes": {
+        "source": { "processed": 800, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+        "api": {
+          "processed": 203,
+          "rejected": 595,
+          "inFlight": 1,
+          "throughput": 5.06743175687334,
+          "rejectionReasons": { "concurrency": 19, "tokens: tokens": 576 },
+          "replicas": [1, 1, 0]
+        },
+        "other": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 2,
+      "nodes": {
+        "source": { "processed": 1000, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+        "api": {
+          "processed": 253,
+          "rejected": 745,
+          "inFlight": 1,
+          "throughput": 4.992832192242812,
+          "rejectionReasons": { "concurrency": 19, "tokens: tokens": 726 },
+          "replicas": [1, 1, 0]
+        },
+        "other": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 2,
+      "nodes": {
+        "source": { "processed": 1200, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+        "api": {
+          "processed": 303,
+          "rejected": 895,
+          "inFlight": 1,
+          "throughput": 4.944562005808949,
+          "rejectionReasons": { "concurrency": 19, "tokens: tokens": 876 },
+          "replicas": [1, 1, 0]
+        },
+        "other": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 2,
+    "real": {
+      "source": { "processed": 1200, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+      "api": {
+        "processed": 303,
+        "rejected": 895,
+        "inFlight": 1,
+        "throughput": 4.944562005808949,
+        "rejectionReasons": { "concurrency": 19, "tokens: tokens": 876 },
+        "replicas": [1, 1, 0]
+      },
+      "other": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "call": 1199 }
+  },
+  "events": {
+    "total": 3597,
+    "byKind": { "process": 1503, "deliver": 1199, "reject": 895 },
+    "byNode": { "source": { "process": 1200 }, "api": { "deliver": 1199, "reject": 895, "process": 303 } },
+    "perSecond": [
+      "abc47ecb57ab",
+      "1101d753109c",
+      "a276d0e814b7",
+      "14ff3c3d3fbc",
+      "7517bf1d6c57",
+      "624f07a8237d",
+      "da491d73a76a",
+      "8ae48ddb7bb0",
+      "4facc7c473b7",
+      "69e5637011d5",
+      "30420ca21dc8",
+      "5827c3df94da",
+      "8025d75839d1",
+      "2013fbe8687f",
+      "80d183e6ff8f",
+      "29ed9e88ccd4",
+      "27908d8baa5b",
+      "d780c8b5113d",
+      "8bcdad93356e",
+      "338dfced6f53",
+      "836050555690",
+      "7891dcd0b6ae",
+      "13e899e4bb7a",
+      "f303c63a012b",
+      "f8cd6b887daf",
+      "05ffa7586be3",
+      "4ae5f1bac7a5",
+      "336278cdf422",
+      "f675ad12ece0",
+      "7b1360f837af",
+      "7a14edc2d3f0",
+      "b186df97cfeb",
+      "f9e08757d2a9",
+      "72fca7e3d43c",
+      "00ba25571afe",
+      "9f577db2533d",
+      "288b1778c0a4",
+      "3fbe67cfef6b",
+      "b2e3e635a39a",
+      "131d06caa096",
+      "6f8c2a4c6ff9",
+      "d4c042429ce3",
+      "75845d6ac546",
+      "0f4a14af6a04",
+      "8e00a521b3fa",
+      "77338e215d21",
+      "dbe0d80826ac",
+      "97a4d0a8f019",
+      "22565a51b2d0",
+      "bbb093fb56b5",
+      "834f10c6a5e1",
+      "0d337467dddf",
+      "50abc7c7bd0d",
+      "9552e70e87bd",
+      "2d2ad3e4cd02",
+      "2626a5fd83bd",
+      "1798be566873",
+      "9b3cb54138de",
+      "e55d1b21fb9b",
+      "89cec32491c4",
+      "490d9a05650e"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 1198, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0, "rejected": 895 },
+    "endToEndMs": { "count": 1198, "min": 10, "mean": 72.228714524207, "p50": 10, "p90": 270, "max": 300 },
+    "waitMs": { "api": { "count": 303, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 } },
+    "processMs": {
+      "api": { "count": 303, "min": 200, "mean": 246.03960396039605, "p50": 250, "p90": 290, "max": 290 }
+    }
+  }
+}

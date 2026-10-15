@@ -1,0 +1,23 @@
+{
+  "evidence": {
+    "played": [
+      { "id": "exact", "title": "200 calls in 0.2 s at scale 1", "playedMs": 8000, "capped": false },
+      { "id": "sampled", "title": "200 calls in 0.2 s at scale 10", "playedMs": 8000, "capped": false },
+      { "id": "refunds", "title": "60 calls in 1 s at scale 1", "playedMs": 8000, "capped": false }
+    ],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [],
+    "dropped": []
+  },
+  "planned": [],
+  "counted": 0,
+  "findings": [{ "id": "capacity:a", "rule": "capacity", "severity": "warning", "target": "a", "elements": ["a"] }],
+  "agentReport": {
+    "findings": [
+      { "id": "capacity:a", "rule": "capacity", "severity": "warning", "title": "Partner API a can't keep up", "message": "At the diagram's own rates, it gets 40/s and handles 5/s (800%): 35/s may be rejected.", "targets": ["a"] }
+    ],
+    "summary": "1 warning, 0 suggestions.",
+    "simulations": "Played 3 saved simulations (at most 60 s each)."
+  }
+}

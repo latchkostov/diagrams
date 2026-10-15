@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "web": [40, 40], "mobile": [40, 160], "partner": [40, 280], "gw": [400, 160], "orders": [760, 160], "topic": [1120, 160], "billing": [1480, 100], "search": [1480, 220], "db": [1840, 160] },
+    "TB": { "web": [40, 40], "mobile": [320, 40], "partner": [600, 40], "gw": [320, 200], "orders": [320, 360], "topic": [320, 520], "billing": [180, 680], "search": [460, 680], "db": [320, 840] }
+  },
+  "tidy": { "web": [40, 40], "mobile": [40, 160], "partner": [40, 280], "gw": [400, 160], "orders": [760, 160], "topic": [1120, 160], "billing": [1480, 100], "search": [1480, 220], "db": [1840, 160] },
+  "arrange": {
+    "alignLeft": { "web": [40, 40], "mobile": [40, 160], "partner": [40, 280], "gw": [40, 160], "orders": [40, 160], "topic": [40, 160], "billing": [40, 40], "search": [40, 280], "db": [40, 160] },
+    "alignMiddle": { "web": [40, 160], "mobile": [40, 160], "partner": [40, 160], "gw": [400, 160], "orders": [760, 160], "topic": [1120, 160], "billing": [1480, 160], "search": [1480, 160], "db": [1840, 160] },
+    "distributeH": { "web": [40, 40], "mobile": [265, 160], "partner": [490, 280], "gw": [715, 160], "orders": [940, 160], "topic": [1165, 160], "billing": [1390, 40], "search": [1615, 280], "db": [1840, 160] },
+    "distributeV": { "web": [40, 40], "mobile": [40, 100], "partner": [40, 250], "gw": [400, 130], "orders": [760, 160], "topic": [1120, 190], "billing": [1480, 70], "search": [1480, 280], "db": [1840, 220] },
+    "spreadH": { "web": [40, 40], "mobile": [300, 40], "partner": [560, 40], "gw": [820, 40], "orders": [1080, 40], "topic": [1340, 40], "billing": [1600, 40], "search": [1860, 40], "db": [2120, 40] },
+    "boundaryAround": { "x": 0, "y": -24, "width": 2100, "height": 416 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "web": [40, 40], "mobile": [40, 160], "partner": [40, 280], "gw": [400, 160], "orders": [760, 160], "topic": [1120, 160], "billing": [1480, 100], "search": [1480, 220], "db": [1840, 160] },
+    "groups": {}
+  }
+}

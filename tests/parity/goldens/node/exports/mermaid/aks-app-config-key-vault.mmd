@@ -1,0 +1,35 @@
+---
+title: AKS orders API with App Configuration
+---
+flowchart LR
+  subgraph g_azure ["Azure · prod"]
+    fd["Front Door<br/>WAF · TLS"]
+    sql[("orders-db<br/>Azure SQL")]
+    sb["orders.created<br/>Service Bus topic"]
+    notify["Order confirmation<br/>Function · sends email"]
+    ai["Application Insights<br/>traces · logs · metrics"]
+    appcfg["orders-config<br/>App Configuration"]
+    kv["orders-kv<br/>Key Vault"]
+    mi["orders-api-id<br/>Workload identity"]
+  end
+  subgraph g_aks ["AKS cluster"]
+    api["Orders API<br/>ASP.NET Core · 3 replicas"]
+  end
+  web(["Storefront<br/>Shoppers placing orders"])
+  entra["Entra ID<br/>Token issuer"]
+  web -->|"HTTPS"| fd
+  fd -->|"POST /orders"| api
+  api -->|"EF Core"| sql
+  api -.->|"OrderCreated"| sb
+  sb -.->|"Subscription"| notify
+  api -.->|"reads config"| appcfg
+  appcfg -.->|"reads secrets"| kv
+  api -.->|"gets tokens from: runs as"| mi
+  mi -.->|"gets tokens from: OIDC federation"| entra
+  api -.->|"sends telemetry to"| ai
+  linkStyle 3,4 stroke-dasharray: 6 4
+  linkStyle 5 stroke:#2A8A83,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 6 stroke:#A6720C,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 7,8 stroke:#5A61C4,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 9 stroke:#7C6D98,stroke-width:1.25px,stroke-dasharray: 2 4
+%% diagrams:{"v":1,"description":"Bold lines carry requests and events. Dotted lines are dependencies: where the API gets its settings (two are Key Vault references), its identity, and where it reports.","nodes":{"web":["web","client.browser"],"fd":["fd","azure.front-door"],"api":["api","service.dotnet"],"sql":["sql","azure.sql"],"sb":["sb","azure.service-bus.topic"],"notify":["notify","azure.functions"],"ai":["ai","azure.app-insights"],"appcfg":["appcfg","azure.app-config"],"kv":["kv","azure.key-vault"],"mi":["mi","azure.managed-identity"],"entra":["entra","entra-id"]},"groups":{"g_azure":["azure","azure"],"g_aks":["aks","k8s"]},"edges":["web-to-fd","fd-to-api","api-to-sql","api-to-sb","sb-to-notify","api-to-appcfg","appcfg-to-kv","api-to-mi","mi-to-entra","api-to-ai"],"relations":{"5":"config","6":"secret","7":"identity","8":"identity","9":"telemetry"}}

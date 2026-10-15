@@ -1,0 +1,229 @@
+{
+  "autoScale": { "freePlay": 1, "saved": 1 },
+  "brokerAssignments": { "brokers": {}, "consumers": {} },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "worker",
+      "suggestion": "Worker: 9% utilized",
+      "converged": true,
+      "iterations": 2,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": ["Infinity", 7, 0, 1, 1, 0], "worker": [75, 7, 0.09333333333333334, 1, 1, 0] },
+      "connections": { "request": 7 },
+      "offeredTypes": { "source": ["Request"], "worker": ["Request"] }
+    },
+    "explanations": {
+      "worker": {
+        "id": "worker",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 75,
+        "offered": 7,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 3,
+        "seconds": 0.04,
+        "utilization": 0.09333333333333334,
+        "growth": 0,
+        "contributors": [{ "edge": "request", "node": "source", "label": "Client", "rate": 7 }],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": { "source": [{ "kind": "calls", "edge": "request", "peer": "worker", "filter": ["Request"] }] },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "source": {
+        "profile": { "family": "client", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 7,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Request",
+        "healthChecks": false
+      },
+      "worker": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 40,
+        "concurrency": 3,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "emits": { "Request": "Reply" },
+        "messageType": "Worker",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "saved": {
+      "configured": "(same as edit)",
+      "simulation": "saved",
+      "analysis": {
+        "bottleneck": "worker",
+        "suggestion": "Worker: 40% utilized",
+        "converged": true,
+        "iterations": 2,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": ["Infinity", 30, 0, 1, 1, 0], "worker": [75, 30, 0.4, 1, 1, 0] },
+        "connections": { "request": 30 },
+        "offeredTypes": { "source": ["Request"], "worker": ["Request"] }
+      },
+      "explanations": {
+        "worker": {
+          "id": "worker",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 75,
+          "offered": 30,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 3,
+          "seconds": 0.04,
+          "utilization": 0.4,
+          "growth": 0,
+          "contributors": [{ "edge": "request", "node": "source", "label": "Client", "rate": 30 }],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": {
+        "source": {
+          "profile": { "family": "client", "revision": "legacy", "evidence": [], "units": "real" },
+          "ratePerSec": 7,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "Request",
+          "healthChecks": false
+        },
+        "worker": {
+          "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 40,
+          "concurrency": 3,
+          "replicas": 1,
+          "jitter": 0,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "emits": { "Request": "Reply" },
+          "messageType": "Worker",
+          "healthChecks": false
+        }
+      }
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "ok",
+          "top": "worker",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Worker at 9% · 7/s of 75/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": { "source": ["idle", "7/s · no limit", { "modeled": false }], "worker": ["ok", "9% · 7/s of 75/s"] }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "ok",
+          "top": "worker",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Worker at 47% · 35/s of 75/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "35/s · no limit", { "modeled": false }],
+            "worker": ["ok", "47% · 35/s of 75/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "ok",
+          "top": "worker",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Worker at 9% · 7/s of 75/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": { "source": ["idle", "7/s · no limit", { "modeled": false }], "worker": ["ok", "9% · 7/s of 75/s"] }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "ok",
+          "top": "worker",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Worker at 9% · 7/s of 75/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": { "source": ["idle", "7/s · no limit", { "modeled": false }], "worker": ["ok", "9% · 7/s of 75/s"] }
+        },
+        "partitionsNotes": {}
+      }
+    },
+    "saved": {
+      "tone": "ok",
+      "top": "worker",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Worker at 40% · 30/s of 75/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": { "source": ["idle", "30/s · no limit", { "modeled": false }], "worker": ["ok", "40% · 30/s of 75/s"] }
+    }
+  }
+}

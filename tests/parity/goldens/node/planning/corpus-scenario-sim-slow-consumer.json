@@ -1,0 +1,296 @@
+{
+  "autoScale": { "freePlay": 1 },
+  "brokerAssignments": {
+    "brokers": {
+      "topic": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+    },
+    "consumers": {
+      "fast": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "slow": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      }
+    }
+  },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "slow",
+      "suggestion": "Reports: raise replicas from 1 to 9.",
+      "converged": true,
+      "iterations": 3,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "devices": ["Infinity", 6, 0, 1, 1, 0], "topic": [0.6666666666666666, 6, 9, 1, 1, 0], "fast": [100, 6, 0.06, 1, 1, 0], "slow": [0.6666666666666666, 6, 9, 1, 1, 0] },
+      "connections": { "devices-topic": 6, "topic-fast": 6, "topic-slow": 6 },
+      "offeredTypes": { "devices": ["Reading"], "topic": ["Reading"], "fast": ["Reading"], "slow": ["Reading"] }
+    },
+    "explanations": {
+      "fast": {
+        "id": "fast",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 100,
+        "offered": 6,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 8
+          }
+        ],
+        "slots": 8,
+        "seconds": 0.08,
+        "utilization": 0.06,
+        "growth": 0,
+        "contributors": [{ "edge": "topic-fast", "node": "topic", "label": "telemetry", "rate": 6 }],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      },
+      "slow": {
+        "id": "slow",
+        "role": "processor",
+        "status": "up",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0.6666666666666666,
+        "offered": 6,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 8
+          }
+        ],
+        "slots": 1,
+        "seconds": 1.5,
+        "utilization": 9,
+        "growth": 5.333333333333333,
+        "contributors": [{ "edge": "topic-slow", "node": "topic", "label": "telemetry", "rate": 6 }],
+        "target": 0.5,
+        "minimumReplicas": 9,
+        "targetReplicas": 18,
+        "changes": [
+          { "nodeId": "slow", "key": "replicas", "from": 1, "to": 18 },
+          { "nodeId": "topic", "key": "partitions", "from": 8, "to": 18 }
+        ],
+        "fixId": "capacity:slow",
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "devices": [{ "kind": "publishes", "edge": "devices-topic", "peer": "topic" }],
+      "fast": [
+        {
+          "kind": "consumes",
+          "edge": "topic-fast",
+          "peer": "topic",
+          "group": "topic-fast",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "slow": [
+        {
+          "kind": "consumes",
+          "edge": "topic-slow",
+          "peer": "topic",
+          "group": "topic-slow",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ]
+    },
+    "sizing": [
+      { "nodeId": "slow", "key": "replicas", "from": 1, "to": 17 },
+      { "nodeId": "topic", "key": "partitions", "from": 8, "to": 17 }
+    ],
+    "redundancy": { "topic": { "replicas": 2, "enough": false }, "slow": { "replicas": 17, "enough": true } },
+    "resolved": {
+      "devices": {
+        "profile": { "family": "client", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 6,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Reading",
+        "healthChecks": false
+      },
+      "topic": {
+        "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+        "profile": { "family": "log", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 8,
+        "messageType": "telemetry",
+        "healthChecks": false
+      },
+      "fast": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 80,
+        "concurrency": 8,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Alerts",
+        "healthChecks": false
+      },
+      "slow": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 1500,
+        "concurrency": 1,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Reports",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {},
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "over",
+          "top": "slow",
+          "headline": "Reports and 1 more are over capacity",
+          "detail": "900% · 6/s of 0.7/s",
+          "fix": {
+            "changes": [
+              { "nodeId": "slow", "key": "replicas", "from": 1, "to": 17, "label": "Reports" },
+              { "nodeId": "topic", "key": "partitions", "from": 8, "to": 17, "label": "telemetry" }
+            ],
+            "label": "Reports 1 → 17 replicas, telemetry 8 → 17 partitions"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "devices": ["idle", "6/s · no limit", { "modeled": false }],
+            "topic": ["over", "900% · 6/s of 0.7/s"],
+            "fast": ["ok", "6% · 6/s of 100/s"],
+            "slow": ["over", "900% · 6/s of 0.7/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "over",
+          "top": "slow",
+          "headline": "Reports and 1 more are over capacity",
+          "detail": "45× · 30/s of 0.7/s",
+          "fix": {
+            "changes": [
+              { "nodeId": "slow", "key": "replicas", "from": 1, "to": 82, "label": "Reports" },
+              { "nodeId": "topic", "key": "partitions", "from": 8, "to": 82, "label": "telemetry" }
+            ],
+            "label": "Reports 1 → 82 replicas, telemetry 8 → 82 partitions"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "devices": ["idle", "30/s · no limit", { "modeled": false }],
+            "topic": ["over", "45× · 30/s of 0.7/s"],
+            "fast": ["ok", "30% · 30/s of 100/s"],
+            "slow": ["over", "45× · 30/s of 0.7/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "over",
+          "top": "slow",
+          "headline": "Reports and 1 more are over capacity",
+          "detail": "900% · 6/s of 0.7/s",
+          "fix": {
+            "changes": [
+              { "nodeId": "slow", "key": "replicas", "from": 1, "to": 34, "label": "Reports" },
+              { "nodeId": "topic", "key": "partitions", "from": 8, "to": 17, "label": "telemetry" }
+            ],
+            "label": "Reports 1 → 34 replicas, telemetry 8 → 17 partitions"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "devices": ["idle", "6/s · no limit", { "modeled": false }],
+            "topic": ["over", "900% · 6/s of 0.7/s"],
+            "fast": ["ok", "6% · 6/s of 100/s"],
+            "slow": ["over", "900% · 6/s of 0.7/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": { "topic": { "partitions": 16 } }, "rates": {} },
+        "view": {
+          "tone": "over",
+          "top": "slow",
+          "headline": "Reports and 1 more are over capacity",
+          "detail": "900% · 6/s of 0.7/s",
+          "fix": {
+            "changes": [
+              { "nodeId": "slow", "key": "replicas", "from": 1, "to": 17, "label": "Reports" },
+              { "nodeId": "topic", "key": "partitions", "from": 16, "to": 17, "label": "telemetry" }
+            ],
+            "label": "Reports 1 → 17 replicas, telemetry 16 → 17 partitions"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "devices": ["idle", "6/s · no limit", { "modeled": false }],
+            "topic": ["over", "900% · 6/s of 0.7/s"],
+            "fast": ["ok", "6% · 6/s of 100/s"],
+            "slow": ["over", "900% · 6/s of 0.7/s"]
+          }
+        },
+        "partitionsNotes": { "topic": "Its largest consumer group has 1 replica: partitions past 1 add no speed." }
+      }
+    }
+  }
+}

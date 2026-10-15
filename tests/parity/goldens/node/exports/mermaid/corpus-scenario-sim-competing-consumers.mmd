@@ -1,0 +1,15 @@
+---
+title: Competing consumers
+---
+flowchart LR
+  producer["Producer"]
+  broker["jobs queue<br/>jobs"]
+  w1["Worker 1"]
+  w2["Worker 2"]
+  w3["Worker 3"]
+  producer -.-> broker
+  broker -.-> w1
+  broker -.-> w2
+  broker -.-> w3
+  linkStyle 0,1,2,3 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"Three workers pull from one queue.","nodes":{"producer":["producer","service.go"],"broker":["broker","azure.service-bus.queue"],"w1":["w1","azure.functions"],"w2":["w2","azure.functions"],"w3":["w3","azure.functions"]},"edges":["producer-broker","broker-w1","broker-w2","broker-w3"],"relations":{}}

@@ -1,0 +1,79 @@
+{
+  "ok": true,
+  "format": "kubernetes",
+  "warnings": [],
+  "report": {
+    "summary": {
+      "code": "importReport.summary",
+      "args": [
+        { "title": "shop and kafka", "format": "Kubernetes", "total": "all", "drawn": 5, "nodes": 5, "connections": 4, "guesses": 0 }
+      ]
+    },
+    "format": "Kubernetes",
+    "source": "orders-api.yaml",
+    "title": "shop and kafka",
+    "nodes": 5,
+    "connections": 4,
+    "boundaries": 2,
+    "guesses": [],
+    "inferred": [
+      { "fromId": "orders-api", "toId": "topic-orders.placed.v1", "from": "orders-api (shop)", "to": "orders.placed.v1 (kafka)", "evidence": "ORDERS_TOPIC", "note": "writes", "guess": true }
+    ],
+    "notDrawn": [],
+    "unread": [],
+    "notes": []
+  },
+  "reportEnglish": { "report.summary": "Imported “shop and kafka” from Kubernetes: 5 nodes, 4 connections." },
+  "replay": null,
+  "checks": ["warning no-reader:topic-orders.placed.v1"],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "shop and kafka",
+    "direction": "LR",
+    "groups": [
+      { "id": "boundary-shop", "label": "shop", "tone": "k8s", "x": 40, "y": 40, "width": 560, "height": 328 },
+      { "id": "boundary-kafka", "label": "kafka", "tone": "k8s", "x": 740, "y": 120, "width": 300, "height": 176 }
+    ],
+    "nodes": [
+      {
+        "id": "orders-api",
+        "stencil": "generic.service",
+        "label": "orders-api",
+        "sublabel": "orders-api:2.3.0",
+        "x": 80,
+        "y": 104,
+        "group": "boundary-shop",
+        "props": { "replicas": 3 }
+      },
+      { "id": "configmap-orders-api-config", "stencil": "k8s.configmap", "label": "orders-api-config", "x": 80, "y": 256, "group": "boundary-shop" },
+      { "id": "secret-orders-db", "stencil": "k8s.secret", "label": "orders-db", "x": 340, "y": 256, "group": "boundary-shop" },
+      { "id": "identity-orders-api", "stencil": "azure.managed-identity", "label": "orders-api", "x": 210, "y": 448 },
+      { "id": "topic-orders.placed.v1", "stencil": "kafka.topic", "label": "orders.placed.v1", "x": 780, "y": 184, "group": "boundary-kafka" }
+    ],
+    "edges": [
+      { "id": "e1", "from": "orders-api", "to": "topic-orders.placed.v1", "kind": "async" },
+      {
+        "id": "e2",
+        "from": "orders-api",
+        "to": "configmap-orders-api-config",
+        "relation": "config",
+        "props": {
+          "settings": [
+            { "key": "KAFKA_BOOTSTRAP_SERVERS" },
+            { "key": "ORDERS_TOPIC" },
+            { "key": "REDIS_URL" },
+            { "key": "FEATURE_SPLIT_SHIPMENTS" }
+          ]
+        }
+      },
+      {
+        "id": "e3",
+        "from": "orders-api",
+        "to": "secret-orders-db",
+        "relation": "secret",
+        "props": { "settings": [{ "key": "DATABASE_URL", "secret": true }] }
+      },
+      { "id": "e4", "from": "orders-api", "to": "identity-orders-api", "relation": "identity" }
+    ]
+  }
+}

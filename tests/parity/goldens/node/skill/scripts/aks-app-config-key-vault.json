@@ -1,0 +1,260 @@
+{
+  "layout": {
+    "status": 0,
+    "stdout": "<tmp>/laid.json: placed 11 nodes, fitted 2 boundaries.\n",
+    "nodes": { "web": [40, 280], "fd": [408, 280], "api": [768, 680], "sql": [1149, 400], "sb": [1149, 160], "notify": [1522, 160], "ai": [1149, 40], "appcfg": [1149, 280], "kv": [1522, 280], "mi": [1149, 520], "entra": [1522, 680] },
+    "groups": { "azure": [368, -24, 1416, 656], "aks": [728, 616, 321, 176] }
+  },
+  "shareLink": {
+    "status": 0,
+    "prefix": "https://www.livediagrams.dev/#d=",
+    "decoded": { "sha256": "b034cc0c8fdfc86388cd314de9217eecd802634afa9c15850bc6307fc25c397f", "bytes": 5537 },
+    "sameAsFile": true,
+    "warned": false
+  },
+  "exportHtml": {
+    "status": 0,
+    "stdout": "<tmp>/export.html (<size>, plays \"Lunch rush\" when opened)\nPrivate: it works offline and makes no network requests, and only people who have the file can open it. Share it where your team already controls access.\n",
+    "stderr": "",
+    "payload": {
+      "version": 1,
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "AKS orders API with App Configuration",
+        "description": "Bold lines carry requests and events. Dotted lines are dependencies: where the API gets its settings (two are Key Vault references), its identity, and where it reports.",
+        "direction": "LR",
+        "groups": [
+          { "id": "azure", "label": "Azure · prod", "tone": "azure", "x": 400, "y": 0, "width": 1600, "height": 680 },
+          { "id": "aks", "label": "AKS cluster", "tone": "k8s", "x": 820, "y": 236, "width": 320, "height": 172 }
+        ],
+        "nodes": [
+          {
+            "id": "web",
+            "stencil": "client.browser",
+            "label": "Storefront",
+            "sublabel": "Shoppers placing orders",
+            "x": 40,
+            "y": 300,
+            "props": { "ratePerSec": 20, "messageType": "PlaceOrder" }
+          },
+          { "id": "fd", "stencil": "azure.front-door", "label": "Front Door", "sublabel": "WAF · TLS", "x": 440, "y": 300, "group": "azure" },
+          {
+            "id": "api",
+            "stencil": "service.dotnet",
+            "label": "Orders API",
+            "sublabel": "ASP.NET Core · 3 replicas",
+            "x": 860,
+            "y": 300,
+            "group": "aks",
+            "props": { "replicas": 3, "concurrency": 16, "latencyMs": 120, "emits": "OrderCreated" }
+          },
+          { "id": "sql", "stencil": "azure.sql", "label": "orders-db", "sublabel": "Azure SQL", "x": 1300, "y": 180, "group": "azure" },
+          {
+            "id": "sb",
+            "stencil": "azure.service-bus.topic",
+            "label": "orders.created",
+            "sublabel": "Service Bus topic",
+            "x": 1300,
+            "y": 420,
+            "group": "azure",
+            "props": { "partitions": 16 }
+          },
+          {
+            "id": "notify",
+            "stencil": "azure.functions",
+            "label": "Order confirmation",
+            "sublabel": "Function · sends email",
+            "x": 1720,
+            "y": 420,
+            "group": "azure",
+            "props": { "concurrency": 32, "latencyMs": 150 }
+          },
+          { "id": "ai", "stencil": "azure.app-insights", "label": "Application Insights", "sublabel": "traces · logs · metrics", "x": 860, "y": 60, "group": "azure" },
+          { "id": "appcfg", "stencil": "azure.app-config", "label": "orders-config", "sublabel": "App Configuration", "x": 860, "y": 560, "group": "azure" },
+          { "id": "kv", "stencil": "azure.key-vault", "label": "orders-kv", "sublabel": "Key Vault", "x": 1300, "y": 560, "group": "azure" },
+          { "id": "mi", "stencil": "azure.managed-identity", "label": "orders-api-id", "sublabel": "Workload identity", "x": 440, "y": 560, "group": "azure" },
+          { "id": "entra", "stencil": "entra-id", "label": "Entra ID", "sublabel": "Token issuer", "x": 40, "y": 560 }
+        ],
+        "edges": [
+          {
+            "id": "web-to-fd",
+            "from": "web",
+            "to": "fd",
+            "label": "HTTPS",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "fd-to-api",
+            "from": "fd",
+            "to": "api",
+            "label": "POST /orders",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "api-to-sql",
+            "from": "api",
+            "to": "sql",
+            "label": "EF Core",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "api-to-sb",
+            "from": "api",
+            "to": "sb",
+            "label": "OrderCreated",
+            "kind": "async",
+            "props": { "travelMs": 300 }
+          },
+          {
+            "id": "sb-to-notify",
+            "from": "sb",
+            "to": "notify",
+            "label": "Subscription",
+            "kind": "async",
+            "props": { "travelMs": 300, "group": "confirmations" }
+          },
+          {
+            "id": "api-to-appcfg",
+            "from": "api",
+            "to": "appcfg",
+            "kind": "async",
+            "relation": "config",
+            "sourceSide": "bottom",
+            "targetSide": "top",
+            "props": {
+              "settings": [
+                { "key": "Orders:PageSize" },
+                { "key": "Features:*" },
+                { "key": "ConnectionStrings:Orders", "secret": true },
+                { "key": "Stripe:ApiKey", "secret": true }
+              ]
+            }
+          },
+          { "id": "appcfg-to-kv", "from": "appcfg", "to": "kv", "kind": "async", "relation": "secret", "sourceSide": "right", "targetSide": "left" },
+          { "id": "api-to-mi", "from": "api", "to": "mi", "label": "runs as", "kind": "async", "relation": "identity", "sourceSide": "bottom", "targetSide": "right" },
+          { "id": "mi-to-entra", "from": "mi", "to": "entra", "label": "OIDC federation", "kind": "async", "relation": "identity", "sourceSide": "left", "targetSide": "right" },
+          { "id": "api-to-ai", "from": "api", "to": "ai", "kind": "async", "relation": "telemetry", "sourceSide": "top", "targetSide": "bottom" }
+        ],
+        "simulations": [
+          {
+            "id": "lunch-rush",
+            "title": "Lunch rush",
+            "description": "Steady orders: every request writes to SQL and publishes OrderCreated. Config, secrets and tokens were read at startup, so nothing moves on the dotted lines.",
+            "seed": 3,
+            "scale": 2,
+            "traffic": [
+              {
+                "id": "orders",
+                "node": "web",
+                "messageType": "PlaceOrder",
+                "label": "400 orders over 10 seconds",
+                "shape": { "kind": "constant", "ratePerSec": 40, "durationMs": 10000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 0,
+                "action": { "do": "note", "text": "Orders flow through Front Door to the API, then to SQL and Service Bus.", "focus": ["fd", "api", "sql", "sb"] }
+              },
+              {
+                "atMs": 4000,
+                "action": { "do": "note", "text": "No messages go to App Configuration or Key Vault: the API read them at startup and keeps them cached.", "focus": ["api", "appcfg", "kv"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "written",
+                "label": "Every order is written",
+                "metric": { "node": "sql", "field": "processed" },
+                "op": "==",
+                "value": 400,
+                "when": "end"
+              },
+              {
+                "id": "confirmed",
+                "label": "Every order is confirmed",
+                "metric": { "node": "notify", "field": "processed" },
+                "op": "==",
+                "value": 400,
+                "when": "end"
+              },
+              {
+                "id": "no-drops",
+                "label": "Nothing is dropped",
+                "metric": { "node": "api", "field": "dropped" },
+                "op": "==",
+                "value": 0,
+                "when": "always"
+              }
+            ]
+          },
+          {
+            "id": "flash-sale",
+            "title": "Flash sale",
+            "description": "A spike to 300 orders a second for three seconds. Three replicas absorb it; the dependencies stay quiet.",
+            "seed": 5,
+            "scale": 5,
+            "traffic": [
+              {
+                "id": "spike",
+                "node": "web",
+                "messageType": "PlaceOrder",
+                "label": "1,110 orders: steady, then a three-second sale",
+                "shape": { "kind": "spike", "baseRate": 30, "peakRate": 300, "atMs": 3000, "peakMs": 3000, "durationMs": 10000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 3000,
+                "action": { "do": "note", "text": "The sale starts: 300 orders a second for three seconds.", "focus": ["web", "api"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "written",
+                "label": "Every order is written",
+                "metric": { "node": "sql", "field": "processed" },
+                "op": "==",
+                "value": 1110,
+                "when": "end"
+              },
+              {
+                "id": "confirmed",
+                "label": "Every order is confirmed",
+                "metric": { "node": "notify", "field": "processed" },
+                "op": "==",
+                "value": 1110,
+                "when": "end"
+              },
+              {
+                "id": "no-drops",
+                "label": "Nothing is dropped",
+                "metric": { "node": "api", "field": "dropped" },
+                "op": "==",
+                "value": 0,
+                "when": "always"
+              }
+            ]
+          }
+        ]
+      },
+      "icons": {
+        "azure-app-config": { "sha256": "d7b1443dffc64d5dc0b894f7006469bc54e482432f8b8044746497c522ab6100", "bytes": 2808 },
+        "azure-app-insights": { "sha256": "32d5342b89d19175c3fae292740013d9362827b6d4fec1c6747845e1aac51058", "bytes": 3400 },
+        "azure-front-door": { "sha256": "4e280e45877e871c74b1c618b0defe0e5e390d3d29b25b712844ed6b9de89d5a", "bytes": 1185 },
+        "azure-functions": { "sha256": "a0db338f682176fb01465ae4590055ecdb3c7862ce174df80eefee3ab444d134", "bytes": 2399 },
+        "azure-key-vault": { "sha256": "e7d3f312fe58b856144a78ab18fff5947ea95be560538079b96770ac00a87b06", "bytes": 2995 },
+        "azure-managed-identity": { "sha256": "1a200841f63f401143d6166a197a6212dab657cb1d6b1b0de945a680a743857e", "bytes": 3220 },
+        "azure-service-bus": { "sha256": "fcb7a4b1a367139c449790d6799ba6f2d53eb0f0e18176ee300e842d09022ba7", "bytes": 3909 },
+        "azure-sql": { "sha256": "02379ac5241520f4ec7f593009755b613e22831191f46036f86c2fcd9487cc95", "bytes": 2358 },
+        "client-browser": { "sha256": "c66b629864dc684d451c1c280107fe74cdd69ffb9d17be64673c90c7c92434f7", "bytes": 476 },
+        "dotnet": { "sha256": "993caba10a755f1f3ba9e25ff9fd3d529ed2d04cefe18a76d40aece85c6a7f36", "bytes": 1020 },
+        "entra-id": { "sha256": "7ee19972baea3d8245d3a13508d8482d0d6ac0bf4839a2719b4493fdacf4f6a3", "bytes": 1210 }
+      },
+      "options": { "theme": "dark", "startSimulation": "lunch-rush", "exportedOn": "2026-01-01" }
+    }
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "all": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "capacity:api",
+          "rule": "capacity",
+          "severity": "warning",
+          "title": "api can't keep up",
+          "message": "At the diagram's own rates, it gets 16/s and handles 16/s (100%): its backlog only grows.",
+          "targets": ["api"],
+          "fix": {
+            "label": "Set replicas to 2",
+            "ops": [{ "op": "update", "target": "api", "props": { "replicas": 2 } }]
+          }
+        },
+        {
+          "id": "single-point:api",
+          "rule": "single-point",
+          "severity": "warning",
+          "title": "Every request goes through one api",
+          "message": "It runs 1 replica at 100% of what it can handle, and every request from Web goes through it: if it stops or slows, Web gets nothing.",
+          "targets": ["api", "web"],
+          "fix": {
+            "label": "Set replicas to 2",
+            "ops": [{ "op": "update", "target": "api", "props": { "replicas": 2 } }]
+          }
+        }
+      ],
+      "summary": "2 warnings, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  },
+  "warnings": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "capacity:api",
+          "rule": "capacity",
+          "severity": "warning",
+          "title": "api can't keep up",
+          "message": "At the diagram's own rates, it gets 16/s and handles 16/s (100%): its backlog only grows.",
+          "targets": ["api"],
+          "fix": {
+            "label": "Set replicas to 2",
+            "ops": [{ "op": "update", "target": "api", "props": { "replicas": 2 } }]
+          }
+        },
+        {
+          "id": "single-point:api",
+          "rule": "single-point",
+          "severity": "warning",
+          "title": "Every request goes through one api",
+          "message": "It runs 1 replica at 100% of what it can handle, and every request from Web goes through it: if it stops or slows, Web gets nothing.",
+          "targets": ["api", "web"],
+          "fix": {
+            "label": "Set replicas to 2",
+            "ops": [{ "op": "update", "target": "api", "props": { "replicas": 2 } }]
+          }
+        }
+      ],
+      "summary": "2 warnings, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  },
+  "oneRule": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "capacity:api",
+          "rule": "capacity",
+          "severity": "warning",
+          "title": "api can't keep up",
+          "message": "At the diagram's own rates, it gets 16/s and handles 16/s (100%): its backlog only grows.",
+          "targets": ["api"],
+          "fix": {
+            "label": "Set replicas to 2",
+            "ops": [{ "op": "update", "target": "api", "props": { "replicas": 2 } }]
+          }
+        }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  }
+}

@@ -1,0 +1,207 @@
+<mxfile host="Diagrams" agent="Diagrams" version="24.0.0" type="device">
+  <diagram id="dg-1sstvgh" name="Outbox and saga checkout">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <object id="0" dg_format="diagrams/v1" dg_description="A transactional outbox publishes order events; a saga orchestrates inventory and payment, compensating when a step fails." dg_direction="LR" dg_simulations="[{&quot;id&quot;:&quot;happy-path&quot;,&quot;title&quot;:&quot;Twenty checkouts, happy path&quot;,&quot;description&quot;:&quot;Each order commits with its outbox row, then the saga reserves stock, charges the card and confirms.&quot;,&quot;seed&quot;:7,&quot;scale&quot;:1,&quot;traffic&quot;:[{&quot;id&quot;:&quot;checkouts&quot;,&quot;node&quot;:&quot;client&quot;,&quot;messageType&quot;:&quot;PlaceOrder&quot;,&quot;label&quot;:&quot;20 checkouts&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;burst&quot;,&quot;count&quot;:20,&quot;spreadMs&quot;:4000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;trace&quot;,&quot;node&quot;:&quot;order-api&quot;}},{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The order row and its OrderCreated event commit in one database transaction. No dual write, so no lost events.&quot;,&quot;focus&quot;:[&quot;order-api&quot;,&quot;orders-db&quot;],&quot;pause&quot;:true}},{&quot;atMs&quot;:900,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The outbox relay tails the write-ahead log and publishes each outbox row to Kafka.&quot;,&quot;focus&quot;:[&quot;orders-db&quot;,&quot;outbox-relay&quot;,&quot;order-events&quot;]}},{&quot;atMs&quot;:2500,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The saga runs one step at a time: reserve stock, charge the card, then confirm the order. Every step is saved, so a restart resumes where it left off.&quot;,&quot;focus&quot;:[&quot;saga&quot;,&quot;saga-db&quot;,&quot;inventory-cmds&quot;,&quot;payment-cmds&quot;,&quot;saga-replies&quot;]}},{&quot;atMs&quot;:6000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;OrderConfirmed goes out through the same outbox, and the customer gets a receipt.&quot;,&quot;focus&quot;:[&quot;order-events&quot;,&quot;notifications&quot;,&quot;email&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;stock&quot;,&quot;label&quot;:&quot;20 reservations&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;inventory-db&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:20,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;charges&quot;,&quot;label&quot;:&quot;20 cards charged once each&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;stripe&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:20,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;receipts&quot;,&quot;label&quot;:&quot;20 receipts sent&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;email&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:20,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;orders&quot;,&quot;label&quot;:&quot;20 orders created, 20 confirmed&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;orders-db&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:40,&quot;when&quot;:&quot;end&quot;}]},{&quot;id&quot;:&quot;declines&quot;,&quot;title&quot;:&quot;Declines and flaky payments&quot;,&quot;description&quot;:&quot;Transient payment errors are retried with the same idempotency key; a fraud rule declines cards for three seconds and the saga compensates.&quot;,&quot;seed&quot;:7,&quot;scale&quot;:1,&quot;setup&quot;:{&quot;props&quot;:{&quot;payment-svc&quot;:{&quot;failureRate&quot;:0.2}}},&quot;traffic&quot;:[{&quot;id&quot;:&quot;checkouts&quot;,&quot;node&quot;:&quot;client&quot;,&quot;messageType&quot;:&quot;PlaceOrder&quot;,&quot;label&quot;:&quot;60 checkouts over 6 seconds&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:10,&quot;durationMs&quot;:6000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;One payment call in five times out. The consumer retries in place with the same Idempotency-Key, so a retry never charges twice.&quot;,&quot;focus&quot;:[&quot;payment-svc&quot;,&quot;stripe&quot;]}},{&quot;atMs&quot;:2500,&quot;action&quot;:{&quot;do&quot;:&quot;props&quot;,&quot;node&quot;:&quot;payment-svc&quot;,&quot;props&quot;:{&quot;emits&quot;:{&quot;ChargePayment&quot;:&quot;PaymentDeclined&quot;}}}},{&quot;atMs&quot;:2500,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;A fraud rule starts declining every card. The saga compensates: it releases the reserved stock, then cancels the order.&quot;,&quot;focus&quot;:[&quot;payment-svc&quot;,&quot;saga&quot;,&quot;inventory-cmds&quot;,&quot;order-api&quot;],&quot;pause&quot;:true}},{&quot;atMs&quot;:5500,&quot;action&quot;:{&quot;do&quot;:&quot;props&quot;,&quot;node&quot;:&quot;payment-svc&quot;,&quot;props&quot;:{&quot;emits&quot;:{&quot;ChargePayment&quot;:&quot;PaymentCaptured&quot;}}}},{&quot;atMs&quot;:5500,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The rule is rolled back. Every customer still hears back: a receipt or a cancellation.&quot;,&quot;focus&quot;:[&quot;notifications&quot;,&quot;email&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;everyone&quot;,&quot;label&quot;:&quot;All 60 customers get an email&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;email&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:60,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;compensated&quot;,&quot;label&quot;:&quot;Declined orders release their stock&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;inventory-db&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:60,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;retried&quot;,&quot;label&quot;:&quot;Transient errors were retried&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;payment-svc&quot;,&quot;field&quot;:&quot;failed&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;no-dlq&quot;,&quot;label&quot;:&quot;Nothing is dead-lettered&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;payment-cmds&quot;,&quot;field&quot;:&quot;deadLettered&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;always&quot;}]}]">
+          <mxCell />
+        </object>
+        <mxCell id="1" parent="0" />
+        <object id="dg-g-kafka" label="Kafka · saga channels" dg_id="kafka" dg_tone="neutral">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="1520" y="120" width="340" height="632" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-client" label="Mobile checkout&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Place order&lt;/span&gt;" dg_id="client" dg_stencil="client.mobile" dg_props="{&quot;ratePerSec&quot;:5,&quot;messageType&quot;:&quot;PlaceOrder&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#10B9811A;strokeColor=#10B981;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="60" y="326" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-order-api" label="Order service&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Owns order state&lt;/span&gt;" dg_id="order-api" dg_stencil="service.dotnet" dg_props="{&quot;concurrency&quot;:32,&quot;latencyMs&quot;:100,&quot;emits&quot;:{&quot;PlaceOrder&quot;:&quot;OrderCreated&quot;,&quot;ConfirmOrder&quot;:&quot;OrderConfirmed&quot;,&quot;CancelOrder&quot;:&quot;OrderCancelled&quot;}}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#512BD41A;strokeColor=#512BD4;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="440" y="326" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-orders-db" label="Orders database&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;orders + outbox table&lt;/span&gt;" dg_id="orders-db" dg_stencil="postgres" dg_props="{&quot;latencyMs&quot;:10}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3367911A;strokeColor=#336791;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="440" y="486" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-outbox-relay" label="Outbox relay&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Debezium outbox router&lt;/span&gt;" dg_id="outbox-relay" dg_stencil="kafka.connect" dg_props="{&quot;concurrency&quot;:32,&quot;latencyMs&quot;:80}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="820" y="486" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-order-events" label="orders.events&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;key: orderId&lt;/span&gt;" dg_id="order-events" dg_stencil="kafka.topic" dg_props="{&quot;partitions&quot;:12}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="820" y="166" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-notifications" label="Notification service&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;group: notifications&lt;/span&gt;" dg_id="notifications" dg_stencil="service.node" dg_props="{&quot;concurrency&quot;:32,&quot;latencyMs&quot;:100,&quot;emits&quot;:{&quot;OrderConfirmed&quot;:&quot;ReceiptEmail&quot;,&quot;OrderCancelled&quot;:&quot;CancellationEmail&quot;}}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#5FA04E1A;strokeColor=#5FA04E;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="1200" y="46" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-email" label="SendGrid&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Receipts&lt;/span&gt;" dg_id="email" dg_stencil="sendgrid" dg_props="{}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#1A82E21A;strokeColor=#1A82E2;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="1580" y="46" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-saga" label="Checkout saga&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Orchestrator · group: saga&lt;/span&gt;" dg_id="saga" dg_stencil="generic.saga" dg_props="{&quot;concurrency&quot;:64,&quot;latencyMs&quot;:50,&quot;emits&quot;:{&quot;OrderCreated&quot;:&quot;ReserveInventory&quot;,&quot;InventoryReserved&quot;:&quot;ChargePayment&quot;,&quot;PaymentCaptured&quot;:&quot;ConfirmOrder&quot;,&quot;PaymentDeclined&quot;:&quot;ReleaseInventory&quot;,&quot;InventoryReleased&quot;:&quot;CancelOrder&quot;}}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#EA580C1A;strokeColor=#EA580C;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="1200" y="326" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-saga-db" label="Saga state&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;One row per checkout&lt;/span&gt;" dg_id="saga-db" dg_stencil="postgres" dg_props="{&quot;latencyMs&quot;:10}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3367911A;strokeColor=#336791;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="1200" y="486" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-inventory-cmds" label="inventory.commands&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Reserve · Release&lt;/span&gt;" dg_id="inventory-cmds" dg_stencil="kafka.topic" dg_props="{&quot;partitions&quot;:12}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="dg-g-kafka">
+            <mxGeometry x="60" y="46" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-saga-replies" label="saga.replies&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Step results&lt;/span&gt;" dg_id="saga-replies" dg_stencil="kafka.topic" dg_props="{&quot;partitions&quot;:12}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="dg-g-kafka">
+            <mxGeometry x="60" y="206" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-payment-cmds" label="payments.commands&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;ChargePayment&lt;/span&gt;" dg_id="payment-cmds" dg_stencil="kafka.topic" dg_props="{&quot;partitions&quot;:12,&quot;maxDeliveryCount&quot;:5}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="dg-g-kafka">
+            <mxGeometry x="60" y="366" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-payments-dlq" label="payments.commands.dlq&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Dead letters · replayable&lt;/span&gt;" dg_id="payments-dlq" dg_stencil="kafka.topic" dg_props="{&quot;isDeadLetter&quot;:true}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="dg-g-kafka">
+            <mxGeometry x="60" y="526" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-inventory-svc" label="Inventory service&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;group: inventory&lt;/span&gt;" dg_id="inventory-svc" dg_stencil="service.java" dg_props="{&quot;concurrency&quot;:32,&quot;latencyMs&quot;:100,&quot;emits&quot;:{&quot;ReserveInventory&quot;:&quot;InventoryReserved&quot;,&quot;ReleaseInventory&quot;:&quot;InventoryReleased&quot;}}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E76F001A;strokeColor=#E76F00;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="1960" y="166" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-payment-svc" label="Payment service&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;group: payments&lt;/span&gt;" dg_id="payment-svc" dg_stencil="service.go" dg_props="{&quot;concurrency&quot;:32,&quot;latencyMs&quot;:150,&quot;retry&quot;:&quot;inplace&quot;,&quot;retryBackoffMs&quot;:300,&quot;emits&quot;:{&quot;ChargePayment&quot;:&quot;PaymentCaptured&quot;}}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#00ADD81A;strokeColor=#00ADD8;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="1960" y="486" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-inventory-db" label="Inventory database&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Reservations by orderId&lt;/span&gt;" dg_id="inventory-db" dg_stencil="postgres" dg_props="{&quot;latencyMs&quot;:10}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3367911A;strokeColor=#336791;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="2340" y="166" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-stripe" label="Stripe&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Payment intents&lt;/span&gt;" dg_id="stripe" dg_stencil="stripe" dg_props="{}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#635BFF1A;strokeColor=#635BFF;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="2340" y="486" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-vault" label="Vault&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Stripe API key&lt;/span&gt;" dg_id="vault" dg_stencil="vault">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#EAB3081A;strokeColor=#EAB308;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="1960" y="646" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-client-to-order-api" label="POST /orders" dg_id="client-to-order-api" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-client" target="dg-n-order-api">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-order-api-to-orders-db" label="Order + outbox, one tx" dg_id="order-api-to-orders-db" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-order-api" target="dg-n-orders-db">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-orders-db-to-outbox-relay" label="WAL" dg_id="orders-db-to-outbox-relay" dg_kind="async" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-orders-db" target="dg-n-outbox-relay">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-outbox-relay-to-order-events" label="Outbox events" dg_id="outbox-relay-to-order-events" dg_kind="async" dg_props="{&quot;travelMs&quot;:300}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-outbox-relay" target="dg-n-order-events">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-order-events-to-saga" label="OrderCreated" dg_id="order-events-to-saga" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;group&quot;:&quot;saga&quot;,&quot;filter&quot;:[&quot;OrderCreated&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-order-events" target="dg-n-saga">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-order-events-to-notifications" label="Confirmed · Cancelled" dg_id="order-events-to-notifications" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;group&quot;:&quot;notifications&quot;,&quot;filter&quot;:[&quot;OrderConfirmed&quot;,&quot;OrderCancelled&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-order-events" target="dg-n-notifications">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-notifications-to-email" label="Send email" dg_id="notifications-to-email" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-notifications" target="dg-n-email">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-saga-to-saga-db" label="Persist step" dg_id="saga-to-saga-db" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-saga" target="dg-n-saga-db">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-saga-to-inventory-cmds" label="Reserve / Release" dg_id="saga-to-inventory-cmds" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;filter&quot;:[&quot;ReserveInventory&quot;,&quot;ReleaseInventory&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-saga" target="dg-n-inventory-cmds">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-saga-to-payment-cmds" label="ChargePayment" dg_id="saga-to-payment-cmds" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;filter&quot;:[&quot;ChargePayment&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-saga" target="dg-n-payment-cmds">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-saga-to-order-api" label="Confirm / Cancel" dg_id="saga-to-order-api" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;filter&quot;:[&quot;ConfirmOrder&quot;,&quot;CancelOrder&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-saga" target="dg-n-order-api">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-inventory-cmds-to-inventory-svc" label="" dg_id="inventory-cmds-to-inventory-svc" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;group&quot;:&quot;inventory&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-inventory-cmds" target="dg-n-inventory-svc">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-inventory-svc-to-inventory-db" label="Reserve stock" dg_id="inventory-svc-to-inventory-db" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-inventory-svc" target="dg-n-inventory-db">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-inventory-svc-to-saga-replies" label="Reserved / Released" dg_id="inventory-svc-to-saga-replies" dg_kind="async" dg_props="{&quot;travelMs&quot;:300}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-inventory-svc" target="dg-n-saga-replies">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-payment-cmds-to-payment-svc" label="" dg_id="payment-cmds-to-payment-svc" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;group&quot;:&quot;payments&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-payment-cmds" target="dg-n-payment-svc">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-payment-cmds-to-payments-dlq" label="After 5 attempts" dg_id="payment-cmds-to-payments-dlq" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;dlq&quot;:true}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-payment-cmds" target="dg-n-payments-dlq">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-payment-svc-to-stripe" label="Idempotency-Key" dg_id="payment-svc-to-stripe" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200,&quot;filter&quot;:[&quot;PaymentCaptured&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-payment-svc" target="dg-n-stripe">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-payment-svc-to-saga-replies" label="Captured / Declined" dg_id="payment-svc-to-saga-replies" dg_kind="async" dg_props="{&quot;travelMs&quot;:300}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-payment-svc" target="dg-n-saga-replies">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-saga-replies-to-saga" label="Next step" dg_id="saga-replies-to-saga" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;group&quot;:&quot;saga&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-saga-replies" target="dg-n-saga">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-payment-svc-to-vault" label="" dg_id="payment-svc-to-vault" dg_kind="async" dg_relation="secret">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#A6720C;dashed=1;dashPattern=1 4;dfRelation=secret;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="dg-n-payment-svc" target="dg-n-vault">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

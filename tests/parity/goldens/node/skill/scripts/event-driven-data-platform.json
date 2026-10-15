@@ -1,0 +1,584 @@
+{
+  "layout": {
+    "status": 0,
+    "stdout": "<tmp>/laid.json: placed 21 nodes, fitted 2 boundaries.\n",
+    "nodes": {
+      "billing-webhooks": [40, 40],
+      "storefront": [40, 400],
+      "accounts-db": [40, 520],
+      "segment-cache": [3874, 280],
+      "webhook-receiver": [436, 160],
+      "checkout": [436, 280],
+      "debezium": [436, 400],
+      "personalization": [3478, 220],
+      "marketing": [3478, 340],
+      "billing-topic": [832, 160],
+      "orders-topic": [832, 280],
+      "accounts-topic": [832, 400],
+      "segments-topic": [3090, 280],
+      "schema-registry": [1588, -20],
+      "snowpipe": [1222, 560],
+      "reverse-etl": [2728, 560],
+      "raw": [1588, 580],
+      "marts": [2335, 560],
+      "airflow": [40, 160],
+      "dbt": [1975, -40],
+      "bi": [40, 280]
+    },
+    "groups": { "kafka": [792, 96, 2571, 416], "snowflake": [1548, 496, 1080, 196] }
+  },
+  "shareLink": {
+    "status": 0,
+    "prefix": "https://www.livediagrams.dev/#d=",
+    "decoded": { "sha256": "2f4ce317f019fbe4b15b087750a176c44701142bf7d05cc22789b2580c820386", "bytes": 11570 },
+    "sameAsFile": true,
+    "warned": false
+  },
+  "exportHtml": {
+    "status": 0,
+    "stdout": "<tmp>/export.html (<size>, plays \"Follow one order end to end\" when opened)\nPrivate: it works offline and makes no network requests, and only people who have the file can open it. Share it where your team already controls access.\n",
+    "stderr": "",
+    "payload": {
+      "version": 1,
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Event-driven data platform",
+        "description": "Operational events stream through Kafka into Snowflake; dbt builds marts and reverse ETL publishes segments back to Kafka.",
+        "direction": "LR",
+        "groups": [
+          { "id": "kafka", "label": "Kafka · Confluent Cloud", "tone": "neutral", "x": 760, "y": 40, "width": 340, "height": 592 },
+          { "id": "snowflake", "label": "Snowflake · ANALYTICS", "tone": "neutral", "x": 1520, "y": 160, "width": 340, "height": 392 }
+        ],
+        "nodes": [
+          {
+            "id": "billing-webhooks",
+            "stencil": "generic.webhook",
+            "label": "Billing webhooks",
+            "sublabel": "Stripe · invoice.paid",
+            "x": 40,
+            "y": 80,
+            "props": { "ratePerSec": 5, "messageType": "InvoicePaid" }
+          },
+          {
+            "id": "storefront",
+            "stencil": "client.browser",
+            "label": "Storefront",
+            "sublabel": "Web and mobile checkout",
+            "x": 40,
+            "y": 200,
+            "props": { "ratePerSec": 20, "messageType": "CheckoutRequest" }
+          },
+          {
+            "id": "accounts-db",
+            "stencil": "postgres",
+            "label": "Accounts database",
+            "sublabel": "OLTP · logical replication",
+            "x": 40,
+            "y": 320,
+            "props": { "messageType": "AccountChanged", "latencyMs": 2 }
+          },
+          {
+            "id": "segment-cache",
+            "stencil": "redis.cache",
+            "label": "Segment cache",
+            "sublabel": "customerId → segments",
+            "x": 40,
+            "y": 520,
+            "props": { "latencyMs": 2 }
+          },
+          {
+            "id": "webhook-receiver",
+            "stencil": "service.node",
+            "label": "Webhook receiver",
+            "sublabel": "Verify signature · ack 200",
+            "x": 420,
+            "y": 80,
+            "props": { "concurrency": 64, "latencyMs": 80 }
+          },
+          {
+            "id": "checkout",
+            "stencil": "service.go",
+            "label": "Checkout service",
+            "sublabel": "Commits order · publishes",
+            "x": 420,
+            "y": 200,
+            "props": { "concurrency": 64, "latencyMs": 120, "emits": "OrderPlaced" }
+          },
+          {
+            "id": "debezium",
+            "stencil": "debezium",
+            "label": "Debezium connector",
+            "sublabel": "Postgres WAL → events",
+            "x": 420,
+            "y": 320,
+            "props": { "ratePerSec": 10, "messageType": "AccountChanged" }
+          },
+          {
+            "id": "personalization",
+            "stencil": "service.java",
+            "label": "Personalization service",
+            "sublabel": "Next-best offer",
+            "x": 420,
+            "y": 520,
+            "props": { "group": "personalization", "concurrency": 64, "latencyMs": 100 }
+          },
+          {
+            "id": "marketing",
+            "stencil": "generic.marketing",
+            "label": "Marketing automation",
+            "sublabel": "Braze · campaigns",
+            "x": 420,
+            "y": 640,
+            "props": { "group": "marketing-sync" }
+          },
+          {
+            "id": "billing-topic",
+            "stencil": "kafka.topic",
+            "label": "billing.invoices.v1",
+            "sublabel": "key: customerId",
+            "x": 800,
+            "y": 80,
+            "group": "kafka",
+            "props": { "partitions": 6 }
+          },
+          {
+            "id": "orders-topic",
+            "stencil": "kafka.topic",
+            "label": "orders.v1",
+            "sublabel": "key: orderId",
+            "x": 800,
+            "y": 200,
+            "group": "kafka",
+            "props": { "partitions": 6 }
+          },
+          {
+            "id": "accounts-topic",
+            "stencil": "kafka.topic",
+            "label": "cdc.accounts.v1",
+            "sublabel": "Debezium · key: accountId",
+            "x": 800,
+            "y": 320,
+            "group": "kafka",
+            "props": { "partitions": 6 }
+          },
+          {
+            "id": "segments-topic",
+            "stencil": "kafka.topic",
+            "label": "customer-segments.v1",
+            "sublabel": "key: customerId",
+            "x": 800,
+            "y": 520,
+            "group": "kafka",
+            "props": { "partitions": 6 }
+          },
+          {
+            "id": "schema-registry",
+            "stencil": "kafka.schema-registry",
+            "label": "Schema registry",
+            "sublabel": "Avro · backward compatible",
+            "x": 1166,
+            "y": 80,
+            "props": { "compatibility": "BACKWARD" }
+          },
+          {
+            "id": "snowpipe",
+            "stencil": "snowflake.snowpipe",
+            "label": "Snowflake connector",
+            "sublabel": "Snowpipe Streaming",
+            "x": 1180,
+            "y": 200,
+            "props": {
+              "group": "snowflake-sink",
+              "replicas": 6,
+              "concurrency": 4,
+              "latencyMs": 40,
+              "emits": { "OrderPlaced": "RawOrderRow", "InvoicePaid": "RawInvoiceRow", "AccountChanged": "RawAccountRow" }
+            }
+          },
+          {
+            "id": "reverse-etl",
+            "stencil": "generic.reverse-etl",
+            "label": "Reverse ETL",
+            "sublabel": "Hightouch · diffs only",
+            "x": 1180,
+            "y": 520,
+            "props": { "concurrency": 400, "latencyMs": 1500, "emits": "CustomerSegmentChanged" }
+          },
+          {
+            "id": "raw",
+            "stencil": "snowflake",
+            "label": "Raw tables",
+            "sublabel": "RAW.KAFKA_* · VARIANT",
+            "x": 1560,
+            "y": 200,
+            "group": "snowflake",
+            "props": { "latencyMs": 1 }
+          },
+          {
+            "id": "marts",
+            "stencil": "snowflake",
+            "label": "Marts",
+            "sublabel": "Segments · revenue · orders",
+            "x": 1560,
+            "y": 440,
+            "group": "snowflake",
+            "props": { "latencyMs": 1 }
+          },
+          { "id": "airflow", "stencil": "airflow", "label": "Airflow", "sublabel": "dbt build · every 15 min", "x": 1932, "y": 80 },
+          {
+            "id": "dbt",
+            "stencil": "dbt",
+            "label": "dbt models",
+            "sublabel": "Incremental models",
+            "x": 1940,
+            "y": 320,
+            "props": {
+              "concurrency": 3000,
+              "latencyMs": 2500,
+              "emits": { "RawOrderRow": "CustomerSegmentRow", "RawInvoiceRow": "RevenueRow", "RawAccountRow": "CustomerRow" }
+            }
+          },
+          {
+            "id": "bi",
+            "stencil": "tableau",
+            "label": "Revenue dashboards",
+            "sublabel": "Tableau · live",
+            "x": 1940,
+            "y": 560,
+            "props": {}
+          }
+        ],
+        "edges": [
+          {
+            "id": "billing-webhooks-to-webhook-receiver",
+            "from": "billing-webhooks",
+            "to": "webhook-receiver",
+            "label": "HTTPS · signed",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "storefront-to-checkout",
+            "from": "storefront",
+            "to": "checkout",
+            "label": "POST /checkout",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "accounts-db-to-debezium",
+            "from": "accounts-db",
+            "to": "debezium",
+            "label": "WAL",
+            "kind": "async",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "webhook-receiver-to-billing-topic",
+            "from": "webhook-receiver",
+            "to": "billing-topic",
+            "label": "InvoicePaid",
+            "kind": "async",
+            "props": { "travelMs": 300 }
+          },
+          {
+            "id": "checkout-to-orders-topic",
+            "from": "checkout",
+            "to": "orders-topic",
+            "label": "OrderPlaced",
+            "kind": "async",
+            "props": { "travelMs": 300 }
+          },
+          {
+            "id": "debezium-to-accounts-topic",
+            "from": "debezium",
+            "to": "accounts-topic",
+            "label": "AccountChanged",
+            "kind": "async",
+            "props": { "travelMs": 300 }
+          },
+          {
+            "id": "billing-topic-to-snowpipe",
+            "from": "billing-topic",
+            "to": "snowpipe",
+            "kind": "async",
+            "props": { "travelMs": 300, "group": "snowflake-sink" }
+          },
+          {
+            "id": "orders-topic-to-snowpipe",
+            "from": "orders-topic",
+            "to": "snowpipe",
+            "label": "group: snowflake-sink",
+            "kind": "async",
+            "props": { "travelMs": 300, "group": "snowflake-sink" }
+          },
+          {
+            "id": "accounts-topic-to-snowpipe",
+            "from": "accounts-topic",
+            "to": "snowpipe",
+            "kind": "async",
+            "props": { "travelMs": 300, "group": "snowflake-sink" }
+          },
+          { "id": "snowpipe-to-schema-registry", "from": "snowpipe", "to": "schema-registry", "label": "Avro schemas", "kind": "async", "relation": "depends", "sourceSide": "top", "targetSide": "bottom" },
+          {
+            "id": "snowpipe-to-raw",
+            "from": "snowpipe",
+            "to": "raw",
+            "label": "insertRows",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "raw-to-dbt",
+            "from": "raw",
+            "to": "dbt",
+            "label": "New rows",
+            "kind": "async",
+            "props": { "travelMs": 300, "filter": ["Raw*"] }
+          },
+          { "id": "airflow-to-dbt", "from": "airflow", "to": "dbt", "label": "dbt build", "kind": "async", "relation": "depends", "sourceSide": "bottom", "targetSide": "top" },
+          {
+            "id": "dbt-to-marts",
+            "from": "dbt",
+            "to": "marts",
+            "label": "MERGE models",
+            "kind": "sync",
+            "props": { "travelMs": 200, "filter": ["CustomerSegmentRow", "RevenueRow", "CustomerRow"] }
+          },
+          {
+            "id": "bi-to-marts",
+            "from": "bi",
+            "to": "marts",
+            "label": "Live queries",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "marts-to-reverse-etl",
+            "from": "marts",
+            "to": "reverse-etl",
+            "label": "Changed segments",
+            "kind": "async",
+            "props": { "travelMs": 300, "filter": ["CustomerSegmentRow"] }
+          },
+          {
+            "id": "reverse-etl-to-segments-topic",
+            "from": "reverse-etl",
+            "to": "segments-topic",
+            "label": "Segment changes",
+            "kind": "async",
+            "props": { "travelMs": 300 }
+          },
+          {
+            "id": "segments-topic-to-personalization",
+            "from": "segments-topic",
+            "to": "personalization",
+            "label": "group: personalization",
+            "kind": "async",
+            "props": { "travelMs": 300, "group": "personalization" }
+          },
+          {
+            "id": "segments-topic-to-marketing",
+            "from": "segments-topic",
+            "to": "marketing",
+            "label": "group: marketing-sync",
+            "kind": "async",
+            "props": { "travelMs": 300, "group": "marketing-sync" }
+          },
+          {
+            "id": "personalization-to-segment-cache",
+            "from": "personalization",
+            "to": "segment-cache",
+            "label": "SET segments",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          }
+        ],
+        "simulations": [
+          {
+            "id": "one-order",
+            "title": "Follow one order end to end",
+            "description": "One checkout travels through Kafka, Snowflake and dbt, then comes back out as a segment change.",
+            "seed": 7,
+            "scale": 1,
+            "traffic": [
+              {
+                "id": "order",
+                "node": "storefront",
+                "messageType": "CheckoutRequest",
+                "label": "One checkout",
+                "shape": { "kind": "burst", "count": 1 }
+              }
+            ],
+            "timeline": [
+              { "atMs": 0, "action": { "do": "trace", "node": "checkout" } },
+              {
+                "atMs": 0,
+                "action": { "do": "note", "text": "A shopper checks out. Follow this one order through Kafka, Snowflake and dbt, and back out to Kafka as a segment change.", "focus": ["storefront", "checkout", "orders-topic"], "pause": true }
+              },
+              {
+                "atMs": 1000,
+                "action": { "do": "note", "text": "The Snowflake Kafka connector streams the event into a RAW table within about a second. There is no nightly batch window.", "focus": ["orders-topic", "snowpipe", "raw"] }
+              },
+              {
+                "atMs": 2600,
+                "action": { "do": "note", "text": "dbt's incremental models turn the raw row into marts. This order moves the customer into a new segment.", "focus": ["raw", "dbt", "marts"] }
+              },
+              {
+                "atMs": 5600,
+                "action": { "do": "note", "text": "Reverse ETL compares the mart with its last sync and publishes only the changed row to customer-segments.v1.", "focus": ["marts", "reverse-etl", "segments-topic"] }
+              },
+              {
+                "atMs": 8000,
+                "action": { "do": "note", "text": "Personalization and the marketing tool consume the change like any other event, each in its own consumer group.", "focus": ["segments-topic", "personalization", "marketing"], "pause": true }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "raw",
+                "label": "The order lands in RAW",
+                "metric": { "node": "raw", "field": "processed" },
+                "op": "==",
+                "value": 1,
+                "when": "end"
+              },
+              {
+                "id": "marts",
+                "label": "dbt builds it into the marts",
+                "metric": { "node": "marts", "field": "processed" },
+                "op": "==",
+                "value": 1,
+                "when": "end"
+              },
+              {
+                "id": "cache",
+                "label": "Personalization caches the new segment",
+                "metric": { "node": "segment-cache", "field": "processed" },
+                "op": "==",
+                "value": 1,
+                "when": "end"
+              },
+              {
+                "id": "marketing",
+                "label": "The marketing tool receives it",
+                "metric": { "node": "marketing", "field": "processed" },
+                "op": "==",
+                "value": 1,
+                "when": "end"
+              }
+            ]
+          },
+          {
+            "id": "load-spike",
+            "title": "Warehouse load spike",
+            "description": "Month-end invoices spike to 600/s on top of steady orders and CDC; Kafka absorbs the burst while the loader catches up.",
+            "seed": 7,
+            "scale": 20,
+            "traffic": [
+              {
+                "id": "orders",
+                "node": "storefront",
+                "messageType": "CheckoutRequest",
+                "label": "Steady orders: 200/s",
+                "shape": { "kind": "constant", "ratePerSec": 200, "durationMs": 10000 }
+              },
+              {
+                "id": "invoices",
+                "node": "billing-webhooks",
+                "messageType": "InvoicePaid",
+                "label": "Month-end invoices peak at 600/s",
+                "shape": { "kind": "spike", "baseRate": 20, "peakRate": 600, "atMs": 3000, "peakMs": 3000, "durationMs": 10000 }
+              },
+              {
+                "id": "accounts",
+                "node": "accounts-db",
+                "messageType": "AccountChanged",
+                "label": "Account changes: 50/s",
+                "shape": { "kind": "constant", "ratePerSec": 50, "durationMs": 10000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 0,
+                "action": { "do": "note", "text": "Orders, invoices and account changes all stream into Snowflake. Each dot is 20 events. The connector loads about 600 rows a second.", "focus": ["orders-topic", "billing-topic", "accounts-topic", "snowpipe"] }
+              },
+              {
+                "atMs": 3000,
+                "action": { "do": "note", "text": "Month-end: invoice webhooks jump to 600 a second. The loader falls behind, and Kafka absorbs the burst as consumer lag.", "focus": ["billing-webhooks", "billing-topic", "snowpipe"], "pause": true }
+              },
+              {
+                "atMs": 6500,
+                "action": { "do": "note", "text": "Producers never slowed down. Once the spike passes, the connector drains the lag and RAW catches up.", "focus": ["snowpipe", "raw"] }
+              },
+              {
+                "atMs": 9000,
+                "action": { "do": "note", "text": "Only order-driven segment changes flow back out through reverse ETL. Invoices and account rows stay in the marts.", "focus": ["marts", "reverse-etl", "segments-topic"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "lag",
+                "label": "The loader falls behind during the spike",
+                "metric": { "node": "billing-topic", "field": "lag", "group": "snowflake-sink" },
+                "op": ">",
+                "value": 0,
+                "when": "at",
+                "atMs": 5500
+              },
+              {
+                "id": "drained",
+                "label": "Lag drains to zero",
+                "metric": { "node": "billing-topic", "field": "lag", "group": "snowflake-sink" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              },
+              {
+                "id": "raw",
+                "label": "All 4,440 events land in RAW",
+                "metric": { "node": "raw", "field": "processed" },
+                "op": "==",
+                "value": 4440,
+                "when": "end"
+              },
+              {
+                "id": "no-drop",
+                "label": "Nothing is dropped",
+                "metric": { "node": "billing-topic", "field": "dropped" },
+                "op": "==",
+                "value": 0,
+                "when": "always"
+              },
+              {
+                "id": "segments",
+                "label": "2,000 segment changes reach marketing",
+                "metric": { "node": "marketing", "field": "processed" },
+                "op": "==",
+                "value": 2000,
+                "when": "end"
+              }
+            ]
+          }
+        ]
+      },
+      "icons": {
+        "airflow": { "sha256": "37cca726072562fb6fade75fb22591d5dee56c3986da88ef9660f38826d7148f", "bytes": 2248 },
+        "client-browser": { "sha256": "c66b629864dc684d451c1c280107fe74cdd69ffb9d17be64673c90c7c92434f7", "bytes": 476 },
+        "dbt": { "sha256": "277cb9b85ff052ed1952ff33c11de68f9e347fef036090f1516d15b320b2b612", "bytes": 1922 },
+        "generic-cdc": { "sha256": "382caa8edcdab51b2cd4d020c4c91bb3e2805c9597bd1110427718e457c58934", "bytes": 578 },
+        "generic-marketing": { "sha256": "468fa563fc6c9936e65c930d765a18c149abcc539caaa185dff69de7482297fe", "bytes": 629 },
+        "generic-reverse-etl": { "sha256": "9255dd7462fe7205e2efe10f50357568482d6fd209d994cac9fbd9d48338d006", "bytes": 438 },
+        "generic-webhook": { "sha256": "f73d0eda19274f25a80e339ef1119c82f8aed73222085462017cf001b6c0ebed", "bytes": 595 },
+        "go": { "sha256": "f1f50429f38e0fa91b2c77cf600cee410845b58e30935a09cb206cfc88efff9c", "bytes": 2404 },
+        "java": { "sha256": "5267ef9b941ed3577d43b258c86bd6f218c30356da4c8edf6ef49a989845b337", "bytes": 2011 },
+        "kafka": { "sha256": "938a96212aef8da520eca3435f23c1a3304ce25fbfaf0e5712ce548353abc5ef", "bytes": 4092 },
+        "nodejs": { "sha256": "5d31625856d847dbfd22e16f061e65622e638f5621e5b49b8fec1fdde933de7e", "bytes": 1848 },
+        "postgresql": { "sha256": "95779d4aab758053d1839595cc9716e1eedb1021a015a00331e54268a5daf5c0", "bytes": 7732 },
+        "redis": { "sha256": "985d03e20de4a6caf7eccc34ba6b73e2a5bab3aa1dc1b0d3e0613b5342a1e30e", "bytes": 3257 },
+        "snowflake": { "sha256": "1c46c348a8d8022f5601aa7862264a8f6b4f61f8574e0d5a2d4e8769352a94f4", "bytes": 3098 },
+        "tableau": { "sha256": "85a540831948e7c77de1fce976ca45a7705f9317fd2294b088eaada95fe5020d", "bytes": 1507 }
+      },
+      "options": { "theme": "dark", "startSimulation": "one-order", "exportedOn": "2026-01-01" }
+    }
+  }
+}

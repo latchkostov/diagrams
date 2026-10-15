@@ -1,0 +1,68 @@
+{
+  "summary": "1 warning, 2 suggestions.",
+  "findings": {
+    "dead-letter:posting-sub": {
+      "title": "Failed messages are dropped",
+      "message": "Ledger worker fails messages in “Poison invoices”, and ledger-posting has no dead-letter queue: messages that run out of deliveries (10) are lost.",
+      "rationale": "A message that keeps failing is redelivered up to the broker's delivery limit, then goes to the broker's dead-letter route, or is dropped when there isn't one (or its filter doesn't take the message). A dead-letter queue keeps it to inspect and replay.",
+      "fix": { "label": "Add dead-letter queue" }
+    },
+    "dead-letter:approval-sub": {
+      "title": "approval-workflow has no dead-letter queue",
+      "message": "If Invoice approval can't handle a message, it's dropped after 10 deliveries. A command queue is where losing messages hurts most.",
+      "rationale": "A message that keeps failing is redelivered up to the broker's delivery limit, then goes to the broker's dead-letter route, or is dropped when there isn't one (or its filter doesn't take the message). A dead-letter queue keeps it to inspect and replay.",
+      "fix": { "label": "Add dead-letter queue" }
+    },
+    "no-reader:dlq": {
+      "title": "Dead letters pile up in invoice.commands DLQ",
+      "message": "Nothing in the diagram reads or alerts on invoice.commands DLQ: failed messages stay there until someone looks.",
+      "rationale": "A dead-letter queue has no automatic cleanup. Someone should be told when messages land there, and be able to replay them.",
+      "fix": { "label": "Add a reader…", "choice": "Pick what reads invoice.commands DLQ, then add it and connect dlq to it." }
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "dead-letter:posting-sub",
+        "rule": "dead-letter",
+        "severity": "warning",
+        "title": "Failed messages are dropped",
+        "message": "Ledger worker fails messages in “Poison invoices”, and ledger-posting has no dead-letter queue: messages that run out of deliveries (10) are lost.",
+        "targets": ["posting-sub", "worker"],
+        "fix": {
+          "label": "Add dead-letter queue",
+          "ops": [
+            { "op": "add_node", "kind": "generic.queue", "label": "ledger-posting DLQ", "key": "new-dlq" },
+            { "op": "connect", "from": "posting-sub", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
+            { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
+          ]
+        }
+      }
+    ],
+    "summary": "1 warning, 2 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding.",
+    "more": "2 more findings omitted; call check_diagram with rules to see them."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      {
+        "id": "dead-letter:posting-sub",
+        "rule": "dead-letter",
+        "severity": "warning",
+        "title": "Failed messages are dropped",
+        "message": "Ledger worker fails messages in “Poison invoices”, and ledger-posting has no dead-letter queue: messages that run out of deliveries (10) are lost.",
+        "targets": ["posting-sub", "worker"],
+        "fix": {
+          "label": "Add dead-letter queue",
+          "ops": [
+            { "op": "add_node", "kind": "generic.queue", "label": "ledger-posting DLQ", "key": "new-dlq" },
+            { "op": "connect", "from": "posting-sub", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
+            { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
+          ]
+        }
+      }
+    ],
+    "summary": "1 warning, 2 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
+}

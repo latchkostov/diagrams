@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "source": [40, 40], "worker": [400, 40], "vault\ninjected\tsecret": [760, 40] },
+    "TB": { "source": [40, 40], "worker": [40, 200], "vault\ninjected\tsecret": [40, 360] }
+  },
+  "tidy": { "source": [0, 120], "worker": [360, 120], "vault\ninjected\tsecret": [720, 120] },
+  "arrange": {
+    "alignLeft": { "source": [0, 120], "worker": [0, 120], "vault\ninjected\tsecret": [0, 120] },
+    "alignMiddle": { "source": [0, 120], "worker": [360, 120], "vault\ninjected\tsecret": [720, 120] },
+    "distributeH": { "source": [0, 120], "worker": [360, 120], "vault\ninjected\tsecret": [720, 120] },
+    "distributeV": { "source": [0, 120], "worker": [360, 120], "vault\ninjected\tsecret": [720, 120] },
+    "spreadH": { "source": [0, 120], "worker": [360, 120], "vault\ninjected\tsecret": [720, 120] },
+    "boundaryAround": { "x": -40, "y": 56, "width": 1033, "height": 176 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "source": [40, 40], "worker": [400, 40], "vault\ninjected\tsecret": [760, 40] },
+    "groups": {}
+  }
+}

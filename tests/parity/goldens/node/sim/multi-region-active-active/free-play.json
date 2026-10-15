@@ -1,0 +1,214 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "users": { "replicas": [1, 1, 0] },
+        "r53": { "replicas": [1, 1, 0] },
+        "alb-us": { "replicas": [1, 1, 0] },
+        "api-us": { "replicas": [6, 6, 0] },
+        "table-us": { "replicas": [1, 1, 0] },
+        "alb-eu": { "replicas": [1, 1, 0] },
+        "api-eu": { "replicas": [6, 6, 0] },
+        "table-eu": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 35,
+      "nodes": {
+        "users": { "processed": 200, "throughput": 20.40106029531822, "replicas": [1, 1, 0] },
+        "r53": { "processed": 196, "inFlight": 1, "throughput": 19.600926246289887, "replicas": [1, 1, 0] },
+        "alb-us": { "processed": 96, "throughput": 10.146257280787768, "replicas": [1, 1, 0] },
+        "api-us": { "processed": 93, "inFlight": 1, "throughput": 9.872798785247433, "replicas": [6, 6, 0] },
+        "table-us": { "processed": 174, "throughput": 20.29194454336292, "replicas": [1, 1, 0] },
+        "alb-eu": { "processed": 95, "throughput": 9.6513497214282, "replicas": [1, 1, 0] },
+        "api-eu": { "processed": 93, "inFlight": 1, "throughput": 10.325261437646775, "replicas": [6, 6, 0] },
+        "table-eu": { "processed": 174, "throughput": 20.18912241099399, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 35,
+      "nodes": {
+        "users": { "processed": 400, "throughput": 20.40198650202273, "replicas": [1, 1, 0] },
+        "r53": { "processed": 396, "inFlight": 1, "throughput": 19.602013159926404, "replicas": [1, 1, 0] },
+        "alb-us": { "processed": 196, "throughput": 10.146944489318747, "replicas": [1, 1, 0] },
+        "api-us": { "processed": 193, "inFlight": 1, "throughput": 9.911585613609374, "replicas": [6, 6, 0] },
+        "table-us": { "processed": 374, "throughput": 20.27008544047153, "replicas": [1, 1, 0] },
+        "alb-eu": { "processed": 195, "throughput": 9.652072163894001, "replicas": [1, 1, 0] },
+        "api-eu": { "processed": 193, "inFlight": 1, "throughput": 10.39601094371633, "replicas": [6, 6, 0] },
+        "table-eu": { "processed": 374, "throughput": 20.35141848877937, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 35,
+      "nodes": {
+        "users": { "processed": 600, "throughput": 20.401986544072436, "replicas": [1, 1, 0] },
+        "r53": { "processed": 596, "inFlight": 1, "throughput": 19.6020132092722, "replicas": [1, 1, 0] },
+        "alb-us": { "processed": 296, "throughput": 10.146944520517977, "replicas": [1, 1, 0] },
+        "api-us": { "processed": 293, "inFlight": 1, "throughput": 9.940557323596073, "replicas": [6, 6, 0] },
+        "table-us": { "processed": 574, "throughput": 20.327540081794446, "replicas": [1, 1, 0] },
+        "alb-eu": { "processed": 295, "throughput": 9.652072196692849, "replicas": [1, 1, 0] },
+        "api-eu": { "processed": 293, "inFlight": 1, "throughput": 10.440366262358612, "replicas": [6, 6, 0] },
+        "table-eu": { "processed": 574, "throughput": 20.32157197632964, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 35,
+      "nodes": {
+        "users": { "processed": 800, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+        "r53": { "processed": 796, "inFlight": 1, "throughput": 19.60201320927437, "replicas": [1, 1, 0] },
+        "alb-us": { "processed": 396, "throughput": 10.14694452051939, "replicas": [1, 1, 0] },
+        "api-us": { "processed": 393, "inFlight": 1, "throughput": 9.889244714460034, "replicas": [6, 6, 0] },
+        "table-us": { "processed": 774, "throughput": 20.32055837337632, "replicas": [1, 1, 0] },
+        "alb-eu": { "processed": 395, "throughput": 9.652072196694336, "replicas": [1, 1, 0] },
+        "api-eu": { "processed": 393, "inFlight": 1, "throughput": 10.479561123712054, "replicas": [6, 6, 0] },
+        "table-eu": { "processed": 774, "throughput": 20.377856429184604, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 35,
+      "nodes": {
+        "users": { "processed": 1000, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+        "r53": { "processed": 996, "inFlight": 1, "throughput": 19.60201320927437, "replicas": [1, 1, 0] },
+        "alb-us": { "processed": 496, "throughput": 10.14694452051939, "replicas": [1, 1, 0] },
+        "api-us": { "processed": 493, "inFlight": 1, "throughput": 9.890660278271426, "replicas": [6, 6, 0] },
+        "table-us": { "processed": 974, "throughput": 20.24558928719435, "replicas": [1, 1, 0] },
+        "alb-eu": { "processed": 495, "throughput": 9.652072196694336, "replicas": [1, 1, 0] },
+        "api-eu": { "processed": 492, "inFlight": 2, "throughput": 9.402500093942926, "replicas": [6, 6, 0] },
+        "table-eu": { "processed": 974, "throughput": 20.268786640600894, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 35,
+      "nodes": {
+        "users": { "processed": 1200, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+        "r53": { "processed": 1196, "inFlight": 1, "throughput": 19.60201320927437, "replicas": [1, 1, 0] },
+        "alb-us": { "processed": 596, "throughput": 10.14694452051939, "replicas": [1, 1, 0] },
+        "api-us": { "processed": 593, "inFlight": 1, "throughput": 9.874114796767138, "replicas": [6, 6, 0] },
+        "table-us": { "processed": 1174, "throughput": 20.293345451745733, "replicas": [1, 1, 0] },
+        "alb-eu": { "processed": 595, "throughput": 9.652072196694336, "replicas": [1, 1, 0] },
+        "api-eu": { "processed": 593, "inFlight": 1, "throughput": 10.396005278952059, "replicas": [6, 6, 0] },
+        "table-eu": { "processed": 1174, "throughput": 20.268765818083892, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 35,
+    "real": {
+      "users": { "processed": 1200, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+      "r53": { "processed": 1196, "inFlight": 1, "throughput": 19.60201320927437, "replicas": [1, 1, 0] },
+      "alb-us": { "processed": 596, "throughput": 10.14694452051939, "replicas": [1, 1, 0] },
+      "api-us": { "processed": 593, "inFlight": 1, "throughput": 9.874114796767138, "replicas": [6, 6, 0] },
+      "table-us": { "processed": 1174, "throughput": 20.293345451745733, "replicas": [1, 1, 0] },
+      "alb-eu": { "processed": 595, "throughput": 9.652072196694336, "replicas": [1, 1, 0] },
+      "api-eu": { "processed": 593, "inFlight": 1, "throughput": 10.396005278952059, "replicas": [6, 6, 0] },
+      "table-eu": { "processed": 1174, "throughput": 20.268765818083892, "replicas": [1, 1, 0] }
+    },
+    "edges": { "users-to-r53": 1197, "r53-to-alb-us": 596, "r53-to-alb-eu": 595, "alb-us-to-api-us": 594, "alb-eu-to-api-eu": 594, "api-us-to-table-us": 592, "api-eu-to-table-eu": 591, "table-us-to-table-eu": 583, "table-eu-to-table-us": 582 }
+  },
+  "events": {
+    "total": 13045,
+    "byKind": { "process": 7121, "deliver": 5924 },
+    "byNode": {
+      "users": { "process": 1200 },
+      "r53": { "deliver": 1197, "process": 1196 },
+      "alb-us": { "deliver": 596, "process": 596 },
+      "alb-eu": { "deliver": 595, "process": 595 },
+      "api-us": { "deliver": 594, "process": 593 },
+      "api-eu": { "deliver": 594, "process": 593 },
+      "table-us": { "deliver": 1174, "process": 1174 },
+      "table-eu": { "deliver": 1174, "process": 1174 }
+    },
+    "perSecond": [
+      "c8f82c582d66",
+      "53ce8e4650e8",
+      "369d7c781369",
+      "c388054b6047",
+      "68f4ac679d95",
+      "807134aeff8c",
+      "094de966f67c",
+      "c34ac139348f",
+      "cf7545d00d15",
+      "6fba1a11fb7a",
+      "07eca3795d85",
+      "080dd257cef9",
+      "2acc45adf973",
+      "40839b4204a8",
+      "3fb24cb098d1",
+      "c4d2371df177",
+      "b135affdf172",
+      "f396f16231b1",
+      "00143e297086",
+      "8ce4fd156721",
+      "b12c6115b08c",
+      "2c0cbfc5d14f",
+      "77d1a3f00efc",
+      "18a6692d030e",
+      "fd5c7fd55227",
+      "b01167d2d726",
+      "065006de4a79",
+      "e58489df30fd",
+      "d52b79b9d992",
+      "974c4ed07acc",
+      "520f8dffd47d",
+      "7a5f8e74f6bd",
+      "9e29dcd6ede8",
+      "7ce4ed120368",
+      "be0455db8328",
+      "5e6316258d2b",
+      "917851850c49",
+      "6832097a822b",
+      "e27a43a58597",
+      "9d51f429b2d3",
+      "e5f52e8d6847",
+      "28bddf02016a",
+      "e3f04b1663ae",
+      "abad757b7bf1",
+      "69cfa86b2486",
+      "2f5e43e8f93b",
+      "6e7b028f3e54",
+      "9e42dd91f95c",
+      "46f9d49f3f49",
+      "353449cb8f69",
+      "dc4075526290",
+      "297ff3c7ff65",
+      "a23dab7f4068",
+      "4aa425e279c2",
+      "1c1c32ed0180",
+      "7650f1d7a3f4",
+      "1b6963d82823",
+      "11d121070c7e",
+      "693abe7eedc0",
+      "b18c77c870fb",
+      "62061609106d"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 1165, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 1165, "min": 1720, "mean": 1744.8841201716739, "p50": 1740, "p90": 1760, "max": 1770 },
+    "waitMs": {
+      "r53": { "count": 1165, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "alb-us": { "count": 583, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "api-us": { "count": 583, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "alb-eu": { "count": 582, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "api-eu": { "count": 582, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "r53": { "count": 1165, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "alb-us": { "count": 583, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "api-us": { "count": 583, "min": 100, "mean": 124.95711835334477, "p50": 130, "p90": 140, "max": 150 },
+      "alb-eu": { "count": 582, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "api-eu": { "count": 582, "min": 100, "mean": 124.81099656357388, "p50": 120, "p90": 140, "max": 150 }
+    }
+  }
+}

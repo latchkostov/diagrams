@@ -1,0 +1,19 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Delivery losses",
+    "direction": "LR",
+    "nodes": [
+      { "id": "web", "stencil": "generic.service", "label": "Web", "x": 40, "y": 100 },
+      { "id": "q", "stencil": "generic.service", "label": "orders", "x": 400, "y": 100 },
+      { "id": "worker", "stencil": "generic.service", "label": "Worker", "x": 760, "y": 40 },
+      { "id": "dlq", "stencil": "generic.service", "label": "orders-dlq", "x": 760, "y": 160 }
+    ],
+    "edges": [
+      { "id": "e1-web-q", "from": "web", "to": "q", "kind": "async" },
+      { "id": "e2-q-worker", "from": "q", "to": "worker", "kind": "async" },
+      { "id": "e3-q-dlq", "from": "q", "to": "dlq", "kind": "async" }
+    ]
+  }
+}

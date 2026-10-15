@@ -1,0 +1,29 @@
+{
+  "all": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "capacity:worker-0", "rule": "capacity", "severity": "warning", "title": "Worker 0 is down", "message": "It's saved down, so it handles nothing: messages wait in Order events until it's back.", "targets": ["worker-0"] }
+      ],
+      "summary": "1 warning, 0 suggestions."
+    }
+  },
+  "warnings": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "capacity:worker-0", "rule": "capacity", "severity": "warning", "title": "Worker 0 is down", "message": "It's saved down, so it handles nothing: messages wait in Order events until it's back.", "targets": ["worker-0"] }
+      ],
+      "summary": "1 warning, 0 suggestions."
+    }
+  },
+  "oneRule": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "capacity:worker-0", "rule": "capacity", "severity": "warning", "title": "Worker 0 is down", "message": "It's saved down, so it handles nothing: messages wait in Order events until it's back.", "targets": ["worker-0"] }
+      ],
+      "summary": "1 warning, 0 suggestions."
+    }
+  }
+}

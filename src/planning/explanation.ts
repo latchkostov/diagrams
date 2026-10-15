@@ -12,6 +12,7 @@ export const explanationSimulation = (d: DiagramFile): Simulation => ({
   traffic: sourceTraffic(d),
 });
 export interface Explanation {
+  managed?: "serverless" | "api";
   status: NodeStatus;
   role: string;
   id: string;
@@ -60,7 +61,7 @@ export function explainNode(
   const topology = options.topology ?? compileTopology(d);
   const node = d.nodes.find((n) => n.id === id);
   const n = analysis.nodes[id];
-  if (!node || !n || (n.role !== "processor" && !brokerRole(n.role) && !n.device)) return undefined;
+  if (!node || !n || (n.role !== "processor" && !brokerRole(n.role) && !n.device && !n.managed)) return undefined;
   const index = explanationIndex(d, topology);
   const incoming = index.incoming.get(id) ?? [];
   const peers = new Map<string, { edge: string; node: string; label: string; via?: string; rate: number }>();
@@ -109,7 +110,8 @@ export function explainNode(
           Math.max(resolveMultiplier(sim.multipliers?.capacity), 1e-9),
       ),
     );
-  const min = n.role === "processor" && Number.isFinite(n.utilization) && n.capacity ? baseNeeded(1) : undefined;
+  const min =
+    !n.managed && n.role === "processor" && Number.isFinite(n.utilization) && n.capacity ? baseNeeded(1) : undefined;
   const chosen = changes?.find((c) => c.nodeId === id && c.key === "replicas");
   const targetReplicas =
     chosen?.key === "replicas"
@@ -118,6 +120,9 @@ export function explainNode(
         ? baseNeeded(target)
         : undefined;
   return {
+    ...(n.managed
+      ? { managed: props.profile.family === "serverless" ? ("serverless" as const) : ("api" as const) }
+      : {}),
     id,
     role: n.role,
     status: n.status ?? "up",

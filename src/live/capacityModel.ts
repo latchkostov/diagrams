@@ -308,7 +308,8 @@ function nodeText(n: NodeCapacity, status?: NodeHeat["status"], noReader = false
     return keeps(n.role)
       ? `Nobody reads this yet · ${formatRate(n.offered)} kept`
       : `No consumer · ${formatRate(n.offered)} waiting`;
-  if (n.capacity === Infinity) return `${formatRate(n.offered)} · no limit`;
+  if (n.capacity === Infinity) return n.managed ? t("admission.unknown") : `${formatRate(n.offered)} · no limit`;
+  if (n.managed && !Number.isFinite(n.utilization)) return t("admission.zeroCapacity", { rate: formatRate(n.offered) });
   if (!Number.isFinite(n.utilization)) return `No capacity · ${formatRate(n.offered)} waiting`;
   return `${formatUtilization(n.utilization)} · ${formatRate(n.offered)} of ${formatRate(n.capacity)}`;
 }
@@ -352,7 +353,7 @@ export function computeFix(
   const byId = new Map(d.nodes.map((n) => [n.id, n]));
   const changes: FixChange[] = sized.map((c) => ({ ...c, label: byId.get(c.nodeId)!.label }));
   const phrase = (c: FixChange) =>
-    c.key === "partitions" && d.planning?.revision === "p2"
+    c.key === "partitions" && (d.planning?.revision === "p2" || d.planning?.revision === "p3")
       ? t("broker.fix", {
           name: c.label,
           kind: assignmentLabel(baseProps(d, byId.get(c.nodeId)!, sim).broker),
@@ -398,7 +399,7 @@ export function capacityView(d: DiagramFile, sim: Simulation, status?: RunStatus
     feeds.get(id)?.map((b) => byId.get(b)?.label || b) ?? undefined;
   for (const [id, n] of Object.entries(analysis.nodes)) {
     // A network device is a gateway with a real ceiling (its datasheet's throughput).
-    const modeled = isModeled(n.role) || !!n.device;
+    const modeled = isModeled(n.role) || !!n.device || !!n.managed;
     const st = byId.has(id) ? nodeStatus(byId.get(id)!, sim, status) : undefined;
     // A broker with no route out: nothing consumes it (dead-letter routes don't read it either).
     const noReader = BROKERS.has(n.role) && !routes.get(id)?.length;
@@ -446,20 +447,21 @@ export function capacityView(d: DiagramFile, sim: Simulation, status?: RunStatus
     if (busiest && (busiest.level === "over" || busiest.level === "hot"))
       detail += ` ${busiest.label} is ${busiest.level === "over" ? "over" : "near"} capacity too: ${busiest.text}.`;
   } else if (!top) {
-    headline = "No traffic to analyze";
-    detail = "Set a rate on an entry point to see where it backs up.";
+    const unknown = Object.values(nodes).some((n) => n.managed && n.offered > 0 && n.capacity === Infinity);
+    headline = unknown ? t("admission.unknownShort") : "No traffic to analyze";
+    detail = unknown ? t("admission.unknown") : "Set a rate on an entry point to see where it backs up.";
   } else if (top.noReader) {
     // Not "can't keep up": nothing reads it. Partitions only cap the consumers in a group, so they can't help.
     headline = `Nobody reads ${top.label}`;
     detail = keeps(top.role)
-      ? d.planning?.revision === "p2"
+      ? d.planning?.revision === "p2" || d.planning?.revision === "p3"
         ? t("broker.noReader")
         : "It keeps what's published, but nothing consumes it. Partitions can't change that: add a consumer."
       : "Messages wait in it until a consumer takes them.";
     addConsumer = top.id;
   } else if (!Number.isFinite(top.utilization)) {
-    headline = `${top.label} can't keep up at all`;
-    detail = "Its consumers can't take any of its messages.";
+    headline = top.managed ? t("admission.zeroHeadline", { label: top.label }) : `${top.label} can't keep up at all`;
+    detail = top.managed ? t("admission.zeroDetail") : "Its consumers can't take any of its messages.";
   } else if (top.idleReplicas > 0 && top.level !== "ok") {
     headline = `${top.label}: ${top.idleReplicas} of ${top.replicas} replicas idle`;
     detail = top.assignment
@@ -468,7 +470,7 @@ export function capacityView(d: DiagramFile, sim: Simulation, status?: RunStatus
   } else if (top.level === "over" || top.level === "hot") {
     const more = over.length > 1 ? ` and ${over.length - 1} more` : "";
     headline = `${top.label}${more} ${over.length > 1 ? "are" : "is"} ${top.level === "over" ? "over" : "near"} capacity`;
-    detail = top.text;
+    detail = top.managed ? `${top.text}. ${t("admission.reduce")}` : top.text;
   } else if (top.level === "warn") {
     headline = `${top.label} is busy`;
     detail = `${top.text}. Still some headroom.`;
@@ -544,7 +546,7 @@ export function partitionsNotes(d: DiagramFile, sim: Simulation | null, inputs: 
     if (!groups.length) {
       notes.set(
         node.id,
-        d.planning?.revision === "p2"
+        d.planning?.revision === "p2" || d.planning?.revision === "p3"
           ? t("broker.noReader")
           : "Nobody reads it yet, so more partitions change nothing.",
       );
@@ -556,7 +558,7 @@ export function partitionsNotes(d: DiagramFile, sim: Simulation | null, inputs: 
     const which = groups.length > 1 ? "Its largest consumer group has" : "Its consumer group has";
     notes.set(
       node.id,
-      d.planning?.revision === "p2"
+      d.planning?.revision === "p2" || d.planning?.revision === "p3"
         ? t("broker.assignmentNote")
         : `${which} ${most} ${most === 1 ? "replica" : "replicas"}: partitions past ${most} add no speed.`,
     );
@@ -607,7 +609,7 @@ export function selectRows(
   const roleIds = (pred: (r: SimRole) => boolean) => d.nodes.filter((n) => pred(roleOf(n))).map((n) => n.id);
   return {
     entries: [...entries],
-    services: pick(roleIds((r) => r === "processor")),
+    services: pick(roleIds((r) => r === "processor").filter((id) => !view.nodes[id]?.managed)),
     brokers: pick(roleIds((r) => BROKERS.has(r))),
     hidden,
   };
@@ -747,7 +749,11 @@ export function freePlaySaveProps(d: DiagramFile, inputs: LiveInputs): Record<st
     for (const n of d.nodes) {
       // Capacity × scales what has capacity in units: a service's replicas and a network device's units.
       const props = baseProps(d, n, null, inputs.props[n.id]);
-      if (roleOf(n) !== "processor" && !props.device) continue;
+      if (
+        (props.admission && props.admission.fixedSlotsPerReplica === undefined) ||
+        (roleOf(n) !== "processor" && !props.device)
+      )
+        continue;
       const replicas = Math.max(1, Math.round(props.replicas * capacity));
       out[n.id] = { ...out[n.id], replicas };
     }

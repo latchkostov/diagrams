@@ -1,5 +1,47 @@
 # Design review
 
+## Self-hosting review fixes (2026-10-14)
+
+Scoped source review found no blocking UX issues. Copied embed and share URLs use the prepared deployment
+directory on deep fallback routes. Proxy redirects preserve the public path. No controls, layout changes or
+focus targets were added; existing primary actions and chrome budgets remain intact. Hosting documentation
+explains native Pages fallback and its asset precedence. This was a source review; production browser
+regressions are verified separately.
+
+## Round 42: Planning P3 final review fixes (2026-10-14)
+
+The designer's scoped source review covered managed admission fields, bulk selection applicability,
+and Inputs & capacity wording. Single and bulk editing share applicable fields and patch mappings;
+differing values say Mixed, and controls absent from any selected managed node are hidden. Automatic
+functions hide fixed-fleet concurrency. Existing preset and Advanced placement remain, with no new
+global controls. Invalid mixed edits explicitly retain Mixed values. Managed services are excluded
+before row limits and hidden counts. Zero capacity describes rejected calls and the admission budget.
+
+No blocking source-review concerns were found. The 1280 × 800 production bulk screenshot keeps
+labels, fields, Emits and actions inside the existing inspector without overlap. Production browser
+verification is recorded in
+[the final review dispositions](research/planning-p3-final-review.md). This scoped review does not
+replace a screen-reader or whole-app walkthrough. Four new messages use the established English
+fallback outside English; existing translations are retained.
+
+## Round 41: Planning P3 review fixes (2026-10-14)
+
+Scoped source and production screenshot review preserves the chrome budget: no toolbar controls
+were added. Managed processors reuse the existing Emits editor inside Advanced, while the
+main admission fields stay unchanged. Numeric draft feedback appears only for invalid input,
+names the range/step and retained value, and is associated with its input and status announcement.
+The production screenshot shows the complete two-line message without clipping after scrolling
+that field into view. Browser checks cover editing/removing Emits and independent per-field Undo.
+
+Arabic and expanded pseudo-locale controls fit at 1280 × 800 without horizontal overflow.
+The existing inspector scrolls for its deeper settings. This was a scoped review of the affected
+surfaces, not a whole-app visual or screen-reader audit. New validation messages currently use
+English fallback outside English; existing P3 translations are retained.
+
+All 17 review findings are accepted, including overlapping code/coverage findings. Dispositions,
+alternatives declined and deliberate regression evidence are recorded in
+[Planning P3 review fixes](research/planning-p3-review-fixes.md).
+
 ## Round 40: stencil catalog review fixes (2026-10-14)
 
 The required designer-agent source and production screenshot review found no remaining actionable UX
@@ -3921,3 +3963,43 @@ Ctrl+K, the stencil rail, gallery and editing feedback. No controls were added. 
 identities, focus and undo paths remain intact; localized labels, wrapping and RTL navigation agree.
 The slim i18n entry keeps the typed API in its React-free core, and connection creation retains P1's defaults.
 This was a source review, not a whole-app browser or screenshot audit; production e2e results are reported separately.
+
+## Round 38 — Planning P3: managed admission (2026-10-14)
+
+Designer-agent review covered the P3 source and five production screenshots, followed by the
+engineer's screenshot verification at 1280 × 800. The preset is followed by at most four main
+controls. Scope/scaling details use Advanced, and no global chrome or ineffective caller retry/
+deadline button was added. Unknown limits are visible in the controls and explanation. Rejected
+traffic has its own neutral badge, separate from red failures/losses and firewall blocks.
+
+Accepted fixes: label the rate as local, show the inherited account rate separately, and leave the
+local input empty until configured. A zero local rate is rejected without removing an existing
+budget. Format preset numbers/units for the selected language; remove duplicate account scope
+hints. Automatic Lambda no longer claims its old replica/slot pool; it reports the allocation.
+A short Auto selector keeps the instant-scaling assumption in a wrapped explanation. Translated rejection labels
+fit the event column; temporarily restoring its fixed width makes the German regression fail.
+
+| Production screenshot                                        | Review                                                                                |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| [Stripe](research/planning-p3/p3-stripe.png)                 | Preset, four controls and account evidence; local overrides preserve the account cap. |
+| [Live rejections](research/planning-p3/p3-live.png)          | Rejected counts stay separate; caller failures remain zero.                           |
+| [Unknown PayPal limits](research/planning-p3/p3-unknown.png) | No numeric or unlimited promise. Iterable shares this unknown-limit path.             |
+| [Arabic](research/planning-p3/p3-ar.png)                     | Controls mirror; diagram direction stays intact; no horizontal overflow.              |
+| [Pseudo-locale](research/planning-p3/p3-en-XA.png)           | Expanded labels wrap within the inspector.                                            |
+
+This was a scoped source/screenshot review, not a new screen-reader or whole-app manual walkthrough.
+The requested production E2E suites cover the surrounding editing, Live, capacity, Checks, network,
+planning and language workflows. Existing P1 prose still falls back to English; P3 copy is translated
+in all 37 catalogs. Rejected or deferred: SaaS replicas (wrong planning lever), guessed vendor/model
+rates (unsupported evidence), endpoint authoring/OpenAPI (P6/P7), and caller waits/deadlines/retries/
+cascades (item 10, outside this approval).
+
+P3's seven-angle code review found overlapping reports of leaked reservations after an outage,
+conflicting shared budgets, endpoint-duration capacity, internal key collisions, retained consumer
+attempts bypassing quotas, and implicit vendor limits during upgrades. Each was accepted, with a
+regression test and deliberate restoration of the faulty path. Keyboard drafts and inherited function
+settings now follow effective resolution. Zero-demand endpoint entries are ignored; incoming edges
+are indexed once for managed capacity. Per-attempt invariant compilation is ticketed in BACKLOG.
+Caller retry/deadline execution remains deferred. Final results are reported with the pushed commit.
+
+The final designer follow-up also identified unfinished native numeric input clearing a saved cap. A production keyboard regression reproduced it; invalid intermediate text now stays uncommitted and blur restores the saved value.

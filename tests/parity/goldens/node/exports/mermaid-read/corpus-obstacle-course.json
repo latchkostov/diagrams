@@ -1,0 +1,37 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Routing obstacle course",
+    "direction": "LR",
+    "groups": [
+      { "id": "g_g", "label": "Boundary across the middle", "tone": "neutral", "x": 40, "y": 40, "width": 300, "height": 176 }
+    ],
+    "nodes": [
+      { "id": "n0_0", "stencil": "service.node", "label": "Node 0.0", "sublabel": "col 0 · row 0", "x": 440, "y": 404 },
+      { "id": "n0_1", "stencil": "service.node", "label": "Node 0.1", "sublabel": "col 0 · row 1", "x": 80, "y": 104 },
+      { "id": "n0_2", "stencil": "service.node", "label": "Node 0.2", "sublabel": "col 0 · row 2", "x": 80, "y": 224 },
+      { "id": "n1_0", "stencil": "service.node", "label": "Node 1.0", "sublabel": "col 1 · row 0", "x": 80, "y": 464 },
+      { "id": "n1_1", "stencil": "service.node", "label": "Node 1.1", "sublabel": "col 1 · row 1", "x": 800, "y": 344 },
+      { "id": "n1_2", "stencil": "service.node", "label": "Node 1.2", "sublabel": "col 1 · row 2", "x": 80, "y": 584 },
+      { "id": "n2_0", "stencil": "service.node", "label": "Node 2.0", "sublabel": "col 2 · row 0", "x": 1160, "y": 224 },
+      { "id": "n2_1", "stencil": "service.node", "label": "Node 2.1", "sublabel": "col 2 · row 1", "x": 1160, "y": 464 },
+      { "id": "n2_2", "stencil": "service.node", "label": "Node 2.2", "sublabel": "col 2 · row 2", "x": 1160, "y": 344 },
+      { "id": "n3_0", "stencil": "service.node", "label": "Node 3.0", "sublabel": "col 3 · row 0", "x": 80, "y": 344 },
+      { "id": "n3_1", "stencil": "service.node", "label": "Node 3.1", "sublabel": "col 3 · row 1", "x": 440, "y": 284 },
+      { "id": "n3_2", "stencil": "service.node", "label": "Node 3.2", "sublabel": "col 3 · row 2", "x": 1520, "y": 344 }
+    ],
+    "edges": [
+      { "id": "e1-n0_1-n3_1", "from": "n0_1", "to": "n3_1", "label": "Skips every column", "kind": "async" },
+      { "id": "e2-n0_0-n2_2", "from": "n0_0", "to": "n2_2", "label": "Diagonal across", "kind": "async" },
+      { "id": "e3-n1_1-n2_0", "from": "n1_1", "to": "n2_0", "label": "Fan 0", "kind": "async" },
+      { "id": "e4-n1_1-n2_1", "from": "n1_1", "to": "n2_1", "label": "Fan 1", "kind": "async" },
+      { "id": "e5-n1_1-n2_2", "from": "n1_1", "to": "n2_2", "label": "Fan 2", "kind": "async" },
+      { "id": "e6-n0_0-n1_1", "from": "n0_0", "to": "n1_1", "label": "In 0", "kind": "sync" },
+      { "id": "e7-n0_2-n1_1", "from": "n0_2", "to": "n1_1", "label": "In 2", "kind": "sync" },
+      { "id": "e8-n3_0-n0_0", "from": "n3_0", "to": "n0_0", "label": "Back to the start", "kind": "sync" },
+      { "id": "e9-n3_2-n2_2", "from": "n3_2", "to": "n2_2", "label": "Reply", "kind": "async" },
+      { "id": "e10-n2_2-n3_2", "from": "n2_2", "to": "n3_2", "label": "Request", "kind": "sync" }
+    ]
+  }
+}

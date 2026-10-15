@@ -1,0 +1,37 @@
+{
+  "viewport": "translate(17.7596px, 203.82px) scale(0.55601)",
+  "nodes": {
+    "group:us": { "kind": "group", "box": "translate(760px, 160px) 1100×152", "text": "AWS · us-east-1" },
+    "group:eu": { "kind": "group", "box": "translate(760px, 480px) 1100×152", "text": "AWS · eu-west-1" },
+    "users": { "kind": "node", "box": "translate(40px, 360px) 220×72", "text": "Customers Americas and Europe" },
+    "r53": { "kind": "node", "box": "translate(420px, 360px) 223×72", "text": "Route 53 Latency · health checks" },
+    "alb-us": { "kind": "node", "box": "translate(800px, 200px) 220×72", "text": "Load balancer us-east-1 · 3 AZs" },
+    "api-us": { "kind": "node", "box": "translate(1180px, 200px) 229×72", "text": "Checkout API Fargate · sized for 100%" },
+    "table-us": { "kind": "node", "box": "translate(1560px, 200px) 220×72", "text": "Orders global table us-east-1 replica" },
+    "alb-eu": { "kind": "node", "box": "translate(800px, 520px) 220×72", "text": "Load balancer eu-west-1 · 3 AZs" },
+    "api-eu": { "kind": "node", "box": "translate(1180px, 520px) 229×72", "text": "Checkout API Fargate · sized for 100%" },
+    "table-eu": { "kind": "node", "box": "translate(1560px, 520px) 220×72", "text": "Orders global table eu-west-1 replica" }
+  },
+  "edges": {
+    "users-to-r53": "M260,396 L420,396",
+    "r53-to-alb-us": "M643,389 L698.5,389 Q708.5,389 708.5,379 L708.5,246 Q708.5,236 718.5,236 L800,236",
+    "r53-to-alb-eu": "M643,403 L698.5,403 Q708.5,403 708.5,413 L708.5,546 Q708.5,556 718.5,556 L800,556",
+    "alb-us-to-api-us": "M1020,236 L1180,236",
+    "alb-eu-to-api-eu": "M1020,556 L1180,556",
+    "api-us-to-table-us": "M1409,236 L1560,236",
+    "api-eu-to-table-eu": "M1409,556 L1560,556",
+    "table-us-to-table-eu": "M1670,272 L1670,520",
+    "table-eu-to-table-us": "M1780,556 L1808,556 Q1818,556 1818,546 L1818,246 Q1818,236 1808,236 L1780,236"
+  },
+  "labels": {
+    "users-to-r53": { "style": "transform: translate(-50%, -50%) translate(334px, 396px); --fe-w: 77px; --fe-h: 19px;", "text": "DNS lookup" },
+    "r53-to-alb-us": { "style": "transform: translate(-50%, -50%) translate(708.5px, 312.5px); --fe-w: 125px; --fe-h: 19px;", "text": "Nearest: us-east-1" },
+    "r53-to-alb-eu": { "style": "transform: translate(-50%, -50%) translate(708.5px, 479.5px); --fe-w: 125px; --fe-h: 19px;", "text": "Nearest: eu-west-1" },
+    "alb-us-to-api-us": { "style": "transform: translate(-50%, -50%) translate(1094px, 236px); --fe-w: 47px; --fe-h: 19px;", "text": "HTTPS" },
+    "alb-eu-to-api-eu": { "style": "transform: translate(-50%, -50%) translate(1094px, 556px); --fe-w: 47px; --fe-h: 19px;", "text": "HTTPS" },
+    "api-us-to-table-us": { "style": "transform: translate(-50%, -50%) translate(1478.5px, 236px); --fe-w: 83px; --fe-h: 19px;", "text": "Local write" },
+    "api-eu-to-table-eu": { "style": "transform: translate(-50%, -50%) translate(1478.5px, 556px); --fe-w: 83px; --fe-h: 19px;", "text": "Local write" },
+    "table-us-to-table-eu": { "style": "transform: translate(-50%, -50%) translate(1670px, 390px); --fe-w: 113px; --fe-h: 19px;", "text": "Replicate · ~1 s" },
+    "table-eu-to-table-us": { "style": "transform: translate(-50%, -50%) translate(1818px, 396px); --fe-w: 113px; --fe-h: 19px;", "text": "Replicate · ~1 s" }
+  }
+}

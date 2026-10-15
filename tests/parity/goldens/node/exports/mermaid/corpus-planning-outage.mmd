@@ -1,0 +1,13 @@
+---
+title: Planning: shared capacity
+---
+flowchart LR
+  checkout(["Checkout"])
+  orders["Orders"]
+  queue["Queue"]
+  other["Other"]
+  checkout -.-> queue
+  queue -.-> orders
+  queue -.-> other
+  linkStyle 0,1,2 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"nodes":{"checkout":["checkout","client.browser"],"orders":["orders","service.dotnet"],"queue":["queue","generic.queue"],"other":["other","service.dotnet"]},"edges":["in","one","two"],"relations":{}}

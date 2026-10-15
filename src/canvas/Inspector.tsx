@@ -72,6 +72,8 @@ import {
 } from "../stencils/netDevices";
 import { formatCount } from "../live/format";
 import { DEFAULT_TRAVEL_MS } from "../sim/topology";
+import { managedKind } from "../model/admissionPresets";
+import { AdmissionFields, BulkAdmissionFields } from "../planning/lazy";
 import { nodeSimFields, edgeSimFields, inertNodeProps } from "./simFieldRules";
 import { SIM_LIMITS } from "../interop/native";
 import { t, useLocale } from "../i18n";
@@ -451,6 +453,7 @@ function NodePanel({
   const [picker, setPicker] = useState<{ x: number; y: number } | null>(null);
   const broker = brokerSpec(node.data.stencil, role, meta.planning);
   const simFields = nodeSimFields(role, node.data.stencil, meta.planning);
+  const managed = meta.planning?.revision === "p3" && !!managedKind(node.data.stencil);
   const device = role === "gateway" ? deviceSpec(node.data.stencil) : undefined;
   // What Custom properties leaves out: only the settings a control here shows.
   const hidden = !device ? SIM_KEYS : device.kind === "adc" ? ADC_KEYS : DEVICE_KEYS;
@@ -560,7 +563,25 @@ function NodePanel({
             {assignmentLabel(broker)} · {t("broker.fanout")}
           </p>
         )}
-        {device ? (
+        {managed ? (
+          <AdmissionFields
+            stencil={node.data.stencil}
+            props={props}
+            set={(patch, key) => editor.setNodeProps(node.id, patch, key ? merge(key) : undefined)}
+            advanced={
+              simFields.includes("emits") ? (
+                <SimInput
+                  name="emits"
+                  field={SIM_FIELDS.emits!}
+                  value={props.emits}
+                  onChange={(value) =>
+                    editor.setNodeProps(node.id, { emits: value as NodeSimProps["emits"] }, merge("emits"))
+                  }
+                />
+              ) : undefined
+            }
+          />
+        ) : device ? (
           <DeviceFields
             spec={device}
             props={props}
@@ -577,7 +598,10 @@ function NodePanel({
                       ...SIM_FIELDS[k]!,
                       label: assignmentLabel(broker),
                       hint: t("broker.assignmentHint"),
-                      note: meta.planning?.revision === "p2" ? undefined : SIM_FIELDS[k]!.note,
+                      note:
+                        meta.planning?.revision === "p2" || meta.planning?.revision === "p3"
+                          ? undefined
+                          : SIM_FIELDS[k]!.note,
                     }
                   : k === "replicas"
                     ? { ...SIM_FIELDS[k]!, hint: t("broker.replicaHint") }
@@ -598,7 +622,7 @@ function NodePanel({
         ) : (
           <p className="insp-note">This stencil is decorative and doesn't take part in the simulation.</p>
         )}
-        {inertNodeProps(role, props).map(({ key, why }) => (
+        {(managed ? [] : inertNodeProps(role, props)).map(({ key, why }) => (
           <InertNote
             key={key}
             name={key}
@@ -1571,6 +1595,7 @@ function BulkNodes({ editor, selectedNodes, groups, meta }: InspectorProps) {
     ),
   ].join(" / ");
   const mergeKey = ids.join(",");
+  const managed = meta.planning?.revision === "p3" && selectedNodes.every((node) => !!managedKind(node.data.stencil));
   return (
     <>
       <Section title={plural(ids.length, "node", "nodes")}>
@@ -1622,8 +1647,20 @@ function BulkNodes({ editor, selectedNodes, groups, meta }: InspectorProps) {
           </select>
         </BulkRow>
       </Section>
-      {simKeys.length > 0 && (
+      {(simKeys.length > 0 || managed) && (
         <Disclosure id="multi-simulation" title="Simulation">
+          {managed && (
+            <BulkAdmissionFields
+              nodes={selectedNodes.map((node) => ({
+                id: node.id,
+                stencil: node.data.stencil,
+                props: node.data.props ?? {},
+              }))}
+              set={(patches, key) =>
+                editor.setNodesProps(ids, (_props, id) => patches[id], { merge: `bulk:${mergeKey}:${key}` })
+              }
+            />
+          )}
           {simKeys.map((k) => {
             const value = shared(selectedNodes, (n) => showSim(SIM_FIELDS[k]!.kind, n.data.props?.[k]));
             const first = selectedNodes[0].data.props?.[k];

@@ -1,0 +1,53 @@
+{
+  "detected": "drawio",
+  "outcome": {
+    "ok": "pages",
+    "format": "drawio",
+    "pages": [{ "name": "Cluster", "index": 0 }, { "name": "Page-2", "index": 1 }]
+  },
+  "pages": {
+    "Cluster": {
+      "ok": true,
+      "format": "drawio",
+      "warnings": [],
+      "report": null,
+      "reportEnglish": {},
+      "replay": null,
+      "checks": ["warning no-reader:q"],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Cluster",
+        "groups": [
+          { "id": "ns", "label": "Namespace: checkout", "tone": "k8s", "x": 130, "y": 60, "width": 620, "height": 300 }
+        ],
+        "nodes": [
+          { "id": "dep", "stencil": "k8s.deployment", "label": "checkout", "x": 170, "y": 170, "group": "ns" },
+          { "id": "pod", "stencil": "k8s.pod", "label": "worker", "x": 490, "y": 170, "group": "ns" },
+          { "id": "q", "stencil": "rabbitmq.queue", "label": "RabbitMQ jobs", "x": 830, "y": 170 }
+        ],
+        "edges": [
+          { "id": "a", "from": "dep", "to": "pod", "label": "spawn", "kind": "sync" },
+          { "id": "b", "from": "pod", "to": "q", "kind": "async" }
+        ]
+      }
+    },
+    "Page-2": {
+      "ok": true,
+      "format": "drawio",
+      "warnings": [],
+      "report": null,
+      "reportEnglish": {},
+      "replay": null,
+      "checks": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "two pages compressed (Page-2)",
+        "nodes": [
+          { "id": "s3", "stencil": "aws.s3", "label": "Exports", "x": 30, "y": 100 },
+          { "id": "sqs", "stencil": "aws.sqs", "label": "Export jobs", "x": 350, "y": 100 }
+        ],
+        "edges": [{ "id": "c", "from": "sqs", "to": "s3", "kind": "async" }]
+      }
+    }
+  }
+}

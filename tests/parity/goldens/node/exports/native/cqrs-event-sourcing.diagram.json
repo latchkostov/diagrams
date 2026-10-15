@@ -1,0 +1,610 @@
+{
+  "format": "diagrams/v1",
+  "title": "CQRS with event sourcing",
+  "description": "Commands append events to an event store; projections build read models that queries hit, and an outbound feed shares events.",
+  "direction": "LR",
+  "groups": [
+    {
+      "id": "write",
+      "label": "Write side",
+      "tone": "neutral",
+      "x": 760,
+      "y": 120,
+      "width": 720,
+      "height": 152
+    },
+    {
+      "id": "read",
+      "label": "Read side",
+      "tone": "neutral",
+      "x": 760,
+      "y": 360,
+      "width": 1100,
+      "height": 392
+    }
+  ],
+  "nodes": [
+    {
+      "id": "app",
+      "stencil": "client.mobile",
+      "label": "Banking app",
+      "sublabel": "Commands and queries",
+      "x": 40,
+      "y": 340,
+      "props": {
+        "ratePerSec": 20,
+        "messageType": "Deposit"
+      }
+    },
+    {
+      "id": "gateway",
+      "stencil": "kong",
+      "label": "API gateway",
+      "sublabel": "Routes by verb",
+      "x": 420,
+      "y": 340,
+      "props": {
+        "latencyMs": 2
+      }
+    },
+    {
+      "id": "command-handler",
+      "stencil": "service.dotnet",
+      "label": "Command handler",
+      "sublabel": "Load · decide · append",
+      "x": 800,
+      "y": 160,
+      "group": "write",
+      "props": {
+        "concurrency": 32,
+        "latencyMs": 60,
+        "emits": {
+          "Deposit": "MoneyDeposited",
+          "Withdraw": "MoneyWithdrawn"
+        }
+      }
+    },
+    {
+      "id": "event-store",
+      "stencil": "generic.event-store",
+      "label": "Event store",
+      "sublabel": "Stream per account",
+      "x": 1180,
+      "y": 160,
+      "group": "write",
+      "props": {
+        "partitions": 16
+      }
+    },
+    {
+      "id": "publisher",
+      "stencil": "kafka.connect",
+      "label": "Event publisher",
+      "sublabel": "group: integration",
+      "x": 1560,
+      "y": 160,
+      "props": {
+        "concurrency": 32,
+        "latencyMs": 50
+      }
+    },
+    {
+      "id": "integration-topic",
+      "stencil": "kafka.topic",
+      "label": "accounts.events.v1",
+      "sublabel": "Public contract",
+      "x": 1940,
+      "y": 160,
+      "props": {
+        "partitions": 16
+      }
+    },
+    {
+      "id": "query-api",
+      "stencil": "service.node",
+      "label": "Query API",
+      "sublabel": "Reads only",
+      "x": 800,
+      "y": 520,
+      "group": "read",
+      "props": {
+        "concurrency": 64,
+        "latencyMs": 20
+      }
+    },
+    {
+      "id": "balances-db",
+      "stencil": "postgres",
+      "label": "Balances",
+      "sublabel": "Read model · one row each",
+      "x": 1180,
+      "y": 400,
+      "group": "read",
+      "props": {
+        "latencyMs": 2
+      }
+    },
+    {
+      "id": "statements",
+      "stencil": "elasticsearch",
+      "label": "Statements",
+      "sublabel": "Read model · searchable",
+      "x": 1180,
+      "y": 640,
+      "group": "read",
+      "props": {
+        "latencyMs": 2
+      }
+    },
+    {
+      "id": "balance-proj",
+      "stencil": "generic.projection",
+      "label": "Balance projection",
+      "sublabel": "group: balances",
+      "x": 1560,
+      "y": 400,
+      "group": "read",
+      "props": {
+        "concurrency": 32,
+        "latencyMs": 40
+      }
+    },
+    {
+      "id": "statement-proj",
+      "stencil": "generic.projection",
+      "label": "Statement projection",
+      "sublabel": "group: statements",
+      "x": 1560,
+      "y": 640,
+      "group": "read",
+      "props": {
+        "concurrency": 32,
+        "latencyMs": 80
+      }
+    },
+    {
+      "id": "fraud",
+      "stencil": "service.python",
+      "label": "Fraud scoring",
+      "sublabel": "Another team · group: fraud",
+      "x": 1940,
+      "y": 40,
+      "props": {
+        "concurrency": 32,
+        "latencyMs": 60
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "app-to-gateway",
+      "from": "app",
+      "to": "gateway",
+      "label": "HTTPS",
+      "kind": "sync",
+      "props": {
+        "travelMs": 200
+      }
+    },
+    {
+      "id": "gateway-to-command-handler",
+      "from": "gateway",
+      "to": "command-handler",
+      "label": "POST · commands",
+      "kind": "sync",
+      "props": {
+        "travelMs": 200,
+        "filter": [
+          "Deposit",
+          "Withdraw"
+        ]
+      }
+    },
+    {
+      "id": "gateway-to-query-api",
+      "from": "gateway",
+      "to": "query-api",
+      "label": "GET · queries",
+      "kind": "sync",
+      "props": {
+        "travelMs": 200,
+        "filter": [
+          "Get*"
+        ]
+      }
+    },
+    {
+      "id": "command-handler-to-event-store",
+      "from": "command-handler",
+      "to": "event-store",
+      "label": "Append · expectedVersion",
+      "kind": "sync",
+      "props": {
+        "travelMs": 200
+      }
+    },
+    {
+      "id": "event-store-to-publisher",
+      "from": "event-store",
+      "to": "publisher",
+      "label": "Subscription",
+      "kind": "async",
+      "props": {
+        "travelMs": 300,
+        "group": "integration"
+      }
+    },
+    {
+      "id": "publisher-to-integration-topic",
+      "from": "publisher",
+      "to": "integration-topic",
+      "label": "Integration events",
+      "kind": "async",
+      "props": {
+        "travelMs": 300
+      }
+    },
+    {
+      "id": "event-store-to-balance-proj",
+      "from": "event-store",
+      "to": "balance-proj",
+      "kind": "async",
+      "props": {
+        "travelMs": 300,
+        "group": "balances"
+      }
+    },
+    {
+      "id": "event-store-to-statement-proj",
+      "from": "event-store",
+      "to": "statement-proj",
+      "kind": "async",
+      "props": {
+        "travelMs": 300,
+        "group": "statements"
+      }
+    },
+    {
+      "id": "balance-proj-to-balances-db",
+      "from": "balance-proj",
+      "to": "balances-db",
+      "label": "Upsert balance",
+      "kind": "sync",
+      "props": {
+        "travelMs": 200
+      }
+    },
+    {
+      "id": "statement-proj-to-statements",
+      "from": "statement-proj",
+      "to": "statements",
+      "label": "Index entry",
+      "kind": "sync",
+      "props": {
+        "travelMs": 200
+      }
+    },
+    {
+      "id": "query-api-to-balances-db",
+      "from": "query-api",
+      "to": "balances-db",
+      "label": "GetBalance",
+      "kind": "sync",
+      "props": {
+        "travelMs": 200,
+        "filter": [
+          "GetBalance"
+        ]
+      }
+    },
+    {
+      "id": "query-api-to-statements",
+      "from": "query-api",
+      "to": "statements",
+      "label": "GetStatement",
+      "kind": "sync",
+      "props": {
+        "travelMs": 200,
+        "filter": [
+          "GetStatement"
+        ]
+      }
+    },
+    {
+      "id": "integration-topic-to-fraud",
+      "from": "integration-topic",
+      "to": "fraud",
+      "label": "group: fraud",
+      "kind": "async",
+      "props": {
+        "travelMs": 300,
+        "group": "fraud"
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "busy-day",
+      "title": "Payday: reads outnumber writes",
+      "description": "400 commands and 1,600 queries; writes and reads scale independently.",
+      "seed": 7,
+      "scale": 5,
+      "traffic": [
+        {
+          "id": "deposits",
+          "node": "app",
+          "messageType": "Deposit",
+          "label": "Deposits: 40/s",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 40,
+            "durationMs": 8000
+          }
+        },
+        {
+          "id": "withdrawals",
+          "node": "app",
+          "messageType": "Withdraw",
+          "label": "Withdrawals: 10/s",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 10,
+            "durationMs": 8000
+          }
+        },
+        {
+          "id": "balances",
+          "node": "app",
+          "messageType": "GetBalance",
+          "label": "Balance checks: 150/s",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 150,
+            "durationMs": 8000
+          }
+        },
+        {
+          "id": "statements",
+          "node": "app",
+          "messageType": "GetStatement",
+          "label": "Statement searches: 50/s",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 50,
+            "durationMs": 8000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 0,
+          "action": {
+            "do": "note",
+            "text": "Payday. Commands go to the write side; queries never touch it. Each dot is five requests.",
+            "focus": [
+              "gateway",
+              "command-handler",
+              "query-api"
+            ]
+          }
+        },
+        {
+          "atMs": 2500,
+          "action": {
+            "do": "note",
+            "text": "The event store is the source of truth: an append-only log of what happened. Each projection keeps its own position in it.",
+            "focus": [
+              "event-store",
+              "balance-proj",
+              "statement-proj",
+              "publisher"
+            ],
+            "pause": true
+          }
+        },
+        {
+          "atMs": 6000,
+          "action": {
+            "do": "note",
+            "text": "Queries read denormalized tables, so reads stay fast however long an account's history grows.",
+            "focus": [
+              "query-api",
+              "balances-db",
+              "statements"
+            ]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "appended",
+          "label": "All 400 commands are appended",
+          "metric": {
+            "node": "event-store",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 400,
+          "when": "end"
+        },
+        {
+          "id": "published",
+          "label": "All 400 events are shared",
+          "metric": {
+            "node": "integration-topic",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 400,
+          "when": "end"
+        },
+        {
+          "id": "statements",
+          "label": "Statements: 400 entries + 400 searches",
+          "metric": {
+            "node": "statements",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 800,
+          "when": "end"
+        },
+        {
+          "id": "caught-up",
+          "label": "Projections catch up",
+          "metric": {
+            "node": "event-store",
+            "field": "lag"
+          },
+          "op": "==",
+          "value": 0,
+          "when": "end"
+        }
+      ]
+    },
+    {
+      "id": "rebuild",
+      "title": "Rebuild a read model",
+      "description": "A new statement projection replays 2,000 historical events while live traffic continues.",
+      "seed": 7,
+      "scale": 5,
+      "traffic": [
+        {
+          "id": "deposits",
+          "node": "app",
+          "messageType": "Deposit",
+          "label": "Deposits: 40/s",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 40,
+            "durationMs": 10000
+          }
+        },
+        {
+          "id": "balances",
+          "node": "app",
+          "messageType": "GetBalance",
+          "label": "Balance checks: 100/s",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 100,
+            "durationMs": 10000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 0,
+          "action": {
+            "do": "note",
+            "text": "Statements need a new field. Instead of migrating the index, we deploy a new projection and rebuild it from the log.",
+            "focus": [
+              "statement-proj",
+              "statements"
+            ]
+          }
+        },
+        {
+          "atMs": 2000,
+          "action": {
+            "do": "status",
+            "node": "statement-proj",
+            "status": "paused"
+          }
+        },
+        {
+          "atMs": 2000,
+          "action": {
+            "do": "note",
+            "text": "The old projection stops. New events wait in its subscription; balances and the public feed are unaffected.",
+            "focus": [
+              "event-store",
+              "statement-proj",
+              "balance-proj"
+            ]
+          }
+        },
+        {
+          "atMs": 4000,
+          "action": {
+            "do": "status",
+            "node": "statement-proj",
+            "status": "up"
+          }
+        },
+        {
+          "atMs": 4000,
+          "action": {
+            "do": "inject",
+            "node": "statement-proj",
+            "count": 2000,
+            "messageType": "MoneyDeposited",
+            "spreadMs": 500
+          }
+        },
+        {
+          "atMs": 4000,
+          "action": {
+            "do": "note",
+            "text": "Version 2 replays 2,000 historical events from position zero, then picks up the live ones. Statements are briefly stale; nothing is lost.",
+            "focus": [
+              "statement-proj",
+              "statements"
+            ],
+            "pause": true
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "behind",
+          "label": "Statements fall behind during the rebuild",
+          "metric": {
+            "node": "event-store",
+            "field": "lag",
+            "group": "statements"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "at",
+          "atMs": 5000
+        },
+        {
+          "id": "balances-current",
+          "label": "Balances keep up",
+          "metric": {
+            "node": "event-store",
+            "field": "lag",
+            "group": "balances"
+          },
+          "op": "<=",
+          "value": 40,
+          "when": "always"
+        },
+        {
+          "id": "rebuilt",
+          "label": "History and live events are indexed",
+          "metric": {
+            "node": "statements",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 2400,
+          "when": "end"
+        },
+        {
+          "id": "caught-up",
+          "label": "The new projection catches up",
+          "metric": {
+            "node": "event-store",
+            "field": "lag",
+            "group": "statements"
+          },
+          "op": "==",
+          "value": 0,
+          "when": "end"
+        }
+      ]
+    }
+  ]
+}

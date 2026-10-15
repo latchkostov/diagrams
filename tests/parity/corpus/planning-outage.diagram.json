@@ -1,0 +1,89 @@
+{
+  "format": "diagrams/v1",
+  "title": "Planning: shared capacity",
+  "nodes": [
+    {
+      "id": "checkout",
+      "stencil": "client.browser",
+      "label": "Checkout",
+      "x": 0,
+      "y": 140,
+      "props": {
+        "ratePerSec": 6
+      }
+    },
+    {
+      "id": "orders",
+      "stencil": "service.dotnet",
+      "label": "Orders",
+      "x": 640,
+      "y": 140,
+      "props": {
+        "latencyMs": 4000,
+        "jitter": 0
+      }
+    },
+    {
+      "id": "queue",
+      "stencil": "generic.queue",
+      "label": "Queue",
+      "x": 320,
+      "y": 140
+    },
+    {
+      "id": "other",
+      "stencil": "service.dotnet",
+      "label": "Other",
+      "x": 640,
+      "y": 300,
+      "props": {
+        "latencyMs": 4000,
+        "jitter": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "in",
+      "from": "checkout",
+      "to": "queue"
+    },
+    {
+      "id": "one",
+      "from": "queue",
+      "to": "orders"
+    },
+    {
+      "id": "two",
+      "from": "queue",
+      "to": "other"
+    }
+  ],
+  "simulations": [
+    {
+      "id": "outage",
+      "title": "Outage",
+      "traffic": [
+        {
+          "id": "t",
+          "node": "checkout",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 6,
+            "durationMs": 60000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 0,
+          "action": {
+            "do": "status",
+            "node": "other",
+            "status": "down"
+          }
+        }
+      ]
+    }
+  ]
+}

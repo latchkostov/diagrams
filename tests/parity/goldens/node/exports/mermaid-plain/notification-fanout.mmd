@@ -1,0 +1,38 @@
+---
+title: Notification fan-out
+---
+flowchart LR
+  subgraph g_azure ["Azure · notifications"]
+    shipping["Shipping service<br/>Publishes OrderShipped"]
+    events["order-events<br/>Topic"]
+    preferences[("Preferences<br/>Channels · quiet hours")]
+    router["Notification router<br/>sub: notifications"]
+    email_q["email<br/>~90% opted in"]
+    sms_q["sms<br/>~30% opted in"]
+    push_q["push<br/>~70% have the app"]
+    email_sender["Email sender<br/>Templates · 500/s"]
+    sms_limiter["SMS rate limiter<br/>Token bucket · 50/s"]
+    push_sender["Push sender<br/>Batches of 500"]
+    key_vault["notify-kv<br/>Provider API keys"]
+  end
+  carrier(["Carrier tracking<br/>Parcel scanned"])
+  sendgrid(["SendGrid<br/>Email"])
+  twilio(["Twilio<br/>SMS"])
+  push(["FCM and APNs<br/>Mobile push"])
+  carrier -->|"Webhook"| shipping
+  shipping -.->|"OrderShipped"| events
+  events -.->|"Subscription"| router
+  router -->|"Read preferences"| preferences
+  router -.->|"If email"| email_q
+  router -.->|"If SMS"| sms_q
+  router -.->|"If push"| push_q
+  email_q -.-> email_sender
+  sms_q -.-> sms_limiter
+  push_q -.-> push_sender
+  email_sender -->|"Mail Send API"| sendgrid
+  sms_limiter -->|"Messages API"| twilio
+  push_sender -->|"Send"| push
+  email_sender -.->|"reads secrets"| key_vault
+  sms_limiter -.->|"reads secrets"| key_vault
+  linkStyle 1,2,4,5,6,7,8,9 stroke-dasharray: 6 4
+  linkStyle 13,14 stroke:#A6720C,stroke-width:1.25px,stroke-dasharray: 2 4

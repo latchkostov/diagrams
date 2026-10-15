@@ -1,0 +1,307 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "user": { "replicas": [1, 1, 0] },
+        "rag-api": { "replicas": [1, 1, 0] },
+        "cache": { "replicas": [1, 1, 0] },
+        "feedback": { "lag": { "evals": 0 }, "replicas": [1, 1, 0] },
+        "llm": { "replicas": [1, 1, 0] },
+        "vector-db": { "replicas": [1, 1, 0] },
+        "eval-job": { "replicas": [1, 1, 0] },
+        "quality": { "replicas": [1, 1, 0] },
+        "docs": { "replicas": [1, 1, 0] },
+        "ingest-q": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "embed-worker": { "replicas": [4, 4, 0] },
+        "embeddings": { "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 9,
+      "nodes": {
+        "user": { "processed": 20, "throughput": 2.528714056021835, "replicas": [1, 1, 0] },
+        "rag-api": { "processed": 19, "throughput": 2.1123059115465592, "replicas": [1, 1, 0] },
+        "cache": { "processed": 18, "throughput": 1.590788164733146, "replicas": [1, 1, 0] },
+        "feedback": {
+          "processed": 2,
+          "throughput": 0.0010044441661864992,
+          "lag": { "evals": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "llm": { "processed": 17, "inFlight": 3, "throughput": 2.0648711082840077, "replicas": [1, 1, 0] },
+        "vector-db": { "processed": 19, "throughput": 1.6099469131106752, "replicas": [1, 1, 0] },
+        "eval-job": { "processed": 2, "throughput": 0.0018774489164007436, "replicas": [1, 1, 0] },
+        "quality": { "processed": 2, "throughput": 0.002534290955577563, "replicas": [1, 1, 0] },
+        "docs": { "processed": 2, "throughput": 1.0017209943662089, "replicas": [1, 1, 0] },
+        "ingest-q": {
+          "processed": 1,
+          "throughput": 0.009049951925926022,
+          "lag": { "queue": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "embed-worker": { "processed": 1, "throughput": 0.015529779607332084, "replicas": [4, 4, 0] },
+        "embeddings": { "processed": 1, "throughput": 0.02270895739711155, "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 10,
+      "nodes": {
+        "user": { "processed": 40, "throughput": 2.528828859462367, "replicas": [1, 1, 0] },
+        "rag-api": { "processed": 39, "throughput": 2.127676455247174, "replicas": [1, 1, 0] },
+        "cache": { "processed": 38, "throughput": 1.5788355431613945, "replicas": [1, 1, 0] },
+        "feedback": { "processed": 6, "throughput": 0.3450670166215293, "lag": { "evals": 0 }, "replicas": [1, 1, 0] },
+        "llm": { "processed": 40, "inFlight": 4, "throughput": 3.0422218644602346, "replicas": [1, 1, 0] },
+        "vector-db": { "processed": 41, "throughput": 1.5975567409164733, "replicas": [1, 1, 0] },
+        "eval-job": { "processed": 6, "throughput": 0.6041050909763067, "replicas": [1, 1, 0] },
+        "quality": { "processed": 6, "throughput": 0.8154565777558688, "replicas": [1, 1, 0] },
+        "docs": { "processed": 4, "throughput": 1.0017664724289947, "replicas": [1, 1, 0] },
+        "ingest-q": {
+          "processed": 3,
+          "throughput": 0.009111340889528972,
+          "lag": { "queue": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "embed-worker": { "processed": 3, "throughput": 0.015175107965959491, "replicas": [4, 4, 0] },
+        "embeddings": { "processed": 3, "throughput": 0.022187326833315424, "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 11,
+      "nodes": {
+        "user": { "processed": 60, "throughput": 2.528828864674435, "replicas": [1, 1, 0] },
+        "rag-api": { "processed": 59, "throughput": 2.134525341712699, "replicas": [1, 1, 0] },
+        "cache": { "processed": 58, "throughput": 1.5767720655590725, "replicas": [1, 1, 0] },
+        "feedback": { "processed": 15, "throughput": 0.6209421736798282, "lag": { "evals": 0 }, "replicas": [1, 1, 0] },
+        "llm": { "processed": 68, "inFlight": 5, "throughput": 2.93314001597513, "replicas": [1, 1, 0] },
+        "vector-db": { "processed": 63, "throughput": 1.5960569393040744, "replicas": [1, 1, 0] },
+        "eval-job": { "processed": 15, "throughput": 1.1694515674632937, "replicas": [1, 1, 0] },
+        "quality": { "processed": 14, "throughput": 0.5325622800103115, "replicas": [1, 1, 0] },
+        "docs": { "processed": 6, "throughput": 1.0017664744936956, "replicas": [1, 1, 0] },
+        "ingest-q": {
+          "processed": 5,
+          "throughput": 0.009111343676583615,
+          "lag": { "queue": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "embed-worker": { "processed": 5, "throughput": 0.015632014843222554, "replicas": [4, 4, 0] },
+        "embeddings": { "processed": 5, "throughput": 0.021966545819144305, "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 10,
+      "nodes": {
+        "user": { "processed": 80, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "rag-api": { "processed": 79, "throughput": 2.1245592588939157, "replicas": [1, 1, 0] },
+        "cache": { "processed": 78, "throughput": 1.59570275209928, "replicas": [1, 1, 0] },
+        "feedback": { "processed": 18, "throughput": 0.2605678375051499, "lag": { "evals": 0 }, "replicas": [1, 1, 0] },
+        "llm": { "processed": 91, "inFlight": 5, "throughput": 1.5516030590526257, "replicas": [1, 1, 0] },
+        "vector-db": { "processed": 85, "throughput": 1.6136886991935582, "replicas": [1, 1, 0] },
+        "eval-job": { "processed": 18, "throughput": 0.45687157947888035, "replicas": [1, 1, 0] },
+        "quality": { "processed": 18, "throughput": 0.6167121254907256, "replicas": [1, 1, 0] },
+        "docs": { "processed": 8, "throughput": 1.0017664744937893, "replicas": [1, 1, 0] },
+        "ingest-q": {
+          "processed": 7,
+          "throughput": 0.009111343676710123,
+          "lag": { "queue": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "embed-worker": { "processed": 7, "throughput": 0.014579125363474438, "replicas": [4, 4, 0] },
+        "embeddings": { "processed": 7, "throughput": 0.02028187790294307, "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 7,
+      "nodes": {
+        "user": { "processed": 100, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "rag-api": { "processed": 99, "throughput": 2.1271727634438453, "replicas": [1, 1, 0] },
+        "cache": { "processed": 98, "throughput": 1.5989269753221262, "replicas": [1, 1, 0] },
+        "feedback": {
+          "processed": 20,
+          "throughput": 0.008338009323642898,
+          "lag": { "evals": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "llm": { "processed": 116, "inFlight": 2, "throughput": 3.136067227188448, "replicas": [1, 1, 0] },
+        "vector-db": { "processed": 107, "throughput": 1.6169190966250975, "replicas": [1, 1, 0] },
+        "eval-job": { "processed": 20, "throughput": 0.015121428776059122, "replicas": [1, 1, 0] },
+        "quality": { "processed": 20, "throughput": 0.020411793816496597, "replicas": [1, 1, 0] },
+        "docs": { "processed": 10, "throughput": 1.0017664744937893, "replicas": [1, 1, 0] },
+        "ingest-q": {
+          "processed": 9,
+          "throughput": 0.009111343676710123,
+          "lag": { "queue": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "embed-worker": { "processed": 9, "throughput": 0.014584130079773333, "replicas": [4, 4, 0] },
+        "embeddings": { "processed": 9, "throughput": 0.020694384453498166, "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 8,
+      "nodes": {
+        "user": { "processed": 120, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "rag-api": { "processed": 119, "throughput": 2.1268320632808533, "replicas": [1, 1, 0] },
+        "cache": { "processed": 118, "throughput": 1.5777938353185426, "replicas": [1, 1, 0] },
+        "feedback": {
+          "processed": 23,
+          "throughput": 0.015600457339984572,
+          "lag": { "evals": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "llm": { "processed": 138, "inFlight": 3, "throughput": 2.5025880346342513, "replicas": [1, 1, 0] },
+        "vector-db": { "processed": 129, "throughput": 1.5965124493773477, "replicas": [1, 1, 0] },
+        "eval-job": { "processed": 23, "throughput": 0.028440016313668753, "replicas": [1, 1, 0] },
+        "quality": { "processed": 23, "throughput": 0.0383900065086109, "replicas": [1, 1, 0] },
+        "docs": { "processed": 12, "throughput": 1.0017664744937893, "replicas": [1, 1, 0] },
+        "ingest-q": {
+          "processed": 11,
+          "throughput": 0.009111343676710123,
+          "lag": { "queue": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "embed-worker": { "processed": 11, "throughput": 0.015173013662464097, "replicas": [4, 4, 0] },
+        "embeddings": { "processed": 11, "throughput": 0.021315878706031906, "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 8,
+    "real": {
+      "user": { "processed": 120, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+      "rag-api": { "processed": 119, "throughput": 2.1268320632808533, "replicas": [1, 1, 0] },
+      "cache": { "processed": 118, "throughput": 1.5777938353185426, "replicas": [1, 1, 0] },
+      "feedback": { "processed": 23, "throughput": 0.015600457339984572, "lag": { "evals": 0 }, "replicas": [1, 1, 0] },
+      "llm": { "processed": 138, "inFlight": 3, "throughput": 2.5025880346342513, "replicas": [1, 1, 0] },
+      "vector-db": { "processed": 129, "throughput": 1.5965124493773477, "replicas": [1, 1, 0] },
+      "eval-job": { "processed": 23, "throughput": 0.028440016313668753, "replicas": [1, 1, 0] },
+      "quality": { "processed": 23, "throughput": 0.0383900065086109, "replicas": [1, 1, 0] },
+      "docs": { "processed": 12, "throughput": 1.0017664744937893, "replicas": [1, 1, 0] },
+      "ingest-q": { "processed": 11, "throughput": 0.009111343676710123, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "embed-worker": { "processed": 11, "throughput": 0.015173013662464097, "replicas": [4, 4, 0] },
+      "embeddings": { "processed": 11, "throughput": 0.021315878706031906, "replicas": [1, 1, 0] },
+      "vault": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "user-to-rag-api": 119, "rag-api-to-cache": 118, "rag-api-to-vector-db": 118, "rag-api-to-llm": 118, "rag-api-to-feedback": 23, "feedback-to-eval-job": 23, "eval-job-to-llm": 23, "eval-job-to-quality": 23, "docs-to-ingest-q": 11, "ingest-q-to-embed-worker": 11, "embed-worker-to-embeddings": 11, "embed-worker-to-vector-db": 11, "rag-api-to-vault": 0, "embed-worker-to-vault": 0 }
+  },
+  "events": {
+    "total": 1347,
+    "byKind": { "process": 738, "deliver": 609 },
+    "byNode": {
+      "user": { "process": 120 },
+      "rag-api": { "deliver": 119, "process": 119 },
+      "cache": { "deliver": 118, "process": 118 },
+      "vector-db": { "deliver": 129, "process": 129 },
+      "llm": { "deliver": 141, "process": 138 },
+      "feedback": { "deliver": 23, "process": 23 },
+      "eval-job": { "deliver": 23, "process": 23 },
+      "quality": { "deliver": 23, "process": 23 },
+      "docs": { "process": 12 },
+      "ingest-q": { "deliver": 11, "process": 11 },
+      "embed-worker": { "deliver": 11, "process": 11 },
+      "embeddings": { "deliver": 11, "process": 11 }
+    },
+    "perSecond": [
+      "2aaba112115d",
+      "d04b6474d91a",
+      "a7fbf1a69548",
+      "c737555e365f",
+      "af3520b307fd",
+      "21c78e98e1ae",
+      "cc935af65303",
+      "6e8f71cb67dc",
+      "4ea9ce204bb3",
+      "44db3ea708fb",
+      "c57de6d8a870",
+      "ebfcf2bdcf93",
+      "8276c46f6d0a",
+      "1f3ec3e92115",
+      "21e26d5500e1",
+      "2b272e65e4b0",
+      "daa248cd2d78",
+      "af2138577437",
+      "006748c3e2c9",
+      "856ecde86122",
+      "86367bf8869f",
+      "bfe6433e8157",
+      "e2240906b4b7",
+      "b48281c804d7",
+      "916b854c2847",
+      "22b5ba064cda",
+      "3a9e5d0141f0",
+      "dcda87a06d95",
+      "832f03d50e06",
+      "6dc8e71f23d4",
+      "30d81eabfc61",
+      "32699b972311",
+      "18cd9d94b6a1",
+      "80c34157bccd",
+      "2e82b2026a92",
+      "c23aacd7f72b",
+      "fe8cd75448de",
+      "77ad742c1ce8",
+      "b2fa62b81a3d",
+      "ef0d3846eea2",
+      "8575177e4aa8",
+      "8abba070335c",
+      "d133e0fade8a",
+      "a3f284b11310",
+      "db4723f19514",
+      "7c64fb320fa1",
+      "d4851884007a",
+      "ac660b03cee3",
+      "5bede4d95246",
+      "17c6760df3fb",
+      "96e56bee036a",
+      "027743a86bcd",
+      "7afd9f036fc6",
+      "3e549992bc5d",
+      "85d7a22d6afc",
+      "dcbe65ff70bd",
+      "d55e9cd72c10",
+      "dcdd9fbb022d",
+      "67b8e1b5ca4e",
+      "6498ce1d2243",
+      "c6f7edf82f44"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 126, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 126, "min": 1100, "mean": 2393.3333333333335, "p50": 2400, "p90": 3210, "max": 3570 },
+    "waitMs": {
+      "rag-api": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "cache": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "llm": { "count": 138, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "vector-db": { "count": 126, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "eval-job": { "count": 23, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "embed-worker": { "count": 11, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "embeddings": { "count": 11, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "rag-api": { "count": 115, "min": 100, "mean": 126.17391304347827, "p50": 130, "p90": 150, "max": 150 },
+      "cache": { "count": 115, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "llm": { "count": 138, "min": 1450, "mean": 1797.463768115942, "p50": 1830, "p90": 2040, "max": 2160 },
+      "vector-db": { "count": 126, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "eval-job": { "count": 23, "min": 260, "mean": 306.5217391304348, "p50": 310, "p90": 350, "max": 360 },
+      "embed-worker": { "count": 11, "min": 170, "mean": 209.0909090909091, "p50": 210, "p90": 240, "max": 240 },
+      "embeddings": { "count": 11, "min": 130, "mean": 151.8181818181818, "p50": 150, "p90": 180, "max": 180 }
+    }
+  }
+}

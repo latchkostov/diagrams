@@ -1,0 +1,87 @@
+{
+  "format": "diagrams/v2",
+  "planning": {
+    "revision": "p2"
+  },
+  "title": "Planning: logs and subscriptions",
+  "nodes": [
+    {
+      "id": "source",
+      "stencil": "client.browser",
+      "label": "Publisher",
+      "x": 0,
+      "y": 100,
+      "props": {
+        "ratePerSec": 64
+      }
+    },
+    {
+      "id": "broker",
+      "stencil": "aws.kinesis",
+      "label": "Events",
+      "x": 320,
+      "y": 100,
+      "props": {
+        "partitions": 3
+      }
+    },
+    {
+      "id": "worker",
+      "stencil": "aws.lambda",
+      "label": "Readers",
+      "x": 640,
+      "y": 220,
+      "props": {
+        "replicas": 8,
+        "concurrency": 4,
+        "latencyMs": 1000,
+        "jitter": 0
+      }
+    },
+    {
+      "id": "dead",
+      "stencil": "aws.sqs",
+      "label": "Recovery",
+      "x": 320,
+      "y": 320
+    },
+    {
+      "id": "cluster",
+      "stencil": "kafka.cluster",
+      "label": "Cluster",
+      "x": 0,
+      "y": 320
+    }
+  ],
+  "edges": [
+    {
+      "id": "publish",
+      "from": "source",
+      "to": "broker",
+      "props": {
+        "travelMs": 0
+      }
+    },
+    {
+      "id": "read",
+      "label": "billing",
+      "from": "broker",
+      "to": "worker",
+      "props": {
+        "group": "billing",
+        "travelMs": 0
+      }
+    },
+    {
+      "id": "recovery",
+      "label": "Recovery",
+      "from": "broker",
+      "to": "dead",
+      "props": {
+        "dlq": true,
+        "group": "billing",
+        "travelMs": 0
+      }
+    }
+  ]
+}

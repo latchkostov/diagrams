@@ -1,0 +1,33 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Multi-region active/active",
+    "direction": "LR",
+    "groups": [
+      { "id": "g_us", "label": "AWS · us-east-1", "tone": "aws", "x": 768, "y": 40, "width": 1034, "height": 236 },
+      { "id": "g_eu", "label": "AWS · eu-west-1", "tone": "aws", "x": 768, "y": 100, "width": 1400, "height": 236 }
+    ],
+    "nodes": [
+      { "id": "alb_us", "stencil": "load-balancer", "label": "Load balancer", "sublabel": "us-east-1 · 3 AZs", "x": 808, "y": 104, "group": "g_us" },
+      { "id": "api_us", "stencil": "aws.ecs", "label": "Checkout API", "sublabel": "Fargate · sized for 100%", "x": 1168, "y": 104, "group": "g_us" },
+      { "id": "table_us", "stencil": "generic.database", "label": "Orders global table", "sublabel": "us-east-1 replica", "x": 1542, "y": 164, "group": "g_us" },
+      { "id": "alb_eu", "stencil": "load-balancer", "label": "Load balancer", "sublabel": "eu-west-1 · 3 AZs", "x": 808, "y": 224, "group": "g_eu" },
+      { "id": "api_eu", "stencil": "aws.ecs", "label": "Checkout API", "sublabel": "Fargate · sized for 100%", "x": 1168, "y": 224, "group": "g_eu" },
+      { "id": "table_eu", "stencil": "generic.database", "label": "Orders global table", "sublabel": "eu-west-1 replica", "x": 1908, "y": 164, "group": "g_eu" },
+      { "id": "users", "stencil": "client.user", "label": "Customers", "sublabel": "Americas and Europe", "x": 80, "y": 164 },
+      { "id": "r53", "stencil": "aws.route53", "label": "Route 53", "sublabel": "Latency · health checks", "x": 440, "y": 164 }
+    ],
+    "edges": [
+      { "id": "e1-users-r53", "from": "users", "to": "r53", "label": "DNS lookup", "kind": "sync" },
+      { "id": "e2-r53-alb_us", "from": "r53", "to": "alb_us", "label": "Nearest: us-east-1", "kind": "sync" },
+      { "id": "e3-r53-alb_eu", "from": "r53", "to": "alb_eu", "label": "Nearest: eu-west-1", "kind": "sync" },
+      { "id": "e4-alb_us-api_us", "from": "alb_us", "to": "api_us", "label": "HTTPS", "kind": "sync" },
+      { "id": "e5-alb_eu-api_eu", "from": "alb_eu", "to": "api_eu", "label": "HTTPS", "kind": "sync" },
+      { "id": "e6-api_us-table_us", "from": "api_us", "to": "table_us", "label": "Local write", "kind": "sync" },
+      { "id": "e7-api_eu-table_eu", "from": "api_eu", "to": "table_eu", "label": "Local write", "kind": "sync" },
+      { "id": "e8-table_us-table_eu", "from": "table_us", "to": "table_eu", "label": "Replicate · ~1 s", "kind": "async" },
+      { "id": "e9-table_eu-table_us", "from": "table_eu", "to": "table_us", "label": "Replicate · ~1 s", "kind": "async" }
+    ]
+  }
+}

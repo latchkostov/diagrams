@@ -6,6 +6,7 @@ import { RULES as ALL_RULES, runChecks } from "./run";
 import { buildContext } from "./context";
 import { collectEvidence } from "./evidence";
 import { withEvidence } from "./evidenceMerge";
+import { upgradePlanning } from "../planning/migration";
 
 const RULE_BY_ID = new Map(ALL_RULES.map((r) => [r.id, r]));
 
@@ -76,6 +77,16 @@ describe("checks on the public examples", () => {
       ).not.toContain(f.id);
     }
   });
+});
+it("P3 precision gate adds no findings to the same materialized P2 public examples", () => {
+  for (const d of Object.values(bySlug)) {
+    const p2 = upgradePlanning(d);
+    p2.planning = { revision: "p2" };
+    const p3 = upgradePlanning(p2);
+    expect(runChecks(p3).findings.map((f) => [f.id, f.severity])).toEqual(
+      runChecks(p2).findings.map((f) => [f.id, f.severity]),
+    );
+  }
 });
 
 /**

@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "checkout": [40, 100], "queue": [400, 100], "orders": [760, 40], "other": [760, 160] },
+    "TB": { "checkout": [180, 40], "queue": [180, 200], "orders": [40, 360], "other": [320, 360] }
+  },
+  "tidy": { "checkout": [0, 200], "orders": [640, 140], "queue": [320, 200], "other": [640, 260] },
+  "arrange": {
+    "alignLeft": { "checkout": [0, 140], "orders": [0, 140], "queue": [0, 140], "other": [0, 300] },
+    "alignMiddle": { "checkout": [0, 220], "orders": [640, 220], "queue": [320, 220], "other": [640, 220] },
+    "distributeH": { "checkout": [0, 140], "orders": [427, 140], "queue": [213, 140], "other": [640, 300] },
+    "distributeV": { "checkout": [0, 140], "orders": [640, 193], "queue": [320, 247], "other": [640, 300] },
+    "spreadH": { "checkout": [0, 140], "orders": [640, 140], "queue": [320, 140], "other": [900, 140] },
+    "boundaryAround": { "x": -40, "y": 76, "width": 940, "height": 336 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "checkout": [40, 100], "orders": [760, 40], "queue": [400, 100], "other": [760, 160] },
+    "groups": {}
+  }
+}

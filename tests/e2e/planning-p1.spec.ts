@@ -223,7 +223,7 @@ test("P1: model upgrade previews unchanged capacity, is undoable and exposes a l
   await page.getByTestId("planning-upgrade").focus();
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("planning-preview")).toBeFocused();
-  await expect(page.getByTestId("planning-model")).toContainText("p2");
+  await expect(page.getByTestId("planning-model")).toContainText("p3");
   await page.getByTestId("planning-preview").click();
   await expect(page.getByTestId("planning-legacy-preview")).toContainText("planning.revision");
   const pending = page.waitForEvent("download");

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { PROTOCOL } from "./hostProtocol";
 import { hostEmbedUrl, iframeSnippet, SNIPPET_PROTOCOL, webComponentSnippet } from "./hostSnippets";
 
@@ -34,6 +34,19 @@ describe("host embed: the embed dialog's code", () => {
     expect(webComponentSnippet(opts, "https://example.org/tools/diagrams/")).toContain(
       `src="https://example.org/tools/diagrams/embed/live-diagram.js"`,
     );
+  });
+
+  it("uses the prepared deployment base on deep fallback routes", () => {
+    vi.stubGlobal("window", { location: { origin: "https://example.org", pathname: "/tools/diagrams/a/deep/route" } });
+    vi.stubGlobal("document", { baseURI: "https://example.org/tools/diagrams/?ignored=1#ignored" });
+    try {
+      expect(webComponentSnippet(opts)).toContain('src="https://example.org/tools/diagrams/embed/live-diagram.js"');
+      expect(hostEmbedUrl("https://wiki.example.org")).toBe(
+        "https://example.org/tools/diagrams/?embed=1&host=1&hostOrigin=https%3A%2F%2Fwiki.example.org",
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("the iframe version talks only to this site's origin, and can't be broken out of its script tag", () => {

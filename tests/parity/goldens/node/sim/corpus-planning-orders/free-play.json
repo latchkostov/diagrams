@@ -1,0 +1,144 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": { "checkout": { "replicas": [1, 1, 0] }, "orders": { "replicas": [1, 1, 0] } }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 22,
+      "nodes": {
+        "checkout": { "processed": 30, "throughput": 3.5191583840503444, "replicas": [1, 1, 0] },
+        "orders": { "processed": 8, "backlog": 17, "inFlight": 4, "throughput": 1.3707201916849425, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 44,
+      "nodes": {
+        "checkout": { "processed": 60, "throughput": 3.5193181535938045, "replicas": [1, 1, 0] },
+        "orders": { "processed": 16, "backlog": 39, "inFlight": 4, "throughput": 0.1855690359802542, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 62,
+      "nodes": {
+        "checkout": { "processed": 90, "throughput": 3.5193181608473307, "replicas": [1, 1, 0] },
+        "orders": { "processed": 28, "backlog": 57, "inFlight": 4, "throughput": 1.371180171387615, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 84,
+      "nodes": {
+        "checkout": { "processed": 120, "throughput": 3.519318160847659, "replicas": [1, 1, 0] },
+        "orders": { "processed": 36, "backlog": 79, "inFlight": 4, "throughput": 0.1855690568633003, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 102,
+      "nodes": {
+        "checkout": { "processed": 150, "throughput": 3.519318160847659, "replicas": [1, 1, 0] },
+        "orders": { "processed": 48, "backlog": 97, "inFlight": 4, "throughput": 1.3711801713885632, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 124,
+      "nodes": {
+        "checkout": { "processed": 180, "throughput": 3.519318160847659, "replicas": [1, 1, 0] },
+        "orders": { "processed": 56, "backlog": 119, "inFlight": 4, "throughput": 0.18556905686330039, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 124,
+    "real": {
+      "checkout": { "processed": 180, "throughput": 3.519318160847659, "replicas": [1, 1, 0] },
+      "orders": { "processed": 56, "backlog": 119, "inFlight": 4, "throughput": 0.18556905686330039, "replicas": [1, 1, 0] }
+    },
+    "edges": { "request": 179 }
+  },
+  "events": {
+    "total": 415,
+    "byKind": { "process": 236, "deliver": 179 },
+    "byNode": { "checkout": { "process": 180 }, "orders": { "deliver": 179, "process": 56 } },
+    "perSecond": [
+      "24f19caaea2b",
+      "2bd485f63fd7",
+      "b0ccd3592a70",
+      "4110be36d820",
+      "321693c29a32",
+      "8ffcfc4fcaea",
+      "4d3e5c678e01",
+      "3139bfb5992b",
+      "3e0d9969cf99",
+      "d2f4e078db4d",
+      "b956543ac50d",
+      "a7b146afccf9",
+      "5b1b3bb531a5",
+      "61be7c028486",
+      "26f76bbe1d59",
+      "2918fdc36dc4",
+      "159f6abe3c50",
+      "a4658560560b",
+      "87f75f2422e4",
+      "0b6a9b80fe26",
+      "4eb0287e5d0a",
+      "f3fda862f05e",
+      "5cd0f1de43af",
+      "e63a84c0c2c8",
+      "451099865946",
+      "6a4812414555",
+      "c521c85cf092",
+      "43ece90d0f69",
+      "760cd7c8c8bb",
+      "e19e99469d05",
+      "16879cd7e23a",
+      "94e4821eaf29",
+      "58c224b284c1",
+      "0a8d18520fb3",
+      "a622b3623480",
+      "7f8ce290f335",
+      "66c1bac3cffd",
+      "8f652b993905",
+      "6c5ab68a51c0",
+      "ba9cf6fec3d6",
+      "b1d51270ca33",
+      "2951176028db",
+      "fd4452b4ac39",
+      "5b200a806d2d",
+      "65ab8c45dabc",
+      "a50aa5d2834e",
+      "a3b34eef7bb8",
+      "295c2aca6330",
+      "9ac033f7f195",
+      "b17ae879c6d3",
+      "345fa872e689",
+      "afc23f47d9b3",
+      "4ff227d69648",
+      "3a501174da4c",
+      "8074da3d6b7b",
+      "dadc16871343",
+      "fef3daccc5d7",
+      "a09a6e5f10e7",
+      "4e21be55a21e",
+      "c79223273bb8",
+      "3c40149ba79a"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 56, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 56, "min": 4010, "mean": 21344.10714285714, "p50": 22670, "p90": 36010, "max": 38680 },
+    "waitMs": {
+      "orders": { "count": 56, "min": 0, "mean": 17334.10714285714, "p50": 18660, "p90": 32000, "max": 34670 }
+    },
+    "processMs": { "orders": { "count": 56, "min": 4000, "mean": 4000, "p50": 4000, "p90": 4000, "max": 4000 } }
+  }
+}

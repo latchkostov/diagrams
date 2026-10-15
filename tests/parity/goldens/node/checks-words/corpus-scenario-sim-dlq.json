@@ -1,0 +1,26 @@
+{
+  "summary": "0 warnings, 1 suggestion.",
+  "findings": {
+    "no-reader:dlq": {
+      "title": "Dead letters pile up in Dead-letter queue",
+      "message": "Nothing in the diagram reads or alerts on Dead-letter queue: failed messages stay there until someone looks.",
+      "rationale": "A dead-letter queue has no automatic cleanup. Someone should be told when messages land there, and be able to replay them.",
+      "fix": { "label": "Add a reader…", "choice": "Pick what reads Dead-letter queue, then add it and connect dlq to it." }
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "no-reader:dlq",
+        "rule": "no-reader",
+        "severity": "suggestion",
+        "title": "Dead letters pile up in Dead-letter queue",
+        "message": "Nothing in the diagram reads or alerts on Dead-letter queue: failed messages stay there until someone looks.",
+        "targets": ["dlq", "queue"],
+        "fix": { "label": "Add a reader…", "needsChoice": "Pick what reads Dead-letter queue, then add it and connect dlq to it." }
+      }
+    ],
+    "summary": "0 warnings, 1 suggestion."
+  },
+  "agentReportWarnings": { "findings": [], "summary": "0 warnings, 1 suggestion." }
+}

@@ -1,0 +1,566 @@
+{
+  "steps": [
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "topic-1",
+            "label": "parity.events",
+            "stencil": { "id": "kafka.topic", "label": "Kafka Topic", "confidence": "high", "alternatives": ["pulsar.topic", "confluent.cloud", "aws.msk"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-1", "from": "app", "to": "topic-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+2 nodes, +2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "dotnet-1",
+            "label": "Parity reader",
+            "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-2", "from": "topic-1", "to": "dotnet-1" },
+          {
+            "i": 2,
+            "op": "add_node",
+            "id": "key-vault-1",
+            "label": "Parity secrets",
+            "stencil": { "id": "azure.key-vault", "label": "Key Vault", "confidence": "high", "alternatives": [] }
+          },
+          { "i": 3, "op": "connect", "id": "e-3", "from": "dotnet-1", "to": "key-vault-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +2 connections, −1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "insert_between",
+            "id": "queue-1",
+            "label": "buffer",
+            "stencil": { "id": "rabbitmq.queue", "label": "RabbitMQ Queue", "confidence": "high", "alternatives": ["aws.mq"] },
+            "from": "app",
+            "to": "collector"
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "update", "id": "collector" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "update",
+            "id": "pubsub-topic",
+            "stencil": { "id": "aws.lambda", "label": "AWS Lambda", "confidence": "high", "alternatives": [] }
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 boundary, 2 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_boundary", "id": "boundary-1", "label": "Parity zone" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 note",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_note", "id": "note-1" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "title or direction changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "set_meta" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "−1 node, −2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "remove", "ids": ["dotnet-1", "e-2", "e-3"] }]
+      }
+    },
+    {
+      "isError": true,
+      "output": {
+        "ok": false,
+        "i": 0,
+        "error": "Unknown reference \"no-such-node\".",
+        "ref": "no-such-node",
+        "candidates": [
+          { "id": "app", "label": "Mobile and web apps", "stencil": "client.mobile" },
+          { "id": "collector", "label": "Renamed by parity", "stencil": "gcp.cloud-run" },
+          { "id": "pubsub-topic", "label": "clickstream", "stencil": "aws.lambda" },
+          { "id": "dataflow", "label": "Sessionize job", "stencil": "gcp.dataflow" },
+          { "id": "raw-archive", "label": "Raw archive", "stencil": "gcp.cloud-storage" },
+          { "id": "bigquery", "label": "Analytics dataset", "stencil": "gcp.bigquery" },
+          { "id": "looker", "label": "Product dashboards", "stencil": "looker" },
+          { "id": "dead-letters", "label": "clickstream-dlq", "stencil": "gcp.pubsub" },
+          { "id": "dead-bucket", "label": "Dead letters", "stencil": "gcp.cloud-storage" },
+          { "id": "topic-1", "label": "parity.events", "stencil": "kafka.topic" },
+          { "id": "key-vault-1", "label": "Parity secrets", "stencil": "azure.key-vault" },
+          { "id": "queue-1", "label": "buffer", "stencil": "rabbitmq.queue" },
+          { "id": "note-1", "label": "Pinned by the parity harness" }
+        ],
+        "hint": "Use an id from candidates, or call describe_diagram.",
+        "applied": false
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "dryRun": true,
+        "summary": "+1 node",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "postgres-1",
+            "label": "Dry run only",
+            "stencil": { "id": "postgres", "label": "PostgreSQL", "confidence": "high", "alternatives": ["gcp.cloud-sql", "aws.aurora", "supabase"] }
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "isError": false,
+      "output": { "ok": true, "id": "sim-1", "title": "Parity rush", "summary": "Added simulation \"Parity rush\": 4 traffic, 2 events, 1 expectations.", "undo": "One undo step reverts this call.", "play": "The user plays it in live view (L), or from the command palette." }
+    },
+    {
+      "isError": true,
+      "output": { "ok": false, "error": "constant traffic needs ratePerSec.", "hint": "Check the input against the tool's schema and try again." }
+    }
+  ],
+  "applied": [
+    { "tool": "edit_diagram", "summary": "+1 node, +1 connection", "changed": ["topic-1", "e-1"] },
+    {
+      "tool": "edit_diagram",
+      "summary": "+2 nodes, +2 connections",
+      "changed": ["dotnet-1", "key-vault-1", "e-2", "e-3"],
+      "choices": [
+        {
+          "nodeId": "dotnet-1",
+          "kind": ".NET consumer",
+          "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] },
+          "node": {
+            "id": "dotnet-1",
+            "stencil": "service.dotnet",
+            "label": "Parity reader",
+            "x": 646,
+            "y": 576,
+            "props": { "replicas": 3 }
+          }
+        }
+      ]
+    },
+    { "tool": "edit_diagram", "summary": "+1 node, +2 connections, −1 connection", "changed": ["queue-1", "e-4", "e-5"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["collector"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["pubsub-topic"] },
+    { "tool": "edit_diagram", "summary": "+1 boundary, 2 changed", "changed": ["boundary-1", "app", "collector"] },
+    { "tool": "edit_diagram", "summary": "+1 note", "changed": ["note-1"] },
+    { "tool": "edit_diagram", "summary": "title or direction changed", "changed": [] },
+    { "tool": "edit_diagram", "summary": "−1 node, −2 connections", "changed": [] },
+    { "tool": "set_simulation", "summary": "Added simulation “Parity rush”", "changed": ["app"] }
+  ],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Parity edit",
+    "description": "Clickstream events flow through Pub/Sub and a Dataflow streaming job into BigQuery for Looker, with a raw archive and dead letters.",
+    "direction": "TB",
+    "groups": [
+      { "id": "gcp", "label": "Google Cloud · analytics project", "tone": "gcp", "x": 760, "y": 56, "width": 1440, "height": 416 },
+      { "id": "boundary-1", "label": "Parity zone", "tone": "neutral", "x": 0, "y": 176, "width": 694, "height": 176 }
+    ],
+    "nodes": [
+      {
+        "id": "app",
+        "stencil": "client.mobile",
+        "label": "Mobile and web apps",
+        "sublabel": "Clickstream SDK",
+        "x": 40,
+        "y": 240,
+        "props": { "ratePerSec": 50, "messageType": "ClickEvent" },
+        "group": "boundary-1"
+      },
+      {
+        "id": "collector",
+        "stencil": "gcp.cloud-run",
+        "label": "Renamed by parity",
+        "sublabel": "Validate · batch publish",
+        "x": 420,
+        "y": 240,
+        "group": "boundary-1",
+        "props": { "concurrency": 400, "latencyMs": 120 }
+      },
+      {
+        "id": "pubsub-topic",
+        "stencil": "aws.lambda",
+        "label": "clickstream",
+        "sublabel": "Topic · 7-day retention",
+        "x": 800,
+        "y": 240,
+        "group": "gcp",
+        "props": { "partitions": 64 }
+      },
+      {
+        "id": "dataflow",
+        "stencil": "gcp.dataflow",
+        "label": "Sessionize job",
+        "sublabel": "Streaming · 1-min windows",
+        "x": 1180,
+        "y": 120,
+        "group": "gcp",
+        "props": {
+          "group": "dataflow",
+          "replicas": 4,
+          "concurrency": 4,
+          "latencyMs": 40,
+          "emits": { "ClickEvent": "SessionRow", "MalformedEvent": "DeadLetter" }
+        }
+      },
+      {
+        "id": "raw-archive",
+        "stencil": "gcp.cloud-storage",
+        "label": "Raw archive",
+        "sublabel": "Avro · by hour",
+        "x": 1180,
+        "y": 360,
+        "group": "gcp",
+        "props": { "latencyMs": 0 }
+      },
+      {
+        "id": "bigquery",
+        "stencil": "gcp.bigquery",
+        "label": "Analytics dataset",
+        "sublabel": "Storage Write API",
+        "x": 1560,
+        "y": 120,
+        "group": "gcp",
+        "props": { "latencyMs": 0 }
+      },
+      {
+        "id": "looker",
+        "stencil": "looker",
+        "label": "Product dashboards",
+        "sublabel": "Funnels · retention",
+        "x": 1940,
+        "y": 120,
+        "group": "gcp",
+        "props": {}
+      },
+      {
+        "id": "dead-letters",
+        "stencil": "gcp.pubsub",
+        "label": "clickstream-dlq",
+        "sublabel": "Unparseable events",
+        "x": 1560,
+        "y": 240,
+        "group": "gcp",
+        "props": { "partitions": 64 }
+      },
+      {
+        "id": "dead-bucket",
+        "stencil": "gcp.cloud-storage",
+        "label": "Dead letters",
+        "sublabel": "Inspect · replay",
+        "x": 1940,
+        "y": 240,
+        "group": "gcp",
+        "props": { "latencyMs": 1 }
+      },
+      { "id": "topic-1", "stencil": "kafka.topic", "label": "parity.events", "x": 346, "y": 576 },
+      { "id": "key-vault-1", "stencil": "azure.key-vault", "label": "Parity secrets", "x": 40, "y": 64 },
+      { "id": "queue-1", "stencil": "rabbitmq.queue", "label": "buffer", "x": 346, "y": 688 }
+    ],
+    "edges": [
+      {
+        "id": "collector-to-topic",
+        "from": "collector",
+        "to": "pubsub-topic",
+        "label": "Publish",
+        "kind": "async",
+        "props": { "travelMs": 300 }
+      },
+      {
+        "id": "topic-to-dataflow",
+        "from": "pubsub-topic",
+        "to": "dataflow",
+        "label": "sub: dataflow",
+        "kind": "async",
+        "props": { "travelMs": 300, "group": "dataflow" }
+      },
+      {
+        "id": "topic-to-raw-archive",
+        "from": "pubsub-topic",
+        "to": "raw-archive",
+        "label": "Cloud Storage subscription",
+        "kind": "async",
+        "props": { "travelMs": 300, "group": "archive" }
+      },
+      {
+        "id": "dataflow-to-bigquery",
+        "from": "dataflow",
+        "to": "bigquery",
+        "label": "Sessions",
+        "kind": "sync",
+        "props": { "travelMs": 200, "filter": ["SessionRow"] }
+      },
+      {
+        "id": "dataflow-to-dead-letters",
+        "from": "dataflow",
+        "to": "dead-letters",
+        "label": "Parse errors",
+        "kind": "async",
+        "props": { "travelMs": 300, "filter": ["DeadLetter"] }
+      },
+      {
+        "id": "dead-letters-to-dead-bucket",
+        "from": "dead-letters",
+        "to": "dead-bucket",
+        "label": "sub: archive",
+        "kind": "async",
+        "props": { "travelMs": 300, "group": "dlq-archive", "dlq": false }
+      },
+      {
+        "id": "looker-to-bigquery",
+        "from": "looker",
+        "to": "bigquery",
+        "label": "SQL",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      { "id": "e-1", "from": "app", "to": "topic-1", "kind": "async" },
+      {
+        "id": "e-4",
+        "from": "app",
+        "to": "queue-1",
+        "kind": "sync",
+        "label": "HTTPS batches",
+        "props": { "travelMs": 200 }
+      },
+      { "id": "e-5", "from": "queue-1", "to": "collector", "kind": "sync", "props": { "travelMs": 200 } }
+    ],
+    "simulations": [
+      {
+        "id": "morning-ramp",
+        "title": "Morning ramp to 2,000 events/s",
+        "description": "Traffic ramps from 200 to 2,000 events a second; a bad SDK release sends 200 malformed events.",
+        "seed": 7,
+        "scale": 50,
+        "setup": { "props": { "dataflow": { "replicas": 24 } } },
+        "traffic": [
+          {
+            "id": "clicks",
+            "node": "app",
+            "messageType": "ClickEvent",
+            "label": "Ramp 200 → 2,000 events/s",
+            "shape": { "kind": "ramp", "startRate": 200, "stages": [{ "durationMs": 8000, "targetRate": 2000 }] }
+          },
+          {
+            "id": "malformed",
+            "node": "app",
+            "messageType": "MalformedEvent",
+            "label": "200 malformed events",
+            "shape": { "kind": "burst", "count": 200, "atMs": 4000, "spreadMs": 1000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 0,
+            "action": { "do": "note", "text": "Clicks ramp up as people wake up. Pub/Sub keeps each subscription separate: Dataflow and the raw archive each get every event. Each dot is 50 events.", "focus": ["app", "pubsub-topic", "dataflow", "raw-archive"] }
+          },
+          {
+            "atMs": 4000,
+            "action": { "do": "note", "text": "A bad SDK release sends malformed events. Dataflow routes them to a dead-letter topic instead of failing the pipeline.", "focus": ["dataflow", "dead-letters", "dead-bucket"], "pause": true }
+          },
+          {
+            "atMs": 7000,
+            "action": { "do": "note", "text": "Sessions stream into BigQuery within seconds, so Looker's dashboards are current.", "focus": ["bigquery", "looker"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "archive",
+            "label": "Every event is archived raw",
+            "metric": { "node": "raw-archive", "field": "processed" },
+            "op": "==",
+            "value": 9000,
+            "when": "end"
+          },
+          {
+            "id": "sessions",
+            "label": "8,800 valid events reach BigQuery",
+            "metric": { "node": "bigquery", "field": "processed" },
+            "op": "==",
+            "value": 8800,
+            "when": "end"
+          },
+          {
+            "id": "dead",
+            "label": "200 malformed events are kept for replay",
+            "metric": { "node": "dead-bucket", "field": "processed" },
+            "op": "==",
+            "value": 200,
+            "when": "end"
+          }
+        ]
+      },
+      {
+        "id": "autoscale",
+        "title": "Backlog until Dataflow autoscales",
+        "description": "600 events a second meet two workers; the subscription backlog grows until autoscaling adds six more.",
+        "seed": 7,
+        "scale": 20,
+        "setup": { "props": { "dataflow": { "replicas": 2 } } },
+        "traffic": [
+          {
+            "id": "clicks",
+            "node": "app",
+            "messageType": "ClickEvent",
+            "label": "600 events/s for 10 seconds",
+            "shape": { "kind": "constant", "ratePerSec": 600, "durationMs": 10000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 0,
+            "action": { "do": "note", "text": "Two Dataflow workers handle about 200 events a second, but 600 arrive. Unacknowledged messages pile up in the subscription.", "focus": ["pubsub-topic", "dataflow"] }
+          },
+          { "atMs": 4000, "action": { "do": "props", "node": "dataflow", "props": { "replicas": 8 } } },
+          {
+            "atMs": 4000,
+            "action": { "do": "note", "text": "Autoscaling sees the backlog and adds six workers. The raw archive was never behind: its subscription is independent.", "focus": ["dataflow", "raw-archive"], "pause": true }
+          },
+          {
+            "atMs": 9000,
+            "action": { "do": "note", "text": "With 800 events a second of capacity, the backlog drains and BigQuery catches up.", "focus": ["pubsub-topic", "bigquery"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "backlog",
+            "label": "Backlog grows with two workers",
+            "metric": { "node": "pubsub-topic", "field": "lag", "group": "dataflow" },
+            "op": ">",
+            "value": 0,
+            "when": "at",
+            "atMs": 3500
+          },
+          {
+            "id": "drained",
+            "label": "Backlog drains after autoscaling",
+            "metric": { "node": "pubsub-topic", "field": "lag", "group": "dataflow" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          },
+          {
+            "id": "sessions",
+            "label": "All 6,000 events reach BigQuery",
+            "metric": { "node": "bigquery", "field": "processed" },
+            "op": "==",
+            "value": 6000,
+            "when": "end"
+          }
+        ]
+      },
+      {
+        "id": "sim-1",
+        "title": "Parity rush",
+        "durationMs": 20000,
+        "traffic": [
+          {
+            "id": "traffic-1",
+            "node": "app",
+            "shape": { "kind": "constant", "ratePerSec": 20, "fromMs": 0, "durationMs": 10000 }
+          },
+          {
+            "id": "traffic-2",
+            "node": "app",
+            "shape": { "kind": "burst", "count": 50, "atMs": 5000, "spreadMs": 2000 },
+            "messageType": "ParityBurst"
+          },
+          {
+            "id": "traffic-3",
+            "node": "app",
+            "shape": {
+              "kind": "ramp",
+              "fromMs": 0,
+              "startRate": 1,
+              "stages": [{ "durationMs": 8000, "targetRate": 30 }]
+            }
+          },
+          {
+            "id": "traffic-4",
+            "node": "app",
+            "shape": { "kind": "spike", "baseRate": 5, "peakRate": 40, "atMs": 12000, "peakMs": 1000, "durationMs": 4000 }
+          }
+        ],
+        "timeline": [
+          { "atMs": 6000, "action": { "do": "status", "node": "pubsub-topic", "status": "down" } },
+          { "atMs": 6000, "action": { "do": "note", "text": "It goes down", "focus": ["pubsub-topic"] } }
+        ],
+        "expectations": [
+          {
+            "id": "expectation-1",
+            "label": "Nothing dropped",
+            "metric": { "node": "pubsub-topic", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ],
+        "scale": 2
+      }
+    ],
+    "annotations": [
+      { "id": "note-1", "kind": "note", "text": "Pinned by the parity harness", "x": 40, "y": 360, "width": 240, "height": 160 }
+    ]
+  }
+}

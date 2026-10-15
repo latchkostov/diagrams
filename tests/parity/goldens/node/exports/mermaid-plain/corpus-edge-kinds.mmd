@@ -1,0 +1,21 @@
+---
+title: Edge kinds
+---
+flowchart LR
+  async_a["async source"]
+  async_b["async target"]
+  sync_a["sync source"]
+  sync_b["sync target"]
+  labelled_a["labelled source"]
+  labelled_b["labelled target"]
+  long_label_a["long-label source"]
+  long_label_b["long-label target"]
+  bi_a["bidirectional A"]
+  bi_b["bidirectional B"]
+  async_a -.-> async_b
+  sync_a --> sync_b
+  labelled_a -.->|"OrderPlaced"| labelled_b
+  long_label_a -->|"POST /orders/{id}/payments (idempotent, retries ×3)"| long_label_b
+  bi_a -->|"request"| bi_b
+  bi_b -.->|"callback"| bi_a
+  linkStyle 0,2,5 stroke-dasharray: 6 4

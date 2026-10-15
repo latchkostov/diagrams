@@ -1,0 +1,719 @@
+{
+  "steps": [
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "topic-1",
+            "label": "parity.events",
+            "stencil": { "id": "kafka.topic", "label": "Kafka Topic", "confidence": "high", "alternatives": ["pulsar.topic", "confluent.cloud", "aws.msk"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-1", "from": "shopper", "to": "topic-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+2 nodes, +2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "dotnet-1",
+            "label": "Parity reader",
+            "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-2", "from": "topic-1", "to": "dotnet-1" },
+          {
+            "i": 2,
+            "op": "add_node",
+            "id": "key-vault-1",
+            "label": "Parity secrets",
+            "stencil": { "id": "azure.key-vault", "label": "Key Vault", "confidence": "high", "alternatives": [] }
+          },
+          { "i": 3, "op": "connect", "id": "e-3", "from": "dotnet-1", "to": "key-vault-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +2 connections, −1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "insert_between",
+            "id": "queue-1",
+            "label": "buffer",
+            "stencil": { "id": "rabbitmq.queue", "label": "RabbitMQ Queue", "confidence": "high", "alternatives": ["aws.mq"] },
+            "from": "shopper",
+            "to": "gateway"
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "update", "id": "gateway" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "2 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "update",
+            "id": "orders",
+            "stencil": { "id": "aws.lambda", "label": "AWS Lambda", "confidence": "high", "alternatives": [] },
+            "relations": [{ "id": "orders-to-schemas", "from": "flow", "to": "depends" }],
+            "note": "1 connection is now Depends on: no messages flow over it"
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 boundary, 2 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_boundary", "id": "boundary-1", "label": "Parity zone" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 note",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_note", "id": "note-1" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "title or direction changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "set_meta" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "−1 node, −2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "remove", "ids": ["dotnet-1", "e-2", "e-3"] }]
+      }
+    },
+    {
+      "isError": true,
+      "output": {
+        "ok": false,
+        "i": 0,
+        "error": "Unknown reference \"no-such-node\".",
+        "ref": "no-such-node",
+        "candidates": [
+          { "id": "shopper", "label": "Storefront", "stencil": "client.browser" },
+          { "id": "gateway", "label": "Renamed by parity", "stencil": "nginx" },
+          { "id": "orders", "label": "Order service", "stencil": "aws.lambda" },
+          { "id": "order-events", "label": "orders.created.v1", "stencil": "kafka.topic" },
+          { "id": "inventory", "label": "Inventory service", "stencil": "service.java" },
+          { "id": "payments", "label": "Payments service", "stencil": "service.go" },
+          { "id": "notifications", "label": "Notification service", "stencil": "service.node" },
+          { "id": "stock-db", "label": "Inventory database", "stencil": "postgres" },
+          { "id": "payment-db", "label": "Payment ledger", "stencil": "postgres" },
+          { "id": "notify-cache", "label": "Notification dedupe", "stencil": "redis.cache" },
+          { "id": "payment-events", "label": "payments.completed.v1", "stencil": "kafka.topic" },
+          { "id": "order-db", "label": "Orders database", "stencil": "postgres" },
+          { "id": "schemas", "label": "Schema registry", "stencil": "kafka.schema-registry" },
+          { "id": "metrics", "label": "Commerce metrics", "stencil": "prometheus" },
+          { "id": "dashboard", "label": "Order operations", "stencil": "grafana" },
+          { "id": "topic-1", "label": "parity.events", "stencil": "kafka.topic" },
+          { "id": "key-vault-1", "label": "Parity secrets", "stencil": "azure.key-vault" },
+          { "id": "queue-1", "label": "buffer", "stencil": "rabbitmq.queue" },
+          { "id": "note-1", "label": "Pinned by the parity harness" }
+        ],
+        "hint": "Use an id from candidates, or call describe_diagram.",
+        "applied": false
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "dryRun": true,
+        "summary": "+1 node",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "postgres-1",
+            "label": "Dry run only",
+            "stencil": { "id": "postgres", "label": "PostgreSQL", "confidence": "high", "alternatives": ["gcp.cloud-sql", "aws.aurora", "supabase"] }
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "isError": false,
+      "output": { "ok": true, "id": "sim-1", "title": "Parity rush", "summary": "Added simulation \"Parity rush\": 4 traffic, 2 events, 1 expectations.", "undo": "One undo step reverts this call.", "play": "The user plays it in live view (L), or from the command palette." }
+    },
+    {
+      "isError": true,
+      "output": { "ok": false, "error": "constant traffic needs ratePerSec.", "hint": "Check the input against the tool's schema and try again." }
+    }
+  ],
+  "applied": [
+    { "tool": "edit_diagram", "summary": "+1 node, +1 connection", "changed": ["topic-1", "e-1"] },
+    {
+      "tool": "edit_diagram",
+      "summary": "+2 nodes, +2 connections",
+      "changed": ["dotnet-1", "key-vault-1", "e-2", "e-3"],
+      "choices": [
+        {
+          "nodeId": "dotnet-1",
+          "kind": ".NET consumer",
+          "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] },
+          "node": {
+            "id": "dotnet-1",
+            "stencil": "service.dotnet",
+            "label": "Parity reader",
+            "x": 661,
+            "y": 616,
+            "props": { "replicas": 3 }
+          }
+        }
+      ]
+    },
+    { "tool": "edit_diagram", "summary": "+1 node, +2 connections, −1 connection", "changed": ["queue-1", "e-4", "e-5"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["gateway"] },
+    { "tool": "edit_diagram", "summary": "2 changed", "changed": ["orders", "orders-to-schemas"] },
+    { "tool": "edit_diagram", "summary": "+1 boundary, 2 changed", "changed": ["boundary-1", "shopper", "gateway"] },
+    { "tool": "edit_diagram", "summary": "+1 note", "changed": ["note-1"] },
+    { "tool": "edit_diagram", "summary": "title or direction changed", "changed": [] },
+    { "tool": "edit_diagram", "summary": "−1 node, −2 connections", "changed": [] },
+    { "tool": "set_simulation", "summary": "Added simulation “Parity rush”", "changed": ["shopper"] }
+  ],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Parity edit",
+    "description": "Order placement with independent consumer groups, local stores and payment confirmation events.",
+    "direction": "TB",
+    "groups": [
+      { "id": "aks", "label": "AKS · commerce workloads + Kafka", "tone": "k8s", "x": 760, "y": 96, "width": 1100, "height": 416 },
+      { "id": "boundary-1", "label": "Parity zone", "tone": "neutral", "x": 0, "y": 216, "width": 720, "height": 176 }
+    ],
+    "nodes": [
+      {
+        "id": "shopper",
+        "stencil": "client.browser",
+        "label": "Storefront",
+        "sublabel": "Browser / mobile checkout",
+        "x": 40,
+        "y": 280,
+        "props": { "ratePerSec": 25, "messageType": "OrderRequest" },
+        "group": "boundary-1"
+      },
+      {
+        "id": "gateway",
+        "stencil": "nginx",
+        "label": "Renamed by parity",
+        "sublabel": "TLS termination · /api/orders",
+        "x": 420,
+        "y": 280,
+        "props": { "latencyMs": 120 },
+        "group": "boundary-1"
+      },
+      {
+        "id": "orders",
+        "stencil": "aws.lambda",
+        "label": "Order service",
+        "sublabel": ".NET 10 · group: orders-payments",
+        "x": 800,
+        "y": 280,
+        "group": "aks",
+        "props": {
+          "group": "orders-payments",
+          "idempotent": true,
+          "concurrency": 64,
+          "latencyMs": 150,
+          "emits": { "OrderRequest": "OrderPlaced", "PaymentCompleted": "OrderUpdated" }
+        }
+      },
+      {
+        "id": "order-events",
+        "stencil": "kafka.topic",
+        "label": "orders.created.v1",
+        "sublabel": "OrderPlaced · keyed by orderId",
+        "x": 1180,
+        "y": 280,
+        "group": "aks",
+        "props": { "partitions": 64, "replicationFactor": 3 }
+      },
+      {
+        "id": "inventory",
+        "stencil": "service.java",
+        "label": "Inventory service",
+        "sublabel": "group: inventory-reservations",
+        "x": 1560,
+        "y": 160,
+        "group": "aks",
+        "props": { "group": "inventory-reservations", "concurrency": 64, "latencyMs": 150, "emits": "InventoryReserved" }
+      },
+      {
+        "id": "payments",
+        "stencil": "service.go",
+        "label": "Payments service",
+        "sublabel": "group: payment-authorizations",
+        "x": 1560,
+        "y": 280,
+        "group": "aks",
+        "props": { "group": "payment-authorizations", "concurrency": 64, "latencyMs": 150, "emits": "PaymentCompleted" }
+      },
+      {
+        "id": "notifications",
+        "stencil": "service.node",
+        "label": "Notification service",
+        "sublabel": "group: customer-notifications",
+        "x": 1560,
+        "y": 400,
+        "group": "aks",
+        "props": { "group": "customer-notifications", "concurrency": 64, "latencyMs": 150, "emits": "NotificationRequested" }
+      },
+      {
+        "id": "stock-db",
+        "stencil": "postgres",
+        "label": "Inventory database",
+        "sublabel": "Reservations · SKU availability",
+        "x": 1940,
+        "y": 160,
+        "props": {}
+      },
+      {
+        "id": "payment-db",
+        "stencil": "postgres",
+        "label": "Payment ledger",
+        "sublabel": "Idempotency keys · authorizations",
+        "x": 1940,
+        "y": 280,
+        "props": {}
+      },
+      {
+        "id": "notify-cache",
+        "stencil": "redis.cache",
+        "label": "Notification dedupe",
+        "sublabel": "Order / template key · TTL 24h",
+        "x": 1940,
+        "y": 400,
+        "props": {}
+      },
+      {
+        "id": "payment-events",
+        "stencil": "kafka.topic",
+        "label": "payments.completed.v1",
+        "sublabel": "PaymentCompleted · keyed by orderId",
+        "x": 1180,
+        "y": 520,
+        "props": { "partitions": 64, "replicationFactor": 3 }
+      },
+      {
+        "id": "order-db",
+        "stencil": "postgres",
+        "label": "Orders database",
+        "sublabel": "Order state · transactional outbox",
+        "x": 800,
+        "y": 520,
+        "props": {}
+      },
+      {
+        "id": "schemas",
+        "stencil": "kafka.schema-registry",
+        "label": "Schema registry",
+        "sublabel": "Avro · backward compatible",
+        "x": 1180,
+        "y": 40,
+        "props": { "compatibility": "BACKWARD" }
+      },
+      {
+        "id": "metrics",
+        "stencil": "prometheus",
+        "label": "Commerce metrics",
+        "sublabel": "Scrape interval: 15s",
+        "x": 1560,
+        "y": 640,
+        "props": { "scrapeIntervalSec": 15 }
+      },
+      {
+        "id": "dashboard",
+        "stencil": "grafana",
+        "label": "Order operations",
+        "sublabel": "Lag · checkout latency · failures",
+        "x": 1940,
+        "y": 640,
+        "props": {}
+      },
+      { "id": "topic-1", "stencil": "kafka.topic", "label": "parity.events", "x": 361, "y": 392 },
+      { "id": "key-vault-1", "stencil": "azure.key-vault", "label": "Parity secrets", "x": 40, "y": 64 },
+      { "id": "queue-1", "stencil": "rabbitmq.queue", "label": "buffer", "x": 361, "y": 504 }
+    ],
+    "edges": [
+      {
+        "id": "gateway-to-orders",
+        "from": "gateway",
+        "to": "orders",
+        "label": "POST /orders",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "orders-to-order-db",
+        "from": "orders",
+        "to": "order-db",
+        "label": "Commit order + outbox",
+        "kind": "sync",
+        "props": { "travelMs": 200, "filter": ["OrderPlaced", "OrderUpdated"] }
+      },
+      {
+        "id": "orders-to-order-events",
+        "from": "orders",
+        "to": "order-events",
+        "label": "OrderPlaced",
+        "kind": "async",
+        "props": { "travelMs": 300, "filter": ["OrderPlaced"] }
+      },
+      {
+        "id": "order-events-to-inventory",
+        "from": "order-events",
+        "to": "inventory",
+        "label": "Reserve inventory",
+        "kind": "async",
+        "props": { "travelMs": 300, "filter": ["OrderPlaced"], "group": "inventory-reservations" }
+      },
+      {
+        "id": "order-events-to-payments",
+        "from": "order-events",
+        "to": "payments",
+        "label": "Authorize payment",
+        "kind": "async",
+        "props": { "travelMs": 300, "filter": ["OrderPlaced"], "group": "payment-authorizations" }
+      },
+      {
+        "id": "order-events-to-notifications",
+        "from": "order-events",
+        "to": "notifications",
+        "label": "Send confirmation",
+        "kind": "async",
+        "props": { "travelMs": 300, "filter": ["OrderPlaced"], "group": "customer-notifications" }
+      },
+      {
+        "id": "inventory-to-stock-db",
+        "from": "inventory",
+        "to": "stock-db",
+        "label": "Reserve SKUs",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "payments-to-payment-db",
+        "from": "payments",
+        "to": "payment-db",
+        "label": "Record authorization",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "notifications-to-notify-cache",
+        "from": "notifications",
+        "to": "notify-cache",
+        "label": "SET NX · dedupe",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "payments-to-payment-events",
+        "from": "payments",
+        "to": "payment-events",
+        "label": "PaymentCompleted",
+        "kind": "async",
+        "props": { "travelMs": 300 }
+      },
+      {
+        "id": "payment-events-to-orders",
+        "from": "payment-events",
+        "to": "orders",
+        "label": "group: orders-payments",
+        "kind": "async",
+        "props": { "travelMs": 300, "filter": ["PaymentCompleted"], "group": "orders-payments" }
+      },
+      {
+        "id": "orders-to-schemas",
+        "from": "orders",
+        "to": "schemas",
+        "label": "Fetch Avro schema",
+        "kind": "sync",
+        "props": { "travelMs": 200, "filter": ["OrderPlaced"] },
+        "relation": "depends",
+        "relationOrigin": "inferred"
+      },
+      {
+        "id": "metrics-to-orders",
+        "from": "metrics",
+        "to": "orders",
+        "label": "GET /metrics",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "dashboard-to-metrics",
+        "from": "dashboard",
+        "to": "metrics",
+        "label": "PromQL",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      { "id": "e-1", "from": "shopper", "to": "topic-1", "kind": "async" },
+      {
+        "id": "e-4",
+        "from": "shopper",
+        "to": "queue-1",
+        "kind": "sync",
+        "label": "HTTPS",
+        "props": { "travelMs": 200 }
+      },
+      { "id": "e-5", "from": "queue-1", "to": "gateway", "kind": "sync", "props": { "travelMs": 200 } }
+    ],
+    "simulations": [
+      {
+        "id": "black-friday",
+        "title": "Black Friday: 2,000 orders/s",
+        "seed": 7,
+        "traffic": [
+          {
+            "id": "checkouts",
+            "node": "shopper",
+            "messageType": "OrderRequest",
+            "label": "Black Friday: 2,000 orders per second",
+            "shape": { "kind": "constant", "ratePerSec": 2000, "durationMs": 10000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 0,
+            "action": { "do": "note", "text": "20,000 checkouts at 2,000 orders/s. Each dot represents 50 orders; independent groups reserve stock, authorize payment and notify customers.", "focus": ["shopper", "order-events"] }
+          },
+          {
+            "atMs": 6000,
+            "action": { "do": "note", "text": "PaymentCompleted updates the order without creating another order.", "focus": ["payments", "payment-events", "orders"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "stock",
+            "label": "All 20,000 orders reserve stock",
+            "metric": { "node": "stock-db", "field": "processed" },
+            "op": "==",
+            "value": 20000,
+            "when": "end"
+          },
+          {
+            "id": "payments",
+            "label": "All 20,000 payments are recorded",
+            "metric": { "node": "payment-db", "field": "processed" },
+            "op": "==",
+            "value": 20000,
+            "when": "end"
+          },
+          {
+            "id": "notifications",
+            "label": "Notifications",
+            "metric": { "node": "notify-cache", "field": "processed" },
+            "op": "==",
+            "value": 20000,
+            "when": "end"
+          },
+          {
+            "id": "orders",
+            "label": "20,000 orders created and 20,000 payment updates",
+            "metric": { "node": "order-db", "field": "processed" },
+            "op": "==",
+            "value": 40000,
+            "when": "end"
+          },
+          {
+            "id": "no-dlq",
+            "label": "No dlq",
+            "metric": { "node": "order-events", "field": "deadLettered" },
+            "op": "==",
+            "value": 0,
+            "when": "always"
+          },
+          {
+            "id": "no-drop",
+            "label": "No drop",
+            "metric": { "node": "order-events", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "always"
+          }
+        ],
+        "scale": 50,
+        "description": "20,000 checkouts in ten seconds; each dot represents 50 orders.",
+        "setup": {
+          "props": {
+            "orders": { "replicas": 12 },
+            "inventory": { "replicas": 6 },
+            "payments": { "replicas": 6 },
+            "notifications": { "replicas": 6 }
+          }
+        }
+      },
+      {
+        "id": "payments-outage",
+        "title": "Payments service goes down",
+        "seed": 7,
+        "traffic": [
+          {
+            "id": "checkouts",
+            "node": "shopper",
+            "messageType": "OrderRequest",
+            "label": "300 checkouts during an outage",
+            "shape": { "kind": "constant", "ratePerSec": 50, "durationMs": 6000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 0,
+            "action": { "do": "note", "text": "Inventory and notifications have independent consumer groups.", "focus": ["order-events"] }
+          },
+          { "atMs": 4000, "action": { "do": "status", "node": "payments", "status": "down" } },
+          {
+            "atMs": 4000,
+            "action": { "do": "note", "text": "Payments is offline. Its group accumulates lag while the other groups continue.", "focus": ["payments", "order-events"], "pause": true }
+          },
+          { "atMs": 12000, "action": { "do": "status", "node": "payments", "status": "up" } },
+          {
+            "atMs": 12000,
+            "action": { "do": "note", "text": "Payments is back. Watch its backlog drain and the ledger catch up.", "focus": ["payments", "payment-db"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "outage-lag",
+            "label": "Payment lag grows during the outage",
+            "metric": { "node": "order-events", "field": "lag", "group": "payment-authorizations" },
+            "op": ">",
+            "value": 0,
+            "when": "at",
+            "atMs": 11000
+          },
+          {
+            "id": "recovered",
+            "label": "Recovered",
+            "metric": { "node": "order-events", "field": "lag", "group": "payment-authorizations" },
+            "op": "==",
+            "value": 0,
+            "when": "eventually"
+          },
+          {
+            "id": "drained",
+            "label": "Drained",
+            "metric": { "node": "order-events", "field": "lag", "group": "payment-authorizations" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          },
+          {
+            "id": "payments",
+            "label": "Payments",
+            "metric": { "node": "payment-db", "field": "processed" },
+            "op": "==",
+            "value": 300,
+            "when": "end"
+          },
+          {
+            "id": "stock",
+            "label": "Stock",
+            "metric": { "node": "stock-db", "field": "processed" },
+            "op": "==",
+            "value": 300,
+            "when": "end"
+          }
+        ],
+        "scale": 1
+      },
+      {
+        "id": "sim-1",
+        "title": "Parity rush",
+        "durationMs": 20000,
+        "traffic": [
+          {
+            "id": "traffic-1",
+            "node": "shopper",
+            "shape": { "kind": "constant", "ratePerSec": 20, "fromMs": 0, "durationMs": 10000 }
+          },
+          {
+            "id": "traffic-2",
+            "node": "shopper",
+            "shape": { "kind": "burst", "count": 50, "atMs": 5000, "spreadMs": 2000 },
+            "messageType": "ParityBurst"
+          },
+          {
+            "id": "traffic-3",
+            "node": "shopper",
+            "shape": {
+              "kind": "ramp",
+              "fromMs": 0,
+              "startRate": 1,
+              "stages": [{ "durationMs": 8000, "targetRate": 30 }]
+            }
+          },
+          {
+            "id": "traffic-4",
+            "node": "shopper",
+            "shape": { "kind": "spike", "baseRate": 5, "peakRate": 40, "atMs": 12000, "peakMs": 1000, "durationMs": 4000 }
+          }
+        ],
+        "timeline": [
+          { "atMs": 6000, "action": { "do": "status", "node": "orders", "status": "down" } },
+          { "atMs": 6000, "action": { "do": "note", "text": "It goes down", "focus": ["orders"] } }
+        ],
+        "expectations": [
+          {
+            "id": "expectation-1",
+            "label": "Nothing dropped",
+            "metric": { "node": "orders", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ],
+        "scale": 2
+      }
+    ],
+    "annotations": [
+      { "id": "note-1", "kind": "note", "text": "Pinned by the parity harness", "x": 40, "y": 400, "width": 240, "height": 160 }
+    ]
+  }
+}

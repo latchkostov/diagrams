@@ -1,0 +1,43 @@
+{
+  "withIcons": {
+    "sha256": "df9631c708ad38c8ba9c58b11fa1f50d53559f9914738300ebd139a9dd94f420",
+    "bytes": 5162,
+    "inlined": { "service.dotnet": "dotnet 625b7d68f63c47d9" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Retries and dead-lettering",
+        "description": "maxDeliveryCount 3; the DLQ edge is inferred from the target's label.",
+        "nodes": [
+          { "id": "api", "stencil": "service.dotnet", "label": "Orders API", "x": 40, "y": 160 },
+          {
+            "id": "queue",
+            "stencil": "azure.service-bus.queue",
+            "label": "orders",
+            "sublabel": "orders",
+            "x": 400,
+            "y": 160,
+            "props": { "maxDeliveryCount": 3 }
+          },
+          {
+            "id": "worker",
+            "stencil": "azure.functions",
+            "label": "Fulfilment",
+            "x": 760,
+            "y": 40,
+            "props": { "failureRate": 1, "latencyMs": 200 }
+          },
+          { "id": "dlq", "stencil": "azure.service-bus.queue", "label": "Dead-letter queue", "sublabel": "orders/$deadletterqueue", "x": 760, "y": 280 }
+        ],
+        "edges": [
+          { "id": "api-queue", "from": "api", "to": "queue", "kind": "async" },
+          { "id": "queue-worker", "from": "queue", "to": "worker", "kind": "async" },
+          { "id": "queue-dlq", "from": "queue", "to": "dlq", "kind": "async", "props": { "dlq": true } }
+        ]
+      }
+    }
+  ]
+}

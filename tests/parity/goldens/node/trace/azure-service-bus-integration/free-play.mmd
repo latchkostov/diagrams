@@ -1,0 +1,16 @@
+---
+title: "Contoso ERP #1 · 880 ms end to end · 1 copy"
+---
+sequenceDiagram
+  participant partner as Contoso ERP
+  participant apim as Partner API
+  participant ingest as Invoice intake
+  participant invoices as invoices
+  participant blob as Invoice originals
+  partner->>apim: Contoso ERP (+0.00 s)<br/>HTTPS
+  apim-->>partner: reply (+0.25 s)
+  apim->>ingest: Contoso ERP (+0.25 s)<br/>POST /v1/invoices
+  ingest-->>apim: reply (+0.58 s)
+  ingest-)invoices: Contoso ERP (+0.58 s)<br/>InvoiceAccepted
+  ingest->>blob: Contoso ERP (+0.58 s)<br/>Archive original PDF
+  blob-->>ingest: reply (+0.83 s)

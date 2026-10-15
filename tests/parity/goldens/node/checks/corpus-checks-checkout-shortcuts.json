@@ -1,0 +1,128 @@
+{
+  "ran": [
+    "dead-letter",
+    "no-reader",
+    "sync-cycle",
+    "sync-chain",
+    "shared-database",
+    "entry-gateway",
+    "capacity",
+    "single-point",
+    "secret-identity",
+    "schema-registry"
+  ],
+  "off": [],
+  "findings": [
+    {
+      "id": "shared-database:billing-db",
+      "rule": "shared-database",
+      "severity": "warning",
+      "target": "billing-db",
+      "elements": ["billing-db", "billing", "db", "orders"],
+      "fix": {
+        "ops": [
+          { "op": "connect", "from": "billing", "to": "orders", "kind": "sync", "key": "ask-orders-1", "label": "Read order totals" },
+          { "op": "remove", "targets": ["billing-db"] }
+        ],
+        "needsChoice": false
+      }
+    },
+    {
+      "id": "entry-gateway:orders",
+      "rule": "entry-gateway",
+      "severity": "suggestion",
+      "target": "orders",
+      "elements": ["orders", "app", "app-orders"],
+      "fix": {
+        "ops": [
+          { "op": "connect", "from": "app", "to": "gw", "kind": "sync", "label": "POST /orders" },
+          { "op": "remove", "targets": ["app-orders"] }
+        ],
+        "needsChoice": false,
+        "options": [
+          {
+            "kind": "generic.firewall",
+            "ops": [
+              { "op": "insert_between", "from": "app", "to": "orders", "kind": "generic.firewall", "label": "Firewall / WAF", "key": "new-gateway" }
+            ]
+          },
+          {
+            "kind": "kong",
+            "ops": [
+              { "op": "insert_between", "from": "app", "to": "orders", "kind": "kong", "label": "Kong Gateway", "key": "new-gateway" }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "ignored": [],
+  "fixes": {
+    "shared-database:billing-db (default)": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "summary": "+1 connection, −1 connection",
+      "results": [
+        { "i": 0, "op": "connect", "id": "e-1", "from": "billing", "to": "orders" },
+        { "i": 1, "op": "remove", "ids": ["billing-db"] }
+      ],
+      "nodes": 6,
+      "edges": 5,
+      "findingsAfter": ["entry-gateway:orders"]
+    },
+    "entry-gateway:orders (default)": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "summary": "+1 connection, −1 connection",
+      "results": [
+        { "i": 0, "op": "connect", "id": "e-1", "from": "app", "to": "gw" },
+        { "i": 1, "op": "remove", "ids": ["app-orders"] }
+      ],
+      "nodes": 6,
+      "edges": 5,
+      "findingsAfter": ["shared-database:billing-db"]
+    },
+    "entry-gateway:orders (option 1)": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "summary": "+1 node, +2 connections, −1 connection",
+      "results": [
+        {
+          "i": 0,
+          "op": "insert_between",
+          "id": "firewall-1",
+          "label": "Firewall / WAF",
+          "stencil": { "id": "generic.firewall", "label": "Firewall / WAF", "confidence": "high", "alternatives": [] },
+          "from": "app",
+          "to": "orders"
+        }
+      ],
+      "nodes": 7,
+      "edges": 6,
+      "findingsAfter": ["shared-database:billing-db"]
+    },
+    "entry-gateway:orders (option 2)": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "summary": "+1 node, +2 connections, −1 connection",
+      "results": [
+        {
+          "i": 0,
+          "op": "insert_between",
+          "id": "kong-1",
+          "label": "Kong Gateway",
+          "stencil": { "id": "kong", "label": "Kong Gateway", "confidence": "high", "alternatives": [] },
+          "from": "app",
+          "to": "orders"
+        }
+      ],
+      "nodes": 7,
+      "edges": 6,
+      "findingsAfter": ["shared-database:billing-db"]
+    }
+  }
+}

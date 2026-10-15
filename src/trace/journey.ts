@@ -19,7 +19,7 @@ export interface Visit {
   left?: number;
 }
 
-export type HopKind = "origin" | "hop" | "redeliver" | "dlq" | "fail" | "deadletter" | "drop" | "blocked";
+export type HopKind = "origin" | "hop" | "redeliver" | "dlq" | "fail" | "deadletter" | "drop" | "blocked" | "rejected";
 
 export interface JourneyRow {
   /** Unique within the journey. */
@@ -79,6 +79,7 @@ export interface Journey {
   dropped: number;
   /** Copies a deny rule stopped (on purpose: not in `dropped`). */
   blocked: number;
+  rejected?: number;
   /** Brokers with no consumer that kept a copy (a topic nobody reads, a dead-letter queue): its journey ends there. */
   kept: string[];
   /** Nodes reached and edges travelled, in order of first use: the path so far. */
@@ -115,7 +116,8 @@ export function buildJourney(trace: MessageTrace, diagram: DiagramLike, now = tr
     failures = 0,
     deadLettered = 0,
     dropped = 0,
-    blocked = 0;
+    blocked = 0,
+    rejected = 0;
   const kept: string[] = [];
 
   const reach = (node: string | undefined) => {
@@ -260,6 +262,19 @@ export function buildJourney(trace: MessageTrace, diagram: DiagramLike, now = tr
         dropped++;
         rows.push({ key, kind: "drop", t, id: step.id, type: step.type, node: step.node!, reason: step.reason, copy });
         break;
+      case "reject":
+        rejected++;
+        rows.push({
+          key,
+          kind: "rejected",
+          t,
+          id: step.id,
+          type: step.type,
+          node: step.node!,
+          reason: step.reason,
+          copy,
+        });
+        break;
       case "block":
         // A deny rule's block is its own outcome: on purpose, never counted with the losses.
         blocked++;
@@ -296,6 +311,7 @@ export function buildJourney(trace: MessageTrace, diagram: DiagramLike, now = tr
     deadLettered,
     dropped,
     blocked,
+    ...(rejected ? { rejected } : {}),
     kept,
     nodes,
     edges: edgeList,

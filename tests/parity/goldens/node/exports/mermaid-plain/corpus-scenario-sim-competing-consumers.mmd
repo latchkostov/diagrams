@@ -1,0 +1,14 @@
+---
+title: Competing consumers
+---
+flowchart LR
+  producer["Producer"]
+  broker["jobs queue<br/>jobs"]
+  w1["Worker 1"]
+  w2["Worker 2"]
+  w3["Worker 3"]
+  producer -.-> broker
+  broker -.-> w1
+  broker -.-> w2
+  broker -.-> w3
+  linkStyle 0,1,2,3 stroke-dasharray: 6 4

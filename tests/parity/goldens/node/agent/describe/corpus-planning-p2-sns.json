@@ -1,0 +1,137 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"Planning: logs and subscriptions\" · direction LR · 5 nodes, 3 connections, 0 boundaries, 0 simulations\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Publisher\" props={\"ratePerSec\":64} capabilities=[{\"kind\":\"publishes\",\"edge\":\"publish\",\"peer\":\"broker\"}] explanation=undefined\n  \"broker\" \"aws.sns\" (\"Amazon SNS\") \"Events\" props={\"partitions\":3} capabilities=[] explanation=undefined\n  \"worker\" \"aws.lambda\" (\"AWS Lambda\") \"Readers\" props={\"replicas\":8,\"concurrency\":4,\"latencyMs\":1000,\"jitter\":0} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read\",\"peer\":\"broker\",\"group\":\"billing\",\"broker\":{\"partitioned\":false,\"assignment\":\"subscriptions\",\"group\":\"subscription\",\"ingestUnit\":\"messages/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":32,\"offered\":64,\"replicas\":8,\"baseReplicas\":8,\"omittedContributors\":0,\"activeReplicas\":8,\"assignments\":[],\"slots\":4,\"seconds\":1,\"utilization\":2,\"growth\":32,\"contributors\":[{\"edge\":\"read\",\"node\":\"broker\",\"label\":\"Events\",\"rate\":64}],\"target\":0.5,\"minimumReplicas\":16,\"targetReplicas\":32,\"changes\":null,\"converged\":true}\n  \"dead\" \"aws.sqs\" (\"Amazon SQS\") \"Recovery\" capabilities=[] explanation={\"id\":\"dead\",\"role\":\"queue\",\"status\":\"up\",\"reason\":\"no-reader\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"changes\":null,\"addConsumer\":\"dead\",\"fixId\":\"no-reader:dead\",\"converged\":true}\n  \"cluster\" \"kafka.cluster\" (\"Kafka Cluster\") \"Cluster\" capabilities=[] explanation=undefined\nconnections:\n  \"publish\" \"source\" -> \"broker\" async\n  \"read\" \"broker\" -> \"worker\" async \"billing\"\n  \"recovery\" \"broker\" -> \"dead\" async \"Recovery\""
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "Planning: logs and subscriptions",
+      "direction": "LR",
+      "planning": { "revision": "p2" },
+      "nodes": [
+        {
+          "id": "source",
+          "stencil": "client.browser",
+          "label": "Publisher",
+          "x": 0,
+          "y": 100,
+          "props": { "ratePerSec": 64 },
+          "capabilities": [{ "kind": "publishes", "edge": "publish", "peer": "broker" }]
+        },
+        {
+          "id": "broker",
+          "stencil": "aws.sns",
+          "label": "Events",
+          "x": 320,
+          "y": 100,
+          "props": { "partitions": 3 },
+          "capabilities": []
+        },
+        {
+          "id": "worker",
+          "stencil": "aws.lambda",
+          "label": "Readers",
+          "x": 640,
+          "y": 220,
+          "props": { "replicas": 8, "concurrency": 4, "latencyMs": 1000, "jitter": 0 },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "read",
+              "peer": "broker",
+              "group": "billing",
+              "broker": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "worker",
+            "role": "processor",
+            "status": "up",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 32,
+            "offered": 64,
+            "replicas": 8,
+            "baseReplicas": 8,
+            "omittedContributors": 0,
+            "activeReplicas": 8,
+            "assignments": [],
+            "slots": 4,
+            "seconds": 1,
+            "utilization": 2,
+            "growth": 32,
+            "contributors": [{ "edge": "read", "node": "broker", "label": "Events", "rate": 64 }],
+            "target": 0.5,
+            "minimumReplicas": 16,
+            "targetReplicas": 32,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "dead",
+          "stencil": "aws.sqs",
+          "label": "Recovery",
+          "x": 320,
+          "y": 320,
+          "capabilities": [],
+          "explanation": {
+            "id": "dead",
+            "role": "queue",
+            "status": "up",
+            "reason": "no-reader",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": null,
+            "seconds": 0,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "changes": null,
+            "addConsumer": "dead",
+            "fixId": "no-reader:dead",
+            "converged": true
+          }
+        },
+        { "id": "cluster", "stencil": "kafka.cluster", "label": "Cluster", "x": 0, "y": 320, "capabilities": [] }
+      ],
+      "edges": [
+        { "id": "publish", "from": "source", "to": "broker", "props": { "travelMs": 0 } },
+        {
+          "id": "read",
+          "label": "billing",
+          "from": "broker",
+          "to": "worker",
+          "props": { "group": "billing", "travelMs": 0 }
+        },
+        {
+          "id": "recovery",
+          "label": "Recovery",
+          "from": "broker",
+          "to": "dead",
+          "props": { "dlq": true, "group": "billing", "travelMs": 0 }
+        }
+      ],
+      "groups": [],
+      "annotations": [],
+      "simulations": [],
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"Planning: logs and subscriptions\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Publisher\" props={\"ratePerSec\":64} capabilities=[{\"kind\":\"publishes\",\"edge\":\"publish\",\"peer\":\"broker\"}] explanation=undefined\n  \"broker\" \"aws.sns\" (\"Amazon SNS\") \"Events\" props={\"partitions\":3} capabilities=[] explanation=undefined\nconnections:\n  \"publish\" \"source\" -> \"broker\" async"
+  }
+}

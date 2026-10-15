@@ -1,0 +1,1212 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"Planning: shared capacity\" · direction LR · 26 nodes, 25 connections, 0 boundaries, 0 simulations\nnodes:\n  \"checkout\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":3} capabilities=[{\"kind\":\"publishes\",\"edge\":\"publish\",\"peer\":\"topic\"}] explanation=undefined\n  \"topic\" \"kafka.topic\" (\"Kafka Topic\") \"Order events\" capabilities=[] explanation=undefined\n  \"worker-0\" \"generic.service\" (\"Service\") \"Worker 0\" props={\"status\":\"down\"} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-0\",\"peer\":\"topic\",\"group\":\"group-0\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker-0\",\"role\":\"processor\",\"status\":\"down\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"read-0\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"worker-1\" \"generic.service\" (\"Service\") \"Worker 1\" props={\"status\":\"down\"} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-1\",\"peer\":\"topic\",\"group\":\"group-1\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker-1\",\"role\":\"processor\",\"status\":\"down\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"read-1\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"worker-2\" \"generic.service\" (\"Service\") \"Worker 2\" props={\"status\":\"down\"} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-2\",\"peer\":\"topic\",\"group\":\"group-2\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker-2\",\"role\":\"processor\",\"status\":\"down\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"read-2\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"worker-3\" \"generic.service\" (\"Service\") \"Worker 3\" props={\"status\":\"down\"} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-3\",\"peer\":\"topic\",\"group\":\"group-3\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker-3\",\"role\":\"processor\",\"status\":\"down\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"read-3\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"worker-4\" \"generic.service\" (\"Service\") \"Worker 4\" props={\"status\":\"down\"} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-4\",\"peer\":\"topic\",\"group\":\"group-4\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker-4\",\"role\":\"processor\",\"status\":\"down\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"read-4\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"worker-5\" \"generic.service\" (\"Service\") \"Worker 5\" props={\"status\":\"down\"} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-5\",\"peer\":\"topic\",\"group\":\"group-5\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker-5\",\"role\":\"processor\",\"status\":\"down\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"read-5\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"worker-6\" \"generic.service\" (\"Service\") \"Worker 6\" props={\"status\":\"down\"} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-6\",\"peer\":\"topic\",\"group\":\"group-6\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker-6\",\"role\":\"processor\",\"status\":\"down\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"read-6\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"worker-7\" \"generic.service\" (\"Service\") \"Worker 7\" props={\"status\":\"down\"} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-7\",\"peer\":\"topic\",\"group\":\"group-7\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker-7\",\"role\":\"processor\",\"status\":\"down\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"read-7\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"worker-8\" \"generic.service\" (\"Service\") \"Worker 8\" props={\"status\":\"down\"} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-8\",\"peer\":\"topic\",\"group\":\"group-8\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker-8\",\"role\":\"processor\",\"status\":\"down\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"read-8\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"worker-9\" \"generic.service\" (\"Service\") \"Worker 9\" props={\"status\":\"down\"} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-9\",\"peer\":\"topic\",\"group\":\"group-9\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker-9\",\"role\":\"processor\",\"status\":\"down\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"read-9\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"worker-10\" \"generic.service\" (\"Service\") \"Worker 10\" props={\"status\":\"down\"} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-10\",\"peer\":\"topic\",\"group\":\"group-10\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker-10\",\"role\":\"processor\",\"status\":\"down\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"read-10\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"worker-11\" \"generic.service\" (\"Service\") \"Worker 11\" props={\"status\":\"down\"} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-11\",\"peer\":\"topic\",\"group\":\"group-11\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker-11\",\"role\":\"processor\",\"status\":\"down\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"read-11\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"worker-12\" \"generic.service\" (\"Service\") \"Worker 12\" props={\"status\":\"down\"} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-12\",\"peer\":\"topic\",\"group\":\"group-12\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker-12\",\"role\":\"processor\",\"status\":\"down\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"read-12\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"worker-13\" \"generic.service\" (\"Service\") \"Worker 13\" props={\"status\":\"down\"} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-13\",\"peer\":\"topic\",\"group\":\"group-13\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker-13\",\"role\":\"processor\",\"status\":\"down\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"read-13\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"worker-14\" \"generic.service\" (\"Service\") \"Worker 14\" props={\"status\":\"down\"} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-14\",\"peer\":\"topic\",\"group\":\"group-14\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker-14\",\"role\":\"processor\",\"status\":\"down\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"read-14\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"worker-15\" \"generic.service\" (\"Service\") \"Worker 15\" props={\"status\":\"down\"} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-15\",\"peer\":\"topic\",\"group\":\"group-15\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker-15\",\"role\":\"processor\",\"status\":\"down\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"read-15\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"worker-16\" \"generic.service\" (\"Service\") \"Worker 16\" props={\"status\":\"down\"} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-16\",\"peer\":\"topic\",\"group\":\"group-16\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker-16\",\"role\":\"processor\",\"status\":\"down\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"read-16\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"worker-17\" \"generic.service\" (\"Service\") \"Worker 17\" props={\"status\":\"down\"} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-17\",\"peer\":\"topic\",\"group\":\"group-17\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker-17\",\"role\":\"processor\",\"status\":\"down\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"read-17\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"worker-18\" \"generic.service\" (\"Service\") \"Worker 18\" props={\"status\":\"down\"} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-18\",\"peer\":\"topic\",\"group\":\"group-18\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker-18\",\"role\":\"processor\",\"status\":\"down\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"read-18\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"worker-19\" \"generic.service\" (\"Service\") \"Worker 19\" props={\"status\":\"down\"} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-19\",\"peer\":\"topic\",\"group\":\"group-19\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker-19\",\"role\":\"processor\",\"status\":\"down\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"read-19\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"worker-20\" \"generic.service\" (\"Service\") \"Worker 20\" props={\"status\":\"down\"} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-20\",\"peer\":\"topic\",\"group\":\"group-20\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker-20\",\"role\":\"processor\",\"status\":\"down\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"read-20\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"worker-21\" \"generic.service\" (\"Service\") \"Worker 21\" props={\"status\":\"down\"} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-21\",\"peer\":\"topic\",\"group\":\"group-21\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker-21\",\"role\":\"processor\",\"status\":\"down\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"read-21\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"worker-22\" \"generic.service\" (\"Service\") \"Worker 22\" props={\"status\":\"down\"} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-22\",\"peer\":\"topic\",\"group\":\"group-22\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker-22\",\"role\":\"processor\",\"status\":\"down\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"read-22\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"worker-23\" \"generic.service\" (\"Service\") \"Worker 23\" props={\"status\":\"down\"} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-23\",\"peer\":\"topic\",\"group\":\"group-23\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker-23\",\"role\":\"processor\",\"status\":\"down\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"read-23\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"publish\" \"checkout\" -> \"topic\" async\n  \"read-0\" \"topic\" -> \"worker-0\" async\n  \"read-1\" \"topic\" -> \"worker-1\" async\n  \"read-2\" \"topic\" -> \"worker-2\" async\n  \"read-3\" \"topic\" -> \"worker-3\" async\n  \"read-4\" \"topic\" -> \"worker-4\" async\n  \"read-5\" \"topic\" -> \"worker-5\" async\n  \"read-6\" \"topic\" -> \"worker-6\" async\n  \"read-7\" \"topic\" -> \"worker-7\" async\n  \"read-8\" \"topic\" -> \"worker-8\" async\n  \"read-9\" \"topic\" -> \"worker-9\" async\n  \"read-10\" \"topic\" -> \"worker-10\" async\n  \"read-11\" \"topic\" -> \"worker-11\" async\n  \"read-12\" \"topic\" -> \"worker-12\" async\n  \"read-13\" \"topic\" -> \"worker-13\" async\n  \"read-14\" \"topic\" -> \"worker-14\" async\n  \"read-15\" \"topic\" -> \"worker-15\" async\n  \"read-16\" \"topic\" -> \"worker-16\" async\n  \"read-17\" \"topic\" -> \"worker-17\" async\n  \"read-18\" \"topic\" -> \"worker-18\" async\n  \"read-19\" \"topic\" -> \"worker-19\" async\n  \"read-20\" \"topic\" -> \"worker-20\" async\n  \"read-21\" \"topic\" -> \"worker-21\" async\n  \"read-22\" \"topic\" -> \"worker-22\" async\n  \"read-23\" \"topic\" -> \"worker-23\" async"
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "Planning: shared capacity",
+      "direction": "LR",
+      "nodes": [
+        {
+          "id": "checkout",
+          "stencil": "client.browser",
+          "label": "Checkout",
+          "x": 0,
+          "y": 140,
+          "props": { "ratePerSec": 3 },
+          "capabilities": [{ "kind": "publishes", "edge": "publish", "peer": "topic" }]
+        },
+        { "id": "topic", "stencil": "kafka.topic", "label": "Order events", "x": 320, "y": 20, "capabilities": [] },
+        {
+          "id": "worker-0",
+          "stencil": "generic.service",
+          "label": "Worker 0",
+          "x": 640,
+          "y": 0,
+          "props": { "status": "down" },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "read-0",
+              "peer": "topic",
+              "group": "group-0",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "worker-0",
+            "role": "processor",
+            "status": "down",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": null,
+            "growth": 3,
+            "contributors": [{ "edge": "read-0", "node": "topic", "label": "Order events", "rate": 3 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "worker-1",
+          "stencil": "generic.service",
+          "label": "Worker 1",
+          "x": 960,
+          "y": 0,
+          "props": { "status": "down" },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "read-1",
+              "peer": "topic",
+              "group": "group-1",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "worker-1",
+            "role": "processor",
+            "status": "down",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": null,
+            "growth": 3,
+            "contributors": [{ "edge": "read-1", "node": "topic", "label": "Order events", "rate": 3 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "worker-2",
+          "stencil": "generic.service",
+          "label": "Worker 2",
+          "x": 1280,
+          "y": 0,
+          "props": { "status": "down" },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "read-2",
+              "peer": "topic",
+              "group": "group-2",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "worker-2",
+            "role": "processor",
+            "status": "down",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": null,
+            "growth": 3,
+            "contributors": [{ "edge": "read-2", "node": "topic", "label": "Order events", "rate": 3 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "worker-3",
+          "stencil": "generic.service",
+          "label": "Worker 3",
+          "x": 1600,
+          "y": 0,
+          "props": { "status": "down" },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "read-3",
+              "peer": "topic",
+              "group": "group-3",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "worker-3",
+            "role": "processor",
+            "status": "down",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": null,
+            "growth": 3,
+            "contributors": [{ "edge": "read-3", "node": "topic", "label": "Order events", "rate": 3 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "worker-4",
+          "stencil": "generic.service",
+          "label": "Worker 4",
+          "x": 640,
+          "y": 140,
+          "props": { "status": "down" },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "read-4",
+              "peer": "topic",
+              "group": "group-4",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "worker-4",
+            "role": "processor",
+            "status": "down",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": null,
+            "growth": 3,
+            "contributors": [{ "edge": "read-4", "node": "topic", "label": "Order events", "rate": 3 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "worker-5",
+          "stencil": "generic.service",
+          "label": "Worker 5",
+          "x": 960,
+          "y": 140,
+          "props": { "status": "down" },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "read-5",
+              "peer": "topic",
+              "group": "group-5",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "worker-5",
+            "role": "processor",
+            "status": "down",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": null,
+            "growth": 3,
+            "contributors": [{ "edge": "read-5", "node": "topic", "label": "Order events", "rate": 3 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "worker-6",
+          "stencil": "generic.service",
+          "label": "Worker 6",
+          "x": 1280,
+          "y": 140,
+          "props": { "status": "down" },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "read-6",
+              "peer": "topic",
+              "group": "group-6",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "worker-6",
+            "role": "processor",
+            "status": "down",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": null,
+            "growth": 3,
+            "contributors": [{ "edge": "read-6", "node": "topic", "label": "Order events", "rate": 3 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "worker-7",
+          "stencil": "generic.service",
+          "label": "Worker 7",
+          "x": 1600,
+          "y": 140,
+          "props": { "status": "down" },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "read-7",
+              "peer": "topic",
+              "group": "group-7",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "worker-7",
+            "role": "processor",
+            "status": "down",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": null,
+            "growth": 3,
+            "contributors": [{ "edge": "read-7", "node": "topic", "label": "Order events", "rate": 3 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "worker-8",
+          "stencil": "generic.service",
+          "label": "Worker 8",
+          "x": 640,
+          "y": 280,
+          "props": { "status": "down" },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "read-8",
+              "peer": "topic",
+              "group": "group-8",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "worker-8",
+            "role": "processor",
+            "status": "down",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": null,
+            "growth": 3,
+            "contributors": [{ "edge": "read-8", "node": "topic", "label": "Order events", "rate": 3 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "worker-9",
+          "stencil": "generic.service",
+          "label": "Worker 9",
+          "x": 960,
+          "y": 280,
+          "props": { "status": "down" },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "read-9",
+              "peer": "topic",
+              "group": "group-9",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "worker-9",
+            "role": "processor",
+            "status": "down",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": null,
+            "growth": 3,
+            "contributors": [{ "edge": "read-9", "node": "topic", "label": "Order events", "rate": 3 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "worker-10",
+          "stencil": "generic.service",
+          "label": "Worker 10",
+          "x": 1280,
+          "y": 280,
+          "props": { "status": "down" },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "read-10",
+              "peer": "topic",
+              "group": "group-10",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "worker-10",
+            "role": "processor",
+            "status": "down",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": null,
+            "growth": 3,
+            "contributors": [{ "edge": "read-10", "node": "topic", "label": "Order events", "rate": 3 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "worker-11",
+          "stencil": "generic.service",
+          "label": "Worker 11",
+          "x": 1600,
+          "y": 280,
+          "props": { "status": "down" },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "read-11",
+              "peer": "topic",
+              "group": "group-11",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "worker-11",
+            "role": "processor",
+            "status": "down",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": null,
+            "growth": 3,
+            "contributors": [{ "edge": "read-11", "node": "topic", "label": "Order events", "rate": 3 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "worker-12",
+          "stencil": "generic.service",
+          "label": "Worker 12",
+          "x": 640,
+          "y": 420,
+          "props": { "status": "down" },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "read-12",
+              "peer": "topic",
+              "group": "group-12",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "worker-12",
+            "role": "processor",
+            "status": "down",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": null,
+            "growth": 3,
+            "contributors": [{ "edge": "read-12", "node": "topic", "label": "Order events", "rate": 3 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "worker-13",
+          "stencil": "generic.service",
+          "label": "Worker 13",
+          "x": 960,
+          "y": 420,
+          "props": { "status": "down" },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "read-13",
+              "peer": "topic",
+              "group": "group-13",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "worker-13",
+            "role": "processor",
+            "status": "down",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": null,
+            "growth": 3,
+            "contributors": [{ "edge": "read-13", "node": "topic", "label": "Order events", "rate": 3 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "worker-14",
+          "stencil": "generic.service",
+          "label": "Worker 14",
+          "x": 1280,
+          "y": 420,
+          "props": { "status": "down" },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "read-14",
+              "peer": "topic",
+              "group": "group-14",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "worker-14",
+            "role": "processor",
+            "status": "down",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": null,
+            "growth": 3,
+            "contributors": [{ "edge": "read-14", "node": "topic", "label": "Order events", "rate": 3 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "worker-15",
+          "stencil": "generic.service",
+          "label": "Worker 15",
+          "x": 1600,
+          "y": 420,
+          "props": { "status": "down" },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "read-15",
+              "peer": "topic",
+              "group": "group-15",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "worker-15",
+            "role": "processor",
+            "status": "down",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": null,
+            "growth": 3,
+            "contributors": [{ "edge": "read-15", "node": "topic", "label": "Order events", "rate": 3 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "worker-16",
+          "stencil": "generic.service",
+          "label": "Worker 16",
+          "x": 640,
+          "y": 560,
+          "props": { "status": "down" },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "read-16",
+              "peer": "topic",
+              "group": "group-16",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "worker-16",
+            "role": "processor",
+            "status": "down",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": null,
+            "growth": 3,
+            "contributors": [{ "edge": "read-16", "node": "topic", "label": "Order events", "rate": 3 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "worker-17",
+          "stencil": "generic.service",
+          "label": "Worker 17",
+          "x": 960,
+          "y": 560,
+          "props": { "status": "down" },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "read-17",
+              "peer": "topic",
+              "group": "group-17",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "worker-17",
+            "role": "processor",
+            "status": "down",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": null,
+            "growth": 3,
+            "contributors": [{ "edge": "read-17", "node": "topic", "label": "Order events", "rate": 3 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "worker-18",
+          "stencil": "generic.service",
+          "label": "Worker 18",
+          "x": 1280,
+          "y": 560,
+          "props": { "status": "down" },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "read-18",
+              "peer": "topic",
+              "group": "group-18",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "worker-18",
+            "role": "processor",
+            "status": "down",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": null,
+            "growth": 3,
+            "contributors": [{ "edge": "read-18", "node": "topic", "label": "Order events", "rate": 3 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "worker-19",
+          "stencil": "generic.service",
+          "label": "Worker 19",
+          "x": 1600,
+          "y": 560,
+          "props": { "status": "down" },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "read-19",
+              "peer": "topic",
+              "group": "group-19",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "worker-19",
+            "role": "processor",
+            "status": "down",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": null,
+            "growth": 3,
+            "contributors": [{ "edge": "read-19", "node": "topic", "label": "Order events", "rate": 3 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "worker-20",
+          "stencil": "generic.service",
+          "label": "Worker 20",
+          "x": 640,
+          "y": 700,
+          "props": { "status": "down" },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "read-20",
+              "peer": "topic",
+              "group": "group-20",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "worker-20",
+            "role": "processor",
+            "status": "down",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": null,
+            "growth": 3,
+            "contributors": [{ "edge": "read-20", "node": "topic", "label": "Order events", "rate": 3 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "worker-21",
+          "stencil": "generic.service",
+          "label": "Worker 21",
+          "x": 960,
+          "y": 700,
+          "props": { "status": "down" },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "read-21",
+              "peer": "topic",
+              "group": "group-21",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "worker-21",
+            "role": "processor",
+            "status": "down",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": null,
+            "growth": 3,
+            "contributors": [{ "edge": "read-21", "node": "topic", "label": "Order events", "rate": 3 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "worker-22",
+          "stencil": "generic.service",
+          "label": "Worker 22",
+          "x": 1280,
+          "y": 700,
+          "props": { "status": "down" },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "read-22",
+              "peer": "topic",
+              "group": "group-22",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "worker-22",
+            "role": "processor",
+            "status": "down",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": null,
+            "growth": 3,
+            "contributors": [{ "edge": "read-22", "node": "topic", "label": "Order events", "rate": 3 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "worker-23",
+          "stencil": "generic.service",
+          "label": "Worker 23",
+          "x": 1600,
+          "y": 700,
+          "props": { "status": "down" },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "read-23",
+              "peer": "topic",
+              "group": "group-23",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "worker-23",
+            "role": "processor",
+            "status": "down",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": null,
+            "growth": 3,
+            "contributors": [{ "edge": "read-23", "node": "topic", "label": "Order events", "rate": 3 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        }
+      ],
+      "edges": [
+        { "id": "publish", "from": "checkout", "to": "topic", "kind": "async", "props": { "travelMs": 0 } },
+        { "id": "read-0", "from": "topic", "to": "worker-0", "props": { "group": "group-0" } },
+        { "id": "read-1", "from": "topic", "to": "worker-1", "props": { "group": "group-1" } },
+        { "id": "read-2", "from": "topic", "to": "worker-2", "props": { "group": "group-2" } },
+        { "id": "read-3", "from": "topic", "to": "worker-3", "props": { "group": "group-3" } },
+        { "id": "read-4", "from": "topic", "to": "worker-4", "props": { "group": "group-4" } },
+        { "id": "read-5", "from": "topic", "to": "worker-5", "props": { "group": "group-5" } },
+        { "id": "read-6", "from": "topic", "to": "worker-6", "props": { "group": "group-6" } },
+        { "id": "read-7", "from": "topic", "to": "worker-7", "props": { "group": "group-7" } },
+        { "id": "read-8", "from": "topic", "to": "worker-8", "props": { "group": "group-8" } },
+        { "id": "read-9", "from": "topic", "to": "worker-9", "props": { "group": "group-9" } },
+        { "id": "read-10", "from": "topic", "to": "worker-10", "props": { "group": "group-10" } },
+        { "id": "read-11", "from": "topic", "to": "worker-11", "props": { "group": "group-11" } },
+        { "id": "read-12", "from": "topic", "to": "worker-12", "props": { "group": "group-12" } },
+        { "id": "read-13", "from": "topic", "to": "worker-13", "props": { "group": "group-13" } },
+        { "id": "read-14", "from": "topic", "to": "worker-14", "props": { "group": "group-14" } },
+        { "id": "read-15", "from": "topic", "to": "worker-15", "props": { "group": "group-15" } },
+        { "id": "read-16", "from": "topic", "to": "worker-16", "props": { "group": "group-16" } },
+        { "id": "read-17", "from": "topic", "to": "worker-17", "props": { "group": "group-17" } },
+        { "id": "read-18", "from": "topic", "to": "worker-18", "props": { "group": "group-18" } },
+        { "id": "read-19", "from": "topic", "to": "worker-19", "props": { "group": "group-19" } },
+        { "id": "read-20", "from": "topic", "to": "worker-20", "props": { "group": "group-20" } },
+        { "id": "read-21", "from": "topic", "to": "worker-21", "props": { "group": "group-21" } },
+        { "id": "read-22", "from": "topic", "to": "worker-22", "props": { "group": "group-22" } },
+        { "id": "read-23", "from": "topic", "to": "worker-23", "props": { "group": "group-23" } }
+      ],
+      "groups": [],
+      "annotations": [],
+      "simulations": [],
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"Planning: shared capacity\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"checkout\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":3} capabilities=[{\"kind\":\"publishes\",\"edge\":\"publish\",\"peer\":\"topic\"}] explanation=undefined\n  \"topic\" \"kafka.topic\" (\"Kafka Topic\") \"Order events\" capabilities=[] explanation=undefined\nconnections:\n  \"publish\" \"checkout\" -> \"topic\" async"
+  }
+}

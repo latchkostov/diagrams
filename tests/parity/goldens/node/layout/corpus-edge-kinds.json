@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "async-a": [40, 40], "sync-a": [40, 160], "labelled-a": [40, 280], "long-label-a": [40, 400], "bi-a": [40, 520], "async-b": [469, 40], "sync-b": [469, 160], "labelled-b": [469, 280], "long-label-b": [469, 400], "bi-b": [469, 520] },
+    "TB": { "async-a": [40, 40], "sync-a": [320, 40], "labelled-a": [600, 40], "long-label-a": [880, 40], "bi-a": [1160, 40], "async-b": [40, 200], "sync-b": [320, 200], "labelled-b": [600, 200], "long-label-b": [880, 200], "bi-b": [1160, 200] }
+  },
+  "tidy": { "async-a": [40, 40], "async-b": [469, 40], "sync-a": [40, 160], "sync-b": [469, 160], "labelled-a": [40, 280], "labelled-b": [469, 280], "long-label-a": [40, 400], "long-label-b": [469, 400], "bi-a": [40, 520], "bi-b": [469, 520] },
+  "arrange": {
+    "alignLeft": { "async-a": [40, 40], "async-b": [40, 40], "sync-a": [40, 220], "sync-b": [40, 220], "labelled-a": [40, 400], "labelled-b": [40, 400], "long-label-a": [40, 580], "long-label-b": [40, 580], "bi-a": [40, 760], "bi-b": [40, 760] },
+    "alignMiddle": { "async-a": [40, 400], "async-b": [544, 400], "sync-a": [40, 400], "sync-b": [544, 400], "labelled-a": [40, 400], "labelled-b": [544, 400], "long-label-a": [40, 400], "long-label-b": [544, 400], "bi-a": [40, 400], "bi-b": [544, 400] },
+    "distributeH": { "async-a": [40, 40], "async-b": [320, 40], "sync-a": [96, 220], "sync-b": [376, 220], "labelled-a": [152, 400], "labelled-b": [432, 400], "long-label-a": [208, 580], "long-label-b": [488, 580], "bi-a": [264, 760], "bi-b": [544, 760] },
+    "distributeV": { "async-a": [40, 40], "async-b": [544, 120], "sync-a": [40, 200], "sync-b": [544, 280], "labelled-a": [40, 360], "labelled-b": [544, 440], "long-label-a": [40, 520], "long-label-b": [544, 600], "bi-a": [40, 680], "bi-b": [544, 760] },
+    "spreadH": { "async-a": [40, 40], "async-b": [1340, 40], "sync-a": [300, 40], "sync-b": [1600, 40], "labelled-a": [560, 40], "labelled-b": [1860, 40], "long-label-a": [820, 40], "long-label-b": [2120, 40], "bi-a": [1080, 40], "bi-b": [2380, 40] },
+    "boundaryAround": { "x": 0, "y": -24, "width": 804, "height": 896 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "async-a": [40, 40], "async-b": [469, 40], "sync-a": [40, 160], "sync-b": [469, 160], "labelled-a": [40, 280], "labelled-b": [469, 280], "long-label-a": [40, 400], "long-label-b": [469, 400], "bi-a": [40, 520], "bi-b": [469, 520] },
+    "groups": {}
+  }
+}

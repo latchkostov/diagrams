@@ -1,0 +1,17 @@
+---
+title: Annotations among routes
+---
+flowchart LR
+  a(["Storefront"])
+  b["Checkout"]
+  c["Billing"]
+  d[("Ledger")]
+  e["Exporter"]
+  f[("Archive")]
+  s[("Legacy FTP")]
+  a -->|"Over the zone"| b
+  c -.->|"Around the note"| d
+  e -.->|"To a shape"| s
+  s -.-> f
+  linkStyle 1,2,3 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"Edges cross zones and text, go around notes, and may end on shapes.","nodes":{"a":["a","client.browser"],"b":["b","service.go"],"c":["c","service.java"],"d":["d","postgres"],"e":["e","service.node"],"f":["f","aws.s3"]},"edges":["a->b","c->d","e->s","s->f"],"relations":{}}

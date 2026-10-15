@@ -1,0 +1,14 @@
+---
+title: Gateway round-robin
+---
+flowchart LR
+  web(["Browser"])
+  gw["API Gateway"]
+  b1["Backend 1"]
+  b2["Backend 2"]
+  b3["Backend 3"]
+  web --> gw
+  gw --> b1
+  gw --> b2
+  gw --> b3
+%% diagrams:{"v":1,"description":"3 backends behind one API gateway.","nodes":{"web":["web","client.browser"],"gw":["gw","aws.api-gateway"],"b1":["b1","aws.lambda"],"b2":["b2","aws.lambda"],"b3":["b3","aws.lambda"]},"edges":["web-gw","gw-b1","gw-b2","gw-b3"],"relations":{}}

@@ -1,0 +1,58 @@
+{
+  "withIcons": {
+    "sha256": "562642aebcb350e1230c6529bbe39838f58afca5a1da991566dc9339e19736e1",
+    "bytes": 2855,
+    "inlined": { "client.browser": "client-browser 0022934839e05a07" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Managed admission",
+        "nodes": [
+          {
+            "id": "source",
+            "stencil": "client.browser",
+            "label": "Checkout",
+            "x": 0,
+            "y": 130,
+            "props": { "ratePerSec": 20 }
+          },
+          {
+            "id": "api",
+            "stencil": "aws.lambda",
+            "label": "aws.lambda",
+            "x": 330,
+            "y": 130,
+            "props": {
+              "preset": "lambda-account",
+              "presetRevision": "2026-10-14",
+              "scaling": "auto",
+              "maxConcurrency": 1000,
+              "latencyMs": 1000,
+              "concurrency": 1,
+              "api": { "sharedConcurrency": "lambda-account-region", "maxInFlight": 1000 },
+              "jitter": 0
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "call",
+            "from": "source",
+            "to": "api",
+            "kind": "sync",
+            "props": {
+              "travelMs": 0,
+              "caller": {
+                "deadlineMs": 1,
+                "retry": { "maxAttempts": 3, "strategy": "exponential", "backoffMs": 100, "retryOn": ["throttled"] }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

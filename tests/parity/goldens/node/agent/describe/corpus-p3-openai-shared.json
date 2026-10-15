@@ -1,0 +1,140 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"Managed admission\" · direction LR · 3 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":20} capabilities=[{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"api\"}] explanation=undefined\n  \"api\" \"openai\" (\"OpenAI API\") \"openai\" props={\"preset\":\"managed-measured\",\"presetRevision\":\"2026-10-14\",\"scaling\":\"auto\",\"maxConcurrency\":10,\"api\":{\"maxInFlight\":2,\"sharedConcurrency\":\"first\",\"quotas\":[{\"id\":\"tokens\",\"unit\":\"tokens\",\"amount\":10,\"windowMs\":1000,\"algorithm\":\"token-bucket\"}],\"costPerRequest\":{\"tokens\":2}}} capabilities=[] explanation={\"managed\":\"api\",\"id\":\"api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":5,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":4,\"growth\":15,\"contributors\":[{\"edge\":\"call\",\"node\":\"source\",\"label\":\"Checkout\",\"rate\":20}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"other\" \"openai\" (\"OpenAI API\") \"Other\" props={\"preset\":\"managed-measured\",\"presetRevision\":\"2026-10-14\",\"scaling\":\"auto\",\"maxConcurrency\":10,\"api\":{\"maxInFlight\":4,\"sharedConcurrency\":\"second\",\"quotas\":[{\"id\":\"tokens\",\"unit\":\"tokens\",\"amount\":10,\"windowMs\":1000,\"algorithm\":\"token-bucket\"}],\"costPerRequest\":{\"tokens\":2}}} capabilities=[] explanation={\"managed\":\"api\",\"id\":\"other\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":null,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"call\" \"source\" -> \"api\" sync"
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "Managed admission",
+      "direction": "LR",
+      "planning": { "revision": "p3" },
+      "nodes": [
+        {
+          "id": "source",
+          "stencil": "client.browser",
+          "label": "Checkout",
+          "x": 0,
+          "y": 130,
+          "props": { "ratePerSec": 20 },
+          "capabilities": [{ "kind": "calls", "edge": "call", "peer": "api" }]
+        },
+        {
+          "id": "api",
+          "stencil": "openai",
+          "label": "openai",
+          "x": 330,
+          "y": 130,
+          "props": {
+            "preset": "managed-measured",
+            "presetRevision": "2026-10-14",
+            "scaling": "auto",
+            "maxConcurrency": 10,
+            "api": {
+              "maxInFlight": 2,
+              "sharedConcurrency": "first",
+              "quotas": [
+                { "id": "tokens", "unit": "tokens", "amount": 10, "windowMs": 1000, "algorithm": "token-bucket" }
+              ],
+              "costPerRequest": { "tokens": 2 }
+            }
+          },
+          "capabilities": [],
+          "explanation": {
+            "managed": "api",
+            "id": "api",
+            "role": "processor",
+            "status": "up",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 5,
+            "offered": 20,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": 4,
+            "growth": 15,
+            "contributors": [{ "edge": "call", "node": "source", "label": "Checkout", "rate": 20 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "other",
+          "stencil": "openai",
+          "label": "Other",
+          "x": 330,
+          "y": 330,
+          "props": {
+            "preset": "managed-measured",
+            "presetRevision": "2026-10-14",
+            "scaling": "auto",
+            "maxConcurrency": 10,
+            "api": {
+              "maxInFlight": 4,
+              "sharedConcurrency": "second",
+              "quotas": [
+                { "id": "tokens", "unit": "tokens", "amount": 10, "windowMs": 1000, "algorithm": "token-bucket" }
+              ],
+              "costPerRequest": { "tokens": 2 }
+            }
+          },
+          "capabilities": [],
+          "explanation": {
+            "managed": "api",
+            "id": "other",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": null,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "call",
+          "from": "source",
+          "to": "api",
+          "kind": "sync",
+          "props": {
+            "travelMs": 0,
+            "caller": {
+              "deadlineMs": 1,
+              "retry": { "maxAttempts": 3, "strategy": "exponential", "backoffMs": 100, "retryOn": ["throttled"] }
+            }
+          }
+        }
+      ],
+      "groups": [],
+      "annotations": [],
+      "simulations": [],
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"Managed admission\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":20} capabilities=[{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"api\"}] explanation=undefined\n  \"api\" \"openai\" (\"OpenAI API\") \"openai\" props={\"preset\":\"managed-measured\",\"presetRevision\":\"2026-10-14\",\"scaling\":\"auto\",\"maxConcurrency\":10,\"api\":{\"maxInFlight\":2,\"sharedConcurrency\":\"first\",\"quotas\":[{\"id\":\"tokens\",\"unit\":\"tokens\",\"amount\":10,\"windowMs\":1000,\"algorithm\":\"token-bucket\"}],\"costPerRequest\":{\"tokens\":2}}} capabilities=[] explanation={\"managed\":\"api\",\"id\":\"api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":5,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":4,\"growth\":15,\"contributors\":[{\"edge\":\"call\",\"node\":\"source\",\"label\":\"Checkout\",\"rate\":20}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"call\" \"source\" -> \"api\" sync"
+  }
+}

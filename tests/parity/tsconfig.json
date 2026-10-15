@@ -1,0 +1,10 @@
+{
+  // Type-checks the parity harness (docs/PARITY.md): its Vitest and Playwright files, with Vite's client types
+  // (virtual modules, import.meta) and Node's. `pnpm typecheck` runs it.
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "types": ["vite/client", "node"],
+    "noEmit": true
+  },
+  "include": ["./**/*.ts", "../../src/**/*.d.ts"]
+}

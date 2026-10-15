@@ -1,0 +1,289 @@
+{
+  "autoScale": { "freePlay": 1 },
+  "brokerAssignments": {
+    "brokers": {
+      "payments": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+    },
+    "consumers": {
+      "ledger": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      }
+    }
+  },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "api",
+      "suggestion": "Payments API: 31% utilized",
+      "converged": true,
+      "iterations": 5,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "web": ["Infinity", 5, 0, 1, 1, 0], "api": [16, 5, 0.3125, 1, 1, 0], "payments": [16, 5, 0.3125, 1, 1, 0], "ledger": [16, 5, 0.3125, 1, 1, 0], "db": ["Infinity", 5, 0, 1, 1, 0], "kv": ["Infinity", 0, 0, 1, 1, 0] },
+      "connections": { "web-api": 5, "api-payments": 5, "payments-ledger": 5, "ledger-db": 5 },
+      "offeredTypes": { "web": ["Checkout"], "api": ["Checkout"], "payments": ["Checkout"], "ledger": ["Checkout"], "db": ["Checkout"] }
+    },
+    "explanations": {
+      "api": {
+        "id": "api",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 16,
+        "offered": 5,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": 0.3125,
+        "growth": 0,
+        "contributors": [{ "edge": "web-api", "node": "web", "label": "Checkout", "rate": 5 }],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      },
+      "ledger": {
+        "id": "ledger",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 16,
+        "offered": 5,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "payments",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": 0.3125,
+        "growth": 0,
+        "contributors": [{ "edge": "payments-ledger", "node": "payments", "label": "payments.v1", "rate": 5 }],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "web": [{ "kind": "calls", "edge": "web-api", "peer": "api" }],
+      "api": [{ "kind": "publishes", "edge": "api-payments", "peer": "payments" }],
+      "ledger": [
+        {
+          "kind": "consumes",
+          "edge": "payments-ledger",
+          "peer": "payments",
+          "group": "payments-ledger",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        },
+        { "kind": "calls", "edge": "ledger-db", "peer": "db" }
+      ]
+    },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "web": {
+        "profile": { "family": "client", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 5,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Checkout",
+        "healthChecks": false
+      },
+      "api": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Payments API",
+        "healthChecks": false
+      },
+      "payments": {
+        "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+        "profile": { "family": "log", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "payments.v1",
+        "healthChecks": false
+      },
+      "ledger": {
+        "profile": { "family": "serverless", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Ledger writer",
+        "healthChecks": false
+      },
+      "db": {
+        "profile": { "family": "nosql", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Ledger",
+        "healthChecks": false
+      },
+      "kv": {
+        "profile": { "family": "dependency", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "payments-kv",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {},
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "ok",
+          "top": "api",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Payments API at 31% · 5/s of 16/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "web": ["idle", "5/s · no limit", { "modeled": false }],
+            "api": ["ok", "31% · 5/s of 16/s"],
+            "payments": ["ok", "31% · 5/s of 16/s"],
+            "ledger": ["ok", "31% · 5/s of 16/s"],
+            "db": ["idle", "5/s · no limit", { "modeled": false }],
+            "kv": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "over",
+          "top": "api",
+          "headline": "Payments API and 2 more are over capacity",
+          "detail": "156% · 25/s of 16/s",
+          "fix": {
+            "changes": [
+              { "nodeId": "api", "key": "replicas", "from": 1, "to": 3, "label": "Payments API" },
+              { "nodeId": "ledger", "key": "replicas", "from": 1, "to": 3, "label": "Ledger writer" }
+            ],
+            "label": "Payments API 1 → 3 replicas, Ledger writer 1 → 3 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "web": ["idle", "25/s · no limit", { "modeled": false }],
+            "api": ["over", "156% · 25/s of 16/s"],
+            "payments": ["over", "156% · 25/s of 16/s"],
+            "ledger": ["over", "156% · 25/s of 16/s"],
+            "db": ["idle", "25/s · no limit", { "modeled": false }],
+            "kv": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "ok",
+          "top": "api",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Payments API at 31% · 5/s of 16/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "web": ["idle", "5/s · no limit", { "modeled": false }],
+            "api": ["ok", "31% · 5/s of 16/s"],
+            "payments": ["ok", "31% · 5/s of 16/s"],
+            "ledger": ["ok", "31% · 5/s of 16/s"],
+            "db": ["idle", "5/s · no limit", { "modeled": false }],
+            "kv": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": { "payments": { "partitions": 6 } }, "rates": {} },
+        "view": {
+          "tone": "ok",
+          "top": "api",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Payments API at 31% · 5/s of 16/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "web": ["idle", "5/s · no limit", { "modeled": false }],
+            "api": ["ok", "31% · 5/s of 16/s"],
+            "payments": ["ok", "31% · 5/s of 16/s"],
+            "ledger": ["ok", "31% · 5/s of 16/s"],
+            "db": ["idle", "5/s · no limit", { "modeled": false }],
+            "kv": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": { "payments": "Its consumer group has 1 replica: partitions past 1 add no speed." }
+      }
+    }
+  }
+}

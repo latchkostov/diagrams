@@ -44,7 +44,8 @@ export function planningSimulation(d: DiagramFile, sim: Simulation): Simulation 
   const props = structuredClone(sim.setup?.props ?? {});
   for (const n of d.nodes) {
     const role = roleOf(n);
-    if (role === "gateway" || role === "store") props[n.id] = { ...props[n.id], latencyMs: 0 };
+    if ((role === "gateway" || role === "store") && !planProps(n, sim, d).admission)
+      props[n.id] = { ...props[n.id], latencyMs: 0 };
   }
   return { ...sim, setup: { ...sim.setup, props } };
 }
@@ -102,6 +103,7 @@ export function sizingFix(
   const changes: SizingChange[] = [];
   const devices = new Set<string>();
   for (const n of nodes) {
+    if (n.managed) continue;
     if (n.device && Number.isFinite(n.utilization) && n.utilization >= FIX_ABOVE && n.capacity) {
       const sized = deviceSizing(byId.get(n.id)!, sim, n, d, target);
       if (sized) {

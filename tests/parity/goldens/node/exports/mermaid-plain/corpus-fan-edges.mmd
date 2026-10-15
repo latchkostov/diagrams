@@ -1,0 +1,26 @@
+---
+title: Fan 5 in / 5 out
+---
+flowchart LR
+  hub["Hub<br/>events"]
+  in1["Producer 1"]
+  out1["Consumer 1"]
+  in2["Producer 2"]
+  out2["Consumer 2"]
+  in3["Producer 3"]
+  out3["Consumer 3"]
+  in4["Producer 4"]
+  out4["Consumer 4"]
+  in5["Producer 5"]
+  out5["Consumer 5"]
+  in1 -.-> hub
+  hub -.-> out1
+  in2 -.-> hub
+  hub -.-> out2
+  in3 -.-> hub
+  hub -.-> out3
+  in4 -.-> hub
+  hub -.-> out4
+  in5 -.-> hub
+  hub -.-> out5
+  linkStyle 0,1,2,3,4,5,6,7,8,9 stroke-dasharray: 6 4

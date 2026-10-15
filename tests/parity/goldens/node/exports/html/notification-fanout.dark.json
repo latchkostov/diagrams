@@ -1,0 +1,329 @@
+{
+  "file": { "sha256": "caf379fc071ae63d06048d2f70f369562cc8321c97e452b244e3b863cd37661a", "bytes": 32615 },
+  "payload": {
+    "version": 1,
+    "diagram": {
+      "format": "diagrams/v1",
+      "title": "Notification fan-out",
+      "description": "One shipping event fans out by customer preference to email, SMS and push queues, each sender respecting its provider's rate limit.",
+      "direction": "LR",
+      "groups": [
+        { "id": "azure", "label": "Azure · notifications", "tone": "azure", "x": 380, "y": 0, "width": 1860, "height": 512 }
+      ],
+      "nodes": [
+        {
+          "id": "carrier",
+          "stencil": "generic.webhook",
+          "label": "Carrier tracking",
+          "sublabel": "Parcel scanned",
+          "x": 40,
+          "y": 280,
+          "props": { "ratePerSec": 10, "messageType": "ParcelScanned" }
+        },
+        {
+          "id": "shipping",
+          "stencil": "azure.container-apps",
+          "label": "Shipping service",
+          "sublabel": "Publishes OrderShipped",
+          "x": 420,
+          "y": 280,
+          "group": "azure",
+          "props": { "concurrency": 200, "latencyMs": 50, "emits": "OrderShipped" }
+        },
+        {
+          "id": "events",
+          "stencil": "azure.service-bus.topic",
+          "label": "order-events",
+          "sublabel": "Topic",
+          "x": 800,
+          "y": 280,
+          "group": "azure",
+          "props": { "partitions": 32 }
+        },
+        {
+          "id": "preferences",
+          "stencil": "azure.cosmos-db",
+          "label": "Preferences",
+          "sublabel": "Channels · quiet hours",
+          "x": 1180,
+          "y": 120,
+          "group": "azure",
+          "props": { "latencyMs": 0 }
+        },
+        {
+          "id": "router",
+          "stencil": "azure.functions",
+          "label": "Notification router",
+          "sublabel": "sub: notifications",
+          "x": 1180,
+          "y": 280,
+          "group": "azure",
+          "props": { "concurrency": 400, "latencyMs": 60 }
+        },
+        {
+          "id": "email-q",
+          "stencil": "azure.service-bus.queue",
+          "label": "email",
+          "sublabel": "~90% opted in",
+          "x": 1560,
+          "y": 40,
+          "group": "azure",
+          "props": {}
+        },
+        {
+          "id": "sms-q",
+          "stencil": "azure.service-bus.queue",
+          "label": "sms",
+          "sublabel": "~30% opted in",
+          "x": 1560,
+          "y": 280,
+          "group": "azure",
+          "props": {}
+        },
+        {
+          "id": "push-q",
+          "stencil": "azure.service-bus.queue",
+          "label": "push",
+          "sublabel": "~70% have the app",
+          "x": 1560,
+          "y": 400,
+          "group": "azure",
+          "props": {}
+        },
+        {
+          "id": "email-sender",
+          "stencil": "azure.functions",
+          "label": "Email sender",
+          "sublabel": "Templates · 500/s",
+          "x": 1940,
+          "y": 40,
+          "group": "azure",
+          "props": { "replicas": 10, "concurrency": 5, "latencyMs": 100, "emits": "EmailSent" }
+        },
+        {
+          "id": "sms-limiter",
+          "stencil": "generic.rate-limiter",
+          "label": "SMS rate limiter",
+          "sublabel": "Token bucket · 50/s",
+          "x": 1940,
+          "y": 280,
+          "group": "azure",
+          "props": { "replicas": 1, "concurrency": 5, "latencyMs": 100, "emits": "SmsSent" }
+        },
+        {
+          "id": "push-sender",
+          "stencil": "azure.functions",
+          "label": "Push sender",
+          "sublabel": "Batches of 500",
+          "x": 1940,
+          "y": 400,
+          "group": "azure",
+          "props": { "replicas": 10, "concurrency": 5, "latencyMs": 100, "emits": "PushSent" }
+        },
+        {
+          "id": "sendgrid",
+          "stencil": "sendgrid",
+          "label": "SendGrid",
+          "sublabel": "Email",
+          "x": 2320,
+          "y": 40,
+          "props": {}
+        },
+        { "id": "key-vault", "stencil": "azure.key-vault", "label": "notify-kv", "sublabel": "Provider API keys", "x": 1940, "y": 160, "group": "azure" },
+        { "id": "twilio", "stencil": "twilio", "label": "Twilio", "sublabel": "SMS", "x": 2320, "y": 280, "props": {} },
+        {
+          "id": "push",
+          "stencil": "generic.push",
+          "label": "FCM and APNs",
+          "sublabel": "Mobile push",
+          "x": 2320,
+          "y": 400,
+          "props": {}
+        }
+      ],
+      "edges": [
+        {
+          "id": "carrier-to-shipping",
+          "from": "carrier",
+          "to": "shipping",
+          "label": "Webhook",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "shipping-to-events",
+          "from": "shipping",
+          "to": "events",
+          "label": "OrderShipped",
+          "kind": "async",
+          "props": { "travelMs": 300 }
+        },
+        {
+          "id": "events-to-router",
+          "from": "events",
+          "to": "router",
+          "label": "Subscription",
+          "kind": "async",
+          "props": { "travelMs": 300, "group": "notifications" }
+        },
+        {
+          "id": "router-to-preferences",
+          "from": "router",
+          "to": "preferences",
+          "label": "Read preferences",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "router-to-email-q",
+          "from": "router",
+          "to": "email-q",
+          "label": "If email",
+          "kind": "async",
+          "props": { "travelMs": 300, "share": 0.9 }
+        },
+        {
+          "id": "router-to-sms-q",
+          "from": "router",
+          "to": "sms-q",
+          "label": "If SMS",
+          "kind": "async",
+          "props": { "travelMs": 300, "share": 0.3 }
+        },
+        {
+          "id": "router-to-push-q",
+          "from": "router",
+          "to": "push-q",
+          "label": "If push",
+          "kind": "async",
+          "props": { "travelMs": 300, "share": 0.7 }
+        },
+        {
+          "id": "email-q-to-email-sender",
+          "from": "email-q",
+          "to": "email-sender",
+          "kind": "async",
+          "props": { "travelMs": 300 }
+        },
+        {
+          "id": "sms-q-to-sms-limiter",
+          "from": "sms-q",
+          "to": "sms-limiter",
+          "kind": "async",
+          "props": { "travelMs": 300 }
+        },
+        {
+          "id": "push-q-to-push-sender",
+          "from": "push-q",
+          "to": "push-sender",
+          "kind": "async",
+          "props": { "travelMs": 300 }
+        },
+        {
+          "id": "email-sender-to-sendgrid",
+          "from": "email-sender",
+          "to": "sendgrid",
+          "label": "Mail Send API",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "sms-limiter-to-twilio",
+          "from": "sms-limiter",
+          "to": "twilio",
+          "label": "Messages API",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "push-sender-to-push",
+          "from": "push-sender",
+          "to": "push",
+          "label": "Send",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        { "id": "email-sender-to-key-vault", "from": "email-sender", "to": "key-vault", "kind": "async", "relation": "secret", "sourceSide": "bottom", "targetSide": "top" },
+        { "id": "sms-limiter-to-key-vault", "from": "sms-limiter", "to": "key-vault", "kind": "async", "relation": "secret", "sourceSide": "top", "targetSide": "bottom" }
+      ],
+      "simulations": [
+        {
+          "id": "sms-outage",
+          "title": "SMS provider outage",
+          "description": "Twilio errors for five seconds; the circuit breaker pauses SMS while email and push carry on.",
+          "seed": 7,
+          "scale": 1,
+          "traffic": [
+            {
+              "id": "scans",
+              "node": "carrier",
+              "messageType": "ParcelScanned",
+              "label": "40 parcels/s for 8 seconds",
+              "shape": { "kind": "constant", "ratePerSec": 40, "durationMs": 8000 }
+            }
+          ],
+          "timeline": [
+            { "atMs": 1500, "action": { "do": "status", "node": "sms-limiter", "status": "paused" } },
+            {
+              "atMs": 1500,
+              "action": { "do": "note", "text": "Twilio starts returning errors. The circuit breaker opens and SMS sending pauses; messages wait in the queue instead of failing.", "focus": ["sms-limiter", "twilio", "sms-q"], "pause": true }
+            },
+            { "atMs": 6500, "action": { "do": "status", "node": "sms-limiter", "status": "up" } },
+            {
+              "atMs": 6500,
+              "action": { "do": "note", "text": "The breaker closes. The backlog drains at 50 a second; email and push never noticed.", "focus": ["sms-q", "sms-limiter", "sendgrid", "push"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "waiting",
+              "label": "SMS waits during the outage",
+              "metric": { "node": "sms-q", "field": "lag" },
+              "op": ">",
+              "value": 20,
+              "when": "at",
+              "atMs": 6000
+            },
+            {
+              "id": "drained",
+              "label": "The SMS backlog drains",
+              "metric": { "node": "sms-q", "field": "lag" },
+              "op": "==",
+              "value": 0,
+              "when": "end"
+            },
+            {
+              "id": "email",
+              "label": "Email is unaffected",
+              "metric": { "node": "email-q", "field": "lag" },
+              "op": "<=",
+              "value": 10,
+              "when": "always"
+            },
+            {
+              "id": "all-routed",
+              "label": "All 320 events are routed",
+              "metric": { "node": "preferences", "field": "processed" },
+              "op": "==",
+              "value": 320,
+              "when": "end"
+            }
+          ]
+        }
+      ]
+    },
+    "icons": {
+      "azure-container-apps": { "sha256": "23a05a5f1aa1c519356a68e742419e5b899200e7d9fc0d0b1d14f5faf7f8b0da", "bytes": 2889 },
+      "azure-cosmos-db": { "sha256": "0d7a1b51b99663c876f0ab112ff6f403f1a7408e6bebb2768ed339eefec79548", "bytes": 3550 },
+      "azure-functions": { "sha256": "a0db338f682176fb01465ae4590055ecdb3c7862ce174df80eefee3ab444d134", "bytes": 2399 },
+      "azure-key-vault": { "sha256": "e7d3f312fe58b856144a78ab18fff5947ea95be560538079b96770ac00a87b06", "bytes": 2995 },
+      "azure-service-bus": { "sha256": "fcb7a4b1a367139c449790d6799ba6f2d53eb0f0e18176ee300e842d09022ba7", "bytes": 3909 },
+      "generic-push": { "sha256": "50d924eb3d08a76fcd9c01ba00327022a7066df5efc79fa2d37e0e9051729f7d", "bytes": 658 },
+      "generic-rate-limiter": { "sha256": "6622811a3ad16c0caa46d1592d3144da878bb3266101850e7a1c0ec83f57ae17", "bytes": 379 },
+      "generic-webhook": { "sha256": "f73d0eda19274f25a80e339ef1119c82f8aed73222085462017cf001b6c0ebed", "bytes": 595 },
+      "sendgrid": { "sha256": "e477f12f566a4d5c36a22ff9bb0104eb4be9fdcdd03c4b03dfa2fe43eff7ceee", "bytes": 624 },
+      "twilio": { "sha256": "b9b71d4118eed4397cbf084885b2ffcbb5eda4cf6dde2c66399a68c5a2190143", "bytes": 1037 }
+    },
+    "options": { "theme": "dark", "banner": "Confidential: internal use only", "startSimulation": null, "exportedOn": "2026-01-01" }
+  }
+}

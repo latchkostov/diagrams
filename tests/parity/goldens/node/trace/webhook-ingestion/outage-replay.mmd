@@ -1,0 +1,51 @@
+---
+title: "WebhookEvent #1 · 11.6 s end to end · 2 copies · 4 retries · dead-lettered"
+---
+sequenceDiagram
+  participant partners as Partner webhooks
+  participant edge as Cloudflare
+  participant receiver as Webhook receiver
+  participant raw as Raw payloads
+  participant exchange as webhooks
+  participant queue as webhooks.process
+  participant workers as Webhook workers
+  participant dlq as webhooks.dlq
+  participant replay as Replay tool
+  participant dedupe as Seen event IDs
+  participant integration_db as Integration database
+  partners->>edge: WebhookEvent (+0.00 s)<br/>HTTPS POST
+  edge-->>partners: reply (+0.21 s)
+  edge->>receiver: WebhookEvent (+0.21 s)<br/>/hooks/:partner
+  receiver-->>edge: reply (+0.44 s)
+  receiver->>raw: WebhookEvent (+0.44 s)<br/>PUT body
+  receiver-)exchange: WebhookEvent (+0.44 s)<br/>Publish
+  raw-->>receiver: reply (+0.64 s)
+  exchange-)queue: WebhookEvent (+0.74 s)<br/>webhook.#35;
+  queue-)workers: WebhookEvent (+1.04 s)<br/>Prefetch 4
+  Note over workers: ✕ attempt 1 failed
+  workers--)queue: back to the broker after attempt 1 (+1.49 s)
+  queue-)workers: WebhookEvent (+2.09 s)<br/>Prefetch 4
+  Note over workers: ✕ attempt 2 failed
+  workers--)queue: back to the broker after attempt 2 (+2.54 s)
+  queue-)workers: WebhookEvent (+3.14 s)<br/>Prefetch 4
+  Note over workers: ✕ attempt 3 failed
+  workers--)queue: back to the broker after attempt 3 (+3.63 s)
+  queue-)workers: WebhookEvent (+4.23 s)<br/>Prefetch 4
+  Note over workers: ✕ attempt 4 failed
+  workers--)queue: back to the broker after attempt 4 (+4.71 s)
+  queue-)workers: WebhookEvent (+5.31 s)<br/>Prefetch 4
+  Note over workers: ✕ attempt 5 failed
+  workers--)queue: back to the broker after attempt 5 (+5.79 s)
+  Note over queue: Dead-lettered after 5 deliveries
+  rect rgba(209, 57, 63, 0.14)
+    queue-)dlq: WebhookEvent (dead letter) (+6.09 s)
+  end
+  Note over partners,integration_db: ⏱ 3.58 s waiting in webhooks.dlq
+  dlq-)replay: WebhookEvent (+9.97 s)<br/>Drain
+  replay-)exchange: WebhookEvent (+10.33 s)<br/>Republish
+  exchange-)queue: WebhookEvent (+10.63 s)<br/>webhook.#35;
+  queue-)workers: WebhookEvent (+10.93 s)<br/>Prefetch 4
+  workers->>dedupe: PartnerChangeApplied (+11.43 s)<br/>Idempotency check
+  workers->>integration_db: PartnerChangeApplied (+11.43 s)<br/>Apply change
+  dedupe-->>workers: reply (+11.63 s)
+  integration_db-->>workers: reply (+11.64 s)

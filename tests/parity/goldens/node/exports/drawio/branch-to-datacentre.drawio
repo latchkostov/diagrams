@@ -1,0 +1,167 @@
+<mxfile host="Diagrams" agent="Diagrams" version="24.0.0" type="device">
+  <diagram id="dg-1ry0p1f" name="Branch office to data centre">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <object id="0" dg_format="diagrams/v1" dg_description="A branch and internet customers reach a data centre through edge routers, an active-standby firewall pair, a spine and leaf fabric and a load balancer pair. The firewall's rules allow web traffic and deny the branch any path to the payments zone." dg_direction="TB" dg_simulations="[{&quot;id&quot;:&quot;firewall-failover&quot;,&quot;title&quot;:&quot;One firewall fails over&quot;,&quot;description&quot;:&quot;The active firewall dies mid-traffic. The standby takes over in a few seconds: requests wait at the pair, none are lost.&quot;,&quot;seed&quot;:3,&quot;traffic&quot;:[{&quot;id&quot;:&quot;shop&quot;,&quot;node&quot;:&quot;customers&quot;,&quot;messageType&quot;:&quot;Checkout&quot;,&quot;label&quot;:&quot;Checkouts: 400/s&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:400,&quot;durationMs&quot;:12000}},{&quot;id&quot;:&quot;office&quot;,&quot;node&quot;:&quot;staff&quot;,&quot;messageType&quot;:&quot;BackOffice&quot;,&quot;label&quot;:&quot;Back office: 40/s&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:40,&quot;durationMs&quot;:12000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Customers come in over the internet and the branch over SD-WAN. Both pass the firewall pair: one unit carries the traffic, the other stands by.&quot;,&quot;focus&quot;:[&quot;firewall&quot;]}},{&quot;atMs&quot;:4000,&quot;action&quot;:{&quot;do&quot;:&quot;props&quot;,&quot;node&quot;:&quot;firewall&quot;,&quot;props&quot;:{&quot;replicas&quot;:1}}},{&quot;atMs&quot;:4000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The active firewall fails. For a few seconds, while the standby notices and takes over its sessions, requests wait at the pair.&quot;,&quot;focus&quot;:[&quot;firewall&quot;],&quot;pause&quot;:true}},{&quot;atMs&quot;:7500,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The standby carries everything now, at the same throughput: nothing was dropped. Until the failed unit is back, though, the pair has no spare.&quot;,&quot;focus&quot;:[&quot;firewall&quot;,&quot;adc&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;waits&quot;,&quot;label&quot;:&quot;Requests wait while it fails over&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;firewall&quot;,&quot;field&quot;:&quot;backlog&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:50,&quot;when&quot;:&quot;eventually&quot;},{&quot;id&quot;:&quot;no-drops&quot;,&quot;label&quot;:&quot;The firewall never drops a request&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;firewall&quot;,&quot;field&quot;:&quot;dropped&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;always&quot;}]},{&quot;id&quot;:&quot;payments-denied&quot;,&quot;title&quot;:&quot;The firewall blocks the branch from payments&quot;,&quot;description&quot;:&quot;Someone at the branch tries Payments' admin API. The firewall's deny rule stops every request: blocked on purpose, not lost.&quot;,&quot;seed&quot;:5,&quot;traffic&quot;:[{&quot;id&quot;:&quot;shop&quot;,&quot;node&quot;:&quot;customers&quot;,&quot;messageType&quot;:&quot;Checkout&quot;,&quot;label&quot;:&quot;Checkouts: 400/s&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:400,&quot;durationMs&quot;:10000}},{&quot;id&quot;:&quot;office&quot;,&quot;node&quot;:&quot;staff&quot;,&quot;messageType&quot;:&quot;BackOffice&quot;,&quot;label&quot;:&quot;Back office: 40/s&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:40,&quot;durationMs&quot;:10000}},{&quot;id&quot;:&quot;admin&quot;,&quot;node&quot;:&quot;staff&quot;,&quot;messageType&quot;:&quot;PaymentAdmin&quot;,&quot;label&quot;:&quot;Payment admin attempts: 20/s&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:20,&quot;durationMs&quot;:6000,&quot;fromMs&quot;:2000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The branch reaches the shop's back office through the firewall. Its rules allow web traffic, and deny the branch any path to Payments, which sits in the PCI zone.&quot;,&quot;focus&quot;:[&quot;firewall&quot;,&quot;payments&quot;]}},{&quot;atMs&quot;:2000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Someone at the branch starts calling Payments' admin API.&quot;,&quot;focus&quot;:[&quot;staff&quot;,&quot;branch-router&quot;]}},{&quot;atMs&quot;:5000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Every one of those requests stops at the firewall: the deny rule blocks it. Blocked isn't lost; it's the rule working.&quot;,&quot;focus&quot;:[&quot;firewall&quot;,&quot;payments&quot;],&quot;pause&quot;:true}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;blocked&quot;,&quot;label&quot;:&quot;The firewall blocks the admin requests&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;firewall&quot;,&quot;field&quot;:&quot;blocked&quot;},&quot;op&quot;:&quot;&gt;=&quot;,&quot;value&quot;:100,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;no-drops&quot;,&quot;label&quot;:&quot;Nothing is dropped at the firewall&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;firewall&quot;,&quot;field&quot;:&quot;dropped&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;always&quot;}]}]">
+          <mxCell />
+        </object>
+        <mxCell id="1" parent="0" />
+        <object id="dg-g-branch" label="Branch office" dg_id="branch" dg_tone="onprem">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#64748B;strokeColor=#64748B;" vertex="1" parent="1">
+            <mxGeometry x="960" y="0" width="340" height="312" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-dc" label="Data centre" dg_id="dc" dg_tone="onprem">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#64748B;strokeColor=#64748B;" vertex="1" parent="1">
+            <mxGeometry x="340" y="320" width="1020" height="1112" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-customers" label="Customers&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;internet&lt;/span&gt;" dg_id="customers" dg_stencil="client.user" dg_props="{&quot;ratePerSec&quot;:400,&quot;messageType&quot;:&quot;Checkout&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#0EA5E91A;strokeColor=#0EA5E9;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="580" y="46" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-staff" label="Branch staff&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;120 desks&lt;/span&gt;" dg_id="staff" dg_stencil="client.team" dg_props="{&quot;ratePerSec&quot;:40,&quot;messageType&quot;:&quot;BackOffice&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3B82F61A;strokeColor=#3B82F6;fontSize=12;" vertex="1" parent="dg-g-branch">
+            <mxGeometry x="60" y="46" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-branch-router" label="Branch router&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Catalyst 8200 · SD-WAN&lt;/span&gt;" dg_id="branch-router" dg_stencil="cisco.isr" dg_props="{&quot;size&quot;:&quot;branch&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#049FD91A;strokeColor=#049FD9;fontSize=12;" vertex="1" parent="dg-g-branch">
+            <mxGeometry x="60" y="206" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-edge-router" label="Edge routers&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;2 × MX204 · BGP&lt;/span&gt;" dg_id="edge-router" dg_stencil="juniper.mx" dg_props="{&quot;ha&quot;:&quot;active-active&quot;,&quot;replicas&quot;:2}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#5E8C1F1A;strokeColor=#5E8C1F;fontSize=12;" vertex="1" parent="dg-g-dc">
+            <mxGeometry x="240" y="46" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-firewall" label="Firewall pair&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;PA-3440 · active-standby&lt;/span&gt;" dg_id="firewall" dg_stencil="paloalto.ngfw" dg_props="{&quot;ha&quot;:&quot;active-standby&quot;,&quot;replicas&quot;:2}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#FA582D1A;strokeColor=#FA582D;fontSize=12;" vertex="1" parent="dg-g-dc">
+            <mxGeometry x="240" y="206" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-spine-1" label="Spine 1&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Arista 7050SX3&lt;/span&gt;" dg_id="spine-1" dg_stencil="arista.switch">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#1F5DA81A;strokeColor=#1F5DA8;fontSize=12;" vertex="1" parent="dg-g-dc">
+            <mxGeometry x="60" y="366" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-spine-2" label="Spine 2&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Arista 7050SX3&lt;/span&gt;" dg_id="spine-2" dg_stencil="arista.switch">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#1F5DA81A;strokeColor=#1F5DA8;fontSize=12;" vertex="1" parent="dg-g-dc">
+            <mxGeometry x="420" y="366" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-leaf" label="Services leaf&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Nexus 93180YC · vPC pair&lt;/span&gt;" dg_id="leaf" dg_stencil="cisco.nexus" dg_props="{&quot;size&quot;:&quot;campus&quot;,&quot;ha&quot;:&quot;active-active&quot;,&quot;replicas&quot;:2}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#049FD91A;strokeColor=#049FD9;fontSize=12;" vertex="1" parent="dg-g-dc">
+            <mxGeometry x="240" y="526" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-adc" label="Load balancer&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;BIG-IP pair · VIP shop&lt;/span&gt;" dg_id="adc" dg_stencil="f5.bigip" dg_props="{&quot;size&quot;:&quot;campus&quot;,&quot;ha&quot;:&quot;active-standby&quot;,&quot;replicas&quot;:2}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E4002B1A;strokeColor=#E4002B;fontSize=12;" vertex="1" parent="dg-g-dc">
+            <mxGeometry x="240" y="686" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-web-1" label="Storefront 1&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;web pool&lt;/span&gt;" dg_id="web-1" dg_stencil="service.java" dg_props="{&quot;latencyMs&quot;:30,&quot;concurrency&quot;:16,&quot;replicas&quot;:2}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E76F001A;strokeColor=#E76F00;fontSize=12;" vertex="1" parent="dg-g-dc">
+            <mxGeometry x="60" y="846" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-web-2" label="Storefront 2&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;web pool&lt;/span&gt;" dg_id="web-2" dg_stencil="service.java" dg_props="{&quot;latencyMs&quot;:30,&quot;concurrency&quot;:16,&quot;replicas&quot;:2}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E76F001A;strokeColor=#E76F00;fontSize=12;" vertex="1" parent="dg-g-dc">
+            <mxGeometry x="420" y="846" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-orders-db" label="Orders DB&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;primary&lt;/span&gt;" dg_id="orders-db" dg_stencil="postgres" dg_props="{&quot;latencyMs&quot;:5}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3367911A;strokeColor=#336791;fontSize=12;" vertex="1" parent="dg-g-dc">
+            <mxGeometry x="60" y="1006" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-payments" label="Payments API&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;PCI zone&lt;/span&gt;" dg_id="payments" dg_stencil="service.dotnet" dg_props="{&quot;latencyMs&quot;:40,&quot;concurrency&quot;:16,&quot;replicas&quot;:2}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#512BD41A;strokeColor=#512BD4;fontSize=12;" vertex="1" parent="dg-g-dc">
+            <mxGeometry x="740" y="846" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-customers-edge" label="HTTPS" dg_id="customers-edge" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-customers" target="dg-n-edge-router">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-staff-branch" label="Back office" dg_id="staff-branch" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-staff" target="dg-n-branch-router">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-branch-edge" label="SD-WAN tunnel" dg_id="branch-edge" dg_kind="sync" dg_props="{&quot;travelMs&quot;:700}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-branch-router" target="dg-n-edge-router">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-edge-firewall" label="" dg_id="edge-firewall" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-edge-router" target="dg-n-firewall">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-firewall-spine-1" label="Allow: web" dg_id="firewall-spine-1" dg_kind="sync" dg_props="{&quot;filter&quot;:[&quot;Checkout&quot;,&quot;BackOffice&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-firewall" target="dg-n-spine-1">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-firewall-spine-2" label="" dg_id="firewall-spine-2" dg_kind="sync" dg_props="{&quot;filter&quot;:[&quot;Checkout&quot;,&quot;BackOffice&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-firewall" target="dg-n-spine-2">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-firewall-payments" label="Deny: branch → payments" dg_id="firewall-payments" dg_kind="sync" dg_props="{&quot;filter&quot;:[&quot;PaymentAdmin&quot;],&quot;deny&quot;:true}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="dg-n-firewall" target="dg-n-payments">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-spine-1-leaf" label="" dg_id="spine-1-leaf" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-spine-1" target="dg-n-leaf">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-spine-2-leaf" label="" dg_id="spine-2-leaf" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-spine-2" target="dg-n-leaf">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-leaf-adc" label="" dg_id="leaf-adc" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-leaf" target="dg-n-adc">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-adc-web-1" label="" dg_id="adc-web-1" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-adc" target="dg-n-web-1">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-adc-web-2" label="" dg_id="adc-web-2" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-adc" target="dg-n-web-2">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-web-1-db" label="" dg_id="web-1-db" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-web-1" target="dg-n-orders-db">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-web-2-db" label="" dg_id="web-2-db" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-web-2" target="dg-n-orders-db">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-web-1-payments" label="Charge" dg_id="web-1-payments" dg_kind="sync" dg_props="{&quot;filter&quot;:[&quot;Checkout&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-web-1" target="dg-n-payments">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-web-2-payments" label="" dg_id="web-2-payments" dg_kind="sync" dg_props="{&quot;filter&quot;:[&quot;Checkout&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-web-2" target="dg-n-payments">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

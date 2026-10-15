@@ -1,0 +1,38 @@
+{
+  "detected": "drawio",
+  "outcome": {
+    "ok": true,
+    "format": "drawio",
+    "warnings": ["1 connector wasn't attached to two shapes and was skipped."],
+    "report": null,
+    "reportEnglish": {},
+    "replay": null,
+    "checks": [],
+    "diagram": {
+      "format": "diagrams/v1",
+      "title": "Order intake",
+      "groups": [
+        { "id": "azure", "label": "Azure subscription", "tone": "azure", "x": 320, "y": 70, "width": 790, "height": 230 }
+      ],
+      "nodes": [
+        { "id": "fn", "stencil": "azure.functions", "label": "Order API", "sublabel": "Function App", "x": 360, "y": 130, "group": "azure" },
+        { "id": "sb", "stencil": "azure.service-bus.queue", "label": "orders", "x": 600, "y": 130, "group": "azure" },
+        { "id": "cosmos", "stencil": "azure.cosmos-db", "label": "Order store", "x": 850, "y": 140, "group": "azure" },
+        { "id": "customer", "stencil": "client.user", "label": "Customer", "x": 20, "y": 140 },
+        { "id": "lambda", "stencil": "aws.lambda", "label": "Fulfilment", "x": 1230, "y": 140 },
+        { "id": "kafka", "stencil": "kafka.topic", "label": "Kafka", "sublabel": "orders.v1", "x": 1550, "y": 140 },
+        { "id": "pg", "stencil": "postgres", "label": "Reporting Postgres", "x": 1550, "y": 300 }
+      ],
+      "edges": [
+        { "id": "e1", "from": "customer", "to": "fn", "label": "POST /orders", "kind": "sync" },
+        { "id": "e2", "from": "fn", "to": "sb", "label": "OrderPlaced", "kind": "async" },
+        { "id": "e3", "from": "sb", "to": "cosmos", "kind": "async" },
+        { "id": "e4", "from": "lambda", "to": "kafka", "label": "publish", "kind": "sync" },
+        { "id": "e5", "from": "kafka", "to": "pg", "kind": "async" }
+      ],
+      "annotations": [
+        { "id": "note", "kind": "text", "text": "Draft: owners to confirm", "x": 170, "y": 400, "width": 160, "height": 30 }
+      ]
+    }
+  }
+}

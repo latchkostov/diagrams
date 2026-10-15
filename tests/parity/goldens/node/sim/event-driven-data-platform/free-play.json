@@ -1,0 +1,497 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "billing-webhooks": { "replicas": [1, 1, 0] },
+        "storefront": { "replicas": [1, 1, 0] },
+        "accounts-db": { "replicas": [1, 1, 0] },
+        "segment-cache": { "replicas": [1, 1, 0] },
+        "webhook-receiver": { "replicas": [1, 1, 0] },
+        "checkout": { "replicas": [1, 1, 0] },
+        "debezium": { "replicas": [1, 1, 0] },
+        "personalization": { "replicas": [1, 1, 0] },
+        "marketing": { "replicas": [1, 1, 0] },
+        "billing-topic": { "lag": { "snowflake-sink": 0 }, "replicas": [1, 1, 0] },
+        "orders-topic": { "lag": { "snowflake-sink": 0 }, "replicas": [1, 1, 0] },
+        "accounts-topic": { "lag": { "snowflake-sink": 0 }, "replicas": [1, 1, 0] },
+        "segments-topic": { "lag": { "personalization": 0, "marketing-sync": 0 }, "replicas": [1, 1, 0] },
+        "schema-registry": { "replicas": [1, 1, 0] },
+        "snowpipe": { "replicas": [6, 6, 0] },
+        "reverse-etl": { "replicas": [1, 1, 0] },
+        "raw": { "replicas": [1, 1, 0] },
+        "marts": { "replicas": [1, 1, 0] },
+        "airflow": { "replicas": [1, 1, 0] },
+        "dbt": { "replicas": [1, 1, 0] },
+        "bi": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 202,
+      "nodes": {
+        "billing-webhooks": { "processed": 50, "throughput": 5.488914795493901, "replicas": [1, 1, 0] },
+        "storefront": { "processed": 200, "throughput": 20.40106029531822, "replicas": [1, 1, 0] },
+        "accounts-db": { "replicas": [1, 1, 0] },
+        "segment-cache": { "processed": 61, "throughput": 19.009420868032205, "replicas": [1, 1, 0] },
+        "webhook-receiver": { "processed": 48, "inFlight": 1, "throughput": 4.861260021191772, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 193, "inFlight": 3, "throughput": 19.900280789440718, "replicas": [1, 1, 0] },
+        "debezium": { "processed": 100, "throughput": 10.45549028686799, "replicas": [1, 1, 0] },
+        "personalization": { "processed": 65, "inFlight": 3, "throughput": 18.870822766669267, "replicas": [1, 1, 0] },
+        "marketing": { "processed": 68, "throughput": 19.969917182219298, "replicas": [1, 1, 0] },
+        "billing-topic": {
+          "processed": 47,
+          "throughput": 5.358791201978691,
+          "lag": { "snowflake-sink": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "orders-topic": {
+          "processed": 187,
+          "throughput": 19.88821833129974,
+          "lag": { "snowflake-sink": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "accounts-topic": {
+          "processed": 97,
+          "throughput": 10.45532420886544,
+          "lag": { "snowflake-sink": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "segments-topic": {
+          "processed": 73,
+          "throughput": 18.972113464265,
+          "lag": { "personalization": 0, "marketing-sync": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "schema-registry": { "replicas": [1, 1, 0] },
+        "snowpipe": { "processed": 319, "inFlight": 1, "throughput": 35.79419218295418, "replicas": [6, 6, 0] },
+        "reverse-etl": { "processed": 76, "inFlight": 31, "throughput": 16.639918008108538, "replicas": [1, 1, 0] },
+        "raw": { "processed": 311, "throughput": 35.11590048132433, "replicas": [1, 1, 0] },
+        "marts": { "processed": 206, "throughput": 37.699340109777445, "replicas": [1, 1, 0] },
+        "airflow": { "processed": 20, "throughput": 2.528714056021835, "replicas": [1, 1, 0] },
+        "dbt": { "processed": 214, "inFlight": 86, "throughput": 37.89261238156891, "replicas": [1, 1, 0] },
+        "bi": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 211,
+      "nodes": {
+        "billing-webhooks": { "processed": 100, "throughput": 5.489163991840091, "replicas": [1, 1, 0] },
+        "storefront": { "processed": 400, "throughput": 20.40198650202273, "replicas": [1, 1, 0] },
+        "accounts-db": { "replicas": [1, 1, 0] },
+        "segment-cache": { "processed": 259, "throughput": 17.674395200702943, "replicas": [1, 1, 0] },
+        "webhook-receiver": { "processed": 98, "inFlight": 1, "throughput": 4.909032784975102, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 393, "inFlight": 3, "throughput": 19.8680478708674, "replicas": [1, 1, 0] },
+        "debezium": { "processed": 200, "throughput": 10.45596496539264, "replicas": [1, 1, 0] },
+        "personalization": { "processed": 269, "throughput": 23.225422916512265, "replicas": [1, 1, 0] },
+        "marketing": { "processed": 269, "throughput": 20.979379455432944, "replicas": [1, 1, 0] },
+        "billing-topic": {
+          "processed": 97,
+          "throughput": 5.423277687933864,
+          "lag": { "snowflake-sink": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "orders-topic": {
+          "processed": 387,
+          "throughput": 19.89786394537358,
+          "lag": { "snowflake-sink": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "accounts-topic": {
+          "processed": 197,
+          "throughput": 10.45596495785271,
+          "lag": { "snowflake-sink": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "segments-topic": {
+          "processed": 277,
+          "throughput": 22.65221537001608,
+          "lag": { "personalization": 0, "marketing-sync": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "schema-registry": { "replicas": [1, 1, 0] },
+        "snowpipe": { "processed": 668, "inFlight": 2, "throughput": 34.90092563725802, "replicas": [6, 6, 0] },
+        "reverse-etl": { "processed": 279, "inFlight": 28, "throughput": 18.514340707234627, "replicas": [1, 1, 0] },
+        "raw": { "processed": 661, "throughput": 35.24957958971206, "replicas": [1, 1, 0] },
+        "marts": { "processed": 552, "throughput": 32.83903895902098, "replicas": [1, 1, 0] },
+        "airflow": { "processed": 40, "throughput": 2.528828859462367, "replicas": [1, 1, 0] },
+        "dbt": { "processed": 559, "inFlight": 91, "throughput": 33.07181352523327, "replicas": [1, 1, 0] },
+        "bi": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 207,
+      "nodes": {
+        "billing-webhooks": { "processed": 150, "throughput": 5.489164003153583, "replicas": [1, 1, 0] },
+        "storefront": { "processed": 600, "throughput": 20.401986544072436, "replicas": [1, 1, 0] },
+        "accounts-db": { "replicas": [1, 1, 0] },
+        "segment-cache": { "processed": 462, "throughput": 20.12389499233879, "replicas": [1, 1, 0] },
+        "webhook-receiver": { "processed": 148, "inFlight": 1, "throughput": 4.894612811849943, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 593, "inFlight": 3, "throughput": 19.915761266892165, "replicas": [1, 1, 0] },
+        "debezium": { "processed": 300, "throughput": 10.45596498694302, "replicas": [1, 1, 0] },
+        "personalization": { "processed": 465, "inFlight": 1, "throughput": 19.05925788788096, "replicas": [1, 1, 0] },
+        "marketing": { "processed": 466, "throughput": 18.101104748768986, "replicas": [1, 1, 0] },
+        "billing-topic": {
+          "processed": 147,
+          "throughput": 5.403812760205859,
+          "lag": { "snowflake-sink": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "orders-topic": {
+          "processed": 587,
+          "throughput": 19.920120400315582,
+          "lag": { "snowflake-sink": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "accounts-topic": {
+          "processed": 297,
+          "throughput": 10.45596498694268,
+          "lag": { "snowflake-sink": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "segments-topic": {
+          "processed": 473,
+          "throughput": 19.564047417111254,
+          "lag": { "personalization": 0, "marketing-sync": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "schema-registry": { "replicas": [1, 1, 0] },
+        "snowpipe": { "processed": 1018, "inFlight": 2, "throughput": 34.80534938772344, "replicas": [6, 6, 0] },
+        "reverse-etl": { "processed": 481, "inFlight": 31, "throughput": 21.555152050853966, "replicas": [1, 1, 0] },
+        "raw": { "processed": 1011, "throughput": 35.155577672558955, "replicas": [1, 1, 0] },
+        "marts": { "processed": 904, "inFlight": 1, "throughput": 34.43499580709142, "replicas": [1, 1, 0] },
+        "airflow": { "processed": 60, "throughput": 2.528828864674435, "replicas": [1, 1, 0] },
+        "dbt": { "processed": 911, "inFlight": 89, "throughput": 34.07476751570956, "replicas": [1, 1, 0] },
+        "bi": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 211,
+      "nodes": {
+        "billing-webhooks": { "processed": 200, "throughput": 5.489164003154097, "replicas": [1, 1, 0] },
+        "storefront": { "processed": 800, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+        "accounts-db": { "replicas": [1, 1, 0] },
+        "segment-cache": { "processed": 662, "throughput": 18.793949290027275, "replicas": [1, 1, 0] },
+        "webhook-receiver": { "processed": 198, "inFlight": 1, "throughput": 4.864979941790206, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 793, "inFlight": 3, "throughput": 19.88678459954165, "replicas": [1, 1, 0] },
+        "debezium": { "processed": 400, "throughput": 10.455964986943998, "replicas": [1, 1, 0] },
+        "personalization": { "processed": 663, "inFlight": 1, "throughput": 16.229095839141902, "replicas": [1, 1, 0] },
+        "marketing": { "processed": 664, "throughput": 15.492233661259272, "replicas": [1, 1, 0] },
+        "billing-topic": {
+          "processed": 197,
+          "throughput": 5.363812569561968,
+          "lag": { "snowflake-sink": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "orders-topic": {
+          "processed": 787,
+          "throughput": 19.901778258092538,
+          "lag": { "snowflake-sink": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "accounts-topic": {
+          "processed": 397,
+          "throughput": 10.455964986943998,
+          "lag": { "snowflake-sink": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "segments-topic": {
+          "processed": 677,
+          "throughput": 22.959455564304275,
+          "lag": { "personalization": 0, "marketing-sync": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "schema-registry": { "replicas": [1, 1, 0] },
+        "snowpipe": { "processed": 1368, "inFlight": 2, "throughput": 34.7946921916552, "replicas": [6, 6, 0] },
+        "reverse-etl": { "processed": 679, "inFlight": 28, "throughput": 18.785314905310088, "replicas": [1, 1, 0] },
+        "raw": { "processed": 1361, "throughput": 35.1420250878692, "replicas": [1, 1, 0] },
+        "marts": { "processed": 1254, "throughput": 33.13189812343654, "replicas": [1, 1, 0] },
+        "airflow": { "processed": 80, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "dbt": { "processed": 1264, "inFlight": 86, "throughput": 35.40209842459564, "replicas": [1, 1, 0] },
+        "bi": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 203,
+      "nodes": {
+        "billing-webhooks": { "processed": 250, "throughput": 5.489164003154097, "replicas": [1, 1, 0] },
+        "storefront": { "processed": 1000, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+        "accounts-db": { "replicas": [1, 1, 0] },
+        "segment-cache": { "processed": 862, "inFlight": 1, "throughput": 21.894168789716453, "replicas": [1, 1, 0] },
+        "webhook-receiver": { "processed": 248, "inFlight": 1, "throughput": 4.88292278329882, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 993, "inFlight": 3, "throughput": 19.91686863014018, "replicas": [1, 1, 0] },
+        "debezium": { "processed": 500, "throughput": 10.455964986943998, "replicas": [1, 1, 0] },
+        "personalization": { "processed": 867, "inFlight": 2, "throughput": 22.32118886469882, "replicas": [1, 1, 0] },
+        "marketing": { "processed": 869, "throughput": 22.053674374996085, "replicas": [1, 1, 0] },
+        "billing-topic": {
+          "processed": 247,
+          "throughput": 5.411858292893911,
+          "lag": { "snowflake-sink": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "orders-topic": {
+          "processed": 987,
+          "throughput": 19.889731590700922,
+          "lag": { "snowflake-sink": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "accounts-topic": {
+          "processed": 497,
+          "throughput": 10.455964986943998,
+          "lag": { "snowflake-sink": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "segments-topic": {
+          "processed": 874,
+          "throughput": 20.672959226554248,
+          "lag": { "personalization": 0, "marketing-sync": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "schema-registry": { "replicas": [1, 1, 0] },
+        "snowpipe": { "processed": 1718, "inFlight": 2, "throughput": 34.73711587854248, "replicas": [6, 6, 0] },
+        "reverse-etl": { "processed": 880, "inFlight": 28, "throughput": 20.07771348457561, "replicas": [1, 1, 0] },
+        "raw": { "processed": 1711, "throughput": 35.113730777580265, "replicas": [1, 1, 0] },
+        "marts": { "processed": 1607, "throughput": 37.32860529704387, "replicas": [1, 1, 0] },
+        "airflow": { "processed": 100, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "dbt": { "processed": 1614, "inFlight": 86, "throughput": 36.58124336334936, "replicas": [1, 1, 0] },
+        "bi": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 202,
+      "nodes": {
+        "billing-webhooks": { "processed": 300, "throughput": 5.489164003154097, "replicas": [1, 1, 0] },
+        "storefront": { "processed": 1200, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+        "accounts-db": { "replicas": [1, 1, 0] },
+        "segment-cache": { "processed": 1062, "throughput": 19.07429565813266, "replicas": [1, 1, 0] },
+        "webhook-receiver": { "processed": 298, "inFlight": 1, "throughput": 4.904458118828215, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 1193, "inFlight": 3, "throughput": 19.85799811795237, "replicas": [1, 1, 0] },
+        "debezium": { "processed": 600, "throughput": 10.455964986943998, "replicas": [1, 1, 0] },
+        "personalization": { "processed": 1065, "inFlight": 2, "throughput": 18.187222977753876, "replicas": [1, 1, 0] },
+        "marketing": { "processed": 1067, "throughput": 18.2691239753679, "replicas": [1, 1, 0] },
+        "billing-topic": {
+          "processed": 297,
+          "throughput": 5.405009937796062,
+          "lag": { "snowflake-sink": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "orders-topic": {
+          "processed": 1187,
+          "throughput": 19.877907124945732,
+          "lag": { "snowflake-sink": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "accounts-topic": {
+          "processed": 597,
+          "throughput": 10.455964986943998,
+          "lag": { "snowflake-sink": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "segments-topic": {
+          "processed": 1072,
+          "throughput": 17.815182725393544,
+          "lag": { "personalization": 0, "marketing-sync": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "schema-registry": { "replicas": [1, 1, 0] },
+        "snowpipe": { "processed": 2068, "inFlight": 2, "throughput": 34.77124712686456, "replicas": [6, 6, 0] },
+        "reverse-etl": { "processed": 1078, "inFlight": 31, "throughput": 18.099769965556714, "replicas": [1, 1, 0] },
+        "raw": { "processed": 2061, "throughput": 35.14264373769573, "replicas": [1, 1, 0] },
+        "marts": { "processed": 1955, "inFlight": 1, "throughput": 35.178177200286356, "replicas": [1, 1, 0] },
+        "airflow": { "processed": 120, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "dbt": { "processed": 1964, "inFlight": 86, "throughput": 36.532755906930454, "replicas": [1, 1, 0] },
+        "bi": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 202,
+    "real": {
+      "billing-webhooks": { "processed": 300, "throughput": 5.489164003154097, "replicas": [1, 1, 0] },
+      "storefront": { "processed": 1200, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+      "accounts-db": { "replicas": [1, 1, 0] },
+      "segment-cache": { "processed": 1062, "throughput": 19.07429565813266, "replicas": [1, 1, 0] },
+      "webhook-receiver": { "processed": 298, "inFlight": 1, "throughput": 4.904458118828215, "replicas": [1, 1, 0] },
+      "checkout": { "processed": 1193, "inFlight": 3, "throughput": 19.85799811795237, "replicas": [1, 1, 0] },
+      "debezium": { "processed": 600, "throughput": 10.455964986943998, "replicas": [1, 1, 0] },
+      "personalization": { "processed": 1065, "inFlight": 2, "throughput": 18.187222977753876, "replicas": [1, 1, 0] },
+      "marketing": { "processed": 1067, "throughput": 18.2691239753679, "replicas": [1, 1, 0] },
+      "billing-topic": {
+        "processed": 297,
+        "throughput": 5.405009937796062,
+        "lag": { "snowflake-sink": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "orders-topic": {
+        "processed": 1187,
+        "throughput": 19.877907124945732,
+        "lag": { "snowflake-sink": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "accounts-topic": {
+        "processed": 597,
+        "throughput": 10.455964986943998,
+        "lag": { "snowflake-sink": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "segments-topic": {
+        "processed": 1072,
+        "throughput": 17.815182725393544,
+        "lag": { "personalization": 0, "marketing-sync": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "schema-registry": { "replicas": [1, 1, 0] },
+      "snowpipe": { "processed": 2068, "inFlight": 2, "throughput": 34.77124712686456, "replicas": [6, 6, 0] },
+      "reverse-etl": { "processed": 1078, "inFlight": 31, "throughput": 18.099769965556714, "replicas": [1, 1, 0] },
+      "raw": { "processed": 2061, "throughput": 35.14264373769573, "replicas": [1, 1, 0] },
+      "marts": { "processed": 1955, "inFlight": 1, "throughput": 35.178177200286356, "replicas": [1, 1, 0] },
+      "airflow": { "processed": 120, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+      "dbt": { "processed": 1964, "inFlight": 86, "throughput": 36.532755906930454, "replicas": [1, 1, 0] },
+      "bi": { "replicas": [1, 1, 0] }
+    },
+    "edges": {
+      "billing-webhooks-to-webhook-receiver": 299,
+      "storefront-to-checkout": 1196,
+      "accounts-db-to-debezium": 0,
+      "webhook-receiver-to-billing-topic": 297,
+      "checkout-to-orders-topic": 1187,
+      "debezium-to-accounts-topic": 597,
+      "billing-topic-to-snowpipe": 295,
+      "orders-topic-to-snowpipe": 1181,
+      "accounts-topic-to-snowpipe": 594,
+      "snowpipe-to-schema-registry": 0,
+      "snowpipe-to-raw": 2061,
+      "raw-to-dbt": 2050,
+      "airflow-to-dbt": 0,
+      "dbt-to-marts": 1956,
+      "bi-to-marts": 0,
+      "marts-to-reverse-etl": 1109,
+      "reverse-etl-to-segments-topic": 1072,
+      "segments-topic-to-personalization": 1067,
+      "segments-topic-to-marketing": 1067,
+      "personalization-to-segment-cache": 1062
+    }
+  },
+  "events": {
+    "total": 36274,
+    "byKind": { "process": 19184, "deliver": 17090 },
+    "byNode": {
+      "storefront": { "process": 1200 },
+      "debezium": { "process": 600 },
+      "billing-webhooks": { "process": 300 },
+      "checkout": { "deliver": 1196, "process": 1193 },
+      "accounts-topic": { "deliver": 597, "process": 597 },
+      "webhook-receiver": { "deliver": 299, "process": 298 },
+      "airflow": { "process": 120 },
+      "orders-topic": { "deliver": 1187, "process": 1187 },
+      "snowpipe": { "deliver": 2070, "process": 2068 },
+      "billing-topic": { "deliver": 297, "process": 297 },
+      "raw": { "deliver": 2061, "process": 2061 },
+      "dbt": { "deliver": 2050, "process": 1964 },
+      "marts": { "deliver": 1956, "process": 1955 },
+      "reverse-etl": { "deliver": 1109, "process": 1078 },
+      "segments-topic": { "deliver": 1072, "process": 1072 },
+      "personalization": { "deliver": 1067, "process": 1065 },
+      "marketing": { "deliver": 1067, "process": 1067 },
+      "segment-cache": { "deliver": 1062, "process": 1062 }
+    },
+    "perSecond": [
+      "a0e228fad325",
+      "b160e1a2cb24",
+      "a9a8960ad353",
+      "0d308535e33f",
+      "1a57cb57f4b1",
+      "63b2adc488f2",
+      "91b30d9d5c75",
+      "51edd6b96f49",
+      "037b18c28b93",
+      "6900189f74f9",
+      "1c3fe2203447",
+      "4e7a18c02110",
+      "6c45ef21a67b",
+      "4578ca78bd36",
+      "11470ac570a6",
+      "640121dd344f",
+      "c21143640376",
+      "5246b88c4c8b",
+      "cae5a68560f6",
+      "37ace7d4b5a0",
+      "b28e476247bf",
+      "e6503ca649b2",
+      "792f009e62eb",
+      "907aee1ea233",
+      "5c04d0a8fd25",
+      "7d2c7d10f778",
+      "19a0ca0ca62a",
+      "e274037671e5",
+      "edf3365e3c55",
+      "15f7ffc0e703",
+      "099b3d733e66",
+      "26cc5a9c8c31",
+      "5be3935bfde3",
+      "d382373e99a8",
+      "93d5602d37a8",
+      "28e34968d8dc",
+      "804c140a4377",
+      "ddedfbd45d99",
+      "b2aba8c9cc0b",
+      "4e94a43ec97a",
+      "9c403efdf6f4",
+      "ebb383f7ae5b",
+      "4bfa201cbfdb",
+      "0f2e6d389020",
+      "4a61c1276e14",
+      "250c544cb982",
+      "9b9133e470d4",
+      "d1047fb19dfb",
+      "10473644fb44",
+      "dbb176f58c62",
+      "79cf9d4810bf",
+      "f9b9fd1cf215",
+      "f197fb44da82",
+      "2be9c927b2ab",
+      "02295501ca0b",
+      "68580bd96967",
+      "b4d395a65241",
+      "e1ba317dde93",
+      "9275420c9ab4",
+      "75bdd3e8710c",
+      "dda8b638a99c"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 409, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 409, "min": 0, "mean": 4211.931540342298, "p50": 4030, "p90": 6950, "max": 7500 },
+    "waitMs": {
+      "segment-cache": { "count": 117, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "webhook-receiver": { "count": 85, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "checkout": { "count": 117, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "personalization": { "count": 117, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "snowpipe": { "count": 354, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "reverse-etl": { "count": 117, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "raw": { "count": 354, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "marts": { "count": 354, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "dbt": { "count": 354, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "segment-cache": { "count": 117, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "webhook-receiver": { "count": 85, "min": 70, "mean": 85.17647058823529, "p50": 80, "p90": 100, "max": 100 },
+      "checkout": { "count": 117, "min": 100, "mean": 123.93162393162393, "p50": 130, "p90": 140, "max": 150 },
+      "personalization": { "count": 117, "min": 90, "mean": 105.04273504273505, "p50": 110, "p90": 120, "max": 120 },
+      "snowpipe": { "count": 354, "min": 40, "mean": 44.83050847457627, "p50": 40, "p90": 50, "max": 50 },
+      "reverse-etl": { "count": 117, "min": 1210, "mean": 1465.7264957264956, "p50": 1420, "p90": 1720, "max": 1800 },
+      "raw": { "count": 354, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "marts": { "count": 354, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "dbt": { "count": 354, "min": 2010, "mean": 2439.9435028248586, "p50": 2410, "p90": 2840, "max": 2990 }
+    }
+  }
+}

@@ -1,0 +1,57 @@
+---
+title: Planning: shared capacity
+---
+flowchart LR
+  checkout(["Checkout"])
+  topic["Order events"]
+  worker_0["Worker 0"]
+  worker_1["Worker 1"]
+  worker_2["Worker 2"]
+  worker_3["Worker 3"]
+  worker_4["Worker 4"]
+  worker_5["Worker 5"]
+  worker_6["Worker 6"]
+  worker_7["Worker 7"]
+  worker_8["Worker 8"]
+  worker_9["Worker 9"]
+  worker_10["Worker 10"]
+  worker_11["Worker 11"]
+  worker_12["Worker 12"]
+  worker_13["Worker 13"]
+  worker_14["Worker 14"]
+  worker_15["Worker 15"]
+  worker_16["Worker 16"]
+  worker_17["Worker 17"]
+  worker_18["Worker 18"]
+  worker_19["Worker 19"]
+  worker_20["Worker 20"]
+  worker_21["Worker 21"]
+  worker_22["Worker 22"]
+  worker_23["Worker 23"]
+  checkout -.-> topic
+  topic -.-> worker_0
+  topic -.-> worker_1
+  topic -.-> worker_2
+  topic -.-> worker_3
+  topic -.-> worker_4
+  topic -.-> worker_5
+  topic -.-> worker_6
+  topic -.-> worker_7
+  topic -.-> worker_8
+  topic -.-> worker_9
+  topic -.-> worker_10
+  topic -.-> worker_11
+  topic -.-> worker_12
+  topic -.-> worker_13
+  topic -.-> worker_14
+  topic -.-> worker_15
+  topic -.-> worker_16
+  topic -.-> worker_17
+  topic -.-> worker_18
+  topic -.-> worker_19
+  topic -.-> worker_20
+  topic -.-> worker_21
+  topic -.-> worker_22
+  topic -.-> worker_23
+  linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"nodes":{"checkout":["checkout","client.browser"],"topic":["topic","kafka.topic"],"worker_0":["worker-0","generic.service"],"worker_1":["worker-1","generic.service"],"worker_2":["worker-2","generic.service"],"worker_3":["worker-3","generic.service"],"worker_4":["worker-4","generic.service"],"worker_5":["worker-5","generic.service"],"worker_6":["worker-6","generic.service"],"worker_7":["worker-7","generic.service"],"worker_8":["worker-8","generic.service"],"worker_9":["worker-9","generic.service"],"worker_10":["worker-10","generic.service"],"worker_11":["worker-11","generic.service"],"worker_12":["worker-12","generic.service"],"worker_13":["worker-13","generic.service"],"worker_14":["worker-14","generic.service"],"worker_15":["worker-15","generic.service"],"worker_16":["worker-16","generic.service"],"worker_17":["worker-17","generic.service"],"worker_18":["worker-18","generic.service"],"worker_19":["worker-19","generic.service"],"worker_20":["worker-20","generic.service"],"worker_21":["worker-21","generic.service"],"worker_22":["worker-22","generic.service"],"worker_23":["worker-23","generic.service"]},"edges":["publish","read-0","read-1","read-2","read-3","read-4","read-5","read-6","read-7","read-8","read-9","read-10","read-11","read-12","read-13","read-14","read-15","read-16","read-17","read-18","read-19","read-20","read-21","read-22","read-23"],"relations":{}}

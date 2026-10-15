@@ -1,0 +1,13 @@
+{
+  "autoLayout": { "LR": { "service": [40, 40] }, "TB": { "service": [40, 40] } },
+  "tidy": {},
+  "arrange": {
+    "alignLeft": { "service": [100, 100] },
+    "alignMiddle": { "service": [100, 100] },
+    "distributeH": { "service": [100, 100] },
+    "distributeV": { "service": [100, 100] },
+    "spreadH": { "service": [100, 100] },
+    "boundaryAround": { "x": 60, "y": 36, "width": 300, "height": 176 }
+  },
+  "skillLayout": { "laidOut": true, "fitted": [], "placedNotes": [], "nodes": { "service": [40, 40] }, "groups": {} }
+}

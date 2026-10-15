@@ -1,0 +1,20 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Planning: logs and subscriptions",
+    "direction": "LR",
+    "nodes": [
+      { "id": "source", "stencil": "generic.service", "label": "Publisher", "x": 40, "y": 40 },
+      { "id": "broker", "stencil": "generic.topic", "label": "Events", "x": 400, "y": 100 },
+      { "id": "worker", "stencil": "generic.service", "label": "Readers", "x": 760, "y": 40 },
+      { "id": "dead", "stencil": "generic.service", "label": "Recovery", "x": 760, "y": 160 },
+      { "id": "cluster", "stencil": "generic.service", "label": "Cluster", "x": 40, "y": 160 }
+    ],
+    "edges": [
+      { "id": "e1-source-broker", "from": "source", "to": "broker", "kind": "async" },
+      { "id": "e2-broker-worker", "from": "broker", "to": "worker", "label": "billing", "kind": "async" },
+      { "id": "e3-broker-dead", "from": "broker", "to": "dead", "label": "Recovery", "kind": "async" }
+    ]
+  }
+}

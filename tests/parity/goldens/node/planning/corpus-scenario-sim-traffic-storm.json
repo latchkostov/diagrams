@@ -1,0 +1,408 @@
+{
+  "autoScale": { "freePlay": 1 },
+  "brokerAssignments": {
+    "brokers": {
+      "topic": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+    },
+    "consumers": {
+      "billing": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "search": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      }
+    }
+  },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "orders",
+      "suggestion": "Orders: raise replicas from 1 to 3.",
+      "converged": true,
+      "iterations": 6,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "web": ["Infinity", 15, 0, 1, 1, 0], "mobile": ["Infinity", 15, 0, 1, 1, 0], "partner": ["Infinity", 15, 0, 1, 1, 0], "gw": ["Infinity", 45, 0, 1, 1, 0], "orders": [16, 45, 2.8125, 1, 1, 0], "topic": [80, 45, 0.5625, 1, 1, 0], "billing": [80, 45, 0.5625, 1, 1, 0], "search": [80, 45, 0.5625, 1, 1, 0], "db": ["Infinity", 45, 0, 1, 1, 0] },
+      "connections": { "web-gw": 15, "mobile-gw": 15, "partner-gw": 15, "gw-orders": 45, "orders-topic": 45, "topic-billing": 45, "topic-search": 45, "billing-db": 45 },
+      "offeredTypes": { "web": ["WebOrder"], "mobile": ["AppOrder"], "partner": ["PartnerOrder"], "gw": ["WebOrder", "AppOrder", "PartnerOrder"], "orders": ["WebOrder", "AppOrder", "PartnerOrder"], "topic": ["WebOrder", "AppOrder", "PartnerOrder"], "billing": ["WebOrder", "AppOrder", "PartnerOrder"], "search": ["WebOrder", "AppOrder", "PartnerOrder"], "db": ["WebOrder", "AppOrder", "PartnerOrder"] }
+    },
+    "explanations": {
+      "orders": {
+        "id": "orders",
+        "role": "processor",
+        "status": "up",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 16,
+        "offered": 45,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": 2.8125,
+        "growth": 29,
+        "contributors": [
+          { "edge": "gw-orders", "node": "gw", "label": "Web, Mobile, Partner webhook", "rate": 45, "via": "Front Door" }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 3,
+        "targetReplicas": 6,
+        "changes": [{ "nodeId": "orders", "key": "replicas", "from": 1, "to": 6 }],
+        "fixId": "capacity:orders",
+        "converged": true
+      },
+      "billing": {
+        "id": "billing",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 80,
+        "offered": 45,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 12
+          }
+        ],
+        "slots": 12,
+        "seconds": 0.15,
+        "utilization": 0.5625,
+        "growth": 0,
+        "contributors": [{ "edge": "topic-billing", "node": "topic", "label": "order-events", "rate": 45 }],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      },
+      "search": {
+        "id": "search",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 80,
+        "offered": 45,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 12
+          }
+        ],
+        "slots": 12,
+        "seconds": 0.15,
+        "utilization": 0.5625,
+        "growth": 0,
+        "contributors": [{ "edge": "topic-search", "node": "topic", "label": "order-events", "rate": 45 }],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "web": [{ "kind": "calls", "edge": "web-gw", "peer": "gw" }],
+      "mobile": [{ "kind": "calls", "edge": "mobile-gw", "peer": "gw" }],
+      "partner": [{ "kind": "calls", "edge": "partner-gw", "peer": "gw" }],
+      "gw": [{ "kind": "calls", "edge": "gw-orders", "peer": "orders" }],
+      "orders": [{ "kind": "publishes", "edge": "orders-topic", "peer": "topic" }],
+      "billing": [
+        {
+          "kind": "consumes",
+          "edge": "topic-billing",
+          "peer": "topic",
+          "group": "topic-billing",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        },
+        { "kind": "calls", "edge": "billing-db", "peer": "db" }
+      ],
+      "search": [
+        {
+          "kind": "consumes",
+          "edge": "topic-search",
+          "peer": "topic",
+          "group": "topic-search",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ]
+    },
+    "sizing": [{ "nodeId": "orders", "key": "replicas", "from": 1, "to": 6 }],
+    "redundancy": { "orders": { "replicas": 6, "enough": true } },
+    "resolved": {
+      "web": {
+        "profile": { "family": "client", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 15,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "WebOrder",
+        "healthChecks": false
+      },
+      "mobile": {
+        "profile": { "family": "client", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 15,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "AppOrder",
+        "healthChecks": false
+      },
+      "partner": {
+        "profile": { "family": "client", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 15,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "PartnerOrder",
+        "healthChecks": false
+      },
+      "gw": {
+        "profile": { "family": "edge", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Front Door",
+        "healthChecks": false
+      },
+      "orders": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Orders",
+        "healthChecks": false
+      },
+      "topic": {
+        "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+        "profile": { "family": "pubsub", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 12,
+        "messageType": "order-events",
+        "healthChecks": false
+      },
+      "billing": {
+        "profile": { "family": "serverless", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 150,
+        "concurrency": 12,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Billing",
+        "healthChecks": false
+      },
+      "search": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 150,
+        "concurrency": 12,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Search indexer",
+        "healthChecks": false
+      },
+      "db": {
+        "profile": { "family": "nosql", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Orders DB",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {},
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "over",
+          "top": "orders",
+          "headline": "Orders is over capacity",
+          "detail": "281% · 45/s of 16/s",
+          "fix": {
+            "changes": [{ "nodeId": "orders", "key": "replicas", "from": 1, "to": 6, "label": "Orders" }],
+            "label": "Orders 1 → 6 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "web": ["idle", "15/s · no limit", { "modeled": false }],
+            "mobile": ["idle", "15/s · no limit", { "modeled": false }],
+            "partner": ["idle", "15/s · no limit", { "modeled": false }],
+            "gw": ["idle", "45/s · no limit", { "modeled": false }],
+            "orders": ["over", "281% · 45/s of 16/s"],
+            "topic": ["ok", "56% · 45/s of 80/s"],
+            "billing": ["ok", "56% · 45/s of 80/s"],
+            "search": ["ok", "56% · 45/s of 80/s"],
+            "db": ["idle", "45/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "over",
+          "top": "orders",
+          "headline": "Orders and 3 more are over capacity",
+          "detail": "14× · 225/s of 16/s",
+          "fix": {
+            "changes": [
+              { "nodeId": "orders", "key": "replicas", "from": 1, "to": 26, "label": "Orders" },
+              { "nodeId": "billing", "key": "replicas", "from": 1, "to": 6, "label": "Billing" },
+              { "nodeId": "search", "key": "replicas", "from": 1, "to": 6, "label": "Search indexer" }
+            ],
+            "label": "Orders 1 → 26 replicas, Billing 1 → 6 replicas and 1 more"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "web": ["idle", "75/s · no limit", { "modeled": false }],
+            "mobile": ["idle", "75/s · no limit", { "modeled": false }],
+            "partner": ["idle", "75/s · no limit", { "modeled": false }],
+            "gw": ["idle", "225/s · no limit", { "modeled": false }],
+            "orders": ["over", "14× · 225/s of 16/s"],
+            "topic": ["over", "281% · 225/s of 80/s"],
+            "billing": ["over", "281% · 225/s of 80/s"],
+            "search": ["over", "281% · 225/s of 80/s"],
+            "db": ["idle", "225/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "over",
+          "top": "orders",
+          "headline": "Orders is over capacity",
+          "detail": "281% · 45/s of 16/s",
+          "fix": {
+            "changes": [{ "nodeId": "orders", "key": "replicas", "from": 1, "to": 12, "label": "Orders" }],
+            "label": "Orders 1 → 12 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "web": ["idle", "15/s · no limit", { "modeled": false }],
+            "mobile": ["idle", "15/s · no limit", { "modeled": false }],
+            "partner": ["idle", "15/s · no limit", { "modeled": false }],
+            "gw": ["idle", "45/s · no limit", { "modeled": false }],
+            "orders": ["over", "281% · 45/s of 16/s"],
+            "topic": ["ok", "56% · 45/s of 80/s"],
+            "billing": ["ok", "56% · 45/s of 80/s"],
+            "search": ["ok", "56% · 45/s of 80/s"],
+            "db": ["idle", "45/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": { "topic": { "partitions": 24 } }, "rates": {} },
+        "view": {
+          "tone": "over",
+          "top": "orders",
+          "headline": "Orders is over capacity",
+          "detail": "281% · 45/s of 16/s",
+          "fix": {
+            "changes": [{ "nodeId": "orders", "key": "replicas", "from": 1, "to": 6, "label": "Orders" }],
+            "label": "Orders 1 → 6 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "web": ["idle", "15/s · no limit", { "modeled": false }],
+            "mobile": ["idle", "15/s · no limit", { "modeled": false }],
+            "partner": ["idle", "15/s · no limit", { "modeled": false }],
+            "gw": ["idle", "45/s · no limit", { "modeled": false }],
+            "orders": ["over", "281% · 45/s of 16/s"],
+            "topic": ["ok", "56% · 45/s of 80/s"],
+            "billing": ["ok", "56% · 45/s of 80/s"],
+            "search": ["ok", "56% · 45/s of 80/s"],
+            "db": ["idle", "45/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": { "topic": "Its largest consumer group has 1 replica: partitions past 1 add no speed." }
+      }
+    }
+  }
+}

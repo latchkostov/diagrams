@@ -1,0 +1,13 @@
+{
+  "autoLayout": { "LR": {}, "TB": {} },
+  "tidy": {},
+  "arrange": {
+    "alignLeft": {},
+    "alignMiddle": {},
+    "distributeH": {},
+    "distributeV": {},
+    "spreadH": {},
+    "boundaryAround": { "x": -40, "y": -64, "width": 80, "height": 104 }
+  },
+  "skillLayout": { "laidOut": true, "fitted": [], "placedNotes": [], "nodes": {}, "groups": {} }
+}

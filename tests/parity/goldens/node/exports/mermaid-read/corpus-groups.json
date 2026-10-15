@@ -1,0 +1,43 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Group tones",
+    "direction": "LR",
+    "groups": [
+      { "id": "g_azure", "label": "azure boundary", "tone": "azure", "x": 40, "y": 40, "width": 660, "height": 176 },
+      { "id": "g_aws", "label": "aws boundary", "tone": "aws", "x": 760, "y": 40, "width": 660, "height": 176 },
+      { "id": "g_gcp", "label": "gcp boundary", "tone": "gcp", "x": 1480, "y": 40, "width": 660, "height": 176 },
+      { "id": "g_k8s", "label": "k8s boundary", "tone": "k8s", "x": 2200, "y": 40, "width": 660, "height": 176 },
+      { "id": "g_onprem", "label": "onprem boundary", "tone": "onprem", "x": 2920, "y": 40, "width": 660, "height": 176 },
+      { "id": "g_neutral", "label": "neutral boundary", "tone": "neutral", "x": 3640, "y": 40, "width": 660, "height": 176 }
+    ],
+    "nodes": [
+      { "id": "azure_1", "stencil": "generic.service", "label": "azure service", "x": 80, "y": 104, "group": "g_azure" },
+      { "id": "azure_2", "stencil": "generic.topic", "label": "azure topic", "sublabel": "azure.events", "x": 440, "y": 104, "group": "g_azure" },
+      { "id": "aws_1", "stencil": "generic.service", "label": "aws service", "x": 800, "y": 104, "group": "g_aws" },
+      { "id": "aws_2", "stencil": "generic.topic", "label": "aws topic", "sublabel": "aws.events", "x": 1160, "y": 104, "group": "g_aws" },
+      { "id": "gcp_1", "stencil": "generic.service", "label": "gcp service", "x": 1520, "y": 104, "group": "g_gcp" },
+      { "id": "gcp_2", "stencil": "generic.topic", "label": "gcp topic", "sublabel": "gcp.events", "x": 1880, "y": 104, "group": "g_gcp" },
+      { "id": "k8s_1", "stencil": "k8s.pod", "label": "k8s service", "x": 2240, "y": 104, "group": "g_k8s" },
+      { "id": "k8s_2", "stencil": "k8s.pod", "label": "k8s topic", "sublabel": "k8s.events", "x": 2600, "y": 104, "group": "g_k8s" },
+      { "id": "onprem_1", "stencil": "generic.service", "label": "onprem service", "x": 2960, "y": 104, "group": "g_onprem" },
+      { "id": "onprem_2", "stencil": "generic.topic", "label": "onprem topic", "sublabel": "onprem.events", "x": 3320, "y": 104, "group": "g_onprem" },
+      { "id": "neutral_1", "stencil": "generic.service", "label": "neutral service", "x": 3680, "y": 104, "group": "g_neutral" },
+      { "id": "neutral_2", "stencil": "generic.topic", "label": "neutral topic", "sublabel": "neutral.events", "x": 4040, "y": 104, "group": "g_neutral" }
+    ],
+    "edges": [
+      { "id": "e1-azure_1-azure_2", "from": "azure_1", "to": "azure_2", "kind": "async" },
+      { "id": "e2-aws_1-aws_2", "from": "aws_1", "to": "aws_2", "kind": "async" },
+      { "id": "e3-azure_2-aws_1", "from": "azure_2", "to": "aws_1", "kind": "async" },
+      { "id": "e4-gcp_1-gcp_2", "from": "gcp_1", "to": "gcp_2", "kind": "async" },
+      { "id": "e5-aws_2-gcp_1", "from": "aws_2", "to": "gcp_1", "kind": "async" },
+      { "id": "e6-k8s_1-k8s_2", "from": "k8s_1", "to": "k8s_2", "kind": "async" },
+      { "id": "e7-gcp_2-k8s_1", "from": "gcp_2", "to": "k8s_1", "kind": "async" },
+      { "id": "e8-onprem_1-onprem_2", "from": "onprem_1", "to": "onprem_2", "kind": "async" },
+      { "id": "e9-k8s_2-onprem_1", "from": "k8s_2", "to": "onprem_1", "kind": "async" },
+      { "id": "e10-neutral_1-neutral_2", "from": "neutral_1", "to": "neutral_2", "kind": "async" },
+      { "id": "e11-onprem_2-neutral_1", "from": "onprem_2", "to": "neutral_1", "kind": "async" }
+    ]
+  }
+}

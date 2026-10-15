@@ -1,0 +1,150 @@
+{
+  "autoScale": { "freePlay": 1 },
+  "brokerAssignments": { "brokers": {}, "consumers": {} },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "api",
+      "suggestion": "aws.api-gateway: 0% utilized",
+      "converged": true,
+      "iterations": 2,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": ["Infinity", 20, 0, 1, 1, 0], "api": [10000, 20, 0.002, 1, 1, 0] },
+      "connections": { "call": 20 },
+      "offeredTypes": { "source": ["Checkout"], "api": ["Checkout"] }
+    },
+    "explanations": {
+      "api": {
+        "managed": "api",
+        "id": "api",
+        "role": "gateway",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 10000,
+        "offered": 20,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 1,
+        "utilization": 0.002,
+        "growth": 0,
+        "contributors": [{ "edge": "call", "node": "source", "label": "Checkout", "rate": 20 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": { "source": [{ "kind": "calls", "edge": "call", "peer": "api" }] },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "source": {
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 20,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Checkout",
+        "healthChecks": false
+      },
+      "api": {
+        "admission": {
+          "api": {
+            "quotas": [
+              { "id": "global-rate", "unit": "requests", "amount": 10000, "burst": 5000, "windowMs": 1000, "algorithm": "token-bucket", "sharedGroup": "api-gateway-account-region" }
+            ]
+          },
+          "endpoints": []
+        },
+        "profile": { "family": "api-gateway", "revision": "p3", "preset": "api-gateway-account", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 1000,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "aws.api-gateway",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {},
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "ok",
+          "top": "api",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: aws.api-gateway at 0% · 20/s of 10k/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": { "source": ["idle", "20/s · no limit", { "modeled": false }], "api": ["ok", "0% · 20/s of 10k/s"] }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "ok",
+          "top": "api",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: aws.api-gateway at 1% · 100/s of 10k/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "100/s · no limit", { "modeled": false }],
+            "api": ["ok", "1% · 100/s of 10k/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "ok",
+          "top": "api",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: aws.api-gateway at 0% · 20/s of 10k/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": { "source": ["idle", "20/s · no limit", { "modeled": false }], "api": ["ok", "0% · 20/s of 10k/s"] }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "ok",
+          "top": "api",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: aws.api-gateway at 0% · 20/s of 10k/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": { "source": ["idle", "20/s · no limit", { "modeled": false }], "api": ["ok", "0% · 20/s of 10k/s"] }
+        },
+        "partitionsNotes": {}
+      }
+    }
+  }
+}

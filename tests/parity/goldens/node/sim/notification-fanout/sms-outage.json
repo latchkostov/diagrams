@@ -1,0 +1,171 @@
+{
+  "run": {
+    "time": 11320,
+    "totalMs": 18000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "waiting", "label": "SMS waits during the outage", "status": "pass", "value": 0 },
+      { "id": "drained", "label": "The SMS backlog drains", "status": "pass", "value": 0 },
+      { "id": "email", "label": "Email is unaffected", "status": "pass", "value": 0 },
+      { "id": "all-routed", "label": "All 320 events are routed", "status": "pass", "value": 320 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "40 parcels/s for 8 seconds" },
+      { "atMs": 1500, "kind": "status", "label": "status: sms-limiter" },
+      { "atMs": 1500, "kind": "note", "label": "Twilio starts returning errors. The circuit breaker opens and SMS sending pauses; messages wait in the queue instead of failing." },
+      { "atMs": 6500, "kind": "status", "label": "status: sms-limiter" },
+      { "atMs": 6500, "kind": "note", "label": "The breaker closes. The backlog drains at 50 a second; email and push never noticed." },
+      { "atMs": 8000, "kind": "traffic", "label": "40 parcels/s for 8 seconds ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "carrier": { "replicas": [1, 1, 0] },
+        "shipping": { "replicas": [1, 1, 0] },
+        "events": { "lag": { "notifications": 0 }, "replicas": [1, 1, 0] },
+        "preferences": { "replicas": [1, 1, 0] },
+        "router": { "replicas": [1, 1, 0] },
+        "email-q": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "sms-q": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "push-q": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "email-sender": { "replicas": [10, 10, 0] },
+        "sms-limiter": { "replicas": [1, 1, 0] },
+        "push-sender": { "replicas": [10, 10, 0] },
+        "sendgrid": { "replicas": [1, 1, 0] },
+        "key-vault": { "replicas": [1, 1, 0] },
+        "twilio": { "replicas": [1, 1, 0] },
+        "push": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 0,
+      "nodes": {
+        "carrier": { "processed": 320, "throughput": 5.520640778089587, "replicas": [1, 1, 0] },
+        "shipping": { "processed": 320, "throughput": 7.048179304705693, "replicas": [1, 1, 0] },
+        "events": {
+          "processed": 320,
+          "throughput": 9.514046911831876,
+          "lag": { "notifications": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "preferences": { "processed": 320, "throughput": 16.72949513990854, "replicas": [1, 1, 0] },
+        "router": { "processed": 320, "throughput": 13.696952154511767, "replicas": [1, 1, 0] },
+        "email-q": { "processed": 293, "throughput": 17.268153190902133, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "sms-q": { "processed": 92, "throughput": 6.723973528845515, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "push-q": { "processed": 223, "throughput": 13.264161230670469, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "email-sender": { "processed": 293, "throughput": 25.869369397019828, "replicas": [10, 10, 0] },
+        "sms-limiter": { "processed": 92, "throughput": 14.967813521697998, "replicas": [1, 1, 0] },
+        "push-sender": { "processed": 223, "throughput": 19.93249966031706, "replicas": [10, 10, 0] },
+        "sendgrid": { "processed": 293, "throughput": 31.596919133384272, "replicas": [1, 1, 0] },
+        "key-vault": { "replicas": [1, 1, 0] },
+        "twilio": { "processed": 92, "throughput": 18.281728719029, "replicas": [1, 1, 0] },
+        "push": { "processed": 223, "throughput": 24.345610062137887, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 11320,
+    "inSystem": 0,
+    "real": {
+      "carrier": { "processed": 320, "throughput": 1.4747580412999595, "replicas": [1, 1, 0] },
+      "shipping": { "processed": 320, "throughput": 1.8828175068720263, "replicas": [1, 1, 0] },
+      "events": {
+        "processed": 320,
+        "throughput": 2.541537794709492,
+        "lag": { "notifications": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "preferences": { "processed": 320, "throughput": 4.469038735935722, "replicas": [1, 1, 0] },
+      "router": { "processed": 320, "throughput": 3.658939449807331, "replicas": [1, 1, 0] },
+      "email-q": { "processed": 293, "throughput": 4.61293331704424, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "sms-q": { "processed": 92, "throughput": 1.7962106990385425, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "push-q": { "processed": 223, "throughput": 3.5433257156789044, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "email-sender": { "processed": 293, "throughput": 6.910621805539071, "replicas": [10, 10, 0] },
+      "sms-limiter": { "processed": 92, "throughput": 3.998431384887361, "replicas": [1, 1, 0] },
+      "push-sender": { "processed": 223, "throughput": 5.324674315693047, "replicas": [10, 10, 0] },
+      "sendgrid": { "processed": 293, "throughput": 8.440652533887224, "replicas": [1, 1, 0] },
+      "key-vault": { "replicas": [1, 1, 0] },
+      "twilio": { "processed": 92, "throughput": 4.883695121815604, "replicas": [1, 1, 0] },
+      "push": { "processed": 223, "throughput": 6.5035718954920965, "replicas": [1, 1, 0] }
+    },
+    "edges": {
+      "carrier-to-shipping": 320,
+      "shipping-to-events": 320,
+      "events-to-router": 320,
+      "router-to-preferences": 320,
+      "router-to-email-q": 293,
+      "router-to-sms-q": 92,
+      "router-to-push-q": 223,
+      "email-q-to-email-sender": 293,
+      "sms-q-to-sms-limiter": 92,
+      "push-q-to-push-sender": 223,
+      "email-sender-to-sendgrid": 293,
+      "sms-limiter-to-twilio": 92,
+      "push-sender-to-push": 223,
+      "email-sender-to-key-vault": 0,
+      "sms-limiter-to-key-vault": 0
+    }
+  },
+  "events": {
+    "total": 6850,
+    "byKind": { "inject": 320, "process": 3424, "deliver": 3104, "status": 2 },
+    "byNode": {
+      "carrier": { "inject": 320, "process": 320 },
+      "shipping": { "deliver": 320, "process": 320 },
+      "events": { "deliver": 320, "process": 320 },
+      "router": { "deliver": 320, "process": 320 },
+      "preferences": { "deliver": 320, "process": 320 },
+      "email-q": { "deliver": 293, "process": 293 },
+      "push-q": { "deliver": 223, "process": 223 },
+      "sms-q": { "deliver": 92, "process": 92 },
+      "sms-limiter": { "status": 2, "deliver": 92, "process": 92 },
+      "email-sender": { "deliver": 293, "process": 293 },
+      "push-sender": { "deliver": 223, "process": 223 },
+      "sendgrid": { "deliver": 293, "process": 293 },
+      "push": { "deliver": 223, "process": 223 },
+      "twilio": { "deliver": 92, "process": 92 }
+    },
+    "perSecond": [
+      "2d306a098b9c",
+      "6d54b7bc6b37",
+      "cbf13451ce70",
+      "6795873a64a5",
+      "9556f22c7a40",
+      "885a942e87c8",
+      "c507aba6dfbc",
+      "5d29795b5c5d",
+      "687c27d6d770",
+      "4728a2dfff02",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 1500, "text": "Twilio starts returning errors. The circuit breaker opens and SMS sending pauses; messages wait in the queue instead of failing.", "focus": ["sms-limiter", "twilio", "sms-q"] },
+    { "atMs": 6500, "text": "The breaker closes. The backlog drains at 50 a second; email and push never noticed.", "focus": ["sms-q", "sms-limiter", "sendgrid", "push"] }
+  ],
+  "latency": {
+    "journeys": { "done": 307, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 307, "min": 1110, "mean": 2242.57328990228, "p50": 1830, "p90": 3980, "max": 6700 },
+    "waitMs": {
+      "shipping": { "count": 307, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "router": { "count": 307, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "email-sender": { "count": 281, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "sms-limiter": { "count": 79, "min": 0, "mean": 45.822784810126585, "p50": 20, "p90": 200, "max": 330 },
+      "push-sender": { "count": 215, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "shipping": { "count": 307, "min": 50, "mean": 54.88599348534202, "p50": 50, "p90": 60, "max": 60 },
+      "router": { "count": 307, "min": 50, "mean": 64.69055374592834, "p50": 60, "p90": 70, "max": 80 },
+      "email-sender": { "count": 281, "min": 90, "mean": 104.59074733096085, "p50": 110, "p90": 120, "max": 120 },
+      "sms-limiter": { "count": 79, "min": 90, "mean": 103.41772151898734, "p50": 100, "p90": 120, "max": 120 },
+      "push-sender": { "count": 215, "min": 90, "mean": 105.62790697674419, "p50": 110, "p90": 120, "max": 120 }
+    }
+  }
+}

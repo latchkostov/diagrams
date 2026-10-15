@@ -1,0 +1,56 @@
+{
+  "run": {
+    "time": 8000,
+    "totalMs": 8000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "burst" },
+      { "atMs": 1000, "kind": "traffic", "label": "burst ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 1,
+      "nodes": {
+        "web": { "processed": 1, "replicas": [1, 1, 0] },
+        "batch": { "replicas": [1, 1, 0] },
+        "a": { "replicas": [1, 1, 0] },
+        "b": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 8000,
+    "inSystem": 0,
+    "real": {
+      "web": { "processed": 60, "throughput": 0.034630487588352875, "replicas": [1, 1, 0] },
+      "batch": { "replicas": [1, 1, 0] },
+      "a": {
+        "processed": 10,
+        "rejected": 50,
+        "throughput": 0.005423432889634412,
+        "rejectionReasons": { "refund-rate: requests": 50 },
+        "replicas": [1, 1, 0]
+      },
+      "b": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "web-a": 60, "batch-b": 0 }
+  },
+  "events": {
+    "total": 240,
+    "byKind": { "inject": 60, "process": 70, "deliver": 60, "reject": 50 },
+    "byNode": { "web": { "inject": 60, "process": 60 }, "a": { "deliver": 60, "reject": 50, "process": 10 } },
+    "perSecond": ["5b7124b6ee50", "cdbdfb9cb586", "-", "-", "-", "-", "-", "-", "-"]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 60, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0, "rejected": 50 },
+    "endToEndMs": { "count": 60, "min": 10, "mean": 25, "p50": 10, "p90": 100, "max": 100 },
+    "waitMs": { "a": { "count": 10, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 } },
+    "processMs": { "a": { "count": 10, "min": 90, "mean": 90, "p50": 90, "p90": 90, "max": 90 } }
+  }
+}

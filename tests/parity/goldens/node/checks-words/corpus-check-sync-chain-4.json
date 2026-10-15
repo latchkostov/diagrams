@@ -1,0 +1,41 @@
+{
+  "summary": "1 warning, 0 suggestions.",
+  "findings": {
+    "sync-chain:s0": {
+      "title": "4 requests deep",
+      "message": "s0 → s1 → s2 → s3 → s4: each waits for the next, so all 5 must be up, and their latencies add up. Making the last call a message means s0 no longer waits for s4.",
+      "rationale": "Each synchronous hop multiplies availability and adds latency: a request succeeds only when every service it waits on does. Turning a call into a message lets the caller finish without waiting.",
+      "fix": { "label": "Make s3 → s4 a message" }
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "sync-chain:s0",
+        "rule": "sync-chain",
+        "severity": "warning",
+        "title": "4 requests deep",
+        "message": "s0 → s1 → s2 → s3 → s4: each waits for the next, so all 5 must be up, and their latencies add up. Making the last call a message means s0 no longer waits for s4.",
+        "targets": ["s0", "s1", "s2", "s3", "s4", "e0", "e1", "e2", "e3"],
+        "fix": { "label": "Make s3 → s4 a message", "ops": [{ "op": "update", "target": "e3", "kind": "async" }] }
+      }
+    ],
+    "summary": "1 warning, 0 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      {
+        "id": "sync-chain:s0",
+        "rule": "sync-chain",
+        "severity": "warning",
+        "title": "4 requests deep",
+        "message": "s0 → s1 → s2 → s3 → s4: each waits for the next, so all 5 must be up, and their latencies add up. Making the last call a message means s0 no longer waits for s4.",
+        "targets": ["s0", "s1", "s2", "s3", "s4", "e0", "e1", "e2", "e3"],
+        "fix": { "label": "Make s3 → s4 a message", "ops": [{ "op": "update", "target": "e3", "kind": "async" }] }
+      }
+    ],
+    "summary": "1 warning, 0 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
+}

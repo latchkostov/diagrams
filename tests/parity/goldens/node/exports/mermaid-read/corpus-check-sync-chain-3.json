@@ -1,0 +1,21 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Sync chain of 3 hops",
+    "direction": "LR",
+    "nodes": [
+      { "id": "web", "stencil": "generic.service", "label": "Web", "x": 40, "y": 40 },
+      { "id": "s0", "stencil": "generic.service", "label": "s0", "x": 400, "y": 40 },
+      { "id": "s1", "stencil": "generic.service", "label": "s1", "x": 760, "y": 40 },
+      { "id": "s2", "stencil": "generic.service", "label": "s2", "x": 1120, "y": 40 },
+      { "id": "s3", "stencil": "aws.s3", "label": "s3", "x": 1480, "y": 40 }
+    ],
+    "edges": [
+      { "id": "e1-web-s0", "from": "web", "to": "s0", "kind": "sync" },
+      { "id": "e2-s0-s1", "from": "s0", "to": "s1", "kind": "sync" },
+      { "id": "e3-s1-s2", "from": "s1", "to": "s2", "kind": "sync" },
+      { "id": "e4-s2-s3", "from": "s2", "to": "s3", "kind": "sync" }
+    ]
+  }
+}

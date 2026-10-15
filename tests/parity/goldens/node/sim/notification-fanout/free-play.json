@@ -1,0 +1,327 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "carrier": { "replicas": [1, 1, 0] },
+        "shipping": { "replicas": [1, 1, 0] },
+        "events": { "lag": { "notifications": 0 }, "replicas": [1, 1, 0] },
+        "preferences": { "replicas": [1, 1, 0] },
+        "router": { "replicas": [1, 1, 0] },
+        "email-q": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "sms-q": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "push-q": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "email-sender": { "replicas": [10, 10, 0] },
+        "sms-limiter": { "replicas": [1, 1, 0] },
+        "push-sender": { "replicas": [10, 10, 0] },
+        "sendgrid": { "replicas": [1, 1, 0] },
+        "key-vault": { "replicas": [1, 1, 0] },
+        "twilio": { "replicas": [1, 1, 0] },
+        "push": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 31,
+      "nodes": {
+        "carrier": { "processed": 100, "throughput": 10.45549028686799, "replicas": [1, 1, 0] },
+        "shipping": { "processed": 97, "inFlight": 1, "throughput": 9.99433855743853, "replicas": [1, 1, 0] },
+        "events": {
+          "processed": 94,
+          "throughput": 9.989111447734896,
+          "lag": { "notifications": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "preferences": { "processed": 88, "throughput": 9.635741868321428, "replicas": [1, 1, 0] },
+        "router": { "processed": 90, "inFlight": 1, "throughput": 9.655491544839368, "replicas": [1, 1, 0] },
+        "email-q": { "processed": 78, "throughput": 7.5844047816017, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "sms-q": { "processed": 25, "throughput": 3.8013238792166706, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "push-q": { "processed": 58, "throughput": 7.742068691011589, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "email-sender": { "processed": 74, "inFlight": 1, "throughput": 6.62318423287017, "replicas": [10, 10, 0] },
+        "sms-limiter": { "processed": 23, "throughput": 3.084200135636434, "replicas": [1, 1, 0] },
+        "push-sender": { "processed": 55, "throughput": 7.8929474699989886, "replicas": [10, 10, 0] },
+        "sendgrid": { "processed": 74, "throughput": 8.089575489830565, "replicas": [1, 1, 0] },
+        "key-vault": { "replicas": [1, 1, 0] },
+        "twilio": { "processed": 21, "throughput": 1.6420677226644873, "replicas": [1, 1, 0] },
+        "push": { "processed": 53, "throughput": 7.494128547660598, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 28,
+      "nodes": {
+        "carrier": { "processed": 200, "throughput": 10.45596496539264, "replicas": [1, 1, 0] },
+        "shipping": { "processed": 197, "inFlight": 1, "throughput": 10.00485535509128, "replicas": [1, 1, 0] },
+        "events": {
+          "processed": 194,
+          "throughput": 10.012598516321704,
+          "lag": { "notifications": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "preferences": { "processed": 188, "throughput": 9.664989048508442, "replicas": [1, 1, 0] },
+        "router": { "processed": 190, "inFlight": 1, "throughput": 9.671878860897984, "replicas": [1, 1, 0] },
+        "email-q": { "processed": 169, "throughput": 9.545288076631662, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "sms-q": { "processed": 58, "throughput": 2.266544348117636, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "push-q": { "processed": 129, "throughput": 8.29392688404017, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "email-sender": { "processed": 165, "inFlight": 1, "throughput": 9.527358022609953, "replicas": [10, 10, 0] },
+        "sms-limiter": { "processed": 58, "throughput": 3.380351503282877, "replicas": [1, 1, 0] },
+        "push-sender": { "processed": 125, "inFlight": 1, "throughput": 7.636715268275264, "replicas": [10, 10, 0] },
+        "sendgrid": { "processed": 163, "throughput": 9.479239230857642, "replicas": [1, 1, 0] },
+        "key-vault": { "replicas": [1, 1, 0] },
+        "twilio": { "processed": 58, "throughput": 4.128770649660577, "replicas": [1, 1, 0] },
+        "push": { "processed": 124, "throughput": 8.312387797696513, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 29,
+      "nodes": {
+        "carrier": { "processed": 300, "throughput": 10.45596498694302, "replicas": [1, 1, 0] },
+        "shipping": { "processed": 297, "inFlight": 1, "throughput": 9.998484146509824, "replicas": [1, 1, 0] },
+        "events": {
+          "processed": 294,
+          "throughput": 9.992379845055998,
+          "lag": { "notifications": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "preferences": { "processed": 288, "throughput": 9.652068666770646, "replicas": [1, 1, 0] },
+        "router": { "processed": 290, "inFlight": 1, "throughput": 9.670624562926543, "replicas": [1, 1, 0] },
+        "email-q": { "processed": 260, "throughput": 9.537414121285586, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "sms-q": { "processed": 84, "throughput": 2.393289687870782, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "push-q": { "processed": 205, "throughput": 6.480576493078391, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "email-sender": { "processed": 256, "inFlight": 1, "throughput": 9.50563323079799, "replicas": [10, 10, 0] },
+        "sms-limiter": { "processed": 83, "throughput": 2.2226876583252393, "replicas": [1, 1, 0] },
+        "push-sender": { "processed": 204, "throughput": 8.547913239602295, "replicas": [10, 10, 0] },
+        "sendgrid": { "processed": 254, "throughput": 9.460648384478281, "replicas": [1, 1, 0] },
+        "key-vault": { "replicas": [1, 1, 0] },
+        "twilio": { "processed": 83, "throughput": 2.7147968364070127, "replicas": [1, 1, 0] },
+        "push": { "processed": 201, "throughput": 7.099296224491106, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 31,
+      "nodes": {
+        "carrier": { "processed": 400, "throughput": 10.455964986943998, "replicas": [1, 1, 0] },
+        "shipping": { "processed": 397, "inFlight": 1, "throughput": 9.991486605235526, "replicas": [1, 1, 0] },
+        "events": {
+          "processed": 394,
+          "throughput": 9.994552591582632,
+          "lag": { "notifications": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "preferences": { "processed": 388, "throughput": 9.660131213750983, "replicas": [1, 1, 0] },
+        "router": { "processed": 390, "inFlight": 1, "throughput": 9.650400701545266, "replicas": [1, 1, 0] },
+        "email-q": { "processed": 346, "throughput": 8.351785020241929, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "sms-q": { "processed": 114, "throughput": 2.4416688648126943, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "push-q": { "processed": 269, "throughput": 7.54114906390298, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "email-sender": { "processed": 342, "inFlight": 1, "throughput": 7.701186075754255, "replicas": [10, 10, 0] },
+        "sms-limiter": { "processed": 114, "throughput": 3.6390953137441513, "replicas": [1, 1, 0] },
+        "push-sender": { "processed": 265, "inFlight": 1, "throughput": 6.491182083252607, "replicas": [10, 10, 0] },
+        "sendgrid": { "processed": 340, "throughput": 7.238339583616926, "replicas": [1, 1, 0] },
+        "key-vault": { "replicas": [1, 1, 0] },
+        "twilio": { "processed": 114, "throughput": 4.444801053414851, "replicas": [1, 1, 0] },
+        "push": { "processed": 263, "throughput": 5.7820084379951115, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 27,
+      "nodes": {
+        "carrier": { "processed": 500, "throughput": 10.455964986943998, "replicas": [1, 1, 0] },
+        "shipping": { "processed": 497, "inFlight": 1, "throughput": 9.968010671164352, "replicas": [1, 1, 0] },
+        "events": {
+          "processed": 494,
+          "throughput": 9.975703756379945,
+          "lag": { "notifications": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "preferences": { "processed": 488, "throughput": 9.660293830015974, "replicas": [1, 1, 0] },
+        "router": { "processed": 490, "inFlight": 1, "throughput": 9.658803500735289, "replicas": [1, 1, 0] },
+        "email-q": { "processed": 439, "throughput": 9.351040359917102, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "sms-q": { "processed": 142, "throughput": 1.9926020903000214, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "push-q": { "processed": 341, "throughput": 6.385459399259827, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "email-sender": { "processed": 435, "inFlight": 1, "throughput": 9.283056701312518, "replicas": [10, 10, 0] },
+        "sms-limiter": { "processed": 141, "inFlight": 1, "throughput": 1.940554218852646, "replicas": [1, 1, 0] },
+        "push-sender": { "processed": 339, "throughput": 6.912559209448067, "replicas": [10, 10, 0] },
+        "sendgrid": { "processed": 433, "throughput": 9.181603602454407, "replicas": [1, 1, 0] },
+        "key-vault": { "replicas": [1, 1, 0] },
+        "twilio": { "processed": 141, "throughput": 2.3701982752659734, "replicas": [1, 1, 0] },
+        "push": { "processed": 338, "throughput": 7.343355447321621, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 26,
+      "nodes": {
+        "carrier": { "processed": 600, "throughput": 10.455964986943998, "replicas": [1, 1, 0] },
+        "shipping": { "processed": 597, "inFlight": 1, "throughput": 9.989420316025234, "replicas": [1, 1, 0] },
+        "events": {
+          "processed": 594,
+          "throughput": 9.980144953645995,
+          "lag": { "notifications": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "preferences": { "processed": 588, "throughput": 9.638554581595077, "replicas": [1, 1, 0] },
+        "router": { "processed": 590, "inFlight": 1, "throughput": 9.6318655214904, "replicas": [1, 1, 0] },
+        "email-q": { "processed": 522, "throughput": 6.915503547929071, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "sms-q": { "processed": 167, "throughput": 1.115996611989693, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "push-q": { "processed": 416, "throughput": 6.261336763596006, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "email-sender": { "processed": 519, "inFlight": 1, "throughput": 6.724308854080632, "replicas": [10, 10, 0] },
+        "sms-limiter": { "processed": 167, "throughput": 1.6667254455588971, "replicas": [1, 1, 0] },
+        "push-sender": { "processed": 413, "inFlight": 1, "throughput": 6.011649318062153, "replicas": [10, 10, 0] },
+        "sendgrid": { "processed": 518, "throughput": 7.187769988418826, "replicas": [1, 1, 0] },
+        "key-vault": { "replicas": [1, 1, 0] },
+        "twilio": { "processed": 167, "throughput": 2.035743056301373, "replicas": [1, 1, 0] },
+        "push": { "processed": 412, "throughput": 6.317325665496711, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 26,
+    "real": {
+      "carrier": { "processed": 600, "throughput": 10.455964986943998, "replicas": [1, 1, 0] },
+      "shipping": { "processed": 597, "inFlight": 1, "throughput": 9.989420316025234, "replicas": [1, 1, 0] },
+      "events": {
+        "processed": 594,
+        "throughput": 9.980144953645995,
+        "lag": { "notifications": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "preferences": { "processed": 588, "throughput": 9.638554581595077, "replicas": [1, 1, 0] },
+      "router": { "processed": 590, "inFlight": 1, "throughput": 9.6318655214904, "replicas": [1, 1, 0] },
+      "email-q": { "processed": 522, "throughput": 6.915503547929071, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "sms-q": { "processed": 167, "throughput": 1.115996611989693, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "push-q": { "processed": 416, "throughput": 6.261336763596006, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "email-sender": { "processed": 519, "inFlight": 1, "throughput": 6.724308854080632, "replicas": [10, 10, 0] },
+      "sms-limiter": { "processed": 167, "throughput": 1.6667254455588971, "replicas": [1, 1, 0] },
+      "push-sender": { "processed": 413, "inFlight": 1, "throughput": 6.011649318062153, "replicas": [10, 10, 0] },
+      "sendgrid": { "processed": 518, "throughput": 7.187769988418826, "replicas": [1, 1, 0] },
+      "key-vault": { "replicas": [1, 1, 0] },
+      "twilio": { "processed": 167, "throughput": 2.035743056301373, "replicas": [1, 1, 0] },
+      "push": { "processed": 412, "throughput": 6.317325665496711, "replicas": [1, 1, 0] }
+    },
+    "edges": {
+      "carrier-to-shipping": 598,
+      "shipping-to-events": 594,
+      "events-to-router": 591,
+      "router-to-preferences": 588,
+      "router-to-email-q": 522,
+      "router-to-sms-q": 167,
+      "router-to-push-q": 416,
+      "email-q-to-email-sender": 520,
+      "sms-q-to-sms-limiter": 167,
+      "push-q-to-push-sender": 414,
+      "email-sender-to-sendgrid": 518,
+      "sms-limiter-to-twilio": 167,
+      "push-sender-to-push": 412,
+      "email-sender-to-key-vault": 0,
+      "sms-limiter-to-key-vault": 0
+    }
+  },
+  "events": {
+    "total": 11944,
+    "byKind": { "process": 6270, "deliver": 5674 },
+    "byNode": {
+      "carrier": { "process": 600 },
+      "shipping": { "deliver": 598, "process": 597 },
+      "events": { "deliver": 594, "process": 594 },
+      "router": { "deliver": 591, "process": 590 },
+      "preferences": { "deliver": 588, "process": 588 },
+      "email-q": { "deliver": 522, "process": 522 },
+      "sms-q": { "deliver": 167, "process": 167 },
+      "push-q": { "deliver": 416, "process": 416 },
+      "email-sender": { "deliver": 520, "process": 519 },
+      "sms-limiter": { "deliver": 167, "process": 167 },
+      "push-sender": { "deliver": 414, "process": 413 },
+      "twilio": { "deliver": 167, "process": 167 },
+      "sendgrid": { "deliver": 518, "process": 518 },
+      "push": { "deliver": 412, "process": 412 }
+    },
+    "perSecond": [
+      "1864f73b5ef7",
+      "abaa0f6c6430",
+      "eadf1f02366d",
+      "dec2e69557a5",
+      "7950902af0f0",
+      "81237a45c5ba",
+      "ead8ccd8145a",
+      "c3a4fec56cdd",
+      "4a81568b3134",
+      "cc87b5ed5ad5",
+      "a20b6717c3b3",
+      "3584e24fa044",
+      "0f0309453696",
+      "dfc91df37247",
+      "5f7b40312cce",
+      "e9812566ad72",
+      "accdff86f8e5",
+      "82d0885950a8",
+      "811240a22602",
+      "e7061ed06723",
+      "db3aa3caf757",
+      "373de3226a2d",
+      "6ddfb25ead17",
+      "4c1e8f4534b5",
+      "a7fd52e24bbf",
+      "5d4a886251ee",
+      "0294f76e20db",
+      "e737f2655de8",
+      "1f8da093c873",
+      "1b094e535df8",
+      "96e9a721a4c7",
+      "433eb4be3f9d",
+      "22fba901bb72",
+      "70d24862fc0a",
+      "6fc788c8435e",
+      "d68c90521206",
+      "32b86bf2a9a9",
+      "cd16a6f5530c",
+      "3b74657466e0",
+      "feaa487b7f56",
+      "af0ef46ae05b",
+      "d25c6f0b923a",
+      "86cdcacbe4e4",
+      "d8f456662d0f",
+      "281e0b1bbfa2",
+      "4679bdee1ad1",
+      "66349b6347cc",
+      "ce09eb3340b1",
+      "b03aeb71aa31",
+      "b90a3e9f985b",
+      "ec0831d59e50",
+      "f1133b78e1a9",
+      "a7617d3ed2ee",
+      "a6248e3b8afb",
+      "a753ddc266cd",
+      "88a11ea51de1",
+      "7a50ea0c1838",
+      "bb3f129e1cc4",
+      "91f355674e30",
+      "73eee7b6ef78",
+      "6da7d0d058fb"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 582, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 582, "min": 1110, "mean": 1808.4707903780068, "p50": 1830, "p90": 1850, "max": 1860 },
+    "waitMs": {
+      "shipping": { "count": 582, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "router": { "count": 582, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "email-sender": { "count": 518, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "sms-limiter": { "count": 167, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "push-sender": { "count": 412, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "shipping": { "count": 582, "min": 50, "mean": 55.13745704467354, "p50": 60, "p90": 60, "max": 60 },
+      "router": { "count": 582, "min": 50, "mean": 64.70790378006873, "p50": 60, "p90": 70, "max": 80 },
+      "email-sender": { "count": 518, "min": 90, "mean": 104.2084942084942, "p50": 100, "p90": 120, "max": 120 },
+      "sms-limiter": { "count": 167, "min": 90, "mean": 103.77245508982035, "p50": 100, "p90": 120, "max": 120 },
+      "push-sender": { "count": 412, "min": 90, "mean": 104.49029126213593, "p50": 100, "p90": 120, "max": 120 }
+    }
+  }
+}

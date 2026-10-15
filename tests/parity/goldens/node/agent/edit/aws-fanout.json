@@ -1,0 +1,686 @@
+{
+  "steps": [
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "topic-1",
+            "label": "parity.events",
+            "stencil": { "id": "kafka.topic", "label": "Kafka Topic", "confidence": "high", "alternatives": ["pulsar.topic", "confluent.cloud", "aws.msk"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-1", "from": "client", "to": "topic-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+2 nodes, +2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "dotnet-1",
+            "label": "Parity reader",
+            "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-2", "from": "topic-1", "to": "dotnet-1" },
+          {
+            "i": 2,
+            "op": "add_node",
+            "id": "key-vault-1",
+            "label": "Parity secrets",
+            "stencil": { "id": "azure.key-vault", "label": "Key Vault", "confidence": "high", "alternatives": [] }
+          },
+          { "i": 3, "op": "connect", "id": "e-3", "from": "dotnet-1", "to": "key-vault-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +2 connections, −1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "insert_between",
+            "id": "queue-1",
+            "label": "buffer",
+            "stencil": { "id": "rabbitmq.queue", "label": "RabbitMQ Queue", "confidence": "high", "alternatives": ["aws.mq"] },
+            "from": "client",
+            "to": "api"
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "update", "id": "api" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": { "ok": true, "summary": "No change: the diagram already matched.", "changed": false }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 boundary, 2 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_boundary", "id": "boundary-1", "label": "Parity zone" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 note",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_note", "id": "note-1" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "title or direction changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "set_meta" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "−1 node, −2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "remove", "ids": ["dotnet-1", "e-2", "e-3"] }]
+      }
+    },
+    {
+      "isError": true,
+      "output": {
+        "ok": false,
+        "i": 0,
+        "error": "Unknown reference \"no-such-node\".",
+        "ref": "no-such-node",
+        "candidates": [
+          { "id": "client", "label": "Retail checkout", "stencil": "client.browser" },
+          { "id": "api", "label": "Renamed by parity", "stencil": "aws.api-gateway" },
+          { "id": "intake", "label": "Create order", "stencil": "aws.lambda" },
+          { "id": "sns", "label": "order-events", "stencil": "aws.sns" },
+          { "id": "fulfillment-q", "label": "fulfillment-orders", "stencil": "aws.sqs" },
+          { "id": "archive-q", "label": "order-archive", "stencil": "aws.sqs" },
+          { "id": "receipt-q", "label": "order-receipts", "stencil": "aws.sqs" },
+          { "id": "fulfill", "label": "Reserve fulfillment", "stencil": "aws.lambda" },
+          { "id": "archive", "label": "Archive orders", "stencil": "aws.lambda" },
+          { "id": "receipt", "label": "Prepare receipt", "stencil": "aws.lambda" },
+          { "id": "ddb", "label": "Order state", "stencil": "aws.dynamodb" },
+          { "id": "s3", "label": "Order archive", "stencil": "aws.s3" },
+          { "id": "receipt-db", "label": "Receipt state", "stencil": "aws.dynamodb" },
+          { "id": "schedule", "label": "Reconcile schedule", "stencil": "aws.eventbridge" },
+          { "id": "reconcile", "label": "Reconcile orders", "stencil": "aws.lambda" },
+          { "id": "dlq", "label": "fulfillment-orders-dlq", "stencil": "aws.sqs" },
+          { "id": "topic-1", "label": "parity.events", "stencil": "kafka.topic" },
+          { "id": "key-vault-1", "label": "Parity secrets", "stencil": "azure.key-vault" },
+          { "id": "queue-1", "label": "buffer", "stencil": "rabbitmq.queue" },
+          { "id": "note-1", "label": "Pinned by the parity harness" }
+        ],
+        "hint": "Use an id from candidates, or call describe_diagram.",
+        "applied": false
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "dryRun": true,
+        "summary": "+1 node",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "postgres-1",
+            "label": "Dry run only",
+            "stencil": { "id": "postgres", "label": "PostgreSQL", "confidence": "high", "alternatives": ["gcp.cloud-sql", "aws.aurora", "supabase"] }
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "isError": false,
+      "output": { "ok": true, "id": "sim-1", "title": "Parity rush", "summary": "Added simulation \"Parity rush\": 4 traffic, 2 events, 1 expectations.", "undo": "One undo step reverts this call.", "play": "The user plays it in live view (L), or from the command palette." }
+    },
+    {
+      "isError": true,
+      "output": { "ok": false, "error": "constant traffic needs ratePerSec.", "hint": "Check the input against the tool's schema and try again." }
+    }
+  ],
+  "applied": [
+    { "tool": "edit_diagram", "summary": "+1 node, +1 connection", "changed": ["topic-1", "e-1"] },
+    {
+      "tool": "edit_diagram",
+      "summary": "+2 nodes, +2 connections",
+      "changed": ["dotnet-1", "key-vault-1", "e-2", "e-3"],
+      "choices": [
+        {
+          "nodeId": "dotnet-1",
+          "kind": ".NET consumer",
+          "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] },
+          "node": {
+            "id": "dotnet-1",
+            "stencil": "service.dotnet",
+            "label": "Parity reader",
+            "x": 654,
+            "y": 728,
+            "props": { "replicas": 3 }
+          }
+        }
+      ]
+    },
+    { "tool": "edit_diagram", "summary": "+1 node, +2 connections, −1 connection", "changed": ["queue-1", "e-4", "e-5"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["api"] },
+    { "tool": "edit_diagram", "summary": "+1 boundary, 2 changed", "changed": ["boundary-1", "client", "api"] },
+    { "tool": "edit_diagram", "summary": "+1 note", "changed": ["note-1"] },
+    { "tool": "edit_diagram", "summary": "title or direction changed", "changed": [] },
+    { "tool": "edit_diagram", "summary": "−1 node, −2 connections", "changed": [] },
+    { "tool": "set_simulation", "summary": "Added simulation “Parity rush”", "changed": ["client"] }
+  ],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Parity edit",
+    "description": "An order API publishes SNS events to isolated fulfillment, archive and receipt queues, with scheduled reconciliation.",
+    "direction": "TB",
+    "groups": [
+      { "id": "aws", "label": "AWS · commerce production", "tone": "aws", "x": 760, "y": -24, "width": 1860, "height": 656 },
+      { "id": "boundary-1", "label": "Parity zone", "tone": "neutral", "x": 0, "y": 216, "width": 720, "height": 176 }
+    ],
+    "nodes": [
+      {
+        "id": "client",
+        "stencil": "client.browser",
+        "label": "Retail checkout",
+        "sublabel": "Authenticated storefront",
+        "x": 40,
+        "y": 280,
+        "props": { "ratePerSec": 20 },
+        "group": "boundary-1"
+      },
+      {
+        "id": "api",
+        "stencil": "aws.api-gateway",
+        "label": "Renamed by parity",
+        "sublabel": "POST /orders · JWT authorizer",
+        "x": 420,
+        "y": 280,
+        "group": "boundary-1",
+        "props": { "latencyMs": 120 }
+      },
+      {
+        "id": "intake",
+        "stencil": "aws.lambda",
+        "label": "Create order",
+        "sublabel": "Node.js · publish OrderPlaced",
+        "x": 800,
+        "y": 280,
+        "group": "aws",
+        "props": { "concurrency": 64, "latencyMs": 150, "emits": "OrderPlaced" }
+      },
+      {
+        "id": "sns",
+        "stencil": "aws.sns",
+        "label": "order-events",
+        "sublabel": "OrderPlaced · subscription filters",
+        "x": 1180,
+        "y": 280,
+        "group": "aws",
+        "props": { "partitions": 64 }
+      },
+      {
+        "id": "fulfillment-q",
+        "stencil": "aws.sqs",
+        "label": "fulfillment-orders",
+        "sublabel": "Visibility: 60s · retry limit: 5",
+        "x": 1560,
+        "y": 160,
+        "group": "aws",
+        "props": { "visibilityTimeoutSec": 60, "maxDeliveryCount": 5 }
+      },
+      {
+        "id": "archive-q",
+        "stencil": "aws.sqs",
+        "label": "order-archive",
+        "sublabel": "Batch: 100 · retention: 14 days",
+        "x": 1560,
+        "y": 280,
+        "group": "aws",
+        "props": { "batchSize": 100, "retentionDays": 14 }
+      },
+      {
+        "id": "receipt-q",
+        "stencil": "aws.sqs",
+        "label": "order-receipts",
+        "sublabel": "Visibility: 30s · retry limit: 5",
+        "x": 1560,
+        "y": 400,
+        "group": "aws",
+        "props": { "visibilityTimeoutSec": 30, "maxDeliveryCount": 5 }
+      },
+      {
+        "id": "fulfill",
+        "stencil": "aws.lambda",
+        "label": "Reserve fulfillment",
+        "sublabel": "Batch: 10 · idempotent writes",
+        "x": 1940,
+        "y": 160,
+        "group": "aws",
+        "props": { "batchSize": 10, "concurrency": 64, "latencyMs": 150, "emits": "FulfillmentReserved" }
+      },
+      {
+        "id": "archive",
+        "stencil": "aws.lambda",
+        "label": "Archive orders",
+        "sublabel": "Batch: 100 · compressed JSONL",
+        "x": 1940,
+        "y": 280,
+        "group": "aws",
+        "props": { "batchSize": 100, "concurrency": 64, "latencyMs": 150, "emits": "OrderArchived" }
+      },
+      {
+        "id": "receipt",
+        "stencil": "aws.lambda",
+        "label": "Prepare receipt",
+        "sublabel": "Batch: 10 · receipt status",
+        "x": 1940,
+        "y": 400,
+        "group": "aws",
+        "props": { "batchSize": 10, "concurrency": 64, "latencyMs": 150, "emits": "ReceiptPrepared" }
+      },
+      {
+        "id": "ddb",
+        "stencil": "aws.dynamodb",
+        "label": "Order state",
+        "sublabel": "PK: ORDER#id · conditional writes",
+        "x": 2320,
+        "y": 160,
+        "group": "aws",
+        "props": {}
+      },
+      {
+        "id": "s3",
+        "stencil": "aws.s3",
+        "label": "Order archive",
+        "sublabel": "s3://commerce-orders/year/month/",
+        "x": 2320,
+        "y": 280,
+        "group": "aws",
+        "props": {}
+      },
+      {
+        "id": "receipt-db",
+        "stencil": "aws.dynamodb",
+        "label": "Receipt state",
+        "sublabel": "PK: ORDER#id · dedupe token",
+        "x": 2320,
+        "y": 400,
+        "group": "aws",
+        "props": {}
+      },
+      {
+        "id": "schedule",
+        "stencil": "aws.eventbridge",
+        "label": "Reconcile schedule",
+        "sublabel": "rate(15 minutes)",
+        "x": 1560,
+        "y": 40,
+        "group": "aws",
+        "props": { "ratePerSec": 0.0011111111111111111 }
+      },
+      {
+        "id": "reconcile",
+        "stencil": "aws.lambda",
+        "label": "Reconcile orders",
+        "sublabel": "Detect pending reservations",
+        "x": 1940,
+        "y": 40,
+        "group": "aws",
+        "props": { "concurrency": 64, "latencyMs": 150 }
+      },
+      {
+        "id": "dlq",
+        "stencil": "aws.sqs",
+        "label": "fulfillment-orders-dlq",
+        "sublabel": "Redrive after 5 failed receives",
+        "x": 1560,
+        "y": 520,
+        "group": "aws",
+        "props": { "isDeadLetter": true, "retentionDays": 14 }
+      },
+      { "id": "topic-1", "stencil": "kafka.topic", "label": "parity.events", "x": 354, "y": 728 },
+      { "id": "key-vault-1", "stencil": "azure.key-vault", "label": "Parity secrets", "x": 40, "y": 64 },
+      { "id": "queue-1", "stencil": "rabbitmq.queue", "label": "buffer", "x": 354, "y": 840 }
+    ],
+    "edges": [
+      {
+        "id": "api-to-intake",
+        "from": "api",
+        "to": "intake",
+        "label": "POST /orders",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "intake-to-sns",
+        "from": "intake",
+        "to": "sns",
+        "label": "OrderPlaced",
+        "kind": "async",
+        "props": { "travelMs": 300 }
+      },
+      {
+        "id": "sns-to-fulfillment-q",
+        "from": "sns",
+        "to": "fulfillment-q",
+        "label": "Fulfillment subscription",
+        "kind": "async",
+        "props": { "travelMs": 300, "filter": ["OrderPlaced"], "group": "fulfillment-q" }
+      },
+      {
+        "id": "sns-to-archive-q",
+        "from": "sns",
+        "to": "archive-q",
+        "label": "Archive subscription",
+        "kind": "async",
+        "props": { "travelMs": 300, "filter": ["OrderPlaced"], "group": "archive-q" }
+      },
+      {
+        "id": "sns-to-receipt-q",
+        "from": "sns",
+        "to": "receipt-q",
+        "label": "Receipt subscription",
+        "kind": "async",
+        "props": { "travelMs": 300, "filter": ["OrderPlaced"], "group": "receipt-q" }
+      },
+      {
+        "id": "fulfillment-q-to-fulfill",
+        "from": "fulfillment-q",
+        "to": "fulfill",
+        "label": "Event source · batch 10",
+        "kind": "async",
+        "props": { "travelMs": 300 }
+      },
+      {
+        "id": "archive-q-to-archive",
+        "from": "archive-q",
+        "to": "archive",
+        "label": "Event source · batch 100",
+        "kind": "async",
+        "props": { "travelMs": 300 }
+      },
+      {
+        "id": "receipt-q-to-receipt",
+        "from": "receipt-q",
+        "to": "receipt",
+        "label": "Event source · batch 10",
+        "kind": "async",
+        "props": { "travelMs": 300 }
+      },
+      {
+        "id": "fulfill-to-ddb",
+        "from": "fulfill",
+        "to": "ddb",
+        "label": "Conditional update",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "archive-to-s3",
+        "from": "archive",
+        "to": "s3",
+        "label": "PutObject",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "receipt-to-receipt-db",
+        "from": "receipt",
+        "to": "receipt-db",
+        "label": "Put receipt status",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "schedule-to-reconcile",
+        "from": "schedule",
+        "to": "reconcile",
+        "label": "Scheduled event",
+        "kind": "async",
+        "props": { "travelMs": 300 }
+      },
+      {
+        "id": "reconcile-to-ddb",
+        "from": "reconcile",
+        "to": "ddb",
+        "label": "Query pending orders",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "fulfillment-q-to-dlq",
+        "from": "fulfillment-q",
+        "to": "dlq",
+        "label": "After 5 failed receives",
+        "kind": "async",
+        "props": { "travelMs": 300 }
+      },
+      { "id": "e-1", "from": "client", "to": "topic-1", "kind": "async" },
+      {
+        "id": "e-4",
+        "from": "client",
+        "to": "queue-1",
+        "kind": "sync",
+        "label": "HTTPS",
+        "props": { "travelMs": 200 }
+      },
+      { "id": "e-5", "from": "queue-1", "to": "api", "kind": "sync", "props": { "travelMs": 200 } }
+    ],
+    "simulations": [
+      {
+        "id": "steady-spike",
+        "title": "Steady traffic then spike",
+        "seed": 7,
+        "traffic": [
+          {
+            "id": "orders",
+            "node": "client",
+            "messageType": "OrderRequest",
+            "label": "290 orders: steady demand and a flash sale",
+            "shape": { "kind": "spike", "baseRate": 15, "peakRate": 100, "atMs": 3000, "peakMs": 2000, "durationMs": 8000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 0,
+            "action": { "do": "note", "text": "SNS fans each order into isolated fulfillment, archive and receipt queues.", "focus": ["sns"] }
+          },
+          {
+            "atMs": 3000,
+            "action": { "do": "note", "text": "The flash sale peaks at 100 orders per second.", "focus": ["client", "fulfillment-q", "archive-q", "receipt-q"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "fulfillment",
+            "label": "Fulfillment",
+            "metric": { "node": "ddb", "field": "processed" },
+            "op": "==",
+            "value": 290,
+            "when": "end"
+          },
+          {
+            "id": "archive",
+            "label": "Archive",
+            "metric": { "node": "s3", "field": "processed" },
+            "op": "==",
+            "value": 290,
+            "when": "end"
+          },
+          {
+            "id": "receipts",
+            "label": "Receipts",
+            "metric": { "node": "receipt-db", "field": "processed" },
+            "op": "==",
+            "value": 290,
+            "when": "end"
+          },
+          {
+            "id": "no-dlq",
+            "label": "No dlq",
+            "metric": { "node": "fulfillment-q", "field": "deadLettered" },
+            "op": "==",
+            "value": 0,
+            "when": "always"
+          }
+        ],
+        "scale": 2
+      },
+      {
+        "id": "throttle",
+        "title": "Lambda throttling",
+        "seed": 7,
+        "traffic": [
+          {
+            "id": "orders",
+            "node": "client",
+            "messageType": "OrderRequest",
+            "label": "300 orders under reserved-concurrency pressure",
+            "shape": { "kind": "constant", "ratePerSec": 50, "durationMs": 6000 }
+          }
+        ],
+        "timeline": [
+          { "atMs": 2000, "action": { "do": "props", "node": "fulfill", "props": { "concurrency": 1 } } },
+          {
+            "atMs": 2000,
+            "action": { "do": "note", "text": "Fulfillment is throttled to one Lambda worker. The other queues remain independent.", "focus": ["fulfill", "fulfillment-q"], "pause": true }
+          },
+          { "atMs": 10000, "action": { "do": "props", "node": "fulfill", "props": { "concurrency": 64 } } },
+          {
+            "atMs": 10000,
+            "action": { "do": "note", "text": "Reserved concurrency is restored; fulfillment catches up.", "focus": ["fulfill", "ddb"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "lag-grows",
+            "label": "Lag grows",
+            "metric": { "node": "fulfillment-q", "field": "lag" },
+            "op": ">",
+            "value": 0,
+            "when": "at",
+            "atMs": 8000
+          },
+          {
+            "id": "drained",
+            "label": "Drained",
+            "metric": { "node": "fulfillment-q", "field": "lag" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          },
+          {
+            "id": "fulfillment",
+            "label": "Fulfillment",
+            "metric": { "node": "ddb", "field": "processed" },
+            "op": "==",
+            "value": 300,
+            "when": "end"
+          },
+          {
+            "id": "archive",
+            "label": "Archive",
+            "metric": { "node": "s3", "field": "processed" },
+            "op": "==",
+            "value": 300,
+            "when": "end"
+          },
+          {
+            "id": "receipts",
+            "label": "Receipts",
+            "metric": { "node": "receipt-db", "field": "processed" },
+            "op": "==",
+            "value": 300,
+            "when": "end"
+          }
+        ],
+        "scale": 2
+      },
+      {
+        "id": "sim-1",
+        "title": "Parity rush",
+        "durationMs": 20000,
+        "traffic": [
+          {
+            "id": "traffic-1",
+            "node": "client",
+            "shape": { "kind": "constant", "ratePerSec": 20, "fromMs": 0, "durationMs": 10000 }
+          },
+          {
+            "id": "traffic-2",
+            "node": "client",
+            "shape": { "kind": "burst", "count": 50, "atMs": 5000, "spreadMs": 2000 },
+            "messageType": "ParityBurst"
+          },
+          {
+            "id": "traffic-3",
+            "node": "client",
+            "shape": {
+              "kind": "ramp",
+              "fromMs": 0,
+              "startRate": 1,
+              "stages": [{ "durationMs": 8000, "targetRate": 30 }]
+            }
+          },
+          {
+            "id": "traffic-4",
+            "node": "client",
+            "shape": { "kind": "spike", "baseRate": 5, "peakRate": 40, "atMs": 12000, "peakMs": 1000, "durationMs": 4000 }
+          }
+        ],
+        "timeline": [
+          { "atMs": 6000, "action": { "do": "status", "node": "intake", "status": "down" } },
+          { "atMs": 6000, "action": { "do": "note", "text": "It goes down", "focus": ["intake"] } }
+        ],
+        "expectations": [
+          {
+            "id": "expectation-1",
+            "label": "Nothing dropped",
+            "metric": { "node": "intake", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ],
+        "scale": 2
+      }
+    ],
+    "annotations": [
+      { "id": "note-1", "kind": "note", "text": "Pinned by the parity harness", "x": 40, "y": 400, "width": 240, "height": 160 }
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+# Optional: install/configure an ingress controller and cert-manager separately.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: live-diagrams
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-production
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [diagrams.example.com]
+      secretName: live-diagrams-tls
+  rules:
+    - host: diagrams.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: live-diagrams
+                port:
+                  name: http

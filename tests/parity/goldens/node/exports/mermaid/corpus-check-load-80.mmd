@@ -1,0 +1,10 @@
+---
+title: Load at the busy line
+---
+flowchart LR
+  web(["Web"])
+  api["api"]
+  db[("Ledger")]
+  web --> api
+  api --> db
+%% diagrams:{"v":1,"description":"One replica of 4 slots at 250 ms handles 16 req/s.","nodes":{"web":["web","client.browser"],"api":["api","service.go"],"db":["db","postgres"]},"edges":["call","write"],"relations":{}}

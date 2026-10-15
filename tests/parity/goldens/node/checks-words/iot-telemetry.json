@@ -1,0 +1,47 @@
+{
+  "summary": "1 warning, 0 suggestions.",
+  "findings": {
+    "capacity:hot": {
+      "title": "Device state projector can't keep up",
+      "message": "At the diagram's own rates, it gets 2k/s and handles 853/s (234%): its backlog only grows.",
+      "rationale": "Demand above what a service can handle never drains: latency and backlog grow until something times out. Live view's Show capacity has the same numbers.",
+      "fix": { "label": "Set replicas to 5" }
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "capacity:hot",
+        "rule": "capacity",
+        "severity": "warning",
+        "title": "Device state projector can't keep up",
+        "message": "At the diagram's own rates, it gets 2k/s and handles 853/s (234%): its backlog only grows.",
+        "targets": ["hot"],
+        "fix": {
+          "label": "Set replicas to 5",
+          "ops": [{ "op": "update", "target": "hot", "props": { "replicas": 5 } }]
+        }
+      }
+    ],
+    "summary": "1 warning, 0 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      {
+        "id": "capacity:hot",
+        "rule": "capacity",
+        "severity": "warning",
+        "title": "Device state projector can't keep up",
+        "message": "At the diagram's own rates, it gets 2k/s and handles 853/s (234%): its backlog only grows.",
+        "targets": ["hot"],
+        "fix": {
+          "label": "Set replicas to 5",
+          "ops": [{ "op": "update", "target": "hot", "props": { "replicas": 5 } }]
+        }
+      }
+    ],
+    "summary": "1 warning, 0 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
+}

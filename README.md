@@ -70,8 +70,8 @@ zip always carry the current viewer, and `pnpm skill:check` (nightly) reports a 
 
 The app is static files, so a company can host its own copy behind its own sign-in and keep every diagram inside its
 network. `pnpm build:internal` builds one with share links and AI tools off and new diagrams private, and
-`VITE_BRAND_NAME` names it. [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md) covers the switches, hosting behind SSO
-(Azure Static Web Apps, CloudFront, nginx with oauth2-proxy, IIS), the security headers and updates.
+`VITE_BRAND_NAME` names it. The [self-hosting guide](docs/SELF-HOSTING.md) covers Docker/Compose, Kubernetes/Helm,
+static-host templates, SSO, generated security headers, verification, offline bundles and upgrades.
 
 ## Development
 

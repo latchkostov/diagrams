@@ -1,0 +1,73 @@
+{
+  "format": "diagrams/v1",
+  "title": "Slow consumer lag",
+  "description": "Fast and slow consumer groups on one topic.",
+  "nodes": [
+    {
+      "id": "devices",
+      "stencil": "client.iot",
+      "label": "Devices",
+      "x": 40,
+      "y": 160,
+      "props": {
+        "ratePerSec": 6,
+        "messageType": "Reading"
+      }
+    },
+    {
+      "id": "topic",
+      "stencil": "azure.event-hubs",
+      "label": "telemetry",
+      "x": 400,
+      "y": 160,
+      "sublabel": "telemetry",
+      "props": {
+        "partitions": 8
+      }
+    },
+    {
+      "id": "fast",
+      "stencil": "service.go",
+      "label": "Alerts",
+      "x": 760,
+      "y": 40,
+      "sublabel": "fast",
+      "props": {
+        "latencyMs": 80,
+        "concurrency": 8
+      }
+    },
+    {
+      "id": "slow",
+      "stencil": "service.python",
+      "label": "Reports",
+      "x": 760,
+      "y": 280,
+      "sublabel": "slow",
+      "props": {
+        "latencyMs": 1500,
+        "concurrency": 1
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "devices-topic",
+      "from": "devices",
+      "to": "topic",
+      "kind": "async"
+    },
+    {
+      "id": "topic-fast",
+      "from": "topic",
+      "to": "fast",
+      "kind": "async"
+    },
+    {
+      "id": "topic-slow",
+      "from": "topic",
+      "to": "slow",
+      "kind": "async"
+    }
+  ]
+}

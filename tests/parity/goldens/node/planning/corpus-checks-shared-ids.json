@@ -1,0 +1,303 @@
+{
+  "autoScale": { "freePlay": 1 },
+  "brokerAssignments": { "brokers": {}, "consumers": {} },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "orders",
+      "suggestion": "Order service: 6% utilized",
+      "converged": true,
+      "iterations": 4,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "web": ["Infinity", 20, 0, 1, 1, 0], "app": ["Infinity", 10, 0, 1, 1, 0], "gw": ["Infinity", 20, 0, 1, 1, 0], "orders": [533.3333333333334, 30, 0.056249999999999994, 1, 1, 0], "db": ["Infinity", 30, 0, 1, 1, 0], "billing": [400, 0, 0, 1, 1, 0], "billing-db": [16, 0, 0, 1, 1, 0] },
+      "connections": { "web-gw": 20, "app-orders": 10, "gw-orders": 20, "orders-db": 30 },
+      "offeredTypes": { "web": ["Storefront"], "app": ["Mobile app"], "gw": ["Storefront"], "orders": ["Mobile app", "Storefront"], "db": ["Mobile app", "Storefront"] }
+    },
+    "explanations": {
+      "orders": {
+        "id": "orders",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 533.3333333333334,
+        "offered": 30,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 64,
+        "seconds": 0.12,
+        "utilization": 0.056249999999999994,
+        "growth": 0,
+        "contributors": [
+          { "edge": "gw-orders", "node": "gw", "label": "Storefront", "rate": 20, "via": "Commerce gateway" },
+          { "edge": "app-orders", "node": "app", "label": "Mobile app", "rate": 10 }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      },
+      "billing": {
+        "id": "billing",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 400,
+        "offered": 0,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 32,
+        "seconds": 0.08,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      },
+      "billing-db": {
+        "id": "billing-db",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 16,
+        "offered": 0,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "web": [{ "kind": "calls", "edge": "web-gw", "peer": "gw" }],
+      "app": [{ "kind": "calls", "edge": "app-orders", "peer": "orders" }],
+      "gw": [{ "kind": "calls", "edge": "gw-orders", "peer": "orders" }],
+      "orders": [{ "kind": "calls", "edge": "orders-db", "peer": "db" }],
+      "billing": [{ "kind": "calls", "edge": "billing-db", "peer": "db" }]
+    },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "web": {
+        "profile": { "family": "client", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 20,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Storefront",
+        "healthChecks": false
+      },
+      "app": {
+        "profile": { "family": "client", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 10,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Mobile app",
+        "healthChecks": false
+      },
+      "gw": {
+        "profile": { "family": "proxy", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Commerce gateway",
+        "healthChecks": false
+      },
+      "orders": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 120,
+        "concurrency": 64,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Order service",
+        "healthChecks": false
+      },
+      "db": {
+        "profile": { "family": "sql", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "orders-db",
+        "healthChecks": false
+      },
+      "billing": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 80,
+        "concurrency": 32,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Billing",
+        "healthChecks": false
+      },
+      "billing-db": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Ledger",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {},
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "ok",
+          "top": "orders",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Order service at 6% · 30/s of 533/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "web": ["idle", "20/s · no limit", { "modeled": false }],
+            "app": ["idle", "10/s · no limit", { "modeled": false }],
+            "gw": ["idle", "20/s · no limit", { "modeled": false }],
+            "orders": ["ok", "6% · 30/s of 533/s"],
+            "db": ["idle", "30/s · no limit", { "modeled": false }],
+            "billing": ["idle", ""],
+            "billing-db": ["idle", ""]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "ok",
+          "top": "orders",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Order service at 28% · 150/s of 533/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "web": ["idle", "100/s · no limit", { "modeled": false }],
+            "app": ["idle", "50/s · no limit", { "modeled": false }],
+            "gw": ["idle", "100/s · no limit", { "modeled": false }],
+            "orders": ["ok", "28% · 150/s of 533/s"],
+            "db": ["idle", "150/s · no limit", { "modeled": false }],
+            "billing": ["idle", ""],
+            "billing-db": ["idle", ""]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "ok",
+          "top": "orders",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Order service at 6% · 30/s of 533/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "web": ["idle", "20/s · no limit", { "modeled": false }],
+            "app": ["idle", "10/s · no limit", { "modeled": false }],
+            "gw": ["idle", "20/s · no limit", { "modeled": false }],
+            "orders": ["ok", "6% · 30/s of 533/s"],
+            "db": ["idle", "30/s · no limit", { "modeled": false }],
+            "billing": ["idle", ""],
+            "billing-db": ["idle", ""]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "ok",
+          "top": "orders",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Order service at 6% · 30/s of 533/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "web": ["idle", "20/s · no limit", { "modeled": false }],
+            "app": ["idle", "10/s · no limit", { "modeled": false }],
+            "gw": ["idle", "20/s · no limit", { "modeled": false }],
+            "orders": ["ok", "6% · 30/s of 533/s"],
+            "db": ["idle", "30/s · no limit", { "modeled": false }],
+            "billing": ["idle", ""],
+            "billing-db": ["idle", ""]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    }
+  }
+}

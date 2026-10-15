@@ -1,0 +1,142 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": { "checkout": { "replicas": [1, 1, 0] }, "topic": { "noConsumer": true, "replicas": [1, 1, 0] } }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 30,
+      "nodes": {
+        "checkout": { "processed": 30, "throughput": 3.5191583840503444, "replicas": [1, 1, 0] },
+        "topic": { "processed": 29, "backlog": 29, "throughput": 2.549509805388901, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 60,
+      "nodes": {
+        "checkout": { "processed": 60, "throughput": 3.5193181535938045, "replicas": [1, 1, 0] },
+        "topic": { "processed": 59, "backlog": 59, "throughput": 2.5496711806429677, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 90,
+      "nodes": {
+        "checkout": { "processed": 90, "throughput": 3.5193181608473307, "replicas": [1, 1, 0] },
+        "topic": { "processed": 89, "backlog": 89, "throughput": 2.549671187969393, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 120,
+      "nodes": {
+        "checkout": { "processed": 120, "throughput": 3.519318160847659, "replicas": [1, 1, 0] },
+        "topic": { "processed": 119, "backlog": 119, "throughput": 2.5496711879697243, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 150,
+      "nodes": {
+        "checkout": { "processed": 150, "throughput": 3.519318160847659, "replicas": [1, 1, 0] },
+        "topic": { "processed": 149, "backlog": 149, "throughput": 2.5496711879697243, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 180,
+      "nodes": {
+        "checkout": { "processed": 180, "throughput": 3.519318160847659, "replicas": [1, 1, 0] },
+        "topic": { "processed": 179, "backlog": 179, "throughput": 2.5496711879697243, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 180,
+    "real": {
+      "checkout": { "processed": 180, "throughput": 3.519318160847659, "replicas": [1, 1, 0] },
+      "topic": { "processed": 179, "backlog": 179, "throughput": 2.5496711879697243, "noConsumer": true, "replicas": [1, 1, 0] }
+    },
+    "edges": { "publish": 179 }
+  },
+  "events": {
+    "total": 538,
+    "byKind": { "process": 359, "deliver": 179 },
+    "byNode": { "checkout": { "process": 180 }, "topic": { "deliver": 179, "process": 179 } },
+    "perSecond": [
+      "643fce9f026e",
+      "858c23e7f8eb",
+      "b6d3eb6cede1",
+      "8d6ced296968",
+      "c2a5c288d985",
+      "6a3f07167651",
+      "5f5925437ba6",
+      "801a27b667e9",
+      "88881ffaa7ce",
+      "b575ef0d01a2",
+      "0a1453c7b1fa",
+      "ba7fa728e54c",
+      "0e1b1f3cda15",
+      "293ec0f54001",
+      "7064873b7fc6",
+      "f3d6723d285b",
+      "256849acfa6c",
+      "9479775610e9",
+      "5af0890cfbcd",
+      "cc29e890fb24",
+      "31979ee0509d",
+      "d4f1b292e98d",
+      "e9361a6ab032",
+      "1bb2b5371172",
+      "15d5dd753db4",
+      "bd620917f675",
+      "b86a89a9af2b",
+      "ef5c68ca1682",
+      "3d34b8c184b4",
+      "2085afa955cd",
+      "a6f19bfdc7f9",
+      "e2b2fcfa326d",
+      "3be7135bef54",
+      "c142d2ce76b1",
+      "94dcc511778a",
+      "d4211469e534",
+      "d11d23f095ec",
+      "b0a1bd917cc6",
+      "28f4fb385243",
+      "eced04b429ba",
+      "f9b88e692806",
+      "4591a91126e7",
+      "da2693f56069",
+      "2d9112f4eb9d",
+      "d9a6b22bd875",
+      "ad17c2e8cf15",
+      "a79f4b14f74b",
+      "79bbbfdadcbf",
+      "d9ed4f302ee8",
+      "041e13b5be56",
+      "e99b29cd12a9",
+      "031fa8821afe",
+      "c9761d7f64c8",
+      "80f00fc1c4c7",
+      "c0ad4f3d2fd7",
+      "ddc764f19dcd",
+      "07be91bdab33",
+      "055b66692965",
+      "783ed7a5ac62",
+      "54be45f702a3",
+      "3c40149ba79a"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 179, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 179, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+    "waitMs": {},
+    "processMs": {}
+  }
+}

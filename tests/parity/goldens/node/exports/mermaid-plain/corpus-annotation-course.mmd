@@ -1,0 +1,16 @@
+---
+title: Annotations among routes
+---
+flowchart LR
+  a(["Storefront"])
+  b["Checkout"]
+  c["Billing"]
+  d[("Ledger")]
+  e["Exporter"]
+  f[("Archive")]
+  s[("Legacy FTP")]
+  a -->|"Over the zone"| b
+  c -.->|"Around the note"| d
+  e -.->|"To a shape"| s
+  s -.-> f
+  linkStyle 1,2,3 stroke-dasharray: 6 4

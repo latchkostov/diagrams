@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "customers": [40, 40], "staff": [40, 160], "branch-router": [400, 100], "edge-router": [765, 100], "firewall": [1125, 100], "spine-1": [1499, 40], "spine-2": [1499, 160], "leaf": [1859, 100], "adc": [2233, 100], "web-1": [2595, 40], "web-2": [2595, 160], "payments": [2955, 40], "orders-db": [2955, 160] },
+    "TB": { "customers": [40, 40], "staff": [330, 40], "branch-router": [190, 200], "edge-router": [190, 360], "firewall": [190, 520], "spine-1": [40, 680], "spine-2": [330, 680], "leaf": [190, 840], "adc": [190, 1000], "web-1": [40, 1160], "web-2": [330, 1160], "payments": [40, 1320], "orders-db": [330, 1320] }
+  },
+  "tidy": { "customers": [380, 40], "staff": [670, 40], "branch-router": [530, 200], "edge-router": [530, 360], "firewall": [530, 520], "spine-1": [380, 680], "spine-2": [670, 680], "leaf": [530, 840], "adc": [530, 1000], "web-1": [380, 1160], "web-2": [670, 1160], "orders-db": [670, 1320], "payments": [380, 1320] },
+  "arrange": {
+    "alignLeft": { "customers": [380, 40], "staff": [380, 40], "branch-router": [380, 200], "edge-router": [380, 360], "firewall": [380, 520], "spine-1": [380, 680], "spine-2": [380, 680], "leaf": [380, 840], "adc": [380, 1000], "web-1": [380, 1160], "web-2": [380, 1160], "orders-db": [380, 1320], "payments": [380, 1160] },
+    "alignMiddle": { "customers": [560, 680], "staff": [1000, 680], "branch-router": [1000, 680], "edge-router": [560, 680], "firewall": [560, 680], "spine-1": [380, 680], "spine-2": [740, 680], "leaf": [560, 680], "adc": [560, 680], "web-1": [380, 680], "web-2": [740, 680], "orders-db": [380, 680], "payments": [1060, 680] },
+    "distributeH": { "customers": [542, 40], "staff": [950, 40], "branch-router": [1004, 200], "edge-router": [596, 360], "firewall": [650, 520], "spine-1": [380, 680], "spine-2": [842, 680], "leaf": [718, 840], "adc": [786, 1000], "web-1": [434, 1160], "web-2": [896, 1160], "orders-db": [488, 1320], "payments": [1060, 1160] },
+    "distributeV": { "customers": [560, 40], "staff": [1000, 147], "branch-router": [1000, 253], "edge-router": [560, 360], "firewall": [560, 467], "spine-1": [380, 573], "spine-2": [740, 680], "leaf": [560, 787], "adc": [560, 893], "web-1": [380, 1000], "web-2": [740, 1107], "orders-db": [380, 1320], "payments": [1060, 1213] },
+    "spreadH": { "customers": [1160, 40], "staff": [3010, 40], "branch-router": [3270, 40], "edge-router": [1420, 40], "firewall": [1680, 40], "spine-1": [380, 40], "spine-2": [2490, 40], "leaf": [1954, 40], "adc": [2228, 40], "web-1": [640, 40], "web-2": [2750, 40], "orders-db": [900, 40], "payments": [3532, 40] },
+    "boundaryAround": { "x": 340, "y": -24, "width": 980, "height": 1456 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": ["branch", "dc"],
+    "placedNotes": [],
+    "nodes": { "customers": [-120, 40], "staff": [330, 40], "branch-router": [190, 200], "edge-router": [190, 360], "firewall": [190, 520], "spine-1": [40, 680], "spine-2": [330, 680], "leaf": [190, 840], "adc": [190, 1000], "web-1": [40, 1160], "web-2": [330, 1160], "orders-db": [330, 1320], "payments": [40, 1320] },
+    "groups": { "branch": [150, -24, 440, 336], "dc": [0, 296, 590, 1136] }
+  }
+}

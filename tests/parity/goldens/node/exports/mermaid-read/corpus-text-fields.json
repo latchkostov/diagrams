@@ -1,0 +1,17 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Fields",
+    "direction": "LR",
+    "groups": [
+      { "id": "g_core", "label": "Core platform", "tone": "neutral", "x": 40, "y": 100, "width": 660, "height": 236 }
+    ],
+    "nodes": [
+      { "id": "a", "stencil": "generic.service", "label": "Order service", "x": 80, "y": 224, "group": "g_core" },
+      { "id": "b", "stencil": "generic.service", "label": "Payments gateway", "x": 440, "y": 164, "group": "g_core" },
+      { "id": "c", "stencil": "generic.service", "label": "Worker", "x": 80, "y": 104 }
+    ],
+    "edges": [{ "id": "e1-a-b", "from": "a", "to": "b", "label": "writes", "kind": "async" }]
+  }
+}

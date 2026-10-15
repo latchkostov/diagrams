@@ -1,0 +1,48 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "AWS serverless orders",
+    "direction": "LR",
+    "groups": [
+      { "id": "g_aws", "label": "AWS · us-east-1", "tone": "aws", "x": 400, "y": 160, "width": 2492, "height": 536 }
+    ],
+    "nodes": [
+      { "id": "apigw", "stencil": "generic.service", "label": "Orders API", "sublabel": "REST · Cognito authorizer", "x": 440, "y": 344, "group": "g_aws" },
+      { "id": "create_order", "stencil": "generic.service", "label": "CreateOrder", "sublabel": "Validate · PutItem", "x": 830, "y": 284, "group": "g_aws" },
+      { "id": "orders_table", "stencil": "generic.database", "label": "Orders table", "sublabel": "Streams: NEW_IMAGE", "x": 1190, "y": 344, "group": "g_aws" },
+      { "id": "stream_fn", "stencil": "generic.service", "label": "Stream publisher", "sublabel": "Batch 100 · PutEvents", "x": 1550, "y": 344, "group": "g_aws" },
+      { "id": "bus", "stencil": "generic.service", "label": "commerce-bus", "sublabel": "Rules by detail-type", "x": 1910, "y": 344, "group": "g_aws" },
+      { "id": "sfn", "stencil": "generic.service", "label": "Payment workflow", "sublabel": "Charge · update status", "x": 2270, "y": 224, "group": "g_aws" },
+      { "id": "dlq", "stencil": "generic.service", "label": "fulfillment-dlq", "sublabel": "Redrive when 3PL recovers", "x": 2632, "y": 344, "group": "g_aws" },
+      { "id": "fulfillment_q", "stencil": "generic.queue", "label": "fulfillment-queue", "sublabel": "maxReceiveCount: 3", "x": 2270, "y": 344, "group": "g_aws" },
+      { "id": "fulfillment_fn", "stencil": "generic.service", "label": "RequestShipment", "sublabel": "Batch 10 · partial failures", "x": 2632, "y": 224, "group": "g_aws" },
+      { "id": "sns", "stencil": "client.user", "label": "order-updates", "sublabel": "Customer notifications", "x": 2270, "y": 464, "group": "g_aws" },
+      { "id": "email", "stencil": "generic.email", "label": "Email receipt", "sublabel": "Amazon SES", "x": 2632, "y": 464, "group": "g_aws" },
+      { "id": "sms", "stencil": "client.user", "label": "SMS update", "sublabel": "End User Messaging", "x": 2632, "y": 584, "group": "g_aws" },
+      { "id": "cognito", "stencil": "client.user", "label": "Cognito user pool", "sublabel": "Shopper sign-in", "x": 830, "y": 404, "group": "g_aws" },
+      { "id": "client", "stencil": "client.user", "label": "Web shop", "sublabel": "Signed-in customers", "x": 80, "y": 344 },
+      { "id": "stripe", "stencil": "generic.service", "label": "Stripe", "sublabel": "Payment intents", "x": 2632, "y": 104 },
+      { "id": "three_pl", "stencil": "generic.database", "label": "3PL warehouse API", "sublabel": "POST /shipments", "x": 3025, "y": 344 }
+    ],
+    "edges": [
+      { "id": "e1-client-apigw", "from": "client", "to": "apigw", "label": "HTTPS", "kind": "sync" },
+      { "id": "e2-apigw-create_order", "from": "apigw", "to": "create_order", "label": "POST /orders", "kind": "sync" },
+      { "id": "e3-create_order-orders_table", "from": "create_order", "to": "orders_table", "label": "PutItem", "kind": "sync" },
+      { "id": "e4-orders_table-stream_fn", "from": "orders_table", "to": "stream_fn", "label": "DynamoDB Streams", "kind": "async" },
+      { "id": "e5-stream_fn-bus", "from": "stream_fn", "to": "bus", "label": "PutEvents", "kind": "async" },
+      { "id": "e6-bus-sfn", "from": "bus", "to": "sfn", "label": "Rule: OrderPlaced", "kind": "async" },
+      { "id": "e7-sfn-stripe", "from": "sfn", "to": "stripe", "label": "Task: charge", "kind": "sync" },
+      { "id": "e8-sfn-orders_table", "from": "sfn", "to": "orders_table", "label": "UpdateItem: PAID", "kind": "sync" },
+      { "id": "e9-bus-fulfillment_q", "from": "bus", "to": "fulfillment_q", "label": "Rule: OrderPaid", "kind": "async" },
+      { "id": "e10-fulfillment_q-fulfillment_fn", "from": "fulfillment_q", "to": "fulfillment_fn", "label": "Event source", "kind": "async" },
+      { "id": "e11-fulfillment_fn-three_pl", "from": "fulfillment_fn", "to": "three_pl", "label": "Create shipment", "kind": "sync" },
+      { "id": "e12-fulfillment_q-dlq", "from": "fulfillment_q", "to": "dlq", "label": "After 3 receives", "kind": "async" },
+      { "id": "e13-dlq-fulfillment_q", "from": "dlq", "to": "fulfillment_q", "label": "Redrive", "kind": "async" },
+      { "id": "e14-bus-sns", "from": "bus", "to": "sns", "label": "Rule: OrderPaid", "kind": "async" },
+      { "id": "e15-sns-email", "from": "sns", "to": "email", "label": "Email", "kind": "async" },
+      { "id": "e16-sns-sms", "from": "sns", "to": "sms", "label": "SMS", "kind": "async" },
+      { "id": "e17-apigw-cognito", "from": "apigw", "to": "cognito", "label": "JWT authorizer", "kind": "async", "relation": "identity" }
+    ]
+  }
+}

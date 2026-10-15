@@ -1,0 +1,62 @@
+{
+  "summary": "1 warning, 1 suggestion.",
+  "findings": {
+    "dead-letter:q": {
+      "title": "Failed messages are dropped",
+      "message": "Worker fails 100% of messages, and orders's dead-letter route doesn't take “Order”: messages that run out of deliveries (1) are lost.",
+      "rationale": "A message that keeps failing is redelivered up to the broker's delivery limit, then goes to the broker's dead-letter route, or is dropped when there isn't one (or its filter doesn't take the message). A dead-letter queue keeps it to inspect and replay.",
+      "fix": { "label": "Send every failed message to orders-dlq" }
+    },
+    "no-reader:dlq": {
+      "title": "Dead letters pile up in orders-dlq",
+      "message": "Nothing in the diagram reads or alerts on orders-dlq: failed messages stay there until someone looks.",
+      "rationale": "A dead-letter queue has no automatic cleanup. Someone should be told when messages land there, and be able to replay them.",
+      "fix": { "label": "Add a reader…", "choice": "Pick what reads orders-dlq, then add it and connect dlq to it." }
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "dead-letter:q",
+        "rule": "dead-letter",
+        "severity": "warning",
+        "title": "Failed messages are dropped",
+        "message": "Worker fails 100% of messages, and orders's dead-letter route doesn't take “Order”: messages that run out of deliveries (1) are lost.",
+        "targets": ["q", "worker", "dead"],
+        "fix": {
+          "label": "Send every failed message to orders-dlq",
+          "ops": [{ "op": "update", "target": "dead", "props": { "filter": null } }]
+        }
+      },
+      {
+        "id": "no-reader:dlq",
+        "rule": "no-reader",
+        "severity": "suggestion",
+        "title": "Dead letters pile up in orders-dlq",
+        "message": "Nothing in the diagram reads or alerts on orders-dlq: failed messages stay there until someone looks.",
+        "targets": ["dlq", "q"],
+        "fix": { "label": "Add a reader…", "needsChoice": "Pick what reads orders-dlq, then add it and connect dlq to it." }
+      }
+    ],
+    "summary": "1 warning, 1 suggestion.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      {
+        "id": "dead-letter:q",
+        "rule": "dead-letter",
+        "severity": "warning",
+        "title": "Failed messages are dropped",
+        "message": "Worker fails 100% of messages, and orders's dead-letter route doesn't take “Order”: messages that run out of deliveries (1) are lost.",
+        "targets": ["q", "worker", "dead"],
+        "fix": {
+          "label": "Send every failed message to orders-dlq",
+          "ops": [{ "op": "update", "target": "dead", "props": { "filter": null } }]
+        }
+      }
+    ],
+    "summary": "1 warning, 1 suggestion.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
+}

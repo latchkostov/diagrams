@@ -1,0 +1,493 @@
+{
+  "autoScale": { "freePlay": 2, "exact": 20, "sampled": 20, "refunds": 1 },
+  "brokerAssignments": { "brokers": {}, "consumers": {} },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "a",
+      "suggestion": "Partner API a: Increase allocation or Reduce calls.",
+      "converged": true,
+      "iterations": 2,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "web": ["Infinity", 40, 0, 1, 1, 0], "batch": ["Infinity", 80, 0, 1, 1, 0], "a": [5, 40, 8, 1, 1, 0], "b": [68.66666666666667, 80, 1.1650485436893203, 1, 1, 0] },
+      "connections": { "web-a": 40, "batch-b": 80 },
+      "offeredTypes": { "web": ["Web"], "batch": ["Batch"], "a": ["Web"], "b": ["Batch"] }
+    },
+    "explanations": {
+      "a": {
+        "managed": "api",
+        "id": "a",
+        "role": "sink",
+        "status": "up",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 5,
+        "offered": 40,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0.1,
+        "utilization": 8,
+        "growth": 35,
+        "contributors": [{ "edge": "web-a", "node": "web", "label": "Web", "rate": 40 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "b": {
+        "managed": "api",
+        "id": "b",
+        "role": "sink",
+        "status": "up",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 68.66666666666667,
+        "offered": 80,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0.1,
+        "utilization": 1.1650485436893203,
+        "growth": 11.333333333333329,
+        "contributors": [{ "edge": "batch-b", "node": "batch", "label": "Batch", "rate": 80 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "web": [{ "kind": "calls", "edge": "web-a", "peer": "a" }],
+      "batch": [{ "kind": "calls", "edge": "batch-b", "peer": "b" }]
+    },
+    "sizing": null,
+    "redundancy": { "a": { "replicas": 2, "enough": false }, "b": { "replicas": 2, "enough": false } },
+    "resolved": {
+      "web": {
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 40,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Web",
+        "healthChecks": false
+      },
+      "batch": {
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 80,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Batch",
+        "healthChecks": false
+      },
+      "a": {
+        "admission": {
+          "api": {
+            "maxInFlight": 40,
+            "quotas": [
+              { "id": "account-rate", "unit": "requests", "amount": 103, "windowMs": 1000, "algorithm": "token-bucket", "sharedGroup": "acct" }
+            ]
+          },
+          "endpoints": [
+            {
+              "id": "refunds",
+              "method": "POST",
+              "path": "/refunds",
+              "behaviour": {
+                "quotas": [
+                  { "id": "refund-rate", "unit": "requests", "amount": 5, "windowMs": 1000, "algorithm": "token-bucket" }
+                ]
+              }
+            }
+          ]
+        },
+        "profile": { "family": "external-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 100,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Partner API a",
+        "healthChecks": false
+      },
+      "b": {
+        "admission": {
+          "api": {
+            "maxInFlight": 40,
+            "quotas": [
+              { "id": "account-rate", "unit": "requests", "amount": 103, "windowMs": 1000, "algorithm": "token-bucket", "sharedGroup": "acct" }
+            ],
+            "sharedConcurrency": "pool"
+          },
+          "endpoints": []
+        },
+        "profile": { "family": "external-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 100,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Partner API b",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "exact": {
+      "configured": "(same as edit)",
+      "simulation": "exact",
+      "analysis": {
+        "bottleneck": "b",
+        "suggestion": "Partner API b: Increase allocation or Reduce calls.",
+        "converged": true,
+        "iterations": 2,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "web": ["Infinity", 0, 0, 1, 1, 0], "batch": ["Infinity", 1000, 0, 1, 1, 0], "a": ["Infinity", 0, 0, 1, 1, 0], "b": [103, 1000, 9.70873786407767, 1, 1, 0] },
+        "connections": { "batch-b": 1000 },
+        "offeredTypes": { "batch": ["Charge"], "b": ["Charge"] }
+      },
+      "explanations": {
+        "a": {
+          "managed": "api",
+          "id": "a",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 0,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.1,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
+        "b": {
+          "managed": "api",
+          "id": "b",
+          "role": "sink",
+          "status": "up",
+          "reason": "capacity",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 103,
+          "offered": 1000,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.1,
+          "utilization": 9.70873786407767,
+          "growth": 897,
+          "contributors": [{ "edge": "batch-b", "node": "batch", "label": "Batch", "rate": 1000 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": { "b": { "replicas": 2, "enough": false } },
+      "resolved": "(same as edit)"
+    },
+    "sampled": {
+      "configured": "(same as edit)",
+      "simulation": "sampled",
+      "analysis": {
+        "bottleneck": "b",
+        "suggestion": "Partner API b: Increase allocation or Reduce calls.",
+        "converged": true,
+        "iterations": 2,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "web": ["Infinity", 0, 0, 1, 1, 0], "batch": ["Infinity", 1000, 0, 1, 1, 0], "a": ["Infinity", 0, 0, 1, 1, 0], "b": [103, 1000, 9.70873786407767, 1, 1, 0] },
+        "connections": { "batch-b": 1000 },
+        "offeredTypes": { "batch": ["Charge"], "b": ["Charge"] }
+      },
+      "explanations": {
+        "a": {
+          "managed": "api",
+          "id": "a",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 0,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.1,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
+        "b": {
+          "managed": "api",
+          "id": "b",
+          "role": "sink",
+          "status": "up",
+          "reason": "capacity",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 103,
+          "offered": 1000,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.1,
+          "utilization": 9.70873786407767,
+          "growth": 897,
+          "contributors": [{ "edge": "batch-b", "node": "batch", "label": "Batch", "rate": 1000 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": { "b": { "replicas": 2, "enough": false } },
+      "resolved": "(same as edit)"
+    },
+    "refunds": {
+      "configured": "(same as edit)",
+      "simulation": "refunds",
+      "analysis": {
+        "bottleneck": "a",
+        "suggestion": "Partner API a: Increase allocation or Reduce calls.",
+        "converged": true,
+        "iterations": 2,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "web": ["Infinity", 60, 0, 1, 1, 0], "batch": ["Infinity", 0, 0, 1, 1, 0], "a": [5, 60, 12, 1, 1, 0], "b": ["Infinity", 0, 0, 1, 1, 0] },
+        "connections": { "web-a": 60 },
+        "offeredTypes": { "web": ["Charge"], "a": ["Charge"] }
+      },
+      "explanations": {
+        "a": {
+          "managed": "api",
+          "id": "a",
+          "role": "sink",
+          "status": "up",
+          "reason": "capacity",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 5,
+          "offered": 60,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.1,
+          "utilization": 12,
+          "growth": 55,
+          "contributors": [{ "edge": "web-a", "node": "web", "label": "Web", "rate": 60 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
+        "b": {
+          "managed": "api",
+          "id": "b",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 0,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.1,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": { "a": { "replicas": 2, "enough": false } },
+      "resolved": "(same as edit)"
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "over",
+          "top": "a",
+          "headline": "Partner API a and 1 more are over capacity",
+          "detail": "800% · 40/s of 5/s. Reduce calls",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "web": ["idle", "40/s · no limit", { "modeled": false }],
+            "batch": ["idle", "80/s · no limit", { "modeled": false }],
+            "a": ["over", "800% · 40/s of 5/s"],
+            "b": ["over", "117% · 80/s of 69/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "over",
+          "top": "a",
+          "headline": "Partner API a and 1 more are over capacity",
+          "detail": "40× · 200/s of 5/s. Reduce calls",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "web": ["idle", "200/s · no limit", { "modeled": false }],
+            "batch": ["idle", "400/s · no limit", { "modeled": false }],
+            "a": ["over", "40× · 200/s of 5/s"],
+            "b": ["over", "583% · 400/s of 69/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "over",
+          "top": "a",
+          "headline": "Partner API a and 1 more are over capacity",
+          "detail": "800% · 40/s of 5/s. Reduce calls",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "web": ["idle", "40/s · no limit", { "modeled": false }],
+            "batch": ["idle", "80/s · no limit", { "modeled": false }],
+            "a": ["over", "800% · 40/s of 5/s"],
+            "b": ["over", "117% · 80/s of 69/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "over",
+          "top": "a",
+          "headline": "Partner API a and 1 more are over capacity",
+          "detail": "800% · 40/s of 5/s. Reduce calls",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "web": ["idle", "40/s · no limit", { "modeled": false }],
+            "batch": ["idle", "80/s · no limit", { "modeled": false }],
+            "a": ["over", "800% · 40/s of 5/s"],
+            "b": ["over", "117% · 80/s of 69/s"]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    },
+    "exact": {
+      "tone": "over",
+      "top": "b",
+      "headline": "Partner API b is over capacity",
+      "detail": "971% · 1k/s of 103/s. Reduce calls",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "web": ["idle", "", { "modeled": false }],
+        "batch": ["idle", "1k/s · no limit", { "modeled": false }],
+        "a": ["idle", ""],
+        "b": ["over", "971% · 1k/s of 103/s"]
+      }
+    },
+    "sampled": {
+      "tone": "over",
+      "top": "b",
+      "headline": "Partner API b is over capacity",
+      "detail": "971% · 1k/s of 103/s. Reduce calls",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "web": ["idle", "", { "modeled": false }],
+        "batch": ["idle", "1k/s · no limit", { "modeled": false }],
+        "a": ["idle", ""],
+        "b": ["over", "971% · 1k/s of 103/s"]
+      }
+    },
+    "refunds": {
+      "tone": "over",
+      "top": "a",
+      "headline": "Partner API a is over capacity",
+      "detail": "12× · 60/s of 5/s. Reduce calls",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "web": ["idle", "60/s · no limit", { "modeled": false }],
+        "batch": ["idle", "", { "modeled": false }],
+        "a": ["over", "12× · 60/s of 5/s"],
+        "b": ["idle", ""]
+      }
+    }
+  }
+}

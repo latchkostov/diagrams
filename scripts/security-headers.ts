@@ -125,6 +125,9 @@ export const COMMON_HEADERS: Record<string, string> = {
  */
 export const OPENER_POLICY = "same-origin-allow-popups";
 
+/** Default opener behaviour, for static hosts that cannot remove an inherited auth-page header. */
+export const AUTH_OPENER_POLICY = "unsafe-none";
+
 /**
  * An embed is any URL with an `embed` parameter (src/App.tsx uses the same rule). Matching the key alone
  * keeps Vercel's rule exact: its `has` values are regex-like, and a loose match on "1" must never hand the

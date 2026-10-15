@@ -1,0 +1,19 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Retries and dead-lettering",
+    "direction": "LR",
+    "nodes": [
+      { "id": "api", "stencil": "generic.service", "label": "Orders API", "x": 40, "y": 100 },
+      { "id": "queue", "stencil": "generic.service", "label": "orders", "sublabel": "orders", "x": 400, "y": 100 },
+      { "id": "worker", "stencil": "generic.service", "label": "Fulfilment", "x": 760, "y": 40 },
+      { "id": "dlq", "stencil": "generic.queue", "label": "Dead-letter queue", "sublabel": "orders/$deadletterqueue", "x": 760, "y": 160 }
+    ],
+    "edges": [
+      { "id": "e1-api-queue", "from": "api", "to": "queue", "kind": "async" },
+      { "id": "e2-queue-worker", "from": "queue", "to": "worker", "kind": "async" },
+      { "id": "e3-queue-dlq", "from": "queue", "to": "dlq", "kind": "async" }
+    ]
+  }
+}

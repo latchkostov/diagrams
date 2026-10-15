@@ -1,0 +1,16 @@
+{
+  "evidence": {
+    "played": [
+      { "id": "busy-day", "title": "Payday: reads outnumber writes", "playedMs": 11180, "capped": false },
+      { "id": "rebuild", "title": "Rebuild a read model", "playedMs": 13180, "capped": false }
+    ],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [],
+    "dropped": []
+  },
+  "planned": [],
+  "counted": 0,
+  "findings": [],
+  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 2 saved simulations (at most 60 s each)." }
+}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createEngine } from "../sim/engine";
 import type { DiagramFile } from "../model/types";
-import { SIM_FIELDS_BY_ROLE, edgeSimFields, inertNodeProps } from "./simFieldRules";
+import { SIM_FIELDS_BY_ROLE, edgeSimFields, inertNodeProps, nodeSimFields } from "./simFieldRules";
 
 // The inspector shows a simulation field only where it can change the run (docs/research/sim-flows-review.md,
 // F-28, F-23). Each hidden field is checked against the engine: changing it changes nothing.
@@ -84,3 +84,11 @@ describe("simulation fields that can't change the run are hidden", () => {
     expect(play("service.dotnet", { failureRate: 0.5 }, { dlq: true })).toEqual({ end: 0, edge: 0 });
   });
 });
+
+it.each(["openai", "anthropic.claude", "aws.lambda"])(
+  "managed %s hides ineffective legacy fields in shared inspector applicability",
+  (stencil) => {
+    expect(nodeSimFields("processor", stencil, { revision: "p3" })).toEqual(["emits"]);
+    expect(nodeSimFields("processor", stencil, { revision: "p2" })).toContain("replicas");
+  },
+);

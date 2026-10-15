@@ -1,0 +1,20 @@
+---
+title: Back-edges and loops
+---
+flowchart LR
+  api["API"]
+  svc["Orders"]
+  topic["orders<br/>orders.v1"]
+  retry["Retry worker"]
+  above[("Cache (above)")]
+  below[("DB (below)")]
+  api --> svc
+  svc -.-> topic
+  topic -.->|"failed"| retry
+  retry -.->|"back-edge: retry"| svc
+  topic -.->|"back-edge: skip"| api
+  svc --> above
+  svc --> below
+  retry -.->|"self-loop"| retry
+  linkStyle 1,2,3,4,7 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"Targets behind, above and below their sources.","nodes":{"api":["api","aws.api-gateway"],"svc":["svc","service.node"],"topic":["topic","kafka.topic"],"retry":["retry","service.go"],"above":["above","redis.cache"],"below":["below","postgres"]},"edges":["fwd-1","fwd-2","down","back","back-far","up","down-2","self"],"relations":{}}

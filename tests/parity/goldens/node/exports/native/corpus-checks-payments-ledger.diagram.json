@@ -1,0 +1,96 @@
+{
+  "format": "diagrams/v1",
+  "title": "Payments ledger",
+  "description": "Checkout takes a payment through the Payments API, which publishes it to Kafka as Avro; the ledger writer records it. Both read their keys from Key Vault.",
+  "nodes": [
+    {
+      "id": "web",
+      "stencil": "client.browser",
+      "label": "Checkout",
+      "x": 0,
+      "y": 120,
+      "props": {
+        "ratePerSec": 5
+      }
+    },
+    {
+      "id": "api",
+      "stencil": "azure.container-apps",
+      "label": "Payments API",
+      "sublabel": "Charges cards",
+      "x": 300,
+      "y": 120
+    },
+    {
+      "id": "payments",
+      "stencil": "kafka.topic",
+      "label": "payments.v1",
+      "sublabel": "Avro · key: orderId",
+      "x": 620,
+      "y": 120
+    },
+    {
+      "id": "ledger",
+      "stencil": "azure.functions",
+      "label": "Ledger writer",
+      "x": 940,
+      "y": 120
+    },
+    {
+      "id": "db",
+      "stencil": "azure.cosmos-db",
+      "label": "Ledger",
+      "sublabel": "One entry per payment",
+      "x": 1260,
+      "y": 120
+    },
+    {
+      "id": "kv",
+      "stencil": "azure.key-vault",
+      "label": "payments-kv",
+      "sublabel": "Stripe and ledger keys",
+      "x": 620,
+      "y": 380
+    }
+  ],
+  "edges": [
+    {
+      "id": "web-api",
+      "from": "web",
+      "to": "api",
+      "kind": "sync",
+      "label": "POST /payments"
+    },
+    {
+      "id": "api-payments",
+      "from": "api",
+      "to": "payments",
+      "kind": "async",
+      "label": "PaymentTaken"
+    },
+    {
+      "id": "payments-ledger",
+      "from": "payments",
+      "to": "ledger",
+      "kind": "async"
+    },
+    {
+      "id": "ledger-db",
+      "from": "ledger",
+      "to": "db",
+      "kind": "sync"
+    },
+    {
+      "id": "api-kv",
+      "from": "api",
+      "to": "kv",
+      "relation": "secret"
+    },
+    {
+      "id": "ledger-kv",
+      "from": "ledger",
+      "to": "kv",
+      "relation": "secret"
+    }
+  ]
+}

@@ -1,0 +1,373 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"Group tones\" · direction LR · 12 nodes, 11 connections, 6 boundaries, 0 simulations\ndescription: \"Every boundary tone, with cross-boundary edges.\"\nnodes:\n  \"azure-1\" \"service.node\" (\"Node.js Service\") \"azure service\" in \"azure\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"azure-in\",\"peer\":\"azure-2\"}] explanation={\"id\":\"azure-1\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"azure-2\" \"kafka.topic\" (\"Kafka Topic\") \"azure topic\" / \"azure.events\" in \"azure\" capabilities=[] explanation=undefined\n  \"aws-1\" \"service.node\" (\"Node.js Service\") \"aws service\" in \"aws\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"aws-in\",\"peer\":\"aws-2\"},{\"kind\":\"consumes\",\"edge\":\"aws-cross\",\"peer\":\"azure-2\",\"group\":\"aws-cross\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"aws-1\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"azure-2\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"aws-2\" \"kafka.topic\" (\"Kafka Topic\") \"aws topic\" / \"aws.events\" in \"aws\" capabilities=[] explanation=undefined\n  \"gcp-1\" \"service.node\" (\"Node.js Service\") \"gcp service\" in \"gcp\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"gcp-in\",\"peer\":\"gcp-2\"},{\"kind\":\"consumes\",\"edge\":\"gcp-cross\",\"peer\":\"aws-2\",\"group\":\"gcp-cross\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"gcp-1\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"aws-2\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"gcp-2\" \"kafka.topic\" (\"Kafka Topic\") \"gcp topic\" / \"gcp.events\" in \"gcp\" capabilities=[] explanation=undefined\n  \"k8s-1\" \"service.node\" (\"Node.js Service\") \"k8s service\" in \"k8s\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"k8s-in\",\"peer\":\"k8s-2\"},{\"kind\":\"consumes\",\"edge\":\"k8s-cross\",\"peer\":\"gcp-2\",\"group\":\"k8s-cross\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"k8s-1\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"gcp-2\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"k8s-2\" \"kafka.topic\" (\"Kafka Topic\") \"k8s topic\" / \"k8s.events\" in \"k8s\" capabilities=[] explanation=undefined\n  \"onprem-1\" \"service.node\" (\"Node.js Service\") \"onprem service\" in \"onprem\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"onprem-in\",\"peer\":\"onprem-2\"},{\"kind\":\"consumes\",\"edge\":\"onprem-cross\",\"peer\":\"k8s-2\",\"group\":\"onprem-cross\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"onprem-1\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"k8s-2\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"onprem-2\" \"kafka.topic\" (\"Kafka Topic\") \"onprem topic\" / \"onprem.events\" in \"onprem\" capabilities=[] explanation=undefined\n  \"neutral-1\" \"service.node\" (\"Node.js Service\") \"neutral service\" in \"neutral\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"neutral-in\",\"peer\":\"neutral-2\"},{\"kind\":\"consumes\",\"edge\":\"neutral-cross\",\"peer\":\"onprem-2\",\"group\":\"neutral-cross\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"neutral-1\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"onprem-2\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"neutral-2\" \"kafka.topic\" (\"Kafka Topic\") \"neutral topic\" / \"neutral.events\" in \"neutral\" capabilities=[] explanation={\"id\":\"neutral-2\",\"role\":\"topic\",\"status\":\"up\",\"reason\":\"no-reader\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"changes\":null,\"addConsumer\":\"neutral-2\",\"fixId\":\"no-reader:neutral-2\",\"converged\":true}\nconnections:\n  \"azure-in\" \"azure-1\" -> \"azure-2\" async\n  \"aws-in\" \"aws-1\" -> \"aws-2\" async\n  \"aws-cross\" \"azure-2\" -> \"aws-1\" async\n  \"gcp-in\" \"gcp-1\" -> \"gcp-2\" async\n  \"gcp-cross\" \"aws-2\" -> \"gcp-1\" async\n  \"k8s-in\" \"k8s-1\" -> \"k8s-2\" async\n  \"k8s-cross\" \"gcp-2\" -> \"k8s-1\" async\n  \"onprem-in\" \"onprem-1\" -> \"onprem-2\" async\n  \"onprem-cross\" \"k8s-2\" -> \"onprem-1\" async\n  \"neutral-in\" \"neutral-1\" -> \"neutral-2\" async\n  \"neutral-cross\" \"onprem-2\" -> \"neutral-1\" async\nboundary \"azure\" \"azure boundary\" (azure): \"azure-1\", \"azure-2\"\nboundary \"aws\" \"aws boundary\" (aws): \"aws-1\", \"aws-2\"\nboundary \"gcp\" \"gcp boundary\" (gcp): \"gcp-1\", \"gcp-2\"\nboundary \"k8s\" \"k8s boundary\" (k8s): \"k8s-1\", \"k8s-2\"\nboundary \"onprem\" \"onprem boundary\" (onprem): \"onprem-1\", \"onprem-2\"\nboundary \"neutral\" \"neutral boundary\" (neutral): \"neutral-1\", \"neutral-2\""
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "Group tones",
+      "description": "Every boundary tone, with cross-boundary edges.",
+      "direction": "LR",
+      "nodes": [
+        {
+          "id": "azure-1",
+          "stencil": "service.node",
+          "label": "azure service",
+          "x": 40,
+          "y": 40,
+          "group": "azure",
+          "capabilities": [{ "kind": "publishes", "edge": "azure-in", "peer": "azure-2" }],
+          "explanation": {
+            "id": "azure-1",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 16,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        },
+        { "id": "azure-2", "stencil": "kafka.topic", "label": "azure topic", "sublabel": "azure.events", "x": 40, "y": 160, "group": "azure", "capabilities": [] },
+        {
+          "id": "aws-1",
+          "stencil": "service.node",
+          "label": "aws service",
+          "x": 453.99999999999994,
+          "y": 40,
+          "group": "aws",
+          "capabilities": [
+            { "kind": "publishes", "edge": "aws-in", "peer": "aws-2" },
+            {
+              "kind": "consumes",
+              "edge": "aws-cross",
+              "peer": "azure-2",
+              "group": "aws-cross",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "aws-1",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 16,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "azure-2",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        },
+        { "id": "aws-2", "stencil": "kafka.topic", "label": "aws topic", "sublabel": "aws.events", "x": 453.99999999999994, "y": 160, "group": "aws", "capabilities": [] },
+        {
+          "id": "gcp-1",
+          "stencil": "service.node",
+          "label": "gcp service",
+          "x": 867.9999999999999,
+          "y": 40,
+          "group": "gcp",
+          "capabilities": [
+            { "kind": "publishes", "edge": "gcp-in", "peer": "gcp-2" },
+            {
+              "kind": "consumes",
+              "edge": "gcp-cross",
+              "peer": "aws-2",
+              "group": "gcp-cross",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "gcp-1",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 16,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "aws-2",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        },
+        { "id": "gcp-2", "stencil": "kafka.topic", "label": "gcp topic", "sublabel": "gcp.events", "x": 867.9999999999999, "y": 160, "group": "gcp", "capabilities": [] },
+        {
+          "id": "k8s-1",
+          "stencil": "service.node",
+          "label": "k8s service",
+          "x": 40,
+          "y": 400,
+          "group": "k8s",
+          "capabilities": [
+            { "kind": "publishes", "edge": "k8s-in", "peer": "k8s-2" },
+            {
+              "kind": "consumes",
+              "edge": "k8s-cross",
+              "peer": "gcp-2",
+              "group": "k8s-cross",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "k8s-1",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 16,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "gcp-2",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        },
+        { "id": "k8s-2", "stencil": "kafka.topic", "label": "k8s topic", "sublabel": "k8s.events", "x": 40, "y": 520, "group": "k8s", "capabilities": [] },
+        {
+          "id": "onprem-1",
+          "stencil": "service.node",
+          "label": "onprem service",
+          "x": 453.99999999999994,
+          "y": 400,
+          "group": "onprem",
+          "capabilities": [
+            { "kind": "publishes", "edge": "onprem-in", "peer": "onprem-2" },
+            {
+              "kind": "consumes",
+              "edge": "onprem-cross",
+              "peer": "k8s-2",
+              "group": "onprem-cross",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "onprem-1",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 16,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "k8s-2",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        },
+        { "id": "onprem-2", "stencil": "kafka.topic", "label": "onprem topic", "sublabel": "onprem.events", "x": 453.99999999999994, "y": 520, "group": "onprem", "capabilities": [] },
+        {
+          "id": "neutral-1",
+          "stencil": "service.node",
+          "label": "neutral service",
+          "x": 867.9999999999999,
+          "y": 400,
+          "group": "neutral",
+          "capabilities": [
+            { "kind": "publishes", "edge": "neutral-in", "peer": "neutral-2" },
+            {
+              "kind": "consumes",
+              "edge": "neutral-cross",
+              "peer": "onprem-2",
+              "group": "neutral-cross",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "neutral-1",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 16,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "onprem-2",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "neutral-2",
+          "stencil": "kafka.topic",
+          "label": "neutral topic",
+          "sublabel": "neutral.events",
+          "x": 867.9999999999999,
+          "y": 520,
+          "group": "neutral",
+          "capabilities": [],
+          "explanation": {
+            "id": "neutral-2",
+            "role": "topic",
+            "status": "up",
+            "reason": "no-reader",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": null,
+            "seconds": 0,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "changes": null,
+            "addConsumer": "neutral-2",
+            "fixId": "no-reader:neutral-2",
+            "converged": true
+          }
+        }
+      ],
+      "edges": [
+        { "id": "azure-in", "from": "azure-1", "to": "azure-2", "kind": "async" },
+        { "id": "aws-in", "from": "aws-1", "to": "aws-2", "kind": "async" },
+        { "id": "aws-cross", "from": "azure-2", "to": "aws-1", "kind": "async" },
+        { "id": "gcp-in", "from": "gcp-1", "to": "gcp-2", "kind": "async" },
+        { "id": "gcp-cross", "from": "aws-2", "to": "gcp-1", "kind": "async" },
+        { "id": "k8s-in", "from": "k8s-1", "to": "k8s-2", "kind": "async" },
+        { "id": "k8s-cross", "from": "gcp-2", "to": "k8s-1", "kind": "async" },
+        { "id": "onprem-in", "from": "onprem-1", "to": "onprem-2", "kind": "async" },
+        { "id": "onprem-cross", "from": "k8s-2", "to": "onprem-1", "kind": "async" },
+        { "id": "neutral-in", "from": "neutral-1", "to": "neutral-2", "kind": "async" },
+        { "id": "neutral-cross", "from": "onprem-2", "to": "neutral-1", "kind": "async" }
+      ],
+      "groups": [
+        { "id": "azure", "label": "azure boundary", "tone": "azure", "x": 10, "y": -10, "width": 290, "height": 282 },
+        { "id": "aws", "label": "aws boundary", "tone": "aws", "x": 423.99999999999994, "y": -10, "width": 290, "height": 282 },
+        { "id": "gcp", "label": "gcp boundary", "tone": "gcp", "x": 837.9999999999999, "y": -10, "width": 290, "height": 282 },
+        { "id": "k8s", "label": "k8s boundary", "tone": "k8s", "x": 10, "y": 350, "width": 290, "height": 282 },
+        { "id": "onprem", "label": "onprem boundary", "tone": "onprem", "x": 423.99999999999994, "y": 350, "width": 290, "height": 282 },
+        { "id": "neutral", "label": "neutral boundary", "tone": "neutral", "x": 837.9999999999999, "y": 350, "width": 290, "height": 282 }
+      ],
+      "annotations": [],
+      "simulations": [],
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"Group tones\" · direction LR · 2 nodes, 1 connections, 1 boundaries, 0 simulations\ndescription: \"Every boundary tone, with cross-boundary edges.\"\nnodes:\n  \"azure-1\" \"service.node\" (\"Node.js Service\") \"azure service\" in \"azure\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"azure-in\",\"peer\":\"azure-2\"}] explanation={\"id\":\"azure-1\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"azure-2\" \"kafka.topic\" (\"Kafka Topic\") \"azure topic\" / \"azure.events\" in \"azure\" capabilities=[] explanation=undefined\nconnections:\n  \"azure-in\" \"azure-1\" -> \"azure-2\" async\nboundary \"azure\" \"azure boundary\" (azure): \"azure-1\", \"azure-2\""
+  }
+}

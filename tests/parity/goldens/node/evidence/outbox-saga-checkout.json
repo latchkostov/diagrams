@@ -1,0 +1,39 @@
+{
+  "evidence": {
+    "played": [
+      { "id": "happy-path", "title": "Twenty checkouts, happy path", "playedMs": 11570, "capped": false },
+      { "id": "declines", "title": "Declines and flaky payments", "playedMs": 14180, "capped": false }
+    ],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [],
+    "dropped": []
+  },
+  "planned": [],
+  "counted": 0,
+  "findings": [
+    {
+      "id": "no-reader:payments-dlq",
+      "rule": "no-reader",
+      "severity": "suggestion",
+      "target": "payments-dlq",
+      "elements": ["payments-dlq", "payment-cmds"],
+      "fix": { "ops": null, "needsChoice": true }
+    }
+  ],
+  "agentReport": {
+    "findings": [
+      {
+        "id": "no-reader:payments-dlq",
+        "rule": "no-reader",
+        "severity": "suggestion",
+        "title": "Dead letters pile up in payments.commands.dlq",
+        "message": "Nothing in the diagram reads or alerts on payments.commands.dlq: failed messages stay there until someone looks.",
+        "targets": ["payments-dlq", "payment-cmds"],
+        "fix": { "label": "Add a reader…", "needsChoice": "Pick what reads payments.commands.dlq, then add it and connect payments-dlq to it." }
+      }
+    ],
+    "summary": "0 warnings, 1 suggestion.",
+    "simulations": "Played 2 saved simulations (at most 60 s each)."
+  }
+}

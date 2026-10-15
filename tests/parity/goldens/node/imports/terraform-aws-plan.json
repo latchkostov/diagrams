@@ -1,0 +1,223 @@
+{
+  "ok": true,
+  "format": "terraform",
+  "warnings": [],
+  "report": {
+    "summary": {
+      "code": "importReport.summary",
+      "args": [
+        { "title": "aws-plan", "format": "Terraform plan", "total": "all", "drawn": 13, "nodes": 13, "connections": 16, "guesses": 0 }
+      ]
+    },
+    "format": "Terraform plan",
+    "source": "aws-plan.json",
+    "title": "aws-plan",
+    "nodes": 13,
+    "connections": 16,
+    "boundaries": 1,
+    "guesses": [],
+    "inferred": [
+      { "fromId": "nightly-rollup", "toId": "orders-projector", "from": "nightly-rollup", "to": "orders-projector", "evidence": "aws_cloudwatch_event_target.nightly_rollup" },
+      { "fromId": "order-events", "toId": "orders-queue", "from": "order-events", "to": "orders-queue", "evidence": "aws_sns_topic_subscription.orders_queue" },
+      { "fromId": "order-events", "toId": "ext-audit.example.com", "from": "order-events", "to": "audit.example.com", "evidence": "aws_sns_topic_subscription.audit_webhook" },
+      { "fromId": "orders-queue", "toId": "order-handler", "from": "orders-queue", "to": "order-handler", "evidence": "aws_lambda_event_source_mapping.orders_queue" },
+      { "fromId": "orders", "toId": "orders-projector", "from": "orders", "to": "orders-projector", "evidence": "aws_lambda_event_source_mapping.orders_stream" },
+      { "fromId": "events-msk", "toId": "analytics", "from": "events-msk", "to": "analytics", "evidence": "module.streaming.aws_lambda_event_source_mapping.analytics" },
+      { "fromId": "orders-queue", "toId": "orders-dlq", "from": "orders-queue", "to": "orders-dlq", "evidence": "aws_sqs_queue.orders", "note": "dead letters" },
+      { "fromId": "order-handler", "toId": "orders-db-credentials", "from": "order-handler", "to": "orders/db-credentials", "evidence": "aws_iam_role_policy.order_handler", "note": "as order-handler-role" },
+      { "fromId": "orders-projector", "toId": "orders-db-credentials", "from": "orders-projector", "to": "orders/db-credentials", "evidence": "aws_iam_role_policy.order_handler", "note": "as order-handler-role" },
+      { "fromId": "analytics", "toId": "orders-db-credentials", "from": "analytics", "to": "orders/db-credentials", "evidence": "aws_iam_role_policy.order_handler", "note": "as order-handler-role" }
+    ],
+    "connectionsTitle": { "code": "importDetail.connectionsFromSubscriptionsMappingsAndGrants", "args": [] },
+    "notDrawn": [
+      { "name": "aws_cloudwatch_log_group order_handler", "reason": { "code": "importReason.monitoring", "args": [] } },
+      {
+        "name": "aws_iam_role_policy_attachment basic_logs",
+        "reason": { "code": "importReason.accessAndPermissions", "args": [] }
+      },
+      { "name": "aws_kms_key msk", "reason": { "code": "importReason.encryptionKey", "args": [] } },
+      {
+        "name": "aws_secretsmanager_secret_version db",
+        "reason": { "code": "importReason.aSecretsValueNeverRead", "args": [] }
+      },
+      { "name": "aws_security_group msk", "reason": { "code": "importReason.networking", "args": [] } },
+      { "name": "aws_sqs_queue legacy_orders", "reason": { "code": "importDetail.destroyedByThisPlan", "args": [] } },
+      { "name": "aws_sqs_queue_policy orders", "reason": { "code": "importReason.accessAndPermissions", "args": [] } },
+      { "name": "random_password db", "reason": { "code": "importReason.helperNotInfrastructure", "args": [] } }
+    ],
+    "unread": [],
+    "notes": [
+      { "code": "importDetail.planValue0ToAddValue1To", "args": [{ "value0": 28, "value1": 0, "value2": 1 }] },
+      {
+        "code": "importDetail.supporting",
+        "args": [
+          {
+            "count": 7,
+            "kinds": {
+              "list": [
+                { "code": "importKind.accessAndPermissions", "args": [] },
+                { "code": "importKind.parts", "args": [] },
+                { "code": "importKind.monitoring", "args": [] },
+                { "code": "importKind.networking", "args": [] },
+                { "code": "importKind.helpers", "args": [] }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "reportEnglish": {
+    "report.summary": "Imported “aws-plan” from Terraform plan: 13 nodes, 16 connections.",
+    "report.connectionsTitle": "Connections from subscriptions, mappings and grants",
+    "report.notDrawn[0].reason": "monitoring",
+    "report.notDrawn[1].reason": "access and permissions",
+    "report.notDrawn[2].reason": "encryption key",
+    "report.notDrawn[3].reason": "a secret's value: never read",
+    "report.notDrawn[4].reason": "networking",
+    "report.notDrawn[5].reason": "destroyed by this plan",
+    "report.notDrawn[6].reason": "access and permissions",
+    "report.notDrawn[7].reason": "helper, not infrastructure",
+    "report.notes[0]": "Plan: 28 to add, 0 to change, 1 to destroy",
+    "report.notes[1]": "7 supporting resources aren't drawn: access and permissions, parts of what's drawn, monitoring, networking and helpers"
+  },
+  "replay": {
+    "warnings": [],
+    "nodes": 27,
+    "edges": 38,
+    "notDrawn": [
+      { "name": "aws_sqs_queue legacy_orders", "reason": { "code": "importDetail.destroyedByThisPlan", "args": [] } }
+    ],
+    "diagram": {
+      "format": "diagrams/v1",
+      "title": "aws-plan (everything)",
+      "direction": "LR",
+      "groups": [
+        { "id": "boundary-module.streaming", "label": "module.streaming", "tone": "aws", "x": 40, "y": 40, "width": 700, "height": 448 }
+      ],
+      "nodes": [
+        { "id": "order-events", "stencil": "aws.sns", "label": "order-events", "x": 40, "y": 540 },
+        { "id": "orders-queue", "stencil": "aws.sqs", "label": "orders-queue", "x": 880, "y": 290 },
+        { "id": "orders-dlq", "stencil": "aws.sqs", "label": "orders-dlq", "x": 1240, "y": 350 },
+        { "id": "orders", "stencil": "generic.service", "label": "orders", "sublabel": "aws_sqs_queue_policy", "x": 40, "y": 932 },
+        { "id": "orders_queue", "stencil": "generic.service", "label": "orders_queue", "sublabel": "aws_sns_topic_subscription", "x": 348, "y": 932 },
+        { "id": "audit_webhook", "stencil": "generic.service", "label": "audit_webhook", "sublabel": "aws_sns_topic_subscription", "x": 656, "y": 932 },
+        { "id": "order-handler", "stencil": "aws.lambda", "label": "order-handler", "x": 1240, "y": 470 },
+        { "id": "orders_queue-2", "stencil": "generic.service", "label": "orders_queue", "sublabel": "aws_lambda_event_source_mapping", "x": 964, "y": 932 },
+        { "id": "orders-2", "stencil": "aws.dynamodb", "label": "orders", "x": 40, "y": 660 },
+        { "id": "orders-projector", "stencil": "aws.lambda", "label": "orders-projector", "x": 880, "y": 530 },
+        { "id": "orders_stream", "stencil": "generic.service", "label": "orders_stream", "sublabel": "aws_lambda_event_source_mapping", "x": 40, "y": 1044 },
+        { "id": "order-handler-role", "stencil": "aws.iam-role", "label": "order-handler-role", "x": 640, "y": 1196 },
+        { "id": "order-handler-2", "stencil": "generic.service", "label": "order-handler", "sublabel": "aws_iam_role_policy", "x": 348, "y": 1044 },
+        { "id": "basic_logs", "stencil": "generic.service", "label": "basic_logs", "sublabel": "aws_iam_role_policy_attachment", "x": 656, "y": 1044 },
+        { "id": "orders-db-credentials", "stencil": "aws.secrets-manager", "label": "orders/db-credentials", "x": 911, "y": 1196 },
+        { "id": "db", "stencil": "generic.service", "label": "db", "sublabel": "aws_secretsmanager_secret_version", "x": 964, "y": 1044 },
+        { "id": "db-2", "stencil": "generic.service", "label": "db", "sublabel": "random_password", "x": 1244, "y": 1196 },
+        { "id": "orders-projector-config", "stencil": "aws.parameter-store", "label": "/orders/projector/config", "x": 860, "y": 682 },
+        { "id": "aws-lambda-order-handler", "stencil": "generic.service", "label": "/aws/lambda/order-handler", "sublabel": "aws_cloudwatch_log_group", "x": 40, "y": 1156 },
+        { "id": "nightly_rollup", "stencil": "generic.service", "label": "nightly_rollup", "sublabel": "aws_cloudwatch_event_target", "x": 348, "y": 1156 },
+        { "id": "events-msk", "stencil": "aws.msk", "label": "events-msk", "x": 80, "y": 104, "group": "boundary-module.streaming" },
+        { "id": "msk-brokers", "stencil": "generic.service", "label": "msk-brokers", "sublabel": "aws_security_group", "x": 80, "y": 376, "group": "boundary-module.streaming" },
+        { "id": "msk", "stencil": "generic.service", "label": "msk", "sublabel": "aws_kms_key", "x": 340, "y": 376, "group": "boundary-module.streaming" },
+        { "id": "analytics", "stencil": "aws.lambda", "label": "analytics", "sublabel": "×2", "x": 480, "y": 164, "group": "boundary-module.streaming" },
+        { "id": "analytics-2", "stencil": "generic.service", "label": "analytics", "sublabel": "aws_lambda_event_source_mapping · ×2", "x": 80, "y": 224, "group": "boundary-module.streaming" },
+        { "id": "nightly-rollup", "stencil": "generic.scheduler", "label": "nightly-rollup", "sublabel": "cron(0 2 * * ? *)", "x": 40, "y": 780 },
+        { "id": "ext-audit.example.com", "stencil": "generic.external-api", "label": "audit.example.com", "x": 880, "y": 410 }
+      ],
+      "edges": [
+        { "id": "e1", "from": "nightly-rollup", "to": "orders-projector", "kind": "async" },
+        { "id": "e2", "from": "order-events", "to": "orders-queue", "kind": "async" },
+        { "id": "e3", "from": "order-events", "to": "ext-audit.example.com", "kind": "async" },
+        { "id": "e4", "from": "orders-queue", "to": "order-handler", "kind": "async" },
+        { "id": "e5", "from": "orders-2", "to": "orders-projector", "kind": "async" },
+        {
+          "id": "e6",
+          "from": "events-msk",
+          "to": "analytics",
+          "kind": "async",
+          "props": { "group": "orders-analytics" }
+        },
+        { "id": "e7", "from": "orders-queue", "to": "orders-dlq", "kind": "async", "props": { "dlq": true } },
+        { "id": "e8", "from": "orders", "to": "orders-queue", "relation": "depends" },
+        { "id": "e9", "from": "orders", "to": "order-events", "relation": "depends" },
+        { "id": "e10", "from": "orders_queue", "to": "order-events", "relation": "depends" },
+        { "id": "e11", "from": "orders_queue", "to": "orders-queue", "relation": "depends" },
+        { "id": "e12", "from": "audit_webhook", "to": "order-events", "relation": "depends" },
+        { "id": "e13", "from": "order-handler", "to": "order-handler-role", "relation": "identity" },
+        { "id": "e14", "from": "order-handler", "to": "orders-2", "relation": "depends" },
+        { "id": "e15", "from": "order-handler", "to": "orders-db-credentials", "relation": "secret" },
+        { "id": "e16", "from": "order-handler", "to": "events-msk", "relation": "depends" },
+        { "id": "e17", "from": "orders_queue-2", "to": "orders-queue", "relation": "depends" },
+        { "id": "e18", "from": "orders_queue-2", "to": "order-handler", "relation": "depends" },
+        { "id": "e19", "from": "orders-projector", "to": "order-handler-role", "relation": "identity" },
+        { "id": "e20", "from": "orders-projector", "to": "orders-projector-config", "relation": "config" },
+        { "id": "e21", "from": "orders_stream", "to": "orders-2", "relation": "depends" },
+        { "id": "e22", "from": "orders_stream", "to": "orders-projector", "relation": "depends" },
+        { "id": "e23", "from": "order-handler-2", "to": "order-handler-role", "relation": "depends" },
+        { "id": "e24", "from": "order-handler-2", "to": "orders-db-credentials", "relation": "depends" },
+        { "id": "e25", "from": "order-handler-2", "to": "orders-queue", "relation": "depends" },
+        { "id": "e26", "from": "order-handler-2", "to": "orders-2", "relation": "depends" },
+        { "id": "e27", "from": "basic_logs", "to": "order-handler-role", "relation": "depends" },
+        { "id": "e28", "from": "db", "to": "orders-db-credentials", "relation": "depends" },
+        { "id": "e29", "from": "db", "to": "db-2", "relation": "depends" },
+        { "id": "e30", "from": "nightly_rollup", "to": "nightly-rollup", "relation": "depends" },
+        { "id": "e31", "from": "nightly_rollup", "to": "orders-projector", "relation": "depends" },
+        { "id": "e32", "from": "events-msk", "to": "msk", "relation": "depends" },
+        { "id": "e33", "from": "events-msk", "to": "msk-brokers", "relation": "depends" },
+        { "id": "e34", "from": "analytics", "to": "order-handler-role", "relation": "identity" },
+        { "id": "e35", "from": "analytics-2", "to": "events-msk", "relation": "depends" },
+        { "id": "e36", "from": "analytics-2", "to": "analytics", "relation": "depends" },
+        { "id": "e37", "from": "orders-projector", "to": "orders-db-credentials", "relation": "secret" },
+        { "id": "e38", "from": "analytics", "to": "orders-db-credentials", "relation": "secret" }
+      ]
+    }
+  },
+  "checks": ["suggestion no-reader:orders-dlq"],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "aws-plan",
+    "direction": "LR",
+    "groups": [
+      { "id": "boundary-module.streaming", "label": "module.streaming", "tone": "aws", "x": 40, "y": 40, "width": 660, "height": 176 }
+    ],
+    "nodes": [
+      { "id": "order-events", "stencil": "aws.sns", "label": "order-events", "x": 40, "y": 260 },
+      { "id": "orders-queue", "stencil": "aws.sqs", "label": "orders-queue", "x": 840, "y": 150 },
+      { "id": "orders-dlq", "stencil": "aws.sqs", "label": "orders-dlq", "x": 1200, "y": 210 },
+      { "id": "order-handler", "stencil": "aws.lambda", "label": "order-handler", "x": 1200, "y": 330 },
+      { "id": "orders", "stencil": "aws.dynamodb", "label": "orders", "x": 40, "y": 380 },
+      { "id": "orders-projector", "stencil": "aws.lambda", "label": "orders-projector", "x": 840, "y": 390 },
+      { "id": "order-handler-role", "stencil": "aws.iam-role", "label": "order-handler-role", "x": 620, "y": 542 },
+      { "id": "orders-db-credentials", "stencil": "aws.secrets-manager", "label": "orders/db-credentials", "x": 891, "y": 542 },
+      { "id": "orders-projector-config", "stencil": "aws.parameter-store", "label": "/orders/projector/config", "x": 1420, "y": 542 },
+      { "id": "events-msk", "stencil": "aws.msk", "label": "events-msk", "x": 80, "y": 104, "group": "boundary-module.streaming" },
+      { "id": "analytics", "stencil": "aws.lambda", "label": "analytics", "sublabel": "×2", "x": 440, "y": 104, "group": "boundary-module.streaming" },
+      { "id": "nightly-rollup", "stencil": "generic.scheduler", "label": "nightly-rollup", "sublabel": "cron(0 2 * * ? *)", "x": 40, "y": 500 },
+      { "id": "ext-audit.example.com", "stencil": "generic.external-api", "label": "audit.example.com", "x": 840, "y": 270 }
+    ],
+    "edges": [
+      { "id": "e1", "from": "nightly-rollup", "to": "orders-projector", "kind": "async" },
+      { "id": "e2", "from": "order-events", "to": "orders-queue", "kind": "async" },
+      { "id": "e3", "from": "order-events", "to": "ext-audit.example.com", "kind": "async" },
+      { "id": "e4", "from": "orders-queue", "to": "order-handler", "kind": "async" },
+      { "id": "e5", "from": "orders", "to": "orders-projector", "kind": "async" },
+      {
+        "id": "e6",
+        "from": "events-msk",
+        "to": "analytics",
+        "kind": "async",
+        "props": { "group": "orders-analytics" }
+      },
+      { "id": "e7", "from": "orders-queue", "to": "orders-dlq", "kind": "async", "props": { "dlq": true } },
+      { "id": "e8", "from": "order-handler", "to": "order-handler-role", "relation": "identity" },
+      { "id": "e9", "from": "order-handler", "to": "orders", "relation": "depends" },
+      { "id": "e10", "from": "order-handler", "to": "orders-db-credentials", "relation": "secret" },
+      { "id": "e11", "from": "order-handler", "to": "events-msk", "relation": "depends" },
+      { "id": "e12", "from": "orders-projector", "to": "order-handler-role", "relation": "identity" },
+      { "id": "e13", "from": "orders-projector", "to": "orders-projector-config", "relation": "config" },
+      { "id": "e14", "from": "analytics", "to": "order-handler-role", "relation": "identity" },
+      { "id": "e15", "from": "orders-projector", "to": "orders-db-credentials", "relation": "secret" },
+      { "id": "e16", "from": "analytics", "to": "orders-db-credentials", "relation": "secret" }
+    ]
+  }
+}

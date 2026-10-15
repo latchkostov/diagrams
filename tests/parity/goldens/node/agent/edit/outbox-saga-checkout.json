@@ -1,0 +1,773 @@
+{
+  "steps": [
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "topic-1",
+            "label": "parity.events",
+            "stencil": { "id": "kafka.topic", "label": "Kafka Topic", "confidence": "high", "alternatives": ["pulsar.topic", "confluent.cloud", "aws.msk"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-1", "from": "client", "to": "topic-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+2 nodes, +2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "dotnet-1",
+            "label": "Parity reader",
+            "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-2", "from": "topic-1", "to": "dotnet-1" },
+          {
+            "i": 2,
+            "op": "add_node",
+            "id": "key-vault-1",
+            "label": "Parity secrets",
+            "stencil": { "id": "azure.key-vault", "label": "Key Vault", "confidence": "high", "alternatives": [] }
+          },
+          { "i": 3, "op": "connect", "id": "e-3", "from": "dotnet-1", "to": "key-vault-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +2 connections, −1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "insert_between",
+            "id": "queue-1",
+            "label": "buffer",
+            "stencil": { "id": "rabbitmq.queue", "label": "RabbitMQ Queue", "confidence": "high", "alternatives": ["aws.mq"] },
+            "from": "client",
+            "to": "order-api"
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "update", "id": "order-api" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "update",
+            "id": "orders-db",
+            "stencil": { "id": "aws.lambda", "label": "AWS Lambda", "confidence": "high", "alternatives": [] }
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 boundary, 2 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_boundary", "id": "boundary-1", "label": "Parity zone" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 note",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_note", "id": "note-1" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "title or direction changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "set_meta" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "−1 node, −2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "remove", "ids": ["dotnet-1", "e-2", "e-3"] }]
+      }
+    },
+    {
+      "isError": true,
+      "output": {
+        "ok": false,
+        "i": 0,
+        "error": "Unknown reference \"no-such-node\".",
+        "ref": "no-such-node",
+        "candidates": [
+          { "id": "client", "label": "Mobile checkout", "stencil": "client.mobile" },
+          { "id": "order-api", "label": "Renamed by parity", "stencil": "service.dotnet" },
+          { "id": "orders-db", "label": "Orders database", "stencil": "aws.lambda" },
+          { "id": "outbox-relay", "label": "Outbox relay", "stencil": "kafka.connect" },
+          { "id": "order-events", "label": "orders.events", "stencil": "kafka.topic" },
+          { "id": "notifications", "label": "Notification service", "stencil": "service.node" },
+          { "id": "email", "label": "SendGrid", "stencil": "sendgrid" },
+          { "id": "saga", "label": "Checkout saga", "stencil": "generic.saga" },
+          { "id": "saga-db", "label": "Saga state", "stencil": "postgres" },
+          { "id": "inventory-cmds", "label": "inventory.commands", "stencil": "kafka.topic" },
+          { "id": "saga-replies", "label": "saga.replies", "stencil": "kafka.topic" },
+          { "id": "payment-cmds", "label": "payments.commands", "stencil": "kafka.topic" },
+          { "id": "payments-dlq", "label": "payments.commands.dlq", "stencil": "kafka.topic" },
+          { "id": "inventory-svc", "label": "Inventory service", "stencil": "service.java" },
+          { "id": "payment-svc", "label": "Payment service", "stencil": "service.go" },
+          { "id": "inventory-db", "label": "Inventory database", "stencil": "postgres" },
+          { "id": "stripe", "label": "Stripe", "stencil": "stripe" },
+          { "id": "vault", "label": "Vault", "stencil": "vault" },
+          { "id": "topic-1", "label": "parity.events", "stencil": "kafka.topic" },
+          { "id": "key-vault-1", "label": "Parity secrets", "stencil": "azure.key-vault" }
+        ],
+        "hint": "Use an id from candidates, or call describe_diagram.",
+        "applied": false
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "dryRun": true,
+        "summary": "+1 node",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "postgres-1",
+            "label": "Dry run only",
+            "stencil": { "id": "postgres", "label": "PostgreSQL", "confidence": "high", "alternatives": ["gcp.cloud-sql", "aws.aurora", "supabase"] }
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "isError": false,
+      "output": { "ok": true, "id": "sim-1", "title": "Parity rush", "summary": "Added simulation \"Parity rush\": 4 traffic, 2 events, 1 expectations.", "undo": "One undo step reverts this call.", "play": "The user plays it in live view (L), or from the command palette." }
+    },
+    {
+      "isError": true,
+      "output": { "ok": false, "error": "constant traffic needs ratePerSec.", "hint": "Check the input against the tool's schema and try again." }
+    }
+  ],
+  "applied": [
+    { "tool": "edit_diagram", "summary": "+1 node, +1 connection", "changed": ["topic-1", "e-1"] },
+    {
+      "tool": "edit_diagram",
+      "summary": "+2 nodes, +2 connections",
+      "changed": ["dotnet-1", "key-vault-1", "e-2", "e-3"],
+      "choices": [
+        {
+          "nodeId": "dotnet-1",
+          "kind": ".NET consumer",
+          "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] },
+          "node": {
+            "id": "dotnet-1",
+            "stencil": "service.dotnet",
+            "label": "Parity reader",
+            "x": 640,
+            "y": 656,
+            "props": { "replicas": 3 }
+          }
+        }
+      ]
+    },
+    { "tool": "edit_diagram", "summary": "+1 node, +2 connections, −1 connection", "changed": ["queue-1", "e-4", "e-5"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["order-api"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["orders-db"] },
+    { "tool": "edit_diagram", "summary": "+1 boundary, 2 changed", "changed": ["boundary-1", "client", "order-api"] },
+    { "tool": "edit_diagram", "summary": "+1 note", "changed": ["note-1"] },
+    { "tool": "edit_diagram", "summary": "title or direction changed", "changed": [] },
+    { "tool": "edit_diagram", "summary": "−1 node, −2 connections", "changed": [] },
+    { "tool": "set_simulation", "summary": "Added simulation “Parity rush”", "changed": ["client"] }
+  ],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Parity edit",
+    "description": "A transactional outbox publishes order events; a saga orchestrates inventory and payment, compensating when a step fails.",
+    "direction": "TB",
+    "groups": [
+      { "id": "kafka", "label": "Kafka · saga channels", "tone": "neutral", "x": 1520, "y": 120, "width": 340, "height": 632 },
+      { "id": "boundary-1", "label": "Parity zone", "tone": "neutral", "x": 0, "y": 256, "width": 680, "height": 176 }
+    ],
+    "nodes": [
+      {
+        "id": "client",
+        "stencil": "client.mobile",
+        "label": "Mobile checkout",
+        "sublabel": "Place order",
+        "x": 40,
+        "y": 320,
+        "props": { "ratePerSec": 5, "messageType": "PlaceOrder" },
+        "group": "boundary-1"
+      },
+      {
+        "id": "order-api",
+        "stencil": "service.dotnet",
+        "label": "Renamed by parity",
+        "sublabel": "Owns order state",
+        "x": 420,
+        "y": 320,
+        "props": {
+          "concurrency": 32,
+          "latencyMs": 120,
+          "emits": { "PlaceOrder": "OrderCreated", "ConfirmOrder": "OrderConfirmed", "CancelOrder": "OrderCancelled" }
+        },
+        "group": "boundary-1"
+      },
+      {
+        "id": "orders-db",
+        "stencil": "aws.lambda",
+        "label": "Orders database",
+        "sublabel": "orders + outbox table",
+        "x": 420,
+        "y": 480,
+        "props": { "latencyMs": 10 }
+      },
+      {
+        "id": "outbox-relay",
+        "stencil": "kafka.connect",
+        "label": "Outbox relay",
+        "sublabel": "Debezium outbox router",
+        "x": 800,
+        "y": 480,
+        "props": { "concurrency": 32, "latencyMs": 80 }
+      },
+      {
+        "id": "order-events",
+        "stencil": "kafka.topic",
+        "label": "orders.events",
+        "sublabel": "key: orderId",
+        "x": 800,
+        "y": 160,
+        "props": { "partitions": 12 }
+      },
+      {
+        "id": "notifications",
+        "stencil": "service.node",
+        "label": "Notification service",
+        "sublabel": "group: notifications",
+        "x": 1180,
+        "y": 40,
+        "props": {
+          "concurrency": 32,
+          "latencyMs": 100,
+          "emits": { "OrderConfirmed": "ReceiptEmail", "OrderCancelled": "CancellationEmail" }
+        }
+      },
+      {
+        "id": "email",
+        "stencil": "sendgrid",
+        "label": "SendGrid",
+        "sublabel": "Receipts",
+        "x": 1560,
+        "y": 40,
+        "props": {}
+      },
+      {
+        "id": "saga",
+        "stencil": "generic.saga",
+        "label": "Checkout saga",
+        "sublabel": "Orchestrator · group: saga",
+        "x": 1180,
+        "y": 320,
+        "props": {
+          "concurrency": 64,
+          "latencyMs": 50,
+          "emits": { "OrderCreated": "ReserveInventory", "InventoryReserved": "ChargePayment", "PaymentCaptured": "ConfirmOrder", "PaymentDeclined": "ReleaseInventory", "InventoryReleased": "CancelOrder" }
+        }
+      },
+      {
+        "id": "saga-db",
+        "stencil": "postgres",
+        "label": "Saga state",
+        "sublabel": "One row per checkout",
+        "x": 1180,
+        "y": 480,
+        "props": { "latencyMs": 10 }
+      },
+      {
+        "id": "inventory-cmds",
+        "stencil": "kafka.topic",
+        "label": "inventory.commands",
+        "sublabel": "Reserve · Release",
+        "x": 1560,
+        "y": 160,
+        "group": "kafka",
+        "props": { "partitions": 12 }
+      },
+      {
+        "id": "saga-replies",
+        "stencil": "kafka.topic",
+        "label": "saga.replies",
+        "sublabel": "Step results",
+        "x": 1560,
+        "y": 320,
+        "group": "kafka",
+        "props": { "partitions": 12 }
+      },
+      {
+        "id": "payment-cmds",
+        "stencil": "kafka.topic",
+        "label": "payments.commands",
+        "sublabel": "ChargePayment",
+        "x": 1560,
+        "y": 480,
+        "group": "kafka",
+        "props": { "partitions": 12, "maxDeliveryCount": 5 }
+      },
+      {
+        "id": "payments-dlq",
+        "stencil": "kafka.topic",
+        "label": "payments.commands.dlq",
+        "sublabel": "Dead letters · replayable",
+        "x": 1560,
+        "y": 640,
+        "group": "kafka",
+        "props": { "isDeadLetter": true }
+      },
+      {
+        "id": "inventory-svc",
+        "stencil": "service.java",
+        "label": "Inventory service",
+        "sublabel": "group: inventory",
+        "x": 1940,
+        "y": 160,
+        "props": {
+          "concurrency": 32,
+          "latencyMs": 100,
+          "emits": { "ReserveInventory": "InventoryReserved", "ReleaseInventory": "InventoryReleased" }
+        }
+      },
+      {
+        "id": "payment-svc",
+        "stencil": "service.go",
+        "label": "Payment service",
+        "sublabel": "group: payments",
+        "x": 1940,
+        "y": 480,
+        "props": {
+          "concurrency": 32,
+          "latencyMs": 150,
+          "retry": "inplace",
+          "retryBackoffMs": 300,
+          "emits": { "ChargePayment": "PaymentCaptured" }
+        }
+      },
+      {
+        "id": "inventory-db",
+        "stencil": "postgres",
+        "label": "Inventory database",
+        "sublabel": "Reservations by orderId",
+        "x": 2320,
+        "y": 160,
+        "props": { "latencyMs": 10 }
+      },
+      {
+        "id": "stripe",
+        "stencil": "stripe",
+        "label": "Stripe",
+        "sublabel": "Payment intents",
+        "x": 2320,
+        "y": 480,
+        "props": {}
+      },
+      { "id": "vault", "stencil": "vault", "label": "Vault", "sublabel": "Stripe API key", "x": 1940, "y": 640 },
+      { "id": "topic-1", "stencil": "kafka.topic", "label": "parity.events", "x": 340, "y": 656 },
+      { "id": "key-vault-1", "stencil": "azure.key-vault", "label": "Parity secrets", "x": 40, "y": 64 },
+      { "id": "queue-1", "stencil": "rabbitmq.queue", "label": "buffer", "x": 340, "y": 768 }
+    ],
+    "edges": [
+      {
+        "id": "order-api-to-orders-db",
+        "from": "order-api",
+        "to": "orders-db",
+        "label": "Order + outbox, one tx",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "orders-db-to-outbox-relay",
+        "from": "orders-db",
+        "to": "outbox-relay",
+        "label": "WAL",
+        "kind": "async",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "outbox-relay-to-order-events",
+        "from": "outbox-relay",
+        "to": "order-events",
+        "label": "Outbox events",
+        "kind": "async",
+        "props": { "travelMs": 300 }
+      },
+      {
+        "id": "order-events-to-saga",
+        "from": "order-events",
+        "to": "saga",
+        "label": "OrderCreated",
+        "kind": "async",
+        "props": { "travelMs": 300, "group": "saga", "filter": ["OrderCreated"] }
+      },
+      {
+        "id": "order-events-to-notifications",
+        "from": "order-events",
+        "to": "notifications",
+        "label": "Confirmed · Cancelled",
+        "kind": "async",
+        "props": { "travelMs": 300, "group": "notifications", "filter": ["OrderConfirmed", "OrderCancelled"] }
+      },
+      {
+        "id": "notifications-to-email",
+        "from": "notifications",
+        "to": "email",
+        "label": "Send email",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "saga-to-saga-db",
+        "from": "saga",
+        "to": "saga-db",
+        "label": "Persist step",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "saga-to-inventory-cmds",
+        "from": "saga",
+        "to": "inventory-cmds",
+        "label": "Reserve / Release",
+        "kind": "async",
+        "props": { "travelMs": 300, "filter": ["ReserveInventory", "ReleaseInventory"] }
+      },
+      {
+        "id": "saga-to-payment-cmds",
+        "from": "saga",
+        "to": "payment-cmds",
+        "label": "ChargePayment",
+        "kind": "async",
+        "props": { "travelMs": 300, "filter": ["ChargePayment"] }
+      },
+      {
+        "id": "saga-to-order-api",
+        "from": "saga",
+        "to": "order-api",
+        "label": "Confirm / Cancel",
+        "kind": "async",
+        "props": { "travelMs": 300, "filter": ["ConfirmOrder", "CancelOrder"] }
+      },
+      {
+        "id": "inventory-cmds-to-inventory-svc",
+        "from": "inventory-cmds",
+        "to": "inventory-svc",
+        "kind": "async",
+        "props": { "travelMs": 300, "group": "inventory" }
+      },
+      {
+        "id": "inventory-svc-to-inventory-db",
+        "from": "inventory-svc",
+        "to": "inventory-db",
+        "label": "Reserve stock",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "inventory-svc-to-saga-replies",
+        "from": "inventory-svc",
+        "to": "saga-replies",
+        "label": "Reserved / Released",
+        "kind": "async",
+        "props": { "travelMs": 300 }
+      },
+      {
+        "id": "payment-cmds-to-payment-svc",
+        "from": "payment-cmds",
+        "to": "payment-svc",
+        "kind": "async",
+        "props": { "travelMs": 300, "group": "payments" }
+      },
+      {
+        "id": "payment-cmds-to-payments-dlq",
+        "from": "payment-cmds",
+        "to": "payments-dlq",
+        "label": "After 5 attempts",
+        "kind": "async",
+        "props": { "travelMs": 300, "dlq": true }
+      },
+      {
+        "id": "payment-svc-to-stripe",
+        "from": "payment-svc",
+        "to": "stripe",
+        "label": "Idempotency-Key",
+        "kind": "sync",
+        "props": { "travelMs": 200, "filter": ["PaymentCaptured"] }
+      },
+      {
+        "id": "payment-svc-to-saga-replies",
+        "from": "payment-svc",
+        "to": "saga-replies",
+        "label": "Captured / Declined",
+        "kind": "async",
+        "props": { "travelMs": 300 }
+      },
+      {
+        "id": "saga-replies-to-saga",
+        "from": "saga-replies",
+        "to": "saga",
+        "label": "Next step",
+        "kind": "async",
+        "props": { "travelMs": 300, "group": "saga" }
+      },
+      { "id": "payment-svc-to-vault", "from": "payment-svc", "to": "vault", "kind": "async", "relation": "secret", "sourceSide": "bottom", "targetSide": "top" },
+      { "id": "e-1", "from": "client", "to": "topic-1", "kind": "async" },
+      {
+        "id": "e-4",
+        "from": "client",
+        "to": "queue-1",
+        "kind": "sync",
+        "label": "POST /orders",
+        "props": { "travelMs": 200 }
+      },
+      { "id": "e-5", "from": "queue-1", "to": "order-api", "kind": "sync", "props": { "travelMs": 200 } }
+    ],
+    "simulations": [
+      {
+        "id": "happy-path",
+        "title": "Twenty checkouts, happy path",
+        "description": "Each order commits with its outbox row, then the saga reserves stock, charges the card and confirms.",
+        "seed": 7,
+        "scale": 1,
+        "traffic": [
+          {
+            "id": "checkouts",
+            "node": "client",
+            "messageType": "PlaceOrder",
+            "label": "20 checkouts",
+            "shape": { "kind": "burst", "count": 20, "spreadMs": 4000 }
+          }
+        ],
+        "timeline": [
+          { "atMs": 0, "action": { "do": "trace", "node": "order-api" } },
+          {
+            "atMs": 0,
+            "action": { "do": "note", "text": "The order row and its OrderCreated event commit in one database transaction. No dual write, so no lost events.", "focus": ["order-api", "orders-db"], "pause": true }
+          },
+          {
+            "atMs": 900,
+            "action": { "do": "note", "text": "The outbox relay tails the write-ahead log and publishes each outbox row to Kafka.", "focus": ["orders-db", "outbox-relay", "order-events"] }
+          },
+          {
+            "atMs": 2500,
+            "action": { "do": "note", "text": "The saga runs one step at a time: reserve stock, charge the card, then confirm the order. Every step is saved, so a restart resumes where it left off.", "focus": ["saga", "saga-db", "inventory-cmds", "payment-cmds", "saga-replies"] }
+          },
+          {
+            "atMs": 6000,
+            "action": { "do": "note", "text": "OrderConfirmed goes out through the same outbox, and the customer gets a receipt.", "focus": ["order-events", "notifications", "email"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "stock",
+            "label": "20 reservations",
+            "metric": { "node": "inventory-db", "field": "processed" },
+            "op": "==",
+            "value": 20,
+            "when": "end"
+          },
+          {
+            "id": "charges",
+            "label": "20 cards charged once each",
+            "metric": { "node": "stripe", "field": "processed" },
+            "op": "==",
+            "value": 20,
+            "when": "end"
+          },
+          {
+            "id": "receipts",
+            "label": "20 receipts sent",
+            "metric": { "node": "email", "field": "processed" },
+            "op": "==",
+            "value": 20,
+            "when": "end"
+          },
+          {
+            "id": "orders",
+            "label": "20 orders created, 20 confirmed",
+            "metric": { "node": "orders-db", "field": "processed" },
+            "op": "==",
+            "value": 40,
+            "when": "end"
+          }
+        ]
+      },
+      {
+        "id": "declines",
+        "title": "Declines and flaky payments",
+        "description": "Transient payment errors are retried with the same idempotency key; a fraud rule declines cards for three seconds and the saga compensates.",
+        "seed": 7,
+        "scale": 1,
+        "setup": { "props": { "payment-svc": { "failureRate": 0.2 } } },
+        "traffic": [
+          {
+            "id": "checkouts",
+            "node": "client",
+            "messageType": "PlaceOrder",
+            "label": "60 checkouts over 6 seconds",
+            "shape": { "kind": "constant", "ratePerSec": 10, "durationMs": 6000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 0,
+            "action": { "do": "note", "text": "One payment call in five times out. The consumer retries in place with the same Idempotency-Key, so a retry never charges twice.", "focus": ["payment-svc", "stripe"] }
+          },
+          {
+            "atMs": 2500,
+            "action": {
+              "do": "props",
+              "node": "payment-svc",
+              "props": { "emits": { "ChargePayment": "PaymentDeclined" } }
+            }
+          },
+          {
+            "atMs": 2500,
+            "action": { "do": "note", "text": "A fraud rule starts declining every card. The saga compensates: it releases the reserved stock, then cancels the order.", "focus": ["payment-svc", "saga", "inventory-cmds", "order-api"], "pause": true }
+          },
+          {
+            "atMs": 5500,
+            "action": {
+              "do": "props",
+              "node": "payment-svc",
+              "props": { "emits": { "ChargePayment": "PaymentCaptured" } }
+            }
+          },
+          {
+            "atMs": 5500,
+            "action": { "do": "note", "text": "The rule is rolled back. Every customer still hears back: a receipt or a cancellation.", "focus": ["notifications", "email"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "everyone",
+            "label": "All 60 customers get an email",
+            "metric": { "node": "email", "field": "processed" },
+            "op": "==",
+            "value": 60,
+            "when": "end"
+          },
+          {
+            "id": "compensated",
+            "label": "Declined orders release their stock",
+            "metric": { "node": "inventory-db", "field": "processed" },
+            "op": ">",
+            "value": 60,
+            "when": "end"
+          },
+          {
+            "id": "retried",
+            "label": "Transient errors were retried",
+            "metric": { "node": "payment-svc", "field": "failed" },
+            "op": ">",
+            "value": 0,
+            "when": "end"
+          },
+          {
+            "id": "no-dlq",
+            "label": "Nothing is dead-lettered",
+            "metric": { "node": "payment-cmds", "field": "deadLettered" },
+            "op": "==",
+            "value": 0,
+            "when": "always"
+          }
+        ]
+      },
+      {
+        "id": "sim-1",
+        "title": "Parity rush",
+        "durationMs": 20000,
+        "traffic": [
+          {
+            "id": "traffic-1",
+            "node": "client",
+            "shape": { "kind": "constant", "ratePerSec": 20, "fromMs": 0, "durationMs": 10000 }
+          },
+          {
+            "id": "traffic-2",
+            "node": "client",
+            "shape": { "kind": "burst", "count": 50, "atMs": 5000, "spreadMs": 2000 },
+            "messageType": "ParityBurst"
+          },
+          {
+            "id": "traffic-3",
+            "node": "client",
+            "shape": {
+              "kind": "ramp",
+              "fromMs": 0,
+              "startRate": 1,
+              "stages": [{ "durationMs": 8000, "targetRate": 30 }]
+            }
+          },
+          {
+            "id": "traffic-4",
+            "node": "client",
+            "shape": { "kind": "spike", "baseRate": 5, "peakRate": 40, "atMs": 12000, "peakMs": 1000, "durationMs": 4000 }
+          }
+        ],
+        "timeline": [
+          { "atMs": 6000, "action": { "do": "status", "node": "orders-db", "status": "down" } },
+          { "atMs": 6000, "action": { "do": "note", "text": "It goes down", "focus": ["orders-db"] } }
+        ],
+        "expectations": [
+          {
+            "id": "expectation-1",
+            "label": "Nothing dropped",
+            "metric": { "node": "orders-db", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ],
+        "scale": 2
+      }
+    ],
+    "annotations": [
+      { "id": "note-1", "kind": "note", "text": "Pinned by the parity harness", "x": 40, "y": 440, "width": 240, "height": 160 }
+    ]
+  }
+}

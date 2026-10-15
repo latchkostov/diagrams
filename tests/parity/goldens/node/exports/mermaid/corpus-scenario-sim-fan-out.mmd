@@ -1,0 +1,15 @@
+---
+title: Fan-out to 3 consumer groups
+---
+flowchart LR
+  orders["Orders API"]
+  topic["orders<br/>orders.created"]
+  billing["Billing<br/>group: billing"]
+  shipping["Shipping<br/>group: shipping"]
+  analytics["Analytics<br/>group: analytics"]
+  orders -.-> topic
+  topic -.-> billing
+  topic -.-> shipping
+  topic -.-> analytics
+  linkStyle 0,1,2,3 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"Each subscriber is its own consumer group, so each gets a copy.","nodes":{"orders":["orders","service.node"],"topic":["topic","kafka.topic"],"billing":["billing","service.dotnet"],"shipping":["shipping","service.java"],"analytics":["analytics","service.python"]},"edges":["orders-topic","topic-billing","topic-shipping","topic-analytics"],"relations":{}}

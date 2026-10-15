@@ -1,0 +1,30 @@
+{
+  "withIcons": {
+    "sha256": "9577d04f4c516235414e64bd7312a7a209b32708e7048a7aa66e555edf976de4",
+    "bytes": 16712,
+    "inlined": { "kafka.topic": "kafka 81e432d1da74c5fe", "service.dotnet": "dotnet 625b7d68f63c47d9", "service.java": "java a7012363e0756258", "service.node": "nodejs ad81b1a87b698cc5", "service.python": "python a10eacac248223c9" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Fan-out to 3 consumer groups",
+        "description": "Each subscriber is its own consumer group, so each gets a copy.",
+        "nodes": [
+          { "id": "orders", "stencil": "service.node", "label": "Orders API", "x": 40, "y": 160 },
+          { "id": "topic", "stencil": "kafka.topic", "label": "orders", "sublabel": "orders.created", "x": 400, "y": 160 },
+          { "id": "billing", "stencil": "service.dotnet", "label": "Billing", "sublabel": "group: billing", "x": 760, "y": 40 },
+          { "id": "shipping", "stencil": "service.java", "label": "Shipping", "sublabel": "group: shipping", "x": 760, "y": 160 },
+          { "id": "analytics", "stencil": "service.python", "label": "Analytics", "sublabel": "group: analytics", "x": 760, "y": 280 }
+        ],
+        "edges": [
+          { "id": "orders-topic", "from": "orders", "to": "topic", "kind": "async" },
+          { "id": "topic-billing", "from": "topic", "to": "billing", "kind": "async" },
+          { "id": "topic-shipping", "from": "topic", "to": "shipping", "kind": "async" },
+          { "id": "topic-analytics", "from": "topic", "to": "analytics", "kind": "async" }
+        ]
+      }
+    }
+  ]
+}

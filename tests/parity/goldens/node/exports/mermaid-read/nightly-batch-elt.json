@@ -1,0 +1,35 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Nightly batch ELT",
+    "direction": "LR",
+    "groups": [
+      { "id": "g_snowflake", "label": "Snowflake · ANALYTICS", "tone": "neutral", "x": 417, "y": 280, "width": 660, "height": 296 }
+    ],
+    "nodes": [
+      { "id": "raw", "stencil": "generic.database", "label": "Raw tables", "sublabel": "RAW schema · 3 sources", "x": 817, "y": 344, "group": "g_snowflake" },
+      { "id": "dbt", "stencil": "dbt", "label": "dbt build", "sublabel": "120 models · tests", "x": 457, "y": 404, "group": "g_snowflake" },
+      { "id": "marts", "stencil": "generic.database", "label": "Marts", "sublabel": "Revenue · pipeline · churn", "x": 817, "y": 464, "group": "g_snowflake" },
+      { "id": "airflow", "stencil": "generic.service", "label": "Airflow", "sublabel": "Nightly DAG · 02:00 UTC", "x": 80, "y": 104 },
+      { "id": "app_db", "stencil": "generic.database", "label": "App database", "sublabel": "Read replica", "x": 80, "y": 224 },
+      { "id": "crm", "stencil": "generic.service", "label": "Salesforce", "sublabel": "Accounts · opportunities", "x": 80, "y": 344 },
+      { "id": "billing", "stencil": "generic.service", "label": "Stripe", "sublabel": "Invoices · subscriptions", "x": 80, "y": 464 },
+      { "id": "airbyte", "stencil": "airbyte", "label": "Airbyte", "sublabel": "Incremental syncs", "x": 457, "y": 284 },
+      { "id": "tableau", "stencil": "tableau", "label": "Tableau", "sublabel": "Extract refresh 06:00", "x": 80, "y": 584 },
+      { "id": "slack", "stencil": "generic.service", "label": "#data-alerts", "sublabel": "Failed tests", "x": 817, "y": 224 }
+    ],
+    "edges": [
+      { "id": "e1-app_db-airbyte", "from": "app_db", "to": "airbyte", "label": "Incremental", "kind": "async" },
+      { "id": "e2-crm-airbyte", "from": "crm", "to": "airbyte", "label": "Bulk API", "kind": "async" },
+      { "id": "e3-billing-airbyte", "from": "billing", "to": "airbyte", "label": "Events API", "kind": "async" },
+      { "id": "e4-airflow-airbyte", "from": "airflow", "to": "airbyte", "label": "1 · Sync sources", "kind": "async", "relation": "depends" },
+      { "id": "e5-airflow-dbt", "from": "airflow", "to": "dbt", "label": "2 · dbt build", "kind": "async", "relation": "depends" },
+      { "id": "e6-airbyte-raw", "from": "airbyte", "to": "raw", "label": "COPY INTO", "kind": "sync" },
+      { "id": "e7-dbt-raw", "from": "dbt", "to": "raw", "label": "SELECT", "kind": "async", "relation": "depends" },
+      { "id": "e8-dbt-marts", "from": "dbt", "to": "marts", "label": "CREATE TABLE AS", "kind": "sync" },
+      { "id": "e9-dbt-slack", "from": "dbt", "to": "slack", "label": "Test failed", "kind": "async" },
+      { "id": "e10-tableau-marts", "from": "tableau", "to": "marts", "label": "Refresh extracts", "kind": "sync" }
+    ]
+  }
+}

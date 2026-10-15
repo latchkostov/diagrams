@@ -1,0 +1,115 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"Complete export fixture\" · direction TB · 2 nodes, 1 connections, 1 boundaries, 1 simulations\ndescription: \"All saved fields\"\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Client\" / \"Requests\" props={\"ratePerSec\":7,\"messageType\":\"Request\",\"custom\":{\"retained\":true}} in \"zone\" capabilities=[{\"kind\":\"calls\",\"edge\":\"request\",\"peer\":\"worker\",\"filter\":[\"Request\"]}] explanation=undefined\n  \"worker\" \"service.go\" (\"Go Service\") \"Worker\" / \"API\" props={\"concurrency\":3,\"latencyMs\":40,\"emits\":{\"Request\":\"Reply\"}} in \"zone\" capabilities=[] explanation={\"id\":\"worker\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":75,\"offered\":7,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":3,\"seconds\":0.04,\"utilization\":0.09333333333333334,\"growth\":0,\"contributors\":[{\"edge\":\"request\",\"node\":\"source\",\"label\":\"Client\",\"rate\":7}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"request\" \"source\" -> \"worker\" sync \"Call\"\nboundary \"zone\" \"Zone\" (neutral): \"source\", \"worker\"\nsimulation \"saved\" \"Saved simulation\": {\"kind\":\"burst\",\"count\":3,\"atMs\":100,\"spreadMs\":100} from \"source\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Start\",\"focus\":[\"source\"],\"pause\":true}},{\"atMs\":300,\"action\":{\"do\":\"props\",\"node\":\"worker\",\"props\":{\"concurrency\":4}}}]; expectations=[{\"id\":\"processed\",\"label\":\"All processed\",\"metric\":{\"node\":\"worker\",\"field\":\"processed\"},\"op\":\"==\",\"value\":3,\"when\":\"end\"}]"
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "Complete export fixture",
+      "description": "All saved fields",
+      "direction": "TB",
+      "nodes": [
+        {
+          "id": "source",
+          "stencil": "client.browser",
+          "label": "Client",
+          "sublabel": "Requests",
+          "x": 60,
+          "y": 100,
+          "group": "zone",
+          "props": { "ratePerSec": 7, "messageType": "Request", "custom": { "retained": true } },
+          "capabilities": [{ "kind": "calls", "edge": "request", "peer": "worker", "filter": ["Request"] }]
+        },
+        {
+          "id": "worker",
+          "stencil": "service.go",
+          "label": "Worker",
+          "sublabel": "API",
+          "x": 480,
+          "y": 100,
+          "group": "zone",
+          "props": { "concurrency": 3, "latencyMs": 40, "emits": { "Request": "Reply" } },
+          "capabilities": [],
+          "explanation": {
+            "id": "worker",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 75,
+            "offered": 7,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 3,
+            "seconds": 0.04,
+            "utilization": 0.09333333333333334,
+            "growth": 0,
+            "contributors": [{ "edge": "request", "node": "source", "label": "Client", "rate": 7 }],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "request",
+          "from": "source",
+          "to": "worker",
+          "label": "Call",
+          "kind": "sync",
+          "sourceSide": "bottom",
+          "targetSide": "left",
+          "props": { "travelMs": 30, "filter": ["Request"], "emits": "Request" }
+        }
+      ],
+      "groups": [{ "id": "zone", "label": "Zone", "tone": "neutral", "x": 20, "y": 20, "width": 800, "height": 300 }],
+      "annotations": [],
+      "simulations": [
+        {
+          "id": "saved",
+          "title": "Saved simulation",
+          "description": "Replay",
+          "seed": 7,
+          "durationMs": 5000,
+          "setup": { "status": { "worker": "up" }, "props": { "worker": { "jitter": 0 } } },
+          "traffic": [
+            {
+              "id": "burst",
+              "label": "Requests",
+              "node": "source",
+              "messageType": "Request",
+              "shape": { "kind": "burst", "count": 3, "atMs": 100, "spreadMs": 100 }
+            }
+          ],
+          "timeline": [
+            { "atMs": 0, "action": { "do": "note", "text": "Start", "focus": ["source"], "pause": true } },
+            { "atMs": 300, "action": { "do": "props", "node": "worker", "props": { "concurrency": 4 } } }
+          ],
+          "expectations": [
+            {
+              "id": "processed",
+              "label": "All processed",
+              "metric": { "node": "worker", "field": "processed" },
+              "op": "==",
+              "value": 3,
+              "when": "end"
+            }
+          ]
+        }
+      ],
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"Complete export fixture\" · direction TB · 2 nodes, 1 connections, 1 boundaries, 1 simulations\ndescription: \"All saved fields\"\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Client\" / \"Requests\" props={\"ratePerSec\":7,\"messageType\":\"Request\",\"custom\":{\"retained\":true}} in \"zone\" capabilities=[{\"kind\":\"calls\",\"edge\":\"request\",\"peer\":\"worker\",\"filter\":[\"Request\"]}] explanation=undefined\n  \"worker\" \"service.go\" (\"Go Service\") \"Worker\" / \"API\" props={\"concurrency\":3,\"latencyMs\":40,\"emits\":{\"Request\":\"Reply\"}} in \"zone\" capabilities=[] explanation={\"id\":\"worker\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":75,\"offered\":7,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":3,\"seconds\":0.04,\"utilization\":0.09333333333333334,\"growth\":0,\"contributors\":[{\"edge\":\"request\",\"node\":\"source\",\"label\":\"Client\",\"rate\":7}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"request\" \"source\" -> \"worker\" sync \"Call\"\nboundary \"zone\" \"Zone\" (neutral): \"source\", \"worker\"\nsimulation \"saved\" \"Saved simulation\": {\"kind\":\"burst\",\"count\":3,\"atMs\":100,\"spreadMs\":100} from \"source\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Start\",\"focus\":[\"source\"],\"pause\":true}},{\"atMs\":300,\"action\":{\"do\":\"props\",\"node\":\"worker\",\"props\":{\"concurrency\":4}}}]; expectations=[{\"id\":\"processed\",\"label\":\"All processed\",\"metric\":{\"node\":\"worker\",\"field\":\"processed\"},\"op\":\"==\",\"value\":3,\"when\":\"end\"}]"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "airflow": [40, 40], "app-db": [40, 160], "crm": [40, 280], "billing": [40, 400], "tableau": [40, 520], "dbt": [417, 220], "airbyte": [417, 340], "slack": [777, 160], "raw": [777, 280], "marts": [777, 400] },
+    "TB": { "app-db": [40, 40], "crm": [350, 40], "billing": [650, 40], "airflow": [960, 40], "tableau": [1270, 40], "airbyte": [500, 200], "dbt": [810, 200], "raw": [350, 360], "slack": [650, 360], "marts": [960, 360] }
+  },
+  "tidy": { "airflow": [40, 40], "app-db": [40, 160], "crm": [40, 280], "billing": [40, 400], "airbyte": [417, 340], "raw": [777, 280], "dbt": [417, 220], "marts": [777, 400], "tableau": [40, 520], "slack": [777, 160] },
+  "arrange": {
+    "alignLeft": { "airflow": [40, 40], "app-db": [40, 160], "crm": [40, 320], "billing": [40, 480], "airbyte": [40, 320], "raw": [40, 320], "dbt": [40, 320], "marts": [40, 320], "tableau": [40, 320], "slack": [40, 520] },
+    "alignMiddle": { "airflow": [800, 280], "app-db": [40, 280], "crm": [40, 280], "billing": [40, 280], "airbyte": [420, 280], "raw": [800, 280], "dbt": [1180, 280], "marts": [1560, 280], "tableau": [1940, 280], "slack": [1180, 280] },
+    "distributeH": { "airflow": [884, 40], "app-db": [40, 160], "crm": [244, 320], "billing": [462, 480], "airbyte": [680, 320], "raw": [1095, 320], "dbt": [1301, 320], "marts": [1709, 320], "tableau": [1940, 320], "slack": [1505, 520] },
+    "distributeV": { "airflow": [800, 40], "app-db": [40, 93], "crm": [40, 147], "billing": [40, 467], "airbyte": [420, 200], "raw": [800, 253], "dbt": [1180, 307], "marts": [1560, 360], "tableau": [1940, 413], "slack": [1180, 520] },
+    "spreadH": { "airflow": [1108, 40], "app-db": [40, 40], "crm": [300, 40], "billing": [574, 40], "airbyte": [848, 40], "raw": [1376, 40], "dbt": [1638, 40], "marts": [2158, 40], "tableau": [2445, 40], "slack": [1898, 40] },
+    "boundaryAround": { "x": 0, "y": -24, "width": 2200, "height": 656 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": ["snowflake"],
+    "placedNotes": [],
+    "nodes": { "airflow": [40, 40], "app-db": [40, 160], "crm": [40, 280], "billing": [40, 400], "airbyte": [417, 580], "raw": [777, 280], "dbt": [417, 220], "marts": [777, 400], "tableau": [40, 520], "slack": [777, 40] },
+    "groups": { "snowflake": [377, 156, 687, 356] }
+  }
+}

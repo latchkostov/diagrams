@@ -1484,8 +1484,8 @@
 
 .lv-events li {
   display: grid;
-  /* The kind column fits its longest word ("blocked") at 11px mono. */
-  grid-template-columns: 44px 50px 1fr;
+  /* Translated admission outcomes grow without covering the event text. */
+  grid-template-columns: 44px minmax(50px, max-content) minmax(0, 1fr);
   gap: 6px;
   padding: 2px 12px;
   color: var(--text-2);

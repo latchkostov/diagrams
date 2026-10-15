@@ -1,0 +1,591 @@
+{
+  "steps": [
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "topic-1",
+            "label": "parity.events",
+            "stencil": { "id": "kafka.topic", "label": "Kafka Topic", "confidence": "high", "alternatives": ["pulsar.topic", "confluent.cloud", "aws.msk"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-1", "from": "sql", "to": "topic-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+2 nodes, +2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "dotnet-1",
+            "label": "Parity reader",
+            "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-2", "from": "topic-1", "to": "dotnet-1" },
+          {
+            "i": 2,
+            "op": "add_node",
+            "id": "key-vault-1",
+            "label": "Parity secrets",
+            "stencil": { "id": "azure.key-vault", "label": "Key Vault", "confidence": "high", "alternatives": [] }
+          },
+          { "i": 3, "op": "connect", "id": "e-3", "from": "dotnet-1", "to": "key-vault-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +2 connections, −1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "insert_between",
+            "id": "queue-1",
+            "label": "buffer",
+            "stencil": { "id": "rabbitmq.queue", "label": "RabbitMQ Queue", "confidence": "high", "alternatives": ["aws.mq"] },
+            "from": "sql",
+            "to": "debezium"
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "update", "id": "debezium" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "update",
+            "id": "orders-topic",
+            "stencil": { "id": "aws.lambda", "label": "AWS Lambda", "confidence": "high", "alternatives": [] }
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 boundary, 2 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_boundary", "id": "boundary-1", "label": "Parity zone" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 note",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_note", "id": "note-1" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "title or direction changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "set_meta" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "−1 node, −2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "remove", "ids": ["dotnet-1", "e-2", "e-3"] }]
+      }
+    },
+    {
+      "isError": true,
+      "output": {
+        "ok": false,
+        "i": 0,
+        "error": "Unknown reference \"no-such-node\".",
+        "ref": "no-such-node",
+        "candidates": [
+          { "id": "sql", "label": "Retail SQL Server", "stencil": "sqlserver" },
+          { "id": "debezium", "label": "Renamed by parity", "stencil": "kafka.connect" },
+          { "id": "orders-topic", "label": "retail.dbo.orders", "stencil": "aws.lambda" },
+          { "id": "customers-topic", "label": "retail.dbo.customers", "stencil": "kafka.topic" },
+          { "id": "processor", "label": "Retail projections", "stencil": "service.java" },
+          { "id": "search", "label": "Retail search", "stencil": "elasticsearch" },
+          { "id": "warehouse", "label": "Retail warehouse", "stencil": "snowflake" },
+          { "id": "s3-sink", "label": "S3 sink connector", "stencil": "kafka.connect" },
+          { "id": "lake", "label": "Retail raw lake", "stencil": "aws.s3" },
+          { "id": "registry", "label": "CDC schemas", "stencil": "kafka.schema-registry" },
+          { "id": "topic-1", "label": "parity.events", "stencil": "kafka.topic" },
+          { "id": "key-vault-1", "label": "Parity secrets", "stencil": "azure.key-vault" },
+          { "id": "queue-1", "label": "buffer", "stencil": "rabbitmq.queue" },
+          { "id": "note-1", "label": "Pinned by the parity harness" }
+        ],
+        "hint": "Use an id from candidates, or call describe_diagram.",
+        "applied": false
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "dryRun": true,
+        "summary": "+1 node",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "postgres-1",
+            "label": "Dry run only",
+            "stencil": { "id": "postgres", "label": "PostgreSQL", "confidence": "high", "alternatives": ["gcp.cloud-sql", "aws.aurora", "supabase"] }
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "isError": false,
+      "output": { "ok": true, "id": "sim-1", "title": "Parity rush", "summary": "Added simulation \"Parity rush\": 4 traffic, 2 events, 1 expectations.", "undo": "One undo step reverts this call.", "play": "The user plays it in live view (L), or from the command palette." }
+    },
+    {
+      "isError": true,
+      "output": { "ok": false, "error": "constant traffic needs ratePerSec.", "hint": "Check the input against the tool's schema and try again." }
+    }
+  ],
+  "applied": [
+    { "tool": "edit_diagram", "summary": "+1 node, +1 connection", "changed": ["topic-1", "e-1"] },
+    {
+      "tool": "edit_diagram",
+      "summary": "+2 nodes, +2 connections",
+      "changed": ["dotnet-1", "key-vault-1", "e-2", "e-3"],
+      "choices": [
+        {
+          "nodeId": "dotnet-1",
+          "kind": ".NET consumer",
+          "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] },
+          "node": {
+            "id": "dotnet-1",
+            "stencil": "service.dotnet",
+            "label": "Parity reader",
+            "x": 661,
+            "y": 728,
+            "props": { "replicas": 3 }
+          }
+        }
+      ]
+    },
+    { "tool": "edit_diagram", "summary": "+1 node, +2 connections, −1 connection", "changed": ["queue-1", "e-4", "e-5"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["debezium"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["orders-topic"] },
+    { "tool": "edit_diagram", "summary": "+1 boundary, 2 changed", "changed": ["boundary-1", "sql", "debezium"] },
+    { "tool": "edit_diagram", "summary": "+1 note", "changed": ["note-1"] },
+    { "tool": "edit_diagram", "summary": "title or direction changed", "changed": [] },
+    { "tool": "edit_diagram", "summary": "−1 node, −2 connections", "changed": [] },
+    { "tool": "set_simulation", "summary": "Added simulation “Parity rush”", "changed": ["sql"] }
+  ],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Parity edit",
+    "description": "Debezium captures retail table changes for search projections, a warehouse and raw lake retention.",
+    "direction": "TB",
+    "groups": [
+      { "id": "onprem", "label": "On-prem · retail datacenter", "tone": "onprem", "x": 321, "y": 664, "width": 300, "height": 176 },
+      { "id": "platform", "label": "Kubernetes · CDC platform", "tone": "k8s", "x": 760, "y": -24, "width": 720, "height": 656 },
+      { "id": "boundary-1", "label": "Parity zone", "tone": "neutral", "x": 0, "y": 216, "width": 720, "height": 176 }
+    ],
+    "nodes": [
+      {
+        "id": "sql",
+        "stencil": "sqlserver",
+        "label": "Retail SQL Server",
+        "sublabel": "retail-prod · CDC enabled",
+        "x": 40,
+        "y": 280,
+        "group": "boundary-1",
+        "props": { "ratePerSec": 120 }
+      },
+      {
+        "id": "debezium",
+        "stencil": "kafka.connect",
+        "label": "Renamed by parity",
+        "sublabel": "retail-cdc · snapshot then tail",
+        "x": 420,
+        "y": 280,
+        "group": "boundary-1",
+        "props": { "connector": "debezium-sqlserver", "source": true, "concurrency": 64, "latencyMs": 120 }
+      },
+      {
+        "id": "orders-topic",
+        "stencil": "aws.lambda",
+        "label": "retail.dbo.orders",
+        "sublabel": "CDC envelope · key: order_id",
+        "x": 800,
+        "y": 160,
+        "group": "platform",
+        "props": { "partitions": 64 }
+      },
+      {
+        "id": "customers-topic",
+        "stencil": "kafka.topic",
+        "label": "retail.dbo.customers",
+        "sublabel": "CDC envelope · key: customer_id",
+        "x": 800,
+        "y": 400,
+        "group": "platform",
+        "props": { "partitions": 64 }
+      },
+      {
+        "id": "processor",
+        "stencil": "service.java",
+        "label": "Retail projections",
+        "sublabel": "Kafka Streams · group: retail-projector",
+        "x": 1180,
+        "y": 280,
+        "group": "platform",
+        "props": { "group": "retail-projector", "processingGuarantee": "exactly_once_v2", "concurrency": 64, "latencyMs": 150 }
+      },
+      {
+        "id": "search",
+        "stencil": "elasticsearch",
+        "label": "Retail search",
+        "sublabel": "orders-v1 · customer-v1 indexes",
+        "x": 1560,
+        "y": 160,
+        "props": {}
+      },
+      {
+        "id": "warehouse",
+        "stencil": "snowflake",
+        "label": "Retail warehouse",
+        "sublabel": "RETAIL_ANALYTICS · MERGE by key",
+        "x": 1560,
+        "y": 400,
+        "props": {}
+      },
+      {
+        "id": "s3-sink",
+        "stencil": "kafka.connect",
+        "label": "S3 sink connector",
+        "sublabel": "retail-raw-sink · Parquet",
+        "x": 1180,
+        "y": 520,
+        "group": "platform",
+        "props": { "group": "retail-raw-sink", "flushSize": 10000, "concurrency": 64, "latencyMs": 150 }
+      },
+      {
+        "id": "lake",
+        "stencil": "aws.s3",
+        "label": "Retail raw lake",
+        "sublabel": "s3://retail-cdc-raw/table/date/",
+        "x": 1560,
+        "y": 520,
+        "props": {}
+      },
+      {
+        "id": "registry",
+        "stencil": "kafka.schema-registry",
+        "label": "CDC schemas",
+        "sublabel": "Avro envelopes · compatibility checks",
+        "x": 800,
+        "y": 40,
+        "group": "platform",
+        "props": {}
+      },
+      { "id": "topic-1", "stencil": "kafka.topic", "label": "parity.events", "x": 361, "y": 728, "group": "onprem" },
+      { "id": "key-vault-1", "stencil": "azure.key-vault", "label": "Parity secrets", "x": 40, "y": 64 },
+      { "id": "queue-1", "stencil": "rabbitmq.queue", "label": "buffer", "x": 361, "y": 840 }
+    ],
+    "edges": [
+      {
+        "id": "debezium-to-orders-topic",
+        "from": "debezium",
+        "to": "orders-topic",
+        "label": "Order row changes",
+        "kind": "async",
+        "props": { "travelMs": 300, "filter": ["OrderRow*"] }
+      },
+      {
+        "id": "debezium-to-customers-topic",
+        "from": "debezium",
+        "to": "customers-topic",
+        "label": "Customer row changes",
+        "kind": "async",
+        "props": { "travelMs": 300, "filter": ["CustomerRow*"] }
+      },
+      {
+        "id": "orders-topic-to-processor",
+        "from": "orders-topic",
+        "to": "processor",
+        "label": "group: retail-projector",
+        "kind": "async",
+        "props": { "travelMs": 300, "group": "retail-projector" }
+      },
+      {
+        "id": "customers-topic-to-processor",
+        "from": "customers-topic",
+        "to": "processor",
+        "label": "group: retail-projector",
+        "kind": "async",
+        "props": { "travelMs": 300, "group": "retail-projector" }
+      },
+      {
+        "id": "processor-to-search",
+        "from": "processor",
+        "to": "search",
+        "label": "Bulk index / delete",
+        "kind": "sync",
+        "props": { "travelMs": 200, "emits": "SearchDocument" }
+      },
+      {
+        "id": "processor-to-warehouse",
+        "from": "processor",
+        "to": "warehouse",
+        "label": "Batch MERGE",
+        "kind": "sync",
+        "props": { "travelMs": 200, "emits": "WarehouseRow" }
+      },
+      {
+        "id": "orders-topic-to-s3-sink",
+        "from": "orders-topic",
+        "to": "s3-sink",
+        "label": "group: retail-raw-sink",
+        "kind": "async",
+        "props": { "travelMs": 300, "group": "retail-raw-sink" }
+      },
+      {
+        "id": "customers-topic-to-s3-sink",
+        "from": "customers-topic",
+        "to": "s3-sink",
+        "label": "group: retail-raw-sink",
+        "kind": "async",
+        "props": { "travelMs": 300, "group": "retail-raw-sink" }
+      },
+      {
+        "id": "s3-sink-to-lake",
+        "from": "s3-sink",
+        "to": "lake",
+        "label": "PutObject · Parquet",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "debezium-to-registry",
+        "from": "debezium",
+        "to": "registry",
+        "label": "Register schema",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      { "id": "e-1", "from": "sql", "to": "topic-1", "kind": "async" },
+      {
+        "id": "e-4",
+        "from": "sql",
+        "to": "queue-1",
+        "kind": "async",
+        "label": "CDC · transaction log",
+        "props": { "travelMs": 300 }
+      },
+      { "id": "e-5", "from": "queue-1", "to": "debezium", "kind": "async", "props": { "travelMs": 300 } }
+    ],
+    "simulations": [
+      {
+        "id": "backfill",
+        "title": "Bulk backfill",
+        "seed": 7,
+        "traffic": [
+          {
+            "id": "snapshot",
+            "node": "sql",
+            "messageType": "OrderRowChanged",
+            "label": "600 SQL Server snapshot rows",
+            "shape": { "kind": "burst", "count": 600, "spreadMs": 3000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 0,
+            "action": { "do": "note", "text": "A SQL Server backfill produces order CDC envelopes. Customer subscriptions skip this batch.", "focus": ["sql", "debezium", "orders-topic"] }
+          },
+          {
+            "atMs": 5000,
+            "action": { "do": "note", "text": "Independent groups build search projections and retain raw rows.", "focus": ["processor", "s3-sink"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "search",
+            "label": "Search",
+            "metric": { "node": "search", "field": "processed" },
+            "op": "==",
+            "value": 600,
+            "when": "end"
+          },
+          {
+            "id": "warehouse",
+            "label": "Warehouse",
+            "metric": { "node": "warehouse", "field": "processed" },
+            "op": "==",
+            "value": 600,
+            "when": "end"
+          },
+          {
+            "id": "lake",
+            "label": "Lake",
+            "metric": { "node": "lake", "field": "processed" },
+            "op": "==",
+            "value": 600,
+            "when": "end"
+          },
+          {
+            "id": "customer-filter",
+            "label": "Customer filter",
+            "metric": { "node": "customers-topic", "field": "processed" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ],
+        "scale": 5
+      },
+      {
+        "id": "search-slow",
+        "title": "Elasticsearch slow",
+        "seed": 7,
+        "traffic": [
+          {
+            "id": "changes",
+            "node": "sql",
+            "messageType": "OrderRowChanged",
+            "label": "200 order updates",
+            "shape": { "kind": "burst", "count": 200, "spreadMs": 2000 }
+          }
+        ],
+        "timeline": [
+          { "atMs": 0, "action": { "do": "props", "node": "search", "props": { "latencyMs": 5000 } } },
+          {
+            "atMs": 0,
+            "action": { "do": "note", "text": "Slow Elasticsearch writes remain in flight; the warehouse and raw lake continue.", "focus": ["search", "warehouse", "lake"] }
+          },
+          { "atMs": 8000, "action": { "do": "props", "node": "search", "props": { "latencyMs": 40 } } },
+          {
+            "atMs": 8000,
+            "action": { "do": "note", "text": "Index latency recovers. Every projection eventually lands.", "focus": ["search"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "slow-writes",
+            "label": "Slow writes",
+            "metric": { "node": "search", "field": "inFlight" },
+            "op": ">",
+            "value": 0,
+            "when": "at",
+            "atMs": 3000
+          },
+          {
+            "id": "search",
+            "label": "Search",
+            "metric": { "node": "search", "field": "processed" },
+            "op": "==",
+            "value": 200,
+            "when": "end"
+          },
+          {
+            "id": "warehouse",
+            "label": "Warehouse",
+            "metric": { "node": "warehouse", "field": "processed" },
+            "op": "==",
+            "value": 200,
+            "when": "end"
+          },
+          {
+            "id": "lake",
+            "label": "Lake",
+            "metric": { "node": "lake", "field": "processed" },
+            "op": "==",
+            "value": 200,
+            "when": "end"
+          }
+        ],
+        "scale": 2
+      },
+      {
+        "id": "sim-1",
+        "title": "Parity rush",
+        "durationMs": 20000,
+        "traffic": [
+          {
+            "id": "traffic-1",
+            "node": "sql",
+            "shape": { "kind": "constant", "ratePerSec": 20, "fromMs": 0, "durationMs": 10000 }
+          },
+          {
+            "id": "traffic-2",
+            "node": "sql",
+            "shape": { "kind": "burst", "count": 50, "atMs": 5000, "spreadMs": 2000 },
+            "messageType": "ParityBurst"
+          },
+          {
+            "id": "traffic-3",
+            "node": "sql",
+            "shape": {
+              "kind": "ramp",
+              "fromMs": 0,
+              "startRate": 1,
+              "stages": [{ "durationMs": 8000, "targetRate": 30 }]
+            }
+          },
+          {
+            "id": "traffic-4",
+            "node": "sql",
+            "shape": { "kind": "spike", "baseRate": 5, "peakRate": 40, "atMs": 12000, "peakMs": 1000, "durationMs": 4000 }
+          }
+        ],
+        "timeline": [
+          { "atMs": 6000, "action": { "do": "status", "node": "orders-topic", "status": "down" } },
+          { "atMs": 6000, "action": { "do": "note", "text": "It goes down", "focus": ["orders-topic"] } }
+        ],
+        "expectations": [
+          {
+            "id": "expectation-1",
+            "label": "Nothing dropped",
+            "metric": { "node": "orders-topic", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ],
+        "scale": 2
+      }
+    ],
+    "annotations": [
+      { "id": "note-1", "kind": "note", "text": "Pinned by the parity harness", "x": 40, "y": 400, "width": 240, "height": 160 }
+    ]
+  }
+}

@@ -1,0 +1,381 @@
+{
+  "file": { "sha256": "016b5d712444ce4f1f91002c3aca4d75c8bd98060ebcb7c2801e5f9e035ba4a1", "bytes": 41392 },
+  "payload": {
+    "version": 1,
+    "diagram": {
+      "format": "diagrams/v1",
+      "title": "AWS order fan-out",
+      "description": "An order API publishes SNS events to isolated fulfillment, archive and receipt queues, with scheduled reconciliation.",
+      "direction": "LR",
+      "groups": [
+        { "id": "aws", "label": "AWS · commerce production", "tone": "aws", "x": 380, "y": 0, "width": 2240, "height": 632 }
+      ],
+      "nodes": [
+        {
+          "id": "client",
+          "stencil": "client.browser",
+          "label": "Retail checkout",
+          "sublabel": "Authenticated storefront",
+          "x": 40,
+          "y": 280,
+          "props": { "ratePerSec": 20 }
+        },
+        {
+          "id": "api",
+          "stencil": "aws.api-gateway",
+          "label": "Orders API",
+          "sublabel": "POST /orders · JWT authorizer",
+          "x": 420,
+          "y": 280,
+          "group": "aws",
+          "props": {}
+        },
+        {
+          "id": "intake",
+          "stencil": "aws.lambda",
+          "label": "Create order",
+          "sublabel": "Node.js · publish OrderPlaced",
+          "x": 800,
+          "y": 280,
+          "group": "aws",
+          "props": { "concurrency": 64, "latencyMs": 150, "emits": "OrderPlaced" }
+        },
+        {
+          "id": "sns",
+          "stencil": "aws.sns",
+          "label": "order-events",
+          "sublabel": "OrderPlaced · subscription filters",
+          "x": 1180,
+          "y": 280,
+          "group": "aws",
+          "props": { "partitions": 64 }
+        },
+        {
+          "id": "fulfillment-q",
+          "stencil": "aws.sqs",
+          "label": "fulfillment-orders",
+          "sublabel": "Visibility: 60s · retry limit: 5",
+          "x": 1560,
+          "y": 160,
+          "group": "aws",
+          "props": { "visibilityTimeoutSec": 60, "maxDeliveryCount": 5 }
+        },
+        {
+          "id": "archive-q",
+          "stencil": "aws.sqs",
+          "label": "order-archive",
+          "sublabel": "Batch: 100 · retention: 14 days",
+          "x": 1560,
+          "y": 280,
+          "group": "aws",
+          "props": { "batchSize": 100, "retentionDays": 14 }
+        },
+        {
+          "id": "receipt-q",
+          "stencil": "aws.sqs",
+          "label": "order-receipts",
+          "sublabel": "Visibility: 30s · retry limit: 5",
+          "x": 1560,
+          "y": 400,
+          "group": "aws",
+          "props": { "visibilityTimeoutSec": 30, "maxDeliveryCount": 5 }
+        },
+        {
+          "id": "fulfill",
+          "stencil": "aws.lambda",
+          "label": "Reserve fulfillment",
+          "sublabel": "Batch: 10 · idempotent writes",
+          "x": 1940,
+          "y": 160,
+          "group": "aws",
+          "props": { "batchSize": 10, "concurrency": 64, "latencyMs": 150, "emits": "FulfillmentReserved" }
+        },
+        {
+          "id": "archive",
+          "stencil": "aws.lambda",
+          "label": "Archive orders",
+          "sublabel": "Batch: 100 · compressed JSONL",
+          "x": 1940,
+          "y": 280,
+          "group": "aws",
+          "props": { "batchSize": 100, "concurrency": 64, "latencyMs": 150, "emits": "OrderArchived" }
+        },
+        {
+          "id": "receipt",
+          "stencil": "aws.lambda",
+          "label": "Prepare receipt",
+          "sublabel": "Batch: 10 · receipt status",
+          "x": 1940,
+          "y": 400,
+          "group": "aws",
+          "props": { "batchSize": 10, "concurrency": 64, "latencyMs": 150, "emits": "ReceiptPrepared" }
+        },
+        {
+          "id": "ddb",
+          "stencil": "aws.dynamodb",
+          "label": "Order state",
+          "sublabel": "PK: ORDER#id · conditional writes",
+          "x": 2320,
+          "y": 160,
+          "group": "aws",
+          "props": {}
+        },
+        {
+          "id": "s3",
+          "stencil": "aws.s3",
+          "label": "Order archive",
+          "sublabel": "s3://commerce-orders/year/month/",
+          "x": 2320,
+          "y": 280,
+          "group": "aws",
+          "props": {}
+        },
+        {
+          "id": "receipt-db",
+          "stencil": "aws.dynamodb",
+          "label": "Receipt state",
+          "sublabel": "PK: ORDER#id · dedupe token",
+          "x": 2320,
+          "y": 400,
+          "group": "aws",
+          "props": {}
+        },
+        {
+          "id": "schedule",
+          "stencil": "aws.eventbridge",
+          "label": "Reconcile schedule",
+          "sublabel": "rate(15 minutes)",
+          "x": 1560,
+          "y": 40,
+          "group": "aws",
+          "props": { "ratePerSec": 0.0011111111111111111 }
+        },
+        {
+          "id": "reconcile",
+          "stencil": "aws.lambda",
+          "label": "Reconcile orders",
+          "sublabel": "Detect pending reservations",
+          "x": 1940,
+          "y": 40,
+          "group": "aws",
+          "props": { "concurrency": 64, "latencyMs": 150 }
+        },
+        {
+          "id": "dlq",
+          "stencil": "aws.sqs",
+          "label": "fulfillment-orders-dlq",
+          "sublabel": "Redrive after 5 failed receives",
+          "x": 1560,
+          "y": 520,
+          "group": "aws",
+          "props": { "isDeadLetter": true, "retentionDays": 14 }
+        }
+      ],
+      "edges": [
+        {
+          "id": "client-to-api",
+          "from": "client",
+          "to": "api",
+          "label": "HTTPS",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "api-to-intake",
+          "from": "api",
+          "to": "intake",
+          "label": "POST /orders",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "intake-to-sns",
+          "from": "intake",
+          "to": "sns",
+          "label": "OrderPlaced",
+          "kind": "async",
+          "props": { "travelMs": 300 }
+        },
+        {
+          "id": "sns-to-fulfillment-q",
+          "from": "sns",
+          "to": "fulfillment-q",
+          "label": "Fulfillment subscription",
+          "kind": "async",
+          "props": { "travelMs": 300, "filter": ["OrderPlaced"], "group": "fulfillment-q" }
+        },
+        {
+          "id": "sns-to-archive-q",
+          "from": "sns",
+          "to": "archive-q",
+          "label": "Archive subscription",
+          "kind": "async",
+          "props": { "travelMs": 300, "filter": ["OrderPlaced"], "group": "archive-q" }
+        },
+        {
+          "id": "sns-to-receipt-q",
+          "from": "sns",
+          "to": "receipt-q",
+          "label": "Receipt subscription",
+          "kind": "async",
+          "props": { "travelMs": 300, "filter": ["OrderPlaced"], "group": "receipt-q" }
+        },
+        {
+          "id": "fulfillment-q-to-fulfill",
+          "from": "fulfillment-q",
+          "to": "fulfill",
+          "label": "Event source · batch 10",
+          "kind": "async",
+          "props": { "travelMs": 300 }
+        },
+        {
+          "id": "archive-q-to-archive",
+          "from": "archive-q",
+          "to": "archive",
+          "label": "Event source · batch 100",
+          "kind": "async",
+          "props": { "travelMs": 300 }
+        },
+        {
+          "id": "receipt-q-to-receipt",
+          "from": "receipt-q",
+          "to": "receipt",
+          "label": "Event source · batch 10",
+          "kind": "async",
+          "props": { "travelMs": 300 }
+        },
+        {
+          "id": "fulfill-to-ddb",
+          "from": "fulfill",
+          "to": "ddb",
+          "label": "Conditional update",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "archive-to-s3",
+          "from": "archive",
+          "to": "s3",
+          "label": "PutObject",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "receipt-to-receipt-db",
+          "from": "receipt",
+          "to": "receipt-db",
+          "label": "Put receipt status",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "schedule-to-reconcile",
+          "from": "schedule",
+          "to": "reconcile",
+          "label": "Scheduled event",
+          "kind": "async",
+          "props": { "travelMs": 300 }
+        },
+        {
+          "id": "reconcile-to-ddb",
+          "from": "reconcile",
+          "to": "ddb",
+          "label": "Query pending orders",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "fulfillment-q-to-dlq",
+          "from": "fulfillment-q",
+          "to": "dlq",
+          "label": "After 5 failed receives",
+          "kind": "async",
+          "props": { "travelMs": 300 }
+        }
+      ],
+      "simulations": [
+        {
+          "id": "throttle",
+          "title": "Lambda throttling",
+          "seed": 7,
+          "traffic": [
+            {
+              "id": "orders",
+              "node": "client",
+              "messageType": "OrderRequest",
+              "label": "300 orders under reserved-concurrency pressure",
+              "shape": { "kind": "constant", "ratePerSec": 50, "durationMs": 6000 }
+            }
+          ],
+          "timeline": [
+            { "atMs": 2000, "action": { "do": "props", "node": "fulfill", "props": { "concurrency": 1 } } },
+            {
+              "atMs": 2000,
+              "action": { "do": "note", "text": "Fulfillment is throttled to one Lambda worker. The other queues remain independent.", "focus": ["fulfill", "fulfillment-q"], "pause": true }
+            },
+            { "atMs": 10000, "action": { "do": "props", "node": "fulfill", "props": { "concurrency": 64 } } },
+            {
+              "atMs": 10000,
+              "action": { "do": "note", "text": "Reserved concurrency is restored; fulfillment catches up.", "focus": ["fulfill", "ddb"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "lag-grows",
+              "label": "Lag grows",
+              "metric": { "node": "fulfillment-q", "field": "lag" },
+              "op": ">",
+              "value": 0,
+              "when": "at",
+              "atMs": 8000
+            },
+            {
+              "id": "drained",
+              "label": "Drained",
+              "metric": { "node": "fulfillment-q", "field": "lag" },
+              "op": "==",
+              "value": 0,
+              "when": "end"
+            },
+            {
+              "id": "fulfillment",
+              "label": "Fulfillment",
+              "metric": { "node": "ddb", "field": "processed" },
+              "op": "==",
+              "value": 300,
+              "when": "end"
+            },
+            {
+              "id": "archive",
+              "label": "Archive",
+              "metric": { "node": "s3", "field": "processed" },
+              "op": "==",
+              "value": 300,
+              "when": "end"
+            },
+            {
+              "id": "receipts",
+              "label": "Receipts",
+              "metric": { "node": "receipt-db", "field": "processed" },
+              "op": "==",
+              "value": 300,
+              "when": "end"
+            }
+          ],
+          "scale": 2
+        }
+      ]
+    },
+    "icons": {
+      "aws-api-gateway": { "sha256": "ba50151d29b0ff766b5f5dc174fc1062d6ea07ec5187db2bbdfce8ed00398637", "bytes": 1924 },
+      "aws-dynamodb": { "sha256": "682c5f50891c32b946f08761514899c04263bb0452a64d26a8c4d2602d8264dc", "bytes": 6120 },
+      "aws-eventbridge": { "sha256": "f01c5248cde4b218382a835b9c97db4e992eed45d497dc294cabe1be5c2dd550", "bytes": 4486 },
+      "aws-lambda": { "sha256": "66901bf03fc8e947cfd6633a5cee9bec3d7ee5b68d96a74622779e8e9cf5bcb7", "bytes": 1953 },
+      "aws-s3": { "sha256": "9eb9da8cd09cf6770410a45ab3dacc830aea6752f0d6be88305f249e70f713df", "bytes": 2031 },
+      "aws-sns": { "sha256": "9805176c950fdf2f6840101e64c822ae8b1b978871ccda85fa3eb766c563f509", "bytes": 3726 },
+      "aws-sqs": { "sha256": "8c262db53d2142510d9951733380ba5041e572cc26a0bb1751a102d647f05c24", "bytes": 6604 },
+      "client-browser": { "sha256": "c66b629864dc684d451c1c280107fe74cdd69ffb9d17be64673c90c7c92434f7", "bytes": 476 }
+    },
+    "options": { "theme": "dark", "banner": "Confidential: internal use only", "startSimulation": null, "exportedOn": "2026-01-01" }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Slow consumer lag",
+    "direction": "LR",
+    "nodes": [
+      { "id": "devices", "stencil": "client.iot", "label": "Devices", "x": 40, "y": 100 },
+      { "id": "topic", "stencil": "generic.service", "label": "telemetry", "sublabel": "telemetry", "x": 400, "y": 100 },
+      { "id": "fast", "stencil": "generic.service", "label": "Alerts", "sublabel": "fast", "x": 760, "y": 40 },
+      { "id": "slow", "stencil": "generic.service", "label": "Reports", "sublabel": "slow", "x": 760, "y": 160 }
+    ],
+    "edges": [
+      { "id": "e1-devices-topic", "from": "devices", "to": "topic", "kind": "async" },
+      { "id": "e2-topic-fast", "from": "topic", "to": "fast", "kind": "async" },
+      { "id": "e3-topic-slow", "from": "topic", "to": "slow", "kind": "async" }
+    ]
+  }
+}

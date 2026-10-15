@@ -1,0 +1,216 @@
+{
+  "autoScale": { "freePlay": 1 },
+  "brokerAssignments": { "brokers": {}, "consumers": {} },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "api",
+      "suggestion": "openai: Increase allocation or Reduce calls.",
+      "converged": true,
+      "iterations": 2,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": ["Infinity", 20, 0, 1, 1, 0], "api": [5, 20, 4, 1, 1, 0], "other": ["Infinity", 0, 0, 1, 1, 0] },
+      "connections": { "call": 20 },
+      "offeredTypes": { "source": ["Checkout"], "api": ["Checkout"] }
+    },
+    "explanations": {
+      "api": {
+        "managed": "api",
+        "id": "api",
+        "role": "processor",
+        "status": "up",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 5,
+        "offered": 20,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": 4,
+        "growth": 15,
+        "contributors": [{ "edge": "call", "node": "source", "label": "Checkout", "rate": 20 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "other": {
+        "managed": "api",
+        "id": "other",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": "Infinity",
+        "offered": 0,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": { "source": [{ "kind": "calls", "edge": "call", "peer": "api" }] },
+    "sizing": null,
+    "redundancy": { "api": { "replicas": 2, "enough": false } },
+    "resolved": {
+      "source": {
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 20,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Checkout",
+        "healthChecks": false
+      },
+      "api": {
+        "admission": {
+          "api": {
+            "maxInFlight": 2,
+            "sharedConcurrency": "first",
+            "quotas": [
+              { "id": "tokens", "unit": "tokens", "amount": 10, "windowMs": 1000, "algorithm": "token-bucket" }
+            ],
+            "costPerRequest": { "tokens": 2 }
+          },
+          "endpoints": []
+        },
+        "profile": { "family": "model-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "openai",
+        "healthChecks": false
+      },
+      "other": {
+        "admission": {
+          "api": {
+            "maxInFlight": 4,
+            "sharedConcurrency": "second",
+            "quotas": [
+              { "id": "tokens", "unit": "tokens", "amount": 10, "windowMs": 1000, "algorithm": "token-bucket" }
+            ],
+            "costPerRequest": { "tokens": 2 }
+          },
+          "endpoints": []
+        },
+        "profile": { "family": "model-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Other",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {},
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "over",
+          "top": "api",
+          "headline": "openai is over capacity",
+          "detail": "400% · 20/s of 5/s. Reduce calls",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "20/s · no limit", { "modeled": false }],
+            "api": ["over", "400% · 20/s of 5/s"],
+            "other": ["idle", ""]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "over",
+          "top": "api",
+          "headline": "openai is over capacity",
+          "detail": "20× · 100/s of 5/s. Reduce calls",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "100/s · no limit", { "modeled": false }],
+            "api": ["over", "20× · 100/s of 5/s"],
+            "other": ["idle", ""]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "over",
+          "top": "api",
+          "headline": "openai is over capacity",
+          "detail": "400% · 20/s of 5/s. Reduce calls",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "20/s · no limit", { "modeled": false }],
+            "api": ["over", "400% · 20/s of 5/s"],
+            "other": ["idle", ""]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "over",
+          "top": "api",
+          "headline": "openai is over capacity",
+          "detail": "400% · 20/s of 5/s. Reduce calls",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "20/s · no limit", { "modeled": false }],
+            "api": ["over", "400% · 20/s of 5/s"],
+            "other": ["idle", ""]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    }
+  }
+}

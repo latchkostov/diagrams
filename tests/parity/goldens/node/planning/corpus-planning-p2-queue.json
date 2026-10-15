@@ -1,0 +1,250 @@
+{
+  "autoScale": { "freePlay": 2 },
+  "brokerAssignments": { "brokers": {}, "consumers": { "worker": { "count": 8 } } },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "worker",
+      "suggestion": "Readers: raise replicas from 8 to 16.",
+      "converged": true,
+      "iterations": 3,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": ["Infinity", 64, 0, 1, 1, 0], "broker": [32, 64, 2, 1, 1, 0], "worker": [32, 64, 2, 8, 8, 0], "dead": [0, 0, 0, 1, 1, 0], "cluster": ["Infinity", 0, 0, 1, 1, 0] },
+      "connections": { "publish": 64, "read": 64 },
+      "offeredTypes": { "source": ["Publisher"], "broker": ["Publisher"], "worker": ["Publisher"] }
+    },
+    "explanations": {
+      "worker": {
+        "id": "worker",
+        "role": "processor",
+        "status": "up",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 32,
+        "offered": 64,
+        "replicas": 8,
+        "baseReplicas": 8,
+        "omittedContributors": 0,
+        "activeReplicas": 8,
+        "assignments": [],
+        "slots": 4,
+        "seconds": 1,
+        "utilization": 2,
+        "growth": 32,
+        "contributors": [{ "edge": "read", "node": "broker", "label": "Events", "rate": 64 }],
+        "target": 0.5,
+        "minimumReplicas": 16,
+        "targetReplicas": 32,
+        "changes": [{ "nodeId": "worker", "key": "replicas", "from": 8, "to": 32 }],
+        "fixId": "capacity:worker",
+        "converged": true
+      },
+      "dead": {
+        "id": "dead",
+        "role": "queue",
+        "status": "up",
+        "reason": "no-reader",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 0,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
+        "changes": null,
+        "addConsumer": "dead",
+        "fixId": "no-reader:dead",
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "source": [{ "kind": "publishes", "edge": "publish", "peer": "broker" }],
+      "worker": [{ "kind": "consumes", "edge": "read", "peer": "broker", "retry": "requeue", "retryBackoffMs": 0 }]
+    },
+    "sizing": [{ "nodeId": "worker", "key": "replicas", "from": 8, "to": 30 }],
+    "redundancy": { "broker": { "replicas": 2, "enough": false }, "worker": { "replicas": 30, "enough": true } },
+    "resolved": {
+      "source": {
+        "profile": { "family": "client", "revision": "p2", "evidence": [], "units": "real" },
+        "ratePerSec": 64,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Publisher",
+        "healthChecks": false
+      },
+      "broker": {
+        "profile": { "family": "queue", "revision": "p2", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Events",
+        "healthChecks": false
+      },
+      "worker": {
+        "profile": { "family": "serverless", "revision": "p2", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 1000,
+        "concurrency": 4,
+        "replicas": 8,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Readers",
+        "healthChecks": false
+      },
+      "dead": {
+        "profile": { "family": "queue", "revision": "p2", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Recovery",
+        "healthChecks": false
+      },
+      "cluster": {
+        "profile": { "family": "dependency", "revision": "p2", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Cluster",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {},
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "over",
+          "top": "worker",
+          "headline": "Readers and 1 more are over capacity",
+          "detail": "200% · 64/s of 32/s",
+          "fix": {
+            "changes": [{ "nodeId": "worker", "key": "replicas", "from": 8, "to": 30, "label": "Readers" }],
+            "label": "Readers 8 → 30 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "64/s · no limit", { "modeled": false }],
+            "broker": ["over", "200% · 64/s of 32/s"],
+            "worker": ["over", "200% · 64/s of 32/s"],
+            "dead": ["idle", "", { "noReader": true }],
+            "cluster": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "over",
+          "top": "worker",
+          "headline": "Readers and 1 more are over capacity",
+          "detail": "10× · 320/s of 32/s",
+          "fix": {
+            "changes": [{ "nodeId": "worker", "key": "replicas", "from": 8, "to": 146, "label": "Readers" }],
+            "label": "Readers 8 → 146 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "320/s · no limit", { "modeled": false }],
+            "broker": ["over", "10× · 320/s of 32/s"],
+            "worker": ["over", "10× · 320/s of 32/s"],
+            "dead": ["idle", "", { "noReader": true }],
+            "cluster": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "over",
+          "top": "worker",
+          "headline": "Readers and 1 more are over capacity",
+          "detail": "400% · 64/s of 16/s",
+          "fix": {
+            "changes": [{ "nodeId": "worker", "key": "replicas", "from": 8, "to": 60, "label": "Readers" }],
+            "label": "Readers 8 → 60 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "64/s · no limit", { "modeled": false }],
+            "broker": ["over", "400% · 64/s of 16/s"],
+            "worker": ["over", "400% · 64/s of 16/s"],
+            "dead": ["idle", "", { "noReader": true }],
+            "cluster": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "over",
+          "top": "worker",
+          "headline": "Readers and 1 more are over capacity",
+          "detail": "200% · 64/s of 32/s",
+          "fix": {
+            "changes": [{ "nodeId": "worker", "key": "replicas", "from": 8, "to": 30, "label": "Readers" }],
+            "label": "Readers 8 → 30 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "64/s · no limit", { "modeled": false }],
+            "broker": ["over", "200% · 64/s of 32/s"],
+            "worker": ["over", "200% · 64/s of 32/s"],
+            "dead": ["idle", "", { "noReader": true }],
+            "cluster": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    }
+  }
+}

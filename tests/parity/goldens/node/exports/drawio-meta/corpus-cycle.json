@@ -1,0 +1,29 @@
+{
+  "withIcons": {
+    "sha256": "fac1ae23d4579476cb4fddd26f3ba08546d421d14a02a73e0eb9b1ef7f10bb85",
+    "bytes": 15747,
+    "inlined": { "kafka.topic": "kafka 81e432d1da74c5fe", "service.dotnet": "dotnet 625b7d68f63c47d9" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Cycle of 4",
+        "description": "Messages loop back to the first node.",
+        "nodes": [
+          { "id": "c1", "stencil": "service.dotnet", "label": "Service 1", "x": 260, "y": 106 },
+          { "id": "c2", "stencil": "kafka.topic", "label": "Topic 2", "sublabel": "ring.2", "x": 480, "y": 260 },
+          { "id": "c3", "stencil": "service.dotnet", "label": "Service 3", "x": 260, "y": 414 },
+          { "id": "c4", "stencil": "kafka.topic", "label": "Topic 4", "sublabel": "ring.4", "x": 40, "y": 260 }
+        ],
+        "edges": [
+          { "id": "r1", "from": "c1", "to": "c2", "kind": "async" },
+          { "id": "r2", "from": "c2", "to": "c3", "kind": "async" },
+          { "id": "r3", "from": "c3", "to": "c4", "kind": "async" },
+          { "id": "r4", "from": "c4", "to": "c1", "label": "back to start", "kind": "async" }
+        ]
+      }
+    }
+  ]
+}

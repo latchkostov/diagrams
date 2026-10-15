@@ -1,0 +1,12 @@
+---
+title: Slow consumer lag
+---
+flowchart LR
+  devices(["Devices"])
+  topic["telemetry<br/>telemetry"]
+  fast["Alerts<br/>fast"]
+  slow["Reports<br/>slow"]
+  devices -.-> topic
+  topic -.-> fast
+  topic -.-> slow
+  linkStyle 0,1,2 stroke-dasharray: 6 4

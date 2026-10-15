@@ -1,0 +1,39 @@
+{
+  "summary": "1 warning, 0 suggestions.",
+  "findings": {
+    "no-reader:long-sub": {
+      "title": "Nobody reads notifications",
+      "message": "Customer Communication Preferences Synchronisation Service publishes to notifications, but nothing consumes it: it keeps every message, unread.",
+      "rationale": "A topic keeps what's published until its retention ends, whether anything reads it or not. With no consumer group, nothing acts on its messages, and more partitions don't change that.",
+      "fix": { "label": "Add a consumer…", "choice": "Pick what reads notifications, then add it and connect long-sub to it." }
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "no-reader:long-sub",
+        "rule": "no-reader",
+        "severity": "warning",
+        "title": "Nobody reads notifications",
+        "message": "Customer Communication Preferences Synchronisation Service publishes to notifications, but nothing consumes it: it keeps every message, unread.",
+        "targets": ["long-sub", "long-label"],
+        "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads notifications, then add it and connect long-sub to it." }
+      }
+    ],
+    "summary": "1 warning, 0 suggestions."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      {
+        "id": "no-reader:long-sub",
+        "rule": "no-reader",
+        "severity": "warning",
+        "title": "Nobody reads notifications",
+        "message": "Customer Communication Preferences Synchronisation Service publishes to notifications, but nothing consumes it: it keeps every message, unread.",
+        "targets": ["long-sub", "long-label"],
+        "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads notifications, then add it and connect long-sub to it." }
+      }
+    ],
+    "summary": "1 warning, 0 suggestions."
+  }
+}

@@ -1,0 +1,40 @@
+---
+title: "PlaceOrder #1 · 3.85 s end to end · 3 copies"
+---
+sequenceDiagram
+  participant client as Web shop
+  participant apigw as Orders API
+  participant create_order as CreateOrder
+  participant orders_table as Orders table
+  participant stream_fn as Stream publisher
+  participant bus as commerce-bus
+  participant sfn as Payment workflow
+  participant stripe as Stripe
+  participant fulfillment_q as fulfillment-queue
+  participant sns as order-updates
+  participant fulfillment_fn as RequestShipment
+  participant email as Email receipt
+  participant sms as SMS update
+  participant three_pl as 3PL warehouse API
+  client->>apigw: PlaceOrder (+0.00 s)<br/>HTTPS
+  apigw-->>client: reply (+0.21 s)
+  apigw->>create_order: PlaceOrder (+0.21 s)<br/>POST /orders
+  create_order-->>apigw: reply (+0.48 s)
+  create_order->>orders_table: OrderPlaced (+0.48 s)<br/>PutItem
+  orders_table-->>create_order: reply (+0.69 s)
+  orders_table-)stream_fn: OrderPlaced (+0.69 s)<br/>DynamoDB Streams
+  stream_fn-)bus: OrderPlaced (+1.05 s)<br/>PutEvents
+  bus-)sfn: OrderPlaced (+1.35 s)<br/>Rule: OrderPlaced
+  sfn->>stripe: OrderPaid (+2.03 s)<br/>Task: charge
+  sfn->>orders_table: OrderPaid (+2.03 s)<br/>UpdateItem: PAID
+  stripe-->>sfn: reply (+2.23 s)
+  orders_table-->>sfn: reply (+2.24 s)
+  orders_table-)stream_fn: OrderPaid (+2.24 s)<br/>DynamoDB Streams
+  stream_fn-)bus: OrderPaid (+2.61 s)<br/>PutEvents
+  bus-)fulfillment_q: OrderPaid (+2.91 s)<br/>Rule: OrderPaid
+  bus-)sns: OrderPaid (+2.91 s)<br/>Rule: OrderPaid
+  fulfillment_q-)fulfillment_fn: OrderPaid (+3.21 s)<br/>Event source
+  sns-)email: OrderPaid (+3.21 s)<br/>Email
+  sns-)sms: OrderPaid (+3.21 s)<br/>SMS
+  fulfillment_fn->>three_pl: ShipmentRequested (+3.65 s)<br/>Create shipment
+  three_pl-->>fulfillment_fn: reply (+3.85 s)

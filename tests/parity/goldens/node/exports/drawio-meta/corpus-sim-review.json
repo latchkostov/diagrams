@@ -1,0 +1,46 @@
+{
+  "withIcons": {
+    "sha256": "af6f596d70834be537a5a98470c26c8a1dceb84dc1dfc12922b28486c44ae14d",
+    "bytes": 6150,
+    "inlined": { "client.browser": "client-browser 0022934839e05a07", "service.go": "go 6f494b4da5a84f2a" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Delivery losses",
+        "nodes": [
+          {
+            "id": "web",
+            "stencil": "client.browser",
+            "label": "Web",
+            "x": 0,
+            "y": 100,
+            "props": { "ratePerSec": 2, "messageType": "Order" }
+          },
+          {
+            "id": "q",
+            "stencil": "aws.sqs",
+            "label": "orders",
+            "x": 400,
+            "y": 100,
+            "props": { "maxDeliveryCount": 1 }
+          },
+          {
+            "id": "worker",
+            "stencil": "service.go",
+            "label": "Worker",
+            "x": 800,
+            "y": 100,
+            "props": { "failureRate": 1, "latencyMs": 10, "concurrency": 1, "jitter": 0 }
+          }
+        ],
+        "edges": [
+          { "id": "web-q", "from": "web", "to": "q", "kind": "async", "props": { "travelMs": 20 } },
+          { "id": "q-worker", "from": "q", "to": "worker", "kind": "async", "props": { "travelMs": 20 } }
+        ]
+      }
+    }
+  ]
+}

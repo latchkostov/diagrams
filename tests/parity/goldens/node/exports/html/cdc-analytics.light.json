@@ -1,0 +1,337 @@
+{
+  "file": { "sha256": "e8e4a098b53c71c6deaeed8e077cf69fc4a93faee31c4d120129956ca472f49a", "bytes": 30759 },
+  "payload": {
+    "version": 1,
+    "diagram": {
+      "format": "diagrams/v1",
+      "title": "CDC search and analytics",
+      "description": "Debezium captures retail table changes for search projections, a warehouse and raw lake retention.",
+      "direction": "LR",
+      "groups": [
+        { "id": "onprem", "label": "On-prem · retail datacenter", "tone": "onprem", "x": 0, "y": 240, "width": 321, "height": 152 },
+        { "id": "platform", "label": "Kubernetes · CDC platform", "tone": "k8s", "x": 380, "y": 0, "width": 1100, "height": 632 }
+      ],
+      "nodes": [
+        {
+          "id": "sql",
+          "stencil": "sqlserver",
+          "label": "Retail SQL Server",
+          "sublabel": "retail-prod · CDC enabled",
+          "x": 40,
+          "y": 280,
+          "group": "onprem",
+          "props": { "ratePerSec": 120 }
+        },
+        {
+          "id": "debezium",
+          "stencil": "kafka.connect",
+          "label": "Debezium SQL Server",
+          "sublabel": "retail-cdc · snapshot then tail",
+          "x": 420,
+          "y": 280,
+          "group": "platform",
+          "props": { "connector": "debezium-sqlserver", "source": true, "concurrency": 64, "latencyMs": 150 }
+        },
+        {
+          "id": "orders-topic",
+          "stencil": "kafka.topic",
+          "label": "retail.dbo.orders",
+          "sublabel": "CDC envelope · key: order_id",
+          "x": 800,
+          "y": 160,
+          "group": "platform",
+          "props": { "partitions": 64 }
+        },
+        {
+          "id": "customers-topic",
+          "stencil": "kafka.topic",
+          "label": "retail.dbo.customers",
+          "sublabel": "CDC envelope · key: customer_id",
+          "x": 800,
+          "y": 400,
+          "group": "platform",
+          "props": { "partitions": 64 }
+        },
+        {
+          "id": "processor",
+          "stencil": "service.java",
+          "label": "Retail projections",
+          "sublabel": "Kafka Streams · group: retail-projector",
+          "x": 1180,
+          "y": 280,
+          "group": "platform",
+          "props": { "group": "retail-projector", "processingGuarantee": "exactly_once_v2", "concurrency": 64, "latencyMs": 150 }
+        },
+        {
+          "id": "search",
+          "stencil": "elasticsearch",
+          "label": "Retail search",
+          "sublabel": "orders-v1 · customer-v1 indexes",
+          "x": 1560,
+          "y": 160,
+          "props": {}
+        },
+        {
+          "id": "warehouse",
+          "stencil": "snowflake",
+          "label": "Retail warehouse",
+          "sublabel": "RETAIL_ANALYTICS · MERGE by key",
+          "x": 1560,
+          "y": 400,
+          "props": {}
+        },
+        {
+          "id": "s3-sink",
+          "stencil": "kafka.connect",
+          "label": "S3 sink connector",
+          "sublabel": "retail-raw-sink · Parquet",
+          "x": 1180,
+          "y": 520,
+          "group": "platform",
+          "props": { "group": "retail-raw-sink", "flushSize": 10000, "concurrency": 64, "latencyMs": 150 }
+        },
+        {
+          "id": "lake",
+          "stencil": "aws.s3",
+          "label": "Retail raw lake",
+          "sublabel": "s3://retail-cdc-raw/table/date/",
+          "x": 1560,
+          "y": 520,
+          "props": {}
+        },
+        {
+          "id": "registry",
+          "stencil": "kafka.schema-registry",
+          "label": "CDC schemas",
+          "sublabel": "Avro envelopes · compatibility checks",
+          "x": 800,
+          "y": 40,
+          "group": "platform",
+          "props": {}
+        }
+      ],
+      "edges": [
+        {
+          "id": "sql-to-debezium",
+          "from": "sql",
+          "to": "debezium",
+          "label": "CDC · transaction log",
+          "kind": "async",
+          "props": { "travelMs": 300 }
+        },
+        {
+          "id": "debezium-to-orders-topic",
+          "from": "debezium",
+          "to": "orders-topic",
+          "label": "Order row changes",
+          "kind": "async",
+          "props": { "travelMs": 300, "filter": ["OrderRow*"] }
+        },
+        {
+          "id": "debezium-to-customers-topic",
+          "from": "debezium",
+          "to": "customers-topic",
+          "label": "Customer row changes",
+          "kind": "async",
+          "props": { "travelMs": 300, "filter": ["CustomerRow*"] }
+        },
+        {
+          "id": "orders-topic-to-processor",
+          "from": "orders-topic",
+          "to": "processor",
+          "label": "group: retail-projector",
+          "kind": "async",
+          "props": { "travelMs": 300, "group": "retail-projector" }
+        },
+        {
+          "id": "customers-topic-to-processor",
+          "from": "customers-topic",
+          "to": "processor",
+          "label": "group: retail-projector",
+          "kind": "async",
+          "props": { "travelMs": 300, "group": "retail-projector" }
+        },
+        {
+          "id": "processor-to-search",
+          "from": "processor",
+          "to": "search",
+          "label": "Bulk index / delete",
+          "kind": "sync",
+          "props": { "travelMs": 200, "emits": "SearchDocument" }
+        },
+        {
+          "id": "processor-to-warehouse",
+          "from": "processor",
+          "to": "warehouse",
+          "label": "Batch MERGE",
+          "kind": "sync",
+          "props": { "travelMs": 200, "emits": "WarehouseRow" }
+        },
+        {
+          "id": "orders-topic-to-s3-sink",
+          "from": "orders-topic",
+          "to": "s3-sink",
+          "label": "group: retail-raw-sink",
+          "kind": "async",
+          "props": { "travelMs": 300, "group": "retail-raw-sink" }
+        },
+        {
+          "id": "customers-topic-to-s3-sink",
+          "from": "customers-topic",
+          "to": "s3-sink",
+          "label": "group: retail-raw-sink",
+          "kind": "async",
+          "props": { "travelMs": 300, "group": "retail-raw-sink" }
+        },
+        {
+          "id": "s3-sink-to-lake",
+          "from": "s3-sink",
+          "to": "lake",
+          "label": "PutObject · Parquet",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "debezium-to-registry",
+          "from": "debezium",
+          "to": "registry",
+          "label": "Register schema",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        }
+      ],
+      "simulations": [
+        {
+          "id": "backfill",
+          "title": "Bulk backfill",
+          "seed": 7,
+          "traffic": [
+            {
+              "id": "snapshot",
+              "node": "sql",
+              "messageType": "OrderRowChanged",
+              "label": "600 SQL Server snapshot rows",
+              "shape": { "kind": "burst", "count": 600, "spreadMs": 3000 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 0,
+              "action": { "do": "note", "text": "A SQL Server backfill produces order CDC envelopes. Customer subscriptions skip this batch.", "focus": ["sql", "debezium", "orders-topic"] }
+            },
+            {
+              "atMs": 5000,
+              "action": { "do": "note", "text": "Independent groups build search projections and retain raw rows.", "focus": ["processor", "s3-sink"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "search",
+              "label": "Search",
+              "metric": { "node": "search", "field": "processed" },
+              "op": "==",
+              "value": 600,
+              "when": "end"
+            },
+            {
+              "id": "warehouse",
+              "label": "Warehouse",
+              "metric": { "node": "warehouse", "field": "processed" },
+              "op": "==",
+              "value": 600,
+              "when": "end"
+            },
+            {
+              "id": "lake",
+              "label": "Lake",
+              "metric": { "node": "lake", "field": "processed" },
+              "op": "==",
+              "value": 600,
+              "when": "end"
+            },
+            {
+              "id": "customer-filter",
+              "label": "Customer filter",
+              "metric": { "node": "customers-topic", "field": "processed" },
+              "op": "==",
+              "value": 0,
+              "when": "end"
+            }
+          ],
+          "scale": 5
+        },
+        {
+          "id": "search-slow",
+          "title": "Elasticsearch slow",
+          "seed": 7,
+          "traffic": [
+            {
+              "id": "changes",
+              "node": "sql",
+              "messageType": "OrderRowChanged",
+              "label": "200 order updates",
+              "shape": { "kind": "burst", "count": 200, "spreadMs": 2000 }
+            }
+          ],
+          "timeline": [
+            { "atMs": 0, "action": { "do": "props", "node": "search", "props": { "latencyMs": 5000 } } },
+            {
+              "atMs": 0,
+              "action": { "do": "note", "text": "Slow Elasticsearch writes remain in flight; the warehouse and raw lake continue.", "focus": ["search", "warehouse", "lake"] }
+            },
+            { "atMs": 8000, "action": { "do": "props", "node": "search", "props": { "latencyMs": 40 } } },
+            {
+              "atMs": 8000,
+              "action": { "do": "note", "text": "Index latency recovers. Every projection eventually lands.", "focus": ["search"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "slow-writes",
+              "label": "Slow writes",
+              "metric": { "node": "search", "field": "inFlight" },
+              "op": ">",
+              "value": 0,
+              "when": "at",
+              "atMs": 3000
+            },
+            {
+              "id": "search",
+              "label": "Search",
+              "metric": { "node": "search", "field": "processed" },
+              "op": "==",
+              "value": 200,
+              "when": "end"
+            },
+            {
+              "id": "warehouse",
+              "label": "Warehouse",
+              "metric": { "node": "warehouse", "field": "processed" },
+              "op": "==",
+              "value": 200,
+              "when": "end"
+            },
+            {
+              "id": "lake",
+              "label": "Lake",
+              "metric": { "node": "lake", "field": "processed" },
+              "op": "==",
+              "value": 200,
+              "when": "end"
+            }
+          ],
+          "scale": 2
+        }
+      ]
+    },
+    "icons": {
+      "aws-s3": { "sha256": "9eb9da8cd09cf6770410a45ab3dacc830aea6752f0d6be88305f249e70f713df", "bytes": 2031 },
+      "elasticsearch": { "sha256": "224c01316361b0813a093eaf7386da7aa4330cb3f28f257fce540ce730613ceb", "bytes": 851 },
+      "java": { "sha256": "5267ef9b941ed3577d43b258c86bd6f218c30356da4c8edf6ef49a989845b337", "bytes": 2011 },
+      "kafka": { "sha256": "938a96212aef8da520eca3435f23c1a3304ce25fbfaf0e5712ce548353abc5ef", "bytes": 4092 },
+      "snowflake": { "sha256": "1c46c348a8d8022f5601aa7862264a8f6b4f61f8574e0d5a2d4e8769352a94f4", "bytes": 3098 },
+      "sqlserver": { "sha256": "7d834ff581c31728bc4f2bb63bdc15d4e7d14f777bccbdad2fa41e289bf5aeea", "bytes": 5086 }
+    },
+    "options": { "theme": "light", "startSimulation": "backfill", "exportedOn": "2026-01-01" }
+  }
+}

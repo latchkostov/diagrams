@@ -1,0 +1,39 @@
+{
+  "summary": "1 warning, 0 suggestions.",
+  "findings": {
+    "no-reader:topic": {
+      "title": "Nobody reads Order events",
+      "message": "Checkout publishes to Order events, but nothing consumes it: it keeps every message, unread.",
+      "rationale": "A topic keeps what's published until its retention ends, whether anything reads it or not. With no consumer group, nothing acts on its messages, and more partitions don't change that.",
+      "fix": { "label": "Add a consumer…", "choice": "Pick what reads Order events, then add it and connect topic to it." }
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "no-reader:topic",
+        "rule": "no-reader",
+        "severity": "warning",
+        "title": "Nobody reads Order events",
+        "message": "Checkout publishes to Order events, but nothing consumes it: it keeps every message, unread.",
+        "targets": ["topic", "checkout"],
+        "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads Order events, then add it and connect topic to it." }
+      }
+    ],
+    "summary": "1 warning, 0 suggestions."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      {
+        "id": "no-reader:topic",
+        "rule": "no-reader",
+        "severity": "warning",
+        "title": "Nobody reads Order events",
+        "message": "Checkout publishes to Order events, but nothing consumes it: it keeps every message, unread.",
+        "targets": ["topic", "checkout"],
+        "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads Order events, then add it and connect topic to it." }
+      }
+    ],
+    "summary": "1 warning, 0 suggestions."
+  }
+}

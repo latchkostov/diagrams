@@ -1,0 +1,18 @@
+{
+  "summary": "1 warning, 0 suggestions.",
+  "findings": {
+    "capacity:worker-0": { "title": "Worker 0 is down", "message": "It's saved down, so it handles nothing: messages wait in Order events until it's back.", "rationale": "A service saved down or paused starts that way in live view. Behind a topic or queue its messages wait; pushed to it, they fail." }
+  },
+  "agentReport": {
+    "findings": [
+      { "id": "capacity:worker-0", "rule": "capacity", "severity": "warning", "title": "Worker 0 is down", "message": "It's saved down, so it handles nothing: messages wait in Order events until it's back.", "targets": ["worker-0"] }
+    ],
+    "summary": "1 warning, 0 suggestions."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      { "id": "capacity:worker-0", "rule": "capacity", "severity": "warning", "title": "Worker 0 is down", "message": "It's saved down, so it handles nothing: messages wait in Order events until it's back.", "targets": ["worker-0"] }
+    ],
+    "summary": "1 warning, 0 suggestions."
+  }
+}

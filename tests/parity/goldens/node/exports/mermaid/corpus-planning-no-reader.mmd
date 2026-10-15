@@ -1,0 +1,9 @@
+---
+title: Planning: shared capacity
+---
+flowchart LR
+  checkout(["Checkout"])
+  topic["Order events"]
+  checkout -.-> topic
+  linkStyle 0 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"nodes":{"checkout":["checkout","client.browser"],"topic":["topic","kafka.topic"]},"edges":["publish"],"relations":{}}

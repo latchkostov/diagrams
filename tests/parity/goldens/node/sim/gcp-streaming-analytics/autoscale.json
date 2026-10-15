@@ -1,0 +1,125 @@
+{
+  "run": {
+    "time": 12620,
+    "totalMs": 20000,
+    "done": true,
+    "scale": 20,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "backlog", "label": "Backlog grows with two workers", "status": "pass", "value": 0 },
+      { "id": "drained", "label": "Backlog drains after autoscaling", "status": "pass", "value": 0 },
+      { "id": "sessions", "label": "All 6,000 events reach BigQuery", "status": "pass", "value": 6000 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "note", "label": "Two Dataflow workers handle about 200 events a second, but 600 arrive. Unacknowledged messages pile up in the subscription." },
+      { "atMs": 0, "kind": "traffic", "label": "600 events/s for 10 seconds" },
+      { "atMs": 4000, "kind": "props", "label": "props: dataflow" },
+      { "atMs": 4000, "kind": "note", "label": "Autoscaling sees the backlog and adds six workers. The raw archive was never behind: its subscription is independent." },
+      { "atMs": 9000, "kind": "note", "label": "With 800 events a second of capacity, the backlog drains and BigQuery catches up." },
+      { "atMs": 10000, "kind": "traffic", "label": "600 events/s for 10 seconds ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "app": { "replicas": [1, 1, 0] },
+        "collector": { "replicas": [1, 1, 0] },
+        "pubsub-topic": { "lag": { "dataflow": 0, "archive": 0 }, "replicas": [1, 1, 0] },
+        "dataflow": { "replicas": [2, 2, 0] },
+        "raw-archive": { "replicas": [1, 1, 0] },
+        "bigquery": { "replicas": [1, 1, 0] },
+        "looker": { "replicas": [1, 1, 0] },
+        "dead-letters": { "lag": { "dlq-archive": 0 }, "replicas": [1, 1, 0] },
+        "dead-bucket": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 54,
+      "nodes": {
+        "app": { "processed": 300, "throughput": 29.749580719191012, "replicas": [1, 1, 0] },
+        "collector": { "processed": 292, "inFlight": 2, "throughput": 29.822476077525174, "replicas": [1, 1, 0] },
+        "pubsub-topic": {
+          "processed": 283,
+          "backlog": 5,
+          "throughput": 29.81059764939583,
+          "lag": { "dataflow": 5, "archive": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "dataflow": { "processed": 263, "backlog": 1, "inFlight": 2, "throughput": 39.910539451927484, "replicas": [8, 8, 0] },
+        "raw-archive": { "processed": 274, "throughput": 29.830775803140753, "replicas": [1, 1, 0] },
+        "bigquery": { "processed": 255, "throughput": 39.89085204241068, "replicas": [1, 1, 0] },
+        "looker": { "replicas": [1, 1, 0] },
+        "dead-letters": { "lag": { "dlq-archive": 0 }, "replicas": [1, 1, 0] },
+        "dead-bucket": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 12620,
+    "inSystem": 0,
+    "real": {
+      "app": { "processed": 6000, "throughput": 44.78045475670328, "replicas": [1, 1, 0] },
+      "collector": { "processed": 6000, "throughput": 56.67610600260641, "replicas": [1, 1, 0] },
+      "pubsub-topic": {
+        "processed": 6000,
+        "throughput": 76.50474086672932,
+        "lag": { "dataflow": 0, "archive": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "dataflow": { "processed": 6000, "throughput": 146.6207859633808, "replicas": [8, 8, 0] },
+      "raw-archive": { "processed": 6000, "throughput": 103.27059828027417, "replicas": [1, 1, 0] },
+      "bigquery": { "processed": 6000, "throughput": 179.08303237928496, "replicas": [1, 1, 0] },
+      "looker": { "replicas": [1, 1, 0] },
+      "dead-letters": { "lag": { "dlq-archive": 0 }, "replicas": [1, 1, 0] },
+      "dead-bucket": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "app-to-collector": 300, "collector-to-topic": 300, "topic-to-dataflow": 300, "topic-to-raw-archive": 300, "dataflow-to-bigquery": 300, "dataflow-to-dead-letters": 0, "dead-letters-to-dead-bucket": 0, "looker-to-bigquery": 0 }
+  },
+  "events": {
+    "total": 3600,
+    "byKind": { "inject": 300, "process": 1800, "deliver": 1500 },
+    "byNode": {
+      "app": { "inject": 300, "process": 300 },
+      "collector": { "deliver": 300, "process": 300 },
+      "pubsub-topic": { "deliver": 300, "process": 300 },
+      "dataflow": { "deliver": 300, "process": 300 },
+      "raw-archive": { "deliver": 300, "process": 300 },
+      "bigquery": { "deliver": 300, "process": 300 }
+    },
+    "perSecond": [
+      "2af28531f886",
+      "6adbcf5248c7",
+      "1da83db02354",
+      "747a25f541b0",
+      "3aa254157722",
+      "08ed61712637",
+      "23e0702cb46f",
+      "99f8091fb003",
+      "52af6e0adfc0",
+      "416ee128af0b",
+      "c5f3f8c5763a",
+      "a765beda2250",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 0, "text": "Two Dataflow workers handle about 200 events a second, but 600 arrive. Unacknowledged messages pile up in the subscription.", "focus": ["pubsub-topic", "dataflow"] },
+    { "atMs": 4000, "text": "Autoscaling sees the backlog and adds six workers. The raw archive was never behind: its subscription is independent.", "focus": ["dataflow", "raw-archive"] },
+    { "atMs": 9000, "text": "With 800 events a second of capacity, the backlog drains and BigQuery catches up.", "focus": ["pubsub-topic", "bigquery"] }
+  ],
+  "latency": {
+    "journeys": { "done": 300, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 300, "min": 1080, "mean": 2213.7, "p50": 2230, "p90": 3110, "max": 3310 },
+    "waitMs": {
+      "collector": { "count": 300, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "dataflow": { "count": 300, "min": 0, "mean": 47.666666666666664, "p50": 30, "p90": 150, "max": 270 }
+    },
+    "processMs": {
+      "collector": { "count": 300, "min": 40, "mean": 45.53333333333333, "p50": 50, "p90": 50, "max": 50 },
+      "dataflow": { "count": 300, "min": 40, "mean": 44.96666666666667, "p50": 40, "p90": 50, "max": 50 }
+    }
+  }
+}

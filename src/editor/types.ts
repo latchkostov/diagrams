@@ -98,7 +98,11 @@ export interface EditorApi {
   /** Bulk edit (the multi-selection's inspector): one state pass and one undo step for all of `ids`. */
   updateNodes(ids: readonly string[], patch: Pick<Partial<DiagramNode>, "stencil" | "group">, opts?: EditOptions): void;
   /** Bulk edit: shallow-merges the same props into every node of `ids`, as one undo step. */
-  setNodesProps(ids: readonly string[], patch: Record<string, unknown>, opts?: EditOptions): void;
+  setNodesProps(
+    ids: readonly string[],
+    patch: Record<string, unknown> | ((props: Record<string, unknown>, id: string) => Record<string, unknown>),
+    opts?: EditOptions,
+  ): void;
   /** Bulk edit: one colour for several texts, notes, zones and shapes, as one undo step. */
   updateAnnotations(ids: readonly string[], patch: Pick<Partial<DiagramAnnotation>, "color">, opts?: EditOptions): void;
   /** Bulk edit: one colour for several boundaries, as one undo step. */

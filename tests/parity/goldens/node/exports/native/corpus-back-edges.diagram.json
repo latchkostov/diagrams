@@ -1,0 +1,104 @@
+{
+  "format": "diagrams/v1",
+  "title": "Back-edges and loops",
+  "description": "Targets behind, above and below their sources.",
+  "nodes": [
+    {
+      "id": "api",
+      "stencil": "aws.api-gateway",
+      "label": "API",
+      "x": 40,
+      "y": 160
+    },
+    {
+      "id": "svc",
+      "stencil": "service.node",
+      "label": "Orders",
+      "x": 400,
+      "y": 160
+    },
+    {
+      "id": "topic",
+      "stencil": "kafka.topic",
+      "label": "orders",
+      "sublabel": "orders.v1",
+      "x": 760,
+      "y": 160
+    },
+    {
+      "id": "retry",
+      "stencil": "service.go",
+      "label": "Retry worker",
+      "x": 760,
+      "y": 400
+    },
+    {
+      "id": "above",
+      "stencil": "redis.cache",
+      "label": "Cache (above)",
+      "x": 400,
+      "y": -8
+    },
+    {
+      "id": "below",
+      "stencil": "postgres",
+      "label": "DB (below)",
+      "x": 400,
+      "y": 400
+    }
+  ],
+  "edges": [
+    {
+      "id": "fwd-1",
+      "from": "api",
+      "to": "svc",
+      "kind": "sync"
+    },
+    {
+      "id": "fwd-2",
+      "from": "svc",
+      "to": "topic",
+      "kind": "async"
+    },
+    {
+      "id": "down",
+      "from": "topic",
+      "to": "retry",
+      "kind": "async",
+      "label": "failed"
+    },
+    {
+      "id": "back",
+      "from": "retry",
+      "to": "svc",
+      "kind": "async",
+      "label": "back-edge: retry"
+    },
+    {
+      "id": "back-far",
+      "from": "topic",
+      "to": "api",
+      "kind": "async",
+      "label": "back-edge: skip"
+    },
+    {
+      "id": "up",
+      "from": "svc",
+      "to": "above",
+      "kind": "sync"
+    },
+    {
+      "id": "down-2",
+      "from": "svc",
+      "to": "below",
+      "kind": "sync"
+    },
+    {
+      "id": "self",
+      "from": "retry",
+      "to": "retry",
+      "kind": "async",
+      "label": "self-loop"
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "withIcons": {
+    "sha256": "90b954ee82ff924282ab674cc515e30afb3e9d72588fce860eee63ad1fcb970a",
+    "bytes": 59756,
+    "inlined": { "kafka.topic": "kafka 81e432d1da74c5fe", "postgres": "postgresql 5bc8dcc1fbb1ec10", "service.dotnet": "dotnet 625b7d68f63c47d9", "service.go": "go 6f494b4da5a84f2a", "service.java": "java a7012363e0756258" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Routing obstacle course",
+        "description": "Skipped columns, fans, back-edges and reverse pairs.",
+        "direction": "LR",
+        "groups": [
+          { "id": "g", "label": "Boundary across the middle", "tone": "k8s", "x": 420, "y": 0, "width": 700, "height": 460 }
+        ],
+        "nodes": [
+          { "id": "n0-0", "stencil": "service.dotnet", "label": "Node 0.0", "sublabel": "col 0 · row 0", "x": 40, "y": 40 },
+          { "id": "n0-1", "stencil": "kafka.topic", "label": "Node 0.1", "sublabel": "col 0 · row 1", "x": 40, "y": 180 },
+          { "id": "n0-2", "stencil": "service.go", "label": "Node 0.2", "sublabel": "col 0 · row 2", "x": 40, "y": 320 },
+          { "id": "n1-0", "stencil": "kafka.topic", "label": "Node 1.0", "sublabel": "col 1 · row 0", "x": 440, "y": 40, "group": "g" },
+          { "id": "n1-1", "stencil": "service.go", "label": "Node 1.1", "sublabel": "col 1 · row 1", "x": 440, "y": 180, "group": "g" },
+          { "id": "n1-2", "stencil": "postgres", "label": "Node 1.2", "sublabel": "col 1 · row 2", "x": 440, "y": 320, "group": "g" },
+          { "id": "n2-0", "stencil": "service.go", "label": "Node 2.0", "sublabel": "col 2 · row 0", "x": 840, "y": 40, "group": "g" },
+          { "id": "n2-1", "stencil": "postgres", "label": "Node 2.1", "sublabel": "col 2 · row 1", "x": 840, "y": 180, "group": "g" },
+          { "id": "n2-2", "stencil": "aws.sqs", "label": "Node 2.2", "sublabel": "col 2 · row 2", "x": 840, "y": 320, "group": "g" },
+          { "id": "n3-0", "stencil": "postgres", "label": "Node 3.0", "sublabel": "col 3 · row 0", "x": 1240, "y": 40 },
+          { "id": "n3-1", "stencil": "aws.sqs", "label": "Node 3.1", "sublabel": "col 3 · row 1", "x": 1240, "y": 180 },
+          { "id": "n3-2", "stencil": "service.java", "label": "Node 3.2", "sublabel": "col 3 · row 2", "x": 1240, "y": 320 }
+        ],
+        "edges": [
+          { "id": "n0-1->n3-1", "from": "n0-1", "to": "n3-1", "label": "Skips every column", "kind": "async" },
+          { "id": "n0-0->n2-2", "from": "n0-0", "to": "n2-2", "label": "Diagonal across", "kind": "async" },
+          { "id": "n1-1->n2-0", "from": "n1-1", "to": "n2-0", "label": "Fan 0", "kind": "async" },
+          { "id": "n1-1->n2-1", "from": "n1-1", "to": "n2-1", "label": "Fan 1", "kind": "async" },
+          { "id": "n1-1->n2-2", "from": "n1-1", "to": "n2-2", "label": "Fan 2", "kind": "async" },
+          { "id": "n0-0->n1-1", "from": "n0-0", "to": "n1-1", "label": "In 0", "kind": "sync" },
+          { "id": "n0-2->n1-1", "from": "n0-2", "to": "n1-1", "label": "In 2", "kind": "sync" },
+          { "id": "n3-0->n0-0", "from": "n3-0", "to": "n0-0", "label": "Back to the start", "kind": "sync" },
+          { "id": "n3-2->n2-2", "from": "n3-2", "to": "n2-2", "label": "Reply", "kind": "async" },
+          { "id": "n2-2->n3-2", "from": "n2-2", "to": "n3-2", "label": "Request", "kind": "sync" }
+        ]
+      }
+    }
+  ]
+}

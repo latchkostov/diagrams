@@ -1,0 +1,18 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Shared account quota and an endpoint budget",
+    "direction": "LR",
+    "nodes": [
+      { "id": "web", "stencil": "generic.service", "label": "Web", "x": 40, "y": 40 },
+      { "id": "batch", "stencil": "generic.service", "label": "Batch", "x": 40, "y": 160 },
+      { "id": "a", "stencil": "client.partner", "label": "Partner API a", "x": 400, "y": 40 },
+      { "id": "b", "stencil": "client.partner", "label": "Partner API b", "x": 400, "y": 160 }
+    ],
+    "edges": [
+      { "id": "e1-web-a", "from": "web", "to": "a", "kind": "sync" },
+      { "id": "e2-batch-b", "from": "batch", "to": "b", "kind": "sync" }
+    ]
+  }
+}

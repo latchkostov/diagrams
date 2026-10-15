@@ -1,0 +1,37 @@
+{
+  "withIcons": {
+    "sha256": "4d392e74440e32342f556872cf57a9065422407f5609810f6161ca8b4d09f407",
+    "bytes": 22362,
+    "inlined": { "kafka.topic": "kafka 81e432d1da74c5fe", "service.dotnet": "dotnet 625b7d68f63c47d9", "service.go": "go 6f494b4da5a84f2a", "service.java": "java a7012363e0756258", "service.node": "nodejs ad81b1a87b698cc5", "service.python": "python a10eacac248223c9" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Edge kinds",
+        "description": "async (dashed), sync (solid), labels, and a two-way pair.",
+        "nodes": [
+          { "id": "async-a", "stencil": "service.node", "label": "async source", "x": 40, "y": 40 },
+          { "id": "async-b", "stencil": "kafka.topic", "label": "async target", "x": 544, "y": 40 },
+          { "id": "sync-a", "stencil": "aws.api-gateway", "label": "sync source", "x": 40, "y": 220 },
+          { "id": "sync-b", "stencil": "service.java", "label": "sync target", "x": 544, "y": 220 },
+          { "id": "labelled-a", "stencil": "service.go", "label": "labelled source", "x": 40, "y": 400 },
+          { "id": "labelled-b", "stencil": "aws.sqs", "label": "labelled target", "x": 544, "y": 400 },
+          { "id": "long-label-a", "stencil": "azure.api-management", "label": "long-label source", "x": 40, "y": 580 },
+          { "id": "long-label-b", "stencil": "azure.functions", "label": "long-label target", "x": 544, "y": 580 },
+          { "id": "bi-a", "stencil": "service.python", "label": "bidirectional A", "x": 40, "y": 760 },
+          { "id": "bi-b", "stencil": "service.dotnet", "label": "bidirectional B", "x": 544, "y": 760 }
+        ],
+        "edges": [
+          { "id": "edge-async", "from": "async-a", "to": "async-b", "kind": "async" },
+          { "id": "edge-sync", "from": "sync-a", "to": "sync-b", "kind": "sync" },
+          { "id": "edge-labelled", "from": "labelled-a", "to": "labelled-b", "label": "OrderPlaced", "kind": "async" },
+          { "id": "edge-long-label", "from": "long-label-a", "to": "long-label-b", "label": "POST /orders/{id}/payments (idempotent, retries ×3)", "kind": "sync" },
+          { "id": "bi-ab", "from": "bi-a", "to": "bi-b", "label": "request", "kind": "sync" },
+          { "id": "bi-ba", "from": "bi-b", "to": "bi-a", "label": "callback", "kind": "async" }
+        ]
+      }
+    }
+  ]
+}

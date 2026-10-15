@@ -1,0 +1,456 @@
+{
+  "version": 1,
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Kafka order pipeline",
+    "description": "Order placement with independent consumer groups, local stores and payment confirmation events.",
+    "direction": "LR",
+    "groups": [
+      { "id": "aks", "label": "AKS · commerce workloads + Kafka", "tone": "k8s", "x": 760, "y": 120, "width": 1100, "height": 392 }
+    ],
+    "nodes": [
+      {
+        "id": "shopper",
+        "stencil": "client.browser",
+        "label": "Storefront",
+        "sublabel": "Browser / mobile checkout",
+        "x": 40,
+        "y": 280,
+        "props": { "ratePerSec": 25, "messageType": "OrderRequest" }
+      },
+      {
+        "id": "gateway",
+        "stencil": "nginx",
+        "label": "Commerce gateway",
+        "sublabel": "TLS termination · /api/orders",
+        "x": 420,
+        "y": 280,
+        "props": {}
+      },
+      {
+        "id": "orders",
+        "stencil": "service.dotnet",
+        "label": "Order service",
+        "sublabel": ".NET 10 · group: orders-payments",
+        "x": 800,
+        "y": 280,
+        "group": "aks",
+        "props": {
+          "group": "orders-payments",
+          "idempotent": true,
+          "concurrency": 64,
+          "latencyMs": 150,
+          "emits": { "OrderRequest": "OrderPlaced", "PaymentCompleted": "OrderUpdated" }
+        }
+      },
+      {
+        "id": "order-events",
+        "stencil": "kafka.topic",
+        "label": "orders.created.v1",
+        "sublabel": "OrderPlaced · keyed by orderId",
+        "x": 1180,
+        "y": 280,
+        "group": "aks",
+        "props": { "partitions": 64, "replicationFactor": 3 }
+      },
+      {
+        "id": "inventory",
+        "stencil": "service.java",
+        "label": "Inventory service",
+        "sublabel": "group: inventory-reservations",
+        "x": 1560,
+        "y": 160,
+        "group": "aks",
+        "props": { "group": "inventory-reservations", "concurrency": 64, "latencyMs": 150, "emits": "InventoryReserved" }
+      },
+      {
+        "id": "payments",
+        "stencil": "service.go",
+        "label": "Payments service",
+        "sublabel": "group: payment-authorizations",
+        "x": 1560,
+        "y": 280,
+        "group": "aks",
+        "props": { "group": "payment-authorizations", "concurrency": 64, "latencyMs": 150, "emits": "PaymentCompleted" }
+      },
+      {
+        "id": "notifications",
+        "stencil": "service.node",
+        "label": "Notification service",
+        "sublabel": "group: customer-notifications",
+        "x": 1560,
+        "y": 400,
+        "group": "aks",
+        "props": { "group": "customer-notifications", "concurrency": 64, "latencyMs": 150, "emits": "NotificationRequested" }
+      },
+      {
+        "id": "stock-db",
+        "stencil": "postgres",
+        "label": "Inventory database",
+        "sublabel": "Reservations · SKU availability",
+        "x": 1940,
+        "y": 160,
+        "props": {}
+      },
+      {
+        "id": "payment-db",
+        "stencil": "postgres",
+        "label": "Payment ledger",
+        "sublabel": "Idempotency keys · authorizations",
+        "x": 1940,
+        "y": 280,
+        "props": {}
+      },
+      {
+        "id": "notify-cache",
+        "stencil": "redis.cache",
+        "label": "Notification dedupe",
+        "sublabel": "Order / template key · TTL 24h",
+        "x": 1940,
+        "y": 400,
+        "props": {}
+      },
+      {
+        "id": "payment-events",
+        "stencil": "kafka.topic",
+        "label": "payments.completed.v1",
+        "sublabel": "PaymentCompleted · keyed by orderId",
+        "x": 1180,
+        "y": 520,
+        "props": { "partitions": 64, "replicationFactor": 3 }
+      },
+      {
+        "id": "order-db",
+        "stencil": "postgres",
+        "label": "Orders database",
+        "sublabel": "Order state · transactional outbox",
+        "x": 800,
+        "y": 520,
+        "props": {}
+      },
+      {
+        "id": "schemas",
+        "stencil": "kafka.schema-registry",
+        "label": "Schema registry",
+        "sublabel": "Avro · backward compatible",
+        "x": 1180,
+        "y": 40,
+        "props": { "compatibility": "BACKWARD" }
+      },
+      {
+        "id": "metrics",
+        "stencil": "prometheus",
+        "label": "Commerce metrics",
+        "sublabel": "Scrape interval: 15s",
+        "x": 1560,
+        "y": 640,
+        "props": { "scrapeIntervalSec": 15 }
+      },
+      {
+        "id": "dashboard",
+        "stencil": "grafana",
+        "label": "Order operations",
+        "sublabel": "Lag · checkout latency · failures",
+        "x": 1940,
+        "y": 640,
+        "props": {}
+      }
+    ],
+    "edges": [
+      {
+        "id": "shopper-to-gateway",
+        "from": "shopper",
+        "to": "gateway",
+        "label": "HTTPS",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "gateway-to-orders",
+        "from": "gateway",
+        "to": "orders",
+        "label": "POST /orders",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "orders-to-order-db",
+        "from": "orders",
+        "to": "order-db",
+        "label": "Commit order + outbox",
+        "kind": "sync",
+        "props": { "travelMs": 200, "filter": ["OrderPlaced", "OrderUpdated"] }
+      },
+      {
+        "id": "orders-to-order-events",
+        "from": "orders",
+        "to": "order-events",
+        "label": "OrderPlaced",
+        "kind": "async",
+        "props": { "travelMs": 300, "filter": ["OrderPlaced"] }
+      },
+      {
+        "id": "order-events-to-inventory",
+        "from": "order-events",
+        "to": "inventory",
+        "label": "Reserve inventory",
+        "kind": "async",
+        "props": { "travelMs": 300, "filter": ["OrderPlaced"], "group": "inventory-reservations" }
+      },
+      {
+        "id": "order-events-to-payments",
+        "from": "order-events",
+        "to": "payments",
+        "label": "Authorize payment",
+        "kind": "async",
+        "props": { "travelMs": 300, "filter": ["OrderPlaced"], "group": "payment-authorizations" }
+      },
+      {
+        "id": "order-events-to-notifications",
+        "from": "order-events",
+        "to": "notifications",
+        "label": "Send confirmation",
+        "kind": "async",
+        "props": { "travelMs": 300, "filter": ["OrderPlaced"], "group": "customer-notifications" }
+      },
+      {
+        "id": "inventory-to-stock-db",
+        "from": "inventory",
+        "to": "stock-db",
+        "label": "Reserve SKUs",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "payments-to-payment-db",
+        "from": "payments",
+        "to": "payment-db",
+        "label": "Record authorization",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "notifications-to-notify-cache",
+        "from": "notifications",
+        "to": "notify-cache",
+        "label": "SET NX · dedupe",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "payments-to-payment-events",
+        "from": "payments",
+        "to": "payment-events",
+        "label": "PaymentCompleted",
+        "kind": "async",
+        "props": { "travelMs": 300 }
+      },
+      {
+        "id": "payment-events-to-orders",
+        "from": "payment-events",
+        "to": "orders",
+        "label": "group: orders-payments",
+        "kind": "async",
+        "props": { "travelMs": 300, "filter": ["PaymentCompleted"], "group": "orders-payments" }
+      },
+      {
+        "id": "orders-to-schemas",
+        "from": "orders",
+        "to": "schemas",
+        "label": "Fetch Avro schema",
+        "kind": "sync",
+        "props": { "travelMs": 200, "filter": ["OrderPlaced"] }
+      },
+      {
+        "id": "metrics-to-orders",
+        "from": "metrics",
+        "to": "orders",
+        "label": "GET /metrics",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "dashboard-to-metrics",
+        "from": "dashboard",
+        "to": "metrics",
+        "label": "PromQL",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      }
+    ],
+    "simulations": [
+      {
+        "id": "black-friday",
+        "title": "Black Friday: 2,000 orders/s",
+        "seed": 7,
+        "traffic": [
+          {
+            "id": "checkouts",
+            "node": "shopper",
+            "messageType": "OrderRequest",
+            "label": "Black Friday: 2,000 orders per second",
+            "shape": { "kind": "constant", "ratePerSec": 2000, "durationMs": 10000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 0,
+            "action": { "do": "note", "text": "20,000 checkouts at 2,000 orders/s. Each dot represents 50 orders; independent groups reserve stock, authorize payment and notify customers.", "focus": ["shopper", "order-events"] }
+          },
+          {
+            "atMs": 6000,
+            "action": { "do": "note", "text": "PaymentCompleted updates the order without creating another order.", "focus": ["payments", "payment-events", "orders"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "stock",
+            "label": "All 20,000 orders reserve stock",
+            "metric": { "node": "stock-db", "field": "processed" },
+            "op": "==",
+            "value": 20000,
+            "when": "end"
+          },
+          {
+            "id": "payments",
+            "label": "All 20,000 payments are recorded",
+            "metric": { "node": "payment-db", "field": "processed" },
+            "op": "==",
+            "value": 20000,
+            "when": "end"
+          },
+          {
+            "id": "notifications",
+            "label": "Notifications",
+            "metric": { "node": "notify-cache", "field": "processed" },
+            "op": "==",
+            "value": 20000,
+            "when": "end"
+          },
+          {
+            "id": "orders",
+            "label": "20,000 orders created and 20,000 payment updates",
+            "metric": { "node": "order-db", "field": "processed" },
+            "op": "==",
+            "value": 40000,
+            "when": "end"
+          },
+          {
+            "id": "no-dlq",
+            "label": "No dlq",
+            "metric": { "node": "order-events", "field": "deadLettered" },
+            "op": "==",
+            "value": 0,
+            "when": "always"
+          },
+          {
+            "id": "no-drop",
+            "label": "No drop",
+            "metric": { "node": "order-events", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "always"
+          }
+        ],
+        "scale": 50,
+        "description": "20,000 checkouts in ten seconds; each dot represents 50 orders.",
+        "setup": {
+          "props": {
+            "orders": { "replicas": 12 },
+            "inventory": { "replicas": 6 },
+            "payments": { "replicas": 6 },
+            "notifications": { "replicas": 6 }
+          }
+        }
+      },
+      {
+        "id": "payments-outage",
+        "title": "Payments service goes down",
+        "seed": 7,
+        "traffic": [
+          {
+            "id": "checkouts",
+            "node": "shopper",
+            "messageType": "OrderRequest",
+            "label": "300 checkouts during an outage",
+            "shape": { "kind": "constant", "ratePerSec": 50, "durationMs": 6000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 0,
+            "action": { "do": "note", "text": "Inventory and notifications have independent consumer groups.", "focus": ["order-events"] }
+          },
+          { "atMs": 4000, "action": { "do": "status", "node": "payments", "status": "down" } },
+          {
+            "atMs": 4000,
+            "action": { "do": "note", "text": "Payments is offline. Its group accumulates lag while the other groups continue.", "focus": ["payments", "order-events"], "pause": true }
+          },
+          { "atMs": 12000, "action": { "do": "status", "node": "payments", "status": "up" } },
+          {
+            "atMs": 12000,
+            "action": { "do": "note", "text": "Payments is back. Watch its backlog drain and the ledger catch up.", "focus": ["payments", "payment-db"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "outage-lag",
+            "label": "Payment lag grows during the outage",
+            "metric": { "node": "order-events", "field": "lag", "group": "payment-authorizations" },
+            "op": ">",
+            "value": 0,
+            "when": "at",
+            "atMs": 11000
+          },
+          {
+            "id": "recovered",
+            "label": "Recovered",
+            "metric": { "node": "order-events", "field": "lag", "group": "payment-authorizations" },
+            "op": "==",
+            "value": 0,
+            "when": "eventually"
+          },
+          {
+            "id": "drained",
+            "label": "Drained",
+            "metric": { "node": "order-events", "field": "lag", "group": "payment-authorizations" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          },
+          {
+            "id": "payments",
+            "label": "Payments",
+            "metric": { "node": "payment-db", "field": "processed" },
+            "op": "==",
+            "value": 300,
+            "when": "end"
+          },
+          {
+            "id": "stock",
+            "label": "Stock",
+            "metric": { "node": "stock-db", "field": "processed" },
+            "op": "==",
+            "value": 300,
+            "when": "end"
+          }
+        ],
+        "scale": 1
+      }
+    ]
+  },
+  "icons": {
+    "client-browser": { "sha256": "c66b629864dc684d451c1c280107fe74cdd69ffb9d17be64673c90c7c92434f7", "bytes": 476 },
+    "dotnet": { "sha256": "993caba10a755f1f3ba9e25ff9fd3d529ed2d04cefe18a76d40aece85c6a7f36", "bytes": 1020 },
+    "go": { "sha256": "f1f50429f38e0fa91b2c77cf600cee410845b58e30935a09cb206cfc88efff9c", "bytes": 2404 },
+    "grafana": { "sha256": "47b2cb370fb846522ea552fc41a39ffb273b24d0a7fe51dd73342e3c1b78b090", "bytes": 6627 },
+    "java": { "sha256": "5267ef9b941ed3577d43b258c86bd6f218c30356da4c8edf6ef49a989845b337", "bytes": 2011 },
+    "kafka": { "sha256": "938a96212aef8da520eca3435f23c1a3304ce25fbfaf0e5712ce548353abc5ef", "bytes": 4092 },
+    "nginx": { "sha256": "0b7c9147e93090490bd07edcdd07571ab142981f96b3cc1401846a8a358de524", "bytes": 1015 },
+    "nodejs": { "sha256": "5d31625856d847dbfd22e16f061e65622e638f5621e5b49b8fec1fdde933de7e", "bytes": 1848 },
+    "postgresql": { "sha256": "95779d4aab758053d1839595cc9716e1eedb1021a015a00331e54268a5daf5c0", "bytes": 7732 },
+    "prometheus": { "sha256": "2b147486fae92dd21bfe25b3a06203ddfb3145861cd736c5a3235c020f158ee8", "bytes": 1233 },
+    "redis": { "sha256": "985d03e20de4a6caf7eccc34ba6b73e2a5bab3aa1dc1b0d3e0613b5342a1e30e", "bytes": 3257 }
+  },
+  "options": { "theme": "light", "startSimulation": "black-friday", "exportedOn": "2026-01-01" }
+}

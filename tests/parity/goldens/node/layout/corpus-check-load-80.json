@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "web": [40, 40], "api": [400, 40], "db": [760, 40] },
+    "TB": { "web": [40, 40], "api": [40, 200], "db": [40, 360] }
+  },
+  "tidy": { "web": [0, 100], "api": [320, 100], "db": [640, 100] },
+  "arrange": {
+    "alignLeft": { "web": [0, 100], "api": [0, 100], "db": [0, 100] },
+    "alignMiddle": { "web": [0, 100], "api": [320, 100], "db": [640, 100] },
+    "distributeH": { "web": [0, 100], "api": [320, 100], "db": [640, 100] },
+    "distributeV": { "web": [0, 100], "api": [320, 100], "db": [640, 100] },
+    "spreadH": { "web": [0, 100], "api": [320, 100], "db": [640, 100] },
+    "boundaryAround": { "x": -40, "y": 36, "width": 940, "height": 176 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "web": [40, 40], "api": [400, 40], "db": [760, 40] },
+    "groups": {}
+  }
+}

@@ -26,6 +26,14 @@ export function realNodeMetrics(node: NodeSimState, scale = 1): RealNodeMetrics 
     dropped: real(node.dropped),
     ...(node.outageDropped === undefined ? {} : { outageDropped: real(node.outageDropped) }),
     ...(node.blocked === undefined ? {} : { blocked: real(node.blocked) }),
+    ...(node.rejected === undefined ? {} : { rejected: real(node.rejected) }),
+    ...(node.rejectionReasons === undefined
+      ? {}
+      : {
+          rejectionReasons: Object.fromEntries(
+            Object.entries(node.rejectionReasons).map(([reason, count]) => [reason, real(count)]),
+          ),
+        }),
     throughput: real(node.throughput),
     lag: Object.fromEntries(Object.entries(node.lag).map(([id, n]) => [id, real(n)])),
   };

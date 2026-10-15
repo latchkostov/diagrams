@@ -1,0 +1,38 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Relationships",
+    "direction": "LR",
+    "nodes": [
+      { "id": "message_a", "stencil": "generic.service", "label": "message source", "x": 40, "y": 40 },
+      { "id": "message_b", "stencil": "generic.service", "label": "message target", "x": 415, "y": 40 },
+      { "id": "request_a", "stencil": "generic.service", "label": "request source", "x": 40, "y": 280 },
+      { "id": "request_b", "stencil": "generic.service", "label": "request target", "x": 415, "y": 280 },
+      { "id": "config_a", "stencil": "generic.service", "label": "config source", "x": 40, "y": 160 },
+      { "id": "config_b", "stencil": "generic.service", "label": "config target", "x": 415, "y": 160 },
+      { "id": "secret_a", "stencil": "vault", "label": "secret source", "x": 40, "y": 400 },
+      { "id": "secret_b", "stencil": "vault", "label": "secret target", "x": 415, "y": 400 },
+      { "id": "identity_a", "stencil": "generic.service", "label": "identity source", "x": 40, "y": 520 },
+      { "id": "identity_b", "stencil": "generic.service", "label": "identity target", "x": 415, "y": 520 },
+      { "id": "telemetry_a", "stencil": "generic.service", "label": "telemetry source", "x": 40, "y": 640 },
+      { "id": "telemetry_b", "stencil": "generic.service", "label": "telemetry target", "x": 415, "y": 640 },
+      { "id": "deploy_a", "stencil": "generic.service", "label": "deploy source", "x": 40, "y": 760 },
+      { "id": "deploy_b", "stencil": "generic.service", "label": "deploy target", "x": 415, "y": 760 },
+      { "id": "depends_a", "stencil": "generic.service", "label": "depends source", "x": 40, "y": 880 },
+      { "id": "depends_b", "stencil": "generic.service", "label": "depends target", "x": 415, "y": 880 },
+      { "id": "kv", "stencil": "azure.key-vault", "label": "Key Vault", "x": 775, "y": 460 }
+    ],
+    "edges": [
+      { "id": "e1-message_a-message_b", "from": "message_a", "to": "message_b", "label": "Message", "kind": "async" },
+      { "id": "e2-request_a-request_b", "from": "request_a", "to": "request_b", "label": "Request", "kind": "sync" },
+      { "id": "e3-config_a-config_b", "from": "config_a", "to": "config_b", "kind": "async", "relation": "config" },
+      { "id": "e4-secret_a-secret_b", "from": "secret_a", "to": "secret_b", "kind": "async", "relation": "secret" },
+      { "id": "e5-identity_a-identity_b", "from": "identity_a", "to": "identity_b", "label": "execution role", "kind": "async", "relation": "identity" },
+      { "id": "e6-telemetry_a-telemetry_b", "from": "telemetry_a", "to": "telemetry_b", "kind": "async", "relation": "telemetry" },
+      { "id": "e7-deploy_a-deploy_b", "from": "deploy_a", "to": "deploy_b", "label": "helm upgrade", "kind": "async", "relation": "deploy" },
+      { "id": "e8-depends_a-depends_b", "from": "depends_a", "to": "depends_b", "label": "resolves orders.internal", "kind": "async", "relation": "depends" },
+      { "id": "e9-config_b-kv", "from": "config_b", "to": "kv", "kind": "async", "relation": "secret" }
+    ]
+  }
+}

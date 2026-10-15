@@ -1,0 +1,13 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Managed admission",
+    "direction": "LR",
+    "nodes": [
+      { "id": "source", "stencil": "generic.service", "label": "Checkout", "x": 40, "y": 40 },
+      { "id": "api", "stencil": "client.partner", "label": "generic.external-api", "x": 400, "y": 40 }
+    ],
+    "edges": [{ "id": "e1-source-api", "from": "source", "to": "api", "kind": "sync" }]
+  }
+}

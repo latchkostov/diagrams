@@ -1,0 +1,15 @@
+---
+title: Odd nodes
+---
+flowchart LR
+  normal["orders<br/>orders.created.v1"]
+  unknown["Unknown stencil<br/>acme.quantum-bus"]
+  long_label["Customer Communication Preferences Synchronisation Service"]
+  long_sub["notifications<br/>sb://contoso-prod-eastus2.servicebus.windows.net/topics/customer-notification-preferences-changed"]
+  no_sub[("DB")]
+  empty_label[("empty-label")]
+  normal -.-> unknown
+  long_label -.-> long_sub
+  no_sub --> empty_label
+  linkStyle 0,1 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"Fallbacks and overflow on the canvas.","nodes":{"normal":["normal","kafka.topic"],"unknown":["unknown","acme.quantum-bus"],"long_label":["long-label","service.dotnet"],"long_sub":["long-sub","azure.service-bus.topic"],"no_sub":["no-sub","postgres"],"empty_label":["empty-label","redis.cache"]},"edges":["o1","o2","o3"],"relations":{}}

@@ -1,0 +1,26 @@
+---
+title: "WebhookEvent #1 · 1.71 s end to end · 2 copies"
+---
+sequenceDiagram
+  participant partners as Partner webhooks
+  participant edge as Cloudflare
+  participant receiver as Webhook receiver
+  participant raw as Raw payloads
+  participant exchange as webhooks
+  participant queue as webhooks.process
+  participant workers as Webhook workers
+  participant dedupe as Seen event IDs
+  participant integration_db as Integration database
+  partners->>edge: WebhookEvent (+0.00 s)<br/>HTTPS POST
+  edge-->>partners: reply (+0.21 s)
+  edge->>receiver: WebhookEvent (+0.21 s)<br/>/hooks/:partner
+  receiver-->>edge: reply (+0.44 s)
+  receiver->>raw: WebhookEvent (+0.44 s)<br/>PUT body
+  receiver-)exchange: WebhookEvent (+0.44 s)<br/>Publish
+  raw-->>receiver: reply (+0.64 s)
+  exchange-)queue: WebhookEvent (+0.74 s)<br/>webhook.#35;
+  queue-)workers: WebhookEvent (+1.04 s)<br/>Prefetch 4
+  workers->>dedupe: PartnerChangeApplied (+1.50 s)<br/>Idempotency check
+  workers->>integration_db: PartnerChangeApplied (+1.50 s)<br/>Apply change
+  dedupe-->>workers: reply (+1.70 s)
+  integration_db-->>workers: reply (+1.71 s)

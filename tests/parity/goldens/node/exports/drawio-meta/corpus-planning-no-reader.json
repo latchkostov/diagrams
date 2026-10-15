@@ -1,0 +1,28 @@
+{
+  "withIcons": {
+    "sha256": "ff2db0c9c729594bc8f6a1beb64f379833f7b487da570c64dd00149edee57f88",
+    "bytes": 6901,
+    "inlined": { "client.browser": "client-browser 0022934839e05a07", "kafka.topic": "kafka 81e432d1da74c5fe" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Planning: shared capacity",
+        "nodes": [
+          {
+            "id": "checkout",
+            "stencil": "client.browser",
+            "label": "Checkout",
+            "x": 0,
+            "y": 140,
+            "props": { "ratePerSec": 3 }
+          },
+          { "id": "topic", "stencil": "kafka.topic", "label": "Order events", "x": 320, "y": 20 }
+        ],
+        "edges": [{ "id": "publish", "from": "checkout", "to": "topic", "kind": "async", "props": { "travelMs": 0 } }]
+      }
+    }
+  ]
+}

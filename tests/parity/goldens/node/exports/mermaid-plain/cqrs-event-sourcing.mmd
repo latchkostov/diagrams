@@ -1,0 +1,34 @@
+---
+title: CQRS with event sourcing
+---
+flowchart LR
+  subgraph g_write ["Write side"]
+    command_handler["Command handler<br/>Load · decide · append"]
+    event_store["Event store<br/>Stream per account"]
+  end
+  subgraph g_read ["Read side"]
+    query_api["Query API<br/>Reads only"]
+    balances_db[("Balances<br/>Read model · one row each")]
+    statements[("Statements<br/>Read model · searchable")]
+    balance_proj["Balance projection<br/>group: balances"]
+    statement_proj["Statement projection<br/>group: statements"]
+  end
+  app(["Banking app<br/>Commands and queries"])
+  gateway["API gateway<br/>Routes by verb"]
+  publisher["Event publisher<br/>group: integration"]
+  integration_topic["accounts.events.v1<br/>Public contract"]
+  fraud["Fraud scoring<br/>Another team · group: fraud"]
+  app -->|"HTTPS"| gateway
+  gateway -->|"POST · commands"| command_handler
+  gateway -->|"GET · queries"| query_api
+  command_handler -->|"Append · expectedVersion"| event_store
+  event_store -.->|"Subscription"| publisher
+  publisher -.->|"Integration events"| integration_topic
+  event_store -.-> balance_proj
+  event_store -.-> statement_proj
+  balance_proj -->|"Upsert balance"| balances_db
+  statement_proj -->|"Index entry"| statements
+  query_api -->|"GetBalance"| balances_db
+  query_api -->|"GetStatement"| statements
+  integration_topic -.->|"group: fraud"| fraud
+  linkStyle 4,5,6,7,12 stroke-dasharray: 6 4

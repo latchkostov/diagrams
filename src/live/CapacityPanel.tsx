@@ -240,7 +240,7 @@ export const CapacityPanel = memo(function CapacityPanel({
                       className={`cap-preset${on ? " is-on" : ""}`}
                       aria-pressed={on}
                       title={
-                        diagram.planning?.revision === "p2"
+                        diagram.planning?.revision === "p2" || diagram.planning?.revision === "p3"
                           ? p.id === "double-partitions"
                             ? `2 × ${assignmentLabels}`
                             : p.id === "normal"
@@ -251,7 +251,8 @@ export const CapacityPanel = memo(function CapacityPanel({
                       onClick={() => set(applyPreset(p.id, inputs, diagram, base))}
                       data-testid={`capacity-preset-${p.id}`}
                     >
-                      {p.id === "double-partitions" && diagram.planning?.revision === "p2"
+                      {p.id === "double-partitions" &&
+                      (diagram.planning?.revision === "p2" || diagram.planning?.revision === "p3")
                         ? `2 × ${assignmentLabels}`
                         : p.label}
                       {p.id === "black-friday" && <small>5×</small>}

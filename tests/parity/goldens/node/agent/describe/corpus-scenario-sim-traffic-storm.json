@@ -1,0 +1,217 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"Traffic storm\" · direction LR · 9 nodes, 8 connections, 0 boundaries, 0 simulations\ndescription: \"Bursty clients, a bottleneck service, and a fan-out topic.\"\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Web\" props={\"ratePerSec\":15,\"messageType\":\"WebOrder\"} capabilities=[{\"kind\":\"calls\",\"edge\":\"web-gw\",\"peer\":\"gw\"}] explanation=undefined\n  \"mobile\" \"client.mobile\" (\"Mobile App\") \"Mobile\" props={\"ratePerSec\":15,\"messageType\":\"AppOrder\"} capabilities=[{\"kind\":\"calls\",\"edge\":\"mobile-gw\",\"peer\":\"gw\"}] explanation=undefined\n  \"partner\" \"generic.webhook\" (\"Webhook\") \"Partner webhook\" props={\"ratePerSec\":15,\"messageType\":\"PartnerOrder\"} capabilities=[{\"kind\":\"calls\",\"edge\":\"partner-gw\",\"peer\":\"gw\"}] explanation=undefined\n  \"gw\" \"azure.front-door\" (\"Front Door\") \"Front Door\" capabilities=[{\"kind\":\"calls\",\"edge\":\"gw-orders\",\"peer\":\"orders\"}] explanation=undefined\n  \"orders\" \"service.dotnet\" (\".NET Service\") \"Orders\" props={\"latencyMs\":250,\"concurrency\":4} capabilities=[{\"kind\":\"publishes\",\"edge\":\"orders-topic\",\"peer\":\"topic\"}] explanation={\"id\":\"orders\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":45,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":2.8125,\"growth\":29,\"contributors\":[{\"edge\":\"gw-orders\",\"node\":\"gw\",\"label\":\"Web, Mobile, Partner webhook\",\"rate\":45,\"via\":\"Front Door\"}],\"target\":0.5,\"minimumReplicas\":3,\"targetReplicas\":6,\"changes\":null,\"converged\":true}\n  \"topic\" \"azure.service-bus.topic\" (\"Service Bus Topic\") \"order-events\" / \"orders\" props={\"partitions\":12} capabilities=[] explanation=undefined\n  \"billing\" \"azure.functions\" (\"Azure Functions\") \"Billing\" props={\"concurrency\":12,\"latencyMs\":150} capabilities=[{\"kind\":\"consumes\",\"edge\":\"topic-billing\",\"peer\":\"topic\",\"group\":\"topic-billing\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"billing-db\",\"peer\":\"db\"}] explanation={\"id\":\"billing\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":80,\"offered\":45,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":12}],\"slots\":12,\"seconds\":0.15,\"utilization\":0.5625,\"growth\":0,\"contributors\":[{\"edge\":\"topic-billing\",\"node\":\"topic\",\"label\":\"order-events\",\"rate\":45}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":2,\"changes\":null,\"converged\":true}\n  \"search\" \"azure.container-apps\" (\"Container Apps\") \"Search indexer\" props={\"concurrency\":12,\"latencyMs\":150} capabilities=[{\"kind\":\"consumes\",\"edge\":\"topic-search\",\"peer\":\"topic\",\"group\":\"topic-search\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"search\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":80,\"offered\":45,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":12}],\"slots\":12,\"seconds\":0.15,\"utilization\":0.5625,\"growth\":0,\"contributors\":[{\"edge\":\"topic-search\",\"node\":\"topic\",\"label\":\"order-events\",\"rate\":45}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":2,\"changes\":null,\"converged\":true}\n  \"db\" \"azure.cosmos-db\" (\"Cosmos DB\") \"Orders DB\" capabilities=[] explanation=undefined\nconnections:\n  \"web-gw\" \"web\" -> \"gw\" sync\n  \"mobile-gw\" \"mobile\" -> \"gw\" sync\n  \"partner-gw\" \"partner\" -> \"gw\" sync\n  \"gw-orders\" \"gw\" -> \"orders\" sync\n  \"orders-topic\" \"orders\" -> \"topic\" async\n  \"topic-billing\" \"topic\" -> \"billing\" async\n  \"topic-search\" \"topic\" -> \"search\" async\n  \"billing-db\" \"billing\" -> \"db\" sync"
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "Traffic storm",
+      "description": "Bursty clients, a bottleneck service, and a fan-out topic.",
+      "direction": "LR",
+      "nodes": [
+        {
+          "id": "web",
+          "stencil": "client.browser",
+          "label": "Web",
+          "x": 40,
+          "y": 40,
+          "props": { "ratePerSec": 15, "messageType": "WebOrder" },
+          "capabilities": [{ "kind": "calls", "edge": "web-gw", "peer": "gw" }]
+        },
+        {
+          "id": "mobile",
+          "stencil": "client.mobile",
+          "label": "Mobile",
+          "x": 40,
+          "y": 160,
+          "props": { "ratePerSec": 15, "messageType": "AppOrder" },
+          "capabilities": [{ "kind": "calls", "edge": "mobile-gw", "peer": "gw" }]
+        },
+        {
+          "id": "partner",
+          "stencil": "generic.webhook",
+          "label": "Partner webhook",
+          "x": 40,
+          "y": 280,
+          "props": { "ratePerSec": 15, "messageType": "PartnerOrder" },
+          "capabilities": [{ "kind": "calls", "edge": "partner-gw", "peer": "gw" }]
+        },
+        {
+          "id": "gw",
+          "stencil": "azure.front-door",
+          "label": "Front Door",
+          "x": 400,
+          "y": 160,
+          "capabilities": [{ "kind": "calls", "edge": "gw-orders", "peer": "orders" }]
+        },
+        {
+          "id": "orders",
+          "stencil": "service.dotnet",
+          "label": "Orders",
+          "x": 760,
+          "y": 160,
+          "props": { "latencyMs": 250, "concurrency": 4 },
+          "capabilities": [{ "kind": "publishes", "edge": "orders-topic", "peer": "topic" }],
+          "explanation": {
+            "id": "orders",
+            "role": "processor",
+            "status": "up",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 16,
+            "offered": 45,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": 2.8125,
+            "growth": 29,
+            "contributors": [
+              { "edge": "gw-orders", "node": "gw", "label": "Web, Mobile, Partner webhook", "rate": 45, "via": "Front Door" }
+            ],
+            "target": 0.5,
+            "minimumReplicas": 3,
+            "targetReplicas": 6,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "topic",
+          "stencil": "azure.service-bus.topic",
+          "label": "order-events",
+          "x": 1120,
+          "y": 160,
+          "sublabel": "orders",
+          "props": { "partitions": 12 },
+          "capabilities": []
+        },
+        {
+          "id": "billing",
+          "stencil": "azure.functions",
+          "label": "Billing",
+          "x": 1480,
+          "y": 40,
+          "props": { "concurrency": 12, "latencyMs": 150 },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "topic-billing",
+              "peer": "topic",
+              "group": "topic-billing",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            },
+            { "kind": "calls", "edge": "billing-db", "peer": "db" }
+          ],
+          "explanation": {
+            "id": "billing",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 80,
+            "offered": 45,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 12
+              }
+            ],
+            "slots": 12,
+            "seconds": 0.15,
+            "utilization": 0.5625,
+            "growth": 0,
+            "contributors": [{ "edge": "topic-billing", "node": "topic", "label": "order-events", "rate": 45 }],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 2,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "search",
+          "stencil": "azure.container-apps",
+          "label": "Search indexer",
+          "x": 1480,
+          "y": 280,
+          "props": { "concurrency": 12, "latencyMs": 150 },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "topic-search",
+              "peer": "topic",
+              "group": "topic-search",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "search",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 80,
+            "offered": 45,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 12
+              }
+            ],
+            "slots": 12,
+            "seconds": 0.15,
+            "utilization": 0.5625,
+            "growth": 0,
+            "contributors": [{ "edge": "topic-search", "node": "topic", "label": "order-events", "rate": 45 }],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 2,
+            "changes": null,
+            "converged": true
+          }
+        },
+        { "id": "db", "stencil": "azure.cosmos-db", "label": "Orders DB", "x": 1840, "y": 160, "capabilities": [] }
+      ],
+      "edges": [
+        { "id": "web-gw", "from": "web", "to": "gw", "kind": "sync" },
+        { "id": "mobile-gw", "from": "mobile", "to": "gw", "kind": "sync" },
+        { "id": "partner-gw", "from": "partner", "to": "gw", "kind": "sync" },
+        { "id": "gw-orders", "from": "gw", "to": "orders", "kind": "sync" },
+        { "id": "orders-topic", "from": "orders", "to": "topic", "kind": "async" },
+        { "id": "topic-billing", "from": "topic", "to": "billing", "kind": "async" },
+        { "id": "topic-search", "from": "topic", "to": "search", "kind": "async" },
+        { "id": "billing-db", "from": "billing", "to": "db", "kind": "sync" }
+      ],
+      "groups": [],
+      "annotations": [],
+      "simulations": [],
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"Traffic storm\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\ndescription: \"Bursty clients, a bottleneck service, and a fan-out topic.\"\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Web\" props={\"ratePerSec\":15,\"messageType\":\"WebOrder\"} capabilities=[{\"kind\":\"calls\",\"edge\":\"web-gw\",\"peer\":\"gw\"}] explanation=undefined\n  \"gw\" \"azure.front-door\" (\"Front Door\") \"Front Door\" capabilities=[{\"kind\":\"calls\",\"edge\":\"gw-orders\",\"peer\":\"orders\"}] explanation=undefined\nconnections:\n  \"web-gw\" \"web\" -> \"gw\" sync"
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "all": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "capacity:worker",
+          "rule": "capacity",
+          "severity": "warning",
+          "title": "Worker can't keep up",
+          "message": "At the diagram's own rates, it gets 10/s and handles 5/s (200%): its backlog only grows.",
+          "targets": ["worker"],
+          "fix": {
+            "label": "Set replicas to 4",
+            "ops": [{ "op": "update", "target": "worker", "props": { "replicas": 4 } }]
+          }
+        },
+        {
+          "id": "secret-identity:vault\ninjected\tsecret",
+          "rule": "secret-identity",
+          "severity": "suggestion",
+          "title": "Worker reads secrets without an identity",
+          "message": "Worker reads secrets from Vault\nInjected label, but the diagram doesn't say what it signs in as. With a managed identity, it gets in with no stored credential to leak or rotate.",
+          "targets": ["vault\ninjected\tsecret", "worker"],
+          "fix": {
+            "label": "Add a managed identity",
+            "ops": [
+              { "op": "add_node", "kind": "azure.managed-identity", "label": "Worker identity", "sublabel": "workload identity", "key": "new-identity-1" },
+              { "op": "connect", "from": "worker", "to": "new-identity-1", "relation": "identity" }
+            ]
+          }
+        }
+      ],
+      "summary": "1 warning, 1 suggestion.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  },
+  "warnings": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "capacity:worker",
+          "rule": "capacity",
+          "severity": "warning",
+          "title": "Worker can't keep up",
+          "message": "At the diagram's own rates, it gets 10/s and handles 5/s (200%): its backlog only grows.",
+          "targets": ["worker"],
+          "fix": {
+            "label": "Set replicas to 4",
+            "ops": [{ "op": "update", "target": "worker", "props": { "replicas": 4 } }]
+          }
+        }
+      ],
+      "summary": "1 warning, 1 suggestion.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  },
+  "oneRule": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "capacity:worker",
+          "rule": "capacity",
+          "severity": "warning",
+          "title": "Worker can't keep up",
+          "message": "At the diagram's own rates, it gets 10/s and handles 5/s (200%): its backlog only grows.",
+          "targets": ["worker"],
+          "fix": {
+            "label": "Set replicas to 4",
+            "ops": [{ "op": "update", "target": "worker", "props": { "replicas": 4 } }]
+          }
+        }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  }
+}

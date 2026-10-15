@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "api": [40, 100], "queue": [400, 100], "worker": [760, 40], "dlq": [760, 160] },
+    "TB": { "api": [180, 40], "queue": [180, 200], "worker": [40, 360], "dlq": [330, 360] }
+  },
+  "tidy": { "api": [40, 100], "queue": [400, 100], "worker": [760, 40], "dlq": [760, 160] },
+  "arrange": {
+    "alignLeft": { "api": [40, 160], "queue": [40, 160], "worker": [40, 40], "dlq": [40, 280] },
+    "alignMiddle": { "api": [40, 160], "queue": [400, 160], "worker": [760, 160], "dlq": [760, 160] },
+    "distributeH": { "api": [40, 160], "queue": [280, 160], "worker": [520, 40], "dlq": [760, 280] },
+    "distributeV": { "api": [40, 120], "queue": [400, 200], "worker": [760, 40], "dlq": [760, 280] },
+    "spreadH": { "api": [40, 40], "queue": [400, 40], "worker": [760, 40], "dlq": [1020, 40] },
+    "boundaryAround": { "x": 0, "y": -24, "width": 1028, "height": 416 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "api": [40, 100], "queue": [400, 100], "worker": [760, 40], "dlq": [760, 160] },
+    "groups": {}
+  }
+}

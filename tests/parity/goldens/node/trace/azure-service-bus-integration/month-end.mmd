@@ -1,0 +1,21 @@
+---
+title: "InvoiceHighValue #2 · 2.19 s end to end · 1 copy"
+---
+sequenceDiagram
+  participant ingest as Invoice intake
+  participant invoices as invoices
+  participant blob as Invoice originals
+  participant approval_sub as approval-workflow
+  participant workflow as Invoice approval
+  participant commands as invoice.commands
+  participant worker as Ledger worker
+  participant cosmos as Invoice ledger
+  ingest-)invoices: InvoiceHighValue (+0.13 s)<br/>InvoiceAccepted
+  ingest->>blob: InvoiceHighValue (+0.13 s)<br/>Archive original PDF
+  blob-->>ingest: reply (+0.38 s)
+  invoices-)approval_sub: InvoiceHighValue (+0.43 s)<br/>amount > 10000
+  approval_sub-)workflow: InvoiceHighValue (+0.73 s)<br/>Peek-lock delivery
+  workflow-)commands: PostInvoice (+1.18 s)
+  commands-)worker: PostInvoice (+1.48 s)<br/>Execute command
+  worker->>cosmos: InvoicePosted (+1.94 s)<br/>Upsert ledger
+  cosmos-->>worker: reply (+2.19 s)

@@ -1,0 +1,126 @@
+{
+  "run": {
+    "time": 14910,
+    "totalMs": 22000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "loaded", "label": "300 batches loaded", "status": "pass", "value": 300 },
+      { "id": "built", "label": "120 marts built", "status": "pass", "value": 120 },
+      { "id": "alerted", "label": "A failing test alerts the team", "status": "pass", "value": 5 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "note", "label": "02:00. Airflow starts the nightly DAG: Airbyte copies whatever changed since yesterday from three sources into raw tables." },
+      { "atMs": 0, "kind": "traffic", "label": "02:00 · 150 app table batches" },
+      { "atMs": 0, "kind": "traffic", "label": "02:00 · 75 CRM batches" },
+      { "atMs": 0, "kind": "traffic", "label": "02:00 · 75 billing batches" },
+      { "atMs": 1500, "kind": "traffic", "label": "02:00 · 150 app table batches ends" },
+      { "atMs": 1500, "kind": "traffic", "label": "02:00 · 75 CRM batches ends" },
+      { "atMs": 1500, "kind": "traffic", "label": "02:00 · 75 billing batches ends" },
+      { "atMs": 7000, "kind": "note", "label": "03:00. The load is done, so dbt rebuilds the marts and runs its tests. A failing test posts to Slack." },
+      { "atMs": 7000, "kind": "traffic", "label": "03:00 · dbt builds 120 models" },
+      { "atMs": 7500, "kind": "traffic", "label": "03:00 · dbt builds 120 models ends" },
+      { "atMs": 12000, "kind": "note", "label": "06:00. Tableau refreshes. Simple and cheap, but dashboards show yesterday. Compare the event-driven data platform, where rows land in seconds." }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "airflow": { "replicas": [1, 1, 0] },
+        "app-db": { "replicas": [1, 1, 0] },
+        "crm": { "replicas": [1, 1, 0] },
+        "billing": { "replicas": [1, 1, 0] },
+        "airbyte": { "replicas": [3, 3, 0] },
+        "raw": { "replicas": [1, 1, 0] },
+        "dbt": { "replicas": [1, 1, 0] },
+        "marts": { "replicas": [1, 1, 0] },
+        "tableau": { "replicas": [1, 1, 0] },
+        "slack": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 69,
+      "nodes": {
+        "airflow": { "replicas": [1, 1, 0] },
+        "app-db": { "processed": 150, "throughput": 0.015806843924816624, "replicas": [1, 1, 0] },
+        "crm": { "processed": 75, "throughput": 0.007917100128005387, "replicas": [1, 1, 0] },
+        "billing": { "processed": 75, "throughput": 0.007917100128005387, "replicas": [1, 1, 0] },
+        "airbyte": { "processed": 300, "throughput": 0.7179142240451151, "replicas": [3, 3, 0] },
+        "raw": { "processed": 300, "throughput": 0.8768624133711208, "replicas": [1, 1, 0] },
+        "dbt": { "processed": 54, "backlog": 58, "inFlight": 8, "throughput": 17.848708930706835, "replicas": [1, 1, 0] },
+        "marts": { "processed": 51, "throughput": 18.56380347421044, "replicas": [1, 1, 0] },
+        "tableau": { "replicas": [1, 1, 0] },
+        "slack": { "processed": 2, "throughput": 0.2993217258786707, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 14910,
+    "inSystem": 0,
+    "real": {
+      "airflow": { "replicas": [1, 1, 0] },
+      "app-db": { "processed": 150, "throughput": 0.00011653577239146902, "replicas": [1, 1, 0] },
+      "crm": { "processed": 75, "throughput": 0.000058368728311993425, "replicas": [1, 1, 0] },
+      "billing": { "processed": 75, "throughput": 0.000058368728311993425, "replicas": [1, 1, 0] },
+      "airbyte": { "processed": 300, "throughput": 0.005292814239695871, "replicas": [3, 3, 0] },
+      "raw": { "processed": 300, "throughput": 0.006464657910793951, "replicas": [1, 1, 0] },
+      "dbt": { "processed": 120, "throughput": 3.9386718463043366, "replicas": [1, 1, 0] },
+      "marts": { "processed": 120, "throughput": 4.810704656563919, "replicas": [1, 1, 0] },
+      "tableau": { "replicas": [1, 1, 0] },
+      "slack": { "processed": 5, "throughput": 0.2155476152004208, "replicas": [1, 1, 0] }
+    },
+    "edges": { "app-db-to-airbyte": 150, "crm-to-airbyte": 75, "billing-to-airbyte": 75, "airflow-to-airbyte": 0, "airflow-to-dbt": 0, "airbyte-to-raw": 300, "dbt-to-raw": 0, "dbt-to-marts": 120, "dbt-to-slack": 5, "tableau-to-marts": 0 }
+  },
+  "events": {
+    "total": 2290,
+    "byKind": { "inject": 420, "process": 1145, "deliver": 725 },
+    "byNode": {
+      "app-db": { "inject": 150, "process": 150 },
+      "crm": { "inject": 75, "process": 75 },
+      "billing": { "inject": 75, "process": 75 },
+      "airbyte": { "deliver": 300, "process": 300 },
+      "raw": { "deliver": 300, "process": 300 },
+      "dbt": { "inject": 120, "process": 120 },
+      "marts": { "deliver": 120, "process": 120 },
+      "slack": { "deliver": 5, "process": 5 }
+    },
+    "perSecond": [
+      "8557d106e64e",
+      "771f2d81c417",
+      "fba5b6d360e5",
+      "f5ece48ec6ae",
+      "2b26255287ea",
+      "1a5fe4dd5e50",
+      "-",
+      "a1bb410c220e",
+      "f0ae64db7903",
+      "35901953e0eb",
+      "4191b68dd6d7",
+      "30192560d871",
+      "60142df4bc92",
+      "22198c2c7977",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 0, "text": "02:00. Airflow starts the nightly DAG: Airbyte copies whatever changed since yesterday from three sources into raw tables.", "focus": ["airflow", "airbyte", "raw"] },
+    { "atMs": 7000, "text": "03:00. The load is done, so dbt rebuilds the marts and runs its tests. A failing test posts to Slack.", "focus": ["airflow", "dbt", "marts", "slack"] },
+    { "atMs": 12000, "text": "06:00. Tableau refreshes. Simple and cheap, but dashboards show yesterday. Compare the event-driven data platform, where rows land in seconds.", "focus": ["marts", "tableau"] }
+  ],
+  "latency": {
+    "journeys": { "done": 294, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 294, "min": 540, "mean": 2595.816326530612, "p50": 2340, "p90": 4680, "max": 5910 },
+    "waitMs": {
+      "airbyte": { "count": 174, "min": 0, "mean": 1401.3218390804598, "p50": 1360, "p90": 2540, "max": 3310 },
+      "dbt": { "count": 120, "min": 0, "mean": 2617.5833333333335, "p50": 2640, "p90": 4890, "max": 5360 }
+    },
+    "processMs": {
+      "airbyte": { "count": 174, "min": 210, "mean": 259.5977011494253, "p50": 260, "p90": 300, "max": 300 },
+      "dbt": { "count": 120, "min": 330, "mean": 404.6666666666667, "p50": 400, "p90": 470, "max": 480 }
+    }
+  }
+}

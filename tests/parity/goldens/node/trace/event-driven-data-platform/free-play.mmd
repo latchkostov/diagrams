@@ -1,0 +1,21 @@
+---
+title: "InvoicePaid #1 · 4.05 s end to end"
+---
+sequenceDiagram
+  participant billing_webhooks as Billing webhooks
+  participant webhook_receiver as Webhook receiver
+  participant billing_topic as billing.invoices.v1
+  participant snowpipe as Snowflake connector
+  participant raw as Raw tables
+  participant dbt as dbt models
+  participant marts as Marts
+  billing_webhooks->>webhook_receiver: InvoicePaid (+0.00 s)<br/>HTTPS · signed
+  webhook_receiver-->>billing_webhooks: reply (+0.27 s)
+  webhook_receiver-)billing_topic: InvoicePaid (+0.27 s)
+  billing_topic-)snowpipe: InvoicePaid (+0.57 s)
+  snowpipe->>raw: RawInvoiceRow (+0.92 s)<br/>insertRows
+  raw-->>snowpipe: reply (+1.13 s)
+  raw-)dbt: RawInvoiceRow (+1.13 s)<br/>New rows
+  Note over billing_webhooks,marts: ⏱ 2.41 s at dbt models: processing
+  dbt->>marts: RevenueRow (+3.84 s)<br/>MERGE models
+  marts-->>dbt: reply (+4.05 s)

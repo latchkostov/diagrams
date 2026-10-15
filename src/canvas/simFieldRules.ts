@@ -1,5 +1,6 @@
 import type { SimRole, PlanningModel } from "../model/types";
 import { brokerSpec } from "../model/brokers";
+import { managedKind } from "../model/admissionPresets";
 import type { NodeSimProps } from "../sim/types";
 
 // Which simulation fields the inspector shows: only the ones that can change the run where they are
@@ -48,6 +49,7 @@ export function edgeSimFields(sourceRole: SimRole | undefined): { group: boolean
 
 /** Profile-aware fields; legacy files retain their old controls and semantics. */
 export function nodeSimFields(role: SimRole, stencil: string, planning?: PlanningModel): SimKey[] {
+  if (planning?.revision === "p3" && managedKind(stencil)) return role === "processor" ? ["emits"] : [];
   return SIM_FIELDS_BY_ROLE[role].filter(
     (key) => key !== "partitions" || brokerSpec(stencil, role, planning)?.partitioned,
   );

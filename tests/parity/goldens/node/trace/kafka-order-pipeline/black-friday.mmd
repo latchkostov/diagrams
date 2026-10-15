@@ -1,0 +1,39 @@
+---
+title: "OrderRequest #1 · 2.38 s end to end · 5 copies"
+---
+sequenceDiagram
+  participant shopper as Storefront
+  participant gateway as Commerce gateway
+  participant orders as Order service
+  participant order_db as Orders database
+  participant order_events as orders.created.v1
+  participant schemas as Schema registry
+  participant inventory as Inventory service
+  participant payments as Payments service
+  participant notifications as Notification service
+  participant stock_db as Inventory database
+  participant notify_cache as Notification dedupe
+  participant payment_db as Payment ledger
+  participant payment_events as payments.completed.v1
+  shopper->>gateway: OrderRequest (+0.00 s)<br/>HTTPS
+  gateway-->>shopper: reply (+0.25 s)
+  gateway->>orders: OrderRequest (+0.25 s)<br/>POST /orders
+  orders-->>gateway: reply (+0.59 s)
+  orders->>order_db: OrderPlaced (+0.59 s)<br/>Commit order + outbox
+  orders-)order_events: OrderPlaced (+0.59 s)
+  orders->>schemas: OrderPlaced (+0.59 s)<br/>Fetch Avro schema
+  schemas-->>orders: reply (+0.79 s)
+  order_db-->>orders: reply (+0.83 s)
+  order_events-)inventory: OrderPlaced (+0.89 s)<br/>Reserve inventory
+  order_events-)payments: OrderPlaced (+0.89 s)<br/>Authorize payment
+  order_events-)notifications: OrderPlaced (+0.89 s)<br/>Send confirmation
+  inventory->>stock_db: InventoryReserved (+1.32 s)<br/>Reserve SKUs
+  notifications->>notify_cache: NotificationRequested (+1.35 s)<br/>SET NX · dedupe
+  payments->>payment_db: PaymentCompleted (+1.37 s)<br/>Record authorization
+  payments-)payment_events: PaymentCompleted (+1.37 s)
+  stock_db-->>inventory: reply (+1.57 s)
+  notify_cache-->>notifications: reply (+1.59 s)
+  payment_db-->>payments: reply (+1.61 s)
+  payment_events-)orders: PaymentCompleted (+1.67 s)<br/>group: orders-payments
+  orders->>order_db: OrderUpdated (+2.14 s)<br/>Commit order + outbox
+  order_db-->>orders: reply (+2.38 s)

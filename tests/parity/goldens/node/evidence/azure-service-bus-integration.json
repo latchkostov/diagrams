@@ -1,0 +1,80 @@
+{
+  "evidence": {
+    "played": [
+      { "id": "month-end", "title": "Month-end invoice batch", "playedMs": 6690, "capped": false },
+      { "id": "poison", "title": "Poison invoices", "playedMs": 20000, "capped": false }
+    ],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [
+      { "simulation": "Poison invoices", "node": "dlq", "broker": true, "what": "unread", "count": 30, "expects": "some" }
+    ],
+    "dropped": []
+  },
+  "planned": [{ "node": "dlq", "simulation": "Poison invoices", "what": "unread", "count": 30, "why": "expected" }],
+  "counted": 0,
+  "findings": [
+    {
+      "id": "dead-letter:posting-sub",
+      "rule": "dead-letter",
+      "severity": "warning",
+      "target": "posting-sub",
+      "elements": ["posting-sub", "worker"],
+      "fix": {
+        "ops": [
+          { "op": "add_node", "kind": "generic.queue", "label": "ledger-posting DLQ", "key": "new-dlq" },
+          { "op": "connect", "from": "posting-sub", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
+          { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
+        ],
+        "needsChoice": false
+      }
+    },
+    {
+      "id": "dead-letter:approval-sub",
+      "rule": "dead-letter",
+      "severity": "suggestion",
+      "target": "approval-sub",
+      "elements": ["approval-sub", "workflow"],
+      "fix": {
+        "ops": [
+          { "op": "add_node", "kind": "generic.queue", "label": "approval-workflow DLQ", "key": "new-dlq" },
+          { "op": "connect", "from": "approval-sub", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
+          { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
+        ],
+        "needsChoice": false
+      }
+    },
+    {
+      "id": "no-reader:dlq",
+      "rule": "no-reader",
+      "severity": "suggestion",
+      "target": "dlq",
+      "elements": ["dlq", "commands"],
+      "fix": { "ops": null, "needsChoice": true }
+    }
+  ],
+  "agentReport": {
+    "findings": [
+      {
+        "id": "dead-letter:posting-sub",
+        "rule": "dead-letter",
+        "severity": "warning",
+        "title": "Failed messages are dropped",
+        "message": "Ledger worker fails messages in “Poison invoices”, and ledger-posting has no dead-letter queue: messages that run out of deliveries (10) are lost.",
+        "targets": ["posting-sub", "worker"],
+        "fix": {
+          "label": "Add dead-letter queue",
+          "ops": [
+            { "op": "add_node", "kind": "generic.queue", "label": "ledger-posting DLQ", "key": "new-dlq" },
+            { "op": "connect", "from": "posting-sub", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
+            { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
+          ]
+        }
+      }
+    ],
+    "summary": "1 warning, 2 suggestions.",
+    "simulations": "Played 2 saved simulations (at most 60 s each). On purpose, not findings: 30 left unread in dlq in “Poison invoices”.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding.",
+    "more": "2 more findings omitted; call check_diagram with rules to see them."
+  }
+}

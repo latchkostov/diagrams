@@ -1,0 +1,10 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Custom colours",
+    "direction": "LR",
+    "nodes": [{ "id": "shape1", "stencil": "generic.service", "label": "Transparent shape", "x": 40, "y": 40 }],
+    "edges": []
+  }
+}

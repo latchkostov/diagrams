@@ -1,0 +1,40 @@
+{
+  "withIcons": {
+    "sha256": "9464166fc914327c6204fc4b40b372e98ac02b33add92abbadead1dfd3b457c0",
+    "bytes": 14834,
+    "inlined": { "client.browser": "client-browser 0022934839e05a07", "postgres": "postgresql 5bc8dcc1fbb1ec10", "service.go": "go 6f494b4da5a84f2a" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Load at the busy line",
+        "description": "One replica of 4 slots at 250 ms handles 16 req/s.",
+        "nodes": [
+          {
+            "id": "web",
+            "stencil": "client.browser",
+            "label": "Web",
+            "x": 0,
+            "y": 100,
+            "props": { "ratePerSec": 12.8 }
+          },
+          {
+            "id": "api",
+            "stencil": "service.go",
+            "label": "api",
+            "x": 320,
+            "y": 100,
+            "props": { "replicas": 1, "concurrency": 4, "latencyMs": 250, "jitter": 0 }
+          },
+          { "id": "db", "stencil": "postgres", "label": "Ledger", "x": 640, "y": 100 }
+        ],
+        "edges": [
+          { "id": "call", "from": "web", "to": "api", "kind": "sync" },
+          { "id": "write", "from": "api", "to": "db", "kind": "sync" }
+        ]
+      }
+    }
+  ]
+}

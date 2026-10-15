@@ -1,0 +1,33 @@
+---
+title: "CheckoutRequest #1 · 7.03 s end to end · 1 copy"
+---
+sequenceDiagram
+  participant storefront as Storefront
+  participant checkout as Checkout service
+  participant orders_topic as orders.v1
+  participant snowpipe as Snowflake connector
+  participant raw as Raw tables
+  participant dbt as dbt models
+  participant marts as Marts
+  participant reverse_etl as Reverse ETL
+  participant segments_topic as customer-segments.v1
+  participant personalization as Personalization service
+  participant marketing as Marketing automation
+  participant segment_cache as Segment cache
+  storefront->>checkout: CheckoutRequest (+0.00 s)<br/>POST /checkout
+  checkout-->>storefront: reply (+0.30 s)
+  checkout-)orders_topic: OrderPlaced (+0.30 s)
+  orders_topic-)snowpipe: OrderPlaced (+0.60 s)<br/>group: snowflake-sink
+  snowpipe->>raw: RawOrderRow (+0.94 s)<br/>insertRows
+  raw-->>snowpipe: reply (+1.15 s)
+  raw-)dbt: RawOrderRow (+1.15 s)<br/>New rows
+  Note over storefront,segment_cache: ⏱ 2.95 s at dbt models: processing
+  dbt->>marts: CustomerSegmentRow (+4.40 s)<br/>MERGE models
+  marts-->>dbt: reply (+4.61 s)
+  marts-)reverse_etl: CustomerSegmentRow (+4.61 s)<br/>Changed segments
+  Note over storefront,segment_cache: ⏱ 1.21 s at Reverse ETL: processing
+  reverse_etl-)segments_topic: CustomerSegmentChanged (+6.12 s)<br/>Segment changes
+  segments_topic-)personalization: CustomerSegmentChanged (+6.42 s)<br/>group: personalization
+  segments_topic-)marketing: CustomerSegmentChanged (+6.42 s)<br/>group: marketing-sync
+  personalization->>segment_cache: CustomerSegmentChanged (+6.82 s)<br/>SET segments
+  segment_cache-->>personalization: reply (+7.03 s)

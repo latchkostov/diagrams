@@ -17,10 +17,15 @@ import { brokerSpec, type BrokerSpec } from "../model/brokers";
 import type { NodeSimProps } from "./types";
 import { profileOf, resolvePreset, FAMILIES, PROCESSOR_LESSON, type ResolutionEvidence } from "../stencils/profiles";
 import type { PlanningModel } from "../model/types";
+import type { AdmissionPolicy } from "./admission";
+import { admissionPresetFor, ADMISSION_REVISION } from "../model/admissionPresets";
+import { validAdmissionData } from "../model/admissionSchema";
 
 /** Only these roles spend service time, including paused and resumed work. */
 export const hasServiceTime = (role: SimRole): boolean =>
   role === "processor" || role === "store" || role === "gateway";
+const metadataNumber = (value: unknown) =>
+  typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : undefined;
 
 type DeviceKey = "size" | "gbps" | "messageKB" | "ha" | "failoverMs" | "healthChecks";
 
@@ -39,7 +44,20 @@ export interface ResolvedDevice {
 }
 
 export type ResolvedProps = Required<
-  Omit<NodeSimProps, "emits" | DeviceKey | "preset" | "presetRevision" | "connections" | "querySlots" | "ingestUnits">
+  Omit<
+    NodeSimProps,
+    | "api"
+    | "endpoints"
+    | "scaling"
+    | "maxConcurrency"
+    | "emits"
+    | DeviceKey
+    | "preset"
+    | "presetRevision"
+    | "connections"
+    | "querySlots"
+    | "ingestUnits"
+  >
 > &
   Pick<NodeSimProps, "emits"> & {
     healthChecks: boolean;
@@ -48,6 +66,7 @@ export type ResolvedProps = Required<
     /** Metadata only: never changes dispatch or sampling units. */
     profile: ResolutionEvidence;
     broker?: BrokerSpec & { messageKB?: number; ingestUnits?: number };
+    admission?: AdmissionPolicy;
   };
 
 /** Ignore malformed free-form diagram props rather than poisoning the clock. `stencil` adds a device's presets. */
@@ -57,12 +76,20 @@ export function resolveProps(
   props: Record<string, unknown>,
   stencil: string | undefined,
   planning: PlanningModel | undefined,
+  previousAdmission?: AdmissionPolicy,
 ): ResolvedProps {
   const authored = props;
   const profile = profileOf(stencil);
   const compatible = !!profile && FAMILIES[profile.family].roles.includes(role);
   const pinned =
-    !!planning && compatible ? resolvePreset(stencil, props.preset, props.presetRevision, props.size) : undefined;
+    !!planning && compatible
+      ? resolvePreset(
+          stencil,
+          props.preset ?? (planning.revision === "p3" ? admissionPresetFor(stencil) : undefined),
+          props.presetRevision ?? (planning.revision === "p3" && !props.preset ? ADMISSION_REVISION : undefined),
+          props.size,
+        )
+      : undefined;
   props = {
     ...(!!planning && compatible && profile ? FAMILIES[profile.family].defaults : {}),
     ...pinned?.values,
@@ -77,9 +104,74 @@ export function resolveProps(
   const evidencePreset = pinned ?? devicePreset;
   const ha = device?.ha ?? "standalone";
   const broker = brokerSpec(stencil, role, planning);
+  const managed =
+    planning?.revision === "p3" &&
+    ((compatible &&
+      (profile?.family === "serverless" ||
+        profile?.family === "external-api" ||
+        profile?.family === "model-api" ||
+        profile?.family === "api-gateway")) ||
+      ((props.api !== undefined || props.endpoints !== undefined) && (hasServiceTime(role) || role === "sink")));
+  const invalidAdmission =
+    previousAdmission?.invalid ?? (managed && !previousAdmission && !validAdmissionData(props.api, props.endpoints));
+  const api =
+    managed && !invalidAdmission && props.api && typeof props.api === "object" && !Array.isArray(props.api)
+      ? (props.api as NonNullable<NodeSimProps["api"]>)
+      : {};
+  const allocation = metadataNumber(props.maxConcurrency);
+  const fixedWorker = role === "processor" && profile?.family !== "model-api";
+  const automatic = profile?.family === "serverless" && props.scaling === "auto";
+  // Fleet slots are derived after capacity multiplication and partition assignment.
+  const effectiveSlots = fixedWorker ? allocation : undefined;
+  const endpoints =
+    !invalidAdmission && Array.isArray(props.endpoints)
+      ? (props.endpoints as NonNullable<NodeSimProps["endpoints"]>)
+      : [];
+  const stripeScope =
+    stencil === "stripe" && pinned?.id?.startsWith("stripe-")
+      ? api.quotas?.find((q) => q.sharedGroup)?.sharedGroup
+      : undefined;
+  const resolvedEndpoints =
+    previousAdmission?.endpoints ??
+    endpoints.map((endpoint) =>
+      stripeScope && endpoint.behaviour?.quotas === undefined
+        ? {
+            ...endpoint,
+            behaviour: {
+              ...endpoint.behaviour,
+              quotas: [
+                {
+                  id: "endpoint-rate",
+                  unit: "requests" as const,
+                  amount: 25,
+                  windowMs: 1000,
+                  algorithm: "token-bucket" as const,
+                  sharedGroup: `${stripeScope}:${endpoint.method}:${endpoint.path}`,
+                },
+              ],
+            },
+          }
+        : endpoint,
+    );
   const metadata = (key: string) =>
     typeof props[key] === "number" && Number.isFinite(props[key]) && props[key] > 0 ? props[key] : undefined;
   return {
+    ...(managed
+      ? {
+          admission: {
+            ...(invalidAdmission ? { invalid: true } : {}),
+            requirementsPolicy: previousAdmission?.requirementsPolicy ?? previousAdmission,
+            api: previousAdmission?.api ?? api,
+            endpoints: resolvedEndpoints,
+            slots: effectiveSlots,
+            fixedSlotsPerReplica: fixedWorker && !automatic ? number("concurrency", 4) : undefined,
+            accountConcurrency:
+              pinned?.values.api?.sharedConcurrency === api.sharedConcurrency
+                ? pinned?.values.api?.maxInFlight
+                : undefined,
+          },
+        }
+      : {}),
     broker: broker
       ? {
           ...broker,
@@ -94,27 +186,31 @@ export function resolveProps(
       presetRevision: pinned?.revision,
       evidence: (evidencePreset?.sources ?? (role === "processor" ? PROCESSOR_LESSON.sources : [])).map((source) => ({
         ...source,
-        ...(authored[source.key] !== undefined && authored[source.key] !== evidencePreset?.values[source.key]
+        ...(authored[source.key] !== undefined &&
+        JSON.stringify(authored[source.key]) !== JSON.stringify(evidencePreset?.values[source.key])
           ? { evidence: "assumption" as const, note: "Configured workload assumption." }
           : {}),
       })),
       units: "real",
     },
     ratePerSec: number("ratePerSec", 2),
-    latencyMs: hasServiceTime(role)
-      ? number(
-          "latencyMs",
-          device?.preset
-            ? device.preset.latencyMs
-            : role === "processor"
-              ? 250
-              : role === "gateway"
-                ? 60
-                : role === "store"
-                  ? 40
-                  : 0,
-        )
-      : 0,
+    latencyMs:
+      hasServiceTime(role) || managed
+        ? number(
+            "latencyMs",
+            device?.preset
+              ? device.preset.latencyMs
+              : role === "processor"
+                ? 250
+                : role === "gateway"
+                  ? 60
+                  : role === "store"
+                    ? 40
+                    : managed
+                      ? 250
+                      : 0,
+          )
+        : 0,
     concurrency: role === "processor" ? Math.floor(number("concurrency", 4)) : Infinity,
     // An HA pair or cluster starts at two units.
     replicas: Math.max(1, Math.floor(number("replicas", ha === "standalone" ? 1 : 2, 1))),

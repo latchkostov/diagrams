@@ -1,0 +1,62 @@
+{
+  "summary": "1 warning, 1 suggestion.",
+  "findings": {
+    "no-reader:n3-1": {
+      "title": "Nobody reads Node 3.1",
+      "message": "Node 0.1 sends to Node 3.1, but nothing consumes it: messages pile up.",
+      "rationale": "A queue with producers and no consumers only grows. Every queue should have a consumer that takes its messages.",
+      "fix": { "label": "Add a consumer…", "choice": "Pick what reads Node 3.1, then add it and connect n3-1 to it." }
+    },
+    "dead-letter:n2-2": {
+      "title": "Node 2.2 has no dead-letter queue",
+      "message": "If Node 3.2 can't handle a message, it's dropped after 3 deliveries. A command queue is where losing messages hurts most.",
+      "rationale": "A message that keeps failing is redelivered up to the broker's delivery limit, then goes to the broker's dead-letter route, or is dropped when there isn't one (or its filter doesn't take the message). A dead-letter queue keeps it to inspect and replay.",
+      "fix": { "label": "Add dead-letter queue" }
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "no-reader:n3-1",
+        "rule": "no-reader",
+        "severity": "warning",
+        "title": "Nobody reads Node 3.1",
+        "message": "Node 0.1 sends to Node 3.1, but nothing consumes it: messages pile up.",
+        "targets": ["n3-1", "n0-1"],
+        "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads Node 3.1, then add it and connect n3-1 to it." }
+      },
+      {
+        "id": "dead-letter:n2-2",
+        "rule": "dead-letter",
+        "severity": "suggestion",
+        "title": "Node 2.2 has no dead-letter queue",
+        "message": "If Node 3.2 can't handle a message, it's dropped after 3 deliveries. A command queue is where losing messages hurts most.",
+        "targets": ["n2-2", "n3-2"],
+        "fix": {
+          "label": "Add dead-letter queue",
+          "ops": [
+            { "op": "add_node", "kind": "aws.sqs", "label": "Node 2.2-dlq", "key": "new-dlq" },
+            { "op": "connect", "from": "n2-2", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
+            { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
+          ]
+        }
+      }
+    ],
+    "summary": "1 warning, 1 suggestion.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      {
+        "id": "no-reader:n3-1",
+        "rule": "no-reader",
+        "severity": "warning",
+        "title": "Nobody reads Node 3.1",
+        "message": "Node 0.1 sends to Node 3.1, but nothing consumes it: messages pile up.",
+        "targets": ["n3-1", "n0-1"],
+        "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads Node 3.1, then add it and connect n3-1 to it." }
+      }
+    ],
+    "summary": "1 warning, 1 suggestion."
+  }
+}
