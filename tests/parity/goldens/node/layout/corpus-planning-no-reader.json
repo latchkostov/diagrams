@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "checkout": [40, 40], "topic": [400, 40] },
+    "TB": { "checkout": [40, 40], "topic": [40, 200] }
+  },
+  "tidy": { "checkout": [0, 20], "topic": [320, 20] },
+  "arrange": {
+    "alignLeft": { "checkout": [0, 140], "topic": [0, 20] },
+    "alignMiddle": { "checkout": [0, 80], "topic": [320, 80] },
+    "distributeH": { "checkout": [0, 140], "topic": [320, 20] },
+    "distributeV": { "checkout": [0, 140], "topic": [320, 20] },
+    "spreadH": { "checkout": [0, 20], "topic": [320, 20] },
+    "boundaryAround": { "x": -40, "y": -44, "width": 620, "height": 296 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "checkout": [40, 40], "topic": [400, 40] },
+    "groups": {}
+  }
+}

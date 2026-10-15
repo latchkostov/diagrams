@@ -1,0 +1,39 @@
+{
+  "summary": "1 warning, 0 suggestions.",
+  "findings": {
+    "no-reader:neutral-2": {
+      "title": "Nobody reads neutral topic",
+      "message": "neutral service publishes to neutral topic, but nothing consumes it: it keeps every message, unread.",
+      "rationale": "A topic keeps what's published until its retention ends, whether anything reads it or not. With no consumer group, nothing acts on its messages, and more partitions don't change that.",
+      "fix": { "label": "Add a consumer…", "choice": "Pick what reads neutral topic, then add it and connect neutral-2 to it." }
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "no-reader:neutral-2",
+        "rule": "no-reader",
+        "severity": "warning",
+        "title": "Nobody reads neutral topic",
+        "message": "neutral service publishes to neutral topic, but nothing consumes it: it keeps every message, unread.",
+        "targets": ["neutral-2", "neutral-1"],
+        "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads neutral topic, then add it and connect neutral-2 to it." }
+      }
+    ],
+    "summary": "1 warning, 0 suggestions."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      {
+        "id": "no-reader:neutral-2",
+        "rule": "no-reader",
+        "severity": "warning",
+        "title": "Nobody reads neutral topic",
+        "message": "neutral service publishes to neutral topic, but nothing consumes it: it keeps every message, unread.",
+        "targets": ["neutral-2", "neutral-1"],
+        "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads neutral topic, then add it and connect neutral-2 to it." }
+      }
+    ],
+    "summary": "1 warning, 0 suggestions."
+  }
+}

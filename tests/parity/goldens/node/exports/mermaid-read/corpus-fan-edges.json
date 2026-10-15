@@ -1,0 +1,33 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Fan 5 in / 5 out",
+    "direction": "LR",
+    "nodes": [
+      { "id": "hub", "stencil": "generic.topic", "label": "Hub", "sublabel": "events", "x": 400, "y": 280 },
+      { "id": "in1", "stencil": "generic.service", "label": "Producer 1", "x": 40, "y": 40 },
+      { "id": "out1", "stencil": "generic.service", "label": "Consumer 1", "x": 760, "y": 40 },
+      { "id": "in2", "stencil": "generic.service", "label": "Producer 2", "x": 40, "y": 160 },
+      { "id": "out2", "stencil": "generic.service", "label": "Consumer 2", "x": 760, "y": 160 },
+      { "id": "in3", "stencil": "generic.service", "label": "Producer 3", "x": 40, "y": 280 },
+      { "id": "out3", "stencil": "generic.service", "label": "Consumer 3", "x": 760, "y": 280 },
+      { "id": "in4", "stencil": "generic.service", "label": "Producer 4", "x": 40, "y": 400 },
+      { "id": "out4", "stencil": "generic.service", "label": "Consumer 4", "x": 760, "y": 400 },
+      { "id": "in5", "stencil": "generic.service", "label": "Producer 5", "x": 40, "y": 520 },
+      { "id": "out5", "stencil": "generic.service", "label": "Consumer 5", "x": 760, "y": 520 }
+    ],
+    "edges": [
+      { "id": "e1-in1-hub", "from": "in1", "to": "hub", "kind": "async" },
+      { "id": "e2-hub-out1", "from": "hub", "to": "out1", "kind": "async" },
+      { "id": "e3-in2-hub", "from": "in2", "to": "hub", "kind": "async" },
+      { "id": "e4-hub-out2", "from": "hub", "to": "out2", "kind": "async" },
+      { "id": "e5-in3-hub", "from": "in3", "to": "hub", "kind": "async" },
+      { "id": "e6-hub-out3", "from": "hub", "to": "out3", "kind": "async" },
+      { "id": "e7-in4-hub", "from": "in4", "to": "hub", "kind": "async" },
+      { "id": "e8-hub-out4", "from": "hub", "to": "out4", "kind": "async" },
+      { "id": "e9-in5-hub", "from": "in5", "to": "hub", "kind": "async" },
+      { "id": "e10-hub-out5", "from": "hub", "to": "out5", "kind": "async" }
+    ]
+  }
+}

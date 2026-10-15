@@ -1,0 +1,35 @@
+---
+title: CQRS with event sourcing
+---
+flowchart LR
+  subgraph g_write ["Write side"]
+    command_handler["Command handler<br/>Load · decide · append"]
+    event_store["Event store<br/>Stream per account"]
+  end
+  subgraph g_read ["Read side"]
+    query_api["Query API<br/>Reads only"]
+    balances_db[("Balances<br/>Read model · one row each")]
+    statements[("Statements<br/>Read model · searchable")]
+    balance_proj["Balance projection<br/>group: balances"]
+    statement_proj["Statement projection<br/>group: statements"]
+  end
+  app(["Banking app<br/>Commands and queries"])
+  gateway["API gateway<br/>Routes by verb"]
+  publisher["Event publisher<br/>group: integration"]
+  integration_topic["accounts.events.v1<br/>Public contract"]
+  fraud["Fraud scoring<br/>Another team · group: fraud"]
+  app -->|"HTTPS"| gateway
+  gateway -->|"POST · commands"| command_handler
+  gateway -->|"GET · queries"| query_api
+  command_handler -->|"Append · expectedVersion"| event_store
+  event_store -.->|"Subscription"| publisher
+  publisher -.->|"Integration events"| integration_topic
+  event_store -.-> balance_proj
+  event_store -.-> statement_proj
+  balance_proj -->|"Upsert balance"| balances_db
+  statement_proj -->|"Index entry"| statements
+  query_api -->|"GetBalance"| balances_db
+  query_api -->|"GetStatement"| statements
+  integration_topic -.->|"group: fraud"| fraud
+  linkStyle 4,5,6,7,12 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"Commands append events to an event store; projections build read models that queries hit, and an outbound feed shares events.","nodes":{"app":["app","client.mobile"],"gateway":["gateway","kong"],"command_handler":["command-handler","service.dotnet"],"event_store":["event-store","generic.event-store"],"publisher":["publisher","kafka.connect"],"integration_topic":["integration-topic","kafka.topic"],"query_api":["query-api","service.node"],"balances_db":["balances-db","postgres"],"statements":["statements","elasticsearch"],"balance_proj":["balance-proj","generic.projection"],"statement_proj":["statement-proj","generic.projection"],"fraud":["fraud","service.python"]},"groups":{"g_write":["write","neutral"],"g_read":["read","neutral"]},"edges":["app-to-gateway","gateway-to-command-handler","gateway-to-query-api","command-handler-to-event-store","event-store-to-publisher","publisher-to-integration-topic","event-store-to-balance-proj","event-store-to-statement-proj","balance-proj-to-balances-db","statement-proj-to-statements","query-api-to-balances-db","query-api-to-statements","integration-topic-to-fraud"],"relations":{}}

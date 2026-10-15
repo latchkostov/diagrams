@@ -1,0 +1,77 @@
+{
+  "ok": true,
+  "format": "asyncapi",
+  "warnings": [],
+  "report": {
+    "summary": {
+      "code": "importReport.summary",
+      "args": [
+        { "title": "Notification service", "format": "AsyncAPI", "total": "all", "drawn": 3, "nodes": 3, "connections": 2, "guesses": 0 }
+      ]
+    },
+    "format": "AsyncAPI",
+    "source": "notifications-2.6.asyncapi.yaml",
+    "title": "Notification service",
+    "nodes": 3,
+    "connections": 2,
+    "boundaries": 1,
+    "guesses": [],
+    "inferred": [],
+    "notDrawn": [],
+    "unread": [],
+    "notes": [
+      { "code": "importDetail.value0HasNoProducerInThese", "args": [{ "value0": "order-notifications" }] },
+      { "code": "importReport.watchTraffic", "args": [{ "title": "Imported traffic" }] }
+    ],
+    "traffic": [
+      { "nodeId": "notification-service", "label": "Notification service", "messageType": "EmailSent", "ratePerSec": 1, "seconds": 120 }
+    ]
+  },
+  "reportEnglish": { "report.summary": "Imported “Notification service” from AsyncAPI: 3 nodes, 2 connections.", "report.notes[0]": "order-notifications has no producer in these files", "report.notes[1]": "Go live and pick “Imported traffic” to watch messages flow" },
+  "replay": null,
+  "checks": ["warning no-reader:topic-email.sent", "suggestion dead-letter:topic-order-notifications"],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Notification service",
+    "direction": "LR",
+    "groups": [
+      { "id": "boundary-rabbitmq-rabbitmq.shop.internal-5672", "label": "RabbitMQ · rabbitmq.shop.internal:5672", "tone": "neutral", "x": 413, "y": 40, "width": 306, "height": 296 }
+    ],
+    "nodes": [
+      { "id": "notification-service", "stencil": "generic.service", "label": "Notification service", "x": 40, "y": 150 },
+      { "id": "topic-order-notifications", "stencil": "rabbitmq.queue", "label": "order-notifications", "x": 453, "y": 104, "group": "boundary-rabbitmq-rabbitmq.shop.internal-5672" },
+      { "id": "topic-email.sent", "stencil": "rabbitmq.exchange", "label": "email.sent", "x": 453, "y": 224, "group": "boundary-rabbitmq-rabbitmq.shop.internal-5672" }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "from": "topic-order-notifications",
+        "to": "notification-service",
+        "kind": "async",
+        "props": { "filter": ["OrderConfirmationRequested"] }
+      },
+      {
+        "id": "e2",
+        "from": "notification-service",
+        "to": "topic-email.sent",
+        "kind": "async",
+        "props": { "emits": "EmailSent" }
+      }
+    ],
+    "simulations": [
+      {
+        "id": "imported-traffic",
+        "title": "Imported traffic",
+        "description": "2 minutes of steady traffic where messages start, from the import.",
+        "traffic": [
+          {
+            "id": "t1",
+            "node": "notification-service",
+            "messageType": "EmailSent",
+            "shape": { "kind": "constant", "ratePerSec": 1, "durationMs": 120000 }
+          }
+        ]
+      }
+    ]
+  }
+}

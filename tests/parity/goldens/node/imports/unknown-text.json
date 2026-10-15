@@ -1,0 +1,4 @@
+{
+  "ok": false,
+  "error": "That doesn't look like a diagram we can read. Supported: Live Diagrams files (.diagram.json), draw.io (.drawio / .xml), Mermaid flowcharts (.mmd), docker-compose files, Kubernetes manifests, AsyncAPI documents and Terraform plans (terraform show -json)."
+}

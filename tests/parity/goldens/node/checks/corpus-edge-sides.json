@@ -1,0 +1,147 @@
+{
+  "ran": [
+    "dead-letter",
+    "no-reader",
+    "sync-cycle",
+    "sync-chain",
+    "shared-database",
+    "entry-gateway",
+    "capacity",
+    "single-point",
+    "secret-identity",
+    "schema-registry"
+  ],
+  "off": [],
+  "findings": [
+    {
+      "id": "no-reader:tt-b",
+      "rule": "no-reader",
+      "severity": "warning",
+      "target": "tt-b",
+      "elements": ["tt-b", "tt-a"],
+      "fix": { "ops": null, "needsChoice": true }
+    },
+    {
+      "id": "no-reader:tr-b",
+      "rule": "no-reader",
+      "severity": "warning",
+      "target": "tr-b",
+      "elements": ["tr-b", "tr-a"],
+      "fix": { "ops": null, "needsChoice": true }
+    },
+    {
+      "id": "no-reader:tb-b",
+      "rule": "no-reader",
+      "severity": "warning",
+      "target": "tb-b",
+      "elements": ["tb-b", "tb-a"],
+      "fix": { "ops": null, "needsChoice": true }
+    },
+    {
+      "id": "no-reader:tl-b",
+      "rule": "no-reader",
+      "severity": "warning",
+      "target": "tl-b",
+      "elements": ["tl-b", "tl-a"],
+      "fix": { "ops": null, "needsChoice": true }
+    },
+    {
+      "id": "no-reader:rt-b",
+      "rule": "no-reader",
+      "severity": "warning",
+      "target": "rt-b",
+      "elements": ["rt-b", "rt-a"],
+      "fix": { "ops": null, "needsChoice": true }
+    },
+    {
+      "id": "no-reader:rr-b",
+      "rule": "no-reader",
+      "severity": "warning",
+      "target": "rr-b",
+      "elements": ["rr-b", "rr-a"],
+      "fix": { "ops": null, "needsChoice": true }
+    },
+    {
+      "id": "no-reader:rb-b",
+      "rule": "no-reader",
+      "severity": "warning",
+      "target": "rb-b",
+      "elements": ["rb-b", "rb-a"],
+      "fix": { "ops": null, "needsChoice": true }
+    },
+    {
+      "id": "no-reader:rl-b",
+      "rule": "no-reader",
+      "severity": "warning",
+      "target": "rl-b",
+      "elements": ["rl-b", "rl-a"],
+      "fix": { "ops": null, "needsChoice": true }
+    },
+    {
+      "id": "no-reader:bt-b",
+      "rule": "no-reader",
+      "severity": "warning",
+      "target": "bt-b",
+      "elements": ["bt-b", "bt-a"],
+      "fix": { "ops": null, "needsChoice": true }
+    },
+    {
+      "id": "no-reader:br-b",
+      "rule": "no-reader",
+      "severity": "warning",
+      "target": "br-b",
+      "elements": ["br-b", "br-a"],
+      "fix": { "ops": null, "needsChoice": true }
+    },
+    {
+      "id": "no-reader:bb-b",
+      "rule": "no-reader",
+      "severity": "warning",
+      "target": "bb-b",
+      "elements": ["bb-b", "bb-a"],
+      "fix": { "ops": null, "needsChoice": true }
+    },
+    {
+      "id": "no-reader:bl-b",
+      "rule": "no-reader",
+      "severity": "warning",
+      "target": "bl-b",
+      "elements": ["bl-b", "bl-a"],
+      "fix": { "ops": null, "needsChoice": true }
+    },
+    {
+      "id": "no-reader:lt-b",
+      "rule": "no-reader",
+      "severity": "warning",
+      "target": "lt-b",
+      "elements": ["lt-b", "lt-a"],
+      "fix": { "ops": null, "needsChoice": true }
+    },
+    {
+      "id": "no-reader:lr-b",
+      "rule": "no-reader",
+      "severity": "warning",
+      "target": "lr-b",
+      "elements": ["lr-b", "lr-a"],
+      "fix": { "ops": null, "needsChoice": true }
+    },
+    {
+      "id": "no-reader:lb-b",
+      "rule": "no-reader",
+      "severity": "warning",
+      "target": "lb-b",
+      "elements": ["lb-b", "lb-a"],
+      "fix": { "ops": null, "needsChoice": true }
+    },
+    {
+      "id": "no-reader:ll-b",
+      "rule": "no-reader",
+      "severity": "warning",
+      "target": "ll-b",
+      "elements": ["ll-b", "ll-a"],
+      "fix": { "ops": null, "needsChoice": true }
+    }
+  ],
+  "ignored": [],
+  "fixes": {}
+}

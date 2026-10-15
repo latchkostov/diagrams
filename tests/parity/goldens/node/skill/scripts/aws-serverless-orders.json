@@ -1,0 +1,468 @@
+{
+  "layout": {
+    "status": 0,
+    "stdout": "<tmp>/laid.json: placed 16 nodes, fitted 1 boundary.\n",
+    "nodes": { "client": [40, 280], "apigw": [400, 280], "create-order": [790, 220], "orders-table": [1150, 280], "stream-fn": [1510, 280], "bus": [1870, 280], "sfn": [2230, 160], "stripe": [2592, -40], "dlq": [2592, 280], "fulfillment-q": [2230, 280], "fulfillment-fn": [2592, 160], "three-pl": [2985, 280], "sns": [2230, 400], "email": [2592, 400], "sms": [2592, 520], "cognito": [790, 340] },
+    "groups": { "aws": [360, 96, 2525, 536] }
+  },
+  "shareLink": {
+    "status": 0,
+    "prefix": "https://www.livediagrams.dev/#d=",
+    "decoded": { "sha256": "3156660689ded90ad9ff26ddbdbcfeb697b03ad225d80684ecc2de6c548bc1ba", "bytes": 8939 },
+    "sameAsFile": true,
+    "warned": false
+  },
+  "exportHtml": {
+    "status": 0,
+    "stdout": "<tmp>/export.html (<size>, plays \"Flash sale: 300 orders/s\" when opened)\nPrivate: it works offline and makes no network requests, and only people who have the file can open it. Share it where your team already controls access.\n",
+    "stderr": "",
+    "payload": {
+      "version": 1,
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "AWS serverless orders",
+        "description": "API Gateway and Lambda write orders to DynamoDB; its stream feeds EventBridge rules for a Step Functions workflow, SQS and SNS.",
+        "direction": "LR",
+        "groups": [
+          { "id": "aws", "label": "AWS · us-east-1", "tone": "aws", "x": 380, "y": 120, "width": 2240, "height": 692 }
+        ],
+        "nodes": [
+          {
+            "id": "client",
+            "stencil": "client.browser",
+            "label": "Web shop",
+            "sublabel": "Signed-in customers",
+            "x": 40,
+            "y": 160,
+            "props": { "ratePerSec": 10, "messageType": "PlaceOrder" }
+          },
+          {
+            "id": "apigw",
+            "stencil": "aws.api-gateway",
+            "label": "Orders API",
+            "sublabel": "REST · Cognito authorizer",
+            "x": 420,
+            "y": 160,
+            "group": "aws",
+            "props": { "latencyMs": 2 }
+          },
+          {
+            "id": "create-order",
+            "stencil": "aws.lambda",
+            "label": "CreateOrder",
+            "sublabel": "Validate · PutItem",
+            "x": 800,
+            "y": 160,
+            "group": "aws",
+            "props": { "concurrency": 100, "latencyMs": 80, "emits": "OrderPlaced" }
+          },
+          {
+            "id": "orders-table",
+            "stencil": "aws.dynamodb",
+            "label": "Orders table",
+            "sublabel": "Streams: NEW_IMAGE",
+            "x": 1180,
+            "y": 160,
+            "group": "aws",
+            "props": { "latencyMs": 1 }
+          },
+          {
+            "id": "stream-fn",
+            "stencil": "aws.lambda",
+            "label": "Stream publisher",
+            "sublabel": "Batch 100 · PutEvents",
+            "x": 1180,
+            "y": 400,
+            "group": "aws",
+            "props": { "concurrency": 100, "latencyMs": 60 }
+          },
+          {
+            "id": "bus",
+            "stencil": "aws.eventbridge",
+            "label": "commerce-bus",
+            "sublabel": "Rules by detail-type",
+            "x": 1560,
+            "y": 400,
+            "group": "aws",
+            "props": { "partitions": 64 }
+          },
+          {
+            "id": "sfn",
+            "stencil": "aws.step-functions",
+            "label": "Payment workflow",
+            "sublabel": "Charge · update status",
+            "x": 1560,
+            "y": 160,
+            "group": "aws",
+            "props": { "concurrency": 200, "latencyMs": 400, "emits": "OrderPaid" }
+          },
+          {
+            "id": "stripe",
+            "stencil": "stripe",
+            "label": "Stripe",
+            "sublabel": "Payment intents",
+            "x": 1940,
+            "y": 40,
+            "props": {}
+          },
+          {
+            "id": "dlq",
+            "stencil": "aws.sqs",
+            "label": "fulfillment-dlq",
+            "sublabel": "Redrive when 3PL recovers",
+            "x": 1940,
+            "y": 280,
+            "group": "aws",
+            "props": { "isDeadLetter": true }
+          },
+          {
+            "id": "fulfillment-q",
+            "stencil": "aws.sqs",
+            "label": "fulfillment-queue",
+            "sublabel": "maxReceiveCount: 3",
+            "x": 1940,
+            "y": 400,
+            "group": "aws",
+            "props": { "maxDeliveryCount": 3, "visibilityTimeoutSec": 30 }
+          },
+          {
+            "id": "fulfillment-fn",
+            "stencil": "aws.lambda",
+            "label": "RequestShipment",
+            "sublabel": "Batch 10 · partial failures",
+            "x": 2320,
+            "y": 400,
+            "group": "aws",
+            "props": { "concurrency": 50, "latencyMs": 150, "retryBackoffMs": 300, "emits": "ShipmentRequested" }
+          },
+          {
+            "id": "three-pl",
+            "stencil": "generic.external-api",
+            "label": "3PL warehouse API",
+            "sublabel": "POST /shipments",
+            "x": 2320,
+            "y": 40,
+            "props": {}
+          },
+          {
+            "id": "sns",
+            "stencil": "aws.sns",
+            "label": "order-updates",
+            "sublabel": "Customer notifications",
+            "x": 1560,
+            "y": 640,
+            "group": "aws",
+            "props": { "partitions": 64 }
+          },
+          {
+            "id": "email",
+            "stencil": "generic.email",
+            "label": "Email receipt",
+            "sublabel": "Amazon SES",
+            "x": 1940,
+            "y": 580,
+            "group": "aws",
+            "props": {}
+          },
+          {
+            "id": "sms",
+            "stencil": "generic.sms",
+            "label": "SMS update",
+            "sublabel": "End User Messaging",
+            "x": 1940,
+            "y": 700,
+            "group": "aws",
+            "props": {}
+          },
+          { "id": "cognito", "stencil": "generic.identity-provider", "label": "Cognito user pool", "sublabel": "Shopper sign-in", "x": 431, "y": 400, "group": "aws" }
+        ],
+        "edges": [
+          {
+            "id": "client-to-apigw",
+            "from": "client",
+            "to": "apigw",
+            "label": "HTTPS",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "apigw-to-create-order",
+            "from": "apigw",
+            "to": "create-order",
+            "label": "POST /orders",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "create-order-to-orders-table",
+            "from": "create-order",
+            "to": "orders-table",
+            "label": "PutItem",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "orders-table-to-stream-fn",
+            "from": "orders-table",
+            "to": "stream-fn",
+            "label": "DynamoDB Streams",
+            "kind": "async",
+            "props": { "travelMs": 300 }
+          },
+          {
+            "id": "stream-fn-to-bus",
+            "from": "stream-fn",
+            "to": "bus",
+            "label": "PutEvents",
+            "kind": "async",
+            "props": { "travelMs": 300 }
+          },
+          {
+            "id": "bus-to-sfn",
+            "from": "bus",
+            "to": "sfn",
+            "label": "Rule: OrderPlaced",
+            "kind": "async",
+            "props": { "travelMs": 300, "group": "payment-rule", "filter": ["OrderPlaced"] }
+          },
+          {
+            "id": "sfn-to-stripe",
+            "from": "sfn",
+            "to": "stripe",
+            "label": "Task: charge",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "sfn-to-orders-table",
+            "from": "sfn",
+            "to": "orders-table",
+            "label": "UpdateItem: PAID",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "bus-to-fulfillment-q",
+            "from": "bus",
+            "to": "fulfillment-q",
+            "label": "Rule: OrderPaid",
+            "kind": "async",
+            "props": { "travelMs": 300, "group": "fulfillment-rule", "filter": ["OrderPaid"] }
+          },
+          {
+            "id": "fulfillment-q-to-fulfillment-fn",
+            "from": "fulfillment-q",
+            "to": "fulfillment-fn",
+            "label": "Event source",
+            "kind": "async",
+            "props": { "travelMs": 300 }
+          },
+          {
+            "id": "fulfillment-fn-to-three-pl",
+            "from": "fulfillment-fn",
+            "to": "three-pl",
+            "label": "Create shipment",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "fulfillment-q-to-dlq",
+            "from": "fulfillment-q",
+            "to": "dlq",
+            "label": "After 3 receives",
+            "kind": "async",
+            "props": { "travelMs": 300, "dlq": true },
+            "sourceSide": "top",
+            "targetSide": "bottom"
+          },
+          {
+            "id": "dlq-to-fulfillment-q",
+            "from": "dlq",
+            "to": "fulfillment-q",
+            "label": "Redrive",
+            "kind": "async",
+            "props": { "travelMs": 300 },
+            "sourceSide": "left",
+            "targetSide": "left"
+          },
+          {
+            "id": "bus-to-sns",
+            "from": "bus",
+            "to": "sns",
+            "label": "Rule: OrderPaid",
+            "kind": "async",
+            "props": { "travelMs": 300, "group": "notify-rule", "filter": ["OrderPaid"] }
+          },
+          {
+            "id": "sns-to-email",
+            "from": "sns",
+            "to": "email",
+            "label": "Email",
+            "kind": "async",
+            "props": { "travelMs": 300, "group": "email" }
+          },
+          {
+            "id": "sns-to-sms",
+            "from": "sns",
+            "to": "sms",
+            "label": "SMS",
+            "kind": "async",
+            "props": { "travelMs": 300, "group": "sms" }
+          },
+          { "id": "apigw-to-cognito", "from": "apigw", "to": "cognito", "label": "JWT authorizer", "kind": "async", "relation": "identity", "sourceSide": "bottom", "targetSide": "top" }
+        ],
+        "simulations": [
+          {
+            "id": "flash-sale",
+            "title": "Flash sale: 300 orders/s",
+            "description": "Steady traffic jumps to 300 orders a second for three seconds; Lambda scales out and nothing queues for long.",
+            "seed": 7,
+            "scale": 10,
+            "traffic": [
+              {
+                "id": "orders",
+                "node": "client",
+                "messageType": "PlaceOrder",
+                "label": "1,040 orders with a flash-sale peak",
+                "shape": { "kind": "spike", "baseRate": 20, "peakRate": 300, "atMs": 3000, "peakMs": 3000, "durationMs": 10000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 0,
+                "action": { "do": "note", "text": "Every write to the orders table lands on its stream. One Lambda turns stream records into EventBridge events; rules route them by type. Each dot is 10 orders.", "focus": ["orders-table", "stream-fn", "bus"] }
+              },
+              {
+                "atMs": 3000,
+                "action": { "do": "note", "text": "The flash sale peaks at 300 orders a second. API Gateway and Lambda scale out; there are no servers to add.", "focus": ["client", "apigw", "create-order"], "pause": true }
+              },
+              {
+                "atMs": 5500,
+                "action": { "do": "note", "text": "The payment workflow writes PAID back to the table. That change comes round the stream as OrderPaid, which the other two rules pick up.", "focus": ["sfn", "orders-table", "fulfillment-q", "sns"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "writes",
+                "label": "Each order is written twice: placed, then paid",
+                "metric": { "node": "orders-table", "field": "processed" },
+                "op": "==",
+                "value": 2080,
+                "when": "end"
+              },
+              {
+                "id": "shipments",
+                "label": "1,040 shipments requested",
+                "metric": { "node": "three-pl", "field": "processed" },
+                "op": "==",
+                "value": 1040,
+                "when": "end"
+              },
+              {
+                "id": "receipts",
+                "label": "1,040 email receipts",
+                "metric": { "node": "email", "field": "processed" },
+                "op": "==",
+                "value": 1040,
+                "when": "end"
+              },
+              {
+                "id": "no-dlq",
+                "label": "Nothing is dead-lettered",
+                "metric": { "node": "fulfillment-q", "field": "deadLettered" },
+                "op": "==",
+                "value": 0,
+                "when": "always"
+              }
+            ]
+          },
+          {
+            "id": "three-pl-outage",
+            "title": "3PL outage and DLQ redrive",
+            "description": "The warehouse API fails for five seconds; SQS retries after a visibility timeout, parks failures in the DLQ, and an operator redrives them.",
+            "seed": 7,
+            "scale": 1,
+            "setup": { "status": { "dlq": "paused" } },
+            "traffic": [
+              {
+                "id": "orders",
+                "node": "client",
+                "messageType": "PlaceOrder",
+                "label": "160 orders over 8 seconds",
+                "shape": { "kind": "constant", "ratePerSec": 20, "durationMs": 8000 }
+              }
+            ],
+            "timeline": [
+              { "atMs": 2000, "action": { "do": "props", "node": "fulfillment-fn", "props": { "failureRate": 1 } } },
+              {
+                "atMs": 2000,
+                "action": { "do": "note", "text": "The 3PL's API is down. Each shipment request fails, becomes visible again after the timeout, and is retried.", "focus": ["fulfillment-fn", "three-pl", "fulfillment-q"] }
+              },
+              {
+                "atMs": 4500,
+                "action": { "do": "note", "text": "After three receives, SQS moves the message to the dead-letter queue. Payments and receipts are unaffected.", "focus": ["fulfillment-q", "dlq", "email"], "pause": true }
+              },
+              { "atMs": 7000, "action": { "do": "props", "node": "fulfillment-fn", "props": { "failureRate": 0 } } },
+              { "atMs": 9500, "action": { "do": "status", "node": "dlq", "status": "up" } },
+              {
+                "atMs": 9500,
+                "action": { "do": "note", "text": "The 3PL is back, so an operator redrives the DLQ. Every parked shipment goes through.", "focus": ["dlq", "fulfillment-q", "three-pl"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "parked",
+                "label": "Failures are dead-lettered, not lost",
+                "metric": { "node": "fulfillment-q", "field": "deadLettered" },
+                "op": ">",
+                "value": 0,
+                "when": "at",
+                "atMs": 9000
+              },
+              {
+                "id": "receipts",
+                "label": "Receipts are unaffected",
+                "metric": { "node": "email", "field": "processed" },
+                "op": "==",
+                "value": 160,
+                "when": "end"
+              },
+              {
+                "id": "shipped",
+                "label": "All 160 shipments are requested",
+                "metric": { "node": "three-pl", "field": "processed" },
+                "op": "==",
+                "value": 160,
+                "when": "end"
+              },
+              {
+                "id": "empty",
+                "label": "The DLQ is empty after the redrive",
+                "metric": { "node": "dlq", "field": "backlog" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              }
+            ]
+          }
+        ]
+      },
+      "icons": {
+        "aws-api-gateway": { "sha256": "ba50151d29b0ff766b5f5dc174fc1062d6ea07ec5187db2bbdfce8ed00398637", "bytes": 1924 },
+        "aws-dynamodb": { "sha256": "682c5f50891c32b946f08761514899c04263bb0452a64d26a8c4d2602d8264dc", "bytes": 6120 },
+        "aws-eventbridge": { "sha256": "f01c5248cde4b218382a835b9c97db4e992eed45d497dc294cabe1be5c2dd550", "bytes": 4486 },
+        "aws-lambda": { "sha256": "66901bf03fc8e947cfd6633a5cee9bec3d7ee5b68d96a74622779e8e9cf5bcb7", "bytes": 1953 },
+        "aws-sns": { "sha256": "9805176c950fdf2f6840101e64c822ae8b1b978871ccda85fa3eb766c563f509", "bytes": 3726 },
+        "aws-sqs": { "sha256": "8c262db53d2142510d9951733380ba5041e572cc26a0bb1751a102d647f05c24", "bytes": 6604 },
+        "aws-step-functions": { "sha256": "a058a1115e7a0c2fe490304a3e9b5bacf0dd7feb7bbaf89bc433c3670f1d7fa8", "bytes": 2505 },
+        "client-browser": { "sha256": "c66b629864dc684d451c1c280107fe74cdd69ffb9d17be64673c90c7c92434f7", "bytes": 476 },
+        "generic-email": { "sha256": "f0db58eaa97e89831f8591e9a1557e2470bca8fd215a0b887d8430147f9ddd19", "bytes": 447 },
+        "generic-external-api": { "sha256": "d3a95660f5a9fb8dbd298a79af1604cd83926a306583abeee407a7389b130be8", "bytes": 369 },
+        "generic-identity-provider": { "sha256": "0676c452dd144f732465c06edb4613a3a1778edea71ea777d753b9dc9db8b60c", "bytes": 656 },
+        "generic-sms": { "sha256": "7baa86ab3e2c8ded4e3b092cfd34b57d190418db592524b99a476782340d335a", "bytes": 577 },
+        "stripe": { "sha256": "d73033ac5105145a1a5dc226c8c4a9b744369e2c0ae7234e97671c799656fd31", "bytes": 738 }
+      },
+      "options": { "theme": "dark", "startSimulation": "flash-sale", "exportedOn": "2026-01-01" }
+    }
+  }
+}

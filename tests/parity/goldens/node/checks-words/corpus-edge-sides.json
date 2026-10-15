@@ -1,0 +1,185 @@
+{
+  "summary": "16 warnings, 0 suggestions.",
+  "findings": {
+    "no-reader:tt-b": {
+      "title": "Nobody reads → top",
+      "message": "top → publishes to → top, but nothing consumes it: it keeps every message, unread.",
+      "rationale": "A topic keeps what's published until its retention ends, whether anything reads it or not. With no consumer group, nothing acts on its messages, and more partitions don't change that.",
+      "fix": { "label": "Add a consumer…", "choice": "Pick what reads → top, then add it and connect tt-b to it." }
+    },
+    "no-reader:tr-b": {
+      "title": "Nobody reads → right",
+      "message": "top → publishes to → right, but nothing consumes it: it keeps every message, unread.",
+      "rationale": "A topic keeps what's published until its retention ends, whether anything reads it or not. With no consumer group, nothing acts on its messages, and more partitions don't change that.",
+      "fix": { "label": "Add a consumer…", "choice": "Pick what reads → right, then add it and connect tr-b to it." }
+    },
+    "no-reader:tb-b": {
+      "title": "Nobody reads → bottom",
+      "message": "top → publishes to → bottom, but nothing consumes it: it keeps every message, unread.",
+      "rationale": "A topic keeps what's published until its retention ends, whether anything reads it or not. With no consumer group, nothing acts on its messages, and more partitions don't change that.",
+      "fix": { "label": "Add a consumer…", "choice": "Pick what reads → bottom, then add it and connect tb-b to it." }
+    },
+    "no-reader:tl-b": {
+      "title": "Nobody reads → left",
+      "message": "top → publishes to → left, but nothing consumes it: it keeps every message, unread.",
+      "rationale": "A topic keeps what's published until its retention ends, whether anything reads it or not. With no consumer group, nothing acts on its messages, and more partitions don't change that.",
+      "fix": { "label": "Add a consumer…", "choice": "Pick what reads → left, then add it and connect tl-b to it." }
+    },
+    "no-reader:rt-b": {
+      "title": "Nobody reads → top",
+      "message": "right → publishes to → top, but nothing consumes it: it keeps every message, unread.",
+      "rationale": "A topic keeps what's published until its retention ends, whether anything reads it or not. With no consumer group, nothing acts on its messages, and more partitions don't change that.",
+      "fix": { "label": "Add a consumer…", "choice": "Pick what reads → top, then add it and connect rt-b to it." }
+    },
+    "no-reader:rr-b": {
+      "title": "Nobody reads → right",
+      "message": "right → publishes to → right, but nothing consumes it: it keeps every message, unread.",
+      "rationale": "A topic keeps what's published until its retention ends, whether anything reads it or not. With no consumer group, nothing acts on its messages, and more partitions don't change that.",
+      "fix": { "label": "Add a consumer…", "choice": "Pick what reads → right, then add it and connect rr-b to it." }
+    },
+    "no-reader:rb-b": {
+      "title": "Nobody reads → bottom",
+      "message": "right → publishes to → bottom, but nothing consumes it: it keeps every message, unread.",
+      "rationale": "A topic keeps what's published until its retention ends, whether anything reads it or not. With no consumer group, nothing acts on its messages, and more partitions don't change that.",
+      "fix": { "label": "Add a consumer…", "choice": "Pick what reads → bottom, then add it and connect rb-b to it." }
+    },
+    "no-reader:rl-b": {
+      "title": "Nobody reads → left",
+      "message": "right → publishes to → left, but nothing consumes it: it keeps every message, unread.",
+      "rationale": "A topic keeps what's published until its retention ends, whether anything reads it or not. With no consumer group, nothing acts on its messages, and more partitions don't change that.",
+      "fix": { "label": "Add a consumer…", "choice": "Pick what reads → left, then add it and connect rl-b to it." }
+    },
+    "no-reader:bt-b": {
+      "title": "Nobody reads → top",
+      "message": "bottom → publishes to → top, but nothing consumes it: it keeps every message, unread.",
+      "rationale": "A topic keeps what's published until its retention ends, whether anything reads it or not. With no consumer group, nothing acts on its messages, and more partitions don't change that.",
+      "fix": { "label": "Add a consumer…", "choice": "Pick what reads → top, then add it and connect bt-b to it." }
+    },
+    "no-reader:br-b": {
+      "title": "Nobody reads → right",
+      "message": "bottom → publishes to → right, but nothing consumes it: it keeps every message, unread.",
+      "rationale": "A topic keeps what's published until its retention ends, whether anything reads it or not. With no consumer group, nothing acts on its messages, and more partitions don't change that.",
+      "fix": { "label": "Add a consumer…", "choice": "Pick what reads → right, then add it and connect br-b to it." }
+    },
+    "no-reader:bb-b": {
+      "title": "Nobody reads → bottom",
+      "message": "bottom → publishes to → bottom, but nothing consumes it: it keeps every message, unread.",
+      "rationale": "A topic keeps what's published until its retention ends, whether anything reads it or not. With no consumer group, nothing acts on its messages, and more partitions don't change that.",
+      "fix": { "label": "Add a consumer…", "choice": "Pick what reads → bottom, then add it and connect bb-b to it." }
+    },
+    "no-reader:bl-b": {
+      "title": "Nobody reads → left",
+      "message": "bottom → publishes to → left, but nothing consumes it: it keeps every message, unread.",
+      "rationale": "A topic keeps what's published until its retention ends, whether anything reads it or not. With no consumer group, nothing acts on its messages, and more partitions don't change that.",
+      "fix": { "label": "Add a consumer…", "choice": "Pick what reads → left, then add it and connect bl-b to it." }
+    },
+    "no-reader:lt-b": {
+      "title": "Nobody reads → top",
+      "message": "left → publishes to → top, but nothing consumes it: it keeps every message, unread.",
+      "rationale": "A topic keeps what's published until its retention ends, whether anything reads it or not. With no consumer group, nothing acts on its messages, and more partitions don't change that.",
+      "fix": { "label": "Add a consumer…", "choice": "Pick what reads → top, then add it and connect lt-b to it." }
+    },
+    "no-reader:lr-b": {
+      "title": "Nobody reads → right",
+      "message": "left → publishes to → right, but nothing consumes it: it keeps every message, unread.",
+      "rationale": "A topic keeps what's published until its retention ends, whether anything reads it or not. With no consumer group, nothing acts on its messages, and more partitions don't change that.",
+      "fix": { "label": "Add a consumer…", "choice": "Pick what reads → right, then add it and connect lr-b to it." }
+    },
+    "no-reader:lb-b": {
+      "title": "Nobody reads → bottom",
+      "message": "left → publishes to → bottom, but nothing consumes it: it keeps every message, unread.",
+      "rationale": "A topic keeps what's published until its retention ends, whether anything reads it or not. With no consumer group, nothing acts on its messages, and more partitions don't change that.",
+      "fix": { "label": "Add a consumer…", "choice": "Pick what reads → bottom, then add it and connect lb-b to it." }
+    },
+    "no-reader:ll-b": {
+      "title": "Nobody reads → left",
+      "message": "left → publishes to → left, but nothing consumes it: it keeps every message, unread.",
+      "rationale": "A topic keeps what's published until its retention ends, whether anything reads it or not. With no consumer group, nothing acts on its messages, and more partitions don't change that.",
+      "fix": { "label": "Add a consumer…", "choice": "Pick what reads → left, then add it and connect ll-b to it." }
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "no-reader:tt-b",
+        "rule": "no-reader",
+        "severity": "warning",
+        "title": "Nobody reads → top",
+        "message": "top → publishes to → top, but nothing consumes it: it keeps every message, unread.",
+        "targets": ["tt-b", "tt-a"],
+        "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads → top, then add it and connect tt-b to it." }
+      },
+      {
+        "id": "no-reader:tr-b",
+        "rule": "no-reader",
+        "severity": "warning",
+        "title": "Nobody reads → right",
+        "message": "top → publishes to → right, but nothing consumes it: it keeps every message, unread.",
+        "targets": ["tr-b", "tr-a"],
+        "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads → right, then add it and connect tr-b to it." }
+      },
+      {
+        "id": "no-reader:tb-b",
+        "rule": "no-reader",
+        "severity": "warning",
+        "title": "Nobody reads → bottom",
+        "message": "top → publishes to → bottom, but nothing consumes it: it keeps every message, unread.",
+        "targets": ["tb-b", "tb-a"],
+        "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads → bottom, then add it and connect tb-b to it." }
+      },
+      {
+        "id": "no-reader:tl-b",
+        "rule": "no-reader",
+        "severity": "warning",
+        "title": "Nobody reads → left",
+        "message": "top → publishes to → left, but nothing consumes it: it keeps every message, unread.",
+        "targets": ["tl-b", "tl-a"],
+        "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads → left, then add it and connect tl-b to it." }
+      }
+    ],
+    "summary": "16 warnings, 0 suggestions.",
+    "more": "12 more findings omitted; call check_diagram with rules to see them."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      {
+        "id": "no-reader:tt-b",
+        "rule": "no-reader",
+        "severity": "warning",
+        "title": "Nobody reads → top",
+        "message": "top → publishes to → top, but nothing consumes it: it keeps every message, unread.",
+        "targets": ["tt-b", "tt-a"],
+        "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads → top, then add it and connect tt-b to it." }
+      },
+      {
+        "id": "no-reader:tr-b",
+        "rule": "no-reader",
+        "severity": "warning",
+        "title": "Nobody reads → right",
+        "message": "top → publishes to → right, but nothing consumes it: it keeps every message, unread.",
+        "targets": ["tr-b", "tr-a"],
+        "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads → right, then add it and connect tr-b to it." }
+      },
+      {
+        "id": "no-reader:tb-b",
+        "rule": "no-reader",
+        "severity": "warning",
+        "title": "Nobody reads → bottom",
+        "message": "top → publishes to → bottom, but nothing consumes it: it keeps every message, unread.",
+        "targets": ["tb-b", "tb-a"],
+        "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads → bottom, then add it and connect tb-b to it." }
+      },
+      {
+        "id": "no-reader:tl-b",
+        "rule": "no-reader",
+        "severity": "warning",
+        "title": "Nobody reads → left",
+        "message": "top → publishes to → left, but nothing consumes it: it keeps every message, unread.",
+        "targets": ["tl-b", "tl-a"],
+        "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads → left, then add it and connect tl-b to it." }
+      }
+    ],
+    "summary": "16 warnings, 0 suggestions.",
+    "more": "12 more findings omitted; call check_diagram with rules to see them."
+  }
+}

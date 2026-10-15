@@ -1,0 +1,202 @@
+{
+  "run": {
+    "time": 15330,
+    "totalMs": 20000,
+    "done": true,
+    "scale": 10,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "writes", "label": "Each order is written twice: placed, then paid", "status": "pass", "value": 2080 },
+      { "id": "shipments", "label": "1,040 shipments requested", "status": "pass", "value": 1040 },
+      { "id": "receipts", "label": "1,040 email receipts", "status": "pass", "value": 1040 },
+      { "id": "no-dlq", "label": "Nothing is dead-lettered", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "note", "label": "Every write to the orders table lands on its stream. One Lambda turns stream records into EventBridge events; rules route them by type. Each dot is 10 orders." },
+      { "atMs": 0, "kind": "traffic", "label": "1,040 orders with a flash-sale peak" },
+      { "atMs": 3000, "kind": "note", "label": "The flash sale peaks at 300 orders a second. API Gateway and Lambda scale out; there are no servers to add." },
+      { "atMs": 5500, "kind": "note", "label": "The payment workflow writes PAID back to the table. That change comes round the stream as OrderPaid, which the other two rules pick up." },
+      { "atMs": 10000, "kind": "traffic", "label": "1,040 orders with a flash-sale peak ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "client": { "replicas": [1, 1, 0] },
+        "apigw": { "replicas": [1, 1, 0] },
+        "create-order": { "replicas": [1, 1, 0] },
+        "orders-table": { "replicas": [1, 1, 0] },
+        "stream-fn": { "replicas": [1, 1, 0] },
+        "bus": { "lag": { "payment-rule": 0, "fulfillment-rule": 0, "notify-rule": 0 }, "replicas": [1, 1, 0] },
+        "sfn": { "replicas": [1, 1, 0] },
+        "stripe": { "replicas": [1, 1, 0] },
+        "dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "fulfillment-q": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "fulfillment-fn": { "replicas": [1, 1, 0] },
+        "three-pl": { "replicas": [1, 1, 0] },
+        "sns": { "lag": { "email": 0, "sms": 0 }, "replicas": [1, 1, 0] },
+        "email": { "replicas": [1, 1, 0] },
+        "sms": { "replicas": [1, 1, 0] },
+        "cognito": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 11,
+      "nodes": {
+        "client": { "processed": 104, "throughput": 2.0399277434901455, "replicas": [1, 1, 0] },
+        "apigw": { "processed": 103, "throughput": 2.4915733723463127, "replicas": [1, 1, 0] },
+        "create-order": { "processed": 103, "throughput": 3.311326573041147, "replicas": [1, 1, 0] },
+        "orders-table": { "processed": 201, "throughput": 9.658734956349942, "replicas": [1, 1, 0] },
+        "stream-fn": { "processed": 199, "inFlight": 1, "throughput": 11.763332055666735, "replicas": [1, 1, 0] },
+        "bus": {
+          "processed": 199,
+          "throughput": 15.878837381782848,
+          "lag": { "payment-rule": 0, "fulfillment-rule": 0, "notify-rule": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "sfn": { "processed": 99, "inFlight": 1, "throughput": 5.5129084436608515, "replicas": [1, 1, 0] },
+        "stripe": { "processed": 99, "throughput": 6.733481578571847, "replicas": [1, 1, 0] },
+        "dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "fulfillment-q": {
+          "processed": 97,
+          "throughput": 14.553016487370163,
+          "lag": { "queue": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "fulfillment-fn": { "processed": 96, "throughput": 21.66732602835418, "replicas": [1, 1, 0] },
+        "three-pl": { "processed": 96, "throughput": 26.4645317729874, "replicas": [1, 1, 0] },
+        "sns": {
+          "processed": 97,
+          "throughput": 14.553016487370163,
+          "lag": { "email": 0, "sms": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "email": { "processed": 96, "throughput": 18.51136430775076, "replicas": [1, 1, 0] },
+        "sms": { "processed": 96, "throughput": 18.51136430775076, "replicas": [1, 1, 0] },
+        "cognito": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 15330,
+    "inSystem": 0,
+    "real": {
+      "client": { "processed": 1040, "throughput": 0.1474992410844672, "replicas": [1, 1, 0] },
+      "apigw": { "processed": 1040, "throughput": 0.18015597988709983, "replicas": [1, 1, 0] },
+      "create-order": { "processed": 1040, "throughput": 0.23987019189438585, "replicas": [1, 1, 0] },
+      "orders-table": { "processed": 2080, "throughput": 1.678419615553348, "replicas": [1, 1, 0] },
+      "stream-fn": { "processed": 2080, "throughput": 2.4207094593224148, "replicas": [1, 1, 0] },
+      "bus": {
+        "processed": 2080,
+        "throughput": 3.267615984248902,
+        "lag": { "payment-rule": 0, "fulfillment-rule": 0, "notify-rule": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "sfn": { "processed": 1040, "throughput": 1.1206303066004983, "replicas": [1, 1, 0] },
+      "stripe": { "processed": 1040, "throughput": 1.3687409473597238, "replicas": [1, 1, 0] },
+      "dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "fulfillment-q": {
+        "processed": 1040,
+        "throughput": 3.6356411102830744,
+        "lag": { "queue": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "fulfillment-fn": { "processed": 1040, "throughput": 5.726148346830976, "replicas": [1, 1, 0] },
+      "three-pl": { "processed": 1040, "throughput": 6.993933384453644, "replicas": [1, 1, 0] },
+      "sns": {
+        "processed": 1040,
+        "throughput": 3.6356411102830744,
+        "lag": { "email": 0, "sms": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "email": { "processed": 1040, "throughput": 4.907602173900999, "replicas": [1, 1, 0] },
+      "sms": { "processed": 1040, "throughput": 4.907602173900999, "replicas": [1, 1, 0] },
+      "cognito": { "replicas": [1, 1, 0] }
+    },
+    "edges": {
+      "client-to-apigw": 104,
+      "apigw-to-create-order": 104,
+      "create-order-to-orders-table": 104,
+      "orders-table-to-stream-fn": 208,
+      "stream-fn-to-bus": 208,
+      "bus-to-sfn": 104,
+      "sfn-to-stripe": 104,
+      "sfn-to-orders-table": 104,
+      "bus-to-fulfillment-q": 104,
+      "fulfillment-q-to-fulfillment-fn": 104,
+      "fulfillment-fn-to-three-pl": 104,
+      "fulfillment-q-to-dlq": 0,
+      "dlq-to-fulfillment-q": 0,
+      "bus-to-sns": 104,
+      "sns-to-email": 104,
+      "sns-to-sms": 104,
+      "apigw-to-cognito": 0
+    }
+  },
+  "events": {
+    "total": 3536,
+    "byKind": { "inject": 104, "process": 1768, "deliver": 1664 },
+    "byNode": {
+      "client": { "inject": 104, "process": 104 },
+      "apigw": { "deliver": 104, "process": 104 },
+      "create-order": { "deliver": 104, "process": 104 },
+      "orders-table": { "deliver": 208, "process": 208 },
+      "stream-fn": { "deliver": 208, "process": 208 },
+      "bus": { "deliver": 208, "process": 208 },
+      "sfn": { "deliver": 104, "process": 104 },
+      "stripe": { "deliver": 104, "process": 104 },
+      "fulfillment-q": { "deliver": 104, "process": 104 },
+      "sns": { "deliver": 104, "process": 104 },
+      "fulfillment-fn": { "deliver": 104, "process": 104 },
+      "email": { "deliver": 104, "process": 104 },
+      "sms": { "deliver": 104, "process": 104 },
+      "three-pl": { "deliver": 104, "process": 104 }
+    },
+    "perSecond": [
+      "3762e0241ebd",
+      "e6d12631d75f",
+      "56ef3c813afa",
+      "8b3e4954bbdc",
+      "ffc9cf8c0f6c",
+      "63d84a6a5f30",
+      "b63267e5c5af",
+      "918d39ccdf84",
+      "f12629705a39",
+      "f4a17c8f6a7d",
+      "b80b094f0bdd",
+      "5324b268648d",
+      "7b89ac08fcb1",
+      "84809034cfcb",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 0, "text": "Every write to the orders table lands on its stream. One Lambda turns stream records into EventBridge events; rules route them by type. Each dot is 10 orders.", "focus": ["orders-table", "stream-fn", "bus"] },
+    { "atMs": 3000, "text": "The flash sale peaks at 300 orders a second. API Gateway and Lambda scale out; there are no servers to add.", "focus": ["client", "apigw", "create-order"] },
+    { "atMs": 5500, "text": "The payment workflow writes PAID back to the table. That change comes round the stream as OrderPaid, which the other two rules pick up.", "focus": ["sfn", "orders-table", "fulfillment-q", "sns"] }
+  ],
+  "latency": {
+    "journeys": { "done": 104, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 104, "min": 3820, "mean": 3909.0384615384614, "p50": 3910, "p90": 3980, "max": 4010 },
+    "waitMs": {
+      "apigw": { "count": 104, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "create-order": { "count": 104, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "orders-table": { "count": 208, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "stream-fn": { "count": 208, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "sfn": { "count": 104, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "fulfillment-fn": { "count": 104, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "apigw": { "count": 104, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "create-order": { "count": 104, "min": 70, "mean": 84.71153846153847, "p50": 90, "p90": 100, "max": 100 },
+      "orders-table": { "count": 208, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "stream-fn": { "count": 208, "min": 50, "mean": 64.75961538461539, "p50": 60, "p90": 70, "max": 80 },
+      "sfn": { "count": 104, "min": 330, "mean": 407.9807692307692, "p50": 410, "p90": 470, "max": 480 },
+      "fulfillment-fn": { "count": 104, "min": 130, "mean": 156.73076923076923, "p50": 160, "p90": 180, "max": 180 }
+    }
+  }
+}

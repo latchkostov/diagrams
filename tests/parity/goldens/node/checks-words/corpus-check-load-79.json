@@ -1,0 +1,30 @@
+{
+  "summary": "0 warnings, 1 suggestion.",
+  "findings": {
+    "single-point:api": {
+      "title": "Every request goes through one api",
+      "message": "It runs 1 replica, and every request from Web goes through it: if it stops, Web gets nothing.",
+      "rationale": "Redundancy is what turns one instance's availability into a service's: with two replicas, one can stop (a deploy, a crash, a node drained) while the other answers.",
+      "fix": { "label": "Set replicas to 2" }
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "single-point:api",
+        "rule": "single-point",
+        "severity": "suggestion",
+        "title": "Every request goes through one api",
+        "message": "It runs 1 replica, and every request from Web goes through it: if it stops, Web gets nothing.",
+        "targets": ["api", "web"],
+        "fix": {
+          "label": "Set replicas to 2",
+          "ops": [{ "op": "update", "target": "api", "props": { "replicas": 2 } }]
+        }
+      }
+    ],
+    "summary": "0 warnings, 1 suggestion.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  },
+  "agentReportWarnings": { "findings": [], "summary": "0 warnings, 1 suggestion." }
+}

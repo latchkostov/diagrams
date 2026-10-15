@@ -1,0 +1,159 @@
+{
+  "{\"query\":\"kafka\"}": {
+    "isError": false,
+    "output": [
+      { "id": "kafka.topic", "label": "Kafka Topic", "vendor": "Apache Kafka", "category": "messaging", "simRole": "topic", "description": "Partitioned, replicated log; every consumer group gets every record." },
+      { "id": "kafka.cluster", "label": "Kafka Cluster", "vendor": "Apache Kafka", "category": "messaging", "simRole": "none", "description": "A set of Kafka brokers hosting topics and partitions." },
+      { "id": "kafka.connect", "label": "Kafka Connect", "vendor": "Apache Kafka", "category": "messaging", "simRole": "processor", "description": "Source/sink connectors streaming data between Kafka and external systems." },
+      { "id": "kafka.streams", "label": "Kafka Streams", "vendor": "Apache Kafka", "category": "messaging", "simRole": "processor", "description": "Java library for stateful stream processing that reads from and writes back to Kafka." },
+      { "id": "azure.event-hubs", "label": "Event Hubs", "vendor": "Azure", "category": "messaging", "simRole": "stream", "description": "Partitioned big-data event streaming service (Kafka-compatible)." }
+    ]
+  },
+  "{\"query\":\"Kafka topic\"}": {
+    "isError": false,
+    "output": [
+      { "id": "kafka.topic", "label": "Kafka Topic", "vendor": "Apache Kafka", "category": "messaging", "simRole": "topic", "description": "Partitioned, replicated log; every consumer group gets every record." },
+      { "id": "pulsar.topic", "label": "Pulsar Topic", "vendor": "Apache Pulsar", "category": "messaging", "simRole": "topic", "description": "Multi-tenant pub/sub with tiered storage and shared or exclusive subscriptions." },
+      { "id": "confluent.cloud", "label": "Confluent Cloud", "vendor": "Confluent", "category": "messaging", "simRole": "stream", "description": "Managed Kafka from Confluent (Cloud or Platform) with connectors, governance and Flink." },
+      { "id": "aws.msk", "label": "Amazon MSK", "vendor": "AWS", "category": "messaging", "simRole": "stream", "description": "Managed Streaming for Apache Kafka: AWS-run Kafka clusters." },
+      { "id": "rabbitmq.exchange", "label": "RabbitMQ Exchange", "vendor": "RabbitMQ", "category": "messaging", "simRole": "topic", "description": "Routes messages to bound queues (direct, topic, fanout, headers)." }
+    ]
+  },
+  "{\"query\":\"postgres\"}": {
+    "isError": false,
+    "output": [
+      { "id": "postgres", "label": "PostgreSQL", "vendor": "PostgreSQL", "category": "data", "simRole": "store", "description": "Open-source relational database." },
+      { "id": "gcp.cloud-sql", "label": "Cloud SQL", "vendor": "Google Cloud", "category": "data", "simRole": "store", "description": "Managed PostgreSQL, MySQL and SQL Server on Google Cloud." },
+      { "id": "aws.aurora", "label": "Amazon Aurora", "vendor": "AWS", "category": "data", "simRole": "store", "description": "MySQL- and PostgreSQL-compatible relational database built for the cloud." },
+      { "id": "supabase", "label": "Supabase", "vendor": "Supabase", "category": "data", "simRole": "store", "description": "Hosted Postgres with auth, storage, realtime and edge functions." }
+    ]
+  },
+  "{\"query\":\"queue\",\"limit\":10}": {
+    "isError": false,
+    "output": [
+      { "id": "generic.queue", "label": "Queue", "vendor": "Generic", "category": "generic", "simRole": "queue", "description": "Point-to-point queue: each message goes to one consumer." },
+      { "id": "azure.service-bus.queue", "label": "Service Bus Queue", "vendor": "Azure", "category": "messaging", "simRole": "queue", "description": "Durable point-to-point queue with sessions, DLQ and competing consumers." },
+      { "id": "azure.storage-queue", "label": "Storage Queue", "vendor": "Azure", "category": "messaging", "simRole": "queue", "description": "Simple, cheap queue in an Azure Storage account." },
+      { "id": "rabbitmq.queue", "label": "RabbitMQ Queue", "vendor": "RabbitMQ", "category": "messaging", "simRole": "queue", "description": "Buffers messages for competing consumers." },
+      { "id": "aws.sqs", "label": "Amazon SQS", "vendor": "AWS", "category": "messaging", "simRole": "queue", "description": "Fully managed message queue (standard or FIFO)." },
+      { "id": "aws.mq", "label": "Amazon MQ", "vendor": "AWS", "category": "messaging", "simRole": "queue", "description": "Managed ActiveMQ and RabbitMQ brokers for JMS and AMQP workloads." }
+    ]
+  },
+  "{\"query\":\"azure function\"}": {
+    "isError": false,
+    "output": [
+      { "id": "azure.functions", "label": "Azure Functions", "vendor": "Azure", "category": "compute", "simRole": "processor", "description": "Event-driven serverless functions." }
+    ]
+  },
+  "{\"query\":\".NET consumer\"}": { "isError": false, "output": [] },
+  "{\"query\":\"api gateway\",\"category\":\"network\"}": {
+    "isError": false,
+    "output": [
+      { "id": "aws.api-gateway", "label": "Amazon API Gateway", "vendor": "AWS", "category": "network", "simRole": "gateway", "description": "Managed REST, HTTP and WebSocket APIs." },
+      { "id": "azure.api-management", "label": "API Management", "vendor": "Azure", "category": "network", "simRole": "gateway", "description": "API gateway with policies, auth, quotas and a developer portal." },
+      { "id": "kong", "label": "Kong Gateway", "vendor": "Kong", "category": "network", "simRole": "gateway", "description": "API gateway with auth, rate-limiting and routing plugins." }
+    ]
+  },
+  "{\"query\":\"redis cache\"}": {
+    "isError": false,
+    "output": [
+      { "id": "redis.cache", "label": "Redis Cache", "vendor": "Redis", "category": "data", "simRole": "store", "description": "In-memory key-value cache." },
+      { "id": "azure.redis", "label": "Azure Managed Redis", "vendor": "Azure", "category": "data", "simRole": "store", "description": "Managed Redis for caching, sessions and pub/sub." }
+    ]
+  },
+  "{\"query\":\"s3 bucket\"}": {
+    "isError": false,
+    "output": [
+      { "id": "aws.s3", "label": "Amazon S3", "vendor": "AWS", "category": "data", "simRole": "store", "description": "Object storage." },
+      { "id": "minio", "label": "MinIO", "vendor": "MinIO", "category": "data", "simRole": "store", "description": "S3-compatible object storage you can run anywhere." }
+    ]
+  },
+  "{\"query\":\"lambda\"}": {
+    "isError": false,
+    "output": [
+      { "id": "aws.lambda", "label": "AWS Lambda", "vendor": "AWS", "category": "compute", "simRole": "processor", "description": "Serverless functions triggered by events." },
+      { "id": "azure.functions", "label": "Azure Functions", "vendor": "Azure", "category": "compute", "simRole": "processor", "description": "Event-driven serverless functions." },
+      { "id": "gcp.cloud-functions", "label": "Cloud Functions", "vendor": "Google Cloud", "category": "compute", "simRole": "processor", "description": "Event-driven serverless functions on Google Cloud." }
+    ]
+  },
+  "{\"query\":\"load balancer\"}": {
+    "isError": false,
+    "output": [
+      { "id": "load-balancer", "label": "Load Balancer", "vendor": "Generic", "category": "network", "simRole": "gateway", "description": "Distributes traffic across instances." },
+      { "id": "aws.elb", "label": "Elastic Load Balancing", "vendor": "AWS", "category": "network", "simRole": "gateway", "description": "Application / Network load balancer." },
+      { "id": "gcp.cloud-load-balancing", "label": "Cloud Load Balancing", "vendor": "Google Cloud", "category": "network", "simRole": "gateway", "description": "Global anycast load balancer in front of regional backends." },
+      { "id": "haproxy", "label": "HAProxy", "vendor": "HAProxy", "category": "network", "simRole": "gateway", "description": "High-performance TCP/HTTP load balancer and reverse proxy." },
+      { "id": "generic.adc", "label": "ADC", "vendor": "Generic", "category": "onprem", "simRole": "gateway", "description": "Application delivery controller: a hardware or virtual load balancer that health-checks its targets." }
+    ]
+  },
+  "{\"query\":\"firewall\",\"limit\":10}": {
+    "isError": false,
+    "output": [
+      { "id": "generic.firewall", "label": "Firewall / WAF", "vendor": "Generic", "category": "network", "simRole": "gateway", "description": "Filters traffic before it reaches your services." },
+      { "id": "generic.ngfw", "label": "Firewall (NGFW)", "vendor": "Generic", "category": "onprem", "simRole": "gateway", "description": "A firewall appliance in your rack: allows or denies each connection, inspects what it allows." },
+      { "id": "cisco.secure-firewall", "label": "Cisco Secure Firewall", "vendor": "Cisco", "category": "onprem", "simRole": "gateway", "description": "Firepower Threat Defense and ASA firewalls (Secure Firewall 1200, 3100 and 4200 series)." },
+      { "id": "paloalto.ngfw", "label": "Palo Alto NGFW", "vendor": "Palo Alto Networks", "category": "onprem", "simRole": "gateway", "description": "PA-Series next-generation firewalls (PA-440 branch to PA-5440 data centre)." },
+      { "id": "fortinet.fortigate", "label": "FortiGate", "vendor": "Fortinet", "category": "onprem", "simRole": "gateway", "description": "Next-generation firewalls with SD-WAN built in (FortiGate 70G to 3700F)." },
+      { "id": "checkpoint.quantum", "label": "Check Point Quantum", "vendor": "Check Point", "category": "onprem", "simRole": "gateway", "description": "Quantum Force security gateways (3920 branch to 19100 data centre)." },
+      { "id": "juniper.srx", "label": "Juniper SRX", "vendor": "Juniper", "category": "onprem", "simRole": "gateway", "description": "SRX firewalls and secure routers (SRX345 branch to SRX4600 data centre)." }
+    ]
+  },
+  "{\"query\":\"openai\"}": {
+    "isError": false,
+    "output": [
+      { "id": "openai", "label": "OpenAI API", "vendor": "OpenAI", "category": "clients", "simRole": "processor", "description": "Hosted LLM API for chat, embeddings and tool calling." }
+    ]
+  },
+  "{\"query\":\"claude\"}": {
+    "isError": false,
+    "output": [
+      { "id": "anthropic.claude", "label": "Claude API", "vendor": "Anthropic", "category": "clients", "simRole": "processor", "description": "Anthropic's hosted Claude models for chat, tool use and agents." },
+      { "id": "generic.llm", "label": "LLM API", "vendor": "Generic", "category": "clients", "simRole": "processor", "description": "Any hosted or self-hosted large language model endpoint." }
+    ]
+  },
+  "{\"query\":\"event hub\"}": {
+    "isError": false,
+    "output": [
+      { "id": "azure.event-hubs", "label": "Event Hubs", "vendor": "Azure", "category": "messaging", "simRole": "stream", "description": "Partitioned big-data event streaming service (Kafka-compatible)." }
+    ]
+  },
+  "{\"query\":\"service bus topic\"}": {
+    "isError": false,
+    "output": [
+      { "id": "azure.service-bus.topic", "label": "Service Bus Topic", "vendor": "Azure", "category": "messaging", "simRole": "topic", "description": "Pub/sub topic; each subscription receives its own copy of every message." }
+    ]
+  },
+  "{\"query\":\"browser\",\"category\":\"clients\"}": {
+    "isError": false,
+    "output": [
+      { "id": "client.browser", "label": "Web Browser", "vendor": "Client", "category": "clients", "simRole": "source", "description": "Web front-end / SPA running in a browser." }
+    ]
+  },
+  "{\"query\":\"grafana\",\"category\":\"observability\"}": {
+    "isError": false,
+    "output": [
+      { "id": "grafana", "label": "Grafana", "vendor": "Grafana Labs", "category": "observability", "simRole": "sink", "description": "Dashboards and alerting over metrics, logs and traces." },
+      { "id": "loki", "label": "Loki", "vendor": "Grafana Labs", "category": "observability", "simRole": "sink", "description": "Grafana's log aggregation system, indexed by labels." }
+    ]
+  },
+  "{\"query\":\"key vault\",\"category\":\"security\"}": {
+    "isError": false,
+    "output": [
+      { "id": "azure.key-vault", "label": "Key Vault", "vendor": "Azure", "category": "security", "simRole": "none", "description": "Managed secrets, keys and certificates." }
+    ]
+  },
+  "{\"query\":\"snowflake\",\"category\":\"data\"}": {
+    "isError": false,
+    "output": [
+      { "id": "snowflake", "label": "Snowflake", "vendor": "Snowflake", "category": "data", "simRole": "store", "description": "Cloud data warehouse." },
+      { "id": "snowflake.snowpipe", "label": "Snowpipe Streaming", "vendor": "Snowflake", "category": "data", "simRole": "processor", "description": "Loads rows into Snowflake tables continuously, e.g. from the Snowflake Kafka connector." }
+    ]
+  },
+  "{\"query\":\"zzzz-no-such-thing\"}": { "isError": false, "output": [] },
+  "{\"query\":\"k8s deployment\"}": {
+    "isError": false,
+    "output": [
+      { "id": "k8s.deployment", "label": "Kubernetes Deployment", "vendor": "Kubernetes", "category": "compute", "simRole": "processor", "description": "Declarative, replicated set of pods with rolling updates." }
+    ]
+  }
+}

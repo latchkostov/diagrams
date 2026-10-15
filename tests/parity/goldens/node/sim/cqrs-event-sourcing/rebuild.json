@@ -1,0 +1,183 @@
+{
+  "run": {
+    "time": 13180,
+    "totalMs": 20000,
+    "done": true,
+    "scale": 5,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "behind", "label": "Statements fall behind during the rebuild", "status": "pass", "value": 0 },
+      { "id": "balances-current", "label": "Balances keep up", "status": "pass", "value": 0 },
+      { "id": "rebuilt", "label": "History and live events are indexed", "status": "pass", "value": 2400 },
+      { "id": "caught-up", "label": "The new projection catches up", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "note", "label": "Statements need a new field. Instead of migrating the index, we deploy a new projection and rebuild it from the log." },
+      { "atMs": 0, "kind": "traffic", "label": "Deposits: 40/s" },
+      { "atMs": 0, "kind": "traffic", "label": "Balance checks: 100/s" },
+      { "atMs": 2000, "kind": "status", "label": "status: statement-proj" },
+      { "atMs": 2000, "kind": "note", "label": "The old projection stops. New events wait in its subscription; balances and the public feed are unaffected." },
+      { "atMs": 4000, "kind": "status", "label": "status: statement-proj" },
+      { "atMs": 4000, "kind": "inject", "label": "inject: statement-proj" },
+      { "atMs": 4000, "kind": "note", "label": "Version 2 replays 2,000 historical events from position zero, then picks up the live ones. Statements are briefly stale; nothing is lost." },
+      { "atMs": 10000, "kind": "traffic", "label": "Deposits: 40/s ends" },
+      { "atMs": 10000, "kind": "traffic", "label": "Balance checks: 100/s ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "app": { "replicas": [1, 1, 0] },
+        "gateway": { "replicas": [1, 1, 0] },
+        "command-handler": { "replicas": [1, 1, 0] },
+        "event-store": { "lag": { "integration": 0, "balances": 0, "statements": 0 }, "replicas": [1, 1, 0] },
+        "publisher": { "replicas": [1, 1, 0] },
+        "integration-topic": { "lag": { "fraud": 0 }, "replicas": [1, 1, 0] },
+        "query-api": { "replicas": [1, 1, 0] },
+        "balances-db": { "replicas": [1, 1, 0] },
+        "statements": { "replicas": [1, 1, 0] },
+        "balance-proj": { "replicas": [1, 1, 0] },
+        "statement-proj": { "replicas": [1, 1, 0] },
+        "fraud": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 37,
+      "nodes": {
+        "app": { "processed": 280, "throughput": 27.16887822915508, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 273, "inFlight": 1, "throughput": 27.755481412157177, "replicas": [1, 1, 0] },
+        "command-handler": { "processed": 76, "throughput": 8.241510326441446, "replicas": [1, 1, 0] },
+        "event-store": {
+          "processed": 74,
+          "throughput": 7.851181387378445,
+          "lag": { "integration": 0, "balances": 0, "statements": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "publisher": { "processed": 71, "inFlight": 1, "throughput": 7.689472640119939, "replicas": [1, 1, 0] },
+        "integration-topic": {
+          "processed": 69,
+          "throughput": 8.085008718337571,
+          "lag": { "fraud": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "query-api": { "processed": 191, "throughput": 20.09979460084246, "replicas": [1, 1, 0] },
+        "balances-db": { "processed": 257, "throughput": 28.595016478728947, "replicas": [1, 1, 0] },
+        "statements": { "processed": 468, "inFlight": 1, "throughput": 78.14741150734851, "replicas": [1, 1, 0] },
+        "balance-proj": { "processed": 71, "inFlight": 1, "throughput": 7.621531966692054, "replicas": [1, 1, 0] },
+        "statement-proj": { "processed": 471, "inFlight": 1, "throughput": 65.91856644070774, "replicas": [1, 1, 0] },
+        "fraud": { "processed": 66, "throughput": 8.012202268831969, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 13180,
+    "inSystem": 0,
+    "real": {
+      "app": { "processed": 1400, "throughput": 6.067120782606441, "replicas": [1, 1, 0] },
+      "gateway": { "processed": 1400, "throughput": 7.41039805796639, "replicas": [1, 1, 0] },
+      "command-handler": { "processed": 400, "throughput": 2.8270155519422833, "replicas": [1, 1, 0] },
+      "event-store": {
+        "processed": 400,
+        "throughput": 3.4529245925039964,
+        "lag": { "integration": 0, "balances": 0, "statements": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "publisher": { "processed": 400, "throughput": 4.91940078683266, "replicas": [1, 1, 0] },
+      "integration-topic": {
+        "processed": 400,
+        "throughput": 6.640496480102377,
+        "lag": { "fraud": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "query-api": { "processed": 1000, "throughput": 6.549825948962446, "replicas": [1, 1, 0] },
+      "balances-db": { "processed": 1400, "throughput": 14.100425767593116, "replicas": [1, 1, 0] },
+      "statements": { "processed": 2400, "throughput": 21.10223616099226, "replicas": [1, 1, 0] },
+      "balance-proj": { "processed": 400, "throughput": 4.879757039720642, "replicas": [1, 1, 0] },
+      "statement-proj": { "processed": 2400, "throughput": 17.10514018684275, "replicas": [1, 1, 0] },
+      "fraud": { "processed": 400, "throughput": 9.576958132278774, "replicas": [1, 1, 0] }
+    },
+    "edges": {
+      "app-to-gateway": 280,
+      "gateway-to-command-handler": 80,
+      "gateway-to-query-api": 200,
+      "command-handler-to-event-store": 80,
+      "event-store-to-publisher": 80,
+      "publisher-to-integration-topic": 80,
+      "event-store-to-balance-proj": 80,
+      "event-store-to-statement-proj": 80,
+      "balance-proj-to-balances-db": 80,
+      "statement-proj-to-statements": 480,
+      "query-api-to-balances-db": 200,
+      "query-api-to-statements": 0,
+      "integration-topic-to-fraud": 80
+    }
+  },
+  "events": {
+    "total": 4962,
+    "byKind": { "inject": 680, "process": 2480, "deliver": 1800, "status": 2 },
+    "byNode": {
+      "app": { "inject": 280, "process": 280 },
+      "gateway": { "deliver": 280, "process": 280 },
+      "query-api": { "deliver": 200, "process": 200 },
+      "command-handler": { "deliver": 80, "process": 80 },
+      "balances-db": { "deliver": 280, "process": 280 },
+      "event-store": { "deliver": 80, "process": 80 },
+      "publisher": { "deliver": 80, "process": 80 },
+      "balance-proj": { "deliver": 80, "process": 80 },
+      "statement-proj": { "deliver": 80, "process": 480, "status": 2, "inject": 400 },
+      "statements": { "deliver": 480, "process": 480 },
+      "integration-topic": { "deliver": 80, "process": 80 },
+      "fraud": { "deliver": 80, "process": 80 }
+    },
+    "perSecond": [
+      "50e6efbe360f",
+      "8e75111bb81a",
+      "551fc35f2b4e",
+      "2ad31ea297d7",
+      "ae56095ac4ef",
+      "b08cfb305d88",
+      "d288c66bad40",
+      "e5e6fa3b54ad",
+      "90a5e4e1213b",
+      "781f6d948f38",
+      "f2e2cb960442",
+      "5660f6597db5",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 0, "text": "Statements need a new field. Instead of migrating the index, we deploy a new projection and rebuild it from the log.", "focus": ["statement-proj", "statements"] },
+    { "atMs": 2000, "text": "The old projection stops. New events wait in its subscription; balances and the public feed are unaffected.", "focus": ["event-store", "statement-proj", "balance-proj"] },
+    { "atMs": 4000, "text": "Version 2 replays 2,000 historical events from position zero, then picks up the live ones. Statements are briefly stale; nothing is lost.", "focus": ["statement-proj", "statements"] }
+  ],
+  "latency": {
+    "journeys": { "done": 379, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 379, "min": 380, "mean": 1403.2717678100264, "p50": 650, "p90": 3730, "max": 5860 },
+    "waitMs": {
+      "gateway": { "count": 254, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "command-handler": { "count": 68, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "publisher": { "count": 68, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "query-api": { "count": 186, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "balances-db": { "count": 254, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "statements": { "count": 193, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "balance-proj": { "count": 68, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "statement-proj": { "count": 193, "min": 0, "mean": 947.6683937823834, "p50": 600, "p90": 2940, "max": 4480 },
+      "fraud": { "count": 68, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "gateway": { "count": 254, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "command-handler": { "count": 68, "min": 50, "mean": 62.64705882352941, "p50": 60, "p90": 70, "max": 80 },
+      "publisher": { "count": 68, "min": 50, "mean": 55, "p50": 60, "p90": 60, "max": 60 },
+      "query-api": { "count": 186, "min": 20, "mean": 25.053763440860216, "p50": 30, "p90": 30, "max": 30 },
+      "balances-db": { "count": 254, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "statements": { "count": 193, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "balance-proj": { "count": 68, "min": 40, "mean": 45.44117647058823, "p50": 50, "p90": 50, "max": 50 },
+      "statement-proj": { "count": 193, "min": 70, "mean": 84.4041450777202, "p50": 80, "p90": 100, "max": 100 },
+      "fraud": { "count": 68, "min": 50, "mean": 65, "p50": 70, "p90": 80, "max": 80 }
+    }
+  }
+}

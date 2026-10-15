@@ -1,0 +1,12 @@
+---
+title: Fields
+---
+flowchart LR
+  subgraph g_core ["Core platform"]
+    a(["Order service"])
+    b(["Payments gateway"])
+  end
+  c(["Worker"])
+  a -.->|"writes"| b
+  linkStyle 0 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"Platform overview\nOwned by the core team","nodes":{"a":["a","client.browser"],"b":["b","client.browser"],"c":["c","client.browser"]},"groups":{"g_core":["core","neutral"]},"edges":["ab"],"relations":{}}

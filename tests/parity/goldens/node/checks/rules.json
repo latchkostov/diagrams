@@ -1,0 +1,28 @@
+[
+  { "id": "dead-letter", "name": "Failed messages are dropped", "about": "A message that keeps failing is redelivered up to the broker's delivery limit, then dropped unless there's a dead-letter route. Fires for a broker with consumers and no dead-letter route that takes their failed messages: a warning when a consumer can fail in this diagram, a suggestion for a queue.", "onDemand": false },
+  { "id": "no-reader", "name": "Nobody reads a topic or queue", "about": "A topic or queue that receives messages and has no consumer: a topic keeps every message unread, a queue's backlog only grows. Fires for a broker with incoming flows and no route out: a suggestion when it's a dead-letter queue.", "onDemand": false },
+  { "id": "sync-cycle", "name": "Requests go round in a circle", "about": "When requests go round in a circle, a slow call holds every service on the loop, and timeouts and retries multiply around it. Fires for every loop of requests (sync flows); messages and dependencies don't count.", "onDemand": false },
+  { "id": "sync-chain", "name": "Requests chained too deep", "about": "Every service a request waits on must be up for it to succeed, and their latencies add up: three services at 99.99% give 99.97% at best. Fires when requests go from service to service 4 or more times in a row; calls from clients and gateways, and into stores, don't count.", "onDemand": false },
+  { "id": "shared-database", "name": "A service uses another's database", "about": "Each service's data should be private to it and reached through its API: a second service using the same tables couples their deploys and schemas. Fires for a flow from a service into a database in a boundary that holds the service using it; warehouses, object storage and connectors don't count.", "onDemand": false },
+  { "id": "entry-gateway", "name": "A client goes around the gateway", "about": "Traffic from outside should come in through a gateway or firewall that filters attacks and limits the rate. Fires for an outside client calling a service you run directly, when the diagram's other traffic comes in through a gateway; managed platforms with their own front door don't count.", "onDemand": false },
+  { "id": "capacity", "name": "Can't keep up", "about": "A service or broker over 100% at the diagram's own rates has a backlog that only grows. Uses Show capacity's analysis at free-play rates (each source's rate), and reports the busiest service or broker.", "onDemand": false },
+  {
+    "id": "single-point",
+    "name": "Every request goes through one replica",
+    "about": "A service or gateway with one replica that an entry point's every request goes through stops that entry when it stops. Fires when the diagram says it runs one replica, and as a warning when it's also 80% busy or more at the diagram's own rates; managed gateways, serverless and async consumers don't count.",
+    "onDemand": false
+  },
+  {
+    "id": "secret-identity",
+    "name": "Services read secrets without an identity",
+    "about": "A service needs a credential to open a vault; stored with the service, it's one more secret. A workload identity (managed identity, IAM role, service account) needs none. Fires once per diagram, for services on a cloud with a Secret dependency and no Identity dependency; config stores and Kubernetes Secrets don't count.",
+    "onDemand": false
+  },
+  {
+    "id": "schema-registry",
+    "name": "Avro or Protobuf without a schema registry",
+    "about": "Kafka's Avro and Protobuf serializers put a schema id from a registry in every record: without one, consumers can't decode them and nothing stops an incompatible schema change. Fires once per diagram, for Kafka topics whose content type or label says Avro or Protobuf when no schema registry is drawn.",
+    "onDemand": false
+  },
+  { "id": "dropped", "name": "Messages are lost in a simulation", "about": "Run simulations plays the diagram's saved simulations and reports messages they lose that no other check explains. Only on demand, and never for losses a simulation causes on purpose: at a node it takes down or makes fail, or counts its own expectations name.", "onDemand": true }
+]

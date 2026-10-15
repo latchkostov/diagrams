@@ -1,0 +1,83 @@
+{
+  "withIcons": {
+    "sha256": "1b703a8fdcd961b7e3f69c9ba1183d03071d239287278b9be78bb4508abe9909",
+    "bytes": 7931,
+    "inlined": { "client.browser": "client-browser 0022934839e05a07", "openai": "openai b5f7c2d4f02ea1de" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Managed admission",
+        "nodes": [
+          {
+            "id": "source",
+            "stencil": "client.browser",
+            "label": "Checkout",
+            "x": 0,
+            "y": 130,
+            "props": { "ratePerSec": 20 }
+          },
+          {
+            "id": "api",
+            "stencil": "openai",
+            "label": "openai",
+            "x": 330,
+            "y": 130,
+            "props": {
+              "preset": "managed-measured",
+              "presetRevision": "2026-10-14",
+              "scaling": "auto",
+              "maxConcurrency": 10,
+              "api": {
+                "maxInFlight": 2,
+                "sharedConcurrency": "first",
+                "quotas": [
+                  { "id": "tokens", "unit": "tokens", "amount": 10, "windowMs": 1000, "algorithm": "token-bucket" }
+                ],
+                "costPerRequest": { "tokens": 2 }
+              }
+            }
+          },
+          {
+            "id": "other",
+            "stencil": "openai",
+            "label": "Other",
+            "x": 330,
+            "y": 330,
+            "props": {
+              "preset": "managed-measured",
+              "presetRevision": "2026-10-14",
+              "scaling": "auto",
+              "maxConcurrency": 10,
+              "api": {
+                "maxInFlight": 4,
+                "sharedConcurrency": "second",
+                "quotas": [
+                  { "id": "tokens", "unit": "tokens", "amount": 10, "windowMs": 1000, "algorithm": "token-bucket" }
+                ],
+                "costPerRequest": { "tokens": 2 }
+              }
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "call",
+            "from": "source",
+            "to": "api",
+            "kind": "sync",
+            "props": {
+              "travelMs": 0,
+              "caller": {
+                "deadlineMs": 1,
+                "retry": { "maxAttempts": 3, "strategy": "exponential", "backoffMs": 100, "retryOn": ["throttled"] }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

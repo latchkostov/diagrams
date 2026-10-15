@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "orders": [40, 160], "topic": [400, 160], "billing": [760, 40], "shipping": [760, 160], "analytics": [760, 280] },
+    "TB": { "orders": [320, 40], "topic": [320, 200], "billing": [40, 360], "shipping": [320, 360], "analytics": [600, 360] }
+  },
+  "tidy": { "orders": [40, 160], "topic": [400, 160], "billing": [760, 40], "shipping": [760, 160], "analytics": [760, 280] },
+  "arrange": {
+    "alignLeft": { "orders": [40, 160], "topic": [40, 160], "billing": [40, 40], "shipping": [40, 160], "analytics": [40, 280] },
+    "alignMiddle": { "orders": [40, 160], "topic": [400, 160], "billing": [760, 160], "shipping": [760, 160], "analytics": [760, 160] },
+    "distributeH": { "orders": [40, 160], "topic": [220, 160], "billing": [400, 40], "shipping": [580, 160], "analytics": [760, 280] },
+    "distributeV": { "orders": [40, 100], "topic": [400, 160], "billing": [760, 40], "shipping": [760, 220], "analytics": [760, 280] },
+    "spreadH": { "orders": [40, 40], "topic": [400, 40], "billing": [760, 40], "shipping": [1020, 40], "analytics": [1280, 40] },
+    "boundaryAround": { "x": 0, "y": -24, "width": 1020, "height": 416 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "orders": [40, 160], "topic": [400, 160], "billing": [760, 40], "shipping": [760, 160], "analytics": [760, 280] },
+    "groups": {}
+  }
+}

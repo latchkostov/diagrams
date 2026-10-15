@@ -1,0 +1,258 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "web": { "replicas": [1, 1, 0] },
+        "mobile": { "replicas": [1, 1, 0] },
+        "partner": { "replicas": [1, 1, 0] },
+        "gw": { "replicas": [1, 1, 0] },
+        "orders": { "replicas": [1, 1, 0] },
+        "topic": { "lag": { "topic-billing": 0, "topic-search": 0 }, "replicas": [1, 1, 0] },
+        "billing": { "replicas": [1, 1, 0] },
+        "search": { "replicas": [1, 1, 0] },
+        "db": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 326,
+      "nodes": {
+        "web": { "processed": 150, "throughput": 15.477971080391363, "replicas": [1, 1, 0] },
+        "mobile": { "processed": 150, "throughput": 15.477971080391363, "replicas": [1, 1, 0] },
+        "partner": { "processed": 150, "throughput": 15.477971080391363, "replicas": [1, 1, 0] },
+        "gw": { "processed": 436, "inFlight": 5, "throughput": 44.298960870857364, "replicas": [1, 1, 0] },
+        "orders": { "processed": 144, "backlog": 280, "inFlight": 4, "throughput": 14.79856801411832, "replicas": [1, 1, 0] },
+        "topic": {
+          "processed": 140,
+          "throughput": 15.394973875746363,
+          "lag": { "topic-billing": 0, "topic-search": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "billing": { "processed": 134, "throughput": 16.50998248687599, "replicas": [1, 1, 0] },
+        "search": { "processed": 134, "throughput": 16.370253942845206, "replicas": [1, 1, 0] },
+        "db": { "processed": 130, "throughput": 16.303364084733243, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 620,
+      "nodes": {
+        "web": { "processed": 300, "throughput": 15.47867377919129, "replicas": [1, 1, 0] },
+        "mobile": { "processed": 300, "throughput": 15.47867377919129, "replicas": [1, 1, 0] },
+        "partner": { "processed": 300, "throughput": 15.47867377919129, "replicas": [1, 1, 0] },
+        "gw": { "processed": 886, "inFlight": 5, "throughput": 44.414837401799254, "replicas": [1, 1, 0] },
+        "orders": { "processed": 304, "backlog": 568, "inFlight": 4, "throughput": 15.986118956410216, "replicas": [1, 1, 0] },
+        "topic": {
+          "processed": 300,
+          "throughput": 16.682960941551233,
+          "lag": { "topic-billing": 0, "topic-search": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "billing": { "processed": 292, "inFlight": 2, "throughput": 15.983294264227974, "replicas": [1, 1, 0] },
+        "search": { "processed": 292, "inFlight": 2, "throughput": 15.84800181175112, "replicas": [1, 1, 0] },
+        "db": { "processed": 288, "inFlight": 1, "throughput": 15.881832412714028, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 912,
+      "nodes": {
+        "web": { "processed": 450, "throughput": 15.478673811093758, "replicas": [1, 1, 0] },
+        "mobile": { "processed": 450, "throughput": 15.478673811093758, "replicas": [1, 1, 0] },
+        "partner": { "processed": 450, "throughput": 15.478673811093758, "replicas": [1, 1, 0] },
+        "gw": { "processed": 1336, "inFlight": 5, "throughput": 44.34874725060658, "replicas": [1, 1, 0] },
+        "orders": { "processed": 462, "backlog": 861, "inFlight": 4, "throughput": 15.370523732382184, "replicas": [1, 1, 0] },
+        "topic": {
+          "processed": 458,
+          "throughput": 15.964501956245966,
+          "lag": { "topic-billing": 0, "topic-search": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "billing": { "processed": 450, "inFlight": 4, "throughput": 14.974056515682294, "replicas": [1, 1, 0] },
+        "search": { "processed": 450, "inFlight": 4, "throughput": 15.09032798230096, "replicas": [1, 1, 0] },
+        "db": { "processed": 446, "inFlight": 1, "throughput": 14.858022777729612, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 1201,
+      "nodes": {
+        "web": { "processed": 600, "throughput": 15.478673811095218, "replicas": [1, 1, 0] },
+        "mobile": { "processed": 600, "throughput": 15.478673811095218, "replicas": [1, 1, 0] },
+        "partner": { "processed": 600, "throughput": 15.478673811095218, "replicas": [1, 1, 0] },
+        "gw": { "processed": 1787, "inFlight": 4, "throughput": 45.41534313031815, "replicas": [1, 1, 0] },
+        "orders": { "processed": 621, "backlog": 1151, "inFlight": 4, "throughput": 17.089985758204826, "replicas": [1, 1, 0] },
+        "topic": {
+          "processed": 615,
+          "throughput": 15.8130392308746,
+          "lag": { "topic-billing": 0, "topic-search": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "billing": { "processed": 609, "inFlight": 1, "throughput": 16.953081877488298, "replicas": [1, 1, 0] },
+        "search": { "processed": 609, "inFlight": 1, "throughput": 17.007765770377635, "replicas": [1, 1, 0] },
+        "db": { "processed": 605, "throughput": 16.865800463835345, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 1495,
+      "nodes": {
+        "web": { "processed": 750, "throughput": 15.478673811095218, "replicas": [1, 1, 0] },
+        "mobile": { "processed": 750, "throughput": 15.478673811095218, "replicas": [1, 1, 0] },
+        "partner": { "processed": 750, "throughput": 15.478673811095218, "replicas": [1, 1, 0] },
+        "gw": { "processed": 2236, "inFlight": 5, "throughput": 44.397794700594744, "replicas": [1, 1, 0] },
+        "orders": { "processed": 777, "backlog": 1446, "inFlight": 4, "throughput": 15.390645480826866, "replicas": [1, 1, 0] },
+        "topic": {
+          "processed": 773,
+          "throughput": 16.159530645069452,
+          "lag": { "topic-billing": 0, "topic-search": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "billing": { "processed": 766, "inFlight": 2, "throughput": 16.37341652285138, "replicas": [1, 1, 0] },
+        "search": { "processed": 766, "inFlight": 2, "throughput": 16.38467834580452, "replicas": [1, 1, 0] },
+        "db": { "processed": 762, "throughput": 16.182891326618392, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 1787,
+      "nodes": {
+        "web": { "processed": 900, "throughput": 15.478673811095218, "replicas": [1, 1, 0] },
+        "mobile": { "processed": 900, "throughput": 15.478673811095218, "replicas": [1, 1, 0] },
+        "partner": { "processed": 900, "throughput": 15.478673811095218, "replicas": [1, 1, 0] },
+        "gw": { "processed": 2687, "inFlight": 4, "throughput": 45.34600409955345, "replicas": [1, 1, 0] },
+        "orders": { "processed": 936, "backlog": 1738, "inFlight": 4, "throughput": 16.99245569470502, "replicas": [1, 1, 0] },
+        "topic": {
+          "processed": 931,
+          "throughput": 16.7622959436146,
+          "lag": { "topic-billing": 0, "topic-search": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "billing": { "processed": 924, "inFlight": 1, "throughput": 16.91166708676129, "replicas": [1, 1, 0] },
+        "search": { "processed": 924, "inFlight": 1, "throughput": 16.887386837157617, "replicas": [1, 1, 0] },
+        "db": { "processed": 920, "throughput": 16.771889171694056, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 1787,
+    "real": {
+      "web": { "processed": 900, "throughput": 15.478673811095218, "replicas": [1, 1, 0] },
+      "mobile": { "processed": 900, "throughput": 15.478673811095218, "replicas": [1, 1, 0] },
+      "partner": { "processed": 900, "throughput": 15.478673811095218, "replicas": [1, 1, 0] },
+      "gw": { "processed": 2687, "inFlight": 4, "throughput": 45.34600409955345, "replicas": [1, 1, 0] },
+      "orders": { "processed": 936, "backlog": 1738, "inFlight": 4, "throughput": 16.99245569470502, "replicas": [1, 1, 0] },
+      "topic": {
+        "processed": 931,
+        "throughput": 16.7622959436146,
+        "lag": { "topic-billing": 0, "topic-search": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "billing": { "processed": 924, "inFlight": 1, "throughput": 16.91166708676129, "replicas": [1, 1, 0] },
+      "search": { "processed": 924, "inFlight": 1, "throughput": 16.887386837157617, "replicas": [1, 1, 0] },
+      "db": { "processed": 920, "throughput": 16.771889171694056, "replicas": [1, 1, 0] }
+    },
+    "edges": { "web-gw": 897, "mobile-gw": 897, "partner-gw": 897, "gw-orders": 2678, "orders-topic": 931, "topic-billing": 925, "topic-search": 925, "billing-db": 920 }
+  },
+  "events": {
+    "total": 19092,
+    "byKind": { "process": 10022, "deliver": 9070 },
+    "byNode": {
+      "web": { "process": 900 },
+      "mobile": { "process": 900 },
+      "partner": { "process": 900 },
+      "gw": { "deliver": 2691, "process": 2687 },
+      "orders": { "deliver": 2678, "process": 936 },
+      "topic": { "deliver": 931, "process": 931 },
+      "billing": { "deliver": 925, "process": 924 },
+      "search": { "deliver": 925, "process": 924 },
+      "db": { "deliver": 920, "process": 920 }
+    },
+    "perSecond": [
+      "627d4a92c895",
+      "ffd5d9413e86",
+      "f7b3a3fee09c",
+      "b2ea6c8a44a6",
+      "8fbc16c22bd9",
+      "618c1c41b65d",
+      "092822aaa76a",
+      "aefaca68c86e",
+      "3424d0b43b53",
+      "78fc50ccc0c2",
+      "0fb1276b60a5",
+      "b2d1e6e096b6",
+      "f4600af01148",
+      "f72375fa0855",
+      "06efbeaf3911",
+      "cf6b901a02e6",
+      "985f6be5b853",
+      "cdb60b313158",
+      "f38016cc0495",
+      "9de262c5e7e9",
+      "58d736625318",
+      "a477b4250933",
+      "f573729285e3",
+      "8de200203c03",
+      "e391682e1eed",
+      "f0bcbeabef86",
+      "cb1eee390cf1",
+      "9fe7c9627fd0",
+      "4ec799ee313e",
+      "fc374d868d4f",
+      "5038c9adac56",
+      "bfdfc77afb3a",
+      "9dcb522f617c",
+      "2eb610b272f2",
+      "71492df6163c",
+      "c05cf38a70bc",
+      "2c2e4cafb768",
+      "60cea1f309f3",
+      "5432ac24fcdd",
+      "e94371154e32",
+      "73ca57261bdc",
+      "9e33b13b96b6",
+      "bf76bec186c4",
+      "8c9e3ddd4572",
+      "68c693351947",
+      "351f36a9a569",
+      "ef399c7c537c",
+      "f1907cab8d06",
+      "349fddd9732d",
+      "ad22638fea29",
+      "96273def95e4",
+      "7824add85466",
+      "ee2694a8d834",
+      "6281110a37f5",
+      "17e5de0bc1dd",
+      "edc0f543884c",
+      "cc1e0190bd29",
+      "3cb1bd1613c3",
+      "3010b81e1025",
+      "ec3e918d0396",
+      "f452a3eca2ad"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 131, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 131, "min": 1720, "mean": 11241.603053435114, "p50": 6800, "p90": 27540, "max": 38690 },
+    "waitMs": {
+      "gw": { "count": 131, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "orders": { "count": 131, "min": 0, "mean": 9523.358778625954, "p50": 5080, "p90": 25790, "max": 37010 },
+      "billing": { "count": 131, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "search": { "count": 131, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "db": { "count": 131, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "gw": { "count": 131, "min": 50, "mean": 64.80916030534351, "p50": 70, "p90": 70, "max": 80 },
+      "orders": { "count": 131, "min": 210, "mean": 252.29007633587787, "p50": 250, "p90": 290, "max": 300 },
+      "billing": { "count": 131, "min": 130, "mean": 155.64885496183206, "p50": 160, "p90": 180, "max": 180 },
+      "search": { "count": 131, "min": 130, "mean": 154.8854961832061, "p50": 150, "p90": 180, "max": 180 },
+      "db": { "count": 131, "min": 40, "mean": 45.49618320610687, "p50": 50, "p90": 50, "max": 50 }
+    }
+  }
+}

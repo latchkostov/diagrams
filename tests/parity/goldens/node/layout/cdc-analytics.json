@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "sql": [40, 160], "debezium": [436, 160], "registry": [836, 40], "orders-topic": [836, 160], "customers-topic": [836, 280], "processor": [1257, 100], "s3-sink": [1257, 220], "search": [1657, 40], "warehouse": [1657, 160], "lake": [1657, 280] },
+    "TB": { "sql": [360, 40], "debezium": [360, 200], "orders-topic": [40, 360], "customers-topic": [360, 360], "registry": [680, 360], "processor": [200, 520], "s3-sink": [520, 520], "search": [40, 680], "warehouse": [360, 680], "lake": [680, 680] }
+  },
+  "tidy": { "sql": [40, 160], "debezium": [436, 160], "orders-topic": [836, 160], "customers-topic": [836, 280], "processor": [1257, 100], "search": [1657, 40], "warehouse": [1657, 160], "s3-sink": [1257, 220], "lake": [1657, 280], "registry": [836, 40] },
+  "arrange": {
+    "alignLeft": { "sql": [40, 280], "debezium": [40, 280], "orders-topic": [40, 160], "customers-topic": [40, 400], "processor": [40, 280], "search": [40, 160], "warehouse": [40, 400], "s3-sink": [40, 520], "lake": [40, 520], "registry": [40, 40] },
+    "alignMiddle": { "sql": [40, 280], "debezium": [420, 280], "orders-topic": [800, 280], "customers-topic": [800, 280], "processor": [1180, 280], "search": [1560, 280], "warehouse": [1560, 280], "s3-sink": [1180, 280], "lake": [1560, 280], "registry": [800, 280] },
+    "distributeH": { "sql": [40, 280], "debezium": [194, 280], "orders-topic": [367, 160], "customers-topic": [540, 400], "processor": [886, 280], "search": [1214, 160], "warehouse": [1387, 400], "s3-sink": [1059, 520], "lake": [1560, 520], "registry": [713, 40] },
+    "distributeV": { "sql": [40, 200], "debezium": [420, 253], "orders-topic": [800, 93], "customers-topic": [800, 360], "processor": [1180, 307], "search": [1560, 147], "warehouse": [1560, 413], "s3-sink": [1180, 467], "lake": [1560, 520], "registry": [800, 40] },
+    "spreadH": { "sql": [40, 40], "debezium": [420, 40], "orders-topic": [800, 40], "customers-topic": [1099, 40], "processor": [1699, 40], "search": [2280, 40], "warehouse": [2580, 40], "s3-sink": [1999, 40], "lake": [2880, 40], "registry": [1399, 40] },
+    "boundaryAround": { "x": 0, "y": -24, "width": 1860, "height": 656 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": ["onprem", "platform"],
+    "placedNotes": [],
+    "nodes": { "sql": [40, 160], "debezium": [436, 160], "orders-topic": [836, 160], "customers-topic": [836, 280], "processor": [1257, 100], "search": [1657, 40], "warehouse": [1657, 160], "s3-sink": [1257, 220], "lake": [1657, 280], "registry": [836, 40] },
+    "groups": { "onprem": [0, 96, 321, 176], "platform": [396, -24, 1161, 416] }
+  }
+}

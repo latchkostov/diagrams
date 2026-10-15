@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "api": [40, 160], "svc": [400, 160], "above": [760, 40], "topic": [760, 160], "below": [760, 280], "retry": [1120, 160] },
+    "TB": { "api": [320, 40], "svc": [320, 200], "above": [40, 360], "topic": [320, 360], "below": [600, 360], "retry": [320, 520] }
+  },
+  "tidy": { "api": [40, 110], "svc": [400, 110], "topic": [760, 110], "retry": [1120, 110], "above": [760, -10], "below": [760, 230] },
+  "arrange": {
+    "alignLeft": { "api": [40, 160], "svc": [40, 160], "topic": [40, 160], "retry": [40, 400], "above": [40, -8], "below": [40, 400] },
+    "alignMiddle": { "api": [40, 196], "svc": [400, 196], "topic": [760, 196], "retry": [760, 196], "above": [400, 196], "below": [400, 196] },
+    "distributeH": { "api": [40, 160], "svc": [184, 160], "topic": [616, 160], "retry": [760, 400], "above": [328, -8], "below": [472, 400] },
+    "distributeV": { "api": [40, 74], "svc": [400, 155], "topic": [760, 237], "retry": [760, 318], "above": [400, -8], "below": [400, 400] },
+    "spreadH": { "api": [40, -8], "svc": [400, -8], "topic": [1180, -8], "retry": [1440, -8], "above": [660, -8], "below": [920, -8] },
+    "boundaryAround": { "x": 0, "y": -72, "width": 1020, "height": 584 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "api": [40, 160], "svc": [400, 160], "topic": [760, 160], "retry": [1120, 160], "above": [760, 40], "below": [760, 280] },
+    "groups": {}
+  }
+}

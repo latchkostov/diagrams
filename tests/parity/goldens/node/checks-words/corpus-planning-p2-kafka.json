@@ -1,0 +1,70 @@
+{
+  "summary": "1 warning, 1 suggestion.",
+  "findings": {
+    "capacity:worker": {
+      "title": "Readers can't keep up",
+      "message": "At the diagram's own rates, it gets 64/s and handles 12/s (533%): its backlog only grows. Assigned instances: 3 / 8 · Partitions.",
+      "rationale": "Demand above what a service can handle never drains: latency and backlog grow until something times out. Live view's Show capacity has the same numbers.",
+      "fix": { "label": "Set replicas to 30 and Events: Partitions → 30" },
+      "brokerAssignment": "Assigned instances: 3 / 8 · Partitions.",
+      "brokerChanges": ["Events: Partitions → 30"]
+    },
+    "no-reader:dead": {
+      "title": "Dead letters pile up in Recovery",
+      "message": "Nothing in the diagram reads or alerts on Recovery: failed messages stay there until someone looks.",
+      "rationale": "A dead-letter queue has no automatic cleanup. Someone should be told when messages land there, and be able to replay them.",
+      "fix": { "label": "Add a reader…", "choice": "Pick what reads Recovery, then add it and connect dead to it." }
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "capacity:worker",
+        "rule": "capacity",
+        "severity": "warning",
+        "title": "Readers can't keep up",
+        "message": "At the diagram's own rates, it gets 64/s and handles 12/s (533%): its backlog only grows. Assigned instances: 3 / 8 · Partitions.",
+        "targets": ["worker"],
+        "fix": {
+          "label": "Set replicas to 30 and Events: Partitions → 30",
+          "ops": [
+            { "op": "update", "target": "worker", "props": { "replicas": 30 } },
+            { "op": "update", "target": "broker", "props": { "partitions": 30 } }
+          ]
+        }
+      },
+      {
+        "id": "no-reader:dead",
+        "rule": "no-reader",
+        "severity": "suggestion",
+        "title": "Dead letters pile up in Recovery",
+        "message": "Nothing in the diagram reads or alerts on Recovery: failed messages stay there until someone looks.",
+        "targets": ["dead", "broker"],
+        "fix": { "label": "Add a reader…", "needsChoice": "Pick what reads Recovery, then add it and connect dead to it." }
+      }
+    ],
+    "summary": "1 warning, 1 suggestion.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      {
+        "id": "capacity:worker",
+        "rule": "capacity",
+        "severity": "warning",
+        "title": "Readers can't keep up",
+        "message": "At the diagram's own rates, it gets 64/s and handles 12/s (533%): its backlog only grows. Assigned instances: 3 / 8 · Partitions.",
+        "targets": ["worker"],
+        "fix": {
+          "label": "Set replicas to 30 and Events: Partitions → 30",
+          "ops": [
+            { "op": "update", "target": "worker", "props": { "replicas": 30 } },
+            { "op": "update", "target": "broker", "props": { "partitions": 30 } }
+          ]
+        }
+      }
+    ],
+    "summary": "1 warning, 1 suggestion.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "ran": [
+    "dead-letter",
+    "no-reader",
+    "sync-cycle",
+    "sync-chain",
+    "shared-database",
+    "entry-gateway",
+    "capacity",
+    "single-point",
+    "secret-identity",
+    "schema-registry"
+  ],
+  "off": [],
+  "findings": [
+    {
+      "id": "shared-database:billing-db",
+      "rule": "shared-database",
+      "severity": "warning",
+      "target": "billing-db",
+      "elements": ["billing-db", "billing", "db", "orders"],
+      "fix": {
+        "ops": [
+          { "op": "connect", "from": "billing", "to": "orders", "kind": "sync", "key": "ask-orders-1", "label": "Read order totals" },
+          { "op": "remove", "targets": ["billing-db"] }
+        ],
+        "needsChoice": false
+      }
+    },
+    {
+      "id": "entry-gateway:orders",
+      "rule": "entry-gateway",
+      "severity": "suggestion",
+      "target": "orders",
+      "elements": ["orders", "app", "app-orders"],
+      "fix": {
+        "ops": [
+          { "op": "connect", "from": "app", "to": "gw", "kind": "sync", "label": "POST /orders" },
+          { "op": "remove", "targets": ["app-orders"] }
+        ],
+        "needsChoice": false,
+        "options": [
+          {
+            "kind": "generic.firewall",
+            "ops": [
+              { "op": "insert_between", "from": "app", "to": "orders", "kind": "generic.firewall", "label": "Firewall / WAF", "key": "new-gateway" }
+            ]
+          },
+          {
+            "kind": "kong",
+            "ops": [
+              { "op": "insert_between", "from": "app", "to": "orders", "kind": "kong", "label": "Kong Gateway", "key": "new-gateway" }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "ignored": [],
+  "fixes": {
+    "shared-database:billing-db (default)": {
+      "ok": false,
+      "errors": [
+        { "i": -1, "error": "Two elements shared the id \"billing-db\"; one was renamed to \"billing-db-2\"." }
+      ],
+      "warnings": [],
+      "summary": "No changes applied",
+      "results": [],
+      "nodes": 7,
+      "edges": 6,
+      "findingsAfter": ["shared-database:billing-db", "entry-gateway:orders"]
+    },
+    "entry-gateway:orders (default)": {
+      "ok": false,
+      "errors": [
+        { "i": -1, "error": "Two elements shared the id \"billing-db\"; one was renamed to \"billing-db-2\"." }
+      ],
+      "warnings": [],
+      "summary": "No changes applied",
+      "results": [],
+      "nodes": 7,
+      "edges": 6,
+      "findingsAfter": ["shared-database:billing-db", "entry-gateway:orders"]
+    },
+    "entry-gateway:orders (option 1)": {
+      "ok": false,
+      "errors": [
+        { "i": -1, "error": "Two elements shared the id \"billing-db\"; one was renamed to \"billing-db-2\"." }
+      ],
+      "warnings": [],
+      "summary": "No changes applied",
+      "results": [],
+      "nodes": 7,
+      "edges": 6,
+      "findingsAfter": ["shared-database:billing-db", "entry-gateway:orders"]
+    },
+    "entry-gateway:orders (option 2)": {
+      "ok": false,
+      "errors": [
+        { "i": -1, "error": "Two elements shared the id \"billing-db\"; one was renamed to \"billing-db-2\"." }
+      ],
+      "warnings": [],
+      "summary": "No changes applied",
+      "results": [],
+      "nodes": 7,
+      "edges": 6,
+      "findingsAfter": ["shared-database:billing-db", "entry-gateway:orders"]
+    }
+  }
+}

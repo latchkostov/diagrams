@@ -1,0 +1,141 @@
+{
+  "ok": true,
+  "format": "asyncapi",
+  "warnings": [],
+  "report": {
+    "summary": {
+      "code": "importReport.summary",
+      "args": [
+        { "title": "Order service", "format": "AsyncAPI", "total": "all", "drawn": 7, "nodes": 7, "connections": 6, "guesses": 0 }
+      ]
+    },
+    "format": "AsyncAPI",
+    "source": "orders-service.asyncapi.yaml",
+    "title": "Order service",
+    "nodes": 7,
+    "connections": 6,
+    "boundaries": 2,
+    "guesses": [],
+    "inferred": [],
+    "notDrawn": [
+      {
+        "name": "Order service: 1 security scheme",
+        "reason": { "code": "importDetail.notComponentsOfTheSystem", "args": [] }
+      },
+      {
+        "name": "Order service: 1 payload schema",
+        "reason": { "code": "importDetail.notComponentsOfTheSystem", "args": [] }
+      }
+    ],
+    "unread": [],
+    "notes": [
+      { "code": "importDetail.value0HasNoProducerInThese", "args": [{ "value0": "payments.completed.v1" }] },
+      { "code": "importDetail.value0HasNoProducerInThese", "args": [{ "value0": "payments.failed.v1" }] },
+      { "code": "importReport.watchTraffic", "args": [{ "title": "Imported traffic" }] }
+    ],
+    "traffic": [
+      { "nodeId": "order-service", "label": "Order service", "messageType": "OrderPlaced", "ratePerSec": 1, "seconds": 120 }
+    ]
+  },
+  "reportEnglish": {
+    "report.summary": "Imported “Order service” from AsyncAPI: 7 nodes, 6 connections.",
+    "report.notDrawn[0].reason": "not components of the system",
+    "report.notDrawn[1].reason": "not components of the system",
+    "report.notes[0]": "payments.completed.v1 has no producer in these files",
+    "report.notes[1]": "payments.failed.v1 has no producer in these files",
+    "report.notes[2]": "Go live and pick “Imported traffic” to watch messages flow"
+  },
+  "replay": null,
+  "checks": [
+    "warning no-reader:topic-orders.placed.v1",
+    "warning no-reader:topic-orders.cancelled.v1",
+    "warning no-reader:topic-order-notifications"
+  ],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Order service",
+    "direction": "LR",
+    "groups": [
+      { "id": "boundary-kafka-kafka-0.shop.internal-9092", "label": "Kafka · kafka-0.shop.internal:9092", "tone": "neutral", "x": 400, "y": 40, "width": 321, "height": 536 },
+      { "id": "boundary-rabbitmq-rabbitmq.shop.internal-5672", "label": "RabbitMQ · rabbitmq.shop.internal:5672", "tone": "neutral", "x": 400, "y": 620, "width": 306, "height": 176 }
+    ],
+    "nodes": [
+      { "id": "order-service", "stencil": "generic.service", "label": "Order service", "x": 40, "y": 380 },
+      {
+        "id": "topic-orders.placed.v1",
+        "stencil": "kafka.topic",
+        "label": "orders.placed.v1",
+        "x": 440,
+        "y": 104,
+        "group": "boundary-kafka-kafka-0.shop.internal-9092",
+        "props": { "partitions": 12, "contentType": "application/vnd.apache.avro" }
+      },
+      {
+        "id": "topic-orders.cancelled.v1",
+        "stencil": "kafka.topic",
+        "label": "orders.cancelled.v1",
+        "x": 440,
+        "y": 224,
+        "group": "boundary-kafka-kafka-0.shop.internal-9092",
+        "props": { "partitions": 6 }
+      },
+      { "id": "topic-payments.completed.v1", "stencil": "kafka.topic", "label": "payments.completed.v1", "x": 440, "y": 344, "group": "boundary-kafka-kafka-0.shop.internal-9092" },
+      { "id": "topic-payments.failed.v1", "stencil": "kafka.topic", "label": "payments.failed.v1", "x": 440, "y": 464, "group": "boundary-kafka-kafka-0.shop.internal-9092" },
+      { "id": "topic-order-notifications", "stencil": "rabbitmq.exchange", "label": "order-notifications", "x": 440, "y": 684, "group": "boundary-rabbitmq-rabbitmq.shop.internal-5672" },
+      { "id": "schema-registry.shop.internal", "stencil": "kafka.schema-registry", "label": "schema-registry.shop.internal", "x": 20, "y": 532 }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "from": "order-service",
+        "to": "topic-orders.placed.v1",
+        "kind": "async",
+        "props": { "emits": "OrderPlaced" }
+      },
+      {
+        "id": "e2",
+        "from": "order-service",
+        "to": "topic-orders.cancelled.v1",
+        "kind": "async",
+        "props": { "emits": "OrderCancelled" }
+      },
+      {
+        "id": "e3",
+        "from": "topic-payments.completed.v1",
+        "to": "order-service",
+        "kind": "async",
+        "props": { "filter": ["PaymentCompleted"], "group": "order-service" }
+      },
+      {
+        "id": "e4",
+        "from": "topic-payments.failed.v1",
+        "to": "order-service",
+        "kind": "async",
+        "props": { "filter": ["PaymentFailed"], "group": "order-service" }
+      },
+      {
+        "id": "e5",
+        "from": "order-service",
+        "to": "topic-order-notifications",
+        "kind": "async",
+        "props": { "emits": "OrderConfirmationRequested" }
+      },
+      { "id": "e6", "from": "order-service", "to": "schema-registry.shop.internal", "relation": "depends" }
+    ],
+    "simulations": [
+      {
+        "id": "imported-traffic",
+        "title": "Imported traffic",
+        "description": "2 minutes of steady traffic where messages start, from the import.",
+        "traffic": [
+          {
+            "id": "t1",
+            "node": "order-service",
+            "messageType": "OrderPlaced",
+            "shape": { "kind": "constant", "ratePerSec": 1, "durationMs": 120000 }
+          }
+        ]
+      }
+    ]
+  }
+}

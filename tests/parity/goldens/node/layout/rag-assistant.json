@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "user": [40, 160], "docs": [40, 280], "rag-api": [433, 160], "ingest-q": [433, 280], "feedback": [823, 100], "cache": [823, 220], "embed-worker": [823, 340], "eval-job": [1207, 40], "vector-db": [1207, 160], "vault": [1207, 280], "embeddings": [1207, 400], "quality": [1600, 160], "llm": [1600, 280] },
+    "TB": { "user": [350, 40], "docs": [670, 40], "rag-api": [350, 200], "ingest-q": [670, 200], "cache": [200, 360], "feedback": [510, 360], "embed-worker": [820, 360], "vector-db": [40, 520], "eval-job": [350, 520], "vault": [670, 520], "embeddings": [980, 520], "llm": [350, 680], "quality": [670, 680] }
+  },
+  "tidy": { "user": [40, 160], "rag-api": [433, 160], "cache": [823, 220], "feedback": [823, 100], "llm": [1600, 280], "vector-db": [1207, 160], "eval-job": [1207, 40], "quality": [1600, 160], "docs": [40, 280], "ingest-q": [433, 280], "embed-worker": [823, 340], "embeddings": [1207, 400], "vault": [1207, 280] },
+  "arrange": {
+    "alignLeft": { "user": [40, 160], "rag-api": [40, 160], "cache": [40, 320], "feedback": [40, 40], "llm": [40, 160], "vector-db": [40, 320], "eval-job": [40, 40], "quality": [40, 40], "docs": [40, 480], "ingest-q": [40, 480], "embed-worker": [40, 480], "embeddings": [40, 480], "vault": [40, 320] },
+    "alignMiddle": { "user": [40, 260], "rag-api": [420, 260], "cache": [420, 260], "feedback": [800, 260], "llm": [800, 260], "vector-db": [800, 260], "eval-job": [1180, 260], "quality": [1560, 260], "docs": [40, 260], "ingest-q": [420, 260], "embed-worker": [800, 260], "embeddings": [1180, 260], "vault": [1180, 260] },
+    "distributeH": { "user": [40, 160], "rag-api": [308, 160], "cache": [448, 320], "feedback": [709, 40], "llm": [823, 160], "vector-db": [938, 320], "eval-job": [1185, 40], "quality": [1560, 40], "docs": [161, 480], "ingest-q": [582, 480], "embed-worker": [1051, 480], "embeddings": [1332, 480], "vault": [1447, 320] },
+    "distributeV": { "user": [40, 150], "rag-api": [420, 187], "cache": [420, 260], "feedback": [800, 40], "llm": [800, 223], "vector-db": [800, 297], "eval-job": [1180, 77], "quality": [1560, 113], "docs": [40, 370], "ingest-q": [420, 407], "embed-worker": [800, 443], "embeddings": [1180, 480], "vault": [1180, 333] },
+    "spreadH": { "user": [40, 40], "rag-api": [601, 40], "cache": [888, 40], "feedback": [1443, 40], "llm": [1703, 40], "vector-db": [1965, 40], "eval-job": [2506, 40], "quality": [3321, 40], "docs": [308, 40], "ingest-q": [1169, 40], "embed-worker": [2225, 40], "embeddings": [2799, 40], "vault": [3061, 40] },
+    "boundaryAround": { "x": 0, "y": -24, "width": 1834, "height": 616 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "user": [40, 160], "rag-api": [433, 160], "cache": [823, 220], "feedback": [823, 100], "llm": [1600, 280], "vector-db": [1207, 160], "eval-job": [1207, 40], "quality": [1600, 160], "docs": [40, 280], "ingest-q": [433, 280], "embed-worker": [823, 340], "embeddings": [1207, 400], "vault": [1207, 280] },
+    "groups": {}
+  }
+}

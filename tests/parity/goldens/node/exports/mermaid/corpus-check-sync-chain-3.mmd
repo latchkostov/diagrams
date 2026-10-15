@@ -1,0 +1,14 @@
+---
+title: Sync chain of 3 hops
+---
+flowchart LR
+  web(["Web"])
+  s0["s0"]
+  s1["s1"]
+  s2["s2"]
+  s3["s3"]
+  web --> s0
+  s0 --> s1
+  s1 --> s2
+  s2 --> s3
+%% diagrams:{"v":1,"nodes":{"web":["web","client.browser"],"s0":["s0","service.go"],"s1":["s1","service.go"],"s2":["s2","service.go"],"s3":["s3","service.go"]},"edges":["e-web","e0","e1","e2"],"relations":{}}

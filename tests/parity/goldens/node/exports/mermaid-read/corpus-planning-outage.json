@@ -1,0 +1,19 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Planning: shared capacity",
+    "direction": "LR",
+    "nodes": [
+      { "id": "checkout", "stencil": "generic.service", "label": "Checkout", "x": 40, "y": 100 },
+      { "id": "orders", "stencil": "generic.service", "label": "Orders", "x": 760, "y": 40 },
+      { "id": "queue", "stencil": "generic.queue", "label": "Queue", "x": 400, "y": 100 },
+      { "id": "other", "stencil": "generic.service", "label": "Other", "x": 760, "y": 160 }
+    ],
+    "edges": [
+      { "id": "e1-checkout-queue", "from": "checkout", "to": "queue", "kind": "async" },
+      { "id": "e2-queue-orders", "from": "queue", "to": "orders", "kind": "async" },
+      { "id": "e3-queue-other", "from": "queue", "to": "other", "kind": "async" }
+    ]
+  }
+}

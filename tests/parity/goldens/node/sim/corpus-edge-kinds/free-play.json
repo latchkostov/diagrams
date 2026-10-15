@@ -1,0 +1,209 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "async-a": { "replicas": [1, 1, 0] },
+        "async-b": { "noConsumer": true, "replicas": [1, 1, 0] },
+        "sync-a": { "replicas": [1, 1, 0] },
+        "sync-b": { "replicas": [1, 1, 0] },
+        "labelled-a": { "replicas": [1, 1, 0] },
+        "labelled-b": { "lag": { "queue": 0 }, "noConsumer": true, "replicas": [1, 1, 0] },
+        "long-label-a": { "replicas": [1, 1, 0] },
+        "long-label-b": { "replicas": [1, 1, 0] },
+        "bi-a": { "replicas": [1, 1, 0] },
+        "bi-b": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 0,
+      "nodes": {
+        "async-a": { "replicas": [1, 1, 0] },
+        "async-b": { "noConsumer": true, "replicas": [1, 1, 0] },
+        "sync-a": { "replicas": [1, 1, 0] },
+        "sync-b": { "replicas": [1, 1, 0] },
+        "labelled-a": { "replicas": [1, 1, 0] },
+        "labelled-b": { "lag": { "queue": 0 }, "noConsumer": true, "replicas": [1, 1, 0] },
+        "long-label-a": { "replicas": [1, 1, 0] },
+        "long-label-b": { "replicas": [1, 1, 0] },
+        "bi-a": { "replicas": [1, 1, 0] },
+        "bi-b": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 0,
+      "nodes": {
+        "async-a": { "replicas": [1, 1, 0] },
+        "async-b": { "noConsumer": true, "replicas": [1, 1, 0] },
+        "sync-a": { "replicas": [1, 1, 0] },
+        "sync-b": { "replicas": [1, 1, 0] },
+        "labelled-a": { "replicas": [1, 1, 0] },
+        "labelled-b": { "lag": { "queue": 0 }, "noConsumer": true, "replicas": [1, 1, 0] },
+        "long-label-a": { "replicas": [1, 1, 0] },
+        "long-label-b": { "replicas": [1, 1, 0] },
+        "bi-a": { "replicas": [1, 1, 0] },
+        "bi-b": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 0,
+      "nodes": {
+        "async-a": { "replicas": [1, 1, 0] },
+        "async-b": { "noConsumer": true, "replicas": [1, 1, 0] },
+        "sync-a": { "replicas": [1, 1, 0] },
+        "sync-b": { "replicas": [1, 1, 0] },
+        "labelled-a": { "replicas": [1, 1, 0] },
+        "labelled-b": { "lag": { "queue": 0 }, "noConsumer": true, "replicas": [1, 1, 0] },
+        "long-label-a": { "replicas": [1, 1, 0] },
+        "long-label-b": { "replicas": [1, 1, 0] },
+        "bi-a": { "replicas": [1, 1, 0] },
+        "bi-b": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 0,
+      "nodes": {
+        "async-a": { "replicas": [1, 1, 0] },
+        "async-b": { "noConsumer": true, "replicas": [1, 1, 0] },
+        "sync-a": { "replicas": [1, 1, 0] },
+        "sync-b": { "replicas": [1, 1, 0] },
+        "labelled-a": { "replicas": [1, 1, 0] },
+        "labelled-b": { "lag": { "queue": 0 }, "noConsumer": true, "replicas": [1, 1, 0] },
+        "long-label-a": { "replicas": [1, 1, 0] },
+        "long-label-b": { "replicas": [1, 1, 0] },
+        "bi-a": { "replicas": [1, 1, 0] },
+        "bi-b": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 0,
+      "nodes": {
+        "async-a": { "replicas": [1, 1, 0] },
+        "async-b": { "noConsumer": true, "replicas": [1, 1, 0] },
+        "sync-a": { "replicas": [1, 1, 0] },
+        "sync-b": { "replicas": [1, 1, 0] },
+        "labelled-a": { "replicas": [1, 1, 0] },
+        "labelled-b": { "lag": { "queue": 0 }, "noConsumer": true, "replicas": [1, 1, 0] },
+        "long-label-a": { "replicas": [1, 1, 0] },
+        "long-label-b": { "replicas": [1, 1, 0] },
+        "bi-a": { "replicas": [1, 1, 0] },
+        "bi-b": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 0,
+      "nodes": {
+        "async-a": { "replicas": [1, 1, 0] },
+        "async-b": { "noConsumer": true, "replicas": [1, 1, 0] },
+        "sync-a": { "replicas": [1, 1, 0] },
+        "sync-b": { "replicas": [1, 1, 0] },
+        "labelled-a": { "replicas": [1, 1, 0] },
+        "labelled-b": { "lag": { "queue": 0 }, "noConsumer": true, "replicas": [1, 1, 0] },
+        "long-label-a": { "replicas": [1, 1, 0] },
+        "long-label-b": { "replicas": [1, 1, 0] },
+        "bi-a": { "replicas": [1, 1, 0] },
+        "bi-b": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 0,
+    "real": {
+      "async-a": { "replicas": [1, 1, 0] },
+      "async-b": { "noConsumer": true, "replicas": [1, 1, 0] },
+      "sync-a": { "replicas": [1, 1, 0] },
+      "sync-b": { "replicas": [1, 1, 0] },
+      "labelled-a": { "replicas": [1, 1, 0] },
+      "labelled-b": { "lag": { "queue": 0 }, "noConsumer": true, "replicas": [1, 1, 0] },
+      "long-label-a": { "replicas": [1, 1, 0] },
+      "long-label-b": { "replicas": [1, 1, 0] },
+      "bi-a": { "replicas": [1, 1, 0] },
+      "bi-b": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "edge-async": 0, "edge-sync": 0, "edge-labelled": 0, "edge-long-label": 0, "bi-ab": 0, "bi-ba": 0 }
+  },
+  "events": {
+    "total": 0,
+    "byKind": {},
+    "byNode": {},
+    "perSecond": [
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 0, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": null,
+    "waitMs": {},
+    "processMs": {}
+  }
+}

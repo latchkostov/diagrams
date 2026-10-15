@@ -1,0 +1,230 @@
+{
+  "run": {
+    "time": 14180,
+    "totalMs": 16000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "everyone", "label": "All 60 customers get an email", "status": "pass", "value": 60 },
+      { "id": "compensated", "label": "Declined orders release their stock", "status": "pass", "value": 78 },
+      { "id": "retried", "label": "Transient errors were retried", "status": "pass", "value": 15 },
+      { "id": "no-dlq", "label": "Nothing is dead-lettered", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "note", "label": "One payment call in five times out. The consumer retries in place with the same Idempotency-Key, so a retry never charges twice." },
+      { "atMs": 0, "kind": "traffic", "label": "60 checkouts over 6 seconds" },
+      { "atMs": 2500, "kind": "props", "label": "props: payment-svc" },
+      { "atMs": 2500, "kind": "note", "label": "A fraud rule starts declining every card. The saga compensates: it releases the reserved stock, then cancels the order." },
+      { "atMs": 5500, "kind": "props", "label": "props: payment-svc" },
+      { "atMs": 5500, "kind": "note", "label": "The rule is rolled back. Every customer still hears back: a receipt or a cancellation." },
+      { "atMs": 6000, "kind": "traffic", "label": "60 checkouts over 6 seconds ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "client": { "replicas": [1, 1, 0] },
+        "order-api": { "replicas": [1, 1, 0] },
+        "orders-db": { "replicas": [1, 1, 0] },
+        "outbox-relay": { "replicas": [1, 1, 0] },
+        "order-events": { "lag": { "saga": 0, "notifications": 0 }, "replicas": [1, 1, 0] },
+        "notifications": { "replicas": [1, 1, 0] },
+        "email": { "replicas": [1, 1, 0] },
+        "saga": { "replicas": [1, 1, 0] },
+        "saga-db": { "replicas": [1, 1, 0] },
+        "inventory-cmds": { "lag": { "inventory": 0 }, "replicas": [1, 1, 0] },
+        "saga-replies": { "lag": { "saga": 0 }, "replicas": [1, 1, 0] },
+        "payment-cmds": { "lag": { "payments": 0 }, "replicas": [1, 1, 0] },
+        "payments-dlq": { "noConsumer": true, "replicas": [1, 1, 0] },
+        "inventory-svc": { "replicas": [1, 1, 0] },
+        "payment-svc": { "replicas": [1, 1, 0] },
+        "inventory-db": { "replicas": [1, 1, 0] },
+        "stripe": { "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 22,
+      "nodes": {
+        "client": { "processed": 60, "throughput": 0.19295289221422265, "replicas": [1, 1, 0] },
+        "order-api": { "processed": 113, "inFlight": 1, "throughput": 11.651685677455323, "replicas": [1, 1, 0] },
+        "orders-db": { "processed": 110, "throughput": 11.106559026916107, "replicas": [1, 1, 0] },
+        "outbox-relay": { "processed": 107, "inFlight": 1, "throughput": 11.280561562350513, "replicas": [1, 1, 0] },
+        "order-events": {
+          "processed": 104,
+          "throughput": 11.936284563872105,
+          "lag": { "saga": 0, "notifications": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "notifications": { "processed": 40, "inFlight": 1, "throughput": 12.243908828227918, "replicas": [1, 1, 0] },
+        "email": { "processed": 39, "throughput": 13.82159083893461, "replicas": [1, 1, 0] },
+        "saga": { "processed": 194, "inFlight": 1, "throughput": 14.14864459598055, "replicas": [1, 1, 0] },
+        "saga-db": { "processed": 193, "throughput": 16.488184225133818, "replicas": [1, 1, 0] },
+        "inventory-cmds": {
+          "processed": 78,
+          "throughput": 1.3650863867592538,
+          "lag": { "inventory": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "saga-replies": {
+          "processed": 137,
+          "throughput": 11.68953692806131,
+          "lag": { "saga": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "payment-cmds": {
+          "processed": 60,
+          "throughput": 4.31216653382916,
+          "lag": { "payments": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "payments-dlq": { "noConsumer": true, "replicas": [1, 1, 0] },
+        "inventory-svc": { "processed": 78, "throughput": 2.048617690224933, "replicas": [1, 1, 0] },
+        "payment-svc": { "processed": 59, "failed": 15, "inFlight": 1, "throughput": 6.611204257414696, "replicas": [1, 1, 0] },
+        "inventory-db": { "processed": 78, "throughput": 2.5402729973690583, "replicas": [1, 1, 0] },
+        "stripe": { "processed": 41, "throughput": 7.9534227687201575, "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 14180,
+    "inSystem": 0,
+    "real": {
+      "client": { "processed": 60, "throughput": 0.00295189128156092, "replicas": [1, 1, 0] },
+      "order-api": { "processed": 120, "throughput": 0.3608389580382296, "replicas": [1, 1, 0] },
+      "orders-db": { "processed": 120, "throughput": 0.4478146141079953, "replicas": [1, 1, 0] },
+      "outbox-relay": { "processed": 120, "throughput": 0.5946052232828084, "replicas": [1, 1, 0] },
+      "order-events": {
+        "processed": 120,
+        "throughput": 0.8026330976789936,
+        "lag": { "saga": 0, "notifications": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "notifications": { "processed": 60, "throughput": 1.1946333041679875, "replicas": [1, 1, 0] },
+      "email": { "processed": 60, "throughput": 1.4591284127007753, "replicas": [1, 1, 0] },
+      "saga": { "processed": 198, "throughput": 0.3023405068939078, "replicas": [1, 1, 0] },
+      "saga-db": { "processed": 198, "throughput": 0.3751514361374504, "replicas": [1, 1, 0] },
+      "inventory-cmds": {
+        "processed": 78,
+        "throughput": 0.020883784417070915,
+        "lag": { "inventory": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "saga-replies": {
+        "processed": 138,
+        "throughput": 0.20343278901413964,
+        "lag": { "saga": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "payment-cmds": {
+        "processed": 60,
+        "throughput": 0.06596971234676739,
+        "lag": { "payments": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "payments-dlq": { "noConsumer": true, "replicas": [1, 1, 0] },
+      "inventory-svc": { "processed": 78, "throughput": 0.031340793235234594, "replicas": [1, 1, 0] },
+      "payment-svc": { "processed": 60, "failed": 15, "throughput": 0.11936592355053996, "replicas": [1, 1, 0] },
+      "inventory-db": { "processed": 78, "throughput": 0.038862385671799886, "replicas": [1, 1, 0] },
+      "stripe": { "processed": 42, "throughput": 0.1439347883214634, "replicas": [1, 1, 0] },
+      "vault": { "replicas": [1, 1, 0] }
+    },
+    "edges": {
+      "client-to-order-api": 60,
+      "order-api-to-orders-db": 120,
+      "orders-db-to-outbox-relay": 120,
+      "outbox-relay-to-order-events": 120,
+      "order-events-to-saga": 60,
+      "order-events-to-notifications": 60,
+      "notifications-to-email": 60,
+      "saga-to-saga-db": 198,
+      "saga-to-inventory-cmds": 78,
+      "saga-to-payment-cmds": 60,
+      "saga-to-order-api": 60,
+      "inventory-cmds-to-inventory-svc": 78,
+      "inventory-svc-to-inventory-db": 78,
+      "inventory-svc-to-saga-replies": 78,
+      "payment-cmds-to-payment-svc": 60,
+      "payment-cmds-to-payments-dlq": 0,
+      "payment-svc-to-stripe": 42,
+      "payment-svc-to-saga-replies": 60,
+      "saga-replies-to-saga": 138,
+      "payment-svc-to-vault": 0
+    }
+  },
+  "events": {
+    "total": 3210,
+    "byKind": { "inject": 60, "process": 1590, "deliver": 1530, "fail": 15, "retry": 15 },
+    "byNode": {
+      "client": { "inject": 60, "process": 60 },
+      "order-api": { "deliver": 120, "process": 120 },
+      "orders-db": { "deliver": 120, "process": 120 },
+      "outbox-relay": { "deliver": 120, "process": 120 },
+      "order-events": { "deliver": 120, "process": 120 },
+      "saga": { "deliver": 198, "process": 198 },
+      "saga-db": { "deliver": 198, "process": 198 },
+      "inventory-cmds": { "deliver": 78, "process": 78 },
+      "inventory-svc": { "deliver": 78, "process": 78 },
+      "inventory-db": { "deliver": 78, "process": 78 },
+      "saga-replies": { "deliver": 138, "process": 138 },
+      "payment-cmds": { "deliver": 60, "process": 60, "retry": 15 },
+      "payment-svc": { "deliver": 60, "fail": 15, "process": 60 },
+      "stripe": { "deliver": 42, "process": 42 },
+      "notifications": { "deliver": 60, "process": 60 },
+      "email": { "deliver": 60, "process": 60 }
+    },
+    "perSecond": [
+      "1844318109cf",
+      "de64e38bc790",
+      "137e987a8bba",
+      "2e8a4629a504",
+      "91c430d9dbf3",
+      "68b3b396a74b",
+      "dc9cc9ee221d",
+      "f9a64081ceea",
+      "e07ef86222e2",
+      "b4b5eed66b45",
+      "bb1f5832ff9f",
+      "2c017c10e16b",
+      "2436cf32f829",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 0, "text": "One payment call in five times out. The consumer retries in place with the same Idempotency-Key, so a retry never charges twice.", "focus": ["payment-svc", "stripe"] },
+    { "atMs": 2500, "text": "A fraud rule starts declining every card. The saga compensates: it releases the reserved stock, then cancels the order.", "focus": ["payment-svc", "saga", "inventory-cmds", "order-api"] },
+    { "atMs": 5500, "text": "The rule is rolled back. Every customer still hears back: a receipt or a cancellation.", "focus": ["notifications", "email"] }
+  ],
+  "latency": {
+    "journeys": { "done": 60, "retried": 10, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 60, "min": 5960, "mean": 6564.166666666667, "p50": 6080, "p90": 7420, "max": 8750 },
+    "waitMs": {
+      "order-api": { "count": 120, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "orders-db": { "count": 120, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "outbox-relay": { "count": 120, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "notifications": { "count": 60, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "saga": { "count": 198, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "saga-db": { "count": 198, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "inventory-svc": { "count": 78, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "payment-svc": { "count": 60, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "inventory-db": { "count": 78, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "order-api": { "count": 120, "min": 90, "mean": 104.91666666666667, "p50": 110, "p90": 120, "max": 120 },
+      "orders-db": { "count": 120, "min": 10, "mean": 15.166666666666666, "p50": 20, "p90": 20, "max": 20 },
+      "outbox-relay": { "count": 120, "min": 70, "mean": 84.33333333333333, "p50": 80, "p90": 100, "max": 100 },
+      "notifications": { "count": 60, "min": 90, "mean": 105.33333333333333, "p50": 100, "p90": 120, "max": 120 },
+      "saga": { "count": 198, "min": 50, "mean": 54.343434343434346, "p50": 50, "p90": 60, "max": 60 },
+      "saga-db": { "count": 198, "min": 10, "mean": 15.202020202020202, "p50": 20, "p90": 20, "max": 20 },
+      "inventory-svc": { "count": 78, "min": 90, "mean": 107.05128205128206, "p50": 110, "p90": 120, "max": 120 },
+      "payment-svc": { "count": 60, "min": 130, "mean": 271.5, "p50": 170, "p90": 620, "max": 1530 },
+      "inventory-db": { "count": 78, "min": 10, "mean": 15.76923076923077, "p50": 20, "p90": 20, "max": 20 }
+    }
+  }
+}

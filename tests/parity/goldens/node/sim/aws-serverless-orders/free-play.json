@@ -1,0 +1,409 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "client": { "replicas": [1, 1, 0] },
+        "apigw": { "replicas": [1, 1, 0] },
+        "create-order": { "replicas": [1, 1, 0] },
+        "orders-table": { "replicas": [1, 1, 0] },
+        "stream-fn": { "replicas": [1, 1, 0] },
+        "bus": { "lag": { "payment-rule": 0, "fulfillment-rule": 0, "notify-rule": 0 }, "replicas": [1, 1, 0] },
+        "sfn": { "replicas": [1, 1, 0] },
+        "stripe": { "replicas": [1, 1, 0] },
+        "dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "fulfillment-q": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "fulfillment-fn": { "replicas": [1, 1, 0] },
+        "three-pl": { "replicas": [1, 1, 0] },
+        "sns": { "lag": { "email": 0, "sms": 0 }, "replicas": [1, 1, 0] },
+        "email": { "replicas": [1, 1, 0] },
+        "sms": { "replicas": [1, 1, 0] },
+        "cognito": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 52,
+      "nodes": {
+        "client": { "processed": 100, "throughput": 10.45549028686799, "replicas": [1, 1, 0] },
+        "apigw": { "processed": 97, "inFlight": 1, "throughput": 9.555446846603363, "replicas": [1, 1, 0] },
+        "create-order": { "processed": 95, "throughput": 10.421070463173505, "replicas": [1, 1, 0] },
+        "orders-table": { "processed": 168, "throughput": 18.664089270042968, "replicas": [1, 1, 0] },
+        "stream-fn": { "processed": 163, "throughput": 20.994997854096702, "replicas": [1, 1, 0] },
+        "bus": {
+          "processed": 156,
+          "throughput": 19.93973677041222,
+          "lag": { "payment-rule": 0, "fulfillment-rule": 0, "notify-rule": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "sfn": { "processed": 79, "inFlight": 4, "throughput": 10.094416942483202, "replicas": [1, 1, 0] },
+        "stripe": { "processed": 76, "throughput": 9.059108633917885, "replicas": [1, 1, 0] },
+        "dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "fulfillment-q": {
+          "processed": 67,
+          "throughput": 9.821407344038885,
+          "lag": { "queue": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "fulfillment-fn": { "processed": 62, "inFlight": 2, "throughput": 9.482684373892587, "replicas": [1, 1, 0] },
+        "three-pl": { "processed": 60, "throughput": 9.425968395057465, "replicas": [1, 1, 0] },
+        "sns": {
+          "processed": 67,
+          "throughput": 9.821407344038885,
+          "lag": { "email": 0, "sms": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "email": { "processed": 64, "throughput": 9.892515074044606, "replicas": [1, 1, 0] },
+        "sms": { "processed": 64, "throughput": 9.892515074044606, "replicas": [1, 1, 0] },
+        "cognito": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 50,
+      "nodes": {
+        "client": { "processed": 200, "throughput": 10.45596496539264, "replicas": [1, 1, 0] },
+        "apigw": { "processed": 197, "inFlight": 1, "throughput": 9.556032447084759, "replicas": [1, 1, 0] },
+        "create-order": { "processed": 194, "inFlight": 1, "throughput": 9.361986010860676, "replicas": [1, 1, 0] },
+        "orders-table": { "processed": 370, "throughput": 20.665529446825715, "replicas": [1, 1, 0] },
+        "stream-fn": { "processed": 362, "inFlight": 1, "throughput": 20.03125418734393, "replicas": [1, 1, 0] },
+        "bus": {
+          "processed": 356,
+          "throughput": 19.99157189559573,
+          "lag": { "payment-rule": 0, "fulfillment-rule": 0, "notify-rule": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "sfn": { "processed": 179, "inFlight": 4, "throughput": 10.082633716511188, "replicas": [1, 1, 0] },
+        "stripe": { "processed": 177, "throughput": 10.113870060671381, "replicas": [1, 1, 0] },
+        "dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "fulfillment-q": {
+          "processed": 167,
+          "throughput": 9.91005955643709,
+          "lag": { "queue": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "fulfillment-fn": { "processed": 163, "inFlight": 1, "throughput": 10.424220546368204, "replicas": [1, 1, 0] },
+        "three-pl": { "processed": 161, "throughput": 10.442058455826139, "replicas": [1, 1, 0] },
+        "sns": {
+          "processed": 167,
+          "throughput": 9.91005955643709,
+          "lag": { "email": 0, "sms": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "email": { "processed": 164, "throughput": 9.856606014755885, "replicas": [1, 1, 0] },
+        "sms": { "processed": 164, "throughput": 9.856606014755885, "replicas": [1, 1, 0] },
+        "cognito": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 49,
+      "nodes": {
+        "client": { "processed": 300, "throughput": 10.45596498694302, "replicas": [1, 1, 0] },
+        "apigw": { "processed": 297, "inFlight": 1, "throughput": 9.55603247367099, "replicas": [1, 1, 0] },
+        "create-order": { "processed": 294, "inFlight": 1, "throughput": 9.407994048530966, "replicas": [1, 1, 0] },
+        "orders-table": { "processed": 568, "inFlight": 2, "throughput": 18.700305459611954, "replicas": [1, 1, 0] },
+        "stream-fn": { "processed": 563, "inFlight": 1, "throughput": 21.081042764023582, "replicas": [1, 1, 0] },
+        "bus": {
+          "processed": 555,
+          "throughput": 19.07549784395795,
+          "lag": { "payment-rule": 0, "fulfillment-rule": 0, "notify-rule": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "sfn": { "processed": 279, "inFlight": 4, "throughput": 10.101836832865976, "replicas": [1, 1, 0] },
+        "stripe": { "processed": 277, "throughput": 10.112981118927388, "replicas": [1, 1, 0] },
+        "dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "fulfillment-q": {
+          "processed": 267,
+          "throughput": 9.87479927206044,
+          "lag": { "queue": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "fulfillment-fn": { "processed": 263, "inFlight": 1, "throughput": 10.34996871633692, "replicas": [1, 1, 0] },
+        "three-pl": { "processed": 261, "throughput": 10.408217180719657, "replicas": [1, 1, 0] },
+        "sns": {
+          "processed": 267,
+          "throughput": 9.87479927206044,
+          "lag": { "email": 0, "sms": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "email": { "processed": 264, "throughput": 9.85219137967756, "replicas": [1, 1, 0] },
+        "sms": { "processed": 264, "throughput": 9.85219137967756, "replicas": [1, 1, 0] },
+        "cognito": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 50,
+      "nodes": {
+        "client": { "processed": 400, "throughput": 10.455964986943998, "replicas": [1, 1, 0] },
+        "apigw": { "processed": 397, "inFlight": 1, "throughput": 9.556032473672195, "replicas": [1, 1, 0] },
+        "create-order": { "processed": 394, "inFlight": 1, "throughput": 9.434492372453413, "replicas": [1, 1, 0] },
+        "orders-table": { "processed": 769, "throughput": 19.97279249981683, "replicas": [1, 1, 0] },
+        "stream-fn": { "processed": 762, "inFlight": 1, "throughput": 20.18528954745771, "replicas": [1, 1, 0] },
+        "bus": {
+          "processed": 756,
+          "throughput": 20.090935170209864,
+          "lag": { "payment-rule": 0, "fulfillment-rule": 0, "notify-rule": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "sfn": { "processed": 378, "inFlight": 5, "throughput": 9.412740810382381, "replicas": [1, 1, 0] },
+        "stripe": { "processed": 376, "throughput": 9.361460126716969, "replicas": [1, 1, 0] },
+        "dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "fulfillment-q": {
+          "processed": 367,
+          "throughput": 9.993304923471866,
+          "lag": { "queue": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "fulfillment-fn": { "processed": 362, "inFlight": 2, "throughput": 9.487395713822728, "replicas": [1, 1, 0] },
+        "three-pl": { "processed": 361, "throughput": 10.466053180569613, "replicas": [1, 1, 0] },
+        "sns": {
+          "processed": 367,
+          "throughput": 9.993304923471866,
+          "lag": { "email": 0, "sms": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "email": { "processed": 364, "throughput": 10.000428785262185, "replicas": [1, 1, 0] },
+        "sms": { "processed": 364, "throughput": 10.000428785262185, "replicas": [1, 1, 0] },
+        "cognito": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 49,
+      "nodes": {
+        "client": { "processed": 500, "throughput": 10.455964986943998, "replicas": [1, 1, 0] },
+        "apigw": { "processed": 497, "inFlight": 1, "throughput": 9.556032473672195, "replicas": [1, 1, 0] },
+        "create-order": { "processed": 495, "throughput": 10.409276712500178, "replicas": [1, 1, 0] },
+        "orders-table": { "processed": 969, "inFlight": 1, "throughput": 19.869195077860823, "replicas": [1, 1, 0] },
+        "stream-fn": { "processed": 962, "throughput": 20.152909249109378, "replicas": [1, 1, 0] },
+        "bus": {
+          "processed": 956,
+          "throughput": 20.168966500548805,
+          "lag": { "payment-rule": 0, "fulfillment-rule": 0, "notify-rule": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "sfn": { "processed": 479, "inFlight": 4, "throughput": 10.242260237640307, "replicas": [1, 1, 0] },
+        "stripe": { "processed": 477, "throughput": 10.243505238737125, "replicas": [1, 1, 0] },
+        "dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "fulfillment-q": {
+          "processed": 467,
+          "throughput": 9.942707971424634,
+          "lag": { "queue": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "fulfillment-fn": { "processed": 463, "inFlight": 2, "throughput": 10.508037736374348, "replicas": [1, 1, 0] },
+        "three-pl": { "processed": 460, "throughput": 9.55160706648595, "replicas": [1, 1, 0] },
+        "sns": {
+          "processed": 467,
+          "throughput": 9.942707971424634,
+          "lag": { "email": 0, "sms": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "email": { "processed": 465, "throughput": 10.963122102227926, "replicas": [1, 1, 0] },
+        "sms": { "processed": 465, "throughput": 10.963122102227926, "replicas": [1, 1, 0] },
+        "cognito": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 50,
+      "nodes": {
+        "client": { "processed": 600, "throughput": 10.455964986943998, "replicas": [1, 1, 0] },
+        "apigw": { "processed": 597, "inFlight": 1, "throughput": 9.556032473672195, "replicas": [1, 1, 0] },
+        "create-order": { "processed": 595, "throughput": 10.39946017404327, "replicas": [1, 1, 0] },
+        "orders-table": { "processed": 1169, "throughput": 19.717082176965906, "replicas": [1, 1, 0] },
+        "stream-fn": { "processed": 1163, "throughput": 20.895152356111687, "replicas": [1, 1, 0] },
+        "bus": {
+          "processed": 1156,
+          "throughput": 19.96072882791032,
+          "lag": { "payment-rule": 0, "fulfillment-rule": 0, "notify-rule": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "sfn": { "processed": 579, "inFlight": 4, "throughput": 10.070667529977792, "replicas": [1, 1, 0] },
+        "stripe": { "processed": 577, "throughput": 10.115926356356605, "replicas": [1, 1, 0] },
+        "dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "fulfillment-q": {
+          "processed": 567,
+          "throughput": 9.969284133028411,
+          "lag": { "queue": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "fulfillment-fn": { "processed": 563, "inFlight": 2, "throughput": 10.570642435458835, "replicas": [1, 1, 0] },
+        "three-pl": { "processed": 559, "throughput": 8.602251458009714, "replicas": [1, 1, 0] },
+        "sns": {
+          "processed": 567,
+          "throughput": 9.969284133028411,
+          "lag": { "email": 0, "sms": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "email": { "processed": 565, "throughput": 10.951342944101226, "replicas": [1, 1, 0] },
+        "sms": { "processed": 565, "throughput": 10.951342944101226, "replicas": [1, 1, 0] },
+        "cognito": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 50,
+    "real": {
+      "client": { "processed": 600, "throughput": 10.455964986943998, "replicas": [1, 1, 0] },
+      "apigw": { "processed": 597, "inFlight": 1, "throughput": 9.556032473672195, "replicas": [1, 1, 0] },
+      "create-order": { "processed": 595, "throughput": 10.39946017404327, "replicas": [1, 1, 0] },
+      "orders-table": { "processed": 1169, "throughput": 19.717082176965906, "replicas": [1, 1, 0] },
+      "stream-fn": { "processed": 1163, "throughput": 20.895152356111687, "replicas": [1, 1, 0] },
+      "bus": {
+        "processed": 1156,
+        "throughput": 19.96072882791032,
+        "lag": { "payment-rule": 0, "fulfillment-rule": 0, "notify-rule": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "sfn": { "processed": 579, "inFlight": 4, "throughput": 10.070667529977792, "replicas": [1, 1, 0] },
+      "stripe": { "processed": 577, "throughput": 10.115926356356605, "replicas": [1, 1, 0] },
+      "dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "fulfillment-q": {
+        "processed": 567,
+        "throughput": 9.969284133028411,
+        "lag": { "queue": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "fulfillment-fn": { "processed": 563, "inFlight": 2, "throughput": 10.570642435458835, "replicas": [1, 1, 0] },
+      "three-pl": { "processed": 559, "throughput": 8.602251458009714, "replicas": [1, 1, 0] },
+      "sns": {
+        "processed": 567,
+        "throughput": 9.969284133028411,
+        "lag": { "email": 0, "sms": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "email": { "processed": 565, "throughput": 10.951342944101226, "replicas": [1, 1, 0] },
+      "sms": { "processed": 565, "throughput": 10.951342944101226, "replicas": [1, 1, 0] },
+      "cognito": { "replicas": [1, 1, 0] }
+    },
+    "edges": {
+      "client-to-apigw": 598,
+      "apigw-to-create-order": 595,
+      "create-order-to-orders-table": 592,
+      "orders-table-to-stream-fn": 1163,
+      "stream-fn-to-bus": 1156,
+      "bus-to-sfn": 583,
+      "sfn-to-stripe": 577,
+      "sfn-to-orders-table": 577,
+      "bus-to-fulfillment-q": 567,
+      "fulfillment-q-to-fulfillment-fn": 565,
+      "fulfillment-fn-to-three-pl": 559,
+      "fulfillment-q-to-dlq": 0,
+      "dlq-to-fulfillment-q": 0,
+      "bus-to-sns": 567,
+      "sns-to-email": 565,
+      "sns-to-sms": 565,
+      "apigw-to-cognito": 0
+    }
+  },
+  "events": {
+    "total": 19051,
+    "byKind": { "process": 9822, "deliver": 9229 },
+    "byNode": {
+      "client": { "process": 600 },
+      "apigw": { "deliver": 598, "process": 597 },
+      "create-order": { "deliver": 595, "process": 595 },
+      "orders-table": { "deliver": 1169, "process": 1169 },
+      "stream-fn": { "deliver": 1163, "process": 1163 },
+      "bus": { "deliver": 1156, "process": 1156 },
+      "sfn": { "deliver": 583, "process": 579 },
+      "stripe": { "deliver": 577, "process": 577 },
+      "fulfillment-q": { "deliver": 567, "process": 567 },
+      "sns": { "deliver": 567, "process": 567 },
+      "fulfillment-fn": { "deliver": 565, "process": 563 },
+      "email": { "deliver": 565, "process": 565 },
+      "sms": { "deliver": 565, "process": 565 },
+      "three-pl": { "deliver": 559, "process": 559 }
+    },
+    "perSecond": [
+      "f6d7c0f1dd2f",
+      "51e5c81e53bb",
+      "d88d562492ea",
+      "789f60206a6b",
+      "0bd30cd00c43",
+      "bb2a3cfe500f",
+      "8a628a242352",
+      "8505f48c96f3",
+      "a5138cba93f6",
+      "cb21ca177f0f",
+      "673e98fd1244",
+      "338aa6d91885",
+      "b3bfaf85e77e",
+      "6b33ff44bf80",
+      "8ae6e5c3e1cf",
+      "d5d8217304e3",
+      "a4bd219a7594",
+      "220f008a1448",
+      "9de37d83149d",
+      "5a6484020e7e",
+      "4c46dfdb09d3",
+      "34a593ef7d67",
+      "4b4ad869a940",
+      "4b78e6434044",
+      "af5745726232",
+      "742810b8eea8",
+      "c1186dc31011",
+      "1cc8b5fcc870",
+      "e94f7497a816",
+      "534bf32618ef",
+      "aeb76eb89b94",
+      "26debddd0972",
+      "49262916db13",
+      "04072c2b8fcd",
+      "bac35df383a3",
+      "fc7d920c2c19",
+      "193cd575e317",
+      "a86c9ae1a9a6",
+      "51006a4fc334",
+      "c611771b1ac3",
+      "f0de180027ca",
+      "3cf3e5d2da4a",
+      "e534114047b6",
+      "4d8a0f48ddaa",
+      "bf524274211e",
+      "54536948ed89",
+      "01fa6848a500",
+      "99661edf58d0",
+      "c24773348acb",
+      "450c96fb6b97",
+      "abef0f06d50b",
+      "cdf4b8f6b426",
+      "86e67e22f83e",
+      "e57d3fd37d3b",
+      "3ab51d3eeb4d",
+      "057f8bb33a19",
+      "ee3b3acb9f3d",
+      "f3cbeb81c129",
+      "9dcb187856fc",
+      "973b7725f3f8",
+      "7f1befd1378d"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 559, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 559, "min": 3790, "mean": 3902.2540250447228, "p50": 3900, "p90": 3970, "max": 4030 },
+    "waitMs": {
+      "apigw": { "count": 559, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "create-order": { "count": 559, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "orders-table": { "count": 1118, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "stream-fn": { "count": 1118, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "sfn": { "count": 559, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "fulfillment-fn": { "count": 559, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "apigw": { "count": 559, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "create-order": { "count": 559, "min": 70, "mean": 84.4901610017889, "p50": 80, "p90": 100, "max": 100 },
+      "orders-table": { "count": 1118, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "stream-fn": { "count": 1118, "min": 50, "mean": 64.89266547406082, "p50": 60, "p90": 70, "max": 80 },
+      "sfn": { "count": 559, "min": 330, "mean": 402.9695885509839, "p50": 400, "p90": 470, "max": 480 },
+      "fulfillment-fn": { "count": 559, "min": 130, "mean": 155.00894454382828, "p50": 160, "p90": 180, "max": 180 }
+    }
+  }
+}

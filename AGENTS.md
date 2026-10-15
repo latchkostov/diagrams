@@ -19,6 +19,9 @@ owner's working reference and stay on this machine.
 ## Commands
 
 - `pnpm dev`, `pnpm build`, `pnpm test` (Vitest), `pnpm test:e2e` (Playwright), `pnpm check` (all)
+- Output parity (`docs/PARITY.md`): `pnpm parity` checks every output against committed goldens. A feature PR that
+  changes output on purpose runs `pnpm parity:update` and explains the goldens' diff in its description. The browser
+  tier runs in Playwright's Linux image, so Docker must be running; `pnpm parity:node` needs no Docker.
 
 ## UX
 

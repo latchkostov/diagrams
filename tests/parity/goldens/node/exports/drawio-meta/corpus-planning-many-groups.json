@@ -1,0 +1,246 @@
+{
+  "withIcons": {
+    "sha256": "4c2396b35148b77ba4c2c0102e6e9d23b26ec8a007fd7523712ad3b50de6d8c8",
+    "bytes": 41281,
+    "inlined": { "client.browser": "client-browser 0022934839e05a07", "generic.service": "generic-service 6ec0da29f56c9e80", "kafka.topic": "kafka 81e432d1da74c5fe" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Planning: shared capacity",
+        "nodes": [
+          {
+            "id": "checkout",
+            "stencil": "client.browser",
+            "label": "Checkout",
+            "x": 0,
+            "y": 140,
+            "props": { "ratePerSec": 3 }
+          },
+          { "id": "topic", "stencil": "kafka.topic", "label": "Order events", "x": 320, "y": 20 },
+          {
+            "id": "worker-0",
+            "stencil": "generic.service",
+            "label": "Worker 0",
+            "x": 640,
+            "y": 0,
+            "props": { "status": "down" }
+          },
+          {
+            "id": "worker-1",
+            "stencil": "generic.service",
+            "label": "Worker 1",
+            "x": 960,
+            "y": 0,
+            "props": { "status": "down" }
+          },
+          {
+            "id": "worker-2",
+            "stencil": "generic.service",
+            "label": "Worker 2",
+            "x": 1280,
+            "y": 0,
+            "props": { "status": "down" }
+          },
+          {
+            "id": "worker-3",
+            "stencil": "generic.service",
+            "label": "Worker 3",
+            "x": 1600,
+            "y": 0,
+            "props": { "status": "down" }
+          },
+          {
+            "id": "worker-4",
+            "stencil": "generic.service",
+            "label": "Worker 4",
+            "x": 640,
+            "y": 140,
+            "props": { "status": "down" }
+          },
+          {
+            "id": "worker-5",
+            "stencil": "generic.service",
+            "label": "Worker 5",
+            "x": 960,
+            "y": 140,
+            "props": { "status": "down" }
+          },
+          {
+            "id": "worker-6",
+            "stencil": "generic.service",
+            "label": "Worker 6",
+            "x": 1280,
+            "y": 140,
+            "props": { "status": "down" }
+          },
+          {
+            "id": "worker-7",
+            "stencil": "generic.service",
+            "label": "Worker 7",
+            "x": 1600,
+            "y": 140,
+            "props": { "status": "down" }
+          },
+          {
+            "id": "worker-8",
+            "stencil": "generic.service",
+            "label": "Worker 8",
+            "x": 640,
+            "y": 280,
+            "props": { "status": "down" }
+          },
+          {
+            "id": "worker-9",
+            "stencil": "generic.service",
+            "label": "Worker 9",
+            "x": 960,
+            "y": 280,
+            "props": { "status": "down" }
+          },
+          {
+            "id": "worker-10",
+            "stencil": "generic.service",
+            "label": "Worker 10",
+            "x": 1280,
+            "y": 280,
+            "props": { "status": "down" }
+          },
+          {
+            "id": "worker-11",
+            "stencil": "generic.service",
+            "label": "Worker 11",
+            "x": 1600,
+            "y": 280,
+            "props": { "status": "down" }
+          },
+          {
+            "id": "worker-12",
+            "stencil": "generic.service",
+            "label": "Worker 12",
+            "x": 640,
+            "y": 420,
+            "props": { "status": "down" }
+          },
+          {
+            "id": "worker-13",
+            "stencil": "generic.service",
+            "label": "Worker 13",
+            "x": 960,
+            "y": 420,
+            "props": { "status": "down" }
+          },
+          {
+            "id": "worker-14",
+            "stencil": "generic.service",
+            "label": "Worker 14",
+            "x": 1280,
+            "y": 420,
+            "props": { "status": "down" }
+          },
+          {
+            "id": "worker-15",
+            "stencil": "generic.service",
+            "label": "Worker 15",
+            "x": 1600,
+            "y": 420,
+            "props": { "status": "down" }
+          },
+          {
+            "id": "worker-16",
+            "stencil": "generic.service",
+            "label": "Worker 16",
+            "x": 640,
+            "y": 560,
+            "props": { "status": "down" }
+          },
+          {
+            "id": "worker-17",
+            "stencil": "generic.service",
+            "label": "Worker 17",
+            "x": 960,
+            "y": 560,
+            "props": { "status": "down" }
+          },
+          {
+            "id": "worker-18",
+            "stencil": "generic.service",
+            "label": "Worker 18",
+            "x": 1280,
+            "y": 560,
+            "props": { "status": "down" }
+          },
+          {
+            "id": "worker-19",
+            "stencil": "generic.service",
+            "label": "Worker 19",
+            "x": 1600,
+            "y": 560,
+            "props": { "status": "down" }
+          },
+          {
+            "id": "worker-20",
+            "stencil": "generic.service",
+            "label": "Worker 20",
+            "x": 640,
+            "y": 700,
+            "props": { "status": "down" }
+          },
+          {
+            "id": "worker-21",
+            "stencil": "generic.service",
+            "label": "Worker 21",
+            "x": 960,
+            "y": 700,
+            "props": { "status": "down" }
+          },
+          {
+            "id": "worker-22",
+            "stencil": "generic.service",
+            "label": "Worker 22",
+            "x": 1280,
+            "y": 700,
+            "props": { "status": "down" }
+          },
+          {
+            "id": "worker-23",
+            "stencil": "generic.service",
+            "label": "Worker 23",
+            "x": 1600,
+            "y": 700,
+            "props": { "status": "down" }
+          }
+        ],
+        "edges": [
+          { "id": "publish", "from": "checkout", "to": "topic", "kind": "async", "props": { "travelMs": 0 } },
+          { "id": "read-0", "from": "topic", "to": "worker-0", "kind": "async", "props": { "group": "group-0" } },
+          { "id": "read-1", "from": "topic", "to": "worker-1", "kind": "async", "props": { "group": "group-1" } },
+          { "id": "read-2", "from": "topic", "to": "worker-2", "kind": "async", "props": { "group": "group-2" } },
+          { "id": "read-3", "from": "topic", "to": "worker-3", "kind": "async", "props": { "group": "group-3" } },
+          { "id": "read-4", "from": "topic", "to": "worker-4", "kind": "async", "props": { "group": "group-4" } },
+          { "id": "read-5", "from": "topic", "to": "worker-5", "kind": "async", "props": { "group": "group-5" } },
+          { "id": "read-6", "from": "topic", "to": "worker-6", "kind": "async", "props": { "group": "group-6" } },
+          { "id": "read-7", "from": "topic", "to": "worker-7", "kind": "async", "props": { "group": "group-7" } },
+          { "id": "read-8", "from": "topic", "to": "worker-8", "kind": "async", "props": { "group": "group-8" } },
+          { "id": "read-9", "from": "topic", "to": "worker-9", "kind": "async", "props": { "group": "group-9" } },
+          { "id": "read-10", "from": "topic", "to": "worker-10", "kind": "async", "props": { "group": "group-10" } },
+          { "id": "read-11", "from": "topic", "to": "worker-11", "kind": "async", "props": { "group": "group-11" } },
+          { "id": "read-12", "from": "topic", "to": "worker-12", "kind": "async", "props": { "group": "group-12" } },
+          { "id": "read-13", "from": "topic", "to": "worker-13", "kind": "async", "props": { "group": "group-13" } },
+          { "id": "read-14", "from": "topic", "to": "worker-14", "kind": "async", "props": { "group": "group-14" } },
+          { "id": "read-15", "from": "topic", "to": "worker-15", "kind": "async", "props": { "group": "group-15" } },
+          { "id": "read-16", "from": "topic", "to": "worker-16", "kind": "async", "props": { "group": "group-16" } },
+          { "id": "read-17", "from": "topic", "to": "worker-17", "kind": "async", "props": { "group": "group-17" } },
+          { "id": "read-18", "from": "topic", "to": "worker-18", "kind": "async", "props": { "group": "group-18" } },
+          { "id": "read-19", "from": "topic", "to": "worker-19", "kind": "async", "props": { "group": "group-19" } },
+          { "id": "read-20", "from": "topic", "to": "worker-20", "kind": "async", "props": { "group": "group-20" } },
+          { "id": "read-21", "from": "topic", "to": "worker-21", "kind": "async", "props": { "group": "group-21" } },
+          { "id": "read-22", "from": "topic", "to": "worker-22", "kind": "async", "props": { "group": "group-22" } },
+          { "id": "read-23", "from": "topic", "to": "worker-23", "kind": "async", "props": { "group": "group-23" } }
+        ]
+      }
+    }
+  ]
+}

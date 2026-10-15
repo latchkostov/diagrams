@@ -1,0 +1,161 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "c1": { "replicas": [1, 1, 0] },
+        "c2": { "lag": { "r2": 0 }, "replicas": [1, 1, 0] },
+        "c3": { "replicas": [1, 1, 0] },
+        "c4": { "lag": { "r4": 0 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 0,
+      "nodes": {
+        "c1": { "replicas": [1, 1, 0] },
+        "c2": { "lag": { "r2": 0 }, "replicas": [1, 1, 0] },
+        "c3": { "replicas": [1, 1, 0] },
+        "c4": { "lag": { "r4": 0 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 0,
+      "nodes": {
+        "c1": { "replicas": [1, 1, 0] },
+        "c2": { "lag": { "r2": 0 }, "replicas": [1, 1, 0] },
+        "c3": { "replicas": [1, 1, 0] },
+        "c4": { "lag": { "r4": 0 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 0,
+      "nodes": {
+        "c1": { "replicas": [1, 1, 0] },
+        "c2": { "lag": { "r2": 0 }, "replicas": [1, 1, 0] },
+        "c3": { "replicas": [1, 1, 0] },
+        "c4": { "lag": { "r4": 0 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 0,
+      "nodes": {
+        "c1": { "replicas": [1, 1, 0] },
+        "c2": { "lag": { "r2": 0 }, "replicas": [1, 1, 0] },
+        "c3": { "replicas": [1, 1, 0] },
+        "c4": { "lag": { "r4": 0 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 0,
+      "nodes": {
+        "c1": { "replicas": [1, 1, 0] },
+        "c2": { "lag": { "r2": 0 }, "replicas": [1, 1, 0] },
+        "c3": { "replicas": [1, 1, 0] },
+        "c4": { "lag": { "r4": 0 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 0,
+      "nodes": {
+        "c1": { "replicas": [1, 1, 0] },
+        "c2": { "lag": { "r2": 0 }, "replicas": [1, 1, 0] },
+        "c3": { "replicas": [1, 1, 0] },
+        "c4": { "lag": { "r4": 0 }, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 0,
+    "real": {
+      "c1": { "replicas": [1, 1, 0] },
+      "c2": { "lag": { "r2": 0 }, "replicas": [1, 1, 0] },
+      "c3": { "replicas": [1, 1, 0] },
+      "c4": { "lag": { "r4": 0 }, "replicas": [1, 1, 0] }
+    },
+    "edges": { "r1": 0, "r2": 0, "r3": 0, "r4": 0 }
+  },
+  "events": {
+    "total": 0,
+    "byKind": {},
+    "byNode": {},
+    "perSecond": [
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 0, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": null,
+    "waitMs": {},
+    "processMs": {}
+  }
+}

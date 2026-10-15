@@ -1,0 +1,209 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "airflow": { "replicas": [1, 1, 0] },
+        "app-db": { "replicas": [1, 1, 0] },
+        "crm": { "replicas": [1, 1, 0] },
+        "billing": { "replicas": [1, 1, 0] },
+        "airbyte": { "replicas": [3, 3, 0] },
+        "raw": { "replicas": [1, 1, 0] },
+        "dbt": { "replicas": [1, 1, 0] },
+        "marts": { "replicas": [1, 1, 0] },
+        "tableau": { "replicas": [1, 1, 0] },
+        "slack": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 0,
+      "nodes": {
+        "airflow": { "processed": 20, "throughput": 2.528714056021835, "replicas": [1, 1, 0] },
+        "app-db": { "replicas": [1, 1, 0] },
+        "crm": { "replicas": [1, 1, 0] },
+        "billing": { "replicas": [1, 1, 0] },
+        "airbyte": { "replicas": [3, 3, 0] },
+        "raw": { "replicas": [1, 1, 0] },
+        "dbt": { "replicas": [1, 1, 0] },
+        "marts": { "replicas": [1, 1, 0] },
+        "tableau": { "replicas": [1, 1, 0] },
+        "slack": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 0,
+      "nodes": {
+        "airflow": { "processed": 40, "throughput": 2.528828859462367, "replicas": [1, 1, 0] },
+        "app-db": { "replicas": [1, 1, 0] },
+        "crm": { "replicas": [1, 1, 0] },
+        "billing": { "replicas": [1, 1, 0] },
+        "airbyte": { "replicas": [3, 3, 0] },
+        "raw": { "replicas": [1, 1, 0] },
+        "dbt": { "replicas": [1, 1, 0] },
+        "marts": { "replicas": [1, 1, 0] },
+        "tableau": { "replicas": [1, 1, 0] },
+        "slack": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 0,
+      "nodes": {
+        "airflow": { "processed": 60, "throughput": 2.528828864674435, "replicas": [1, 1, 0] },
+        "app-db": { "replicas": [1, 1, 0] },
+        "crm": { "replicas": [1, 1, 0] },
+        "billing": { "replicas": [1, 1, 0] },
+        "airbyte": { "replicas": [3, 3, 0] },
+        "raw": { "replicas": [1, 1, 0] },
+        "dbt": { "replicas": [1, 1, 0] },
+        "marts": { "replicas": [1, 1, 0] },
+        "tableau": { "replicas": [1, 1, 0] },
+        "slack": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 0,
+      "nodes": {
+        "airflow": { "processed": 80, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "app-db": { "replicas": [1, 1, 0] },
+        "crm": { "replicas": [1, 1, 0] },
+        "billing": { "replicas": [1, 1, 0] },
+        "airbyte": { "replicas": [3, 3, 0] },
+        "raw": { "replicas": [1, 1, 0] },
+        "dbt": { "replicas": [1, 1, 0] },
+        "marts": { "replicas": [1, 1, 0] },
+        "tableau": { "replicas": [1, 1, 0] },
+        "slack": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 0,
+      "nodes": {
+        "airflow": { "processed": 100, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "app-db": { "replicas": [1, 1, 0] },
+        "crm": { "replicas": [1, 1, 0] },
+        "billing": { "replicas": [1, 1, 0] },
+        "airbyte": { "replicas": [3, 3, 0] },
+        "raw": { "replicas": [1, 1, 0] },
+        "dbt": { "replicas": [1, 1, 0] },
+        "marts": { "replicas": [1, 1, 0] },
+        "tableau": { "replicas": [1, 1, 0] },
+        "slack": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 0,
+      "nodes": {
+        "airflow": { "processed": 120, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "app-db": { "replicas": [1, 1, 0] },
+        "crm": { "replicas": [1, 1, 0] },
+        "billing": { "replicas": [1, 1, 0] },
+        "airbyte": { "replicas": [3, 3, 0] },
+        "raw": { "replicas": [1, 1, 0] },
+        "dbt": { "replicas": [1, 1, 0] },
+        "marts": { "replicas": [1, 1, 0] },
+        "tableau": { "replicas": [1, 1, 0] },
+        "slack": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 0,
+    "real": {
+      "airflow": { "processed": 120, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+      "app-db": { "replicas": [1, 1, 0] },
+      "crm": { "replicas": [1, 1, 0] },
+      "billing": { "replicas": [1, 1, 0] },
+      "airbyte": { "replicas": [3, 3, 0] },
+      "raw": { "replicas": [1, 1, 0] },
+      "dbt": { "replicas": [1, 1, 0] },
+      "marts": { "replicas": [1, 1, 0] },
+      "tableau": { "replicas": [1, 1, 0] },
+      "slack": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "app-db-to-airbyte": 0, "crm-to-airbyte": 0, "billing-to-airbyte": 0, "airflow-to-airbyte": 0, "airflow-to-dbt": 0, "airbyte-to-raw": 0, "dbt-to-raw": 0, "dbt-to-marts": 0, "dbt-to-slack": 0, "tableau-to-marts": 0 }
+  },
+  "events": {
+    "total": 120,
+    "byKind": { "process": 120 },
+    "byNode": { "airflow": { "process": 120 } },
+    "perSecond": [
+      "f264ecf3d933",
+      "1119cf99c405",
+      "e8d091d241b6",
+      "488e81021a10",
+      "5f1a5857d3c0",
+      "c3528c574739",
+      "5efeea9464e9",
+      "5efd1fcd8d82",
+      "07fd03799344",
+      "cfa998a69a3e",
+      "b4024191c973",
+      "e52c4307443e",
+      "d931e8ddf821",
+      "0cd11c0411df",
+      "0ea0c7e6d7a3",
+      "66e037429ee3",
+      "3b6f7282231f",
+      "c11724f7236c",
+      "ba7aa319824d",
+      "2ba41932931e",
+      "657d57089fcb",
+      "5cc23aafc703",
+      "5ca1a1a83851",
+      "af3db3400e30",
+      "030931038690",
+      "c1399ce84377",
+      "e91a87c4e301",
+      "352836c69398",
+      "40cc3b9f891b",
+      "15f65799e12b",
+      "f221438b6eeb",
+      "1fd034e8bd2a",
+      "c79f98f2ade6",
+      "d6ff253238ab",
+      "7dd066b27841",
+      "624321bb328f",
+      "09cd51c253f9",
+      "df91963e6648",
+      "a26ea3837fae",
+      "35f62a96b0b9",
+      "e9fe1b06a48b",
+      "458b26a79b52",
+      "68b18251f2dd",
+      "0172a3dbf144",
+      "273b55c875a3",
+      "79a9acf98159",
+      "c2a622991f7f",
+      "b5af299a5da9",
+      "b29ad4c07bdf",
+      "c9b6c488fc4c",
+      "080bf521c3ea",
+      "b925b7faecd7",
+      "d6e79b0b9275",
+      "294a52bd7e10",
+      "3ce5abf050fb",
+      "2b49cdd06e1f",
+      "28579f9536fb",
+      "8627d9406c83",
+      "242207f46f01",
+      "1d22fbb3eb21",
+      "3e431394c296"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 120, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 120, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+    "waitMs": {},
+    "processMs": {}
+  }
+}

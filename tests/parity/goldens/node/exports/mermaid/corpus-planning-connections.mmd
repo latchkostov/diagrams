@@ -1,0 +1,18 @@
+---
+title: Planning: shared capacity
+---
+flowchart LR
+  checkout(["Checkout"])
+  orders["Orders"]
+  topic["Order events"]
+  topic2["Returns"]
+  payments["Payments"]
+  queue["Audit"]
+  checkout -.-> topic
+  checkout -.-> topic2
+  topic -.-> orders
+  topic2 -.-> orders
+  orders --> payments
+  orders -.-> queue
+  linkStyle 0,1,2,3,5 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"nodes":{"checkout":["checkout","client.browser"],"orders":["orders","service.dotnet"],"topic":["topic","kafka.topic"],"topic2":["topic2","azure.service-bus.topic"],"payments":["payments","generic.service"],"queue":["queue","generic.queue"]},"edges":["publish","publish2","consume","consume2","call","audit"],"relations":{}}

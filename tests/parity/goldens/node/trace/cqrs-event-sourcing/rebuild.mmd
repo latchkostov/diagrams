@@ -1,0 +1,14 @@
+---
+title: "GetBalance #1 · 640 ms end to end"
+---
+sequenceDiagram
+  participant app as Banking app
+  participant gateway as API gateway
+  participant query_api as Query API
+  participant balances_db as Balances
+  app->>gateway: GetBalance (+0.00 s)<br/>HTTPS
+  gateway-->>app: reply (+0.21 s)
+  gateway->>query_api: GetBalance (+0.21 s)<br/>GET · queries
+  query_api-->>gateway: reply (+0.43 s)
+  query_api->>balances_db: GetBalance (+0.43 s)
+  balances_db-->>query_api: reply (+0.64 s)

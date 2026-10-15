@@ -1,0 +1,30 @@
+---
+title: "Deposit #1 · 1.68 s end to end · 2 copies"
+---
+sequenceDiagram
+  participant app as Banking app
+  participant gateway as API gateway
+  participant command_handler as Command handler
+  participant event_store as Event store
+  participant publisher as Event publisher
+  participant balance_proj as Balance projection
+  participant statement_proj as Statement projection
+  participant balances_db as Balances
+  participant integration_topic as accounts.events.v1
+  participant statements as Statements
+  participant fraud as Fraud scoring
+  app->>gateway: Deposit (+0.00 s)<br/>HTTPS
+  gateway-->>app: reply (+0.21 s)
+  gateway->>command_handler: Deposit (+0.21 s)<br/>POST · commands
+  command_handler-->>gateway: reply (+0.46 s)
+  command_handler->>event_store: MoneyDeposited (+0.46 s)<br/>Append · expectedVersion
+  event_store-->>command_handler: reply (+0.66 s)
+  event_store-)publisher: MoneyDeposited (+0.66 s)<br/>Subscription
+  event_store-)balance_proj: MoneyDeposited (+0.66 s)
+  event_store-)statement_proj: MoneyDeposited (+0.66 s)
+  balance_proj->>balances_db: MoneyDeposited (+1.01 s)<br/>Upsert balance
+  publisher-)integration_topic: MoneyDeposited (+1.02 s)<br/>Integration events
+  statement_proj->>statements: MoneyDeposited (+1.04 s)<br/>Index entry
+  balances_db-->>balance_proj: reply (+1.22 s)
+  statements-->>statement_proj: reply (+1.25 s)
+  integration_topic-)fraud: MoneyDeposited (+1.32 s)<br/>group: fraud

@@ -1,0 +1,249 @@
+{
+  "file": { "sha256": "e2d22acb72dc6a6a50d4be81d798e85a7b5241ecd1d9b657c26c72f6a760cbdc", "bytes": 19760 },
+  "payload": {
+    "version": 1,
+    "diagram": {
+      "format": "diagrams/v1",
+      "title": "GCP streaming analytics",
+      "description": "Clickstream events flow through Pub/Sub and a Dataflow streaming job into BigQuery for Looker, with a raw archive and dead letters.",
+      "direction": "LR",
+      "groups": [
+        { "id": "gcp", "label": "Google Cloud · analytics project", "tone": "gcp", "x": 380, "y": 80, "width": 1860, "height": 392 }
+      ],
+      "nodes": [
+        {
+          "id": "app",
+          "stencil": "client.mobile",
+          "label": "Mobile and web apps",
+          "sublabel": "Clickstream SDK",
+          "x": 40,
+          "y": 240,
+          "props": { "ratePerSec": 50, "messageType": "ClickEvent" }
+        },
+        {
+          "id": "collector",
+          "stencil": "gcp.cloud-run",
+          "label": "Event collector",
+          "sublabel": "Validate · batch publish",
+          "x": 420,
+          "y": 240,
+          "group": "gcp",
+          "props": { "concurrency": 400, "latencyMs": 40 }
+        },
+        {
+          "id": "pubsub-topic",
+          "stencil": "gcp.pubsub",
+          "label": "clickstream",
+          "sublabel": "Topic · 7-day retention",
+          "x": 800,
+          "y": 240,
+          "group": "gcp",
+          "props": { "partitions": 64 }
+        },
+        {
+          "id": "dataflow",
+          "stencil": "gcp.dataflow",
+          "label": "Sessionize job",
+          "sublabel": "Streaming · 1-min windows",
+          "x": 1180,
+          "y": 120,
+          "group": "gcp",
+          "props": {
+            "group": "dataflow",
+            "replicas": 4,
+            "concurrency": 4,
+            "latencyMs": 40,
+            "emits": { "ClickEvent": "SessionRow", "MalformedEvent": "DeadLetter" }
+          }
+        },
+        {
+          "id": "raw-archive",
+          "stencil": "gcp.cloud-storage",
+          "label": "Raw archive",
+          "sublabel": "Avro · by hour",
+          "x": 1180,
+          "y": 360,
+          "group": "gcp",
+          "props": { "latencyMs": 0 }
+        },
+        {
+          "id": "bigquery",
+          "stencil": "gcp.bigquery",
+          "label": "Analytics dataset",
+          "sublabel": "Storage Write API",
+          "x": 1560,
+          "y": 120,
+          "group": "gcp",
+          "props": { "latencyMs": 0 }
+        },
+        {
+          "id": "looker",
+          "stencil": "looker",
+          "label": "Product dashboards",
+          "sublabel": "Funnels · retention",
+          "x": 1940,
+          "y": 120,
+          "group": "gcp",
+          "props": {}
+        },
+        {
+          "id": "dead-letters",
+          "stencil": "gcp.pubsub",
+          "label": "clickstream-dlq",
+          "sublabel": "Unparseable events",
+          "x": 1560,
+          "y": 240,
+          "group": "gcp",
+          "props": { "partitions": 64 }
+        },
+        {
+          "id": "dead-bucket",
+          "stencil": "gcp.cloud-storage",
+          "label": "Dead letters",
+          "sublabel": "Inspect · replay",
+          "x": 1940,
+          "y": 240,
+          "group": "gcp",
+          "props": { "latencyMs": 1 }
+        }
+      ],
+      "edges": [
+        {
+          "id": "app-to-collector",
+          "from": "app",
+          "to": "collector",
+          "label": "HTTPS batches",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "collector-to-topic",
+          "from": "collector",
+          "to": "pubsub-topic",
+          "label": "Publish",
+          "kind": "async",
+          "props": { "travelMs": 300 }
+        },
+        {
+          "id": "topic-to-dataflow",
+          "from": "pubsub-topic",
+          "to": "dataflow",
+          "label": "sub: dataflow",
+          "kind": "async",
+          "props": { "travelMs": 300, "group": "dataflow" }
+        },
+        {
+          "id": "topic-to-raw-archive",
+          "from": "pubsub-topic",
+          "to": "raw-archive",
+          "label": "Cloud Storage subscription",
+          "kind": "async",
+          "props": { "travelMs": 300, "group": "archive" }
+        },
+        {
+          "id": "dataflow-to-bigquery",
+          "from": "dataflow",
+          "to": "bigquery",
+          "label": "Sessions",
+          "kind": "sync",
+          "props": { "travelMs": 200, "filter": ["SessionRow"] }
+        },
+        {
+          "id": "dataflow-to-dead-letters",
+          "from": "dataflow",
+          "to": "dead-letters",
+          "label": "Parse errors",
+          "kind": "async",
+          "props": { "travelMs": 300, "filter": ["DeadLetter"] }
+        },
+        {
+          "id": "dead-letters-to-dead-bucket",
+          "from": "dead-letters",
+          "to": "dead-bucket",
+          "label": "sub: archive",
+          "kind": "async",
+          "props": { "travelMs": 300, "group": "dlq-archive", "dlq": false }
+        },
+        {
+          "id": "looker-to-bigquery",
+          "from": "looker",
+          "to": "bigquery",
+          "label": "SQL",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        }
+      ],
+      "simulations": [
+        {
+          "id": "autoscale",
+          "title": "Backlog until Dataflow autoscales",
+          "description": "600 events a second meet two workers; the subscription backlog grows until autoscaling adds six more.",
+          "seed": 7,
+          "scale": 20,
+          "setup": { "props": { "dataflow": { "replicas": 2 } } },
+          "traffic": [
+            {
+              "id": "clicks",
+              "node": "app",
+              "messageType": "ClickEvent",
+              "label": "600 events/s for 10 seconds",
+              "shape": { "kind": "constant", "ratePerSec": 600, "durationMs": 10000 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 0,
+              "action": { "do": "note", "text": "Two Dataflow workers handle about 200 events a second, but 600 arrive. Unacknowledged messages pile up in the subscription.", "focus": ["pubsub-topic", "dataflow"] }
+            },
+            { "atMs": 4000, "action": { "do": "props", "node": "dataflow", "props": { "replicas": 8 } } },
+            {
+              "atMs": 4000,
+              "action": { "do": "note", "text": "Autoscaling sees the backlog and adds six workers. The raw archive was never behind: its subscription is independent.", "focus": ["dataflow", "raw-archive"], "pause": true }
+            },
+            {
+              "atMs": 9000,
+              "action": { "do": "note", "text": "With 800 events a second of capacity, the backlog drains and BigQuery catches up.", "focus": ["pubsub-topic", "bigquery"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "backlog",
+              "label": "Backlog grows with two workers",
+              "metric": { "node": "pubsub-topic", "field": "lag", "group": "dataflow" },
+              "op": ">",
+              "value": 0,
+              "when": "at",
+              "atMs": 3500
+            },
+            {
+              "id": "drained",
+              "label": "Backlog drains after autoscaling",
+              "metric": { "node": "pubsub-topic", "field": "lag", "group": "dataflow" },
+              "op": "==",
+              "value": 0,
+              "when": "end"
+            },
+            {
+              "id": "sessions",
+              "label": "All 6,000 events reach BigQuery",
+              "metric": { "node": "bigquery", "field": "processed" },
+              "op": "==",
+              "value": 6000,
+              "when": "end"
+            }
+          ]
+        }
+      ]
+    },
+    "icons": {
+      "client-mobile": { "sha256": "b59f9659c6a761a2d7413154aa557fbddef653dd248cfc9ac6a240556c09625b", "bytes": 419 },
+      "gcp-bigquery": { "sha256": "e8ef923d5b9029086b69d18e67323040f9f38d7c39f5ccca7095f027bf1f4496", "bytes": 929 },
+      "gcp-cloud-run": { "sha256": "2b8dd430d769a3f7580b05db939225808889f58fc3afcfbd611a069b0a0d6703", "bytes": 460 },
+      "gcp-cloud-storage": { "sha256": "6747250ce9ec32b7d417333bbf7e544700f58a2027154ebbaf263f9b3432dc4b", "bytes": 1009 },
+      "gcp-dataflow": { "sha256": "39d44a66783c5c65996d1c5781e18f00c2072e8e78c2fb2767c5160f787f1cca", "bytes": 1603 },
+      "gcp-pubsub": { "sha256": "416bb0990be92e547b172293458c8e0540c92009a501c25c1db16e6caadd97b1", "bytes": 1746 },
+      "looker": { "sha256": "ae332a7910353de9d666bfaf7a6c36aad7450ef9fca46bdb4a80e21f5d80fd7b", "bytes": 1546 }
+    },
+    "options": { "theme": "dark", "banner": "Confidential: internal use only", "startSimulation": null, "exportedOn": "2026-01-01" }
+  }
+}

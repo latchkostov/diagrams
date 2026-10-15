@@ -1,0 +1,77 @@
+{
+  "all": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "dead-letter:q",
+          "rule": "dead-letter",
+          "severity": "warning",
+          "title": "Failed messages are dropped",
+          "message": "Worker fails 100% of messages, and orders has no dead-letter queue: messages that run out of deliveries (1) are lost.",
+          "targets": ["q", "worker"],
+          "fix": {
+            "label": "Add dead-letter queue",
+            "ops": [
+              { "op": "add_node", "kind": "aws.sqs", "label": "orders-dlq", "key": "new-dlq" },
+              { "op": "connect", "from": "q", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
+              { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
+            ]
+          }
+        }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  },
+  "warnings": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "dead-letter:q",
+          "rule": "dead-letter",
+          "severity": "warning",
+          "title": "Failed messages are dropped",
+          "message": "Worker fails 100% of messages, and orders has no dead-letter queue: messages that run out of deliveries (1) are lost.",
+          "targets": ["q", "worker"],
+          "fix": {
+            "label": "Add dead-letter queue",
+            "ops": [
+              { "op": "add_node", "kind": "aws.sqs", "label": "orders-dlq", "key": "new-dlq" },
+              { "op": "connect", "from": "q", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
+              { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
+            ]
+          }
+        }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  },
+  "oneRule": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "dead-letter:q",
+          "rule": "dead-letter",
+          "severity": "warning",
+          "title": "Failed messages are dropped",
+          "message": "Worker fails 100% of messages, and orders has no dead-letter queue: messages that run out of deliveries (1) are lost.",
+          "targets": ["q", "worker"],
+          "fix": {
+            "label": "Add dead-letter queue",
+            "ops": [
+              { "op": "add_node", "kind": "aws.sqs", "label": "orders-dlq", "key": "new-dlq" },
+              { "op": "connect", "from": "q", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
+              { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
+            ]
+          }
+        }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  }
+}

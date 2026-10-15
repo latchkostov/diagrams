@@ -1,0 +1,32 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "GCP streaming analytics",
+    "direction": "LR",
+    "groups": [
+      { "id": "g_gcp", "label": "Google Cloud · analytics project", "tone": "gcp", "x": 40, "y": 40, "width": 2155, "height": 296 }
+    ],
+    "nodes": [
+      { "id": "collector", "stencil": "generic.service", "label": "Event collector", "sublabel": "Validate · batch publish", "x": 449, "y": 164, "group": "g_gcp" },
+      { "id": "pubsub_topic", "stencil": "generic.topic", "label": "clickstream", "sublabel": "Topic · 7-day retention", "x": 823, "y": 164, "group": "g_gcp" },
+      { "id": "dataflow", "stencil": "generic.scheduler", "label": "Sessionize job", "sublabel": "Streaming · 1-min windows", "x": 1194, "y": 104, "group": "g_gcp" },
+      { "id": "raw_archive", "stencil": "generic.database", "label": "Raw archive", "sublabel": "Avro · by hour", "x": 1194, "y": 224, "group": "g_gcp" },
+      { "id": "bigquery", "stencil": "generic.database", "label": "Analytics dataset", "sublabel": "Storage Write API", "x": 1575, "y": 104, "group": "g_gcp" },
+      { "id": "looker", "stencil": "generic.service", "label": "Product dashboards", "sublabel": "Funnels · retention", "x": 80, "y": 224, "group": "g_gcp" },
+      { "id": "dead_letters", "stencil": "generic.topic", "label": "clickstream-dlq", "sublabel": "Unparseable events", "x": 1575, "y": 224, "group": "g_gcp" },
+      { "id": "dead_bucket", "stencil": "generic.database", "label": "Dead letters", "sublabel": "Inspect · replay", "x": 1935, "y": 164, "group": "g_gcp" },
+      { "id": "app", "stencil": "azure.app-service", "label": "Mobile and web apps", "sublabel": "Clickstream SDK", "x": 80, "y": 104 }
+    ],
+    "edges": [
+      { "id": "e1-app-collector", "from": "app", "to": "collector", "label": "HTTPS batches", "kind": "sync" },
+      { "id": "e2-collector-pubsub_topic", "from": "collector", "to": "pubsub_topic", "label": "Publish", "kind": "async" },
+      { "id": "e3-pubsub_topic-dataflow", "from": "pubsub_topic", "to": "dataflow", "label": "sub: dataflow", "kind": "async" },
+      { "id": "e4-pubsub_topic-raw_archive", "from": "pubsub_topic", "to": "raw_archive", "label": "Cloud Storage subscription", "kind": "async" },
+      { "id": "e5-dataflow-bigquery", "from": "dataflow", "to": "bigquery", "label": "Sessions", "kind": "sync" },
+      { "id": "e6-dataflow-dead_letters", "from": "dataflow", "to": "dead_letters", "label": "Parse errors", "kind": "async" },
+      { "id": "e7-dead_letters-dead_bucket", "from": "dead_letters", "to": "dead_bucket", "label": "sub: archive", "kind": "async" },
+      { "id": "e8-looker-bigquery", "from": "looker", "to": "bigquery", "label": "SQL", "kind": "sync" }
+    ]
+  }
+}

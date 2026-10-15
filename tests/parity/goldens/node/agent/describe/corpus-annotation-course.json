@@ -1,0 +1,144 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"Annotations among routes\" · direction LR · 6 nodes, 4 connections, 0 boundaries, 0 simulations\ndescription: \"Edges cross zones and text, go around notes, and may end on shapes.\"\nnodes:\n  \"a\" \"client.browser\" (\"Web Browser\") \"Storefront\" capabilities=[{\"kind\":\"calls\",\"edge\":\"a->b\",\"peer\":\"b\"}] explanation=undefined\n  \"b\" \"service.go\" (\"Go Service\") \"Checkout\" capabilities=[] explanation={\"id\":\"b\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"a->b\",\"node\":\"a\",\"label\":\"Storefront\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"c\" \"service.java\" (\"Java Service\") \"Billing\" capabilities=[] explanation={\"id\":\"c\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"d\" \"postgres\" (\"PostgreSQL\") \"Ledger\" capabilities=[] explanation=undefined\n  \"e\" \"service.node\" (\"Node.js Service\") \"Exporter\" capabilities=[] explanation={\"id\":\"e\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"f\" \"aws.s3\" (\"Amazon S3\") \"Archive\" capabilities=[] explanation=undefined\nconnections:\n  \"a->b\" \"a\" -> \"b\" sync \"Over the zone\"\n  \"c->d\" \"c\" -> \"d\" async \"Around the note\"\n  \"e->s\" \"e\" -> \"s\" async \"To a shape\"\n  \"s->f\" \"s\" -> \"f\" async\nzone \"zone\" \"Payment zone\"\ntext \"caption\" \"Edges may cross a caption\"\nnote \"note\" \"Settles nightly\"\nshape \"s\" \"Legacy FTP\""
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "Annotations among routes",
+      "description": "Edges cross zones and text, go around notes, and may end on shapes.",
+      "direction": "LR",
+      "nodes": [
+        {
+          "id": "a",
+          "stencil": "client.browser",
+          "label": "Storefront",
+          "x": 40,
+          "y": 200,
+          "capabilities": [{ "kind": "calls", "edge": "a->b", "peer": "b" }]
+        },
+        {
+          "id": "b",
+          "stencil": "service.go",
+          "label": "Checkout",
+          "x": 760,
+          "y": 200,
+          "capabilities": [],
+          "explanation": {
+            "id": "b",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 16,
+            "offered": 2,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": 0.125,
+            "growth": 0,
+            "contributors": [{ "edge": "a->b", "node": "a", "label": "Storefront", "rate": 2 }],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "c",
+          "stencil": "service.java",
+          "label": "Billing",
+          "x": 40,
+          "y": 480,
+          "capabilities": [],
+          "explanation": {
+            "id": "c",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 16,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        },
+        { "id": "d", "stencil": "postgres", "label": "Ledger", "x": 760, "y": 480, "capabilities": [] },
+        {
+          "id": "e",
+          "stencil": "service.node",
+          "label": "Exporter",
+          "x": 40,
+          "y": 760,
+          "capabilities": [],
+          "explanation": {
+            "id": "e",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 16,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        },
+        { "id": "f", "stencil": "aws.s3", "label": "Archive", "x": 760, "y": 760, "capabilities": [] }
+      ],
+      "edges": [
+        { "id": "a->b", "from": "a", "to": "b", "label": "Over the zone", "kind": "sync" },
+        { "id": "c->d", "from": "c", "to": "d", "label": "Around the note" },
+        { "id": "e->s", "from": "e", "to": "s", "label": "To a shape" },
+        { "id": "s->f", "from": "s", "to": "f" }
+      ],
+      "groups": [],
+      "annotations": [
+        { "id": "zone", "kind": "zone", "text": "Payment zone", "x": 300, "y": 120, "width": 420, "height": 250, "color": "green" },
+        { "id": "caption", "kind": "text", "text": "Edges may cross a caption", "x": 340, "y": 216, "width": 260, "height": 30 },
+        { "id": "note", "kind": "note", "text": "Settles nightly", "x": 390, "y": 440, "width": 200, "height": 150 },
+        { "id": "s", "kind": "shape", "text": "Legacy FTP", "x": 420, "y": 750, "width": 160, "height": 90, "shape": "cylinder" }
+      ],
+      "simulations": [],
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"Annotations among routes\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\ndescription: \"Edges cross zones and text, go around notes, and may end on shapes.\"\nnodes:\n  \"a\" \"client.browser\" (\"Web Browser\") \"Storefront\" capabilities=[{\"kind\":\"calls\",\"edge\":\"a->b\",\"peer\":\"b\"}] explanation=undefined\n  \"b\" \"service.go\" (\"Go Service\") \"Checkout\" capabilities=[] explanation={\"id\":\"b\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"a->b\",\"node\":\"a\",\"label\":\"Storefront\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"a->b\" \"a\" -> \"b\" sync \"Over the zone\""
+  }
+}

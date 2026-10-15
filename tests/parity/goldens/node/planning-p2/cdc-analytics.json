@@ -1,0 +1,827 @@
+{
+  "format": "diagrams/v2",
+  "planning": { "revision": "p3" },
+  "nodeProps": {
+    "sql": { "ratePerSec": 120, "latencyMs": 40, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Retail SQL Server", "healthChecks": false },
+    "debezium": { "connector": "debezium-sqlserver", "source": true, "concurrency": 64, "latencyMs": 150, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Debezium SQL Server", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
+    "orders-topic": { "partitions": 64, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "messageType": "retail.dbo.orders", "healthChecks": false },
+    "customers-topic": { "partitions": 64, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "messageType": "retail.dbo.customers", "healthChecks": false },
+    "processor": { "group": "retail-projector", "processingGuarantee": "exactly_once_v2", "concurrency": 64, "latencyMs": 150, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Retail projections", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
+    "search": { "ratePerSec": 2, "latencyMs": 40, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Retail search", "healthChecks": false },
+    "warehouse": { "ratePerSec": 2, "latencyMs": 40, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Retail warehouse", "healthChecks": false },
+    "s3-sink": { "group": "retail-raw-sink", "flushSize": 10000, "concurrency": 64, "latencyMs": 150, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "S3 sink connector", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
+    "lake": { "ratePerSec": 2, "latencyMs": 40, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Retail raw lake", "healthChecks": false },
+    "registry": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "CDC schemas", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" }
+  },
+  "legacyExport": { "format": "diagrams/v1", "losses": ["planning.revision", "debezium.props.preset", "debezium.props.presetRevision", "processor.props.preset", "processor.props.presetRevision", "s3-sink.props.preset", "s3-sink.props.presetRevision", "registry.props.preset", "registry.props.presetRevision"] },
+  "autoScale": { "freePlay": 1, "backfill": 5, "search-slow": 2 },
+  "brokerAssignments": {
+    "brokers": {
+      "orders-topic": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+      "customers-topic": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+    },
+    "consumers": {
+      "processor": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "s3-sink": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      }
+    }
+  },
+  "edit": {
+    "configured": false,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": null,
+      "suggestion": "Add entry traffic to analyze capacity.",
+      "converged": true,
+      "iterations": 1,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": {
+        "sql": ["Infinity", 0, 0, 1, 1, 0],
+        "debezium": [426.6666666666667, 0, 0, 1, 1, 0],
+        "orders-topic": [426.6666666666667, 0, 0, 1, 1, 0],
+        "customers-topic": [426.6666666666667, 0, 0, 1, 1, 0],
+        "processor": [
+          426.6666666666667,
+          0,
+          0,
+          1,
+          1,
+          0,
+          {
+            "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+          }
+        ],
+        "search": ["Infinity", 0, 0, 1, 1, 0],
+        "warehouse": ["Infinity", 0, 0, 1, 1, 0],
+        "s3-sink": [
+          426.6666666666667,
+          0,
+          0,
+          1,
+          1,
+          0,
+          {
+            "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+          }
+        ],
+        "lake": ["Infinity", 0, 0, 1, 1, 0],
+        "registry": ["Infinity", 0, 0, 1, 1, 0]
+      },
+      "connections": {},
+      "offeredTypes": {}
+    },
+    "explanations": {
+      "debezium": {
+        "id": "debezium",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 426.6666666666667,
+        "offered": 0,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 64,
+        "seconds": 0.15,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      },
+      "processor": {
+        "id": "processor",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 426.6666666666667,
+        "offered": 0,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "orders-topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 64
+          },
+          {
+            "broker": "customers-topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 64
+          }
+        ],
+        "slots": 64,
+        "seconds": 0.15,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      },
+      "s3-sink": {
+        "id": "s3-sink",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 426.6666666666667,
+        "offered": 0,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "orders-topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 64
+          },
+          {
+            "broker": "customers-topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 64
+          }
+        ],
+        "slots": 64,
+        "seconds": 0.15,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "debezium": [
+        { "kind": "publishes", "edge": "debezium-to-orders-topic", "peer": "orders-topic", "filter": ["OrderRow*"] },
+        { "kind": "publishes", "edge": "debezium-to-customers-topic", "peer": "customers-topic", "filter": ["CustomerRow*"] },
+        { "kind": "calls", "edge": "debezium-to-registry", "peer": "registry" }
+      ],
+      "processor": [
+        {
+          "kind": "consumes",
+          "edge": "orders-topic-to-processor",
+          "peer": "orders-topic",
+          "group": "retail-projector",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        },
+        {
+          "kind": "consumes",
+          "edge": "customers-topic-to-processor",
+          "peer": "customers-topic",
+          "group": "retail-projector",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        },
+        { "kind": "calls", "edge": "processor-to-search", "peer": "search" },
+        { "kind": "calls", "edge": "processor-to-warehouse", "peer": "warehouse" }
+      ],
+      "s3-sink": [
+        {
+          "kind": "consumes",
+          "edge": "orders-topic-to-s3-sink",
+          "peer": "orders-topic",
+          "group": "retail-raw-sink",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        },
+        {
+          "kind": "consumes",
+          "edge": "customers-topic-to-s3-sink",
+          "peer": "customers-topic",
+          "group": "retail-raw-sink",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        },
+        { "kind": "calls", "edge": "s3-sink-to-lake", "peer": "lake" }
+      ]
+    },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "sql": {
+        "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 120,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Retail SQL Server",
+        "healthChecks": false
+      },
+      "debezium": {
+        "profile": { "family": "stream-processor", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 150,
+        "concurrency": 64,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Debezium SQL Server",
+        "healthChecks": false
+      },
+      "orders-topic": {
+        "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 64,
+        "messageType": "retail.dbo.orders",
+        "healthChecks": false
+      },
+      "customers-topic": {
+        "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 64,
+        "messageType": "retail.dbo.customers",
+        "healthChecks": false
+      },
+      "processor": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 150,
+        "concurrency": 64,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Retail projections",
+        "healthChecks": false
+      },
+      "search": {
+        "profile": { "family": "search", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Retail search",
+        "healthChecks": false
+      },
+      "warehouse": {
+        "profile": { "family": "warehouse", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Retail warehouse",
+        "healthChecks": false
+      },
+      "s3-sink": {
+        "profile": { "family": "stream-processor", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 150,
+        "concurrency": 64,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "S3 sink connector",
+        "healthChecks": false
+      },
+      "lake": {
+        "profile": { "family": "object", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Retail raw lake",
+        "healthChecks": false
+      },
+      "registry": {
+        "profile": { "family": "dependency", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "CDC schemas",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "backfill": {
+      "configured": "(same as edit)",
+      "simulation": "backfill",
+      "analysis": {
+        "bottleneck": "debezium",
+        "suggestion": "Debezium SQL Server: 47% utilized",
+        "converged": true,
+        "iterations": 5,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": {
+          "sql": ["Infinity", 200, 0, 1, 1, 0],
+          "debezium": [426.6666666666667, 200, 0.46875, 1, 1, 0],
+          "orders-topic": [426.6666666666667, 200, 0.46875, 1, 1, 0],
+          "customers-topic": [426.6666666666667, 0, 0, 1, 1, 0],
+          "processor": [
+            426.6666666666667,
+            200,
+            0.46875,
+            1,
+            1,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ],
+          "search": ["Infinity", 200, 0, 1, 1, 0],
+          "warehouse": ["Infinity", 200, 0, 1, 1, 0],
+          "s3-sink": [
+            426.6666666666667,
+            200,
+            0.46875,
+            1,
+            1,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ],
+          "lake": ["Infinity", 200, 0, 1, 1, 0],
+          "registry": ["Infinity", 200, 0, 1, 1, 0]
+        },
+        "connections": { "sql-to-debezium": 200, "debezium-to-orders-topic": 200, "debezium-to-registry": 200, "orders-topic-to-processor": 200, "orders-topic-to-s3-sink": 200, "processor-to-search": 200, "processor-to-warehouse": 200, "s3-sink-to-lake": 200 },
+        "offeredTypes": { "sql": ["OrderRowChanged"], "debezium": ["OrderRowChanged"], "orders-topic": ["OrderRowChanged"], "registry": ["OrderRowChanged"], "processor": ["OrderRowChanged"], "s3-sink": ["OrderRowChanged"], "search": ["SearchDocument"], "warehouse": ["WarehouseRow"], "lake": ["OrderRowChanged"] }
+      },
+      "explanations": {
+        "debezium": {
+          "id": "debezium",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 426.6666666666667,
+          "offered": 200,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 64,
+          "seconds": 0.15,
+          "utilization": 0.46875,
+          "growth": 0,
+          "contributors": [{ "edge": "sql-to-debezium", "node": "sql", "label": "Retail SQL Server", "rate": 200 }],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "processor": {
+          "id": "processor",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 426.6666666666667,
+          "offered": 200,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "orders-topic",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 64
+            },
+            {
+              "broker": "customers-topic",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 64
+            }
+          ],
+          "slots": 64,
+          "seconds": 0.15,
+          "utilization": 0.46875,
+          "growth": 0,
+          "contributors": [
+            { "edge": "orders-topic-to-processor", "node": "orders-topic", "label": "retail.dbo.orders", "rate": 200 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "s3-sink": {
+          "id": "s3-sink",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 426.6666666666667,
+          "offered": 200,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "orders-topic",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 64
+            },
+            {
+              "broker": "customers-topic",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 64
+            }
+          ],
+          "slots": 64,
+          "seconds": 0.15,
+          "utilization": 0.46875,
+          "growth": 0,
+          "contributors": [
+            { "edge": "orders-topic-to-s3-sink", "node": "orders-topic", "label": "retail.dbo.orders", "rate": 200 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": "(same as edit)"
+    },
+    "search-slow": {
+      "configured": "(same as edit)",
+      "simulation": "search-slow",
+      "analysis": {
+        "bottleneck": "debezium",
+        "suggestion": "Debezium SQL Server: 23% utilized",
+        "converged": true,
+        "iterations": 5,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": {
+          "sql": ["Infinity", 100, 0, 1, 1, 0],
+          "debezium": [426.6666666666667, 100, 0.234375, 1, 1, 0],
+          "orders-topic": [426.6666666666667, 100, 0.234375, 1, 1, 0],
+          "customers-topic": [426.6666666666667, 0, 0, 1, 1, 0],
+          "processor": [
+            426.6666666666667,
+            100,
+            0.234375,
+            1,
+            1,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ],
+          "search": ["Infinity", 100, 0, 1, 1, 0],
+          "warehouse": ["Infinity", 100, 0, 1, 1, 0],
+          "s3-sink": [
+            426.6666666666667,
+            100,
+            0.234375,
+            1,
+            1,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ],
+          "lake": ["Infinity", 100, 0, 1, 1, 0],
+          "registry": ["Infinity", 100, 0, 1, 1, 0]
+        },
+        "connections": { "sql-to-debezium": 100, "debezium-to-orders-topic": 100, "debezium-to-registry": 100, "orders-topic-to-processor": 100, "orders-topic-to-s3-sink": 100, "processor-to-search": 100, "processor-to-warehouse": 100, "s3-sink-to-lake": 100 },
+        "offeredTypes": { "sql": ["OrderRowChanged"], "debezium": ["OrderRowChanged"], "orders-topic": ["OrderRowChanged"], "registry": ["OrderRowChanged"], "processor": ["OrderRowChanged"], "s3-sink": ["OrderRowChanged"], "search": ["SearchDocument"], "warehouse": ["WarehouseRow"], "lake": ["OrderRowChanged"] }
+      },
+      "explanations": {
+        "debezium": {
+          "id": "debezium",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 426.6666666666667,
+          "offered": 100,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 64,
+          "seconds": 0.15,
+          "utilization": 0.234375,
+          "growth": 0,
+          "contributors": [{ "edge": "sql-to-debezium", "node": "sql", "label": "Retail SQL Server", "rate": 100 }],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "processor": {
+          "id": "processor",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 426.6666666666667,
+          "offered": 100,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "orders-topic",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 64
+            },
+            {
+              "broker": "customers-topic",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 64
+            }
+          ],
+          "slots": 64,
+          "seconds": 0.15,
+          "utilization": 0.234375,
+          "growth": 0,
+          "contributors": [
+            { "edge": "orders-topic-to-processor", "node": "orders-topic", "label": "retail.dbo.orders", "rate": 100 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "s3-sink": {
+          "id": "s3-sink",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 426.6666666666667,
+          "offered": 100,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "orders-topic",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 64
+            },
+            {
+              "broker": "customers-topic",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 64
+            }
+          ],
+          "slots": 64,
+          "seconds": 0.15,
+          "utilization": 0.234375,
+          "growth": 0,
+          "contributors": [
+            { "edge": "orders-topic-to-s3-sink", "node": "orders-topic", "label": "retail.dbo.orders", "rate": 100 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": "(same as edit)"
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "sql": ["idle", "", { "modeled": false }],
+            "debezium": ["idle", ""],
+            "orders-topic": ["idle", ""],
+            "customers-topic": ["idle", ""],
+            "processor": ["idle", ""],
+            "search": ["idle", "", { "modeled": false }],
+            "warehouse": ["idle", "", { "modeled": false }],
+            "s3-sink": ["idle", ""],
+            "lake": ["idle", "", { "modeled": false }],
+            "registry": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "sql": ["idle", "", { "modeled": false }],
+            "debezium": ["idle", ""],
+            "orders-topic": ["idle", ""],
+            "customers-topic": ["idle", ""],
+            "processor": ["idle", ""],
+            "search": ["idle", "", { "modeled": false }],
+            "warehouse": ["idle", "", { "modeled": false }],
+            "s3-sink": ["idle", ""],
+            "lake": ["idle", "", { "modeled": false }],
+            "registry": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "sql": ["idle", "", { "modeled": false }],
+            "debezium": ["idle", ""],
+            "orders-topic": ["idle", ""],
+            "customers-topic": ["idle", ""],
+            "processor": ["idle", ""],
+            "search": ["idle", "", { "modeled": false }],
+            "warehouse": ["idle", "", { "modeled": false }],
+            "s3-sink": ["idle", ""],
+            "lake": ["idle", "", { "modeled": false }],
+            "registry": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": {
+          "props": { "orders-topic": { "partitions": 128 }, "customers-topic": { "partitions": 128 } },
+          "rates": {}
+        },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "sql": ["idle", "", { "modeled": false }],
+            "debezium": ["idle", ""],
+            "orders-topic": ["idle", ""],
+            "customers-topic": ["idle", ""],
+            "processor": ["idle", ""],
+            "search": ["idle", "", { "modeled": false }],
+            "warehouse": ["idle", "", { "modeled": false }],
+            "s3-sink": ["idle", ""],
+            "lake": ["idle", "", { "modeled": false }],
+            "registry": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": { "orders-topic": "All configured reader instances already have an assignment.", "customers-topic": "All configured reader instances already have an assignment." }
+      }
+    },
+    "backfill": {
+      "tone": "ok",
+      "top": "debezium",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Debezium SQL Server at 47% · 200/s of 427/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "sql": ["idle", "200/s · no limit", { "modeled": false }],
+        "debezium": ["ok", "47% · 200/s of 427/s"],
+        "orders-topic": ["ok", "47% · 200/s of 427/s"],
+        "customers-topic": ["idle", ""],
+        "processor": ["ok", "47% · 200/s of 427/s"],
+        "search": ["idle", "200/s · no limit", { "modeled": false }],
+        "warehouse": ["idle", "200/s · no limit", { "modeled": false }],
+        "s3-sink": ["ok", "47% · 200/s of 427/s"],
+        "lake": ["idle", "200/s · no limit", { "modeled": false }],
+        "registry": ["idle", "200/s · no limit", { "modeled": false }]
+      }
+    },
+    "search-slow": {
+      "tone": "ok",
+      "top": "debezium",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Debezium SQL Server at 23% · 100/s of 427/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "sql": ["idle", "100/s · no limit", { "modeled": false }],
+        "debezium": ["ok", "23% · 100/s of 427/s"],
+        "orders-topic": ["ok", "23% · 100/s of 427/s"],
+        "customers-topic": ["idle", ""],
+        "processor": ["ok", "23% · 100/s of 427/s"],
+        "search": ["idle", "100/s · no limit", { "modeled": false }],
+        "warehouse": ["idle", "100/s · no limit", { "modeled": false }],
+        "s3-sink": ["ok", "23% · 100/s of 427/s"],
+        "lake": ["idle", "100/s · no limit", { "modeled": false }],
+        "registry": ["idle", "100/s · no limit", { "modeled": false }]
+      }
+    }
+  }
+}

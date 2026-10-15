@@ -1,0 +1,9 @@
+---
+title: Complete export fixture
+---
+flowchart TB
+  subgraph g_zone ["Zone"]
+    source(["Client<br/>Requests"])
+    worker["Worker<br/>API"]
+  end
+  source -->|"Call"| worker

@@ -1,0 +1,71 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"Relationship regressions\" · direction LR · 3 nodes, 2 connections, 0 boundaries, 0 simulations\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Caller\" props={\"ratePerSec\":10} capabilities=[] explanation=undefined\n  \"worker\" \"service.go\" (\"Go Service\") \"Worker\" props={\"latencyMs\":200,\"concurrency\":1} capabilities=[] explanation={\"id\":\"worker\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":5,\"offered\":10,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":1,\"seconds\":0.2,\"utilization\":2,\"growth\":5,\"contributors\":[{\"edge\":\"demand\",\"node\":\"source\",\"label\":\"Caller\",\"rate\":10}],\"target\":0.5,\"minimumReplicas\":2,\"targetReplicas\":4,\"changes\":null,\"converged\":true}\n  \"vault\\ninjected\\tsecret\" \"azure.key-vault\" (\"Key Vault\") \"Vault\\nInjected label\" capabilities=[] explanation=undefined\nconnections:\n  \"demand\" \"source\" -> \"worker\" async \"secret\"\n  \"credential\" \"worker\" -> \"vault\\ninjected\\tsecret\" secret dependency"
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "Relationship regressions",
+      "direction": "LR",
+      "nodes": [
+        {
+          "id": "source",
+          "stencil": "client.browser",
+          "label": "Caller",
+          "x": 0,
+          "y": 120,
+          "props": { "ratePerSec": 10 },
+          "capabilities": []
+        },
+        {
+          "id": "worker",
+          "stencil": "service.go",
+          "label": "Worker",
+          "x": 360,
+          "y": 120,
+          "props": { "latencyMs": 200, "concurrency": 1 },
+          "capabilities": [],
+          "explanation": {
+            "id": "worker",
+            "role": "processor",
+            "status": "up",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 5,
+            "offered": 10,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 1,
+            "seconds": 0.2,
+            "utilization": 2,
+            "growth": 5,
+            "contributors": [{ "edge": "demand", "node": "source", "label": "Caller", "rate": 10 }],
+            "target": 0.5,
+            "minimumReplicas": 2,
+            "targetReplicas": 4,
+            "changes": null,
+            "converged": true
+          }
+        },
+        { "id": "vault\ninjected\tsecret", "stencil": "azure.key-vault", "label": "Vault\nInjected label", "x": 720, "y": 120, "capabilities": [] }
+      ],
+      "edges": [
+        { "id": "demand", "from": "source", "to": "worker", "kind": "async", "label": "secret" },
+        { "id": "credential", "from": "worker", "to": "vault\ninjected\tsecret", "kind": "async", "relation": "secret" }
+      ],
+      "groups": [],
+      "annotations": [],
+      "simulations": [],
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"Relationship regressions\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Caller\" props={\"ratePerSec\":10} capabilities=[] explanation=undefined\n  \"worker\" \"service.go\" (\"Go Service\") \"Worker\" props={\"latencyMs\":200,\"concurrency\":1} capabilities=[] explanation={\"id\":\"worker\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":5,\"offered\":10,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":1,\"seconds\":0.2,\"utilization\":2,\"growth\":5,\"contributors\":[{\"edge\":\"demand\",\"node\":\"source\",\"label\":\"Caller\",\"rate\":10}],\"target\":0.5,\"minimumReplicas\":2,\"targetReplicas\":4,\"changes\":null,\"converged\":true}\nconnections:\n  \"demand\" \"source\" -> \"worker\" async \"secret\""
+  }
+}

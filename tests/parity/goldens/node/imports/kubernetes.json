@@ -1,0 +1,168 @@
+{
+  "ok": true,
+  "format": "kubernetes",
+  "warnings": [],
+  "report": {
+    "summary": {
+      "code": "importReport.summary",
+      "args": [
+        { "title": "shop and kafka", "format": "Kubernetes", "total": "all", "drawn": 14, "nodes": 14, "connections": 13, "guesses": 0 }
+      ]
+    },
+    "format": "Kubernetes",
+    "source": "00-namespaces.yaml, data.yaml, ingress.yaml, orders-api.yaml, payments-worker.yaml",
+    "title": "shop and kafka",
+    "nodes": 14,
+    "connections": 13,
+    "boundaries": 2,
+    "guesses": [],
+    "inferred": [
+      { "fromId": "orders-api", "toId": "redis", "from": "orders-api (shop)", "to": "redis (shop)", "evidence": "REDIS_URL" },
+      { "fromId": "orders-api", "toId": "postgres", "from": "orders-api (shop)", "to": "postgres (shop)", "evidence": "DATABASE_HOST" },
+      { "fromId": "orders-api", "toId": "topic-orders.placed.v1", "from": "orders-api (shop)", "to": "orders.placed.v1 (kafka)", "evidence": "ORDERS_TOPIC", "note": "writes", "guess": true },
+      { "fromId": "payments-worker", "toId": "topic-payments.completed.v1", "from": "payments-worker (shop)", "to": "payments.completed.v1 (kafka)", "evidence": "OUTPUT_TOPIC", "note": "writes" },
+      { "fromId": "settlement-report", "toId": "postgres", "from": "settlement-report (shop)", "to": "postgres (shop)", "evidence": "DATABASE_HOST" }
+    ],
+    "notDrawn": [
+      { "name": "Kafka shop-kafka", "reason": { "code": "importDetail.shownThroughItsTopics", "args": [] } },
+      {
+        "name": "ServiceMonitor orders-api",
+        "reason": { "code": "importDetail.unknownKindValue0", "args": [{ "value0": "monitoring.coreos.com" }] }
+      }
+    ],
+    "unread": [],
+    "notes": [
+      { "code": "importDetail.value0AServiceWithValue1In", "args": [{ "value0": "storefront", "reason": "workload" }] },
+      {
+        "code": "importDetail.value0ScalesFromValue1ToValue2",
+        "args": [{ "value0": "payments-worker", "value1": 1, "value2": 12 }]
+      }
+    ]
+  },
+  "reportEnglish": { "report.summary": "Imported “shop and kafka” from Kubernetes: 14 nodes, 13 connections.", "report.notDrawn[0].reason": "shown through its topics", "report.notDrawn[1].reason": "unknown kind (monitoring.coreos.com)", "report.notes[0]": "storefront: a Service with no workload in these files", "report.notes[1]": "payments-worker scales from 1 to 12 replicas (KEDA)" },
+  "replay": null,
+  "checks": ["warning no-reader:topic-payments.completed.v1"],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "shop and kafka",
+    "direction": "LR",
+    "groups": [
+      { "id": "boundary-shop", "label": "shop", "tone": "k8s", "x": 400, "y": 40, "width": 1047, "height": 568 },
+      { "id": "boundary-kafka", "label": "kafka", "tone": "k8s", "x": 1587, "y": 180, "width": 321, "height": 296 }
+    ],
+    "nodes": [
+      {
+        "id": "postgres",
+        "stencil": "postgres",
+        "label": "postgres",
+        "sublabel": "postgres:16",
+        "x": 1187,
+        "y": 284,
+        "group": "boundary-shop",
+        "props": { "replicas": 1 }
+      },
+      {
+        "id": "redis",
+        "stencil": "redis.cache",
+        "label": "redis",
+        "sublabel": "redis:7-alpine",
+        "x": 1187,
+        "y": 164,
+        "group": "boundary-shop",
+        "props": { "replicas": 1 }
+      },
+      {
+        "id": "orders-api",
+        "stencil": "generic.service",
+        "label": "orders-api",
+        "sublabel": "orders-api:2.3.0",
+        "x": 800,
+        "y": 164,
+        "group": "boundary-shop",
+        "props": { "replicas": 3 }
+      },
+      {
+        "id": "payments-worker",
+        "stencil": "generic.service",
+        "label": "payments-worker",
+        "sublabel": "payments-worker:1.8.2",
+        "x": 440,
+        "y": 104,
+        "group": "boundary-shop",
+        "props": { "replicas": 1 }
+      },
+      { "id": "settlement-report", "stencil": "generic.scheduler", "label": "settlement-report", "sublabel": "0 2 * * *", "x": 440, "y": 344, "group": "boundary-shop" },
+      {
+        "id": "topic-orders.placed.v1",
+        "stencil": "kafka.topic",
+        "label": "orders.placed.v1",
+        "x": 1627,
+        "y": 244,
+        "group": "boundary-kafka",
+        "props": { "partitions": 12 }
+      },
+      {
+        "id": "topic-payments.completed.v1",
+        "stencil": "kafka.topic",
+        "label": "payments.completed.v1",
+        "x": 1627,
+        "y": 364,
+        "group": "boundary-kafka",
+        "props": { "partitions": 6 }
+      },
+      { "id": "storefront", "stencil": "generic.service", "label": "storefront", "sublabel": "no workload in these files", "x": 800, "y": 284, "group": "boundary-shop" },
+      { "id": "ingress-shop", "stencil": "nginx", "label": "shop", "sublabel": "shop.example.com", "x": 440, "y": 224, "group": "boundary-shop" },
+      { "id": "users", "stencil": "client.user", "label": "Users", "x": 40, "y": 290 },
+      { "id": "configmap-orders-api-config", "stencil": "k8s.configmap", "label": "orders-api-config", "x": 800, "y": 496, "group": "boundary-shop" },
+      { "id": "secret-orders-db", "stencil": "k8s.secret", "label": "orders-db", "x": 1060, "y": 496, "group": "boundary-shop" },
+      { "id": "identity-orders-api", "stencil": "azure.managed-identity", "label": "orders-api", "x": 814, "y": 688 },
+      { "id": "secret-payment-provider", "stencil": "k8s.secret", "label": "payment-provider", "sublabel": "not in these files", "x": 440, "y": 496, "group": "boundary-shop" }
+    ],
+    "edges": [
+      { "id": "e1", "from": "users", "to": "ingress-shop", "kind": "sync" },
+      { "id": "e2", "from": "ingress-shop", "to": "orders-api", "kind": "sync" },
+      { "id": "e3", "from": "ingress-shop", "to": "storefront", "kind": "sync" },
+      {
+        "id": "e4",
+        "from": "topic-orders.placed.v1",
+        "to": "payments-worker",
+        "kind": "async",
+        "props": { "group": "payments" }
+      },
+      { "id": "e5", "from": "orders-api", "to": "redis", "kind": "sync" },
+      { "id": "e6", "from": "orders-api", "to": "postgres", "kind": "sync" },
+      { "id": "e7", "from": "orders-api", "to": "topic-orders.placed.v1", "kind": "async" },
+      { "id": "e8", "from": "payments-worker", "to": "topic-payments.completed.v1", "kind": "async" },
+      { "id": "e9", "from": "settlement-report", "to": "postgres", "kind": "sync" },
+      {
+        "id": "e10",
+        "from": "orders-api",
+        "to": "configmap-orders-api-config",
+        "relation": "config",
+        "props": {
+          "settings": [
+            { "key": "KAFKA_BOOTSTRAP_SERVERS" },
+            { "key": "ORDERS_TOPIC" },
+            { "key": "REDIS_URL" },
+            { "key": "FEATURE_SPLIT_SHIPMENTS" }
+          ]
+        }
+      },
+      {
+        "id": "e11",
+        "from": "orders-api",
+        "to": "secret-orders-db",
+        "relation": "secret",
+        "props": { "settings": [{ "key": "DATABASE_URL", "secret": true }] }
+      },
+      { "id": "e12", "from": "orders-api", "to": "identity-orders-api", "relation": "identity" },
+      {
+        "id": "e13",
+        "from": "payments-worker",
+        "to": "secret-payment-provider",
+        "relation": "secret",
+        "props": { "settings": [{ "key": "api-key", "secret": true }] }
+      }
+    ]
+  }
+}

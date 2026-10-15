@@ -1,0 +1,69 @@
+{
+  "format": "diagrams/v1",
+  "title": "Competing consumers",
+  "description": "Three workers pull from one queue.",
+  "nodes": [
+    {
+      "id": "producer",
+      "stencil": "service.go",
+      "label": "Producer",
+      "x": 40,
+      "y": 160
+    },
+    {
+      "id": "broker",
+      "stencil": "azure.service-bus.queue",
+      "label": "jobs queue",
+      "x": 400,
+      "y": 160,
+      "sublabel": "jobs"
+    },
+    {
+      "id": "w1",
+      "stencil": "azure.functions",
+      "label": "Worker 1",
+      "x": 760,
+      "y": 40
+    },
+    {
+      "id": "w2",
+      "stencil": "azure.functions",
+      "label": "Worker 2",
+      "x": 760,
+      "y": 160
+    },
+    {
+      "id": "w3",
+      "stencil": "azure.functions",
+      "label": "Worker 3",
+      "x": 760,
+      "y": 280
+    }
+  ],
+  "edges": [
+    {
+      "id": "producer-broker",
+      "from": "producer",
+      "to": "broker",
+      "kind": "async"
+    },
+    {
+      "id": "broker-w1",
+      "from": "broker",
+      "to": "w1",
+      "kind": "async"
+    },
+    {
+      "id": "broker-w2",
+      "from": "broker",
+      "to": "w2",
+      "kind": "async"
+    },
+    {
+      "id": "broker-w3",
+      "from": "broker",
+      "to": "w3",
+      "kind": "async"
+    }
+  ]
+}

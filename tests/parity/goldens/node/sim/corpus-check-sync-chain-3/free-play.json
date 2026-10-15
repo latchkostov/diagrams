@@ -1,0 +1,185 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "web": { "replicas": [1, 1, 0] },
+        "s0": { "replicas": [1, 1, 0] },
+        "s1": { "replicas": [1, 1, 0] },
+        "s2": { "replicas": [1, 1, 0] },
+        "s3": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 4,
+      "nodes": {
+        "web": { "processed": 20, "throughput": 2.528714056021835, "replicas": [1, 1, 0] },
+        "s0": { "processed": 19, "throughput": 2.4544956951605985, "replicas": [1, 1, 0] },
+        "s1": { "processed": 18, "throughput": 2.3854051163030427, "replicas": [1, 1, 0] },
+        "s2": { "processed": 17, "throughput": 2.32749907489339, "replicas": [1, 1, 0] },
+        "s3": { "processed": 16, "throughput": 2.168764270984486, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 4,
+      "nodes": {
+        "web": { "processed": 40, "throughput": 2.528828859462367, "replicas": [1, 1, 0] },
+        "s0": { "processed": 39, "throughput": 2.4722862109577397, "replicas": [1, 1, 0] },
+        "s1": { "processed": 38, "throughput": 2.288156113838009, "replicas": [1, 1, 0] },
+        "s2": { "processed": 37, "throughput": 2.1207339183218776, "replicas": [1, 1, 0] },
+        "s3": { "processed": 36, "throughput": 1.9555475223699892, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 4,
+      "nodes": {
+        "web": { "processed": 60, "throughput": 2.528828864674435, "replicas": [1, 1, 0] },
+        "s0": { "processed": 59, "throughput": 2.3960817737860896, "replicas": [1, 1, 0] },
+        "s1": { "processed": 58, "throughput": 2.2737046886388064, "replicas": [1, 1, 0] },
+        "s2": { "processed": 57, "throughput": 2.2217603084041806, "replicas": [1, 1, 0] },
+        "s3": { "processed": 56, "throughput": 2.2217928887168354, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 4,
+      "nodes": {
+        "web": { "processed": 80, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "s0": { "processed": 79, "throughput": 2.382387036575297, "replicas": [1, 1, 0] },
+        "s1": { "processed": 78, "throughput": 2.3398880091664065, "replicas": [1, 1, 0] },
+        "s2": { "processed": 77, "throughput": 2.2820640297520556, "replicas": [1, 1, 0] },
+        "s3": { "processed": 76, "throughput": 2.130241628346147, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 4,
+      "nodes": {
+        "web": { "processed": 100, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "s0": { "processed": 99, "throughput": 2.3851865683286015, "replicas": [1, 1, 0] },
+        "s1": { "processed": 98, "throughput": 2.3145308983382034, "replicas": [1, 1, 0] },
+        "s2": { "processed": 97, "throughput": 2.2415138756350172, "replicas": [1, 1, 0] },
+        "s3": { "processed": 96, "throughput": 2.084561409724115, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 4,
+      "nodes": {
+        "web": { "processed": 120, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "s0": { "processed": 119, "throughput": 2.41219992855116, "replicas": [1, 1, 0] },
+        "s1": { "processed": 118, "throughput": 2.3211063585669165, "replicas": [1, 1, 0] },
+        "s2": { "processed": 117, "throughput": 2.2346862861326, "replicas": [1, 1, 0] },
+        "s3": { "processed": 116, "throughput": 2.068218459937285, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 4,
+    "real": {
+      "web": { "processed": 120, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+      "s0": { "processed": 119, "throughput": 2.41219992855116, "replicas": [1, 1, 0] },
+      "s1": { "processed": 118, "throughput": 2.3211063585669165, "replicas": [1, 1, 0] },
+      "s2": { "processed": 117, "throughput": 2.2346862861326, "replicas": [1, 1, 0] },
+      "s3": { "processed": 116, "throughput": 2.068218459937285, "replicas": [1, 1, 0] }
+    },
+    "edges": { "e-web": 119, "e0": 118, "e1": 117, "e2": 116 }
+  },
+  "events": {
+    "total": 1060,
+    "byKind": { "process": 590, "deliver": 470 },
+    "byNode": {
+      "web": { "process": 120 },
+      "s0": { "deliver": 119, "process": 119 },
+      "s1": { "deliver": 118, "process": 118 },
+      "s2": { "deliver": 117, "process": 117 },
+      "s3": { "deliver": 116, "process": 116 }
+    },
+    "perSecond": [
+      "26acd684ba9d",
+      "caae7ee34e06",
+      "cfcaee2951d9",
+      "79715c38287c",
+      "369f979f42d3",
+      "ea2311c9102f",
+      "6bcd5e2de3e1",
+      "2032002f824b",
+      "857eca11ae8c",
+      "869699470967",
+      "28e8c1b76b32",
+      "ca21db2f0b92",
+      "d105b4acf71e",
+      "a1c9f23a4732",
+      "b1f1a20cab90",
+      "1ceeb4fb4238",
+      "916f21c0fa43",
+      "901aba7c2156",
+      "3e1393f9360b",
+      "5285c297e6c8",
+      "d2417114447f",
+      "ceed36531b0a",
+      "4c551869e91f",
+      "220ac50f88c6",
+      "41c0e2fd94ad",
+      "8361d3b31d08",
+      "b269e2b26154",
+      "1d2a6400f0cc",
+      "d600b7aac3d2",
+      "d2981f569a69",
+      "6f5fe98dd2fc",
+      "0c3a246101db",
+      "fab1a23168be",
+      "342a2f255f2a",
+      "becab377b230",
+      "13dfaaf6948a",
+      "b28bb66f2c39",
+      "3bdf45f780c5",
+      "65a245c7f7ae",
+      "2e3d38a467a6",
+      "1ead5f700048",
+      "47844ade8e70",
+      "512d9b2adbed",
+      "6e8d55bae735",
+      "bf7247f9c8f8",
+      "90095b148188",
+      "683c119a4b80",
+      "5edea80bc2db",
+      "b3cabfbe84fa",
+      "5be6f17e0672",
+      "6da24e80058b",
+      "835868a3c9ae",
+      "b335b982d67f",
+      "69b9d0f82f6b",
+      "3649813e3949",
+      "934e926e6945",
+      "3e971a0f9847",
+      "11d40fb6f7d3",
+      "34c87ef87607",
+      "fc460d4bc207",
+      "e60f2e36b744"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 116, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 116, "min": 1700, "mean": 1826.896551724138, "p50": 1820, "p90": 1900, "max": 1970 },
+    "waitMs": {
+      "s0": { "count": 116, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "s1": { "count": 116, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "s2": { "count": 116, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "s3": { "count": 116, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "s0": { "count": 116, "min": 210, "mean": 257.67241379310343, "p50": 260, "p90": 300, "max": 300 },
+      "s1": { "count": 116, "min": 210, "mean": 255.68965517241378, "p50": 260, "p90": 290, "max": 300 },
+      "s2": { "count": 116, "min": 210, "mean": 255.68965517241378, "p50": 260, "p90": 300, "max": 300 },
+      "s3": { "count": 116, "min": 210, "mean": 257.8448275862069, "p50": 260, "p90": 300, "max": 300 }
+    }
+  }
+}

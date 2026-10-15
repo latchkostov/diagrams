@@ -1,0 +1,39 @@
+{
+  "all": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "capacity:a", "rule": "capacity", "severity": "warning", "title": "Partner API a can't keep up", "message": "At the diagram's own rates, it gets 40/s and handles 5/s (800%): 35/s may be rejected.", "targets": ["a"] }
+      ],
+      "summary": "1 warning, 0 suggestions."
+    }
+  },
+  "warnings": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "capacity:a", "rule": "capacity", "severity": "warning", "title": "Partner API a can't keep up", "message": "At the diagram's own rates, it gets 40/s and handles 5/s (800%): 35/s may be rejected.", "targets": ["a"] }
+      ],
+      "summary": "1 warning, 0 suggestions."
+    }
+  },
+  "oneRule": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "capacity:a", "rule": "capacity", "severity": "warning", "title": "Partner API a can't keep up", "message": "At the diagram's own rates, it gets 40/s and handles 5/s (800%): 35/s may be rejected.", "targets": ["a"] }
+      ],
+      "summary": "1 warning, 0 suggestions."
+    }
+  },
+  "simulations": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "capacity:a", "rule": "capacity", "severity": "warning", "title": "Partner API a can't keep up", "message": "At the diagram's own rates, it gets 40/s and handles 5/s (800%): 35/s may be rejected.", "targets": ["a"] }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "simulations": "Played 3 saved simulations (at most 60 s each)."
+    }
+  }
+}

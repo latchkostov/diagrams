@@ -1,0 +1,14 @@
+---
+title: Fan-out to 3 consumer groups
+---
+flowchart LR
+  orders["Orders API"]
+  topic["orders<br/>orders.created"]
+  billing["Billing<br/>group: billing"]
+  shipping["Shipping<br/>group: shipping"]
+  analytics["Analytics<br/>group: analytics"]
+  orders -.-> topic
+  topic -.-> billing
+  topic -.-> shipping
+  topic -.-> analytics
+  linkStyle 0,1,2,3 stroke-dasharray: 6 4

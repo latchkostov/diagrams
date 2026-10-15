@@ -115,6 +115,39 @@ jobs:
       - name: Entry chunk size budget
         run: pnpm size
 
+  # Output parity (docs/PARITY.md): everything the app produces from a diagram (simulations, checks, exports,
+  # imports, agent tools, layout, languages, and on a production build the canvas, images and Interactive HTML)
+  # against the committed goldens. Fails on any difference, with the diff in the log and the job summary. Never
+  # updates goldens (`pnpm parity:update` refuses on CI). Runs on every event: the skill's references are Markdown,
+  # so a docs-only change can still move a golden.
+  parity:
+    name: Output parity
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Type-check the harness
+        run: pnpm exec tsc --noEmit -p tests/parity
+      # The Node tier runs here; the browser tier in Playwright's Linux image for the installed version, through
+      # Docker (scripts/parity.mjs), exactly as it runs on a laptop, so goldens recorded anywhere match.
+      - name: Parity
+        run: pnpm parity
+      - name: Upload actual outputs and diffs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: parity-output
+          path: |
+            tests/.output/parity
+            tests/.output/parity-results
+          retention-days: 14
+
   e2e:
     name: E2E ${{ matrix.shard }}/${{ strategy.job-total }}
     needs: changes
@@ -215,7 +248,7 @@ jobs:
 
   ci:
     name: CI
-    needs: [changes, checks, e2e, self-host]
+    needs: [changes, checks, parity, e2e, self-host]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -225,13 +258,15 @@ jobs:
           CHANGES: ${{ needs.changes.result }}
           CHECKS: ${{ needs.checks.result }}
           SELF_HOST: ${{ needs.self-host.result }}
+          PARITY: ${{ needs.parity.result }}
           E2E: ${{ needs.e2e.result }}
           E2E_WANTED: ${{ needs.changes.outputs.e2e }}
         run: |
-          echo "changes=$CHANGES checks=$CHECKS e2e=$E2E (wanted: $E2E_WANTED)"
+          echo "changes=$CHANGES checks=$CHECKS self-host=$SELF_HOST parity=$PARITY e2e=$E2E (wanted: $E2E_WANTED)"
           [ "$CHANGES" = "success" ] || { echo "::error::change detection $CHANGES"; exit 1; }
           [ "$CHECKS" = "success" ] || { echo "::error::checks $CHECKS"; exit 1; }
           [ "$SELF_HOST" = "success" ] || { echo "::error::self-host $SELF_HOST"; exit 1; }
+          [ "$PARITY" = "success" ] || { echo "::error::output parity $PARITY"; exit 1; }
           if [ "$E2E_WANTED" = "true" ]; then
             [ "$E2E" = "success" ] || { echo "::error::e2e $E2E"; exit 1; }
           else

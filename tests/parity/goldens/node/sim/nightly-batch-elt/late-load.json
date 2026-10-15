@@ -1,0 +1,148 @@
+{
+  "run": {
+    "time": 20760,
+    "totalMs": 22000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "overrun", "label": "The load is unfinished at 03:00", "status": "pass", "value": 300 },
+      { "id": "loaded", "label": "All 300 batches land eventually", "status": "pass", "value": 300 },
+      { "id": "built", "label": "dbt built 120 marts anyway", "status": "pass", "value": 120 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "note", "label": "Tonight Salesforce throttles its bulk API, so every sync runs about three times slower." },
+      { "atMs": 0, "kind": "traffic", "label": "02:00 · 150 app table batches" },
+      { "atMs": 0, "kind": "traffic", "label": "02:00 · 75 CRM batches" },
+      { "atMs": 0, "kind": "traffic", "label": "02:00 · 75 billing batches" },
+      { "atMs": 1500, "kind": "traffic", "label": "02:00 · 150 app table batches ends" },
+      { "atMs": 1500, "kind": "traffic", "label": "02:00 · 75 CRM batches ends" },
+      { "atMs": 1500, "kind": "traffic", "label": "02:00 · 75 billing batches ends" },
+      { "atMs": 7000, "kind": "note", "label": "03:00 arrives and the load isn't finished. A time-based schedule starts dbt anyway, so some marts are built from partial data." },
+      { "atMs": 7000, "kind": "traffic", "label": "03:00 · dbt builds 120 models" },
+      { "atMs": 7500, "kind": "traffic", "label": "03:00 · dbt builds 120 models ends" },
+      { "atMs": 12000, "kind": "note", "label": "The fix: make dbt wait for the load (a sensor or a data-aware schedule), or stream the data so there's no window to miss." }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 3,
+      "nodes": {
+        "airflow": { "replicas": [1, 1, 0] },
+        "app-db": { "backlog": 1, "replicas": [1, 1, 0] },
+        "crm": { "processed": 1, "replicas": [1, 1, 0] },
+        "billing": { "processed": 1, "replicas": [1, 1, 0] },
+        "airbyte": { "replicas": [3, 3, 0] },
+        "raw": { "replicas": [1, 1, 0] },
+        "dbt": { "replicas": [1, 1, 0] },
+        "marts": { "replicas": [1, 1, 0] },
+        "tableau": { "replicas": [1, 1, 0] },
+        "slack": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 221,
+      "nodes": {
+        "airflow": { "replicas": [1, 1, 0] },
+        "app-db": { "processed": 150, "throughput": 0.015806843924816624, "replicas": [1, 1, 0] },
+        "crm": { "processed": 75, "throughput": 0.007917100128005387, "replicas": [1, 1, 0] },
+        "billing": { "processed": 75, "throughput": 0.007917100128005387, "replicas": [1, 1, 0] },
+        "airbyte": { "processed": 151, "backlog": 134, "inFlight": 15, "throughput": 16.31932891955864, "replicas": [3, 3, 0] },
+        "raw": { "processed": 149, "throughput": 17.54949447702739, "replicas": [1, 1, 0] },
+        "dbt": { "processed": 55, "backlog": 57, "inFlight": 8, "throughput": 18.893712225193287, "replicas": [1, 1, 0] },
+        "marts": { "processed": 50, "throughput": 17.73199109065179, "replicas": [1, 1, 0] },
+        "tableau": { "replicas": [1, 1, 0] },
+        "slack": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 0,
+      "nodes": {
+        "airflow": { "replicas": [1, 1, 0] },
+        "app-db": { "processed": 150, "throughput": 7.176296039532746e-7, "replicas": [1, 1, 0] },
+        "crm": { "processed": 75, "throughput": 3.5943578973402305e-7, "replicas": [1, 1, 0] },
+        "billing": { "processed": 75, "throughput": 3.5943578973402305e-7, "replicas": [1, 1, 0] },
+        "airbyte": { "processed": 300, "throughput": 6.583621054325097, "replicas": [3, 3, 0] },
+        "raw": { "processed": 300, "throughput": 8.04125291443403, "replicas": [1, 1, 0] },
+        "dbt": { "processed": 120, "throughput": 0.024905678184315362, "replicas": [1, 1, 0] },
+        "marts": { "processed": 120, "throughput": 0.030419864028172313, "replicas": [1, 1, 0] },
+        "tableau": { "replicas": [1, 1, 0] },
+        "slack": { "processed": 5, "throughput": 0.0016805309487731837, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 20760,
+    "inSystem": 0,
+    "real": {
+      "airflow": { "replicas": [1, 1, 0] },
+      "app-db": { "processed": 150, "throughput": 3.356112727973657e-7, "replicas": [1, 1, 0] },
+      "crm": { "processed": 75, "throughput": 1.6809605152439624e-7, "replicas": [1, 1, 0] },
+      "billing": { "processed": 75, "throughput": 1.6809605152439624e-7, "replicas": [1, 1, 0] },
+      "airbyte": { "processed": 300, "throughput": 3.078938535263443, "replicas": [3, 3, 0] },
+      "raw": { "processed": 300, "throughput": 3.760624019176398, "replicas": [1, 1, 0] },
+      "dbt": { "processed": 120, "throughput": 0.011647549528717462, "replicas": [1, 1, 0] },
+      "marts": { "processed": 120, "throughput": 0.014226349120182679, "replicas": [1, 1, 0] },
+      "tableau": { "replicas": [1, 1, 0] },
+      "slack": { "processed": 5, "throughput": 0.0007859279042923305, "replicas": [1, 1, 0] }
+    },
+    "edges": { "app-db-to-airbyte": 150, "crm-to-airbyte": 75, "billing-to-airbyte": 75, "airflow-to-airbyte": 0, "airflow-to-dbt": 0, "airbyte-to-raw": 300, "dbt-to-raw": 0, "dbt-to-marts": 120, "dbt-to-slack": 5, "tableau-to-marts": 0 }
+  },
+  "events": {
+    "total": 2290,
+    "byKind": { "inject": 420, "process": 1145, "deliver": 725 },
+    "byNode": {
+      "app-db": { "inject": 150, "process": 150 },
+      "crm": { "inject": 75, "process": 75 },
+      "billing": { "inject": 75, "process": 75 },
+      "airbyte": { "deliver": 300, "process": 300 },
+      "raw": { "deliver": 300, "process": 300 },
+      "dbt": { "inject": 120, "process": 120 },
+      "marts": { "deliver": 120, "process": 120 },
+      "slack": { "deliver": 5, "process": 5 }
+    },
+    "perSecond": [
+      "2aa8b8c6cfd0",
+      "a6e3606cefab",
+      "db337780cf7e",
+      "31b0a6ec1b50",
+      "f11b75d816c8",
+      "1d867d359c6a",
+      "b9d0034b735f",
+      "6e1446768781",
+      "bb87693bbc3a",
+      "6a9afed7571a",
+      "d702496c3dc0",
+      "b11f5104886e",
+      "b8ade6a88363",
+      "8aaa71fb91cb",
+      "361c828ce21f",
+      "b06d7576e531",
+      "f0b28b8fbb93",
+      "d4b98af16dfe",
+      "25589d9fa2ab",
+      "7d42218f85f0",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 0, "text": "Tonight Salesforce throttles its bulk API, so every sync runs about three times slower.", "focus": ["crm", "airbyte"] },
+    { "atMs": 7000, "text": "03:00 arrives and the load isn't finished. A time-based schedule starts dbt anyway, so some marts are built from partial data.", "focus": ["airbyte", "raw", "dbt"] },
+    { "atMs": 12000, "text": "The fix: make dbt wait for the load (a sensor or a data-aware schedule), or stream the data so there's no window to miss.", "focus": ["airflow", "dbt"] }
+  ],
+  "latency": {
+    "journeys": { "done": 253, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 253, "min": 630, "mean": 5004.387351778656, "p50": 4060, "p90": 9200, "max": 17660 },
+    "waitMs": {
+      "airbyte": { "count": 156, "min": 0, "mean": 5016.025641025641, "p50": 4420, "p90": 8150, "max": 16220 },
+      "dbt": { "count": 97, "min": 0, "mean": 2097.6288659793813, "p50": 2150, "p90": 3940, "max": 5190 }
+    },
+    "processMs": {
+      "airbyte": { "count": 156, "min": 730, "mean": 914.8717948717949, "p50": 920, "p90": 1060, "max": 1080 },
+      "dbt": { "count": 97, "min": 330, "mean": 408.35051546391753, "p50": 420, "p90": 470, "max": 480 }
+    }
+  }
+}

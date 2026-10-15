@@ -1,0 +1,1 @@
+{ "ok": false, "error": "This file has too many aliases (it could expand to millions of values), so it wasn't read." }

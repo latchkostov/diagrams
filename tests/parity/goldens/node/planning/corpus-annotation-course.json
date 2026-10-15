@@ -1,0 +1,229 @@
+{
+  "autoScale": { "freePlay": 1 },
+  "brokerAssignments": { "brokers": {}, "consumers": {} },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "b",
+      "suggestion": "Checkout: 13% utilized",
+      "converged": true,
+      "iterations": 2,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "a": ["Infinity", 2, 0, 1, 1, 0], "b": [16, 2, 0.125, 1, 1, 0], "c": [16, 0, 0, 1, 1, 0], "d": ["Infinity", 0, 0, 1, 1, 0], "e": [16, 0, 0, 1, 1, 0], "f": ["Infinity", 0, 0, 1, 1, 0] },
+      "connections": { "a->b": 2 },
+      "offeredTypes": { "a": ["Storefront"], "b": ["Storefront"] }
+    },
+    "explanations": {
+      "b": {
+        "id": "b",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 16,
+        "offered": 2,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": 0.125,
+        "growth": 0,
+        "contributors": [{ "edge": "a->b", "node": "a", "label": "Storefront", "rate": 2 }],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      },
+      "c": { "id": "c", "role": "processor", "status": "up", "reason": "throughput", "evidence": "configured", "unit": "msg/s", "capacity": 16, "offered": 0, "replicas": 1, "baseReplicas": 1, "omittedContributors": 0, "activeReplicas": 1, "assignments": [], "slots": 4, "seconds": 0.25, "utilization": 0, "growth": 0, "contributors": [], "target": 0.5, "minimumReplicas": 1, "changes": null, "converged": true },
+      "e": { "id": "e", "role": "processor", "status": "up", "reason": "throughput", "evidence": "configured", "unit": "msg/s", "capacity": 16, "offered": 0, "replicas": 1, "baseReplicas": 1, "omittedContributors": 0, "activeReplicas": 1, "assignments": [], "slots": 4, "seconds": 0.25, "utilization": 0, "growth": 0, "contributors": [], "target": 0.5, "minimumReplicas": 1, "changes": null, "converged": true }
+    },
+    "capabilities": { "a": [{ "kind": "calls", "edge": "a->b", "peer": "b" }] },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "a": {
+        "profile": { "family": "client", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Storefront",
+        "healthChecks": false
+      },
+      "b": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Checkout",
+        "healthChecks": false
+      },
+      "c": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Billing",
+        "healthChecks": false
+      },
+      "d": {
+        "profile": { "family": "sql", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Ledger",
+        "healthChecks": false
+      },
+      "e": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Exporter",
+        "healthChecks": false
+      },
+      "f": {
+        "profile": { "family": "object", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Archive",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {},
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "ok",
+          "top": "b",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Checkout at 13% · 2/s of 16/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "a": ["idle", "2/s · no limit", { "modeled": false }],
+            "b": ["ok", "13% · 2/s of 16/s"],
+            "c": ["idle", ""],
+            "d": ["idle", "", { "modeled": false }],
+            "e": ["idle", ""],
+            "f": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "warn",
+          "top": "b",
+          "headline": "Checkout is busy",
+          "detail": "63% · 10/s of 16/s. Still some headroom.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "a": ["idle", "10/s · no limit", { "modeled": false }],
+            "b": ["warn", "63% · 10/s of 16/s"],
+            "c": ["idle", ""],
+            "d": ["idle", "", { "modeled": false }],
+            "e": ["idle", ""],
+            "f": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "ok",
+          "top": "b",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Checkout at 13% · 2/s of 16/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "a": ["idle", "2/s · no limit", { "modeled": false }],
+            "b": ["ok", "13% · 2/s of 16/s"],
+            "c": ["idle", ""],
+            "d": ["idle", "", { "modeled": false }],
+            "e": ["idle", ""],
+            "f": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "ok",
+          "top": "b",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Checkout at 13% · 2/s of 16/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "a": ["idle", "2/s · no limit", { "modeled": false }],
+            "b": ["ok", "13% · 2/s of 16/s"],
+            "c": ["idle", ""],
+            "d": ["idle", "", { "modeled": false }],
+            "e": ["idle", ""],
+            "f": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    }
+  }
+}

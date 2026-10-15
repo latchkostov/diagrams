@@ -1,0 +1,193 @@
+{
+  "run": {
+    "time": 13840,
+    "totalMs": 20000,
+    "done": true,
+    "scale": 50,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "stock", "label": "All 20,000 orders reserve stock", "status": "pass", "value": 20000 },
+      { "id": "payments", "label": "All 20,000 payments are recorded", "status": "pass", "value": 20000 },
+      { "id": "notifications", "label": "Notifications", "status": "pass", "value": 20000 },
+      { "id": "orders", "label": "20,000 orders created and 20,000 payment updates", "status": "pass", "value": 40000 },
+      { "id": "no-dlq", "label": "No dlq", "status": "pass", "value": 0 },
+      { "id": "no-drop", "label": "No drop", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "note", "label": "20,000 checkouts at 2,000 orders/s. Each dot represents 50 orders; independent groups reserve stock, authorize payment and notify customers." },
+      { "atMs": 0, "kind": "traffic", "label": "Black Friday: 2,000 orders per second" },
+      { "atMs": 6000, "kind": "note", "label": "PaymentCompleted updates the order without creating another order." },
+      { "atMs": 10000, "kind": "traffic", "label": "Black Friday: 2,000 orders per second ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "shopper": { "replicas": [1, 1, 0] },
+        "gateway": { "replicas": [1, 1, 0] },
+        "orders": { "replicas": [12, 12, 0] },
+        "order-events": {
+          "lag": { "inventory-reservations": 0, "payment-authorizations": 0, "customer-notifications": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "inventory": { "replicas": [6, 6, 0] },
+        "payments": { "replicas": [6, 6, 0] },
+        "notifications": { "replicas": [6, 6, 0] },
+        "stock-db": { "replicas": [1, 1, 0] },
+        "payment-db": { "replicas": [1, 1, 0] },
+        "notify-cache": { "replicas": [1, 1, 0] },
+        "payment-events": { "lag": { "orders-payments": 0 }, "replicas": [1, 1, 0] },
+        "order-db": { "replicas": [1, 1, 0] },
+        "schemas": { "replicas": [1, 1, 0] },
+        "metrics": { "replicas": [1, 1, 0] },
+        "dashboard": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 177,
+      "nodes": {
+        "shopper": { "processed": 400, "throughput": 39.79914400525013, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 389, "inFlight": 3, "throughput": 39.987947067568065, "replicas": [1, 1, 0] },
+        "orders": { "processed": 688, "inFlight": 13, "throughput": 78.81473235697096, "replicas": [12, 12, 0] },
+        "order-events": {
+          "processed": 362,
+          "throughput": 39.282350344195876,
+          "lag": { "inventory-reservations": 0, "payment-authorizations": 0, "customer-notifications": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "inventory": { "processed": 345, "inFlight": 5, "throughput": 40.47972106323869, "replicas": [6, 6, 0] },
+        "payments": { "processed": 345, "inFlight": 5, "throughput": 40.3949296204402, "replicas": [6, 6, 0] },
+        "notifications": { "processed": 345, "inFlight": 5, "throughput": 40.37979694247342, "replicas": [6, 6, 0] },
+        "stock-db": { "processed": 334, "inFlight": 2, "throughput": 39.26414361514113, "replicas": [1, 1, 0] },
+        "payment-db": { "processed": 335, "inFlight": 1, "throughput": 40.217299877604184, "replicas": [1, 1, 0] },
+        "notify-cache": { "processed": 335, "inFlight": 1, "throughput": 40.17203768305436, "replicas": [1, 1, 0] },
+        "payment-events": {
+          "processed": 333,
+          "throughput": 40.39937477496511,
+          "lag": { "orders-payments": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "order-db": { "processed": 670, "inFlight": 3, "throughput": 80.36717362633118, "replicas": [1, 1, 0] },
+        "schemas": { "processed": 366, "throughput": 39.284131826158834, "replicas": [1, 1, 0] },
+        "metrics": { "replicas": [1, 1, 0] },
+        "dashboard": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 13840,
+    "inSystem": 0,
+    "real": {
+      "shopper": { "processed": 20000, "throughput": 43.851418180027714, "replicas": [1, 1, 0] },
+      "gateway": { "processed": 20000, "throughput": 56.54609377738598, "replicas": [1, 1, 0] },
+      "orders": { "processed": 40000, "throughput": 446.2294354548454, "replicas": [12, 12, 0] },
+      "order-events": {
+        "processed": 20000,
+        "throughput": 109.04306445185266,
+        "lag": { "inventory-reservations": 0, "payment-authorizations": 0, "customer-notifications": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "inventory": { "processed": 20000, "throughput": 171.60872227552454, "replicas": [6, 6, 0] },
+      "payments": { "processed": 20000, "throughput": 171.63519349580432, "replicas": [6, 6, 0] },
+      "notifications": { "processed": 20000, "throughput": 171.63731725779672, "replicas": [6, 6, 0] },
+      "stock-db": { "processed": 20000, "throughput": 219.15540210382062, "replicas": [1, 1, 0] },
+      "payment-db": { "processed": 20000, "throughput": 219.2127937751631, "replicas": [1, 1, 0] },
+      "notify-cache": { "processed": 20000, "throughput": 219.32895357693556, "replicas": [1, 1, 0] },
+      "payment-events": {
+        "processed": 20000,
+        "throughput": 231.6832776303227,
+        "lag": { "orders-payments": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "order-db": { "processed": 40000, "throughput": 570.0306598527774, "replicas": [1, 1, 0] },
+      "schemas": { "processed": 20000, "throughput": 98.66624489334312, "replicas": [1, 1, 0] },
+      "metrics": { "replicas": [1, 1, 0] },
+      "dashboard": { "replicas": [1, 1, 0] }
+    },
+    "edges": {
+      "shopper-to-gateway": 400,
+      "gateway-to-orders": 400,
+      "orders-to-order-db": 800,
+      "orders-to-order-events": 400,
+      "order-events-to-inventory": 400,
+      "order-events-to-payments": 400,
+      "order-events-to-notifications": 400,
+      "inventory-to-stock-db": 400,
+      "payments-to-payment-db": 400,
+      "notifications-to-notify-cache": 400,
+      "payments-to-payment-events": 400,
+      "payment-events-to-orders": 400,
+      "orders-to-schemas": 400,
+      "metrics-to-orders": 0,
+      "dashboard-to-metrics": 0
+    }
+  },
+  "events": {
+    "total": 12000,
+    "byKind": { "inject": 400, "process": 6000, "deliver": 5600 },
+    "byNode": {
+      "shopper": { "inject": 400, "process": 400 },
+      "gateway": { "deliver": 400, "process": 400 },
+      "orders": { "deliver": 800, "process": 800 },
+      "order-db": { "deliver": 800, "process": 800 },
+      "schemas": { "deliver": 400, "process": 400 },
+      "order-events": { "deliver": 400, "process": 400 },
+      "inventory": { "deliver": 400, "process": 400 },
+      "payments": { "deliver": 400, "process": 400 },
+      "notifications": { "deliver": 400, "process": 400 },
+      "stock-db": { "deliver": 400, "process": 400 },
+      "notify-cache": { "deliver": 400, "process": 400 },
+      "payment-db": { "deliver": 400, "process": 400 },
+      "payment-events": { "deliver": 400, "process": 400 }
+    },
+    "perSecond": [
+      "3ae2751ff7d2",
+      "73c519fb3529",
+      "4222ab6cecd1",
+      "78668db62d18",
+      "adb3b93412b0",
+      "743ea032cc84",
+      "83aa2e069b2c",
+      "1ba30943b954",
+      "05652a2d0f04",
+      "bd036b15dde3",
+      "c45c7702b51f",
+      "5f44cf183e9b",
+      "c35f05be3d07",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 0, "text": "20,000 checkouts at 2,000 orders/s. Each dot represents 50 orders; independent groups reserve stock, authorize payment and notify customers.", "focus": ["shopper", "order-events"] },
+    { "atMs": 6000, "text": "PaymentCompleted updates the order without creating another order.", "focus": ["payments", "payment-events", "orders"] }
+  ],
+  "latency": {
+    "journeys": { "done": 400, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 400, "min": 2290, "mean": 2375.5, "p50": 2380, "p90": 2420, "max": 2450 },
+    "waitMs": {
+      "gateway": { "count": 400, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "orders": { "count": 800, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "inventory": { "count": 400, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "payments": { "count": 400, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "notifications": { "count": 400, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "stock-db": { "count": 400, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "payment-db": { "count": 400, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "notify-cache": { "count": 400, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "order-db": { "count": 800, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "gateway": { "count": 400, "min": 50, "mean": 65.25, "p50": 70, "p90": 80, "max": 80 },
+      "orders": { "count": 800, "min": 130, "mean": 155.2875, "p50": 160, "p90": 180, "max": 180 },
+      "inventory": { "count": 400, "min": 130, "mean": 154.175, "p50": 150, "p90": 180, "max": 180 },
+      "payments": { "count": 400, "min": 130, "mean": 154.45, "p50": 150, "p90": 180, "max": 180 },
+      "notifications": { "count": 400, "min": 130, "mean": 153.925, "p50": 150, "p90": 180, "max": 180 },
+      "stock-db": { "count": 400, "min": 40, "mean": 44.925, "p50": 40, "p90": 50, "max": 50 },
+      "payment-db": { "count": 400, "min": 40, "mean": 44.8, "p50": 40, "p90": 50, "max": 50 },
+      "notify-cache": { "count": 400, "min": 40, "mean": 44.775, "p50": 40, "p90": 50, "max": 50 },
+      "order-db": { "count": 800, "min": 40, "mean": 45.0875, "p50": 50, "p90": 50, "max": 50 }
+    }
+  }
+}

@@ -1,0 +1,212 @@
+{
+  "format": "diagrams/v1",
+  "title": "Relationships",
+  "direction": "LR",
+  "nodes": [
+    {
+      "id": "message-a",
+      "stencil": "service.node",
+      "label": "message source",
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "message-b",
+      "stencil": "kafka.topic",
+      "label": "message target",
+      "x": 544,
+      "y": 40
+    },
+    {
+      "id": "request-a",
+      "stencil": "aws.api-gateway",
+      "label": "request source",
+      "x": 40,
+      "y": 190
+    },
+    {
+      "id": "request-b",
+      "stencil": "service.java",
+      "label": "request target",
+      "x": 544,
+      "y": 190
+    },
+    {
+      "id": "config-a",
+      "stencil": "service.dotnet",
+      "label": "config source",
+      "x": 40,
+      "y": 340
+    },
+    {
+      "id": "config-b",
+      "stencil": "azure.app-config",
+      "label": "config target",
+      "x": 544,
+      "y": 340
+    },
+    {
+      "id": "secret-a",
+      "stencil": "service.go",
+      "label": "secret source",
+      "x": 40,
+      "y": 490
+    },
+    {
+      "id": "secret-b",
+      "stencil": "aws.secrets-manager",
+      "label": "secret target",
+      "x": 544,
+      "y": 490
+    },
+    {
+      "id": "identity-a",
+      "stencil": "aws.lambda",
+      "label": "identity source",
+      "x": 40,
+      "y": 640
+    },
+    {
+      "id": "identity-b",
+      "stencil": "aws.iam-role",
+      "label": "identity target",
+      "x": 544,
+      "y": 640
+    },
+    {
+      "id": "telemetry-a",
+      "stencil": "service.python",
+      "label": "telemetry source",
+      "x": 40,
+      "y": 790
+    },
+    {
+      "id": "telemetry-b",
+      "stencil": "azure.app-insights",
+      "label": "telemetry target",
+      "x": 544,
+      "y": 790
+    },
+    {
+      "id": "deploy-a",
+      "stencil": "github-actions",
+      "label": "deploy source",
+      "x": 40,
+      "y": 940
+    },
+    {
+      "id": "deploy-b",
+      "stencil": "azure.aks",
+      "label": "deploy target",
+      "x": 544,
+      "y": 940
+    },
+    {
+      "id": "depends-a",
+      "stencil": "azure.aks",
+      "label": "depends source",
+      "x": 40,
+      "y": 1090
+    },
+    {
+      "id": "depends-b",
+      "stencil": "generic.dns",
+      "label": "depends target",
+      "x": 544,
+      "y": 1090
+    },
+    {
+      "id": "kv",
+      "stencil": "azure.key-vault",
+      "label": "Key Vault",
+      "x": 1048,
+      "y": 340
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-message",
+      "from": "message-a",
+      "to": "message-b",
+      "kind": "async",
+      "label": "Message"
+    },
+    {
+      "id": "edge-request",
+      "from": "request-a",
+      "to": "request-b",
+      "kind": "sync",
+      "label": "Request"
+    },
+    {
+      "id": "edge-config",
+      "from": "config-a",
+      "to": "config-b",
+      "kind": "async",
+      "relation": "config",
+      "props": {
+        "settings": [
+          {
+            "key": "Orders:PageSize"
+          },
+          {
+            "key": "Features:*"
+          },
+          {
+            "key": "ConnectionStrings:Orders",
+            "secret": true
+          },
+          {
+            "key": "Stripe:ApiKey",
+            "secret": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "edge-secret",
+      "from": "secret-a",
+      "to": "secret-b",
+      "kind": "async",
+      "relation": "secret"
+    },
+    {
+      "id": "edge-identity",
+      "from": "identity-a",
+      "to": "identity-b",
+      "kind": "async",
+      "relation": "identity",
+      "label": "execution role"
+    },
+    {
+      "id": "edge-telemetry",
+      "from": "telemetry-a",
+      "to": "telemetry-b",
+      "kind": "async",
+      "relation": "telemetry"
+    },
+    {
+      "id": "edge-deploy",
+      "from": "deploy-a",
+      "to": "deploy-b",
+      "kind": "async",
+      "relation": "deploy",
+      "label": "helm upgrade"
+    },
+    {
+      "id": "edge-depends",
+      "from": "depends-a",
+      "to": "depends-b",
+      "kind": "async",
+      "relation": "depends",
+      "label": "resolves orders.internal"
+    },
+    {
+      "id": "edge-references",
+      "from": "config-b",
+      "to": "kv",
+      "kind": "async",
+      "relation": "secret"
+    }
+  ]
+}

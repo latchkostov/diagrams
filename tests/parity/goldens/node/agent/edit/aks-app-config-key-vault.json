@@ -1,0 +1,496 @@
+{
+  "steps": [
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "topic-1",
+            "label": "parity.events",
+            "stencil": { "id": "kafka.topic", "label": "Kafka Topic", "confidence": "high", "alternatives": ["pulsar.topic", "confluent.cloud", "aws.msk"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-1", "from": "web", "to": "topic-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+2 nodes, +2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "dotnet-1",
+            "label": "Parity reader",
+            "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-2", "from": "topic-1", "to": "dotnet-1" },
+          {
+            "i": 2,
+            "op": "add_node",
+            "id": "key-vault-1",
+            "label": "Parity secrets",
+            "stencil": { "id": "azure.key-vault", "label": "Key Vault", "confidence": "high", "alternatives": [] }
+          },
+          { "i": 3, "op": "connect", "id": "e-3", "from": "dotnet-1", "to": "kv" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +2 connections, −1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "insert_between",
+            "id": "queue-1",
+            "label": "buffer",
+            "stencil": { "id": "rabbitmq.queue", "label": "RabbitMQ Queue", "confidence": "high", "alternatives": ["aws.mq"] },
+            "from": "web",
+            "to": "fd"
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "update", "id": "fd" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "update",
+            "id": "api",
+            "stencil": { "id": "aws.lambda", "label": "AWS Lambda", "confidence": "high", "alternatives": [] }
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 boundary, 2 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_boundary", "id": "boundary-1", "label": "Parity zone" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 note",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_note", "id": "note-1" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "title or direction changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "set_meta" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "−1 node, −2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "remove", "ids": ["dotnet-1", "e-2", "e-3"] }]
+      }
+    },
+    {
+      "isError": true,
+      "output": {
+        "ok": false,
+        "i": 0,
+        "error": "Unknown reference \"no-such-node\".",
+        "ref": "no-such-node",
+        "candidates": [
+          { "id": "web", "label": "Storefront", "stencil": "client.browser" },
+          { "id": "fd", "label": "Renamed by parity", "stencil": "azure.front-door" },
+          { "id": "api", "label": "Orders API", "stencil": "aws.lambda" },
+          { "id": "sql", "label": "orders-db", "stencil": "azure.sql" },
+          { "id": "sb", "label": "orders.created", "stencil": "azure.service-bus.topic" },
+          { "id": "notify", "label": "Order confirmation", "stencil": "azure.functions" },
+          { "id": "ai", "label": "Application Insights", "stencil": "azure.app-insights" },
+          { "id": "appcfg", "label": "orders-config", "stencil": "azure.app-config" },
+          { "id": "kv", "label": "orders-kv", "stencil": "azure.key-vault" },
+          { "id": "mi", "label": "orders-api-id", "stencil": "azure.managed-identity" },
+          { "id": "entra", "label": "Entra ID", "stencil": "entra-id" },
+          { "id": "topic-1", "label": "parity.events", "stencil": "kafka.topic" },
+          { "id": "key-vault-1", "label": "Parity secrets", "stencil": "azure.key-vault" },
+          { "id": "queue-1", "label": "buffer", "stencil": "rabbitmq.queue" },
+          { "id": "note-1", "label": "Pinned by the parity harness" }
+        ],
+        "hint": "Use an id from candidates, or call describe_diagram.",
+        "applied": false
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "dryRun": true,
+        "summary": "+1 node",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "postgres-1",
+            "label": "Dry run only",
+            "stencil": { "id": "postgres", "label": "PostgreSQL", "confidence": "high", "alternatives": ["gcp.cloud-sql", "aws.aurora", "supabase"] }
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "isError": false,
+      "output": { "ok": true, "id": "sim-1", "title": "Parity rush", "summary": "Added simulation \"Parity rush\": 4 traffic, 2 events, 1 expectations.", "undo": "One undo step reverts this call.", "play": "The user plays it in live view (L), or from the command palette." }
+    },
+    {
+      "isError": true,
+      "output": { "ok": false, "error": "constant traffic needs ratePerSec.", "hint": "Check the input against the tool's schema and try again." }
+    }
+  ],
+  "applied": [
+    { "tool": "edit_diagram", "summary": "+1 node, +1 connection", "changed": ["topic-1", "e-1"] },
+    {
+      "tool": "edit_diagram",
+      "summary": "+2 nodes, +2 connections",
+      "changed": ["dotnet-1", "key-vault-1", "e-2", "e-3"],
+      "choices": [
+        {
+          "nodeId": "dotnet-1",
+          "kind": ".NET consumer",
+          "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] },
+          "node": {
+            "id": "dotnet-1",
+            "stencil": "service.dotnet",
+            "label": "Parity reader",
+            "x": 648,
+            "y": 748,
+            "props": { "replicas": 3 }
+          }
+        }
+      ]
+    },
+    { "tool": "edit_diagram", "summary": "+1 node, +2 connections, −1 connection", "changed": ["queue-1", "e-4", "e-5"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["fd"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["api"] },
+    { "tool": "edit_diagram", "summary": "+1 boundary, 2 changed", "changed": ["boundary-1", "web", "fd"] },
+    { "tool": "edit_diagram", "summary": "+1 note", "changed": ["note-1"] },
+    { "tool": "edit_diagram", "summary": "title or direction changed", "changed": [] },
+    { "tool": "edit_diagram", "summary": "−1 node, −2 connections", "changed": [] },
+    { "tool": "set_simulation", "summary": "Added simulation “Parity rush”", "changed": ["web"] }
+  ],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Parity edit",
+    "description": "Bold lines carry requests and events. Dotted lines are dependencies: where the API gets its settings (two are Key Vault references), its identity, and where it reports.",
+    "direction": "TB",
+    "groups": [
+      { "id": "azure", "label": "Azure · prod", "tone": "azure", "x": 400, "y": -4, "width": 1582, "height": 676 },
+      { "id": "aks", "label": "AKS cluster", "tone": "k8s", "x": 820, "y": 236, "width": 321, "height": 176 },
+      { "id": "boundary-1", "label": "Parity zone", "tone": "neutral", "x": 0, "y": 236, "width": 700, "height": 176 }
+    ],
+    "nodes": [
+      {
+        "id": "web",
+        "stencil": "client.browser",
+        "label": "Storefront",
+        "sublabel": "Shoppers placing orders",
+        "x": 40,
+        "y": 300,
+        "props": { "ratePerSec": 20, "messageType": "PlaceOrder" },
+        "group": "boundary-1"
+      },
+      {
+        "id": "fd",
+        "stencil": "azure.front-door",
+        "label": "Renamed by parity",
+        "sublabel": "WAF · TLS",
+        "x": 440,
+        "y": 300,
+        "group": "boundary-1",
+        "props": { "latencyMs": 120 }
+      },
+      {
+        "id": "api",
+        "stencil": "aws.lambda",
+        "label": "Orders API",
+        "sublabel": "ASP.NET Core · 3 replicas",
+        "x": 860,
+        "y": 300,
+        "group": "aks",
+        "props": { "replicas": 3, "concurrency": 16, "latencyMs": 120, "emits": "OrderCreated" }
+      },
+      { "id": "sql", "stencil": "azure.sql", "label": "orders-db", "sublabel": "Azure SQL", "x": 1300, "y": 180, "group": "azure" },
+      {
+        "id": "sb",
+        "stencil": "azure.service-bus.topic",
+        "label": "orders.created",
+        "sublabel": "Service Bus topic",
+        "x": 1300,
+        "y": 420,
+        "group": "azure",
+        "props": { "partitions": 16 }
+      },
+      {
+        "id": "notify",
+        "stencil": "azure.functions",
+        "label": "Order confirmation",
+        "sublabel": "Function · sends email",
+        "x": 1720,
+        "y": 420,
+        "group": "azure",
+        "props": { "concurrency": 32, "latencyMs": 150 }
+      },
+      { "id": "ai", "stencil": "azure.app-insights", "label": "Application Insights", "sublabel": "traces · logs · metrics", "x": 860, "y": 60, "group": "azure" },
+      { "id": "appcfg", "stencil": "azure.app-config", "label": "orders-config", "sublabel": "App Configuration", "x": 860, "y": 560, "group": "azure" },
+      { "id": "kv", "stencil": "azure.key-vault", "label": "orders-kv", "sublabel": "Key Vault", "x": 1300, "y": 560, "group": "azure" },
+      { "id": "mi", "stencil": "azure.managed-identity", "label": "orders-api-id", "sublabel": "Workload identity", "x": 440, "y": 560, "group": "azure" },
+      { "id": "entra", "stencil": "entra-id", "label": "Entra ID", "sublabel": "Token issuer", "x": 40, "y": 560 },
+      { "id": "topic-1", "stencil": "kafka.topic", "label": "parity.events", "x": 348, "y": 748 },
+      { "id": "key-vault-1", "stencil": "azure.key-vault", "label": "Parity secrets", "x": 40, "y": 64 },
+      { "id": "queue-1", "stencil": "rabbitmq.queue", "label": "buffer", "x": 348, "y": 860 }
+    ],
+    "edges": [
+      {
+        "id": "fd-to-api",
+        "from": "fd",
+        "to": "api",
+        "label": "POST /orders",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "api-to-sql",
+        "from": "api",
+        "to": "sql",
+        "label": "EF Core",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "api-to-sb",
+        "from": "api",
+        "to": "sb",
+        "label": "OrderCreated",
+        "kind": "async",
+        "props": { "travelMs": 300 }
+      },
+      {
+        "id": "sb-to-notify",
+        "from": "sb",
+        "to": "notify",
+        "label": "Subscription",
+        "kind": "async",
+        "props": { "travelMs": 300, "group": "confirmations" }
+      },
+      {
+        "id": "api-to-appcfg",
+        "from": "api",
+        "to": "appcfg",
+        "kind": "async",
+        "relation": "config",
+        "sourceSide": "bottom",
+        "targetSide": "top",
+        "props": {
+          "settings": [
+            { "key": "Orders:PageSize" },
+            { "key": "Features:*" },
+            { "key": "ConnectionStrings:Orders", "secret": true },
+            { "key": "Stripe:ApiKey", "secret": true }
+          ]
+        }
+      },
+      { "id": "appcfg-to-kv", "from": "appcfg", "to": "kv", "kind": "async", "relation": "secret", "sourceSide": "right", "targetSide": "left" },
+      { "id": "api-to-mi", "from": "api", "to": "mi", "label": "runs as", "kind": "async", "relation": "identity", "sourceSide": "bottom", "targetSide": "right" },
+      { "id": "mi-to-entra", "from": "mi", "to": "entra", "label": "OIDC federation", "kind": "async", "relation": "identity", "sourceSide": "left", "targetSide": "right" },
+      { "id": "api-to-ai", "from": "api", "to": "ai", "kind": "async", "relation": "telemetry", "sourceSide": "top", "targetSide": "bottom" },
+      { "id": "e-1", "from": "web", "to": "topic-1", "kind": "async" },
+      { "id": "e-4", "from": "web", "to": "queue-1", "kind": "sync", "label": "HTTPS", "props": { "travelMs": 200 } },
+      { "id": "e-5", "from": "queue-1", "to": "fd", "kind": "sync", "props": { "travelMs": 200 } }
+    ],
+    "simulations": [
+      {
+        "id": "lunch-rush",
+        "title": "Lunch rush",
+        "description": "Steady orders: every request writes to SQL and publishes OrderCreated. Config, secrets and tokens were read at startup, so nothing moves on the dotted lines.",
+        "seed": 3,
+        "scale": 2,
+        "traffic": [
+          {
+            "id": "orders",
+            "node": "web",
+            "messageType": "PlaceOrder",
+            "label": "400 orders over 10 seconds",
+            "shape": { "kind": "constant", "ratePerSec": 40, "durationMs": 10000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 0,
+            "action": { "do": "note", "text": "Orders flow through Front Door to the API, then to SQL and Service Bus.", "focus": ["fd", "api", "sql", "sb"] }
+          },
+          {
+            "atMs": 4000,
+            "action": { "do": "note", "text": "No messages go to App Configuration or Key Vault: the API read them at startup and keeps them cached.", "focus": ["api", "appcfg", "kv"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "written",
+            "label": "Every order is written",
+            "metric": { "node": "sql", "field": "processed" },
+            "op": "==",
+            "value": 400,
+            "when": "end"
+          },
+          {
+            "id": "confirmed",
+            "label": "Every order is confirmed",
+            "metric": { "node": "notify", "field": "processed" },
+            "op": "==",
+            "value": 400,
+            "when": "end"
+          },
+          {
+            "id": "no-drops",
+            "label": "Nothing is dropped",
+            "metric": { "node": "api", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "always"
+          }
+        ]
+      },
+      {
+        "id": "flash-sale",
+        "title": "Flash sale",
+        "description": "A spike to 300 orders a second for three seconds. Three replicas absorb it; the dependencies stay quiet.",
+        "seed": 5,
+        "scale": 5,
+        "traffic": [
+          {
+            "id": "spike",
+            "node": "web",
+            "messageType": "PlaceOrder",
+            "label": "1,110 orders: steady, then a three-second sale",
+            "shape": { "kind": "spike", "baseRate": 30, "peakRate": 300, "atMs": 3000, "peakMs": 3000, "durationMs": 10000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 3000,
+            "action": { "do": "note", "text": "The sale starts: 300 orders a second for three seconds.", "focus": ["web", "api"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "written",
+            "label": "Every order is written",
+            "metric": { "node": "sql", "field": "processed" },
+            "op": "==",
+            "value": 1110,
+            "when": "end"
+          },
+          {
+            "id": "confirmed",
+            "label": "Every order is confirmed",
+            "metric": { "node": "notify", "field": "processed" },
+            "op": "==",
+            "value": 1110,
+            "when": "end"
+          },
+          {
+            "id": "no-drops",
+            "label": "Nothing is dropped",
+            "metric": { "node": "api", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "always"
+          }
+        ]
+      },
+      {
+        "id": "sim-1",
+        "title": "Parity rush",
+        "durationMs": 20000,
+        "traffic": [
+          {
+            "id": "traffic-1",
+            "node": "web",
+            "shape": { "kind": "constant", "ratePerSec": 20, "fromMs": 0, "durationMs": 10000 }
+          },
+          {
+            "id": "traffic-2",
+            "node": "web",
+            "shape": { "kind": "burst", "count": 50, "atMs": 5000, "spreadMs": 2000 },
+            "messageType": "ParityBurst"
+          },
+          {
+            "id": "traffic-3",
+            "node": "web",
+            "shape": {
+              "kind": "ramp",
+              "fromMs": 0,
+              "startRate": 1,
+              "stages": [{ "durationMs": 8000, "targetRate": 30 }]
+            }
+          },
+          {
+            "id": "traffic-4",
+            "node": "web",
+            "shape": { "kind": "spike", "baseRate": 5, "peakRate": 40, "atMs": 12000, "peakMs": 1000, "durationMs": 4000 }
+          }
+        ],
+        "timeline": [
+          { "atMs": 6000, "action": { "do": "status", "node": "api", "status": "down" } },
+          { "atMs": 6000, "action": { "do": "note", "text": "It goes down", "focus": ["api"] } }
+        ],
+        "expectations": [
+          {
+            "id": "expectation-1",
+            "label": "Nothing dropped",
+            "metric": { "node": "api", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ],
+        "scale": 2
+      }
+    ],
+    "annotations": [
+      { "id": "note-1", "kind": "note", "text": "Pinned by the parity harness", "x": 2022, "y": 420, "width": 240, "height": 160 }
+    ]
+  }
+}

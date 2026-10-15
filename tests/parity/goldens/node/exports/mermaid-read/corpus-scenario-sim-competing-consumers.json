@@ -1,0 +1,21 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Competing consumers",
+    "direction": "LR",
+    "nodes": [
+      { "id": "producer", "stencil": "generic.service", "label": "Producer", "x": 40, "y": 160 },
+      { "id": "broker", "stencil": "generic.queue", "label": "jobs queue", "sublabel": "jobs", "x": 400, "y": 160 },
+      { "id": "w1", "stencil": "generic.service", "label": "Worker 1", "x": 760, "y": 40 },
+      { "id": "w2", "stencil": "generic.service", "label": "Worker 2", "x": 760, "y": 160 },
+      { "id": "w3", "stencil": "generic.service", "label": "Worker 3", "x": 760, "y": 280 }
+    ],
+    "edges": [
+      { "id": "e1-producer-broker", "from": "producer", "to": "broker", "kind": "async" },
+      { "id": "e2-broker-w1", "from": "broker", "to": "w1", "kind": "async" },
+      { "id": "e3-broker-w2", "from": "broker", "to": "w2", "kind": "async" },
+      { "id": "e4-broker-w3", "from": "broker", "to": "w3", "kind": "async" }
+    ]
+  }
+}

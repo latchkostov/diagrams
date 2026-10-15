@@ -1,0 +1,64 @@
+{
+  "format": "diagrams/v1",
+  "title": "Cycle of 4",
+  "description": "Messages loop back to the first node.",
+  "nodes": [
+    {
+      "id": "c1",
+      "stencil": "service.dotnet",
+      "label": "Service 1",
+      "x": 260,
+      "y": 106
+    },
+    {
+      "id": "c2",
+      "stencil": "kafka.topic",
+      "label": "Topic 2",
+      "sublabel": "ring.2",
+      "x": 480,
+      "y": 260
+    },
+    {
+      "id": "c3",
+      "stencil": "service.dotnet",
+      "label": "Service 3",
+      "x": 260,
+      "y": 414
+    },
+    {
+      "id": "c4",
+      "stencil": "kafka.topic",
+      "label": "Topic 4",
+      "sublabel": "ring.4",
+      "x": 40,
+      "y": 260
+    }
+  ],
+  "edges": [
+    {
+      "id": "r1",
+      "from": "c1",
+      "to": "c2",
+      "kind": "async"
+    },
+    {
+      "id": "r2",
+      "from": "c2",
+      "to": "c3",
+      "kind": "async"
+    },
+    {
+      "id": "r3",
+      "from": "c3",
+      "to": "c4",
+      "kind": "async"
+    },
+    {
+      "id": "r4",
+      "from": "c4",
+      "to": "c1",
+      "kind": "async",
+      "label": "back to start"
+    }
+  ]
+}

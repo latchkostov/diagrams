@@ -1,0 +1,312 @@
+== (page)
+svg width=2256 height=857 viewBox=0 0 2256 857
+  foreignObject x=0 y=0 width=100% height=100%
+    div .react-flow__container.react-flow__viewport.xyflow__viewport width:2256px height:857px transform:translate(8px, 97px) scale(1) color:rgb(232, 236, 244) background-color:rgb(14, 19, 29) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+      style "@font-face { font-family: "Mona Sans Variable"; font-style: normal; font-display: swap; font-weight: 200 900; font-stretch: 75% 125%; src: url("data:…61c0dd79") format("woff2-variations"); unicode-range: U+102-103, U+110-111, U+128-129, U+168-169, U+1A0-1A1, U+1AF-1B0, U+300-301, U+303-304, U+308-309, U+323, U+329, U+1EA0-1EF9, U+20AB; } @font-face { font-family: "Mona Sans Variable"; font-style: normal; font-display: swap; font-weight: 200 900; font-stretch: 75% 125%; src: url("data:…156a6adf") format("woff2-variations"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC, U+2CE-2D7, U+2DD-2FF, U+304, U+308, U+329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; } @font-face { font-family: "Mona Sans Variable"; font-style: normal; font-display: swap; font-weight: 200 900; font-stretch: 75% 125%; src: url("data:…c4a71e3c") format("woff2-variations"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB-2BC, U+2C6, U+2DA, U+2DC, U+304, U+308, U+329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; } @font-face { font-family: "Geist Mono Variable"; font-style: normal; font-display: swap; font-weight: 100 900; src: url("data:…1d9f6a3b") format("woff2-variations"); unicode-range: U+460-52F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F; } @font-face { font-family: "Geist Mono Variable"; font-style: normal; font-display: swap; font-weight: 100 900; src: url("data:…1595e878") format("woff2-variations"); unicode-range: U+301, U+400-45F, U+490-491, U+4B0-4B1, U+2116; } @font-face { font-family: "Geist Mono Variable"; font-style: normal; font-display: swap; font-weight: 100 900; src: url("data:…1467b7b1") format("woff2-variations"); unicode-range: U+2000-2001, U+2004-2008, U+200A, U+23B8-23BD, U+2500-259F; } @font-face { font-family: "Geist Mono Variable"; font-style: normal; font-display: swap; font-weight: 100 900; src: url("data:…ceb18a9d") format("woff2-variations"); unicode-range: U+102-103, U+110-111, U+128-129, U+168-169, U+1A0-1A1, U+1AF-1B0, U+300-301, U+303-304, U+308-309, U+323, U+329, U+1EA0-1EF9, U+20AB; } @font-face { font-family: "Geist Mono Variable"; font-style: normal; font-display: swap; font-weight: 100 900; src: url("data:…5867656d") format("woff2-variations"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC, U+2CE-2D7, U+2DD-2FF, U+304, U+308, U+329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; } @font-face { font-family: "Geist Mono Variable"; font-style: normal; font-display: swap; font-weight: 100 900; src: url("data:…79eae234") format("woff2-variations"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB-2BC, U+2C6, U+2DA, U+2DC, U+304, U+308, U+329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }"
+      svg .df-defs width=0 height=0 width:0px height:0px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+        defs
+          marker viewBox=0 0 12 12
+            path .m-async d=M1.5 1.5 L10.5 6 L1.5 10.5 L4 6 Z fill:rgb(88, 99, 123)
+          marker viewBox=0 0 12 12
+            path .m-sync d=M1.5 1.5 L10.5 6 L1.5 10.5 L4 6 Z fill:rgb(154, 165, 188)
+          marker viewBox=0 0 12 12
+            path .m-selected d=M1.5 1.5 L10.5 6 L1.5 10.5 L4 6 Z fill:rgb(143, 155, 255)
+          marker viewBox=0 0 12 12
+            path .m-dep.m-dep-config d=M3 2.25 L9.75 6 L3 9.75 fill:none stroke:rgb(92, 181, 173) stroke-width:1.4px
+          marker viewBox=0 0 12 12
+            path .m-dep.m-dep-secret d=M3 2.25 L9.75 6 L3 9.75 fill:none stroke:rgb(211, 162, 75) stroke-width:1.4px
+          marker viewBox=0 0 12 12
+            path .m-dep.m-dep-identity d=M3 2.25 L9.75 6 L3 9.75 fill:none stroke:rgb(154, 161, 238) stroke-width:1.4px
+          marker viewBox=0 0 12 12
+            path .m-dep.m-dep-telemetry d=M3 2.25 L9.75 6 L3 9.75 fill:none stroke:rgb(169, 155, 196) stroke-width:1.4px
+          marker viewBox=0 0 12 12
+            path .m-dep.m-dep-deploy d=M3 2.25 L9.75 6 L3 9.75 fill:none stroke:rgb(107, 191, 135) stroke-width:1.4px
+          marker viewBox=0 0 12 12
+            path .m-dep.m-dep-depends d=M3 2.25 L9.75 6 L3 9.75 fill:none stroke:rgb(154, 165, 188) stroke-width:1.4px
+          marker viewBox=0 0 12 12
+            path .m-dep.m-dep-selected d=M3 2.25 L9.75 6 L3 9.75 fill:none stroke:rgb(143, 155, 255) stroke-width:1.4px
+      div .react-flow__edges width:0px height:0px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+        svg width:300px height:150px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+          g #relationship-wrapper-shopper-to-gateway .nopan.react-flow__edge.react-flow__edge-flow.selectable
+        svg width:300px height:150px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+          g #relationship-wrapper-gateway-to-orders .nopan.react-flow__edge.react-flow__edge-flow.selectable
+        svg width:300px height:150px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+          g #relationship-wrapper-orders-to-order-db .nopan.react-flow__edge.react-flow__edge-flow.selectable
+        svg width:300px height:150px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+          g #relationship-wrapper-orders-to-order-events .nopan.react-flow__edge.react-flow__edge-flow.selectable
+        svg width:300px height:150px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+          g #relationship-wrapper-order-events-to-inventory .nopan.react-flow__edge.react-flow__edge-flow.selectable
+        svg width:300px height:150px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+          g #relationship-wrapper-order-events-to-payments .nopan.react-flow__edge.react-flow__edge-flow.selectable
+        svg width:300px height:150px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+          g #relationship-wrapper-order-events-to-notifications .nopan.react-flow__edge.react-flow__edge-flow.selectable
+        svg width:300px height:150px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+          g #relationship-wrapper-inventory-to-stock-db .nopan.react-flow__edge.react-flow__edge-flow.selectable
+        svg width:300px height:150px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+          g #relationship-wrapper-payments-to-payment-db .nopan.react-flow__edge.react-flow__edge-flow.selectable
+        svg width:300px height:150px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+          g #relationship-wrapper-notifications-to-notify-cache .nopan.react-flow__edge.react-flow__edge-flow.selectable
+        svg width:300px height:150px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+          g #relationship-wrapper-payments-to-payment-events .nopan.react-flow__edge.react-flow__edge-flow.selectable
+        svg width:300px height:150px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+          g #relationship-wrapper-payment-events-to-orders .nopan.react-flow__edge.react-flow__edge-flow.selectable
+        svg width:300px height:150px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+          g #relationship-wrapper-orders-to-schemas .nopan.react-flow__edge.react-flow__edge-flow.selectable
+        svg width:300px height:150px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+          g #relationship-wrapper-metrics-to-orders .nopan.react-flow__edge.react-flow__edge-flow.selectable
+        svg width:300px height:150px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+          g #relationship-wrapper-dashboard-to-metrics .nopan.react-flow__edge.react-flow__edge-flow.selectable
+      div .react-flow__edgelabel-renderer width:1100px height:848px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+      div .react-flow__nodes width:1100px height:848px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+        div #rf__node-group:aks .draggable.nopan.react-flow__node.react-flow__node-boundary.selectable width:1100px height:392px transform:matrix(1, 0, 0, 1, 760, 120) color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+        div #rf__node-shopper .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:235px height:72px transform:matrix(1, 0, 0, 1, 40, 280) color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+        div #rf__node-gateway .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:259px height:72px transform:matrix(1, 0, 0, 1, 420, 280) color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+        div #rf__node-orders .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:260px height:72px transform:matrix(1, 0, 0, 1, 800, 280) color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+        div #rf__node-order-events .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:260px height:72px transform:matrix(1, 0, 0, 1, 1180, 280) color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+        div #rf__node-inventory .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:259px height:72px transform:matrix(1, 0, 0, 1, 1560, 160) color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+        div #rf__node-payments .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:259px height:72px transform:matrix(1, 0, 0, 1, 1560, 280) color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+        div #rf__node-notifications .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:259px height:72px transform:matrix(1, 0, 0, 1, 1560, 400) color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+        div #rf__node-stock-db .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:260px height:72px transform:matrix(1, 0, 0, 1, 1940, 160) color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+        div #rf__node-payment-db .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:260px height:72px transform:matrix(1, 0, 0, 1, 1940, 280) color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+        div #rf__node-notify-cache .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:260px height:72px transform:matrix(1, 0, 0, 1, 1940, 400) color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+        div #rf__node-payment-events .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:260px height:72px transform:matrix(1, 0, 0, 1, 1180, 520) color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+        div #rf__node-order-db .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:260px height:72px transform:matrix(1, 0, 0, 1, 800, 520) color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+        div #rf__node-schemas .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:241px height:72px transform:matrix(1, 0, 0, 1, 1180, 40) color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+        div #rf__node-metrics .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:220px height:72px transform:matrix(1, 0, 0, 1, 1560, 640) color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+        div #rf__node-dashboard .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:260px height:72px transform:matrix(1, 0, 0, 1, 1940, 640) color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+      div .react-flow__viewport-portal width:1100px height:848px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+== edge-dashboard-to-metrics
+            g #edge-dashboard-to-metrics .fe.fe-sync
+              path .fe-halo d=M1940,676 L1780,676 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path .fe-path.react-flow__edge-path d=M1940,676 L1780,676 fill:none stroke:rgb(154, 165, 188) stroke-width:1.6px
+              path .react-flow__edge-interaction d=M1940,676 L1780,676 fill:none stroke-width:22px
+== edge-gateway-to-orders
+            g #edge-gateway-to-orders .fe.fe-sync
+              path .fe-halo d=M679,316 L800,316 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path .fe-path.react-flow__edge-path d=M679,316 L800,316 fill:none stroke:rgb(154, 165, 188) stroke-width:1.6px
+              path .react-flow__edge-interaction d=M679,316 L800,316 fill:none stroke-width:22px
+== edge-inventory-to-stock-db
+            g #edge-inventory-to-stock-db .fe.fe-sync
+              path .fe-halo d=M1819,196 L1940,196 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path .fe-path.react-flow__edge-path d=M1819,196 L1940,196 fill:none stroke:rgb(154, 165, 188) stroke-width:1.6px
+              path .react-flow__edge-interaction d=M1819,196 L1940,196 fill:none stroke-width:22px
+== edge-label-dashboard-to-metrics
+        div #edge-label-dashboard-to-metrics .fe-label.fe-label-sync.is-full.nodrag.nopan width:53px height:19px transform:matrix(1, 0, 0, 1, 1839.5, 666.5) color:rgb(155, 165, 185) background-color:rgb(24, 32, 48) font-size:9.9px font-weight:500 border-top-color:rgb(35, 43, 60) border-top-width:1px border-radius:8px "PromQL"
+== edge-label-gateway-to-orders
+        div #edge-label-gateway-to-orders .fe-label.fe-label-sync.is-full.nodrag.nopan width:89px height:19px transform:matrix(1, 0, 0, 1, 689, 306.5) color:rgb(155, 165, 185) background-color:rgb(24, 32, 48) font-size:9.9px font-weight:500 border-top-color:rgb(35, 43, 60) border-top-width:1px border-radius:8px "POST /orders"
+== edge-label-inventory-to-stock-db
+        div #edge-label-inventory-to-stock-db .fe-label.fe-label-sync.is-full.nodrag.nopan width:89px height:19px transform:matrix(1, 0, 0, 1, 1829, 186.5) color:rgb(155, 165, 185) background-color:rgb(24, 32, 48) font-size:9.9px font-weight:500 border-top-color:rgb(35, 43, 60) border-top-width:1px border-radius:8px "Reserve SKUs"
+== edge-label-metrics-to-orders
+        div #edge-label-metrics-to-orders .fe-label.fe-label-sync.is-full.nodrag.nopan width:89px height:19px transform:matrix(1, 0, 0, 1, 1291.75, 666.5) color:rgb(155, 165, 185) background-color:rgb(24, 32, 48) font-size:9.9px font-weight:500 border-top-color:rgb(35, 43, 60) border-top-width:1px border-radius:8px "GET /metrics"
+== edge-label-notifications-to-notify-cache
+        div #edge-label-notifications-to-notify-cache .fe-label.fe-label-sync.is-wrap.nodrag.nopan width:65px height:32px transform:matrix(1, 0, 0, 1, 1841, 420) color:rgb(155, 165, 185) background-color:rgb(24, 32, 48) font-size:9.9px font-weight:500 border-top-color:rgb(35, 43, 60) border-top-width:1px border-radius:8px "SET NX · dedupe"
+== edge-label-order-events-to-inventory
+        div #edge-label-order-events-to-inventory .fe-label.fe-label-async.is-full.nodrag.nopan width:119px height:19px transform:matrix(1, 0, 0, 1, 1440.5, 239.5) color:rgb(155, 165, 185) background-color:rgb(24, 32, 48) font-size:9.9px font-weight:500 border-top-color:rgb(35, 43, 60) border-top-width:1px border-radius:8px "Reserve inventory"
+== edge-label-order-events-to-notifications
+        div #edge-label-order-events-to-notifications .fe-label.fe-label-async.is-full.nodrag.nopan width:119px height:19px transform:matrix(1, 0, 0, 1, 1435, 373.5) color:rgb(155, 165, 185) background-color:rgb(24, 32, 48) font-size:9.9px font-weight:500 border-top-color:rgb(35, 43, 60) border-top-width:1px border-radius:8px "Send confirmation"
+== edge-label-order-events-to-payments
+        div #edge-label-order-events-to-payments .fe-label.fe-label-async.is-wrap.nodrag.nopan width:71px height:32px transform:matrix(1, 0, 0, 1, 1477.5, 293) color:rgb(155, 165, 185) background-color:rgb(24, 32, 48) font-size:9.9px font-weight:500 border-top-color:rgb(35, 43, 60) border-top-width:1px border-radius:8px "Authorize payment"
+== edge-label-orders-to-order-db
+        div #edge-label-orders-to-order-db .fe-label.fe-label-sync.is-full.nodrag.nopan width:143px height:19px transform:matrix(1, 0, 0, 1, 858.5, 420.5) color:rgb(155, 165, 185) background-color:rgb(24, 32, 48) font-size:9.9px font-weight:500 border-top-color:rgb(35, 43, 60) border-top-width:1px border-radius:8px "Commit order + outbox"
+== edge-label-orders-to-order-events
+        div #edge-label-orders-to-order-events .fe-label.fe-label-async.is-full.nodrag.nopan width:83px height:19px transform:matrix(1, 0, 0, 1, 1069.5, 299.5) color:rgb(155, 165, 185) background-color:rgb(24, 32, 48) font-size:9.9px font-weight:500 border-top-color:rgb(35, 43, 60) border-top-width:1px border-radius:8px "OrderPlaced"
+== edge-label-orders-to-schemas
+        div #edge-label-orders-to-schemas .fe-label.fe-label-sync.is-full.nodrag.nopan width:119px height:19px transform:matrix(1, 0, 0, 1, 1060.5, 176) color:rgb(155, 165, 185) background-color:rgb(24, 32, 48) font-size:9.9px font-weight:500 border-top-color:rgb(35, 43, 60) border-top-width:1px border-radius:8px "Fetch Avro schema"
+== edge-label-payment-events-to-orders
+        div #edge-label-payment-events-to-orders .fe-label.fe-label-async.is-full.nodrag.nopan width:149px height:19px transform:matrix(1, 0, 0, 1, 1051, 437) color:rgb(155, 165, 185) background-color:rgb(24, 32, 48) font-size:9.9px font-weight:500 border-top-color:rgb(35, 43, 60) border-top-width:1px border-radius:8px "group: orders-payments"
+== edge-label-payments-to-payment-db
+        div #edge-label-payments-to-payment-db .fe-label.fe-label-sync.is-wrap.nodrag.nopan width:95px height:32px transform:matrix(1, 0, 0, 1, 1826, 300) color:rgb(155, 165, 185) background-color:rgb(24, 32, 48) font-size:9.9px font-weight:500 border-top-color:rgb(35, 43, 60) border-top-width:1px border-radius:8px "Record authorization"
+== edge-label-payments-to-payment-events
+        div #edge-label-payments-to-payment-events .fe-label.fe-label-async.is-full.nodrag.nopan width:113px height:19px transform:matrix(1, 0, 0, 1, 1449, 480) color:rgb(155, 165, 185) background-color:rgb(24, 32, 48) font-size:9.9px font-weight:500 border-top-color:rgb(35, 43, 60) border-top-width:1px border-radius:8px "PaymentCompleted"
+== edge-label-shopper-to-gateway
+        div #edge-label-shopper-to-gateway .fe-label.fe-label-sync.is-full.nodrag.nopan width:47px height:19px transform:matrix(1, 0, 0, 1, 318, 306.5) color:rgb(155, 165, 185) background-color:rgb(24, 32, 48) font-size:9.9px font-weight:500 border-top-color:rgb(35, 43, 60) border-top-width:1px border-radius:8px "HTTPS"
+== edge-metrics-to-orders
+            g #edge-metrics-to-orders .fe.fe-sync
+              path .fe-halo d=M1560,676 L1124.5,676 Q1114.5,676 1114.5,666 L1114.5,333 Q1114.5,323 1104.5,323 L1060,323 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path .fe-path.react-flow__edge-path d=M1560,676 L1124.5,676 Q1114.5,676 1114.5,666 L1114.5,333 Q1114.5,323 1104.5,323 L1060,323 fill:none stroke:rgb(154, 165, 188) stroke-width:1.6px
+              path .react-flow__edge-interaction d=M1560,676 L1124.5,676 Q1114.5,676 1114.5,666 L1114.5,333 Q1114.5,323 1104.5,323 L1060,323 fill:none stroke-width:22px
+== edge-notifications-to-notify-cache
+            g #edge-notifications-to-notify-cache .fe.fe-sync
+              path .fe-halo d=M1819,436 L1940,436 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path .fe-path.react-flow__edge-path d=M1819,436 L1940,436 fill:none stroke:rgb(154, 165, 188) stroke-width:1.6px
+              path .react-flow__edge-interaction d=M1819,436 L1940,436 fill:none stroke-width:22px
+== edge-order-events-to-inventory
+            g #edge-order-events-to-inventory .fe.fe-async
+              path .fe-halo d=M1440,302 L1490,302 Q1500,302 1500,292 L1500,206 Q1500,196 1510,196 L1560,196 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path .fe-path.react-flow__edge-path d=M1440,302 L1490,302 Q1500,302 1500,292 L1500,206 Q1500,196 1510,196 L1560,196 fill:none stroke:rgb(88, 99, 123) stroke-width:1.6px stroke-dasharray:5px, 5px
+              path .react-flow__edge-interaction d=M1440,302 L1490,302 Q1500,302 1500,292 L1500,206 Q1500,196 1510,196 L1560,196 fill:none stroke-width:22px
+== edge-order-events-to-notifications
+            g #edge-order-events-to-notifications .fe.fe-async
+              path .fe-halo d=M1440,330 L1484.5,330 Q1494.5,330 1494.5,340 L1494.5,426 Q1494.5,436 1504.5,436 L1560,436 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path .fe-path.react-flow__edge-path d=M1440,330 L1484.5,330 Q1494.5,330 1494.5,340 L1494.5,426 Q1494.5,436 1504.5,436 L1560,436 fill:none stroke:rgb(88, 99, 123) stroke-width:1.6px stroke-dasharray:5px, 5px
+              path .react-flow__edge-interaction d=M1440,330 L1484.5,330 Q1494.5,330 1494.5,340 L1494.5,426 Q1494.5,436 1504.5,436 L1560,436 fill:none stroke-width:22px
+== edge-order-events-to-payments
+            g #edge-order-events-to-payments .fe.fe-async
+              path .fe-halo d=M1440,316 L1496.5,316 Q1500,316 1500,312.5 L1500,312.5 Q1500,309 1503.5,309 L1560,309 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path .fe-path.react-flow__edge-path d=M1440,316 L1496.5,316 Q1500,316 1500,312.5 L1500,312.5 Q1500,309 1503.5,309 L1560,309 fill:none stroke:rgb(88, 99, 123) stroke-width:1.6px stroke-dasharray:5px, 5px
+              path .react-flow__edge-interaction d=M1440,316 L1496.5,316 Q1500,316 1500,312.5 L1500,312.5 Q1500,309 1503.5,309 L1560,309 fill:none stroke-width:22px
+== edge-orders-to-order-db
+            g #edge-orders-to-order-db .fe.fe-sync
+              path .fe-halo d=M930,352 L930,520 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path .fe-path.react-flow__edge-path d=M930,352 L930,520 fill:none stroke:rgb(154, 165, 188) stroke-width:1.6px
+              path .react-flow__edge-interaction d=M930,352 L930,520 fill:none stroke-width:22px
+== edge-orders-to-order-events
+            g #edge-orders-to-order-events .fe.fe-async
+              path .fe-halo d=M1060,309 L1116.5,309 Q1120,309 1120,312.5 L1120,312.5 Q1120,316 1123.5,316 L1180,316 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path .fe-path.react-flow__edge-path d=M1060,309 L1116.5,309 Q1120,309 1120,312.5 L1120,312.5 Q1120,316 1123.5,316 L1180,316 fill:none stroke:rgb(88, 99, 123) stroke-width:1.6px stroke-dasharray:5px, 5px
+              path .react-flow__edge-interaction d=M1060,309 L1116.5,309 Q1120,309 1120,312.5 L1120,312.5 Q1120,316 1123.5,316 L1180,316 fill:none stroke-width:22px
+== edge-orders-to-schemas
+            g #edge-orders-to-schemas .fe.fe-sync
+              path .fe-halo d=M1060,295 L1110,295 Q1120,295 1120,285 L1120,86 Q1120,76 1130,76 L1180,76 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path .fe-path.react-flow__edge-path d=M1060,295 L1110,295 Q1120,295 1120,285 L1120,86 Q1120,76 1130,76 L1180,76 fill:none stroke:rgb(154, 165, 188) stroke-width:1.6px
+              path .react-flow__edge-interaction d=M1060,295 L1110,295 Q1120,295 1120,285 L1120,86 Q1120,76 1130,76 L1180,76 fill:none stroke-width:22px
+== edge-payment-events-to-orders
+            g #edge-payment-events-to-orders .fe.fe-async
+              path .fe-halo d=M1180,556 L1135.5,556 Q1125.5,556 1125.5,546 L1125.5,347 Q1125.5,337 1115.5,337 L1060,337 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path .fe-path.react-flow__edge-path d=M1180,556 L1135.5,556 Q1125.5,556 1125.5,546 L1125.5,347 Q1125.5,337 1115.5,337 L1060,337 fill:none stroke:rgb(88, 99, 123) stroke-width:1.6px stroke-dasharray:5px, 5px
+              path .react-flow__edge-interaction d=M1180,556 L1135.5,556 Q1125.5,556 1125.5,546 L1125.5,347 Q1125.5,337 1115.5,337 L1060,337 fill:none stroke-width:22px
+== edge-payments-to-payment-db
+            g #edge-payments-to-payment-db .fe.fe-sync
+              path .fe-halo d=M1819,316 L1940,316 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path .fe-path.react-flow__edge-path d=M1819,316 L1940,316 fill:none stroke:rgb(154, 165, 188) stroke-width:1.6px
+              path .react-flow__edge-interaction d=M1819,316 L1940,316 fill:none stroke-width:22px
+== edge-payments-to-payment-events
+            g #edge-payments-to-payment-events .fe.fe-async
+              path .fe-halo d=M1560,323 L1515.5,323 Q1505.5,323 1505.5,333 L1505.5,546 Q1505.5,556 1495.5,556 L1440,556 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path .fe-path.react-flow__edge-path d=M1560,323 L1515.5,323 Q1505.5,323 1505.5,333 L1505.5,546 Q1505.5,556 1495.5,556 L1440,556 fill:none stroke:rgb(88, 99, 123) stroke-width:1.6px stroke-dasharray:5px, 5px
+              path .react-flow__edge-interaction d=M1560,323 L1515.5,323 Q1505.5,323 1505.5,333 L1505.5,546 Q1505.5,556 1495.5,556 L1440,556 fill:none stroke-width:22px
+== edge-shopper-to-gateway
+            g #edge-shopper-to-gateway .fe.fe-sync
+              path .fe-halo d=M275,316 L420,316 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path .fe-path.react-flow__edge-path d=M275,316 L420,316 fill:none stroke:rgb(154, 165, 188) stroke-width:1.6px
+              path .react-flow__edge-interaction d=M275,316 L420,316 fill:none stroke-width:22px
+== export-header
+      div #export-header .export-header width:688px height:60.9375px left:40px top:-49px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+        h1 width:688px height:31.1875px color:rgb(232, 236, 244) font-size:25.9px font-weight:700 border-top-color:rgb(232, 236, 244) "Kafka order pipeline"
+        p width:688px height:21.75px color:rgb(155, 165, 185) font-size:14.9px font-weight:400 border-top-color:rgb(155, 165, 185) "Order placement with independent consumer groups, local stores and payment confirmation events."
+== group-aks
+          div #group-aks .grp width:1100px height:392px color:rgb(232, 236, 244) background-color:oklab(0.567586 0.0457724 -0.196834 / 0.07) font-size:13.9px font-weight:400 border-top-color:oklab(0.567586 0.0457724 -0.196834 / 0.4) border-top-width:1px border-radius:20px
+            svg #group-outline-aks .grp-outline width=100% height=100% width:1098px height:390px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+              rect width=100% height=100% fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+            div #group-label-aks .grp-drag.grp-label width:242.094px height:24px left:14px top:12px color:oklab(0.680015 0.0317206 -0.141242) background-color:oklab(0.232415 0.00341507 -0.0428653) display:flex font-size:11.9px font-weight:600 border-top-color:oklab(0.680015 0.0317206 -0.141242) border-radius:7px "AKS · commerce workloads + Kafka"
+              span .grp-swatch width:8px height:8px color:oklab(0.680015 0.0317206 -0.141242) background-color:rgb(108, 92, 231) font-size:11.9px font-weight:600 border-top-color:oklab(0.680015 0.0317206 -0.141242) border-radius:2.5px
+== node-dashboard
+          div #node-dashboard .dn.dn-card width:260px height:72px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+            div .nb.nb-card width:260px height:72px color:rgb(232, 236, 244) background-color:rgb(23, 30, 44) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(40, 49, 73) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(232, 236, 244) background-color:oklab(0.902945 0.0202655 0.0134674) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…dc78e4eb width:36px height:26px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+              div .nb-text width:175px height:47.1562px color:rgb(232, 236, 244) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+                div .nb-label width:175px height:16.875px color:rgb(232, 236, 244) font-size:12.9px font-weight:620 border-top-color:rgb(232, 236, 244) "Order operations"
+                div .nb-sub width:175px height:27.2812px color:rgb(155, 165, 185) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(155, 165, 185) "Lag · checkout latency · failures"
+== node-gateway
+          div #node-gateway .dn.dn-card width:259px height:72px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+            div .nb.nb-card width:259px height:72px color:rgb(232, 236, 244) background-color:rgb(23, 30, 44) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(40, 49, 73) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(232, 236, 244) background-color:oklab(0.887754 -0.0243563 0.00605086) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…5762972c width:36px height:26px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+              div .nb-text width:174px height:33.5156px color:rgb(232, 236, 244) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+                div .nb-label width:174px height:16.875px color:rgb(232, 236, 244) font-size:12.9px font-weight:620 border-top-color:rgb(232, 236, 244) "Commerce gateway"
+                div .nb-sub width:174px height:13.6406px color:rgb(155, 165, 185) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(155, 165, 185) "TLS termination · /api/orders"
+== node-inventory
+          div #node-inventory .dn.dn-card width:259px height:72px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+            div .nb.nb-card width:259px height:72px color:rgb(232, 236, 244) background-color:rgb(23, 30, 44) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(40, 49, 73) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(232, 236, 244) background-color:oklab(0.901481 0.0164286 0.0132106) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…bff3f045 width:36px height:26px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+              div .nb-text width:174px height:33.5156px color:rgb(232, 236, 244) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+                div .nb-label width:174px height:16.875px color:rgb(232, 236, 244) font-size:12.9px font-weight:620 border-top-color:rgb(232, 236, 244) "Inventory service"
+                div .nb-sub width:174px height:13.6406px color:rgb(155, 165, 185) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(155, 165, 185) "group: inventory-reservations"
+== node-metrics
+          div #node-metrics .dn.dn-card width:220px height:72px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+            div .nb.nb-card width:220px height:72px color:rgb(232, 236, 244) background-color:rgb(23, 30, 44) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(40, 49, 73) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(232, 236, 244) background-color:oklab(0.895336 0.0237298 0.0089807) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…a8a0f90d width:36px height:26px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+              div .nb-text width:123.844px height:33.5156px color:rgb(232, 236, 244) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+                div .nb-label width:123.844px height:16.875px color:rgb(232, 236, 244) font-size:12.9px font-weight:620 border-top-color:rgb(232, 236, 244) "Commerce metrics"
+                div .nb-sub width:123.844px height:13.6406px color:rgb(155, 165, 185) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(155, 165, 185) "Scrape interval: 15s"
+== node-notifications
+          div #node-notifications .dn.dn-card width:259px height:72px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+            div .nb.nb-card width:259px height:72px color:rgb(232, 236, 244) background-color:rgb(23, 30, 44) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(40, 49, 73) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(232, 236, 244) background-color:oklab(0.896668 -0.0174025 0.00528183) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…f3932afb width:36px height:26px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+              div .nb-text width:174px height:33.5156px color:rgb(232, 236, 244) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+                div .nb-label width:174px height:16.875px color:rgb(232, 236, 244) font-size:12.9px font-weight:620 border-top-color:rgb(232, 236, 244) "Notification service"
+                div .nb-sub width:174px height:13.6406px color:rgb(155, 165, 185) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(155, 165, 185) "group: customer-notifications"
+== node-notify-cache
+          div #node-notify-cache .dn.dn-card width:260px height:72px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+            div .nb.nb-card width:260px height:72px color:rgb(232, 236, 244) background-color:rgb(23, 30, 44) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(40, 49, 73) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(232, 236, 244) background-color:oklab(0.888422 0.0271689 0.00696383) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…0483cca6 width:36px height:26px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+              div .nb-text width:175px height:47.1562px color:rgb(232, 236, 244) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+                div .nb-label width:175px height:16.875px color:rgb(232, 236, 244) font-size:12.9px font-weight:620 border-top-color:rgb(232, 236, 244) "Notification dedupe"
+                div .nb-sub width:175px height:27.2812px color:rgb(155, 165, 185) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(155, 165, 185) "Order / template key · TTL 24h"
+== node-order-db
+          div #node-order-db .dn.dn-card width:260px height:72px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+            div .nb.nb-card width:260px height:72px color:rgb(232, 236, 244) background-color:rgb(23, 30, 44) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(40, 49, 73) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(232, 236, 244) background-color:oklab(0.873429 -0.00706616 -0.0213077) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…9b9cad0c width:36px height:26px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+              div .nb-text width:175px height:47.1562px color:rgb(232, 236, 244) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+                div .nb-label width:175px height:16.875px color:rgb(232, 236, 244) font-size:12.9px font-weight:620 border-top-color:rgb(232, 236, 244) "Orders database"
+                div .nb-sub width:175px height:27.2812px color:rgb(155, 165, 185) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(155, 165, 185) "Order state · transactional outbox"
+== node-order-events
+          div #node-order-events .dn.dn-card width:260px height:72px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+            div .nb.nb-card width:260px height:72px color:rgb(232, 236, 244) background-color:rgb(23, 30, 44) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(40, 49, 73) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(232, 236, 244) background-color:oklab(0.880472 0.0142188 -0.0449059) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…7c01c5d3 width:36px height:26px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+              div .nb-text width:175px height:47.1562px color:rgb(232, 236, 244) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+                div .nb-label width:175px height:16.875px color:rgb(232, 236, 244) font-size:12.9px font-weight:620 border-top-color:rgb(232, 236, 244) "orders.created.v1"
+                div .nb-sub width:175px height:27.2812px color:rgb(155, 165, 185) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(155, 165, 185) "OrderPlaced · keyed by orderId"
+== node-orders
+          div #node-orders .dn.dn-card width:260px height:72px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+            div .nb.nb-card width:260px height:72px color:rgb(232, 236, 244) background-color:rgb(23, 30, 44) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(40, 49, 73) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(232, 236, 244) background-color:oklab(0.867747 0.00687546 -0.0453632) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…328354bb width:36px height:26px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+              div .nb-text width:175px height:47.1562px color:rgb(232, 236, 244) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+                div .nb-label width:175px height:16.875px color:rgb(232, 236, 244) font-size:12.9px font-weight:620 border-top-color:rgb(232, 236, 244) "Order service"
+                div .nb-sub width:175px height:27.2812px color:rgb(155, 165, 185) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(155, 165, 185) ".NET 10 · group: orders-payments"
+== node-payment-db
+          div #node-payment-db .dn.dn-card width:260px height:72px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+            div .nb.nb-card width:260px height:72px color:rgb(232, 236, 244) background-color:rgb(23, 30, 44) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(40, 49, 73) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(232, 236, 244) background-color:oklab(0.873429 -0.00706616 -0.0213077) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…9b9cad0c width:36px height:26px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+              div .nb-text width:175px height:47.1562px color:rgb(232, 236, 244) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+                div .nb-label width:175px height:16.875px color:rgb(232, 236, 244) font-size:12.9px font-weight:620 border-top-color:rgb(232, 236, 244) "Payment ledger"
+                div .nb-sub width:175px height:27.2812px color:rgb(155, 165, 185) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(155, 165, 185) "Idempotency keys · authorizations"
+== node-payment-events
+          div #node-payment-events .dn.dn-card width:260px height:72px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+            div .nb.nb-card width:260px height:72px color:rgb(232, 236, 244) background-color:rgb(23, 30, 44) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(40, 49, 73) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(232, 236, 244) background-color:oklab(0.880472 0.0142188 -0.0449059) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…7c01c5d3 width:36px height:26px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+              div .nb-text width:175px height:47.1562px color:rgb(232, 236, 244) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+                div .nb-label width:175px height:16.875px color:rgb(232, 236, 244) font-size:12.9px font-weight:620 border-top-color:rgb(232, 236, 244) "payments.completed.v1"
+                div .nb-sub width:175px height:27.2812px color:rgb(155, 165, 185) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(155, 165, 185) "PaymentCompleted · keyed by orderId"
+== node-payments
+          div #node-payments .dn.dn-card width:259px height:72px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+            div .nb.nb-card width:259px height:72px color:rgb(232, 236, 244) background-color:rgb(23, 30, 44) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(40, 49, 73) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(232, 236, 244) background-color:oklab(0.904981 -0.0162325 -0.0230317) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…45f16c07 width:36px height:26px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+              div .nb-text width:174px height:33.5156px color:rgb(232, 236, 244) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+                div .nb-label width:174px height:16.875px color:rgb(232, 236, 244) font-size:12.9px font-weight:620 border-top-color:rgb(232, 236, 244) "Payments service"
+                div .nb-sub width:174px height:13.6406px color:rgb(155, 165, 185) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(155, 165, 185) "group: payment-authorizations"
+== node-schemas
+          div #node-schemas .dn.dn-card width:241px height:72px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+            div .nb.nb-card width:241px height:72px color:rgb(232, 236, 244) background-color:rgb(23, 30, 44) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(40, 49, 73) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(232, 236, 244) background-color:oklab(0.880472 0.0142188 -0.0449059) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…7c01c5d3 width:36px height:26px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+              div .nb-text width:156px height:33.5156px color:rgb(232, 236, 244) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+                div .nb-label width:156px height:16.875px color:rgb(232, 236, 244) font-size:12.9px font-weight:620 border-top-color:rgb(232, 236, 244) "Schema registry"
+                div .nb-sub width:156px height:13.6406px color:rgb(155, 165, 185) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(155, 165, 185) "Avro · backward compatible"
+== node-shopper
+          div #node-shopper .dn.dn-card width:235px height:72px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+            div .nb.nb-card width:235px height:72px color:rgb(232, 236, 244) background-color:rgb(23, 30, 44) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(40, 49, 73) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(232, 236, 244) background-color:oklab(0.887523 0.00284252 -0.0409882) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…8e4c7264 width:36px height:26px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+              div .nb-text width:150px height:33.5156px color:rgb(232, 236, 244) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+                div .nb-label width:150px height:16.875px color:rgb(232, 236, 244) font-size:12.9px font-weight:620 border-top-color:rgb(232, 236, 244) "Storefront"
+                div .nb-sub width:150px height:13.6406px color:rgb(155, 165, 185) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(155, 165, 185) "Browser / mobile checkout"
+== node-stock-db
+          div #node-stock-db .dn.dn-card width:260px height:72px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+            div .nb.nb-card width:260px height:72px color:rgb(232, 236, 244) background-color:rgb(23, 30, 44) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(40, 49, 73) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(232, 236, 244) background-color:oklab(0.873429 -0.00706616 -0.0213077) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…9b9cad0c width:36px height:26px color:rgb(232, 236, 244) font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+              div .nb-text width:175px height:47.1562px color:rgb(232, 236, 244) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(232, 236, 244)
+                div .nb-label width:175px height:16.875px color:rgb(232, 236, 244) font-size:12.9px font-weight:620 border-top-color:rgb(232, 236, 244) "Inventory database"
+                div .nb-sub width:175px height:27.2812px color:rgb(155, 165, 185) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(155, 165, 185) "Reservations · SKU availability"

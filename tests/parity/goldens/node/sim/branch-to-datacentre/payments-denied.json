@@ -1,0 +1,154 @@
+{
+  "run": {
+    "time": 13710,
+    "totalMs": 20000,
+    "done": true,
+    "scale": 10,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "blocked", "label": "The firewall blocks the admin requests", "status": "pass", "value": 120 },
+      { "id": "no-drops", "label": "Nothing is dropped at the firewall", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "note", "label": "The branch reaches the shop's back office through the firewall. Its rules allow web traffic, and deny the branch any path to Payments, which sits in the PCI zone." },
+      { "atMs": 0, "kind": "traffic", "label": "Checkouts: 400/s" },
+      { "atMs": 0, "kind": "traffic", "label": "Back office: 40/s" },
+      { "atMs": 2000, "kind": "note", "label": "Someone at the branch starts calling Payments' admin API." },
+      { "atMs": 2000, "kind": "traffic", "label": "Payment admin attempts: 20/s" },
+      { "atMs": 5000, "kind": "note", "label": "Every one of those requests stops at the firewall: the deny rule blocks it. Blocked isn't lost; it's the rule working." },
+      { "atMs": 8000, "kind": "traffic", "label": "Payment admin attempts: 20/s ends" },
+      { "atMs": 10000, "kind": "traffic", "label": "Checkouts: 400/s ends" },
+      { "atMs": 10000, "kind": "traffic", "label": "Back office: 40/s ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "customers": { "replicas": [1, 1, 0] },
+        "staff": { "replicas": [1, 1, 0] },
+        "branch-router": { "replicas": [1, 1, 0] },
+        "edge-router": { "replicas": [2, 2, 0] },
+        "firewall": { "replicas": [2, 2, 0] },
+        "spine-1": { "replicas": [1, 1, 0] },
+        "spine-2": { "replicas": [1, 1, 0] },
+        "leaf": { "replicas": [2, 2, 0] },
+        "adc": { "replicas": [2, 2, 0] },
+        "web-1": { "replicas": [2, 2, 0] },
+        "web-2": { "replicas": [2, 2, 0] },
+        "orders-db": { "replicas": [1, 1, 0] },
+        "payments": { "replicas": [2, 2, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 79,
+      "nodes": {
+        "customers": { "processed": 400, "throughput": 39.79914400525013, "replicas": [1, 1, 0] },
+        "staff": { "processed": 52, "throughput": 3.8830907596388102, "replicas": [1, 1, 0] },
+        "branch-router": { "processed": 51, "throughput": 4.742817764009106, "replicas": [1, 1, 0] },
+        "edge-router": { "processed": 439, "inFlight": 1, "throughput": 44.80731000320856, "replicas": [2, 2, 0] },
+        "firewall": { "processed": 430, "blocked": 12, "throughput": 45.244029099258945, "replicas": [2, 2, 0] },
+        "spine-1": { "processed": 204, "inFlight": 1, "throughput": 21.633345829488032, "replicas": [1, 1, 0] },
+        "spine-2": { "processed": 204, "throughput": 21.795627478697853, "replicas": [1, 1, 0] },
+        "leaf": { "processed": 399, "throughput": 43.675671774624945, "replicas": [2, 2, 0] },
+        "adc": { "processed": 390, "inFlight": 1, "throughput": 43.93203283158587, "replicas": [2, 2, 0] },
+        "web-1": { "processed": 190, "inFlight": 1, "throughput": 21.897659083852588, "replicas": [2, 2, 0] },
+        "web-2": { "processed": 190, "inFlight": 1, "throughput": 22.372407179180197, "replicas": [2, 2, 0] },
+        "orders-db": { "processed": 371, "throughput": 44.49873009494387, "replicas": [1, 1, 0] },
+        "payments": { "processed": 338, "inFlight": 2, "throughput": 39.6067944205424, "replicas": [2, 2, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 13710,
+    "inSystem": 0,
+    "real": {
+      "customers": { "processed": 4000, "throughput": 9.987847934490572, "replicas": [1, 1, 0] },
+      "staff": { "processed": 520, "throughput": 1.1964876430367262, "replicas": [1, 1, 0] },
+      "branch-router": { "processed": 520, "throughput": 1.4613933073096173, "replicas": [1, 1, 0] },
+      "edge-router": { "processed": 4520, "throughput": 15.171646227783736, "replicas": [2, 2, 0] },
+      "firewall": { "processed": 4520, "blocked": 120, "throughput": 18.716927084642258, "replicas": [2, 2, 0] },
+      "spine-1": { "processed": 2200, "throughput": 11.157896463798501, "replicas": [1, 1, 0] },
+      "spine-2": { "processed": 2200, "throughput": 11.613630629891299, "replicas": [1, 1, 0] },
+      "leaf": { "processed": 4400, "throughput": 28.09273336719565, "replicas": [2, 2, 0] },
+      "adc": { "processed": 4400, "throughput": 34.65738879932396, "replicas": [2, 2, 0] },
+      "web-1": { "processed": 2200, "throughput": 21.387465097678277, "replicas": [2, 2, 0] },
+      "web-2": { "processed": 2200, "throughput": 22.426558208532946, "replicas": [2, 2, 0] },
+      "orders-db": { "processed": 4400, "throughput": 54.05239927130619, "replicas": [1, 1, 0] },
+      "payments": { "processed": 4000, "throughput": 45.62436208623295, "replicas": [2, 2, 0] }
+    },
+    "edges": { "customers-edge": 400, "staff-branch": 52, "branch-edge": 52, "edge-firewall": 452, "firewall-spine-1": 220, "firewall-spine-2": 220, "firewall-payments": 0, "spine-1-leaf": 220, "spine-2-leaf": 220, "leaf-adc": 440, "adc-web-1": 220, "adc-web-2": 220, "web-1-db": 220, "web-2-db": 220, "web-1-payments": 200, "web-2-payments": 200 }
+  },
+  "events": {
+    "total": 8028,
+    "byKind": { "inject": 452, "process": 4008, "deliver": 3556, "block": 12 },
+    "byNode": {
+      "customers": { "inject": 400, "process": 400 },
+      "edge-router": { "deliver": 452, "process": 452 },
+      "staff": { "inject": 52, "process": 52 },
+      "firewall": { "deliver": 452, "process": 452, "block": 12 },
+      "branch-router": { "deliver": 52, "process": 52 },
+      "spine-1": { "deliver": 220, "process": 220 },
+      "spine-2": { "deliver": 220, "process": 220 },
+      "leaf": { "deliver": 440, "process": 440 },
+      "adc": { "deliver": 440, "process": 440 },
+      "web-1": { "deliver": 220, "process": 220 },
+      "web-2": { "deliver": 220, "process": 220 },
+      "orders-db": { "deliver": 440, "process": 440 },
+      "payments": { "deliver": 400, "process": 400 }
+    },
+    "perSecond": [
+      "a0abb115134a",
+      "9241bd543c77",
+      "bd0ebd0a9bf2",
+      "4f887b2ffcf3",
+      "0b1efe8fc4a8",
+      "2003ae3fc7a2",
+      "80b4936fd180",
+      "1de9e6c8cc23",
+      "f8c4f697a663",
+      "6eb8670e6fc8",
+      "91481ad237c1",
+      "5fe000edbd41",
+      "ffd89755b6eb",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 0, "text": "The branch reaches the shop's back office through the firewall. Its rules allow web traffic, and deny the branch any path to Payments, which sits in the PCI zone.", "focus": ["firewall", "payments"] },
+    { "atMs": 2000, "text": "Someone at the branch starts calling Payments' admin API.", "focus": ["staff", "branch-router"] },
+    { "atMs": 5000, "text": "Every one of those requests stops at the firewall: the deny rule blocks it. Blocked isn't lost; it's the rule working.", "focus": ["firewall", "payments"] }
+  ],
+  "latency": {
+    "journeys": { "done": 452, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 12, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 452, "min": 1130, "mean": 1579.1592920353983, "p50": 1530, "p90": 1540, "max": 2210 },
+    "waitMs": {
+      "branch-router": { "count": 52, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "edge-router": { "count": 452, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "firewall": { "count": 452, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "spine-1": { "count": 220, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "spine-2": { "count": 220, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "leaf": { "count": 440, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "adc": { "count": 440, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "web-1": { "count": 220, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "web-2": { "count": 220, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "orders-db": { "count": 440, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "payments": { "count": 400, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "branch-router": { "count": 52, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "edge-router": { "count": 452, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "firewall": { "count": 452, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "spine-1": { "count": 220, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "spine-2": { "count": 220, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "leaf": { "count": 440, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "adc": { "count": 440, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "web-1": { "count": 220, "min": 30, "mean": 35, "p50": 40, "p90": 40, "max": 40 },
+      "web-2": { "count": 220, "min": 30, "mean": 34.54545454545455, "p50": 30, "p90": 40, "max": 40 },
+      "orders-db": { "count": 440, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "payments": { "count": 400, "min": 40, "mean": 45.3, "p50": 50, "p90": 50, "max": 50 }
+    }
+  }
+}

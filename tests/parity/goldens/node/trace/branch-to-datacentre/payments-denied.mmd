@@ -1,0 +1,29 @@
+---
+title: "Checkout #1 · 1.53 s end to end · 1 copy"
+---
+sequenceDiagram
+  participant customers as Customers
+  participant edge_router as Edge routers
+  participant firewall as Firewall pair
+  participant spine_1 as Spine 1
+  participant leaf as Services leaf
+  participant adc as Load balancer
+  participant web_1 as Storefront 1
+  participant orders_db as Orders DB
+  participant payments as Payments API
+  customers->>edge_router: Checkout (+0.00 s)<br/>HTTPS
+  edge_router-->>customers: reply (+0.21 s)
+  edge_router->>firewall: Checkout (+0.21 s)
+  firewall-->>edge_router: reply (+0.42 s)
+  firewall->>spine_1: Checkout (+0.42 s)<br/>Allow: web
+  spine_1-->>firewall: reply (+0.63 s)
+  spine_1->>leaf: Checkout (+0.63 s)
+  leaf-->>spine_1: reply (+0.84 s)
+  leaf->>adc: Checkout (+0.84 s)
+  adc-->>leaf: reply (+1.05 s)
+  adc->>web_1: Checkout (+1.05 s)
+  web_1-->>adc: reply (+1.29 s)
+  web_1->>orders_db: Checkout (+1.29 s)
+  web_1->>payments: Checkout (+1.29 s)<br/>Charge
+  orders_db-->>web_1: reply (+1.50 s)
+  payments-->>web_1: reply (+1.53 s)

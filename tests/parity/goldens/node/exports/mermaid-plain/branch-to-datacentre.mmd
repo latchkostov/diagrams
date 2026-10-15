@@ -1,0 +1,37 @@
+---
+title: Branch office to data centre
+---
+flowchart TB
+  subgraph g_branch ["Branch office"]
+    staff(["Branch staff<br/>120 desks"])
+    branch_router["Branch router<br/>Catalyst 8200 · SD-WAN"]
+  end
+  subgraph g_dc ["Data centre"]
+    edge_router["Edge routers<br/>2 × MX204 · BGP"]
+    firewall["Firewall pair<br/>PA-3440 · active-standby"]
+    spine_1["Spine 1<br/>Arista 7050SX3"]
+    spine_2["Spine 2<br/>Arista 7050SX3"]
+    leaf["Services leaf<br/>Nexus 93180YC · vPC pair"]
+    adc["Load balancer<br/>BIG-IP pair · VIP shop"]
+    web_1["Storefront 1<br/>web pool"]
+    web_2["Storefront 2<br/>web pool"]
+    orders_db[("Orders DB<br/>primary")]
+    payments["Payments API<br/>PCI zone"]
+  end
+  customers(["Customers<br/>internet"])
+  customers -->|"HTTPS"| edge_router
+  staff -->|"Back office"| branch_router
+  branch_router -->|"SD-WAN tunnel"| edge_router
+  edge_router --> firewall
+  firewall -->|"Allow: web"| spine_1
+  firewall --> spine_2
+  firewall -->|"Deny: branch → payments"| payments
+  spine_1 --> leaf
+  spine_2 --> leaf
+  leaf --> adc
+  adc --> web_1
+  adc --> web_2
+  web_1 --> orders_db
+  web_2 --> orders_db
+  web_1 -->|"Charge"| payments
+  web_2 --> payments

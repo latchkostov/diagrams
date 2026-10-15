@@ -1,0 +1,229 @@
+{
+  "run": {
+    "time": 20000,
+    "totalMs": 20000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "quarantined", "label": "Poison invoices reach the DLQ", "status": "pass", "value": 30 },
+      { "id": "dlq-retains", "label": "All 30 poison invoices are retained", "status": "pass", "value": 30 },
+      { "id": "no-ledger-write", "label": "No ledger write", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "note", "label": "A schema mismatch makes every ledger attempt fail. Commands are retried five times." },
+      { "atMs": 0, "kind": "traffic", "label": "30 malformed posting requests" },
+      { "atMs": 1000, "kind": "traffic", "label": "30 malformed posting requests ends" },
+      { "atMs": 10000, "kind": "note", "label": "Poison commands are quarantined in the DLQ for operator replay." },
+      { "atMs": 12000, "kind": "props", "label": "props: worker" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 1,
+      "nodes": {
+        "partner": { "replicas": [1, 1, 0] },
+        "apim": { "replicas": [1, 1, 0] },
+        "ingest": { "backlog": 1, "replicas": [1, 1, 0] },
+        "invoices": { "lag": { "finance-approval": 0, "ledger-posting": 0 }, "replicas": [1, 1, 0] },
+        "approval-sub": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "posting-sub": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "workflow": { "replicas": [1, 1, 0] },
+        "worker": { "replicas": [1, 1, 0] },
+        "commands": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "dlq": { "lag": { "queue": 0 }, "noConsumer": true, "replicas": [1, 1, 0] },
+        "cosmos": { "replicas": [1, 1, 0] },
+        "blob": { "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] },
+        "insights": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 30,
+      "nodes": {
+        "partner": { "replicas": [1, 1, 0] },
+        "apim": { "replicas": [1, 1, 0] },
+        "ingest": { "processed": 30, "throughput": 0.002737080870695818, "replicas": [1, 1, 0] },
+        "invoices": {
+          "processed": 30,
+          "throughput": 0.0036946727203565396,
+          "lag": { "finance-approval": 0, "ledger-posting": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "approval-sub": {
+          "processed": 30,
+          "throughput": 0.004987286512684057,
+          "lag": { "queue": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "posting-sub": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "workflow": { "processed": 30, "throughput": 0.007864691040731876, "replicas": [1, 1, 0] },
+        "worker": { "failed": 150, "replicas": [1, 1, 0] },
+        "commands": {
+          "processed": 30,
+          "deadLettered": 30,
+          "throughput": 0.010616222470195988,
+          "lag": { "queue": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "dlq": {
+          "processed": 30,
+          "backlog": 30,
+          "throughput": 0.08528982475494765,
+          "lag": { "queue": 30 },
+          "noConsumer": true,
+          "replicas": [1, 1, 0]
+        },
+        "cosmos": { "replicas": [1, 1, 0] },
+        "blob": { "processed": 30, "throughput": 0.003503476195278073, "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] },
+        "insights": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 30,
+      "nodes": {
+        "partner": { "replicas": [1, 1, 0] },
+        "apim": { "replicas": [1, 1, 0] },
+        "ingest": { "processed": 30, "throughput": 1.242632792838379e-7, "replicas": [1, 1, 0] },
+        "invoices": {
+          "processed": 30,
+          "throughput": 1.67737881999565e-7,
+          "lag": { "finance-approval": 0, "ledger-posting": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "approval-sub": {
+          "processed": 30,
+          "throughput": 2.2642245738125679e-7,
+          "lag": { "queue": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "posting-sub": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "workflow": { "processed": 30, "throughput": 3.5705642085289037e-7, "replicas": [1, 1, 0] },
+        "worker": { "failed": 150, "replicas": [1, 1, 0] },
+        "commands": {
+          "processed": 30,
+          "deadLettered": 30,
+          "throughput": 4.819757544898374e-7,
+          "lag": { "queue": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "dlq": {
+          "processed": 30,
+          "backlog": 30,
+          "throughput": 0.000003872152053329471,
+          "lag": { "queue": 30 },
+          "noConsumer": true,
+          "replicas": [1, 1, 0]
+        },
+        "cosmos": { "replicas": [1, 1, 0] },
+        "blob": { "processed": 30, "throughput": 1.5905757319017108e-7, "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] },
+        "insights": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 20000,
+    "inSystem": 30,
+    "real": {
+      "partner": { "replicas": [1, 1, 0] },
+      "apim": { "replicas": [1, 1, 0] },
+      "ingest": { "processed": 30, "throughput": 1.242632792838379e-7, "replicas": [1, 1, 0] },
+      "invoices": {
+        "processed": 30,
+        "throughput": 1.67737881999565e-7,
+        "lag": { "finance-approval": 0, "ledger-posting": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "approval-sub": {
+        "processed": 30,
+        "throughput": 2.2642245738125679e-7,
+        "lag": { "queue": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "posting-sub": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "workflow": { "processed": 30, "throughput": 3.5705642085289037e-7, "replicas": [1, 1, 0] },
+      "worker": { "failed": 150, "replicas": [1, 1, 0] },
+      "commands": {
+        "processed": 30,
+        "deadLettered": 30,
+        "throughput": 4.819757544898374e-7,
+        "lag": { "queue": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "dlq": {
+        "processed": 30,
+        "backlog": 30,
+        "throughput": 0.000003872152053329471,
+        "lag": { "queue": 30 },
+        "noConsumer": true,
+        "replicas": [1, 1, 0]
+      },
+      "cosmos": { "replicas": [1, 1, 0] },
+      "blob": { "processed": 30, "throughput": 1.5905757319017108e-7, "replicas": [1, 1, 0] },
+      "vault": { "replicas": [1, 1, 0] },
+      "insights": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "partner-to-apim": 0, "apim-to-ingest": 0, "ingest-to-invoices": 30, "invoices-to-approval-sub": 30, "invoices-to-posting-sub": 0, "approval-sub-to-workflow": 30, "posting-sub-to-worker": 0, "workflow-to-commands": 30, "commands-to-worker": 30, "commands-to-dlq": 30, "worker-to-cosmos": 0, "ingest-to-blob": 30, "ingest-to-vault": 0, "ingest-to-insights": 0 }
+  },
+  "events": {
+    "total": 780,
+    "byKind": { "inject": 30, "process": 210, "deliver": 210, "fail": 150, "retry": 150, "deadletter": 30 },
+    "byNode": {
+      "ingest": { "inject": 30, "process": 30 },
+      "blob": { "deliver": 30, "process": 30 },
+      "invoices": { "deliver": 30, "process": 30 },
+      "approval-sub": { "deliver": 30, "process": 30 },
+      "workflow": { "deliver": 30, "process": 30 },
+      "commands": { "deliver": 30, "process": 30, "retry": 150, "deadletter": 30 },
+      "worker": { "deliver": 30, "fail": 150 },
+      "dlq": { "deliver": 30, "process": 30 }
+    },
+    "perSecond": [
+      "84260e07ef5e",
+      "1acc56313a3e",
+      "541512515ad3",
+      "90018fb7705e",
+      "37de729cb7cb",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 0, "text": "A schema mismatch makes every ledger attempt fail. Commands are retried five times.", "focus": ["worker", "commands"] },
+    { "atMs": 10000, "text": "Poison commands are quarantined in the DLQ for operator replay.", "focus": ["commands", "dlq"] }
+  ],
+  "latency": {
+    "journeys": { "done": 30, "retried": 30, "deadLettered": 30, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 30, "min": 3510, "mean": 3590.3333333333335, "p50": 3590, "p90": 3660, "max": 3680 },
+    "waitMs": {
+      "ingest": { "count": 30, "min": 0, "mean": 0.3333333333333333, "p50": 0, "p90": 0, "max": 10 },
+      "workflow": { "count": 30, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "worker": { "count": 30, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "blob": { "count": 30, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "ingest": { "count": 30, "min": 130, "mean": 152, "p50": 150, "p90": 180, "max": 180 },
+      "workflow": { "count": 30, "min": 130, "mean": 156, "p50": 160, "p90": 180, "max": 180 },
+      "blob": { "count": 30, "min": 40, "mean": 46.333333333333336, "p50": 50, "p90": 50, "max": 50 }
+    }
+  }
+}

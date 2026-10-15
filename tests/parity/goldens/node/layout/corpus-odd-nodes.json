@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "normal": [40, 40], "long-label": [40, 160], "no-sub": [40, 280], "unknown": [440, 40], "long-sub": [440, 160], "empty-label": [440, 280] },
+    "TB": { "normal": [40, 40], "long-label": [360, 40], "no-sub": [680, 40], "unknown": [40, 200], "long-sub": [360, 200], "empty-label": [680, 200] }
+  },
+  "tidy": { "normal": [40, 40], "unknown": [400, 40], "long-label": [40, 160], "long-sub": [400, 160], "no-sub": [40, 280], "empty-label": [400, 280] },
+  "arrange": {
+    "alignLeft": { "normal": [40, 40], "unknown": [40, 40], "long-label": [40, 160], "long-sub": [40, 160], "no-sub": [40, 280], "empty-label": [40, 280] },
+    "alignMiddle": { "normal": [40, 160], "unknown": [400, 160], "long-label": [40, 160], "long-sub": [400, 160], "no-sub": [40, 160], "empty-label": [400, 160] },
+    "distributeH": { "normal": [40, 40], "unknown": [248, 40], "long-label": [96, 160], "long-sub": [304, 160], "no-sub": [192, 280], "empty-label": [400, 280] },
+    "distributeV": { "normal": [40, 40], "unknown": [400, 88], "long-label": [40, 136], "long-sub": [400, 184], "no-sub": [40, 232], "empty-label": [400, 280] },
+    "spreadH": { "normal": [40, 40], "unknown": [860, 40], "long-label": [300, 40], "long-sub": [1120, 40], "no-sub": [600, 40], "empty-label": [1420, 40] },
+    "boundaryAround": { "x": 0, "y": -24, "width": 700, "height": 416 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "normal": [40, 40], "unknown": [440, 40], "long-label": [40, 160], "long-sub": [440, 160], "no-sub": [40, 280], "empty-label": [440, 280] },
+    "groups": {}
+  }
+}

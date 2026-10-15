@@ -1,0 +1,27 @@
+{
+  "ran": [
+    "dead-letter",
+    "no-reader",
+    "sync-cycle",
+    "sync-chain",
+    "shared-database",
+    "entry-gateway",
+    "capacity",
+    "single-point",
+    "secret-identity",
+    "schema-registry"
+  ],
+  "off": [],
+  "findings": [
+    {
+      "id": "no-reader:payments-dlq",
+      "rule": "no-reader",
+      "severity": "suggestion",
+      "target": "payments-dlq",
+      "elements": ["payments-dlq", "payment-cmds"],
+      "fix": { "ops": null, "needsChoice": true }
+    }
+  ],
+  "ignored": [],
+  "fixes": {}
+}

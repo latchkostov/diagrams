@@ -1,0 +1,23 @@
+{
+  "summary": "1 warning, 0 suggestions.",
+  "findings": {
+    "capacity:api": {
+      "title": "openai can't keep up",
+      "message": "At the diagram's own rates, it gets 20/s and handles 5/s (400%): 15/s may be rejected.",
+      "rationale": "Demand above what a service can handle never drains: latency and backlog grow until something times out. Live view's Show capacity has the same numbers.",
+      "shownMessage": "At the diagram's own rates, it gets 20/s and handles 5/s (400%): 15 req/s may be rejected."
+    }
+  },
+  "agentReport": {
+    "findings": [
+      { "id": "capacity:api", "rule": "capacity", "severity": "warning", "title": "openai can't keep up", "message": "At the diagram's own rates, it gets 20/s and handles 5/s (400%): 15/s may be rejected.", "targets": ["api"] }
+    ],
+    "summary": "1 warning, 0 suggestions."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      { "id": "capacity:api", "rule": "capacity", "severity": "warning", "title": "openai can't keep up", "message": "At the diagram's own rates, it gets 20/s and handles 5/s (400%): 15/s may be rejected.", "targets": ["api"] }
+    ],
+    "summary": "1 warning, 0 suggestions."
+  }
+}

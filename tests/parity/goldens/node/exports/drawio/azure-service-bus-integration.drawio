@@ -1,0 +1,157 @@
+<mxfile host="Diagrams" agent="Diagrams" version="24.0.0" type="device">
+  <diagram id="dg-x3ueg1" name="Azure invoice integration">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <object id="0" dg_format="diagrams/v1" dg_description="Partner invoices fan out through filtered Service Bus subscriptions; commands use retries and dead lettering." dg_direction="LR" dg_simulations="[{&quot;id&quot;:&quot;month-end&quot;,&quot;title&quot;:&quot;Month-end invoice batch&quot;,&quot;seed&quot;:7,&quot;traffic&quot;:[{&quot;id&quot;:&quot;batch&quot;,&quot;node&quot;:&quot;ingest&quot;,&quot;messageType&quot;:&quot;InvoiceHighValue&quot;,&quot;label&quot;:&quot;300 high-value month-end invoices&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;burst&quot;,&quot;count&quot;:300,&quot;spreadMs&quot;:3000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The ERP submits 300 high-value invoices. Only the approval subscription accepts them.&quot;,&quot;focus&quot;:[&quot;partner&quot;,&quot;invoices&quot;,&quot;approval-sub&quot;]}},{&quot;atMs&quot;:5000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Approved invoices become PostInvoice commands; originals remain archived.&quot;,&quot;focus&quot;:[&quot;workflow&quot;,&quot;commands&quot;,&quot;cosmos&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;ledger&quot;,&quot;label&quot;:&quot;Ledger&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;cosmos&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:300,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;archive&quot;,&quot;label&quot;:&quot;Archive&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;blob&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:300,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;approval&quot;,&quot;label&quot;:&quot;Approval&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;workflow&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:300,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;no-dlq&quot;,&quot;label&quot;:&quot;No dlq&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;commands&quot;,&quot;field&quot;:&quot;deadLettered&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;always&quot;}],&quot;scale&quot;:2},{&quot;id&quot;:&quot;poison&quot;,&quot;title&quot;:&quot;Poison invoices&quot;,&quot;seed&quot;:7,&quot;traffic&quot;:[{&quot;id&quot;:&quot;poison-batch&quot;,&quot;node&quot;:&quot;ingest&quot;,&quot;messageType&quot;:&quot;InvoiceHighValue&quot;,&quot;label&quot;:&quot;30 malformed posting requests&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;burst&quot;,&quot;count&quot;:30,&quot;spreadMs&quot;:1000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;A schema mismatch makes every ledger attempt fail. Commands are retried five times.&quot;,&quot;focus&quot;:[&quot;worker&quot;,&quot;commands&quot;]}},{&quot;atMs&quot;:10000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Poison commands are quarantined in the DLQ for operator replay.&quot;,&quot;focus&quot;:[&quot;commands&quot;,&quot;dlq&quot;],&quot;pause&quot;:true}},{&quot;atMs&quot;:12000,&quot;action&quot;:{&quot;do&quot;:&quot;props&quot;,&quot;node&quot;:&quot;worker&quot;,&quot;props&quot;:{&quot;failureRate&quot;:0}}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;quarantined&quot;,&quot;label&quot;:&quot;Poison invoices reach the DLQ&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;commands&quot;,&quot;field&quot;:&quot;deadLettered&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;dlq-retains&quot;,&quot;label&quot;:&quot;All 30 poison invoices are retained&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;dlq&quot;,&quot;field&quot;:&quot;backlog&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:30,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;no-ledger-write&quot;,&quot;label&quot;:&quot;No ledger write&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;cosmos&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;end&quot;}],&quot;setup&quot;:{&quot;props&quot;:{&quot;worker&quot;:{&quot;failureRate&quot;:1,&quot;retry&quot;:&quot;inplace&quot;,&quot;retryBackoffMs&quot;:100}}},&quot;durationMs&quot;:20000,&quot;scale&quot;:1}]">
+          <mxCell />
+        </object>
+        <mxCell id="1" parent="0" />
+        <object id="dg-g-azure" label="Azure · enterprise integration" dg_id="azure" dg_tone="azure">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#0078D4;strokeColor=#0078D4;" vertex="1" parent="1">
+            <mxGeometry x="380" y="0" width="2240" height="632" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-partner" label="Contoso ERP&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Invoice integration · OAuth2&lt;/span&gt;" dg_id="partner" dg_stencil="client.partner" dg_props="{&quot;ratePerSec&quot;:8}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#F973161A;strokeColor=#F97316;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="60" y="286" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-apim" label="Partner API&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;/v1/invoices · JWT validation&lt;/span&gt;" dg_id="apim" dg_stencil="azure.api-management" dg_props="{}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/integration/API_Management_Services.svg;" vertex="1" parent="dg-g-azure">
+            <mxGeometry x="122" y="288" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-ingest" label="Invoice intake&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Validate · normalize · publish&lt;/span&gt;" dg_id="ingest" dg_stencil="azure.functions" dg_props="{&quot;concurrency&quot;:64,&quot;latencyMs&quot;:150,&quot;emits&quot;:{&quot;InvoiceSubmitted&quot;:&quot;InvoiceAccepted&quot;}}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/compute/Function_Apps.svg;" vertex="1" parent="dg-g-azure">
+            <mxGeometry x="502" y="288" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-invoices" label="invoices&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;InvoiceAccepted · session: tenantId&lt;/span&gt;" dg_id="invoices" dg_stencil="azure.service-bus.topic" dg_props="{&quot;sessionEnabled&quot;:true,&quot;partitions&quot;:64}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/integration/Service_Bus.svg;" vertex="1" parent="dg-g-azure">
+            <mxGeometry x="882" y="288" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-approval-sub" label="approval-workflow&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Subscription · amount &amp;gt; 10000&lt;/span&gt;" dg_id="approval-sub" dg_stencil="generic.queue" dg_props="{&quot;filter&quot;:&quot;amount &gt; 10000&quot;,&quot;maxDeliveryCount&quot;:10}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#F59E0B1A;strokeColor=#F59E0B;fontSize=12;" vertex="1" parent="dg-g-azure">
+            <mxGeometry x="1200" y="166" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-posting-sub" label="ledger-posting&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Subscription · all accepted invoices&lt;/span&gt;" dg_id="posting-sub" dg_stencil="generic.queue" dg_props="{&quot;maxDeliveryCount&quot;:10}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#F59E0B1A;strokeColor=#F59E0B;fontSize=12;" vertex="1" parent="dg-g-azure">
+            <mxGeometry x="1200" y="406" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-workflow" label="Invoice approval&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Finance approval workflow&lt;/span&gt;" dg_id="workflow" dg_stencil="azure.logic-apps" dg_props="{&quot;concurrency&quot;:64,&quot;latencyMs&quot;:150,&quot;emits&quot;:&quot;PostInvoice&quot;}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/integration/Logic_Apps.svg;" vertex="1" parent="dg-g-azure">
+            <mxGeometry x="1642" y="168" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-worker" label="Ledger worker&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;KEDA · group: ledger-posting&lt;/span&gt;" dg_id="worker" dg_stencil="azure.container-apps" dg_props="{&quot;group&quot;:&quot;ledger-posting&quot;,&quot;concurrency&quot;:64,&quot;latencyMs&quot;:150,&quot;emits&quot;:&quot;InvoicePosted&quot;}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/other/Worker_Container_App.svg;" vertex="1" parent="dg-g-azure">
+            <mxGeometry x="1642" y="408" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-commands" label="invoice.commands&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;PostInvoice · session: tenantId&lt;/span&gt;" dg_id="commands" dg_stencil="azure.service-bus.queue" dg_props="{&quot;maxDeliveryCount&quot;:5,&quot;lockDurationSec&quot;:60,&quot;sessionEnabled&quot;:true}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/integration/Service_Bus.svg;" vertex="1" parent="dg-g-azure">
+            <mxGeometry x="2022" y="168" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-dlq" label="invoice.commands DLQ&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;$DeadLetterQueue · operator replay&lt;/span&gt;" dg_id="dlq" dg_stencil="azure.service-bus.queue" dg_props="{&quot;isDeadLetter&quot;:true}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/integration/Service_Bus.svg;" vertex="1" parent="dg-g-azure">
+            <mxGeometry x="2022" y="48" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-cosmos" label="Invoice ledger&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Partition key: /tenantId&lt;/span&gt;" dg_id="cosmos" dg_stencil="azure.cosmos-db" dg_props="{}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/databases/Azure_Cosmos_DB.svg;" vertex="1" parent="dg-g-azure">
+            <mxGeometry x="2022" y="408" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-blob" label="Invoice originals&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;invoices-raw · immutable archive&lt;/span&gt;" dg_id="blob" dg_stencil="azure.blob-storage" dg_props="{}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/storage/Storage_Accounts.svg;" vertex="1" parent="dg-g-azure">
+            <mxGeometry x="882" y="528" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-vault" label="Integration secrets&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;ERP credentials · managed identity&lt;/span&gt;" dg_id="vault" dg_stencil="azure.key-vault" dg_props="{}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/security/Key_Vaults.svg;" vertex="1" parent="dg-g-azure">
+            <mxGeometry x="502" y="48" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-insights" label="Integration telemetry&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Trace by invoiceId · DLQ alerts&lt;/span&gt;" dg_id="insights" dg_stencil="azure.app-insights" dg_props="{}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/devops/Application_Insights.svg;" vertex="1" parent="dg-g-azure">
+            <mxGeometry x="502" y="528" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-partner-to-apim" label="HTTPS" dg_id="partner-to-apim" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-partner" target="dg-n-apim">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-apim-to-ingest" label="POST /v1/invoices" dg_id="apim-to-ingest" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-apim" target="dg-n-ingest">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ingest-to-invoices" label="InvoiceAccepted" dg_id="ingest-to-invoices" dg_kind="async" dg_props="{&quot;travelMs&quot;:300}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-ingest" target="dg-n-invoices">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-invoices-to-approval-sub" label="amount &amp;gt; 10000" dg_id="invoices-to-approval-sub" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;filter&quot;:[&quot;InvoiceHighValue&quot;],&quot;group&quot;:&quot;finance-approval&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-invoices" target="dg-n-approval-sub">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-invoices-to-posting-sub" label="All invoices" dg_id="invoices-to-posting-sub" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;filter&quot;:[&quot;InvoiceAccepted&quot;],&quot;group&quot;:&quot;ledger-posting&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-invoices" target="dg-n-posting-sub">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-approval-sub-to-workflow" label="Peek-lock delivery" dg_id="approval-sub-to-workflow" dg_kind="async" dg_props="{&quot;travelMs&quot;:300}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-approval-sub" target="dg-n-workflow">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-posting-sub-to-worker" label="Peek-lock delivery" dg_id="posting-sub-to-worker" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;filter&quot;:[&quot;InvoiceAccepted&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-posting-sub" target="dg-n-worker">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-workflow-to-commands" label="PostInvoice" dg_id="workflow-to-commands" dg_kind="async" dg_props="{&quot;travelMs&quot;:300}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-workflow" target="dg-n-commands">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-commands-to-worker" label="Execute command" dg_id="commands-to-worker" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;filter&quot;:[&quot;PostInvoice&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-commands" target="dg-n-worker">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-commands-to-dlq" label="After 5 failed deliveries" dg_id="commands-to-dlq" dg_kind="async" dg_props="{&quot;travelMs&quot;:300}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-commands" target="dg-n-dlq">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-worker-to-cosmos" label="Upsert ledger" dg_id="worker-to-cosmos" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-worker" target="dg-n-cosmos">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ingest-to-blob" label="Archive original PDF" dg_id="ingest-to-blob" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-ingest" target="dg-n-blob">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ingest-to-vault" label="" dg_id="ingest-to-vault" dg_kind="sync" dg_relation="secret">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#A6720C;dashed=1;dashPattern=1 4;dfRelation=secret;" edge="1" parent="1" source="dg-n-ingest" target="dg-n-vault">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ingest-to-insights" label="Traces / exceptions" dg_id="ingest-to-insights" dg_kind="async" dg_relation="telemetry">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#7C6D98;dashed=1;dashPattern=1 4;dfRelation=telemetry;" edge="1" parent="1" source="dg-n-ingest" target="dg-n-insights">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

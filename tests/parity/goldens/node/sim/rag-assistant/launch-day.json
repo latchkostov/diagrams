@@ -1,0 +1,134 @@
+{
+  "run": {
+    "time": 12750,
+    "totalMs": 18000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "retrieved", "label": "Every question retrieves context", "status": "pass", "value": 250 },
+      { "id": "rated", "label": "Rated answers are graded", "status": "pass", "value": 60 },
+      { "id": "llm-keeps-up", "label": "Nothing is dropped", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "trace", "label": "trace: rag-api" },
+      { "atMs": 0, "kind": "note", "label": "Each question checks the semantic cache, retrieves the closest chunks from the vector index, and sends them to the LLM as context." },
+      { "atMs": 0, "kind": "traffic", "label": "Questions ramp from 5 to 40 a second" },
+      { "atMs": 3000, "kind": "note", "label": "Generation is the slow step, about two seconds. Plenty of requests in flight keeps throughput up while each answer streams." },
+      { "atMs": 6000, "kind": "note", "label": "About a quarter of answers get a rating. An eval job asks the LLM to grade them for groundedness, and the scores feed a dashboard." },
+      { "atMs": 8000, "kind": "traffic", "label": "Questions ramp from 5 to 40 a second ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "user": { "replicas": [1, 1, 0] },
+        "rag-api": { "replicas": [1, 1, 0] },
+        "cache": { "replicas": [1, 1, 0] },
+        "feedback": { "lag": { "evals": 0 }, "replicas": [1, 1, 0] },
+        "llm": { "replicas": [1, 1, 0] },
+        "vector-db": { "replicas": [1, 1, 0] },
+        "eval-job": { "replicas": [1, 1, 0] },
+        "quality": { "replicas": [1, 1, 0] },
+        "docs": { "replicas": [1, 1, 0] },
+        "ingest-q": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "embed-worker": { "replicas": [4, 4, 0] },
+        "embeddings": { "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 25,
+      "nodes": {
+        "user": { "processed": 250, "throughput": 5.500964409076658, "replicas": [1, 1, 0] },
+        "rag-api": { "processed": 250, "throughput": 7.519169988406842, "replicas": [1, 1, 0] },
+        "cache": { "processed": 250, "throughput": 9.27623504378271, "replicas": [1, 1, 0] },
+        "feedback": { "processed": 60, "throughput": 3.007195102958406, "lag": { "evals": 0 }, "replicas": [1, 1, 0] },
+        "llm": { "processed": 285, "inFlight": 25, "throughput": 54.825596874436606, "replicas": [1, 1, 0] },
+        "vector-db": { "processed": 250, "throughput": 9.27623504378271, "replicas": [1, 1, 0] },
+        "eval-job": { "processed": 60, "throughput": 5.472138714607392, "replicas": [1, 1, 0] },
+        "quality": { "processed": 60, "throughput": 7.386614640190405, "replicas": [1, 1, 0] },
+        "docs": { "replicas": [1, 1, 0] },
+        "ingest-q": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "embed-worker": { "replicas": [4, 4, 0] },
+        "embeddings": { "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 12750,
+    "inSystem": 0,
+    "real": {
+      "user": { "processed": 250, "throughput": 0.35166488924649597, "replicas": [1, 1, 0] },
+      "rag-api": { "processed": 250, "throughput": 0.48068445540852056, "replicas": [1, 1, 0] },
+      "cache": { "processed": 250, "throughput": 0.5930098663997466, "replicas": [1, 1, 0] },
+      "feedback": { "processed": 60, "throughput": 0.1922435511634186, "lag": { "evals": 0 }, "replicas": [1, 1, 0] },
+      "llm": { "processed": 310, "throughput": 6.147489917459452, "replicas": [1, 1, 0] },
+      "vector-db": { "processed": 250, "throughput": 0.5930098663997466, "replicas": [1, 1, 0] },
+      "eval-job": { "processed": 60, "throughput": 0.3498221242512776, "replicas": [1, 1, 0] },
+      "quality": { "processed": 60, "throughput": 0.4722104755055332, "replicas": [1, 1, 0] },
+      "docs": { "replicas": [1, 1, 0] },
+      "ingest-q": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "embed-worker": { "replicas": [4, 4, 0] },
+      "embeddings": { "replicas": [1, 1, 0] },
+      "vault": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "user-to-rag-api": 250, "rag-api-to-cache": 250, "rag-api-to-vector-db": 250, "rag-api-to-llm": 250, "rag-api-to-feedback": 60, "feedback-to-eval-job": 60, "eval-job-to-llm": 60, "eval-job-to-quality": 60, "docs-to-ingest-q": 0, "ingest-q-to-embed-worker": 0, "embed-worker-to-embeddings": 0, "embed-worker-to-vector-db": 0, "rag-api-to-vault": 0, "embed-worker-to-vault": 0 }
+  },
+  "events": {
+    "total": 2980,
+    "byKind": { "inject": 250, "process": 1490, "deliver": 1240 },
+    "byNode": {
+      "user": { "inject": 250, "process": 250 },
+      "rag-api": { "deliver": 250, "process": 250 },
+      "cache": { "deliver": 250, "process": 250 },
+      "vector-db": { "deliver": 250, "process": 250 },
+      "llm": { "deliver": 310, "process": 310 },
+      "feedback": { "deliver": 60, "process": 60 },
+      "eval-job": { "deliver": 60, "process": 60 },
+      "quality": { "deliver": 60, "process": 60 }
+    },
+    "perSecond": [
+      "720e451557a7",
+      "f148f317ed6d",
+      "0a6ac244e9c0",
+      "5cf2135bd965",
+      "07cb7b63efc8",
+      "51eecb8109be",
+      "c9d302cbbba2",
+      "849dd8ac4f33",
+      "92b144166478",
+      "24ddb5fc7459",
+      "7a9ebd7631d9",
+      "378e9e85685e",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 0, "text": "Each question checks the semantic cache, retrieves the closest chunks from the vector index, and sends them to the LLM as context.", "focus": ["rag-api", "cache", "vector-db", "llm"] },
+    { "atMs": 3000, "text": "Generation is the slow step, about two seconds. Plenty of requests in flight keeps throughput up while each answer streams.", "focus": ["llm"] },
+    { "atMs": 6000, "text": "About a quarter of answers get a rating. An eval job asks the LLM to grade them for groundedness, and the scores feed a dashboard.", "focus": ["feedback", "eval-job", "quality"] }
+  ],
+  "latency": {
+    "journeys": { "done": 250, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 250, "min": 1960, "mean": 2544.08, "p50": 2450, "p90": 3300, "max": 3640 },
+    "waitMs": {
+      "rag-api": { "count": 250, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "cache": { "count": 250, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "llm": { "count": 310, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "vector-db": { "count": 250, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "eval-job": { "count": 60, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "rag-api": { "count": 250, "min": 100, "mean": 124.04, "p50": 120, "p90": 140, "max": 150 },
+      "cache": { "count": 250, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "llm": { "count": 310, "min": 1450, "mean": 1806, "p50": 1810, "p90": 2110, "max": 2160 },
+      "vector-db": { "count": 250, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "eval-job": { "count": 60, "min": 250, "mean": 301.6666666666667, "p50": 300, "p90": 360, "max": 360 }
+    }
+  }
+}

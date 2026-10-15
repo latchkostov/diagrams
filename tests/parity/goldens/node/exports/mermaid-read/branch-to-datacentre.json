@@ -1,0 +1,45 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Branch office to data centre",
+    "direction": "TB",
+    "groups": [
+      { "id": "g_branch", "label": "Branch office", "tone": "neutral", "x": 190, "y": 40, "width": 440, "height": 336 },
+      { "id": "g_dc", "label": "Data centre", "tone": "onprem", "x": 40, "y": 360, "width": 590, "height": 1136 }
+    ],
+    "nodes": [
+      { "id": "staff", "stencil": "generic.service", "label": "Branch staff", "sublabel": "120 desks", "x": 370, "y": 104, "group": "g_branch" },
+      { "id": "branch_router", "stencil": "cisco.isr", "label": "Branch router", "sublabel": "Catalyst 8200 · SD-WAN", "x": 230, "y": 264, "group": "g_branch" },
+      { "id": "edge_router", "stencil": "juniper.mx", "label": "Edge routers", "sublabel": "2 × MX204 · BGP", "x": 230, "y": 424, "group": "g_dc" },
+      { "id": "firewall", "stencil": "paloalto.ngfw", "label": "Firewall pair", "sublabel": "PA-3440 · active-standby", "x": 230, "y": 584, "group": "g_dc" },
+      { "id": "spine_1", "stencil": "arista.switch", "label": "Spine 1", "sublabel": "Arista 7050SX3", "x": 80, "y": 744, "group": "g_dc" },
+      { "id": "spine_2", "stencil": "arista.switch", "label": "Spine 2", "sublabel": "Arista 7050SX3", "x": 370, "y": 744, "group": "g_dc" },
+      { "id": "leaf", "stencil": "cisco.nexus", "label": "Services leaf", "sublabel": "Nexus 93180YC · vPC pair", "x": 230, "y": 904, "group": "g_dc" },
+      { "id": "adc", "stencil": "f5.bigip", "label": "Load balancer", "sublabel": "BIG-IP pair · VIP shop", "x": 230, "y": 1064, "group": "g_dc" },
+      { "id": "web_1", "stencil": "generic.service", "label": "Storefront 1", "sublabel": "web pool", "x": 80, "y": 1224, "group": "g_dc" },
+      { "id": "web_2", "stencil": "generic.service", "label": "Storefront 2", "sublabel": "web pool", "x": 370, "y": 1224, "group": "g_dc" },
+      { "id": "orders_db", "stencil": "generic.database", "label": "Orders DB", "sublabel": "primary", "x": 370, "y": 1384, "group": "g_dc" },
+      { "id": "payments", "stencil": "generic.service", "label": "Payments API", "sublabel": "PCI zone", "x": 80, "y": 1384, "group": "g_dc" },
+      { "id": "customers", "stencil": "client.user", "label": "Customers", "sublabel": "internet", "x": 80, "y": 104 }
+    ],
+    "edges": [
+      { "id": "e1-customers-edge_router", "from": "customers", "to": "edge_router", "label": "HTTPS", "kind": "sync" },
+      { "id": "e2-staff-branch_router", "from": "staff", "to": "branch_router", "label": "Back office", "kind": "sync" },
+      { "id": "e3-branch_router-edge_router", "from": "branch_router", "to": "edge_router", "label": "SD-WAN tunnel", "kind": "sync" },
+      { "id": "e4-edge_router-firewall", "from": "edge_router", "to": "firewall", "kind": "sync" },
+      { "id": "e5-firewall-spine_1", "from": "firewall", "to": "spine_1", "label": "Allow: web", "kind": "sync" },
+      { "id": "e6-firewall-spine_2", "from": "firewall", "to": "spine_2", "kind": "sync" },
+      { "id": "e7-firewall-payments", "from": "firewall", "to": "payments", "label": "Deny: branch → payments", "kind": "sync" },
+      { "id": "e8-spine_1-leaf", "from": "spine_1", "to": "leaf", "kind": "sync" },
+      { "id": "e9-spine_2-leaf", "from": "spine_2", "to": "leaf", "kind": "sync" },
+      { "id": "e10-leaf-adc", "from": "leaf", "to": "adc", "kind": "sync" },
+      { "id": "e11-adc-web_1", "from": "adc", "to": "web_1", "kind": "sync" },
+      { "id": "e12-adc-web_2", "from": "adc", "to": "web_2", "kind": "sync" },
+      { "id": "e13-web_1-orders_db", "from": "web_1", "to": "orders_db", "kind": "sync" },
+      { "id": "e14-web_2-orders_db", "from": "web_2", "to": "orders_db", "kind": "sync" },
+      { "id": "e15-web_1-payments", "from": "web_1", "to": "payments", "label": "Charge", "kind": "sync" },
+      { "id": "e16-web_2-payments", "from": "web_2", "to": "payments", "kind": "sync" }
+    ]
+  }
+}

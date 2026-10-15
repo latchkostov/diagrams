@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "app": [40, 160], "gateway": [400, 160], "command-handler": [763, 100], "query-api": [763, 220], "event-store": [1140, 160], "publisher": [1500, 40], "balance-proj": [1500, 160], "statement-proj": [1500, 280], "integration-topic": [1882, 40], "balances-db": [1882, 160], "statements": [1882, 280], "fraud": [2263, 160] },
+    "TB": { "app": [350, 40], "gateway": [350, 200], "command-handler": [200, 360], "query-api": [510, 360], "event-store": [350, 520], "publisher": [40, 680], "balance-proj": [350, 680], "statement-proj": [670, 680], "integration-topic": [40, 840], "balances-db": [350, 840], "statements": [670, 840], "fraud": [350, 1000] }
+  },
+  "tidy": { "app": [40, 160], "gateway": [400, 160], "command-handler": [763, 100], "event-store": [1140, 160], "publisher": [1500, 40], "integration-topic": [1882, 40], "query-api": [763, 220], "balances-db": [1882, 160], "statements": [1882, 280], "balance-proj": [1500, 160], "statement-proj": [1500, 280], "fraud": [2263, 160] },
+  "arrange": {
+    "alignLeft": { "app": [40, 340], "gateway": [40, 340], "command-handler": [40, 160], "event-store": [40, 160], "publisher": [40, 160], "integration-topic": [40, 160], "query-api": [40, 520], "balances-db": [40, 400], "statements": [40, 640], "balance-proj": [40, 400], "statement-proj": [40, 640], "fraud": [40, 40] },
+    "alignMiddle": { "app": [40, 340], "gateway": [420, 340], "command-handler": [800, 340], "event-store": [1180, 340], "publisher": [1560, 340], "integration-topic": [1940, 340], "query-api": [800, 340], "balances-db": [1180, 340], "statements": [1180, 340], "balance-proj": [1560, 340], "statement-proj": [1560, 340], "fraud": [1940, 340] },
+    "distributeH": { "app": [40, 340], "gateway": [209, 340], "command-handler": [377, 160], "event-store": [717, 160], "publisher": [1252, 160], "integration-topic": [1771, 160], "query-api": [548, 520], "balances-db": [886, 400], "statements": [1075, 640], "balance-proj": [1421, 400], "statement-proj": [1590, 640], "fraud": [1940, 40] },
+    "distributeV": { "app": [40, 313], "gateway": [420, 367], "command-handler": [800, 95], "event-store": [1180, 149], "publisher": [1560, 204], "integration-topic": [1940, 258], "query-api": [800, 531], "balances-db": [1180, 422], "statements": [1180, 585], "balance-proj": [1560, 476], "statement-proj": [1560, 640], "fraud": [1940, 40] },
+    "spreadH": { "app": [40, 40], "gateway": [420, 40], "command-handler": [800, 40], "event-store": [1322, 40], "publisher": [2131, 40], "integration-topic": [2924, 40], "query-api": [1062, 40], "balances-db": [1582, 40], "statements": [1863, 40], "balance-proj": [2391, 40], "statement-proj": [2651, 40], "fraud": [3184, 40] },
+    "boundaryAround": { "x": 0, "y": -24, "width": 2233, "height": 776 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": ["write", "read"],
+    "placedNotes": [],
+    "nodes": { "app": [40, 160], "gateway": [400, 160], "command-handler": [763, -20], "event-store": [1140, -40], "publisher": [1500, -40], "integration-topic": [1882, -40], "query-api": [763, 220], "balances-db": [1882, 160], "statements": [1882, 280], "balance-proj": [1500, 160], "statement-proj": [1500, 280], "fraud": [2263, 160] },
+    "groups": { "write": [723, -104, 677, 196], "read": [723, 96, 1440, 296] }
+  }
+}

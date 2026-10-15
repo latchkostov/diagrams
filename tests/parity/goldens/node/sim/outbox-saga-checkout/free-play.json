@@ -1,0 +1,471 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "client": { "replicas": [1, 1, 0] },
+        "order-api": { "replicas": [1, 1, 0] },
+        "orders-db": { "replicas": [1, 1, 0] },
+        "outbox-relay": { "replicas": [1, 1, 0] },
+        "order-events": { "lag": { "saga": 0, "notifications": 0 }, "replicas": [1, 1, 0] },
+        "notifications": { "replicas": [1, 1, 0] },
+        "email": { "replicas": [1, 1, 0] },
+        "saga": { "replicas": [1, 1, 0] },
+        "saga-db": { "replicas": [1, 1, 0] },
+        "inventory-cmds": { "lag": { "inventory": 0 }, "replicas": [1, 1, 0] },
+        "saga-replies": { "lag": { "saga": 0 }, "replicas": [1, 1, 0] },
+        "payment-cmds": { "lag": { "payments": 0 }, "replicas": [1, 1, 0] },
+        "payments-dlq": { "noConsumer": true, "replicas": [1, 1, 0] },
+        "inventory-svc": { "replicas": [1, 1, 0] },
+        "payment-svc": { "replicas": [1, 1, 0] },
+        "inventory-db": { "replicas": [1, 1, 0] },
+        "stripe": { "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 38,
+      "nodes": {
+        "client": { "processed": 50, "throughput": 5.488914795493901, "replicas": [1, 1, 0] },
+        "order-api": { "processed": 74, "inFlight": 2, "throughput": 9.70982490187233, "replicas": [1, 1, 0] },
+        "orders-db": { "processed": 72, "throughput": 9.848660460851807, "replicas": [1, 1, 0] },
+        "outbox-relay": { "processed": 70, "throughput": 10.765381004926365, "replicas": [1, 1, 0] },
+        "order-events": {
+          "processed": 66,
+          "throughput": 9.715328794253264,
+          "lag": { "saga": 0, "notifications": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "notifications": { "processed": 20, "inFlight": 1, "throughput": 4.699218547024447, "replicas": [1, 1, 0] },
+        "email": { "processed": 19, "throughput": 4.6724750236474, "replicas": [1, 1, 0] },
+        "saga": { "processed": 107, "inFlight": 1, "throughput": 15.932921353246792, "replicas": [1, 1, 0] },
+        "saga-db": { "processed": 102, "inFlight": 1, "throughput": 14.238437513401667, "replicas": [1, 1, 0] },
+        "inventory-cmds": {
+          "processed": 41,
+          "throughput": 5.265857994362618,
+          "lag": { "inventory": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "saga-replies": {
+          "processed": 67,
+          "throughput": 9.600192492193903,
+          "lag": { "saga": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "payment-cmds": {
+          "processed": 34,
+          "throughput": 5.0540932157947305,
+          "lag": { "payments": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "payments-dlq": { "noConsumer": true, "replicas": [1, 1, 0] },
+        "inventory-svc": { "processed": 39, "throughput": 5.2719546157246695, "replicas": [1, 1, 0] },
+        "payment-svc": { "processed": 32, "throughput": 5.295506693551478, "replicas": [1, 1, 0] },
+        "inventory-db": { "processed": 38, "throughput": 5.400467823678716, "replicas": [1, 1, 0] },
+        "stripe": { "processed": 31, "throughput": 5.311902094253832, "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 36,
+      "nodes": {
+        "client": { "processed": 100, "throughput": 5.489163991840091, "replicas": [1, 1, 0] },
+        "order-api": { "processed": 174, "inFlight": 2, "throughput": 9.5921782292986, "replicas": [1, 1, 0] },
+        "orders-db": { "processed": 172, "throughput": 9.725208499602815, "replicas": [1, 1, 0] },
+        "outbox-relay": { "processed": 169, "inFlight": 1, "throughput": 9.61567263427429, "replicas": [1, 1, 0] },
+        "order-events": {
+          "processed": 166,
+          "throughput": 9.64290022734959,
+          "lag": { "saga": 0, "notifications": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "notifications": { "processed": 71, "throughput": 5.634191006474949, "replicas": [1, 1, 0] },
+        "email": { "processed": 69, "throughput": 4.666594378567067, "replicas": [1, 1, 0] },
+        "saga": { "processed": 255, "inFlight": 2, "throughput": 13.936251339657751, "replicas": [1, 1, 0] },
+        "saga-db": { "processed": 252, "inFlight": 1, "throughput": 14.155600595520015, "replicas": [1, 1, 0] },
+        "inventory-cmds": {
+          "processed": 91,
+          "throughput": 5.308253334438132,
+          "lag": { "inventory": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "saga-replies": {
+          "processed": 167,
+          "throughput": 9.706568419867338,
+          "lag": { "saga": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "payment-cmds": {
+          "processed": 84,
+          "throughput": 5.028039179042404,
+          "lag": { "payments": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "payments-dlq": { "noConsumer": true, "replicas": [1, 1, 0] },
+        "inventory-svc": { "processed": 89, "throughput": 5.315050094448582, "replicas": [1, 1, 0] },
+        "payment-svc": { "processed": 82, "inFlight": 1, "throughput": 5.342484782018117, "replicas": [1, 1, 0] },
+        "inventory-db": { "processed": 88, "throughput": 5.405167040234828, "replicas": [1, 1, 0] },
+        "stripe": { "processed": 81, "throughput": 5.369281261080074, "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 36,
+      "nodes": {
+        "client": { "processed": 150, "throughput": 5.489164003153583, "replicas": [1, 1, 0] },
+        "order-api": { "processed": 274, "inFlight": 2, "throughput": 9.662055555327216, "replicas": [1, 1, 0] },
+        "orders-db": { "processed": 272, "throughput": 9.783547569370986, "replicas": [1, 1, 0] },
+        "outbox-relay": { "processed": 269, "inFlight": 1, "throughput": 9.684717318470533, "replicas": [1, 1, 0] },
+        "order-events": {
+          "processed": 266,
+          "throughput": 9.659177802601551,
+          "lag": { "saga": 0, "notifications": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "notifications": { "processed": 121, "throughput": 5.7304007812514355, "replicas": [1, 1, 0] },
+        "email": { "processed": 119, "throughput": 4.707182263014391, "replicas": [1, 1, 0] },
+        "saga": { "processed": 405, "inFlight": 3, "throughput": 14.048334089635754, "replicas": [1, 1, 0] },
+        "saga-db": { "processed": 402, "throughput": 14.24062749237136, "replicas": [1, 1, 0] },
+        "inventory-cmds": {
+          "processed": 141,
+          "throughput": 5.285585823419514,
+          "lag": { "inventory": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "saga-replies": {
+          "processed": 267,
+          "throughput": 9.658208257797371,
+          "lag": { "saga": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "payment-cmds": {
+          "processed": 134,
+          "throughput": 5.037342238875409,
+          "lag": { "payments": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "payments-dlq": { "noConsumer": true, "replicas": [1, 1, 0] },
+        "inventory-svc": { "processed": 139, "throughput": 5.291761095170635, "replicas": [1, 1, 0] },
+        "payment-svc": { "processed": 132, "throughput": 5.320246321629367, "replicas": [1, 1, 0] },
+        "inventory-db": { "processed": 138, "throughput": 5.380867802800682, "replicas": [1, 1, 0] },
+        "stripe": { "processed": 131, "throughput": 5.3650103568049925, "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 37,
+      "nodes": {
+        "client": { "processed": 200, "throughput": 5.489164003154097, "replicas": [1, 1, 0] },
+        "order-api": { "processed": 374, "inFlight": 2, "throughput": 9.609106330013459, "replicas": [1, 1, 0] },
+        "orders-db": { "processed": 372, "throughput": 9.749816300344728, "replicas": [1, 1, 0] },
+        "outbox-relay": { "processed": 370, "throughput": 10.603685773825163, "replicas": [1, 1, 0] },
+        "order-events": {
+          "processed": 366,
+          "throughput": 9.643202365531252,
+          "lag": { "saga": 0, "notifications": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "notifications": { "processed": 170, "inFlight": 1, "throughput": 4.685423174321627, "replicas": [1, 1, 0] },
+        "email": { "processed": 169, "throughput": 4.676756569900432, "replicas": [1, 1, 0] },
+        "saga": { "processed": 556, "inFlight": 2, "throughput": 14.957999999680066, "replicas": [1, 1, 0] },
+        "saga-db": { "processed": 553, "throughput": 15.210770771679222, "replicas": [1, 1, 0] },
+        "inventory-cmds": {
+          "processed": 191,
+          "throughput": 5.293498787958639,
+          "lag": { "inventory": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "saga-replies": {
+          "processed": 367,
+          "throughput": 9.585220854364348,
+          "lag": { "saga": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "payment-cmds": {
+          "processed": 184,
+          "throughput": 5.018135215039905,
+          "lag": { "payments": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "payments-dlq": { "noConsumer": true, "replicas": [1, 1, 0] },
+        "inventory-svc": { "processed": 189, "throughput": 5.305895901532845, "replicas": [1, 1, 0] },
+        "payment-svc": { "processed": 182, "inFlight": 1, "throughput": 5.32550420964519, "replicas": [1, 1, 0] },
+        "inventory-db": { "processed": 187, "inFlight": 1, "throughput": 4.370045131728198, "replicas": [1, 1, 0] },
+        "stripe": { "processed": 181, "throughput": 5.313334350109767, "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 37,
+      "nodes": {
+        "client": { "processed": 250, "throughput": 5.489164003154097, "replicas": [1, 1, 0] },
+        "order-api": { "processed": 474, "inFlight": 2, "throughput": 9.631505867027522, "replicas": [1, 1, 0] },
+        "orders-db": { "processed": 472, "inFlight": 1, "throughput": 9.81906819930645, "replicas": [1, 1, 0] },
+        "outbox-relay": { "processed": 469, "inFlight": 1, "throughput": 9.726021121708072, "replicas": [1, 1, 0] },
+        "order-events": {
+          "processed": 466,
+          "throughput": 9.664074480490548,
+          "lag": { "saga": 0, "notifications": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "notifications": { "processed": 220, "inFlight": 1, "throughput": 4.692500809347442, "replicas": [1, 1, 0] },
+        "email": { "processed": 219, "throughput": 4.685401212842215, "replicas": [1, 1, 0] },
+        "saga": { "processed": 707, "inFlight": 1, "throughput": 15.829105945187246, "replicas": [1, 1, 0] },
+        "saga-db": { "processed": 703, "throughput": 15.06939302560554, "replicas": [1, 1, 0] },
+        "inventory-cmds": {
+          "processed": 241,
+          "throughput": 5.241288008082573,
+          "lag": { "inventory": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "saga-replies": {
+          "processed": 467,
+          "throughput": 9.540108774621348,
+          "lag": { "saga": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "payment-cmds": {
+          "processed": 234,
+          "throughput": 4.989660245182214,
+          "lag": { "payments": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "payments-dlq": { "noConsumer": true, "replicas": [1, 1, 0] },
+        "inventory-svc": { "processed": 239, "throughput": 5.276264762801488, "replicas": [1, 1, 0] },
+        "payment-svc": { "processed": 232, "throughput": 5.265881016210524, "replicas": [1, 1, 0] },
+        "inventory-db": { "processed": 238, "throughput": 5.318424094237591, "replicas": [1, 1, 0] },
+        "stripe": { "processed": 231, "throughput": 5.275717210237227, "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 37,
+      "nodes": {
+        "client": { "processed": 300, "throughput": 5.489164003154097, "replicas": [1, 1, 0] },
+        "order-api": { "processed": 574, "inFlight": 2, "throughput": 9.678227482459157, "replicas": [1, 1, 0] },
+        "orders-db": { "processed": 572, "throughput": 9.764209223003744, "replicas": [1, 1, 0] },
+        "outbox-relay": { "processed": 570, "throughput": 10.650743566859123, "replicas": [1, 1, 0] },
+        "order-events": {
+          "processed": 566,
+          "throughput": 9.618095157539193,
+          "lag": { "saga": 0, "notifications": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "notifications": { "processed": 270, "inFlight": 1, "throughput": 4.632296603324956, "replicas": [1, 1, 0] },
+        "email": { "processed": 269, "throughput": 4.632580455240983, "replicas": [1, 1, 0] },
+        "saga": { "processed": 856, "inFlight": 1, "throughput": 14.991370042512507, "replicas": [1, 1, 0] },
+        "saga-db": { "processed": 852, "throughput": 14.224898527697812, "replicas": [1, 1, 0] },
+        "inventory-cmds": {
+          "processed": 291,
+          "throughput": 5.259697417212836,
+          "lag": { "inventory": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "saga-replies": {
+          "processed": 567,
+          "throughput": 9.616245827415762,
+          "lag": { "saga": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "payment-cmds": {
+          "processed": 284,
+          "throughput": 5.074934021616277,
+          "lag": { "payments": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "payments-dlq": { "noConsumer": true, "replicas": [1, 1, 0] },
+        "inventory-svc": { "processed": 289, "throughput": 5.285108379685369, "replicas": [1, 1, 0] },
+        "payment-svc": { "processed": 282, "throughput": 5.335416222085471, "replicas": [1, 1, 0] },
+        "inventory-db": { "processed": 288, "throughput": 5.366522791841572, "replicas": [1, 1, 0] },
+        "stripe": { "processed": 281, "throughput": 5.337294056732177, "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 37,
+    "real": {
+      "client": { "processed": 300, "throughput": 5.489164003154097, "replicas": [1, 1, 0] },
+      "order-api": { "processed": 574, "inFlight": 2, "throughput": 9.678227482459157, "replicas": [1, 1, 0] },
+      "orders-db": { "processed": 572, "throughput": 9.764209223003744, "replicas": [1, 1, 0] },
+      "outbox-relay": { "processed": 570, "throughput": 10.650743566859123, "replicas": [1, 1, 0] },
+      "order-events": {
+        "processed": 566,
+        "throughput": 9.618095157539193,
+        "lag": { "saga": 0, "notifications": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "notifications": { "processed": 270, "inFlight": 1, "throughput": 4.632296603324956, "replicas": [1, 1, 0] },
+      "email": { "processed": 269, "throughput": 4.632580455240983, "replicas": [1, 1, 0] },
+      "saga": { "processed": 856, "inFlight": 1, "throughput": 14.991370042512507, "replicas": [1, 1, 0] },
+      "saga-db": { "processed": 852, "throughput": 14.224898527697812, "replicas": [1, 1, 0] },
+      "inventory-cmds": {
+        "processed": 291,
+        "throughput": 5.259697417212836,
+        "lag": { "inventory": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "saga-replies": {
+        "processed": 567,
+        "throughput": 9.616245827415762,
+        "lag": { "saga": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "payment-cmds": {
+        "processed": 284,
+        "throughput": 5.074934021616277,
+        "lag": { "payments": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "payments-dlq": { "noConsumer": true, "replicas": [1, 1, 0] },
+      "inventory-svc": { "processed": 289, "throughput": 5.285108379685369, "replicas": [1, 1, 0] },
+      "payment-svc": { "processed": 282, "throughput": 5.335416222085471, "replicas": [1, 1, 0] },
+      "inventory-db": { "processed": 288, "throughput": 5.366522791841572, "replicas": [1, 1, 0] },
+      "stripe": { "processed": 281, "throughput": 5.337294056732177, "replicas": [1, 1, 0] },
+      "vault": { "replicas": [1, 1, 0] }
+    },
+    "edges": {
+      "client-to-order-api": 299,
+      "order-api-to-orders-db": 572,
+      "orders-db-to-outbox-relay": 570,
+      "outbox-relay-to-order-events": 566,
+      "order-events-to-saga": 292,
+      "order-events-to-notifications": 271,
+      "notifications-to-email": 269,
+      "saga-to-saga-db": 852,
+      "saga-to-inventory-cmds": 291,
+      "saga-to-payment-cmds": 284,
+      "saga-to-order-api": 277,
+      "inventory-cmds-to-inventory-svc": 289,
+      "inventory-svc-to-inventory-db": 288,
+      "inventory-svc-to-saga-replies": 287,
+      "payment-cmds-to-payment-svc": 282,
+      "payment-cmds-to-payments-dlq": 0,
+      "payment-svc-to-stripe": 281,
+      "payment-svc-to-saga-replies": 280,
+      "saga-replies-to-saga": 565,
+      "payment-svc-to-vault": 0
+    }
+  },
+  "events": {
+    "total": 13926,
+    "byKind": { "process": 7111, "deliver": 6815 },
+    "byNode": {
+      "client": { "process": 300 },
+      "order-api": { "deliver": 576, "process": 574 },
+      "orders-db": { "deliver": 572, "process": 572 },
+      "outbox-relay": { "deliver": 570, "process": 570 },
+      "order-events": { "deliver": 566, "process": 566 },
+      "saga": { "deliver": 857, "process": 856 },
+      "saga-db": { "deliver": 852, "process": 852 },
+      "inventory-cmds": { "deliver": 291, "process": 291 },
+      "inventory-svc": { "deliver": 289, "process": 289 },
+      "inventory-db": { "deliver": 288, "process": 288 },
+      "saga-replies": { "deliver": 567, "process": 567 },
+      "payment-cmds": { "deliver": 284, "process": 284 },
+      "payment-svc": { "deliver": 282, "process": 282 },
+      "stripe": { "deliver": 281, "process": 281 },
+      "notifications": { "deliver": 271, "process": 270 },
+      "email": { "deliver": 269, "process": 269 }
+    },
+    "perSecond": [
+      "e6feaa561397",
+      "a7715b510fa4",
+      "9d7a5822c31e",
+      "0259b9c01825",
+      "520efca35ecf",
+      "0426fd6c8156",
+      "169c7c1c9f56",
+      "d3c2236f24e4",
+      "a96247253f96",
+      "b1f7e076b29c",
+      "eb69e2b4479b",
+      "9b22fffd93a1",
+      "366b0af07718",
+      "ca8ef4d32922",
+      "5bc17b3a770d",
+      "893883ecda28",
+      "d7c599a8469e",
+      "47e52e818ae9",
+      "7e550bc7eb80",
+      "1bc8f6029e52",
+      "8ad5311d9d03",
+      "58e943448820",
+      "d2ff7e8ae544",
+      "38ff33f54286",
+      "1c841e4ff914",
+      "dd1deacc1da9",
+      "536058828147",
+      "e3cb2b1058e7",
+      "6a105c81682f",
+      "70c497959422",
+      "3ec2642eb6c9",
+      "a820a0f67808",
+      "1007dc4e2131",
+      "bf1e8193fbea",
+      "ec3b7f975cef",
+      "df4eb695ca62",
+      "bfa944802257",
+      "4b2a66ae50a8",
+      "0d3f3c910c2f",
+      "3813c1710d99",
+      "c403c7720146",
+      "a39a47211168",
+      "1f50a61edf64",
+      "b1141a6268c4",
+      "8e914cca0738",
+      "ba65156c006f",
+      "13fcdd1130ff",
+      "d41c1f000d2f",
+      "ecab03a46a57",
+      "88fba494e433",
+      "9d4f9c390c25",
+      "1361002437e9",
+      "231a8c76dadd",
+      "866de85274dc",
+      "0417165385e5",
+      "11cf6c23401b",
+      "be95c68ebc17",
+      "230057dbb038",
+      "9e15845edc85",
+      "162543a9e0cf",
+      "04b6edf8e848"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 269, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 269, "min": 5950, "mean": 6041.561338289963, "p50": 6040, "p90": 6090, "max": 6140 },
+    "waitMs": {
+      "order-api": { "count": 538, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "orders-db": { "count": 538, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "outbox-relay": { "count": 538, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "notifications": { "count": 269, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "saga": { "count": 807, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "saga-db": { "count": 807, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "inventory-svc": { "count": 269, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "payment-svc": { "count": 269, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "inventory-db": { "count": 269, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "order-api": { "count": 538, "min": 90, "mean": 105.09293680297398, "p50": 110, "p90": 120, "max": 120 },
+      "orders-db": { "count": 538, "min": 10, "mean": 14.535315985130111, "p50": 10, "p90": 20, "max": 20 },
+      "outbox-relay": { "count": 538, "min": 70, "mean": 85.22304832713755, "p50": 90, "p90": 100, "max": 100 },
+      "notifications": { "count": 269, "min": 90, "mean": 105.50185873605948, "p50": 110, "p90": 120, "max": 120 },
+      "saga": { "count": 807, "min": 50, "mean": 55.1177199504337, "p50": 60, "p90": 60, "max": 60 },
+      "saga-db": { "count": 807, "min": 10, "mean": 15.043370508054522, "p50": 20, "p90": 20, "max": 20 },
+      "inventory-svc": { "count": 269, "min": 90, "mean": 105.4275092936803, "p50": 110, "p90": 120, "max": 120 },
+      "payment-svc": { "count": 269, "min": 130, "mean": 155.57620817843866, "p50": 160, "p90": 180, "max": 180 },
+      "inventory-db": { "count": 269, "min": 10, "mean": 15.613382899628252, "p50": 20, "p90": 20, "max": 20 }
+    }
+  }
+}

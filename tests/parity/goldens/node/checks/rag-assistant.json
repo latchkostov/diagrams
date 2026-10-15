@@ -1,0 +1,55 @@
+{
+  "ran": [
+    "dead-letter",
+    "no-reader",
+    "sync-cycle",
+    "sync-chain",
+    "shared-database",
+    "entry-gateway",
+    "capacity",
+    "single-point",
+    "secret-identity",
+    "schema-registry"
+  ],
+  "off": [],
+  "findings": [
+    {
+      "id": "dead-letter:ingest-q",
+      "rule": "dead-letter",
+      "severity": "suggestion",
+      "target": "ingest-q",
+      "elements": ["ingest-q", "embed-worker"],
+      "fix": {
+        "ops": [
+          { "op": "add_node", "kind": "generic.queue", "label": "Ingest jobs DLQ", "key": "new-dlq" },
+          { "op": "connect", "from": "ingest-q", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
+          { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
+        ],
+        "needsChoice": false
+      }
+    }
+  ],
+  "ignored": [],
+  "fixes": {
+    "dead-letter:ingest-q (default)": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "summary": "+1 node, +1 connection",
+      "results": [
+        {
+          "i": 0,
+          "op": "add_node",
+          "id": "queue-1",
+          "label": "Ingest jobs DLQ",
+          "stencil": { "id": "generic.queue", "label": "Queue", "confidence": "high", "alternatives": [] }
+        },
+        { "i": 1, "op": "connect", "id": "e-1", "from": "ingest-q", "to": "queue-1" },
+        { "i": 2, "op": "update", "id": "e-1" }
+      ],
+      "nodes": 14,
+      "edges": 15,
+      "findingsAfter": ["no-reader:queue-1"]
+    }
+  }
+}

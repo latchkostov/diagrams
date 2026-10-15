@@ -1,0 +1,42 @@
+---
+title: AWS serverless orders
+---
+flowchart LR
+  subgraph g_aws ["AWS · us-east-1"]
+    apigw["Orders API<br/>REST · Cognito authorizer"]
+    create_order["CreateOrder<br/>Validate · PutItem"]
+    orders_table[("Orders table<br/>Streams: NEW_IMAGE")]
+    stream_fn["Stream publisher<br/>Batch 100 · PutEvents"]
+    bus["commerce-bus<br/>Rules by detail-type"]
+    sfn["Payment workflow<br/>Charge · update status"]
+    dlq["fulfillment-dlq<br/>Redrive when 3PL recovers"]
+    fulfillment_q["fulfillment-queue<br/>maxReceiveCount: 3"]
+    fulfillment_fn["RequestShipment<br/>Batch 10 · partial failures"]
+    sns["order-updates<br/>Customer notifications"]
+    email(["Email receipt<br/>Amazon SES"])
+    sms(["SMS update<br/>End User Messaging"])
+    cognito["Cognito user pool<br/>Shopper sign-in"]
+  end
+  client(["Web shop<br/>Signed-in customers"])
+  stripe(["Stripe<br/>Payment intents"])
+  three_pl(["3PL warehouse API<br/>POST /shipments"])
+  client -->|"HTTPS"| apigw
+  apigw -->|"POST /orders"| create_order
+  create_order -->|"PutItem"| orders_table
+  orders_table -.->|"DynamoDB Streams"| stream_fn
+  stream_fn -.->|"PutEvents"| bus
+  bus -.->|"Rule: OrderPlaced"| sfn
+  sfn -->|"Task: charge"| stripe
+  sfn -->|"UpdateItem: PAID"| orders_table
+  bus -.->|"Rule: OrderPaid"| fulfillment_q
+  fulfillment_q -.->|"Event source"| fulfillment_fn
+  fulfillment_fn -->|"Create shipment"| three_pl
+  fulfillment_q -.->|"After 3 receives"| dlq
+  dlq -.->|"Redrive"| fulfillment_q
+  bus -.->|"Rule: OrderPaid"| sns
+  sns -.->|"Email"| email
+  sns -.->|"SMS"| sms
+  apigw -.->|"gets tokens from: JWT authorizer"| cognito
+  linkStyle 3,4,5,8,9,11,12,13,14,15 stroke-dasharray: 6 4
+  linkStyle 16 stroke:#5A61C4,stroke-width:1.25px,stroke-dasharray: 2 4
+%% diagrams:{"v":1,"description":"API Gateway and Lambda write orders to DynamoDB; its stream feeds EventBridge rules for a Step Functions workflow, SQS and SNS.","nodes":{"client":["client","client.browser"],"apigw":["apigw","aws.api-gateway"],"create_order":["create-order","aws.lambda"],"orders_table":["orders-table","aws.dynamodb"],"stream_fn":["stream-fn","aws.lambda"],"bus":["bus","aws.eventbridge"],"sfn":["sfn","aws.step-functions"],"stripe":["stripe","stripe"],"dlq":["dlq","aws.sqs"],"fulfillment_q":["fulfillment-q","aws.sqs"],"fulfillment_fn":["fulfillment-fn","aws.lambda"],"three_pl":["three-pl","generic.external-api"],"sns":["sns","aws.sns"],"email":["email","generic.email"],"sms":["sms","generic.sms"],"cognito":["cognito","generic.identity-provider"]},"groups":{"g_aws":["aws","aws"]},"edges":["client-to-apigw","apigw-to-create-order","create-order-to-orders-table","orders-table-to-stream-fn","stream-fn-to-bus","bus-to-sfn","sfn-to-stripe","sfn-to-orders-table","bus-to-fulfillment-q","fulfillment-q-to-fulfillment-fn","fulfillment-fn-to-three-pl","fulfillment-q-to-dlq","dlq-to-fulfillment-q","bus-to-sns","sns-to-email","sns-to-sms","apigw-to-cognito"],"relations":{"16":"identity"}}

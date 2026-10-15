@@ -1,0 +1,147 @@
+<mxfile host="Diagrams" agent="Diagrams" version="24.0.0" type="device">
+  <diagram id="dg-5pqwp2" name="RAG support assistant">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <object id="0" dg_format="diagrams/v1" dg_description="Changed docs are chunked and embedded into a vector index; questions retrieve context for an LLM, and ratings feed an eval loop." dg_direction="LR" dg_simulations="[{&quot;id&quot;:&quot;launch-day&quot;,&quot;title&quot;:&quot;Launch day questions&quot;,&quot;description&quot;:&quot;Questions climb to 40 a second after a product launch; a quarter of answers are rated and graded.&quot;,&quot;seed&quot;:7,&quot;scale&quot;:1,&quot;traffic&quot;:[{&quot;id&quot;:&quot;questions&quot;,&quot;node&quot;:&quot;user&quot;,&quot;messageType&quot;:&quot;Question&quot;,&quot;label&quot;:&quot;Questions ramp from 5 to 40 a second&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;ramp&quot;,&quot;startRate&quot;:5,&quot;stages&quot;:[{&quot;durationMs&quot;:4000,&quot;targetRate&quot;:40},{&quot;durationMs&quot;:4000,&quot;targetRate&quot;:40}]}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;trace&quot;,&quot;node&quot;:&quot;rag-api&quot;}},{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Each question checks the semantic cache, retrieves the closest chunks from the vector index, and sends them to the LLM as context.&quot;,&quot;focus&quot;:[&quot;rag-api&quot;,&quot;cache&quot;,&quot;vector-db&quot;,&quot;llm&quot;],&quot;pause&quot;:true}},{&quot;atMs&quot;:3000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Generation is the slow step, about two seconds. Plenty of requests in flight keeps throughput up while each answer streams.&quot;,&quot;focus&quot;:[&quot;llm&quot;]}},{&quot;atMs&quot;:6000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;About a quarter of answers get a rating. An eval job asks the LLM to grade them for groundedness, and the scores feed a dashboard.&quot;,&quot;focus&quot;:[&quot;feedback&quot;,&quot;eval-job&quot;,&quot;quality&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;retrieved&quot;,&quot;label&quot;:&quot;Every question retrieves context&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;vector-db&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:250,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;rated&quot;,&quot;label&quot;:&quot;Rated answers are graded&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;quality&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:30,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;llm-keeps-up&quot;,&quot;label&quot;:&quot;Nothing is dropped&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;llm&quot;,&quot;field&quot;:&quot;dropped&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;always&quot;}]},{&quot;id&quot;:&quot;reindex&quot;,&quot;title&quot;:&quot;Re-index the knowledge base&quot;,&quot;description&quot;:&quot;A docs migration changes 1,200 pages at once; the ingest queue absorbs them while questions are still answered.&quot;,&quot;seed&quot;:7,&quot;scale&quot;:4,&quot;traffic&quot;:[{&quot;id&quot;:&quot;questions&quot;,&quot;node&quot;:&quot;user&quot;,&quot;messageType&quot;:&quot;Question&quot;,&quot;label&quot;:&quot;Questions: 20 a second&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:20,&quot;durationMs&quot;:12000}},{&quot;id&quot;:&quot;migration&quot;,&quot;node&quot;:&quot;docs&quot;,&quot;messageType&quot;:&quot;PageChanged&quot;,&quot;label&quot;:&quot;1,200 pages change at once&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;burst&quot;,&quot;count&quot;:1200,&quot;atMs&quot;:1000,&quot;spreadMs&quot;:1000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:1000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;A docs migration touches 1,200 pages at once. The queue takes them all; four workers embed about 80 pages a second. Each dot is four messages.&quot;,&quot;focus&quot;:[&quot;docs&quot;,&quot;ingest-q&quot;,&quot;embed-worker&quot;],&quot;pause&quot;:true}},{&quot;atMs&quot;:5000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Questions are still answered while the backlog drains. The index gets fresher page by page.&quot;,&quot;focus&quot;:[&quot;rag-api&quot;,&quot;vector-db&quot;]}},{&quot;atMs&quot;:11000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The queue is empty and every page is re-embedded. Nothing was lost, even though the burst outran the workers.&quot;,&quot;focus&quot;:[&quot;ingest-q&quot;,&quot;embeddings&quot;,&quot;vector-db&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;backlog&quot;,&quot;label&quot;:&quot;The queue absorbs the burst&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;ingest-q&quot;,&quot;field&quot;:&quot;lag&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;at&quot;,&quot;atMs&quot;:4000},{&quot;id&quot;:&quot;drained&quot;,&quot;label&quot;:&quot;Every job finishes&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;ingest-q&quot;,&quot;field&quot;:&quot;lag&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;embedded&quot;,&quot;label&quot;:&quot;1,200 pages re-embedded&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;embeddings&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:1200,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;index&quot;,&quot;label&quot;:&quot;Index: 1,200 upserts + 240 searches&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;vector-db&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:1440,&quot;when&quot;:&quot;end&quot;}]}]">
+          <mxCell />
+        </object>
+        <mxCell id="1" parent="0" />
+        <object id="dg-n-user" label="Help center chat&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Customers ask questions&lt;/span&gt;" dg_id="user" dg_stencil="client.browser" dg_props="{&quot;ratePerSec&quot;:2,&quot;messageType&quot;:&quot;Question&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#6366F11A;strokeColor=#6366F1;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="60" y="166" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-rag-api" label="RAG API&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Retrieve · prompt · stream&lt;/span&gt;" dg_id="rag-api" dg_stencil="service.python" dg_props="{&quot;concurrency&quot;:200,&quot;latencyMs&quot;:120}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3776AB1A;strokeColor=#3776AB;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="440" y="166" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-cache" label="Semantic cache&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Similar question → answer&lt;/span&gt;" dg_id="cache" dg_stencil="redis.cache" dg_props="{&quot;latencyMs&quot;:1}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#DC382D1A;strokeColor=#DC382D;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="440" y="326" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-feedback" label="rag.feedback&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Answers + ratings&lt;/span&gt;" dg_id="feedback" dg_stencil="kafka.topic" dg_props="{&quot;partitions&quot;:6}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="820" y="46" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-llm" label="Claude API&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Answers with citations&lt;/span&gt;" dg_id="llm" dg_stencil="anthropic.claude" dg_props="{&quot;concurrency&quot;:200,&quot;latencyMs&quot;:1800}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#D977571A;strokeColor=#D97757;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="820" y="166" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-vector-db" label="Vector index&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;pgvector · HNSW&lt;/span&gt;" dg_id="vector-db" dg_stencil="generic.vector-db" dg_props="{&quot;latencyMs&quot;:1}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="820" y="326" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-eval-job" label="Eval job&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;LLM-as-judge · group: evals&lt;/span&gt;" dg_id="eval-job" dg_stencil="generic.batch-job" dg_props="{&quot;concurrency&quot;:20,&quot;latencyMs&quot;:300,&quot;emits&quot;:&quot;EvalScore&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#A855F71A;strokeColor=#A855F7;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="1200" y="46" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-quality" label="Answer quality&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Groundedness · thumbs up&lt;/span&gt;" dg_id="quality" dg_stencil="grafana" dg_props="{}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#F468001A;strokeColor=#F46800;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="1580" y="46" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-docs" label="Content updates&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Confluence · Drive webhooks&lt;/span&gt;" dg_id="docs" dg_stencil="generic.webhook" dg_props="{&quot;ratePerSec&quot;:0.2,&quot;messageType&quot;:&quot;PageChanged&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#EC48991A;strokeColor=#EC4899;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="60" y="486" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-ingest-q" label="Ingest jobs&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;One job per changed page&lt;/span&gt;" dg_id="ingest-q" dg_stencil="generic.queue" dg_props="{&quot;maxDeliveryCount&quot;:5}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#F59E0B1A;strokeColor=#F59E0B;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="440" y="486" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-embed-worker" label="Chunk and embed&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;~800 tokens · 100 overlap&lt;/span&gt;" dg_id="embed-worker" dg_stencil="service.python" dg_props="{&quot;replicas&quot;:4,&quot;concurrency&quot;:4,&quot;latencyMs&quot;:200,&quot;emits&quot;:&quot;ChunkVectors&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3776AB1A;strokeColor=#3776AB;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="820" y="486" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-embeddings" label="Embeddings API&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;text-embedding-3-large&lt;/span&gt;" dg_id="embeddings" dg_stencil="openai" dg_props="{&quot;concurrency&quot;:400,&quot;latencyMs&quot;:150}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#10A37F1A;strokeColor=#10A37F;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="1200" y="486" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-vault" label="Vault&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;LLM API keys&lt;/span&gt;" dg_id="vault" dg_stencil="vault">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#EAB3081A;strokeColor=#EAB308;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="1200" y="326" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-user-to-rag-api" label="POST /ask" dg_id="user-to-rag-api" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-user" target="dg-n-rag-api">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-rag-api-to-cache" label="Cache lookup" dg_id="rag-api-to-cache" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-rag-api" target="dg-n-cache">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-rag-api-to-vector-db" label="Top-k chunks" dg_id="rag-api-to-vector-db" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-rag-api" target="dg-n-vector-db">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-rag-api-to-llm" label="Prompt + context" dg_id="rag-api-to-llm" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-rag-api" target="dg-n-llm">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-rag-api-to-feedback" label="Rated answers" dg_id="rag-api-to-feedback" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;share&quot;:0.25,&quot;emits&quot;:&quot;AnswerRated&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-rag-api" target="dg-n-feedback">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-feedback-to-eval-job" label="group: evals" dg_id="feedback-to-eval-job" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;group&quot;:&quot;evals&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-feedback" target="dg-n-eval-job">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-eval-job-to-llm" label="Grade answer" dg_id="eval-job-to-llm" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-eval-job" target="dg-n-llm">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-eval-job-to-quality" label="Scores" dg_id="eval-job-to-quality" dg_kind="async" dg_props="{&quot;travelMs&quot;:300}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-eval-job" target="dg-n-quality">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-docs-to-ingest-q" label="Page changed" dg_id="docs-to-ingest-q" dg_kind="async" dg_props="{&quot;travelMs&quot;:300}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-docs" target="dg-n-ingest-q">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ingest-q-to-embed-worker" label="Competing workers" dg_id="ingest-q-to-embed-worker" dg_kind="async" dg_props="{&quot;travelMs&quot;:300}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-ingest-q" target="dg-n-embed-worker">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-embed-worker-to-embeddings" label="Embed batch" dg_id="embed-worker-to-embeddings" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-embed-worker" target="dg-n-embeddings">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-embed-worker-to-vector-db" label="Upsert chunks" dg_id="embed-worker-to-vector-db" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-embed-worker" target="dg-n-vector-db">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-rag-api-to-vault" label="" dg_id="rag-api-to-vault" dg_kind="async" dg_relation="secret">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#A6720C;dashed=1;dashPattern=1 4;dfRelation=secret;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="dg-n-rag-api" target="dg-n-vault">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-embed-worker-to-vault" label="" dg_id="embed-worker-to-vault" dg_kind="async" dg_relation="secret">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#A6720C;dashed=1;dashPattern=1 4;dfRelation=secret;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="dg-n-embed-worker" target="dg-n-vault">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

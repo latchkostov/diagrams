@@ -1,0 +1,14 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Managed admission",
+    "direction": "LR",
+    "nodes": [
+      { "id": "source", "stencil": "generic.service", "label": "Checkout", "x": 40, "y": 40 },
+      { "id": "api", "stencil": "generic.service", "label": "openai", "x": 400, "y": 100 },
+      { "id": "other", "stencil": "generic.service", "label": "Other", "x": 40, "y": 160 }
+    ],
+    "edges": [{ "id": "e1-source-api", "from": "source", "to": "api", "kind": "sync" }]
+  }
+}

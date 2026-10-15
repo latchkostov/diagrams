@@ -1,0 +1,41 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "CQRS with event sourcing",
+    "direction": "LR",
+    "groups": [
+      { "id": "g_write", "label": "Write side", "tone": "neutral", "x": 763, "y": 100, "width": 677, "height": 236 },
+      { "id": "g_read", "label": "Read side", "tone": "neutral", "x": 763, "y": 160, "width": 1419, "height": 296 }
+    ],
+    "nodes": [
+      { "id": "command_handler", "stencil": "generic.service", "label": "Command handler", "sublabel": "Load · decide · append", "x": 803, "y": 164, "group": "g_write" },
+      { "id": "event_store", "stencil": "generic.event-store", "label": "Event store", "sublabel": "Stream per account", "x": 1180, "y": 224, "group": "g_write" },
+      { "id": "query_api", "stencil": "generic.service", "label": "Query API", "sublabel": "Reads only", "x": 803, "y": 284, "group": "g_read" },
+      { "id": "balances_db", "stencil": "generic.database", "label": "Balances", "sublabel": "Read model · one row each", "x": 1922, "y": 224, "group": "g_read" },
+      { "id": "statements", "stencil": "generic.database", "label": "Statements", "sublabel": "Read model · searchable", "x": 1922, "y": 344, "group": "g_read" },
+      { "id": "balance_proj", "stencil": "generic.projection", "label": "Balance projection", "sublabel": "group: balances", "x": 1540, "y": 224, "group": "g_read" },
+      { "id": "statement_proj", "stencil": "generic.projection", "label": "Statement projection", "sublabel": "group: statements", "x": 1540, "y": 344, "group": "g_read" },
+      { "id": "app", "stencil": "generic.service", "label": "Banking app", "sublabel": "Commands and queries", "x": 80, "y": 224 },
+      { "id": "gateway", "stencil": "aws.api-gateway", "label": "API gateway", "sublabel": "Routes by verb", "x": 440, "y": 224 },
+      { "id": "publisher", "stencil": "generic.service", "label": "Event publisher", "sublabel": "group: integration", "x": 1540, "y": 104 },
+      { "id": "integration_topic", "stencil": "generic.topic", "label": "accounts.events.v1", "sublabel": "Public contract", "x": 1922, "y": 104 },
+      { "id": "fraud", "stencil": "generic.service", "label": "Fraud scoring", "sublabel": "Another team · group: fraud", "x": 2303, "y": 224 }
+    ],
+    "edges": [
+      { "id": "e1-app-gateway", "from": "app", "to": "gateway", "label": "HTTPS", "kind": "sync" },
+      { "id": "e2-gateway-command_handler", "from": "gateway", "to": "command_handler", "label": "POST · commands", "kind": "sync" },
+      { "id": "e3-gateway-query_api", "from": "gateway", "to": "query_api", "label": "GET · queries", "kind": "sync" },
+      { "id": "e4-command_handler-event_store", "from": "command_handler", "to": "event_store", "label": "Append · expectedVersion", "kind": "sync" },
+      { "id": "e5-event_store-publisher", "from": "event_store", "to": "publisher", "label": "Subscription", "kind": "async" },
+      { "id": "e6-publisher-integration_topic", "from": "publisher", "to": "integration_topic", "label": "Integration events", "kind": "async" },
+      { "id": "e7-event_store-balance_proj", "from": "event_store", "to": "balance_proj", "kind": "async" },
+      { "id": "e8-event_store-statement_proj", "from": "event_store", "to": "statement_proj", "kind": "async" },
+      { "id": "e9-balance_proj-balances_db", "from": "balance_proj", "to": "balances_db", "label": "Upsert balance", "kind": "sync" },
+      { "id": "e10-statement_proj-statements", "from": "statement_proj", "to": "statements", "label": "Index entry", "kind": "sync" },
+      { "id": "e11-query_api-balances_db", "from": "query_api", "to": "balances_db", "label": "GetBalance", "kind": "sync" },
+      { "id": "e12-query_api-statements", "from": "query_api", "to": "statements", "label": "GetStatement", "kind": "sync" },
+      { "id": "e13-integration_topic-fraud", "from": "integration_topic", "to": "fraud", "label": "group: fraud", "kind": "async" }
+    ]
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "summary": "2 warnings, 0 suggestions.",
+  "findings": {
+    "no-reader:queue": {
+      "title": "Nobody reads Audit",
+      "message": "Orders sends to Audit, but nothing consumes it: messages pile up.",
+      "rationale": "A queue with producers and no consumers only grows. Every queue should have a consumer that takes its messages.",
+      "fix": { "label": "Add a consumer…", "choice": "Pick what reads Audit, then add it and connect queue to it." }
+    },
+    "capacity:orders": {
+      "title": "Orders can't keep up",
+      "message": "At the diagram's own rates, it gets 6/s and handles 1/s (600%): its backlog only grows.",
+      "rationale": "Demand above what a service can handle never drains: latency and backlog grow until something times out. Live view's Show capacity has the same numbers.",
+      "fix": { "label": "Set replicas to 11 and Order events partitions to 11 and Returns partitions to 11" }
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "no-reader:queue",
+        "rule": "no-reader",
+        "severity": "warning",
+        "title": "Nobody reads Audit",
+        "message": "Orders sends to Audit, but nothing consumes it: messages pile up.",
+        "targets": ["queue", "orders"],
+        "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads Audit, then add it and connect queue to it." }
+      },
+      {
+        "id": "capacity:orders",
+        "rule": "capacity",
+        "severity": "warning",
+        "title": "Orders can't keep up",
+        "message": "At the diagram's own rates, it gets 6/s and handles 1/s (600%): its backlog only grows.",
+        "targets": ["orders"],
+        "fix": {
+          "label": "Set replicas to 11 and Order events partitions to 11 and Returns partitions to 11",
+          "ops": [
+            { "op": "update", "target": "orders", "props": { "replicas": 11 } },
+            { "op": "update", "target": "topic", "props": { "partitions": 11 } },
+            { "op": "update", "target": "topic2", "props": { "partitions": 11 } }
+          ]
+        }
+      }
+    ],
+    "summary": "2 warnings, 0 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      {
+        "id": "no-reader:queue",
+        "rule": "no-reader",
+        "severity": "warning",
+        "title": "Nobody reads Audit",
+        "message": "Orders sends to Audit, but nothing consumes it: messages pile up.",
+        "targets": ["queue", "orders"],
+        "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads Audit, then add it and connect queue to it." }
+      },
+      {
+        "id": "capacity:orders",
+        "rule": "capacity",
+        "severity": "warning",
+        "title": "Orders can't keep up",
+        "message": "At the diagram's own rates, it gets 6/s and handles 1/s (600%): its backlog only grows.",
+        "targets": ["orders"],
+        "fix": {
+          "label": "Set replicas to 11 and Order events partitions to 11 and Returns partitions to 11",
+          "ops": [
+            { "op": "update", "target": "orders", "props": { "replicas": 11 } },
+            { "op": "update", "target": "topic", "props": { "partitions": 11 } },
+            { "op": "update", "target": "topic2", "props": { "partitions": 11 } }
+          ]
+        }
+      }
+    ],
+    "summary": "2 warnings, 0 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
+}

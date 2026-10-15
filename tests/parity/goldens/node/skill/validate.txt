@@ -1,0 +1,104 @@
+exit 1
+VALID <repo>/src/examples/aks-app-config-key-vault.json: 11 nodes, 10 edges, 2 boundaries, 2 simulations
+VALID <repo>/src/examples/aws-fanout.json: 16 nodes, 15 edges, 1 boundary, 2 simulations
+VALID <repo>/src/examples/aws-serverless-orders.json: 16 nodes, 17 edges, 1 boundary, 2 simulations
+VALID <repo>/src/examples/azure-service-bus-integration.json: 14 nodes, 14 edges, 1 boundary, 2 simulations
+VALID <repo>/src/examples/branch-to-datacentre.json: 13 nodes, 16 edges, 2 boundaries, 2 simulations
+  warning: simulations[0] "One firewall fails over": at "scale": 1, live view would animate too many dots. Use "scale": 10 (one dot stands for 10 messages).
+  warning: simulations[1] "The firewall blocks the branch from payments": at "scale": 1, live view would animate too many dots. Use "scale": 10 (one dot stands for 10 messages).
+VALID <repo>/src/examples/cdc-analytics.json: 10 nodes, 11 edges, 2 boundaries, 2 simulations
+VALID <repo>/src/examples/cqrs-event-sourcing.json: 12 nodes, 13 edges, 2 boundaries, 2 simulations
+VALID <repo>/src/examples/event-driven-data-platform.json: 21 nodes, 20 edges, 2 boundaries, 2 simulations
+VALID <repo>/src/examples/gcp-streaming-analytics.json: 9 nodes, 8 edges, 1 boundary, 2 simulations
+VALID <repo>/src/examples/iot-telemetry.json: 11 nodes, 11 edges, 1 boundary, 2 simulations
+VALID <repo>/src/examples/kafka-order-pipeline.json: 15 nodes, 15 edges, 1 boundary, 2 simulations
+VALID <repo>/src/examples/multi-region-active-active.json: 8 nodes, 9 edges, 2 boundaries, 2 simulations
+VALID <repo>/src/examples/nightly-batch-elt.json: 10 nodes, 10 edges, 1 boundary, 2 simulations
+VALID <repo>/src/examples/notification-fanout.json: 15 nodes, 15 edges, 1 boundary, 2 simulations
+VALID <repo>/src/examples/outbox-saga-checkout.json: 18 nodes, 20 edges, 1 boundary, 2 simulations
+VALID <repo>/src/examples/rag-assistant.json: 13 nodes, 14 edges, 2 simulations
+VALID <repo>/src/examples/webhook-ingestion.json: 13 nodes, 13 edges, 1 boundary, 2 simulations
+VALID <repo>/tests/parity/corpus/annotation-course.diagram.json: 6 nodes, 4 edges
+VALID <repo>/tests/parity/corpus/back-edges.diagram.json: 6 nodes, 8 edges
+  warning: edges[7] "self": it connects "retry" to itself.
+VALID <repo>/tests/parity/corpus/check-load-100.diagram.json: 3 nodes, 2 edges
+VALID <repo>/tests/parity/corpus/check-load-79.diagram.json: 3 nodes, 2 edges
+VALID <repo>/tests/parity/corpus/check-load-80.diagram.json: 3 nodes, 2 edges
+VALID <repo>/tests/parity/corpus/check-load-99.diagram.json: 3 nodes, 2 edges
+VALID <repo>/tests/parity/corpus/check-sync-chain-3.diagram.json: 5 nodes, 4 edges
+VALID <repo>/tests/parity/corpus/check-sync-chain-4.diagram.json: 6 nodes, 5 edges
+VALID <repo>/tests/parity/corpus/checks-checkout-shortcuts.diagram.json: 6 nodes, 5 edges, 1 boundary
+VALID <repo>/tests/parity/corpus/checks-payments-ledger.diagram.json: 6 nodes, 6 edges
+INVALID <repo>/tests/parity/corpus/checks-shared-ids.diagram.json: 1 error
+  error: edges[4] "billing-db": the id "billing-db" is already used by node "billing-db".
+VALID <repo>/tests/parity/corpus/custom-colours.diagram.json: 0 nodes, 0 edges
+VALID <repo>/tests/parity/corpus/cycle.diagram.json: 4 nodes, 4 edges
+VALID <repo>/tests/parity/corpus/edge-kinds.diagram.json: 10 nodes, 6 edges
+  warning: Node "async-b" (topic) has no consumer, so messages pile up there in live view.
+  warning: Node "labelled-b" (queue) has no consumer, so messages pile up there in live view.
+VALID <repo>/tests/parity/corpus/edge-relations.diagram.json: 17 nodes, 9 edges
+  warning: Node "message-b" (topic) has no consumer, so messages pile up there in live view.
+VALID <repo>/tests/parity/corpus/edge-sides.diagram.json: 32 nodes, 16 edges
+  warning: Node "tt-b" (topic) has no consumer, so messages pile up there in live view.
+  warning: Node "tr-b" (topic) has no consumer, so messages pile up there in live view.
+  warning: Node "tb-b" (topic) has no consumer, so messages pile up there in live view.
+  warning: Node "tl-b" (topic) has no consumer, so messages pile up there in live view.
+  warning: Node "rt-b" (topic) has no consumer, so messages pile up there in live view.
+  warning: Node "rr-b" (topic) has no consumer, so messages pile up there in live view.
+  warning: Node "rb-b" (topic) has no consumer, so messages pile up there in live view.
+  warning: Node "rl-b" (topic) has no consumer, so messages pile up there in live view.
+  warning: Node "bt-b" (topic) has no consumer, so messages pile up there in live view.
+  warning: Node "br-b" (topic) has no consumer, so messages pile up there in live view.
+  warning: Node "bb-b" (topic) has no consumer, so messages pile up there in live view.
+  warning: Node "bl-b" (topic) has no consumer, so messages pile up there in live view.
+  warning: Node "lt-b" (topic) has no consumer, so messages pile up there in live view.
+  warning: Node "lr-b" (topic) has no consumer, so messages pile up there in live view.
+  warning: Node "lb-b" (topic) has no consumer, so messages pile up there in live view.
+  warning: Node "ll-b" (topic) has no consumer, so messages pile up there in live view.
+  warning: 32 nodes: consider a smaller diagram, or split it into several, so it stays readable.
+VALID <repo>/tests/parity/corpus/export-contract.diagram.json: 2 nodes, 1 edge, 1 boundary, 1 simulation
+VALID <repo>/tests/parity/corpus/fan-edges.diagram.json: 11 nodes, 10 edges
+VALID <repo>/tests/parity/corpus/fan-out.diagram.json: 53 nodes, 52 edges
+  warning: 53 nodes: consider a smaller diagram, or split it into several, so it stays readable.
+VALID <repo>/tests/parity/corpus/groups.diagram.json: 12 nodes, 11 edges, 6 boundaries
+  warning: Node "neutral-2" (topic) has no consumer, so messages pile up there in live view.
+VALID <repo>/tests/parity/corpus/header-overflow.diagram.json: 1 node, 0 edges
+VALID <repo>/tests/parity/corpus/layers.diagram.json: 1 node, 0 edges
+VALID <repo>/tests/parity/corpus/obstacle-course.diagram.json: 12 nodes, 10 edges, 1 boundary
+  warning: Node "n1-0" (topic) has no consumer, so messages pile up there in live view.
+  warning: Node "n3-1" (queue) has no consumer, so messages pile up there in live view.
+  warning: Boundary "g" has no member nodes (set "group": "g" on them).
+INVALID <repo>/tests/parity/corpus/odd-nodes.diagram.json: 1 error
+  error: nodes[1] "unknown": unknown stencil "acme.quantum-bus". Did you mean aws.eventbridge (Amazon EventBridge), azure.service-bus.queue (Service Bus Queue), azure.service-bus.topic (Service Bus Topic)? Stencil ids are in reference/stencils.md.
+  warning: nodes[2] "long-label": the label is 58 characters and will be cut off; move detail to "sublabel".
+  warning: nodes[3] "long-sub": the sublabel is 97 characters; about 56 fit on two lines.
+  warning: nodes[5] "empty-label": the label is empty.
+  warning: Node "long-sub" (topic) has no consumer, so messages pile up there in live view.
+VALID <repo>/tests/parity/corpus/p3-api-gateway.diagram.json: 2 nodes, 1 edge
+VALID <repo>/tests/parity/corpus/p3-external-api.diagram.json: 2 nodes, 1 edge
+VALID <repo>/tests/parity/corpus/p3-lambda.diagram.json: 2 nodes, 1 edge
+VALID <repo>/tests/parity/corpus/p3-openai-shared.diagram.json: 3 nodes, 1 edge
+VALID <repo>/tests/parity/corpus/p3-openai.diagram.json: 2 nodes, 1 edge
+VALID <repo>/tests/parity/corpus/p3-shared-quota.diagram.json: 4 nodes, 2 edges, 3 simulations
+VALID <repo>/tests/parity/corpus/p3-stripe.diagram.json: 2 nodes, 1 edge, 1 simulation
+VALID <repo>/tests/parity/corpus/planning-connections.diagram.json: 6 nodes, 6 edges
+  warning: Node "queue" (queue) has no consumer, so messages pile up there in live view.
+VALID <repo>/tests/parity/corpus/planning-many-groups.diagram.json: 26 nodes, 25 edges
+VALID <repo>/tests/parity/corpus/planning-no-reader.diagram.json: 2 nodes, 1 edge
+  warning: Node "topic" (topic) has no consumer, so messages pile up there in live view.
+VALID <repo>/tests/parity/corpus/planning-orders.diagram.json: 2 nodes, 1 edge
+VALID <repo>/tests/parity/corpus/planning-outage.diagram.json: 4 nodes, 3 edges, 1 simulation
+VALID <repo>/tests/parity/corpus/planning-p2-kafka.diagram.json: 5 nodes, 3 edges
+VALID <repo>/tests/parity/corpus/planning-p2-kinesis.diagram.json: 5 nodes, 3 edges
+VALID <repo>/tests/parity/corpus/planning-p2-queue.diagram.json: 5 nodes, 3 edges
+VALID <repo>/tests/parity/corpus/planning-p2-sns.diagram.json: 5 nodes, 3 edges
+VALID <repo>/tests/parity/corpus/relationships.diagram.json: 3 nodes, 2 edges
+VALID <repo>/tests/parity/corpus/scenario-sim-competing-consumers.diagram.json: 5 nodes, 4 edges
+VALID <repo>/tests/parity/corpus/scenario-sim-dlq.diagram.json: 4 nodes, 3 edges
+VALID <repo>/tests/parity/corpus/scenario-sim-fan-out.diagram.json: 5 nodes, 4 edges
+VALID <repo>/tests/parity/corpus/scenario-sim-gateway-round-robin.diagram.json: 5 nodes, 4 edges
+VALID <repo>/tests/parity/corpus/scenario-sim-slow-consumer.diagram.json: 4 nodes, 3 edges
+VALID <repo>/tests/parity/corpus/scenario-sim-traffic-storm.diagram.json: 9 nodes, 8 edges
+VALID <repo>/tests/parity/corpus/sim-review-diagnostic.diagram.json: 4 nodes, 3 edges
+VALID <repo>/tests/parity/corpus/sim-review.diagram.json: 3 nodes, 2 edges
+VALID <repo>/tests/parity/corpus/text-fields.diagram.json: 3 nodes, 1 edge, 1 boundary

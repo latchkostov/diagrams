@@ -1,0 +1,13 @@
+{
+  "evidence": {
+    "played": [{ "id": "rush", "title": "300 calls in 1 s at scale 1", "playedMs": 8000, "capped": false }],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [],
+    "dropped": []
+  },
+  "planned": [],
+  "counted": 0,
+  "findings": [],
+  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 1 saved simulation (at most 60 s each)." }
+}

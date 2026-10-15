@@ -1,0 +1,18 @@
+---
+title: "Question #1 · 2.47 s end to end · 2 copies"
+---
+sequenceDiagram
+  participant user as Help center chat
+  participant rag_api as RAG API
+  participant cache as Semantic cache
+  participant vector_db as Vector index
+  participant llm as Claude API
+  user->>rag_api: Question (+0.00 s)<br/>POST /ask
+  rag_api-->>user: reply (+0.30 s)
+  rag_api->>cache: Question (+0.30 s)<br/>Cache lookup
+  rag_api->>vector_db: Question (+0.30 s)<br/>Top-k chunks
+  rag_api->>llm: Question (+0.30 s)<br/>Prompt + context
+  cache-->>rag_api: reply (+0.51 s)
+  vector_db-->>rag_api: reply (+0.51 s)
+  Note over user,llm: ⏱ 1.76 s at Claude API: processing
+  llm-->>rag_api: reply (+2.47 s)

@@ -1,0 +1,28 @@
+{
+  "evidence": {
+    "played": [
+      { "id": "failover", "title": "Region outage and failover", "playedMs": 14250, "capped": false },
+      { "id": "both-write", "title": "Both regions take writes", "playedMs": 12230, "capped": false }
+    ],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [
+      {
+        "simulation": "Region outage and failover",
+        "node": "alb-us",
+        "broker": false,
+        "what": "dropped",
+        "count": 96,
+        "onPurpose": { "count": 96, "why": "down" },
+        "expects": "some"
+      }
+    ],
+    "dropped": []
+  },
+  "planned": [
+    { "node": "alb-us", "simulation": "Region outage and failover", "what": "dropped", "count": 96, "why": "down" }
+  ],
+  "counted": 0,
+  "findings": [],
+  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 2 saved simulations (at most 60 s each). On purpose, not findings: 96 dropped at alb-us in “Region outage and failover”." }
+}

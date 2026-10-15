@@ -1,0 +1,217 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "hub": { "lag": { "fo1": 0, "fo2": 0, "fo3": 0, "fo4": 0, "fo5": 0 }, "replicas": [1, 1, 0] },
+        "in1": { "replicas": [1, 1, 0] },
+        "out1": { "replicas": [1, 1, 0] },
+        "in2": { "replicas": [1, 1, 0] },
+        "out2": { "replicas": [1, 1, 0] },
+        "in3": { "replicas": [1, 1, 0] },
+        "out3": { "replicas": [1, 1, 0] },
+        "in4": { "replicas": [1, 1, 0] },
+        "out4": { "replicas": [1, 1, 0] },
+        "in5": { "replicas": [1, 1, 0] },
+        "out5": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 0,
+      "nodes": {
+        "hub": { "lag": { "fo1": 0, "fo2": 0, "fo3": 0, "fo4": 0, "fo5": 0 }, "replicas": [1, 1, 0] },
+        "in1": { "replicas": [1, 1, 0] },
+        "out1": { "replicas": [1, 1, 0] },
+        "in2": { "replicas": [1, 1, 0] },
+        "out2": { "replicas": [1, 1, 0] },
+        "in3": { "replicas": [1, 1, 0] },
+        "out3": { "replicas": [1, 1, 0] },
+        "in4": { "replicas": [1, 1, 0] },
+        "out4": { "replicas": [1, 1, 0] },
+        "in5": { "replicas": [1, 1, 0] },
+        "out5": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 0,
+      "nodes": {
+        "hub": { "lag": { "fo1": 0, "fo2": 0, "fo3": 0, "fo4": 0, "fo5": 0 }, "replicas": [1, 1, 0] },
+        "in1": { "replicas": [1, 1, 0] },
+        "out1": { "replicas": [1, 1, 0] },
+        "in2": { "replicas": [1, 1, 0] },
+        "out2": { "replicas": [1, 1, 0] },
+        "in3": { "replicas": [1, 1, 0] },
+        "out3": { "replicas": [1, 1, 0] },
+        "in4": { "replicas": [1, 1, 0] },
+        "out4": { "replicas": [1, 1, 0] },
+        "in5": { "replicas": [1, 1, 0] },
+        "out5": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 0,
+      "nodes": {
+        "hub": { "lag": { "fo1": 0, "fo2": 0, "fo3": 0, "fo4": 0, "fo5": 0 }, "replicas": [1, 1, 0] },
+        "in1": { "replicas": [1, 1, 0] },
+        "out1": { "replicas": [1, 1, 0] },
+        "in2": { "replicas": [1, 1, 0] },
+        "out2": { "replicas": [1, 1, 0] },
+        "in3": { "replicas": [1, 1, 0] },
+        "out3": { "replicas": [1, 1, 0] },
+        "in4": { "replicas": [1, 1, 0] },
+        "out4": { "replicas": [1, 1, 0] },
+        "in5": { "replicas": [1, 1, 0] },
+        "out5": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 0,
+      "nodes": {
+        "hub": { "lag": { "fo1": 0, "fo2": 0, "fo3": 0, "fo4": 0, "fo5": 0 }, "replicas": [1, 1, 0] },
+        "in1": { "replicas": [1, 1, 0] },
+        "out1": { "replicas": [1, 1, 0] },
+        "in2": { "replicas": [1, 1, 0] },
+        "out2": { "replicas": [1, 1, 0] },
+        "in3": { "replicas": [1, 1, 0] },
+        "out3": { "replicas": [1, 1, 0] },
+        "in4": { "replicas": [1, 1, 0] },
+        "out4": { "replicas": [1, 1, 0] },
+        "in5": { "replicas": [1, 1, 0] },
+        "out5": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 0,
+      "nodes": {
+        "hub": { "lag": { "fo1": 0, "fo2": 0, "fo3": 0, "fo4": 0, "fo5": 0 }, "replicas": [1, 1, 0] },
+        "in1": { "replicas": [1, 1, 0] },
+        "out1": { "replicas": [1, 1, 0] },
+        "in2": { "replicas": [1, 1, 0] },
+        "out2": { "replicas": [1, 1, 0] },
+        "in3": { "replicas": [1, 1, 0] },
+        "out3": { "replicas": [1, 1, 0] },
+        "in4": { "replicas": [1, 1, 0] },
+        "out4": { "replicas": [1, 1, 0] },
+        "in5": { "replicas": [1, 1, 0] },
+        "out5": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 0,
+      "nodes": {
+        "hub": { "lag": { "fo1": 0, "fo2": 0, "fo3": 0, "fo4": 0, "fo5": 0 }, "replicas": [1, 1, 0] },
+        "in1": { "replicas": [1, 1, 0] },
+        "out1": { "replicas": [1, 1, 0] },
+        "in2": { "replicas": [1, 1, 0] },
+        "out2": { "replicas": [1, 1, 0] },
+        "in3": { "replicas": [1, 1, 0] },
+        "out3": { "replicas": [1, 1, 0] },
+        "in4": { "replicas": [1, 1, 0] },
+        "out4": { "replicas": [1, 1, 0] },
+        "in5": { "replicas": [1, 1, 0] },
+        "out5": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 0,
+    "real": {
+      "hub": { "lag": { "fo1": 0, "fo2": 0, "fo3": 0, "fo4": 0, "fo5": 0 }, "replicas": [1, 1, 0] },
+      "in1": { "replicas": [1, 1, 0] },
+      "out1": { "replicas": [1, 1, 0] },
+      "in2": { "replicas": [1, 1, 0] },
+      "out2": { "replicas": [1, 1, 0] },
+      "in3": { "replicas": [1, 1, 0] },
+      "out3": { "replicas": [1, 1, 0] },
+      "in4": { "replicas": [1, 1, 0] },
+      "out4": { "replicas": [1, 1, 0] },
+      "in5": { "replicas": [1, 1, 0] },
+      "out5": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "fi1": 0, "fo1": 0, "fi2": 0, "fo2": 0, "fi3": 0, "fo3": 0, "fi4": 0, "fo4": 0, "fi5": 0, "fo5": 0 }
+  },
+  "events": {
+    "total": 0,
+    "byKind": {},
+    "byNode": {},
+    "perSecond": [
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 0, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": null,
+    "waitMs": {},
+    "processMs": {}
+  }
+}

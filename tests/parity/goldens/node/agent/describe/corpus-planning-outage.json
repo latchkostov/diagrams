@@ -1,0 +1,119 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"Planning: shared capacity\" · direction LR · 4 nodes, 3 connections, 0 boundaries, 1 simulations\nnodes:\n  \"checkout\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":6} capabilities=[{\"kind\":\"publishes\",\"edge\":\"in\",\"peer\":\"queue\"}] explanation=undefined\n  \"orders\" \"service.dotnet\" (\".NET Service\") \"Orders\" props={\"latencyMs\":4000,\"jitter\":0} capabilities=[{\"kind\":\"consumes\",\"edge\":\"one\",\"peer\":\"queue\",\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"orders\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":1,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":4,\"utilization\":3,\"growth\":2,\"contributors\":[{\"edge\":\"one\",\"node\":\"queue\",\"label\":\"Queue\",\"rate\":3}],\"target\":0.5,\"minimumReplicas\":3,\"targetReplicas\":6,\"changes\":null,\"converged\":true}\n  \"queue\" \"generic.queue\" (\"Queue\") \"Queue\" capabilities=[] explanation=undefined\n  \"other\" \"service.dotnet\" (\".NET Service\") \"Other\" props={\"latencyMs\":4000,\"jitter\":0} capabilities=[{\"kind\":\"consumes\",\"edge\":\"two\",\"peer\":\"queue\",\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"other\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":1,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":4,\"utilization\":3,\"growth\":2,\"contributors\":[{\"edge\":\"two\",\"node\":\"queue\",\"label\":\"Queue\",\"rate\":3}],\"target\":0.5,\"minimumReplicas\":3,\"targetReplicas\":6,\"changes\":null,\"converged\":true}\nconnections:\n  \"in\" \"checkout\" -> \"queue\" async\n  \"one\" \"queue\" -> \"orders\" async\n  \"two\" \"queue\" -> \"other\" async\nsimulation \"outage\" \"Outage\": {\"kind\":\"constant\",\"ratePerSec\":6,\"durationMs\":60000} from \"checkout\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"status\",\"node\":\"other\",\"status\":\"down\"}}]; expectations=[]"
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "Planning: shared capacity",
+      "direction": "LR",
+      "nodes": [
+        {
+          "id": "checkout",
+          "stencil": "client.browser",
+          "label": "Checkout",
+          "x": 0,
+          "y": 140,
+          "props": { "ratePerSec": 6 },
+          "capabilities": [{ "kind": "publishes", "edge": "in", "peer": "queue" }]
+        },
+        {
+          "id": "orders",
+          "stencil": "service.dotnet",
+          "label": "Orders",
+          "x": 640,
+          "y": 140,
+          "props": { "latencyMs": 4000, "jitter": 0 },
+          "capabilities": [
+            { "kind": "consumes", "edge": "one", "peer": "queue", "retry": "requeue", "retryBackoffMs": 0 }
+          ],
+          "explanation": {
+            "id": "orders",
+            "role": "processor",
+            "status": "up",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 1,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 4,
+            "seconds": 4,
+            "utilization": 3,
+            "growth": 2,
+            "contributors": [{ "edge": "one", "node": "queue", "label": "Queue", "rate": 3 }],
+            "target": 0.5,
+            "minimumReplicas": 3,
+            "targetReplicas": 6,
+            "changes": null,
+            "converged": true
+          }
+        },
+        { "id": "queue", "stencil": "generic.queue", "label": "Queue", "x": 320, "y": 140, "capabilities": [] },
+        {
+          "id": "other",
+          "stencil": "service.dotnet",
+          "label": "Other",
+          "x": 640,
+          "y": 300,
+          "props": { "latencyMs": 4000, "jitter": 0 },
+          "capabilities": [
+            { "kind": "consumes", "edge": "two", "peer": "queue", "retry": "requeue", "retryBackoffMs": 0 }
+          ],
+          "explanation": {
+            "id": "other",
+            "role": "processor",
+            "status": "up",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 1,
+            "offered": 3,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 4,
+            "seconds": 4,
+            "utilization": 3,
+            "growth": 2,
+            "contributors": [{ "edge": "two", "node": "queue", "label": "Queue", "rate": 3 }],
+            "target": 0.5,
+            "minimumReplicas": 3,
+            "targetReplicas": 6,
+            "changes": null,
+            "converged": true
+          }
+        }
+      ],
+      "edges": [
+        { "id": "in", "from": "checkout", "to": "queue" },
+        { "id": "one", "from": "queue", "to": "orders" },
+        { "id": "two", "from": "queue", "to": "other" }
+      ],
+      "groups": [],
+      "annotations": [],
+      "simulations": [
+        {
+          "id": "outage",
+          "title": "Outage",
+          "traffic": [
+            { "id": "t", "node": "checkout", "shape": { "kind": "constant", "ratePerSec": 6, "durationMs": 60000 } }
+          ],
+          "timeline": [{ "atMs": 0, "action": { "do": "status", "node": "other", "status": "down" } }]
+        }
+      ],
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"Planning: shared capacity\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 1 simulations\nnodes:\n  \"checkout\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":6} capabilities=[{\"kind\":\"publishes\",\"edge\":\"in\",\"peer\":\"queue\"}] explanation=undefined\n  \"queue\" \"generic.queue\" (\"Queue\") \"Queue\" capabilities=[] explanation=undefined\nconnections:\n  \"in\" \"checkout\" -> \"queue\" async\nsimulation \"outage\" \"Outage\": {\"kind\":\"constant\",\"ratePerSec\":6,\"durationMs\":60000} from \"checkout\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"status\",\"node\":\"other\",\"status\":\"down\"}}]; expectations=[]"
+  }
+}

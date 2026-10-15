@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "shopper": [40, 160], "dashboard": [40, 280], "gateway": [440, 160], "metrics": [440, 280], "orders": [840, 220], "schemas": [1255, 100], "order-events": [1255, 220], "order-db": [1255, 340], "inventory": [1655, 100], "payments": [1655, 220], "notifications": [1655, 340], "stock-db": [2076, 40], "payment-db": [2076, 160], "payment-events": [2076, 280], "notify-cache": [2076, 400] },
+    "TB": { "shopper": [360, 40], "dashboard": [680, 40], "gateway": [360, 200], "metrics": [680, 200], "orders": [520, 360], "order-db": [200, 520], "order-events": [520, 520], "schemas": [840, 520], "inventory": [200, 680], "payments": [520, 680], "notifications": [840, 680], "stock-db": [40, 840], "payment-events": [360, 840], "payment-db": [680, 840], "notify-cache": [1000, 840] }
+  },
+  "tidy": { "shopper": [40, 160], "gateway": [440, 160], "orders": [840, 220], "order-events": [1255, 220], "inventory": [1655, 100], "payments": [1655, 220], "notifications": [1655, 340], "stock-db": [2076, 40], "payment-db": [2076, 160], "notify-cache": [2076, 400], "payment-events": [2076, 280], "order-db": [1255, 340], "schemas": [1255, 100], "metrics": [440, 280], "dashboard": [40, 280] },
+  "arrange": {
+    "alignLeft": { "shopper": [40, 280], "gateway": [40, 280], "orders": [40, 280], "order-events": [40, 280], "inventory": [40, 160], "payments": [40, 280], "notifications": [40, 400], "stock-db": [40, 160], "payment-db": [40, 280], "notify-cache": [40, 400], "payment-events": [40, 520], "order-db": [40, 520], "schemas": [40, 40], "metrics": [40, 640], "dashboard": [40, 640] },
+    "alignMiddle": { "shopper": [40, 340], "gateway": [420, 340], "orders": [800, 340], "order-events": [1180, 340], "inventory": [1560, 340], "payments": [1560, 340], "notifications": [1560, 340], "stock-db": [1940, 340], "payment-db": [1940, 340], "notify-cache": [1940, 340], "payment-events": [1180, 340], "order-db": [800, 340], "schemas": [1180, 340], "metrics": [1560, 340], "dashboard": [1940, 340] },
+    "distributeH": { "shopper": [40, 280], "gateway": [162, 280], "orders": [303, 280], "order-events": [584, 280], "inventory": [994, 160], "payments": [1135, 280], "notifications": [1276, 400], "stock-db": [1517, 160], "payment-db": [1658, 280], "notify-cache": [1799, 400], "payment-events": [725, 520], "order-db": [444, 520], "schemas": [866, 40], "metrics": [1417, 640], "dashboard": [1940, 640] },
+    "distributeV": { "shopper": [40, 169], "gateway": [420, 211], "orders": [800, 254], "order-events": [1180, 297], "inventory": [1560, 83], "payments": [1560, 340], "notifications": [1560, 426], "stock-db": [1940, 126], "payment-db": [1940, 383], "notify-cache": [1940, 469], "payment-events": [1180, 511], "order-db": [800, 554], "schemas": [1180, 40], "metrics": [1560, 597], "dashboard": [1940, 640] },
+    "spreadH": { "shopper": [40, 40], "gateway": [420, 40], "orders": [800, 40], "order-events": [1400, 40], "inventory": [2287, 40], "payments": [2587, 40], "notifications": [2887, 40], "stock-db": [3447, 40], "payment-db": [3747, 40], "notify-cache": [4047, 40], "payment-events": [1700, 40], "order-db": [1100, 40], "schemas": [2000, 40], "metrics": [3187, 40], "dashboard": [4347, 40] },
+    "boundaryAround": { "x": 0, "y": -24, "width": 2240, "height": 776 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": ["aks"],
+    "placedNotes": [],
+    "nodes": { "shopper": [40, 160], "gateway": [440, 160], "orders": [840, 220], "order-events": [1255, 220], "inventory": [1655, 100], "payments": [1655, 220], "notifications": [1655, 340], "stock-db": [2076, 40], "payment-db": [2076, 160], "notify-cache": [2076, 400], "payment-events": [2076, 280], "order-db": [1255, 500], "schemas": [1255, -100], "metrics": [440, 280], "dashboard": [40, 280] },
+    "groups": { "aks": [800, 36, 1155, 416] }
+  }
+}

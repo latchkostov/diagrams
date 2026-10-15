@@ -1,0 +1,72 @@
+{
+  "format": "diagrams/v1",
+  "title": "Odd nodes",
+  "description": "Fallbacks and overflow on the canvas.",
+  "nodes": [
+    {
+      "id": "normal",
+      "stencil": "kafka.topic",
+      "label": "orders",
+      "sublabel": "orders.created.v1",
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "unknown",
+      "stencil": "acme.quantum-bus",
+      "label": "Unknown stencil",
+      "sublabel": "acme.quantum-bus",
+      "x": 400,
+      "y": 40
+    },
+    {
+      "id": "long-label",
+      "stencil": "service.dotnet",
+      "label": "Customer Communication Preferences Synchronisation Service",
+      "x": 40,
+      "y": 160
+    },
+    {
+      "id": "long-sub",
+      "stencil": "azure.service-bus.topic",
+      "label": "notifications",
+      "sublabel": "sb://contoso-prod-eastus2.servicebus.windows.net/topics/customer-notification-preferences-changed",
+      "x": 400,
+      "y": 160
+    },
+    {
+      "id": "no-sub",
+      "stencil": "postgres",
+      "label": "DB",
+      "x": 40,
+      "y": 280
+    },
+    {
+      "id": "empty-label",
+      "stencil": "redis.cache",
+      "label": "",
+      "x": 400,
+      "y": 280
+    }
+  ],
+  "edges": [
+    {
+      "id": "o1",
+      "from": "normal",
+      "to": "unknown",
+      "kind": "async"
+    },
+    {
+      "id": "o2",
+      "from": "long-label",
+      "to": "long-sub",
+      "kind": "async"
+    },
+    {
+      "id": "o3",
+      "from": "no-sub",
+      "to": "empty-label",
+      "kind": "sync"
+    }
+  ]
+}

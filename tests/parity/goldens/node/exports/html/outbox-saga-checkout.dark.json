@@ -1,0 +1,447 @@
+{
+  "file": { "sha256": "a5c2f0a39a21280663eca672e0d545782f9d84676c83e3c6f199adb22eb9903f", "bytes": 37863 },
+  "payload": {
+    "version": 1,
+    "diagram": {
+      "format": "diagrams/v1",
+      "title": "Outbox and saga checkout",
+      "description": "A transactional outbox publishes order events; a saga orchestrates inventory and payment, compensating when a step fails.",
+      "direction": "LR",
+      "groups": [
+        { "id": "kafka", "label": "Kafka · saga channels", "tone": "neutral", "x": 1520, "y": 120, "width": 340, "height": 632 }
+      ],
+      "nodes": [
+        {
+          "id": "client",
+          "stencil": "client.mobile",
+          "label": "Mobile checkout",
+          "sublabel": "Place order",
+          "x": 40,
+          "y": 320,
+          "props": { "ratePerSec": 5, "messageType": "PlaceOrder" }
+        },
+        {
+          "id": "order-api",
+          "stencil": "service.dotnet",
+          "label": "Order service",
+          "sublabel": "Owns order state",
+          "x": 420,
+          "y": 320,
+          "props": {
+            "concurrency": 32,
+            "latencyMs": 100,
+            "emits": { "PlaceOrder": "OrderCreated", "ConfirmOrder": "OrderConfirmed", "CancelOrder": "OrderCancelled" }
+          }
+        },
+        {
+          "id": "orders-db",
+          "stencil": "postgres",
+          "label": "Orders database",
+          "sublabel": "orders + outbox table",
+          "x": 420,
+          "y": 480,
+          "props": { "latencyMs": 10 }
+        },
+        {
+          "id": "outbox-relay",
+          "stencil": "kafka.connect",
+          "label": "Outbox relay",
+          "sublabel": "Debezium outbox router",
+          "x": 800,
+          "y": 480,
+          "props": { "concurrency": 32, "latencyMs": 80 }
+        },
+        {
+          "id": "order-events",
+          "stencil": "kafka.topic",
+          "label": "orders.events",
+          "sublabel": "key: orderId",
+          "x": 800,
+          "y": 160,
+          "props": { "partitions": 12 }
+        },
+        {
+          "id": "notifications",
+          "stencil": "service.node",
+          "label": "Notification service",
+          "sublabel": "group: notifications",
+          "x": 1180,
+          "y": 40,
+          "props": {
+            "concurrency": 32,
+            "latencyMs": 100,
+            "emits": { "OrderConfirmed": "ReceiptEmail", "OrderCancelled": "CancellationEmail" }
+          }
+        },
+        {
+          "id": "email",
+          "stencil": "sendgrid",
+          "label": "SendGrid",
+          "sublabel": "Receipts",
+          "x": 1560,
+          "y": 40,
+          "props": {}
+        },
+        {
+          "id": "saga",
+          "stencil": "generic.saga",
+          "label": "Checkout saga",
+          "sublabel": "Orchestrator · group: saga",
+          "x": 1180,
+          "y": 320,
+          "props": {
+            "concurrency": 64,
+            "latencyMs": 50,
+            "emits": { "OrderCreated": "ReserveInventory", "InventoryReserved": "ChargePayment", "PaymentCaptured": "ConfirmOrder", "PaymentDeclined": "ReleaseInventory", "InventoryReleased": "CancelOrder" }
+          }
+        },
+        {
+          "id": "saga-db",
+          "stencil": "postgres",
+          "label": "Saga state",
+          "sublabel": "One row per checkout",
+          "x": 1180,
+          "y": 480,
+          "props": { "latencyMs": 10 }
+        },
+        {
+          "id": "inventory-cmds",
+          "stencil": "kafka.topic",
+          "label": "inventory.commands",
+          "sublabel": "Reserve · Release",
+          "x": 1560,
+          "y": 160,
+          "group": "kafka",
+          "props": { "partitions": 12 }
+        },
+        {
+          "id": "saga-replies",
+          "stencil": "kafka.topic",
+          "label": "saga.replies",
+          "sublabel": "Step results",
+          "x": 1560,
+          "y": 320,
+          "group": "kafka",
+          "props": { "partitions": 12 }
+        },
+        {
+          "id": "payment-cmds",
+          "stencil": "kafka.topic",
+          "label": "payments.commands",
+          "sublabel": "ChargePayment",
+          "x": 1560,
+          "y": 480,
+          "group": "kafka",
+          "props": { "partitions": 12, "maxDeliveryCount": 5 }
+        },
+        {
+          "id": "payments-dlq",
+          "stencil": "kafka.topic",
+          "label": "payments.commands.dlq",
+          "sublabel": "Dead letters · replayable",
+          "x": 1560,
+          "y": 640,
+          "group": "kafka",
+          "props": { "isDeadLetter": true }
+        },
+        {
+          "id": "inventory-svc",
+          "stencil": "service.java",
+          "label": "Inventory service",
+          "sublabel": "group: inventory",
+          "x": 1940,
+          "y": 160,
+          "props": {
+            "concurrency": 32,
+            "latencyMs": 100,
+            "emits": { "ReserveInventory": "InventoryReserved", "ReleaseInventory": "InventoryReleased" }
+          }
+        },
+        {
+          "id": "payment-svc",
+          "stencil": "service.go",
+          "label": "Payment service",
+          "sublabel": "group: payments",
+          "x": 1940,
+          "y": 480,
+          "props": {
+            "concurrency": 32,
+            "latencyMs": 150,
+            "retry": "inplace",
+            "retryBackoffMs": 300,
+            "emits": { "ChargePayment": "PaymentCaptured" }
+          }
+        },
+        {
+          "id": "inventory-db",
+          "stencil": "postgres",
+          "label": "Inventory database",
+          "sublabel": "Reservations by orderId",
+          "x": 2320,
+          "y": 160,
+          "props": { "latencyMs": 10 }
+        },
+        {
+          "id": "stripe",
+          "stencil": "stripe",
+          "label": "Stripe",
+          "sublabel": "Payment intents",
+          "x": 2320,
+          "y": 480,
+          "props": {}
+        },
+        { "id": "vault", "stencil": "vault", "label": "Vault", "sublabel": "Stripe API key", "x": 1940, "y": 640 }
+      ],
+      "edges": [
+        {
+          "id": "client-to-order-api",
+          "from": "client",
+          "to": "order-api",
+          "label": "POST /orders",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "order-api-to-orders-db",
+          "from": "order-api",
+          "to": "orders-db",
+          "label": "Order + outbox, one tx",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "orders-db-to-outbox-relay",
+          "from": "orders-db",
+          "to": "outbox-relay",
+          "label": "WAL",
+          "kind": "async",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "outbox-relay-to-order-events",
+          "from": "outbox-relay",
+          "to": "order-events",
+          "label": "Outbox events",
+          "kind": "async",
+          "props": { "travelMs": 300 }
+        },
+        {
+          "id": "order-events-to-saga",
+          "from": "order-events",
+          "to": "saga",
+          "label": "OrderCreated",
+          "kind": "async",
+          "props": { "travelMs": 300, "group": "saga", "filter": ["OrderCreated"] }
+        },
+        {
+          "id": "order-events-to-notifications",
+          "from": "order-events",
+          "to": "notifications",
+          "label": "Confirmed · Cancelled",
+          "kind": "async",
+          "props": { "travelMs": 300, "group": "notifications", "filter": ["OrderConfirmed", "OrderCancelled"] }
+        },
+        {
+          "id": "notifications-to-email",
+          "from": "notifications",
+          "to": "email",
+          "label": "Send email",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "saga-to-saga-db",
+          "from": "saga",
+          "to": "saga-db",
+          "label": "Persist step",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "saga-to-inventory-cmds",
+          "from": "saga",
+          "to": "inventory-cmds",
+          "label": "Reserve / Release",
+          "kind": "async",
+          "props": { "travelMs": 300, "filter": ["ReserveInventory", "ReleaseInventory"] }
+        },
+        {
+          "id": "saga-to-payment-cmds",
+          "from": "saga",
+          "to": "payment-cmds",
+          "label": "ChargePayment",
+          "kind": "async",
+          "props": { "travelMs": 300, "filter": ["ChargePayment"] }
+        },
+        {
+          "id": "saga-to-order-api",
+          "from": "saga",
+          "to": "order-api",
+          "label": "Confirm / Cancel",
+          "kind": "async",
+          "props": { "travelMs": 300, "filter": ["ConfirmOrder", "CancelOrder"] }
+        },
+        {
+          "id": "inventory-cmds-to-inventory-svc",
+          "from": "inventory-cmds",
+          "to": "inventory-svc",
+          "kind": "async",
+          "props": { "travelMs": 300, "group": "inventory" }
+        },
+        {
+          "id": "inventory-svc-to-inventory-db",
+          "from": "inventory-svc",
+          "to": "inventory-db",
+          "label": "Reserve stock",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "inventory-svc-to-saga-replies",
+          "from": "inventory-svc",
+          "to": "saga-replies",
+          "label": "Reserved / Released",
+          "kind": "async",
+          "props": { "travelMs": 300 }
+        },
+        {
+          "id": "payment-cmds-to-payment-svc",
+          "from": "payment-cmds",
+          "to": "payment-svc",
+          "kind": "async",
+          "props": { "travelMs": 300, "group": "payments" }
+        },
+        {
+          "id": "payment-cmds-to-payments-dlq",
+          "from": "payment-cmds",
+          "to": "payments-dlq",
+          "label": "After 5 attempts",
+          "kind": "async",
+          "props": { "travelMs": 300, "dlq": true }
+        },
+        {
+          "id": "payment-svc-to-stripe",
+          "from": "payment-svc",
+          "to": "stripe",
+          "label": "Idempotency-Key",
+          "kind": "sync",
+          "props": { "travelMs": 200, "filter": ["PaymentCaptured"] }
+        },
+        {
+          "id": "payment-svc-to-saga-replies",
+          "from": "payment-svc",
+          "to": "saga-replies",
+          "label": "Captured / Declined",
+          "kind": "async",
+          "props": { "travelMs": 300 }
+        },
+        {
+          "id": "saga-replies-to-saga",
+          "from": "saga-replies",
+          "to": "saga",
+          "label": "Next step",
+          "kind": "async",
+          "props": { "travelMs": 300, "group": "saga" }
+        },
+        { "id": "payment-svc-to-vault", "from": "payment-svc", "to": "vault", "kind": "async", "relation": "secret", "sourceSide": "bottom", "targetSide": "top" }
+      ],
+      "simulations": [
+        {
+          "id": "declines",
+          "title": "Declines and flaky payments",
+          "description": "Transient payment errors are retried with the same idempotency key; a fraud rule declines cards for three seconds and the saga compensates.",
+          "seed": 7,
+          "scale": 1,
+          "setup": { "props": { "payment-svc": { "failureRate": 0.2 } } },
+          "traffic": [
+            {
+              "id": "checkouts",
+              "node": "client",
+              "messageType": "PlaceOrder",
+              "label": "60 checkouts over 6 seconds",
+              "shape": { "kind": "constant", "ratePerSec": 10, "durationMs": 6000 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 0,
+              "action": { "do": "note", "text": "One payment call in five times out. The consumer retries in place with the same Idempotency-Key, so a retry never charges twice.", "focus": ["payment-svc", "stripe"] }
+            },
+            {
+              "atMs": 2500,
+              "action": {
+                "do": "props",
+                "node": "payment-svc",
+                "props": { "emits": { "ChargePayment": "PaymentDeclined" } }
+              }
+            },
+            {
+              "atMs": 2500,
+              "action": { "do": "note", "text": "A fraud rule starts declining every card. The saga compensates: it releases the reserved stock, then cancels the order.", "focus": ["payment-svc", "saga", "inventory-cmds", "order-api"], "pause": true }
+            },
+            {
+              "atMs": 5500,
+              "action": {
+                "do": "props",
+                "node": "payment-svc",
+                "props": { "emits": { "ChargePayment": "PaymentCaptured" } }
+              }
+            },
+            {
+              "atMs": 5500,
+              "action": { "do": "note", "text": "The rule is rolled back. Every customer still hears back: a receipt or a cancellation.", "focus": ["notifications", "email"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "everyone",
+              "label": "All 60 customers get an email",
+              "metric": { "node": "email", "field": "processed" },
+              "op": "==",
+              "value": 60,
+              "when": "end"
+            },
+            {
+              "id": "compensated",
+              "label": "Declined orders release their stock",
+              "metric": { "node": "inventory-db", "field": "processed" },
+              "op": ">",
+              "value": 60,
+              "when": "end"
+            },
+            {
+              "id": "retried",
+              "label": "Transient errors were retried",
+              "metric": { "node": "payment-svc", "field": "failed" },
+              "op": ">",
+              "value": 0,
+              "when": "end"
+            },
+            {
+              "id": "no-dlq",
+              "label": "Nothing is dead-lettered",
+              "metric": { "node": "payment-cmds", "field": "deadLettered" },
+              "op": "==",
+              "value": 0,
+              "when": "always"
+            }
+          ]
+        }
+      ]
+    },
+    "icons": {
+      "client-mobile": { "sha256": "b59f9659c6a761a2d7413154aa557fbddef653dd248cfc9ac6a240556c09625b", "bytes": 419 },
+      "dotnet": { "sha256": "993caba10a755f1f3ba9e25ff9fd3d529ed2d04cefe18a76d40aece85c6a7f36", "bytes": 1020 },
+      "generic-saga": { "sha256": "257ff0ad422b2414673bd6f28483e8fbb303b9abbb4bbbc187d94edec2169e3c", "bytes": 525 },
+      "go": { "sha256": "f1f50429f38e0fa91b2c77cf600cee410845b58e30935a09cb206cfc88efff9c", "bytes": 2404 },
+      "java": { "sha256": "5267ef9b941ed3577d43b258c86bd6f218c30356da4c8edf6ef49a989845b337", "bytes": 2011 },
+      "kafka": { "sha256": "938a96212aef8da520eca3435f23c1a3304ce25fbfaf0e5712ce548353abc5ef", "bytes": 4092 },
+      "nodejs": { "sha256": "5d31625856d847dbfd22e16f061e65622e638f5621e5b49b8fec1fdde933de7e", "bytes": 1848 },
+      "postgresql": { "sha256": "95779d4aab758053d1839595cc9716e1eedb1021a015a00331e54268a5daf5c0", "bytes": 7732 },
+      "sendgrid": { "sha256": "e477f12f566a4d5c36a22ff9bb0104eb4be9fdcdd03c4b03dfa2fe43eff7ceee", "bytes": 624 },
+      "stripe": { "sha256": "d73033ac5105145a1a5dc226c8c4a9b744369e2c0ae7234e97671c799656fd31", "bytes": 738 },
+      "vault": { "sha256": "85504d51abd2458c156b7b65ae6590805bc10bf64065272705bb9cdd0f7eb7e5", "bytes": 549 }
+    },
+    "options": { "theme": "dark", "banner": "Confidential: internal use only", "startSimulation": null, "exportedOn": "2026-01-01" }
+  }
+}

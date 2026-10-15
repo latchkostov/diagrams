@@ -1,0 +1,54 @@
+---
+title: Edge sides
+---
+flowchart LR
+  tt_a["top →<br/>from top"]
+  tt_b["→ top<br/>to top"]
+  tr_a["top →<br/>from top"]
+  tr_b["→ right<br/>to right"]
+  tb_a["top →<br/>from top"]
+  tb_b["→ bottom<br/>to bottom"]
+  tl_a["top →<br/>from top"]
+  tl_b["→ left<br/>to left"]
+  rt_a["right →<br/>from right"]
+  rt_b["→ top<br/>to top"]
+  rr_a["right →<br/>from right"]
+  rr_b["→ right<br/>to right"]
+  rb_a["right →<br/>from right"]
+  rb_b["→ bottom<br/>to bottom"]
+  rl_a["right →<br/>from right"]
+  rl_b["→ left<br/>to left"]
+  bt_a["bottom →<br/>from bottom"]
+  bt_b["→ top<br/>to top"]
+  br_a["bottom →<br/>from bottom"]
+  br_b["→ right<br/>to right"]
+  bb_a["bottom →<br/>from bottom"]
+  bb_b["→ bottom<br/>to bottom"]
+  bl_a["bottom →<br/>from bottom"]
+  bl_b["→ left<br/>to left"]
+  lt_a["left →<br/>from left"]
+  lt_b["→ top<br/>to top"]
+  lr_a["left →<br/>from left"]
+  lr_b["→ right<br/>to right"]
+  lb_a["left →<br/>from left"]
+  lb_b["→ bottom<br/>to bottom"]
+  ll_a["left →<br/>from left"]
+  ll_b["→ left<br/>to left"]
+  tt_a -.->|"top→top"| tt_b
+  tr_a -.->|"top→right"| tr_b
+  tb_a -.->|"top→bottom"| tb_b
+  tl_a -.->|"top→left"| tl_b
+  rt_a -.->|"right→top"| rt_b
+  rr_a -.->|"right→right"| rr_b
+  rb_a -.->|"right→bottom"| rb_b
+  rl_a -.->|"right→left"| rl_b
+  bt_a -.->|"bottom→top"| bt_b
+  br_a -.->|"bottom→right"| br_b
+  bb_a -.->|"bottom→bottom"| bb_b
+  bl_a -.->|"bottom→left"| bl_b
+  lt_a -.->|"left→top"| lt_b
+  lr_a -.->|"left→right"| lr_b
+  lb_a -.->|"left→bottom"| lb_b
+  ll_a -.->|"left→left"| ll_b
+  linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"sourceSide × targetSide: all 16 combinations.","nodes":{"tt_a":["tt-a","service.node"],"tt_b":["tt-b","kafka.topic"],"tr_a":["tr-a","service.node"],"tr_b":["tr-b","kafka.topic"],"tb_a":["tb-a","service.node"],"tb_b":["tb-b","kafka.topic"],"tl_a":["tl-a","service.node"],"tl_b":["tl-b","kafka.topic"],"rt_a":["rt-a","service.node"],"rt_b":["rt-b","kafka.topic"],"rr_a":["rr-a","service.node"],"rr_b":["rr-b","kafka.topic"],"rb_a":["rb-a","service.node"],"rb_b":["rb-b","kafka.topic"],"rl_a":["rl-a","service.node"],"rl_b":["rl-b","kafka.topic"],"bt_a":["bt-a","service.node"],"bt_b":["bt-b","kafka.topic"],"br_a":["br-a","service.node"],"br_b":["br-b","kafka.topic"],"bb_a":["bb-a","service.node"],"bb_b":["bb-b","kafka.topic"],"bl_a":["bl-a","service.node"],"bl_b":["bl-b","kafka.topic"],"lt_a":["lt-a","service.node"],"lt_b":["lt-b","kafka.topic"],"lr_a":["lr-a","service.node"],"lr_b":["lr-b","kafka.topic"],"lb_a":["lb-a","service.node"],"lb_b":["lb-b","kafka.topic"],"ll_a":["ll-a","service.node"],"ll_b":["ll-b","kafka.topic"]},"edges":["side-tt","side-tr","side-tb","side-tl","side-rt","side-rr","side-rb","side-rl","side-bt","side-br","side-bb","side-bl","side-lt","side-lr","side-lb","side-ll"],"relations":{}}

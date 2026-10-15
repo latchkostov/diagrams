@@ -1,0 +1,285 @@
+{
+  "autoScale": { "freePlay": 1 },
+  "brokerAssignments": { "brokers": {}, "consumers": {} },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "s0",
+      "suggestion": "s0: 13% utilized",
+      "converged": true,
+      "iterations": 5,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "web": ["Infinity", 2, 0, 1, 1, 0], "s0": [16, 2, 0.125, 1, 1, 0], "s1": [16, 2, 0.125, 1, 1, 0], "s2": [16, 2, 0.125, 1, 1, 0], "s3": [16, 2, 0.125, 1, 1, 0] },
+      "connections": { "e-web": 2, "e0": 2, "e1": 2, "e2": 2 },
+      "offeredTypes": { "web": ["Web"], "s0": ["Web"], "s1": ["Web"], "s2": ["Web"], "s3": ["Web"] }
+    },
+    "explanations": {
+      "s0": {
+        "id": "s0",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 16,
+        "offered": 2,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": 0.125,
+        "growth": 0,
+        "contributors": [{ "edge": "e-web", "node": "web", "label": "Web", "rate": 2 }],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      },
+      "s1": {
+        "id": "s1",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 16,
+        "offered": 2,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": 0.125,
+        "growth": 0,
+        "contributors": [{ "edge": "e0", "node": "s0", "label": "s0", "rate": 2 }],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      },
+      "s2": {
+        "id": "s2",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 16,
+        "offered": 2,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": 0.125,
+        "growth": 0,
+        "contributors": [{ "edge": "e1", "node": "s1", "label": "s1", "rate": 2 }],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      },
+      "s3": {
+        "id": "s3",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 16,
+        "offered": 2,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": 0.125,
+        "growth": 0,
+        "contributors": [{ "edge": "e2", "node": "s2", "label": "s2", "rate": 2 }],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "web": [{ "kind": "calls", "edge": "e-web", "peer": "s0" }],
+      "s0": [{ "kind": "calls", "edge": "e0", "peer": "s1" }],
+      "s1": [{ "kind": "calls", "edge": "e1", "peer": "s2" }],
+      "s2": [{ "kind": "calls", "edge": "e2", "peer": "s3" }]
+    },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "web": {
+        "profile": { "family": "client", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Web",
+        "healthChecks": false
+      },
+      "s0": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "s0",
+        "healthChecks": false
+      },
+      "s1": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "s1",
+        "healthChecks": false
+      },
+      "s2": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "s2",
+        "healthChecks": false
+      },
+      "s3": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "s3",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {},
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "ok",
+          "top": "s0",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: s0 at 13% · 2/s of 16/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "web": ["idle", "2/s · no limit", { "modeled": false }],
+            "s0": ["ok", "13% · 2/s of 16/s"],
+            "s1": ["ok", "13% · 2/s of 16/s"],
+            "s2": ["ok", "13% · 2/s of 16/s"],
+            "s3": ["ok", "13% · 2/s of 16/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "warn",
+          "top": "s0",
+          "headline": "s0 is busy",
+          "detail": "63% · 10/s of 16/s. Still some headroom.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "web": ["idle", "10/s · no limit", { "modeled": false }],
+            "s0": ["warn", "63% · 10/s of 16/s"],
+            "s1": ["warn", "63% · 10/s of 16/s"],
+            "s2": ["warn", "63% · 10/s of 16/s"],
+            "s3": ["warn", "63% · 10/s of 16/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "ok",
+          "top": "s0",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: s0 at 13% · 2/s of 16/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "web": ["idle", "2/s · no limit", { "modeled": false }],
+            "s0": ["ok", "13% · 2/s of 16/s"],
+            "s1": ["ok", "13% · 2/s of 16/s"],
+            "s2": ["ok", "13% · 2/s of 16/s"],
+            "s3": ["ok", "13% · 2/s of 16/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "ok",
+          "top": "s0",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: s0 at 13% · 2/s of 16/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "web": ["idle", "2/s · no limit", { "modeled": false }],
+            "s0": ["ok", "13% · 2/s of 16/s"],
+            "s1": ["ok", "13% · 2/s of 16/s"],
+            "s2": ["ok", "13% · 2/s of 16/s"],
+            "s3": ["ok", "13% · 2/s of 16/s"]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    }
+  }
+}

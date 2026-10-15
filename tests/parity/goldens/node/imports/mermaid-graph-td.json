@@ -1,0 +1,23 @@
+{
+  "ok": true,
+  "format": "mermaid",
+  "warnings": [],
+  "report": null,
+  "reportEnglish": {},
+  "replay": null,
+  "checks": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "graph td",
+    "direction": "TB",
+    "nodes": [
+      { "id": "A", "stencil": "generic.service", "label": "A", "x": 40, "y": 40 },
+      { "id": "B", "stencil": "generic.service", "label": "B", "x": 40, "y": 200 },
+      { "id": "C", "stencil": "generic.database", "label": "Orders DB", "x": 40, "y": 360 }
+    ],
+    "edges": [
+      { "id": "e1-A-B", "from": "A", "to": "B", "label": "calls", "kind": "sync" },
+      { "id": "e2-B-C", "from": "B", "to": "C", "label": "writes", "kind": "sync" }
+    ]
+  }
+}

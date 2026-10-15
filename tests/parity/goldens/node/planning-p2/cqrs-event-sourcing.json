@@ -1,0 +1,1364 @@
+{
+  "format": "diagrams/v2",
+  "planning": { "revision": "p3" },
+  "nodeProps": {
+    "app": { "ratePerSec": 20, "messageType": "Deposit", "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "healthChecks": false },
+    "gateway": { "latencyMs": 2, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "API gateway", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
+    "command-handler": {
+      "concurrency": 32,
+      "latencyMs": 60,
+      "emits": { "Deposit": "MoneyDeposited", "Withdraw": "MoneyWithdrawn" },
+      "ratePerSec": 2,
+      "replicas": 1,
+      "jitter": 0.2,
+      "retry": "requeue",
+      "retryBackoffMs": 0,
+      "failureRate": 0,
+      "maxDeliveryCount": 3,
+      "partitions": 3,
+      "messageType": "Command handler",
+      "healthChecks": false,
+      "preset": "processor-lesson",
+      "presetRevision": "1"
+    },
+    "event-store": { "partitions": 16, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "messageType": "Event store", "healthChecks": false },
+    "publisher": { "concurrency": 32, "latencyMs": 50, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Event publisher", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
+    "integration-topic": { "partitions": 16, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "messageType": "accounts.events.v1", "healthChecks": false },
+    "query-api": { "concurrency": 64, "latencyMs": 20, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Query API", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
+    "balances-db": { "latencyMs": 2, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Balances", "healthChecks": false },
+    "statements": { "latencyMs": 2, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Statements", "healthChecks": false },
+    "balance-proj": { "concurrency": 32, "latencyMs": 40, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Balance projection", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
+    "statement-proj": { "concurrency": 32, "latencyMs": 80, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Statement projection", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
+    "fraud": { "concurrency": 32, "latencyMs": 60, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Fraud scoring", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" }
+  },
+  "legacyExport": {
+    "format": "diagrams/v1",
+    "losses": [
+      "planning.revision",
+      "gateway.props.preset",
+      "gateway.props.presetRevision",
+      "command-handler.props.preset",
+      "command-handler.props.presetRevision",
+      "publisher.props.preset",
+      "publisher.props.presetRevision",
+      "query-api.props.preset",
+      "query-api.props.presetRevision",
+      "balance-proj.props.preset",
+      "balance-proj.props.presetRevision",
+      "statement-proj.props.preset",
+      "statement-proj.props.presetRevision",
+      "fraud.props.preset",
+      "fraud.props.presetRevision"
+    ]
+  },
+  "autoScale": { "freePlay": 1, "busy-day": 5, "rebuild": 100 },
+  "brokerAssignments": {
+    "brokers": {
+      "event-store": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+      "integration-topic": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+    },
+    "consumers": {
+      "publisher": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "balance-proj": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "statement-proj": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "fraud": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      }
+    }
+  },
+  "edit": {
+    "configured": false,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "statement-proj",
+      "suggestion": "Statement projection: 5% utilized",
+      "converged": true,
+      "iterations": 7,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": {
+        "app": ["Infinity", 20, 0, 1, 1, 0],
+        "gateway": ["Infinity", 20, 0, 1, 1, 0],
+        "command-handler": [533.3333333333334, 20, 0.0375, 1, 1, 0],
+        "event-store": [400, 20, 0.05, 1, 1, 0],
+        "publisher": [
+          640,
+          20,
+          0.03125,
+          1,
+          1,
+          0,
+          {
+            "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+          }
+        ],
+        "integration-topic": [533.3333333333334, 20, 0.0375, 1, 1, 0],
+        "query-api": [3200, 0, 0, 1, 1, 0],
+        "balances-db": ["Infinity", 20, 0, 1, 1, 0],
+        "statements": ["Infinity", 20, 0, 1, 1, 0],
+        "balance-proj": [
+          800,
+          20,
+          0.025,
+          1,
+          1,
+          0,
+          {
+            "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+          }
+        ],
+        "statement-proj": [
+          400,
+          20,
+          0.05,
+          1,
+          1,
+          0,
+          {
+            "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+          }
+        ],
+        "fraud": [
+          533.3333333333334,
+          20,
+          0.0375,
+          1,
+          1,
+          0,
+          {
+            "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+          }
+        ]
+      },
+      "connections": { "app-to-gateway": 20, "gateway-to-command-handler": 20, "command-handler-to-event-store": 20, "event-store-to-publisher": 20, "event-store-to-balance-proj": 20, "event-store-to-statement-proj": 20, "publisher-to-integration-topic": 20, "balance-proj-to-balances-db": 20, "statement-proj-to-statements": 20, "integration-topic-to-fraud": 20 },
+      "offeredTypes": { "app": ["Deposit"], "gateway": ["Deposit"], "command-handler": ["Deposit"], "event-store": ["MoneyDeposited"], "publisher": ["MoneyDeposited"], "balance-proj": ["MoneyDeposited"], "statement-proj": ["MoneyDeposited"], "integration-topic": ["MoneyDeposited"], "balances-db": ["MoneyDeposited"], "statements": ["MoneyDeposited"], "fraud": ["MoneyDeposited"] }
+    },
+    "explanations": {
+      "gateway": {
+        "managed": "api",
+        "id": "gateway",
+        "role": "gateway",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": "Infinity",
+        "offered": 20,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0.002,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [{ "edge": "app-to-gateway", "node": "app", "label": "Banking app", "rate": 20 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "command-handler": {
+        "id": "command-handler",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 533.3333333333334,
+        "offered": 20,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 32,
+        "seconds": 0.06,
+        "utilization": 0.0375,
+        "growth": 0,
+        "contributors": [
+          { "edge": "gateway-to-command-handler", "node": "gateway", "label": "Banking app", "rate": 20, "via": "API gateway" }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      },
+      "publisher": {
+        "id": "publisher",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 640,
+        "offered": 20,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "event-store",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 16
+          }
+        ],
+        "slots": 32,
+        "seconds": 0.05,
+        "utilization": 0.03125,
+        "growth": 0,
+        "contributors": [
+          { "edge": "event-store-to-publisher", "node": "event-store", "label": "Event store", "rate": 20 }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      },
+      "query-api": {
+        "id": "query-api",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 3200,
+        "offered": 0,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 64,
+        "seconds": 0.02,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      },
+      "balance-proj": {
+        "id": "balance-proj",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 800,
+        "offered": 20,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "event-store",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 16
+          }
+        ],
+        "slots": 32,
+        "seconds": 0.04,
+        "utilization": 0.025,
+        "growth": 0,
+        "contributors": [
+          { "edge": "event-store-to-balance-proj", "node": "event-store", "label": "Event store", "rate": 20 }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      },
+      "statement-proj": {
+        "id": "statement-proj",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 400,
+        "offered": 20,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "event-store",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 16
+          }
+        ],
+        "slots": 32,
+        "seconds": 0.08,
+        "utilization": 0.05,
+        "growth": 0,
+        "contributors": [
+          { "edge": "event-store-to-statement-proj", "node": "event-store", "label": "Event store", "rate": 20 }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      },
+      "fraud": {
+        "id": "fraud",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 533.3333333333334,
+        "offered": 20,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "integration-topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 16
+          }
+        ],
+        "slots": 32,
+        "seconds": 0.06,
+        "utilization": 0.0375,
+        "growth": 0,
+        "contributors": [
+          { "edge": "integration-topic-to-fraud", "node": "integration-topic", "label": "accounts.events.v1", "rate": 20 }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "app": [{ "kind": "calls", "edge": "app-to-gateway", "peer": "gateway" }],
+      "gateway": [
+        { "kind": "calls", "edge": "gateway-to-command-handler", "peer": "command-handler", "filter": ["Deposit", "Withdraw"] },
+        { "kind": "calls", "edge": "gateway-to-query-api", "peer": "query-api", "filter": ["Get*"] }
+      ],
+      "command-handler": [{ "kind": "calls", "edge": "command-handler-to-event-store", "peer": "event-store" }],
+      "publisher": [
+        {
+          "kind": "consumes",
+          "edge": "event-store-to-publisher",
+          "peer": "event-store",
+          "group": "integration",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        },
+        { "kind": "publishes", "edge": "publisher-to-integration-topic", "peer": "integration-topic" }
+      ],
+      "query-api": [
+        { "kind": "calls", "edge": "query-api-to-balances-db", "peer": "balances-db", "filter": ["GetBalance"] },
+        { "kind": "calls", "edge": "query-api-to-statements", "peer": "statements", "filter": ["GetStatement"] }
+      ],
+      "balance-proj": [
+        {
+          "kind": "consumes",
+          "edge": "event-store-to-balance-proj",
+          "peer": "event-store",
+          "group": "balances",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        },
+        { "kind": "calls", "edge": "balance-proj-to-balances-db", "peer": "balances-db" }
+      ],
+      "statement-proj": [
+        {
+          "kind": "consumes",
+          "edge": "event-store-to-statement-proj",
+          "peer": "event-store",
+          "group": "statements",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        },
+        { "kind": "calls", "edge": "statement-proj-to-statements", "peer": "statements" }
+      ],
+      "fraud": [
+        {
+          "kind": "consumes",
+          "edge": "integration-topic-to-fraud",
+          "peer": "integration-topic",
+          "group": "fraud",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ]
+    },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "app": {
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 20,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Deposit",
+        "healthChecks": false
+      },
+      "gateway": {
+        "admission": { "api": {}, "endpoints": [] },
+        "profile": { "family": "api-gateway", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 2,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "API gateway",
+        "healthChecks": false
+      },
+      "command-handler": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 60,
+        "concurrency": 32,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "emits": { "Deposit": "MoneyDeposited", "Withdraw": "MoneyWithdrawn" },
+        "messageType": "Command handler",
+        "healthChecks": false
+      },
+      "event-store": {
+        "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 16,
+        "messageType": "Event store",
+        "healthChecks": false
+      },
+      "publisher": {
+        "profile": { "family": "stream-processor", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 50,
+        "concurrency": 32,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Event publisher",
+        "healthChecks": false
+      },
+      "integration-topic": {
+        "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 16,
+        "messageType": "accounts.events.v1",
+        "healthChecks": false
+      },
+      "query-api": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 20,
+        "concurrency": 64,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Query API",
+        "healthChecks": false
+      },
+      "balances-db": {
+        "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Balances",
+        "healthChecks": false
+      },
+      "statements": {
+        "profile": { "family": "search", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Statements",
+        "healthChecks": false
+      },
+      "balance-proj": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 40,
+        "concurrency": 32,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Balance projection",
+        "healthChecks": false
+      },
+      "statement-proj": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 80,
+        "concurrency": 32,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Statement projection",
+        "healthChecks": false
+      },
+      "fraud": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 60,
+        "concurrency": 32,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Fraud scoring",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "busy-day": {
+      "configured": "(same as edit)",
+      "simulation": "busy-day",
+      "analysis": {
+        "bottleneck": "statement-proj",
+        "suggestion": "Statement projection: 13% utilized",
+        "converged": true,
+        "iterations": 7,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": {
+          "app": ["Infinity", 250, 0, 1, 1, 0],
+          "gateway": ["Infinity", 250, 0, 1, 1, 0],
+          "command-handler": [533.3333333333334, 50, 0.09375, 1, 1, 0],
+          "event-store": [400, 50, 0.125, 1, 1, 0],
+          "publisher": [
+            640,
+            50,
+            0.078125,
+            1,
+            1,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ],
+          "integration-topic": [533.3333333333334, 50, 0.09375, 1, 1, 0],
+          "query-api": [3200, 200, 0.0625, 1, 1, 0],
+          "balances-db": ["Infinity", 200, 0, 1, 1, 0],
+          "statements": ["Infinity", 100, 0, 1, 1, 0],
+          "balance-proj": [
+            800,
+            50,
+            0.0625,
+            1,
+            1,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ],
+          "statement-proj": [
+            400,
+            50,
+            0.125,
+            1,
+            1,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ],
+          "fraud": [
+            533.3333333333334,
+            50,
+            0.09375,
+            1,
+            1,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ]
+        },
+        "connections": {
+          "app-to-gateway": 250,
+          "gateway-to-command-handler": 50,
+          "gateway-to-query-api": 200,
+          "command-handler-to-event-store": 50,
+          "query-api-to-balances-db": 150,
+          "query-api-to-statements": 50,
+          "event-store-to-publisher": 50,
+          "event-store-to-balance-proj": 50,
+          "event-store-to-statement-proj": 50,
+          "publisher-to-integration-topic": 50,
+          "balance-proj-to-balances-db": 50,
+          "statement-proj-to-statements": 50,
+          "integration-topic-to-fraud": 50
+        },
+        "offeredTypes": {
+          "app": ["Deposit", "Withdraw", "GetBalance", "GetStatement"],
+          "gateway": ["Deposit", "Withdraw", "GetBalance", "GetStatement"],
+          "command-handler": ["Deposit", "Withdraw"],
+          "query-api": ["GetBalance", "GetStatement"],
+          "event-store": ["MoneyDeposited", "MoneyWithdrawn"],
+          "balances-db": ["GetBalance", "MoneyDeposited", "MoneyWithdrawn"],
+          "statements": ["GetStatement", "MoneyDeposited", "MoneyWithdrawn"],
+          "publisher": ["MoneyDeposited", "MoneyWithdrawn"],
+          "balance-proj": ["MoneyDeposited", "MoneyWithdrawn"],
+          "statement-proj": ["MoneyDeposited", "MoneyWithdrawn"],
+          "integration-topic": ["MoneyDeposited", "MoneyWithdrawn"],
+          "fraud": ["MoneyDeposited", "MoneyWithdrawn"]
+        }
+      },
+      "explanations": {
+        "gateway": {
+          "managed": "api",
+          "id": "gateway",
+          "role": "gateway",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 250,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.002,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [{ "edge": "app-to-gateway", "node": "app", "label": "Banking app", "rate": 250 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
+        "command-handler": {
+          "id": "command-handler",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 533.3333333333334,
+          "offered": 50,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 32,
+          "seconds": 0.06,
+          "utilization": 0.09375,
+          "growth": 0,
+          "contributors": [
+            { "edge": "gateway-to-command-handler", "node": "gateway", "label": "Banking app", "rate": 50, "via": "API gateway" }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "publisher": {
+          "id": "publisher",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 640,
+          "offered": 50,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "event-store",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 16
+            }
+          ],
+          "slots": 32,
+          "seconds": 0.05,
+          "utilization": 0.078125,
+          "growth": 0,
+          "contributors": [
+            { "edge": "event-store-to-publisher", "node": "event-store", "label": "Event store", "rate": 50 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "query-api": {
+          "id": "query-api",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 3200,
+          "offered": 200,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 64,
+          "seconds": 0.02,
+          "utilization": 0.0625,
+          "growth": 0,
+          "contributors": [
+            { "edge": "gateway-to-query-api", "node": "gateway", "label": "Banking app", "rate": 200, "via": "API gateway" }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "balance-proj": {
+          "id": "balance-proj",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 800,
+          "offered": 50,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "event-store",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 16
+            }
+          ],
+          "slots": 32,
+          "seconds": 0.04,
+          "utilization": 0.0625,
+          "growth": 0,
+          "contributors": [
+            { "edge": "event-store-to-balance-proj", "node": "event-store", "label": "Event store", "rate": 50 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "statement-proj": {
+          "id": "statement-proj",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 400,
+          "offered": 50,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "event-store",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 16
+            }
+          ],
+          "slots": 32,
+          "seconds": 0.08,
+          "utilization": 0.125,
+          "growth": 0,
+          "contributors": [
+            { "edge": "event-store-to-statement-proj", "node": "event-store", "label": "Event store", "rate": 50 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "fraud": {
+          "id": "fraud",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 533.3333333333334,
+          "offered": 50,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "integration-topic",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 16
+            }
+          ],
+          "slots": 32,
+          "seconds": 0.06,
+          "utilization": 0.09375,
+          "growth": 0,
+          "contributors": [
+            { "edge": "integration-topic-to-fraud", "node": "integration-topic", "label": "accounts.events.v1", "rate": 50 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": "(same as edit)"
+    },
+    "rebuild": {
+      "configured": "(same as edit)",
+      "simulation": "rebuild",
+      "analysis": {
+        "bottleneck": "statement-proj",
+        "suggestion": "Statement projection: 10% utilized",
+        "converged": true,
+        "iterations": 7,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": {
+          "app": ["Infinity", 140, 0, 1, 1, 0],
+          "gateway": ["Infinity", 140, 0, 1, 1, 0],
+          "command-handler": [533.3333333333334, 40, 0.075, 1, 1, 0],
+          "event-store": [400, 40, 0.1, 1, 1, 0],
+          "publisher": [
+            640,
+            40,
+            0.0625,
+            1,
+            1,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ],
+          "integration-topic": [533.3333333333334, 40, 0.075, 1, 1, 0],
+          "query-api": [3200, 100, 0.03125, 1, 1, 0],
+          "balances-db": ["Infinity", 140, 0, 1, 1, 0],
+          "statements": ["Infinity", 40, 0, 1, 1, 0],
+          "balance-proj": [
+            800,
+            40,
+            0.05,
+            1,
+            1,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ],
+          "statement-proj": [
+            400,
+            40,
+            0.1,
+            1,
+            1,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ],
+          "fraud": [
+            533.3333333333334,
+            40,
+            0.075,
+            1,
+            1,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ]
+        },
+        "connections": {
+          "app-to-gateway": 140,
+          "gateway-to-command-handler": 40,
+          "gateway-to-query-api": 100,
+          "command-handler-to-event-store": 40,
+          "query-api-to-balances-db": 100,
+          "event-store-to-publisher": 40,
+          "event-store-to-balance-proj": 40,
+          "event-store-to-statement-proj": 40,
+          "publisher-to-integration-topic": 40,
+          "balance-proj-to-balances-db": 40,
+          "statement-proj-to-statements": 40,
+          "integration-topic-to-fraud": 40
+        },
+        "offeredTypes": {
+          "app": ["Deposit", "GetBalance"],
+          "gateway": ["Deposit", "GetBalance"],
+          "command-handler": ["Deposit"],
+          "query-api": ["GetBalance"],
+          "event-store": ["MoneyDeposited"],
+          "balances-db": ["GetBalance", "MoneyDeposited"],
+          "publisher": ["MoneyDeposited"],
+          "balance-proj": ["MoneyDeposited"],
+          "statement-proj": ["MoneyDeposited"],
+          "integration-topic": ["MoneyDeposited"],
+          "statements": ["MoneyDeposited"],
+          "fraud": ["MoneyDeposited"]
+        }
+      },
+      "explanations": {
+        "gateway": {
+          "managed": "api",
+          "id": "gateway",
+          "role": "gateway",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 140,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.002,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [{ "edge": "app-to-gateway", "node": "app", "label": "Banking app", "rate": 140 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
+        "command-handler": {
+          "id": "command-handler",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 533.3333333333334,
+          "offered": 40,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 32,
+          "seconds": 0.06,
+          "utilization": 0.075,
+          "growth": 0,
+          "contributors": [
+            { "edge": "gateway-to-command-handler", "node": "gateway", "label": "Banking app", "rate": 40, "via": "API gateway" }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "publisher": {
+          "id": "publisher",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 640,
+          "offered": 40,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "event-store",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 16
+            }
+          ],
+          "slots": 32,
+          "seconds": 0.05,
+          "utilization": 0.0625,
+          "growth": 0,
+          "contributors": [
+            { "edge": "event-store-to-publisher", "node": "event-store", "label": "Event store", "rate": 40 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "query-api": {
+          "id": "query-api",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 3200,
+          "offered": 100,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 64,
+          "seconds": 0.02,
+          "utilization": 0.03125,
+          "growth": 0,
+          "contributors": [
+            { "edge": "gateway-to-query-api", "node": "gateway", "label": "Banking app", "rate": 100, "via": "API gateway" }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "balance-proj": {
+          "id": "balance-proj",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 800,
+          "offered": 40,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "event-store",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 16
+            }
+          ],
+          "slots": 32,
+          "seconds": 0.04,
+          "utilization": 0.05,
+          "growth": 0,
+          "contributors": [
+            { "edge": "event-store-to-balance-proj", "node": "event-store", "label": "Event store", "rate": 40 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "statement-proj": {
+          "id": "statement-proj",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 400,
+          "offered": 40,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "event-store",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 16
+            }
+          ],
+          "slots": 32,
+          "seconds": 0.08,
+          "utilization": 0.1,
+          "growth": 0,
+          "contributors": [
+            { "edge": "event-store-to-statement-proj", "node": "event-store", "label": "Event store", "rate": 40 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "fraud": {
+          "id": "fraud",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 533.3333333333334,
+          "offered": 40,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "integration-topic",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 16
+            }
+          ],
+          "slots": 32,
+          "seconds": 0.06,
+          "utilization": 0.075,
+          "growth": 0,
+          "contributors": [
+            { "edge": "integration-topic-to-fraud", "node": "integration-topic", "label": "accounts.events.v1", "rate": 40 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": "(same as edit)"
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "ok",
+          "top": "statement-proj",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Statement projection at 5% · 20/s of 400/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "app": ["idle", "20/s · no limit", { "modeled": false }],
+            "gateway": ["idle", "Limits unknown; enter measured or contracted values."],
+            "command-handler": ["ok", "4% · 20/s of 533/s"],
+            "event-store": ["ok", "5% · 20/s of 400/s"],
+            "publisher": ["ok", "3% · 20/s of 640/s"],
+            "integration-topic": ["ok", "4% · 20/s of 533/s"],
+            "query-api": ["idle", ""],
+            "balances-db": ["idle", "20/s · no limit", { "modeled": false }],
+            "statements": ["idle", "20/s · no limit", { "modeled": false }],
+            "balance-proj": ["ok", "3% · 20/s of 800/s"],
+            "statement-proj": ["ok", "5% · 20/s of 400/s"],
+            "fraud": ["ok", "4% · 20/s of 533/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "ok",
+          "top": "statement-proj",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Statement projection at 25% · 100/s of 400/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "app": ["idle", "100/s · no limit", { "modeled": false }],
+            "gateway": ["idle", "Limits unknown; enter measured or contracted values."],
+            "command-handler": ["ok", "19% · 100/s of 533/s"],
+            "event-store": ["ok", "25% · 100/s of 400/s"],
+            "publisher": ["ok", "16% · 100/s of 640/s"],
+            "integration-topic": ["ok", "19% · 100/s of 533/s"],
+            "query-api": ["idle", ""],
+            "balances-db": ["idle", "100/s · no limit", { "modeled": false }],
+            "statements": ["idle", "100/s · no limit", { "modeled": false }],
+            "balance-proj": ["ok", "13% · 100/s of 800/s"],
+            "statement-proj": ["ok", "25% · 100/s of 400/s"],
+            "fraud": ["ok", "19% · 100/s of 533/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "ok",
+          "top": "statement-proj",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Statement projection at 5% · 20/s of 400/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "app": ["idle", "20/s · no limit", { "modeled": false }],
+            "gateway": ["idle", "Limits unknown; enter measured or contracted values."],
+            "command-handler": ["ok", "4% · 20/s of 533/s"],
+            "event-store": ["ok", "5% · 20/s of 400/s"],
+            "publisher": ["ok", "3% · 20/s of 640/s"],
+            "integration-topic": ["ok", "4% · 20/s of 533/s"],
+            "query-api": ["idle", ""],
+            "balances-db": ["idle", "20/s · no limit", { "modeled": false }],
+            "statements": ["idle", "20/s · no limit", { "modeled": false }],
+            "balance-proj": ["ok", "3% · 20/s of 800/s"],
+            "statement-proj": ["ok", "5% · 20/s of 400/s"],
+            "fraud": ["ok", "4% · 20/s of 533/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": {
+          "props": { "event-store": { "partitions": 32 }, "integration-topic": { "partitions": 32 } },
+          "rates": {}
+        },
+        "view": {
+          "tone": "ok",
+          "top": "statement-proj",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Statement projection at 5% · 20/s of 400/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "app": ["idle", "20/s · no limit", { "modeled": false }],
+            "gateway": ["idle", "Limits unknown; enter measured or contracted values."],
+            "command-handler": ["ok", "4% · 20/s of 533/s"],
+            "event-store": ["ok", "5% · 20/s of 400/s"],
+            "publisher": ["ok", "3% · 20/s of 640/s"],
+            "integration-topic": ["ok", "4% · 20/s of 533/s"],
+            "query-api": ["idle", ""],
+            "balances-db": ["idle", "20/s · no limit", { "modeled": false }],
+            "statements": ["idle", "20/s · no limit", { "modeled": false }],
+            "balance-proj": ["ok", "3% · 20/s of 800/s"],
+            "statement-proj": ["ok", "5% · 20/s of 400/s"],
+            "fraud": ["ok", "4% · 20/s of 533/s"]
+          }
+        },
+        "partitionsNotes": { "event-store": "All configured reader instances already have an assignment.", "integration-topic": "All configured reader instances already have an assignment." }
+      }
+    },
+    "busy-day": {
+      "tone": "ok",
+      "top": "statement-proj",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Statement projection at 13% · 50/s of 400/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "app": ["idle", "250/s · no limit", { "modeled": false }],
+        "gateway": ["idle", "Limits unknown; enter measured or contracted values."],
+        "command-handler": ["ok", "9% · 50/s of 533/s"],
+        "event-store": ["ok", "13% · 50/s of 400/s"],
+        "publisher": ["ok", "8% · 50/s of 640/s"],
+        "integration-topic": ["ok", "9% · 50/s of 533/s"],
+        "query-api": ["ok", "6% · 200/s of 3.2k/s"],
+        "balances-db": ["idle", "200/s · no limit", { "modeled": false }],
+        "statements": ["idle", "100/s · no limit", { "modeled": false }],
+        "balance-proj": ["ok", "6% · 50/s of 800/s"],
+        "statement-proj": ["ok", "13% · 50/s of 400/s"],
+        "fraud": ["ok", "9% · 50/s of 533/s"]
+      }
+    },
+    "rebuild": {
+      "tone": "ok",
+      "top": "statement-proj",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Statement projection at 10% · 40/s of 400/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "app": ["idle", "140/s · no limit", { "modeled": false }],
+        "gateway": ["idle", "Limits unknown; enter measured or contracted values."],
+        "command-handler": ["ok", "8% · 40/s of 533/s"],
+        "event-store": ["ok", "10% · 40/s of 400/s"],
+        "publisher": ["ok", "6% · 40/s of 640/s"],
+        "integration-topic": ["ok", "8% · 40/s of 533/s"],
+        "query-api": ["ok", "3% · 100/s of 3.2k/s"],
+        "balances-db": ["idle", "140/s · no limit", { "modeled": false }],
+        "statements": ["idle", "40/s · no limit", { "modeled": false }],
+        "balance-proj": ["ok", "5% · 40/s of 800/s"],
+        "statement-proj": ["ok", "10% · 40/s of 400/s"],
+        "fraud": ["ok", "8% · 40/s of 533/s"]
+      }
+    }
+  }
+}

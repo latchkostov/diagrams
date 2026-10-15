@@ -1,0 +1,15 @@
+%% A Mermaid flowchart with most of the syntax the importer reads.
+flowchart LR
+  user([Customer]) -->|POST /orders| api[Order API<br/>ASP.NET Core]
+  subgraph azure [Azure subscription]
+    api -.->|OrderPlaced| sb[(Service Bus orders)]
+    sb -. fan out .-> fn{{Billing Azure Function}}
+  end
+  fn ==> db[(Postgres ledger)]
+  fn --> mail>Email] & audit["Audit &quot;log&quot;"]
+  db --- report
+  report ~~~ hidden
+  kafka[[Kafka orders topic]] --> worker(Stock worker)
+  worker --> redis[(Redis cache)]
+  classDef hot fill:#f00
+  class api hot

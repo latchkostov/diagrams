@@ -1,0 +1,52 @@
+---
+title: Event-driven data platform
+---
+flowchart LR
+  subgraph g_kafka ["Kafka · Confluent Cloud"]
+    billing_topic["billing.invoices.v1<br/>key: customerId"]
+    orders_topic["orders.v1<br/>key: orderId"]
+    accounts_topic["cdc.accounts.v1<br/>Debezium · key: accountId"]
+    segments_topic["customer-segments.v1<br/>key: customerId"]
+  end
+  subgraph g_snowflake ["Snowflake · ANALYTICS"]
+    raw[("Raw tables<br/>RAW.KAFKA_* · VARIANT")]
+    marts[("Marts<br/>Segments · revenue · orders")]
+  end
+  billing_webhooks(["Billing webhooks<br/>Stripe · invoice.paid"])
+  storefront(["Storefront<br/>Web and mobile checkout"])
+  accounts_db[("Accounts database<br/>OLTP · logical replication")]
+  segment_cache[("Segment cache<br/>customerId → segments")]
+  webhook_receiver["Webhook receiver<br/>Verify signature · ack 200"]
+  checkout["Checkout service<br/>Commits order · publishes"]
+  debezium["Debezium connector<br/>Postgres WAL → events"]
+  personalization["Personalization service<br/>Next-best offer"]
+  marketing(["Marketing automation<br/>Braze · campaigns"])
+  schema_registry["Schema registry<br/>Avro · backward compatible"]
+  snowpipe["Snowflake connector<br/>Snowpipe Streaming"]
+  reverse_etl["Reverse ETL<br/>Hightouch · diffs only"]
+  airflow["Airflow<br/>dbt build · every 15 min"]
+  dbt["dbt models<br/>Incremental models"]
+  bi["Revenue dashboards<br/>Tableau · live"]
+  billing_webhooks -->|"HTTPS · signed"| webhook_receiver
+  storefront -->|"POST /checkout"| checkout
+  accounts_db -.->|"WAL"| debezium
+  webhook_receiver -.->|"InvoicePaid"| billing_topic
+  checkout -.->|"OrderPlaced"| orders_topic
+  debezium -.->|"AccountChanged"| accounts_topic
+  billing_topic -.-> snowpipe
+  orders_topic -.->|"group: snowflake-sink"| snowpipe
+  accounts_topic -.-> snowpipe
+  snowpipe -.->|"depends on: Avro schemas"| schema_registry
+  snowpipe -->|"insertRows"| raw
+  raw -.->|"New rows"| dbt
+  airflow -.->|"depends on: dbt build"| dbt
+  dbt -->|"MERGE models"| marts
+  bi -->|"Live queries"| marts
+  marts -.->|"Changed segments"| reverse_etl
+  reverse_etl -.->|"Segment changes"| segments_topic
+  segments_topic -.->|"group: personalization"| personalization
+  segments_topic -.->|"group: marketing-sync"| marketing
+  personalization -->|"SET segments"| segment_cache
+  linkStyle 2,3,4,5,6,7,8,11,15,16,17,18 stroke-dasharray: 6 4
+  linkStyle 9,12 stroke:#556075,stroke-width:1.25px,stroke-dasharray: 2 4
+%% diagrams:{"v":1,"description":"Operational events stream through Kafka into Snowflake; dbt builds marts and reverse ETL publishes segments back to Kafka.","nodes":{"billing_webhooks":["billing-webhooks","generic.webhook"],"storefront":["storefront","client.browser"],"accounts_db":["accounts-db","postgres"],"segment_cache":["segment-cache","redis.cache"],"webhook_receiver":["webhook-receiver","service.node"],"checkout":["checkout","service.go"],"debezium":["debezium","debezium"],"personalization":["personalization","service.java"],"marketing":["marketing","generic.marketing"],"billing_topic":["billing-topic","kafka.topic"],"orders_topic":["orders-topic","kafka.topic"],"accounts_topic":["accounts-topic","kafka.topic"],"segments_topic":["segments-topic","kafka.topic"],"schema_registry":["schema-registry","kafka.schema-registry"],"snowpipe":["snowpipe","snowflake.snowpipe"],"reverse_etl":["reverse-etl","generic.reverse-etl"],"raw":["raw","snowflake"],"marts":["marts","snowflake"],"airflow":["airflow","airflow"],"dbt":["dbt","dbt"],"bi":["bi","tableau"]},"groups":{"g_kafka":["kafka","neutral"],"g_snowflake":["snowflake","neutral"]},"edges":["billing-webhooks-to-webhook-receiver","storefront-to-checkout","accounts-db-to-debezium","webhook-receiver-to-billing-topic","checkout-to-orders-topic","debezium-to-accounts-topic","billing-topic-to-snowpipe","orders-topic-to-snowpipe","accounts-topic-to-snowpipe","snowpipe-to-schema-registry","snowpipe-to-raw","raw-to-dbt","airflow-to-dbt","dbt-to-marts","bi-to-marts","marts-to-reverse-etl","reverse-etl-to-segments-topic","segments-topic-to-personalization","segments-topic-to-marketing","personalization-to-segment-cache"],"relations":{"9":"depends","12":"depends"}}

@@ -1,0 +1,138 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    { "atMs": 0, "inSystem": 0, "nodes": { "source": { "replicas": [1, 1, 0] }, "api": { "replicas": [1, 1, 0] } } },
+    {
+      "atMs": 10000,
+      "inSystem": 20,
+      "nodes": {
+        "source": { "processed": 200, "throughput": 20.40106029531822, "replicas": [1, 1, 0] },
+        "api": { "processed": 180, "inFlight": 19, "throughput": 20.39946873891197, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 20,
+      "nodes": {
+        "source": { "processed": 400, "throughput": 20.40198650202273, "replicas": [1, 1, 0] },
+        "api": { "processed": 380, "inFlight": 19, "throughput": 20.40198642976616, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 20,
+      "nodes": {
+        "source": { "processed": 600, "throughput": 20.401986544072436, "replicas": [1, 1, 0] },
+        "api": { "processed": 580, "inFlight": 19, "throughput": 20.401986544069157, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 20,
+      "nodes": {
+        "source": { "processed": 800, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+        "api": { "processed": 780, "inFlight": 19, "throughput": 20.401986544074276, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 20,
+      "nodes": {
+        "source": { "processed": 1000, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+        "api": { "processed": 980, "inFlight": 19, "throughput": 20.401986544074276, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 20,
+      "nodes": {
+        "source": { "processed": 1200, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+        "api": { "processed": 1180, "inFlight": 19, "throughput": 20.401986544074276, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 20,
+    "real": {
+      "source": { "processed": 1200, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+      "api": { "processed": 1180, "inFlight": 19, "throughput": 20.401986544074276, "replicas": [1, 1, 0] }
+    },
+    "edges": { "call": 1199 }
+  },
+  "events": {
+    "total": 3579,
+    "byKind": { "process": 2380, "deliver": 1199 },
+    "byNode": { "source": { "process": 1200 }, "api": { "deliver": 1199, "process": 1180 } },
+    "perSecond": [
+      "5ab2dbea6dea",
+      "1fa517b2687a",
+      "69fa4e87937a",
+      "513e7a200f9f",
+      "629f9cc9470b",
+      "730328194811",
+      "7d5ceb05b9a1",
+      "b49959d10ebf",
+      "e64185fbddfc",
+      "cef8b837ffbb",
+      "982ebfd6f6d1",
+      "184cb9a6259d",
+      "67f95c1eca38",
+      "f1bc079fcb1c",
+      "91073e365758",
+      "ae1cd4dc3438",
+      "4abf585e7fd9",
+      "05f84f25a197",
+      "3df79a2d70d7",
+      "c70f07d04f67",
+      "e0e7a832b028",
+      "83db47bb9659",
+      "e7cf3fd4744b",
+      "7907f86e42f2",
+      "0bdddc7581f5",
+      "6502b84edbe2",
+      "48f985e2e203",
+      "7326fb26fbef",
+      "04d6dff1c2f9",
+      "92288da352f7",
+      "c4475a42ae6f",
+      "a0abc59f8a33",
+      "5369316d086c",
+      "db590a9e3103",
+      "e9633f1a9d02",
+      "bc5707554327",
+      "75c2713ce1c0",
+      "06cf8a2cda6d",
+      "fde07d0a646c",
+      "ada0e1d58ff4",
+      "7809fab2a89a",
+      "9d9728996e7c",
+      "aa75b141f982",
+      "f08477abdb9c",
+      "801f2afd378e",
+      "2718980f93da",
+      "0b307c7adde6",
+      "7bf9137be8a6",
+      "9bc24aa4b67e",
+      "1de4365a68e5",
+      "f7337eda6257",
+      "55ff080a7c10",
+      "eeb2874bb629",
+      "b20f1be3a1d8",
+      "7d637f7800b4",
+      "cb42d29a2e44",
+      "360530ad0c4c",
+      "065fb62b9fd4",
+      "8ec4d7526a96",
+      "894e9e8f795c",
+      "ebe49871d20d"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 1180, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 1180, "min": 1000, "mean": 1000, "p50": 1000, "p90": 1000, "max": 1000 },
+    "waitMs": { "api": { "count": 1180, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 } },
+    "processMs": { "api": { "count": 1180, "min": 990, "mean": 990, "p50": 990, "p90": 990, "max": 990 } }
+  }
+}

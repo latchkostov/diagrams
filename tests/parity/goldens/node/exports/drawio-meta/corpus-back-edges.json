@@ -1,0 +1,35 @@
+{
+  "withIcons": {
+    "sha256": "405fc90e8247e2b807ac4307914c60507070d26154f0af5756749bd94ba79ce6",
+    "bytes": 28771,
+    "inlined": { "kafka.topic": "kafka 81e432d1da74c5fe", "postgres": "postgresql 5bc8dcc1fbb1ec10", "redis.cache": "redis a2b5f283f87eccc0", "service.go": "go 6f494b4da5a84f2a", "service.node": "nodejs ad81b1a87b698cc5" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Back-edges and loops",
+        "description": "Targets behind, above and below their sources.",
+        "nodes": [
+          { "id": "api", "stencil": "aws.api-gateway", "label": "API", "x": 40, "y": 160 },
+          { "id": "svc", "stencil": "service.node", "label": "Orders", "x": 400, "y": 160 },
+          { "id": "topic", "stencil": "kafka.topic", "label": "orders", "sublabel": "orders.v1", "x": 760, "y": 160 },
+          { "id": "retry", "stencil": "service.go", "label": "Retry worker", "x": 760, "y": 400 },
+          { "id": "above", "stencil": "redis.cache", "label": "Cache (above)", "x": 400, "y": -8 },
+          { "id": "below", "stencil": "postgres", "label": "DB (below)", "x": 400, "y": 400 }
+        ],
+        "edges": [
+          { "id": "fwd-1", "from": "api", "to": "svc", "kind": "sync" },
+          { "id": "fwd-2", "from": "svc", "to": "topic", "kind": "async" },
+          { "id": "down", "from": "topic", "to": "retry", "label": "failed", "kind": "async" },
+          { "id": "back", "from": "retry", "to": "svc", "label": "back-edge: retry", "kind": "async" },
+          { "id": "back-far", "from": "topic", "to": "api", "label": "back-edge: skip", "kind": "async" },
+          { "id": "up", "from": "svc", "to": "above", "kind": "sync" },
+          { "id": "down-2", "from": "svc", "to": "below", "kind": "sync" },
+          { "id": "self", "from": "retry", "to": "retry", "label": "self-loop", "kind": "async" }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Relationship regressions",
+    "direction": "LR",
+    "nodes": [
+      { "id": "source", "stencil": "generic.service", "label": "Caller", "x": 40, "y": 40 },
+      { "id": "worker", "stencil": "generic.service", "label": "Worker", "x": 400, "y": 40 },
+      { "id": "vault_injected_secret", "stencil": "vault", "label": "Vault", "sublabel": "Injected label", "x": 760, "y": 40 }
+    ],
+    "edges": [
+      { "id": "e1-source-worker", "from": "source", "to": "worker", "kind": "async", "relation": "secret" },
+      { "id": "e2-worker-vault_injected_secret", "from": "worker", "to": "vault_injected_secret", "kind": "async", "relation": "secret" }
+    ]
+  }
+}

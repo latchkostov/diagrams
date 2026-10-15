@@ -1,0 +1,53 @@
+{
+  "summary": "1 warning, 0 suggestions.",
+  "findings": {
+    "capacity:slow": {
+      "title": "Reports can't keep up",
+      "message": "At the diagram's own rates, it gets 6/s and handles 0.67/s (900%): its backlog only grows.",
+      "rationale": "Demand above what a service can handle never drains: latency and backlog grow until something times out. Live view's Show capacity has the same numbers.",
+      "fix": { "label": "Set replicas to 17 and telemetry partitions to 17" }
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "capacity:slow",
+        "rule": "capacity",
+        "severity": "warning",
+        "title": "Reports can't keep up",
+        "message": "At the diagram's own rates, it gets 6/s and handles 0.67/s (900%): its backlog only grows.",
+        "targets": ["slow"],
+        "fix": {
+          "label": "Set replicas to 17 and telemetry partitions to 17",
+          "ops": [
+            { "op": "update", "target": "slow", "props": { "replicas": 17 } },
+            { "op": "update", "target": "topic", "props": { "partitions": 17 } }
+          ]
+        }
+      }
+    ],
+    "summary": "1 warning, 0 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      {
+        "id": "capacity:slow",
+        "rule": "capacity",
+        "severity": "warning",
+        "title": "Reports can't keep up",
+        "message": "At the diagram's own rates, it gets 6/s and handles 0.67/s (900%): its backlog only grows.",
+        "targets": ["slow"],
+        "fix": {
+          "label": "Set replicas to 17 and telemetry partitions to 17",
+          "ops": [
+            { "op": "update", "target": "slow", "props": { "replicas": 17 } },
+            { "op": "update", "target": "topic", "props": { "partitions": 17 } }
+          ]
+        }
+      }
+    ],
+    "summary": "1 warning, 0 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
+}

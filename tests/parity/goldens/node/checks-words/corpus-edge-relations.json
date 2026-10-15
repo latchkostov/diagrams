@@ -1,0 +1,61 @@
+{
+  "summary": "1 warning, 1 suggestion.",
+  "findings": {
+    "no-reader:message-b": {
+      "title": "Nobody reads message target",
+      "message": "message source publishes to message target, but nothing consumes it: it keeps every message, unread.",
+      "rationale": "A topic keeps what's published until its retention ends, whether anything reads it or not. With no consumer group, nothing acts on its messages, and more partitions don't change that.",
+      "fix": { "label": "Add a consumer…", "choice": "Pick what reads message target, then add it and connect message-b to it." }
+    },
+    "secret-identity:secret-b": {
+      "title": "secret source reads secrets without an identity",
+      "message": "secret source reads secrets from secret target, but the diagram doesn't say what it signs in as. With an IAM role, it gets in with no stored credential to leak or rotate.",
+      "rationale": "A service needs a credential to open a vault, and one stored with the service is just one more secret. A workload identity (an Azure managed identity, an AWS IAM role, a Google Cloud service account) signs it in with nothing to store or rotate, and one per service gives each only the access it needs (least privilege).",
+      "fix": { "label": "Add an IAM role" }
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "no-reader:message-b",
+        "rule": "no-reader",
+        "severity": "warning",
+        "title": "Nobody reads message target",
+        "message": "message source publishes to message target, but nothing consumes it: it keeps every message, unread.",
+        "targets": ["message-b", "message-a"],
+        "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads message target, then add it and connect message-b to it." }
+      },
+      {
+        "id": "secret-identity:secret-b",
+        "rule": "secret-identity",
+        "severity": "suggestion",
+        "title": "secret source reads secrets without an identity",
+        "message": "secret source reads secrets from secret target, but the diagram doesn't say what it signs in as. With an IAM role, it gets in with no stored credential to leak or rotate.",
+        "targets": ["secret-b", "secret-a"],
+        "fix": {
+          "label": "Add an IAM role",
+          "ops": [
+            { "op": "add_node", "kind": "aws.iam-role", "label": "secret source identity", "sublabel": "workload identity", "key": "new-identity-1" },
+            { "op": "connect", "from": "secret-a", "to": "new-identity-1", "relation": "identity" }
+          ]
+        }
+      }
+    ],
+    "summary": "1 warning, 1 suggestion.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      {
+        "id": "no-reader:message-b",
+        "rule": "no-reader",
+        "severity": "warning",
+        "title": "Nobody reads message target",
+        "message": "message source publishes to message target, but nothing consumes it: it keeps every message, unread.",
+        "targets": ["message-b", "message-a"],
+        "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads message target, then add it and connect message-b to it." }
+      }
+    ],
+    "summary": "1 warning, 1 suggestion."
+  }
+}

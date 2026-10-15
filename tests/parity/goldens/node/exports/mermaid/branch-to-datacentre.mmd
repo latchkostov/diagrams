@@ -1,0 +1,38 @@
+---
+title: Branch office to data centre
+---
+flowchart TB
+  subgraph g_branch ["Branch office"]
+    staff(["Branch staff<br/>120 desks"])
+    branch_router["Branch router<br/>Catalyst 8200 · SD-WAN"]
+  end
+  subgraph g_dc ["Data centre"]
+    edge_router["Edge routers<br/>2 × MX204 · BGP"]
+    firewall["Firewall pair<br/>PA-3440 · active-standby"]
+    spine_1["Spine 1<br/>Arista 7050SX3"]
+    spine_2["Spine 2<br/>Arista 7050SX3"]
+    leaf["Services leaf<br/>Nexus 93180YC · vPC pair"]
+    adc["Load balancer<br/>BIG-IP pair · VIP shop"]
+    web_1["Storefront 1<br/>web pool"]
+    web_2["Storefront 2<br/>web pool"]
+    orders_db[("Orders DB<br/>primary")]
+    payments["Payments API<br/>PCI zone"]
+  end
+  customers(["Customers<br/>internet"])
+  customers -->|"HTTPS"| edge_router
+  staff -->|"Back office"| branch_router
+  branch_router -->|"SD-WAN tunnel"| edge_router
+  edge_router --> firewall
+  firewall -->|"Allow: web"| spine_1
+  firewall --> spine_2
+  firewall -->|"Deny: branch → payments"| payments
+  spine_1 --> leaf
+  spine_2 --> leaf
+  leaf --> adc
+  adc --> web_1
+  adc --> web_2
+  web_1 --> orders_db
+  web_2 --> orders_db
+  web_1 -->|"Charge"| payments
+  web_2 --> payments
+%% diagrams:{"v":1,"description":"A branch and internet customers reach a data centre through edge routers, an active-standby firewall pair, a spine and leaf fabric and a load balancer pair. The firewall's rules allow web traffic and deny the branch any path to the payments zone.","nodes":{"customers":["customers","client.user"],"staff":["staff","client.team"],"branch_router":["branch-router","cisco.isr"],"edge_router":["edge-router","juniper.mx"],"firewall":["firewall","paloalto.ngfw"],"spine_1":["spine-1","arista.switch"],"spine_2":["spine-2","arista.switch"],"leaf":["leaf","cisco.nexus"],"adc":["adc","f5.bigip"],"web_1":["web-1","service.java"],"web_2":["web-2","service.java"],"orders_db":["orders-db","postgres"],"payments":["payments","service.dotnet"]},"groups":{"g_branch":["branch","onprem"],"g_dc":["dc","onprem"]},"edges":["customers-edge","staff-branch","branch-edge","edge-firewall","firewall-spine-1","firewall-spine-2","firewall-payments","spine-1-leaf","spine-2-leaf","leaf-adc","adc-web-1","adc-web-2","web-1-db","web-2-db","web-1-payments","web-2-payments"],"relations":{}}

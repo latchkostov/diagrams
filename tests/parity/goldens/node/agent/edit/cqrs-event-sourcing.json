@@ -1,0 +1,666 @@
+{
+  "steps": [
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "topic-1",
+            "label": "parity.events",
+            "stencil": { "id": "kafka.topic", "label": "Kafka Topic", "confidence": "high", "alternatives": ["pulsar.topic", "confluent.cloud", "aws.msk"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-1", "from": "app", "to": "topic-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+2 nodes, +2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "dotnet-1",
+            "label": "Parity reader",
+            "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-2", "from": "topic-1", "to": "dotnet-1" },
+          {
+            "i": 2,
+            "op": "add_node",
+            "id": "key-vault-1",
+            "label": "Parity secrets",
+            "stencil": { "id": "azure.key-vault", "label": "Key Vault", "confidence": "high", "alternatives": [] }
+          },
+          { "i": 3, "op": "connect", "id": "e-3", "from": "dotnet-1", "to": "key-vault-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +2 connections, −1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "insert_between",
+            "id": "queue-1",
+            "label": "buffer",
+            "stencil": { "id": "rabbitmq.queue", "label": "RabbitMQ Queue", "confidence": "high", "alternatives": ["aws.mq"] },
+            "from": "app",
+            "to": "gateway"
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "update", "id": "gateway" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "update",
+            "id": "command-handler",
+            "stencil": { "id": "aws.lambda", "label": "AWS Lambda", "confidence": "high", "alternatives": [] }
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 boundary, 2 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_boundary", "id": "boundary-1", "label": "Parity zone" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 note",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_note", "id": "note-1" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "title or direction changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "set_meta" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "−1 node, −2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "remove", "ids": ["dotnet-1", "e-2", "e-3"] }]
+      }
+    },
+    {
+      "isError": true,
+      "output": {
+        "ok": false,
+        "i": 0,
+        "error": "Unknown reference \"no-such-node\".",
+        "ref": "no-such-node",
+        "candidates": [
+          { "id": "app", "label": "Banking app", "stencil": "client.mobile" },
+          { "id": "gateway", "label": "Renamed by parity", "stencil": "kong" },
+          { "id": "command-handler", "label": "Command handler", "stencil": "aws.lambda" },
+          { "id": "event-store", "label": "Event store", "stencil": "generic.event-store" },
+          { "id": "publisher", "label": "Event publisher", "stencil": "kafka.connect" },
+          { "id": "integration-topic", "label": "accounts.events.v1", "stencil": "kafka.topic" },
+          { "id": "query-api", "label": "Query API", "stencil": "service.node" },
+          { "id": "balances-db", "label": "Balances", "stencil": "postgres" },
+          { "id": "statements", "label": "Statements", "stencil": "elasticsearch" },
+          { "id": "balance-proj", "label": "Balance projection", "stencil": "generic.projection" },
+          { "id": "statement-proj", "label": "Statement projection", "stencil": "generic.projection" },
+          { "id": "fraud", "label": "Fraud scoring", "stencil": "service.python" },
+          { "id": "topic-1", "label": "parity.events", "stencil": "kafka.topic" },
+          { "id": "key-vault-1", "label": "Parity secrets", "stencil": "azure.key-vault" },
+          { "id": "queue-1", "label": "buffer", "stencil": "rabbitmq.queue" },
+          { "id": "note-1", "label": "Pinned by the parity harness" }
+        ],
+        "hint": "Use an id from candidates, or call describe_diagram.",
+        "applied": false
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "dryRun": true,
+        "summary": "+1 node",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "postgres-1",
+            "label": "Dry run only",
+            "stencil": { "id": "postgres", "label": "PostgreSQL", "confidence": "high", "alternatives": ["gcp.cloud-sql", "aws.aurora", "supabase"] }
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "isError": false,
+      "output": { "ok": true, "id": "sim-1", "title": "Parity rush", "summary": "Added simulation \"Parity rush\": 4 traffic, 2 events, 1 expectations.", "undo": "One undo step reverts this call.", "play": "The user plays it in live view (L), or from the command palette." }
+    },
+    {
+      "isError": true,
+      "output": { "ok": false, "error": "constant traffic needs ratePerSec.", "hint": "Check the input against the tool's schema and try again." }
+    }
+  ],
+  "applied": [
+    { "tool": "edit_diagram", "summary": "+1 node, +1 connection", "changed": ["topic-1", "e-1"] },
+    {
+      "tool": "edit_diagram",
+      "summary": "+2 nodes, +2 connections",
+      "changed": ["dotnet-1", "key-vault-1", "e-2", "e-3"],
+      "choices": [
+        {
+          "nodeId": "dotnet-1",
+          "kind": ".NET consumer",
+          "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] },
+          "node": {
+            "id": "dotnet-1",
+            "stencil": "service.dotnet",
+            "label": "Parity reader",
+            "x": 640,
+            "y": 788,
+            "props": { "replicas": 3 }
+          }
+        }
+      ]
+    },
+    { "tool": "edit_diagram", "summary": "+1 node, +2 connections, −1 connection", "changed": ["queue-1", "e-4", "e-5"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["gateway"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["command-handler"] },
+    { "tool": "edit_diagram", "summary": "+1 boundary, 2 changed", "changed": ["boundary-1", "app", "gateway"] },
+    { "tool": "edit_diagram", "summary": "+1 note", "changed": ["note-1"] },
+    { "tool": "edit_diagram", "summary": "title or direction changed", "changed": [] },
+    { "tool": "edit_diagram", "summary": "−1 node, −2 connections", "changed": [] },
+    { "tool": "set_simulation", "summary": "Added simulation “Parity rush”", "changed": ["app"] }
+  ],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Parity edit",
+    "description": "Commands append events to an event store; projections build read models that queries hit, and an outbound feed shares events.",
+    "direction": "TB",
+    "groups": [
+      { "id": "write", "label": "Write side", "tone": "neutral", "x": 760, "y": 96, "width": 680, "height": 176 },
+      { "id": "read", "label": "Read side", "tone": "neutral", "x": 760, "y": 360, "width": 1100, "height": 392 },
+      { "id": "boundary-1", "label": "Parity zone", "tone": "neutral", "x": 0, "y": 276, "width": 680, "height": 176 }
+    ],
+    "nodes": [
+      {
+        "id": "app",
+        "stencil": "client.mobile",
+        "label": "Banking app",
+        "sublabel": "Commands and queries",
+        "x": 40,
+        "y": 340,
+        "props": { "ratePerSec": 20, "messageType": "Deposit" },
+        "group": "boundary-1"
+      },
+      {
+        "id": "gateway",
+        "stencil": "kong",
+        "label": "Renamed by parity",
+        "sublabel": "Routes by verb",
+        "x": 420,
+        "y": 340,
+        "props": { "latencyMs": 120 },
+        "group": "boundary-1"
+      },
+      {
+        "id": "command-handler",
+        "stencil": "aws.lambda",
+        "label": "Command handler",
+        "sublabel": "Load · decide · append",
+        "x": 800,
+        "y": 160,
+        "group": "write",
+        "props": {
+          "concurrency": 32,
+          "latencyMs": 60,
+          "emits": { "Deposit": "MoneyDeposited", "Withdraw": "MoneyWithdrawn" }
+        }
+      },
+      {
+        "id": "event-store",
+        "stencil": "generic.event-store",
+        "label": "Event store",
+        "sublabel": "Stream per account",
+        "x": 1180,
+        "y": 160,
+        "group": "write",
+        "props": { "partitions": 16 }
+      },
+      {
+        "id": "publisher",
+        "stencil": "kafka.connect",
+        "label": "Event publisher",
+        "sublabel": "group: integration",
+        "x": 1560,
+        "y": 160,
+        "props": { "concurrency": 32, "latencyMs": 50 }
+      },
+      {
+        "id": "integration-topic",
+        "stencil": "kafka.topic",
+        "label": "accounts.events.v1",
+        "sublabel": "Public contract",
+        "x": 1940,
+        "y": 160,
+        "props": { "partitions": 16 }
+      },
+      {
+        "id": "query-api",
+        "stencil": "service.node",
+        "label": "Query API",
+        "sublabel": "Reads only",
+        "x": 800,
+        "y": 520,
+        "group": "read",
+        "props": { "concurrency": 64, "latencyMs": 20 }
+      },
+      {
+        "id": "balances-db",
+        "stencil": "postgres",
+        "label": "Balances",
+        "sublabel": "Read model · one row each",
+        "x": 1180,
+        "y": 400,
+        "group": "read",
+        "props": { "latencyMs": 2 }
+      },
+      {
+        "id": "statements",
+        "stencil": "elasticsearch",
+        "label": "Statements",
+        "sublabel": "Read model · searchable",
+        "x": 1180,
+        "y": 640,
+        "group": "read",
+        "props": { "latencyMs": 2 }
+      },
+      {
+        "id": "balance-proj",
+        "stencil": "generic.projection",
+        "label": "Balance projection",
+        "sublabel": "group: balances",
+        "x": 1560,
+        "y": 400,
+        "group": "read",
+        "props": { "concurrency": 32, "latencyMs": 40 }
+      },
+      {
+        "id": "statement-proj",
+        "stencil": "generic.projection",
+        "label": "Statement projection",
+        "sublabel": "group: statements",
+        "x": 1560,
+        "y": 640,
+        "group": "read",
+        "props": { "concurrency": 32, "latencyMs": 80 }
+      },
+      {
+        "id": "fraud",
+        "stencil": "service.python",
+        "label": "Fraud scoring",
+        "sublabel": "Another team · group: fraud",
+        "x": 1940,
+        "y": 40,
+        "props": { "concurrency": 32, "latencyMs": 60 }
+      },
+      { "id": "topic-1", "stencil": "kafka.topic", "label": "parity.events", "x": 340, "y": 452 },
+      { "id": "key-vault-1", "stencil": "azure.key-vault", "label": "Parity secrets", "x": 40, "y": 64 },
+      { "id": "queue-1", "stencil": "rabbitmq.queue", "label": "buffer", "x": 340, "y": 564 }
+    ],
+    "edges": [
+      {
+        "id": "gateway-to-command-handler",
+        "from": "gateway",
+        "to": "command-handler",
+        "label": "POST · commands",
+        "kind": "sync",
+        "props": { "travelMs": 200, "filter": ["Deposit", "Withdraw"] }
+      },
+      {
+        "id": "gateway-to-query-api",
+        "from": "gateway",
+        "to": "query-api",
+        "label": "GET · queries",
+        "kind": "sync",
+        "props": { "travelMs": 200, "filter": ["Get*"] }
+      },
+      {
+        "id": "command-handler-to-event-store",
+        "from": "command-handler",
+        "to": "event-store",
+        "label": "Append · expectedVersion",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "event-store-to-publisher",
+        "from": "event-store",
+        "to": "publisher",
+        "label": "Subscription",
+        "kind": "async",
+        "props": { "travelMs": 300, "group": "integration" }
+      },
+      {
+        "id": "publisher-to-integration-topic",
+        "from": "publisher",
+        "to": "integration-topic",
+        "label": "Integration events",
+        "kind": "async",
+        "props": { "travelMs": 300 }
+      },
+      {
+        "id": "event-store-to-balance-proj",
+        "from": "event-store",
+        "to": "balance-proj",
+        "kind": "async",
+        "props": { "travelMs": 300, "group": "balances" }
+      },
+      {
+        "id": "event-store-to-statement-proj",
+        "from": "event-store",
+        "to": "statement-proj",
+        "kind": "async",
+        "props": { "travelMs": 300, "group": "statements" }
+      },
+      {
+        "id": "balance-proj-to-balances-db",
+        "from": "balance-proj",
+        "to": "balances-db",
+        "label": "Upsert balance",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "statement-proj-to-statements",
+        "from": "statement-proj",
+        "to": "statements",
+        "label": "Index entry",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "query-api-to-balances-db",
+        "from": "query-api",
+        "to": "balances-db",
+        "label": "GetBalance",
+        "kind": "sync",
+        "props": { "travelMs": 200, "filter": ["GetBalance"] }
+      },
+      {
+        "id": "query-api-to-statements",
+        "from": "query-api",
+        "to": "statements",
+        "label": "GetStatement",
+        "kind": "sync",
+        "props": { "travelMs": 200, "filter": ["GetStatement"] }
+      },
+      {
+        "id": "integration-topic-to-fraud",
+        "from": "integration-topic",
+        "to": "fraud",
+        "label": "group: fraud",
+        "kind": "async",
+        "props": { "travelMs": 300, "group": "fraud" }
+      },
+      { "id": "e-1", "from": "app", "to": "topic-1", "kind": "async" },
+      { "id": "e-4", "from": "app", "to": "queue-1", "kind": "sync", "label": "HTTPS", "props": { "travelMs": 200 } },
+      { "id": "e-5", "from": "queue-1", "to": "gateway", "kind": "sync", "props": { "travelMs": 200 } }
+    ],
+    "simulations": [
+      {
+        "id": "busy-day",
+        "title": "Payday: reads outnumber writes",
+        "description": "400 commands and 1,600 queries; writes and reads scale independently.",
+        "seed": 7,
+        "scale": 5,
+        "traffic": [
+          {
+            "id": "deposits",
+            "node": "app",
+            "messageType": "Deposit",
+            "label": "Deposits: 40/s",
+            "shape": { "kind": "constant", "ratePerSec": 40, "durationMs": 8000 }
+          },
+          {
+            "id": "withdrawals",
+            "node": "app",
+            "messageType": "Withdraw",
+            "label": "Withdrawals: 10/s",
+            "shape": { "kind": "constant", "ratePerSec": 10, "durationMs": 8000 }
+          },
+          {
+            "id": "balances",
+            "node": "app",
+            "messageType": "GetBalance",
+            "label": "Balance checks: 150/s",
+            "shape": { "kind": "constant", "ratePerSec": 150, "durationMs": 8000 }
+          },
+          {
+            "id": "statements",
+            "node": "app",
+            "messageType": "GetStatement",
+            "label": "Statement searches: 50/s",
+            "shape": { "kind": "constant", "ratePerSec": 50, "durationMs": 8000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 0,
+            "action": { "do": "note", "text": "Payday. Commands go to the write side; queries never touch it. Each dot is five requests.", "focus": ["gateway", "command-handler", "query-api"] }
+          },
+          {
+            "atMs": 2500,
+            "action": { "do": "note", "text": "The event store is the source of truth: an append-only log of what happened. Each projection keeps its own position in it.", "focus": ["event-store", "balance-proj", "statement-proj", "publisher"], "pause": true }
+          },
+          {
+            "atMs": 6000,
+            "action": { "do": "note", "text": "Queries read denormalized tables, so reads stay fast however long an account's history grows.", "focus": ["query-api", "balances-db", "statements"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "appended",
+            "label": "All 400 commands are appended",
+            "metric": { "node": "event-store", "field": "processed" },
+            "op": "==",
+            "value": 400,
+            "when": "end"
+          },
+          {
+            "id": "published",
+            "label": "All 400 events are shared",
+            "metric": { "node": "integration-topic", "field": "processed" },
+            "op": "==",
+            "value": 400,
+            "when": "end"
+          },
+          {
+            "id": "statements",
+            "label": "Statements: 400 entries + 400 searches",
+            "metric": { "node": "statements", "field": "processed" },
+            "op": "==",
+            "value": 800,
+            "when": "end"
+          },
+          {
+            "id": "caught-up",
+            "label": "Projections catch up",
+            "metric": { "node": "event-store", "field": "lag" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ]
+      },
+      {
+        "id": "rebuild",
+        "title": "Rebuild a read model",
+        "description": "A new statement projection replays 2,000 historical events while live traffic continues.",
+        "seed": 7,
+        "scale": 5,
+        "traffic": [
+          {
+            "id": "deposits",
+            "node": "app",
+            "messageType": "Deposit",
+            "label": "Deposits: 40/s",
+            "shape": { "kind": "constant", "ratePerSec": 40, "durationMs": 10000 }
+          },
+          {
+            "id": "balances",
+            "node": "app",
+            "messageType": "GetBalance",
+            "label": "Balance checks: 100/s",
+            "shape": { "kind": "constant", "ratePerSec": 100, "durationMs": 10000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 0,
+            "action": { "do": "note", "text": "Statements need a new field. Instead of migrating the index, we deploy a new projection and rebuild it from the log.", "focus": ["statement-proj", "statements"] }
+          },
+          { "atMs": 2000, "action": { "do": "status", "node": "statement-proj", "status": "paused" } },
+          {
+            "atMs": 2000,
+            "action": { "do": "note", "text": "The old projection stops. New events wait in its subscription; balances and the public feed are unaffected.", "focus": ["event-store", "statement-proj", "balance-proj"] }
+          },
+          { "atMs": 4000, "action": { "do": "status", "node": "statement-proj", "status": "up" } },
+          {
+            "atMs": 4000,
+            "action": { "do": "inject", "node": "statement-proj", "count": 2000, "messageType": "MoneyDeposited", "spreadMs": 500 }
+          },
+          {
+            "atMs": 4000,
+            "action": { "do": "note", "text": "Version 2 replays 2,000 historical events from position zero, then picks up the live ones. Statements are briefly stale; nothing is lost.", "focus": ["statement-proj", "statements"], "pause": true }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "behind",
+            "label": "Statements fall behind during the rebuild",
+            "metric": { "node": "event-store", "field": "lag", "group": "statements" },
+            "op": ">",
+            "value": 0,
+            "when": "at",
+            "atMs": 5000
+          },
+          {
+            "id": "balances-current",
+            "label": "Balances keep up",
+            "metric": { "node": "event-store", "field": "lag", "group": "balances" },
+            "op": "<=",
+            "value": 40,
+            "when": "always"
+          },
+          {
+            "id": "rebuilt",
+            "label": "History and live events are indexed",
+            "metric": { "node": "statements", "field": "processed" },
+            "op": "==",
+            "value": 2400,
+            "when": "end"
+          },
+          {
+            "id": "caught-up",
+            "label": "The new projection catches up",
+            "metric": { "node": "event-store", "field": "lag", "group": "statements" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ]
+      },
+      {
+        "id": "sim-1",
+        "title": "Parity rush",
+        "durationMs": 20000,
+        "traffic": [
+          {
+            "id": "traffic-1",
+            "node": "app",
+            "shape": { "kind": "constant", "ratePerSec": 20, "fromMs": 0, "durationMs": 10000 }
+          },
+          {
+            "id": "traffic-2",
+            "node": "app",
+            "shape": { "kind": "burst", "count": 50, "atMs": 5000, "spreadMs": 2000 },
+            "messageType": "ParityBurst"
+          },
+          {
+            "id": "traffic-3",
+            "node": "app",
+            "shape": {
+              "kind": "ramp",
+              "fromMs": 0,
+              "startRate": 1,
+              "stages": [{ "durationMs": 8000, "targetRate": 30 }]
+            }
+          },
+          {
+            "id": "traffic-4",
+            "node": "app",
+            "shape": { "kind": "spike", "baseRate": 5, "peakRate": 40, "atMs": 12000, "peakMs": 1000, "durationMs": 4000 }
+          }
+        ],
+        "timeline": [
+          { "atMs": 6000, "action": { "do": "status", "node": "command-handler", "status": "down" } },
+          { "atMs": 6000, "action": { "do": "note", "text": "It goes down", "focus": ["command-handler"] } }
+        ],
+        "expectations": [
+          {
+            "id": "expectation-1",
+            "label": "Nothing dropped",
+            "metric": { "node": "command-handler", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ],
+        "scale": 2
+      }
+    ],
+    "annotations": [
+      { "id": "note-1", "kind": "note", "text": "Pinned by the parity harness", "x": 40, "y": 460, "width": 240, "height": 160 }
+    ]
+  }
+}

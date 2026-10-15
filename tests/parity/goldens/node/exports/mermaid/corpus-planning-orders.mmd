@@ -1,0 +1,8 @@
+---
+title: Planning: shared capacity
+---
+flowchart LR
+  checkout(["Checkout"])
+  orders["Orders"]
+  checkout --> orders
+%% diagrams:{"v":1,"nodes":{"checkout":["checkout","client.browser"],"orders":["orders","service.dotnet"]},"edges":["request"],"relations":{}}

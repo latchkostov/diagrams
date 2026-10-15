@@ -1,0 +1,11 @@
+---
+title: Fields
+---
+flowchart LR
+  subgraph g_core ["Core platform"]
+    a(["Order service"])
+    b(["Payments gateway"])
+  end
+  c(["Worker"])
+  a -.->|"writes"| b
+  linkStyle 0 stroke-dasharray: 6 4

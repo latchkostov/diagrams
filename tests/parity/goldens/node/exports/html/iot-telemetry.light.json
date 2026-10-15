@@ -1,0 +1,371 @@
+{
+  "file": { "sha256": "a6e0e83f0e27112d73c2b492657e58536ad0014772ea646bc33e892102445eef", "bytes": 41801 },
+  "payload": {
+    "version": 1,
+    "diagram": {
+      "format": "diagrams/v1",
+      "title": "IoT telemetry platform",
+      "description": "Partitioned device telemetry feeds a low-latency state projection and streaming lake, with threshold alerts.",
+      "direction": "LR",
+      "groups": [
+        { "id": "azure", "label": "Azure · industrial telemetry", "tone": "azure", "x": 380, "y": 0, "width": 1480, "height": 632 }
+      ],
+      "nodes": [
+        {
+          "id": "devices",
+          "stencil": "client.iot",
+          "label": "Factory sensors",
+          "sublabel": "Temperature · vibration · deviceId",
+          "x": 40,
+          "y": 280,
+          "props": { "ratePerSec": 2000, "messageType": "TelemetryReading" }
+        },
+        {
+          "id": "hub",
+          "stencil": "azure.event-hubs",
+          "label": "plant.telemetry.v1",
+          "sublabel": "Partition key: deviceId · retention: 7d",
+          "x": 420,
+          "y": 280,
+          "group": "azure",
+          "props": { "partitions": 64, "retentionDays": 7 }
+        },
+        {
+          "id": "hot",
+          "stencil": "azure.functions",
+          "label": "Device state projector",
+          "sublabel": "Consumer group: hot-state",
+          "x": 800,
+          "y": 160,
+          "group": "azure",
+          "props": {
+            "group": "hot-state",
+            "batchSize": 100,
+            "concurrency": 128,
+            "latencyMs": 150,
+            "emits": { "TelemetryReading": "DeviceStateUpdated", "TemperatureExceeded": "TemperatureExceeded" }
+          }
+        },
+        {
+          "id": "stream",
+          "stencil": "databricks",
+          "label": "Telemetry streaming",
+          "sublabel": "Consumer group: lake-stream",
+          "x": 800,
+          "y": 400,
+          "group": "azure",
+          "props": { "group": "lake-stream", "checkpointIntervalSec": 30, "concurrency": 128, "latencyMs": 150 }
+        },
+        {
+          "id": "cosmos",
+          "stencil": "azure.cosmos-db",
+          "label": "Latest device state",
+          "sublabel": "Partition key: /deviceId · TTL 7d",
+          "x": 1180,
+          "y": 160,
+          "group": "azure",
+          "props": { "ttlSec": 604800 }
+        },
+        {
+          "id": "blob",
+          "stencil": "azure.blob-storage",
+          "label": "Telemetry lake",
+          "sublabel": "Delta · plant/date/hour partitions",
+          "x": 1180,
+          "y": 400,
+          "group": "azure",
+          "props": {}
+        },
+        {
+          "id": "alerts",
+          "stencil": "azure.event-grid",
+          "label": "plant.alerts",
+          "sublabel": "TemperatureExceeded · DeviceOffline",
+          "x": 1180,
+          "y": 40,
+          "group": "azure",
+          "props": { "retryTtlSec": 86400, "partitions": 64 }
+        },
+        {
+          "id": "delivery",
+          "stencil": "azure.logic-apps",
+          "label": "Alert delivery",
+          "sublabel": "Severity filter · on-call routing",
+          "x": 1560,
+          "y": 40,
+          "group": "azure",
+          "props": { "concurrency": 128, "latencyMs": 150, "emits": "IncidentEmail" }
+        },
+        {
+          "id": "email",
+          "stencil": "generic.email",
+          "label": "Plant operations",
+          "sublabel": "On-call mailbox · incident details",
+          "x": 1940,
+          "y": 40,
+          "props": {}
+        },
+        {
+          "id": "grafana",
+          "stencil": "grafana",
+          "label": "Plant health dashboard",
+          "sublabel": "Fleet health · live temperature",
+          "x": 1560,
+          "y": 160,
+          "group": "azure",
+          "props": {}
+        },
+        {
+          "id": "metrics",
+          "stencil": "prometheus",
+          "label": "Streaming metrics",
+          "sublabel": "Consumer lag · processing latency",
+          "x": 1180,
+          "y": 520,
+          "group": "azure",
+          "props": {}
+        }
+      ],
+      "edges": [
+        {
+          "id": "devices-to-hub",
+          "from": "devices",
+          "to": "hub",
+          "label": "AMQP/TLS · telemetry",
+          "kind": "async",
+          "props": { "travelMs": 100 }
+        },
+        {
+          "id": "hub-to-hot",
+          "from": "hub",
+          "to": "hot",
+          "label": "group: hot-state",
+          "kind": "async",
+          "props": { "travelMs": 100, "filter": ["TelemetryReading", "TemperatureExceeded"], "group": "hot-state" }
+        },
+        {
+          "id": "hub-to-stream",
+          "from": "hub",
+          "to": "stream",
+          "label": "group: lake-stream",
+          "kind": "async",
+          "props": { "travelMs": 100, "filter": ["TelemetryReading", "TemperatureExceeded"], "group": "lake-stream" }
+        },
+        {
+          "id": "hot-to-cosmos",
+          "from": "hot",
+          "to": "cosmos",
+          "label": "Upsert latest reading",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "stream-to-blob",
+          "from": "stream",
+          "to": "blob",
+          "label": "Commit Delta microbatch",
+          "kind": "async",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "hot-to-alerts",
+          "from": "hot",
+          "to": "alerts",
+          "label": "TemperatureExceeded",
+          "kind": "async",
+          "props": { "travelMs": 100, "filter": ["TemperatureExceeded"] }
+        },
+        {
+          "id": "alerts-to-delivery",
+          "from": "alerts",
+          "to": "delivery",
+          "label": "Filtered alert subscription",
+          "kind": "async",
+          "props": { "travelMs": 100, "filter": ["Temperature*"], "group": "on-call" }
+        },
+        {
+          "id": "delivery-to-email",
+          "from": "delivery",
+          "to": "email",
+          "label": "Incident notification",
+          "kind": "async",
+          "props": { "travelMs": 100 }
+        },
+        {
+          "id": "grafana-to-cosmos",
+          "from": "grafana",
+          "to": "cosmos",
+          "label": "Query device state",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "metrics-to-stream",
+          "from": "metrics",
+          "to": "stream",
+          "label": "Scrape streaming metrics",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "grafana-to-metrics",
+          "from": "grafana",
+          "to": "metrics",
+          "label": "PromQL",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        }
+      ],
+      "simulations": [
+        {
+          "id": "morning",
+          "title": "Morning device check-in",
+          "seed": 7,
+          "traffic": [
+            {
+              "id": "check-ins",
+              "node": "devices",
+              "messageType": "TelemetryReading",
+              "label": "1,000 devices check in as shifts start",
+              "shape": { "kind": "ramp", "startRate": 100, "stages": [{ "durationMs": 5000, "targetRate": 300 }] }
+            },
+            {
+              "id": "temperature-alerts",
+              "node": "devices",
+              "messageType": "TemperatureExceeded",
+              "label": "10 sensors exceed the temperature threshold",
+              "shape": { "kind": "burst", "atMs": 2500, "count": 10, "spreadMs": 500 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 0,
+              "action": { "do": "note", "text": "Morning check-ins ramp from 100 to 300 per second. Both consumer groups receive every reading.", "focus": ["devices", "hub"] }
+            },
+            {
+              "atMs": 2500,
+              "action": { "do": "note", "text": "Only TemperatureExceeded events go to the on-call mailbox.", "focus": ["hot", "alerts", "email"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "state",
+              "label": "State",
+              "metric": { "node": "cosmos", "field": "processed" },
+              "op": "==",
+              "value": 1010,
+              "when": "end"
+            },
+            {
+              "id": "lake",
+              "label": "Lake",
+              "metric": { "node": "blob", "field": "processed" },
+              "op": "==",
+              "value": 1010,
+              "when": "end"
+            },
+            {
+              "id": "alerts",
+              "label": "Alerts",
+              "metric": { "node": "email", "field": "processed" },
+              "op": "==",
+              "value": 10,
+              "when": "end"
+            },
+            {
+              "id": "drained",
+              "label": "Drained",
+              "metric": { "node": "hub", "field": "lag" },
+              "op": "==",
+              "value": 0,
+              "when": "end"
+            }
+          ],
+          "scale": 10
+        },
+        {
+          "id": "hot-spot",
+          "title": "Event Hubs partition hot spot",
+          "seed": 7,
+          "traffic": [
+            {
+              "id": "check-ins",
+              "node": "devices",
+              "messageType": "TelemetryReading",
+              "label": "200 readings on a hot partition",
+              "shape": { "kind": "constant", "ratePerSec": 50, "durationMs": 4000 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 0,
+              "action": { "do": "note", "text": "One partition activates one replica per group; the other 63 replicas sit idle. Lag grows despite the configured service fleet.", "focus": ["hub", "hot", "stream"], "pause": true }
+            },
+            { "atMs": 8000, "action": { "do": "props", "node": "hub", "props": { "partitions": 64 } } },
+            {
+              "atMs": 8000,
+              "action": { "do": "note", "text": "The partition key is redistributed; the backlog drains.", "focus": ["hub"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "hot-lag",
+              "label": "Hot lag",
+              "metric": { "node": "hub", "field": "lag", "group": "hot-state" },
+              "op": ">",
+              "value": 0,
+              "when": "at",
+              "atMs": 6000
+            },
+            {
+              "id": "state",
+              "label": "State",
+              "metric": { "node": "cosmos", "field": "processed" },
+              "op": "==",
+              "value": 200,
+              "when": "end"
+            },
+            {
+              "id": "lake",
+              "label": "Lake",
+              "metric": { "node": "blob", "field": "processed" },
+              "op": "==",
+              "value": 200,
+              "when": "end"
+            },
+            {
+              "id": "drained",
+              "label": "Drained",
+              "metric": { "node": "hub", "field": "lag" },
+              "op": "==",
+              "value": 0,
+              "when": "end"
+            }
+          ],
+          "setup": {
+            "props": {
+              "hub": { "partitions": 1 },
+              "hot": { "replicas": 64, "concurrency": 1 },
+              "stream": { "replicas": 64, "concurrency": 1 }
+            }
+          },
+          "scale": 2
+        }
+      ]
+    },
+    "icons": {
+      "azure-blob-storage": { "sha256": "4e0ff122d5e8f01b950278c39236d80ddd0b43e2f52a22817f4852d1beb8950a", "bytes": 1619 },
+      "azure-cosmos-db": { "sha256": "0d7a1b51b99663c876f0ab112ff6f403f1a7408e6bebb2768ed339eefec79548", "bytes": 3550 },
+      "azure-event-grid": { "sha256": "92ed835d9860c9edcd166886621638092c79be1e6ae43b69a6547bb2eee31d43", "bytes": 4281 },
+      "azure-event-hubs": { "sha256": "ba19103e5dbceda95239dba702a3f94835959f9fc814b3111208a44152a16913", "bytes": 3562 },
+      "azure-functions": { "sha256": "a0db338f682176fb01465ae4590055ecdb3c7862ce174df80eefee3ab444d134", "bytes": 2399 },
+      "azure-logic-apps": { "sha256": "52542d4ca7c53df0e72bf99fe34bb043d6d3a58bedcc3fab329ea2cf8afbbb9a", "bytes": 2455 },
+      "client-iot": { "sha256": "e44d5f43d03b54bd14b91c8e56fdb8c45fb4fce77a113500ce9435d054ed0a89", "bytes": 917 },
+      "databricks": { "sha256": "7271c6a9a99129b93ed43f23f41d19d8d4cc87422350223ad25698eef07077e4", "bytes": 621 },
+      "generic-email": { "sha256": "f0db58eaa97e89831f8591e9a1557e2470bca8fd215a0b887d8430147f9ddd19", "bytes": 447 },
+      "grafana": { "sha256": "47b2cb370fb846522ea552fc41a39ffb273b24d0a7fe51dd73342e3c1b78b090", "bytes": 6627 },
+      "prometheus": { "sha256": "2b147486fae92dd21bfe25b3a06203ddfb3145861cd736c5a3235c020f158ee8", "bytes": 1233 }
+    },
+    "options": { "theme": "light", "startSimulation": "morning", "exportedOn": "2026-01-01" }
+  }
+}

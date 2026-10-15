@@ -1,0 +1,119 @@
+{
+  "format": "diagrams/v1",
+  "title": "Edge kinds",
+  "description": "async (dashed), sync (solid), labels, and a two-way pair.",
+  "nodes": [
+    {
+      "id": "async-a",
+      "stencil": "service.node",
+      "label": "async source",
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "async-b",
+      "stencil": "kafka.topic",
+      "label": "async target",
+      "x": 544,
+      "y": 40
+    },
+    {
+      "id": "sync-a",
+      "stencil": "aws.api-gateway",
+      "label": "sync source",
+      "x": 40,
+      "y": 220
+    },
+    {
+      "id": "sync-b",
+      "stencil": "service.java",
+      "label": "sync target",
+      "x": 544,
+      "y": 220
+    },
+    {
+      "id": "labelled-a",
+      "stencil": "service.go",
+      "label": "labelled source",
+      "x": 40,
+      "y": 400
+    },
+    {
+      "id": "labelled-b",
+      "stencil": "aws.sqs",
+      "label": "labelled target",
+      "x": 544,
+      "y": 400
+    },
+    {
+      "id": "long-label-a",
+      "stencil": "azure.api-management",
+      "label": "long-label source",
+      "x": 40,
+      "y": 580
+    },
+    {
+      "id": "long-label-b",
+      "stencil": "azure.functions",
+      "label": "long-label target",
+      "x": 544,
+      "y": 580
+    },
+    {
+      "id": "bi-a",
+      "stencil": "service.python",
+      "label": "bidirectional A",
+      "x": 40,
+      "y": 760
+    },
+    {
+      "id": "bi-b",
+      "stencil": "service.dotnet",
+      "label": "bidirectional B",
+      "x": 544,
+      "y": 760
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-async",
+      "from": "async-a",
+      "to": "async-b",
+      "kind": "async"
+    },
+    {
+      "id": "edge-sync",
+      "from": "sync-a",
+      "to": "sync-b",
+      "kind": "sync"
+    },
+    {
+      "id": "edge-labelled",
+      "from": "labelled-a",
+      "to": "labelled-b",
+      "kind": "async",
+      "label": "OrderPlaced"
+    },
+    {
+      "id": "edge-long-label",
+      "from": "long-label-a",
+      "to": "long-label-b",
+      "kind": "sync",
+      "label": "POST /orders/{id}/payments (idempotent, retries ×3)"
+    },
+    {
+      "id": "bi-ab",
+      "from": "bi-a",
+      "to": "bi-b",
+      "kind": "sync",
+      "label": "request"
+    },
+    {
+      "id": "bi-ba",
+      "from": "bi-b",
+      "to": "bi-a",
+      "kind": "async",
+      "label": "callback"
+    }
+  ]
+}

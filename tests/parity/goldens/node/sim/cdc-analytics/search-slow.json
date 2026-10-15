@@ -1,0 +1,138 @@
+{
+  "run": {
+    "time": 10850,
+    "totalMs": 18000,
+    "done": true,
+    "scale": 2,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "slow-writes", "label": "Slow writes", "status": "pass", "value": 0 },
+      { "id": "search", "label": "Search", "status": "pass", "value": 200 },
+      { "id": "warehouse", "label": "Warehouse", "status": "pass", "value": 200 },
+      { "id": "lake", "label": "Lake", "status": "pass", "value": 200 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "props", "label": "props: search" },
+      { "atMs": 0, "kind": "note", "label": "Slow Elasticsearch writes remain in flight; the warehouse and raw lake continue." },
+      { "atMs": 0, "kind": "traffic", "label": "200 order updates" },
+      { "atMs": 2000, "kind": "traffic", "label": "200 order updates ends" },
+      { "atMs": 8000, "kind": "props", "label": "props: search" },
+      { "atMs": 8000, "kind": "note", "label": "Index latency recovers. Every projection eventually lands." }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 1,
+      "nodes": {
+        "sql": { "backlog": 1, "replicas": [1, 1, 0] },
+        "debezium": { "replicas": [1, 1, 0] },
+        "orders-topic": { "lag": { "retail-projector": 0, "retail-raw-sink": 0 }, "replicas": [1, 1, 0] },
+        "customers-topic": { "lag": { "retail-projector": 0, "retail-raw-sink": 0 }, "replicas": [1, 1, 0] },
+        "processor": { "replicas": [1, 1, 0] },
+        "search": { "replicas": [1, 1, 0] },
+        "warehouse": { "replicas": [1, 1, 0] },
+        "s3-sink": { "replicas": [1, 1, 0] },
+        "lake": { "replicas": [1, 1, 0] },
+        "registry": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 0,
+      "nodes": {
+        "sql": { "processed": 100, "throughput": 0.015230138949594303, "replicas": [1, 1, 0] },
+        "debezium": { "processed": 100, "throughput": 0.02404980675023492, "replicas": [1, 1, 0] },
+        "orders-topic": {
+          "processed": 100,
+          "throughput": 0.03246384346230537,
+          "lag": { "retail-projector": 0, "retail-raw-sink": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "customers-topic": { "lag": { "retail-projector": 0, "retail-raw-sink": 0 }, "replicas": [1, 1, 0] },
+        "processor": { "processed": 100, "throughput": 0.05113864695192074, "replicas": [1, 1, 0] },
+        "search": { "processed": 100, "throughput": 11.028039886615494, "replicas": [1, 1, 0] },
+        "warehouse": { "processed": 100, "throughput": 0.06540576606034038, "replicas": [1, 1, 0] },
+        "s3-sink": { "processed": 100, "throughput": 0.05106248769653282, "replicas": [1, 1, 0] },
+        "lake": { "processed": 100, "throughput": 0.06528549844681564, "replicas": [1, 1, 0] },
+        "registry": { "processed": 100, "throughput": 0.02937450029795597, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 10850,
+    "inSystem": 0,
+    "real": {
+      "sql": { "processed": 200, "throughput": 0.013019177605421057, "replicas": [1, 1, 0] },
+      "debezium": { "processed": 200, "throughput": 0.020558493031063472, "replicas": [1, 1, 0] },
+      "orders-topic": {
+        "processed": 200,
+        "throughput": 0.02775106288847087,
+        "lag": { "retail-projector": 0, "retail-raw-sink": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "customers-topic": { "lag": { "retail-projector": 0, "retail-raw-sink": 0 }, "replicas": [1, 1, 0] },
+      "processor": { "processed": 200, "throughput": 0.043714842613810555, "replicas": [1, 1, 0] },
+      "search": { "processed": 200, "throughput": 9.427097835331262, "replicas": [1, 1, 0] },
+      "warehouse": { "processed": 200, "throughput": 0.0559108020994697, "replicas": [1, 1, 0] },
+      "s3-sink": { "processed": 200, "throughput": 0.04364973940789276, "replicas": [1, 1, 0] },
+      "lake": { "processed": 200, "throughput": 0.05580799375176911, "replicas": [1, 1, 0] },
+      "registry": { "processed": 200, "throughput": 0.025110200091757538, "replicas": [1, 1, 0] }
+    },
+    "edges": { "sql-to-debezium": 100, "debezium-to-orders-topic": 100, "debezium-to-customers-topic": 0, "orders-topic-to-processor": 100, "customers-topic-to-processor": 0, "processor-to-search": 100, "processor-to-warehouse": 100, "orders-topic-to-s3-sink": 100, "customers-topic-to-s3-sink": 0, "s3-sink-to-lake": 100, "debezium-to-registry": 100 }
+  },
+  "events": {
+    "total": 1800,
+    "byKind": { "inject": 100, "process": 900, "deliver": 800 },
+    "byNode": {
+      "sql": { "inject": 100, "process": 100 },
+      "debezium": { "deliver": 100, "process": 100 },
+      "registry": { "deliver": 100, "process": 100 },
+      "orders-topic": { "deliver": 100, "process": 100 },
+      "processor": { "deliver": 100, "process": 100 },
+      "s3-sink": { "deliver": 100, "process": 100 },
+      "lake": { "deliver": 100, "process": 100 },
+      "search": { "deliver": 100, "process": 100 },
+      "warehouse": { "deliver": 100, "process": 100 }
+    },
+    "perSecond": [
+      "bb4371908311",
+      "c8804942fa66",
+      "18a157ad8531",
+      "d9d6965c18d4",
+      "-",
+      "8c42439a214b",
+      "fbcd9032af20",
+      "1316fafa18e8",
+      "39876ab07956",
+      "029551f13ab2",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 0, "text": "Slow Elasticsearch writes remain in flight; the warehouse and raw lake continue.", "focus": ["search", "warehouse", "lake"] },
+    { "atMs": 8000, "text": "Index latency recovers. Every projection eventually lands.", "focus": ["search"] }
+  ],
+  "latency": {
+    "journeys": { "done": 100, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 100, "min": 5460, "mean": 6449.7, "p50": 6430, "p90": 7310, "max": 7460 },
+    "waitMs": {
+      "sql": { "count": 100, "min": 0, "mean": 0.1, "p50": 0, "p90": 0, "max": 10 },
+      "debezium": { "count": 100, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "processor": { "count": 100, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "search": { "count": 100, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "warehouse": { "count": 100, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "s3-sink": { "count": 100, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "lake": { "count": 100, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "sql": { "count": 100, "min": 40, "mean": 46.4, "p50": 50, "p90": 50, "max": 50 },
+      "debezium": { "count": 100, "min": 130, "mean": 157.1, "p50": 160, "p90": 180, "max": 180 },
+      "processor": { "count": 100, "min": 130, "mean": 154.4, "p50": 160, "p90": 170, "max": 180 },
+      "search": { "count": 100, "min": 4010, "mean": 4991.7, "p50": 4990, "p90": 5830, "max": 6000 },
+      "warehouse": { "count": 100, "min": 40, "mean": 45.5, "p50": 50, "p90": 50, "max": 50 },
+      "s3-sink": { "count": 100, "min": 130, "mean": 153.7, "p50": 150, "p90": 170, "max": 180 },
+      "lake": { "count": 100, "min": 40, "mean": 46, "p50": 50, "p90": 50, "max": 50 }
+    }
+  }
+}

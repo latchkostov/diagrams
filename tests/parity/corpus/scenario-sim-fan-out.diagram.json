@@ -1,0 +1,72 @@
+{
+  "format": "diagrams/v1",
+  "title": "Fan-out to 3 consumer groups",
+  "description": "Each subscriber is its own consumer group, so each gets a copy.",
+  "nodes": [
+    {
+      "id": "orders",
+      "stencil": "service.node",
+      "label": "Orders API",
+      "x": 40,
+      "y": 160
+    },
+    {
+      "id": "topic",
+      "stencil": "kafka.topic",
+      "label": "orders",
+      "x": 400,
+      "y": 160,
+      "sublabel": "orders.created"
+    },
+    {
+      "id": "billing",
+      "stencil": "service.dotnet",
+      "label": "Billing",
+      "x": 760,
+      "y": 40,
+      "sublabel": "group: billing"
+    },
+    {
+      "id": "shipping",
+      "stencil": "service.java",
+      "label": "Shipping",
+      "x": 760,
+      "y": 160,
+      "sublabel": "group: shipping"
+    },
+    {
+      "id": "analytics",
+      "stencil": "service.python",
+      "label": "Analytics",
+      "x": 760,
+      "y": 280,
+      "sublabel": "group: analytics"
+    }
+  ],
+  "edges": [
+    {
+      "id": "orders-topic",
+      "from": "orders",
+      "to": "topic",
+      "kind": "async"
+    },
+    {
+      "id": "topic-billing",
+      "from": "topic",
+      "to": "billing",
+      "kind": "async"
+    },
+    {
+      "id": "topic-shipping",
+      "from": "topic",
+      "to": "shipping",
+      "kind": "async"
+    },
+    {
+      "id": "topic-analytics",
+      "from": "topic",
+      "to": "analytics",
+      "kind": "async"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "withIcons": {
+    "sha256": "00316e7b31398e4a537be0ca25367cee213cf3a2f4852c123a5a51723083c922",
+    "bytes": 4992,
+    "inlined": { "service.go": "go 6f494b4da5a84f2a" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "identifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifieridentifier",
+        "description": "https://example.test/pathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpathpath",
+        "nodes": [{ "id": "service", "stencil": "service.go", "label": "Service", "x": 100, "y": 100 }],
+        "edges": []
+      }
+    }
+  ]
+}

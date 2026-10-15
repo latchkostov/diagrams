@@ -1,0 +1,127 @@
+<mxfile host="Diagrams" agent="Diagrams" version="24.0.0" type="device">
+  <diagram id="dg-vwz8cz" name="IoT telemetry platform">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <object id="0" dg_format="diagrams/v1" dg_description="Partitioned device telemetry feeds a low-latency state projection and streaming lake, with threshold alerts." dg_direction="LR" dg_simulations="[{&quot;id&quot;:&quot;morning&quot;,&quot;title&quot;:&quot;Morning device check-in&quot;,&quot;seed&quot;:7,&quot;traffic&quot;:[{&quot;id&quot;:&quot;check-ins&quot;,&quot;node&quot;:&quot;devices&quot;,&quot;messageType&quot;:&quot;TelemetryReading&quot;,&quot;label&quot;:&quot;1,000 devices check in as shifts start&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;ramp&quot;,&quot;startRate&quot;:100,&quot;stages&quot;:[{&quot;durationMs&quot;:5000,&quot;targetRate&quot;:300}]}},{&quot;id&quot;:&quot;temperature-alerts&quot;,&quot;node&quot;:&quot;devices&quot;,&quot;messageType&quot;:&quot;TemperatureExceeded&quot;,&quot;label&quot;:&quot;10 sensors exceed the temperature threshold&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;burst&quot;,&quot;atMs&quot;:2500,&quot;count&quot;:10,&quot;spreadMs&quot;:500}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Morning check-ins ramp from 100 to 300 per second. Both consumer groups receive every reading.&quot;,&quot;focus&quot;:[&quot;devices&quot;,&quot;hub&quot;]}},{&quot;atMs&quot;:2500,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Only TemperatureExceeded events go to the on-call mailbox.&quot;,&quot;focus&quot;:[&quot;hot&quot;,&quot;alerts&quot;,&quot;email&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;state&quot;,&quot;label&quot;:&quot;State&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;cosmos&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:1010,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;lake&quot;,&quot;label&quot;:&quot;Lake&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;blob&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:1010,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;alerts&quot;,&quot;label&quot;:&quot;Alerts&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;email&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:10,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;drained&quot;,&quot;label&quot;:&quot;Drained&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;hub&quot;,&quot;field&quot;:&quot;lag&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;end&quot;}],&quot;scale&quot;:10},{&quot;id&quot;:&quot;hot-spot&quot;,&quot;title&quot;:&quot;Event Hubs partition hot spot&quot;,&quot;seed&quot;:7,&quot;traffic&quot;:[{&quot;id&quot;:&quot;check-ins&quot;,&quot;node&quot;:&quot;devices&quot;,&quot;messageType&quot;:&quot;TelemetryReading&quot;,&quot;label&quot;:&quot;200 readings on a hot partition&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:50,&quot;durationMs&quot;:4000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;One partition activates one replica per group; the other 63 replicas sit idle. Lag grows despite the configured service fleet.&quot;,&quot;focus&quot;:[&quot;hub&quot;,&quot;hot&quot;,&quot;stream&quot;],&quot;pause&quot;:true}},{&quot;atMs&quot;:8000,&quot;action&quot;:{&quot;do&quot;:&quot;props&quot;,&quot;node&quot;:&quot;hub&quot;,&quot;props&quot;:{&quot;partitions&quot;:64}}},{&quot;atMs&quot;:8000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The partition key is redistributed; the backlog drains.&quot;,&quot;focus&quot;:[&quot;hub&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;hot-lag&quot;,&quot;label&quot;:&quot;Hot lag&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;hub&quot;,&quot;field&quot;:&quot;lag&quot;,&quot;group&quot;:&quot;hot-state&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;at&quot;,&quot;atMs&quot;:6000},{&quot;id&quot;:&quot;state&quot;,&quot;label&quot;:&quot;State&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;cosmos&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:200,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;lake&quot;,&quot;label&quot;:&quot;Lake&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;blob&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:200,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;drained&quot;,&quot;label&quot;:&quot;Drained&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;hub&quot;,&quot;field&quot;:&quot;lag&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;end&quot;}],&quot;setup&quot;:{&quot;props&quot;:{&quot;hub&quot;:{&quot;partitions&quot;:1},&quot;hot&quot;:{&quot;replicas&quot;:64,&quot;concurrency&quot;:1},&quot;stream&quot;:{&quot;replicas&quot;:64,&quot;concurrency&quot;:1}}},&quot;scale&quot;:2}]">
+          <mxCell />
+        </object>
+        <mxCell id="1" parent="0" />
+        <object id="dg-g-azure" label="Azure · industrial telemetry" dg_id="azure" dg_tone="azure">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#0078D4;strokeColor=#0078D4;" vertex="1" parent="1">
+            <mxGeometry x="380" y="0" width="1480" height="632" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-devices" label="Factory sensors&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Temperature · vibration · deviceId&lt;/span&gt;" dg_id="devices" dg_stencil="client.iot" dg_props="{&quot;ratePerSec&quot;:2000,&quot;messageType&quot;:&quot;TelemetryReading&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#14B8A61A;strokeColor=#14B8A6;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="60" y="286" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-hub" label="plant.telemetry.v1&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Partition key: deviceId · retention: 7d&lt;/span&gt;" dg_id="hub" dg_stencil="azure.event-hubs" dg_props="{&quot;partitions&quot;:64,&quot;retentionDays&quot;:7}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/analytics/Event_Hubs.svg;" vertex="1" parent="dg-g-azure">
+            <mxGeometry x="122" y="288" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-hot" label="Device state projector&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Consumer group: hot-state&lt;/span&gt;" dg_id="hot" dg_stencil="azure.functions" dg_props="{&quot;group&quot;:&quot;hot-state&quot;,&quot;batchSize&quot;:100,&quot;concurrency&quot;:128,&quot;latencyMs&quot;:150,&quot;emits&quot;:{&quot;TelemetryReading&quot;:&quot;DeviceStateUpdated&quot;,&quot;TemperatureExceeded&quot;:&quot;TemperatureExceeded&quot;}}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/compute/Function_Apps.svg;" vertex="1" parent="dg-g-azure">
+            <mxGeometry x="502" y="168" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-stream" label="Telemetry streaming&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Consumer group: lake-stream&lt;/span&gt;" dg_id="stream" dg_stencil="databricks" dg_props="{&quot;group&quot;:&quot;lake-stream&quot;,&quot;checkpointIntervalSec&quot;:30,&quot;concurrency&quot;:128,&quot;latencyMs&quot;:150}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#FF36211A;strokeColor=#FF3621;fontSize=12;" vertex="1" parent="dg-g-azure">
+            <mxGeometry x="440" y="406" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-cosmos" label="Latest device state&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Partition key: /deviceId · TTL 7d&lt;/span&gt;" dg_id="cosmos" dg_stencil="azure.cosmos-db" dg_props="{&quot;ttlSec&quot;:604800}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/databases/Azure_Cosmos_DB.svg;" vertex="1" parent="dg-g-azure">
+            <mxGeometry x="882" y="168" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-blob" label="Telemetry lake&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Delta · plant/date/hour partitions&lt;/span&gt;" dg_id="blob" dg_stencil="azure.blob-storage" dg_props="{}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/storage/Storage_Accounts.svg;" vertex="1" parent="dg-g-azure">
+            <mxGeometry x="882" y="408" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-alerts" label="plant.alerts&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;TemperatureExceeded · DeviceOffline&lt;/span&gt;" dg_id="alerts" dg_stencil="azure.event-grid" dg_props="{&quot;retryTtlSec&quot;:86400,&quot;partitions&quot;:64}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/integration/Event_Grid_Topics.svg;" vertex="1" parent="dg-g-azure">
+            <mxGeometry x="882" y="48" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-delivery" label="Alert delivery&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Severity filter · on-call routing&lt;/span&gt;" dg_id="delivery" dg_stencil="azure.logic-apps" dg_props="{&quot;concurrency&quot;:128,&quot;latencyMs&quot;:150,&quot;emits&quot;:&quot;IncidentEmail&quot;}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/integration/Logic_Apps.svg;" vertex="1" parent="dg-g-azure">
+            <mxGeometry x="1262" y="48" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-email" label="Plant operations&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;On-call mailbox · incident details&lt;/span&gt;" dg_id="email" dg_stencil="generic.email" dg_props="{}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#EF44441A;strokeColor=#EF4444;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="1960" y="46" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-grafana" label="Plant health dashboard&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Fleet health · live temperature&lt;/span&gt;" dg_id="grafana" dg_stencil="grafana" dg_props="{}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#F468001A;strokeColor=#F46800;fontSize=12;" vertex="1" parent="dg-g-azure">
+            <mxGeometry x="1200" y="166" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-metrics" label="Streaming metrics&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Consumer lag · processing latency&lt;/span&gt;" dg_id="metrics" dg_stencil="prometheus" dg_props="{}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E6522C1A;strokeColor=#E6522C;fontSize=12;" vertex="1" parent="dg-g-azure">
+            <mxGeometry x="820" y="526" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-devices-to-hub" label="AMQP/TLS · telemetry" dg_id="devices-to-hub" dg_kind="async" dg_props="{&quot;travelMs&quot;:100}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-devices" target="dg-n-hub">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-hub-to-hot" label="group: hot-state" dg_id="hub-to-hot" dg_kind="async" dg_props="{&quot;travelMs&quot;:100,&quot;filter&quot;:[&quot;TelemetryReading&quot;,&quot;TemperatureExceeded&quot;],&quot;group&quot;:&quot;hot-state&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-hub" target="dg-n-hot">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-hub-to-stream" label="group: lake-stream" dg_id="hub-to-stream" dg_kind="async" dg_props="{&quot;travelMs&quot;:100,&quot;filter&quot;:[&quot;TelemetryReading&quot;,&quot;TemperatureExceeded&quot;],&quot;group&quot;:&quot;lake-stream&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-hub" target="dg-n-stream">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-hot-to-cosmos" label="Upsert latest reading" dg_id="hot-to-cosmos" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-hot" target="dg-n-cosmos">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-stream-to-blob" label="Commit Delta microbatch" dg_id="stream-to-blob" dg_kind="async" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-stream" target="dg-n-blob">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-hot-to-alerts" label="TemperatureExceeded" dg_id="hot-to-alerts" dg_kind="async" dg_props="{&quot;travelMs&quot;:100,&quot;filter&quot;:[&quot;TemperatureExceeded&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-hot" target="dg-n-alerts">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-alerts-to-delivery" label="Filtered alert subscription" dg_id="alerts-to-delivery" dg_kind="async" dg_props="{&quot;travelMs&quot;:100,&quot;filter&quot;:[&quot;Temperature*&quot;],&quot;group&quot;:&quot;on-call&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-alerts" target="dg-n-delivery">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-delivery-to-email" label="Incident notification" dg_id="delivery-to-email" dg_kind="async" dg_props="{&quot;travelMs&quot;:100}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-delivery" target="dg-n-email">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-grafana-to-cosmos" label="Query device state" dg_id="grafana-to-cosmos" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-grafana" target="dg-n-cosmos">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-metrics-to-stream" label="Scrape streaming metrics" dg_id="metrics-to-stream" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-metrics" target="dg-n-stream">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-grafana-to-metrics" label="PromQL" dg_id="grafana-to-metrics" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-grafana" target="dg-n-metrics">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

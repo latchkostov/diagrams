@@ -1,0 +1,17 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Load at the busy line",
+    "direction": "LR",
+    "nodes": [
+      { "id": "web", "stencil": "generic.service", "label": "Web", "x": 40, "y": 40 },
+      { "id": "api", "stencil": "generic.service", "label": "api", "x": 400, "y": 40 },
+      { "id": "db", "stencil": "generic.database", "label": "Ledger", "x": 760, "y": 40 }
+    ],
+    "edges": [
+      { "id": "e1-web-api", "from": "web", "to": "api", "kind": "sync" },
+      { "id": "e2-api-db", "from": "api", "to": "db", "kind": "sync" }
+    ]
+  }
+}

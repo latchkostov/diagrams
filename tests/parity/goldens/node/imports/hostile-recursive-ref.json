@@ -1,0 +1,4 @@
+{
+  "ok": false,
+  "error": "Nothing in it could be drawn: $ref https://schemas.example.com/remote.yaml#/components/messages/Remote (a remote reference, never fetched: open that file too)."
+}

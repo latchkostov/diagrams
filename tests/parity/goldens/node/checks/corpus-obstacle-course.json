@@ -1,0 +1,63 @@
+{
+  "ran": [
+    "dead-letter",
+    "no-reader",
+    "sync-cycle",
+    "sync-chain",
+    "shared-database",
+    "entry-gateway",
+    "capacity",
+    "single-point",
+    "secret-identity",
+    "schema-registry"
+  ],
+  "off": [],
+  "findings": [
+    {
+      "id": "no-reader:n3-1",
+      "rule": "no-reader",
+      "severity": "warning",
+      "target": "n3-1",
+      "elements": ["n3-1", "n0-1"],
+      "fix": { "ops": null, "needsChoice": true }
+    },
+    {
+      "id": "dead-letter:n2-2",
+      "rule": "dead-letter",
+      "severity": "suggestion",
+      "target": "n2-2",
+      "elements": ["n2-2", "n3-2"],
+      "fix": {
+        "ops": [
+          { "op": "add_node", "kind": "aws.sqs", "label": "Node 2.2-dlq", "key": "new-dlq" },
+          { "op": "connect", "from": "n2-2", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
+          { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
+        ],
+        "needsChoice": false
+      }
+    }
+  ],
+  "ignored": [],
+  "fixes": {
+    "dead-letter:n2-2 (default)": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "summary": "+1 node, +1 connection",
+      "results": [
+        {
+          "i": 0,
+          "op": "add_node",
+          "id": "sqs-1",
+          "label": "Node 2.2-dlq",
+          "stencil": { "id": "aws.sqs", "label": "Amazon SQS", "confidence": "high", "alternatives": [] }
+        },
+        { "i": 1, "op": "connect", "id": "e-1", "from": "n2-2", "to": "sqs-1" },
+        { "i": 2, "op": "update", "id": "e-1" }
+      ],
+      "nodes": 13,
+      "edges": 11,
+      "findingsAfter": ["no-reader:n3-1", "no-reader:sqs-1"]
+    }
+  }
+}

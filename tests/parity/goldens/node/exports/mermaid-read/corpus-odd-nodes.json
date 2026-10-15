@@ -1,0 +1,21 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Odd nodes",
+    "direction": "LR",
+    "nodes": [
+      { "id": "normal", "stencil": "generic.service", "label": "orders", "sublabel": "orders.created.v1", "x": 40, "y": 40 },
+      { "id": "unknown", "stencil": "generic.service", "label": "Unknown stencil", "sublabel": "acme.quantum-bus", "x": 440, "y": 40 },
+      { "id": "long_label", "stencil": "client.user", "label": "Customer Communication Preferences Synchronisation Service", "x": 40, "y": 160 },
+      { "id": "long_sub", "stencil": "azure.service-bus.queue", "label": "notifications", "sublabel": "sb://contoso-prod-eastus2.servicebus.windows.net/topics/customer-notification-preferences-changed", "x": 440, "y": 160 },
+      { "id": "no_sub", "stencil": "generic.database", "label": "DB", "x": 40, "y": 280 },
+      { "id": "empty_label", "stencil": "generic.database", "label": "empty-label", "x": 440, "y": 280 }
+    ],
+    "edges": [
+      { "id": "e1-normal-unknown", "from": "normal", "to": "unknown", "kind": "async" },
+      { "id": "e2-long_label-long_sub", "from": "long_label", "to": "long_sub", "kind": "async" },
+      { "id": "e3-no_sub-empty_label", "from": "no_sub", "to": "empty_label", "kind": "sync" }
+    ]
+  }
+}

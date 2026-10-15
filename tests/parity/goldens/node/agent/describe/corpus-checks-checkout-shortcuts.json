@@ -1,0 +1,133 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"Checkout shortcuts\" · direction LR · 6 nodes, 5 connections, 1 boundaries, 0 simulations\ndescription: \"Checkout through the commerce gateway, a mobile app that calls the order service directly, and billing reading order totals.\"\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Storefront\" props={\"ratePerSec\":20} capabilities=[{\"kind\":\"calls\",\"edge\":\"web-gw\",\"peer\":\"gw\"}] explanation=undefined\n  \"app\" \"client.mobile\" (\"Mobile App\") \"Mobile app\" props={\"ratePerSec\":10} capabilities=[{\"kind\":\"calls\",\"edge\":\"app-orders\",\"peer\":\"orders\"}] explanation=undefined\n  \"gw\" \"nginx\" (\"NGINX\") \"Commerce gateway\" / \"TLS · /api\" capabilities=[{\"kind\":\"calls\",\"edge\":\"gw-orders\",\"peer\":\"orders\"}] explanation=undefined\n  \"orders\" \"service.dotnet\" (\".NET Service\") \"Order service\" props={\"concurrency\":64,\"latencyMs\":120} in \"team\" capabilities=[{\"kind\":\"calls\",\"edge\":\"orders-db\",\"peer\":\"db\"}] explanation={\"id\":\"orders\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":533.3333333333334,\"offered\":30,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":64,\"seconds\":0.12,\"utilization\":0.056249999999999994,\"growth\":0,\"contributors\":[{\"edge\":\"gw-orders\",\"node\":\"gw\",\"label\":\"Storefront\",\"rate\":20,\"via\":\"Commerce gateway\"},{\"edge\":\"app-orders\",\"node\":\"app\",\"label\":\"Mobile app\",\"rate\":10}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"db\" \"postgres\" (\"PostgreSQL\") \"orders-db\" in \"team\" capabilities=[] explanation=undefined\n  \"billing\" \"service.java\" (\"Java Service\") \"Billing\" props={\"concurrency\":32,\"latencyMs\":80} capabilities=[{\"kind\":\"calls\",\"edge\":\"billing-db\",\"peer\":\"db\"}] explanation={\"id\":\"billing\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":400,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":32,\"seconds\":0.08,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"web-gw\" \"web\" -> \"gw\" sync \"HTTPS\"\n  \"gw-orders\" \"gw\" -> \"orders\" sync \"POST /orders\"\n  \"app-orders\" \"app\" -> \"orders\" sync \"POST /orders\"\n  \"orders-db\" \"orders\" -> \"db\" sync \"Commit order\"\n  \"billing-db\" \"billing\" -> \"db\" sync \"Read order totals\"\nboundary \"team\" \"Orders team\" (k8s): \"orders\", \"db\""
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "Checkout shortcuts",
+      "description": "Checkout through the commerce gateway, a mobile app that calls the order service directly, and billing reading order totals.",
+      "direction": "LR",
+      "nodes": [
+        {
+          "id": "web",
+          "stencil": "client.browser",
+          "label": "Storefront",
+          "x": 0,
+          "y": 0,
+          "props": { "ratePerSec": 20 },
+          "capabilities": [{ "kind": "calls", "edge": "web-gw", "peer": "gw" }]
+        },
+        {
+          "id": "app",
+          "stencil": "client.mobile",
+          "label": "Mobile app",
+          "x": 0,
+          "y": 220,
+          "props": { "ratePerSec": 10 },
+          "capabilities": [{ "kind": "calls", "edge": "app-orders", "peer": "orders" }]
+        },
+        {
+          "id": "gw",
+          "stencil": "nginx",
+          "label": "Commerce gateway",
+          "sublabel": "TLS · /api",
+          "x": 300,
+          "y": 0,
+          "capabilities": [{ "kind": "calls", "edge": "gw-orders", "peer": "orders" }]
+        },
+        {
+          "id": "orders",
+          "stencil": "service.dotnet",
+          "label": "Order service",
+          "x": 640,
+          "y": 110,
+          "group": "team",
+          "props": { "concurrency": 64, "latencyMs": 120 },
+          "capabilities": [{ "kind": "calls", "edge": "orders-db", "peer": "db" }],
+          "explanation": {
+            "id": "orders",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 533.3333333333334,
+            "offered": 30,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 64,
+            "seconds": 0.12,
+            "utilization": 0.056249999999999994,
+            "growth": 0,
+            "contributors": [
+              { "edge": "gw-orders", "node": "gw", "label": "Storefront", "rate": 20, "via": "Commerce gateway" },
+              { "edge": "app-orders", "node": "app", "label": "Mobile app", "rate": 10 }
+            ],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        },
+        { "id": "db", "stencil": "postgres", "label": "orders-db", "x": 960, "y": 110, "group": "team", "capabilities": [] },
+        {
+          "id": "billing",
+          "stencil": "service.java",
+          "label": "Billing",
+          "x": 960,
+          "y": 400,
+          "props": { "concurrency": 32, "latencyMs": 80 },
+          "capabilities": [{ "kind": "calls", "edge": "billing-db", "peer": "db" }],
+          "explanation": {
+            "id": "billing",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 400,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 32,
+            "seconds": 0.08,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        }
+      ],
+      "edges": [
+        { "id": "web-gw", "from": "web", "to": "gw", "kind": "sync", "label": "HTTPS" },
+        { "id": "gw-orders", "from": "gw", "to": "orders", "kind": "sync", "label": "POST /orders" },
+        { "id": "app-orders", "from": "app", "to": "orders", "kind": "sync", "label": "POST /orders" },
+        { "id": "orders-db", "from": "orders", "to": "db", "kind": "sync", "label": "Commit order" },
+        { "id": "billing-db", "from": "billing", "to": "db", "kind": "sync", "label": "Read order totals" }
+      ],
+      "groups": [
+        { "id": "team", "label": "Orders team", "tone": "k8s", "x": 600, "y": 60, "width": 620, "height": 170 }
+      ],
+      "annotations": [],
+      "simulations": [],
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"Checkout shortcuts\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\ndescription: \"Checkout through the commerce gateway, a mobile app that calls the order service directly, and billing reading order totals.\"\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Storefront\" props={\"ratePerSec\":20} capabilities=[{\"kind\":\"calls\",\"edge\":\"web-gw\",\"peer\":\"gw\"}] explanation=undefined\n  \"gw\" \"nginx\" (\"NGINX\") \"Commerce gateway\" / \"TLS · /api\" capabilities=[{\"kind\":\"calls\",\"edge\":\"gw-orders\",\"peer\":\"orders\"}] explanation=undefined\nconnections:\n  \"web-gw\" \"web\" -> \"gw\" sync \"HTTPS\""
+  }
+}

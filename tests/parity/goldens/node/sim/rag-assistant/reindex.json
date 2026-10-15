@@ -1,0 +1,161 @@
+{
+  "run": {
+    "time": 18470,
+    "totalMs": 22000,
+    "done": true,
+    "scale": 4,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "backlog", "label": "The queue absorbs the burst", "status": "pass", "value": 0 },
+      { "id": "drained", "label": "Every job finishes", "status": "pass", "value": 0 },
+      { "id": "embedded", "label": "1,200 pages re-embedded", "status": "pass", "value": 1200 },
+      { "id": "index", "label": "Index: 1,200 upserts + 240 searches", "status": "pass", "value": 1440 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "Questions: 20 a second" },
+      { "atMs": 1000, "kind": "note", "label": "A docs migration touches 1,200 pages at once. The queue takes them all; four workers embed about 80 pages a second. Each dot is four messages." },
+      { "atMs": 1000, "kind": "traffic", "label": "1,200 pages change at once" },
+      { "atMs": 2000, "kind": "traffic", "label": "1,200 pages change at once ends" },
+      { "atMs": 5000, "kind": "note", "label": "Questions are still answered while the backlog drains. The index gets fresher page by page." },
+      { "atMs": 11000, "kind": "note", "label": "The queue is empty and every page is re-embedded. Nothing was lost, even though the burst outran the workers." },
+      { "atMs": 12000, "kind": "traffic", "label": "Questions: 20 a second ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "user": { "replicas": [1, 1, 0] },
+        "rag-api": { "replicas": [1, 1, 0] },
+        "cache": { "replicas": [1, 1, 0] },
+        "feedback": { "lag": { "evals": 0 }, "replicas": [1, 1, 0] },
+        "llm": { "replicas": [1, 1, 0] },
+        "vector-db": { "replicas": [1, 1, 0] },
+        "eval-job": { "replicas": [1, 1, 0] },
+        "quality": { "replicas": [1, 1, 0] },
+        "docs": { "replicas": [1, 1, 0] },
+        "ingest-q": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "embed-worker": { "replicas": [4, 4, 0] },
+        "embeddings": { "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 163,
+      "nodes": {
+        "user": { "processed": 50, "throughput": 4.539062597882577, "replicas": [1, 1, 0] },
+        "rag-api": { "processed": 48, "inFlight": 1, "throughput": 5.059180415031596, "replicas": [1, 1, 0] },
+        "cache": { "processed": 47, "throughput": 5.119521767336894, "replicas": [1, 1, 0] },
+        "feedback": { "processed": 13, "throughput": 1.8938674528631905, "lag": { "evals": 0 }, "replicas": [1, 1, 0] },
+        "llm": { "processed": 46, "inFlight": 13, "throughput": 5.8541860957582985, "replicas": [1, 1, 0] },
+        "vector-db": { "processed": 210, "throughput": 24.826818636860533, "replicas": [1, 1, 0] },
+        "eval-job": { "processed": 12, "throughput": 1.8989991630757241, "replicas": [1, 1, 0] },
+        "quality": { "processed": 12, "throughput": 2.5633807458572213, "replicas": [1, 1, 0] },
+        "docs": { "processed": 300, "throughput": 0.06361584714475225, "replicas": [1, 1, 0] },
+        "ingest-q": {
+          "processed": 300,
+          "backlog": 121,
+          "throughput": 0.08587074569776032,
+          "lag": { "queue": 121 },
+          "replicas": [1, 1, 0]
+        },
+        "embed-worker": { "processed": 168, "backlog": 1, "inFlight": 4, "throughput": 20.559470363725882, "replicas": [4, 4, 0] },
+        "embeddings": { "processed": 161, "inFlight": 2, "throughput": 20.631315917945187, "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 18470,
+    "inSystem": 0,
+    "real": {
+      "user": { "processed": 240, "throughput": 0.034357470042254735, "replicas": [1, 1, 0] },
+      "rag-api": { "processed": 240, "throughput": 0.04689760238812487, "replicas": [1, 1, 0] },
+      "cache": { "processed": 240, "throughput": 0.057856543130804544, "replicas": [1, 1, 0] },
+      "feedback": { "processed": 64, "throughput": 0.016767644091987815, "lag": { "evals": 0 }, "replicas": [1, 1, 0] },
+      "llm": { "processed": 304, "throughput": 0.5643644791443975, "replicas": [1, 1, 0] },
+      "vector-db": { "processed": 1440, "throughput": 15.564255870737034, "replicas": [1, 1, 0] },
+      "eval-job": { "processed": 64, "throughput": 0.029428139490940544, "replicas": [1, 1, 0] },
+      "quality": { "processed": 64, "throughput": 0.03972383328242124, "replicas": [1, 1, 0] },
+      "docs": { "processed": 1200, "throughput": 0.00005335204177587886, "replicas": [1, 1, 0] },
+      "ingest-q": {
+        "processed": 1200,
+        "throughput": 0.00007201632639377192,
+        "lag": { "queue": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "embed-worker": { "processed": 1200, "throughput": 12.56924300668031, "replicas": [4, 4, 0] },
+      "embeddings": { "processed": 1200, "throughput": 17.923837932684876, "replicas": [1, 1, 0] },
+      "vault": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "user-to-rag-api": 60, "rag-api-to-cache": 60, "rag-api-to-vector-db": 60, "rag-api-to-llm": 60, "rag-api-to-feedback": 16, "feedback-to-eval-job": 16, "eval-job-to-llm": 16, "eval-job-to-quality": 16, "docs-to-ingest-q": 300, "ingest-q-to-embed-worker": 300, "embed-worker-to-embeddings": 300, "embed-worker-to-vector-db": 300, "rag-api-to-vault": 0, "embed-worker-to-vault": 0 }
+  },
+  "events": {
+    "total": 3728,
+    "byKind": { "inject": 360, "process": 1864, "deliver": 1504 },
+    "byNode": {
+      "user": { "inject": 60, "process": 60 },
+      "rag-api": { "deliver": 60, "process": 60 },
+      "cache": { "deliver": 60, "process": 60 },
+      "vector-db": { "deliver": 360, "process": 360 },
+      "llm": { "deliver": 76, "process": 76 },
+      "docs": { "inject": 300, "process": 300 },
+      "feedback": { "deliver": 16, "process": 16 },
+      "ingest-q": { "deliver": 300, "process": 300 },
+      "eval-job": { "deliver": 16, "process": 16 },
+      "embed-worker": { "deliver": 300, "process": 300 },
+      "embeddings": { "deliver": 300, "process": 300 },
+      "quality": { "deliver": 16, "process": 16 }
+    },
+    "perSecond": [
+      "c7e88fa6e5fa",
+      "b03d1c856466",
+      "5d1577d834ee",
+      "0316e3ada73c",
+      "a95f5bf9058a",
+      "b175187e5f98",
+      "44297862db4d",
+      "3504120b232a",
+      "dc28800eda43",
+      "3b3f9c19b490",
+      "1a7edbd60bb3",
+      "fefe78049e97",
+      "b85cb2bca19c",
+      "a353d92a0153",
+      "0891f3bdb028",
+      "3b20d4ae2fd4",
+      "c64ea2b2dc0c",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 1000, "text": "A docs migration touches 1,200 pages at once. The queue takes them all; four workers embed about 80 pages a second. Each dot is four messages.", "focus": ["docs", "ingest-q", "embed-worker"] },
+    { "atMs": 5000, "text": "Questions are still answered while the backlog drains. The index gets fresher page by page.", "focus": ["rag-api", "vector-db"] },
+    { "atMs": 11000, "text": "The queue is empty and every page is re-embedded. Nothing was lost, even though the burst outran the workers.", "focus": ["ingest-q", "embeddings", "vector-db"] }
+  ],
+  "latency": {
+    "journeys": { "done": 208, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 208, "min": 1100, "mean": 4049.423076923077, "p50": 3450, "p90": 7120, "max": 8150 },
+    "waitMs": {
+      "rag-api": { "count": 56, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "cache": { "count": 56, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "llm": { "count": 72, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "vector-db": { "count": 208, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "eval-job": { "count": 16, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "embed-worker": { "count": 152, "min": 0, "mean": 46.44736842105263, "p50": 40, "p90": 80, "max": 310 },
+      "embeddings": { "count": 152, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "rag-api": { "count": 56, "min": 100, "mean": 125, "p50": 130, "p90": 140, "max": 150 },
+      "cache": { "count": 56, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "llm": { "count": 72, "min": 1460, "mean": 1821.6666666666667, "p50": 1860, "p90": 2060, "max": 2130 },
+      "vector-db": { "count": 208, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "eval-job": { "count": 16, "min": 250, "mean": 290.625, "p50": 300, "p90": 330, "max": 330 },
+      "embed-worker": { "count": 152, "min": 170, "mean": 206.97368421052633, "p50": 210, "p90": 240, "max": 240 },
+      "embeddings": { "count": 152, "min": 130, "mean": 155.92105263157896, "p50": 160, "p90": 180, "max": 180 }
+    }
+  }
+}

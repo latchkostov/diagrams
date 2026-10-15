@@ -1,0 +1,57 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Event-driven data platform",
+    "direction": "LR",
+    "groups": [
+      { "id": "g_kafka", "label": "Kafka · Confluent Cloud", "tone": "neutral", "x": 832, "y": 160, "width": 2558, "height": 416 },
+      { "id": "g_snowflake", "label": "Snowflake · ANALYTICS", "tone": "neutral", "x": 1588, "y": 280, "width": 1047, "height": 236 }
+    ],
+    "nodes": [
+      { "id": "billing_topic", "stencil": "generic.service", "label": "billing.invoices.v1", "sublabel": "key: customerId", "x": 872, "y": 224, "group": "g_kafka" },
+      { "id": "orders_topic", "stencil": "generic.service", "label": "orders.v1", "sublabel": "key: orderId", "x": 872, "y": 344, "group": "g_kafka" },
+      { "id": "accounts_topic", "stencil": "kafka.connect", "label": "cdc.accounts.v1", "sublabel": "Debezium · key: accountId", "x": 872, "y": 464, "group": "g_kafka" },
+      { "id": "segments_topic", "stencil": "client.user", "label": "customer-segments.v1", "sublabel": "key: customerId", "x": 3130, "y": 344, "group": "g_kafka" },
+      { "id": "raw", "stencil": "kafka.topic", "label": "Raw tables", "sublabel": "RAW.KAFKA_* · VARIANT", "x": 1628, "y": 404, "group": "g_snowflake" },
+      { "id": "marts", "stencil": "generic.database", "label": "Marts", "sublabel": "Segments · revenue · orders", "x": 2375, "y": 344, "group": "g_snowflake" },
+      { "id": "billing_webhooks", "stencil": "generic.webhook", "label": "Billing webhooks", "sublabel": "Stripe · invoice.paid", "x": 80, "y": 104 },
+      { "id": "storefront", "stencil": "client.mobile", "label": "Storefront", "sublabel": "Web and mobile checkout", "x": 80, "y": 464 },
+      { "id": "accounts_db", "stencil": "generic.database", "label": "Accounts database", "sublabel": "OLTP · logical replication", "x": 80, "y": 584 },
+      { "id": "segment_cache", "stencil": "generic.database", "label": "Segment cache", "sublabel": "customerId → segments", "x": 3914, "y": 344 },
+      { "id": "webhook_receiver", "stencil": "generic.webhook", "label": "Webhook receiver", "sublabel": "Verify signature · ack 200", "x": 476, "y": 224 },
+      { "id": "checkout", "stencil": "generic.service", "label": "Checkout service", "sublabel": "Commits order · publishes", "x": 476, "y": 344 },
+      { "id": "debezium", "stencil": "kafka.connect", "label": "Debezium connector", "sublabel": "Postgres WAL → events", "x": 476, "y": 464 },
+      { "id": "personalization", "stencil": "generic.service", "label": "Personalization service", "sublabel": "Next-best offer", "x": 3518, "y": 284 },
+      { "id": "marketing", "stencil": "generic.marketing", "label": "Marketing automation", "sublabel": "Braze · campaigns", "x": 3518, "y": 404 },
+      { "id": "schema_registry", "stencil": "kafka.schema-registry", "label": "Schema registry", "sublabel": "Avro · backward compatible", "x": 1628, "y": 284 },
+      { "id": "snowpipe", "stencil": "snowflake.snowpipe", "label": "Snowflake connector", "sublabel": "Snowpipe Streaming", "x": 1262, "y": 344 },
+      { "id": "reverse_etl", "stencil": "generic.reverse-etl", "label": "Reverse ETL", "sublabel": "Hightouch · diffs only", "x": 2768, "y": 344 },
+      { "id": "airflow", "stencil": "dbt", "label": "Airflow", "sublabel": "dbt build · every 15 min", "x": 80, "y": 224 },
+      { "id": "dbt", "stencil": "dbt", "label": "dbt models", "sublabel": "Incremental models", "x": 2015, "y": 344 },
+      { "id": "bi", "stencil": "tableau", "label": "Revenue dashboards", "sublabel": "Tableau · live", "x": 80, "y": 344 }
+    ],
+    "edges": [
+      { "id": "e1-billing_webhooks-webhook_receiver", "from": "billing_webhooks", "to": "webhook_receiver", "label": "HTTPS · signed", "kind": "sync" },
+      { "id": "e2-storefront-checkout", "from": "storefront", "to": "checkout", "label": "POST /checkout", "kind": "sync" },
+      { "id": "e3-accounts_db-debezium", "from": "accounts_db", "to": "debezium", "label": "WAL", "kind": "async" },
+      { "id": "e4-webhook_receiver-billing_topic", "from": "webhook_receiver", "to": "billing_topic", "label": "InvoicePaid", "kind": "async" },
+      { "id": "e5-checkout-orders_topic", "from": "checkout", "to": "orders_topic", "label": "OrderPlaced", "kind": "async" },
+      { "id": "e6-debezium-accounts_topic", "from": "debezium", "to": "accounts_topic", "label": "AccountChanged", "kind": "async" },
+      { "id": "e7-billing_topic-snowpipe", "from": "billing_topic", "to": "snowpipe", "kind": "async" },
+      { "id": "e8-orders_topic-snowpipe", "from": "orders_topic", "to": "snowpipe", "label": "group: snowflake-sink", "kind": "async" },
+      { "id": "e9-accounts_topic-snowpipe", "from": "accounts_topic", "to": "snowpipe", "kind": "async" },
+      { "id": "e10-snowpipe-schema_registry", "from": "snowpipe", "to": "schema_registry", "label": "Avro schemas", "kind": "async", "relation": "depends" },
+      { "id": "e11-snowpipe-raw", "from": "snowpipe", "to": "raw", "label": "insertRows", "kind": "sync" },
+      { "id": "e12-raw-dbt", "from": "raw", "to": "dbt", "label": "New rows", "kind": "async" },
+      { "id": "e13-airflow-dbt", "from": "airflow", "to": "dbt", "label": "dbt build", "kind": "async", "relation": "depends" },
+      { "id": "e14-dbt-marts", "from": "dbt", "to": "marts", "label": "MERGE models", "kind": "sync" },
+      { "id": "e15-bi-marts", "from": "bi", "to": "marts", "label": "Live queries", "kind": "sync" },
+      { "id": "e16-marts-reverse_etl", "from": "marts", "to": "reverse_etl", "label": "Changed segments", "kind": "async" },
+      { "id": "e17-reverse_etl-segments_topic", "from": "reverse_etl", "to": "segments_topic", "label": "Segment changes", "kind": "async" },
+      { "id": "e18-segments_topic-personalization", "from": "segments_topic", "to": "personalization", "label": "group: personalization", "kind": "async" },
+      { "id": "e19-segments_topic-marketing", "from": "segments_topic", "to": "marketing", "label": "group: marketing-sync", "kind": "async" },
+      { "id": "e20-personalization-segment_cache", "from": "personalization", "to": "segment_cache", "label": "SET segments", "kind": "sync" }
+    ]
+  }
+}

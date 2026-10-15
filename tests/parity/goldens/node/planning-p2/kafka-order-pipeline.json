@@ -1,0 +1,1457 @@
+{
+  "format": "diagrams/v2",
+  "planning": { "revision": "p3" },
+  "nodeProps": {
+    "shopper": { "ratePerSec": 25, "messageType": "OrderRequest", "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "healthChecks": false },
+    "gateway": { "ratePerSec": 2, "latencyMs": 60, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Commerce gateway", "healthChecks": false },
+    "orders": {
+      "group": "orders-payments",
+      "idempotent": true,
+      "concurrency": 64,
+      "latencyMs": 150,
+      "emits": { "OrderRequest": "OrderPlaced", "PaymentCompleted": "OrderUpdated" },
+      "ratePerSec": 2,
+      "replicas": 1,
+      "jitter": 0.2,
+      "retry": "requeue",
+      "retryBackoffMs": 0,
+      "failureRate": 0,
+      "maxDeliveryCount": 3,
+      "partitions": 3,
+      "messageType": "Order service",
+      "healthChecks": false,
+      "preset": "processor-lesson",
+      "presetRevision": "1"
+    },
+    "order-events": { "partitions": 64, "replicationFactor": 3, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "messageType": "orders.created.v1", "healthChecks": false },
+    "inventory": { "group": "inventory-reservations", "concurrency": 64, "latencyMs": 150, "emits": "InventoryReserved", "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Inventory service", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
+    "payments": { "group": "payment-authorizations", "concurrency": 64, "latencyMs": 150, "emits": "PaymentCompleted", "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Payments service", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
+    "notifications": { "group": "customer-notifications", "concurrency": 64, "latencyMs": 150, "emits": "NotificationRequested", "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Notification service", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
+    "stock-db": { "ratePerSec": 2, "latencyMs": 40, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Inventory database", "healthChecks": false },
+    "payment-db": { "ratePerSec": 2, "latencyMs": 40, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Payment ledger", "healthChecks": false },
+    "notify-cache": { "ratePerSec": 2, "latencyMs": 40, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Notification dedupe", "healthChecks": false },
+    "payment-events": { "partitions": 64, "replicationFactor": 3, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "messageType": "payments.completed.v1", "healthChecks": false },
+    "order-db": { "ratePerSec": 2, "latencyMs": 40, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Orders database", "healthChecks": false },
+    "schemas": { "compatibility": "BACKWARD", "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Schema registry", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
+    "metrics": { "scrapeIntervalSec": 15, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Commerce metrics", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
+    "dashboard": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Order operations", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" }
+  },
+  "legacyExport": {
+    "format": "diagrams/v1",
+    "losses": [
+      "planning.revision",
+      "orders.props.preset",
+      "orders.props.presetRevision",
+      "inventory.props.preset",
+      "inventory.props.presetRevision",
+      "payments.props.preset",
+      "payments.props.presetRevision",
+      "notifications.props.preset",
+      "notifications.props.presetRevision",
+      "schemas.props.preset",
+      "schemas.props.presetRevision",
+      "metrics.props.preset",
+      "metrics.props.presetRevision",
+      "dashboard.props.preset",
+      "dashboard.props.presetRevision"
+    ]
+  },
+  "autoScale": { "freePlay": 1, "black-friday": 50, "payments-outage": 1 },
+  "brokerAssignments": {
+    "brokers": {
+      "order-events": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+      "payment-events": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+    },
+    "consumers": {
+      "inventory": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "payments": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "notifications": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "orders": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      }
+    }
+  },
+  "edit": {
+    "configured": false,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "orders",
+      "suggestion": "Order service: 12% utilized",
+      "converged": true,
+      "iterations": 8,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": {
+        "shopper": ["Infinity", 25, 0, 1, 1, 0],
+        "gateway": ["Infinity", 25, 0, 1, 1, 0],
+        "orders": [
+          426.6666666666667,
+          50,
+          0.1171875,
+          1,
+          1,
+          0,
+          {
+            "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+          }
+        ],
+        "order-events": [426.6666666666667, 25, 0.05859375, 1, 1, 0],
+        "inventory": [
+          426.6666666666667,
+          25,
+          0.05859375,
+          1,
+          1,
+          0,
+          {
+            "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+          }
+        ],
+        "payments": [
+          426.6666666666667,
+          25,
+          0.05859375,
+          1,
+          1,
+          0,
+          {
+            "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+          }
+        ],
+        "notifications": [
+          426.6666666666667,
+          25,
+          0.05859375,
+          1,
+          1,
+          0,
+          {
+            "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+          }
+        ],
+        "stock-db": ["Infinity", 25, 0, 1, 1, 0],
+        "payment-db": ["Infinity", 25, 0, 1, 1, 0],
+        "notify-cache": ["Infinity", 25, 0, 1, 1, 0],
+        "payment-events": [426.6666666666667, 25, 0.05859375, 1, 1, 0],
+        "order-db": ["Infinity", 50, 0, 1, 1, 0],
+        "schemas": ["Infinity", 25, 0, 1, 1, 0],
+        "metrics": ["Infinity", 0, 0, 1, 1, 0],
+        "dashboard": ["Infinity", 0, 0, 1, 1, 0]
+      },
+      "connections": { "shopper-to-gateway": 25, "gateway-to-orders": 25, "orders-to-order-db": 50, "orders-to-order-events": 25, "orders-to-schemas": 25, "order-events-to-inventory": 25, "order-events-to-payments": 25, "order-events-to-notifications": 25, "inventory-to-stock-db": 25, "payments-to-payment-db": 25, "payments-to-payment-events": 25, "notifications-to-notify-cache": 25, "payment-events-to-orders": 25 },
+      "offeredTypes": {
+        "shopper": ["OrderRequest"],
+        "gateway": ["OrderRequest"],
+        "orders": ["OrderRequest", "PaymentCompleted"],
+        "order-db": ["OrderPlaced", "OrderUpdated"],
+        "order-events": ["OrderPlaced"],
+        "schemas": ["OrderPlaced"],
+        "inventory": ["OrderPlaced"],
+        "payments": ["OrderPlaced"],
+        "notifications": ["OrderPlaced"],
+        "stock-db": ["InventoryReserved"],
+        "payment-db": ["PaymentCompleted"],
+        "payment-events": ["PaymentCompleted"],
+        "notify-cache": ["NotificationRequested"]
+      }
+    },
+    "explanations": {
+      "orders": {
+        "id": "orders",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 426.6666666666667,
+        "offered": 50,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "payment-events",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 64
+          }
+        ],
+        "slots": 64,
+        "seconds": 0.15,
+        "utilization": 0.1171875,
+        "growth": 0,
+        "contributors": [
+          { "edge": "gateway-to-orders", "node": "gateway", "label": "Storefront", "rate": 25, "via": "Commerce gateway" },
+          { "edge": "payment-events-to-orders", "node": "payment-events", "label": "payments.completed.v1", "rate": 25 }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      },
+      "inventory": {
+        "id": "inventory",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 426.6666666666667,
+        "offered": 25,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "order-events",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 64
+          }
+        ],
+        "slots": 64,
+        "seconds": 0.15,
+        "utilization": 0.05859375,
+        "growth": 0,
+        "contributors": [
+          { "edge": "order-events-to-inventory", "node": "order-events", "label": "orders.created.v1", "rate": 25 }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      },
+      "payments": {
+        "id": "payments",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 426.6666666666667,
+        "offered": 25,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "order-events",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 64
+          }
+        ],
+        "slots": 64,
+        "seconds": 0.15,
+        "utilization": 0.05859375,
+        "growth": 0,
+        "contributors": [
+          { "edge": "order-events-to-payments", "node": "order-events", "label": "orders.created.v1", "rate": 25 }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      },
+      "notifications": {
+        "id": "notifications",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 426.6666666666667,
+        "offered": 25,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "order-events",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 64
+          }
+        ],
+        "slots": 64,
+        "seconds": 0.15,
+        "utilization": 0.05859375,
+        "growth": 0,
+        "contributors": [
+          { "edge": "order-events-to-notifications", "node": "order-events", "label": "orders.created.v1", "rate": 25 }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "shopper": [{ "kind": "calls", "edge": "shopper-to-gateway", "peer": "gateway" }],
+      "gateway": [{ "kind": "calls", "edge": "gateway-to-orders", "peer": "orders" }],
+      "orders": [
+        { "kind": "calls", "edge": "orders-to-order-db", "peer": "order-db", "filter": ["OrderPlaced", "OrderUpdated"] },
+        { "kind": "publishes", "edge": "orders-to-order-events", "peer": "order-events", "filter": ["OrderPlaced"] },
+        {
+          "kind": "consumes",
+          "edge": "payment-events-to-orders",
+          "peer": "payment-events",
+          "group": "orders-payments",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "filter": ["PaymentCompleted"],
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        },
+        { "kind": "calls", "edge": "orders-to-schemas", "peer": "schemas", "filter": ["OrderPlaced"] }
+      ],
+      "inventory": [
+        {
+          "kind": "consumes",
+          "edge": "order-events-to-inventory",
+          "peer": "order-events",
+          "group": "inventory-reservations",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "filter": ["OrderPlaced"],
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        },
+        { "kind": "calls", "edge": "inventory-to-stock-db", "peer": "stock-db" }
+      ],
+      "payments": [
+        {
+          "kind": "consumes",
+          "edge": "order-events-to-payments",
+          "peer": "order-events",
+          "group": "payment-authorizations",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "filter": ["OrderPlaced"],
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        },
+        { "kind": "calls", "edge": "payments-to-payment-db", "peer": "payment-db" },
+        { "kind": "publishes", "edge": "payments-to-payment-events", "peer": "payment-events" }
+      ],
+      "notifications": [
+        {
+          "kind": "consumes",
+          "edge": "order-events-to-notifications",
+          "peer": "order-events",
+          "group": "customer-notifications",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "filter": ["OrderPlaced"],
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        },
+        { "kind": "calls", "edge": "notifications-to-notify-cache", "peer": "notify-cache" }
+      ],
+      "metrics": [{ "kind": "calls", "edge": "metrics-to-orders", "peer": "orders" }],
+      "dashboard": [{ "kind": "calls", "edge": "dashboard-to-metrics", "peer": "metrics" }]
+    },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "shopper": {
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 25,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "OrderRequest",
+        "healthChecks": false
+      },
+      "gateway": {
+        "profile": { "family": "proxy", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Commerce gateway",
+        "healthChecks": false
+      },
+      "orders": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 150,
+        "concurrency": 64,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "emits": { "OrderRequest": "OrderPlaced", "PaymentCompleted": "OrderUpdated" },
+        "messageType": "Order service",
+        "healthChecks": false
+      },
+      "order-events": {
+        "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 64,
+        "messageType": "orders.created.v1",
+        "healthChecks": false
+      },
+      "inventory": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 150,
+        "concurrency": 64,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "emits": "InventoryReserved",
+        "messageType": "Inventory service",
+        "healthChecks": false
+      },
+      "payments": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 150,
+        "concurrency": 64,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "emits": "PaymentCompleted",
+        "messageType": "Payments service",
+        "healthChecks": false
+      },
+      "notifications": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 150,
+        "concurrency": 64,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "emits": "NotificationRequested",
+        "messageType": "Notification service",
+        "healthChecks": false
+      },
+      "stock-db": {
+        "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Inventory database",
+        "healthChecks": false
+      },
+      "payment-db": {
+        "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Payment ledger",
+        "healthChecks": false
+      },
+      "notify-cache": {
+        "profile": { "family": "cache", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Notification dedupe",
+        "healthChecks": false
+      },
+      "payment-events": {
+        "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 64,
+        "messageType": "payments.completed.v1",
+        "healthChecks": false
+      },
+      "order-db": {
+        "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Orders database",
+        "healthChecks": false
+      },
+      "schemas": {
+        "profile": { "family": "dependency", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Schema registry",
+        "healthChecks": false
+      },
+      "metrics": {
+        "profile": { "family": "telemetry", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Commerce metrics",
+        "healthChecks": false
+      },
+      "dashboard": {
+        "profile": { "family": "telemetry", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Order operations",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "black-friday": {
+      "configured": "(same as edit)",
+      "simulation": "black-friday",
+      "analysis": {
+        "bottleneck": "orders",
+        "suggestion": "Order service: 78% utilized",
+        "converged": true,
+        "iterations": 8,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": {
+          "shopper": ["Infinity", 2000, 0, 1, 1, 0],
+          "gateway": ["Infinity", 2000, 0, 1, 1, 0],
+          "orders": [
+            5120,
+            4000,
+            0.78125,
+            12,
+            12,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ],
+          "order-events": [2560, 2000, 0.78125, 1, 1, 0],
+          "inventory": [
+            2560,
+            2000,
+            0.78125,
+            6,
+            6,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ],
+          "payments": [
+            2560,
+            2000,
+            0.78125,
+            6,
+            6,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ],
+          "notifications": [
+            2560,
+            2000,
+            0.78125,
+            6,
+            6,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ],
+          "stock-db": ["Infinity", 2000, 0, 1, 1, 0],
+          "payment-db": ["Infinity", 2000, 0, 1, 1, 0],
+          "notify-cache": ["Infinity", 2000, 0, 1, 1, 0],
+          "payment-events": [5120, 2000, 0.390625, 1, 1, 0],
+          "order-db": ["Infinity", 4000, 0, 1, 1, 0],
+          "schemas": ["Infinity", 2000, 0, 1, 1, 0],
+          "metrics": ["Infinity", 0, 0, 1, 1, 0],
+          "dashboard": ["Infinity", 0, 0, 1, 1, 0]
+        },
+        "connections": {
+          "shopper-to-gateway": 2000,
+          "gateway-to-orders": 2000,
+          "orders-to-order-db": 4000,
+          "orders-to-order-events": 2000,
+          "orders-to-schemas": 2000,
+          "order-events-to-inventory": 2000,
+          "order-events-to-payments": 2000,
+          "order-events-to-notifications": 2000,
+          "inventory-to-stock-db": 2000,
+          "payments-to-payment-db": 2000,
+          "payments-to-payment-events": 2000,
+          "notifications-to-notify-cache": 2000,
+          "payment-events-to-orders": 2000
+        },
+        "offeredTypes": {
+          "shopper": ["OrderRequest"],
+          "gateway": ["OrderRequest"],
+          "orders": ["OrderRequest", "PaymentCompleted"],
+          "order-db": ["OrderPlaced", "OrderUpdated"],
+          "order-events": ["OrderPlaced"],
+          "schemas": ["OrderPlaced"],
+          "inventory": ["OrderPlaced"],
+          "payments": ["OrderPlaced"],
+          "notifications": ["OrderPlaced"],
+          "stock-db": ["InventoryReserved"],
+          "payment-db": ["PaymentCompleted"],
+          "payment-events": ["PaymentCompleted"],
+          "notify-cache": ["NotificationRequested"]
+        }
+      },
+      "explanations": {
+        "orders": {
+          "id": "orders",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 5120,
+          "offered": 4000,
+          "replicas": 12,
+          "baseReplicas": 12,
+          "omittedContributors": 0,
+          "activeReplicas": 12,
+          "assignments": [
+            {
+              "broker": "payment-events",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 64
+            }
+          ],
+          "slots": 64,
+          "seconds": 0.15,
+          "utilization": 0.78125,
+          "growth": 0,
+          "contributors": [
+            { "edge": "gateway-to-orders", "node": "gateway", "label": "Storefront", "rate": 2000, "via": "Commerce gateway" },
+            { "edge": "payment-events-to-orders", "node": "payment-events", "label": "payments.completed.v1", "rate": 2000 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 12,
+          "changes": null,
+          "converged": true
+        },
+        "inventory": {
+          "id": "inventory",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 2560,
+          "offered": 2000,
+          "replicas": 6,
+          "baseReplicas": 6,
+          "omittedContributors": 0,
+          "activeReplicas": 6,
+          "assignments": [
+            {
+              "broker": "order-events",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 64
+            }
+          ],
+          "slots": 64,
+          "seconds": 0.15,
+          "utilization": 0.78125,
+          "growth": 0,
+          "contributors": [
+            { "edge": "order-events-to-inventory", "node": "order-events", "label": "orders.created.v1", "rate": 2000 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 6,
+          "changes": null,
+          "converged": true
+        },
+        "payments": {
+          "id": "payments",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 2560,
+          "offered": 2000,
+          "replicas": 6,
+          "baseReplicas": 6,
+          "omittedContributors": 0,
+          "activeReplicas": 6,
+          "assignments": [
+            {
+              "broker": "order-events",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 64
+            }
+          ],
+          "slots": 64,
+          "seconds": 0.15,
+          "utilization": 0.78125,
+          "growth": 0,
+          "contributors": [
+            { "edge": "order-events-to-payments", "node": "order-events", "label": "orders.created.v1", "rate": 2000 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 6,
+          "changes": null,
+          "converged": true
+        },
+        "notifications": {
+          "id": "notifications",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 2560,
+          "offered": 2000,
+          "replicas": 6,
+          "baseReplicas": 6,
+          "omittedContributors": 0,
+          "activeReplicas": 6,
+          "assignments": [
+            {
+              "broker": "order-events",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 64
+            }
+          ],
+          "slots": 64,
+          "seconds": 0.15,
+          "utilization": 0.78125,
+          "growth": 0,
+          "contributors": [
+            { "edge": "order-events-to-notifications", "node": "order-events", "label": "orders.created.v1", "rate": 2000 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 6,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": {
+        "shopper": {
+          "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+          "ratePerSec": 25,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "OrderRequest",
+          "healthChecks": false
+        },
+        "gateway": {
+          "profile": { "family": "proxy", "revision": "p3", "evidence": [], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "Commerce gateway",
+          "healthChecks": false
+        },
+        "orders": {
+          "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 150,
+          "concurrency": 64,
+          "replicas": 12,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "emits": { "OrderRequest": "OrderPlaced", "PaymentCompleted": "OrderUpdated" },
+          "messageType": "Order service",
+          "healthChecks": false
+        },
+        "order-events": {
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 64,
+          "messageType": "orders.created.v1",
+          "healthChecks": false
+        },
+        "inventory": {
+          "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 150,
+          "concurrency": 64,
+          "replicas": 6,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "emits": "InventoryReserved",
+          "messageType": "Inventory service",
+          "healthChecks": false
+        },
+        "payments": {
+          "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 150,
+          "concurrency": 64,
+          "replicas": 6,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "emits": "PaymentCompleted",
+          "messageType": "Payments service",
+          "healthChecks": false
+        },
+        "notifications": {
+          "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 150,
+          "concurrency": 64,
+          "replicas": 6,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "emits": "NotificationRequested",
+          "messageType": "Notification service",
+          "healthChecks": false
+        },
+        "stock-db": {
+          "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "Inventory database",
+          "healthChecks": false
+        },
+        "payment-db": {
+          "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "Payment ledger",
+          "healthChecks": false
+        },
+        "notify-cache": {
+          "profile": { "family": "cache", "revision": "p3", "evidence": [], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "Notification dedupe",
+          "healthChecks": false
+        },
+        "payment-events": {
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 64,
+          "messageType": "payments.completed.v1",
+          "healthChecks": false
+        },
+        "order-db": {
+          "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "Orders database",
+          "healthChecks": false
+        },
+        "schemas": {
+          "profile": { "family": "dependency", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "Schema registry",
+          "healthChecks": false
+        },
+        "metrics": {
+          "profile": { "family": "telemetry", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "Commerce metrics",
+          "healthChecks": false
+        },
+        "dashboard": {
+          "profile": { "family": "telemetry", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "Order operations",
+          "healthChecks": false
+        }
+      }
+    },
+    "payments-outage": {
+      "configured": "(same as edit)",
+      "simulation": "payments-outage",
+      "analysis": {
+        "bottleneck": "orders",
+        "suggestion": "Order service: 23% utilized",
+        "converged": true,
+        "iterations": 8,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": {
+          "shopper": ["Infinity", 50, 0, 1, 1, 0],
+          "gateway": ["Infinity", 50, 0, 1, 1, 0],
+          "orders": [
+            426.6666666666667,
+            100,
+            0.234375,
+            1,
+            1,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ],
+          "order-events": [426.6666666666667, 50, 0.1171875, 1, 1, 0],
+          "inventory": [
+            426.6666666666667,
+            50,
+            0.1171875,
+            1,
+            1,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ],
+          "payments": [
+            426.6666666666667,
+            50,
+            0.1171875,
+            1,
+            1,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ],
+          "notifications": [
+            426.6666666666667,
+            50,
+            0.1171875,
+            1,
+            1,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ],
+          "stock-db": ["Infinity", 50, 0, 1, 1, 0],
+          "payment-db": ["Infinity", 50, 0, 1, 1, 0],
+          "notify-cache": ["Infinity", 50, 0, 1, 1, 0],
+          "payment-events": [426.6666666666667, 50, 0.1171875, 1, 1, 0],
+          "order-db": ["Infinity", 100, 0, 1, 1, 0],
+          "schemas": ["Infinity", 50, 0, 1, 1, 0],
+          "metrics": ["Infinity", 0, 0, 1, 1, 0],
+          "dashboard": ["Infinity", 0, 0, 1, 1, 0]
+        },
+        "connections": { "shopper-to-gateway": 50, "gateway-to-orders": 50, "orders-to-order-db": 100, "orders-to-order-events": 50, "orders-to-schemas": 50, "order-events-to-inventory": 50, "order-events-to-payments": 50, "order-events-to-notifications": 50, "inventory-to-stock-db": 50, "payments-to-payment-db": 50, "payments-to-payment-events": 50, "notifications-to-notify-cache": 50, "payment-events-to-orders": 50 },
+        "offeredTypes": {
+          "shopper": ["OrderRequest"],
+          "gateway": ["OrderRequest"],
+          "orders": ["OrderRequest", "PaymentCompleted"],
+          "order-db": ["OrderPlaced", "OrderUpdated"],
+          "order-events": ["OrderPlaced"],
+          "schemas": ["OrderPlaced"],
+          "inventory": ["OrderPlaced"],
+          "payments": ["OrderPlaced"],
+          "notifications": ["OrderPlaced"],
+          "stock-db": ["InventoryReserved"],
+          "payment-db": ["PaymentCompleted"],
+          "payment-events": ["PaymentCompleted"],
+          "notify-cache": ["NotificationRequested"]
+        }
+      },
+      "explanations": {
+        "orders": {
+          "id": "orders",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 426.6666666666667,
+          "offered": 100,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "payment-events",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 64
+            }
+          ],
+          "slots": 64,
+          "seconds": 0.15,
+          "utilization": 0.234375,
+          "growth": 0,
+          "contributors": [
+            { "edge": "gateway-to-orders", "node": "gateway", "label": "Storefront", "rate": 50, "via": "Commerce gateway" },
+            { "edge": "payment-events-to-orders", "node": "payment-events", "label": "payments.completed.v1", "rate": 50 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "inventory": {
+          "id": "inventory",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 426.6666666666667,
+          "offered": 50,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "order-events",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 64
+            }
+          ],
+          "slots": 64,
+          "seconds": 0.15,
+          "utilization": 0.1171875,
+          "growth": 0,
+          "contributors": [
+            { "edge": "order-events-to-inventory", "node": "order-events", "label": "orders.created.v1", "rate": 50 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "payments": {
+          "id": "payments",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 426.6666666666667,
+          "offered": 50,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "order-events",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 64
+            }
+          ],
+          "slots": 64,
+          "seconds": 0.15,
+          "utilization": 0.1171875,
+          "growth": 0,
+          "contributors": [
+            { "edge": "order-events-to-payments", "node": "order-events", "label": "orders.created.v1", "rate": 50 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "notifications": {
+          "id": "notifications",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 426.6666666666667,
+          "offered": 50,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "order-events",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 64
+            }
+          ],
+          "slots": 64,
+          "seconds": 0.15,
+          "utilization": 0.1171875,
+          "growth": 0,
+          "contributors": [
+            { "edge": "order-events-to-notifications", "node": "order-events", "label": "orders.created.v1", "rate": 50 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": "(same as edit)"
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "ok",
+          "top": "orders",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Order service at 12% · 50/s of 427/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "shopper": ["idle", "25/s · no limit", { "modeled": false }],
+            "gateway": ["idle", "25/s · no limit", { "modeled": false }],
+            "orders": ["ok", "12% · 50/s of 427/s"],
+            "order-events": ["ok", "6% · 25/s of 427/s"],
+            "inventory": ["ok", "6% · 25/s of 427/s"],
+            "payments": ["ok", "6% · 25/s of 427/s"],
+            "notifications": ["ok", "6% · 25/s of 427/s"],
+            "stock-db": ["idle", "25/s · no limit", { "modeled": false }],
+            "payment-db": ["idle", "25/s · no limit", { "modeled": false }],
+            "notify-cache": ["idle", "25/s · no limit", { "modeled": false }],
+            "payment-events": ["ok", "6% · 25/s of 427/s"],
+            "order-db": ["idle", "50/s · no limit", { "modeled": false }],
+            "schemas": ["idle", "25/s · no limit", { "modeled": false }],
+            "metrics": ["idle", "", { "modeled": false }],
+            "dashboard": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "ok",
+          "top": "orders",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Order service at 59% · 250/s of 427/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "shopper": ["idle", "125/s · no limit", { "modeled": false }],
+            "gateway": ["idle", "125/s · no limit", { "modeled": false }],
+            "orders": ["ok", "59% · 250/s of 427/s"],
+            "order-events": ["ok", "29% · 125/s of 427/s"],
+            "inventory": ["ok", "29% · 125/s of 427/s"],
+            "payments": ["ok", "29% · 125/s of 427/s"],
+            "notifications": ["ok", "29% · 125/s of 427/s"],
+            "stock-db": ["idle", "125/s · no limit", { "modeled": false }],
+            "payment-db": ["idle", "125/s · no limit", { "modeled": false }],
+            "notify-cache": ["idle", "125/s · no limit", { "modeled": false }],
+            "payment-events": ["ok", "29% · 125/s of 427/s"],
+            "order-db": ["idle", "250/s · no limit", { "modeled": false }],
+            "schemas": ["idle", "125/s · no limit", { "modeled": false }],
+            "metrics": ["idle", "", { "modeled": false }],
+            "dashboard": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "ok",
+          "top": "orders",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Order service at 12% · 50/s of 427/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "shopper": ["idle", "25/s · no limit", { "modeled": false }],
+            "gateway": ["idle", "25/s · no limit", { "modeled": false }],
+            "orders": ["ok", "12% · 50/s of 427/s"],
+            "order-events": ["ok", "6% · 25/s of 427/s"],
+            "inventory": ["ok", "6% · 25/s of 427/s"],
+            "payments": ["ok", "6% · 25/s of 427/s"],
+            "notifications": ["ok", "6% · 25/s of 427/s"],
+            "stock-db": ["idle", "25/s · no limit", { "modeled": false }],
+            "payment-db": ["idle", "25/s · no limit", { "modeled": false }],
+            "notify-cache": ["idle", "25/s · no limit", { "modeled": false }],
+            "payment-events": ["ok", "6% · 25/s of 427/s"],
+            "order-db": ["idle", "50/s · no limit", { "modeled": false }],
+            "schemas": ["idle", "25/s · no limit", { "modeled": false }],
+            "metrics": ["idle", "", { "modeled": false }],
+            "dashboard": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": {
+          "props": { "order-events": { "partitions": 128 }, "payment-events": { "partitions": 128 } },
+          "rates": {}
+        },
+        "view": {
+          "tone": "ok",
+          "top": "orders",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Order service at 12% · 50/s of 427/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "shopper": ["idle", "25/s · no limit", { "modeled": false }],
+            "gateway": ["idle", "25/s · no limit", { "modeled": false }],
+            "orders": ["ok", "12% · 50/s of 427/s"],
+            "order-events": ["ok", "6% · 25/s of 427/s"],
+            "inventory": ["ok", "6% · 25/s of 427/s"],
+            "payments": ["ok", "6% · 25/s of 427/s"],
+            "notifications": ["ok", "6% · 25/s of 427/s"],
+            "stock-db": ["idle", "25/s · no limit", { "modeled": false }],
+            "payment-db": ["idle", "25/s · no limit", { "modeled": false }],
+            "notify-cache": ["idle", "25/s · no limit", { "modeled": false }],
+            "payment-events": ["ok", "6% · 25/s of 427/s"],
+            "order-db": ["idle", "50/s · no limit", { "modeled": false }],
+            "schemas": ["idle", "25/s · no limit", { "modeled": false }],
+            "metrics": ["idle", "", { "modeled": false }],
+            "dashboard": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": { "order-events": "All configured reader instances already have an assignment.", "payment-events": "All configured reader instances already have an assignment." }
+      }
+    },
+    "black-friday": {
+      "tone": "warn",
+      "top": "orders",
+      "headline": "Order service is busy",
+      "detail": "78% · 4k/s of 5.1k/s. Still some headroom.",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "shopper": ["idle", "2k/s · no limit", { "modeled": false }],
+        "gateway": ["idle", "2k/s · no limit", { "modeled": false }],
+        "orders": ["warn", "78% · 4k/s of 5.1k/s"],
+        "order-events": ["warn", "78% · 2k/s of 2.6k/s"],
+        "inventory": ["warn", "78% · 2k/s of 2.6k/s"],
+        "payments": ["warn", "78% · 2k/s of 2.6k/s"],
+        "notifications": ["warn", "78% · 2k/s of 2.6k/s"],
+        "stock-db": ["idle", "2k/s · no limit", { "modeled": false }],
+        "payment-db": ["idle", "2k/s · no limit", { "modeled": false }],
+        "notify-cache": ["idle", "2k/s · no limit", { "modeled": false }],
+        "payment-events": ["ok", "39% · 2k/s of 5.1k/s"],
+        "order-db": ["idle", "4k/s · no limit", { "modeled": false }],
+        "schemas": ["idle", "2k/s · no limit", { "modeled": false }],
+        "metrics": ["idle", "", { "modeled": false }],
+        "dashboard": ["idle", "", { "modeled": false }]
+      }
+    },
+    "payments-outage": {
+      "tone": "ok",
+      "top": "orders",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Order service at 23% · 100/s of 427/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "shopper": ["idle", "50/s · no limit", { "modeled": false }],
+        "gateway": ["idle", "50/s · no limit", { "modeled": false }],
+        "orders": ["ok", "23% · 100/s of 427/s"],
+        "order-events": ["ok", "12% · 50/s of 427/s"],
+        "inventory": ["ok", "12% · 50/s of 427/s"],
+        "payments": ["ok", "12% · 50/s of 427/s"],
+        "notifications": ["ok", "12% · 50/s of 427/s"],
+        "stock-db": ["idle", "50/s · no limit", { "modeled": false }],
+        "payment-db": ["idle", "50/s · no limit", { "modeled": false }],
+        "notify-cache": ["idle", "50/s · no limit", { "modeled": false }],
+        "payment-events": ["ok", "12% · 50/s of 427/s"],
+        "order-db": ["idle", "100/s · no limit", { "modeled": false }],
+        "schemas": ["idle", "50/s · no limit", { "modeled": false }],
+        "metrics": ["idle", "", { "modeled": false }],
+        "dashboard": ["idle", "", { "modeled": false }]
+      }
+    }
+  }
+}

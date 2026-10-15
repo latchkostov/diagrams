@@ -1,0 +1,41 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Webhook ingestion at scale",
+    "direction": "LR",
+    "groups": [
+      { "id": "g_k8s", "label": "Kubernetes", "tone": "k8s", "x": 796, "y": 100, "width": 1771, "height": 356 }
+    ],
+    "nodes": [
+      { "id": "receiver", "stencil": "generic.webhook", "label": "Webhook receiver", "sublabel": "Verify HMAC · 202 fast", "x": 836, "y": 224, "group": "g_k8s" },
+      { "id": "exchange", "stencil": "rabbitmq.exchange", "label": "webhooks", "sublabel": "Topic exchange", "x": 1198, "y": 224, "group": "g_k8s" },
+      { "id": "replay", "stencil": "generic.service", "label": "Replay tool", "sublabel": "Republish on demand", "x": 2307, "y": 344, "group": "g_k8s" },
+      { "id": "queue", "stencil": "generic.webhook", "label": "webhooks.process", "sublabel": "Quorum · delivery limit 5", "x": 1566, "y": 224, "group": "g_k8s" },
+      { "id": "dlq", "stencil": "generic.webhook", "label": "webhooks.dlq", "sublabel": "Parked after 5 tries", "x": 1947, "y": 164, "group": "g_k8s" },
+      { "id": "workers", "stencil": "generic.webhook", "label": "Webhook workers", "sublabel": "Retry with backoff", "x": 1947, "y": 284, "group": "g_k8s" },
+      { "id": "vault", "stencil": "vault", "label": "Vault", "sublabel": "HMAC signing secrets", "x": 1198, "y": 344, "group": "g_k8s" },
+      { "id": "partners", "stencil": "client.partner", "label": "Partner webhooks", "sublabel": "Shopify · Stripe · GitHub", "x": 80, "y": 164 },
+      { "id": "edge", "stencil": "cloudflare", "label": "Cloudflare", "sublabel": "WAF · IP allowlists", "x": 461, "y": 224 },
+      { "id": "raw", "stencil": "generic.database", "label": "Raw payloads", "sublabel": "Kept 30 days for replay", "x": 1198, "y": 104 },
+      { "id": "dedupe", "stencil": "generic.database", "label": "Seen event IDs", "sublabel": "SET NX · TTL 7 days", "x": 2307, "y": 104 },
+      { "id": "integration_db", "stencil": "generic.database", "label": "Integration database", "sublabel": "Orders · products · refunds", "x": 2307, "y": 224 },
+      { "id": "operator", "stencil": "generic.service", "label": "On-call engineer", "sublabel": "Runbook: replay DLQ", "x": 80, "y": 284 }
+    ],
+    "edges": [
+      { "id": "e1-partners-edge", "from": "partners", "to": "edge", "label": "HTTPS POST", "kind": "sync" },
+      { "id": "e2-edge-receiver", "from": "edge", "to": "receiver", "label": "/hooks/:partner", "kind": "sync" },
+      { "id": "e3-receiver-raw", "from": "receiver", "to": "raw", "label": "PUT body", "kind": "sync" },
+      { "id": "e4-receiver-exchange", "from": "receiver", "to": "exchange", "label": "Publish", "kind": "async" },
+      { "id": "e5-exchange-queue", "from": "exchange", "to": "queue", "label": "webhook.#", "kind": "async" },
+      { "id": "e6-queue-workers", "from": "queue", "to": "workers", "label": "Prefetch 4", "kind": "async" },
+      { "id": "e7-queue-dlq", "from": "queue", "to": "dlq", "label": "Dead-letter", "kind": "async" },
+      { "id": "e8-workers-dedupe", "from": "workers", "to": "dedupe", "label": "Idempotency check", "kind": "sync" },
+      { "id": "e9-workers-integration_db", "from": "workers", "to": "integration_db", "label": "Apply change", "kind": "sync" },
+      { "id": "e10-dlq-replay", "from": "dlq", "to": "replay", "label": "Drain", "kind": "async" },
+      { "id": "e11-replay-exchange", "from": "replay", "to": "exchange", "label": "Republish", "kind": "async" },
+      { "id": "e12-operator-replay", "from": "operator", "to": "replay", "label": "Start replay", "kind": "async", "relation": "depends" },
+      { "id": "e13-receiver-vault", "from": "receiver", "to": "vault", "kind": "async", "relation": "secret" }
+    ]
+  }
+}

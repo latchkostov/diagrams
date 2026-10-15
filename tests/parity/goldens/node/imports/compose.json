@@ -1,0 +1,122 @@
+{
+  "ok": true,
+  "format": "compose",
+  "warnings": [],
+  "report": {
+    "summary": {
+      "code": "importReport.summary",
+      "args": [
+        { "title": "shop", "format": "docker-compose", "total": "all", "drawn": 15, "nodes": 15, "connections": 17, "guesses": 2 }
+      ]
+    },
+    "format": "docker-compose",
+    "source": "docker-compose.yml",
+    "title": "shop",
+    "nodes": 15,
+    "connections": 17,
+    "boundaries": 2,
+    "guesses": [
+      { "nodeId": "storefront", "label": "storefront", "stencil": "service.node", "evidence": "storefront:4.2.0 · NODE_ENV", "alternatives": ["client.browser", "generic.service"] },
+      { "nodeId": "legacy-adapter", "label": "legacy-adapter", "stencil": "generic.service", "evidence": "legacy-adapter:1.4", "alternatives": ["generic.external-api"] }
+    ],
+    "inferred": [
+      { "fromId": "storefront", "toId": "orders-api", "from": "storefront", "to": "orders-api", "evidence": "ORDERS_API_URL" },
+      { "fromId": "orders-api", "toId": "postgres", "from": "orders-api", "to": "postgres", "evidence": "SPRING_DATASOURCE_URL" },
+      { "fromId": "orders-api", "toId": "redis", "from": "orders-api", "to": "redis", "evidence": "REDIS_URL" },
+      { "fromId": "orders-api", "toId": "topic-orders.placed.v1", "from": "orders-api", "to": "orders.placed.v1", "evidence": "ORDERS_TOPIC", "note": "writes", "guess": true },
+      { "fromId": "payments-worker", "toId": "ext-api.payments.example.com", "from": "payments-worker", "to": "api.payments.example.com", "evidence": "PAYMENT_PROVIDER_URL" },
+      { "fromId": "topic-orders.placed.v1", "toId": "payments-worker", "from": "orders.placed.v1", "to": "payments-worker", "evidence": "INPUT_TOPIC", "note": "reads" },
+      { "fromId": "payments-worker", "toId": "topic-payments.completed.v1", "from": "payments-worker", "to": "payments.completed.v1", "evidence": "OUTPUT_TOPIC", "note": "writes" },
+      { "fromId": "shipping-worker", "toId": "postgres", "from": "shipping-worker", "to": "postgres", "evidence": "DATABASE_URL" },
+      { "fromId": "orders-api", "toId": "schema-registry", "from": "orders-api", "to": "schema-registry", "evidence": "SCHEMA_REGISTRY_URL" },
+      { "fromId": "orders-api", "toId": "compose-secrets", "from": "orders-api", "to": "Compose secrets", "evidence": "SPRING_DATASOURCE_PASSWORD_FILE" },
+      { "fromId": "payments-worker", "toId": "schema-registry", "from": "payments-worker", "to": "schema-registry", "evidence": "SCHEMA_REGISTRY_URL" },
+      { "fromId": "shipping-worker", "toId": "kafka", "from": "shipping-worker", "to": "kafka", "evidence": "KAFKA_BROKERS", "note": "couldn't tell what it reads or writes" },
+      { "fromId": "schema-registry", "toId": "kafka", "from": "schema-registry", "to": "kafka", "evidence": "SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS", "note": "couldn't tell what it reads or writes" },
+      { "fromId": "postgres", "toId": "compose-secrets", "from": "postgres", "to": "Compose secrets", "evidence": "POSTGRES_PASSWORD_FILE" }
+    ],
+    "notDrawn": [
+      { "name": "pgdata", "reason": { "code": "importDetail.volume", "args": [] } },
+      {
+        "name": "kafka-ui",
+        "reason": { "code": "importDetail.profiles", "args": [{ "count": 1, "names": "“debug”" }] }
+      }
+    ],
+    "unread": [],
+    "notes": [
+      {
+        "code": "importDetail.value0IsOnValue1ShownIn",
+        "args": [
+          {
+            "value0": "orders-api",
+            "value1": { "list": ["frontend", "backend"], "english": "and" },
+            "value2": "backend"
+          }
+        ]
+      }
+    ]
+  },
+  "reportEnglish": { "report.summary": "Imported “shop” from docker-compose: 15 nodes, 17 connections. 2 guesses.", "report.notDrawn[0].reason": "volume", "report.notDrawn[1].reason": "only in profile “debug”", "report.notes[0]": "orders-api is on frontend and backend; shown in backend" },
+  "replay": null,
+  "checks": ["warning no-reader:topic-payments.completed.v1"],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "shop",
+    "direction": "LR",
+    "groups": [
+      { "id": "boundary-frontend", "label": "frontend", "tone": "neutral", "x": 400, "y": 240, "width": 660, "height": 176 },
+      { "id": "boundary-backend", "label": "backend", "tone": "neutral", "x": 1200, "y": 40, "width": 1401, "height": 568 }
+    ],
+    "nodes": [
+      { "id": "gateway", "stencil": "nginx", "label": "gateway", "sublabel": "nginx:1.27-alpine", "x": 440, "y": 304, "group": "boundary-frontend" },
+      { "id": "storefront", "stencil": "service.node", "label": "storefront", "sublabel": "storefront:4.2.0", "x": 800, "y": 304, "group": "boundary-frontend" },
+      { "id": "orders-api", "stencil": "service.java", "label": "orders-api", "sublabel": "orders-api:dev", "x": 1240, "y": 104, "group": "boundary-backend" },
+      {
+        "id": "payments-worker",
+        "stencil": "generic.service",
+        "label": "payments-worker",
+        "sublabel": "payments-worker:dev",
+        "x": 1960,
+        "y": 224,
+        "group": "boundary-backend",
+        "props": { "replicas": 3 }
+      },
+      { "id": "shipping-worker", "stencil": "generic.service", "label": "shipping-worker", "sublabel": "shipping-worker:dev", "x": 1240, "y": 224, "group": "boundary-backend" },
+      { "id": "kafka", "stencil": "kafka.cluster", "label": "kafka", "sublabel": "kafka:3.9.0", "x": 1240, "y": 496, "group": "boundary-backend" },
+      { "id": "schema-registry", "stencil": "kafka.schema-registry", "label": "schema-registry", "sublabel": "cp-schema-registry:7.7.1", "x": 1514, "y": 496, "group": "boundary-backend" },
+      { "id": "postgres", "stencil": "postgres", "label": "postgres", "sublabel": "postgres:16", "x": 1600, "y": 344, "group": "boundary-backend" },
+      { "id": "redis", "stencil": "redis.cache", "label": "redis", "sublabel": "redis:7-alpine", "x": 1600, "y": 104, "group": "boundary-backend" },
+      { "id": "legacy-adapter", "stencil": "generic.service", "label": "legacy-adapter", "sublabel": "legacy-adapter:1.4", "x": 1240, "y": 344, "group": "boundary-backend" },
+      { "id": "users", "stencil": "client.user", "label": "Users", "x": 40, "y": 290 },
+      { "id": "compose-secrets", "stencil": "generic.secret-store", "label": "Compose secrets", "sublabel": "orders_db_password", "x": 1791, "y": 688 },
+      { "id": "topic-orders.placed.v1", "stencil": "kafka.topic", "label": "orders.placed.v1", "x": 1600, "y": 224, "group": "boundary-backend" },
+      { "id": "ext-api.payments.example.com", "stencil": "generic.external-api", "label": "api.payments.example.com", "x": 2741, "y": 290 },
+      { "id": "topic-payments.completed.v1", "stencil": "kafka.topic", "label": "payments.completed.v1", "x": 2320, "y": 224, "group": "boundary-backend" }
+    ],
+    "edges": [
+      { "id": "e1", "from": "gateway", "to": "storefront", "kind": "sync" },
+      { "id": "e2", "from": "gateway", "to": "orders-api", "kind": "sync" },
+      { "id": "e3", "from": "users", "to": "gateway", "kind": "sync" },
+      { "id": "e4", "from": "storefront", "to": "orders-api", "kind": "sync" },
+      { "id": "e5", "from": "orders-api", "to": "postgres", "kind": "sync" },
+      { "id": "e6", "from": "orders-api", "to": "redis", "kind": "sync" },
+      { "id": "e7", "from": "orders-api", "to": "topic-orders.placed.v1", "kind": "async" },
+      { "id": "e8", "from": "payments-worker", "to": "ext-api.payments.example.com", "kind": "sync" },
+      {
+        "id": "e9",
+        "from": "topic-orders.placed.v1",
+        "to": "payments-worker",
+        "kind": "async",
+        "props": { "group": "payments" }
+      },
+      { "id": "e10", "from": "payments-worker", "to": "topic-payments.completed.v1", "kind": "async" },
+      { "id": "e11", "from": "shipping-worker", "to": "postgres", "kind": "sync" },
+      { "id": "e12", "from": "orders-api", "to": "schema-registry", "relation": "depends" },
+      { "id": "e13", "from": "orders-api", "to": "compose-secrets", "relation": "secret" },
+      { "id": "e14", "from": "payments-worker", "to": "schema-registry", "relation": "depends" },
+      { "id": "e15", "from": "shipping-worker", "to": "kafka", "relation": "depends" },
+      { "id": "e16", "from": "schema-registry", "to": "kafka", "relation": "depends" },
+      { "id": "e17", "from": "postgres", "to": "compose-secrets", "relation": "secret" }
+    ]
+  }
+}

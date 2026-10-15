@@ -1,0 +1,19 @@
+{
+  "autoLayout": { "LR": { "source": [40, 40], "api": [400, 40] }, "TB": { "source": [40, 40], "api": [40, 200] } },
+  "tidy": { "source": [0, 130], "api": [330, 130] },
+  "arrange": {
+    "alignLeft": { "source": [0, 130], "api": [0, 130] },
+    "alignMiddle": { "source": [0, 130], "api": [330, 130] },
+    "distributeH": { "source": [0, 130], "api": [330, 130] },
+    "distributeV": { "source": [0, 130], "api": [330, 130] },
+    "spreadH": { "source": [0, 130], "api": [330, 130] },
+    "boundaryAround": { "x": -40, "y": 66, "width": 630, "height": 176 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "source": [40, 40], "api": [400, 40] },
+    "groups": {}
+  }
+}

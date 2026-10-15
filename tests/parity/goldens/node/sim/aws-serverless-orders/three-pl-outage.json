@@ -1,0 +1,206 @@
+{
+  "run": {
+    "time": 13430,
+    "totalMs": 19500,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "parked", "label": "Failures are dead-lettered, not lost", "status": "pass", "value": 23 },
+      { "id": "receipts", "label": "Receipts are unaffected", "status": "pass", "value": 160 },
+      { "id": "shipped", "label": "All 160 shipments are requested", "status": "pass", "value": 160 },
+      { "id": "empty", "label": "The DLQ is empty after the redrive", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "160 orders over 8 seconds" },
+      { "atMs": 2000, "kind": "props", "label": "props: fulfillment-fn" },
+      { "atMs": 2000, "kind": "note", "label": "The 3PL's API is down. Each shipment request fails, becomes visible again after the timeout, and is retried." },
+      { "atMs": 4500, "kind": "note", "label": "After three receives, SQS moves the message to the dead-letter queue. Payments and receipts are unaffected." },
+      { "atMs": 7000, "kind": "props", "label": "props: fulfillment-fn" },
+      { "atMs": 8000, "kind": "traffic", "label": "160 orders over 8 seconds ends" },
+      { "atMs": 9500, "kind": "status", "label": "status: dlq" },
+      { "atMs": 9500, "kind": "note", "label": "The 3PL is back, so an operator redrives the DLQ. Every parked shipment goes through." }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "client": { "replicas": [1, 1, 0] },
+        "apigw": { "replicas": [1, 1, 0] },
+        "create-order": { "replicas": [1, 1, 0] },
+        "orders-table": { "replicas": [1, 1, 0] },
+        "stream-fn": { "replicas": [1, 1, 0] },
+        "bus": { "lag": { "payment-rule": 0, "fulfillment-rule": 0, "notify-rule": 0 }, "replicas": [1, 1, 0] },
+        "sfn": { "replicas": [1, 1, 0] },
+        "stripe": { "replicas": [1, 1, 0] },
+        "dlq": { "status": "paused", "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "fulfillment-q": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "fulfillment-fn": { "replicas": [1, 1, 0] },
+        "three-pl": { "replicas": [1, 1, 0] },
+        "sns": { "lag": { "email": 0, "sms": 0 }, "replicas": [1, 1, 0] },
+        "email": { "replicas": [1, 1, 0] },
+        "sms": { "replicas": [1, 1, 0] },
+        "cognito": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 85,
+      "nodes": {
+        "client": { "processed": 160, "throughput": 2.787922672865248, "replicas": [1, 1, 0] },
+        "apigw": { "processed": 160, "throughput": 3.4051764421748847, "replicas": [1, 1, 0] },
+        "create-order": { "processed": 160, "throughput": 4.523713974683034, "replicas": [1, 1, 0] },
+        "orders-table": { "processed": 313, "throughput": 24.663850128311783, "replicas": [1, 1, 0] },
+        "stream-fn": { "processed": 307, "inFlight": 2, "throughput": 28.358184007740796, "replicas": [1, 1, 0] },
+        "bus": {
+          "processed": 301,
+          "throughput": 31.19539169291818,
+          "lag": { "payment-rule": 0, "fulfillment-rule": 0, "notify-rule": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "sfn": { "processed": 157, "inFlight": 3, "throughput": 18.87823946637991, "replicas": [1, 1, 0] },
+        "stripe": { "processed": 153, "throughput": 18.89316399334391, "replicas": [1, 1, 0] },
+        "dlq": { "processed": 23, "throughput": 1.231054391596892, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "fulfillment-q": {
+          "processed": 158,
+          "deadLettered": 23,
+          "throughput": 39.415769474229485,
+          "lag": { "queue": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "fulfillment-fn": { "processed": 102, "failed": 133, "inFlight": 3, "throughput": 22.2584462219129, "replicas": [1, 1, 0] },
+        "three-pl": { "processed": 99, "throughput": 23.903132834712334, "replicas": [1, 1, 0] },
+        "sns": {
+          "processed": 135,
+          "throughput": 20.4904934838545,
+          "lag": { "email": 0, "sms": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "email": { "processed": 128, "throughput": 19.38092048903657, "replicas": [1, 1, 0] },
+        "sms": { "processed": 128, "throughput": 19.38092048903657, "replicas": [1, 1, 0] },
+        "cognito": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 13430,
+    "inSystem": 0,
+    "real": {
+      "client": { "processed": 160, "throughput": 0.0902922864855331, "replicas": [1, 1, 0] },
+      "apigw": { "processed": 160, "throughput": 0.11028324775401825, "replicas": [1, 1, 0] },
+      "create-order": { "processed": 160, "throughput": 0.1465092565716336, "replicas": [1, 1, 0] },
+      "orders-table": { "processed": 320, "throughput": 1.064747135960288, "replicas": [1, 1, 0] },
+      "stream-fn": { "processed": 320, "throughput": 1.5328383155157497, "replicas": [1, 1, 0] },
+      "bus": {
+        "processed": 320,
+        "throughput": 2.069115300788896,
+        "lag": { "payment-rule": 0, "fulfillment-rule": 0, "notify-rule": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "sfn": { "processed": 160, "throughput": 0.7165579977796542, "replicas": [1, 1, 0] },
+      "stripe": { "processed": 160, "throughput": 0.8752059148697977, "replicas": [1, 1, 0] },
+      "dlq": { "processed": 23, "throughput": 0.039870085668876336, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "fulfillment-q": {
+        "processed": 183,
+        "deadLettered": 23,
+        "throughput": 2.931157283588078,
+        "lag": { "queue": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "fulfillment-fn": { "processed": 160, "failed": 133, "throughput": 4.690281924742236, "replicas": [1, 1, 0] },
+      "three-pl": { "processed": 160, "throughput": 5.72872327942895, "replicas": [1, 1, 0] },
+      "sns": {
+        "processed": 160,
+        "throughput": 2.318225490976869,
+        "lag": { "email": 0, "sms": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "email": { "processed": 160, "throughput": 3.1292770969423254, "replicas": [1, 1, 0] },
+      "sms": { "processed": 160, "throughput": 3.1292770969423254, "replicas": [1, 1, 0] },
+      "cognito": { "replicas": [1, 1, 0] }
+    },
+    "edges": {
+      "client-to-apigw": 160,
+      "apigw-to-create-order": 160,
+      "create-order-to-orders-table": 160,
+      "orders-table-to-stream-fn": 320,
+      "stream-fn-to-bus": 320,
+      "bus-to-sfn": 160,
+      "sfn-to-stripe": 160,
+      "sfn-to-orders-table": 160,
+      "bus-to-fulfillment-q": 160,
+      "fulfillment-q-to-fulfillment-fn": 293,
+      "fulfillment-fn-to-three-pl": 160,
+      "fulfillment-q-to-dlq": 23,
+      "dlq-to-fulfillment-q": 23,
+      "bus-to-sns": 160,
+      "sns-to-email": 160,
+      "sns-to-sms": 160,
+      "apigw-to-cognito": 0
+    }
+  },
+  "events": {
+    "total": 5956,
+    "byKind": { "status": 2, "inject": 160, "process": 2766, "deliver": 2739, "fail": 133, "retry": 133, "deadletter": 23 },
+    "byNode": {
+      "dlq": { "status": 2, "deliver": 23, "process": 23 },
+      "client": { "inject": 160, "process": 160 },
+      "apigw": { "deliver": 160, "process": 160 },
+      "create-order": { "deliver": 160, "process": 160 },
+      "orders-table": { "deliver": 320, "process": 320 },
+      "stream-fn": { "deliver": 320, "process": 320 },
+      "bus": { "deliver": 320, "process": 320 },
+      "sfn": { "deliver": 160, "process": 160 },
+      "stripe": { "deliver": 160, "process": 160 },
+      "fulfillment-q": { "deliver": 183, "process": 183, "retry": 133, "deadletter": 23 },
+      "sns": { "deliver": 160, "process": 160 },
+      "fulfillment-fn": { "deliver": 293, "fail": 133, "process": 160 },
+      "email": { "deliver": 160, "process": 160 },
+      "sms": { "deliver": 160, "process": 160 },
+      "three-pl": { "deliver": 160, "process": 160 }
+    },
+    "perSecond": [
+      "b8ca9df9947c",
+      "b9c11bac27b8",
+      "5856cd1190e0",
+      "c24cf85d3348",
+      "adeb56d892f9",
+      "677956ab4e75",
+      "8acfe4f7e5f3",
+      "a60f35f2f11c",
+      "6f20c5a56f89",
+      "19f5545b8d7f",
+      "4c923ed77731",
+      "bc07a3f3df07",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 2000, "text": "The 3PL's API is down. Each shipment request fails, becomes visible again after the timeout, and is retried.", "focus": ["fulfillment-fn", "three-pl", "fulfillment-q"] },
+    { "atMs": 4500, "text": "After three receives, SQS moves the message to the dead-letter queue. Payments and receipts are unaffected.", "focus": ["fulfillment-q", "dlq", "email"] },
+    { "atMs": 9500, "text": "The 3PL is back, so an operator redrives the DLQ. Every parked shipment goes through.", "focus": ["dlq", "fulfillment-q", "three-pl"] }
+  ],
+  "latency": {
+    "journeys": { "done": 160, "retried": 66, "deadLettered": 23, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 160, "min": 3800, "mean": 5185.625, "p50": 3960, "p90": 9650, "max": 10390 },
+    "waitMs": {
+      "apigw": { "count": 160, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "create-order": { "count": 160, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "orders-table": { "count": 320, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "stream-fn": { "count": 320, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "sfn": { "count": 160, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "fulfillment-fn": { "count": 293, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "apigw": { "count": 160, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "create-order": { "count": 160, "min": 70, "mean": 84.4375, "p50": 90, "p90": 100, "max": 100 },
+      "orders-table": { "count": 320, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "stream-fn": { "count": 320, "min": 50, "mean": 65.15625, "p50": 70, "p90": 70, "max": 80 },
+      "sfn": { "count": 160, "min": 330, "mean": 407.6875, "p50": 410, "p90": 470, "max": 480 },
+      "fulfillment-fn": { "count": 160, "min": 130, "mean": 155, "p50": 150, "p90": 180, "max": 180 }
+    }
+  }
+}
