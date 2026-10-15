@@ -58,6 +58,15 @@
   Existing unmount cleanup was correct and is retained.
 - Production gallery/picker/interop checks and deliberate reversions pass. No parity golden changes.
 
+## Browser parity integration with master (2026-10-15)
+
+- Rebased the deterministic fits onto nested boundaries (#115), the example picker/gallery (#118)
+  and Autoscaling A1 (#117). Autosave, example-copy promotion and CopyNotice are retained alongside
+  the measured fit gate. Both documentation histories are preserved.
+- Regenerated the released viewer from master's copy; plugin 1.1.24 is one patch above master.
+- The eight showcase additions and the two complete-selection Tidy corrections are described under
+  Deterministic canvas fits below. No other existing golden is intentionally changed.
+
 ## Example gallery integration with master (#118, 2026-10-15)
 
 - Rebased the gallery onto nested boundaries and zones (#115), the six showcases (#120) and the

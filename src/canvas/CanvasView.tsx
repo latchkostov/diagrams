@@ -437,6 +437,7 @@ function CanvasInner({
     (direction, selection) => onHistoryStep.current(direction, selection),
   );
 
+  const renameHistoryTitle = history.renameTitle;
   const latest = useRef({ meta, nodes, edges, slug });
   useLayoutEffect(() => {
     latest.current = { meta, nodes, edges, slug };
@@ -655,8 +656,6 @@ function CanvasInner({
     documentId: getDiagramIdentity(slug),
     revision: hostRevision,
   });
-
-  const renameHistoryTitle = history.renameTitle;
 
   // ---------------------------------------------------------------- autosave
   // Debounced while editing, and flushed whenever the canvas could go away before the timer fires:
