@@ -8,6 +8,7 @@ import {
   currentDiagram,
   pageLoadTimeout,
   pauseClock,
+  savedDiagram,
 } from "./fixtures";
 
 import type { Page } from "@playwright/test";
@@ -181,6 +182,39 @@ test("Run it starts and restarts the currently open example", async ({ page }) =
   }
 });
 
+test("a queued public gallery run cannot replace another document's requested simulation", async ({ page }) => {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let requested = false;
+  await page.route(/\/assets\/LiveSession-[\w-]+\.js$/, async (route) => {
+    requested = true;
+    await held;
+    await route.continue();
+  });
+  try {
+    await page.goto(`./?example=${SLUG}`);
+    await page.getByTestId("example-picker").click();
+    await page.getByTestId("picker-browse-examples").click();
+    await page.getByTestId(`example-run-${SLUG}`).click();
+    await expect.poll(() => requested).toBe(true);
+    await page.getByTestId("example-picker").click();
+    await page.getByTestId("picker-browse-examples").click();
+    // Browser navigation while the shared LiveSession chunk is held. This destination asks
+    // for its own simulation, with no second gallery launch to overwrite the stale pending run.
+    await page.evaluate(() => {
+      window.history.pushState(null, "", "?view=canvas&example=notification-fanout&live=1&sim=shipping-wave");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    await expect(page.getByTestId("diagram-title")).toHaveText("Notification fan-out");
+    release();
+    await expect(page.getByTestId("live-sim-picker")).toHaveValue("shipping-wave", { timeout: pageLoadTimeout() });
+  } finally {
+    release();
+  }
+});
+
 test("copy notice stays clear of expanded stencil controls", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto(`./?example=${SLUG}`);
@@ -242,7 +276,27 @@ test("first edit creates your named copy, preserves undo and leaves the deep-lin
   expectNoErrors(consoleErrors);
 });
 
-test("promotion preserves another tab's mounted session, pending edits and undo", async ({ page, context }) => {
+test("persisted edits follow example promotion", async ({ page }) => {
+  await page.goto(`./?example=${SLUG}`);
+  await page.getByTestId("node-shopper").click();
+  await page.getByTestId("inspector-field-label").fill("Before reload");
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+  await expect
+    .poll(async () => (await savedDiagram(page)).nodes.find((node) => node.id === "shopper")?.label)
+    .toBe("Before reload");
+  await page.reload();
+  await expect(page.getByTestId("node-shopper")).toContainText("Before reload");
+  await page.getByTestId("node-shopper").click();
+  await page.getByTestId("inspector-field-label").fill("After reload");
+  await expect
+    .poll(async () => (await savedDiagram(page)).nodes.find((node) => node.id === "shopper")?.label)
+    .toBe("After reload");
+  await page.reload();
+  await expect(page.getByTestId("node-shopper")).toContainText("After reload");
+  expect((await savedDiagram(page)).nodes.find((node) => node.id === "shopper")?.label).toBe("After reload");
+});
+
+test("promotion preserves another tab after its storage refresh", async ({ page, context }) => {
   await page.goto(`./?example=${SLUG}`);
   await expect(page.getByTestId("node-shopper")).toBeVisible();
   const other = await context.newPage();
@@ -252,21 +306,27 @@ test("promotion preserves another tab's mounted session, pending edits and undo"
   await pauseClock(other);
   await other.getByTestId("inspector-field-label").fill("Pending in other tab");
   await other.getByTestId("canvas-view").evaluate((el) => el.setAttribute("data-test-instance", "retained"));
+  await other.evaluate(() => {
+    const w = window as unknown as { __entryReceived: Promise<void> };
+    w.__entryReceived = new Promise((resolve) => {
+      const onStorage = (event: StorageEvent) => {
+        if (!event.key?.startsWith("diagrams.library-entry.v1:") || !event.newValue) return;
+        window.removeEventListener("storage", onStorage);
+        resolve();
+      };
+      window.addEventListener("storage", onStorage);
+    });
+  });
   await page.getByTestId("node-shopper").click();
   await page.getByTestId("inspector-field-label").fill("Owned in first tab");
   // Playwright's clock is context-wide: flush this tab without advancing the other's pending timer.
   await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pagehide")));
   await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
   const firstCopy = await currentDiagram(page);
-  // Observe the real storage event before checking that it did not replace the mounted canvas.
-  await expect
-    .poll(() =>
-      other.evaluate(
-        () => Object.keys(localStorage).filter((key) => key.startsWith("diagrams.library-entry.v1:")).length,
-      ),
-    )
-    .toBe(1);
-  await other.getByTestId("file-button").click();
+  await other.evaluate(() => (window as unknown as { __entryReceived: Promise<void> }).__entryReceived);
+  // The menu is rendered from the receiving tab's refreshed React library state.
+  await other.getByTestId("example-picker").click();
+  await expect(other.getByTestId(`picker-option-${firstCopy}`)).toBeVisible();
   await other.keyboard.press("Escape");
   await expect(other.getByTestId("canvas-view")).toHaveAttribute("data-test-instance", "retained");
   await expect(other.getByTestId("node-shopper")).toContainText("Pending in other tab");
@@ -284,6 +344,52 @@ test("promotion preserves another tab's mounted session, pending edits and undo"
   await other.reload();
   await expect(other.getByTestId("node-shopper")).toContainText("Pending in other tab");
   await other.close();
+});
+
+test("migration recovery preserves the mounted canvas, pending edits and undo", async ({ page }) => {
+  await page.addInitScript((slug) => {
+    if (sessionStorage.getItem("migration-seeded")) return;
+    sessionStorage.setItem("migration-seeded", "1");
+    localStorage.setItem(
+      `diagrams.ai-thread.v1:example:${slug}`,
+      JSON.stringify({
+        turns: [{ id: "retained", at: 1, kind: "explain", request: "Keep the conversation", changed: [] }],
+      }),
+    );
+    const probe = { blocked: true };
+    (window as unknown as { __migrationProbe: typeof probe }).__migrationProbe = probe;
+    const write = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (probe.blocked && (key.startsWith("diagrams.example-session.v1:") || key.startsWith("diagrams.doc.v1:")))
+        throw new DOMException("full", "QuotaExceededError");
+      return write.call(this, key, value);
+    };
+  }, SLUG);
+  await page.goto(`./?example=${SLUG}`);
+  await page.getByTestId("node-shopper").click();
+  await page.getByTestId("canvas-view").evaluate((el) => el.setAttribute("data-test-instance", "retained"));
+  await page.clock.install();
+  await pauseClock(page);
+  await page.getByTestId("inspector-field-label").fill("Edited while full");
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pagehide")));
+  await expect(page.getByTestId("toast")).toBeVisible();
+  await page.evaluate(() => {
+    (window as unknown as { __migrationProbe: { blocked: boolean } }).__migrationProbe.blocked = false;
+    // Force a library refresh while the failed promotion is still pending.
+    window.dispatchEvent(new StorageEvent("storage", { key: "diagrams.library.v1" }));
+  });
+  await expect(page.getByTestId("canvas-view")).toHaveAttribute("data-test-instance", "retained");
+  await expect(page.getByTestId("node-shopper")).toContainText("Edited while full");
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pagehide")));
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+  await page.getByTestId("undo-button").click();
+  await expect(page.getByTestId("node-shopper")).toContainText("Storefront");
+  await page.getByTestId("redo-button").click();
+  await expect(page.getByTestId("node-shopper")).toContainText("Edited while full");
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pagehide")));
+  await page.clock.resume();
+  await page.reload();
+  await expect(page.getByTestId("node-shopper")).toContainText("Edited while full");
 });
 
 test("a failed example copy debounces retries, warns once and recovers the latest edits", async ({ page }) => {

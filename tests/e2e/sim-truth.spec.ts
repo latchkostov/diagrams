@@ -1,3 +1,4 @@
+import { savedDiagram } from "./fixtures";
 import { simReviewFixture, simReviewTrafficFixture } from "../../src/lab/simReviewFixture";
 import type { Page } from "@playwright/test";
 import {
@@ -56,7 +57,7 @@ async function seed(page: Page, diagram: object) {
   await waitForStableViewport(page);
 }
 
-const saved = (page: Page) => page.evaluate((k) => JSON.parse(localStorage.getItem(k) ?? "null") as Saved | null, KEY);
+const saved = (page: Page) => savedDiagram(page) as Promise<Saved>;
 async function savedWhen(page: Page, check: (d: Saved) => boolean): Promise<Saved> {
   let last: Saved | null = null;
   await expect

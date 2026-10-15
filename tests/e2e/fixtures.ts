@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test as base, expect, type Locator, type Page } from "@playwright/test";
+import type { DiagramFile } from "../../src/model/types";
 
 /**
  * Shared helpers for every e2e spec. Selectors are data-testid only (owner's rule):
@@ -19,6 +20,38 @@ export const STORAGE_KEYS = {
   paletteCollapsed: "diagrams.paletteCollapsed.v1",
   labCustom: "diagrams.lab.custom.v1",
 } as const;
+
+/** Persisted content follows the picker into an owned copy; source keys are only for seeding. */
+export async function savedDiagram(page: Page): Promise<DiagramFile> {
+  let diagram: DiagramFile | undefined;
+  // Promotion removes the source before React publishes the new picker slug. Retry the
+  // whole lookup, so that brief handoff cannot pair an old slug with newly moved storage.
+  await expect
+    .poll(
+      async () => {
+        diagram = await page.getByTestId("example-picker").evaluate((picker, prefix) => {
+          const current = picker.getAttribute("data-diagram-slug");
+          if (!current) return undefined;
+          const originalKey = current.startsWith("my-")
+            ? "diagrams.doc.v1:" + current.slice(3)
+            : current === "imported"
+              ? "diagrams.imported.v1"
+              : current === "shared"
+                ? "diagrams.shared.v1"
+                : undefined;
+          const raw =
+            localStorage.getItem(prefix + current) ?? (originalKey ? localStorage.getItem(originalKey) : null);
+          const parsed = raw ? JSON.parse(raw) : undefined;
+          return parsed?.sessionFormat === "diagrams/session/v1" ? parsed.diagram : parsed;
+        }, STORAGE_KEYS.autosavePrefix);
+        return !!diagram && Array.isArray(diagram.nodes);
+      },
+      { message: "Expected a persisted diagram for the currently open document" },
+    )
+    .toBe(true);
+  if (!diagram) throw new Error("Expected a persisted diagram for the currently open document");
+  return diagram;
+}
 
 export interface PublicExample {
   slug: string;

@@ -1,3 +1,4 @@
+import { savedDiagram } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors, waitForStableViewport, STORAGE_KEYS } from "./fixtures";
 import { callTool, installFakeModelContext, must, nodeCount, openAdvanced, toolNames } from "./ai-helpers";
@@ -55,7 +56,7 @@ async function seed(page: Page) {
   await waitForStableViewport(page);
 }
 
-const saved = (page: Page) => page.evaluate((k) => JSON.parse(localStorage.getItem(k) ?? "null") as Saved | null, KEY);
+const saved = (page: Page) => savedDiagram(page) as Promise<Saved>;
 
 /** Polls the autosave until `check` holds, and returns it. */
 async function savedWhen(page: Page, check: (d: Saved) => boolean): Promise<Saved> {

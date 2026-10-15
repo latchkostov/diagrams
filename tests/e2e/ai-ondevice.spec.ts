@@ -1,4 +1,4 @@
-import { openExample } from "./fixtures";
+import { currentDiagram, openExample } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
 import {
@@ -242,12 +242,13 @@ test.describe("a request in flight", () => {
     await page.getByTestId("live-toggle").click();
     await expect.poll(async () => (await fakeModel(page)).aborted).toBe(1);
     await releaseModel(page);
-    await page.waitForTimeout(300);
+    await expect.poll(async () => (await fakeModel(page)).destroyed).toBeGreaterThan(0);
     await page.getByTestId("live-toggle").click();
     await expect(page.getByTestId("ai-ondevice-send")).toBeVisible();
     await expect(page.getByTestId("ai-turn-0")).toHaveCount(0);
     expect(await nodeCount(page)).toBe(before);
-    expect((await savedDiagram(page))?.nodes.some((n) => n.label === "inventory-dlq") ?? false).toBe(false);
+    // Cancellation must leave the example unpromoted, with no persisted edit to read.
+    expect(await currentDiagram(page)).toBe(SLUG);
   });
 
   test("Esc cancels it first, before the panel's own Esc", async ({ page }) => {

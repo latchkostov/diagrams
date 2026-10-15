@@ -1,17 +1,12 @@
-import { currentDiagram, openExample } from "./fixtures";
-import { test, expect, gotoCanvas, expectNoErrors, STORAGE_KEYS } from "./fixtures";
+import { openExample } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
 import { MOD, SLUG, must, nodeCount, openAdvanced, savedDiagram } from "./ai-helpers";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-/** Where "payments" is in flow coordinates: the saved edits, or the example as shipped when there are none. */
+/** Payments' persisted flow coordinate, following promotion into an owned copy. */
 async function paymentsX(page: import("@playwright/test").Page) {
-  const saved = (await savedDiagram(page))?.nodes.find((n) => n.id === "payments");
-  if (saved) return (saved as unknown as { x: number }).x;
-  const original = JSON.parse(readFileSync(join(process.cwd(), "src/examples/kafka-order-pipeline.json"), "utf8")) as {
-    nodes: { id: string; x: number }[];
-  };
   return must(
-    original.nodes.find((n) => n.id === "payments"),
+    (await savedDiagram(page)).nodes.find((node) => node.id === "payments"),
     "payments",
   ).x;
 }
@@ -222,10 +217,7 @@ test.describe("AI panel dock", () => {
     await expect(page.getByTestId("ai-turn-0-undo")).toHaveCount(0);
 
     // Not in the diagram's saved file (so not in exports or share links).
-    const raw = await page.evaluate(
-      (key) => localStorage.getItem(key) ?? "",
-      STORAGE_KEYS.autosavePrefix + (await currentDiagram(page)),
-    );
+    const raw = JSON.stringify(await savedDiagram(page));
     expect(raw).not.toContain("Add a billing worker");
 
     // Another diagram has its own (empty) thread.

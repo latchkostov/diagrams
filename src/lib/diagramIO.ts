@@ -7,6 +7,12 @@ import { diagramThumb, isThumb, type Thumb } from "./thumbnail";
 import { isLocalOnly, privacyOf } from "./localOnly";
 import { newDiagramsPrivate } from "./privacyPrefs";
 import { AI_THREAD_PREFIX } from "./aiThreadKey";
+import {
+  exampleConversationKey,
+  retainExampleConversation,
+  retainedExampleConversation,
+  transferExampleConversation,
+} from "./exampleConversations";
 
 // Where diagrams live in the browser.
 //
@@ -214,45 +220,54 @@ const EXAMPLE_SESSION_PREFIX = "diagrams.example-session.v1:";
 // A save picker/provider may finish after its example became an owned copy.
 const exampleCopies = new Map<string, { source: string; slug: string }>();
 
-/** Keep conversation ownership durable until the first edit transfers this session to Your diagrams. */
+// A failed migration retries the same writes with the identity already given to the canvas.
+const pendingExampleSessions = new Map<string, { previousIdentity: string; autosave?: DiagramFile }>();
+
+/** Keep mounted ownership separate from the example's single durable conversation. */
 function exampleIdentity(slug: string): string {
   const key = EXAMPLE_SESSION_PREFIX + slug;
   const stored = read<unknown>(key);
-  const cached = exampleIdentities.get(slug);
-  // A mounted tab owns its session even when another tab opens or promotes this example.
-  if (cached && typeof stored === "string") return cached;
-  const identity = (typeof stored !== "string" && cached) || `example:${slug}:${randomHex(4)}`;
-  const legacyIdentity = `example:${slug}`;
-  const previousIdentity = typeof stored === "string" ? stored : legacyIdentity;
-  const legacyThreadKey = AI_THREAD_PREFIX + previousIdentity;
-  const legacyThread = safeStorage.getItem(legacyThreadKey);
-  const autosaveKey = AUTOSAVE_PREFIX + slug;
-  const autosave = readDiagram(autosaveKey);
+  let identity = exampleIdentities.get(slug);
+  // The mounted canvas owns this identity even if persistence is temporarily unavailable.
+  if (!identity) {
+    identity = `example:${slug}:${randomHex(4)}`;
+    exampleIdentities.set(slug, identity);
+    const previousIdentity = typeof stored === "string" ? stored : `example:${slug}`;
+    const thread =
+      safeStorage.getItem(exampleConversationKey(slug)) ?? safeStorage.getItem(AI_THREAD_PREFIX + previousIdentity);
+    retainExampleConversation(identity, slug, thread);
+    pendingExampleSessions.set(slug, { previousIdentity, autosave: readDiagram(AUTOSAVE_PREFIX + slug) });
+  }
+  const pending = pendingExampleSessions.get(slug);
+  if (!pending) return identity;
+  const { previousIdentity, autosave } = pending;
   const writes: [string, string | null][] = [[key, JSON.stringify(identity)]];
   const bindings = read<Record<string, { sessionId: string; target: unknown }>>(BINDINGS_KEY);
   const binding = bindings?.[slug];
-  if (binding?.sessionId === previousIdentity && storedTarget(binding.target))
+  const target = binding?.sessionId === previousIdentity ? storedTarget(binding.target) : undefined;
+  if (target) {
+    memoryTargets.set(slug, { sessionId: identity, target });
     writes.push([BINDINGS_KEY, JSON.stringify({ ...bindings, [slug]: { ...binding, sessionId: identity } })]);
+  }
   if (autosave)
     writes.push([
-      autosaveKey,
+      AUTOSAVE_PREFIX + slug,
       JSON.stringify({ sessionFormat: SESSION_FORMAT, sessionId: identity, diagram: autosave }),
     ]);
-  if (legacyThread !== null) {
-    writes.push([AI_THREAD_PREFIX + identity, legacyThread]);
-    // Another mounted session may still own a modern thread; only retire the old unowned key.
-    if (previousIdentity === legacyIdentity) writes.push([legacyThreadKey, null]);
+  writes.push([exampleConversationKey(slug), retainedExampleConversation(identity) ?? null]);
+  // Old releases persisted one copy per mounted generation. Mounted tabs now retain snapshots
+  // in memory; only promoted library documents still own any of those durable generation keys.
+  const owned = new Set(readIndex().map((entry) => AI_THREAD_PREFIX + getDiagramIdentity(entry.slug)));
+  for (const threadKey of safeStorage.keys()) {
+    if (threadKey.startsWith(exampleConversationKey(slug) + ":") && !owned.has(threadKey))
+      writes.push([threadKey, null]);
   }
   try {
     commitWrites(writes);
+    pendingExampleSessions.delete(slug);
   } catch {
-    // A failed migration keeps its source keys readable and can retry on the next visit.
-    if (legacyThread === null) exampleIdentities.set(slug, identity);
-    return legacyThread !== null ? previousIdentity : identity;
+    // The canvas and conversation keep their identity and snapshot while storage recovers.
   }
-  exampleIdentities.set(slug, identity);
-  const target = binding?.sessionId === previousIdentity ? storedTarget(binding.target) : undefined;
-  if (target) memoryTargets.set(slug, { sessionId: identity, target });
   return identity;
 }
 
@@ -364,6 +379,11 @@ export function getOriginal(slug: string): DiagramFile | undefined {
 
 export function getAutosave(slug: string): DiagramFile | undefined {
   if (slug === DRAFT_SLUG) return undefined;
+  if (!slotKey(slug)) {
+    getDiagramIdentity(slug);
+    const pending = pendingExampleSessions.get(slug);
+    if (pending) return pending.autosave;
+  }
   const raw = read<Partial<DocumentSession>>(AUTOSAVE_PREFIX + slug);
   // Existing example autosaves predate sessions and remain valid.
   return readDiagram(
@@ -786,12 +806,17 @@ export function copyEditedExample(
     {
       writes: [
         [EXAMPLE_SESSION_PREFIX + slug, JSON.stringify(fresh)],
+        [AI_THREAD_PREFIX + identity, retainedExampleConversation(identity) ?? null],
+        [exampleConversationKey(slug), null],
         [AUTOSAVE_PREFIX + slug, null],
       ],
       beforePublish: (copy) => {
         exampleCopies.set(identity, { source: slug, slug: copy });
         memoryTargets.delete(slug);
         exampleIdentities.set(slug, fresh);
+        pendingExampleSessions.delete(slug);
+        transferExampleConversation(identity);
+        retainExampleConversation(fresh, slug, null);
       },
     },
   );

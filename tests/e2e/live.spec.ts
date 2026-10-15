@@ -1,3 +1,4 @@
+import { savedDiagram } from "./fixtures";
 import { currentDiagram } from "./fixtures";
 import { openExample } from "./fixtures";
 import type { Page } from "@playwright/test";
@@ -212,18 +213,8 @@ test.describe("live view", () => {
 
     await expect
       .poll(async () =>
-        page.evaluate(
-          (slug) => {
-            const stored = JSON.parse(localStorage.getItem(`diagrams.autosave.v1:${slug}`) ?? "null") as {
-              diagram?: { simulations?: { title: string; traffic: { messageType: string }[] }[] };
-              simulations?: { title: string; traffic: { messageType: string }[] }[];
-            } | null;
-            const saved = stored?.diagram ?? stored;
-            return saved?.simulations?.some(
-              (sim) => sim.title === "Month-end storm" && sim.traffic[0].messageType === "MemberJoined",
-            );
-          },
-          await currentDiagram(page),
+        (await savedDiagram(page)).simulations?.some(
+          (sim) => sim.title === "Month-end storm" && sim.traffic[0].messageType === "MemberJoined",
         ),
       )
       .toBe(true);

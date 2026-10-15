@@ -1,3 +1,4 @@
+import { currentDiagram, savedDiagram } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import { customColoursFixture } from "../../src/lab/customColoursFixture";
@@ -23,15 +24,11 @@ async function seed(page: Page, theme = "light") {
 }
 
 async function colours(page: Page) {
-  return page.evaluate((key) => {
-    const d = JSON.parse(localStorage.getItem(key) ?? "{}");
-    return {
-      color: d.color,
-      annotations: d.annotations
-        ?.map((a: { id: string; color?: string }) => [a.id, a.color])
-        .sort(([a]: [string], [b]: [string]) => a.localeCompare(b)),
-    };
-  }, KEY);
+  const d = await savedDiagram(page);
+  return {
+    color: d.color,
+    annotations: d.annotations?.map((a) => [a.id, a.color]).sort(([a], [b]) => (a ?? "").localeCompare(b ?? "")),
+  };
 }
 
 async function dismiss(page: Page, how: string) {
@@ -145,7 +142,8 @@ for (const theme of ["light", "dark"]) {
     await expect.poll(background).toBe(before);
     await page.getByTestId("redo-button").click();
     await expect.poll(background).toBe(tinted);
-    await page.goto(`./?view=canvas&example=${SLUG}&present=1`);
+    await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pagehide")));
+    await page.goto(`./?view=canvas&example=${await currentDiagram(page)}&present=1`);
     await expect(canvas).toBeVisible();
     await expect.poll(background).toBe(tinted);
     expectNoErrors(consoleErrors);

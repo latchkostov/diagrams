@@ -58,6 +58,22 @@
   retains its per-key run counts. Cancellation tests keep the same traffic on a smaller canvas.
 - Application output is unchanged; no parity goldens changed.
 
+## Example gallery round 4 review fixes (2026-10-15)
+
+- A failed conversation migration keeps the mounted canvas identity through storage recovery.
+  Pending edits, promotion, autosave, Undo and Redo survive without remounting the canvas.
+- Examples retain one durable reload conversation. Mounted tabs keep independent snapshots;
+  promotion transfers the conversation into its owned diagram. Abandoned generations are reclaimed,
+  while active tabs and library-owned conversations remain available. Clear and Delete reclaim their data.
+- Public gallery runs wait for their document's live session and cancel after navigation, so an earlier
+  run cannot replace another diagram's requested simulation. No controls or visible wording were added.
+- Browser persistence assertions share one reader that follows the current owned slug, unwraps sessions
+  and requires a diagram. Cross-tab coverage awaits the receiving storage event and rendered library update.
+- All nine review findings were confirmed, with duplicate reports consolidated into five fixes.
+  No findings were rejected. Durable example conversations avoid adding ownership leases or cleanup timers.
+- No parity goldens change in this round. The skill viewer was refreshed, with plugin version 1.1.20
+  (one patch above master); diagram, simulation, planning, layout, export, agent and language outputs stay unchanged.
+
 ## Toolchain review fixes (2026-10-15)
 
 - CI and nightly share pnpm/Node setup, dependency caching and frozen installs. `package.json` owns

@@ -1,3 +1,4 @@
+import { savedDiagram } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors, gotoLive } from "./fixtures";
 
@@ -332,17 +333,7 @@ test.describe("entry points (sixth review)", () => {
     await page.getByTestId("capacity-save").click();
     await page.reload();
     await expect(page.getByTestId(`node-${id}`)).toBeVisible();
-    const saved = await page.evaluate((nodeId) => {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i) ?? "";
-        if (!key.startsWith("diagrams.doc.v1:") && !key.startsWith("diagrams.autosave.v1:")) continue;
-        type Doc = { nodes?: { id: string; props?: Record<string, unknown> }[] };
-        const stored = JSON.parse(localStorage.getItem(key) ?? "{}") as Doc & { diagram?: Doc };
-        const node = (stored.diagram ?? stored).nodes?.find((n) => n.id === nodeId);
-        if (node) return node.props?.ratePerSec;
-      }
-      return null;
-    }, id);
+    const saved = (await savedDiagram(page)).nodes.find((node) => node.id === id)?.props?.ratePerSec;
     expect(saved).toBe(5000);
   });
 

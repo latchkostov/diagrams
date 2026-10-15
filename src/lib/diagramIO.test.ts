@@ -26,9 +26,9 @@ class MemoryStorage {
 }
 const storage = new MemoryStorage();
 (globalThis as { localStorage?: unknown }).localStorage = storage;
-const io = await import("./diagramIO");
-const { newDiagramsPrivate } = await import("./privacyPrefs");
-const toast = await import("../interop/ui/toast");
+let io = await import("./diagramIO");
+let { newDiagramsPrivate } = await import("./privacyPrefs");
+let toast = await import("../interop/ui/toast");
 
 const good: DiagramFile = {
   format: "diagrams/v1",
@@ -45,12 +45,16 @@ const handle: FileHandle = {
 /** A device destination: the handle itself, kept in memory only. */
 const device: SaveTarget = { providerId: "device", ref: handle, name: handle.name };
 
-beforeEach(() => {
+beforeEach(async () => {
   storage.clear();
   storage.quotaBytes = Infinity;
   storage.failKey = undefined;
   storage.beforeWrite = undefined;
   vi.clearAllMocks();
+  vi.resetModules();
+  io = await import("./diagramIO");
+  ({ newDiagramsPrivate } = await import("./privacyPrefs"));
+  toast = await import("../interop/ui/toast");
 });
 
 describe("diagramIO storage goes through the shared validator", () => {
@@ -760,40 +764,110 @@ describe("first example edit", () => {
       if (withAutosave) storage.setItem(autosaveKey, JSON.stringify(edited));
       const identity = io.getDiagramIdentity(source);
       expect(loadThread(identity)).toEqual(thread.turns);
-      expect(storage.getItem(oldKey)).toBeNull();
+      expect(storage.getItem(oldKey)).toBe(JSON.stringify(thread));
       if (withAutosave) expect(io.getCurrent(source)).toEqual(edited);
       vi.resetModules();
       const reopened = await import("./diagramIO");
       await (await import("../examples")).loadExample(source);
       const reopenedIdentity = reopened.getDiagramIdentity(source);
       expect(reopenedIdentity).not.toBe(identity);
-      expect(loadThread(reopenedIdentity)).toEqual(thread.turns);
+      expect((await import("../ai/ui/thread")).loadThread(reopenedIdentity)).toEqual(thread.turns);
       const copy = reopened.copyEditedExample(source, edited, reopenedIdentity)!;
-      expect(loadThread(reopened.getDiagramIdentity(copy.slug))).toEqual(thread.turns);
+      expect((await import("../ai/ui/thread")).loadThread(reopened.getDiagramIdentity(copy.slug))).toEqual(
+        thread.turns,
+      );
       expect(storage.getItem(autosaveKey)).toBeNull();
-      expect(loadThread(reopened.getDiagramIdentity(source))).toEqual([]);
+      expect((await import("../ai/ui/thread")).loadThread(reopened.getDiagramIdentity(source))).toEqual([]);
       expect(reopened.getCurrent(source)).toEqual(original);
     },
   );
-  it("retains legacy source keys when conversation migration runs out of storage, then retries", async () => {
+  it.each([false, true])(
+    "keeps mounted identity and pending edits after migration failure (modern: %s)",
+    async (modern) => {
+      vi.resetModules();
+      const session = await import("./diagramIO");
+      const { loadThread } = await import("../ai/ui/thread");
+      const source = "kafka-order-pipeline";
+      await (await import("../examples")).loadExample(source);
+      const previousIdentity = `example:${source}${modern ? ":previous" : ""}`;
+      const oldKey = `diagrams.ai-thread.v1:${previousIdentity}`;
+      const autosaveKey = `diagrams.autosave.v1:${source}`;
+      const turns = [{ id: "kept", at: 1, request: "Keep me", kind: "explain", changed: [], after: good }];
+      const thread = JSON.stringify({ turns });
+      storage.setItem(oldKey, thread);
+      if (modern) storage.setItem(`diagrams.example-session.v1:${source}`, JSON.stringify(previousIdentity));
+      storage.setItem(
+        autosaveKey,
+        JSON.stringify(
+          modern ? { sessionFormat: "diagrams/session/v1", sessionId: previousIdentity, diagram: good } : good,
+        ),
+      );
+      storage.failKey = `diagrams.example-session.v1:${source}`;
+      const identity = session.getDiagramIdentity(source);
+      expect(loadThread(identity)).toEqual(turns);
+      expect(session.getCurrent(source)).toEqual(good);
+      expect(session.getDiagramIdentity(source)).toBe(identity);
+      const edited = {
+        ...good,
+        title: "Pending while full",
+        nodes: good.nodes.map((node) => ({ ...node, label: "Pending edit" })),
+      };
+      expect(() => session.copyEditedExample(source, edited, identity)).toThrow();
+      expect(storage.getItem(oldKey)).toBe(thread);
+      storage.failKey = undefined;
+      expect(session.getDiagramIdentity(source)).toBe(identity);
+      expect(session.writeAutosave(source, edited, identity)).toBe(true);
+      const copy = session.copyEditedExample(source, edited, identity)!;
+      expect(copy).toBeDefined();
+      expect(session.getDiagramIdentity(copy.slug)).toBe(identity);
+      expect(session.writeAutosave(copy.slug, { ...edited, title: "Recovered" }, identity)).toBe(true);
+      expect(session.getCurrent(copy.slug)).toMatchObject({ title: "Recovered", nodes: [{ label: "Pending edit" }] });
+      expect(loadThread(identity)).toEqual(turns);
+    },
+  );
+  it("bounds conversations across reloads and closes while preserving active tabs and library owners", async () => {
+    vi.resetModules();
     const source = "kafka-order-pipeline";
-    const oldKey = `diagrams.ai-thread.v1:example:${source}`;
-    const autosaveKey = `diagrams.autosave.v1:${source}`;
-    const thread = JSON.stringify({ turns: [{ id: "kept", request: "Keep me", kind: "explain", changed: [] }] });
-    storage.setItem(oldKey, thread);
-    storage.setItem(autosaveKey, JSON.stringify(good));
-    storage.beforeWrite = (key) => {
-      if (key.startsWith("diagrams.ai-thread.v1:example:") && key !== oldKey) storage.failKey = key;
-    };
-    expect(io.getDiagramIdentity(source)).toBe(`example:${source}`);
-    expect(storage.getItem(oldKey)).toBe(thread);
-    expect(storage.getItem(autosaveKey)).toBe(JSON.stringify(good));
-    storage.beforeWrite = undefined;
-    storage.failKey = undefined;
-    const identity = io.getDiagramIdentity(source);
-    expect(identity).not.toBe(`example:${source}`);
-    expect(storage.getItem(`diagrams.ai-thread.v1:${identity}`)).toBe(thread);
-    expect(io.getCurrent(source)?.title).toBe("Good");
+    const canonical = `diagrams.ai-thread.v1:example:${source}`;
+    const turns = [{ id: "kept", at: 1, request: "Keep me", kind: "explain" as const, changed: [], after: good }];
+    // Include orphan generations left by older releases.
+    storage.setItem(canonical + ":abandoned", JSON.stringify({ turns }));
+    storage.setItem(canonical + ":superseded", JSON.stringify({ turns }));
+    storage.setItem(`diagrams.example-session.v1:${source}`, JSON.stringify(`example:${source}:superseded`));
+    const active = await import("./diagramIO");
+    await (await import("../examples")).loadExample(source);
+    const activeThread = await import("../ai/ui/thread");
+    const activeId = active.getDiagramIdentity(source);
+    expect(activeThread.loadThread(activeId)).toEqual(turns);
+    const threadKeys = () =>
+      Array.from({ length: storage.length }, (_, i) => storage.key(i)).filter((key) =>
+        key?.startsWith("diagrams.ai-thread.v1:"),
+      );
+    for (let reload = 0; reload < 5; reload++) {
+      vi.resetModules();
+      const reopened = await import("./diagramIO");
+      const id = reopened.getDiagramIdentity(source);
+      expect((await import("../ai/ui/thread")).loadThread(id)).toEqual(turns);
+      expect(threadKeys()).toEqual([canonical]);
+      // Dropping this module models a closed/reloaded page: no per-page key survives it.
+    }
+    const activeTurns = [{ ...turns[0], request: "Still active" }];
+    activeThread.saveThread(activeId, activeTurns);
+    expect(activeThread.loadThread(activeId)).toEqual(activeTurns);
+    expect(threadKeys()).toEqual([canonical]);
+    const copy = active.copyEditedExample(source, good, activeId)!;
+    expect(activeThread.loadThread(activeId)).toEqual(activeTurns);
+    vi.resetModules();
+    const latest = await import("./diagramIO");
+    const latestThread = await import("../ai/ui/thread");
+    const latestId = latest.getDiagramIdentity(source);
+    expect(latestThread.loadThread(latestId)).toEqual([]);
+    expect(latestThread.loadThread(activeId)).toEqual(activeTurns);
+    latestThread.saveThread(latestId, turns);
+    latestThread.saveThread(latestId, []);
+    expect(threadKeys()).toEqual([`diagrams.ai-thread.v1:${activeId}`]);
+    latest.deleteLibraryDiagram(copy.slug);
+    expect(threadKeys()).toEqual([]);
   });
   it("creates a named copy with the same canvas identity and leaves a fresh original", async () => {
     const { loadExample } = await import("../examples");

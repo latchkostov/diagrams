@@ -529,33 +529,31 @@ function MainApp() {
               if (localOnly) query.delete("sim");
               else query.set("sim", simulation);
               window.history.replaceState(null, "", `${window.location.pathname}?${query}${window.location.hash}`);
-              if (localOnly) {
-                // Never serialize local simulation ids, even briefly. Wait for this canvas's
-                // session rather than leaving a pending run that could reach another diagram.
-                const identity = getDiagramIdentity(example);
-                const start = () => {
-                  const current = new URLSearchParams(window.location.search);
-                  if (current.get("view") !== "canvas" || current.get("example") !== example || !current.has("live")) {
-                    cancel();
-                    return;
-                  }
-                  const host = paletteHost.get();
-                  if (host.canvas?.documentId !== identity || !host.live) return;
-                  if (!host.session) {
-                    host.live.goLive();
-                    return;
-                  }
+              // Wait for this document's session, including for public examples. A global
+              // pending run can otherwise be consumed by a different canvas after navigation.
+              const identity = getDiagramIdentity(example);
+              const start = () => {
+                const current = new URLSearchParams(window.location.search);
+                if (current.get("view") !== "canvas" || current.get("example") !== example || !current.has("live")) {
                   cancel();
-                  if (!host.session.disabledHint) host.session.run(simulation);
-                };
-                const off = paletteHost.subscribe(start);
-                const cancel = () => {
-                  off();
-                  cancelGalleryRun.current = null;
-                };
-                cancelGalleryRun.current = cancel;
-                start();
-              } else if (example === slug) paletteHost.runSimulation(simulation);
+                  return;
+                }
+                const host = paletteHost.get();
+                if (host.canvas?.documentId !== identity || !host.live) return;
+                if (!host.session) {
+                  host.live.goLive();
+                  return;
+                }
+                cancel();
+                if (!host.session.disabledHint) host.session.run(simulation);
+              };
+              const off = paletteHost.subscribe(start);
+              const cancel = () => {
+                off();
+                cancelGalleryRun.current = null;
+              };
+              cancelGalleryRun.current = cancel;
+              start();
             }
           }}
         />

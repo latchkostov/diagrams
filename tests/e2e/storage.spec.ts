@@ -7,8 +7,6 @@ import { test, expect, gotoCanvas, publicExamples, expectNoErrors } from "./fixt
 
 const TEST_FILES = "diagrams.test-storage.v1";
 const FAIL = "diagrams.test-storage.fail";
-/** An example saves under its slug (your own diagrams under their title). */
-const FIRST = `${publicExamples[0].slug}.diagram.json`;
 
 interface TestFile {
   id: string;
@@ -82,16 +80,18 @@ test.describe("storage providers", () => {
 
     // Save to ▸ Test storage: a new file, and the diagram is now bound to it.
     await setTitle(page, "Cloud round trip");
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+    const filename = "cloud-round-trip.diagram.json";
     await submenuItem(page, "file-save-to", "save-to-test");
-    await expect(page.getByTestId("toast")).toContainText(`Saved to Test storage as ${FIRST}.`);
+    await expect(page.getByTestId("toast")).toContainText(`Saved to Test storage as ${filename}.`);
     await expect(page.getByTestId("save-status")).toHaveText("Saved to Test storage · just now");
     let stored = await files(page);
-    expect(stored.map((f) => f.name)).toEqual([FIRST]);
+    expect(stored.map((f) => f.name)).toEqual([filename]);
     expect(JSON.parse(stored[0].text).title).toBe("Cloud round trip");
 
     // Save (Ctrl+S) writes over the same file.
     await openMenu(page);
-    await expect(page.getByTestId("file-save")).toContainText(`To Test storage: ${FIRST}`);
+    await expect(page.getByTestId("file-save")).toContainText(`To Test storage: ${filename}`);
     await page.keyboard.press("Escape");
     await setTitle(page, "Cloud round trip, edited");
     await page.keyboard.press("Control+s");
@@ -104,7 +104,7 @@ test.describe("storage providers", () => {
     await submenuItem(page, "file-open-from", "open-from-test");
     const dialog = page.getByTestId("storage-files-dialog");
     await expect(dialog).toContainText("Open from Test storage", { timeout: 20_000 }); // lazy chunk
-    await expect(dialog.getByTestId("storage-file-0")).toContainText(FIRST);
+    await expect(dialog.getByTestId("storage-file-0")).toContainText(filename);
     await dialog.getByTestId("storage-file-0").click();
     await expect(dialog).toHaveCount(0);
     await expect(page.getByTestId("diagram-title")).toHaveText("Cloud round trip, edited");
@@ -123,7 +123,7 @@ test.describe("storage providers", () => {
     await page.getByTestId("save-to-test").click();
     await expect
       .poll(async () => (await files(page)).map((f) => f.name))
-      .toEqual([FIRST, "opened-and-saved-back.diagram.json"]);
+      .toEqual([filename, "opened-and-saved-back.diagram.json"]);
     expectNoErrors(consoleErrors);
   });
 
