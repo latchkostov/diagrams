@@ -454,7 +454,7 @@ function NodePanel({
   const merge = (f: string) => ({ merge: `inspector:node:${node.id}:${f}` });
   const [picker, setPicker] = useState<{ x: number; y: number } | null>(null);
   const broker = brokerSpec(node.data.stencil, role, meta.planning);
-  const simFields = nodeSimFields(role, node.data.stencil, meta.planning);
+  const simFields = nodeSimFields(role, node.data.stencil, meta.planning, props);
   const managed =
     (meta.planning?.revision === "p3" || meta.planning?.revision === "p3-a1") && !!managedKind(node.data.stencil);
   const device = role === "gateway" ? deviceSpec(node.data.stencil) : undefined;
@@ -597,40 +597,31 @@ function NodePanel({
             props={props}
             set={(patch, key) => editor.setNodeProps(node.id, patch, key ? merge(key) : undefined)}
           >
-            {simFields
-              .filter(
-                (k) =>
-                  !(
-                    props.autoscaling &&
-                    (props.autoscaling as NodeSimProps["autoscaling"])?.mode === "on" &&
-                    k === "replicas"
-                  ),
-              )
-              .map((k) => (
-                <SimInput
-                  key={k}
-                  name={k}
-                  field={
-                    k === "partitions"
-                      ? {
-                          ...SIM_FIELDS[k]!,
-                          label: assignmentLabel(broker),
-                          hint: t("broker.assignmentHint"),
-                          note:
-                            meta.planning?.revision === "p2" ||
-                            meta.planning?.revision === "p3" ||
-                            meta.planning?.revision === "p3-a1"
-                              ? undefined
-                              : SIM_FIELDS[k]!.note,
-                        }
-                      : k === "replicas"
-                        ? { ...SIM_FIELDS[k]!, hint: t("broker.replicaHint") }
-                        : SIM_FIELDS[k]!
-                  }
-                  value={props[k]}
-                  onChange={(v) => editor.setNodeProps(node.id, { [k]: v }, merge(k))}
-                />
-              ))}
+            {simFields.map((k) => (
+              <SimInput
+                key={k}
+                name={k}
+                field={
+                  k === "partitions"
+                    ? {
+                        ...SIM_FIELDS[k]!,
+                        label: assignmentLabel(broker),
+                        hint: t("broker.assignmentHint"),
+                        note:
+                          meta.planning?.revision === "p2" ||
+                          meta.planning?.revision === "p3" ||
+                          meta.planning?.revision === "p3-a1"
+                            ? undefined
+                            : SIM_FIELDS[k]!.note,
+                      }
+                    : k === "replicas"
+                      ? { ...SIM_FIELDS[k]!, hint: t("broker.replicaHint") }
+                      : SIM_FIELDS[k]!
+                }
+                value={props[k]}
+                onChange={(v) => editor.setNodeProps(node.id, { [k]: v }, merge(k))}
+              />
+            ))}
           </AutoscalingWorkload>
         ) : isClusterWrapper(node.data.stencil) ? (
           <p className="insp-note" data-testid="broker-wrapper">
@@ -1601,7 +1592,7 @@ function BulkNodes({ editor, selectedNodes, groups, meta }: InspectorProps) {
   const stencil = typeof stencilId === "string" ? getStencil(stencilId) : null;
   const group = shared(selectedNodes, (n) => n.data.group ?? "");
   const fields = selectedNodes.map((n) =>
-    nodeSimFields(getStencil(n.data.stencil).simRole, n.data.stencil, meta.planning),
+    nodeSimFields(getStencil(n.data.stencil).simRole, n.data.stencil, meta.planning, n.data.props),
   );
   const simKeys = fields[0].filter((k) => fields.every((keys) => keys.includes(k)));
   const assignmentLabels = [

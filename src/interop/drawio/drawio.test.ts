@@ -242,10 +242,10 @@ describe("round-trip: every public example through draw.io", () => {
         JSON.parse(
           JSON.stringify({
             ...ex,
-            // The draw.io adapter currently preserves graph/workload fields but emits v1.
-            // Planning-model preservation is tracked in docs/BACKLOG.md; keep that loss explicit.
-            format: "diagrams/v1",
-            planning: undefined,
+            // A1 resource data requires its revision; older planning-model loss remains explicit
+            // (docs/BACKLOG.md) for the other showcases.
+            format: ex.planning?.revision === "p3-a1" ? "diagrams/v2" : "diagrams/v1",
+            planning: ex.planning?.revision === "p3-a1" ? ex.planning : undefined,
             groups: ex.groups?.map((g) => ({ ...g, tone: g.tone ?? "neutral" })),
             edges: ex.edges.map((e) => ({ ...e, kind: e.kind ?? "async" })),
           }),

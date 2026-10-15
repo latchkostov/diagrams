@@ -108,6 +108,30 @@ goldens match, with the eight previously documented browser deferrals.
   diagram and 1.5× ratio. Simulation samples start after worker progress arrives; the checks test
   retains its per-key run counts. Cancellation tests keep the same traffic on a smaller canvas.
 - Application output is unchanged; no parity goldens changed.
+
+## Autoscaling A1 round 4 review fixes (2026-10-15)
+
+- HPA owns replica editing consistently in single and mixed bulk selections. Refused capacity inputs
+  announce recovery guidance and retain the previous accepted inputs.
+- Retry refusals release reservations; disabling resources clears working, queued and staged attempts.
+  Memory metrics include the final processing quantum, paused retries retain their backoff, and small
+  fleets make progress under fractional percentage downscale policies.
+- Sampled CPU accounting has a shared 20,000-part limit, checked before allocations and lifecycle
+  splits. Excess work waits without losing messages; the existing live notice explains recovery,
+  including scripted/manual bursts. Metric windows are cached until their actual membership changes;
+  readiness defers replica-index rebuilds until an inspector requests a page. Aggregate and per-replica
+  inspector readings share one clock when opened between live publications.
+- Persisted resource schemas now require p3-a1, including simulation setup and timeline patches.
+  The general edit-property schema remains separate. A 200-seed per-step invariant suite runs with
+  unit tests; nightly expands it to 5,000 seeds and failures print a reduced reproduction. Seed 3
+  additionally found a missing pause timestamp when resources are enabled on a paused service.
+- Three shared parity goldens change for A1 contracts/copy and the rebased example inventory: `node/skill/public-schemas.json`
+  records revision-aware diagram v1/v2 schemas; `node/i18n/catalogs.json` records the added A1 CPU
+  recovery message and its English fallbacks; `node/skill/current-stencils.json` combines the A1
+  showcase with six showcases from the rebase in the current stencil ranking. All diagram outputs,
+  including every A1 run, and all
+  browser goldens remain unchanged. Details: [round 4 review](research/autoscaling-a1-round4-review.md).
+
 ## Autoscaling A1 round 3 review fixes (2026-10-15)
 
 - Saving Capacity × now applies the saved HPA policy and multiplier together, preserving the running

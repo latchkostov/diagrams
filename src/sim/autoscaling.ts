@@ -1,3 +1,4 @@
+import { createCpuPartBudget, type CpuPartBudget } from "./resourceWork";
 import type { SampledWork } from "./sampledResources";
 import type { ComputeResources, HpaController, ScalingMetric } from "../model/autoscaling";
 import { replicaRange } from "../model/autoscaling";
@@ -61,6 +62,7 @@ interface BusyReplica {
 }
 /** No idle-pod objects: ranges describe identical ready/starting replicas. Only admitted identities expand. */
 export interface Fleet {
+  partBudget: CpuPartBudget;
   desired: number;
   ready: number;
   starting: number;
@@ -99,9 +101,10 @@ export interface Fleet {
   rangesDirty: boolean;
   startupHash?: number;
 }
-export function createFleet(count: number, syncMs = 15_000): Fleet {
+export function createFleet(count: number, syncMs = 15_000, partBudget = createCpuPartBudget()): Fleet {
   count = Number.isFinite(count) ? Math.max(0, Math.min(10_000, Math.round(count))) : 0;
   return {
+    partBudget,
     desired: count,
     ready: count,
     starting: 0,
@@ -339,7 +342,7 @@ export function reconcileFleet(
       f.ready--;
       delta++;
     }
-  if (lifecycleChanged) indexReplicas(f);
+  if (lifecycleChanged) f.replicaIndexDirty = true;
 }
 /** Readiness jitter stops fragmenting idle work; active sampled boundaries keep their CPU budgets. */
 export function compactReadyRanges(f: Fleet, working: readonly SampledWork[]) {
@@ -374,8 +377,8 @@ export function advanceFleet(f: Fleet, now: number, working: readonly SampledWor
   }
   if (changed) {
     f.rangesDirty = true;
-    compactReadyRanges(f, working);
-    indexReplicas(f);
+    if (!f.starts.length) compactReadyRanges(f, working);
+    f.replicaIndexDirty = true;
   }
   return changed;
 }
@@ -404,15 +407,51 @@ export function integrateResources(f: Fleet, occupancy: number, now: number, ste
   f.history.push({ time: now, desired: f.desired, ready: f.ready, starting: f.starting, draining: drainingCount(f) });
   if (f.history.length > 600) f.history.shift();
 }
+// Window membership changes only at a published-second boundary. Keep live occupancy/CPU outside.
+const metricCache = new WeakMap<
+  Fleet,
+  {
+    first?: Sample;
+    last?: Sample;
+    length: number;
+    windows: Map<
+      string,
+      { count: number; cpu: number; occupancy: number; lastOccupancy: number; from: number; until: number }
+    >;
+  }
+>();
+function metricWindow(f: Fleet, end: number, windowMs: number) {
+  let cache = metricCache.get(f);
+  if (!cache || cache.first !== f.samples[0] || cache.last !== f.samples.at(-1) || cache.length !== f.samples.length) {
+    cache = { first: f.samples[0], last: f.samples.at(-1), length: f.samples.length, windows: new Map() };
+    metricCache.set(f, cache);
+  }
+  const key = String(windowMs);
+  let value = cache.windows.get(key);
+  if (!value || end < value.from || end >= value.until) {
+    value = { count: 0, cpu: 0, occupancy: 0, lastOccupancy: 0, from: end, until: Infinity };
+    for (const sample of f.samples) {
+      if (sample.at > end) value.until = Math.min(value.until, sample.at);
+      if (sample.at + windowMs > end) value.until = Math.min(value.until, sample.at + windowMs);
+      if (sample.at > end - windowMs && sample.at <= end) {
+        value.count++;
+        value.cpu += sample.cpu;
+        value.occupancy += sample.occupancy;
+        value.lastOccupancy = sample.occupancy;
+      }
+    }
+    if (cache.windows.size >= 32) cache.windows.clear();
+    cache.windows.set(key, value);
+  }
+  return value;
+}
 function metricValue(f: Fleet, r: ComputeResources, m: ScalingMetric, now: number, scale: number): number | undefined {
   const end = now - m.metricDelayMs;
   if (end < m.windowMs || !f.ready) return undefined;
-  const samples = f.samples.filter((s) => s.at > end - m.windowMs && s.at <= end);
-  if (!samples.length) return undefined;
-  const cpu = samples.reduce((sum, s) => sum + s.cpu, 0) / (samples.length * 1000);
-  // Sampled occupancy is time integrated, distributed across the homogeneous eligible fleet.
-  const occupancy =
-    scale > 1 ? samples.reduce((sum, s) => sum + s.occupancy, 0) / samples.length : samples.at(-1)!.occupancy;
+  const window = metricWindow(f, end, m.windowMs);
+  if (!window.count) return undefined;
+  const cpu = window.cpu / (window.count * 1000);
+  const occupancy = scale > 1 ? window.occupancy / window.count : window.lastOccupancy;
   const absolute =
     m.source.resource === "cpu"
       ? (cpu * 1000) / f.ready
@@ -486,8 +525,7 @@ export function evaluateHpa(
     const bounds = behaviour.policies.map((p) => {
       const changes = f.changes.filter((h) => h.at > now - p.periodMs);
       const base = f.desired - changes.reduce((sum, h) => sum + h.delta, 0);
-      const count =
-        p.type === "Pods" ? p.value : up ? Math.ceil((base * p.value) / 100) : Math.floor((base * p.value) / 100);
+      const count = p.type === "Pods" ? p.value : Math.ceil((base * p.value) / 100);
       return up ? base + count : Math.max(0, base - count);
     });
     const bound =

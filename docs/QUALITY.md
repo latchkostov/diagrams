@@ -205,3 +205,19 @@ app and fails if any of that reaches the startup JavaScript (the entry and what 
 first view, or if the canvas splits into more chunks. `scripts/perf/startup.mjs` measures paint, time to
 interactive and the first open of the File menu, the dialogs, Ctrl+K, quick-add, the AI panel and live view on
 a production build, at a CPU and network throttle (`--cold`: each on a fresh page as soon as it's up).
+
+## A1 bookkeeping invariants
+
+`src/sim/resourceInvariants.ts` is an opt-in ownership oracle. Ordinary playback does not execute it.
+`autoscaling.invariants.test.ts` checks every internal 10 ms simulation step across 200 deterministic
+small diagrams/event sequences: bursts, broker retries and refusals, pause/resume, live resource
+removal/re-enabling, HPA edits and fractional downscale. It independently counts ready/starting/draining
+identities, checks reservations against live attempts, exact-fleet baseline plus in-flight memory,
+queued/staged cleanup, finite metrics, preserved paused deadlines and the run-wide sampled CPU-part
+budget. Sampled memory is a declared time-integrated estimate; its numerical state must stay finite.
+
+Failures print the seed, scale, diagram and reduced events (including explicit `unset` keys). Reduction
+removes event chunks, then individual events, then unneeded nodes. Events are 1-minimal for the failing
+invariant, not guaranteed globally shortest. Replay one seed with `A1_FUZZ_SEED=3 pnpm exec vitest run
+src/sim/autoscaling.invariants.test.ts`. `A1_FUZZ_NIGHTLY=1` expands to 5,000 seeds in the nightly workflow.
+Keep new bookkeeping transitions in this generator as well as adding focused regressions.

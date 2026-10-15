@@ -48,6 +48,8 @@ export interface NodeTweak {
 }
 
 export interface LiveState {
+  /** Recoverable run-wide CPU accounting refusal, also applies to manual/scripted bursts. */
+  resourceError?: string;
   playing: boolean;
   speed: number;
   traffic: boolean;
@@ -222,6 +224,7 @@ export class LiveController {
       else this.tweaks.delete(id);
     }
     this.state = {
+      ...(this.engine.trafficLimit() === "resources" ? { resourceError: t("autoscaling.cpuBudget") } : {}),
       scale: resolveScale(snapshot.scale),
       playing: this.playing,
       speed: this.speed,
@@ -430,7 +433,13 @@ export class LiveController {
 
   trafficHint(): string | undefined {
     const limit = this.engine.trafficLimit();
-    return limit === "rate" ? t("live.sourceRateLimit") : limit === "volume" ? t("live.sourceVolumeLimit") : undefined;
+    return limit === "rate"
+      ? t("live.sourceRateLimit")
+      : limit === "volume"
+        ? t("live.sourceVolumeLimit")
+        : limit === "resources"
+          ? t("autoscaling.cpuBudget")
+          : undefined;
   }
 
   setTraffic(on: boolean): void {

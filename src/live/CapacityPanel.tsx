@@ -98,6 +98,7 @@ export const CapacityPanel = memo(function CapacityPanel({
   disabledHint,
 }: Props) {
   const locale = useLocale();
+  const [inputError, setInputError] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [heldRows, setHeldRows] = useState<ReturnType<typeof selectRows> | null>(null);
   const [resetVersion, setResetVersion] = useState(0);
@@ -118,8 +119,13 @@ export const CapacityPanel = memo(function CapacityPanel({
 
   const set = (next: LiveInputs) => {
     if (disabledHint) return;
-    onChange?.();
-    c.setInputs(next);
+    try {
+      c.setInputs(next);
+      setInputError(null);
+      onChange?.();
+    } catch (error) {
+      setInputError(error instanceof Error ? error.message : String(error));
+    }
   };
   const setProp = (id: string, key: string, value: unknown) =>
     set({ ...inputs, props: { ...inputs.props, [id]: { ...inputs.props[id], [key]: value } } });
@@ -340,6 +346,11 @@ export const CapacityPanel = memo(function CapacityPanel({
           </p>
         </div>
 
+        {inputError && (
+          <p className="cap-error" role="alert" data-testid="capacity-input-error">
+            {inputError}
+          </p>
+        )}
         {error && (
           <p className="cap-error" role="alert" data-testid="capacity-save-error">
             {error}

@@ -754,6 +754,8 @@ describe("round 3 runtime regressions", () => {
     r.startup.jitterFraction = 0.5;
     reconcileFleet(f, 10_000, r, 0, 42, "worker");
     const check = () => {
+      // The selected inspector pays one rebuild per lifecycle batch; subsequent pages use the index.
+      fleets.replicaPage(f, r, 0, 1, 100);
       const expected = [...f.ranges.slice(f.rangeHead), ...f.starts]
         .flatMap((c) => Array.from({ length: c.last - c.first + 1 }, (_, i) => c.first + i))
         .sort((a, b) => a - b)

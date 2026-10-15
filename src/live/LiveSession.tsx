@@ -619,7 +619,7 @@ export function LiveSession({
   // a side panel's column, its height is the panel's business (trace.css).
   const cardRoom = useStore((s) => (state.trace && !panel.open ? roomUnderCard(s, presenting ? 392 : 352) : 0));
   // "Nothing has dead-lettered yet" is out of date once one has: the trace card takes over.
-  const shownNotice = notice === DEAD_LETTER_WAIT && state.trace?.current ? null : notice;
+  const shownNotice = state.resourceError ?? (notice === DEAD_LETTER_WAIT && state.trace?.current ? null : notice);
   const sendOne = useCallback(
     (nodeId: string) => controller.sendOne(nodeId, suggestedMessageType(getDiagram(), nodeId)),
     [controller, getDiagram],

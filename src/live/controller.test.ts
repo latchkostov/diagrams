@@ -4,7 +4,7 @@ import type { SimRole } from "../model/types";
 import { LiveController, structuralKey } from "./controller";
 import kafka from "../examples/kafka-order-pipeline.json";
 import { emptyInputs, freePlaySaveProps } from "./capacityModel";
-import { autoscalingFixture } from "../lab/autoscalingFixture";
+import { autoscalingFixture, sampledCpuBudgetFixture } from "../lab/autoscalingFixture";
 import { resourceLesson } from "../model/autoscaling";
 import * as admissions from "../sim/admission";
 
@@ -691,4 +691,22 @@ describe("A1 round 3 controller boundaries", () => {
     expect(c.snapshot()).toEqual(before);
     c.dispose();
   });
+});
+
+it("scripted sampled CPU budget refusal keeps work queued, announces recovery and survives checkpoints", () => {
+  const d = sampledCpuBudgetFixture();
+  const c = new LiveController(d);
+  c.selectSimulation(d.simulations![0]);
+  c.step(6000);
+  expect(c.getState().resourceError).toContain("New messages are waiting");
+  expect(c.snapshot().inSystem).toBe(200);
+  expect(c.snapshot().nodes.worker.backlog).toBeGreaterThan(0);
+  const before = c.snapshot();
+  const look = c.lookAhead();
+  look.step(100);
+  look.restore();
+  expect(c.snapshot()).toEqual(before);
+  c.restart();
+  expect(c.getState().resourceError).toBeUndefined();
+  c.dispose();
 });

@@ -350,3 +350,25 @@ volume and takes a few minutes). On CI, add the image pull and an install inside
   - the node card's gap 12 → 11 px (`src/styles/app.css`): 46 browser goldens (render, layout, SVG structure, PNG
     at 0.37%, the HTML viewer).
 - **Flake check:** five full runs in a row, no differences.
+
+## Autoscaling A1 round 4 (2026-10-15)
+
+Three shared contract/catalog goldens intentionally change:
+
+- `node/skill/public-schemas.json`: diagram v1/v2 schema hashes and the v2 definition list change.
+  Resource/autoscaling properties are forbidden before p3-a1, including simulation setup/timeline
+  patches. V2 adds legacy property/simulation definitions for its older revisions; the general patch
+  schema is unchanged.
+- `node/i18n/catalogs.json`: the A1 CPU-work refusal recovery message adds one English source key.
+  The per-language message count and autoscaling-area hash change, and untranslated languages count
+  its English fallback. No other language area changes.
+
+- `node/skill/current-stencils.json`: rebasing onto the six new master showcases regenerates the
+  current stencil usage ranking with the existing A1 showcase included. The old aggregate skill
+  inputs remain frozen at their existing 18 examples, so `skill/files.json` and `skill/validate.txt`
+  stay unchanged; the six new showcase validations keep master's individual coverage.
+
+Every simulation/controller, planning, check, trace, route, layout, export, import and browser golden
+is unchanged, including all A1 scenarios. The runtime fixes exercise edge cases outside the frozen
+runs; their failing-without-the-fix regressions and per-step invariants cover them separately. No
+simulation golden was re-recorded to accommodate a failure.

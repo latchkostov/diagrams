@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { makePayload } from "../../src/editor/clipboard";
 import { hpaLesson } from "../../src/model/autoscaling";
-import { autoscalingFixture } from "../../src/lab/autoscalingFixture";
+import { autoscalingFixture, sampledCpuBudgetFixture } from "../../src/lab/autoscalingFixture";
 import {
   test,
   expect,
@@ -26,11 +26,14 @@ async function seed(
     replicas = 1,
     cpuProbe = false,
     readinessDelay = 0,
+    twoWorkers = false,
+    budget = false,
+    cpuBudget = false,
   } = {},
 ) {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.emulateMedia({ colorScheme: dark ? "dark" : "light" });
-  const d = autoscalingFixture();
+  const d = cpuBudget ? sampledCpuBudgetFixture() : autoscalingFixture();
   const workload = d.nodes[1].props;
   if (fixed && workload) {
     delete workload.resources;
@@ -49,12 +52,40 @@ async function seed(
       cpuMsPerMessage: 500,
     };
   }
+  if (twoWorkers) {
+    d.nodes = [
+      d.nodes[1],
+      {
+        ...structuredClone(d.nodes[1]),
+        id: "worker2",
+        x: 800,
+        props: { ...d.nodes[1].props, autoscaling: { mode: "off" } },
+      },
+    ];
+    d.edges = [];
+  }
+  if (budget) {
+    const worker = d.nodes[1];
+    d.nodes = [
+      d.nodes[0],
+      ...Array.from({ length: 25 }, (_, i) => ({
+        ...structuredClone(worker),
+        id: i === 0 ? "worker" : `worker-${i}`,
+        x: 440 + (i % 5) * 330,
+        y: Math.floor(i / 5) * 180,
+        props: { ...worker.props, replicas: 1000, autoscaling: { mode: "off" } },
+      })),
+    ];
+  }
   if (older) d.planning = { revision: "p3" };
   await page.addInitScript(
     ({ key, d, locale }) => {
       localStorage.setItem(key, JSON.stringify(d));
       localStorage.setItem("diagrams.locale", locale);
-      localStorage.setItem("diagrams.inspector.open.v1", JSON.stringify({ "node-simulation": true }));
+      localStorage.setItem(
+        "diagrams.inspector.open.v1",
+        JSON.stringify({ "node-simulation": true, "multi-simulation": true }),
+      );
     },
     { key: STORAGE_KEYS.autosavePrefix + slug, d, locale },
   );
@@ -416,4 +447,56 @@ test("A1 refused paste announces model compatibility and opens the upgrade previ
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("autoscaling-upgrade-preview")).toHaveAttribute("aria-expanded", "false");
   await expect(page.getByTestId("planning-upgrade-preview")).toHaveCount(0);
+});
+
+for (const live of [false, true])
+  test(`A1: mixed bulk selection hides HPA-owned replicas (live=${live})`, async ({ page, consoleErrors }) => {
+    await seed(page, { twoWorkers: true });
+    await page.getByTestId("node-worker").click();
+    await page.keyboard.press("Control+a");
+    if (live) {
+      await page.getByTestId("live-toggle").click();
+      await expect(page.getByTestId("live-controls")).toBeVisible();
+      await page.getByTestId("inspector-toggle").click();
+    }
+    await expect(page.getByTestId("inspector-field-latencyMs")).toBeVisible();
+    await expect(page.getByTestId("inspector-field-replicas")).toHaveCount(0);
+    expectNoErrors(consoleErrors);
+  });
+
+test("A1: capacity input budget refusals are announced and recover without losing prior inputs", async ({
+  page,
+  consoleErrors,
+}) => {
+  await seed(page, { live: true, budget: true });
+  await page.getByTestId("live-capacity").click();
+  await expect(page.getByTestId("capacity-panel")).toBeVisible();
+  const field = page.getByTestId("capacity-replicas-worker");
+  await field.fill("1001");
+  await field.press("Tab");
+  await expect(page.getByTestId("capacity-input-error")).toContainText("Resource lifecycle budget exceeded");
+  await page.getByTestId("capacity-close").click();
+  await page.getByTestId("live-capacity").click();
+  await expect(field).toHaveValue("1000");
+  await field.fill("999");
+  await field.press("Tab");
+  await expect(page.getByTestId("capacity-input-error")).toHaveCount(0);
+  await expect(field).toHaveValue("999");
+  expectNoErrors(consoleErrors);
+});
+
+test("A1: scripted CPU refusal uses the live notice with traffic off and clears on restart", async ({
+  page,
+  consoleErrors,
+}) => {
+  await seed(page, { live: true, cpuBudget: true });
+  await pauseClock(page);
+  await page.getByTestId("live-sim-picker").selectOption("cpu-budget");
+  if ((await page.getByTestId("live-play").getAttribute("data-state")) === "paused")
+    await page.getByTestId("live-play").click();
+  await page.clock.runFor(6000);
+  await expect(page.getByTestId("live-notice")).toContainText("New messages are waiting");
+  await page.getByTestId("live-restart").click();
+  await expect(page.getByTestId("live-notice")).toHaveCount(0);
+  expectNoErrors(consoleErrors);
 });

@@ -362,7 +362,7 @@ export interface SimEngine {
   /** Apply patches and an optional capacity multiplier with one incremental allocation pass. */
   setNodePropsBatch(patches: Record<string, NodeSimProps>, capacityMultiplier?: number): void;
   /** Continuous sources are disabled when their sampled rate or per-run volume exceeds the safety budget. */
-  trafficLimit(): "rate" | "volume" | undefined;
+  trafficLimit(): "rate" | "volume" | "resources" | undefined;
   /** Continuous traffic from every source node at its ratePerSec, subject to trafficLimit(). */
   setTraffic(on: boolean): void;
   /** Time multiplier (0.25 – 8). Default 1. */
@@ -372,6 +372,8 @@ export interface SimEngine {
 }
 
 export interface EngineOptions {
+  /** Optional per-step diagnostic; excluded from ordinary playback. */
+  verifyResources?: (state: import("./resourceInvariants").ResourceState) => void;
   /** PRNG seed for deterministic runs (tests). Default random. */
   seed?: number;
   /** Resolve a stencil id to its sim role. Default uses the stencil registry. */
