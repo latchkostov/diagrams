@@ -10,7 +10,7 @@ import { upgradePlanning } from "../planning/migration";
 
 const RULE_BY_ID = new Map(ALL_RULES.map((r) => [r.id, r]));
 
-// The regression snapshot over the 17 public examples (top level only; never ./private). Each finding here
+// The regression snapshot over the 23 public examples (top level only). Each finding here
 // was judged in docs/research/architecture-checks.md ("Batch 1: precision gate", "Batch 3: precision gate",
 // "Batch 4: precision gate"); a change to this list is a change to those tables. The batch 3 rules (sync-chain,
 // shared-database, entry-gateway, single-point) raise nothing on them, by the gate's tightening; of batch 4's,
@@ -48,10 +48,16 @@ const EXPECTED: Record<string, string[]> = {
   "outbox-saga-checkout": ["suggestion no-reader:payments-dlq"],
   "rag-assistant": ["suggestion dead-letter:ingest-q"],
   "webhook-ingestion": [],
+  "partitions-vs-subscriptions": ["warning capacity:log-readers"],
+  "shared-api-quotas": ["warning capacity:answer"],
+  "serverless-burst-buffer": ["warning capacity:direct", "suggestion dead-letter:queue"],
+  "measured-order-capacity": ["suggestion dead-letter:queue"],
+  "contoso-dmz": [],
+  "shared-worker-pool": ["warning capacity:worker"],
 };
 
 describe("checks on the public examples", () => {
-  it("covers exactly the 17 public examples", () => {
+  it("covers exactly the 23 public examples", () => {
     expect(Object.keys(bySlug).sort()).toEqual(Object.keys(EXPECTED).sort());
   });
 
@@ -80,6 +86,7 @@ describe("checks on the public examples", () => {
 });
 it("P3 precision gate adds no findings to the same materialized P2 public examples", () => {
   for (const d of Object.values(bySlug)) {
+    if (d.planning?.revision === "p3") continue; // These examples already require managed admission.
     const p2 = upgradePlanning(d);
     p2.planning = { revision: "p2" };
     const p3 = upgradePlanning(p2);

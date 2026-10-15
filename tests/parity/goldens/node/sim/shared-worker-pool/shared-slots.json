@@ -1,0 +1,121 @@
+{
+  "run": {
+    "time": 11780,
+    "totalMs": 16000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "order-log-lag-at", "label": "order-log: lag > 0", "status": "pass", "value": 0 },
+      { "id": "refund-log-lag-at", "label": "refund-log: lag > 0", "status": "pass", "value": 0 },
+      { "id": "ledger-processed-end", "label": "ledger: processed == 36", "status": "pass", "value": 36 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "orders" },
+      { "atMs": 0, "kind": "traffic", "label": "refunds" },
+      { "atMs": 1500, "kind": "note", "label": "Properties shows two Consumes rows, but one 4/s pool. At 6/s total, waiting work grows by about 2/s." },
+      { "atMs": 6000, "kind": "traffic", "label": "orders ends" },
+      { "atMs": 6000, "kind": "traffic", "label": "refunds ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "orders": { "replicas": [1, 1, 0] },
+        "refunds": { "replicas": [1, 1, 0] },
+        "order-log": { "lag": { "order-posting": 0 }, "replicas": [1, 1, 0] },
+        "refund-log": { "lag": { "refund-posting": 0 }, "replicas": [1, 1, 0] },
+        "worker": { "replicas": [1, 1, 0] },
+        "ledger": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 2,
+      "nodes": {
+        "orders": { "processed": 18, "throughput": 0.06494499729154754, "replicas": [1, 1, 0] },
+        "refunds": { "processed": 18, "throughput": 0.06494499729154754, "replicas": [1, 1, 0] },
+        "order-log": {
+          "processed": 18,
+          "throughput": 0.07853471184465513,
+          "lag": { "order-posting": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "refund-log": {
+          "processed": 18,
+          "throughput": 0.07853471184465513,
+          "lag": { "refund-posting": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "worker": { "processed": 34, "inFlight": 2, "throughput": 3.6688263092181885, "replicas": [1, 1, 0] },
+        "ledger": { "processed": 34, "throughput": 4.526150523474548, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 11780,
+    "inSystem": 0,
+    "real": {
+      "orders": { "processed": 18, "throughput": 0.01095220401761063, "replicas": [1, 1, 0] },
+      "refunds": { "processed": 18, "throughput": 0.01095220401761063, "replicas": [1, 1, 0] },
+      "order-log": {
+        "processed": 18,
+        "throughput": 0.013243948301755775,
+        "lag": { "order-posting": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "refund-log": {
+        "processed": 18,
+        "throughput": 0.013243948301755775,
+        "lag": { "refund-posting": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "worker": { "processed": 36, "throughput": 0.9786330125626135, "replicas": [1, 1, 0] },
+      "ledger": { "processed": 36, "throughput": 1.207318076347867, "replicas": [1, 1, 0] }
+    },
+    "edges": { "order-publish": 18, "refund-publish": 18, "read-orders": 18, "read-refunds": 18, "save": 36 }
+  },
+  "events": {
+    "total": 288,
+    "byKind": { "inject": 36, "process": 144, "deliver": 108 },
+    "byNode": {
+      "orders": { "inject": 18, "process": 18 },
+      "refunds": { "inject": 18, "process": 18 },
+      "order-log": { "deliver": 18, "process": 18 },
+      "refund-log": { "deliver": 18, "process": 18 },
+      "worker": { "deliver": 36, "process": 36 },
+      "ledger": { "deliver": 36, "process": 36 }
+    },
+    "perSecond": [
+      "933155695df0",
+      "8e33dfcbaa12",
+      "f1e913a29de7",
+      "c8068bb932de",
+      "e38f58908c7a",
+      "eb8bbfddcd87",
+      "8be595d5e2ff",
+      "2666efd06c68",
+      "bc397556275b",
+      "0624721ec30c",
+      "3adc14034077",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 1500, "text": "Properties shows two Consumes rows, but one 4/s pool. At 6/s total, waiting work grows by about 2/s.", "focus": ["worker", "order-log", "refund-log"] }
+  ],
+  "latency": {
+    "journeys": { "done": 36, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 36, "min": 1610, "mean": 2945, "p50": 2280, "p90": 4950, "max": 5280 },
+    "waitMs": {
+      "worker": { "count": 36, "min": 0, "mean": 259.44444444444446, "p50": 130, "p90": 470, "max": 470 },
+      "ledger": { "count": 36, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "worker": { "count": 36, "min": 1000, "mean": 1000, "p50": 1000, "p90": 1000, "max": 1000 },
+      "ledger": { "count": 36, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    }
+  }
+}

@@ -474,7 +474,7 @@ export function groupsDiagram(): DiagramFile {
 /** Ids, references and duplicates — shared by the unit tests and the Lab's JSON loader. */
 export function diagramProblems(d: DiagramFile): string[] {
   const problems: string[] = [];
-  if (d.format !== DIAGRAM_FORMAT) problems.push(`format is ${String(d.format)}`);
+  if (d.format !== DIAGRAM_FORMAT && d.format !== "diagrams/v2") problems.push(`format is ${String(d.format)}`);
   const ids = new Set<string>();
   for (const n of d.nodes) {
     if (ids.has(n.id)) problems.push(`duplicate node id ${n.id}`);

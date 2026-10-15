@@ -1,0 +1,703 @@
+{
+  "format": "diagrams/v2",
+  "planning": { "revision": "p3" },
+  "nodeProps": {
+    "requests": { "ratePerSec": 6, "messageType": "Job" },
+    "gateway": {},
+    "queue": {},
+    "direct": {
+      "preset": "managed-measured",
+      "presetRevision": "2026-10-14",
+      "jitter": 0,
+      "failureRate": 0,
+      "scaling": "auto",
+      "maxConcurrency": 2,
+      "latencyMs": 1000,
+      "api": { "maxInFlight": 2 }
+    },
+    "invoker": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 1, "concurrency": 2, "latencyMs": 1000, "jitter": 0, "failureRate": 0 },
+    "async": {
+      "preset": "managed-measured",
+      "presetRevision": "2026-10-14",
+      "jitter": 0,
+      "failureRate": 0,
+      "scaling": "auto",
+      "maxConcurrency": 2,
+      "latencyMs": 250,
+      "api": { "maxInFlight": 2 }
+    },
+    "direct-results": { "latencyMs": 1 },
+    "async-results": { "latencyMs": 1 }
+  },
+  "legacyExport": { "format": "diagrams/v1", "losses": ["planning.revision", "direct.props.preset", "direct.props.presetRevision", "direct.props.api", "direct.props.scaling", "direct.props.maxConcurrency", "invoker.props.preset", "invoker.props.presetRevision", "async.props.preset", "async.props.presetRevision", "async.props.api", "async.props.scaling", "async.props.maxConcurrency"] },
+  "autoScale": { "freePlay": 1, "burst": 2, "paced": 1 },
+  "brokerAssignments": { "brokers": {}, "consumers": { "invoker": { "count": 1 } } },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "direct",
+      "suggestion": "Direct function: Increase allocation or Reduce calls.",
+      "converged": true,
+      "iterations": 5,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "requests": ["Infinity", 6, 0, 1, 1, 0], "gateway": [10000, 6, 0.0006, 1, 1, 0], "queue": [2, 6, 3, 1, 1, 0], "direct": [2, 6, 3, 1, 1, 0], "invoker": [2, 6, 3, 1, 1, 0], "async": [8, 6, 0.75, 1, 1, 0], "direct-results": ["Infinity", 6, 0, 1, 1, 0], "async-results": ["Infinity", 6, 0, 1, 1, 0] },
+      "connections": { "direct-entry": 6, "enqueue": 6, "invoke": 6, "consume": 6, "direct-save": 6, "async-invoke": 6, "async-save": 6 },
+      "offeredTypes": { "requests": ["Job"], "gateway": ["Job"], "queue": ["Job"], "direct": ["Job"], "invoker": ["Job"], "direct-results": ["Job"], "async": ["Job"], "async-results": ["Job"] }
+    },
+    "explanations": {
+      "gateway": {
+        "managed": "api",
+        "id": "gateway",
+        "role": "gateway",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 10000,
+        "offered": 6,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0.06,
+        "utilization": 0.0006,
+        "growth": 0,
+        "contributors": [{ "edge": "direct-entry", "node": "requests", "label": "Contoso requests", "rate": 6 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "direct": {
+        "managed": "serverless",
+        "id": "direct",
+        "role": "processor",
+        "status": "up",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 2,
+        "offered": 6,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 4,
+        "seconds": 1,
+        "utilization": 3,
+        "growth": 4,
+        "contributors": [
+          { "edge": "invoke", "node": "gateway", "label": "Contoso requests", "rate": 6, "via": "API Gateway" }
+        ],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "invoker": {
+        "id": "invoker",
+        "role": "processor",
+        "status": "up",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 2,
+        "offered": 6,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 2,
+        "seconds": 1,
+        "utilization": 3,
+        "growth": 4,
+        "contributors": [{ "edge": "consume", "node": "queue", "label": "Async buffer", "rate": 6 }],
+        "target": 0.5,
+        "minimumReplicas": 3,
+        "targetReplicas": 6,
+        "changes": [{ "nodeId": "invoker", "key": "replicas", "from": 1, "to": 6 }],
+        "fixId": "capacity:invoker",
+        "converged": true
+      },
+      "async": {
+        "managed": "serverless",
+        "id": "async",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 8,
+        "offered": 6,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": 0.75,
+        "growth": 0,
+        "contributors": [{ "edge": "async-invoke", "node": "invoker", "label": "Bounded async invoker", "rate": 6 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "requests": [
+        { "kind": "calls", "edge": "direct-entry", "peer": "gateway" },
+        { "kind": "publishes", "edge": "enqueue", "peer": "queue" }
+      ],
+      "gateway": [{ "kind": "calls", "edge": "invoke", "peer": "direct" }],
+      "direct": [{ "kind": "calls", "edge": "direct-save", "peer": "direct-results" }],
+      "invoker": [
+        { "kind": "consumes", "edge": "consume", "peer": "queue", "retry": "requeue", "retryBackoffMs": 0 },
+        { "kind": "calls", "edge": "async-invoke", "peer": "async" }
+      ],
+      "async": [{ "kind": "calls", "edge": "async-save", "peer": "async-results" }]
+    },
+    "sizing": [{ "nodeId": "invoker", "key": "replicas", "from": 1, "to": 6 }],
+    "redundancy": {
+      "queue": { "replicas": 2, "enough": false },
+      "direct": { "replicas": 2, "enough": false },
+      "invoker": { "replicas": 6, "enough": true }
+    },
+    "resolved": {
+      "requests": {
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 6,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Job",
+        "healthChecks": false
+      },
+      "gateway": {
+        "admission": {
+          "api": {
+            "quotas": [
+              { "id": "global-rate", "unit": "requests", "amount": 10000, "burst": 5000, "windowMs": 1000, "algorithm": "token-bucket", "sharedGroup": "api-gateway-account-region" }
+            ]
+          },
+          "endpoints": []
+        },
+        "profile": { "family": "api-gateway", "revision": "p3", "preset": "api-gateway-account", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 60,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "API Gateway",
+        "healthChecks": false
+      },
+      "queue": {
+        "profile": { "family": "queue", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Async buffer",
+        "healthChecks": false
+      },
+      "direct": {
+        "admission": { "api": { "maxInFlight": 2 }, "endpoints": [], "slots": 2 },
+        "profile": { "family": "serverless", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 1000,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Direct function",
+        "healthChecks": false
+      },
+      "invoker": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 1000,
+        "concurrency": 2,
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Bounded async invoker",
+        "healthChecks": false
+      },
+      "async": {
+        "admission": { "api": { "maxInFlight": 2 }, "endpoints": [], "slots": 2 },
+        "profile": { "family": "serverless", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Buffered function",
+        "healthChecks": false
+      },
+      "direct-results": {
+        "profile": { "family": "nosql", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Direct results",
+        "healthChecks": false
+      },
+      "async-results": {
+        "profile": { "family": "nosql", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Async results",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "burst": {
+      "configured": "(same as edit)",
+      "simulation": "burst",
+      "analysis": {
+        "bottleneck": "direct",
+        "suggestion": "Direct function: Increase allocation or Reduce calls.",
+        "converged": true,
+        "iterations": 5,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "requests": ["Infinity", 100, 0, 1, 1, 0], "gateway": [10000, 100, 0.01, 1, 1, 0], "queue": [2, 100, 50, 1, 1, 0], "direct": [2, 100, 50, 1, 1, 0], "invoker": [2, 100, 50, 1, 1, 0], "async": [8, 100, 12.5, 1, 1, 0], "direct-results": ["Infinity", 100, 0, 1, 1, 0], "async-results": ["Infinity", 100, 0, 1, 1, 0] },
+        "connections": { "direct-entry": 100, "enqueue": 100, "invoke": 100, "consume": 100, "direct-save": 100, "async-invoke": 100, "async-save": 100 },
+        "offeredTypes": { "requests": ["Job"], "gateway": ["Job"], "queue": ["Job"], "direct": ["Job"], "invoker": ["Job"], "direct-results": ["Job"], "async": ["Job"], "async-results": ["Job"] }
+      },
+      "explanations": {
+        "gateway": {
+          "managed": "api",
+          "id": "gateway",
+          "role": "gateway",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 10000,
+          "offered": 100,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.06,
+          "utilization": 0.01,
+          "growth": 0,
+          "contributors": [{ "edge": "direct-entry", "node": "requests", "label": "Contoso requests", "rate": 100 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
+        "direct": {
+          "managed": "serverless",
+          "id": "direct",
+          "role": "processor",
+          "status": "up",
+          "reason": "capacity",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 2,
+          "offered": 100,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 4,
+          "seconds": 1,
+          "utilization": 50,
+          "growth": 98,
+          "contributors": [
+            { "edge": "invoke", "node": "gateway", "label": "Contoso requests", "rate": 100, "via": "API Gateway" }
+          ],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
+        "invoker": {
+          "id": "invoker",
+          "role": "processor",
+          "status": "up",
+          "reason": "capacity",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 2,
+          "offered": 100,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 2,
+          "seconds": 1,
+          "utilization": 50,
+          "growth": 98,
+          "contributors": [{ "edge": "consume", "node": "queue", "label": "Async buffer", "rate": 100 }],
+          "target": 0.5,
+          "minimumReplicas": 50,
+          "targetReplicas": 100,
+          "changes": [{ "nodeId": "invoker", "key": "replicas", "from": 1, "to": 100 }],
+          "fixId": "capacity:invoker",
+          "converged": true
+        },
+        "async": {
+          "managed": "serverless",
+          "id": "async",
+          "role": "processor",
+          "status": "up",
+          "reason": "capacity",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 8,
+          "offered": 100,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 4,
+          "seconds": 0.25,
+          "utilization": 12.5,
+          "growth": 92,
+          "contributors": [
+            { "edge": "async-invoke", "node": "invoker", "label": "Bounded async invoker", "rate": 100 }
+          ],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": [{ "nodeId": "invoker", "key": "replicas", "from": 1, "to": 91 }],
+      "redundancy": {
+        "queue": { "replicas": 2, "enough": false },
+        "direct": { "replicas": 2, "enough": false },
+        "invoker": { "replicas": 91, "enough": true },
+        "async": { "replicas": 2, "enough": false }
+      },
+      "resolved": "(same as edit)"
+    },
+    "paced": {
+      "configured": "(same as edit)",
+      "simulation": "paced",
+      "analysis": {
+        "bottleneck": "direct",
+        "suggestion": "Direct function: 50% utilized",
+        "converged": true,
+        "iterations": 5,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "requests": ["Infinity", 1, 0, 1, 1, 0], "gateway": [10000, 1, 0.0001, 1, 1, 0], "queue": [2, 1, 0.5, 1, 1, 0], "direct": [2, 1, 0.5, 1, 1, 0], "invoker": [2, 1, 0.5, 1, 1, 0], "async": [8, 1, 0.125, 1, 1, 0], "direct-results": ["Infinity", 1, 0, 1, 1, 0], "async-results": ["Infinity", 1, 0, 1, 1, 0] },
+        "connections": { "direct-entry": 1, "enqueue": 1, "invoke": 1, "consume": 1, "direct-save": 1, "async-invoke": 1, "async-save": 1 },
+        "offeredTypes": { "requests": ["Job"], "gateway": ["Job"], "queue": ["Job"], "direct": ["Job"], "invoker": ["Job"], "direct-results": ["Job"], "async": ["Job"], "async-results": ["Job"] }
+      },
+      "explanations": {
+        "gateway": {
+          "managed": "api",
+          "id": "gateway",
+          "role": "gateway",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 10000,
+          "offered": 1,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.06,
+          "utilization": 0.0001,
+          "growth": 0,
+          "contributors": [{ "edge": "direct-entry", "node": "requests", "label": "Contoso requests", "rate": 1 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
+        "direct": {
+          "managed": "serverless",
+          "id": "direct",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 2,
+          "offered": 1,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 4,
+          "seconds": 1,
+          "utilization": 0.5,
+          "growth": 0,
+          "contributors": [
+            { "edge": "invoke", "node": "gateway", "label": "Contoso requests", "rate": 1, "via": "API Gateway" }
+          ],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
+        "invoker": {
+          "id": "invoker",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 2,
+          "offered": 1,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 2,
+          "seconds": 1,
+          "utilization": 0.5,
+          "growth": 0,
+          "contributors": [{ "edge": "consume", "node": "queue", "label": "Async buffer", "rate": 1 }],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "async": {
+          "managed": "serverless",
+          "id": "async",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 8,
+          "offered": 1,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 4,
+          "seconds": 0.25,
+          "utilization": 0.125,
+          "growth": 0,
+          "contributors": [{ "edge": "async-invoke", "node": "invoker", "label": "Bounded async invoker", "rate": 1 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": null,
+      "redundancy": {},
+      "resolved": "(same as edit)"
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "over",
+          "top": "direct",
+          "headline": "Direct function and 2 more are over capacity",
+          "detail": "300% · 6/s of 2/s. Reduce calls",
+          "fix": {
+            "changes": [
+              { "nodeId": "invoker", "key": "replicas", "from": 1, "to": 6, "label": "Bounded async invoker" }
+            ],
+            "label": "Bounded async invoker 1 → 6 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "requests": ["idle", "6/s · no limit", { "modeled": false }],
+            "gateway": ["ok", "0% · 6/s of 10k/s"],
+            "queue": ["over", "300% · 6/s of 2/s"],
+            "direct": ["over", "300% · 6/s of 2/s"],
+            "invoker": ["over", "300% · 6/s of 2/s"],
+            "async": ["warn", "75% · 6/s of 8/s"],
+            "direct-results": ["idle", "6/s · no limit", { "modeled": false }],
+            "async-results": ["idle", "6/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "over",
+          "top": "direct",
+          "headline": "Direct function and 3 more are over capacity",
+          "detail": "15× · 30/s of 2/s. Reduce calls",
+          "fix": {
+            "changes": [
+              { "nodeId": "invoker", "key": "replicas", "from": 1, "to": 28, "label": "Bounded async invoker" }
+            ],
+            "label": "Bounded async invoker 1 → 28 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "requests": ["idle", "30/s · no limit", { "modeled": false }],
+            "gateway": ["ok", "0% · 30/s of 10k/s"],
+            "queue": ["over", "15× · 30/s of 2/s"],
+            "direct": ["over", "15× · 30/s of 2/s"],
+            "invoker": ["over", "15× · 30/s of 2/s"],
+            "async": ["over", "375% · 30/s of 8/s"],
+            "direct-results": ["idle", "30/s · no limit", { "modeled": false }],
+            "async-results": ["idle", "30/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "over",
+          "top": "direct",
+          "headline": "Direct function and 2 more are over capacity",
+          "detail": "300% · 6/s of 2/s. Reduce calls",
+          "fix": {
+            "changes": [
+              { "nodeId": "invoker", "key": "replicas", "from": 1, "to": 12, "label": "Bounded async invoker" }
+            ],
+            "label": "Bounded async invoker 1 → 12 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "requests": ["idle", "6/s · no limit", { "modeled": false }],
+            "gateway": ["ok", "0% · 6/s of 10k/s"],
+            "queue": ["over", "300% · 6/s of 2/s"],
+            "direct": ["over", "300% · 6/s of 2/s"],
+            "invoker": ["over", "300% · 6/s of 2/s"],
+            "async": ["warn", "75% · 6/s of 8/s"],
+            "direct-results": ["idle", "6/s · no limit", { "modeled": false }],
+            "async-results": ["idle", "6/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "over",
+          "top": "direct",
+          "headline": "Direct function and 2 more are over capacity",
+          "detail": "300% · 6/s of 2/s. Reduce calls",
+          "fix": {
+            "changes": [
+              { "nodeId": "invoker", "key": "replicas", "from": 1, "to": 6, "label": "Bounded async invoker" }
+            ],
+            "label": "Bounded async invoker 1 → 6 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "requests": ["idle", "6/s · no limit", { "modeled": false }],
+            "gateway": ["ok", "0% · 6/s of 10k/s"],
+            "queue": ["over", "300% · 6/s of 2/s"],
+            "direct": ["over", "300% · 6/s of 2/s"],
+            "invoker": ["over", "300% · 6/s of 2/s"],
+            "async": ["warn", "75% · 6/s of 8/s"],
+            "direct-results": ["idle", "6/s · no limit", { "modeled": false }],
+            "async-results": ["idle", "6/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    },
+    "burst": {
+      "tone": "over",
+      "top": "direct",
+      "headline": "Direct function and 3 more are over capacity",
+      "detail": "50× · 100/s of 2/s. Reduce calls",
+      "fix": {
+        "changes": [{ "nodeId": "invoker", "key": "replicas", "from": 1, "to": 91, "label": "Bounded async invoker" }],
+        "label": "Bounded async invoker 1 → 91 replicas"
+      },
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "requests": ["idle", "100/s · no limit", { "modeled": false }],
+        "gateway": ["ok", "1% · 100/s of 10k/s"],
+        "queue": ["over", "50× · 100/s of 2/s"],
+        "direct": ["over", "50× · 100/s of 2/s"],
+        "invoker": ["over", "50× · 100/s of 2/s"],
+        "async": ["over", "13× · 100/s of 8/s"],
+        "direct-results": ["idle", "100/s · no limit", { "modeled": false }],
+        "async-results": ["idle", "100/s · no limit", { "modeled": false }]
+      }
+    },
+    "paced": {
+      "tone": "ok",
+      "top": "direct",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Direct function at 50% · 1/s of 2/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "requests": ["idle", "1/s · no limit", { "modeled": false }],
+        "gateway": ["ok", "0% · 1/s of 10k/s"],
+        "queue": ["ok", "50% · 1/s of 2/s"],
+        "direct": ["ok", "50% · 1/s of 2/s"],
+        "invoker": ["ok", "50% · 1/s of 2/s"],
+        "async": ["ok", "13% · 1/s of 8/s"],
+        "direct-results": ["idle", "1/s · no limit", { "modeled": false }],
+        "async-results": ["idle", "1/s · no limit", { "modeled": false }]
+      }
+    }
+  }
+}

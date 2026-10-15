@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "questions": [40, 40], "billing": [40, 160], "gateway": [400, 40], "payments": [400, 160], "assistant": [800, 100], "answer": [1200, 40], "review": [1200, 160] },
+    "TB": { "questions": [40, 40], "billing": [360, 40], "gateway": [40, 200], "payments": [360, 200], "assistant": [200, 360], "answer": [40, 520], "review": [360, 520] }
+  },
+  "tidy": { "questions": [40, 40], "gateway": [40, 200], "assistant": [200, 360], "answer": [40, 520], "review": [360, 520], "billing": [360, 40], "payments": [360, 200] },
+  "arrange": {
+    "alignLeft": { "questions": [40, 40], "gateway": [40, 200], "assistant": [40, 360], "answer": [40, 520], "review": [40, 520], "billing": [40, 40], "payments": [40, 200] },
+    "alignMiddle": { "questions": [40, 280], "gateway": [40, 280], "assistant": [200, 280], "answer": [40, 280], "review": [360, 280], "billing": [360, 280], "payments": [360, 280] },
+    "distributeH": { "questions": [40, 40], "gateway": [67, 200], "assistant": [200, 360], "answer": [133, 520], "review": [267, 520], "billing": [333, 40], "payments": [360, 200] },
+    "distributeV": { "questions": [40, 40], "gateway": [40, 200], "assistant": [200, 360], "answer": [40, 440], "review": [360, 520], "billing": [360, 120], "payments": [360, 280] },
+    "spreadH": { "questions": [40, 40], "gateway": [300, 40], "assistant": [900, 40], "answer": [600, 40], "review": [1200, 40], "billing": [1500, 40], "payments": [1760, 40] },
+    "boundaryAround": { "x": 0, "y": -24, "width": 660, "height": 656 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "questions": [40, 40], "gateway": [40, 200], "assistant": [200, 360], "answer": [40, 520], "review": [360, 520], "billing": [360, 40], "payments": [360, 200] },
+    "groups": {}
+  }
+}

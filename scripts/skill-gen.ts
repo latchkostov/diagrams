@@ -153,7 +153,7 @@ function spec() {
 const MOST_USED = 30;
 
 /** reference/stencils.md: the most used stencils, then every stencil by vendor family. */
-function stencilsDoc(examples: Example[]): string {
+export function stencilsDoc(examples: Example[]): string {
   const uses = new Map<string, number>();
   for (const { diagram } of examples)
     for (const n of diagram.nodes) uses.set(n.stencil, (uses.get(n.stencil) ?? 0) + 1);

@@ -1,0 +1,24 @@
+{
+  "evidence": {
+    "played": [
+      { "id": "launch-burst", "title": "Assistant launch burst", "playedMs": 3540, "capped": false },
+      { "id": "within-budget", "title": "A small batch fits", "playedMs": 3690, "capped": false }
+    ],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [],
+    "dropped": []
+  },
+  "planned": [],
+  "counted": 0,
+  "findings": [
+    { "id": "capacity:answer", "rule": "capacity", "severity": "warning", "target": "answer", "elements": ["answer"] }
+  ],
+  "agentReport": {
+    "findings": [
+      { "id": "capacity:answer", "rule": "capacity", "severity": "warning", "title": "Answer model can't keep up", "message": "At the diagram's own rates, it gets 2/s and handles 0.1/s (2000%): 1.9/s may be rejected.", "targets": ["answer"] }
+    ],
+    "summary": "1 warning, 0 suggestions.",
+    "simulations": "Played 2 saved simulations (at most 60 s each)."
+  }
+}

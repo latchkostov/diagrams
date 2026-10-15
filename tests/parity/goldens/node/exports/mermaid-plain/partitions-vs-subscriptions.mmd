@@ -1,0 +1,16 @@
+---
+title: Partitions versus subscriptions
+---
+flowchart TB
+  publisher(["Northwind events<br/>6 events/s to both brokers"])
+  log["Order log<br/>3 partitions"]
+  fanout["Order notifications<br/>Independent subscriptions"]
+  log_readers["Kafka readers<br/>8 replicas · only 3 assigned"]
+  receipts["Receipt subscription<br/>8 replicas · all available"]
+  audit["Audit subscription<br/>8 replicas · independent copy"]
+  publisher -.->|"Append"| log
+  publisher -.->|"Publish"| fanout
+  log -.->|"orders group"| log_readers
+  fanout -.->|"receipts"| receipts
+  fanout -.->|"audit"| audit
+  linkStyle 0,1,2,3,4 stroke-dasharray: 6 4

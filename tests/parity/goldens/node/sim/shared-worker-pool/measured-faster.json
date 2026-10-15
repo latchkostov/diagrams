@@ -1,0 +1,93 @@
+{
+  "run": {
+    "time": 8610,
+    "totalMs": 16000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "ledger-processed-end", "label": "ledger: processed == 36", "status": "pass", "value": 36 },
+      { "id": "order-log-lag-end", "label": "order-log: lag == 0", "status": "pass", "value": 0 },
+      { "id": "refund-log-lag-end", "label": "refund-log: lag == 0", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "orders" },
+      { "atMs": 0, "kind": "traffic", "label": "refunds" },
+      { "atMs": 6000, "kind": "traffic", "label": "orders ends" },
+      { "atMs": 6000, "kind": "traffic", "label": "refunds ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "orders": { "replicas": [1, 1, 0] },
+        "refunds": { "replicas": [1, 1, 0] },
+        "order-log": { "lag": { "order-posting": 0 }, "replicas": [1, 1, 0] },
+        "refund-log": { "lag": { "refund-posting": 0 }, "replicas": [1, 1, 0] },
+        "worker": { "replicas": [1, 1, 0] },
+        "ledger": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 8610,
+    "inSystem": 0,
+    "real": {
+      "orders": { "processed": 18, "throughput": 0.26074442581767643, "replicas": [1, 1, 0] },
+      "refunds": { "processed": 18, "throughput": 0.26074442581767643, "replicas": [1, 1, 0] },
+      "order-log": {
+        "processed": 18,
+        "throughput": 0.315305092011396,
+        "lag": { "order-posting": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "refund-log": {
+        "processed": 18,
+        "throughput": 0.315305092011396,
+        "lag": { "refund-posting": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "worker": { "processed": 36, "throughput": 1.269892965434348, "replicas": [1, 1, 0] },
+      "ledger": { "processed": 36, "throughput": 1.5666390899497598, "replicas": [1, 1, 0] }
+    },
+    "edges": { "order-publish": 18, "refund-publish": 18, "read-orders": 18, "read-refunds": 18, "save": 36 }
+  },
+  "events": {
+    "total": 288,
+    "byKind": { "inject": 36, "process": 144, "deliver": 108 },
+    "byNode": {
+      "orders": { "inject": 18, "process": 18 },
+      "refunds": { "inject": 18, "process": 18 },
+      "order-log": { "deliver": 18, "process": 18 },
+      "refund-log": { "deliver": 18, "process": 18 },
+      "worker": { "deliver": 36, "process": 36 },
+      "ledger": { "deliver": 36, "process": 36 }
+    },
+    "perSecond": [
+      "933155695df0",
+      "2627bb8f81a9",
+      "9739ce3e15f9",
+      "657de5f51397",
+      "1e602f661482",
+      "379a290bf320",
+      "b519b9b4d046",
+      "9f10b9500b93",
+      "-"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 36, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 36, "min": 1110, "mean": 1110, "p50": 1110, "p90": 1110, "max": 1110 },
+    "waitMs": {
+      "worker": { "count": 36, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "ledger": { "count": 36, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "worker": { "count": 36, "min": 500, "mean": 500, "p50": 500, "p90": 500, "max": 500 },
+      "ledger": { "count": 36, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    }
+  }
+}

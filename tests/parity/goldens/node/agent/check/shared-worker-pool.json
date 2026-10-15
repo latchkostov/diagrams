@@ -1,0 +1,87 @@
+{
+  "all": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "capacity:worker",
+          "rule": "capacity",
+          "severity": "warning",
+          "title": "Ledger worker can't keep up",
+          "message": "At the diagram's own rates, it gets 6/s and handles 4/s (150%): its backlog only grows.",
+          "targets": ["worker"],
+          "fix": {
+            "label": "Set replicas to 3",
+            "ops": [{ "op": "update", "target": "worker", "props": { "replicas": 3 } }]
+          }
+        }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  },
+  "warnings": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "capacity:worker",
+          "rule": "capacity",
+          "severity": "warning",
+          "title": "Ledger worker can't keep up",
+          "message": "At the diagram's own rates, it gets 6/s and handles 4/s (150%): its backlog only grows.",
+          "targets": ["worker"],
+          "fix": {
+            "label": "Set replicas to 3",
+            "ops": [{ "op": "update", "target": "worker", "props": { "replicas": 3 } }]
+          }
+        }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  },
+  "oneRule": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "capacity:worker",
+          "rule": "capacity",
+          "severity": "warning",
+          "title": "Ledger worker can't keep up",
+          "message": "At the diagram's own rates, it gets 6/s and handles 4/s (150%): its backlog only grows.",
+          "targets": ["worker"],
+          "fix": {
+            "label": "Set replicas to 3",
+            "ops": [{ "op": "update", "target": "worker", "props": { "replicas": 3 } }]
+          }
+        }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  },
+  "simulations": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "capacity:worker",
+          "rule": "capacity",
+          "severity": "warning",
+          "title": "Ledger worker can't keep up",
+          "message": "At the diagram's own rates, it gets 6/s and handles 4/s (150%): its backlog only grows.",
+          "targets": ["worker"],
+          "fix": {
+            "label": "Set replicas to 3",
+            "ops": [{ "op": "update", "target": "worker", "props": { "replicas": 3 } }]
+          }
+        }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "simulations": "Played 2 saved simulations (at most 60 s each).",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  }
+}

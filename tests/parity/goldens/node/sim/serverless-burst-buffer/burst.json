@@ -1,0 +1,131 @@
+{
+  "run": {
+    "time": 13570,
+    "totalMs": 12000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "direct-rejected-end", "label": "direct: rejected > 0", "status": "pass", "value": 18 },
+      { "id": "queue-lag-at", "label": "queue: lag > 0", "status": "pass", "value": 0 },
+      { "id": "async-results-processed-end", "label": "async-results: processed == 20", "status": "pass", "value": 20 },
+      { "id": "async-rejected-end", "label": "async: rejected == 0", "status": "pass", "value": 0 },
+      { "id": "queue-lag-end", "label": "queue: lag == 0", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 1000, "kind": "traffic", "label": "requests" },
+      { "atMs": 1200, "kind": "traffic", "label": "requests ends" },
+      { "atMs": 2000, "kind": "note", "label": "Reserved concurrency is simultaneous executions, not requests per second. Direct excess is rejected; SQS waits behind a bounded invoker, which protects the async allocation." }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "requests": { "replicas": [1, 1, 0] },
+        "gateway": { "replicas": [1, 1, 0] },
+        "queue": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "direct": { "replicas": [1, 1, 0] },
+        "invoker": { "replicas": [1, 1, 0] },
+        "async": { "replicas": [1, 1, 0] },
+        "direct-results": { "replicas": [1, 1, 0] },
+        "async-results": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 6,
+      "nodes": {
+        "requests": { "processed": 20, "throughput": 0.002732327100879824, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 20, "throughput": 0.003520539659218578, "replicas": [1, 1, 0] },
+        "queue": { "processed": 20, "throughput": 0.003335764513898303, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "direct": {
+          "processed": 2,
+          "rejected": 18,
+          "throughput": 0.0010575518118253525,
+          "rejectionReasons": { "concurrency": 18 },
+          "replicas": [1, 1, 0]
+        },
+        "invoker": { "processed": 16, "backlog": 2, "inFlight": 2, "throughput": 1.7446273378377326, "replicas": [1, 1, 0] },
+        "async": { "processed": 16, "throughput": 2.7088954610728564, "replicas": [1, 1, 0] },
+        "direct-results": { "processed": 2, "throughput": 0.0013046784675164375, "replicas": [1, 1, 0] },
+        "async-results": { "processed": 14, "throughput": 1.2287092077927309, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 13570,
+    "inSystem": 0,
+    "real": {
+      "requests": { "processed": 20, "throughput": 0.00007693100205909244, "replicas": [1, 1, 0] },
+      "gateway": { "processed": 20, "throughput": 0.00009912379952065375, "replicas": [1, 1, 0] },
+      "queue": { "processed": 20, "throughput": 0.00009392129756525981, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "direct": {
+        "processed": 2,
+        "rejected": 18,
+        "throughput": 0.000029776274073091476,
+        "rejectionReasons": { "concurrency": 18 },
+        "replicas": [1, 1, 0]
+      },
+      "invoker": { "processed": 20, "throughput": 0.3630666295130371, "replicas": [1, 1, 0] },
+      "async": { "processed": 20, "throughput": 0.563736176445472, "replicas": [1, 1, 0] },
+      "direct-results": { "processed": 2, "throughput": 0.00003673433603123173, "replicas": [1, 1, 0] },
+      "async-results": { "processed": 20, "throughput": 0.6954689524846814, "replicas": [1, 1, 0] }
+    },
+    "edges": { "direct-entry": 20, "enqueue": 20, "invoke": 20, "consume": 20, "async-invoke": 20, "direct-save": 2, "async-save": 20 }
+  },
+  "events": {
+    "total": 284,
+    "byKind": { "inject": 20, "process": 124, "deliver": 122, "reject": 18 },
+    "byNode": {
+      "requests": { "inject": 20, "process": 20 },
+      "gateway": { "deliver": 20, "process": 20 },
+      "queue": { "deliver": 20, "process": 20 },
+      "invoker": { "deliver": 20, "process": 20 },
+      "direct": { "deliver": 20, "reject": 18, "process": 2 },
+      "async": { "deliver": 20, "process": 20 },
+      "direct-results": { "deliver": 2, "process": 2 },
+      "async-results": { "deliver": 20, "process": 20 }
+    },
+    "perSecond": [
+      "-",
+      "28e4232b9d06",
+      "c8b732b46384",
+      "a608d8e055e1",
+      "aae7a6e18e75",
+      "276d68c4e1ba",
+      "05984b774042",
+      "4f4d83a535bb",
+      "7b4ddee8177c",
+      "41a482fb350a",
+      "1ee0ec0dee4e",
+      "0380e9191318",
+      "66e9d75b36c7",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 2000, "text": "Reserved concurrency is simultaneous executions, not requests per second. Direct excess is rejected; SQS waits behind a bounded invoker, which protects the async allocation.", "focus": ["direct", "queue", "invoker"] }
+  ],
+  "latency": {
+    "journeys": { "done": 20, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0, "rejected": 18 },
+    "endToEndMs": { "count": 20, "min": 2050, "mean": 6455.5, "p50": 6940, "p90": 10860, "max": 10870 },
+    "waitMs": {
+      "gateway": { "count": 20, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "direct": { "count": 2, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "invoker": { "count": 20, "min": 0, "mean": 737.5, "p50": 800, "p90": 970, "max": 980 },
+      "async": { "count": 20, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "direct-results": { "count": 2, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "async-results": { "count": 20, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "gateway": { "count": 20, "min": 40, "mean": 54, "p50": 60, "p90": 60, "max": 60 },
+      "direct": { "count": 2, "min": 990, "mean": 990, "p50": 990, "p90": 990, "max": 990 },
+      "invoker": { "count": 20, "min": 1000, "mean": 1000, "p50": 1000, "p90": 1000, "max": 1000 },
+      "async": { "count": 20, "min": 240, "mean": 240, "p50": 240, "p90": 240, "max": 240 },
+      "direct-results": { "count": 2, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "async-results": { "count": 20, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    }
+  }
+}

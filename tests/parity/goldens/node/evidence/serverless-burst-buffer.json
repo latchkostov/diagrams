@@ -1,0 +1,56 @@
+{
+  "evidence": {
+    "played": [
+      { "id": "burst", "title": "Twenty jobs at once", "playedMs": 13570, "capped": false },
+      { "id": "paced", "title": "Paced requests fit", "playedMs": 9550, "capped": false }
+    ],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [],
+    "dropped": []
+  },
+  "planned": [],
+  "counted": 0,
+  "findings": [
+    { "id": "capacity:direct", "rule": "capacity", "severity": "warning", "target": "direct", "elements": ["direct"] },
+    {
+      "id": "dead-letter:queue",
+      "rule": "dead-letter",
+      "severity": "suggestion",
+      "target": "queue",
+      "elements": ["queue", "invoker"],
+      "fix": {
+        "ops": [
+          { "op": "add_node", "kind": "aws.sqs", "label": "Async buffer-dlq", "key": "new-dlq" },
+          { "op": "connect", "from": "queue", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
+          { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
+        ],
+        "needsChoice": false
+      }
+    }
+  ],
+  "agentReport": {
+    "findings": [
+      { "id": "capacity:direct", "rule": "capacity", "severity": "warning", "title": "Direct function can't keep up", "message": "At the diagram's own rates, it gets 6/s and handles 2/s (300%): 4/s may be rejected.", "targets": ["direct"] },
+      {
+        "id": "dead-letter:queue",
+        "rule": "dead-letter",
+        "severity": "suggestion",
+        "title": "Async buffer has no dead-letter queue",
+        "message": "If Bounded async invoker can't handle a message, it's dropped after 3 deliveries. A command queue is where losing messages hurts most.",
+        "targets": ["queue", "invoker"],
+        "fix": {
+          "label": "Add dead-letter queue",
+          "ops": [
+            { "op": "add_node", "kind": "aws.sqs", "label": "Async buffer-dlq", "key": "new-dlq" },
+            { "op": "connect", "from": "queue", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
+            { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
+          ]
+        }
+      }
+    ],
+    "summary": "1 warning, 1 suggestion.",
+    "simulations": "Played 2 saved simulations (at most 60 s each).",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
+}

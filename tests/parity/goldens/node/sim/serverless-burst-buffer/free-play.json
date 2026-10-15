@@ -1,0 +1,307 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "requests": { "replicas": [1, 1, 0] },
+        "gateway": { "replicas": [1, 1, 0] },
+        "queue": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "direct": { "replicas": [1, 1, 0] },
+        "invoker": { "replicas": [1, 1, 0] },
+        "async": { "replicas": [1, 1, 0] },
+        "direct-results": { "replicas": [1, 1, 0] },
+        "async-results": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 49,
+      "nodes": {
+        "requests": { "processed": 60, "throughput": 6.50149458286941, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 58, "throughput": 6.030735051261287, "replicas": [1, 1, 0] },
+        "queue": {
+          "processed": 58,
+          "backlog": 36,
+          "throughput": 5.690003341501128,
+          "lag": { "queue": 36 },
+          "replicas": [1, 1, 0]
+        },
+        "direct": {
+          "processed": 16,
+          "rejected": 39,
+          "inFlight": 2,
+          "throughput": 1.3617548527246461,
+          "rejectionReasons": { "concurrency": 39 },
+          "replicas": [1, 1, 0]
+        },
+        "invoker": { "processed": 18, "backlog": 2, "inFlight": 2, "throughput": 2.237392742043914, "replicas": [1, 1, 0] },
+        "async": { "processed": 16, "inFlight": 2, "throughput": 1.2777479726551917, "replicas": [1, 1, 0] },
+        "direct-results": { "processed": 16, "throughput": 1.6799670848460195, "replicas": [1, 1, 0] },
+        "async-results": { "processed": 16, "throughput": 1.5763296400189166, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 89,
+      "nodes": {
+        "requests": { "processed": 120, "throughput": 6.501789750266822, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 118, "throughput": 6.036928102970996, "replicas": [1, 1, 0] },
+        "queue": {
+          "processed": 118,
+          "backlog": 76,
+          "throughput": 5.690363859774448,
+          "lag": { "queue": 76 },
+          "replicas": [1, 1, 0]
+        },
+        "direct": {
+          "processed": 34,
+          "rejected": 81,
+          "inFlight": 2,
+          "throughput": 1.3247335431651908,
+          "rejectionReasons": { "concurrency": 81 },
+          "replicas": [1, 1, 0]
+        },
+        "invoker": { "processed": 38, "backlog": 2, "inFlight": 2, "throughput": 2.237668879786324, "replicas": [1, 1, 0] },
+        "async": { "processed": 36, "inFlight": 2, "throughput": 1.278176733721135, "replicas": [1, 1, 0] },
+        "direct-results": { "processed": 34, "throughput": 1.6342947074916538, "replicas": [1, 1, 0] },
+        "async-results": { "processed": 36, "throughput": 1.5768585931389345, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 129,
+      "nodes": {
+        "requests": { "processed": 180, "throughput": 6.501789763667403, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 178, "throughput": 6.005294445472154, "replicas": [1, 1, 0] },
+        "queue": {
+          "processed": 178,
+          "backlog": 116,
+          "throughput": 5.690363876141956,
+          "lag": { "queue": 116 },
+          "replicas": [1, 1, 0]
+        },
+        "direct": {
+          "processed": 53,
+          "rejected": 122,
+          "inFlight": 2,
+          "throughput": 1.9830764055685255,
+          "rejectionReasons": { "concurrency": 122 },
+          "replicas": [1, 1, 0]
+        },
+        "invoker": { "processed": 58, "backlog": 2, "inFlight": 2, "throughput": 2.2376688923229584, "replicas": [1, 1, 0] },
+        "async": { "processed": 56, "inFlight": 2, "throughput": 1.2781767531868569, "replicas": [1, 1, 0] },
+        "direct-results": { "processed": 53, "throughput": 2.4464778527677664, "replicas": [1, 1, 0] },
+        "async-results": { "processed": 56, "throughput": 1.576858617153369, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 169,
+      "nodes": {
+        "requests": { "processed": 240, "throughput": 6.501789763668005, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 238, "throughput": 6.018483525826856, "replicas": [1, 1, 0] },
+        "queue": {
+          "processed": 238,
+          "backlog": 156,
+          "throughput": 5.690363876142691,
+          "lag": { "queue": 156 },
+          "replicas": [1, 1, 0]
+        },
+        "direct": {
+          "processed": 72,
+          "rejected": 163,
+          "inFlight": 2,
+          "throughput": 2.128902023111982,
+          "rejectionReasons": { "concurrency": 163 },
+          "replicas": [1, 1, 0]
+        },
+        "invoker": { "processed": 78, "backlog": 2, "inFlight": 2, "throughput": 2.237668892323527, "replicas": [1, 1, 0] },
+        "async": { "processed": 76, "inFlight": 2, "throughput": 1.2781767531877397, "replicas": [1, 1, 0] },
+        "direct-results": { "processed": 72, "throughput": 2.6263797177107726, "replicas": [1, 1, 0] },
+        "async-results": { "processed": 76, "throughput": 1.5768586171544585, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 209,
+      "nodes": {
+        "requests": { "processed": 300, "throughput": 6.501789763668005, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 298, "throughput": 6.018464730096953, "replicas": [1, 1, 0] },
+        "queue": {
+          "processed": 298,
+          "backlog": 196,
+          "throughput": 5.690363876142691,
+          "lag": { "queue": 196 },
+          "replicas": [1, 1, 0]
+        },
+        "direct": {
+          "processed": 90,
+          "rejected": 205,
+          "inFlight": 2,
+          "throughput": 1.7250368643114384,
+          "rejectionReasons": { "concurrency": 205 },
+          "replicas": [1, 1, 0]
+        },
+        "invoker": { "processed": 98, "backlog": 2, "inFlight": 2, "throughput": 2.237668892323527, "replicas": [1, 1, 0] },
+        "async": { "processed": 96, "inFlight": 2, "throughput": 1.2781767531877397, "replicas": [1, 1, 0] },
+        "direct-results": { "processed": 90, "throughput": 2.1281401321175974, "replicas": [1, 1, 0] },
+        "async-results": { "processed": 96, "throughput": 1.5768586171544585, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 249,
+      "nodes": {
+        "requests": { "processed": 360, "throughput": 6.501789763668005, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 358, "throughput": 6.038302500832466, "replicas": [1, 1, 0] },
+        "queue": {
+          "processed": 358,
+          "backlog": 236,
+          "throughput": 5.690363876142691,
+          "lag": { "queue": 236 },
+          "replicas": [1, 1, 0]
+        },
+        "direct": {
+          "processed": 109,
+          "rejected": 246,
+          "inFlight": 2,
+          "throughput": 1.8604261536130065,
+          "rejectionReasons": { "concurrency": 246 },
+          "replicas": [1, 1, 0]
+        },
+        "invoker": { "processed": 118, "backlog": 2, "inFlight": 2, "throughput": 2.237668892323527, "replicas": [1, 1, 0] },
+        "async": { "processed": 116, "inFlight": 2, "throughput": 1.2781767531877397, "replicas": [1, 1, 0] },
+        "direct-results": { "processed": 109, "throughput": 2.2951669278820774, "replicas": [1, 1, 0] },
+        "async-results": { "processed": 116, "throughput": 1.5768586171544585, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 249,
+    "real": {
+      "requests": { "processed": 360, "throughput": 6.501789763668005, "replicas": [1, 1, 0] },
+      "gateway": { "processed": 358, "throughput": 6.038302500832466, "replicas": [1, 1, 0] },
+      "queue": {
+        "processed": 358,
+        "backlog": 236,
+        "throughput": 5.690363876142691,
+        "lag": { "queue": 236 },
+        "replicas": [1, 1, 0]
+      },
+      "direct": {
+        "processed": 109,
+        "rejected": 246,
+        "inFlight": 2,
+        "throughput": 1.8604261536130065,
+        "rejectionReasons": { "concurrency": 246 },
+        "replicas": [1, 1, 0]
+      },
+      "invoker": { "processed": 118, "backlog": 2, "inFlight": 2, "throughput": 2.237668892323527, "replicas": [1, 1, 0] },
+      "async": { "processed": 116, "inFlight": 2, "throughput": 1.2781767531877397, "replicas": [1, 1, 0] },
+      "direct-results": { "processed": 109, "throughput": 2.2951669278820774, "replicas": [1, 1, 0] },
+      "async-results": { "processed": 116, "throughput": 1.5768586171544585, "replicas": [1, 1, 0] }
+    },
+    "edges": { "direct-entry": 358, "enqueue": 358, "invoke": 357, "consume": 122, "async-invoke": 118, "direct-save": 109, "async-save": 116 }
+  },
+  "events": {
+    "total": 3428,
+    "byKind": { "process": 1644, "deliver": 1538, "reject": 246 },
+    "byNode": {
+      "requests": { "process": 360 },
+      "gateway": { "deliver": 358, "process": 358 },
+      "queue": { "deliver": 358, "process": 358 },
+      "invoker": { "deliver": 122, "process": 118 },
+      "direct": { "deliver": 357, "reject": 246, "process": 109 },
+      "async": { "deliver": 118, "process": 116 },
+      "direct-results": { "deliver": 109, "process": 109 },
+      "async-results": { "deliver": 116, "process": 116 }
+    },
+    "perSecond": [
+      "2a410ac6fabe",
+      "0c85ec307c89",
+      "b35b2a9a78ac",
+      "c21b6b28c742",
+      "752610303256",
+      "9ce477bb783a",
+      "5f32463d8e1a",
+      "0d919a81a7fa",
+      "cf629f241c13",
+      "9efa2a2b8c07",
+      "d1b3273ffb5d",
+      "4b8638ac3d93",
+      "3d5def4de5d6",
+      "f311b0e83977",
+      "7d6b22d826a2",
+      "c52b9db2630e",
+      "4ebad8300d86",
+      "0eba6d211768",
+      "23f60be7bd3a",
+      "ca92a38b6ace",
+      "03d809b13c9b",
+      "34bcd7cac02b",
+      "d3d6d4cd76b5",
+      "85bcd64b6225",
+      "a575c02524ea",
+      "20bdbe4e5805",
+      "51d23609f163",
+      "f587c8af7950",
+      "0d61adf63501",
+      "d81a88f5ea93",
+      "eb63a508c189",
+      "cab52cf5db60",
+      "650920d90658",
+      "8b32ccde89f6",
+      "4a34db727ea8",
+      "b347f105cd81",
+      "a2422ce1c6a7",
+      "7a5f39be8f54",
+      "ea358c40253a",
+      "6c743a9b174c",
+      "22e647f4727c",
+      "1610e10f84fa",
+      "7c852f2b3d37",
+      "96edcf7c9734",
+      "f464e024a2e7",
+      "dee4dbe1e5cf",
+      "23f58b945a4c",
+      "08dd74715d56",
+      "0b7e4c40d84d",
+      "b9a82b7ea303",
+      "efd11badb6d8",
+      "82f419727e04",
+      "8435008cfab3",
+      "acd6887a4100",
+      "3fbe51871bd0",
+      "06e5cd999dd3",
+      "c64dd2ef7849",
+      "a65f5f1468d9",
+      "bf5d83b3769f",
+      "feeaba728ad3",
+      "f1c9b389e535"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 116, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0, "rejected": 80 },
+    "endToEndMs": { "count": 116, "min": 2050, "mean": 21051.637931034482, "p50": 21380, "p90": 36720, "max": 40050 },
+    "waitMs": {
+      "gateway": { "count": 116, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "direct": { "count": 36, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "invoker": { "count": 116, "min": 0, "mean": 783.9655172413793, "p50": 800, "p90": 800, "max": 800 },
+      "async": { "count": 116, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "direct-results": { "count": 36, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "async-results": { "count": 116, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "gateway": { "count": 116, "min": 40, "mean": 56.46551724137931, "p50": 60, "p90": 70, "max": 70 },
+      "direct": { "count": 36, "min": 990, "mean": 990, "p50": 990, "p90": 990, "max": 990 },
+      "invoker": { "count": 116, "min": 1000, "mean": 1000, "p50": 1000, "p90": 1000, "max": 1000 },
+      "async": { "count": 116, "min": 240, "mean": 240, "p50": 240, "p90": 240, "max": 240 },
+      "direct-results": { "count": 36, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "async-results": { "count": 116, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    }
+  }
+}

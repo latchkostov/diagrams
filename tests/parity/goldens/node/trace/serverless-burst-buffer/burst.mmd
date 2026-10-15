@@ -1,0 +1,25 @@
+---
+title: "Job #1 · 2.05 s end to end · 1 copy"
+---
+sequenceDiagram
+  participant requests as Contoso requests
+  participant gateway as API Gateway
+  participant queue as Async buffer
+  participant invoker as Bounded async invoker
+  participant direct as Direct function
+  participant async as Buffered function
+  participant direct_results as Direct results
+  participant async_results as Async results
+  requests->>gateway: Job (+0.00 s)<br/>Request
+  requests-)queue: Job (+0.00 s)<br/>Enqueue
+  queue-)invoker: Job (+0.20 s)<br/>Pull when free
+  gateway-->>requests: reply (+0.26 s)
+  gateway->>direct: Job (+0.26 s)<br/>Invoke
+  Note over requests,async_results: ⏱ 940 ms at Bounded async invoker: processing
+  invoker->>async: Job (+1.40 s)<br/>Paced invoke
+  direct-->>gateway: reply (+1.45 s)
+  direct->>direct_results: Job (+1.45 s)<br/>Write
+  direct_results-->>direct: reply (+1.66 s)
+  async-->>invoker: reply (+1.84 s)
+  async->>async_results: Job (+1.84 s)<br/>Write
+  async_results-->>async: reply (+2.05 s)

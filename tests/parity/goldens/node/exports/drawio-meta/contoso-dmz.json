@@ -1,0 +1,273 @@
+{
+  "withIcons": {
+    "sha256": "18e7caf49d87e5c9165f89d116fcd33311ccb04c0bd9f5bc7f3a3cb79f9b3295",
+    "bytes": 36981,
+    "inlined": { "cisco.isr": "net-router 470e17f3277c44a1", "cisco.nexus": "net-switch c2f4dc3f7e8bbddd", "client.browser": "client-browser 0022934839e05a07", "client.team": "client-team 932a5c20d72853c7", "f5.bigip": "net-adc 5a4604d3be814648", "paloalto.ngfw": "net-firewall 6643d189423b9fb6", "postgres": "postgresql 5bc8dcc1fbb1ec10", "service.dotnet": "dotnet 625b7d68f63c47d9" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Contoso DMZ",
+        "description": "Contoso web traffic crosses a router, firewall, BIG-IP and switch to the app and database; a separate probe is blocked at the firewall, never counted as a failure.",
+        "direction": "TB",
+        "groups": [
+          { "id": "dmz", "label": "DMZ", "tone": "onprem", "x": 0, "y": 296, "width": 462, "height": 336 },
+          { "id": "trusted", "label": "Trusted services", "tone": "onprem", "x": 160, "y": 736, "width": 340, "height": 496 }
+        ],
+        "nodes": [
+          {
+            "id": "visitors",
+            "stencil": "client.browser",
+            "label": "Contoso visitors",
+            "sublabel": "8 web requests/s",
+            "x": 40,
+            "y": 40,
+            "props": { "ratePerSec": 8, "messageType": "WebRequest" }
+          },
+          {
+            "id": "probes",
+            "stencil": "client.team",
+            "label": "Security exercise",
+            "sublabel": "2 admin probes/s",
+            "x": 360,
+            "y": 40,
+            "props": { "ratePerSec": 2, "messageType": "AdminProbe" }
+          },
+          {
+            "id": "router",
+            "stencil": "cisco.isr",
+            "label": "Edge router pair",
+            "sublabel": "Branch preset · active-active",
+            "x": 200,
+            "y": 200,
+            "props": { "preset": "device-size", "presetRevision": "1", "size": "branch", "replicas": 2, "ha": "active-active", "jitter": 0 }
+          },
+          {
+            "id": "firewall",
+            "stencil": "paloalto.ngfw",
+            "label": "Firewall pair",
+            "sublabel": "Allow web · deny admin",
+            "x": 200,
+            "y": 360,
+            "props": { "preset": "device-size", "presetRevision": "1", "size": "branch", "replicas": 2, "ha": "active-standby", "jitter": 0 },
+            "group": "dmz"
+          },
+          {
+            "id": "adc",
+            "stencil": "f5.bigip",
+            "label": "BIG-IP pair",
+            "sublabel": "Web VIP · active-standby",
+            "x": 40,
+            "y": 520,
+            "props": { "preset": "device-size", "presetRevision": "1", "size": "branch", "replicas": 2, "ha": "active-standby", "jitter": 0 },
+            "group": "dmz"
+          },
+          {
+            "id": "switch",
+            "stencil": "cisco.nexus",
+            "label": "Services switch",
+            "sublabel": "Branch preset · active-active",
+            "x": 200,
+            "y": 800,
+            "props": { "preset": "device-size", "presetRevision": "1", "size": "branch", "replicas": 2, "ha": "active-active", "jitter": 0 },
+            "group": "trusted"
+          },
+          {
+            "id": "app",
+            "stencil": "service.dotnet",
+            "label": "Contoso web app",
+            "sublabel": "2 replicas · 8 slots",
+            "x": 200,
+            "y": 960,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 4, "latencyMs": 100, "jitter": 0, "failureRate": 0 },
+            "group": "trusted"
+          },
+          {
+            "id": "database",
+            "stencil": "postgres",
+            "label": "Orders database",
+            "sublabel": "Trusted zone",
+            "x": 200,
+            "y": 1120,
+            "props": { "latencyMs": 5 },
+            "group": "trusted"
+          },
+          {
+            "id": "admin",
+            "stencil": "postgres",
+            "label": "Admin database",
+            "sublabel": "Denied probe destination",
+            "x": 520,
+            "y": 480,
+            "props": { "latencyMs": 5 }
+          }
+        ],
+        "edges": [
+          {
+            "id": "web-in",
+            "from": "visitors",
+            "to": "router",
+            "label": "Web",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "probe-in",
+            "from": "probes",
+            "to": "router",
+            "label": "Probe",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "perimeter",
+            "from": "router",
+            "to": "firewall",
+            "label": "Inspect",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "allow-web",
+            "from": "firewall",
+            "to": "adc",
+            "label": "Allow web",
+            "kind": "sync",
+            "props": { "travelMs": 200, "filter": ["WebRequest"] }
+          },
+          {
+            "id": "deny-admin",
+            "from": "firewall",
+            "to": "admin",
+            "label": "Deny admin",
+            "kind": "sync",
+            "props": { "travelMs": 200, "filter": ["AdminProbe"], "deny": true }
+          },
+          {
+            "id": "to-switch",
+            "from": "adc",
+            "to": "switch",
+            "label": "Forward",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "to-app",
+            "from": "switch",
+            "to": "app",
+            "label": "Web",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "to-db",
+            "from": "app",
+            "to": "database",
+            "label": "Query",
+            "kind": "sync",
+            "props": { "travelMs": 200 }
+          }
+        ],
+        "simulations": [
+          {
+            "id": "web-and-probes",
+            "title": "Web and blocked probes",
+            "description": "Allowed web calls reach storage; admin probes stop at the firewall.",
+            "seed": 41,
+            "scale": 1,
+            "traffic": [
+              {
+                "id": "visitors",
+                "node": "visitors",
+                "messageType": "WebRequest",
+                "shape": { "kind": "constant", "ratePerSec": 8, "durationMs": 6000 }
+              },
+              {
+                "id": "probes",
+                "node": "probes",
+                "messageType": "AdminProbe",
+                "shape": { "kind": "constant", "ratePerSec": 2, "durationMs": 6000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 2000,
+                "action": { "do": "note", "text": "Blocked is a firewall decision, separate from processing failures and lost messages. All capacities here are illustrative device presets.", "focus": ["firewall", "admin"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "database-processed-end",
+                "label": "database: processed == 48",
+                "metric": { "node": "database", "field": "processed" },
+                "op": "==",
+                "value": 48,
+                "when": "end"
+              },
+              {
+                "id": "admin-processed-end",
+                "label": "admin: processed == 0",
+                "metric": { "node": "admin", "field": "processed" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              },
+              {
+                "id": "firewall-blocked-end",
+                "label": "firewall: blocked == 12",
+                "metric": { "node": "firewall", "field": "blocked" },
+                "op": "==",
+                "value": 12,
+                "when": "end"
+              },
+              {
+                "id": "firewall-dropped-always",
+                "label": "firewall: dropped == 0",
+                "metric": { "node": "firewall", "field": "dropped" },
+                "op": "==",
+                "value": 0,
+                "when": "always"
+              }
+            ]
+          },
+          {
+            "id": "web-only",
+            "title": "Web-only baseline",
+            "description": "The same path carries normal web requests with no blocked traffic.",
+            "seed": 41,
+            "scale": 1,
+            "traffic": [
+              {
+                "id": "visitors",
+                "node": "visitors",
+                "messageType": "WebRequest",
+                "shape": { "kind": "constant", "ratePerSec": 8, "durationMs": 6000 }
+              }
+            ],
+            "timeline": [],
+            "expectations": [
+              {
+                "id": "database-processed-end",
+                "label": "database: processed == 48",
+                "metric": { "node": "database", "field": "processed" },
+                "op": "==",
+                "value": 48,
+                "when": "end"
+              },
+              {
+                "id": "firewall-blocked-end",
+                "label": "firewall: blocked == 0",
+                "metric": { "node": "firewall", "field": "blocked" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

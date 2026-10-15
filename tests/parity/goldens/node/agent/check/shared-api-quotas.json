@@ -1,0 +1,39 @@
+{
+  "all": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "capacity:answer", "rule": "capacity", "severity": "warning", "title": "Answer model can't keep up", "message": "At the diagram's own rates, it gets 2/s and handles 0.1/s (2000%): 1.9/s may be rejected.", "targets": ["answer"] }
+      ],
+      "summary": "1 warning, 0 suggestions."
+    }
+  },
+  "warnings": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "capacity:answer", "rule": "capacity", "severity": "warning", "title": "Answer model can't keep up", "message": "At the diagram's own rates, it gets 2/s and handles 0.1/s (2000%): 1.9/s may be rejected.", "targets": ["answer"] }
+      ],
+      "summary": "1 warning, 0 suggestions."
+    }
+  },
+  "oneRule": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "capacity:answer", "rule": "capacity", "severity": "warning", "title": "Answer model can't keep up", "message": "At the diagram's own rates, it gets 2/s and handles 0.1/s (2000%): 1.9/s may be rejected.", "targets": ["answer"] }
+      ],
+      "summary": "1 warning, 0 suggestions."
+    }
+  },
+  "simulations": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "capacity:answer", "rule": "capacity", "severity": "warning", "title": "Answer model can't keep up", "message": "At the diagram's own rates, it gets 2/s and handles 0.1/s (2000%): 1.9/s may be rejected.", "targets": ["answer"] }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "simulations": "Played 2 saved simulations (at most 60 s each)."
+    }
+  }
+}

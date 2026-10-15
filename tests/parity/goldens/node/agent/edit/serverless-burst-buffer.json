@@ -1,0 +1,544 @@
+{
+  "steps": [
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "topic-1",
+            "label": "parity.events",
+            "stencil": { "id": "kafka.topic", "label": "Kafka Topic", "confidence": "high", "alternatives": ["pulsar.topic", "confluent.cloud", "aws.msk"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-1", "from": "requests", "to": "topic-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+2 nodes, +2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "dotnet-1",
+            "label": "Parity reader",
+            "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-2", "from": "topic-1", "to": "dotnet-1" },
+          {
+            "i": 2,
+            "op": "add_node",
+            "id": "key-vault-1",
+            "label": "Parity secrets",
+            "stencil": { "id": "azure.key-vault", "label": "Key Vault", "confidence": "high", "alternatives": [] }
+          },
+          { "i": 3, "op": "connect", "id": "e-3", "from": "dotnet-1", "to": "key-vault-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +2 connections, −1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "insert_between",
+            "id": "queue-1",
+            "label": "buffer",
+            "stencil": { "id": "rabbitmq.queue", "label": "RabbitMQ Queue", "confidence": "high", "alternatives": ["aws.mq"] },
+            "from": "requests",
+            "to": "gateway"
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "update", "id": "gateway" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "update",
+            "id": "queue",
+            "stencil": { "id": "aws.lambda", "label": "AWS Lambda", "confidence": "high", "alternatives": [] }
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 boundary, 2 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_boundary", "id": "boundary-1", "label": "Parity zone" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 note",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_note", "id": "note-1" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "title or direction changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "set_meta" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "−1 node, −2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "remove", "ids": ["dotnet-1", "e-2", "e-3"] }]
+      }
+    },
+    {
+      "isError": true,
+      "output": {
+        "ok": false,
+        "i": 0,
+        "error": "Unknown reference \"no-such-node\".",
+        "ref": "no-such-node",
+        "candidates": [
+          { "id": "requests", "label": "Contoso requests", "stencil": "client.browser" },
+          { "id": "gateway", "label": "Renamed by parity", "stencil": "aws.api-gateway" },
+          { "id": "queue", "label": "Async buffer", "stencil": "aws.lambda" },
+          { "id": "direct", "label": "Direct function", "stencil": "aws.lambda" },
+          { "id": "invoker", "label": "Bounded async invoker", "stencil": "service.node" },
+          { "id": "async", "label": "Buffered function", "stencil": "aws.lambda" },
+          { "id": "direct-results", "label": "Direct results", "stencil": "aws.dynamodb" },
+          { "id": "async-results", "label": "Async results", "stencil": "aws.dynamodb" },
+          { "id": "topic-1", "label": "parity.events", "stencil": "kafka.topic" },
+          { "id": "key-vault-1", "label": "Parity secrets", "stencil": "azure.key-vault" },
+          { "id": "queue-1", "label": "buffer", "stencil": "rabbitmq.queue" },
+          { "id": "note-1", "label": "Pinned by the parity harness" }
+        ],
+        "hint": "Use an id from candidates, or call describe_diagram.",
+        "applied": false
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "dryRun": true,
+        "summary": "+1 node",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "postgres-1",
+            "label": "Dry run only",
+            "stencil": { "id": "postgres", "label": "PostgreSQL", "confidence": "high", "alternatives": ["gcp.cloud-sql", "aws.aurora", "supabase"] }
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "isError": false,
+      "output": { "ok": true, "id": "sim-1", "title": "Parity rush", "summary": "Added simulation \"Parity rush\": 4 traffic, 2 events, 1 expectations.", "undo": "One undo step reverts this call.", "play": "The user plays it in live view (L), or from the command palette." }
+    },
+    {
+      "isError": true,
+      "output": { "ok": false, "error": "constant traffic needs ratePerSec.", "hint": "Check the input against the tool's schema and try again." }
+    }
+  ],
+  "applied": [
+    { "tool": "edit_diagram", "summary": "+1 node, +1 connection", "changed": ["topic-1", "e-1"] },
+    {
+      "tool": "edit_diagram",
+      "summary": "+2 nodes, +2 connections",
+      "changed": ["dotnet-1", "key-vault-1", "e-2", "e-3"],
+      "choices": [
+        {
+          "nodeId": "dotnet-1",
+          "kind": ".NET consumer",
+          "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] },
+          "node": {
+            "id": "dotnet-1",
+            "stencil": "service.dotnet",
+            "label": "Parity reader",
+            "x": 731,
+            "y": 344,
+            "props": { "replicas": 3 }
+          }
+        }
+      ]
+    },
+    { "tool": "edit_diagram", "summary": "+1 node, +2 connections, −1 connection", "changed": ["queue-1", "e-4", "e-5"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["gateway"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["queue"] },
+    { "tool": "edit_diagram", "summary": "+1 boundary, 2 changed", "changed": ["boundary-1", "requests", "gateway"] },
+    { "tool": "edit_diagram", "summary": "+1 note", "changed": ["note-1"] },
+    { "tool": "edit_diagram", "summary": "title or direction changed", "changed": [] },
+    { "tool": "edit_diagram", "summary": "−1 node, −2 connections", "changed": [] },
+    { "tool": "set_simulation", "summary": "Added simulation “Parity rush”", "changed": ["requests"] }
+  ],
+  "diagram": {
+    "format": "diagrams/v2",
+    "planning": { "revision": "p3" },
+    "direction": "TB",
+    "title": "Parity edit",
+    "description": "Contoso compares direct Lambda admission with an SQS buffer and bounded invoker: reserved concurrency rejects direct excess while paced async calls finish.",
+    "nodes": [
+      {
+        "id": "requests",
+        "stencil": "client.browser",
+        "label": "Contoso requests",
+        "sublabel": "6 requests/s to each path",
+        "props": { "ratePerSec": 6, "messageType": "Job" },
+        "x": 200,
+        "y": 40,
+        "group": "boundary-1"
+      },
+      {
+        "id": "gateway",
+        "stencil": "aws.api-gateway",
+        "label": "Renamed by parity",
+        "sublabel": "Managed account preset",
+        "props": { "latencyMs": 120 },
+        "x": 40,
+        "y": 200,
+        "group": "boundary-1"
+      },
+      {
+        "id": "queue",
+        "stencil": "aws.lambda",
+        "label": "Async buffer",
+        "sublabel": "Wait here for a free worker",
+        "props": {},
+        "x": 360,
+        "y": 200
+      },
+      {
+        "id": "direct",
+        "stencil": "aws.lambda",
+        "label": "Direct function",
+        "sublabel": "2 concurrent executions · 1 s each",
+        "props": {
+          "preset": "managed-measured",
+          "presetRevision": "2026-10-14",
+          "jitter": 0,
+          "failureRate": 0,
+          "scaling": "auto",
+          "maxConcurrency": 2,
+          "latencyMs": 1000,
+          "api": { "maxInFlight": 2 }
+        },
+        "x": 40,
+        "y": 360
+      },
+      {
+        "id": "invoker",
+        "stencil": "service.node",
+        "label": "Bounded async invoker",
+        "sublabel": "2 slots · one-second pacing",
+        "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 1, "concurrency": 2, "latencyMs": 1000, "jitter": 0, "failureRate": 0 },
+        "x": 360,
+        "y": 360
+      },
+      {
+        "id": "async",
+        "stencil": "aws.lambda",
+        "label": "Buffered function",
+        "sublabel": "2 concurrent executions · 250 ms",
+        "props": {
+          "preset": "managed-measured",
+          "presetRevision": "2026-10-14",
+          "jitter": 0,
+          "failureRate": 0,
+          "scaling": "auto",
+          "maxConcurrency": 2,
+          "latencyMs": 250,
+          "api": { "maxInFlight": 2 }
+        },
+        "x": 360,
+        "y": 520
+      },
+      {
+        "id": "direct-results",
+        "stencil": "aws.dynamodb",
+        "label": "Direct results",
+        "sublabel": "Admitted requests only",
+        "props": { "latencyMs": 1 },
+        "x": 40,
+        "y": 520
+      },
+      {
+        "id": "async-results",
+        "stencil": "aws.dynamodb",
+        "label": "Async results",
+        "sublabel": "Every queued job",
+        "props": { "latencyMs": 1 },
+        "x": 200,
+        "y": 680
+      },
+      { "id": "topic-1", "stencil": "kafka.topic", "label": "parity.events", "x": 731, "y": 192 },
+      { "id": "key-vault-1", "stencil": "azure.key-vault", "label": "Parity secrets", "x": -80, "y": 64 },
+      { "id": "queue-1", "stencil": "rabbitmq.queue", "label": "buffer", "x": 991, "y": 192 }
+    ],
+    "edges": [
+      {
+        "id": "enqueue",
+        "from": "requests",
+        "to": "queue",
+        "label": "Enqueue",
+        "kind": "async",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "invoke",
+        "from": "gateway",
+        "to": "direct",
+        "label": "Invoke",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "consume",
+        "from": "queue",
+        "to": "invoker",
+        "label": "Pull when free",
+        "kind": "async",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "async-invoke",
+        "from": "invoker",
+        "to": "async",
+        "label": "Paced invoke",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "direct-save",
+        "from": "direct",
+        "to": "direct-results",
+        "label": "Write",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "async-save",
+        "from": "async",
+        "to": "async-results",
+        "label": "Write",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      { "id": "e-1", "from": "requests", "to": "topic-1", "kind": "async" },
+      {
+        "id": "e-4",
+        "from": "requests",
+        "to": "queue-1",
+        "kind": "sync",
+        "label": "Request",
+        "props": { "travelMs": 200 }
+      },
+      { "id": "e-5", "from": "queue-1", "to": "gateway", "kind": "sync", "props": { "travelMs": 200 } }
+    ],
+    "simulations": [
+      {
+        "id": "burst",
+        "title": "Twenty jobs at once",
+        "description": "Direct calls exceed the reserved allocation. A bounded invoker pulls queued jobs at 2/s. This explicit pacing is not a model of SQS trigger retries; managed allocation is instant and cold starts are excluded.",
+        "seed": 41,
+        "scale": 1,
+        "traffic": [
+          {
+            "id": "requests",
+            "node": "requests",
+            "messageType": "Job",
+            "shape": { "kind": "burst", "count": 20, "atMs": 1000, "spreadMs": 200 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 2000,
+            "action": { "do": "note", "text": "Reserved concurrency is simultaneous executions, not requests per second. Direct excess is rejected; SQS waits behind a bounded invoker, which protects the async allocation.", "focus": ["direct", "queue", "invoker"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "direct-rejected-end",
+            "label": "direct: rejected > 0",
+            "metric": { "node": "direct", "field": "rejected" },
+            "op": ">",
+            "value": 0,
+            "when": "end"
+          },
+          {
+            "id": "queue-lag-at",
+            "label": "queue: lag > 0",
+            "metric": { "node": "queue", "field": "lag" },
+            "op": ">",
+            "value": 0,
+            "when": "at",
+            "atMs": 3000
+          },
+          {
+            "id": "async-results-processed-end",
+            "label": "async-results: processed == 20",
+            "metric": { "node": "async-results", "field": "processed" },
+            "op": "==",
+            "value": 20,
+            "when": "end"
+          },
+          {
+            "id": "async-rejected-end",
+            "label": "async: rejected == 0",
+            "metric": { "node": "async", "field": "rejected" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          },
+          {
+            "id": "queue-lag-end",
+            "label": "queue: lag == 0",
+            "metric": { "node": "queue", "field": "lag" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ]
+      },
+      {
+        "id": "paced",
+        "title": "Paced requests fit",
+        "description": "One job a second stays inside both allocations.",
+        "seed": 41,
+        "scale": 1,
+        "traffic": [
+          {
+            "id": "requests",
+            "node": "requests",
+            "messageType": "Job",
+            "shape": { "kind": "constant", "ratePerSec": 1, "durationMs": 6000 }
+          }
+        ],
+        "timeline": [],
+        "expectations": [
+          {
+            "id": "direct-results-processed-end",
+            "label": "direct-results: processed == 6",
+            "metric": { "node": "direct-results", "field": "processed" },
+            "op": "==",
+            "value": 6,
+            "when": "end"
+          },
+          {
+            "id": "async-results-processed-end",
+            "label": "async-results: processed == 6",
+            "metric": { "node": "async-results", "field": "processed" },
+            "op": "==",
+            "value": 6,
+            "when": "end"
+          },
+          {
+            "id": "direct-rejected-end",
+            "label": "direct: rejected == 0",
+            "metric": { "node": "direct", "field": "rejected" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          },
+          {
+            "id": "async-rejected-end",
+            "label": "async: rejected == 0",
+            "metric": { "node": "async", "field": "rejected" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ]
+      },
+      {
+        "id": "sim-1",
+        "title": "Parity rush",
+        "durationMs": 20000,
+        "traffic": [
+          {
+            "id": "traffic-1",
+            "node": "requests",
+            "shape": { "kind": "constant", "ratePerSec": 20, "fromMs": 0, "durationMs": 10000 }
+          },
+          {
+            "id": "traffic-2",
+            "node": "requests",
+            "shape": { "kind": "burst", "count": 50, "atMs": 5000, "spreadMs": 2000 },
+            "messageType": "ParityBurst"
+          },
+          {
+            "id": "traffic-3",
+            "node": "requests",
+            "shape": {
+              "kind": "ramp",
+              "fromMs": 0,
+              "startRate": 1,
+              "stages": [{ "durationMs": 8000, "targetRate": 30 }]
+            }
+          },
+          {
+            "id": "traffic-4",
+            "node": "requests",
+            "shape": { "kind": "spike", "baseRate": 5, "peakRate": 40, "atMs": 12000, "peakMs": 1000, "durationMs": 4000 }
+          }
+        ],
+        "timeline": [
+          { "atMs": 6000, "action": { "do": "status", "node": "queue", "status": "down" } },
+          { "atMs": 6000, "action": { "do": "note", "text": "It goes down", "focus": ["queue"] } }
+        ],
+        "expectations": [
+          {
+            "id": "expectation-1",
+            "label": "Nothing dropped",
+            "metric": { "node": "queue", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ],
+        "scale": 2
+      }
+    ],
+    "groups": [
+      { "id": "boundary-1", "label": "Parity zone", "tone": "neutral", "x": 0, "y": -24, "width": 481, "height": 336 }
+    ],
+    "annotations": [
+      { "id": "note-1", "kind": "note", "text": "Pinned by the parity harness", "x": 1291, "y": 160, "width": 240, "height": 160 }
+    ]
+  }
+}

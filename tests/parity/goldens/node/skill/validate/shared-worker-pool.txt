@@ -1,0 +1,2 @@
+exit 0
+VALID <repo>/src/examples/shared-worker-pool.json: 6 nodes, 5 edges, 2 simulations

@@ -1,0 +1,46 @@
+{
+  "summary": "1 warning, 1 suggestion.",
+  "findings": {
+    "capacity:direct": {
+      "title": "Direct function can't keep up",
+      "message": "At the diagram's own rates, it gets 6/s and handles 2/s (300%): 4/s may be rejected.",
+      "rationale": "Demand above what a service can handle never drains: latency and backlog grow until something times out. Live view's Show capacity has the same numbers.",
+      "shownMessage": "At the diagram's own rates, it gets 6/s and handles 2/s (300%): 4 req/s may be rejected."
+    },
+    "dead-letter:queue": {
+      "title": "Async buffer has no dead-letter queue",
+      "message": "If Bounded async invoker can't handle a message, it's dropped after 3 deliveries. A command queue is where losing messages hurts most.",
+      "rationale": "A message that keeps failing is redelivered up to the broker's delivery limit, then goes to the broker's dead-letter route, or is dropped when there isn't one (or its filter doesn't take the message). A dead-letter queue keeps it to inspect and replay.",
+      "fix": { "label": "Add dead-letter queue" }
+    }
+  },
+  "agentReport": {
+    "findings": [
+      { "id": "capacity:direct", "rule": "capacity", "severity": "warning", "title": "Direct function can't keep up", "message": "At the diagram's own rates, it gets 6/s and handles 2/s (300%): 4/s may be rejected.", "targets": ["direct"] },
+      {
+        "id": "dead-letter:queue",
+        "rule": "dead-letter",
+        "severity": "suggestion",
+        "title": "Async buffer has no dead-letter queue",
+        "message": "If Bounded async invoker can't handle a message, it's dropped after 3 deliveries. A command queue is where losing messages hurts most.",
+        "targets": ["queue", "invoker"],
+        "fix": {
+          "label": "Add dead-letter queue",
+          "ops": [
+            { "op": "add_node", "kind": "aws.sqs", "label": "Async buffer-dlq", "key": "new-dlq" },
+            { "op": "connect", "from": "queue", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
+            { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
+          ]
+        }
+      }
+    ],
+    "summary": "1 warning, 1 suggestion.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      { "id": "capacity:direct", "rule": "capacity", "severity": "warning", "title": "Direct function can't keep up", "message": "At the diagram's own rates, it gets 6/s and handles 2/s (300%): 4/s may be rejected.", "targets": ["direct"] }
+    ],
+    "summary": "1 warning, 1 suggestion."
+  }
+}

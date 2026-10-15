@@ -1,0 +1,246 @@
+import type { Locator, Page } from "@playwright/test";
+import { test, expect, gotoCanvas, gotoLive, pauseClock, waitForStableViewport, expectNoErrors } from "./fixtures";
+
+const showcases = [
+  { slug: "partitions-vs-subscriptions", signal: "log", field: "backlog" },
+  { slug: "shared-api-quotas", signal: "answer", field: "rejected" },
+  { slug: "serverless-burst-buffer", signal: "direct", field: "rejected" },
+  { slug: "measured-order-capacity", signal: "queue", field: "backlog", sim: "triple" },
+  { slug: "contoso-dmz", signal: "firewall", field: "blocked" },
+  { slug: "shared-worker-pool", signal: "order-log", field: "backlog" },
+] as const;
+
+async function positive(page: Page, node: string, field: string) {
+  const badge = page.getByTestId(`node-badge-${node}`);
+  await expect(badge).toBeVisible();
+  await expect.poll(async () => Number(await badge.getAttribute(`data-${field}`))).toBeGreaterThan(0);
+}
+
+async function expectExposed(control: Locator) {
+  await expect(control).toBeInViewport({ ratio: 1 });
+  await expect
+    .poll(() =>
+      control.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return [0.2, 0.5, 0.8].every((x) =>
+          [0.2, 0.5, 0.8].every((y) => el.contains(document.elementFromPoint(r.x + r.width * x, r.y + r.height * y))),
+        );
+      }),
+    )
+    .toBe(true);
+}
+
+// Read the actual rendered node and label boxes; only data-testid selectors.
+async function overlaps(page: Page) {
+  return page.evaluate(() => {
+    const boxes = (selector: string) =>
+      [...document.querySelectorAll(selector)].map((el) => ({
+        id: el.getAttribute("data-testid"),
+        box: el.getBoundingClientRect(),
+      }));
+    const nodes = boxes('[data-testid^="rf__node-"]:not([data-testid^="rf__node-group:"])');
+    const boundaries = boxes('[data-testid^="rf__node-group:"]');
+    const labels = boxes('[data-testid^="edge-label-"]');
+    const hits: string[] = [];
+    const hit = (a: DOMRect, b: DOMRect) =>
+      a.left + 0.5 < b.right && b.left + 0.5 < a.right && a.top + 0.5 < b.bottom && b.top + 0.5 < a.bottom;
+    for (let i = 0; i < boundaries.length; i++)
+      for (const other of boundaries.slice(i + 1))
+        if (hit(boundaries[i].box, other.box)) hits.push(`${boundaries[i].id} / ${other.id}`);
+    for (let i = 0; i < nodes.length; i++)
+      for (const other of nodes.slice(i + 1))
+        if (hit(nodes[i].box, other.box)) hits.push(`${nodes[i].id} / ${other.id}`);
+    for (let i = 0; i < labels.length; i++)
+      for (const other of [...nodes, ...labels.slice(i + 1)])
+        if (hit(labels[i].box, other.box)) hits.push(`${labels[i].id} / ${other.id}`);
+    return hits;
+  });
+}
+
+for (const theme of ["light", "dark"] as const)
+  for (const viewport of [
+    { width: 1280, height: 800 },
+    { width: 390, height: 844 },
+  ])
+    test.describe(`${theme} ${viewport.width}`, () => {
+      test.use({ colorScheme: theme, viewport });
+      for (const showcase of showcases)
+        test(`${showcase.slug} shows its feature in Live`, async ({ page, consoleErrors }, info) => {
+          const simulation = "sim" in showcase ? `&sim=${showcase.sim}` : "";
+          await page.clock.install();
+          await gotoLive(page, `./?view=canvas&example=${showcase.slug}&live=1${simulation}`);
+          await waitForStableViewport(page);
+          await pauseClock(page);
+          if (viewport.width === 390) {
+            const title = await page.getByTestId("diagram-card").boundingBox();
+            const toggle = await page.getByTestId("live-toggle").boundingBox();
+            expect(title).not.toBeNull();
+            expect(toggle).not.toBeNull();
+            if (!title || !toggle) throw new Error("Expected visible title and Live toggle");
+            expect(title.height).toBeLessThan(toggle.height * 2);
+            const titleText = page.getByTestId("diagram-title");
+            expect(await titleText.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+            const bar = await page.getByTestId("live-controls").boundingBox();
+            expect(bar).not.toBeNull();
+            if (!bar) throw new Error("Expected visible playback bar");
+            for (const id of [
+              "live-play",
+              "live-restart",
+              "live-speed",
+              "live-sim-picker",
+              "live-capacity",
+              "live-more",
+            ]) {
+              const control = await page.getByTestId(id).boundingBox();
+              expect(control, id).not.toBeNull();
+              if (!control) throw new Error(`Expected visible ${id}`);
+              expect(control.x, id).toBeGreaterThanOrEqual(bar.x);
+              expect(control.x + control.width, id).toBeLessThanOrEqual(bar.x + bar.width);
+              expect(
+                await page.getByTestId(id).evaluate((el) => {
+                  const r = el.getBoundingClientRect();
+                  return el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+                }),
+                `${id} is not covered by a side rail`,
+              ).toBe(true);
+            }
+          }
+          await page.getByTestId("live-restart").click();
+          await page.clock.runFor(8000);
+          await positive(page, showcase.signal, showcase.field);
+          if (showcase.slug === "partitions-vs-subscriptions") {
+            await expect(page.getByTestId("capacity-idle-log-readers")).toHaveAttribute("data-idle", "5");
+            await expect(page.getByTestId("capacity-idle-receipts")).toHaveCount(0);
+            await positive(page, "receipts", "processed");
+            await positive(page, "audit", "processed");
+          }
+          if (showcase.slug === "shared-api-quotas") {
+            await positive(page, "review", "rejected");
+            await positive(page, "payments", "rejected");
+            await expect(page.getByTestId("node-rejected-answer")).toContainText("Rejected");
+            await expect(page.getByTestId("node-badge-answer")).toHaveAttribute("data-failed", "0");
+          }
+          if (showcase.slug === "serverless-burst-buffer") {
+            await positive(page, "queue", "backlog");
+            await positive(page, "async-results", "processed");
+            await expect(page.getByTestId("node-badge-async")).toHaveAttribute("data-rejected", "0");
+          }
+          if (showcase.slug === "contoso-dmz") {
+            await positive(page, "database", "processed");
+            await expect(page.getByTestId("node-badge-admin")).toHaveAttribute("data-processed", "0");
+            await expect(page.getByTestId("node-badge-firewall")).toHaveAttribute("data-failed", "0");
+          }
+          if (showcase.slug === "shared-worker-pool") await positive(page, "refund-log", "backlog");
+          expect(await overlaps(page)).toEqual([]);
+          const filename = `${showcase.slug}-${theme}-${viewport.width}.png`;
+          await page.mouse.move(0, 0);
+          const body = await page.screenshot({ path: info.outputPath(filename) });
+          await info.attach(filename, { body, contentType: "image/png" });
+          if (viewport.width === 390) {
+            // Exercise the controls after capturing the normal opening state: Inputs enables the heat map.
+            await page.getByTestId("live-play").click();
+            await page.getByTestId("live-play").click();
+            await page.getByTestId("live-capacity").click();
+            await expect(page.getByTestId("live-capacity")).toHaveAttribute("aria-pressed", "true");
+            await page.getByTestId("live-capacity").click();
+            await expect(page.getByTestId("live-capacity")).toHaveAttribute("aria-pressed", "false");
+            await page.getByTestId("live-more").click();
+            await expect(page.getByTestId("live-more-menu")).toBeVisible();
+            await page.keyboard.press("Escape");
+          }
+          expectNoErrors(consoleErrors);
+        });
+    });
+
+test.describe("mobile title card", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+  test("keeps checks and reset available while folding the description", async ({ page }) => {
+    await gotoCanvas(page, "partitions-vs-subscriptions");
+    await expect(page.getByTestId("checks-count")).toBeVisible();
+    await page.getByTestId("node-receipts").click();
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByTestId("reset-diagram")).toBeVisible();
+    await page.getByTestId("reset-diagram").click();
+    await expect(page.getByTestId("reset-diagram")).toHaveCount(0);
+    for (const id of ["example-picker", "view-button", "file-button", "theme-toggle"]) {
+      const control = page.getByTestId(id);
+      await control.focus();
+      await expect(control).toBeFocused();
+      await control.scrollIntoViewIfNeeded();
+      const bounds = await control.boundingBox();
+      expect(bounds).not.toBeNull();
+      if (!bounds) throw new Error(`Expected visible ${id}`);
+      // Scroll offsets round to device pixels; allow their subpixel remainder.
+      expect(bounds.x, id).toBeGreaterThanOrEqual(-0.5);
+      expect(bounds.x + bounds.width, id).toBeLessThanOrEqual(390.5);
+    }
+  });
+});
+
+test.describe("phone live panels", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("Inputs stays visible and editable above playback", async ({ page }, info) => {
+    await page.clock.install();
+    await gotoLive(page, "./?view=canvas&example=partitions-vs-subscriptions&live=1&sim=compare");
+    await expect(page.getByTestId("live-note")).toBeVisible();
+    await pauseClock(page);
+    await page.getByTestId("live-capacity").click();
+    const panel = page.getByTestId("capacity-panel");
+    await expect(panel).toBeInViewport({ ratio: 1 });
+    await expectExposed(page.getByTestId("capacity-heading"));
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("live-events-toggle").click();
+    await expect(page.getByTestId("live-events")).toBeVisible();
+    await expectExposed(panel);
+    await expect
+      .poll(async () => {
+        const bounds = await panel.boundingBox();
+        const bar = await page.getByTestId("live-controls").boundingBox();
+        return !!bounds && !!bar && bounds.y + bounds.height <= bar.y;
+      })
+      .toBe(true);
+    const input = page.getByTestId("capacity-traffic-mult");
+    await expectExposed(input);
+    await input.focus();
+    await input.press("End");
+    await expect(input).toHaveAttribute("data-value", "10");
+    await expect(page.getByTestId("capacity-traffic-mult-value")).toHaveText("10×");
+    await expect(page.getByTestId("capacity-dirty")).toBeVisible();
+    await page.screenshot({ path: info.outputPath("phone-inputs-narration-log.png") });
+    await page.getByTestId("capacity-close").click();
+    await expect(panel).toHaveCount(0);
+    await expectExposed(page.getByTestId("diagram-card"));
+  });
+
+  test("More stays exposed with Inputs open", async ({ page }, info) => {
+    await gotoLive(page, "./?view=canvas&example=partitions-vs-subscriptions&live=1");
+    await page.getByTestId("live-capacity").click();
+    await expect(page.getByTestId("capacity-panel")).toBeInViewport({ ratio: 1 });
+    await page.getByTestId("live-more").click();
+    await expectExposed(page.getByTestId("live-more-menu"));
+    await expectExposed(page.getByTestId("live-traffic"));
+    await page.getByTestId("live-traffic").click();
+    await expect(page.getByTestId("live-traffic")).toHaveAttribute("aria-checked", "false");
+    await page.getByTestId("live-traffic").focus();
+    await page.getByTestId("live-traffic").press("Space");
+    await expect(page.getByTestId("live-traffic")).toHaveAttribute("aria-checked", "true");
+    await page.screenshot({ path: info.outputPath("phone-inputs-more.png") });
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("capacity-close").click();
+  });
+
+  test("expectations stay exposed with Inputs open", async ({ page }, info) => {
+    await gotoLive(page, "./?view=canvas&example=partitions-vs-subscriptions&live=1&sim=compare");
+    await page.getByTestId("live-capacity").click();
+    await expect(page.getByTestId("capacity-panel")).toBeInViewport({ ratio: 1 });
+    await page.getByTestId("live-expectations-summary").click();
+    await expectExposed(page.getByTestId("live-expectations-list"));
+    await page.screenshot({ path: info.outputPath("phone-inputs-expectations.png") });
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("live-expectations-list")).toHaveCount(0);
+    await expect(page.getByTestId("live-expectations-summary")).toBeFocused();
+    await expect(page.getByTestId("capacity-panel")).toBeVisible();
+    await page.getByTestId("capacity-close").click();
+  });
+});

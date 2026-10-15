@@ -1,0 +1,85 @@
+{
+  "run": {
+    "time": 3690,
+    "totalMs": 11200,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "answer-processed-end", "label": "answer: processed == 4", "status": "pass", "value": 4 },
+      { "id": "review-processed-end", "label": "review: processed == 4", "status": "pass", "value": 4 },
+      { "id": "payments-processed-end", "label": "payments: processed == 3", "status": "pass", "value": 3 },
+      { "id": "answer-rejected-end", "label": "answer: rejected == 0", "status": "pass", "value": 0 },
+      { "id": "review-rejected-end", "label": "review: rejected == 0", "status": "pass", "value": 0 },
+      { "id": "payments-rejected-end", "label": "payments: rejected == 0", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 1000, "kind": "traffic", "label": "questions" },
+      { "atMs": 1000, "kind": "traffic", "label": "billing" },
+      { "atMs": 1200, "kind": "traffic", "label": "questions ends" },
+      { "atMs": 1200, "kind": "traffic", "label": "billing ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "questions": { "replicas": [1, 1, 0] },
+        "gateway": { "replicas": [1, 1, 0] },
+        "assistant": { "replicas": [2, 2, 0] },
+        "answer": { "replicas": [1, 1, 0] },
+        "review": { "replicas": [1, 1, 0] },
+        "billing": { "replicas": [1, 1, 0] },
+        "payments": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 3690,
+    "inSystem": 0,
+    "real": {
+      "questions": { "processed": 4, "throughput": 0.30085088803133025, "replicas": [1, 1, 0] },
+      "gateway": { "processed": 4, "throughput": 0.3882375987103318, "replicas": [1, 1, 0] },
+      "assistant": { "processed": 4, "throughput": 0.5240659420512983, "replicas": [2, 2, 0] },
+      "answer": { "processed": 4, "throughput": 0.8137209711989926, "replicas": [1, 1, 0] },
+      "review": { "processed": 4, "throughput": 0.8137209711989926, "replicas": [1, 1, 0] },
+      "billing": { "processed": 3, "throughput": 0.22536446047834666, "replicas": [1, 1, 0] },
+      "payments": { "processed": 3, "throughput": 0.34887102355172445, "replicas": [1, 1, 0] }
+    },
+    "edges": { "ask": 4, "assist": 4, "generate": 4, "review-answer": 4, "charge": 3 }
+  },
+  "events": {
+    "total": 52,
+    "byKind": { "inject": 7, "process": 26, "deliver": 19 },
+    "byNode": {
+      "questions": { "inject": 4, "process": 4 },
+      "billing": { "inject": 3, "process": 3 },
+      "gateway": { "deliver": 4, "process": 4 },
+      "payments": { "deliver": 3, "process": 3 },
+      "assistant": { "deliver": 4, "process": 4 },
+      "answer": { "deliver": 4, "process": 4 },
+      "review": { "deliver": 4, "process": 4 }
+    },
+    "perSecond": ["-", "1f5fd4a07e6d", "9d8dec5ffc61", "-"]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 7, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 7, "min": 440, "mean": 758.5714285714286, "p50": 990, "p90": 1000, "max": 1000 },
+    "waitMs": {
+      "gateway": { "count": 4, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "assistant": { "count": 4, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "answer": { "count": 4, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "review": { "count": 4, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "payments": { "count": 3, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "gateway": { "count": 4, "min": 50, "mean": 57.5, "p50": 60, "p90": 60, "max": 60 },
+      "assistant": { "count": 4, "min": 100, "mean": 100, "p50": 100, "p90": 100, "max": 100 },
+      "answer": { "count": 4, "min": 240, "mean": 240, "p50": 240, "p90": 240, "max": 240 },
+      "review": { "count": 4, "min": 240, "mean": 240, "p50": 240, "p90": 240, "max": 240 },
+      "payments": { "count": 3, "min": 240, "mean": 240, "p50": 240, "p90": 240, "max": 240 }
+    }
+  }
+}

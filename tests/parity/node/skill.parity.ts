@@ -2,7 +2,7 @@
 // fingerprint: the files themselves are committed and kept equal to the generator by publicSchemas.test.ts), the
 // skill's generated data and references (committed, kept fresh by skill.test.ts), and what the skill's scripts do
 // on fixed inputs: validate, layout, share-link and export-html, run as an agent runs them.
-import { describe, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -13,8 +13,33 @@ import { publicSchemaFiles } from "../../../src/ai/webmcp/publicSchemas";
 import { allDiagrams, examples } from "../lib/corpus";
 import { expectGolden, expectGoldenText, ROOT } from "../lib/golden";
 import { fingerprint } from "../lib/hash";
+import { stencilsDoc } from "../../../scripts/skill-gen";
 
 const SKILL = join(ROOT, "skills/livediagrams");
+// Frozen inputs for the original aggregate outputs, independent of later additions or format upgrades.
+const ORIGINAL_EXAMPLES = [
+  "aks-app-config-key-vault",
+  "aws-fanout",
+  "aws-serverless-orders",
+  "azure-service-bus-integration",
+  "branch-to-datacentre",
+  "cdc-analytics",
+  "cqrs-event-sourcing",
+  "event-driven-data-platform",
+  "gcp-streaming-analytics",
+  "iot-telemetry",
+  "kafka-order-pipeline",
+  "multi-region-active-active",
+  "nightly-batch-elt",
+  "notification-fanout",
+  "outbox-saga-checkout",
+  "rag-assistant",
+  "webhook-ingestion",
+];
+const originals = examples.filter((e) => ORIGINAL_EXAMPLES.includes(e.slug));
+it("retains every original aggregate input", () => {
+  expect(originals.map((e) => e.slug)).toEqual(ORIGINAL_EXAMPLES);
+});
 const exampleFile = (slug: string) => join(ROOT, "src/examples", `${slug}.json`);
 const diagramFile = (slug: string) =>
   slug.startsWith("corpus-")
@@ -59,16 +84,41 @@ it("skill data and references", () => {
   ];
   expectGolden(
     "skill/files.json",
-    Object.fromEntries(files.map((f) => [f, fingerprint(readFileSync(join(SKILL, f), "utf8").replace(/\r\n/g, "\n"))])),
+    Object.fromEntries(
+      files.map((f) => [
+        f,
+        fingerprint(
+          // Preserve the original cohort's generated output; also pin the full current reference below.
+          f === "reference/stencils.md"
+            ? stencilsDoc(originals)
+            : readFileSync(join(SKILL, f), "utf8").replace(/\r\n/g, "\n"),
+        ),
+      ]),
+    ),
+  );
+  expectGolden(
+    "skill/current-stencils.json",
+    fingerprint(readFileSync(join(SKILL, "reference/stencils.md"), "utf8").replace(/\r\n/g, "\n")),
   );
 });
 
 it("validate.mjs", () => {
   const r = script(
     "validate.mjs",
-    allDiagrams.map((d) => diagramFile(d.slug)),
+    // Keep the original public cohort's transcript stable. New inputs get individual goldens below.
+    allDiagrams
+      .filter((d) => d.slug.startsWith("corpus-") || ORIGINAL_EXAMPLES.includes(d.slug))
+      .map((d) => diagramFile(d.slug)),
   );
   expectGoldenText("skill/validate.txt", `exit ${r.status}\n${r.stdout}${r.stderr}`);
+});
+
+describe("validate.mjs added public examples", () => {
+  for (const { slug } of examples.filter((d) => !ORIGINAL_EXAMPLES.includes(d.slug)))
+    it(slug, () => {
+      const r = script("validate.mjs", [exampleFile(slug)]);
+      expectGoldenText(`skill/validate/${slug}.txt`, `exit ${r.status}\n${r.stdout}${r.stderr}`);
+    });
 });
 
 describe("layout.mjs, share-link.mjs and export-html.mjs", () => {

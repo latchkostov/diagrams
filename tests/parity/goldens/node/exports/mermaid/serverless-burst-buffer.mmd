@@ -1,0 +1,21 @@
+---
+title: Serverless burst and buffer
+---
+flowchart TB
+  requests(["Contoso requests<br/>6 requests/s to each path"])
+  gateway["API Gateway<br/>Managed account preset"]
+  queue["Async buffer<br/>Wait here for a free worker"]
+  direct["Direct function<br/>2 concurrent executions · 1 s each"]
+  invoker["Bounded async invoker<br/>2 slots · one-second pacing"]
+  async["Buffered function<br/>2 concurrent executions · 250 ms"]
+  direct_results[("Direct results<br/>Admitted requests only")]
+  async_results[("Async results<br/>Every queued job")]
+  requests -->|"Request"| gateway
+  requests -.->|"Enqueue"| queue
+  gateway -->|"Invoke"| direct
+  queue -.->|"Pull when free"| invoker
+  invoker -->|"Paced invoke"| async
+  direct -->|"Write"| direct_results
+  async -->|"Write"| async_results
+  linkStyle 1,3 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"Contoso compares direct Lambda admission with an SQS buffer and bounded invoker: reserved concurrency rejects direct excess while paced async calls finish.","nodes":{"requests":["requests","client.browser"],"gateway":["gateway","aws.api-gateway"],"queue":["queue","aws.sqs"],"direct":["direct","aws.lambda"],"invoker":["invoker","service.node"],"async":["async","aws.lambda"],"direct_results":["direct-results","aws.dynamodb"],"async_results":["async-results","aws.dynamodb"]},"edges":["direct-entry","enqueue","invoke","consume","async-invoke","direct-save","async-save"],"relations":{}}

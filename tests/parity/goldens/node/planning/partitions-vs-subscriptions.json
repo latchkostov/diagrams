@@ -1,0 +1,636 @@
+{
+  "autoScale": { "freePlay": 1, "compare": 1, "more-partitions": 1 },
+  "brokerAssignments": {
+    "brokers": {
+      "log": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+      "fanout": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" }
+    },
+    "consumers": {
+      "log-readers": {
+        "count": 3,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "receipts": { "count": 8 },
+      "audit": { "count": 8 }
+    }
+  },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "log-readers",
+      "suggestion": "3 partitions: Partitions → 8",
+      "converged": true,
+      "iterations": 3,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": {
+        "publisher": ["Infinity", 6, 0, 1, 1, 0],
+        "log": [3, 6, 2, 1, 1, 0],
+        "fanout": [8, 6, 0.75, 1, 1, 0],
+        "log-readers": [
+          3,
+          6,
+          2,
+          8,
+          3,
+          5,
+          {
+            "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+          }
+        ],
+        "receipts": [8, 6, 0.75, 8, 8, 0],
+        "audit": [8, 6, 0.75, 8, 8, 0]
+      },
+      "connections": { "publish-log": 6, "publish-fanout": 6, "read-log": 6, "read-receipts": 6, "read-audit": 6 },
+      "offeredTypes": { "publisher": ["OrderPlaced"], "log": ["OrderPlaced"], "fanout": ["OrderPlaced"], "log-readers": ["OrderPlaced"], "receipts": ["OrderPlaced"], "audit": ["OrderPlaced"] }
+    },
+    "explanations": {
+      "log-readers": {
+        "id": "log-readers",
+        "role": "processor",
+        "status": "up",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 3,
+        "offered": 6,
+        "replicas": 8,
+        "baseReplicas": 8,
+        "omittedContributors": 0,
+        "activeReplicas": 3,
+        "assignments": [
+          {
+            "broker": "log",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 1,
+        "seconds": 1,
+        "utilization": 2,
+        "growth": 3,
+        "contributors": [{ "edge": "read-log", "node": "log", "label": "Order log", "rate": 6 }],
+        "target": 0.5,
+        "minimumReplicas": 8,
+        "targetReplicas": 12,
+        "changes": [
+          { "nodeId": "log-readers", "key": "replicas", "from": 8, "to": 12 },
+          { "nodeId": "log", "key": "partitions", "from": 3, "to": 12 }
+        ],
+        "fixId": "capacity:log-readers",
+        "converged": true
+      },
+      "receipts": {
+        "id": "receipts",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 8,
+        "offered": 6,
+        "replicas": 8,
+        "baseReplicas": 8,
+        "omittedContributors": 0,
+        "activeReplicas": 8,
+        "assignments": [],
+        "slots": 1,
+        "seconds": 1,
+        "utilization": 0.75,
+        "growth": 0,
+        "contributors": [{ "edge": "read-receipts", "node": "fanout", "label": "Order notifications", "rate": 6 }],
+        "target": 0.5,
+        "minimumReplicas": 8,
+        "changes": null,
+        "converged": true
+      },
+      "audit": {
+        "id": "audit",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 8,
+        "offered": 6,
+        "replicas": 8,
+        "baseReplicas": 8,
+        "omittedContributors": 0,
+        "activeReplicas": 8,
+        "assignments": [],
+        "slots": 1,
+        "seconds": 1,
+        "utilization": 0.75,
+        "growth": 0,
+        "contributors": [{ "edge": "read-audit", "node": "fanout", "label": "Order notifications", "rate": 6 }],
+        "target": 0.5,
+        "minimumReplicas": 8,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "publisher": [
+        { "kind": "publishes", "edge": "publish-log", "peer": "log" },
+        { "kind": "publishes", "edge": "publish-fanout", "peer": "fanout" }
+      ],
+      "log-readers": [
+        {
+          "kind": "consumes",
+          "edge": "read-log",
+          "peer": "log",
+          "group": "orders",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "receipts": [
+        {
+          "kind": "consumes",
+          "edge": "read-receipts",
+          "peer": "fanout",
+          "group": "receipts",
+          "broker": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "audit": [
+        {
+          "kind": "consumes",
+          "edge": "read-audit",
+          "peer": "fanout",
+          "group": "audit",
+          "broker": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ]
+    },
+    "sizing": [
+      { "nodeId": "log-readers", "key": "replicas", "from": 8, "to": 11 },
+      { "nodeId": "log", "key": "partitions", "from": 3, "to": 11 }
+    ],
+    "redundancy": { "log": { "replicas": 2, "enough": false }, "log-readers": { "replicas": 11, "enough": true } },
+    "resolved": {
+      "publisher": {
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 6,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "OrderPlaced",
+        "healthChecks": false
+      },
+      "log": {
+        "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Order log",
+        "healthChecks": false
+      },
+      "fanout": {
+        "broker": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
+        "profile": { "family": "pubsub", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Order notifications",
+        "healthChecks": false
+      },
+      "log-readers": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 1000,
+        "concurrency": 1,
+        "replicas": 8,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Kafka readers",
+        "healthChecks": false
+      },
+      "receipts": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 1000,
+        "concurrency": 1,
+        "replicas": 8,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Receipt subscription",
+        "healthChecks": false
+      },
+      "audit": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 1000,
+        "concurrency": 1,
+        "replicas": 8,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Audit subscription",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "compare": { "configured": "(same as edit)", "simulation": "compare", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" },
+    "more-partitions": {
+      "configured": "(same as edit)",
+      "simulation": "more-partitions",
+      "analysis": {
+        "bottleneck": "log-readers",
+        "suggestion": "Kafka readers: 75% utilized",
+        "converged": true,
+        "iterations": 3,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": {
+          "publisher": ["Infinity", 6, 0, 1, 1, 0],
+          "log": [8, 6, 0.75, 1, 1, 0],
+          "fanout": [8, 6, 0.75, 1, 1, 0],
+          "log-readers": [
+            8,
+            6,
+            0.75,
+            8,
+            8,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ],
+          "receipts": [8, 6, 0.75, 8, 8, 0],
+          "audit": [8, 6, 0.75, 8, 8, 0]
+        },
+        "connections": { "publish-log": 6, "publish-fanout": 6, "read-log": 6, "read-receipts": 6, "read-audit": 6 },
+        "offeredTypes": { "publisher": ["OrderPlaced"], "log": ["OrderPlaced"], "fanout": ["OrderPlaced"], "log-readers": ["OrderPlaced"], "receipts": ["OrderPlaced"], "audit": ["OrderPlaced"] }
+      },
+      "explanations": {
+        "log-readers": {
+          "id": "log-readers",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 8,
+          "offered": 6,
+          "replicas": 8,
+          "baseReplicas": 8,
+          "omittedContributors": 0,
+          "activeReplicas": 8,
+          "assignments": [
+            {
+              "broker": "log",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 8
+            }
+          ],
+          "slots": 1,
+          "seconds": 1,
+          "utilization": 0.75,
+          "growth": 0,
+          "contributors": [{ "edge": "read-log", "node": "log", "label": "Order log", "rate": 6 }],
+          "target": 0.5,
+          "minimumReplicas": 8,
+          "changes": null,
+          "converged": true
+        },
+        "receipts": {
+          "id": "receipts",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 8,
+          "offered": 6,
+          "replicas": 8,
+          "baseReplicas": 8,
+          "omittedContributors": 0,
+          "activeReplicas": 8,
+          "assignments": [],
+          "slots": 1,
+          "seconds": 1,
+          "utilization": 0.75,
+          "growth": 0,
+          "contributors": [{ "edge": "read-receipts", "node": "fanout", "label": "Order notifications", "rate": 6 }],
+          "target": 0.5,
+          "minimumReplicas": 8,
+          "changes": null,
+          "converged": true
+        },
+        "audit": {
+          "id": "audit",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 8,
+          "offered": 6,
+          "replicas": 8,
+          "baseReplicas": 8,
+          "omittedContributors": 0,
+          "activeReplicas": 8,
+          "assignments": [],
+          "slots": 1,
+          "seconds": 1,
+          "utilization": 0.75,
+          "growth": 0,
+          "contributors": [{ "edge": "read-audit", "node": "fanout", "label": "Order notifications", "rate": 6 }],
+          "target": 0.5,
+          "minimumReplicas": 8,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": null,
+      "redundancy": {},
+      "resolved": {
+        "publisher": {
+          "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+          "ratePerSec": 6,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "OrderPlaced",
+          "healthChecks": false
+        },
+        "log": {
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 8,
+          "messageType": "Order log",
+          "healthChecks": false
+        },
+        "fanout": {
+          "broker": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
+          "profile": { "family": "pubsub", "revision": "p3", "evidence": [], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "Order notifications",
+          "healthChecks": false
+        },
+        "log-readers": {
+          "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 1000,
+          "concurrency": 1,
+          "replicas": 8,
+          "jitter": 0,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "Kafka readers",
+          "healthChecks": false
+        },
+        "receipts": {
+          "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 1000,
+          "concurrency": 1,
+          "replicas": 8,
+          "jitter": 0,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "Receipt subscription",
+          "healthChecks": false
+        },
+        "audit": {
+          "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 1000,
+          "concurrency": 1,
+          "replicas": 8,
+          "jitter": 0,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "Audit subscription",
+          "healthChecks": false
+        }
+      }
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "over",
+          "top": "log-readers",
+          "headline": "Kafka readers: 5 of 8 replicas idle",
+          "detail": "Assigned instances: 3 / 8 · Partitions. 200% · 6/s of 3/s",
+          "fix": {
+            "changes": [
+              { "nodeId": "log-readers", "key": "replicas", "from": 8, "to": 11, "label": "Kafka readers" },
+              { "nodeId": "log", "key": "partitions", "from": 3, "to": 11, "label": "Order log" }
+            ],
+            "label": "Kafka readers 8 → 11 replicas, Order log: Partitions → 11"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "publisher": ["idle", "6/s · no limit", { "modeled": false }],
+            "log": ["over", "200% · 6/s of 3/s"],
+            "fanout": ["warn", "75% · 6/s of 8/s"],
+            "log-readers": ["over", "200% · 6/s of 3/s"],
+            "receipts": ["warn", "75% · 6/s of 8/s"],
+            "audit": ["warn", "75% · 6/s of 8/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "over",
+          "top": "log-readers",
+          "headline": "Kafka readers: 5 of 8 replicas idle",
+          "detail": "Assigned instances: 3 / 8 · Partitions. 10× · 30/s of 3/s",
+          "fix": {
+            "changes": [
+              { "nodeId": "log-readers", "key": "replicas", "from": 8, "to": 55, "label": "Kafka readers" },
+              { "nodeId": "receipts", "key": "replicas", "from": 8, "to": 55, "label": "Receipt subscription" },
+              { "nodeId": "audit", "key": "replicas", "from": 8, "to": 55, "label": "Audit subscription" },
+              { "nodeId": "log", "key": "partitions", "from": 3, "to": 55, "label": "Order log" }
+            ],
+            "label": "Kafka readers 8 → 55 replicas, Receipt subscription 8 → 55 replicas and 2 more"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "publisher": ["idle", "30/s · no limit", { "modeled": false }],
+            "log": ["over", "10× · 30/s of 3/s"],
+            "fanout": ["over", "375% · 30/s of 8/s"],
+            "log-readers": ["over", "10× · 30/s of 3/s"],
+            "receipts": ["over", "375% · 30/s of 8/s"],
+            "audit": ["over", "375% · 30/s of 8/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "over",
+          "top": "log-readers",
+          "headline": "Kafka readers: 1 of 4 replicas idle",
+          "detail": "Assigned instances: 3 / 4 · Partitions. 200% · 6/s of 3/s",
+          "fix": {
+            "changes": [
+              { "nodeId": "log-readers", "key": "replicas", "from": 8, "to": 22, "label": "Kafka readers" },
+              { "nodeId": "receipts", "key": "replicas", "from": 8, "to": 22, "label": "Receipt subscription" },
+              { "nodeId": "audit", "key": "replicas", "from": 8, "to": 22, "label": "Audit subscription" },
+              { "nodeId": "log", "key": "partitions", "from": 3, "to": 11, "label": "Order log" }
+            ],
+            "label": "Kafka readers 8 → 22 replicas, Receipt subscription 8 → 22 replicas and 2 more"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "publisher": ["idle", "6/s · no limit", { "modeled": false }],
+            "log": ["over", "200% · 6/s of 3/s"],
+            "fanout": ["over", "150% · 6/s of 4/s"],
+            "log-readers": ["over", "200% · 6/s of 3/s"],
+            "receipts": ["over", "150% · 6/s of 4/s"],
+            "audit": ["over", "150% · 6/s of 4/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": { "log": { "partitions": 6 } }, "rates": {} },
+        "view": {
+          "tone": "hot",
+          "top": "log-readers",
+          "headline": "Kafka readers: 2 of 8 replicas idle",
+          "detail": "Assigned instances: 6 / 8 · Partitions. 100% · 6/s of 6/s",
+          "fix": {
+            "changes": [
+              { "nodeId": "log-readers", "key": "replicas", "from": 8, "to": 11, "label": "Kafka readers" },
+              { "nodeId": "log", "key": "partitions", "from": 6, "to": 11, "label": "Order log" }
+            ],
+            "label": "Kafka readers 8 → 11 replicas, Order log: Partitions → 11"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "publisher": ["idle", "6/s · no limit", { "modeled": false }],
+            "log": ["hot", "100% · 6/s of 6/s"],
+            "fanout": ["warn", "75% · 6/s of 8/s"],
+            "log-readers": ["hot", "100% · 6/s of 6/s"],
+            "receipts": ["warn", "75% · 6/s of 8/s"],
+            "audit": ["warn", "75% · 6/s of 8/s"]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    },
+    "compare": {
+      "tone": "over",
+      "top": "log-readers",
+      "headline": "Kafka readers: 5 of 8 replicas idle",
+      "detail": "Assigned instances: 3 / 8 · Partitions. 200% · 6/s of 3/s",
+      "fix": {
+        "changes": [
+          { "nodeId": "log-readers", "key": "replicas", "from": 8, "to": 11, "label": "Kafka readers" },
+          { "nodeId": "log", "key": "partitions", "from": 3, "to": 11, "label": "Order log" }
+        ],
+        "label": "Kafka readers 8 → 11 replicas, Order log: Partitions → 11"
+      },
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "publisher": ["idle", "6/s · no limit", { "modeled": false }],
+        "log": ["over", "200% · 6/s of 3/s"],
+        "fanout": ["warn", "75% · 6/s of 8/s"],
+        "log-readers": ["over", "200% · 6/s of 3/s"],
+        "receipts": ["warn", "75% · 6/s of 8/s"],
+        "audit": ["warn", "75% · 6/s of 8/s"]
+      }
+    },
+    "more-partitions": {
+      "tone": "warn",
+      "top": "log-readers",
+      "headline": "Kafka readers is busy",
+      "detail": "75% · 6/s of 8/s. Still some headroom.",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "publisher": ["idle", "6/s · no limit", { "modeled": false }],
+        "log": ["warn", "75% · 6/s of 8/s"],
+        "fanout": ["warn", "75% · 6/s of 8/s"],
+        "log-readers": ["warn", "75% · 6/s of 8/s"],
+        "receipts": ["warn", "75% · 6/s of 8/s"],
+        "audit": ["warn", "75% · 6/s of 8/s"]
+      }
+    }
+  }
+}

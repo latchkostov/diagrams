@@ -1287,6 +1287,29 @@
   font-size: 16px;
 }
 
+/* On phones, reserve room for the diagram before the first fit. The full description
+   remains in diagram Properties and the example picker; it must not become a tall column. */
+@media (max-width: 640px) {
+  .diagram-card:not(.is-large) {
+    top: 64px;
+    max-width: calc(100% - 32px);
+    padding: 6px 12px;
+  }
+
+  .diagram-card:not(.is-large) h1 {
+    font-size: 13px;
+    white-space: normal;
+  }
+
+  .diagram-card:not(.is-large) > p {
+    display: none;
+  }
+
+  .diagram-card:not(.is-large) > .diagram-card-meta {
+    display: flex;
+  }
+}
+
 /* Presenting: full screen (when the browser allows it), then Exit presentation, in the top-right corner. */
 .present-bar {
   position: absolute;
