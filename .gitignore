@@ -10,3 +10,4 @@ coverage/
 .vitest/
 # Written by `pnpm headers:self-host` (docs/SELF-HOSTING.md)
 self-host-headers/
+offline-output/

@@ -23,6 +23,11 @@
     "size": "node scripts/bundle-budget.mjs",
     "build:internal": "node scripts/build-internal.mjs",
     "headers:self-host": "node scripts/headers-self-host.mjs",
+    "self-host:verify": "node scripts/verify-instance.mjs",
+    "self-host:prepare": "node scripts/prepare-host-site.mjs",
+    "self-host:image": "node scripts/build-host-image.mjs",
+    "self-host:smoke": "node scripts/self-host-smoke.mjs",
+    "package:offline": "node scripts/package-offline.mjs",
     "review": "bash scripts/review/run.sh"
   },
   "dependencies": {

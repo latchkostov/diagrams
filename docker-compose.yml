@@ -1,0 +1,26 @@
+services:
+  diagrams:
+    image: live-diagrams:local
+    build:
+      context: .
+      args:
+        BUILD_PROFILE: ${BUILD_PROFILE:-internal}
+        VITE_DISABLE_SHARE_LINKS: ${VITE_DISABLE_SHARE_LINKS-}
+        VITE_DISABLE_LINK_OPEN: ${VITE_DISABLE_LINK_OPEN-}
+        VITE_DISABLE_AI_TOOLS: ${VITE_DISABLE_AI_TOOLS-}
+        VITE_DISABLE_ONDEVICE: ${VITE_DISABLE_ONDEVICE-}
+        VITE_PRIVATE_BY_DEFAULT: ${VITE_PRIVATE_BY_DEFAULT-}
+        VITE_BRAND_NAME: ${VITE_BRAND_NAME-}
+        VITE_LOCALES: ${VITE_LOCALES-}
+        BASE_PATH: ${BASE_PATH:-/}
+        FRAME_ANCESTORS: ${FRAME_ANCESTORS-}
+    ports:
+      - "127.0.0.1:8080:8080"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:uid=101,gid=101

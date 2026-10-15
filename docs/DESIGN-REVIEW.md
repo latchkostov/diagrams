@@ -1,5 +1,13 @@
 # Design review
 
+## Self-hosting review fixes (2026-10-14)
+
+Scoped source review found no blocking UX issues. Copied embed and share URLs use the prepared deployment
+directory on deep fallback routes. Proxy redirects preserve the public path. No controls, layout changes or
+focus targets were added; existing primary actions and chrome budgets remain intact. Hosting documentation
+explains native Pages fallback and its asset precedence. This was a source review; production browser
+regressions are verified separately.
+
 ## Round 42: Planning P3 final review fixes (2026-10-14)
 
 The designer's scoped source review covered managed admission fields, bulk selection applicability,

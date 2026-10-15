@@ -50,6 +50,15 @@ export function selfHostCsp(o: SelfHostOptions & { embed: boolean }): string {
     .join("; ");
 }
 
+/** Query-blind static hosts use app resource directives, with the embed allowlist on every page. */
+export function selfHostFlatCsp(o: SelfHostOptions = {}): string {
+  const ancestors = frameAncestorList(o.frameAncestors);
+  return selfHostCsp({ ...o, embed: false }).replace(
+    /frame-ancestors [^;]+/,
+    `frame-ancestors ${["'self'", ...ancestors].join(" ")}`,
+  );
+}
+
 const banner = (comment: string, o: SelfHostOptions) => {
   const ancestors = frameAncestorList(o.frameAncestors);
   return [
@@ -103,23 +112,45 @@ ${script}
 `;
 }
 
+/** Shared directory validation for paths inserted into hosting configuration. */
+export function hostingBase(base = "/"): string {
+  if (!/^\/(?:[a-zA-Z0-9_-]+\/)*$/.test(base))
+    throw new Error("base must start and end with / and contain only letters, digits, _ or -");
+  return base;
+}
+
+export interface HeaderRoute {
+  path: string;
+  headers: Record<string, string>;
+}
+
+/** Structured routes shared by legacy _headers and target-specific serializers. */
+export function selfHostHeaderRoutes(o: SelfHostOptions & { base?: string } = {}): HeaderRoute[] {
+  const base = hostingBase(o.base);
+  return [
+    {
+      path: `${base}*`,
+      headers: {
+        "Content-Security-Policy": selfHostFlatCsp(o),
+        ...COMMON_HEADERS,
+        "Cross-Origin-Opener-Policy": OPENER_POLICY,
+      },
+    },
+    { path: `${base}embed/*`, headers: EMBED_SCRIPT_HEADERS },
+  ];
+}
+
 /**
  * A `_headers` file (Netlify, Cloudflare Pages): one policy for every path, since these files can't tell an
  * embed by its query. With a frame-ancestors list it's the embed policy (the app may then be framed by those
  * domains too); without one, the app's (nothing outside this site frames it). Copy it into dist/ before
  * deploying.
  */
-export function headersFile(o: SelfHostOptions = {}): string {
-  const embed = frameAncestorList(o.frameAncestors).length > 0;
-  const lines = {
-    "Content-Security-Policy": selfHostCsp({ ...o, embed }),
-    ...COMMON_HEADERS,
-    "Cross-Origin-Opener-Policy": OPENER_POLICY,
-  };
-  const block = (path: string, headers: Record<string, string>) =>
-    [path, ...Object.entries(headers).map(([k, v]) => `  ${k}: ${v}`)].join("\n");
-  // The <live-diagram> web component, which your other pages load as a module script (CORS): added to /*'s.
-  return `${banner("#", o)}\n${block("/*", lines)}\n${block("/embed/*", EMBED_SCRIPT_HEADERS)}\n`;
+export function headersFile(o: SelfHostOptions & { base?: string } = {}): string {
+  const blocks = selfHostHeaderRoutes(o).map(({ path, headers }) =>
+    [path, ...Object.entries(headers).map(([k, v]) => `  ${k}: ${v}`)].join("\n"),
+  );
+  return `${banner("#", o)}\n${blocks.join("\n")}\n`;
 }
 
 /** The example list the "framed" samples use. */

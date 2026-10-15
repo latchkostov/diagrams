@@ -1,0 +1,13 @@
+.git
+node_modules
+dist
+tests/.output
+coverage
+.reviews
+.vite
+.vitest
+.env*
+*.local
+src/examples/private
+self-host-headers
+offline-output

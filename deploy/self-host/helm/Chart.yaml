@@ -1,0 +1,6 @@
+apiVersion: v2
+name: live-diagrams
+description: Static Live Diagrams site; all application switches are baked into the image.
+type: application
+version: 0.1.0
+appVersion: "0.0.1"

@@ -1,0 +1,2 @@
+# Use Pages native SPA fallback (no top-level 404.html).
+# Proxy catch-alls override existing assets and must not be added here.

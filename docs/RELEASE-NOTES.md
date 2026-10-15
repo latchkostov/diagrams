@@ -1,5 +1,13 @@
 # Release notes
 
+## Self-hosting review fixes (2026-10-14)
+
+- Cloudflare Pages preserves static assets through its native SPA fallback. Legacy and target header files
+  share directory-aware routes, so cross-origin embed modules keep their CORS headers under a prefix.
+- Embed code uses the prepared deployment base on deep routes; nginx redirects stay relative behind HTTPS proxies.
+- Hosting-only Docker settings reuse the compiled app layer. Concurrent smoke checks own their containers
+  and assigned ports, and clean up only their own container IDs, including after a failed start.
+
 ## Planning P3 final review fixes (2026-10-14)
 
 - Planning and playback share normalized admission requirements. Imports reject duplicate quota IDs
@@ -18,6 +26,15 @@
 - Added a [sourced competitive landscape](research/competitive-landscape.md) covering diagram editors,
   architecture modelling, cloud tools and recent system-design simulators, with explicit verification
   limits, canvas comparisons and ranked opportunities. This is research; app behaviour is unchanged.
+
+## Self-hosting kit (2026-10-14)
+
+- Build a non-root Docker image or deploy with Compose, Kubernetes or Helm, including health probes, caching,
+  compression and directory hosting. Application switches still apply at build time.
+- Generate policies for nginx, Caddy, Netlify, Vercel, Cloudflare Pages, Azure, AWS and GitHub Pages from the
+  shared security policy. The guide explains platform limitations, SSO and private embeds.
+- Check deployed headers with `pnpm self-host:verify <url>` and create a versioned, checksummed offline bundle
+  with `pnpm package:offline`. CI smoke-tests root and sub-path images without publishing them.
 
 ## Planning P3 review fixes (2026-10-14)
 
