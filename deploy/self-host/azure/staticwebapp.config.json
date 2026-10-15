@@ -1,0 +1,39 @@
+{
+  "globalHeaders": {
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "X-Content-Type-Options": "nosniff",
+    "Permissions-Policy": "microphone=(self), display-capture=(self), geolocation=(), payment=(), usb=(), serial=()",
+    "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; worker-src 'self'; frame-src 'self'; frame-ancestors 'self'; form-action 'self'; base-uri 'self'; object-src 'none'",
+    "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+    "Cache-Control": "no-cache"
+  },
+  "routes": [
+    {
+      "route": "/assets/*",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
+      }
+    },
+    {
+      "route": "/embed/*.js",
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Cross-Origin-Resource-Policy": "cross-origin",
+        "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400"
+      }
+    },
+    {
+      "route": "/auth.html",
+      "headers": {
+        "Cross-Origin-Opener-Policy": ""
+      }
+    }
+  ],
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": [
+      "/assets/*",
+      "/embed/*"
+    ]
+  }
+}

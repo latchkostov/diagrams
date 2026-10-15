@@ -50,6 +50,15 @@ export function selfHostCsp(o: SelfHostOptions & { embed: boolean }): string {
     .join("; ");
 }
 
+/** Query-blind static hosts use app resource directives, with the embed allowlist on every page. */
+export function selfHostFlatCsp(o: SelfHostOptions = {}): string {
+  const ancestors = frameAncestorList(o.frameAncestors);
+  return selfHostCsp({ ...o, embed: false }).replace(
+    /frame-ancestors [^;]+/,
+    `frame-ancestors ${["'self'", ...ancestors].join(" ")}`,
+  );
+}
+
 const banner = (comment: string, o: SelfHostOptions) => {
   const ancestors = frameAncestorList(o.frameAncestors);
   return [
@@ -110,9 +119,8 @@ ${script}
  * deploying.
  */
 export function headersFile(o: SelfHostOptions = {}): string {
-  const embed = frameAncestorList(o.frameAncestors).length > 0;
   const lines = {
-    "Content-Security-Policy": selfHostCsp({ ...o, embed }),
+    "Content-Security-Policy": selfHostFlatCsp(o),
     ...COMMON_HEADERS,
     "Cross-Origin-Opener-Policy": OPENER_POLICY,
   };

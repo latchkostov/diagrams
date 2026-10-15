@@ -1,0 +1,35 @@
+image:
+  repository: live-diagrams
+  tag: local
+  pullPolicy: IfNotPresent
+replicas: 2
+# Build metadata only: changing these values does NOT rebuild the image or change the app.
+# Build a matching image with Docker --build-arg and set image.tag to that version.
+build:
+  profile: internal
+  switches:
+    VITE_DISABLE_SHARE_LINKS: "1"
+    VITE_DISABLE_LINK_OPEN: "0"
+    VITE_DISABLE_AI_TOOLS: "1"
+    VITE_DISABLE_ONDEVICE: "0"
+    VITE_PRIVATE_BY_DEFAULT: "1"
+    VITE_BRAND_NAME: Live Diagrams
+    VITE_LOCALES: ""
+  basePath: /
+  frameAncestors: ""
+resources:
+  requests:
+    cpu: 50m
+    memory: 32Mi
+  limits:
+    cpu: 500m
+    memory: 128Mi
+ingress:
+  enabled: false
+  className: nginx
+  host: diagrams.example.com
+  annotations: {}
+  # Example: cert-manager.io/cluster-issuer: letsencrypt-production
+  tls:
+    enabled: false
+    secretName: live-diagrams-tls

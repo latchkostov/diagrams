@@ -19,6 +19,15 @@
   architecture modelling, cloud tools and recent system-design simulators, with explicit verification
   limits, canvas comparisons and ranked opportunities. This is research; app behaviour is unchanged.
 
+## Self-hosting kit (2026-10-14)
+
+- Build a non-root Docker image or deploy with Compose, Kubernetes or Helm, including health probes, caching,
+  compression and directory hosting. Application switches still apply at build time.
+- Generate policies for nginx, Caddy, Netlify, Vercel, Cloudflare Pages, Azure, AWS and GitHub Pages from the
+  shared security policy. The guide explains platform limitations, SSO and private embeds.
+- Check deployed headers with `pnpm self-host:verify <url>` and create a versioned, checksummed offline bundle
+  with `pnpm package:offline`. CI smoke-tests root and sub-path images without publishing them.
+
 ## Planning P3 review fixes (2026-10-14)
 
 - Managed consumers respect each Kafka input group's partition assignment and drain prefetched work

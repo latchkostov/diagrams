@@ -18,26 +18,34 @@ const { values } = parseArgs({
     "frame-ancestors": { type: "string", default: "" },
     providers: { type: "boolean", default: false },
     out: { type: "string", default: "self-host-headers" },
+    base: { type: "string", default: "/" },
   },
 });
 const { nginxHeaders, headersFile } = (
   await runnerImport(path.join(root, "scripts/self-host-headers.ts"), { root, configFile: false, logLevel: "error" })
 ).module;
+const { hostingTemplates } = (
+  await runnerImport(path.join(root, "scripts/self-host-templates.ts"), { root, configFile: false, logLevel: "error" })
+).module;
 
 const options = {
   frameAncestors: values["frame-ancestors"].split(/[\s,]+/).filter(Boolean),
   providers: values.providers,
+  base: values.base,
 };
 let files;
 try {
-  files = { "nginx.conf": nginxHeaders(options), _headers: headersFile(options) };
+  files = { "nginx.conf": nginxHeaders(options), _headers: headersFile(options), ...hostingTemplates(options) };
 } catch (err) {
   console.error(`headers:self-host: ${err instanceof Error ? err.message : err}`);
   process.exit(1);
 }
 const out = path.resolve(values.out);
 fs.mkdirSync(out, { recursive: true });
-for (const [name, text] of Object.entries(files)) fs.writeFileSync(path.join(out, name), text);
+for (const [name, text] of Object.entries(files)) {
+  fs.mkdirSync(path.dirname(path.join(out, name)), { recursive: true });
+  fs.writeFileSync(path.join(out, name), text);
+}
 console.log(
   `headers:self-host: wrote ${Object.keys(files).join(" and ")} to ${path.relative(process.cwd(), out) || "."}`,
 );

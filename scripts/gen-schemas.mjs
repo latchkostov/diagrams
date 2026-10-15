@@ -46,7 +46,10 @@ report(
 const headers = await load("scripts/security-headers.ts");
 report("vercel.json", writeAll(root, { "vercel.json": headers.vercelJson() }), 1, "the repository root");
 // deploy/self-host/: the same headers for a self-hosted copy (scripts/self-host-headers.ts, docs/SELF-HOSTING.md).
-const selfHost = (await load("scripts/self-host-headers.ts")).selfHostSamples();
+const selfHost = {
+  ...(await load("scripts/self-host-headers.ts")).selfHostSamples(),
+  ...(await load("scripts/self-host-templates.ts")).hostingTemplates(),
+};
 report(
   "self-host headers",
   writeAll(path.join(root, "deploy", "self-host"), selfHost),
