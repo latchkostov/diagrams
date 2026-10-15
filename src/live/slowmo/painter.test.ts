@@ -1,8 +1,44 @@
 import { describe, expect, it, vi } from "vitest";
-import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
+import { GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
 import { DEFAULT_TOKENS, type OverlayView, type Rect } from "../particleRenderer";
 import { SlowPainter } from "./painter";
 import type { SlowFrame } from "./script";
+
+// Count both building the frame's indexes and reading their boxes during placement. Wrapping the
+// real implementation keeps scans visible too, even if they reuse an index rather than rebuild it.
+const obstacleWork = vi.hoisted(() => ({ enabled: false, builds: 0, reads: 0 }));
+vi.mock("../traceLabels", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../traceLabels")>();
+  const counted = (boxes: readonly import("../traceLabels").Box[]) =>
+    boxes.map((box) =>
+      obstacleWork.enabled
+        ? new Proxy(box, {
+            get(target, key, receiver) {
+              obstacleWork.reads++;
+              return Reflect.get(target, key, receiver) as unknown;
+            },
+          })
+        : box,
+    );
+  return {
+    ...actual,
+    LabelObstacles: class extends actual.LabelObstacles {
+      constructor(...[hard, soft = [], cell]: ConstructorParameters<typeof actual.LabelObstacles>) {
+        super(counted(hard), counted(soft), cell);
+        if (obstacleWork.enabled) obstacleWork.builds++;
+      }
+    },
+    placeTraceLabels: (...[reqs, env]: Parameters<typeof actual.placeTraceLabels>) => {
+      // The fallback constructor inside the real module has a lexical reference to its class.
+      // Count it too if a caller stops sharing the frame's indexes.
+      if (obstacleWork.enabled && !env.obstacles) {
+        obstacleWork.builds++;
+        return actual.placeTraceLabels(reqs, { ...env, hard: counted(env.hard ?? []), soft: counted(env.soft ?? []) });
+      }
+      return actual.placeTraceLabels(reqs, env);
+    },
+  };
+});
 
 const emptyFrame: SlowFrame = {
   t: 500,
@@ -129,10 +165,9 @@ describe("slow motion labels", () => {
   );
 
   it("places the offsets of a long journey with one index of the obstacles per frame, not one per offset", () => {
-    // Node cards on a pane that grows with them, a tenth of them visited. Indexing the obstacles once per frame
-    // keeps a frame linear in the cards and offsets; an index (or a scan) per offset multiplies the two, so eight
-    // times the diagram would take sixty-four times as long. Compared against an eighth of the diagram, not a
-    // frame's budget in ms, so a busy machine (CI with coverage) doesn't fail it.
+    // Node cards on a pane that grows with them, a tenth visited. Count cold and subsequent frames:
+    // each builds two shared obstacle sets (captions and offsets), regardless of the offset count.
+    // An index or a full obstacle scan per offset multiplies cards by offsets: 64x work at 8x size.
     const journey = (n: number) => {
       const nodes: Record<string, Rect> = {};
       for (let i = 0; i < n; i++)
@@ -142,12 +177,31 @@ describe("slow motion labels", () => {
         visited: Array.from({ length: n / 10 }, (_, i) => ({ node: `n${i * 10}`, real: i * 10 })),
       };
       const height = Math.ceil(n / 40) * 48 + 200;
-      const { painter, view } = paintFrame(frame, nodes, Object.values(nodes), [], { width: 40 * 96, height });
-      // The work being measured: offsets really are placed among the cards.
-      expect(painter.labels.filter((l) => l.kind === "offset")).toHaveLength(n / 10);
-      return () => painter.paint(view);
+      const { painter, view } = paintFrame(frame, nodes, Object.values(nodes), [], {
+        width: 40 * 96,
+        height,
+        times: 0,
+      });
+      return () => {
+        obstacleWork.builds = obstacleWork.reads = 0;
+        obstacleWork.enabled = true;
+        try {
+          painter.paint(view);
+          expect(obstacleWork.builds).toBe(2);
+          expect(painter.labels.filter((l) => l.kind === "offset")).toHaveLength(n / 10);
+          return obstacleWork.reads;
+        } finally {
+          obstacleWork.enabled = false;
+        }
+      };
     };
-    expect(growth(journey(250), journey(250 * GROWTH_FACTOR))).toBeLessThan(LINEAR_LIMIT);
+    const small = journey(250);
+    const large = journey(250 * GROWTH_FACTOR);
+    for (let frame = 0; frame < 2; frame++) {
+      const reads = small();
+      expect(reads).toBeGreaterThan(0);
+      expect(large() / reads).toBeLessThan(LINEAR_LIMIT);
+    }
   });
 
   it("leaves offsets and retry chips out when there is no safe spot", () => {
