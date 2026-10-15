@@ -56,8 +56,7 @@ interface Sample {
 interface BusyReplica {
   count: number;
   cpu: number;
-  currentCpu: number;
-  lastCpu: number;
+  samples: { at: number; cpu: number }[];
   drainAt?: number;
 }
 /** No idle-pod objects: ranges describe identical ready/starting replicas. Only admitted identities expand. */
@@ -90,8 +89,11 @@ export interface Fleet {
   changes: { at: number; delta: number }[];
   decision?: ScalingDecision;
   history: FleetPoint[];
-  /** Work counters for deterministic complexity assertions, never wall-clock timing. */
-  operations: number;
+  concurrency?: number;
+  draining: number;
+  busyIds: number[];
+  rangesDirty: boolean;
+  startupHash?: number;
 }
 export function createFleet(count: number, syncMs = 15_000): Fleet {
   count = Number.isFinite(count) ? Math.max(0, Math.min(10_000, Math.round(count))) : 0;
@@ -123,7 +125,9 @@ export function createFleet(count: number, syncMs = 15_000): Fleet {
     recommendations: [],
     changes: [],
     history: [],
-    operations: 0,
+    draining: 0,
+    busyIds: [],
+    rangesDirty: false,
   };
 }
 const before = (a: Cohort, b: Cohort) => a.at < b.at || (a.at === b.at && a.first < b.first);
@@ -154,7 +158,29 @@ function popDue(heap: Cohort[]): Cohort {
   }
   return first;
 }
+/** Reconfiguration is the only place that rebuilds reservation eligibility. */
+export function configureConcurrency(f: Fleet, concurrency: number): void {
+  if (f.concurrency === concurrency) return;
+  f.concurrency = concurrency;
+  f.partial.clear();
+  for (const [id, p] of f.busy) if (p.drainAt === undefined && p.count > 0 && p.count < concurrency) f.partial.add(id);
+}
+function upperBound(ids: number[], id: number): number {
+  let lo = 0,
+    hi = ids.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (ids[mid] <= id) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+function forgetReplica(f: Fleet, id: number) {
+  f.busy.delete(id);
+  f.busyIds.splice(upperBound(f.busyIds, id) - 1, 1);
+}
 export function acquireReplica(f: Fleet, concurrency: number): number | undefined {
+  configureConcurrency(f, concurrency);
   const partial = f.partial.values().next().value as number | undefined;
   let id = partial ?? f.free.pop();
   if (id === undefined) {
@@ -167,7 +193,8 @@ export function acquireReplica(f: Fleet, concurrency: number): number | undefine
     if (!range) return undefined;
     id = range.first++;
   }
-  const busy = f.busy.get(id) ?? { count: 0, cpu: 0, currentCpu: 0, lastCpu: 0 };
+  if (!f.busy.has(id)) f.busyIds.splice(upperBound(f.busyIds, id), 0, id);
+  const busy = f.busy.get(id) ?? { count: 0, cpu: 0, samples: [] };
   busy.count++;
   f.active++;
   f.busy.set(id, busy);
@@ -183,7 +210,8 @@ export function releaseReplica(f: Fleet, id: number | undefined, concurrency: nu
   if (busy.drainAt === undefined) f.active--;
   if (busy.drainAt !== undefined) {
     if (!busy.count) {
-      f.busy.delete(id);
+      forgetReplica(f, id);
+      f.draining--;
       f.assignmentChanged = true;
     }
   } else if (!busy.count) {
@@ -192,14 +220,16 @@ export function releaseReplica(f: Fleet, id: number | undefined, concurrency: nu
   } else if (busy.count < concurrency) f.partial.add(id);
 }
 export function drainingCount(f: Fleet): number {
-  let count = f.sampledDrains.reduce((sum, c) => sum + c.last - c.first + 1, 0);
-  for (const replica of f.busy.values()) if (replica.drainAt !== undefined) count++;
-  return count;
+  return f.draining;
 }
-function startupSeed(seed: number, node: string, id: number) {
-  let hash = seed ^ id;
-  for (let i = 0; i < node.length; i++) hash = Math.imul(hash ^ node.charCodeAt(i), 16777619);
-  return mulberry32(hash)();
+function startupSeed(f: Fleet, seed: number, node: string, id: number) {
+  if (f.startupHash === undefined) {
+    let hash = seed;
+    // Hash once, including the complete identity; replica expansion never repeats string work.
+    for (let i = 0; i < node.length; i++) hash = Math.imul(hash ^ node.charCodeAt(i), 16777619);
+    f.startupHash = hash;
+  }
+  return mulberry32(f.startupHash ^ id)();
 }
 export function reconcileFleet(
   f: Fleet,
@@ -225,7 +255,7 @@ export function reconcileFleet(
           at:
             now +
             Math.ceil(
-              (r.startup.delayMs * (1 + (startupSeed(seed, node, id) * 2 - 1) * r.startup.jitterFraction)) / 10,
+              (r.startup.delayMs * (1 + (startupSeed(f, seed, node, id) * 2 - 1) * r.startup.jitterFraction)) / 10,
             ) *
               10,
         });
@@ -254,7 +284,7 @@ export function reconcileFleet(
   f.rangeHead = Math.min(f.rangeHead, f.ranges.length);
   while (delta < 0 && f.free.length) {
     const id = f.free.pop()!;
-    f.busy.delete(id);
+    forgetReplica(f, id);
     f.ready--;
     delta++;
   }
@@ -263,6 +293,7 @@ export function reconcileFleet(
       if (delta >= 0) break;
       if (busy.drainAt !== undefined || !busy.count) continue;
       busy.drainAt = now + r.terminationGraceMs;
+      f.draining++;
       f.active -= busy.count;
       f.partial.delete(id);
       f.ready--;
@@ -271,6 +302,8 @@ export function reconcileFleet(
 }
 /** Readiness jitter stops fragmenting idle work; active sampled boundaries keep their CPU budgets. */
 export function compactReadyRanges(f: Fleet, working: readonly SampledWork[]) {
+  if (!f.rangesDirty) return;
+  f.rangesDirty = false;
   if (f.ranges.length - f.rangeHead < 2) return;
   const boundaries = new Set(working.flatMap((w) => (w.cpuParts ?? []).flatMap((p) => [p.first, p.last + 1])));
   const ranges = f.ranges
@@ -288,7 +321,6 @@ export function compactReadyRanges(f: Fleet, working: readonly SampledWork[]) {
 }
 /** Constant idle-tick work. Startup heaps are visited only at due deadlines. Grace checks visit busy identities only. */
 export function advanceFleet(f: Fleet, now: number, working: readonly SampledWork[] = []): boolean {
-  f.operations++;
   let changed = false;
   while (f.starts.length && f.starts[0].at <= now) {
     const c = popDue(f.starts);
@@ -299,15 +331,23 @@ export function advanceFleet(f: Fleet, now: number, working: readonly SampledWor
     f.lastReadyAt = now;
     changed = true;
   }
-  if (changed) compactReadyRanges(f, working);
+  if (changed) {
+    f.rangesDirty = true;
+    compactReadyRanges(f, working);
+  }
   return changed;
 }
-export function chargeCpu(f: Fleet, id: number | undefined, amount: number, ready = true) {
+export function chargeCpu(f: Fleet, id: number | undefined, amount: number, ready = true, now = 0) {
   f.totalCpu += amount;
   const replica = id === undefined ? undefined : f.busy.get(id);
   if (replica) {
     replica.cpu += amount;
-    replica.currentCpu += amount;
+    const at = Math.ceil(now / 1000) * 1000;
+    const last = replica.samples.at(-1);
+    if (last?.at === at) last.cpu += amount;
+    else replica.samples.push({ at, cpu: amount });
+    // Fifteen complete seconds plus the current, unpublished second.
+    while (replica.samples.length > 16) replica.samples.shift();
   }
   if (ready && replica?.drainAt === undefined) f.cpu += amount;
 }
@@ -364,7 +404,7 @@ export function evaluateHpa(
     const ratio = value / t;
     const wanted = Math.abs(ratio - 1) <= c.settings.tolerance ? f.desired : Math.ceil(f.ready * ratio);
     // Starting pods are missing samples, conservatively zero for growth and target for shrink.
-    const recommendation = wanted < f.desired ? wanted + f.starting : wanted;
+    const recommendation = wanted < f.desired ? Math.min(f.desired, wanted + f.starting) : wanted;
     if (recommendation >= raw) {
       raw = recommendation;
       metric = value;
@@ -498,38 +538,63 @@ export function fleetReadout(f: Fleet): FleetReadout {
 /** Only the selected inspector requests a page. Idle ranges never expand in live frames. */
 export function replicaPage(f: Fleet, r: ComputeResources, now: number, scale: number, page = 0): ReplicaRow[] {
   const start = Math.max(0, Math.floor(page)) * 50;
+  const sources: [readonly Cohort[], number, ReplicaRow["state"]][] = [
+    [f.ranges, f.rangeHead, "ready"],
+    [f.sampledDrains, 0, "draining"],
+    [f.starts, 0, "starting"],
+  ];
+  const countThrough = (id: number) => {
+    let count = upperBound(f.busyIds, id);
+    for (const [ranges, head] of sources)
+      for (let i = head; i < ranges.length; i++)
+        count += Math.max(0, Math.min(id, ranges[i].last) - ranges[i].first + 1);
+    return count;
+  };
+  // Find the page boundary by rank without expanding the preceding identities.
+  let lo = 1,
+    hi = f.nextId;
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (countThrough(mid) <= start) lo = mid + 1;
+    else hi = mid;
+  }
   const rows: { id: number; state: ReplicaRow["state"] }[] = [];
-  for (const [id, p] of f.busy) rows.push({ id, state: p.drainAt === undefined ? "ready" : "draining" });
-  for (const range of f.ranges.slice(f.rangeHead))
-    for (let id = range.first; id <= Math.min(range.last, range.first + start + 50); id++)
-      rows.push({ id, state: "ready" });
-  for (const range of f.sampledDrains)
-    for (let id = range.first; id <= Math.min(range.last, range.first + start + 50); id++)
-      rows.push({ id, state: "draining" });
-  for (const range of f.starts)
-    for (let id = range.first; id <= Math.min(range.last, range.first + start + 50); id++)
-      rows.push({ id, state: "starting" });
+  let cursor = lo;
+  while (rows.length < 50) {
+    let id = f.busyIds[upperBound(f.busyIds, cursor - 1)] ?? Infinity;
+    let state: ReplicaRow["state"] = f.busy.get(id)?.drainAt === undefined ? "ready" : "draining";
+    for (const [ranges, head, rangeState] of sources)
+      for (let i = head; i < ranges.length; i++) {
+        const c = ranges[i],
+          candidate = Math.max(cursor, c.first);
+        if (candidate <= c.last && candidate < id) {
+          id = candidate;
+          state = rangeState;
+        }
+      }
+    if (!Number.isFinite(id)) break;
+    rows.push({ id, state });
+    cursor = id + 1;
+  }
   const estimated = scale > 1 ? resourceReadout(f, r, 0, now, scale) : undefined;
-  return rows
-    .sort((a, b) => a.id - b.id)
-    .slice(start, start + 50)
-    .map(({ id, state }) => {
-      const busy = f.busy.get(id);
-      const memory = r.baselineMemoryMiB + (busy?.count ?? 0) * r.memoryMiBPerMessage;
-      const window = Math.max(1000, Math.min(now, 15_000));
-      const cpu = busy ? busy.lastCpu : 0;
-      if (estimated && state !== "starting") return { ...estimated, id, state };
-      return {
-        id,
-        state,
-        units: "real",
-        estimated: scale > 1,
-        executedCpuMs: busy?.cpu ?? 0,
-        memoryMiB: memory,
-        cpuRequestPct: r.cpuRequestMilli ? (((cpu / window) * 1000) / r.cpuRequestMilli) * 100 : undefined,
-        memoryRequestPct: r.memoryRequestMiB ? (memory / r.memoryRequestMiB) * 100 : undefined,
-        memoryLimitPct: r.memoryLimitMiB ? (memory / r.memoryLimitMiB) * 100 : undefined,
-        unsafe: r.memoryLimitMiB !== undefined && memory > r.memoryLimitMiB,
-      };
-    });
+  return rows.map(({ id, state }) => {
+    const busy = f.busy.get(id);
+    const memory = r.baselineMemoryMiB + (busy?.count ?? 0) * r.memoryMiBPerMessage;
+    const end = Math.floor(now / 1000) * 1000;
+    const window = Math.max(1000, Math.min(end, 15_000));
+    const cpu = busy?.samples.reduce((sum, s) => sum + (s.at > end - window && s.at <= end ? s.cpu : 0), 0) ?? 0;
+    if (estimated && state !== "starting") return { ...estimated, id, state };
+    return {
+      id,
+      state,
+      units: "real",
+      estimated: scale > 1,
+      executedCpuMs: busy?.cpu ?? 0,
+      memoryMiB: memory,
+      cpuRequestPct: r.cpuRequestMilli ? (((cpu / window) * 1000) / r.cpuRequestMilli) * 100 : undefined,
+      memoryRequestPct: r.memoryRequestMiB ? (memory / r.memoryRequestMiB) * 100 : undefined,
+      memoryLimitPct: r.memoryLimitMiB ? (memory / r.memoryLimitMiB) * 100 : undefined,
+      unsafe: r.memoryLimitMiB !== undefined && memory > r.memoryLimitMiB,
+    };
+  });
 }

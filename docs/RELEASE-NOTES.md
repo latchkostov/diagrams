@@ -133,6 +133,24 @@ goldens match, with the eight previously documented browser deferrals.
   during dependency verification, without rewriting the lockfile. App output and parity goldens are unchanged.
 - Interactive HTML parity fits the settled viewer explicitly, avoiding a startup-framing race; its
   existing goldens remain unchanged.
+## Autoscaling A1 round 2 review fixes (2026-10-15)
+
+- Concurrency edits refresh replica availability, and work waits for a successful reservation.
+  Starting replicas cannot reverse a shrink recommendation into growth. Retained retries respect
+  delivery limits during outages without requiring CPU progress. Enabling resources queues existing
+  work that does not fit the new fleet.
+- Numeric and Advanced JSON edits validate complete resource/policy candidates. Incomplete optional
+  numbers preserve saved values with feedback, metric windows account for delay, and JSON stays
+  left to right in RTL languages. Paste, duplicate and single/bulk resource edits reject a merged
+  lifecycle budget that could not reopen, preserving queued edits and giving recovery guidance.
+- Sampled admissions avoid rescanning unchanged work, jitter hashes node identity once per fleet,
+  draining readouts use maintained counts, and replica pages expand only their fifty requested rows.
+  Exact replica CPU readings now match the aggregate before and after fifteen seconds.
+- All 1,552 parity goldens remain unchanged, including legacy, non-autoscaling and A1 outputs; none
+  were re-recorded. Existing corpus scenarios do not trigger these corrected edge cases. See
+  `docs/PARITY.md` and `docs/research/autoscaling-a1-round2-review.md` for the full accounting.
+- Refreshed the released offline viewer; plugin version is 1.1.19, one patch above merged master.
+
 ## Autoscaling A1 review preparation (2026-10-14)
 
 - Added **Image workers absorb a burst**, a public Kafka/HPA example with two saved simulations.

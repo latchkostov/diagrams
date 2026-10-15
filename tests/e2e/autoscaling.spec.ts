@@ -16,7 +16,7 @@ import {
 const slug = "kafka-order-pipeline";
 async function seed(
   page: Page,
-  { live = false, fixed = false, locale = "en", dark = false, older = false, replicas = 1 } = {},
+  { live = false, fixed = false, locale = "en", dark = false, older = false, replicas = 1, cpuProbe = false } = {},
 ) {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.emulateMedia({ colorScheme: dark ? "dark" : "light" });
@@ -30,6 +30,14 @@ async function seed(
     const a = hpaLesson();
     Object.assign(a.controller, { initialReplicas: replicas, minReplicas: replicas, maxReplicas: replicas });
     workload.autoscaling = a;
+  }
+  if (cpuProbe && workload) {
+    d.nodes[0].props = { ...d.nodes[0].props, ratePerSec: 1 };
+    workload.autoscaling = { mode: "off" };
+    workload.resources = {
+      ...(workload.resources as ReturnType<typeof import("../../src/model/autoscaling").resourceLesson>),
+      cpuMsPerMessage: 500,
+    };
   }
   if (older) d.planning = { revision: "p3" };
   await page.addInitScript(
@@ -134,6 +142,11 @@ for (const locale of ["de", "ar"])
     await seed(page, { locale, dark: true });
     await page.getByTestId("node-worker").click();
     await expect(page.getByTestId("autoscaling-assumption")).not.toContainText("Workload assumption");
+    if (locale === "ar") {
+      await page.getByTestId("autoscaling-advanced-toggle").click();
+      await expect(page.getByTestId("autoscaling-policy")).toHaveCSS("direction", "ltr");
+      await page.getByTestId("autoscaling-advanced-toggle").click();
+    }
     await page.getByTestId("autoscaling-preset").scrollIntoViewIfNeeded();
     await page.getByTestId("fit-view-button").click();
     await waitForStableViewport(page);
@@ -238,4 +251,97 @@ test("A1: public Kafka showcase starts workers and drains its burst within ten s
   await expect(page.getByTestId("autoscaling-history-summary")).toContainText("Peak replicas");
   await expect(page.getByTestId("autoscaling-counts")).toContainText("Ready: 5");
   expectNoErrors(consoleErrors);
+});
+
+test("A1: incomplete optional numbers retain saved resources on Tab", async ({ page }) => {
+  await seed(page);
+  await page.getByTestId("node-worker").click();
+  await page.getByTestId("autoscaling-advanced-toggle").click();
+  for (const name of ["cpuLimitMilli", "cpuRequestMilli", "memoryLimitMiB"]) {
+    const field = page.getByTestId(`autoscaling-${name}`);
+    const saved = await field.inputValue();
+    await field.focus();
+    await field.press("Control+a");
+    await field.pressSequentially("1e");
+    await field.press("Tab");
+    await expect(field).toHaveAttribute("aria-invalid", "true");
+    await expect(page.getByTestId(`autoscaling-limit-${name}`)).toBeVisible();
+    await field.fill(saved);
+    await field.press("Tab");
+    await expect(field).toHaveValue(saved);
+    await expect(field).toHaveAttribute("aria-invalid", "false");
+  }
+  // Undo remains unavailable: invalid drafts never created a document edit.
+  await expect(page.getByTestId("undo-button")).toBeDisabled();
+});
+
+test("A1: valid Advanced JSON recovers and commits atomically", async ({ page }) => {
+  await seed(page);
+  await page.getByTestId("node-worker").click();
+  await page.getByTestId("autoscaling-advanced-toggle").click();
+  const field = page.getByTestId("autoscaling-policy");
+  const before = hpaLesson().controller.settings;
+  const settings = structuredClone(before);
+  settings.syncMs = 5000;
+  settings.metrics[0].metricDelayMs = 1000;
+  settings.down.stabilizationMs = 60_000;
+  await field.fill('{"up": {}}');
+  await expect(page.getByTestId("autoscaling-policy-invalid")).toBeVisible();
+  await field.fill(JSON.stringify(settings));
+  await field.press("Tab");
+  await expect(page.getByTestId("autoscaling-policy-invalid")).toHaveCount(0);
+  await expect(page.getByTestId("autoscaling-sync")).toHaveValue("5000");
+  const saved = () =>
+    page.evaluate((key) => {
+      const raw = localStorage.getItem(key);
+      if (!raw) throw new Error("Missing saved diagram");
+      const d = JSON.parse(raw);
+      return d.nodes.find((n: { id: string }) => n.id === "worker").props.autoscaling.controller.settings;
+    }, STORAGE_KEYS.autosavePrefix + slug);
+  await expect.poll(saved).toEqual(settings);
+  await page.getByTestId("undo-button").click();
+  await expect.poll(saved).toEqual(before);
+  await expect(page.getByTestId("undo-button")).toBeDisabled();
+});
+
+test("A1: numeric policy edits validate the complete candidate and retain rejected drafts", async ({ page }) => {
+  await seed(page);
+  await page.getByTestId("node-worker").click();
+  await page.getByTestId("autoscaling-advanced-toggle").click();
+  const policy = page.getByTestId("autoscaling-policy");
+  const settings = hpaLesson().controller.settings;
+  settings.metrics[0].metricDelayMs = 1000;
+  await policy.fill(JSON.stringify(settings));
+  await policy.press("Tab");
+  const window = page.getByTestId("autoscaling-window");
+  await window.fill("600000");
+  await window.press("Tab");
+  await expect(window).toHaveAttribute("aria-invalid", "true");
+  await expect(window).toHaveValue("600000");
+  await expect(page.getByTestId("autoscaling-limit-window")).toBeVisible();
+  await expect(page.getByTestId("autoscaling-policy-invalid")).toHaveCount(0);
+  expect(JSON.parse(await policy.inputValue())).toEqual(settings);
+  await window.fill("599000");
+  await window.press("Tab");
+  await expect(window).toHaveAttribute("aria-invalid", "false");
+  settings.metrics[0].windowMs = 599000;
+  expect(JSON.parse(await policy.inputValue())).toEqual(settings);
+});
+
+test("A1: exact replica CPU reflects aggregate work before and after fifteen seconds", async ({ page }) => {
+  await seed(page, { live: true, cpuProbe: true });
+  await pauseClock(page);
+  await page.clock.runFor(5000);
+  await page.getByTestId("node-worker").dblclick();
+  await page.getByTestId("planning-live-details-toggle").click();
+  const aggregate = page.getByTestId("autoscaling-cpu"),
+    replica = page.getByTestId("autoscaling-replica-cpu").first();
+  const check = async () => {
+    const cpu = Number((await aggregate.innerText()).match(/[\d.]+/)?.[0]);
+    expect(cpu).toBeGreaterThan(0);
+    expect(Number(await replica.innerText())).toBeCloseTo(cpu, 1);
+  };
+  await check();
+  await page.clock.runFor(11_000);
+  await check();
 });

@@ -58,7 +58,10 @@ export function retainSampledDrains(f: Fleet, before: Cohort[], working: Sampled
           occupied = true;
         }
     }
-    if (occupied) f.sampledDrains.push({ first, last: old.last, at: deadline });
+    if (occupied) {
+      f.sampledDrains.push({ first, last: old.last, at: deadline });
+      f.draining += old.last - first + 1;
+    }
   }
 }
 export function releaseSampledDrains(f: Fleet, working: SampledWork[]) {
@@ -66,7 +69,10 @@ export function releaseSampledDrains(f: Fleet, working: SampledWork[]) {
     working.flatMap((w) => (w.cpuParts ?? []).filter((p) => p.drainAt !== undefined).map(partKey)),
   );
   const next: Cohort[] = [];
-  for (const c of f.sampledDrains) if (occupied.has(partKey(c))) next.push(c);
+  for (const c of f.sampledDrains) {
+    if (occupied.has(partKey(c))) next.push(c);
+    else f.draining -= size(c);
+  }
   if (next.length !== f.sampledDrains.length) f.assignmentChanged = true;
   f.sampledDrains = next;
 }

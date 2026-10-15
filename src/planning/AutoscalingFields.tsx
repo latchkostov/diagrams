@@ -32,16 +32,26 @@ export function AutoscalingFields({
     valid = false;
   }
   const c = valid && a?.mode === "on" ? a.controller : undefined;
+  const commit = (candidate: Partial<NodeSimProps>, key?: string): boolean => {
+    try {
+      const next = { ...props, ...candidate };
+      checkAutoscaling(next.resources, next.autoscaling);
+      set(candidate, key);
+      return true;
+    } catch {
+      return false;
+    }
+  };
   const patch = (edit: (next: NonNullable<typeof c>) => void, key: string) => {
-    if (a?.mode !== "on") return;
+    if (a?.mode !== "on") return false;
     const next = structuredClone(a);
     edit(next.controller);
-    if (next.controller.minReplicas > next.controller.maxReplicas) return;
+    if (next.controller.minReplicas > next.controller.maxReplicas) return false;
     next.controller.initialReplicas = Math.max(
       next.controller.minReplicas,
       Math.min(next.controller.maxReplicas, next.controller.initialReplicas),
     );
-    set({ autoscaling: next }, key);
+    return commit({ autoscaling: next }, key);
   };
   const metric = c?.settings.metrics[0];
   const resource = (key: keyof ComputeResources, label: string, min = 0) => (
@@ -51,7 +61,7 @@ export function AutoscalingFields({
       value={r?.[key] as number | undefined}
       min={min}
       optional={!["cpuMsPerMessage", "baselineMemoryMiB", "memoryMiBPerMessage"].includes(key)}
-      change={(value) => r && set({ resources: { ...r, [key]: value } }, key)}
+      change={(value) => r && commit({ resources: { ...r, [key]: value } }, key)}
     />
   );
   return (
@@ -65,7 +75,7 @@ export function AutoscalingFields({
           onChange={(e) => {
             setPolicyDraft(null);
             setPolicyInvalid(false);
-            set(
+            commit(
               e.currentTarget.value === "fixed"
                 ? { autoscaling: { mode: "off" }, resources: undefined }
                 : { resources: resourceLesson(), autoscaling: hpaLesson() },
@@ -169,7 +179,7 @@ export function AutoscalingFields({
               value={r.startup.delayMs}
               integer
               change={(v) =>
-                v !== undefined && set({ resources: { ...r, startup: { ...r.startup, delayMs: v } } }, "startup")
+                v !== undefined && commit({ resources: { ...r, startup: { ...r.startup, delayMs: v } } }, "startup")
               }
             />
             <NumberField
@@ -177,7 +187,7 @@ export function AutoscalingFields({
               label={t("autoscaling.grace")}
               value={r.terminationGraceMs}
               integer
-              change={(v) => v !== undefined && set({ resources: { ...r, terminationGraceMs: v } }, "grace")}
+              change={(v) => v !== undefined && commit({ resources: { ...r, terminationGraceMs: v } }, "grace")}
             />
             <NumberField
               name="initial"
@@ -223,6 +233,7 @@ export function AutoscalingFields({
               label={t("autoscaling.window")}
               value={metric.windowMs}
               min={1000}
+              max={600_000 - metric.metricDelayMs}
               integer
               change={(v) =>
                 v !== undefined &&
@@ -260,6 +271,7 @@ export function AutoscalingFields({
               <textarea
                 className="insp-input mono"
                 data-testid="autoscaling-policy"
+                dir="ltr"
                 rows={5}
                 aria-invalid={policyInvalid}
                 value={policyDraft ?? JSON.stringify(c.settings, null, 2)}
@@ -276,9 +288,8 @@ export function AutoscalingFields({
                     const next = structuredClone(a);
                     if (next?.mode !== "on") return;
                     next.controller.settings = value as typeof next.controller.settings;
-                    checkAutoscaling(r, next);
+                    if (!commit({ autoscaling: next }, "behaviour")) throw new Error("Invalid policy");
                     setPolicyInvalid(false);
-                    set({ autoscaling: next }, "behaviour");
                   } catch {
                     setPolicyInvalid(true);
                   }
@@ -324,7 +335,7 @@ function NumberField({
   name: string;
   label: string;
   value: number | undefined;
-  change: (value: number | undefined) => void;
+  change: (value: number | undefined) => boolean | undefined;
   min?: number;
   max?: number;
   integer?: boolean;
@@ -332,6 +343,7 @@ function NumberField({
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const [invalid, setInvalid] = useState(false);
+  const [badInput, setBadInput] = useState(false);
   const feedback = useId();
   return (
     <label className="insp-field">
@@ -351,12 +363,20 @@ function NumberField({
         }}
         onBlur={(e) => {
           const input = e.currentTarget;
-          if (optional && input.value === "") {
-            if (value !== undefined) change(undefined);
+          if (input.validity.badInput || badInput) {
+            setInvalid(true);
+          } else if (optional && input.value === "") {
+            if (value !== undefined && change(undefined) === false) {
+              setInvalid(true);
+              return;
+            }
             setDraft(null);
             setInvalid(false);
           } else if (input.validity.valid && input.value !== "" && Number.isFinite(input.valueAsNumber)) {
-            if (!Object.is(value, input.valueAsNumber)) change(input.valueAsNumber);
+            if (!Object.is(value, input.valueAsNumber) && change(input.valueAsNumber) === false) {
+              setInvalid(true);
+              return;
+            }
             setDraft(null);
             setInvalid(false);
           } else setInvalid(true);
@@ -364,6 +384,7 @@ function NumberField({
         placeholder={t("admission.unknownShort")}
         onChange={(e) => {
           setDraft(e.currentTarget.value);
+          setBadInput(e.currentTarget.validity.badInput);
           setInvalid(false);
         }}
       />

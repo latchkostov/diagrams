@@ -3,6 +3,8 @@ import { t } from "../i18n";
 import { kindLabel, relationNoun } from "../i18n/chrome";
 import { annotationGeometryMessage, relationChangeMessage } from "./editMessages";
 import { useLayoutEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { checkAutoscaling } from "../model/autoscalingSchema";
+import { resourceBudgetExceeded, MAX_LIFECYCLE_REPLICAS } from "../model/resourceBudget";
 import { newPlanningProps } from "../model/planning";
 import { useReactFlow, type ReactFlowInstance } from "@xyflow/react";
 import { flushSync } from "react-dom";
@@ -246,6 +248,22 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       flowIds,
     };
   };
+
+  const acceptNodes = (nodes: FlowNode[]): boolean => {
+    const candidate = fromFlow(deps().meta, nodes, rf.getEdges());
+    if (candidate.planning?.revision !== "p3-a1") return true;
+    if (resourceBudgetExceeded(candidate)) {
+      notify(t("autoscaling.budget", { limit: MAX_LIFECYCLE_REPLICAS }));
+      return false;
+    }
+    try {
+      for (const n of candidate.nodes) checkAutoscaling(n.props?.resources, n.props?.autoscaling);
+      return true;
+    } catch {
+      notify(t("autoscaling.checkInvalid"));
+      return false;
+    }
+  };
   const hint = (merge?: string) => deps().history.hint(merge);
   /**
    * Opens the creation transaction of a node about to be added (`new:<id>`): the node, its edge and the name
@@ -308,6 +326,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       const group = n.group && newGroups.has(n.group) ? n.group : groupAt(all, n.x + width / 2, n.y + height / 2);
       return { ...f, data: { ...f.data, group }, selected: true };
     });
+    if (!acceptNodes([...all, ...nodes])) return null;
     const notes = (r.annotations ?? []).map((a) => ({ ...annotationToFlow(a), selected: true }));
     const foreground = new Map([...nodes, ...notes.filter((n) => n.data.kind !== "zone")].map((n) => [n.id, n]));
     // A copy landing in a boundary already there joins it, and the boundary grows to hold it (D12).
@@ -754,8 +773,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     },
     setNodesProps: (ids, patch, opts) => {
       const set = new Set(ids);
-      hint(opts?.merge);
-      deps().setNodes((ns) =>
+      const update = (ns: FlowNode[]) =>
         ns.map((n) =>
           set.has(n.id) && isDiagram(n)
             ? {
@@ -769,8 +787,13 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
                 },
               }
             : n,
-        ),
-      );
+        );
+      if (!acceptNodes(update(rf.getNodes()))) return;
+      hint(opts?.merge);
+      deps().setNodes((ns) => {
+        const next = update(ns);
+        return acceptNodes(next) ? next : ns;
+      });
     },
     updateGroups: (ids, patch, opts) => {
       const set = new Set(ids);
@@ -784,10 +807,19 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       );
     },
     updateNode: (id, patch, opts) => {
+      if (
+        "props" in patch &&
+        !acceptNodes(
+          rf
+            .getNodes()
+            .map((n) => (n.id === id && isDiagram(n) ? { ...n, data: { ...n.data, props: patch.props } } : n)),
+        )
+      )
+        return;
       hint(opts?.merge);
       if (patch.stencil) reinferEdges(new Map([[id, patch.stencil]]));
-      deps().setNodes((ns) =>
-        ns.map((n) => {
+      deps().setNodes((ns) => {
+        const next = ns.map((n) => {
           if (n.id !== id || !isDiagram(n)) return n;
           const data = { ...n.data };
           if ("stencil" in patch && patch.stencil) data.stencil = patch.stencil;
@@ -799,19 +831,11 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
           const y = patch.y ?? n.position.y;
           const position = x === n.position.x && y === n.position.y ? n.position : { x, y };
           return { ...n, data, position };
-        }),
-      );
+        });
+        return "props" in patch && !acceptNodes(next) ? ns : next;
+      });
     },
-    setNodeProps: (id, patch, opts) => {
-      hint(opts?.merge);
-      deps().setNodes((ns) =>
-        ns.map((n) =>
-          n.id === id && isDiagram(n)
-            ? { ...n, data: { ...n.data, props: withoutUndefined({ ...n.data.props, ...patch }) } }
-            : n,
-        ),
-      );
-    },
+    setNodeProps: (id, patch, opts) => api.setNodesProps([id], patch, opts),
     updateEdge: (id, patch, opts) => api.updateEdges([id], patch, opts),
     updateEdges: (ids, patch, opts) => {
       const targets = new Set(ids);

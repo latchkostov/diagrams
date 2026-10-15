@@ -5,6 +5,8 @@ import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 import type { EdgeMark } from "../canvas/edgeMarks";
 import { createEditor, type EditorDeps } from "./useEditor";
 import type { DiagramFile } from "../model/types";
+import { hpaLesson, resourceLesson } from "../model/autoscaling";
+import { makePayload } from "./clipboard";
 import { validateDiagram } from "../interop/native";
 
 // Flow building (batch 3): the next node one gap beside a node, connected the right way (D3), the selection-
@@ -285,4 +287,86 @@ describe("new ids skip ids held by other kinds", () => {
       expect(t.edges().length + t.nodes().length).toBeGreaterThan(before.size);
       unique(t);
     });
+});
+
+describe("A1 editor precommit invariants", () => {
+  const diagram = (count: number): DiagramFile => ({
+    format: "diagrams/v2",
+    title: "Fleet budget",
+    planning: { revision: "p3-a1" },
+    nodes: Array.from({ length: count }, (_, i) => {
+      const a = hpaLesson();
+      a.controller.maxReplicas = 10_000;
+      return {
+        id: `worker-${i}`,
+        stencil: "service.go",
+        label: "Worker",
+        x: i * 400,
+        y: 0,
+        props: { resources: resourceLesson(), autoscaling: a },
+      };
+    }),
+    edges: [],
+  });
+  it.each(["paste", "duplicate"])("refuses an over-budget merged %s atomically", (action) => {
+    const d = diagram(6),
+      t = setup([], d),
+      ids = d.nodes.map((n) => n.id);
+    validateDiagram(d);
+    if (action === "paste") t.api.pastePayload(makePayload(d, ids)!);
+    else t.api.duplicate({ nodeIds: ids });
+    t.commit();
+    expect(t.api.getDiagram()).toEqual(d);
+    validateDiagram(t.api.getDiagram());
+    t.api.updateNode(ids[0], { label: "Still editable" });
+    t.commit();
+    expect(t.api.getNode(ids[0])!.label).toBe("Still editable");
+  });
+  it.each(["single", "bulk", "replace"])("refuses an over-budget %s resource edit", (action) => {
+    const d = diagram(11);
+    delete d.nodes[10].props;
+    const t = setup([], d),
+      props = { resources: resourceLesson(), autoscaling: hpaLesson() };
+    validateDiagram(d);
+    if (action === "single") t.api.setNodeProps("worker-10", props);
+    else if (action === "bulk") t.api.setNodesProps(["worker-0", "worker-10"], { resources: props.resources });
+    else t.api.updateNode("worker-10", { props });
+    t.commit();
+    expect(t.api.getDiagram()).toEqual(d);
+    validateDiagram(t.api.getDiagram());
+  });
+  it("preserves queued edits when merging resource properties", () => {
+    const t = setup([], diagram(1));
+    t.api.updateNode("worker-0", { label: "New label" });
+    t.api.setNodeProps("worker-0", { concurrency: 2 });
+    t.api.setNodeProps("worker-0", { latencyMs: 100 });
+    t.api.setNodesProps(["worker-0"], (props) => ({ concurrency: Number(props.concurrency) + 1 }));
+    t.commit();
+    expect(t.api.getNode("worker-0")).toMatchObject({ label: "New label", props: { concurrency: 3, latencyMs: 100 } });
+  });
+  it.each(["merge", "replace"])("validates queued %s resource edits against the preceding commit", (action) => {
+    const d = diagram(11);
+    delete d.nodes[9].props;
+    delete d.nodes[10].props;
+    const t = setup([], d),
+      props = d.nodes[0].props!;
+    for (const id of ["worker-9", "worker-10"]) {
+      if (action === "merge") t.api.setNodeProps(id, props);
+      else t.api.updateNode(id, { props });
+    }
+    t.commit();
+    expect(t.api.getNode("worker-9")!.props).toEqual(props);
+    expect(t.api.getNode("worker-10")!.props).toBeUndefined();
+    validateDiagram(t.api.getDiagram());
+  });
+  it("refuses a policy whose combined metric history is invalid", () => {
+    const d = diagram(1),
+      t = setup([], d),
+      a = hpaLesson();
+    a.controller.settings.metrics[0].windowMs = 600_000;
+    a.controller.settings.metrics[0].metricDelayMs = 1000;
+    t.api.setNodeProps("worker-0", { autoscaling: a });
+    t.commit();
+    expect(t.api.getDiagram()).toEqual(d);
+  });
 });

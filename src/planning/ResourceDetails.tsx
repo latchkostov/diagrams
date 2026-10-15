@@ -156,7 +156,7 @@ export function ResourceDetails({
                 <tr key={row.id} data-testid="autoscaling-replica-row">
                   <th scope="row">{row.id}</th>
                   <td>{t("autoscaling.state", { state: row.state })}</td>
-                  <td>
+                  <td data-testid="autoscaling-replica-cpu">
                     {row.cpuRequestPct === undefined
                       ? "—"
                       : formatNumber(row.cpuRequestPct, { maximumFractionDigits: 1 })}

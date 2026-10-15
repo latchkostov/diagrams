@@ -288,6 +288,16 @@ configured resource explanations. The max scenario requires ten replicas at targ
 two; its explanation cautions that startup and partitions still apply. The showcase's deliberately short
 sync/window/startup timings are saved in the input and disclosed in its description.
 
+### Autoscaling A1 round 2 review fixes (2026-10-15)
+
+All 1,552 goldens remain unchanged: legacy, non-autoscaling and A1 simulation, planning, export,
+import, agent, layout and browser outputs. No golden was re-recorded. Existing corpus scenarios do
+not exercise occupied-replica concurrency edits, retained resource retries through an outage,
+shrinking during a long startup, or invalid inspector/paste commits. Focused unit and production
+browser regressions cover those edge cases, plus numeric replica CPU readings. Operation-count
+negative controls cover sampled admission, startup hashing, drain readouts and page expansion.
+The released offline viewer is refreshed without changing its pinned legacy outputs or payloads.
+
 ### Adding an output
 
 Call `expectGolden` (data), `expectGoldenText` (text) or `expectGoldenBinary` (with a comparison)

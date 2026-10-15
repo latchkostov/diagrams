@@ -1,6 +1,5 @@
 import * as fleets from "./autoscaling";
 import { sampledParts } from "./sampledResources";
-import { growth, LINEAR_LIMIT } from "../test/complexity";
 import { describe, it, expect, vi } from "vitest";
 import { createEngine } from "./engine";
 import { createFleet, advanceFleet, evaluateHpa, reconcileFleet, chargeCpu, integrateResources } from "./autoscaling";
@@ -287,45 +286,65 @@ describe("A1 CPU and fleet execution", () => {
     expect(e.frame().nodes.worker.resources!.executedCpuMs - before).toBeLessThanOrEqual(200); // ready + one draining replica
     expect(e.frame().nodes.worker.fleet!.draining).toBeGreaterThan(0);
   });
-  it("idle engine ticks and frames avoid per-replica reads", () => {
+  it("idle tick work is independent of replica count", () => {
     const original = fleets.createFleet;
     const run = (n: number) => {
-      let reads = 0;
-      const spy = vi.spyOn(fleets, "createFleet").mockImplementation(
-        (...args) =>
-          new Proxy(original(...args), {
-            get(target, key, receiver) {
-              if (key === "ready") reads++;
-              return Reflect.get(target, key, receiver) as unknown;
-            },
-          }),
-      );
+      let visits = 0;
+      const spy = vi.spyOn(fleets, "createFleet").mockImplementation((...args) => {
+        const f = original(...args);
+        // Previously used, now idle identities expose any traversal in stepping or frame readouts.
+        for (let i = 0; i < n; i++) fleets.acquireReplica(f, 1);
+        for (const id of f.busy.keys()) fleets.releaseReplica(f, id, 1);
+        const wrap = <T>(items: MapIterator<T>): MapIterator<T> => {
+          const next = items.next.bind(items);
+          items.next = () => {
+            const item = next();
+            if (!item.done) visits++;
+            return item;
+          };
+          return items;
+        };
+        const values = f.busy.values.bind(f.busy),
+          entries = f.busy.entries.bind(f.busy);
+        f.busy.values = () => wrap(values());
+        f.busy[Symbol.iterator] = () => wrap(entries());
+        for (const key of ["ranges", "starts", "free", "busyIds"] as const) {
+          Reflect.set(
+            f,
+            key,
+            new Proxy(f[key], {
+              get(target, key, receiver) {
+                if (typeof key === "string" && /^\d+$/.test(key)) visits++;
+                return Reflect.get(target, key, receiver) as unknown;
+              },
+            }),
+          );
+        }
+        return new Proxy(f, {
+          get(target, key, receiver) {
+            visits++;
+            return Reflect.get(target, key, receiver) as unknown;
+          },
+        });
+      });
       try {
         const d = fixed(40);
         d.nodes[1].props!.replicas = n;
         const e = engine(d);
-        reads = 0;
+        visits = 0;
         for (let i = 0; i < 100; i++) {
           e.step(10);
           e.frame();
         }
-        return reads;
+        return visits;
       } finally {
         spy.mockRestore();
       }
     };
-    expect(run(10_000)).toBe(run(1250));
-    const make = (n: number) => {
-      const d = fixed(40);
-      d.nodes[1].props!.replicas = n;
-      const e = engine(d);
-      e.step(1_200_000);
-      return () => {
-        e.step(10);
-        e.frame();
-      };
-    };
-    expect(growth(make(1250), make(10_000))).toBeLessThan(LINEAR_LIMIT);
+    const small = run(1250),
+      large = run(10_000);
+    expect(small).toBeGreaterThan(0);
+    expect(large).toBe(small);
   });
   it("counts idle partition readers without giving a log more assigned work", () => {
     const d = autoscalingFixture();
@@ -473,22 +492,187 @@ describe("A1 CPU and fleet execution", () => {
       expect(a.snapshot()).toEqual(b.snapshot());
     }
   });
-  it("does constant work per idle tick at 10,000 replicas (small input is one eighth)", () => {
-    const run = (n: number) => {
-      const f = createFleet(n);
-      const r = resourceLesson();
-      reconcileFleet(f, n, r, 0, 42, "worker");
-      for (let t = 10; t <= 1000; t += 10) advanceFleet(f, t);
-      return f;
-    };
-    const small = run(1250),
-      large = run(10_000);
-    expect(large.operations).toBe(small.operations);
-    expect(large.busy.size).toBe(0);
-    expect(large.ranges).toHaveLength(1);
-  });
   it("capacity respects CPU without treating requests as execution ceilings", () => {
     expect(analyzeCapacity(fixed(500)).nodes.worker.capacity).toBe(2);
     expect(analyzeCapacity(fixed(500, 100)).nodes.worker.capacity).toBe(2);
+  });
+  it("starting replicas cannot reverse a shrink recommendation into growth", () => {
+    const f = createFleet(1),
+      r = resourceLesson(),
+      c = hpaLesson().controller;
+    c.settings.metrics[0].windowMs = 1000;
+    c.settings.metrics[0].target = { kind: "utilization", percentOfRequest: 20 };
+    r.startup.delayMs = 60_000;
+    reconcileFleet(f, 4, r, 0, 42, "worker");
+    f.samples.push({ at: 1000, cpu: 200, occupancy: 0, ready: 1 });
+    expect(evaluateHpa(f, c, r, 1000)).toMatchObject({ raw: 4, desired: 4 });
+  });
+  it("concurrency edits refresh reservations and preserve fleet ownership", () => {
+    const d = fixed(100);
+    Object.assign(d.nodes[1].props!, { concurrency: 1, latencyMs: 10_000 });
+    const e = engine(d);
+    e.inject("source", 10);
+    e.step(100);
+    expect(e.frame().nodes.worker.inFlight).toBe(1);
+    e.setNodeProps("worker", { concurrency: 4 });
+    e.step(100);
+    expect(e.frame().nodes.worker.inFlight).toBe(4);
+    const checkpoint = e.checkpoint();
+    e.setNodeProps("worker", { concurrency: 2 });
+    e.step(100);
+    expect(e.frame().nodes.worker.inFlight).toBe(4);
+    e.step(10_000);
+    expect(e.frame().nodes.worker.inFlight).toBe(2);
+    e.restore(checkpoint);
+    e.step(100);
+    expect(e.frame().nodes.worker.inFlight).toBe(4);
+  });
+  it("failed replica acquisition leaves work pending without CPU or admission", () => {
+    const e = engine(fixed(500));
+    const spy = vi.spyOn(fleets, "acquireReplica").mockReturnValue(undefined);
+    try {
+      e.inject("source", 10);
+      e.step(100);
+      expect(e.frame().nodes.worker).toMatchObject({ inFlight: 0, backlog: 10, resources: { executedCpuMs: 0 } });
+    } finally {
+      spy.mockRestore();
+    }
+    e.step(100);
+    expect(e.frame().nodes.worker.inFlight).toBe(4);
+  });
+  it("enabling resources queues existing work that cannot reserve the new fleet", () => {
+    const d = fixed(100);
+    delete d.nodes[1].props!.resources;
+    Object.assign(d.nodes[1].props!, { replicas: 4, concurrency: 1, latencyMs: 1000 });
+    const e = engine(d);
+    e.inject("source", 4);
+    e.step(100);
+    expect(e.frame().nodes.worker.inFlight).toBe(4);
+    e.setNodeProps("worker", { resources: resourceLesson(), autoscaling: hpaLesson() });
+    expect(e.frame().nodes.worker).toMatchObject({ inFlight: 1, backlog: 3, fleet: { ready: 1 } });
+    e.step(5000);
+    expect(e.frame().nodes.worker).toMatchObject({ processed: 4, inFlight: 0, backlog: 0 });
+  });
+  it.each([1, 10])("retained resource retries exhaust delivery limits while down at scale %s", (scale) => {
+    const d = fixed(100);
+    d.nodes[0].stencil = "kafka.topic";
+    d.nodes[0].props = { partitions: 1, maxDeliveryCount: 3 };
+    d.edges[0].kind = "async";
+    Object.assign(d.nodes[1].props!, { concurrency: 1, latencyMs: 100, retry: "inplace", retryBackoffMs: 200 });
+    const e = engine(d, scale);
+    e.inject("source", 1);
+    e.step(10);
+    e.setNodeStatus("worker", "down");
+    e.step(2000);
+    expect(e.frame().nodes.worker).toMatchObject({ failed: 3, inFlight: 0, resources: { executedCpuMs: 0 } });
+    expect(e.frame().inSystem).toBe(0);
+  });
+  it("exact replica CPU reflects work before the first publication", () => {
+    const e = engine(fixed(500));
+    e.inject("source", 1);
+    for (const time of [1000, 14_000, 1000]) {
+      e.step(time);
+      expect(e.replicaPage("worker")[0].cpuRequestPct).toBeCloseTo(e.frame().nodes.worker.resources!.cpuRequestPct!);
+    }
+    expect(e.replicaPage("worker")[0].cpuRequestPct).toBe(0);
+  });
+  it("replica CPU keeps fifteen complete seconds while the current second is unpublished", () => {
+    const e = engine(fixed(500));
+    e.setTraffic(true);
+    e.step(16_100);
+    expect(e.replicaPage("worker")[0].cpuRequestPct).toBeCloseTo(e.frame().nodes.worker.resources!.cpuRequestPct!);
+  });
+  it("instant resource work releases its reservation before admitting the next attempt", () => {
+    const d = fixed(0);
+    Object.assign(d.nodes[1].props!, { latencyMs: 0, concurrency: 1 });
+    const e = engine(d);
+    e.inject("source", 10);
+    e.step(100);
+    expect(e.frame().nodes.worker).toMatchObject({ processed: 10, inFlight: 0, backlog: 0 });
+  });
+  it("hashes node identity once across jittered startup expansion", () => {
+    const r = resourceLesson(),
+      f = createFleet(1),
+      node = "x".repeat(128);
+    r.startup.jitterFraction = 0.5;
+    let reads = 0;
+    const original = String.prototype.charCodeAt;
+    const spy = vi.spyOn(String.prototype, "charCodeAt").mockImplementation(function (this: string, index) {
+      if (String(this) === node) reads++;
+      return original.call(this, index);
+    });
+    try {
+      reconcileFleet(f, 1250, r, 0, 42, node);
+      const first = reads;
+      reconcileFleet(f, 10_000, r, 0, 42, node);
+      expect(first).toBe(node.length);
+      expect(reads).toBe(first);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+  it("sampled admissions do not rescan unchanged protected boundaries", () => {
+    const f = createFleet(8),
+      working: Parameters<typeof sampledParts>[3] = [];
+    working.push({ cpuParts: sampledParts(f, 3, 100, working) });
+    let visits = 0;
+    const tracked = new Proxy(working, {
+      get(target, key, receiver) {
+        if (typeof key === "string" && /^\d+$/.test(key)) visits++;
+        return Reflect.get(target, key, receiver) as unknown;
+      },
+    });
+    for (let i = 0; i < 800; i++) working.push({ cpuParts: sampledParts(f, 8, 100, tracked) });
+    expect(visits).toBe(0);
+    f.rangesDirty = true;
+    fleets.compactReadyRanges(f, tracked);
+    expect(visits).toBe(working.length);
+    expect(f.ranges).toHaveLength(2);
+  });
+  it.each([false, true])("pagination expands only the requested identities (previously used: %s)", (used) => {
+    const f = createFleet(10_000),
+      r = resourceLesson();
+    if (used) {
+      for (let i = 0; i < 10_000; i++) fleets.acquireReplica(f, 1);
+      for (const id of f.busy.keys()) fleets.releaseReplica(f, id, 1);
+    }
+    let rows = 0,
+      visits = 0;
+    const original = Array.prototype.push;
+    Array.prototype.push = function (this: unknown[], ...items: unknown[]) {
+      rows += items.filter((item) => item && typeof item === "object" && "id" in item && "state" in item).length;
+      return original.apply(this, items);
+    };
+    const entries = f.busy[Symbol.iterator].bind(f.busy);
+    f.busy[Symbol.iterator] = () => {
+      const it = entries(),
+        next = it.next.bind(it);
+      it.next = () => {
+        const item = next();
+        if (!item.done) visits++;
+        return item;
+      };
+      return it;
+    };
+    try {
+      const first = fleets.replicaPage(f, r, 1000, 1, 0);
+      const last = fleets.replicaPage(f, r, 1000, 1, 199);
+      expect(first.map((p) => p.id)).toEqual(Array.from({ length: 50 }, (_, i) => i + 1));
+      expect(last.map((p) => p.id)).toEqual(Array.from({ length: 50 }, (_, i) => i + 9951));
+      expect(rows).toBeLessThanOrEqual(100);
+      expect(visits).toBe(0);
+    } finally {
+      Array.prototype.push = original;
+    }
+  });
+  it("draining readouts do not visit previously used replicas", () => {
+    const f = createFleet(10_000),
+      r = resourceLesson();
+    for (let i = 0; i < 10_000; i++) fleets.acquireReplica(f, 1);
+    for (const id of f.busy.keys()) fleets.releaseReplica(f, id, 1);
+    const values = vi.spyOn(f.busy, "values");
+    expect(fleets.fleetReadout(f).draining).toBe(0);
+    expect(fleets.resourceReadout(f, r, 0, 1000, 1).memoryMiB).toBe(r.baselineMemoryMiB);
+    expect(values).not.toHaveBeenCalled();
   });
 });

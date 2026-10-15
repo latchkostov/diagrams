@@ -62,6 +62,20 @@ search and collapse controls. No global control was added.
 Production browser checks verify stencil-control separation, shared and overflow navigation, English
 and Arabic accessible names, and the gallery's existing theme, narrow-layout and axe checks. The
 designer review itself was a source review, not a browser or screen-reader walkthrough.
+## Autoscaling A1 round 2 review fixes (2026-10-15)
+
+Scoped designer source review found no blocking UX issues. The inspector preserves its four main
+fields, Advanced disclosure and existing chrome budget. Incomplete numeric drafts retain saved
+resource values and receive linked inline feedback; complete numeric and JSON policies use the same
+validation path. The metric-window maximum accounts for delay. Policy JSON reads left to right while
+translated labels and surrounding chrome retain RTL layout. Over-budget paste and resource edits
+report recovery guidance before committing.
+
+No additional controls were recommended. This was a scoped source review, not a whole-app browser
+walkthrough or screen-reader audit. The primary engineer also inspected the production light, dark Arabic
+and selected Live screenshots: the four-field disclosure and readable, selected-only resource table remain
+intact. Production browser regressions are reported separately.
+
 ## A1 rebase and showcase review (2026-10-14)
 
 Scoped designer source review accepted the autoscaling showcase and preserved four-field disclosure,
