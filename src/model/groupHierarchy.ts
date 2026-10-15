@@ -196,7 +196,7 @@ export function planBoundaryAdoption(params: PlanBoundaryAdoptionParams): Bounda
   };
 }
 
-/** Clipboard parents are untrusted. Keep only existing references and break cycles before rendering. */
+/** Input parents are untrusted. Keep only existing references and break cycles before rendering. */
 export function sanitizeGroupParents<T extends { id: string; group?: string }>(
   groups: readonly T[],
   externalIds: ReadonlySet<string>,

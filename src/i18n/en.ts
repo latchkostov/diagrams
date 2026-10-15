@@ -1416,6 +1416,8 @@ const en = {
   "edit.coordinateBudget": "it's outside the coordinate budget. Move the selection closer to the origin.",
   "edit.annotationLimit":
     "Couldn't convert this boundary: the diagram already has {limit} annotations. Remove an annotation and try again.",
+  "edit.annotationTextLimit":
+    "Couldn't convert this boundary: its label exceeds {limit} characters. Shorten the label and try again.",
   "edit.annotationSize": "its size must be between 1 and {limit} pixels. Choose a smaller selection.",
   "broker.partitions": "Partitions",
   "broker.shards": "Shards",

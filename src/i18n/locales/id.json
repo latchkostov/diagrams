@@ -1170,6 +1170,7 @@
   "edit.finiteGeometry": "geometrinya harus berhingga.",
   "edit.coordinateBudget": "di luar batas koordinat. Pindahkan pilihan lebih dekat ke titik asal.",
   "edit.annotationLimit": "Tidak dapat mengonversi batas ini: diagram sudah memiliki {limit} anotasi. Hapus satu anotasi dan coba lagi.",
+  "edit.annotationTextLimit": "Batas ini tidak dapat dikonversi: labelnya melebihi {limit} karakter. Persingkat label dan coba lagi.",
   "edit.annotationSize": "ukurannya harus antara 1 dan {limit} piksel. Pilih area yang lebih kecil.",
   "broker.partitions": "Partisi",
   "broker.shards": "Shard",

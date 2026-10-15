@@ -217,6 +217,12 @@ example below is the first one.
 
 ### Nested boundaries review (#115): what changed and why
 
+The final verification round changes only `node/i18n/catalogs.json`: `edit.annotationTextLimit`
+adds the boundary-to-zone label-length rejection and recovery guidance in English and all 37
+translated catalogs. Each catalog's message count increases by one and its `edit` hash changes;
+fallback counts stay unchanged. The membership, cycle, traversal, selection, tone and caption fixes
+leave every recorded diagram, simulation, layout, import, export and browser golden unchanged.
+
 The review fixes change only `node/i18n/catalogs.json`: `edit.annotationLimit` adds the
 boundary-to-zone annotation-count rejection and its recovery guidance. Every catalog's message
 count increases by one and the `edit` area hash changes; all 37 translated catalogs include the new

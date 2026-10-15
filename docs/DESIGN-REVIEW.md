@@ -1,5 +1,14 @@
 # Design review
 
+## Nested boundaries final verification (#115, 2026-10-15)
+
+The designer's scoped source review confirmed the shortcut, carried-descendant undo selection and
+caption-background findings. The fixes keep Ctrl+G consistent with Add boundary, preserve the single
+boundary inspector after undo, and share custom-caption contrast measurement across visible region
+fills. Conversion retains the existing error treatment and gives translated recovery guidance for
+oversized labels. No controls or chrome were added. Production browser regressions cover the shortcut,
+contrast and existing nested movement; the accessibility, groups, clipboard, layout and interop suites pass.
+
 ## Self-hosting review fixes (2026-10-14)
 
 Scoped source review found no blocking UX issues. Copied embed and share URLs use the prepared deployment

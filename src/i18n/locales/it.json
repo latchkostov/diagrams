@@ -1170,6 +1170,7 @@
   "edit.finiteGeometry": "la geometria deve essere finita.",
   "edit.coordinateBudget": "fuori dai limiti delle coordinate. Avvicina la selezione all’origine.",
   "edit.annotationLimit": "Impossibile convertire questo confine: il diagramma contiene già {limit} annotazioni. Rimuovi un’annotazione e riprova.",
+  "edit.annotationTextLimit": "Impossibile convertire questo confine: la sua etichetta supera {limit} caratteri. Accorcia l’etichetta e riprova.",
   "edit.annotationSize": "la dimensione deve essere tra 1 e {limit} pixel. Scegli una selezione più piccola.",
   "broker.partitions": "Partizioni",
   "broker.shards": "Shard",

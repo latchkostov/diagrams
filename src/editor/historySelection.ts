@@ -8,7 +8,7 @@ import { fromFlow } from "../canvas/convert";
 import { GROUP_PREFIX, type DiagramFlowEdge, type FlowNode } from "../canvas/types";
 import { structuralText } from "../model/diagramDiff";
 import { foregroundLayerOrder } from "../model/layers";
-import type { DiagramFile, DiagramGroup, DiagramNode } from "../model/types";
+import type { DiagramAnnotation, DiagramFile, DiagramGroup, DiagramNode } from "../model/types";
 import { canRedo, canUndo, present, redo, undo, type History } from "./history";
 import type { CanvasSnapshot } from "./useHistory";
 
@@ -92,9 +92,7 @@ export function stepChanges(a: DiagramFile, b: DiagramFile): { before: FlowSelec
   const lasting = (g: string | undefined) => g === undefined || (groupsA.has(g) && groupsB.has(g));
   const nodeText = (n: DiagramNode) => structuralText(lasting(n.group) ? n : { ...n, group: undefined });
   /** Moved only by as much as its boundary did (positions are rounded apart, so give or take a pixel). */
-  const carried = (id: string) => {
-    const na = nodesA.get(id),
-      nb = nodesB.get(id);
+  const carried = (na: DiagramNode | DiagramGroup | DiagramAnnotation | undefined, nb: typeof na) => {
     const ga = na?.group === nb?.group && na?.group ? groupsA.get(na.group) : undefined,
       gb = ga && groupsB.get(ga.id);
     // A boundary that changed size grew (or shrank) around its members: it didn't carry them.
@@ -104,7 +102,7 @@ export function stepChanges(a: DiagramFile, b: DiagramFile): { before: FlowSelec
     return (
       near(nb.x - na.x, gb.x - ga.x) &&
       near(nb.y - na.y, gb.y - ga.y) &&
-      nodeText({ ...na, x: 0, y: 0 }) === nodeText({ ...nb, x: 0, y: 0 })
+      structuralText({ ...na, x: 0, y: 0 }) === structuralText({ ...nb, x: 0, y: 0 })
     );
   };
   /** Boundaries with a member the step added or moved. */
@@ -137,9 +135,20 @@ export function stepChanges(a: DiagramFile, b: DiagramFile): { before: FlowSelec
     }
     for (const id of next.keys()) if (!old.has(id)) after[into].push(flowId(id));
   };
-  diff(a.groups, b.groups, "nodes", structuralText, (id) => GROUP_PREFIX + id, grewOnly);
-  diff(a.nodes, b.nodes, "nodes", nodeText, undefined, carried);
-  diff(a.annotations, b.annotations, "nodes", structuralText);
+  diff(
+    a.groups,
+    b.groups,
+    "nodes",
+    structuralText,
+    (id) => GROUP_PREFIX + id,
+    (id) => grewOnly(id) || carried(groupsA.get(id), groupsB.get(id)),
+  );
+  diff(a.nodes, b.nodes, "nodes", nodeText, undefined, (id) => carried(nodesA.get(id), nodesB.get(id)));
+  const annotationsA = byId(a.annotations),
+    annotationsB = byId(b.annotations);
+  diff(a.annotations, b.annotations, "nodes", structuralText, undefined, (id) =>
+    carried(annotationsA.get(id), annotationsB.get(id)),
+  );
   diff(a.edges, b.edges, "edges", structuralText);
 
   // The order things are drawn in: what changed place.

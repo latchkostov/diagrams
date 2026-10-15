@@ -310,7 +310,9 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     const notes = (r.annotations ?? []).map((a) => ({ ...annotationToFlow(a), selected: true }));
     const foreground = new Map([...nodes, ...notes.filter((n) => n.data.kind !== "zone")].map((n) => [n.id, n]));
     // A copy landing in a boundary already there joins it, and the boundary grows to hold it (D12).
-    const joining = new Set(nodes.filter((n) => !(n.data.group && newGroups.has(n.data.group))).map((n) => n.id));
+    const joining = new Set(
+      [...nodes, ...notes].filter((n) => !(n.data.group && newGroups.has(n.data.group))).map((n) => n.id),
+    );
     deps().setNodes(
       (cur) =>
         settled(
@@ -1276,6 +1278,10 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       const id = uniqueId("zone", takenIds());
       const w = groupNode.width ?? groupNode.measured?.width ?? 0;
       const h = groupNode.height ?? groupNode.measured?.height ?? 0;
+      if (groupNode.data.label.length > ANNOTATION_LIMITS.maxAnnotationText) {
+        notify(t("edit.annotationTextLimit", { limit: ANNOTATION_LIMITS.maxAnnotationText }), { kind: "error" });
+        return null;
+      }
       if (ns.filter(isAnnotation).length >= ANNOTATION_LIMITS.maxAnnotations) {
         notify(t("edit.annotationLimit", { limit: ANNOTATION_LIMITS.maxAnnotations }), { kind: "error" });
         return null;

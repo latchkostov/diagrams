@@ -1170,6 +1170,7 @@
   "edit.finiteGeometry": "hình học phải có giá trị hữu hạn.",
   "edit.coordinateBudget": "nằm ngoài giới hạn tọa độ. Di chuyển lựa chọn gần gốc tọa độ hơn.",
   "edit.annotationLimit": "Không thể chuyển đổi ranh giới này: sơ đồ đã có {limit} chú thích. Hãy xóa một chú thích rồi thử lại.",
+  "edit.annotationTextLimit": "Không thể chuyển đổi ranh giới này: nhãn vượt quá {limit} ký tự. Hãy rút ngắn nhãn và thử lại.",
   "edit.annotationSize": "kích thước phải từ 1 đến {limit} pixel. Chọn phạm vi nhỏ hơn.",
   "broker.partitions": "Phân vùng",
   "broker.shards": "Shard",

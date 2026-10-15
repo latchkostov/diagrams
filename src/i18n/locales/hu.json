@@ -1170,6 +1170,7 @@
   "edit.finiteGeometry": "a geometria értékeinek végesnek kell lenniük.",
   "edit.coordinateBudget": "a koordinátakorláton kívül van. Vigye a kijelölést közelebb az origóhoz.",
   "edit.annotationLimit": "Ez a határ nem alakítható át: a diagram már {limit} annotációt tartalmaz. Távolítson el egy annotációt, és próbálja újra.",
+  "edit.annotationTextLimit": "Ez a határ nem alakítható át: a címkéje meghaladja a(z) {limit} karaktert. Rövidítse le a címkét, és próbálja újra.",
   "edit.annotationSize": "a méretnek 1 és {limit} pixel között kell lennie. Válasszon kisebb kijelölést.",
   "broker.partitions": "Partíciók",
   "broker.shards": "Shardok",

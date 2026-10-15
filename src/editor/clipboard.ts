@@ -7,7 +7,9 @@ import {
   type DiagramNode,
 } from "../model/types";
 import { filterLayerOrder } from "../model/layers";
-import { sanitizeGroupParents } from "../model/groupHierarchy";
+import { expandGroupIds, sanitizeGroupParents } from "../model/groupHierarchy";
+import { isPresetGroupTone } from "../canvas/groupTones";
+import { isHexColor } from "../model/colors";
 import { uniqueId } from "./ids";
 import { normalizeAnnotation, annotationCoordinate } from "../model/annotations";
 import { LIMITS, exceedsDepth, validateDiagram } from "../interop/native";
@@ -51,17 +53,7 @@ export function makePayload(
   groupIds: Iterable<string> = [],
   isPrivate = false,
 ): ClipboardPayload | null {
-  const gs = new Set(groupIds);
-  let expanded = true;
-  while (expanded) {
-    expanded = false;
-    for (const g of d.groups ?? []) {
-      if (g.group && gs.has(g.group) && !gs.has(g.id)) {
-        gs.add(g.id);
-        expanded = true;
-      }
-    }
-  }
+  const gs = expandGroupIds(groupIds, d.groups ?? []);
   const groups = (d.groups ?? []).filter((g) => gs.has(g.id));
   const ns = new Set(nodeIds);
   for (const n of d.nodes) if (n.group && gs.has(n.group)) ns.add(n.id);
@@ -146,7 +138,7 @@ export function parsePayload(text: string): ClipboardPayload | null {
   if (!nodes.length && !groups.length && !annotations.length) return null;
   return {
     format: CLIP_FORMAT,
-    groups,
+    groups: groups.map((g) => ({ ...g, tone: isPresetGroupTone(g.tone) || isHexColor(g.tone) ? g.tone : "neutral" })),
     nodes: nodes.map((n) => ({ ...n, label: n.label ?? "" })),
     edges,
     ...(annotations.length ? { annotations } : {}),

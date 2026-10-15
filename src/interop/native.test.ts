@@ -3,6 +3,7 @@ import type { DiagramFile } from "../model/types";
 import { exceedsDepth, LIMITS, MIGRATIONS, parseNative, preserveUnknown, validateDiagram } from "./native";
 import { createSimulationRun } from "../sim/simulation";
 import { fromFlow, toFlow } from "../canvas/convert";
+import { tabOrder } from "../canvas/keyboardNav";
 
 const base = {
   format: "diagrams/v1",
@@ -12,6 +13,61 @@ const base = {
 };
 
 describe("native format validation", () => {
+  it.each([2, 3])("repairs cyclic boundary parents on native import (%i boundaries)", (count) => {
+    const result = parseNative(
+      JSON.stringify({
+        ...base,
+        nodes: [],
+        groups: Array.from({ length: count }, (_, i) => ({
+          id: `g${i}`,
+          label: "Boundary",
+          group: `g${(i + 1) % count}`,
+          x: i * 10,
+          y: 0,
+          width: 100,
+          height: 100,
+        })),
+      }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.warnings.some((w) => w.includes("cyclic parent"))).toBe(true);
+    const groups = result.diagram.groups!;
+    for (const g of groups) {
+      const seen = new Set<string>();
+      let current: typeof g | undefined = g;
+      while (current) {
+        expect(seen.has(current.id)).toBe(false);
+        seen.add(current.id);
+        current = groups.find((next) => next.id === current?.group);
+      }
+    }
+    expect(
+      tabOrder(
+        [],
+        groups.map((g) => ({ ...g, members: groups.filter((c) => c.group === g.id).map((c) => c.id) })),
+      ),
+    ).toHaveLength(count);
+  });
+
+  it("keeps removed boundary and annotation parents removed after autosave and duplication", () => {
+    const original: DiagramFile = {
+      ...base,
+      format: "diagrams/v1",
+      groups: [
+        { id: "outer", label: "Outer", x: 0, y: 0, width: 400, height: 400 },
+        { id: "inner", label: "Inner", x: 10, y: 10, width: 200, height: 200, group: "outer" },
+      ],
+      annotations: [{ id: "note", kind: "note", text: "Note", x: 20, y: 20, width: 100, height: 60, group: "inner" }],
+    };
+    const flow = toFlow(original);
+    for (const n of flow.nodes) n.data.group = undefined;
+    const current = fromFlow(flow.meta, flow.nodes, flow.edges);
+    const autosaved = JSON.parse(JSON.stringify(current)) as DiagramFile;
+    const duplicate = preserveUnknown(autosaved, original);
+    expect(duplicate.groups?.every((g) => g.group === undefined)).toBe(true);
+    expect(duplicate.annotations?.[0].group).toBeUndefined();
+  });
   it("accepts a minimal file and fills defaults", () => {
     const r = parseNative(JSON.stringify({ ...base, title: "" }));
     expect(r.ok && r.diagram.title).toBe("Untitled diagram");

@@ -1170,6 +1170,7 @@
   "edit.finiteGeometry": "geomeetria peab olema lõplik.",
   "edit.coordinateBudget": "väljaspool koordinaatide piiri. Liiguta valik alguspunktile lähemale.",
   "edit.annotationLimit": "Seda piiri ei saa teisendada: diagrammil on juba {limit} annotatsiooni. Eemalda üks annotatsioon ja proovi uuesti.",
+  "edit.annotationTextLimit": "Seda piiri ei saanud teisendada: selle silt ületab {limit} märki. Lühendage silti ja proovige uuesti.",
   "edit.annotationSize": "suurus peab olema 1 kuni {limit} pikslit. Vali väiksem valik.",
   "broker.partitions": "Partitsioonid",
   "broker.shards": "Shardid",

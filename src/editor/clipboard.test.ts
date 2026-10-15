@@ -241,6 +241,17 @@ it("filters, validates and remaps mixed foreground order through clipboard JSON"
 });
 
 describe("untrusted boundary clipboard hierarchy", () => {
+  it.each(["__proto__", "constructor", "toString", "invalid"])("normalizes unsafe tone %s", (tone) => {
+    const parsed = parsePayload(
+      JSON.stringify({
+        format: CLIP_FORMAT,
+        nodes: [],
+        edges: [],
+        groups: [{ id: "g", tone, x: 0, y: 0, width: 100, height: 100 }],
+      }),
+    );
+    expect(parsed?.groups[0].tone).toBe("neutral");
+  });
   const group = (id: string, parent: unknown) => ({
     id,
     label: id,

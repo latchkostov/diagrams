@@ -1170,6 +1170,7 @@
   "edit.finiteGeometry": "de geometrie moet eindig zijn.",
   "edit.coordinateBudget": "buiten de coördinatenlimiet. Verplaats de selectie dichter bij de oorsprong.",
   "edit.annotationLimit": "Deze grens kan niet worden omgezet: het diagram bevat al {limit} aantekeningen. Verwijder een aantekening en probeer het opnieuw.",
+  "edit.annotationTextLimit": "Deze grens kan niet worden geconverteerd: het label overschrijdt {limit} tekens. Verkort het label en probeer het opnieuw.",
   "edit.annotationSize": "de grootte moet tussen 1 en {limit} pixels liggen. Kies een kleinere selectie.",
   "broker.partitions": "Partities",
   "broker.shards": "Shards",

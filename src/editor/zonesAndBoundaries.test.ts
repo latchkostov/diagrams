@@ -8,6 +8,8 @@ import { createEditor, type EditorDeps } from "./useEditor";
 import type { DiagramFile } from "../model/types";
 import { builtinActions } from "./builtinActions";
 import type { ActionContext } from "./actions";
+import { validateDiagram } from "../interop/native";
+import { CLIP_FORMAT, makePayload } from "./clipboard";
 
 function setup(diagram: DiagramFile) {
   const flow = toFlow(diagram);
@@ -612,6 +614,48 @@ const nestedSelection: DiagramFile = {
 };
 
 describe("selection subtree regressions", () => {
+  it("recomputes pasted annotation membership while preserving copied subtrees", () => {
+    const diagram = structuredClone(nestedSelection);
+    diagram.groups!.push({ id: "destination", label: "Destination", x: 1000, y: 0, width: 500, height: 500 });
+    const { api, commit, getNodes } = setup(diagram);
+    api.pastePayload(makePayload(diagram, ["note"])!, { x: 1100, y: 100 });
+    commit();
+    expect(getNodes().find((n) => n.type === "annotation" && n.selected)?.data.group).toBe("destination");
+    api.pastePayload(
+      { format: CLIP_FORMAT, groups: [], nodes: [], edges: [], annotations: diagram.annotations },
+      { x: 2000, y: 0 },
+    );
+    commit();
+    expect(getNodes().find((n) => n.type === "annotation" && n.selected)?.data.group).toBeUndefined();
+    api.pastePayload(makePayload(diagram, [], ["parent"])!, { x: 3000, y: 0 });
+    commit();
+    const child = getNodes().find(
+      (n) => n.type === "boundary" && n.selected && n.data.label === "Child",
+    ) as GroupFlowNode;
+    expect(getNodes().find((n) => n.type === "annotation" && n.selected)?.data.group).toBe(child.data.groupId);
+  });
+
+  it("rejects boundary conversion when its label exceeds maxAnnotationText", () => {
+    const diagram = structuredClone(nestedSelection);
+    diagram.groups![0].label = "x".repeat(ANNOTATION_LIMITS.maxAnnotationText + 1);
+    const { api, commit, getNodes } = setup(diagram);
+    const before = structuredClone(getNodes());
+    expect(api.convertGroupToZone(diagram.groups![0].id)).toBeNull();
+    expect(toast.current?.kind).toBe("error");
+    commit();
+    expect(getNodes()).toEqual(before);
+  });
+
+  it("preserves exactly-at-limit boundary text through conversion and validation", () => {
+    const diagram = structuredClone(nestedSelection);
+    const label = "x".repeat(ANNOTATION_LIMITS.maxAnnotationText);
+    diagram.groups![0].label = label;
+    const { api, commit } = setup(diagram);
+    const id = api.convertGroupToZone(diagram.groups![0].id);
+    commit();
+    const result = validateDiagram(api.getDiagram());
+    expect(result.ok && result.diagram.annotations?.find((a) => a.id === id)?.text).toBe(label);
+  });
   it("wrapping a boundary and its selected contents preserves membership", () => {
     const { api, commit, getNodes } = setup(nestedSelection);
     const wrapper = api.groupNodes(["parent", "group:child", "member", "note"]);

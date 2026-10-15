@@ -1170,6 +1170,7 @@
   "edit.finiteGeometry": "ģeometrijai jābūt galīgai.",
   "edit.coordinateBudget": "ārpus koordinātu ierobežojuma. Pārvietojiet atlasi tuvāk sākumpunktam.",
   "edit.annotationLimit": "Šo robežu nevar pārveidot: diagrammā jau ir {limit} anotāciju. Noņemiet anotāciju un mēģiniet vēlreiz.",
+  "edit.annotationTextLimit": "Šo robežu nevarēja pārveidot: tās etiķete pārsniedz {limit} rakstzīmes. Saīsiniet etiķeti un mēģiniet vēlreiz.",
   "edit.annotationSize": "izmēram jābūt no 1 līdz {limit} pikseļiem. Izvēlieties mazāku atlasi.",
   "broker.partitions": "Nodalījumi",
   "broker.shards": "Shardi",

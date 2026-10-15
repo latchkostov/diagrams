@@ -39,6 +39,51 @@ const fixtureDiagram = {
   edges: [],
 };
 
+for (const mixed of [false, true])
+  test(`Ctrl+G wraps selected boundaries (mixed: ${mixed})`, async ({ page, consoleErrors }) => {
+    await seed(page, nestedFixture);
+    await page.getByTestId("group-label-grp-core").click();
+    if (mixed) await page.getByTestId("node-member").click({ modifiers: ["Shift"] });
+    await page.keyboard.press("Control+g");
+    await expect(page.getByTestId("group-label-boundary-1")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await page.getByTestId("group-label-grp-core").click();
+    await expect(page.getByTestId("inspector-field-group")).toHaveValue("boundary-1");
+    await page.keyboard.press("Control+z");
+    await expect(page.getByTestId("group-label-boundary-1")).toHaveCount(0);
+    expectNoErrors(consoleErrors);
+  });
+
+test("custom caption contrast follows visible boundary and zone fills", async ({ page, consoleErrors }) => {
+  await seed(page, {
+    ...fixtureDiagram,
+    nodes: [],
+    annotations: [
+      { id: "caption", kind: "text", text: "Caption", color: "#707070", x: 800, y: 600, width: 150, height: 40 },
+      { id: "zone", kind: "zone", text: "Region", color: "blue", x: 800, y: 100, width: 400, height: 400 },
+    ],
+  });
+  const caption = page.getByTestId("annotation-caption");
+  await expect(caption).toHaveCSS("--ann-text-ink", "#707070");
+  // Move the boundary under the caption without changing the caption itself.
+  await page.getByTestId("group-label-grp-core").click();
+  await page.getByTestId("inspector-field-width").fill("1100");
+  await page.keyboard.press("Enter");
+  await page.getByTestId("inspector-field-height").fill("700");
+  await page.keyboard.press("Enter");
+  await expect.poll(() => caption.evaluate((el) => el.style.getPropertyValue("--ann-text-ink"))).toBe("var(--text)");
+  await page.keyboard.press("Escape");
+  await caption.click();
+  const start = await boxOf(caption);
+  const target = await boxOf(page.getByTestId("annotation-zone"));
+  await page.mouse.move(start.x + 15, start.y + 15);
+  await page.mouse.down();
+  await page.mouse.move(target.x + 50, target.y + 100, { steps: 10 });
+  await page.mouse.up();
+  await expect.poll(() => caption.evaluate((el) => el.style.getPropertyValue("--ann-text-ink"))).toBe("var(--text)");
+  expectNoErrors(consoleErrors);
+});
+
 test.describe("Zones and Boundaries enhancements", () => {
   test.beforeEach(async ({ page }) => {
     await seed(page, fixtureDiagram);

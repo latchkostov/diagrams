@@ -18,6 +18,7 @@ import { idClaimer } from "../model/ids";
 import { t } from "../i18n/core";
 import { checkJsonSchema } from "../model/jsonSchema";
 import { callerSchema, planningSchema } from "../model/admissionSchema";
+import { sanitizeGroupParents } from "../model/groupHierarchy";
 
 // The native format (diagrams/v1): versioned validation with friendly messages, a migration hook
 // for future formats, and preservation of fields this version doesn't know about (a newer app, or
@@ -253,9 +254,6 @@ export function validateDiagram(data: unknown): NativeResult {
     }
   }
   const groupIds = new Set(groups.map((g) => g.id as string));
-  for (const g of groups) {
-    if (g.group !== undefined && (!groupIds.has(g.group as string) || g.group === g.id)) delete g.group;
-  }
   if (groups.length) d.groups = groups;
   else delete d.groups;
 
@@ -328,9 +326,7 @@ export function validateDiagram(data: unknown): NativeResult {
   for (const n of nodes) if (n.group !== undefined) n.group = groupIdFor.get(n.group);
   for (const g of groups) {
     if (g.group !== undefined) {
-      const mapped = groupIdFor.get(g.group);
-      if (mapped && mapped !== g.id) g.group = mapped;
-      else delete g.group;
+      g.group = groupIdFor.get(g.group) ?? g.group;
     }
   }
   for (const a of annotations) {
@@ -340,6 +336,13 @@ export function validateDiagram(data: unknown): NativeResult {
       else delete a.group;
     }
   }
+  const hierarchy = groups.map((g) => ({ ...g, id: g.id as string, group: g.group as string | undefined }));
+  const sanitized = sanitizeGroupParents(hierarchy, new Set());
+  sanitized.forEach((g, i) => {
+    if (g.group !== hierarchy[i].group)
+      warnings.push(`Boundary "${g.id}" had an invalid or cyclic parent and was taken out of it.`);
+  });
+  if (sanitized.length) d.groups = sanitized;
 
   const edges: Record<string, unknown>[] = [];
   const rawEdges = raw.edges === undefined ? [] : raw.edges;
@@ -749,8 +752,20 @@ const KNOWN_EDGE = new Set([
   "targetSide",
   "props",
 ]);
-const KNOWN_GROUP = new Set(["id", "label", "tone", "x", "y", "width", "height"]);
-const KNOWN_ANNOTATION = new Set(["id", "kind", "text", "x", "y", "width", "height", "shape", "color", "textSize"]);
+const KNOWN_GROUP = new Set(["id", "label", "tone", "x", "y", "width", "height", "group"]);
+const KNOWN_ANNOTATION = new Set([
+  "id",
+  "kind",
+  "text",
+  "x",
+  "y",
+  "width",
+  "height",
+  "shape",
+  "color",
+  "textSize",
+  "group",
+]);
 
 function extras(obj: object, known: Set<string>): [string, unknown][] {
   return Object.entries(obj).filter(([k]) => !known.has(k));

@@ -23,11 +23,11 @@ export const toneLabel: Record<GroupTone, string> = {
 
 export function resolveGroupTone(tone?: string): string {
   if (!tone) return toneColor.neutral;
-  if (tone in toneColor) return toneColor[tone as GroupTone];
+  if (Object.hasOwn(toneColor, tone)) return toneColor[tone as GroupTone];
   if (isHexColor(tone)) return tone;
   return toneColor.neutral;
 }
 
 export function isPresetGroupTone(tone?: string): tone is GroupTone {
-  return typeof tone === "string" && tone in toneColor;
+  return typeof tone === "string" && Object.hasOwn(toneColor, tone);
 }

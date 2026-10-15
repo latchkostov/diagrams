@@ -1170,6 +1170,7 @@
   "edit.finiteGeometry": "geometrien må være endelig.",
   "edit.coordinateBudget": "utenfor koordinatgrensen. Flytt utvalget nærmere origo.",
   "edit.annotationLimit": "Kan ikke konvertere denne avgrensningen: diagrammet har allerede {limit} merknader. Fjern en merknad og prøv igjen.",
+  "edit.annotationTextLimit": "Denne avgrensningen kunne ikke konverteres: etiketten overstiger {limit} tegn. Forkort etiketten og prøv igjen.",
   "edit.annotationSize": "størrelsen må være mellom 1 og {limit} piksler. Velg et mindre utvalg.",
   "broker.partitions": "Partisjoner",
   "broker.shards": "Shards",

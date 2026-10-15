@@ -1,3 +1,4 @@
+import { useCaptionContrast } from "./useCaptionContrast";
 import { isDenyRule } from "../stencils/netDevices";
 import { edgeSettings, isDependency, RELATION_META, settingsSummary } from "../model/relations";
 import { pipsByNode } from "./nodes/dependencyRows";
@@ -314,6 +315,7 @@ function CanvasInner({
   });
   const [meta, setMeta] = useState<DiagramMeta>(flow.meta);
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(flow.nodes);
+  useCaptionContrast(wrapper, nodes, theme, meta.color);
   const [edges, setEdges, onEdgesChange] = useEdgesState<DiagramFlowEdge>(flow.edges);
   const [modified, setModified] = useState(loadedJson !== originalJson);
   const [paletteCollapsed, setPaletteCollapsed] = useState(() => {

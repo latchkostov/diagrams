@@ -1170,6 +1170,7 @@
   "edit.finiteGeometry": "geometria musi być skończona.",
   "edit.coordinateBudget": "poza limitem współrzędnych. Przesuń zaznaczenie bliżej początku.",
   "edit.annotationLimit": "Nie można przekształcić tej granicy: diagram zawiera już {limit} adnotacji. Usuń adnotację i spróbuj ponownie.",
+  "edit.annotationTextLimit": "Nie można przekształcić tej granicy: jej etykieta przekracza {limit} znaków. Skróć etykietę i spróbuj ponownie.",
   "edit.annotationSize": "rozmiar musi wynosić od 1 do {limit} pikseli. Wybierz mniejsze zaznaczenie.",
   "broker.partitions": "Partycje",
   "broker.shards": "Shardy",

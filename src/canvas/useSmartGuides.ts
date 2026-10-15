@@ -2,6 +2,17 @@ import { useCallback, useEffect, useMemo, useRef, type RefObject } from "react";
 import type { NodeChange, ReactFlowState } from "@xyflow/react";
 import { guideIndex, snapMove, type Box, type GuideIndex, type SnapResult } from "./guides";
 import type { AnnotationFlowNode, DiagramFlowEdge, FlowNode, GroupFlowNode } from "./types";
+import { expandGroupIds } from "../model/groupHierarchy";
+
+/** Adapt the flow's boundary IDs once, then traverse the indexed hierarchy. */
+export function draggedGroupIds(dragged: readonly FlowNode[], nodes: readonly FlowNode[]): Set<string> {
+  return expandGroupIds(
+    dragged.filter((n): n is GroupFlowNode => n.type === "boundary").map((n) => n.data.groupId),
+    nodes
+      .filter((n): n is GroupFlowNode => n.type === "boundary")
+      .map((n) => ({ id: n.data.groupId, group: n.data.group })),
+  );
+}
 
 // Smart guides and snapping while dragging (D6). A drag session starts with React Flow's drag: it indexes
 // the other nodes' edges and centres once, then rewrites each batch of position changes so the dragged box
@@ -203,21 +214,9 @@ export function useSmartGuides({
       }
       if (!startPos.size) return;
       // Boundaries aren't React Flow parents: their members move along by the same amount.
-      const groups = new Set(
-        dragged.filter((n): n is GroupFlowNode => n.type === "boundary").map((n) => n.data.groupId),
-      );
+      const groups = draggedGroupIds(dragged, s.nodes);
       const followers = new Map<string, XY>();
       if (groups.size) {
-        let expanded = true;
-        while (expanded) {
-          expanded = false;
-          for (const n of s.nodes) {
-            if (n.type === "boundary" && n.data.group && groups.has(n.data.group) && !groups.has(n.data.groupId)) {
-              groups.add(n.data.groupId);
-              expanded = true;
-            }
-          }
-        }
         for (const n of s.nodes) {
           if (n.data.group && groups.has(n.data.group) && !originals.has(n.id)) {
             followers.set(copies?.get(n.id) ?? n.id, { ...n.position });

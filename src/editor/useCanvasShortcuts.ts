@@ -124,7 +124,7 @@ export function useCanvasShortcuts(
           break;
         case "group":
           handled();
-          if (sel.nodeIds.length) editor.groupNodes(sel.nodeIds);
+          if (hasNodes) editor.groupNodes([...sel.nodeIds, ...sel.groupIds]);
           break;
         case "select-all":
           handled();

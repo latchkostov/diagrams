@@ -1,5 +1,24 @@
 # Release notes
 
+## Nested boundaries final verification (#115, 2026-10-15)
+
+- Removed boundary and annotation parents stay removed after autosave and library duplication.
+  Pasted annotations join the boundary at their destination while copied subtrees keep their links.
+- Native, storage and clipboard validation share the parent-cycle sanitizer; repaired native links
+  produce warnings, and every boundary remains keyboard reachable. Unsupported clipboard tones
+  normalize to neutral, and preset lookups ignore inherited properties.
+- Ctrl+G includes selected boundaries. Copy and drag use indexed descendant traversal, and undo
+  selects the moved boundary without its carried child boundaries or annotations.
+- Custom captions share canvas-background measurement and include visible zone and boundary fills
+  in their contrast checks. Preset captions skip measurement. Conversion rejects boundary labels
+  above the annotation text limit without changing the diagram; labels exactly at the limit survive reopening.
+- Refreshed generated skill code and its viewer, retaining plugin 1.1.21 (one patch above master).
+  The shared sanitizer adds a small preloaded `groupHierarchy` chunk; the startup assertion pins it
+  explicitly, with the entry size budget unchanged.
+- Parity: only `node/i18n/catalogs.json` changes. The translated conversion text-limit error adds one
+  message and changes the `edit` hash in all 38 catalogs; fallback counts remain unchanged. All
+  diagram, simulation, layout, import, export and browser goldens stay unchanged.
+
 ## Nested boundaries review fixes (2026-10-15)
 
 - Moving selected boundaries and wrapping them with their selected contents preserves their existing

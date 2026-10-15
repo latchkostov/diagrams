@@ -1170,6 +1170,7 @@
   "edit.finiteGeometry": "geometria trebuie să fie finită.",
   "edit.coordinateBudget": "depășește limita coordonatelor. Mutați selecția mai aproape de origine.",
   "edit.annotationLimit": "Această limită nu poate fi convertită: diagrama are deja {limit} adnotări. Eliminați o adnotare și încercați din nou.",
+  "edit.annotationTextLimit": "Această limită nu a putut fi convertită: eticheta sa depășește {limit} de caractere. Scurtați eticheta și încercați din nou.",
   "edit.annotationSize": "dimensiunea trebuie să fie între 1 și {limit} pixeli. Alegeți o selecție mai mică.",
   "broker.partitions": "Partiții",
   "broker.shards": "Sharduri",
