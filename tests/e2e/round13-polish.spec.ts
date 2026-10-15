@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { settledCanvas } from "../parity/browser/canvas";
 import {
   test,
   expect,
@@ -190,6 +191,7 @@ test("an Undo toast goes because Ctrl+Z undoes, long before it would expire, and
   // A page clock (it runs in step with real time until paused), so the toast's expiry can be held off below.
   await page.clock.install();
   await gotoCanvas(page, KAFKA);
+  await settledCanvas(page);
   // Drag Payments service out of its boundary: the toast says so, with Undo. (Once the opening fit has finished:
   // measured while the view still moves, the drag starts beside the node and moves nothing.)
   await waitForStableBox(page.getByTestId("node-payments"));
@@ -287,6 +289,7 @@ test.describe("Shift+box adds to the selection", () => {
 
   test("a Shift-drag that adds nothing keeps the selection and its frame", async ({ page, consoleErrors }) => {
     await gotoCanvas(page, KAFKA);
+    await settledCanvas(page);
     const top = await box(page, "node-schemas");
     const bottom = await box(page, "node-order-events");
     // A plain box around the two stacked nodes: React Flow frames the pick (drag it, right-click it).

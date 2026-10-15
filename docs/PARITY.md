@@ -98,19 +98,6 @@ latencies.
 
 ### Deliberately not pinned
 
-**TODO (`test/parity-browser-stable`, PR #120):** once the browser measurement fix lands, remove the
-precise deferrals in `tests/parity/browser/render.parity.ts` and record the eight missing cases:
-
-- Opening canvas renders: `contoso-dmz`, `shared-api-quotas`.
-- Auto-layout **and** Tidy results for each of `contoso-dmz`, `measured-order-capacity`,
-  `partitions-vs-subscriptions`, `serverless-burst-buffer`, `shared-api-quotas`, `shared-worker-pool`
-  (six cases, each pinning both operations).
-
-Verify settled measured boxes, routed edges, text and labels before recording. The other four showcase
-opening renders, every existing browser case, all six showcases' Node goldens and production Live tests
-stay enabled. This is a temporary coverage gap, not a permanent output exclusion; do not re-record
-existing goldens to accept measurement drift.
-
 - **Built code.** Minified bundles, chunk names, the viewer's script and style, the skill's `app.mjs` and `inject.mjs`
   and the released viewer template: a refactor changes them by design. What they _do_ is pinned (the HTML file is
   opened in a browser, the skill's scripts are run). The skill's generated files are pinned as committed;
@@ -379,6 +366,62 @@ not replace them. The font-failure and decorative-animation tests also fail with
 
 No golden was changed or loosened for this fix.
 
+## Restoring showcase coverage: what changed and why (2026-10-15)
+
+The eight cases deferred by #120 are enabled again. Added opening renders are
+`browser/render/{contoso-dmz,shared-api-quotas}.json`; added Auto-layout/Tidy results are
+`browser/layout/{contoso-dmz,measured-order-capacity,partitions-vs-subscriptions,serverless-burst-buffer,shared-api-quotas,shared-worker-pool}.json`.
+The canvas reader identifies an edge by its nesting, so an id starting with `deny-` is included while the
+deny marker inside it is excluded. Opening waits for each file edge by its own test id.
+
+The layout harness had two independent control bugs:
+
+- Ctrl+A was sent with focus on the page body after the Auto-layout palette closed. Selection shortcuts act
+  on the canvas, intentionally leaving text fields and toolbar controls alone. Undo selects the elements the
+  step changed, not necessarily every element; Ctrl+A outside the canvas left that partial selection intact.
+  Palette Select all and Ctrl+A with canvas focus both select every diagram node, boundary and edge. Opening
+  the palette preserves that selection. Node selection is read from React Flow's test-id wrappers and their
+  `selected` state (React Flow does not expose `aria-selected`); the inspector confirms the combined count.
+  Button and keyboard Undo restore the same document and changed-element selection. Keyboard Undo from the
+  canvas also follows that selection with focus/pan; the original shortcut ran from the body, so it did neither.
+- Auto-layout is already the saved layout in the five small planning showcases. It creates no undo step:
+  Ctrl+Z does nothing, and the replacement Undo-button click waited forever on a disabled control. The supplied
+  run's trace ends retrying that disabled click, before Select all or Tidy. With a full selection, Tidy is
+  offered in all five; no example needs a `tidy: "not offered"` result.
+
+The harness now compares the opening and laid-out node boxes, undoes only a real document change, verifies
+the restored boxes, and asserts every node/boundary and edge is selected both before and inside the Tidy
+palette. `selection.parity.ts` covers unchanged Auto-layout, Undo's partial selection, body/toolbar versus
+canvas Ctrl+A, palette selection preservation, boundary-constrained Tidy, and deny-prefixed edge ids.
+
+A first 24-worker pass then exposed a separate readiness race in the new quota layout: the deferred
+architecture-check result adds a warning row, growing the title card from 103 px to 129 px. Auto-layout
+sometimes fitted before that row arrived (`scale(1.14674)`) instead of after it (`scale(1.12414)`). Layout
+cases now wait for the warning count computed from their public input to appear in `checks-count` before
+running Auto-layout; a diagram with zero warnings adds no row to wait for. Opening still records the app's
+initial fit, with no corrective Fit click. `checks.parity.ts` holds the actual checks worker's result and
+proves that the layout wait stays pending until the row renders, then matches the recorded Auto-layout.
+Removing the wait fails that regression. No app behavior or golden changed for this readiness fix.
+
+Only two existing goldens change, solely in their `tidy` records. A diagnostic replay of the original
+Ctrl+Z/Ctrl+A sequence matched both old records exactly:
+
+- `browser/layout/aws-fanout.json`: Undo selected the AWS boundary and its 15 changed members, omitting
+  unchanged `client` and every edge. The old golden tidied those members alone, keeping the outside client
+  fixed and growing the boundary from 2240×632 to 2350×632. Selecting all 16 nodes includes the client and
+  its connection to the API. That whole-diagram Tidy cannot satisfy boundary membership, reports
+  "Couldn't find room. Nothing moved.", and preserves the saved 2240×632 boundary at 380,0 and original
+  node positions. Paths and labels now describe that unchanged drawing. This is an offered, refused Tidy,
+  not a missing action.
+- `browser/layout/rag-assistant.json`: Undo selected 12 changed nodes, omitting unchanged `user` and every
+  edge. The old Tidy excluded `user-to-rag-api` from its layout graph, treating the chat as an obstacle and
+  placing the API at 40,250. All 13 nodes now participate, including that incoming connection; the API lands
+  at 427,160 and the downstream layers, routes and labels follow the complete graph. The chat remains at
+  40,160. No stencil, size or wording changes.
+
+Auto-layout records, all other existing browser records, and the entire Node tier stay unchanged. These
+are corrections to harness inputs; the app's selection, history and layout behavior are unchanged.
+
 ## How it was checked
 
 - **Positive control:** two full runs in a row on unchanged master pass, and so does a fresh clone of the branch.
@@ -513,3 +556,29 @@ startup tests pin its presence, keep controllers lazy and preserve the entry siz
 - `pnpm test --maxWorkers=2`: 494 test files, 6,366 passed, 4 skipped, no type errors. Earlier runs alongside
   builds/browser stress hit the existing local five-second test timeouts; the isolated run passed without changing
   a timeout or assertion. Production build, entry bundle budget and the released viewer's freshness check passed.
+
+## Restored showcase verification (2026-10-15)
+
+- `pnpm parity:update`: exactly eight added goldens and the two explained Tidy corrections above; no other
+  existing output changed. All eight deferred cases now run, with no skips or `not offered` placeholders.
+- Six consecutive complete browser-tier passes after the warning-chrome readiness fix: three with
+  `PARITY_WORKERS=24`, alternating with three with `PARITY_CPU_THROTTLE=10 PARITY_WORKERS=8`.
+  Each passed 62 tests and checked all 82 browser goldens with zero differences and no retries. These reused
+  the production bundle made by the update; two subsequent fresh `pnpm parity` runs each checked all 1,642
+  goldens unchanged.
+- Restoring the old unconditional Undo click, unfocused Ctrl+A and deny-prefix exclusion made all four
+  selection/reader regressions fail (disabled Undo, incomplete selection, or the omitted connection).
+  Restoring the fixes passed all four. Removing the warning-chrome wait made the held-worker regression
+  resolve before its warning row existed; restoring it passed. The first stress attempt exposed that race;
+  its viewport difference was fixed without recording it.
+- The optional polish sweep exposed two drags starting with `data-fit-pending=true`: no boundary-exit toast
+  and an empty box selection. Both now await `settledCanvas` before measuring coordinates. Temporarily removing
+  those waits reproduces both failures; restoring them passes both, without changing app behavior.
+- `pnpm test --maxWorkers=2`: 498 files passed, 6,477 tests passed, 4 skipped, no type errors. The initial
+  post-rebase run had one metadata failure: Vitest's filesystem transform cache still held the 17-example
+  registry and pre-showcase globs. `pnpm exec vitest --clearCache` followed by the full run passed all 23
+  examples and removed the obsolete-snapshot warnings. Production build, entry size budget (103.9/123.5 kB
+  gzip), and skill viewer freshness passed; plugin 1.1.21 remains exactly one patch above origin/master.
+- Production e2e on explicit ports 6205–6209 (`VITE_E2E=1` build): 79 passed across fit-settled, layout,
+  round13-polish and CSP; no retries. Both servers stopped after the run. `pnpm i18n check` reports no errors;
+  existing catalog gaps and translation warnings remain unchanged.

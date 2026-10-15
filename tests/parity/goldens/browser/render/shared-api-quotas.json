@@ -1,0 +1,26 @@
+{
+  "viewport": "translate(171.576px, 85.1304px) scale(1.14674)",
+  "nodes": {
+    "questions": { "kind": "node", "box": "translate(40px, 40px) 220×72", "text": "Acme help desk 2 questions/s" },
+    "gateway": { "kind": "node", "box": "translate(40px, 200px) 260×72", "text": "Assistant gateway Account preset · assumed latency" },
+    "assistant": { "kind": "node", "box": "translate(200px, 360px) 260×72", "text": "Answer and review Each question makes two model calls" },
+    "answer": { "kind": "node", "box": "translate(40px, 520px) 260×72", "text": "Answer model 500 tokens/call · shared project" },
+    "review": { "kind": "node", "box": "translate(360px, 520px) 260×72", "text": "Review model Same 6,000 TPM / 60 RPM budget" },
+    "billing": { "kind": "node", "box": "translate(360px, 40px) 220×72", "text": "Acme billing 12 payment calls/s" },
+    "payments": { "kind": "node", "box": "translate(360px, 200px) 260×72", "text": "Payment API Fictional local cap: 5 requests/s" }
+  },
+  "edges": {
+    "ask": "M150,112 L150,146 Q150,156 160,156 L160,156 Q170,156 170,166 L170,200",
+    "assist": "M170,272 L170,306 Q170,316 180,316 L320,316 Q330,316 330,326 L330,360",
+    "generate": "M323,432 L323,466 Q323,476 313,476 L180,476 Q170,476 170,486 L170,520",
+    "review-answer": "M337,432 L337,466 Q337,476 347,476 L480,476 Q490,476 490,486 L490,520",
+    "charge": "M470,112 L470,146 Q470,156 480,156 L480,156 Q490,156 490,166 L490,200"
+  },
+  "labels": {
+    "ask": { "style": "transform: translate(-50%, -50%) translate(150px, 135px); --fe-w: 65px; --fe-h: 19px;", "text": "Question" },
+    "assist": { "style": "transform: translate(-50%, -50%) translate(250px, 316px); --fe-w: 53px; --fe-h: 19px;", "text": "Answer" },
+    "generate": { "style": "transform: translate(-50%, -50%) translate(246.5px, 476px); --fe-w: 65px; --fe-h: 19px;", "text": "Generate" },
+    "review-answer": { "style": "transform: translate(-50%, -50%) translate(413.5px, 476px); --fe-w: 53px; --fe-h: 19px;", "text": "Review" },
+    "charge": { "style": "transform: translate(-50%, -50%) translate(470px, 135px); --fe-w: 53px; --fe-h: 19px;", "text": "Charge" }
+  }
+}

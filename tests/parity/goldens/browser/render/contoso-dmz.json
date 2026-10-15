@@ -1,0 +1,36 @@
+{
+  "viewport": "translate(506.535px, 15.7047px) scale(0.607383)",
+  "nodes": {
+    "group:dmz": { "kind": "group", "box": "translate(0px, 296px) 462×336", "text": "DMZ" },
+    "group:trusted": { "kind": "group", "box": "translate(160px, 736px) 340×496", "text": "Trusted services" },
+    "visitors": { "kind": "node", "box": "translate(40px, 40px) 220×72", "text": "Contoso visitors 8 web requests/s" },
+    "probes": { "kind": "node", "box": "translate(360px, 40px) 220×72", "text": "Security exercise 2 admin probes/s" },
+    "router": { "kind": "node", "box": "translate(200px, 200px) 259×72", "text": "Edge router pair Branch preset · active-active" },
+    "firewall": { "kind": "node", "box": "translate(200px, 360px) 220×72", "text": "Firewall pair Allow web · deny admin" },
+    "adc": { "kind": "node", "box": "translate(40px, 520px) 229×72", "text": "BIG-IP pair Web VIP · active-standby" },
+    "switch": { "kind": "node", "box": "translate(200px, 800px) 259×72", "text": "Services switch Branch preset · active-active" },
+    "app": { "kind": "node", "box": "translate(200px, 960px) 220×72", "text": "Contoso web app 2 replicas · 8 slots" },
+    "database": { "kind": "node", "box": "translate(200px, 1120px) 220×72", "text": "Orders database Trusted zone" },
+    "admin": { "kind": "node", "box": "translate(520px, 480px) 229×72", "text": "Admin database Denied probe destination" }
+  },
+  "edges": {
+    "web-in": "M150,112 L150,146 Q150,156 160,156 L312.5,156 Q322.5,156 322.5,166 L322.5,200",
+    "probe-in": "M470,112 L470,146 Q470,156 460,156 L346.5,156 Q336.5,156 336.5,166 L336.5,200",
+    "perimeter": "M329.5,272 L329.5,308.3 Q329.5,318 319.8,318 L319.8,318 Q310,318 310,327.8 L310,360",
+    "allow-web": "M303,432 L303,474 Q303,484 293,484 L164.5,484 Q154.5,484 154.5,494 L154.5,520",
+    "deny-admin": "M317,432 L317,446 Q317,456 327,456 L624.5,456 Q634.5,456 634.5,466 L634.5,480",
+    "to-switch": "M154.5,592 L154.5,662 Q154.5,672 164.5,672 L372.8,672 Q382.8,672 382.8,682 L382.8,774 Q382.8,784 372.8,784 L337.5,784 Q329.5,784 329.5,792 L329.5,800",
+    "to-app": "M329.5,872 L329.5,906.3 Q329.5,916 319.8,916 L319.8,916 Q310,916 310,925.8 L310,960",
+    "to-db": "M310,1032 L310,1120"
+  },
+  "labels": {
+    "web-in": { "style": "transform: translate(-50%, -50%) translate(236.25px, 156px); --fe-w: 35px; --fe-h: 19px;", "text": "Web" },
+    "probe-in": { "style": "transform: translate(-50%, -50%) translate(403.25px, 156px); --fe-w: 47px; --fe-h: 19px;", "text": "Probe" },
+    "perimeter": { "style": "transform: translate(-50%, -50%) translate(329.5px, 296px); --fe-w: 59px; --fe-h: 19px;", "text": "Inspect" },
+    "allow-web": { "style": "transform: translate(-50%, -50%) translate(228.75px, 484px); --fe-w: 71px; --fe-h: 19px;", "text": "Allow web" },
+    "deny-admin": { "style": "transform: translate(-50%, -50%) translate(475.75px, 456px); --fe-w: 77px; --fe-h: 19px;", "text": "Deny admin" },
+    "to-switch": { "style": "transform: translate(-50%, -50%) translate(268.625px, 672px); --fe-w: 59px; --fe-h: 19px;", "text": "Forward" },
+    "to-app": { "style": "transform: translate(-50%, -50%) translate(329.5px, 895px); --fe-w: 35px; --fe-h: 19px;", "text": "Web" },
+    "to-db": { "style": "transform: translate(-50%, -50%) translate(310px, 1070px); --fe-w: 47px; --fe-h: 19px;", "text": "Query" }
+  }
+}

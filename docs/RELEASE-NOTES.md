@@ -220,10 +220,20 @@ goldens match, with the eight previously documented browser deferrals.
   while measured work is pending, leaving idle drags and live decorations free of that observer.
 - Browser parity waits for fonts, measured nodes, pending fits and stable geometry; changing badge text cannot
   prevent convergence. CPU-throttle and parallel-worker stress options are documented in `docs/PARITY.md`.
-- Refreshed the Claude Code viewer with the same fit behavior; the plugin is 1.1.20.
+- Refreshed the Claude Code viewer with the same fit behavior; the plugin is 1.1.21.
 - Interactive HTML parity now pins the viewer's own opening fit again: the fit waits for fonts, measured nodes and
   settled chrome, so the explicit zoom-and-fit steps added by the toolchain review are no longer needed.
-- No parity golden changed: every node box, word, route, label, viewport, export and image keeps its existing contract.
+- Browser parity restores eight showcase goldens deferred by #120: opening renders for `contoso-dmz` and
+  `shared-api-quotas`; Auto-layout/Tidy for `contoso-dmz`, `measured-order-capacity`,
+  `partitions-vs-subscriptions`, `serverless-burst-buffer`, `shared-api-quotas` and `shared-worker-pool`.
+  The harness skips Undo after a layout that changes nothing, verifies the entire selection before Tidy, and
+  reads connections whose ids start with `deny-` without mistaking their nested deny markers for connections.
+  Layout parity waits for deferred warning counts to render before fitting, so their title-card row cannot race it.
+- Corrected only the Tidy portions of two existing browser layout goldens: `aws-fanout` had omitted `client`
+  and `rag-assistant` had omitted `user`, because Ctrl+A outside the canvas left Undo's changed-node selection.
+  With everything selected, AWS correctly reports no room within its boundary constraints and keeps its original
+  2240×632 boundary; RAG includes the chat-to-API connection and lays out all 13 nodes (API at 427,160 rather
+  than 40,250). Routes and labels follow those corrected positions; all other existing goldens are unchanged.
 
 ## Showcase review fixes (2026-10-15)
 

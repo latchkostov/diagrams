@@ -7,6 +7,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ROOT } from "../lib/golden";
 import { readyFonts } from "../../../src/canvas/fonts";
+import type { DiagramFile } from "../../../src/model/types";
+import { runChecks } from "../../../src/checks/run";
 
 export interface Drawn {
   viewport: string;
@@ -16,12 +18,8 @@ export interface Drawn {
 }
 
 /** The diagram as the app's file has it (for counts), read from src/examples. */
-export function exampleFile(slug: string): { nodes: unknown[]; edges: unknown[]; title: string } {
-  return JSON.parse(readFileSync(join(ROOT, "src/examples", `${slug}.json`), "utf8")) as {
-    nodes: unknown[];
-    edges: unknown[];
-    title: string;
-  };
+export function exampleFile(slug: string): DiagramFile {
+  return JSON.parse(readFileSync(join(ROOT, "src/examples", `${slug}.json`), "utf8")) as DiagramFile;
 }
 
 /** Everything about the drawing, in flow coordinates; read inside the page. */
@@ -41,8 +39,12 @@ export async function readCanvas(page: Page, root = "canvas-wrap"): Promise<Draw
       viewport ||= (el.parentElement?.parentElement as HTMLElement | null)?.style.transform ?? "";
     }
     const edges: Record<string, string> = {};
-    // An edge is the app's <g data-testid="edge-<id>"> (its deny marker is a <g> too: edge-deny-<id>).
-    for (const el of scope.querySelectorAll<SVGGElement>('g[data-testid^="edge-"]:not([data-testid^="edge-deny-"])')) {
+    // An edge is the app's <g data-testid="edge-<id>">. Its deny marker is a <g data-testid="edge-deny-<id>"> inside it,
+    // so a marker is told apart by its place, not its name (an edge's own id may start with "deny-").
+    const edgeGroups = [...scope.querySelectorAll<SVGGElement>('g[data-testid^="edge-"]')].filter(
+      (g) => !g.parentElement?.closest('g[data-testid^="edge-"]'),
+    );
+    for (const el of edgeGroups) {
       const id = (el.dataset.testid ?? "").slice("edge-".length);
       edges[id] = el.querySelector("path")?.getAttribute("d") ?? "";
     }
@@ -110,11 +112,15 @@ export async function openExample(page: Page, slug: string): Promise<Drawn> {
   const file = exampleFile(slug);
   await page.goto(`./?view=canvas&example=${encodeURIComponent(slug)}`);
   await expect(page.getByTestId("canvas-view")).toBeVisible();
-  await expect(page.getByTestId(/^rf__node-/)).not.toHaveCount(0);
-  if (file.edges.length)
-    await expect(page.locator('g[data-testid^="edge-"]:not([data-testid^="edge-deny-"])')).toHaveCount(
-      file.edges.length,
-    );
+  const nodeIds = [
+    ...file.nodes.map((n) => n.id),
+    ...(file.groups ?? []).map((g) => `group:${g.id}`),
+    ...(file.annotations ?? []).map((a) => a.id),
+  ];
+  await expect(page.getByTestId(/^rf__node-/)).toHaveCount(nodeIds.length);
+  for (const id of nodeIds) await expect(page.getByTestId(`rf__node-${id}`)).toHaveCount(1);
+  // Every connection in the file is drawn (by its own id: an id may start with "deny-", like a deny marker's).
+  for (const edge of file.edges) await expect(page.getByTestId(`edge-${edge.id}`)).toHaveCount(1);
   return settledCanvas(page);
 }
 
@@ -122,7 +128,58 @@ export async function openExample(page: Page, slug: string): Promise<Drawn> {
 export async function command(page: Page, query: string, actionId: string): Promise<void> {
   await page.keyboard.press("Control+k");
   await expect(page.getByTestId("command-palette")).toBeVisible();
+  await expect(page.getByTestId("command-input")).toBeFocused();
   await page.getByTestId("command-input").fill(query);
   await page.getByTestId(`command-item-action:${actionId}`).click();
+  await expect(page.getByTestId("command-palette")).toHaveCount(0);
+}
+
+const nodeBoxes = (drawn: Drawn) =>
+  Object.fromEntries(Object.entries(drawn.nodes).map(([id, n]) => [id, (n as { box: string }).box]));
+
+/** Background warnings add a row to the title card. Layout commands must see that final footprint. */
+export async function checksChrome(page: Page, slug: string): Promise<void> {
+  const warnings = runChecks(exampleFile(slug)).findings.filter((f) => f.severity === "warning").length;
+  // Zero warnings adds no chrome, so there is no footprint change to wait for.
+  if (warnings)
+    await expect(page.getByTestId("checks-count")).toHaveText(`${warnings} warning${warnings === 1 ? "" : "s"}`);
+}
+
+/** Auto-layout can already be the saved layout: that makes no undo step. Never click a disabled Undo. */
+export async function restoreOpening(page: Page, opened: Drawn, laidOut: Drawn): Promise<void> {
+  if (JSON.stringify(nodeBoxes(opened)) === JSON.stringify(nodeBoxes(laidOut))) {
+    await expect(page.getByTestId("undo-button")).toBeDisabled();
+    return;
+  }
+  await expect(page.getByTestId("undo-button")).toBeEnabled();
+  await page.getByTestId("undo-button").click();
+  expect(nodeBoxes(await settledCanvas(page))).toEqual(nodeBoxes(opened));
+}
+
+/** React Flow exposes node selection by class, not aria-selected. Locate its wrappers by test id. */
+export async function canvasSelection(page: Page): Promise<{ nodes: string[]; edges: string[] }> {
+  return page.getByTestId("canvas-wrap").evaluate((scope) => ({
+    nodes: [...scope.querySelectorAll<HTMLElement>('[data-testid^="rf__node-"]')]
+      .filter((el) => el.classList.contains("selected"))
+      .map((el) => (el.dataset.testid ?? "").slice("rf__node-".length))
+      .sort(),
+    edges: [...scope.querySelectorAll<SVGGElement>('g[data-testid^="edge-"]')]
+      .filter((el) => !el.parentElement?.closest('g[data-testid^="edge-"]') && el.classList.contains("is-selected"))
+      .map((el) => (el.dataset.testid ?? "").slice("edge-".length))
+      .sort(),
+  }));
+}
+
+/** Tidy everything, proving the selection before and inside the palette (which snapshots its context). */
+export async function tidyAll(page: Page, drawn: Drawn): Promise<void> {
+  await command(page, "Select all", "canvas.select-all");
+  const all = { nodes: Object.keys(drawn.nodes).sort(), edges: Object.keys(drawn.edges).sort() };
+  await expect.poll(() => canvasSelection(page)).toEqual(all);
+  await page.keyboard.press("Control+k");
+  await expect(page.getByTestId("command-palette")).toBeVisible();
+  await expect(page.getByTestId("command-input")).toBeFocused();
+  await page.getByTestId("command-input").fill("Tidy up");
+  expect(await canvasSelection(page)).toEqual(all);
+  await page.getByTestId("command-item-action:selection.tidy").click();
   await expect(page.getByTestId("command-palette")).toHaveCount(0);
 }

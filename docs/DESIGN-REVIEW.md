@@ -126,6 +126,12 @@ card. No controls, focus targets or wording were added. The pending fit tracks v
 first-run hint finishes its entrance before final framing. This review covers the affected flows, not a whole-app
 accessibility audit. Output parity verifies the settled drawing against the existing goldens.
 
+Showcase parity restoration review: the canvas and palette Select all agree when the canvas owns keyboard
+focus; text fields and toolbar controls retain their own keys. Undo's changed-element selection follows the
+documented rule. Full-selection AWS Tidy correctly keeps membership intact and explains its refusal with the
+existing no-room toast. The harness now exercises those states explicitly, without adding controls or changing
+selection, focus, layout or wording in the app.
+
 ## Self-hosting review fixes (2026-10-14)
 
 Scoped source review found no blocking UX issues. Copied embed and share URLs use the prepared deployment
