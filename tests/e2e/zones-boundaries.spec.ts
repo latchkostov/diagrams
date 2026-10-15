@@ -1,4 +1,6 @@
 import { nestedBoundariesFixture as nestedFixture } from "../../src/lab/nestedBoundariesFixture";
+import { captionContrastFixture } from "../../src/lab/captionContrastFixture";
+import { gotoLab } from "./fixtures";
 import { test, expect, expectNoErrors, gotoCanvas, waitForStableViewport, STORAGE_KEYS, type Page } from "./fixtures";
 
 async function boxOf(locator: import("@playwright/test").Locator) {
@@ -83,6 +85,65 @@ test("custom caption contrast follows visible boundary and zone fills", async ({
   await expect.poll(() => caption.evaluate((el) => el.style.getPropertyValue("--ann-text-ink"))).toBe("var(--text)");
   expectNoErrors(consoleErrors);
 });
+
+test("custom caption contrast updates over a zone alone and returns after leaving", async ({ page }) => {
+  await seed(page, captionContrastFixture);
+  const caption = page.getByTestId("annotation-caption");
+  await expect(caption).toHaveCSS("--ann-text-ink", "#707070");
+  const initial = await boxOf(caption);
+  const zone = await boxOf(page.getByTestId("annotation-zone"));
+  await page.mouse.move(initial.x + 15, initial.y + 15);
+  await page.mouse.down();
+  await page.mouse.move(zone.x + 50, zone.y + 100, { steps: 10 });
+  await page.mouse.up();
+  const destination = await boxOf(caption);
+  expect(destination.x).toBeGreaterThan(zone.x);
+  expect(destination.y).toBeGreaterThan(zone.y);
+  expect(destination.y + destination.height).toBeLessThan(zone.y + zone.height);
+  const boundary = await boxOf(page.getByTestId("group-grp-core"));
+  expect(destination.x).toBeGreaterThan(boundary.x + boundary.width);
+  await expect.poll(() => caption.evaluate((el) => el.style.getPropertyValue("--ann-text-ink"))).toBe("var(--text)");
+  await page.mouse.move(destination.x + 15, destination.y + 15);
+  await page.mouse.down();
+  await page.mouse.move(initial.x + 15, initial.y + 15, { steps: 10 });
+  await page.mouse.up();
+  await expect(caption).toHaveCSS("--ann-text-ink", "#707070");
+});
+
+test("unrelated service selection and movement perform no caption measurement", async ({ page }) => {
+  await seed(page, captionContrastFixture);
+  await expect(page.getByTestId("annotation-caption")).toHaveCSS("--ann-text-ink", "#707070");
+  await page.evaluate(() => {
+    const original = Element.prototype.querySelectorAll;
+    Object.assign(window, { __contrastPasses: 0 });
+    Element.prototype.querySelectorAll = function (selector: string) {
+      if (selector === "[data-caption-root]") (window as Window & { __contrastPasses: number }).__contrastPasses++;
+      return original.call(this, selector);
+    } as typeof original;
+  });
+  await page.getByTestId("node-service").click();
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("Escape");
+  await waitForStableViewport(page);
+  const passes = () => page.evaluate(() => (window as Window & { __contrastPasses: number }).__contrastPasses);
+  expect(await passes()).toBe(0);
+  // Positive control: moving the caption itself must run the same instrumentation.
+  await page.getByTestId("annotation-caption").click();
+  await page.keyboard.press("ArrowRight");
+  await expect.poll(passes).toBeGreaterThan(0);
+});
+
+for (const host of ["editor", "Lab", "overlap audit"] as const)
+  test(`${host} preserves readable custom caption ink`, async ({ page }) => {
+    if (host === "overlap audit") {
+      await gotoLab(page, "overlap-audit");
+      await page.getByTestId("lab-control-diagram").selectOption("caption-contrast");
+    } else {
+      await gotoLab(page, "caption-contrast");
+      if (host === "editor") await page.getByTestId("lab-open-editor").click();
+    }
+    await expect(page.getByTestId("annotation-caption")).toHaveCSS("--ann-text-ink", "#707070");
+  });
 
 test.describe("Zones and Boundaries enhancements", () => {
   test.beforeEach(async ({ page }) => {

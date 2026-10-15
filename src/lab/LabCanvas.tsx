@@ -1,4 +1,5 @@
 import { projectDependencies, useShowDependencies } from "../canvas/dependencyVisibility";
+import { useCaptionContrast } from "../canvas/useCaptionContrast";
 import { useContext, useEffect, useMemo, useRef, useState, type ContextType } from "react";
 import {
   Background,
@@ -53,6 +54,8 @@ function Stage({ diagram, minimap = true, onRendered }: Props) {
   const [start] = useState(() => performance.now());
   const flow = useMemo(() => toFlow(diagram), [diagram]);
   const [nodes, , onNodesChange] = useNodesState<FlowNode>(flow.nodes);
+  const wrapper = useRef<HTMLDivElement>(null);
+  useCaptionContrast(wrapper, nodes, theme, flow.meta.color);
   const [edges, , onEdgesChange] = useEdgesState<DiagramFlowEdge>(flow.edges);
   const showDependencies = useShowDependencies();
   const visibleEdges = useMemo(() => projectDependencies(edges, showDependencies), [edges, showDependencies]);
@@ -79,7 +82,7 @@ function Stage({ diagram, minimap = true, onRendered }: Props) {
 
   return (
     <DiagramContext.Provider value={ui}>
-      <div className="lab-canvas" data-testid="lab-canvas">
+      <div className="lab-canvas" data-testid="lab-canvas" ref={wrapper}>
         <EdgeMarkers />
         <ReactFlow<FlowNode, DiagramFlowEdge>
           nodes={nodes}

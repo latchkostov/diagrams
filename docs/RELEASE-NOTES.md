@@ -1,5 +1,15 @@
 # Release notes
 
+## Boundary and caption follow-ups (#115, 2026-10-15)
+
+- Custom captions use renderer roots in the editor, Lab and overlap audit. Adjacent fills stay
+  separate; overlapping fills follow their spatial paint stacks. Geometry/color invalidation,
+  cached results and bounded spatial work keep unrelated updates cheap. Exhausted work uses theme ink.
+- Import repairs missing original boundary parents before ID remapping, so a generated ID cannot
+  attach unrelated content. The generated agent validator carries the same repair.
+- Regressions cover descendant-ID collisions, zone-only entry/exit, all caption writes, host parity
+  and operation counts; deliberate reversions fail. All 1,761 parity goldens remain unchanged.
+
 ## Gallery launch and Save follow-ups (#118, 2026-10-15)
 
 - Returning to editing cancels a simulation queued while Live downloads. Host publication only

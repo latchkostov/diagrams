@@ -1323,7 +1323,13 @@ function validateDiagram(data) {
 		g.id = id;
 	}
 	for (const n of nodes) if (n.group !== void 0) n.group = groupIdFor.get(n.group);
-	for (const g of groups) if (g.group !== void 0) g.group = groupIdFor.get(g.group) ?? g.group;
+	for (const g of groups) if (g.group !== void 0) {
+		const parent = groupIdFor.get(g.group);
+		if (parent === void 0) {
+			warnings.push(`Boundary "${g.id}" had an invalid or cyclic parent and was taken out of it.`);
+			delete g.group;
+		} else g.group = parent;
+	}
 	for (const a of annotations) if (a.group !== void 0) {
 		const mapped = groupIdFor.get(a.group);
 		if (mapped) a.group = mapped;

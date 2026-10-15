@@ -14,6 +14,7 @@ function GroupNodeImpl({ data, selected }: NodeProps<GroupFlowNode>) {
       className={`grp${selected ? " is-selected" : ""}`}
       style={{ "--tone": resolveGroupTone(data.tone) } as CSSProperties}
       data-testid={`group-${data.groupId}`}
+      data-caption-root={data.groupId}
       data-tone={isHexColor(data.tone) ? "custom" : data.tone}
       onDoubleClick={(e) => {
         e.stopPropagation();
