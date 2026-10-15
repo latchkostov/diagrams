@@ -3951,3 +3951,13 @@ planning and language workflows. Existing P1 prose still falls back to English; 
 in all 37 catalogs. Rejected or deferred: SaaS replicas (wrong planning lever), guessed vendor/model
 rates (unsupported evidence), endpoint authoring/OpenAPI (P6/P7), and caller waits/deadlines/retries/
 cascades (item 10, outside this approval).
+
+P3's seven-angle code review found overlapping reports of leaked reservations after an outage,
+conflicting shared budgets, endpoint-duration capacity, internal key collisions, retained consumer
+attempts bypassing quotas, and implicit vendor limits during upgrades. Each was accepted, with a
+regression test and deliberate restoration of the faulty path. Keyboard drafts and inherited function
+settings now follow effective resolution. Zero-demand endpoint entries are ignored; incoming edges
+are indexed once for managed capacity. Per-attempt invariant compilation is ticketed in BACKLOG.
+Caller retry/deadline execution remains deferred. Final results are reported with the pushed commit.
+
+The final designer follow-up also identified unfinished native numeric input clearing a saved cap. A production keyboard regression reproduced it; invalid intermediate text now stays uncommitted and blur restores the saved value.

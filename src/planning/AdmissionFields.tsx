@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { NodeSimProps } from "../sim/types";
 import type { ApiBehaviour } from "../model/admission";
 import { localRateQuota } from "../model/admissionPresets";
@@ -26,6 +27,9 @@ export function AdmissionFields({
     resolved.profile.preset && resolved.profile.preset in ADMISSION_PRESETS
       ? resolved.profile.preset
       : "managed-measured";
+  const scaling = props.scaling ?? ADMISSION_PRESETS[chosen]?.scaling ?? "fixed";
+  const allocation =
+    typeof props.maxConcurrency === "number" ? props.maxConcurrency : ADMISSION_PRESETS[chosen]?.maxConcurrency;
   const vendor = admissionPresetFor(stencil);
   const presets = [
     ...new Set(
@@ -42,25 +46,7 @@ export function AdmissionFields({
     change: (value: number | undefined) => void,
     max: number,
     step = 1,
-  ) => (
-    <label className="insp-field" key={name}>
-      <span className="insp-label">{label}</span>
-      <input
-        className="insp-input mono"
-        type="number"
-        min={name === "rate" ? 0.000001 : 0}
-        max={max}
-        step={name === "rate" ? "any" : step}
-        value={value ?? ""}
-        placeholder={t("admission.unknownShort")}
-        data-testid={`admission-${name}`}
-        onChange={(event) => {
-          if (event.currentTarget.value === "") change(undefined);
-          else if (event.currentTarget.validity.valid) change(event.currentTarget.valueAsNumber);
-        }}
-      />
-    </label>
-  );
+  ) => <AdmissionInput key={name} name={name} label={label} value={value} change={change} max={max} step={step} />;
   return (
     <div data-testid="admission-controls">
       <label className="insp-field">
@@ -95,13 +81,7 @@ export function AdmissionFields({
         </select>
       </label>
       {serverless
-        ? input(
-            "allocation",
-            t("admission.allocation"),
-            typeof props.maxConcurrency === "number" ? props.maxConcurrency : undefined,
-            (value) => set({ maxConcurrency: value }),
-            10000,
-          )
+        ? input("allocation", t("admission.allocation"), allocation, (value) => set({ maxConcurrency: value }), 10000)
         : input(
             "rate",
             t("admission.rate"),
@@ -122,12 +102,11 @@ export function AdmissionFields({
         </p>
       )}
       {serverless
-        ? props.scaling !== "auto" &&
+        ? scaling !== "auto" &&
           input(
             "concurrency",
             t("admission.concurrency"),
-            (typeof props.concurrency === "number" ? props.concurrency : 4) *
-              (typeof props.replicas === "number" ? props.replicas : 1),
+            resolved.concurrency * resolved.replicas,
             (value) => set({ concurrency: value, replicas: 1 }),
             10000,
           )
@@ -168,7 +147,7 @@ export function AdmissionFields({
             <span className="insp-label">{t("admission.scaling")}</span>
             <select
               className="insp-input"
-              value={props.scaling === "auto" ? "auto" : "fixed"}
+              value={scaling === "auto" ? "auto" : "fixed"}
               data-testid="admission-scaling"
               onChange={(e) => set({ scaling: e.currentTarget.value as "auto" | "fixed" })}
             >
@@ -177,7 +156,7 @@ export function AdmissionFields({
             </select>
           </label>
         )}
-        {serverless && props.scaling === "auto" && (
+        {serverless && scaling === "auto" && (
           <p className="insp-note" data-testid="admission-auto-assumption">
             {t("admission.auto")}
           </p>
@@ -208,5 +187,47 @@ export function AdmissionFields({
           ))}
       </details>
     </div>
+  );
+}
+
+function AdmissionInput({
+  name,
+  label,
+  value,
+  change,
+  max,
+  step,
+}: {
+  name: string;
+  label: string;
+  value: number | undefined;
+  change: (value: number | undefined) => void;
+  max: number;
+  step: number;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <label className="insp-field">
+      <span className="insp-label">{label}</span>
+      <input
+        className="insp-input mono"
+        type="number"
+        min={name === "rate" ? 0.000001 : 0}
+        max={max}
+        step={name === "rate" ? "any" : step}
+        value={draft ?? value ?? ""}
+        placeholder={t("admission.unknownShort")}
+        data-testid={`admission-${name}`}
+        onFocus={() => setDraft(value === undefined ? "" : String(value))}
+        onBlur={() => setDraft(null)}
+        onChange={(event) => {
+          const raw = event.currentTarget.value;
+          setDraft(raw);
+          if (event.currentTarget.validity.badInput) return;
+          if (raw === "") change(undefined);
+          else if (event.currentTarget.validity.valid) change(event.currentTarget.valueAsNumber);
+        }}
+      />
+    </label>
   );
 }

@@ -13,6 +13,8 @@ import { buildJourney } from "../trace/journey";
 import { explainNode } from "../planning/explanation";
 import { explanationSimulation } from "../planning/explanation";
 import { admissionCapacities } from "./admissionPlanning";
+import { upgradePlanning } from "../planning/migration";
+import * as topology from "./topology";
 import { capacityView } from "../live/capacityModel";
 
 const q = (amount = 10, extra: Partial<Quota> = {}): Quota => ({
@@ -38,6 +40,162 @@ const load = (d: DiagramFile, scale = 1) => {
   return e;
 };
 describe("P3 managed admission", () => {
+  it.each(["generic.external-api", "aws.api-gateway"])(
+    "%s outage releases local and shared reservations",
+    (stencil) => {
+      const d = diagram({ maxInFlight: 1, sharedConcurrency: "account" }, stencil);
+      d.nodes.push({ ...d.nodes[0], id: "other" });
+      const e = load(d);
+      e.inject("api", 1);
+      e.setNodeStatus("api", "down");
+      e.step(20);
+      e.setNodeStatus("api", "up");
+      e.inject("other", 1);
+      e.step(200);
+      e.inject("api", 1);
+      e.step(200);
+      expect(e.snapshot().nodes.other).toMatchObject({ processed: 1, rejected: 0 });
+      expect(e.snapshot().nodes.api).toMatchObject({ processed: 1, rejected: 0, inFlight: 0, dropped: 1 });
+    },
+  );
+  it.each(["node", "slots"])("endpoint %s cannot overwrite execution or node concurrency", (id) => {
+    const policy = {
+      ...(id === "slots" ? { slots: 1 } : {}),
+      api: id === "node" ? { maxInFlight: 1 } : {},
+      endpoints: [{ id, method: "GET" as const, path: "/", behaviour: { maxInFlight: 10 } }],
+    };
+    const state = emptyAdmission();
+    configureAdmission(state, [policy]);
+    expect(attemptAdmission(state, "api", policy, id, undefined, 0, 2)).toHaveProperty("rejected", "concurrency");
+  });
+  it("endpoint node has independent local quota keys even with the same quota id", () => {
+    const policy = {
+      api: { quotas: [q(2)] },
+      endpoints: [{ id: "node", method: "GET" as const, path: "/", behaviour: { quotas: [q(1)] } }],
+    };
+    const state = emptyAdmission();
+    configureAdmission(state, [policy]);
+    expect(attemptAdmission(state, "api", policy, "node", undefined, 0, 1)).not.toHaveProperty("rejected");
+    expect(attemptAdmission(state, "api", policy, "node", undefined, 0, 1)).toHaveProperty(
+      "rejected",
+      "rate: requests",
+    );
+  });
+  it("conflicting shared budgets have no usable planning capacity", () => {
+    const entries = [10, 20].map((amount, i) => ({
+      id: String(i),
+      policy: { api: { quotas: [q(amount, { sharedGroup: "account" })] }, endpoints: [] },
+      offered: 2,
+      latencyMs: 100,
+      endpoints: [{ rate: 2 }],
+    }));
+    expect([...admissionCapacities(entries).values()]).toEqual([0, 0]);
+  });
+  it("zero-demand direct injections do not erase endpoint token cost evidence", () => {
+    const policy = {
+      api: { quotas: [q(1000, { unit: "tokens" })] },
+      endpoints: [{ id: "get", method: "GET" as const, path: "/", behaviour: { costPerRequest: { tokens: 10 } } }],
+    };
+    expect(
+      admissionCapacities([
+        { id: "api", policy, offered: 10, latencyMs: 100, endpoints: [{ id: "get", rate: 10 }, { rate: 0 }] },
+      ]).get("api"),
+    ).toBe(100);
+  });
+  it("capacity uses the targeted endpoint duration instead of a slower parent", () => {
+    const d = diagram({ maxInFlight: 1, latencyMs: 1000 });
+    d.nodes[0].props!.endpoints = [{ id: "fast", method: "GET", path: "/", behaviour: { latencyMs: 10 } }];
+    d.nodes.push({ id: "source", stencil: "client.user", label: "Calls", x: 0, y: 0, props: { ratePerSec: 10 } });
+    d.edges.push({ id: "call", from: "source", to: "api", kind: "sync", props: { endpointId: "fast", travelMs: 0 } });
+    expect(analyzeCapacity(d).nodes.api.capacity).toBe(100);
+    const e = load(d);
+    e.inject("source", 10, { spreadMs: 1000 });
+    e.step(2000);
+    expect(e.snapshot().nodes.api).toMatchObject({ processed: 10, rejected: 0 });
+  });
+  it("managed capacity indexes incoming edges once", () => {
+    const d = diagram();
+    d.nodes = Array.from({ length: 20 }, (_, i) => ({ ...d.nodes[0], id: String(i) }));
+    const compile = topology.compileTopology;
+    let scans = 0;
+    const spy = vi.spyOn(topology, "compileTopology").mockImplementation((...args) => {
+      const compiled = compile(...args);
+      compiled.edges = new Proxy(compiled.edges, {
+        get(target, key, receiver) {
+          if (key === "filter") scans++;
+          return Reflect.get(target, key, receiver) as unknown;
+        },
+      });
+      return compiled;
+    });
+    try {
+      analyzeCapacity(d);
+      expect(scans).toBeLessThanOrEqual(2);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+  it("live quota edits change the refill rate at edit time, before the next call", () => {
+    const e = load(diagram({ quotas: [q(100, { burst: 100 })] }));
+    e.inject("api", 100);
+    e.step(500);
+    e.setNodeProps("api", { api: { quotas: [q(1, { burst: 100 })] } });
+    e.step(500);
+    e.inject("api", 100);
+    e.step(200);
+    expect(e.snapshot().nodes.api).toMatchObject({ processed: 150, rejected: 50 });
+  });
+  it("retained consumer retries consume an attempt budget without double-booking concurrency", () => {
+    const d = diagram({ maxInFlight: 1, quotas: [q(1, { windowMs: 60000 })], errorRate: 1 }, "aws.lambda");
+    d.nodes[0].props!.retry = "inplace";
+    d.nodes[0].props!.retryBackoffMs = 10;
+    d.nodes.push({
+      id: "queue",
+      stencil: "aws.sqs",
+      label: "Queue",
+      x: 0,
+      y: 0,
+      props: { maxDeliveryCount: 3, latencyMs: 0 },
+    });
+    d.edges.push({ id: "delivery", from: "queue", to: "api", kind: "async", props: { travelMs: 0 } });
+    const e = load(d);
+    e.inject("queue", 1);
+    e.step(1000);
+    expect(e.snapshot().nodes.api).toMatchObject({ failed: 1, rejected: 1, inFlight: 0 });
+    expect(e.metrics().inSystem).toBe(0);
+  });
+  it("P2 upgrade selects measured behaviour, preserving vendor admissions and saved contexts", () => {
+    const d = diagram({}, "stripe");
+    d.planning = { revision: "p2" };
+    d.nodes[0].props = {};
+    d.simulations = [
+      {
+        id: "saved",
+        title: "Saved",
+        durationMs: 1000,
+        traffic: [],
+        setup: { props: { api: { latencyMs: 0 } } },
+        timeline: [{ atMs: 10, action: { do: "props", node: "api", props: { failureRate: 0 } } }],
+      },
+    ];
+    const upgraded = upgradePlanning(d);
+    const run = (file: DiagramFile) => {
+      const e = load(file);
+      e.inject("api", 101);
+      e.step(200);
+      return e.snapshot().nodes.api;
+    };
+    expect(run(d).processed).toBe(101);
+    expect(run(upgraded)).toMatchObject({ processed: 101, rejected: 0 });
+    const sim = upgraded.simulations![0];
+    const e = load(upgraded);
+    e.setNodeProps("api", sim.setup!.props!.api);
+    e.setNodeProps("api", { failureRate: 0 });
+    e.inject("api", 101);
+    e.step(200);
+    expect(e.snapshot().nodes.api).toMatchObject({ processed: 101, rejected: 0 });
+    expect(resolveNodeProps(upgraded, upgraded.nodes[0]).profile.preset).toBe("managed-measured");
+  });
   it("planning and admission share an endpoint allocation without charging its parent twice", () => {
     const policy = {
       api: { sharedConcurrency: "account" },
@@ -117,7 +275,7 @@ describe("P3 managed admission", () => {
       id,
       method: "POST",
       path: `/${id}`,
-      behaviour: { quotas: [q(2)] },
+      behaviour: { quotas: [q(2, { id: `endpoint-${id}` })] },
     }));
     for (const id of ["a", "b"]) {
       d.nodes.push({ id, stencil: "client.user", label: id, x: 0, y: 0 });
@@ -129,7 +287,7 @@ describe("P3 managed admission", () => {
     e.step(200);
     expect(e.snapshot().nodes.api).toMatchObject({ processed: 3, rejected: 2 });
     // The failed A endpoint attempt must leave the final global token for B.
-    expect(e.snapshot().nodes.api.rejectionReasons).toEqual({ "rate: requests": 2 });
+    expect(e.snapshot().nodes.api.rejectionReasons).toEqual({ "endpoint-a: requests": 1, "rate: requests": 1 });
   });
   it.each(["tokens", "inputTokens", "outputTokens", "costPoints"] as const)(
     "%s binds before RPM and is not interpreted as requests",

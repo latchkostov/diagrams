@@ -742,3 +742,5 @@ changes; the per-edge density thinning stays as the fallback. It's a drawing lim
 badges, scale, capacity and recordings never see it.
 
 P3 admission also accepts measured rates below one request per second: the local bucket can accumulate one request of credit. Live quota edits refill existing credit on simulation time before applying the new cap, without granting a fresh burst. Malformed admission data refuses requests instead of corrupting the simulation clock.
+
+P3 review corrections: outage termination releases concurrency reservations; existing retained consumer retries charge a new attempt budget after backoff. These are consumer attempts, not item 10 caller retries. Live quota changes take effect at their edit time. Capacity uses targeted endpoint duration, skips zero-demand calls, and treats conflicting shared definitions as unusable. Upgrading an earlier diagram selects measured behaviour rather than introducing vendor quotas; selecting a vendor preset is a separate action.

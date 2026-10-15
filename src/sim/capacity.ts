@@ -65,7 +65,7 @@ interface ConsumerGroup {
 }
 type Rates = Map<string, Map<string, number>>;
 const RATE_CAP = 1e12;
-const serviceRate = (entry: Entry, replicas = entry.active): number => {
+const serviceRate = (entry: Entry, replicas = entry.active, endpointId?: string): number => {
   if (!entry.up) return 0;
   if (entry.props.admission) {
     const slots = Math.min(
@@ -75,7 +75,10 @@ const serviceRate = (entry: Entry, replicas = entry.active): number => {
         ? Infinity
         : replicas * entry.props.admission.fixedSlotsPerReplica,
     );
-    const time = entry.props.admission.api.latencyMs ?? entry.props.latencyMs;
+    const time =
+      entry.props.admission.endpoints.find((e) => e.id === endpointId)?.behaviour?.latencyMs ??
+      entry.props.admission.api.latencyMs ??
+      entry.props.latencyMs;
     return slots === 0 ? 0 : time ? (slots * 1000) / time : Infinity;
   }
   if (entry.role === "processor") {
@@ -265,7 +268,7 @@ export function analyzeCapacity(
   const groupRate = (group: ConsumerGroup, edge: CompiledEdge) => {
     const target = entries.get(edge.to)!;
     const allocated = group.allocations.get(edge.to) ?? 0;
-    return allocated ? serviceRate(target, allocated) : 0;
+    return allocated ? serviceRate(target, allocated, edge.endpointId) : 0;
   };
   function split(next: Rates, candidates: CompiledEdge[], type: string, rate: number, weights: number[]): void {
     const infinite = weights.filter((weight) => weight === Infinity).length;
@@ -350,7 +353,7 @@ export function analyzeCapacity(
   const nodes: Record<string, NodeCapacity> = Object.create(null);
   for (const [id, entry] of entries) {
     const offered = total(rates.get(id));
-    let capacity = serviceRate(entry);
+    let capacity = entry.props.admission ? (entry.up ? Infinity : 0) : serviceRate(entry);
     if (brokerRole(entry.role)) {
       const limits = (groups.get(id) ?? []).map((group) => {
         const capacities = new Map(
@@ -389,18 +392,32 @@ export function analyzeCapacity(
       ...(entry.props.admission ? { managed: true } : {}),
     };
   }
+  const incoming = new Map<string, CompiledEdge[]>();
+  for (const edge of compiled.edges) {
+    if (edge.deny || edge.dlq) continue;
+    const list = incoming.get(edge.to) ?? [];
+    list.push(edge);
+    incoming.set(edge.to, list);
+  }
   const managed = [...entries].flatMap(([id, entry]) =>
     entry.props.admission
       ? [
           {
             id,
-            policy: entry.props.admission,
+            policy: {
+              ...entry.props.admission,
+              slots:
+                entry.props.admission.fixedSlotsPerReplica === undefined
+                  ? entry.props.admission.slots
+                  : Math.min(
+                      entry.props.admission.slots ?? Infinity,
+                      entry.active * entry.props.admission.fixedSlotsPerReplica,
+                    ),
+            },
             offered: nodes[id].offered,
             latencyMs: entry.props.latencyMs,
             endpoints: [
-              ...compiled.edges
-                .filter((e) => e.to === id && !e.deny && !e.dlq)
-                .map((e) => ({ id: e.endpointId, rate: connections[e.id] ?? 0 })),
+              ...(incoming.get(id) ?? []).map((e) => ({ id: e.endpointId, rate: connections[e.id] ?? 0 })),
               { rate: total(external.get(id)) },
             ],
           },

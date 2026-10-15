@@ -18,6 +18,7 @@ import { resolveScale, resolveMultiplier } from "./units";
 import {
   attemptAdmission,
   configureAdmission,
+  reconfigureAdmission,
   emptyAdmission,
   releaseAdmission,
   type AdmissionLease,
@@ -76,6 +77,7 @@ interface Delivery {
   original: Message;
 }
 interface Work {
+  retryAdmissionAt?: number;
   lease?: AdmissionLease;
   errorRate?: number;
   message: Message;
@@ -483,10 +485,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (node.props.concurrency !== previous.concurrency || node.props.latencyMs !== previous.latencyMs)
         for (const group of groupsByConsumer.get(id) ?? []) limits.add(group);
     }
-    configureAdmission(
+    reconfigureAdmission(
       admission,
-      [...nodes.values()].flatMap((n) => (n.props.admission ? [n.props.admission] : [])),
+      [...nodes.values()].flatMap((n) => (n.props.admission ? [{ id: n.id, policy: n.props.admission }] : [])),
       planning,
+      time,
     );
     const next = resolveMultiplier(multiplier, capacityMultiplier);
     if (next !== capacityMultiplier) {
@@ -681,6 +684,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       ) {
         work.remaining = node.props.retryBackoffMs + latency(node);
         work.retained = true;
+        if (node.props.admission) work.retryAdmissionAt = time + node.props.retryBackoffMs;
       } else {
         releaseAdmission(admission, work.lease);
         work.lease = undefined;
@@ -706,6 +710,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (node.status === "down") {
       if (work.delivery || node.role === "processor") fail(node, work);
       else {
+        acknowledge(work);
         reply(work);
         drop(node, work.message, "node down");
       }
@@ -736,6 +741,38 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     } else forward(node, work.message);
   }
 
+  function reserveAdmission(node: Node, work: Work): boolean {
+    const policy = node.props.admission;
+    if (!policy) return true;
+    releaseAdmission(admission, work.lease);
+    work.lease = undefined;
+    const outcome = attemptAdmission(
+      admission,
+      node.id,
+      policy.fixedSlotsPerReplica === undefined
+        ? policy
+        : { ...policy, slots: Math.min(policy.slots ?? Infinity, node.activeReplicas * policy.fixedSlotsPerReplica) },
+      work.via?.endpointId,
+      planning,
+      time,
+      scale,
+    );
+    if ("rejected" in outcome) {
+      node.rejected++;
+      node.rejectionReasons[outcome.rejected] = (node.rejectionReasons[outcome.rejected] ?? 0) + 1;
+      log("reject", node, work.message, outcome.rejected);
+      acknowledge(work);
+      reply(work);
+      gone(node, work.message, "reject", outcome.rejected);
+      return false;
+    }
+    work.lease = outcome.lease;
+    work.errorRate = outcome.errorRate;
+    if (outcome.latencyMs !== undefined)
+      work.remaining = outcome.latencyMs * (1 + (random() * 2 - 1) * node.props.jitter);
+    return true;
+  }
+
   function arrive(node: Node, work: Work): void {
     if (node.status === "down") {
       finish(node, work);
@@ -747,31 +784,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       return;
     }
     if (node.props.admission) {
-      const policy = node.props.admission;
-      const outcome = attemptAdmission(
-        admission,
-        node.id,
-        policy.fixedSlotsPerReplica === undefined
-          ? policy
-          : { ...policy, slots: Math.min(policy.slots ?? Infinity, node.activeReplicas * policy.fixedSlotsPerReplica) },
-        work.via?.endpointId,
-        planning,
-        time,
-        scale,
-      );
-      if ("rejected" in outcome) {
-        node.rejected++;
-        node.rejectionReasons[outcome.rejected] = (node.rejectionReasons[outcome.rejected] ?? 0) + 1;
-        log("reject", node, work.message, outcome.rejected);
-        acknowledge(work);
-        reply(work);
-        gone(node, work.message, "reject", outcome.rejected);
-        return;
-      }
-      work.lease = outcome.lease;
-      work.errorRate = outcome.errorRate;
-      if (outcome.latencyMs !== undefined)
-        work.remaining = outcome.latencyMs * (1 + (random() * 2 - 1) * node.props.jitter);
+      if (!reserveAdmission(node, work)) return;
       if (node.status === "paused") node.pending.push(work);
       else if (work.remaining <= 0) finish(node, work);
       else {
@@ -934,6 +947,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (node.status !== "paused" && !held(node)) {
         let keep = 0;
         for (const work of node.working) {
+          if (work.retryAdmissionAt !== undefined && time >= work.retryAdmissionAt && node.status === "up") {
+            work.retryAdmissionAt = undefined;
+            work.retained = false;
+            work.remaining = latency(node);
+            if (!reserveAdmission(node, work)) {
+              work.slotted = false;
+              continue;
+            }
+          }
           work.remaining -= STEP;
           if (work.remaining <= 0 || (node.status === "down" && !work.retained)) {
             work.retained = false;

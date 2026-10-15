@@ -1,4 +1,4 @@
-import type { AdmissionPolicy } from "./admission";
+import { configureAdmission, emptyAdmission, type AdmissionPolicy } from "./admission";
 import type { Quota } from "../model/admission";
 import type { PlanningModel } from "../model/types";
 
@@ -14,6 +14,12 @@ export function admissionCapacities(
   }[],
   planning?: PlanningModel,
 ): Map<string, number> {
+  const sharedState = emptyAdmission();
+  configureAdmission(
+    sharedState,
+    entries.map((entry) => entry.policy),
+    planning,
+  );
   const budgets = new Map<string, { capacity: number; demand: number; members: Set<string> }>();
   const add = (key: string, capacity: number, demand: number, id: string) => {
     const budget = budgets.get(key) ?? { capacity, demand: 0, members: new Set() };
@@ -31,12 +37,23 @@ export function admissionCapacities(
     }
     let seconds = 0;
     for (const call of entry.endpoints) {
+      if (!(call.rate > 0)) continue;
       const endpoint = call.id ? entry.policy.endpoints.find((e) => e.id === call.id) : undefined;
       if (call.id && !endpoint) {
         result.set(entry.id, 0);
         continue;
       }
       const api = endpoint?.behaviour;
+      if (
+        [entry.policy.api, api].some(
+          (behaviour) =>
+            behaviour?.quotas?.some((q) => q.sharedGroup && sharedState.conflicts.has(`quota:${q.sharedGroup}`)) ||
+            (behaviour?.sharedConcurrency && sharedState.conflicts.has(`concurrency:${behaviour.sharedConcurrency}`)),
+        )
+      ) {
+        result.set(entry.id, 0);
+        continue;
+      }
       const latency = api?.latencyMs ?? entry.policy.api.latencyMs ?? entry.latencyMs;
       seconds += (call.rate * latency) / 1000;
       const costs = { ...entry.policy.api.costPerRequest, ...api?.costPerRequest };

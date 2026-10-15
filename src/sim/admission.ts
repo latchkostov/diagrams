@@ -56,6 +56,47 @@ export function configureAdmission(state: AdmissionState, policies: AdmissionPol
     }
 }
 
+function refreshBucket(bucket: Bucket, quota: Quota, now: number) {
+  bucket.tokens = Math.min(bucket.capacity, bucket.tokens + Math.max(0, now - bucket.time) * bucket.rate);
+  bucket.time = now;
+  bucket.tokens = Math.min(bucket.tokens, quota.burst ?? quota.amount);
+  bucket.signature = signature(quota);
+  bucket.capacity = quota.burst ?? quota.amount;
+  bucket.rate = quota.amount / quota.windowMs;
+}
+
+/** Apply live edits at their simulation time, preserving already spent credit. */
+export function reconfigureAdmission(
+  state: AdmissionState,
+  entries: { id: string; policy: AdmissionPolicy }[],
+  planning: PlanningModel | undefined,
+  now: number,
+) {
+  configureAdmission(
+    state,
+    entries.map((e) => e.policy),
+    planning,
+  );
+  const seen = new Set<string>();
+  for (const { id, policy } of entries) {
+    for (const [scope, scopeId, api] of [
+      ["node", undefined, policy.api],
+      ...policy.endpoints.map((e) => ["endpoint", e.id, e.behaviour] as const),
+    ] as const) {
+      for (const q of api?.quotas ?? []) {
+        if (q.sharedGroup && state.conflicts.has(`quota:${q.sharedGroup}`)) continue;
+        const quota =
+          (q.sharedGroup ? planning?.sharedQuotas?.find((shared) => shared.id === q.sharedGroup) : undefined) ?? q;
+        const key = JSON.stringify(q.sharedGroup ? ["shared", q.sharedGroup] : [id, "quota", scope, scopeId, q.id]);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const bucket = state.buckets.get(key);
+        if (bucket) refreshBucket(bucket, quota, now);
+      }
+    }
+  }
+}
+
 /** All applicable budgets are checked before any are charged. Time is exclusively simulation time. */
 export function attemptAdmission(
   state: AdmissionState,
@@ -72,9 +113,9 @@ export function attemptAdmission(
   const behaviour = endpoint?.behaviour;
   const costs = { ...policy.api.costPerRequest, ...behaviour?.costPerRequest };
   const requirements = new Map<string, { quota: Quota; cost: number }>();
-  for (const [scope, quotas] of [
-    ["node", policy.api.quotas],
-    [endpointId, behaviour?.quotas],
+  for (const [scope, scopeId, quotas] of [
+    ["node", undefined, policy.api.quotas],
+    ["endpoint", endpointId, behaviour?.quotas],
   ] as const) {
     for (const declared of quotas ?? []) {
       if (declared.sharedGroup && state.conflicts.has(`quota:${declared.sharedGroup}`))
@@ -84,7 +125,9 @@ export function attemptAdmission(
         : undefined;
       if (authority && signature(authority) !== signature(declared)) return { rejected: "conflicting shared quota" };
       const quota = authority ?? declared;
-      const key = JSON.stringify(declared.sharedGroup ? ["shared", declared.sharedGroup] : [node, scope, quota.id]);
+      const key = JSON.stringify(
+        declared.sharedGroup ? ["shared", declared.sharedGroup] : [node, "quota", scope, scopeId, quota.id],
+      );
       const cost = weight * (costs[quota.unit] ?? (quota.unit === "requests" ? 1 : 0));
       // A token/cost quota without a workload size cannot truthfully admit the request.
       if (quota.unit !== "requests" && costs[quota.unit] === undefined)
@@ -102,18 +145,7 @@ export function attemptAdmission(
   )) {
     let bucket = state.buckets.get(key);
     const config = signature(quota);
-    if (bucket) {
-      bucket.tokens = Math.min(bucket.capacity, bucket.tokens + Math.max(0, now - bucket.time) * bucket.rate);
-      bucket.time = now;
-    }
-    if (bucket && bucket.signature !== config) {
-      // An intentional live edit retains spent credit rather than granting a fresh burst.
-      bucket.tokens = Math.min(bucket.tokens, quota.burst ?? quota.amount);
-      bucket.time = now;
-      bucket.signature = config;
-      bucket.capacity = quota.burst ?? quota.amount;
-      bucket.rate = quota.amount / quota.windowMs;
-    }
+    if (bucket) refreshBucket(bucket, quota, now);
     if (!bucket) {
       bucket = {
         tokens: quota.burst ?? quota.amount,
@@ -124,19 +156,14 @@ export function attemptAdmission(
       };
       state.buckets.set(key, bucket);
     }
-    bucket.tokens = Math.min(
-      quota.burst ?? quota.amount,
-      bucket.tokens + (Math.max(0, now - bucket.time) * quota.amount) / quota.windowMs,
-    );
-    bucket.time = now;
     if (bucket.tokens + 1e-9 < cost) return { rejected: `${quota.id}: ${quota.unit}` };
     charges.push({ bucket, cost });
   }
   const limits = new Map<string, number>();
   if (policy.slots !== undefined) limits.set(JSON.stringify([node, "slots"]), policy.slots);
-  const addConcurrent = (api: ApiBehaviour | undefined, scope: string) => {
+  const addConcurrent = (api: ApiBehaviour | undefined, scope: string[]) => {
     if (!api) return;
-    if (api.maxInFlight !== undefined) limits.set(JSON.stringify([node, scope]), api.maxInFlight);
+    if (api.maxInFlight !== undefined) limits.set(JSON.stringify([node, "concurrency", ...scope]), api.maxInFlight);
     if (api.sharedConcurrency) {
       if (state.conflicts.has(`concurrency:${api.sharedConcurrency}`)) return false;
       const allocation =
@@ -148,7 +175,10 @@ export function attemptAdmission(
     }
     return true;
   };
-  if (addConcurrent(policy.api, "node") === false || addConcurrent(behaviour, endpointId ?? "endpoint") === false)
+  if (
+    addConcurrent(policy.api, ["node"]) === false ||
+    addConcurrent(behaviour, ["endpoint", endpointId ?? ""]) === false
+  )
     return { rejected: "unknown shared allocation" };
   for (const [key, limit] of limits)
     if ((state.inFlight.get(key) ?? 0) + weight > limit + 1e-9) return { rejected: "concurrency" };

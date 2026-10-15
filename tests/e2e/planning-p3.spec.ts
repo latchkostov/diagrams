@@ -11,15 +11,17 @@ import {
   STORAGE_KEYS,
 } from "./fixtures";
 const slug = "kafka-order-pipeline";
-async function seed(page: Page, stencil: string, live = false, locale = "en") {
+async function seed(page: Page, stencil: string, live = false, locale = "en", inherited = false) {
   await page.setViewportSize({ width: 1280, height: 800 });
+  const d = planningP3Fixture(stencil);
+  if (inherited) d.nodes[1].props = {};
   await page.addInitScript(
     ({ key, d, locale }) => {
       localStorage.setItem(key, JSON.stringify(d));
       localStorage.setItem("diagrams.locale", locale);
       localStorage.setItem("diagrams.inspector.open.v1", JSON.stringify({ "node-simulation": true }));
     },
-    { key: STORAGE_KEYS.autosavePrefix + slug, d: planningP3Fixture(stencil), locale },
+    { key: STORAGE_KEYS.autosavePrefix + slug, d, locale },
   );
   if (live) await gotoLive(page, `./?view=canvas&example=${slug}&live=1`);
   else await gotoCanvas(page, slug);
@@ -69,7 +71,49 @@ test("P3: zero local rate is invalid and cannot silently remove the existing bud
   await page.getByTestId("admission-rate").fill("1");
   await page.getByTestId("admission-rate").press("Tab");
   await page.getByTestId("admission-rate").fill("0");
+  await page.getByTestId("admission-rate").press("Tab");
   await expect(page.getByTestId("admission-rate")).toHaveValue("1");
+  expectNoErrors(consoleErrors);
+});
+test("P3: numeric keyboard drafts survive clearing and fractional entry", async ({ page, consoleErrors }) => {
+  await seed(page, "generic.external-api");
+  await page.getByTestId("node-api").click();
+  const duration = page.getByTestId("admission-latency");
+  await duration.fill("");
+  await expect(duration).toHaveValue("");
+  await duration.pressSequentially("12");
+  await duration.press("Tab");
+  await expect(duration).toHaveValue("12");
+  const rate = page.getByTestId("admission-rate");
+  await rate.fill("");
+  await rate.pressSequentially("0.5");
+  await rate.press("Tab");
+  await expect(rate).toHaveValue("0.5");
+  expectNoErrors(consoleErrors);
+});
+test("P3: an unfinished numeric exponent cannot remove a committed local cap", async ({ page, consoleErrors }) => {
+  await seed(page, "generic.external-api");
+  await page.getByTestId("node-api").click();
+  const rate = page.getByTestId("admission-rate");
+  await rate.fill("1");
+  await rate.press("Tab");
+  await rate.focus();
+  await rate.press("Control+a");
+  await rate.pressSequentially("1e");
+  await rate.press("Tab");
+  await expect(rate).toHaveValue("1");
+  expectNoErrors(consoleErrors);
+});
+test("P3: omitted and cleared Lambda overrides show inherited effective settings", async ({ page, consoleErrors }) => {
+  await seed(page, "aws.lambda", false, "en", true);
+  await page.getByTestId("node-api").click();
+  await expect(page.getByTestId("admission-allocation")).toHaveValue("1000");
+  await expect(page.getByTestId("admission-concurrency")).toHaveCount(0);
+  await page.getByTestId("admission-advanced-toggle").click();
+  await expect(page.getByTestId("admission-scaling")).toHaveValue("auto");
+  await page.getByTestId("admission-allocation").fill("");
+  await page.getByTestId("admission-allocation").press("Tab");
+  await expect(page.getByTestId("admission-allocation")).toHaveValue("1000");
   expectNoErrors(consoleErrors);
 });
 test("P3: unknown evidence stays visible and never promises unlimited vendor capacity", async ({

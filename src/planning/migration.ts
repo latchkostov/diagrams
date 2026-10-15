@@ -1,3 +1,4 @@
+import { ADMISSION_REVISION, managedKind } from "../model/admissionPresets";
 import type { DiagramFile } from "../model/types";
 import { resolveProps } from "../sim/defaults";
 import { stencilRole } from "../stencils/roles";
@@ -85,6 +86,8 @@ export function upgradePlanning(d: DiagramFile): DiagramFile {
     const family = profileOf(node.stencil)?.family;
     if (family && FAMILIES[family]?.roles.includes("processor"))
       Object.assign(node.props!, { preset: PROCESSOR_LESSON.id, presetRevision: PROCESSOR_LESSON.revision });
+    if (managedKind(node.stencil))
+      Object.assign(node.props!, { preset: "managed-measured", presetRevision: ADMISSION_REVISION });
     if (resolveProps(stencilRole(node.stencil), node.label, node.props!, node.stencil, undefined).device)
       Object.assign(node.props!, { preset: "device-size", presetRevision: "1" });
   }
