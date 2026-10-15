@@ -1,0 +1,110 @@
+name: Benchmarks
+# The performance benchmarks (docs/BENCHMARKS.md).
+# - Pull requests: the gates only (`pnpm bench:gates`: complexity ratios, render and operation counts, leak counts and
+#   bundle budgets). They don't depend on the machine, so they can fail a pull request; timings never do.
+# - Nightly (and on demand): the whole suite (`pnpm bench`), its results kept as an artifact for 90 days, and a
+#   comparison against the committed baseline (tests/bench/baseline/master.json) and the previous nightly in the
+#   run's summary. A failed gate fails the run; slower timings are listed, never failed on.
+on:
+  pull_request:
+  schedule:
+    - cron: "41 2 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "full, quick or gates"
+        default: full
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  CI: "true"
+
+jobs:
+  gates:
+    name: Benchmark gates
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/bench-setup
+      - name: Type-check the benchmarks
+        run: pnpm exec tsc --noEmit -p tests/bench
+      - name: Gates
+        run: pnpm bench:gates
+      - name: Summary
+        if: ${{ !cancelled() }}
+        run: |
+          if [ -f tests/.output/bench/summary.md ]; then
+            # The gates section: the head of the summary, up to the first suite's table.
+            sed '/^## [a-z]/,$d' tests/.output/bench/summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: bench-gates
+          path: |
+            tests/.output/bench/results.json
+            tests/.output/bench/summary.md
+          retention-days: 14
+
+  nightly:
+    name: Benchmarks (${{ inputs.mode || 'full' }})
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/bench-setup
+      - name: Benchmarks
+        id: bench
+        continue-on-error: true
+        run: node scripts/bench/run.mjs --mode "${MODE}" --label "nightly ${GITHUB_RUN_ID}"
+        env:
+          MODE: ${{ inputs.mode || 'full' }}
+      - name: The previous nightly's results
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          id="$(gh run list --workflow bench.yml --branch "$GITHUB_REF_NAME" --event schedule --status success \
+            --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+          if [ -n "$id" ]; then gh run download "$id" -n bench-results -D previous || true; fi
+      - name: Compare
+        if: ${{ !cancelled() }}
+        run: |
+          out=tests/.output/bench
+          {
+            echo "## Against the committed baseline"
+            node scripts/bench/compare.mjs tests/bench/baseline/master.json "$out/results.json" --md "$out/compare-baseline.md" > /dev/null || true
+            cat "$out/compare-baseline.md"
+            if [ -f previous/results.json ]; then
+              echo "## Against the previous nightly"
+              node scripts/bench/compare.mjs previous/results.json "$out/results.json" --md "$out/compare-previous.md" > /dev/null || true
+              cat "$out/compare-previous.md"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: bench-results
+          path: |
+            tests/.output/bench/results.json
+            tests/.output/bench/summary.md
+            tests/.output/bench/compare-*.md
+            tests/.output/bench/profiles
+          retention-days: 90
+      - name: Fail on a failed gate or suite
+        if: steps.bench.outcome == 'failure'
+        run: |
+          echo "::error::A benchmark gate or suite failed: see the summary and tests/.output/bench/summary.md in the artifact."
+          exit 1

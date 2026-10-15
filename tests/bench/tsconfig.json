@@ -1,0 +1,11 @@
+{
+  // Type-checks the benchmarks (docs/BENCHMARKS.md): pnpm exec tsc --noEmit -p tests/bench. The root tsconfig covers
+  // src/ (the workload generators included); tests/tsconfig.json has no Vite types for what the Node benchmarks import.
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "types": ["vite/client", "node"],
+    "noEmit": true
+  },
+  "include": ["./**/*.ts", "../../src/**/*.d.ts"],
+  "exclude": []
+}
