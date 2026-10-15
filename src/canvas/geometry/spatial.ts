@@ -65,17 +65,33 @@ export class SpatialGrid<T> {
   }
 
   /** Items whose rect's cells overlap `rect`'s cells (a superset of true hits; callers test exactly). */
-  query(rect: Rect): { rect: Rect; item: T }[] {
+  query(rect: Rect): { rect: Rect; item: T }[];
+  query(rect: Rect, budget: { remaining: number }): { rect: Rect; item: T }[] | null;
+  query(rect: Rect, budget?: { remaining: number }): { rect: Rect; item: T }[] | null {
     if (!valid(rect)) return [];
     const range = this.range(rect);
-    if (!range) return this.entries.filter((e) => touches(e.rect, rect));
+    if (!range) {
+      const hits: Entry<T>[] = [];
+      for (const e of this.entries) {
+        if (budget && --budget.remaining < 0) return null;
+        if (touches(e.rect, rect)) hits.push(e);
+      }
+      return hits;
+    }
     const [x1, y1, x2, y2] = range;
     const seen = new Set<Entry<T>>();
-    for (const e of this.overflow) if (touches(e.rect, rect)) seen.add(e);
+    for (const e of this.overflow) {
+      if (budget && --budget.remaining < 0) return null;
+      if (touches(e.rect, rect)) seen.add(e);
+    }
     for (let cx = x1; cx <= x2; cx++)
       for (let cy = y1; cy <= y2; cy++) {
         const list = this.cells.get(this.key(cx, cy));
-        if (list) for (const e of list) seen.add(e);
+        if (list)
+          for (const e of list) {
+            if (budget && --budget.remaining < 0) return null;
+            seen.add(e);
+          }
       }
     return [...seen];
   }

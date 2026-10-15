@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { useReactFlow } from "@xyflow/react";
 import type { EditorApi } from "../editor/types";
-import { publish } from "./host";
+import { paletteHost, publish } from "./host";
 import { motionMs } from "../lib/motion";
 import { placeNextTo, type Box } from "../canvas/placement";
 
@@ -43,7 +43,7 @@ export function useCanvasHost(
         height: n.measured?.height ?? n.height ?? 64,
       };
     };
-    return publish("canvas", {
+    const off = publish("canvas", {
       editor,
       live,
       localOnly,
@@ -76,5 +76,7 @@ export function useCanvasHost(
         return id;
       },
     });
+    paletteHost.activateRun();
+    return off;
   }, [editor, live, enabled, localOnly, isPrivate, onDevice, allowOnDevice, documentId, revision]);
 }

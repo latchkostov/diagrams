@@ -12,6 +12,17 @@ headers remain the target inside collapsible sections.
 This was a source and regression-test review, not an independent whole-app visual walkthrough or
 screen-reader session. Production browser checks cover the changed interactions and accessibility.
 
+## Review follow-ups 1 UX gate (2026-10-15)
+
+The designer agent found no actionable issue in the scoped source, regression-test and screenshot
+review. Explicit Live exit cancels a pending launch. Renderer-root lookup and spatial compositing
+preserve custom caption ink, with conservative theme ink when bounded work is exhausted. Phone
+playback leaves the expanded AI footer exposed, and Inputs folds the dock. A1 keeps its existing
+controls while coalescing partial readiness speech. No chrome or action hierarchy was added.
+The review inspected public showcase phone/light and A1 Live/resource screenshots; it was a scoped
+review, not a full-app assistive-technology walkthrough. Production browser results are recorded in
+`docs/REVIEW-FOLLOWUPS-1.md`.
+
 ## Autoscaling A1 final review gate (2026-10-15)
 
 The designer's scoped source/test review found no blocking UX concern. Scaling speech stays polite

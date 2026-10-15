@@ -13,6 +13,26 @@ const base = {
 };
 
 describe("native format validation", () => {
+  it("rejects a missing original parent even when remapping creates that ID", () => {
+    const result = parseNative(
+      JSON.stringify({
+        ...base,
+        nodes: [{ ...base.nodes[0], id: "x" }],
+        groups: [
+          { id: "x", label: "Renamed", x: 0, y: 0, width: 300, height: 300 },
+          { id: "child", label: "Unrelated", group: "x-2", x: 0, y: 0, width: 100, height: 100 },
+        ],
+      }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.diagram.groups!.map((g) => [g.id, g.group])).toEqual([
+      ["x-2", undefined],
+      ["child", undefined],
+    ]);
+    expect(result.warnings.some((w) => w.includes('Boundary "child"') && w.includes("parent"))).toBe(true);
+  });
+
   it.each([2, 3])("repairs cyclic boundary parents on native import (%i boundaries)", (count) => {
     const result = parseNative(
       JSON.stringify({

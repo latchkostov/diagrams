@@ -31,3 +31,25 @@ focus cases live in `editor.spec.ts`, with accessibility coverage in `a11y.spec.
 
 The stale skill viewer is refreshed and the plugin version is exactly one patch above master.
 No output change is intended and no parity golden is re-recorded.
+
+## Verification
+
+After merging master `1486840b` without rewriting the collaborator's history:
+
+- `pnpm test`: 530 files passed, 7,175 tests passed and four existing tests skipped.
+- Production Chromium: all 111 tests in relationships, editor (including context menus), structure-bulk,
+  sim-truth and a11y passed, using explicit ports 6320–6324 and the production E2E bundle.
+- `pnpm parity`: all 1,761 goldens match, with no changed, added, missing or stale records. The browser
+  tier passed 50 checks in Docker and retained its eight existing skips.
+- `pnpm build` and `pnpm size` passed; the entry is 105.7 kB gzip against a 123.5 kB budget.
+- `pnpm i18n check` has no errors (existing translation warnings remain). `pnpm skill:check` confirms
+  the refreshed viewer matches a fresh build; plugin 1.1.25 is one patch above master.
+- Temporarily reverting the four app fixes fails the respective browser tests. Removing the selected
+  icon fails the unit and browser glyph checks; restoring redundant flow labels fails the accessible
+  description check. All intentional regressions were restored before full verification.
+
+The first full unit run, concurrent with build/parity, failed the unchanged drain complexity test
+(ratio 45.8 against limit 24). Full runs alone passed before and after merging master; its test and
+implementation were not changed. Initial lint rejected a non-null assertion in the new browser test;
+an explicit missing-menu-ID error replaces it. Lint, typecheck and formatting are the final gate
+before each signed commit.

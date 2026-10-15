@@ -310,6 +310,7 @@
 }
 
 .lab-canvas {
+  background: var(--bg);
   position: absolute;
   inset: 0;
 }

@@ -9,8 +9,54 @@
   outside clicks keep focus on the control clicked. Message and Request keep async/sync in hints only.
 - Browser regressions cover keyboard selection/cancellation, popup accessibility, repeated trigger
   clicks, bulk Mixed values and the actual SVG paths for every relationship glyph.
-- Refreshed the stale agent skill viewer; plugin 1.1.24 is one patch above master. No parity goldens
+- Refreshed the stale agent skill viewer; plugin 1.1.25 is one patch above master. No parity goldens
   change: this review changes inspector interaction, not diagram output.
+- Merged the latest master without rewriting collaborator history, retaining both documentation
+  histories and the follow-up fixes in #123.
+
+## Autoscaling preflight follow-ups (#117, 2026-10-15)
+
+- The engine classifies all reachable property actions. Shared allocation projection and patching
+  serve preflight and setters; ordered preflight takes O(N + A) work and preserves intermediate refusals.
+  The 5,000-node/1,000-action operation test counts 7,000 contributions; the old implementation visits
+  5,000,000 nodes. Unrelated actions do not project the graph or copy playback state.
+- Resource and HPA replacement refusals now exercise real limits during step and resume, preserve
+  the entire operation and recover with an exactly-once retry. Partial jittered readiness now has
+  a browser test that observes changed readiness before completion while speech stays coalesced.
+  Existing coalescing behavior is retained; duplicate findings share fixes and correct cleanup stays intact.
+- Refreshed generated skill implementation and the offline viewer at plugin 1.1.24, exactly one patch
+  above master. No schema, public contract or parity golden changes: all 1,761 records match unchanged.
+- Final validation: 7,169 unit tests pass (four existing skips), 199 production Chromium checks pass,
+  and build, size, i18n, skill freshness, lint, typecheck and formatting pass. Initial stale validator-mock
+  and generated-file failures were corrected; deliberate negative controls fail as intended.
+  Detailed triage, rejections and verification: `docs/REVIEW-FOLLOWUPS-1.md`.
+
+## Phone playback follow-up (#120, 2026-10-15)
+
+- Expanded AI docks reserve space for phone playback, keeping the footer and keyboard focus visible.
+  Opening viewport-wide Live panels folds the dock, including when resizing into the phone layout.
+- Production regressions check exposed playback/footer controls and Inputs folding independently;
+  removing either fix fails its check. The designer review found no added chrome or blocking issue.
+- All parity goldens remain unchanged; this corrects the phone layout without changing diagram output.
+
+## Boundary and caption follow-ups (#115, 2026-10-15)
+
+- Custom captions use renderer roots in the editor, Lab and overlap audit. Adjacent fills stay
+  separate; overlapping fills follow their spatial paint stacks. Geometry/color invalidation,
+  cached results and bounded spatial work keep unrelated updates cheap. Exhausted work uses theme ink.
+- Import repairs missing original boundary parents before ID remapping, so a generated ID cannot
+  attach unrelated content. The generated agent validator carries the same repair.
+- Regressions cover descendant-ID collisions, zone-only entry/exit, all caption writes, host parity
+  and operation counts; deliberate reversions fail. All 1,761 parity goldens remain unchanged.
+
+## Gallery launch and Save follow-ups (#118, 2026-10-15)
+
+- Returning to editing cancels a simulation queued while Live downloads. Host publication only
+  consumes a ready request; the matching owner activates Live once per launch.
+- Regression coverage now makes cancelled requests consumable and checks fresh Save destinations
+  after leaving an unedited example, including late picker completion and the reopened copy.
+  Existing unmount cleanup was correct and is retained.
+- Production gallery/picker/interop checks and deliberate reversions pass. No parity golden changes.
 
 ## Example gallery integration with master (#118, 2026-10-15)
 

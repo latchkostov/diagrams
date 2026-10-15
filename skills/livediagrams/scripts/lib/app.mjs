@@ -207,6 +207,10 @@ function checkAutoscaling(resources, autoscaling) {
 //#region src/model/resourceBudget.ts
 /** Lifecycle objects are independent of the particle budget. Reject the whole configuration, never a partial run. */
 var MAX_LIFECYCLE_REPLICAS = 1e5;
+/** The same contribution for a current configuration and a saved-run maximum. */
+function resourceAllocationCount(enabled, count, capacityMultiplier) {
+	return enabled ? Math.max(1, Math.min(1e4, Math.round(count * Math.max(4, capacityMultiplier)))) : 0;
+}
 function resourceBudgetExceeded(d, capacityMultiplier = 4) {
 	if (d.planning?.revision !== "p3-a1") return false;
 	const known = new Set(d.nodes.map((n) => n.id));
@@ -233,7 +237,7 @@ function resourceBudgetExceeded(d, capacityMultiplier = 4) {
 	}
 	let total = 0;
 	for (const { enabled, count } of nodes.values()) {
-		if (enabled) total += Math.max(1, Math.min(1e4, Math.round(count * multiplier)));
+		total += resourceAllocationCount(enabled, count, multiplier);
 		if (total > 1e5) return true;
 	}
 	return false;
@@ -1323,7 +1327,13 @@ function validateDiagram(data) {
 		g.id = id;
 	}
 	for (const n of nodes) if (n.group !== void 0) n.group = groupIdFor.get(n.group);
-	for (const g of groups) if (g.group !== void 0) g.group = groupIdFor.get(g.group) ?? g.group;
+	for (const g of groups) if (g.group !== void 0) {
+		const parent = groupIdFor.get(g.group);
+		if (parent === void 0) {
+			warnings.push(`Boundary "${g.id}" had an invalid or cyclic parent and was taken out of it.`);
+			delete g.group;
+		} else g.group = parent;
+	}
 	for (const a of annotations) if (a.group !== void 0) {
 		const mapped = groupIdFor.get(a.group);
 		if (mapped) a.group = mapped;

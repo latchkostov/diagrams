@@ -699,3 +699,37 @@ test("reopening an example never overwrites its Private copy's destination", asy
   ]);
   expect(await page.evaluate(() => window.__fs.writes[3].name)).toBe("saved-2.json");
 });
+
+for (const deferred of [false, true]) {
+  test(`leaving an unedited example releases its ${deferred ? "pending" : "completed"} Save destination`, async ({
+    page,
+  }) => {
+    await fakeFileSystem(page);
+    await gotoCanvas(page, "kafka-order-pipeline");
+    await page.evaluate((defer) => {
+      window.__fs.defer = defer;
+    }, deferred);
+    await openFile(page);
+    await page.getByTestId("file-save").click();
+    if (deferred) await expect.poll(() => page.evaluate(() => !!window.__fs.release)).toBe(true);
+    else await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(1);
+    await openExample(page, "notification-fanout");
+    await openExample(page, "kafka-order-pipeline");
+    if (deferred) {
+      await page.evaluate(() => {
+        window.__fs.defer = false;
+        window.__fs.release?.();
+      });
+      await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(1);
+    }
+    await page.keyboard.press("Control+s");
+    await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(2);
+    expect(await page.evaluate(() => window.__fs.pickerCalls)).toBe(2);
+    await page.getByTestId("node-shopper").click();
+    await page.getByTestId("inspector-field-label").fill("Reopened storefront");
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+    await page.keyboard.press("Control+s");
+    await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(3);
+    expect(await page.evaluate(() => window.__fs.writes[2].name)).toBe("saved-2.json");
+  });
+}
