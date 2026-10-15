@@ -1,0 +1,13 @@
+---
+title: Slow consumer lag
+---
+flowchart LR
+  devices(["Devices"])
+  topic["telemetry<br/>telemetry"]
+  fast["Alerts<br/>fast"]
+  slow["Reports<br/>slow"]
+  devices -.-> topic
+  topic -.-> fast
+  topic -.-> slow
+  linkStyle 0,1,2 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"Fast and slow consumer groups on one topic.","nodes":{"devices":["devices","client.iot"],"topic":["topic","azure.event-hubs"],"fast":["fast","service.go"],"slow":["slow","service.python"]},"edges":["devices-topic","topic-fast","topic-slow"],"relations":{}}

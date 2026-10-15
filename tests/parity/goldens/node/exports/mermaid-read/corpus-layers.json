@@ -1,0 +1,10 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Overlapping layers",
+    "direction": "LR",
+    "nodes": [{ "id": "service", "stencil": "generic.service", "label": "Service", "x": 40, "y": 40 }],
+    "edges": []
+  }
+}

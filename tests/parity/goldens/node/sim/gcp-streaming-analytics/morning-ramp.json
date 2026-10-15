@@ -1,0 +1,137 @@
+{
+  "run": {
+    "time": 10600,
+    "totalMs": 18000,
+    "done": true,
+    "scale": 50,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "archive", "label": "Every event is archived raw", "status": "pass", "value": 9000 },
+      { "id": "sessions", "label": "8,800 valid events reach BigQuery", "status": "pass", "value": 8800 },
+      { "id": "dead", "label": "200 malformed events are kept for replay", "status": "pass", "value": 200 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "note", "label": "Clicks ramp up as people wake up. Pub/Sub keeps each subscription separate: Dataflow and the raw archive each get every event. Each dot is 50 events." },
+      { "atMs": 0, "kind": "traffic", "label": "Ramp 200 → 2,000 events/s" },
+      { "atMs": 4000, "kind": "note", "label": "A bad SDK release sends malformed events. Dataflow routes them to a dead-letter topic instead of failing the pipeline." },
+      { "atMs": 4000, "kind": "traffic", "label": "200 malformed events" },
+      { "atMs": 5000, "kind": "traffic", "label": "200 malformed events ends" },
+      { "atMs": 7000, "kind": "note", "label": "Sessions stream into BigQuery within seconds, so Looker's dashboards are current." },
+      { "atMs": 8000, "kind": "traffic", "label": "Ramp 200 → 2,000 events/s ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "app": { "replicas": [1, 1, 0] },
+        "collector": { "replicas": [1, 1, 0] },
+        "pubsub-topic": { "lag": { "dataflow": 0, "archive": 0 }, "replicas": [1, 1, 0] },
+        "dataflow": { "replicas": [24, 24, 0] },
+        "raw-archive": { "replicas": [1, 1, 0] },
+        "bigquery": { "replicas": [1, 1, 0] },
+        "looker": { "replicas": [1, 1, 0] },
+        "dead-letters": { "lag": { "dlq-archive": 0 }, "replicas": [1, 1, 0] },
+        "dead-bucket": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 0,
+      "nodes": {
+        "app": { "processed": 180, "throughput": 4.936774046714054, "replicas": [1, 1, 0] },
+        "collector": { "processed": 180, "throughput": 6.243777538425631, "replicas": [1, 1, 0] },
+        "pubsub-topic": {
+          "processed": 180,
+          "throughput": 8.428218102789042,
+          "lag": { "dataflow": 0, "archive": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "dataflow": { "processed": 180, "throughput": 11.894471011130634, "replicas": [24, 24, 0] },
+        "raw-archive": { "processed": 180, "throughput": 11.376904438221281, "replicas": [1, 1, 0] },
+        "bigquery": { "processed": 176, "throughput": 14.475779250147337, "replicas": [1, 1, 0] },
+        "looker": { "replicas": [1, 1, 0] },
+        "dead-letters": {
+          "processed": 4,
+          "throughput": 0.057646212086370524,
+          "lag": { "dlq-archive": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "dead-bucket": { "processed": 4, "throughput": 0.07859629329314731, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 10600,
+    "inSystem": 0,
+    "real": {
+      "app": { "processed": 9000, "throughput": 135.46795208018375, "replicas": [1, 1, 0] },
+      "collector": { "processed": 9000, "throughput": 171.33288831352576, "replicas": [1, 1, 0] },
+      "pubsub-topic": {
+        "processed": 9000,
+        "throughput": 231.27520831744798,
+        "lag": { "dataflow": 0, "archive": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "dataflow": { "processed": 9000, "throughput": 326.3912048045797, "replicas": [24, 24, 0] },
+      "raw-archive": { "processed": 9000, "throughput": 312.1888769212815, "replicas": [1, 1, 0] },
+      "bigquery": { "processed": 8800, "throughput": 397.223804700467, "replicas": [1, 1, 0] },
+      "looker": { "replicas": [1, 1, 0] },
+      "dead-letters": {
+        "processed": 200,
+        "throughput": 1.581845598487218,
+        "lag": { "dlq-archive": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "dead-bucket": { "processed": 200, "throughput": 2.156728015656914, "replicas": [1, 1, 0] }
+    },
+    "edges": { "app-to-collector": 180, "collector-to-topic": 180, "topic-to-dataflow": 180, "topic-to-raw-archive": 180, "dataflow-to-bigquery": 176, "dataflow-to-dead-letters": 4, "dead-letters-to-dead-bucket": 4, "looker-to-bigquery": 0 }
+  },
+  "events": {
+    "total": 2168,
+    "byKind": { "inject": 180, "process": 1084, "deliver": 904 },
+    "byNode": {
+      "app": { "inject": 180, "process": 180 },
+      "collector": { "deliver": 180, "process": 180 },
+      "pubsub-topic": { "deliver": 180, "process": 180 },
+      "dataflow": { "deliver": 180, "process": 180 },
+      "raw-archive": { "deliver": 180, "process": 180 },
+      "bigquery": { "deliver": 176, "process": 176 },
+      "dead-letters": { "deliver": 4, "process": 4 },
+      "dead-bucket": { "deliver": 4, "process": 4 }
+    },
+    "perSecond": [
+      "aff5e65ba362",
+      "0f730fc8619f",
+      "fbe93a689994",
+      "afb75a82ca3c",
+      "00392afc0a57",
+      "bf7b8e380350",
+      "505a0db7e2fa",
+      "0cf02a54dfab",
+      "29d525e3f6b8",
+      "45ef00fc173c",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 0, "text": "Clicks ramp up as people wake up. Pub/Sub keeps each subscription separate: Dataflow and the raw archive each get every event. Each dot is 50 events.", "focus": ["app", "pubsub-topic", "dataflow", "raw-archive"] },
+    { "atMs": 4000, "text": "A bad SDK release sends malformed events. Dataflow routes them to a dead-letter topic instead of failing the pipeline.", "focus": ["dataflow", "dead-letters", "dead-bucket"] },
+    { "atMs": 7000, "text": "Sessions stream into BigQuery within seconds, so Looker's dashboards are current.", "focus": ["bigquery", "looker"] }
+  ],
+  "latency": {
+    "journeys": { "done": 180, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 180, "min": 1080, "mean": 1100.1666666666667, "p50": 1090, "p90": 1100, "max": 1510 },
+    "waitMs": {
+      "collector": { "count": 180, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "dataflow": { "count": 180, "min": 0, "mean": 0.1111111111111111, "p50": 0, "p90": 0, "max": 10 },
+      "dead-bucket": { "count": 4, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "collector": { "count": 180, "min": 40, "mean": 45.72222222222222, "p50": 50, "p90": 50, "max": 50 },
+      "dataflow": { "count": 180, "min": 40, "mean": 45.22222222222222, "p50": 50, "p90": 50, "max": 50 },
+      "dead-bucket": { "count": 4, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    }
+  }
+}

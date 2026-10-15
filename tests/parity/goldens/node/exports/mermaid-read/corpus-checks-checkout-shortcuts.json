@@ -1,0 +1,26 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Checkout shortcuts",
+    "direction": "LR",
+    "groups": [
+      { "id": "g_team", "label": "Orders team", "tone": "neutral", "x": 760, "y": 160, "width": 660, "height": 176 }
+    ],
+    "nodes": [
+      { "id": "orders", "stencil": "generic.service", "label": "Order service", "x": 800, "y": 224, "group": "g_team" },
+      { "id": "db", "stencil": "generic.database", "label": "orders-db", "x": 1160, "y": 224, "group": "g_team" },
+      { "id": "web", "stencil": "generic.service", "label": "Storefront", "x": 80, "y": 104 },
+      { "id": "app", "stencil": "client.mobile", "label": "Mobile app", "x": 80, "y": 224 },
+      { "id": "gw", "stencil": "generic.service", "label": "Commerce gateway", "sublabel": "TLS · /api", "x": 440, "y": 224 },
+      { "id": "billing", "stencil": "generic.service", "label": "Billing", "x": 80, "y": 344 }
+    ],
+    "edges": [
+      { "id": "e1-web-gw", "from": "web", "to": "gw", "label": "HTTPS", "kind": "sync" },
+      { "id": "e2-gw-orders", "from": "gw", "to": "orders", "label": "POST /orders", "kind": "sync" },
+      { "id": "e3-app-orders", "from": "app", "to": "orders", "label": "POST /orders", "kind": "sync" },
+      { "id": "e4-orders-db", "from": "orders", "to": "db", "label": "Commit order", "kind": "sync" },
+      { "id": "e5-billing-db", "from": "billing", "to": "db", "label": "Read order totals", "kind": "sync" }
+    ]
+  }
+}

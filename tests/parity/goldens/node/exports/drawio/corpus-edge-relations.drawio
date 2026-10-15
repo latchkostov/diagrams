@@ -1,0 +1,142 @@
+<mxfile host="Diagrams" agent="Diagrams" version="24.0.0" type="device">
+  <diagram id="dg-ojp7ug" name="Relationships">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <object id="0" dg_format="diagrams/v1" dg_direction="LR">
+          <mxCell />
+        </object>
+        <mxCell id="1" parent="0" />
+        <object id="dg-n-message-a" label="message source" dg_id="message-a" dg_stencil="service.node">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#5FA04E1A;strokeColor=#5FA04E;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="60" y="46" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-message-b" label="message target" dg_id="message-b" dg_stencil="kafka.topic">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="564" y="46" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-request-a" label="request source" dg_id="request-a" dg_stencil="aws.api-gateway">
+          <mxCell style="sketch=0;outlineConnect=0;fontColor=#232F3E;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;fillColor=#8C4FFF;resIcon=mxgraph.aws4.api_gateway;" vertex="1" parent="1">
+            <mxGeometry x="122" y="198" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-request-b" label="request target" dg_id="request-b" dg_stencil="service.java">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E76F001A;strokeColor=#E76F00;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="564" y="196" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-config-a" label="config source" dg_id="config-a" dg_stencil="service.dotnet">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#512BD41A;strokeColor=#512BD4;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="60" y="346" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-config-b" label="config target" dg_id="config-b" dg_stencil="azure.app-config">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/integration/App_Configuration.svg;" vertex="1" parent="1">
+            <mxGeometry x="626" y="348" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-secret-a" label="secret source" dg_id="secret-a" dg_stencil="service.go">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#00ADD81A;strokeColor=#00ADD8;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="60" y="496" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-secret-b" label="secret target" dg_id="secret-b" dg_stencil="aws.secrets-manager">
+          <mxCell style="sketch=0;outlineConnect=0;fontColor=#232F3E;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;fillColor=#DD344C;resIcon=mxgraph.aws4.secrets_manager;" vertex="1" parent="1">
+            <mxGeometry x="626" y="498" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-identity-a" label="identity source" dg_id="identity-a" dg_stencil="aws.lambda">
+          <mxCell style="sketch=0;outlineConnect=0;fontColor=#232F3E;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;fillColor=#ED7100;resIcon=mxgraph.aws4.lambda;" vertex="1" parent="1">
+            <mxGeometry x="122" y="648" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-identity-b" label="identity target" dg_id="identity-b" dg_stencil="aws.iam-role">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#DD344C1A;strokeColor=#DD344C;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="564" y="646" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-telemetry-a" label="telemetry source" dg_id="telemetry-a" dg_stencil="service.python">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3776AB1A;strokeColor=#3776AB;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="60" y="796" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-telemetry-b" label="telemetry target" dg_id="telemetry-b" dg_stencil="azure.app-insights">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/devops/Application_Insights.svg;" vertex="1" parent="1">
+            <mxGeometry x="626" y="798" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-deploy-a" label="deploy source" dg_id="deploy-a" dg_stencil="github-actions">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#2088FF1A;strokeColor=#2088FF;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="60" y="946" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-deploy-b" label="deploy target" dg_id="deploy-b" dg_stencil="azure.aks">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/compute/Kubernetes_Services.svg;" vertex="1" parent="1">
+            <mxGeometry x="626" y="948" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-depends-a" label="depends source" dg_id="depends-a" dg_stencil="azure.aks">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/compute/Kubernetes_Services.svg;" vertex="1" parent="1">
+            <mxGeometry x="122" y="1098" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-depends-b" label="depends target" dg_id="depends-b" dg_stencil="generic.dns">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#0284C71A;strokeColor=#0284C7;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="564" y="1096" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-kv" label="Key Vault" dg_id="kv" dg_stencil="azure.key-vault">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/security/Key_Vaults.svg;" vertex="1" parent="1">
+            <mxGeometry x="1130" y="348" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-edge-message" label="Message" dg_id="edge-message" dg_kind="async">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-message-a" target="dg-n-message-b">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-edge-request" label="Request" dg_id="edge-request" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-request-a" target="dg-n-request-b">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-edge-config" label="" dg_id="edge-config" dg_kind="async" dg_relation="config" dg_props="{&quot;settings&quot;:[{&quot;key&quot;:&quot;Orders:PageSize&quot;},{&quot;key&quot;:&quot;Features:*&quot;},{&quot;key&quot;:&quot;ConnectionStrings:Orders&quot;,&quot;secret&quot;:true},{&quot;key&quot;:&quot;Stripe:ApiKey&quot;,&quot;secret&quot;:true}]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#2A8A83;dashed=1;dashPattern=1 4;dfRelation=config;" edge="1" parent="1" source="dg-n-config-a" target="dg-n-config-b">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-edge-secret" label="" dg_id="edge-secret" dg_kind="async" dg_relation="secret">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#A6720C;dashed=1;dashPattern=1 4;dfRelation=secret;" edge="1" parent="1" source="dg-n-secret-a" target="dg-n-secret-b">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-edge-identity" label="execution role" dg_id="edge-identity" dg_kind="async" dg_relation="identity">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#5A61C4;dashed=1;dashPattern=1 4;dfRelation=identity;" edge="1" parent="1" source="dg-n-identity-a" target="dg-n-identity-b">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-edge-telemetry" label="" dg_id="edge-telemetry" dg_kind="async" dg_relation="telemetry">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#7C6D98;dashed=1;dashPattern=1 4;dfRelation=telemetry;" edge="1" parent="1" source="dg-n-telemetry-a" target="dg-n-telemetry-b">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-edge-deploy" label="helm upgrade" dg_id="edge-deploy" dg_kind="async" dg_relation="deploy">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#3B8752;dashed=1;dashPattern=1 4;dfRelation=deploy;" edge="1" parent="1" source="dg-n-deploy-a" target="dg-n-deploy-b">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-edge-depends" label="resolves orders.internal" dg_id="edge-depends" dg_kind="async" dg_relation="depends">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#556075;dashed=1;dashPattern=1 4;dfRelation=depends;" edge="1" parent="1" source="dg-n-depends-a" target="dg-n-depends-b">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-edge-references" label="" dg_id="edge-references" dg_kind="async" dg_relation="secret">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#A6720C;dashed=1;dashPattern=1 4;dfRelation=secret;" edge="1" parent="1" source="dg-n-config-b" target="dg-n-kv">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

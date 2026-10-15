@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "client": [40, 280], "apigw": [400, 280], "create-order": [790, 220], "cognito": [790, 340], "orders-table": [1150, 280], "stream-fn": [1510, 280], "bus": [1870, 280], "sfn": [2230, 160], "fulfillment-q": [2230, 280], "sns": [2230, 400], "stripe": [2592, 40], "fulfillment-fn": [2592, 160], "dlq": [2592, 280], "email": [2592, 400], "sms": [2592, 520], "three-pl": [2985, 280] },
+    "TB": { "client": [670, 40], "apigw": [670, 200], "cognito": [510, 360], "create-order": [820, 360], "orders-table": [670, 520], "stream-fn": [670, 680], "bus": [670, 840], "sfn": [350, 1000], "sns": [670, 1000], "fulfillment-q": [980, 1000], "stripe": [40, 1160], "fulfillment-fn": [350, 1160], "email": [670, 1160], "sms": [980, 1160], "dlq": [1290, 1160], "three-pl": [670, 1320] }
+  },
+  "tidy": { "client": [40, 280], "apigw": [400, 280], "create-order": [790, 220], "orders-table": [1150, 280], "stream-fn": [1510, 280], "bus": [1870, 280], "sfn": [2230, 160], "stripe": [2592, 40], "dlq": [2592, 280], "fulfillment-q": [2230, 280], "fulfillment-fn": [2592, 160], "three-pl": [2985, 280], "sns": [2230, 400], "email": [2592, 400], "sms": [2592, 520], "cognito": [790, 340] },
+  "arrange": {
+    "alignLeft": { "client": [40, 160], "apigw": [40, 160], "create-order": [40, 160], "orders-table": [40, 160], "stream-fn": [40, 400], "bus": [40, 400], "sfn": [40, 160], "stripe": [40, 40], "dlq": [40, 280], "fulfillment-q": [40, 400], "fulfillment-fn": [40, 400], "three-pl": [40, 40], "sns": [40, 640], "email": [40, 580], "sms": [40, 700], "cognito": [40, 400] },
+    "alignMiddle": { "client": [40, 370], "apigw": [420, 370], "create-order": [800, 370], "orders-table": [1180, 370], "stream-fn": [1180, 370], "bus": [1560, 370], "sfn": [1560, 370], "stripe": [1940, 370], "dlq": [1940, 370], "fulfillment-q": [1940, 370], "fulfillment-fn": [2320, 370], "three-pl": [2320, 370], "sns": [1560, 370], "email": [1940, 370], "sms": [1940, 370], "cognito": [431, 370] },
+    "distributeH": { "client": [40, 160], "apigw": [187, 160], "create-order": [501, 160], "orders-table": [648, 160], "stream-fn": [795, 400], "bus": [941, 400], "sfn": [1088, 160], "stripe": [1386, 40], "dlq": [1532, 280], "fulfillment-q": [1700, 400], "fulfillment-fn": [2140, 400], "three-pl": [2320, 40], "sns": [1237, 640], "email": [1847, 580], "sms": [1994, 700], "cognito": [354, 400] },
+    "distributeV": { "client": [40, 128], "apigw": [420, 172], "create-order": [800, 216], "orders-table": [1180, 260], "stream-fn": [1180, 392], "bus": [1560, 436], "sfn": [1560, 304], "stripe": [1940, 40], "dlq": [1940, 348], "fulfillment-q": [1940, 480], "fulfillment-fn": [2320, 524], "three-pl": [2320, 84], "sns": [1560, 656], "email": [1940, 612], "sms": [1940, 700], "cognito": [431, 568] },
+    "spreadH": { "client": [40, 40], "apigw": [420, 40], "create-order": [961, 40], "orders-table": [1221, 40], "stream-fn": [1481, 40], "bus": [1741, 40], "sfn": [2001, 40], "stripe": [2525, 40], "dlq": [2785, 40], "fulfillment-q": [3066, 40], "fulfillment-fn": [3846, 40], "three-pl": [4139, 40], "sns": [2263, 40], "email": [3326, 40], "sms": [3586, 40], "cognito": [701, 40] },
+    "boundaryAround": { "x": 0, "y": -24, "width": 2613, "height": 836 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": ["aws"],
+    "placedNotes": [],
+    "nodes": { "client": [40, 280], "apigw": [400, 280], "create-order": [790, 220], "orders-table": [1150, 280], "stream-fn": [1510, 280], "bus": [1870, 280], "sfn": [2230, 160], "stripe": [2592, -40], "dlq": [2592, 280], "fulfillment-q": [2230, 280], "fulfillment-fn": [2592, 160], "three-pl": [2985, 280], "sns": [2230, 400], "email": [2592, 400], "sms": [2592, 520], "cognito": [790, 340] },
+    "groups": { "aws": [360, 96, 2525, 536] }
+  }
+}

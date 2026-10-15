@@ -1,0 +1,171 @@
+{
+  "run": {
+    "time": 13180,
+    "totalMs": 20000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "parked", "label": "Webhooks are parked, not dropped", "status": "pass", "value": 36 },
+      { "id": "applied", "label": "All 240 webhooks are applied", "status": "pass", "value": 240 },
+      { "id": "dlq-empty", "label": "The DLQ is empty after the replay", "status": "pass", "value": 0 },
+      { "id": "no-drop", "label": "Nothing is dropped", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "30 webhooks/s for 8 seconds" },
+      { "atMs": 1000, "kind": "props", "label": "props: workers" },
+      { "atMs": 1000, "kind": "note", "label": "The integration database goes down. Workers reject each delivery, and it comes back after a short backoff." },
+      { "atMs": 6500, "kind": "note", "label": "After five tries a webhook is parked in the dead-letter queue rather than retried forever. Nothing is lost: partners already got their 202." },
+      { "atMs": 7000, "kind": "props", "label": "props: workers" },
+      { "atMs": 7000, "kind": "note", "label": "The database is back. Webhooks still retrying go through by themselves." },
+      { "atMs": 8000, "kind": "traffic", "label": "30 webhooks/s for 8 seconds ends" },
+      { "atMs": 10000, "kind": "status", "label": "status: dlq" },
+      { "atMs": 10000, "kind": "note", "label": "The on-call engineer replays the DLQ. Republished events run through the same idempotent workers." }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "partners": { "replicas": [1, 1, 0] },
+        "edge": { "replicas": [1, 1, 0] },
+        "raw": { "replicas": [1, 1, 0] },
+        "receiver": { "replicas": [4, 4, 0] },
+        "exchange": { "lag": { "process": 0 }, "replicas": [1, 1, 0] },
+        "replay": { "replicas": [1, 1, 0] },
+        "queue": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "dlq": { "status": "paused", "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "workers": { "replicas": [4, 4, 0] },
+        "dedupe": { "replicas": [1, 1, 0] },
+        "integration-db": { "replicas": [1, 1, 0] },
+        "operator": { "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 36,
+      "nodes": {
+        "partners": { "processed": 240, "throughput": 4.160974805094151, "replicas": [1, 1, 0] },
+        "edge": { "processed": 240, "throughput": 5.082226103576966, "replicas": [1, 1, 0] },
+        "raw": { "processed": 240, "throughput": 7.853672775267697, "replicas": [1, 1, 0] },
+        "receiver": { "processed": 240, "throughput": 6.430043425722971, "replicas": [4, 4, 0] },
+        "exchange": {
+          "processed": 240,
+          "throughput": 8.679650751308314,
+          "lag": { "process": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "replay": { "replicas": [1, 1, 0] },
+        "queue": {
+          "processed": 240,
+          "deadLettered": 36,
+          "throughput": 11.716303013337182,
+          "lag": { "queue": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "dlq": {
+          "processed": 36,
+          "backlog": 36,
+          "throughput": 1.8593082051680216,
+          "lag": { "queue": 36 },
+          "replicas": [1, 1, 0]
+        },
+        "workers": { "processed": 204, "failed": 503, "throughput": 28.604905273818623, "replicas": [4, 4, 0] },
+        "dedupe": { "processed": 204, "throughput": 34.938110198352426, "replicas": [1, 1, 0] },
+        "integration-db": { "processed": 204, "throughput": 35.28924404345094, "replicas": [1, 1, 0] },
+        "operator": { "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 13180,
+    "inSystem": 0,
+    "real": {
+      "partners": { "processed": 240, "throughput": 0.173036863212539, "replicas": [1, 1, 0] },
+      "edge": { "processed": 240, "throughput": 0.21134770199117903, "replicas": [1, 1, 0] },
+      "raw": { "processed": 240, "throughput": 0.32660012746683464, "replicas": [1, 1, 0] },
+      "receiver": { "processed": 240, "throughput": 0.2673975683162866, "replicas": [4, 4, 0] },
+      "exchange": {
+        "processed": 276,
+        "throughput": 3.2567384789322844,
+        "lag": { "process": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "replay": { "processed": 36, "throughput": 2.1452536368720145, "replicas": [1, 1, 0] },
+      "queue": {
+        "processed": 276,
+        "deadLettered": 36,
+        "throughput": 4.3961371197584125,
+        "lag": { "queue": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "dlq": { "processed": 36, "throughput": 0.07732054978408619, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "workers": { "processed": 240, "failed": 503, "throughput": 7.408240074541202, "replicas": [4, 4, 0] },
+      "dedupe": { "processed": 240, "throughput": 9.04844486015732, "replicas": [1, 1, 0] },
+      "integration-db": { "processed": 240, "throughput": 9.139383242853782, "replicas": [1, 1, 0] },
+      "operator": { "replicas": [1, 1, 0] },
+      "vault": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "partners-to-edge": 240, "edge-to-receiver": 240, "receiver-to-raw": 240, "receiver-to-exchange": 240, "exchange-to-queue": 276, "queue-to-workers": 743, "queue-to-dlq": 36, "workers-to-dedupe": 240, "workers-to-integration-db": 240, "dlq-to-replay": 36, "replay-to-exchange": 36, "operator-to-replay": 0, "receiver-to-vault": 0 }
+  },
+  "events": {
+    "total": 6155,
+    "byKind": { "status": 2, "inject": 240, "process": 2304, "deliver": 2567, "fail": 503, "retry": 503, "deadletter": 36 },
+    "byNode": {
+      "dlq": { "status": 2, "deliver": 36, "process": 36 },
+      "partners": { "inject": 240, "process": 240 },
+      "edge": { "deliver": 240, "process": 240 },
+      "receiver": { "deliver": 240, "process": 240 },
+      "raw": { "deliver": 240, "process": 240 },
+      "exchange": { "deliver": 276, "process": 276 },
+      "queue": { "deliver": 276, "process": 276, "retry": 503, "deadletter": 36 },
+      "workers": { "deliver": 743, "fail": 503, "process": 240 },
+      "dedupe": { "deliver": 240, "process": 240 },
+      "integration-db": { "deliver": 240, "process": 240 },
+      "replay": { "deliver": 36, "process": 36 }
+    },
+    "perSecond": [
+      "ed6b127c5d1c",
+      "4c0b6b89ba0c",
+      "567ec1cb9e69",
+      "cf4490ad2be5",
+      "4b4aa5717282",
+      "db6e792193a4",
+      "f338a7897850",
+      "1d722e45fafd",
+      "e58f3372403d",
+      "99f714c7089f",
+      "ce31c0a7f3c6",
+      "d9528c507abf",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 1000, "text": "The integration database goes down. Workers reject each delivery, and it comes back after a short backoff.", "focus": ["workers", "integration-db", "queue"] },
+    { "atMs": 6500, "text": "After five tries a webhook is parked in the dead-letter queue rather than retried forever. Nothing is lost: partners already got their 202.", "focus": ["queue", "dlq"] },
+    { "atMs": 7000, "text": "The database is back. Webhooks still retrying go through by themselves.", "focus": ["workers", "integration-db"] },
+    { "atMs": 10000, "text": "The on-call engineer replays the DLQ. Republished events run through the same idempotent workers.", "focus": ["operator", "replay", "dlq", "exchange"] }
+  ],
+  "latency": {
+    "journeys": { "done": 166, "retried": 142, "deadLettered": 36, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 166, "min": 1690, "mean": 5317.349397590361, "p50": 4830, "p90": 11070, "max": 11640 },
+    "waitMs": {
+      "edge": { "count": 166, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "receiver": { "count": 166, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "replay": { "count": 36, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "workers": { "count": 593, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "integration-db": { "count": 166, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "edge": { "count": 166, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "receiver": { "count": 166, "min": 30, "mean": 35.36144578313253, "p50": 40, "p90": 40, "max": 40 },
+      "replay": { "count": 36, "min": 50, "mean": 54.72222222222222, "p50": 50, "p90": 60, "max": 60 },
+      "workers": { "count": 166, "min": 130, "mean": 163.13253012048193, "p50": 160, "p90": 190, "max": 200 },
+      "integration-db": { "count": 166, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    }
+  }
+}

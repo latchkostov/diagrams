@@ -1,0 +1,119 @@
+{
+  "ok": true,
+  "format": "asyncapi",
+  "warnings": [],
+  "report": {
+    "summary": {
+      "code": "importReport.summary",
+      "args": [
+        { "title": "Shipping service", "format": "AsyncAPI", "total": "all", "drawn": 5, "nodes": 5, "connections": 4, "guesses": 0 }
+      ]
+    },
+    "format": "AsyncAPI",
+    "source": "shipping-service.asyncapi.yaml",
+    "title": "Shipping service",
+    "nodes": 5,
+    "connections": 4,
+    "boundaries": 1,
+    "guesses": [],
+    "inferred": [],
+    "notDrawn": [],
+    "unread": [],
+    "notes": [
+      {
+        "code": "importDetail.value0IsTheDeadletterRouteOf",
+        "args": [
+          { "value0": "shipping.orders-placed.dlq", "value1": "orders.placed.v1", "value2": "Shipping service" }
+        ]
+      },
+      { "code": "importDetail.value0HasNoProducerInThese", "args": [{ "value0": "orders.placed.v1" }] },
+      {
+        "code": "importDetail.schemaRegistryAddedMessagesOnValue0",
+        "args": [{ "value0": "kafka-0.shop.internal:9092" }]
+      },
+      { "code": "importReport.watchTraffic", "args": [{ "title": "Imported traffic" }] }
+    ],
+    "traffic": [
+      { "nodeId": "shipping-service", "label": "Shipping service", "messageType": "ShipmentDispatched", "ratePerSec": 1, "seconds": 120 }
+    ]
+  },
+  "reportEnglish": {
+    "report.summary": "Imported “Shipping service” from AsyncAPI: 5 nodes, 4 connections.",
+    "report.notes[0]": "shipping.orders-placed.dlq is the dead-letter route of orders.placed.v1 (Shipping service sends its failures there)",
+    "report.notes[1]": "orders.placed.v1 has no producer in these files",
+    "report.notes[2]": "Schema Registry added: messages on kafka-0.shop.internal:9092 use Avro or Protobuf",
+    "report.notes[3]": "Go live and pick “Imported traffic” to watch messages flow"
+  },
+  "replay": null,
+  "checks": ["warning no-reader:topic-shipping.dispatched.v1", "suggestion no-reader:topic-shipping.orders-placed.dlq"],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Shipping service",
+    "direction": "LR",
+    "groups": [
+      { "id": "boundary-kafka-kafka-0.shop.internal-9092", "label": "Kafka · kafka-0.shop.internal:9092", "tone": "neutral", "x": 400, "y": 40, "width": 728, "height": 296 }
+    ],
+    "nodes": [
+      { "id": "shipping-service", "stencil": "generic.service", "label": "Shipping service", "x": 40, "y": 150 },
+      {
+        "id": "topic-orders.placed.v1",
+        "stencil": "kafka.topic",
+        "label": "orders.placed.v1",
+        "x": 440,
+        "y": 104,
+        "group": "boundary-kafka-kafka-0.shop.internal-9092",
+        "props": { "contentType": "application/vnd.apache.avro" }
+      },
+      { "id": "topic-shipping.dispatched.v1", "stencil": "kafka.topic", "label": "shipping.dispatched.v1", "x": 440, "y": 224, "group": "boundary-kafka-kafka-0.shop.internal-9092" },
+      {
+        "id": "topic-shipping.orders-placed.dlq",
+        "stencil": "kafka.topic",
+        "label": "shipping.orders-placed.dlq",
+        "x": 828,
+        "y": 164,
+        "group": "boundary-kafka-kafka-0.shop.internal-9092",
+        "props": { "contentType": "application/vnd.apache.avro" }
+      },
+      { "id": "schema-registry", "stencil": "kafka.schema-registry", "label": "Schema Registry", "x": 40, "y": 302 }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "from": "topic-orders.placed.v1",
+        "to": "shipping-service",
+        "kind": "async",
+        "props": { "filter": ["OrderPlaced"], "group": "shipping-service" }
+      },
+      {
+        "id": "e2",
+        "from": "shipping-service",
+        "to": "topic-shipping.dispatched.v1",
+        "kind": "async",
+        "props": { "emits": "ShipmentDispatched" }
+      },
+      {
+        "id": "e3",
+        "from": "topic-orders.placed.v1",
+        "to": "topic-shipping.orders-placed.dlq",
+        "kind": "async",
+        "props": { "dlq": true }
+      },
+      { "id": "e4", "from": "shipping-service", "to": "schema-registry", "relation": "depends" }
+    ],
+    "simulations": [
+      {
+        "id": "imported-traffic",
+        "title": "Imported traffic",
+        "description": "2 minutes of steady traffic where messages start, from the import.",
+        "traffic": [
+          {
+            "id": "t1",
+            "node": "shipping-service",
+            "messageType": "ShipmentDispatched",
+            "shape": { "kind": "constant", "ratePerSec": 1, "durationMs": 120000 }
+          }
+        ]
+      }
+    ]
+  }
+}

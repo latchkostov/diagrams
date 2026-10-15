@@ -1,0 +1,47 @@
+<mxfile host="Diagrams" agent="Diagrams" version="24.0.0" type="device">
+  <diagram id="dg-1wkxen" name="Retries and dead-lettering">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <object id="0" dg_format="diagrams/v1" dg_description="maxDeliveryCount 3; the DLQ edge is inferred from the target's label.">
+          <mxCell />
+        </object>
+        <mxCell id="1" parent="0" />
+        <object id="dg-n-api" label="Orders API" dg_id="api" dg_stencil="service.dotnet">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#512BD41A;strokeColor=#512BD4;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="60" y="166" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-queue" label="orders&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;orders&lt;/span&gt;" dg_id="queue" dg_stencil="azure.service-bus.queue" dg_props="{&quot;maxDeliveryCount&quot;:3}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/integration/Service_Bus.svg;" vertex="1" parent="1">
+            <mxGeometry x="482" y="168" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-worker" label="Fulfilment" dg_id="worker" dg_stencil="azure.functions" dg_props="{&quot;failureRate&quot;:1,&quot;latencyMs&quot;:200}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/compute/Function_Apps.svg;" vertex="1" parent="1">
+            <mxGeometry x="842" y="48" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-dlq" label="Dead-letter queue&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;orders/$deadletterqueue&lt;/span&gt;" dg_id="dlq" dg_stencil="azure.service-bus.queue">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/integration/Service_Bus.svg;" vertex="1" parent="1">
+            <mxGeometry x="842" y="288" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-api-queue" label="" dg_id="api-queue" dg_kind="async">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-api" target="dg-n-queue">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-queue-worker" label="" dg_id="queue-worker" dg_kind="async">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-queue" target="dg-n-worker">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-queue-dlq" label="" dg_id="queue-dlq" dg_kind="async" dg_props="{&quot;dlq&quot;:true}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-queue" target="dg-n-dlq">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,110 @@
+{
+  "run": {
+    "time": 6690,
+    "totalMs": 15000,
+    "done": true,
+    "scale": 2,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "ledger", "label": "Ledger", "status": "pass", "value": 300 },
+      { "id": "archive", "label": "Archive", "status": "pass", "value": 300 },
+      { "id": "approval", "label": "Approval", "status": "pass", "value": 300 },
+      { "id": "no-dlq", "label": "No dlq", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "note", "label": "The ERP submits 300 high-value invoices. Only the approval subscription accepts them." },
+      { "atMs": 0, "kind": "traffic", "label": "300 high-value month-end invoices" },
+      { "atMs": 3000, "kind": "traffic", "label": "300 high-value month-end invoices ends" },
+      { "atMs": 5000, "kind": "note", "label": "Approved invoices become PostInvoice commands; originals remain archived." }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 1,
+      "nodes": {
+        "partner": { "replicas": [1, 1, 0] },
+        "apim": { "replicas": [1, 1, 0] },
+        "ingest": { "backlog": 1, "replicas": [1, 1, 0] },
+        "invoices": { "lag": { "finance-approval": 0, "ledger-posting": 0 }, "replicas": [1, 1, 0] },
+        "approval-sub": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "posting-sub": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "workflow": { "replicas": [1, 1, 0] },
+        "worker": { "replicas": [1, 1, 0] },
+        "commands": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "dlq": { "lag": { "queue": 0 }, "noConsumer": true, "replicas": [1, 1, 0] },
+        "cosmos": { "replicas": [1, 1, 0] },
+        "blob": { "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] },
+        "insights": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 6690,
+    "inSystem": 0,
+    "real": {
+      "partner": { "replicas": [1, 1, 0] },
+      "apim": { "replicas": [1, 1, 0] },
+      "ingest": { "processed": 300, "throughput": 2.7878525617162024, "replicas": [1, 1, 0] },
+      "invoices": {
+        "processed": 300,
+        "throughput": 3.763207334655933,
+        "lag": { "finance-approval": 0, "ledger-posting": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "approval-sub": {
+        "processed": 300,
+        "throughput": 5.079798565419919,
+        "lag": { "queue": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "posting-sub": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "workflow": { "processed": 300, "throughput": 8.029729297833441, "replicas": [1, 1, 0] },
+      "worker": { "processed": 300, "throughput": 17.039074702144664, "replicas": [1, 1, 0] },
+      "commands": { "processed": 300, "throughput": 10.839000815131527, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "dlq": { "lag": { "queue": 0 }, "noConsumer": true, "replicas": [1, 1, 0] },
+      "cosmos": { "processed": 300, "throughput": 21.763295052284814, "replicas": [1, 1, 0] },
+      "blob": { "processed": 300, "throughput": 3.5605012061544596, "replicas": [1, 1, 0] },
+      "vault": { "replicas": [1, 1, 0] },
+      "insights": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "partner-to-apim": 0, "apim-to-ingest": 0, "ingest-to-invoices": 150, "invoices-to-approval-sub": 150, "invoices-to-posting-sub": 0, "approval-sub-to-workflow": 150, "posting-sub-to-worker": 0, "workflow-to-commands": 150, "commands-to-worker": 150, "commands-to-dlq": 0, "worker-to-cosmos": 150, "ingest-to-blob": 150, "ingest-to-vault": 0, "ingest-to-insights": 0 }
+  },
+  "events": {
+    "total": 2400,
+    "byKind": { "inject": 150, "process": 1200, "deliver": 1050 },
+    "byNode": {
+      "ingest": { "inject": 150, "process": 150 },
+      "blob": { "deliver": 150, "process": 150 },
+      "invoices": { "deliver": 150, "process": 150 },
+      "approval-sub": { "deliver": 150, "process": 150 },
+      "workflow": { "deliver": 150, "process": 150 },
+      "commands": { "deliver": 150, "process": 150 },
+      "worker": { "deliver": 150, "process": 150 },
+      "cosmos": { "deliver": 150, "process": 150 }
+    },
+    "perSecond": ["aed204514abf", "6b004ac71bc0", "df6b608ea15b", "52e376877169", "80ac2a66e867", "598455188416", "-"]
+  },
+  "notes": [
+    { "atMs": 0, "text": "The ERP submits 300 high-value invoices. Only the approval subscription accepts them.", "focus": ["partner", "invoices", "approval-sub"] },
+    { "atMs": 5000, "text": "Approved invoices become PostInvoice commands; originals remain archived.", "focus": ["workflow", "commands", "cosmos"] }
+  ],
+  "latency": {
+    "journeys": { "done": 150, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 150, "min": 2150, "mean": 2213.5333333333333, "p50": 2210, "p90": 2250, "max": 2280 },
+    "waitMs": {
+      "workflow": { "count": 150, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "worker": { "count": 150, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "cosmos": { "count": 150, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "blob": { "count": 150, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "ingest": { "count": 150, "min": 130, "mean": 157.4, "p50": 160, "p90": 180, "max": 180 },
+      "workflow": { "count": 150, "min": 130, "mean": 157.53333333333333, "p50": 160, "p90": 180, "max": 180 },
+      "worker": { "count": 150, "min": 130, "mean": 153.6, "p50": 160, "p90": 180, "max": 180 },
+      "cosmos": { "count": 150, "min": 40, "mean": 44.93333333333333, "p50": 40, "p90": 50, "max": 50 },
+      "blob": { "count": 150, "min": 40, "mean": 45.2, "p50": 50, "p90": 50, "max": 50 }
+    }
+  }
+}

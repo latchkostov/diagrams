@@ -1,0 +1,61 @@
+{
+  "ran": [
+    "dead-letter",
+    "no-reader",
+    "sync-cycle",
+    "sync-chain",
+    "shared-database",
+    "entry-gateway",
+    "capacity",
+    "single-point",
+    "secret-identity",
+    "schema-registry"
+  ],
+  "off": [],
+  "findings": [
+    {
+      "id": "no-reader:message-b",
+      "rule": "no-reader",
+      "severity": "warning",
+      "target": "message-b",
+      "elements": ["message-b", "message-a"],
+      "fix": { "ops": null, "needsChoice": true }
+    },
+    {
+      "id": "secret-identity:secret-b",
+      "rule": "secret-identity",
+      "severity": "suggestion",
+      "target": "secret-b",
+      "elements": ["secret-b", "secret-a"],
+      "fix": {
+        "ops": [
+          { "op": "add_node", "kind": "aws.iam-role", "label": "secret source identity", "sublabel": "workload identity", "key": "new-identity-1" },
+          { "op": "connect", "from": "secret-a", "to": "new-identity-1", "relation": "identity" }
+        ],
+        "needsChoice": false
+      }
+    }
+  ],
+  "ignored": [],
+  "fixes": {
+    "secret-identity:secret-b (default)": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "summary": "+1 node, +1 connection",
+      "results": [
+        {
+          "i": 0,
+          "op": "add_node",
+          "id": "iam-role-1",
+          "label": "secret source identity",
+          "stencil": { "id": "aws.iam-role", "label": "IAM Role", "confidence": "high", "alternatives": [] }
+        },
+        { "i": 1, "op": "connect", "id": "e-1", "from": "secret-a", "to": "iam-role-1" }
+      ],
+      "nodes": 18,
+      "edges": 10,
+      "findingsAfter": ["no-reader:message-b"]
+    }
+  }
+}

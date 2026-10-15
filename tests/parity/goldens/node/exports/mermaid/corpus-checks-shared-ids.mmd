@@ -1,0 +1,21 @@
+---
+title: Checkout shared ids
+---
+flowchart LR
+  subgraph g_team ["Orders team"]
+    orders["Order service"]
+    db[("orders-db")]
+  end
+  web(["Storefront"])
+  app(["Mobile app"])
+  gw["Commerce gateway<br/>TLS · /api"]
+  billing["Billing"]
+  billing_db["Ledger"]
+  web -->|"HTTPS"| gw
+  gw -->|"POST /orders"| orders
+  app -->|"POST /orders"| orders
+  orders -->|"Commit order"| db
+  billing -->|"Read order totals"| db
+  billing -.->|"Invoice issued"| billing_db
+  linkStyle 5 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"Checkout shortcuts from a hand-written file that gives the Ledger service and Billing's flow into the database one id, billing-db.","nodes":{"web":["web","client.browser"],"app":["app","client.mobile"],"gw":["gw","nginx"],"orders":["orders","service.dotnet"],"db":["db","postgres"],"billing":["billing","service.java"],"billing_db":["billing-db","service.go"]},"groups":{"g_team":["team","k8s"]},"edges":["web-gw","gw-orders","app-orders","orders-db","billing-db","ledger-in"],"relations":{}}

@@ -1,0 +1,102 @@
+<mxfile host="Diagrams" agent="Diagrams" version="24.0.0" type="device">
+  <diagram id="dg-qdncvl" name="GCP streaming analytics">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <object id="0" dg_format="diagrams/v1" dg_description="Clickstream events flow through Pub/Sub and a Dataflow streaming job into BigQuery for Looker, with a raw archive and dead letters." dg_direction="LR" dg_simulations="[{&quot;id&quot;:&quot;morning-ramp&quot;,&quot;title&quot;:&quot;Morning ramp to 2,000 events/s&quot;,&quot;description&quot;:&quot;Traffic ramps from 200 to 2,000 events a second; a bad SDK release sends 200 malformed events.&quot;,&quot;seed&quot;:7,&quot;scale&quot;:50,&quot;setup&quot;:{&quot;props&quot;:{&quot;dataflow&quot;:{&quot;replicas&quot;:24}}},&quot;traffic&quot;:[{&quot;id&quot;:&quot;clicks&quot;,&quot;node&quot;:&quot;app&quot;,&quot;messageType&quot;:&quot;ClickEvent&quot;,&quot;label&quot;:&quot;Ramp 200 → 2,000 events/s&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;ramp&quot;,&quot;startRate&quot;:200,&quot;stages&quot;:[{&quot;durationMs&quot;:8000,&quot;targetRate&quot;:2000}]}},{&quot;id&quot;:&quot;malformed&quot;,&quot;node&quot;:&quot;app&quot;,&quot;messageType&quot;:&quot;MalformedEvent&quot;,&quot;label&quot;:&quot;200 malformed events&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;burst&quot;,&quot;count&quot;:200,&quot;atMs&quot;:4000,&quot;spreadMs&quot;:1000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Clicks ramp up as people wake up. Pub/Sub keeps each subscription separate: Dataflow and the raw archive each get every event. Each dot is 50 events.&quot;,&quot;focus&quot;:[&quot;app&quot;,&quot;pubsub-topic&quot;,&quot;dataflow&quot;,&quot;raw-archive&quot;]}},{&quot;atMs&quot;:4000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;A bad SDK release sends malformed events. Dataflow routes them to a dead-letter topic instead of failing the pipeline.&quot;,&quot;focus&quot;:[&quot;dataflow&quot;,&quot;dead-letters&quot;,&quot;dead-bucket&quot;],&quot;pause&quot;:true}},{&quot;atMs&quot;:7000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Sessions stream into BigQuery within seconds, so Looker's dashboards are current.&quot;,&quot;focus&quot;:[&quot;bigquery&quot;,&quot;looker&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;archive&quot;,&quot;label&quot;:&quot;Every event is archived raw&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;raw-archive&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:9000,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;sessions&quot;,&quot;label&quot;:&quot;8,800 valid events reach BigQuery&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;bigquery&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:8800,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;dead&quot;,&quot;label&quot;:&quot;200 malformed events are kept for replay&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;dead-bucket&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:200,&quot;when&quot;:&quot;end&quot;}]},{&quot;id&quot;:&quot;autoscale&quot;,&quot;title&quot;:&quot;Backlog until Dataflow autoscales&quot;,&quot;description&quot;:&quot;600 events a second meet two workers; the subscription backlog grows until autoscaling adds six more.&quot;,&quot;seed&quot;:7,&quot;scale&quot;:20,&quot;setup&quot;:{&quot;props&quot;:{&quot;dataflow&quot;:{&quot;replicas&quot;:2}}},&quot;traffic&quot;:[{&quot;id&quot;:&quot;clicks&quot;,&quot;node&quot;:&quot;app&quot;,&quot;messageType&quot;:&quot;ClickEvent&quot;,&quot;label&quot;:&quot;600 events/s for 10 seconds&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:600,&quot;durationMs&quot;:10000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Two Dataflow workers handle about 200 events a second, but 600 arrive. Unacknowledged messages pile up in the subscription.&quot;,&quot;focus&quot;:[&quot;pubsub-topic&quot;,&quot;dataflow&quot;]}},{&quot;atMs&quot;:4000,&quot;action&quot;:{&quot;do&quot;:&quot;props&quot;,&quot;node&quot;:&quot;dataflow&quot;,&quot;props&quot;:{&quot;replicas&quot;:8}}},{&quot;atMs&quot;:4000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Autoscaling sees the backlog and adds six workers. The raw archive was never behind: its subscription is independent.&quot;,&quot;focus&quot;:[&quot;dataflow&quot;,&quot;raw-archive&quot;],&quot;pause&quot;:true}},{&quot;atMs&quot;:9000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;With 800 events a second of capacity, the backlog drains and BigQuery catches up.&quot;,&quot;focus&quot;:[&quot;pubsub-topic&quot;,&quot;bigquery&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;backlog&quot;,&quot;label&quot;:&quot;Backlog grows with two workers&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;pubsub-topic&quot;,&quot;field&quot;:&quot;lag&quot;,&quot;group&quot;:&quot;dataflow&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;at&quot;,&quot;atMs&quot;:3500},{&quot;id&quot;:&quot;drained&quot;,&quot;label&quot;:&quot;Backlog drains after autoscaling&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;pubsub-topic&quot;,&quot;field&quot;:&quot;lag&quot;,&quot;group&quot;:&quot;dataflow&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;sessions&quot;,&quot;label&quot;:&quot;All 6,000 events reach BigQuery&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;bigquery&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:6000,&quot;when&quot;:&quot;end&quot;}]}]">
+          <mxCell />
+        </object>
+        <mxCell id="1" parent="0" />
+        <object id="dg-g-gcp" label="Google Cloud · analytics project" dg_id="gcp" dg_tone="gcp">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#4285F4;strokeColor=#4285F4;" vertex="1" parent="1">
+            <mxGeometry x="380" y="80" width="1860" height="392" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-app" label="Mobile and web apps&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Clickstream SDK&lt;/span&gt;" dg_id="app" dg_stencil="client.mobile" dg_props="{&quot;ratePerSec&quot;:50,&quot;messageType&quot;:&quot;ClickEvent&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#10B9811A;strokeColor=#10B981;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="60" y="246" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-collector" label="Event collector&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Validate · batch publish&lt;/span&gt;" dg_id="collector" dg_stencil="gcp.cloud-run" dg_props="{&quot;concurrency&quot;:400,&quot;latencyMs&quot;:40}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#4285F41A;strokeColor=#4285F4;fontSize=12;" vertex="1" parent="dg-g-gcp">
+            <mxGeometry x="60" y="166" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-pubsub-topic" label="clickstream&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Topic · 7-day retention&lt;/span&gt;" dg_id="pubsub-topic" dg_stencil="gcp.pubsub" dg_props="{&quot;partitions&quot;:64}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#4285F41A;strokeColor=#4285F4;fontSize=12;" vertex="1" parent="dg-g-gcp">
+            <mxGeometry x="440" y="166" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-dataflow" label="Sessionize job&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Streaming · 1-min windows&lt;/span&gt;" dg_id="dataflow" dg_stencil="gcp.dataflow" dg_props="{&quot;group&quot;:&quot;dataflow&quot;,&quot;replicas&quot;:4,&quot;concurrency&quot;:4,&quot;latencyMs&quot;:40,&quot;emits&quot;:{&quot;ClickEvent&quot;:&quot;SessionRow&quot;,&quot;MalformedEvent&quot;:&quot;DeadLetter&quot;}}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#4285F41A;strokeColor=#4285F4;fontSize=12;" vertex="1" parent="dg-g-gcp">
+            <mxGeometry x="820" y="46" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-raw-archive" label="Raw archive&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Avro · by hour&lt;/span&gt;" dg_id="raw-archive" dg_stencil="gcp.cloud-storage" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#4285F41A;strokeColor=#4285F4;fontSize=12;" vertex="1" parent="dg-g-gcp">
+            <mxGeometry x="820" y="286" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-bigquery" label="Analytics dataset&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Storage Write API&lt;/span&gt;" dg_id="bigquery" dg_stencil="gcp.bigquery" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#4285F41A;strokeColor=#4285F4;fontSize=12;" vertex="1" parent="dg-g-gcp">
+            <mxGeometry x="1200" y="46" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-looker" label="Product dashboards&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Funnels · retention&lt;/span&gt;" dg_id="looker" dg_stencil="looker" dg_props="{}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#4285F41A;strokeColor=#4285F4;fontSize=12;" vertex="1" parent="dg-g-gcp">
+            <mxGeometry x="1580" y="46" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-dead-letters" label="clickstream-dlq&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Unparseable events&lt;/span&gt;" dg_id="dead-letters" dg_stencil="gcp.pubsub" dg_props="{&quot;partitions&quot;:64}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#4285F41A;strokeColor=#4285F4;fontSize=12;" vertex="1" parent="dg-g-gcp">
+            <mxGeometry x="1200" y="166" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-dead-bucket" label="Dead letters&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Inspect · replay&lt;/span&gt;" dg_id="dead-bucket" dg_stencil="gcp.cloud-storage" dg_props="{&quot;latencyMs&quot;:1}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#4285F41A;strokeColor=#4285F4;fontSize=12;" vertex="1" parent="dg-g-gcp">
+            <mxGeometry x="1580" y="166" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-app-to-collector" label="HTTPS batches" dg_id="app-to-collector" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-app" target="dg-n-collector">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-collector-to-topic" label="Publish" dg_id="collector-to-topic" dg_kind="async" dg_props="{&quot;travelMs&quot;:300}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-collector" target="dg-n-pubsub-topic">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-topic-to-dataflow" label="sub: dataflow" dg_id="topic-to-dataflow" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;group&quot;:&quot;dataflow&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-pubsub-topic" target="dg-n-dataflow">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-topic-to-raw-archive" label="Cloud Storage subscription" dg_id="topic-to-raw-archive" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;group&quot;:&quot;archive&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-pubsub-topic" target="dg-n-raw-archive">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-dataflow-to-bigquery" label="Sessions" dg_id="dataflow-to-bigquery" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200,&quot;filter&quot;:[&quot;SessionRow&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-dataflow" target="dg-n-bigquery">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-dataflow-to-dead-letters" label="Parse errors" dg_id="dataflow-to-dead-letters" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;filter&quot;:[&quot;DeadLetter&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-dataflow" target="dg-n-dead-letters">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-dead-letters-to-dead-bucket" label="sub: archive" dg_id="dead-letters-to-dead-bucket" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;group&quot;:&quot;dlq-archive&quot;,&quot;dlq&quot;:false}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-dead-letters" target="dg-n-dead-bucket">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-looker-to-bigquery" label="SQL" dg_id="looker-to-bigquery" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-looker" target="dg-n-bigquery">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

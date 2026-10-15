@@ -1,0 +1,39 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "RAG support assistant",
+    "direction": "LR",
+    "nodes": [
+      { "id": "user", "stencil": "client.user", "label": "Help center chat", "sublabel": "Customers ask questions", "x": 40, "y": 160 },
+      { "id": "rag_api", "stencil": "generic.service", "label": "RAG API", "sublabel": "Retrieve · prompt · stream", "x": 433, "y": 160 },
+      { "id": "cache", "stencil": "generic.database", "label": "Semantic cache", "sublabel": "Similar question → answer", "x": 823, "y": 100 },
+      { "id": "feedback", "stencil": "generic.service", "label": "rag.feedback", "sublabel": "Answers + ratings", "x": 823, "y": 220 },
+      { "id": "llm", "stencil": "generic.service", "label": "Claude API", "sublabel": "Answers with citations", "x": 1600, "y": 160 },
+      { "id": "vector_db", "stencil": "generic.database", "label": "Vector index", "sublabel": "pgvector · HNSW", "x": 1207, "y": 40 },
+      { "id": "eval_job", "stencil": "generic.scheduler", "label": "Eval job", "sublabel": "LLM-as-judge · group: evals", "x": 1207, "y": 160 },
+      { "id": "quality", "stencil": "generic.service", "label": "Answer quality", "sublabel": "Groundedness · thumbs up", "x": 1600, "y": 280 },
+      { "id": "docs", "stencil": "generic.webhook", "label": "Content updates", "sublabel": "Confluence · Drive webhooks", "x": 40, "y": 280 },
+      { "id": "ingest_q", "stencil": "generic.scheduler", "label": "Ingest jobs", "sublabel": "One job per changed page", "x": 433, "y": 280 },
+      { "id": "embed_worker", "stencil": "generic.service", "label": "Chunk and embed", "sublabel": "~800 tokens · 100 overlap", "x": 823, "y": 340 },
+      { "id": "embeddings", "stencil": "generic.service", "label": "Embeddings API", "sublabel": "text-embedding-3-large", "x": 1207, "y": 400 },
+      { "id": "vault", "stencil": "vault", "label": "Vault", "sublabel": "LLM API keys", "x": 1207, "y": 280 }
+    ],
+    "edges": [
+      { "id": "e1-user-rag_api", "from": "user", "to": "rag_api", "label": "POST /ask", "kind": "sync" },
+      { "id": "e2-rag_api-cache", "from": "rag_api", "to": "cache", "label": "Cache lookup", "kind": "sync" },
+      { "id": "e3-rag_api-vector_db", "from": "rag_api", "to": "vector_db", "label": "Top-k chunks", "kind": "sync" },
+      { "id": "e4-rag_api-llm", "from": "rag_api", "to": "llm", "label": "Prompt + context", "kind": "sync" },
+      { "id": "e5-rag_api-feedback", "from": "rag_api", "to": "feedback", "label": "Rated answers", "kind": "async" },
+      { "id": "e6-feedback-eval_job", "from": "feedback", "to": "eval_job", "label": "group: evals", "kind": "async" },
+      { "id": "e7-eval_job-llm", "from": "eval_job", "to": "llm", "label": "Grade answer", "kind": "sync" },
+      { "id": "e8-eval_job-quality", "from": "eval_job", "to": "quality", "label": "Scores", "kind": "async" },
+      { "id": "e9-docs-ingest_q", "from": "docs", "to": "ingest_q", "label": "Page changed", "kind": "async" },
+      { "id": "e10-ingest_q-embed_worker", "from": "ingest_q", "to": "embed_worker", "label": "Competing workers", "kind": "async" },
+      { "id": "e11-embed_worker-embeddings", "from": "embed_worker", "to": "embeddings", "label": "Embed batch", "kind": "sync" },
+      { "id": "e12-embed_worker-vector_db", "from": "embed_worker", "to": "vector_db", "label": "Upsert chunks", "kind": "sync" },
+      { "id": "e13-rag_api-vault", "from": "rag_api", "to": "vault", "kind": "async", "relation": "secret" },
+      { "id": "e14-embed_worker-vault", "from": "embed_worker", "to": "vault", "kind": "async", "relation": "secret" }
+    ]
+  }
+}

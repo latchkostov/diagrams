@@ -1,0 +1,23 @@
+---
+title: Traffic storm
+---
+flowchart LR
+  web(["Web"])
+  mobile(["Mobile"])
+  partner(["Partner webhook"])
+  gw["Front Door"]
+  orders["Orders"]
+  topic["order-events<br/>orders"]
+  billing["Billing"]
+  search["Search indexer"]
+  db[("Orders DB")]
+  web --> gw
+  mobile --> gw
+  partner --> gw
+  gw --> orders
+  orders -.-> topic
+  topic -.-> billing
+  topic -.-> search
+  billing --> db
+  linkStyle 4,5,6 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"Bursty clients, a bottleneck service, and a fan-out topic.","nodes":{"web":["web","client.browser"],"mobile":["mobile","client.mobile"],"partner":["partner","generic.webhook"],"gw":["gw","azure.front-door"],"orders":["orders","service.dotnet"],"topic":["topic","azure.service-bus.topic"],"billing":["billing","azure.functions"],"search":["search","azure.container-apps"],"db":["db","azure.cosmos-db"]},"edges":["web-gw","mobile-gw","partner-gw","gw-orders","orders-topic","topic-billing","topic-search","billing-db"],"relations":{}}

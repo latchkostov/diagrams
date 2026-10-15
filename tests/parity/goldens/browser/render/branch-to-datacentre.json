@@ -1,0 +1,46 @@
+{
+  "viewport": "translate(120.251px, 40px) scale(0.505587)",
+  "nodes": {
+    "group:branch": { "kind": "group", "box": "translate(960px, 0px) 340×312", "text": "Branch office" },
+    "group:dc": { "kind": "group", "box": "translate(340px, 320px) 1020×1112", "text": "Data centre" },
+    "customers": { "kind": "node", "box": "translate(560px, 40px) 220×72", "text": "Customers internet" },
+    "staff": { "kind": "node", "box": "translate(1000px, 40px) 220×72", "text": "Branch staff 120 desks" },
+    "branch-router": { "kind": "node", "box": "translate(1000px, 200px) 220×72", "text": "Branch router Catalyst 8200 · SD-WAN" },
+    "edge-router": { "kind": "node", "box": "translate(560px, 360px) 220×72", "text": "Edge routers 2 × MX204 · BGP" },
+    "firewall": { "kind": "node", "box": "translate(560px, 520px) 229×72", "text": "Firewall pair PA-3440 · active-standby" },
+    "spine-1": { "kind": "node", "box": "translate(380px, 680px) 220×72", "text": "Spine 1 Arista 7050SX3" },
+    "spine-2": { "kind": "node", "box": "translate(740px, 680px) 220×72", "text": "Spine 2 Arista 7050SX3" },
+    "leaf": { "kind": "node", "box": "translate(560px, 840px) 229×72", "text": "Services leaf Nexus 93180YC · vPC pair" },
+    "adc": { "kind": "node", "box": "translate(560px, 1000px) 220×72", "text": "Load balancer BIG-IP pair · VIP shop" },
+    "web-1": { "kind": "node", "box": "translate(380px, 1160px) 220×72", "text": "Storefront 1 web pool" },
+    "web-2": { "kind": "node", "box": "translate(740px, 1160px) 220×72", "text": "Storefront 2 web pool" },
+    "orders-db": { "kind": "node", "box": "translate(380px, 1320px) 220×72", "text": "Orders DB primary" },
+    "payments": { "kind": "node", "box": "translate(1060px, 1160px) 220×72", "text": "Payments API PCI zone" }
+  },
+  "edges": {
+    "customers-edge": "M670,112 L670,232.5 Q670,236 666.5,236 L666.5,236 Q663,236 663,239.5 L663,360",
+    "staff-branch": "M1110,112 L1110,200",
+    "branch-edge": "M1110,272 L1110,334 Q1110,344 1100,344 L685,344 Q677,344 677,352 L677,360",
+    "edge-firewall": "M670,432 L670,473.8 Q670,476 672.3,476 L672.3,476 Q674.5,476 674.5,478.3 L674.5,520",
+    "firewall-spine-1": "M667.5,592 L667.5,626 Q667.5,636 657.5,636 L500,636 Q490,636 490,646 L490,680",
+    "firewall-spine-2": "M681.5,592 L681.5,626 Q681.5,636 691.5,636 L840,636 Q850,636 850,646 L850,680",
+    "firewall-payments": "M789,556 L1160,556 Q1170,556 1170,566 L1170,1160",
+    "spine-1-leaf": "M490,752 L490,786 Q490,796 500,796 L657.5,796 Q667.5,796 667.5,806 L667.5,840",
+    "spine-2-leaf": "M850,752 L850,786 Q850,796 840,796 L691.5,796 Q681.5,796 681.5,806 L681.5,840",
+    "leaf-adc": "M674.5,912 L674.5,953.8 Q674.5,956 672.3,956 L672.3,956 Q670,956 670,958.3 L670,1000",
+    "adc-web-1": "M663,1072 L663,1106 Q663,1116 653,1116 L500,1116 Q490,1116 490,1126 L490,1160",
+    "adc-web-2": "M677,1072 L677,1103.5 Q677,1113.5 687,1113.5 L840,1113.5 Q850,1113.5 850,1123.5 L850,1160",
+    "web-1-db": "M490,1232 L490,1272.5 Q490,1276 486.5,1276 L486.5,1276 Q483,1276 483,1279.5 L483,1320",
+    "web-2-db": "M850,1232 L850,1266 Q850,1276 840,1276 L507,1276 Q497,1276 497,1286 L497,1320",
+    "web-1-payments": "M600,1196 L660,1196 Q670,1196 670,1186 L670,1134.5 Q670,1124.5 680,1124.5 L1000,1124.5 Q1010,1124.5 1010,1134.5 L1010,1179 Q1010,1189 1020,1189 L1060,1189",
+    "web-2-payments": "M960,1196 L1006.5,1196 Q1010,1196 1010,1199.5 L1010,1199.5 Q1010,1203 1013.5,1203 L1060,1203"
+  },
+  "labels": {
+    "customers-edge": { "style": "transform: translate(-50%, -50%) translate(670px, 175px); --fe-w: 47px; --fe-h: 19px;", "text": "HTTPS" },
+    "staff-branch": { "style": "transform: translate(-50%, -50%) translate(1110px, 150px); --fe-w: 83px; --fe-h: 19px;", "text": "Back office" },
+    "branch-edge": { "style": "transform: translate(-50%, -50%) translate(893.5px, 344px); --fe-w: 95px; --fe-h: 19px;", "text": "SD-WAN tunnel" },
+    "firewall-spine-1": { "style": "transform: translate(-50%, -50%) translate(578.75px, 636px); --fe-w: 77px; --fe-h: 19px;", "text": "Allow: web" },
+    "firewall-payments": { "style": "transform: translate(-50%, -50%) translate(1170px, 851px); --fe-w: 155px; --fe-h: 19px;", "text": "Deny: branch → payments" },
+    "web-1-payments": { "style": "transform: translate(-50%, -50%) translate(820px, 1124.5px); --fe-w: 53px; --fe-h: 19px;", "text": "Charge" }
+  }
+}

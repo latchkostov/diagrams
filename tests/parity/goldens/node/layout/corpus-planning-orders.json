@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "checkout": [40, 40], "orders": [400, 40] },
+    "TB": { "checkout": [40, 40], "orders": [40, 200] }
+  },
+  "tidy": { "checkout": [0, 140], "orders": [360, 140] },
+  "arrange": {
+    "alignLeft": { "checkout": [0, 140], "orders": [0, 140] },
+    "alignMiddle": { "checkout": [0, 140], "orders": [640, 140] },
+    "distributeH": { "checkout": [0, 140], "orders": [640, 140] },
+    "distributeV": { "checkout": [0, 140], "orders": [640, 140] },
+    "spreadH": { "checkout": [0, 140], "orders": [640, 140] },
+    "boundaryAround": { "x": -40, "y": 76, "width": 940, "height": 176 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "checkout": [40, 40], "orders": [400, 40] },
+    "groups": {}
+  }
+}

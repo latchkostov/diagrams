@@ -1,0 +1,29 @@
+---
+title: Routing obstacle course
+---
+flowchart LR
+  subgraph g_g ["Boundary across the middle"]
+  end
+  n0_0["Node 0.0<br/>col 0 · row 0"]
+  n0_1["Node 0.1<br/>col 0 · row 1"]
+  n0_2["Node 0.2<br/>col 0 · row 2"]
+  n1_0["Node 1.0<br/>col 1 · row 0"]
+  n1_1["Node 1.1<br/>col 1 · row 1"]
+  n1_2[("Node 1.2<br/>col 1 · row 2")]
+  n2_0["Node 2.0<br/>col 2 · row 0"]
+  n2_1[("Node 2.1<br/>col 2 · row 1")]
+  n2_2["Node 2.2<br/>col 2 · row 2"]
+  n3_0[("Node 3.0<br/>col 3 · row 0")]
+  n3_1["Node 3.1<br/>col 3 · row 1"]
+  n3_2["Node 3.2<br/>col 3 · row 2"]
+  n0_1 -.->|"Skips every column"| n3_1
+  n0_0 -.->|"Diagonal across"| n2_2
+  n1_1 -.->|"Fan 0"| n2_0
+  n1_1 -.->|"Fan 1"| n2_1
+  n1_1 -.->|"Fan 2"| n2_2
+  n0_0 -->|"In 0"| n1_1
+  n0_2 -->|"In 2"| n1_1
+  n3_0 -->|"Back to the start"| n0_0
+  n3_2 -.->|"Reply"| n2_2
+  n2_2 -->|"Request"| n3_2
+  linkStyle 0,1,2,3,4,8 stroke-dasharray: 6 4

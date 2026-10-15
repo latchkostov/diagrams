@@ -1,0 +1,31 @@
+---
+title: CDC search and analytics
+---
+flowchart LR
+  subgraph g_onprem ["On-prem · retail datacenter"]
+    sql[("Retail SQL Server<br/>retail-prod · CDC enabled")]
+  end
+  subgraph g_platform ["Kubernetes · CDC platform"]
+    debezium["Debezium SQL Server<br/>retail-cdc · snapshot then tail"]
+    orders_topic["retail.dbo.orders<br/>CDC envelope · key: order_id"]
+    customers_topic["retail.dbo.customers<br/>CDC envelope · key: customer_id"]
+    processor["Retail projections<br/>Kafka Streams · group: retail-projector"]
+    s3_sink["S3 sink connector<br/>retail-raw-sink · Parquet"]
+    registry["CDC schemas<br/>Avro envelopes · compatibility checks"]
+  end
+  search[("Retail search<br/>orders-v1 · customer-v1 indexes")]
+  warehouse[("Retail warehouse<br/>RETAIL_ANALYTICS · MERGE by key")]
+  lake[("Retail raw lake<br/>s3://retail-cdc-raw/table/date/")]
+  sql -.->|"CDC · transaction log"| debezium
+  debezium -.->|"Order row changes"| orders_topic
+  debezium -.->|"Customer row changes"| customers_topic
+  orders_topic -.->|"group: retail-projector"| processor
+  customers_topic -.->|"group: retail-projector"| processor
+  processor -->|"Bulk index / delete"| search
+  processor -->|"Batch MERGE"| warehouse
+  orders_topic -.->|"group: retail-raw-sink"| s3_sink
+  customers_topic -.->|"group: retail-raw-sink"| s3_sink
+  s3_sink -->|"PutObject · Parquet"| lake
+  debezium -->|"Register schema"| registry
+  linkStyle 0,1,2,3,4,7,8 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"Debezium captures retail table changes for search projections, a warehouse and raw lake retention.","nodes":{"sql":["sql","sqlserver"],"debezium":["debezium","kafka.connect"],"orders_topic":["orders-topic","kafka.topic"],"customers_topic":["customers-topic","kafka.topic"],"processor":["processor","service.java"],"search":["search","elasticsearch"],"warehouse":["warehouse","snowflake"],"s3_sink":["s3-sink","kafka.connect"],"lake":["lake","aws.s3"],"registry":["registry","kafka.schema-registry"]},"groups":{"g_onprem":["onprem","onprem"],"g_platform":["platform","k8s"]},"edges":["sql-to-debezium","debezium-to-orders-topic","debezium-to-customers-topic","orders-topic-to-processor","customers-topic-to-processor","processor-to-search","processor-to-warehouse","orders-topic-to-s3-sink","customers-topic-to-s3-sink","s3-sink-to-lake","debezium-to-registry"],"relations":{}}

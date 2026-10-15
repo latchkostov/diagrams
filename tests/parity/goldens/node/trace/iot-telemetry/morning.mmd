@@ -1,0 +1,16 @@
+---
+title: "TelemetryReading #1 · 570 ms end to end · 1 copy"
+---
+sequenceDiagram
+  participant devices as Factory sensors
+  participant hub as plant.telemetry.v1
+  participant hot as Device state projector
+  participant stream as Telemetry streaming
+  participant cosmos as Latest device state
+  participant blob as Telemetry lake
+  devices-)hub: TelemetryReading (+0.00 s)<br/>AMQP/TLS · telemetry
+  hub-)hot: TelemetryReading (+0.10 s)<br/>group: hot-state
+  hub-)stream: TelemetryReading (+0.10 s)<br/>group: lake-stream
+  hot->>cosmos: DeviceStateUpdated (+0.33 s)<br/>Upsert latest reading
+  stream-)blob: TelemetryReading (+0.33 s)<br/>Commit Delta microbatch
+  cosmos-->>hot: reply (+0.57 s)

@@ -1,0 +1,13 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Planning: shared capacity",
+    "direction": "LR",
+    "nodes": [
+      { "id": "checkout", "stencil": "generic.service", "label": "Checkout", "x": 40, "y": 40 },
+      { "id": "orders", "stencil": "generic.service", "label": "Orders", "x": 400, "y": 40 }
+    ],
+    "edges": [{ "id": "e1-checkout-orders", "from": "checkout", "to": "orders", "kind": "sync" }]
+  }
+}

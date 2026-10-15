@@ -1,0 +1,38 @@
+---
+title: Relationships
+---
+flowchart LR
+  message_a["message source"]
+  message_b["message target"]
+  request_a["request source"]
+  request_b["request target"]
+  config_a["config source"]
+  config_b["config target"]
+  secret_a["secret source"]
+  secret_b["secret target"]
+  identity_a["identity source"]
+  identity_b["identity target"]
+  telemetry_a["telemetry source"]
+  telemetry_b["telemetry target"]
+  deploy_a["deploy source"]
+  deploy_b["deploy target"]
+  depends_a["depends source"]
+  depends_b["depends target"]
+  kv["Key Vault"]
+  message_a -.->|"Message"| message_b
+  request_a -->|"Request"| request_b
+  config_a -.->|"reads config"| config_b
+  secret_a -.->|"reads secrets"| secret_b
+  identity_a -.->|"gets tokens from: execution role"| identity_b
+  telemetry_a -.->|"sends telemetry to"| telemetry_b
+  deploy_a -.->|"deploys to: helm upgrade"| deploy_b
+  depends_a -.->|"depends on: resolves orders.internal"| depends_b
+  config_b -.->|"reads secrets"| kv
+  linkStyle 0 stroke-dasharray: 6 4
+  linkStyle 2 stroke:#2A8A83,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 3,8 stroke:#A6720C,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 4 stroke:#5A61C4,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 5 stroke:#7C6D98,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 6 stroke:#3B8752,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 7 stroke:#556075,stroke-width:1.25px,stroke-dasharray: 2 4
+%% diagrams:{"v":1,"nodes":{"message_a":["message-a","service.node"],"message_b":["message-b","kafka.topic"],"request_a":["request-a","aws.api-gateway"],"request_b":["request-b","service.java"],"config_a":["config-a","service.dotnet"],"config_b":["config-b","azure.app-config"],"secret_a":["secret-a","service.go"],"secret_b":["secret-b","aws.secrets-manager"],"identity_a":["identity-a","aws.lambda"],"identity_b":["identity-b","aws.iam-role"],"telemetry_a":["telemetry-a","service.python"],"telemetry_b":["telemetry-b","azure.app-insights"],"deploy_a":["deploy-a","github-actions"],"deploy_b":["deploy-b","azure.aks"],"depends_a":["depends-a","azure.aks"],"depends_b":["depends-b","generic.dns"],"kv":["kv","azure.key-vault"]},"edges":["edge-message","edge-request","edge-config","edge-secret","edge-identity","edge-telemetry","edge-deploy","edge-depends","edge-references"],"relations":{"2":"config","3":"secret","4":"identity","5":"telemetry","6":"deploy","7":"depends","8":"secret"}}

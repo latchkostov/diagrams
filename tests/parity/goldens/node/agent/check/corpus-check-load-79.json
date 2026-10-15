@@ -1,0 +1,25 @@
+{
+  "all": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "single-point:api",
+          "rule": "single-point",
+          "severity": "suggestion",
+          "title": "Every request goes through one api",
+          "message": "It runs 1 replica, and every request from Web goes through it: if it stops, Web gets nothing.",
+          "targets": ["api", "web"],
+          "fix": {
+            "label": "Set replicas to 2",
+            "ops": [{ "op": "update", "target": "api", "props": { "replicas": 2 } }]
+          }
+        }
+      ],
+      "summary": "0 warnings, 1 suggestion.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  },
+  "warnings": { "isError": false, "output": { "findings": [], "summary": "0 warnings, 1 suggestion." } },
+  "oneRule": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 2 checks ran." } }
+}

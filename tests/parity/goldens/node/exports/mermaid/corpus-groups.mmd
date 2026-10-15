@@ -1,0 +1,41 @@
+---
+title: Group tones
+---
+flowchart LR
+  subgraph g_azure ["azure boundary"]
+    azure_1["azure service"]
+    azure_2["azure topic<br/>azure.events"]
+  end
+  subgraph g_aws ["aws boundary"]
+    aws_1["aws service"]
+    aws_2["aws topic<br/>aws.events"]
+  end
+  subgraph g_gcp ["gcp boundary"]
+    gcp_1["gcp service"]
+    gcp_2["gcp topic<br/>gcp.events"]
+  end
+  subgraph g_k8s ["k8s boundary"]
+    k8s_1["k8s service"]
+    k8s_2["k8s topic<br/>k8s.events"]
+  end
+  subgraph g_onprem ["onprem boundary"]
+    onprem_1["onprem service"]
+    onprem_2["onprem topic<br/>onprem.events"]
+  end
+  subgraph g_neutral ["neutral boundary"]
+    neutral_1["neutral service"]
+    neutral_2["neutral topic<br/>neutral.events"]
+  end
+  azure_1 -.-> azure_2
+  aws_1 -.-> aws_2
+  azure_2 -.-> aws_1
+  gcp_1 -.-> gcp_2
+  aws_2 -.-> gcp_1
+  k8s_1 -.-> k8s_2
+  gcp_2 -.-> k8s_1
+  onprem_1 -.-> onprem_2
+  k8s_2 -.-> onprem_1
+  neutral_1 -.-> neutral_2
+  onprem_2 -.-> neutral_1
+  linkStyle 0,1,2,3,4,5,6,7,8,9,10 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"Every boundary tone, with cross-boundary edges.","nodes":{"azure_1":["azure-1","service.node"],"azure_2":["azure-2","kafka.topic"],"aws_1":["aws-1","service.node"],"aws_2":["aws-2","kafka.topic"],"gcp_1":["gcp-1","service.node"],"gcp_2":["gcp-2","kafka.topic"],"k8s_1":["k8s-1","service.node"],"k8s_2":["k8s-2","kafka.topic"],"onprem_1":["onprem-1","service.node"],"onprem_2":["onprem-2","kafka.topic"],"neutral_1":["neutral-1","service.node"],"neutral_2":["neutral-2","kafka.topic"]},"groups":{"g_azure":["azure","azure"],"g_aws":["aws","aws"],"g_gcp":["gcp","gcp"],"g_k8s":["k8s","k8s"],"g_onprem":["onprem","onprem"],"g_neutral":["neutral","neutral"]},"edges":["azure-in","aws-in","aws-cross","gcp-in","gcp-cross","k8s-in","k8s-cross","onprem-in","onprem-cross","neutral-in","neutral-cross"],"relations":{}}

@@ -1,0 +1,148 @@
+{
+  "format": "diagrams/v1",
+  "title": "Traffic storm",
+  "description": "Bursty clients, a bottleneck service, and a fan-out topic.",
+  "nodes": [
+    {
+      "id": "web",
+      "stencil": "client.browser",
+      "label": "Web",
+      "x": 40,
+      "y": 40,
+      "props": {
+        "ratePerSec": 15,
+        "messageType": "WebOrder"
+      }
+    },
+    {
+      "id": "mobile",
+      "stencil": "client.mobile",
+      "label": "Mobile",
+      "x": 40,
+      "y": 160,
+      "props": {
+        "ratePerSec": 15,
+        "messageType": "AppOrder"
+      }
+    },
+    {
+      "id": "partner",
+      "stencil": "generic.webhook",
+      "label": "Partner webhook",
+      "x": 40,
+      "y": 280,
+      "props": {
+        "ratePerSec": 15,
+        "messageType": "PartnerOrder"
+      }
+    },
+    {
+      "id": "gw",
+      "stencil": "azure.front-door",
+      "label": "Front Door",
+      "x": 400,
+      "y": 160
+    },
+    {
+      "id": "orders",
+      "stencil": "service.dotnet",
+      "label": "Orders",
+      "x": 760,
+      "y": 160,
+      "props": {
+        "latencyMs": 250,
+        "concurrency": 4
+      }
+    },
+    {
+      "id": "topic",
+      "stencil": "azure.service-bus.topic",
+      "label": "order-events",
+      "x": 1120,
+      "y": 160,
+      "sublabel": "orders",
+      "props": {
+        "partitions": 12
+      }
+    },
+    {
+      "id": "billing",
+      "stencil": "azure.functions",
+      "label": "Billing",
+      "x": 1480,
+      "y": 40,
+      "props": {
+        "concurrency": 12,
+        "latencyMs": 150
+      }
+    },
+    {
+      "id": "search",
+      "stencil": "azure.container-apps",
+      "label": "Search indexer",
+      "x": 1480,
+      "y": 280,
+      "props": {
+        "concurrency": 12,
+        "latencyMs": 150
+      }
+    },
+    {
+      "id": "db",
+      "stencil": "azure.cosmos-db",
+      "label": "Orders DB",
+      "x": 1840,
+      "y": 160
+    }
+  ],
+  "edges": [
+    {
+      "id": "web-gw",
+      "from": "web",
+      "to": "gw",
+      "kind": "sync"
+    },
+    {
+      "id": "mobile-gw",
+      "from": "mobile",
+      "to": "gw",
+      "kind": "sync"
+    },
+    {
+      "id": "partner-gw",
+      "from": "partner",
+      "to": "gw",
+      "kind": "sync"
+    },
+    {
+      "id": "gw-orders",
+      "from": "gw",
+      "to": "orders",
+      "kind": "sync"
+    },
+    {
+      "id": "orders-topic",
+      "from": "orders",
+      "to": "topic",
+      "kind": "async"
+    },
+    {
+      "id": "topic-billing",
+      "from": "topic",
+      "to": "billing",
+      "kind": "async"
+    },
+    {
+      "id": "topic-search",
+      "from": "topic",
+      "to": "search",
+      "kind": "async"
+    },
+    {
+      "id": "billing-db",
+      "from": "billing",
+      "to": "db",
+      "kind": "sync"
+    }
+  ]
+}

@@ -1,0 +1,149 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": { "a": { "replicas": [1, 1, 0] }, "b": { "replicas": [1, 1, 0] }, "c": { "replicas": [1, 1, 0] } }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 1,
+      "nodes": {
+        "a": { "processed": 20, "throughput": 2.528714056021835, "replicas": [1, 1, 0] },
+        "b": { "processed": 39, "throughput": 4.598989041331051, "replicas": [1, 1, 0] },
+        "c": { "processed": 20, "throughput": 2.528714056021835, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 1,
+      "nodes": {
+        "a": { "processed": 40, "throughput": 2.528828859462367, "replicas": [1, 1, 0] },
+        "b": { "processed": 79, "throughput": 4.599258813206927, "replicas": [1, 1, 0] },
+        "c": { "processed": 40, "throughput": 2.528828859462367, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 1,
+      "nodes": {
+        "a": { "processed": 60, "throughput": 2.528828864674435, "replicas": [1, 1, 0] },
+        "b": { "processed": 119, "throughput": 4.59925882545455, "replicas": [1, 1, 0] },
+        "c": { "processed": 60, "throughput": 2.528828864674435, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 1,
+      "nodes": {
+        "a": { "processed": 80, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "b": { "processed": 159, "throughput": 4.599258825455104, "replicas": [1, 1, 0] },
+        "c": { "processed": 80, "throughput": 2.528828864674673, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 1,
+      "nodes": {
+        "a": { "processed": 100, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "b": { "processed": 199, "throughput": 4.599258825455104, "replicas": [1, 1, 0] },
+        "c": { "processed": 100, "throughput": 2.528828864674673, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 1,
+      "nodes": {
+        "a": { "processed": 120, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "b": { "processed": 239, "throughput": 4.599258825455104, "replicas": [1, 1, 0] },
+        "c": { "processed": 120, "throughput": 2.528828864674673, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 1,
+    "real": {
+      "a": { "processed": 120, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+      "b": { "processed": 239, "throughput": 4.599258825455104, "replicas": [1, 1, 0] },
+      "c": { "processed": 120, "throughput": 2.528828864674673, "replicas": [1, 1, 0] }
+    },
+    "edges": { "ab": 119 }
+  },
+  "events": {
+    "total": 598,
+    "byKind": { "process": 479, "deliver": 119 },
+    "byNode": { "a": { "process": 120 }, "b": { "process": 239, "deliver": 119 }, "c": { "process": 120 } },
+    "perSecond": [
+      "221f126d8252",
+      "ece66e77c403",
+      "6470a07bdc1e",
+      "4d920bee17fa",
+      "b5277730fbb1",
+      "040018117292",
+      "37790992f2a8",
+      "cc9b417c63ee",
+      "b8541c5bb5cc",
+      "905d8a1a931f",
+      "bc95f40d66e2",
+      "74aba7656355",
+      "a3913d8ed3f3",
+      "01229b2fc301",
+      "4067203ddcdb",
+      "a227dce375cd",
+      "a6abd1eb010b",
+      "c864f201c0ac",
+      "a04105fcf72a",
+      "3763dd89a0f5",
+      "563e923672da",
+      "c5c9e21a39d9",
+      "7a532eda2008",
+      "f86acc4d9306",
+      "d05cd98b6837",
+      "bb6e9933386b",
+      "14fcc9231e40",
+      "48743deff4fa",
+      "98dd73a10600",
+      "b1c911140b91",
+      "72bf498e089f",
+      "7e774bd3e197",
+      "a2f9c69f5e8c",
+      "8c6187dfbb67",
+      "a91f55083898",
+      "ec484d609959",
+      "7012286f7210",
+      "41b33392e4c8",
+      "ab3da2b3684c",
+      "60d5de051c41",
+      "63dd4b3e3d63",
+      "57f0a1cd987d",
+      "e1accff3ac64",
+      "ad37b35b9f57",
+      "10c634fd2ecd",
+      "89ae9229dcd6",
+      "d82d64c9f74a",
+      "964fb561df2e",
+      "0b7af6fe560b",
+      "c531061eba98",
+      "f3a50b771a36",
+      "7f6bd6b26088",
+      "4cdb37521b14",
+      "0f1584ab8f9e",
+      "dc481c1b5043",
+      "eb3ec074c89f",
+      "cf59e92ec588",
+      "870c816d3d6f",
+      "6c802454847f",
+      "7939de4f7553",
+      "753e1d33b7ad"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 359, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 359, "min": 0, "mean": 99.44289693593315, "p50": 0, "p90": 300, "max": 300 },
+    "waitMs": {},
+    "processMs": {}
+  }
+}

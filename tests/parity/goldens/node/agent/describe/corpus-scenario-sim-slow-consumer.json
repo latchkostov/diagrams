@@ -1,0 +1,150 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"Slow consumer lag\" · direction LR · 4 nodes, 3 connections, 0 boundaries, 0 simulations\ndescription: \"Fast and slow consumer groups on one topic.\"\nnodes:\n  \"devices\" \"client.iot\" (\"IoT Device\") \"Devices\" props={\"ratePerSec\":6,\"messageType\":\"Reading\"} capabilities=[{\"kind\":\"publishes\",\"edge\":\"devices-topic\",\"peer\":\"topic\"}] explanation=undefined\n  \"topic\" \"azure.event-hubs\" (\"Event Hubs\") \"telemetry\" / \"telemetry\" props={\"partitions\":8} capabilities=[] explanation=undefined\n  \"fast\" \"service.go\" (\"Go Service\") \"Alerts\" / \"fast\" props={\"latencyMs\":80,\"concurrency\":8} capabilities=[{\"kind\":\"consumes\",\"edge\":\"topic-fast\",\"peer\":\"topic\",\"group\":\"topic-fast\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"fast\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":100,\"offered\":6,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":8}],\"slots\":8,\"seconds\":0.08,\"utilization\":0.06,\"growth\":0,\"contributors\":[{\"edge\":\"topic-fast\",\"node\":\"topic\",\"label\":\"telemetry\",\"rate\":6}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"slow\" \"service.python\" (\"Python Service\") \"Reports\" / \"slow\" props={\"latencyMs\":1500,\"concurrency\":1} capabilities=[{\"kind\":\"consumes\",\"edge\":\"topic-slow\",\"peer\":\"topic\",\"group\":\"topic-slow\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"slow\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0.6666666666666666,\"offered\":6,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":8}],\"slots\":1,\"seconds\":1.5,\"utilization\":9,\"growth\":5.333333333333333,\"contributors\":[{\"edge\":\"topic-slow\",\"node\":\"topic\",\"label\":\"telemetry\",\"rate\":6}],\"target\":0.5,\"minimumReplicas\":9,\"targetReplicas\":18,\"changes\":null,\"converged\":true}\nconnections:\n  \"devices-topic\" \"devices\" -> \"topic\" async\n  \"topic-fast\" \"topic\" -> \"fast\" async\n  \"topic-slow\" \"topic\" -> \"slow\" async"
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "Slow consumer lag",
+      "description": "Fast and slow consumer groups on one topic.",
+      "direction": "LR",
+      "nodes": [
+        {
+          "id": "devices",
+          "stencil": "client.iot",
+          "label": "Devices",
+          "x": 40,
+          "y": 160,
+          "props": { "ratePerSec": 6, "messageType": "Reading" },
+          "capabilities": [{ "kind": "publishes", "edge": "devices-topic", "peer": "topic" }]
+        },
+        {
+          "id": "topic",
+          "stencil": "azure.event-hubs",
+          "label": "telemetry",
+          "x": 400,
+          "y": 160,
+          "sublabel": "telemetry",
+          "props": { "partitions": 8 },
+          "capabilities": []
+        },
+        {
+          "id": "fast",
+          "stencil": "service.go",
+          "label": "Alerts",
+          "x": 760,
+          "y": 40,
+          "sublabel": "fast",
+          "props": { "latencyMs": 80, "concurrency": 8 },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "topic-fast",
+              "peer": "topic",
+              "group": "topic-fast",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "fast",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 100,
+            "offered": 6,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 8
+              }
+            ],
+            "slots": 8,
+            "seconds": 0.08,
+            "utilization": 0.06,
+            "growth": 0,
+            "contributors": [{ "edge": "topic-fast", "node": "topic", "label": "telemetry", "rate": 6 }],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "slow",
+          "stencil": "service.python",
+          "label": "Reports",
+          "x": 760,
+          "y": 280,
+          "sublabel": "slow",
+          "props": { "latencyMs": 1500, "concurrency": 1 },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "topic-slow",
+              "peer": "topic",
+              "group": "topic-slow",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "slow",
+            "role": "processor",
+            "status": "up",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0.6666666666666666,
+            "offered": 6,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 8
+              }
+            ],
+            "slots": 1,
+            "seconds": 1.5,
+            "utilization": 9,
+            "growth": 5.333333333333333,
+            "contributors": [{ "edge": "topic-slow", "node": "topic", "label": "telemetry", "rate": 6 }],
+            "target": 0.5,
+            "minimumReplicas": 9,
+            "targetReplicas": 18,
+            "changes": null,
+            "converged": true
+          }
+        }
+      ],
+      "edges": [
+        { "id": "devices-topic", "from": "devices", "to": "topic", "kind": "async" },
+        { "id": "topic-fast", "from": "topic", "to": "fast", "kind": "async" },
+        { "id": "topic-slow", "from": "topic", "to": "slow", "kind": "async" }
+      ],
+      "groups": [],
+      "annotations": [],
+      "simulations": [],
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"Slow consumer lag\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\ndescription: \"Fast and slow consumer groups on one topic.\"\nnodes:\n  \"devices\" \"client.iot\" (\"IoT Device\") \"Devices\" props={\"ratePerSec\":6,\"messageType\":\"Reading\"} capabilities=[{\"kind\":\"publishes\",\"edge\":\"devices-topic\",\"peer\":\"topic\"}] explanation=undefined\n  \"topic\" \"azure.event-hubs\" (\"Event Hubs\") \"telemetry\" / \"telemetry\" props={\"partitions\":8} capabilities=[] explanation=undefined\nconnections:\n  \"devices-topic\" \"devices\" -> \"topic\" async"
+  }
+}

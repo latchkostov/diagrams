@@ -1,0 +1,9 @@
+---
+title: Load just under the busy line
+---
+flowchart LR
+  web(["Web"])
+  api["api"]
+  db[("Ledger")]
+  web --> api
+  api --> db

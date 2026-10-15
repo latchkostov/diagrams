@@ -1,0 +1,118 @@
+{
+  "run": {
+    "time": 12230,
+    "totalMs": 19000,
+    "done": true,
+    "scale": 10,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "us", "label": "us-east-1 holds all 3,000 orders", "status": "pass", "value": 3000 },
+      { "id": "eu", "label": "eu-west-1 holds all 3,000 orders", "status": "pass", "value": 3000 },
+      { "id": "no-drops", "label": "Nothing is dropped", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "note", "label": "Active/active: both regions serve customers and accept writes. Neither waits for the other. Each dot is 10 checkouts." },
+      { "atMs": 0, "kind": "traffic", "label": "Sale: 200 → 600 checkouts/s" },
+      { "atMs": 3000, "kind": "note", "label": "The sale peaks at 600 a second. Each region carries half, with room to take all of it if the other fails." },
+      { "atMs": 7000, "kind": "note", "label": "Writes replicate asynchronously in both directions; conflicting updates resolve last-writer-wins. When the sale ends, the two replicas hold the same orders." },
+      { "atMs": 9000, "kind": "traffic", "label": "Sale: 200 → 600 checkouts/s ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "users": { "replicas": [1, 1, 0] },
+        "r53": { "replicas": [1, 1, 0] },
+        "alb-us": { "replicas": [1, 1, 0] },
+        "api-us": { "replicas": [6, 6, 0] },
+        "table-us": { "replicas": [1, 1, 0] },
+        "alb-eu": { "replicas": [1, 1, 0] },
+        "api-eu": { "replicas": [6, 6, 0] },
+        "table-eu": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 15,
+      "nodes": {
+        "users": { "processed": 300, "throughput": 8.283078640619797, "replicas": [1, 1, 0] },
+        "r53": { "processed": 300, "throughput": 9.623564399883309, "replicas": [1, 1, 0] },
+        "alb-us": { "processed": 150, "throughput": 6.097936877284311, "replicas": [1, 1, 0] },
+        "api-us": { "processed": 150, "throughput": 8.038840217965008, "replicas": [6, 6, 0] },
+        "table-us": { "processed": 292, "throughput": 21.247917561787425, "replicas": [1, 1, 0] },
+        "alb-eu": { "processed": 150, "throughput": 6.383153333889969, "replicas": [1, 1, 0] },
+        "api-eu": { "processed": 150, "throughput": 8.370805833565207, "replicas": [6, 6, 0] },
+        "table-eu": { "processed": 293, "throughput": 22.098473531832642, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 12230,
+    "inSystem": 0,
+    "real": {
+      "users": { "processed": 3000, "throughput": 8.906664429171931, "replicas": [1, 1, 0] },
+      "r53": { "processed": 3000, "throughput": 10.348067722301897, "replicas": [1, 1, 0] },
+      "alb-us": { "processed": 1500, "throughput": 6.5570157948156185, "replicas": [1, 1, 0] },
+      "api-us": { "processed": 1500, "throughput": 8.644038687502798, "replicas": [6, 6, 0] },
+      "table-us": { "processed": 3000, "throughput": 35.764646718738014, "replicas": [1, 1, 0] },
+      "alb-eu": { "processed": 1500, "throughput": 6.863704573092625, "replicas": [1, 1, 0] },
+      "api-eu": { "processed": 1500, "throughput": 9.000996102548326, "replicas": [6, 6, 0] },
+      "table-eu": { "processed": 3000, "throughput": 35.15931231052791, "replicas": [1, 1, 0] }
+    },
+    "edges": { "users-to-r53": 300, "r53-to-alb-us": 150, "r53-to-alb-eu": 150, "alb-us-to-api-us": 150, "alb-eu-to-api-eu": 150, "api-us-to-table-us": 150, "api-eu-to-table-eu": 150, "table-us-to-table-eu": 150, "table-eu-to-table-us": 150 }
+  },
+  "events": {
+    "total": 3600,
+    "byKind": { "inject": 300, "process": 1800, "deliver": 1500 },
+    "byNode": {
+      "users": { "inject": 300, "process": 300 },
+      "r53": { "deliver": 300, "process": 300 },
+      "alb-us": { "deliver": 150, "process": 150 },
+      "alb-eu": { "deliver": 150, "process": 150 },
+      "api-us": { "deliver": 150, "process": 150 },
+      "api-eu": { "deliver": 150, "process": 150 },
+      "table-us": { "deliver": 300, "process": 300 },
+      "table-eu": { "deliver": 300, "process": 300 }
+    },
+    "perSecond": [
+      "076713d787a0",
+      "f6881fe5ae3e",
+      "d3755403fc2a",
+      "5ccbd9f0705d",
+      "f033c014a2be",
+      "4275af986851",
+      "2758b1174fc3",
+      "6e9d4b524eb6",
+      "d5ef1ca215f7",
+      "feb9be39fb60",
+      "06f532022d9e",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 0, "text": "Active/active: both regions serve customers and accept writes. Neither waits for the other. Each dot is 10 checkouts.", "focus": ["api-us", "api-eu"] },
+    { "atMs": 3000, "text": "The sale peaks at 600 a second. Each region carries half, with room to take all of it if the other fails.", "focus": ["alb-us", "alb-eu"] },
+    { "atMs": 7000, "text": "Writes replicate asynchronously in both directions; conflicting updates resolve last-writer-wins. When the sale ends, the two replicas hold the same orders.", "focus": ["table-us", "table-eu"] }
+  ],
+  "latency": {
+    "journeys": { "done": 300, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 300, "min": 1720, "mean": 1745.6, "p50": 1750, "p90": 1760, "max": 1770 },
+    "waitMs": {
+      "r53": { "count": 300, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "alb-us": { "count": 150, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "api-us": { "count": 150, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "alb-eu": { "count": 150, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "api-eu": { "count": 150, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "r53": { "count": 300, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "alb-us": { "count": 150, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "api-us": { "count": 150, "min": 100, "mean": 124.93333333333334, "p50": 130, "p90": 140, "max": 150 },
+      "alb-eu": { "count": 150, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "api-eu": { "count": 150, "min": 100, "mean": 126.26666666666667, "p50": 130, "p90": 150, "max": 150 }
+    }
+  }
+}

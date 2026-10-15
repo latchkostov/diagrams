@@ -1,0 +1,37 @@
+---
+title: Kafka order pipeline
+---
+flowchart LR
+  subgraph g_aks ["AKS · commerce workloads + Kafka"]
+    orders["Order service<br/>.NET 10 · group: orders-payments"]
+    order_events["orders.created.v1<br/>OrderPlaced · keyed by orderId"]
+    inventory["Inventory service<br/>group: inventory-reservations"]
+    payments["Payments service<br/>group: payment-authorizations"]
+    notifications["Notification service<br/>group: customer-notifications"]
+  end
+  shopper(["Storefront<br/>Browser / mobile checkout"])
+  gateway["Commerce gateway<br/>TLS termination · /api/orders"]
+  stock_db[("Inventory database<br/>Reservations · SKU availability")]
+  payment_db[("Payment ledger<br/>Idempotency keys · authorizations")]
+  notify_cache[("Notification dedupe<br/>Order / template key · TTL 24h")]
+  payment_events["payments.completed.v1<br/>PaymentCompleted · keyed by orderId"]
+  order_db[("Orders database<br/>Order state · transactional outbox")]
+  schemas["Schema registry<br/>Avro · backward compatible"]
+  metrics["Commerce metrics<br/>Scrape interval: 15s"]
+  dashboard["Order operations<br/>Lag · checkout latency · failures"]
+  shopper -->|"HTTPS"| gateway
+  gateway -->|"POST /orders"| orders
+  orders -->|"Commit order + outbox"| order_db
+  orders -.->|"OrderPlaced"| order_events
+  order_events -.->|"Reserve inventory"| inventory
+  order_events -.->|"Authorize payment"| payments
+  order_events -.->|"Send confirmation"| notifications
+  inventory -->|"Reserve SKUs"| stock_db
+  payments -->|"Record authorization"| payment_db
+  notifications -->|"SET NX · dedupe"| notify_cache
+  payments -.->|"PaymentCompleted"| payment_events
+  payment_events -.->|"group: orders-payments"| orders
+  orders -->|"Fetch Avro schema"| schemas
+  metrics -->|"GET /metrics"| orders
+  dashboard -->|"PromQL"| metrics
+  linkStyle 3,4,5,6,10,11 stroke-dasharray: 6 4

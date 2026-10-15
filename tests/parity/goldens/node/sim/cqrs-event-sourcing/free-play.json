@@ -1,0 +1,339 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "app": { "replicas": [1, 1, 0] },
+        "gateway": { "replicas": [1, 1, 0] },
+        "command-handler": { "replicas": [1, 1, 0] },
+        "event-store": { "lag": { "integration": 0, "balances": 0, "statements": 0 }, "replicas": [1, 1, 0] },
+        "publisher": { "replicas": [1, 1, 0] },
+        "integration-topic": { "lag": { "fraud": 0 }, "replicas": [1, 1, 0] },
+        "query-api": { "replicas": [1, 1, 0] },
+        "balances-db": { "replicas": [1, 1, 0] },
+        "statements": { "replicas": [1, 1, 0] },
+        "balance-proj": { "replicas": [1, 1, 0] },
+        "statement-proj": { "replicas": [1, 1, 0] },
+        "fraud": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 57,
+      "nodes": {
+        "app": { "processed": 200, "throughput": 20.40106029531822, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 195, "inFlight": 1, "throughput": 19.600870516505953, "replicas": [1, 1, 0] },
+        "command-handler": { "processed": 190, "inFlight": 1, "throughput": 19.90137880768444, "replicas": [1, 1, 0] },
+        "event-store": {
+          "processed": 186,
+          "throughput": 19.934142642687668,
+          "lag": { "integration": 0, "balances": 0, "statements": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "publisher": { "processed": 179, "inFlight": 1, "throughput": 20.009260979885056, "replicas": [1, 1, 0] },
+        "integration-topic": {
+          "processed": 173,
+          "throughput": 20.001742058025396,
+          "lag": { "fraud": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "query-api": { "replicas": [1, 1, 0] },
+        "balances-db": { "processed": 175, "throughput": 19.979297077872975, "replicas": [1, 1, 0] },
+        "statements": { "processed": 174, "inFlight": 1, "throughput": 19.801714569017246, "replicas": [1, 1, 0] },
+        "balance-proj": { "processed": 179, "inFlight": 1, "throughput": 19.80025141003195, "replicas": [1, 1, 0] },
+        "statement-proj": { "processed": 179, "inFlight": 1, "throughput": 20.61872393907215, "replicas": [1, 1, 0] },
+        "fraud": { "processed": 166, "inFlight": 1, "throughput": 20.290463651138108, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 58,
+      "nodes": {
+        "app": { "processed": 400, "throughput": 20.40198650202273, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 395, "inFlight": 1, "throughput": 19.60201315739627, "replicas": [1, 1, 0] },
+        "command-handler": { "processed": 390, "inFlight": 1, "throughput": 19.92199402505703, "replicas": [1, 1, 0] },
+        "event-store": {
+          "processed": 386,
+          "throughput": 19.92829427059882,
+          "lag": { "integration": 0, "balances": 0, "statements": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "publisher": { "processed": 379, "inFlight": 1, "throughput": 19.986257028895153, "replicas": [1, 1, 0] },
+        "integration-topic": {
+          "processed": 373,
+          "throughput": 19.981190875765726,
+          "lag": { "fraud": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "query-api": { "replicas": [1, 1, 0] },
+        "balances-db": { "processed": 375, "throughput": 19.975429963529425, "replicas": [1, 1, 0] },
+        "statements": { "processed": 374, "throughput": 19.7820673890548, "replicas": [1, 1, 0] },
+        "balance-proj": { "processed": 379, "inFlight": 1, "throughput": 19.781683265181123, "replicas": [1, 1, 0] },
+        "statement-proj": { "processed": 378, "inFlight": 2, "throughput": 19.5965950201893, "replicas": [1, 1, 0] },
+        "fraud": { "processed": 365, "inFlight": 2, "throughput": 19.32758852585928, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 58,
+      "nodes": {
+        "app": { "processed": 600, "throughput": 20.401986544072436, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 595, "inFlight": 1, "throughput": 19.602013209272084, "replicas": [1, 1, 0] },
+        "command-handler": { "processed": 590, "inFlight": 1, "throughput": 19.891298851995508, "replicas": [1, 1, 0] },
+        "event-store": {
+          "processed": 586,
+          "throughput": 19.910555894532894,
+          "lag": { "integration": 0, "balances": 0, "statements": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "publisher": { "processed": 579, "inFlight": 1, "throughput": 19.990979563499604, "replicas": [1, 1, 0] },
+        "integration-topic": {
+          "processed": 573,
+          "throughput": 20.01000051270526,
+          "lag": { "fraud": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "query-api": { "replicas": [1, 1, 0] },
+        "balances-db": { "processed": 575, "throughput": 19.964223158983167, "replicas": [1, 1, 0] },
+        "statements": { "processed": 574, "inFlight": 1, "throughput": 19.72373634052362, "replicas": [1, 1, 0] },
+        "balance-proj": { "processed": 579, "inFlight": 1, "throughput": 19.78134216203691, "replicas": [1, 1, 0] },
+        "statement-proj": { "processed": 579, "inFlight": 1, "throughput": 20.519214219733207, "replicas": [1, 1, 0] },
+        "fraud": { "processed": 565, "inFlight": 2, "throughput": 19.335293083581004, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 57,
+      "nodes": {
+        "app": { "processed": 800, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 795, "inFlight": 1, "throughput": 19.60201320927437, "replicas": [1, 1, 0] },
+        "command-handler": { "processed": 790, "inFlight": 1, "throughput": 19.940128569871227, "replicas": [1, 1, 0] },
+        "event-store": {
+          "processed": 786,
+          "throughput": 19.927315643889717,
+          "lag": { "integration": 0, "balances": 0, "statements": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "publisher": { "processed": 779, "inFlight": 1, "throughput": 20.07620797407075, "replicas": [1, 1, 0] },
+        "integration-topic": {
+          "processed": 773,
+          "throughput": 20.042888673130754,
+          "lag": { "fraud": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "query-api": { "replicas": [1, 1, 0] },
+        "balances-db": { "processed": 775, "throughput": 20.028358336101192, "replicas": [1, 1, 0] },
+        "statements": { "processed": 774, "inFlight": 1, "throughput": 19.835449160820502, "replicas": [1, 1, 0] },
+        "balance-proj": { "processed": 779, "inFlight": 1, "throughput": 19.86870171231371, "replicas": [1, 1, 0] },
+        "statement-proj": { "processed": 778, "inFlight": 2, "throughput": 19.651363563810268, "replicas": [1, 1, 0] },
+        "fraud": { "processed": 766, "inFlight": 1, "throughput": 20.35456802431073, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 57,
+      "nodes": {
+        "app": { "processed": 1000, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 995, "inFlight": 1, "throughput": 19.60201320927437, "replicas": [1, 1, 0] },
+        "command-handler": { "processed": 990, "inFlight": 1, "throughput": 19.84135409885805, "replicas": [1, 1, 0] },
+        "event-store": {
+          "processed": 986,
+          "throughput": 19.860828297769356,
+          "lag": { "integration": 0, "balances": 0, "statements": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "publisher": { "processed": 979, "inFlight": 1, "throughput": 19.976055944331026, "replicas": [1, 1, 0] },
+        "integration-topic": {
+          "processed": 973,
+          "throughput": 19.955743092091083,
+          "lag": { "fraud": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "query-api": { "replicas": [1, 1, 0] },
+        "balances-db": { "processed": 975, "throughput": 19.959588850138704, "replicas": [1, 1, 0] },
+        "statements": { "processed": 974, "throughput": 19.768679306638845, "replicas": [1, 1, 0] },
+        "balance-proj": { "processed": 979, "inFlight": 1, "throughput": 19.758741740076516, "replicas": [1, 1, 0] },
+        "statement-proj": { "processed": 978, "inFlight": 2, "throughput": 19.576325127682697, "replicas": [1, 1, 0] },
+        "fraud": { "processed": 966, "inFlight": 1, "throughput": 20.23609123069435, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 57,
+      "nodes": {
+        "app": { "processed": 1200, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 1195, "inFlight": 1, "throughput": 19.60201320927437, "replicas": [1, 1, 0] },
+        "command-handler": { "processed": 1190, "inFlight": 1, "throughput": 19.83223102365079, "replicas": [1, 1, 0] },
+        "event-store": {
+          "processed": 1186,
+          "throughput": 19.861938423161288,
+          "lag": { "integration": 0, "balances": 0, "statements": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "publisher": { "processed": 1179, "inFlight": 1, "throughput": 19.998853822972343, "replicas": [1, 1, 0] },
+        "integration-topic": {
+          "processed": 1173,
+          "throughput": 19.975791838180594,
+          "lag": { "fraud": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "query-api": { "replicas": [1, 1, 0] },
+        "balances-db": { "processed": 1175, "throughput": 19.947237059226193, "replicas": [1, 1, 0] },
+        "statements": { "processed": 1175, "throughput": 20.749681307624847, "replicas": [1, 1, 0] },
+        "balance-proj": { "processed": 1179, "inFlight": 1, "throughput": 19.757042013993708, "replicas": [1, 1, 0] },
+        "statement-proj": { "processed": 1179, "inFlight": 1, "throughput": 20.56232592443886, "replicas": [1, 1, 0] },
+        "fraud": { "processed": 1165, "inFlight": 2, "throughput": 19.25120575378518, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 57,
+    "real": {
+      "app": { "processed": 1200, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+      "gateway": { "processed": 1195, "inFlight": 1, "throughput": 19.60201320927437, "replicas": [1, 1, 0] },
+      "command-handler": { "processed": 1190, "inFlight": 1, "throughput": 19.83223102365079, "replicas": [1, 1, 0] },
+      "event-store": {
+        "processed": 1186,
+        "throughput": 19.861938423161288,
+        "lag": { "integration": 0, "balances": 0, "statements": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "publisher": { "processed": 1179, "inFlight": 1, "throughput": 19.998853822972343, "replicas": [1, 1, 0] },
+      "integration-topic": {
+        "processed": 1173,
+        "throughput": 19.975791838180594,
+        "lag": { "fraud": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "query-api": { "replicas": [1, 1, 0] },
+      "balances-db": { "processed": 1175, "throughput": 19.947237059226193, "replicas": [1, 1, 0] },
+      "statements": { "processed": 1175, "throughput": 20.749681307624847, "replicas": [1, 1, 0] },
+      "balance-proj": { "processed": 1179, "inFlight": 1, "throughput": 19.757042013993708, "replicas": [1, 1, 0] },
+      "statement-proj": { "processed": 1179, "inFlight": 1, "throughput": 20.56232592443886, "replicas": [1, 1, 0] },
+      "fraud": { "processed": 1165, "inFlight": 2, "throughput": 19.25120575378518, "replicas": [1, 1, 0] }
+    },
+    "edges": {
+      "app-to-gateway": 1196,
+      "gateway-to-command-handler": 1191,
+      "gateway-to-query-api": 0,
+      "command-handler-to-event-store": 1186,
+      "event-store-to-publisher": 1180,
+      "publisher-to-integration-topic": 1173,
+      "event-store-to-balance-proj": 1180,
+      "event-store-to-statement-proj": 1180,
+      "balance-proj-to-balances-db": 1175,
+      "statement-proj-to-statements": 1175,
+      "query-api-to-balances-db": 0,
+      "query-api-to-statements": 0,
+      "integration-topic-to-fraud": 1167
+    }
+  },
+  "events": {
+    "total": 24799,
+    "byKind": { "process": 12996, "deliver": 11803 },
+    "byNode": {
+      "app": { "process": 1200 },
+      "gateway": { "deliver": 1196, "process": 1195 },
+      "command-handler": { "deliver": 1191, "process": 1190 },
+      "event-store": { "deliver": 1186, "process": 1186 },
+      "publisher": { "deliver": 1180, "process": 1179 },
+      "balance-proj": { "deliver": 1180, "process": 1179 },
+      "statement-proj": { "deliver": 1180, "process": 1179 },
+      "balances-db": { "deliver": 1175, "process": 1175 },
+      "statements": { "deliver": 1175, "process": 1175 },
+      "integration-topic": { "deliver": 1173, "process": 1173 },
+      "fraud": { "deliver": 1167, "process": 1165 }
+    },
+    "perSecond": [
+      "de2045d97f7f",
+      "8045b001276c",
+      "60dfd6e5a292",
+      "f24dd5d46b96",
+      "70a6d9813e71",
+      "d3a49c2ac7c6",
+      "0e2de658ca2a",
+      "566792ad3d74",
+      "6680c7e02218",
+      "db5b8d1c3a2c",
+      "7c950d39153c",
+      "4f344532e5d9",
+      "51aaf64122e5",
+      "06b96669168b",
+      "06e418a58189",
+      "411f92909440",
+      "803428440b86",
+      "413ff855e187",
+      "b6676f0b2ebd",
+      "5ded0e2b583d",
+      "ea781db98c76",
+      "05e06f6c35e7",
+      "b03be7718706",
+      "b6fb27c444e4",
+      "dd059ed8d077",
+      "225b7496a439",
+      "5645edae9545",
+      "f66fb95c2d41",
+      "ea52a516a484",
+      "f4c363ed9601",
+      "df0092282da4",
+      "5749e6e06554",
+      "87e0b2217f3b",
+      "64ddf3db7ec7",
+      "bc936f30af06",
+      "93ae8dcbe9dc",
+      "f4b2432ddb63",
+      "156776883115",
+      "b46bef97df81",
+      "ef4f44d89fd6",
+      "6544b55077c2",
+      "c94622bd68ab",
+      "a9b1c585179f",
+      "6d73efa90b22",
+      "3e25093cf7a6",
+      "c265e7434597",
+      "1316a52c40e4",
+      "4140c44c6879",
+      "3708b223c1c7",
+      "c3769fde0200",
+      "b76750ba1b72",
+      "baab7efc755a",
+      "b3ba1800665e",
+      "b946b9c56acc",
+      "8009325eb69f",
+      "65bbd7cc74a2",
+      "89190dd57c54",
+      "84e0fb87871a",
+      "711088a3b842",
+      "750b26216806",
+      "dc0d1354e7d7"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 1165, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 1165, "min": 1660, "mean": 1694.480686695279, "p50": 1690, "p90": 1710, "max": 1730 },
+    "waitMs": {
+      "gateway": { "count": 1165, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "command-handler": { "count": 1165, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "publisher": { "count": 1165, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "balances-db": { "count": 1165, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "statements": { "count": 1165, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "balance-proj": { "count": 1165, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "statement-proj": { "count": 1165, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "fraud": { "count": 1165, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "gateway": { "count": 1165, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "command-handler": { "count": 1165, "min": 50, "mean": 64.97854077253218, "p50": 60, "p90": 70, "max": 80 },
+      "publisher": { "count": 1165, "min": 50, "mean": 54.81545064377682, "p50": 50, "p90": 60, "max": 60 },
+      "balances-db": { "count": 1165, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "statements": { "count": 1165, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "balance-proj": { "count": 1165, "min": 40, "mean": 45.15021459227468, "p50": 50, "p90": 50, "max": 50 },
+      "statement-proj": { "count": 1165, "min": 70, "mean": 84.47210300429184, "p50": 80, "p90": 100, "max": 100 },
+      "fraud": { "count": 1165, "min": 50, "mean": 64.68669527896996, "p50": 60, "p90": 70, "max": 80 }
+    }
+  }
+}

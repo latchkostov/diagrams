@@ -1,0 +1,25 @@
+{
+  "format": "diagrams/v1",
+  "title": "Overlapping layers",
+  "nodes": [
+    {
+      "id": "service",
+      "stencil": "service.go",
+      "label": "Service",
+      "x": 100,
+      "y": 100
+    }
+  ],
+  "edges": [],
+  "annotations": [
+    {
+      "id": "note",
+      "kind": "note",
+      "text": "Overlapping note",
+      "x": 100,
+      "y": 100,
+      "width": 220,
+      "height": 120
+    }
+  ]
+}

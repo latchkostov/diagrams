@@ -1,0 +1,53 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Outbox and saga checkout",
+    "direction": "LR",
+    "groups": [
+      { "id": "g_kafka", "label": "Kafka · saga channels", "tone": "neutral", "x": 2244, "y": 280, "width": 1056, "height": 296 }
+    ],
+    "nodes": [
+      { "id": "inventory_cmds", "stencil": "generic.service", "label": "inventory.commands", "sublabel": "Reserve · Release", "x": 2284, "y": 344, "group": "g_kafka" },
+      { "id": "saga_replies", "stencil": "generic.saga", "label": "saga.replies", "sublabel": "Step results", "x": 3040, "y": 464, "group": "g_kafka" },
+      { "id": "payment_cmds", "stencil": "generic.service", "label": "payments.commands", "sublabel": "ChargePayment", "x": 2284, "y": 464, "group": "g_kafka" },
+      { "id": "payments_dlq", "stencil": "generic.service", "label": "payments.commands.dlq", "sublabel": "Dead letters · replayable", "x": 2644, "y": 404, "group": "g_kafka" },
+      { "id": "client", "stencil": "client.mobile", "label": "Mobile checkout", "sublabel": "Place order", "x": 80, "y": 284 },
+      { "id": "order_api", "stencil": "generic.service", "label": "Order service", "sublabel": "Owns order state", "x": 440, "y": 284 },
+      { "id": "orders_db", "stencil": "generic.database", "label": "Orders database", "sublabel": "orders + outbox table", "x": 809, "y": 284 },
+      { "id": "outbox_relay", "stencil": "kafka.connect", "label": "Outbox relay", "sublabel": "Debezium outbox router", "x": 1169, "y": 284 },
+      { "id": "order_events", "stencil": "generic.topic", "label": "orders.events", "sublabel": "key: orderId", "x": 1534, "y": 284 },
+      { "id": "notifications", "stencil": "generic.email", "label": "Notification service", "sublabel": "group: notifications", "x": 1894, "y": 224 },
+      { "id": "email", "stencil": "generic.email", "label": "SendGrid", "sublabel": "Receipts", "x": 2284, "y": 104 },
+      { "id": "saga", "stencil": "generic.saga", "label": "Checkout saga", "sublabel": "Orchestrator · group: saga", "x": 1894, "y": 344 },
+      { "id": "saga_db", "stencil": "generic.database", "label": "Saga state", "sublabel": "One row per checkout", "x": 2284, "y": 224 },
+      { "id": "inventory_svc", "stencil": "generic.service", "label": "Inventory service", "sublabel": "group: inventory", "x": 2644, "y": 164 },
+      { "id": "payment_svc", "stencil": "generic.service", "label": "Payment service", "sublabel": "group: payments", "x": 2644, "y": 284 },
+      { "id": "inventory_db", "stencil": "generic.database", "label": "Inventory database", "sublabel": "Reservations by orderId", "x": 3040, "y": 104 },
+      { "id": "stripe", "stencil": "generic.service", "label": "Stripe", "sublabel": "Payment intents", "x": 3040, "y": 224 },
+      { "id": "vault", "stencil": "vault", "label": "Vault", "sublabel": "Stripe API key", "x": 3040, "y": 344 }
+    ],
+    "edges": [
+      { "id": "e1-client-order_api", "from": "client", "to": "order_api", "label": "POST /orders", "kind": "sync" },
+      { "id": "e2-order_api-orders_db", "from": "order_api", "to": "orders_db", "label": "Order + outbox, one tx", "kind": "sync" },
+      { "id": "e3-orders_db-outbox_relay", "from": "orders_db", "to": "outbox_relay", "label": "WAL", "kind": "async" },
+      { "id": "e4-outbox_relay-order_events", "from": "outbox_relay", "to": "order_events", "label": "Outbox events", "kind": "async" },
+      { "id": "e5-order_events-saga", "from": "order_events", "to": "saga", "label": "OrderCreated", "kind": "async" },
+      { "id": "e6-order_events-notifications", "from": "order_events", "to": "notifications", "label": "Confirmed · Cancelled", "kind": "async" },
+      { "id": "e7-notifications-email", "from": "notifications", "to": "email", "label": "Send email", "kind": "sync" },
+      { "id": "e8-saga-saga_db", "from": "saga", "to": "saga_db", "label": "Persist step", "kind": "sync" },
+      { "id": "e9-saga-inventory_cmds", "from": "saga", "to": "inventory_cmds", "label": "Reserve / Release", "kind": "async" },
+      { "id": "e10-saga-payment_cmds", "from": "saga", "to": "payment_cmds", "label": "ChargePayment", "kind": "async" },
+      { "id": "e11-saga-order_api", "from": "saga", "to": "order_api", "label": "Confirm / Cancel", "kind": "async" },
+      { "id": "e12-inventory_cmds-inventory_svc", "from": "inventory_cmds", "to": "inventory_svc", "kind": "async" },
+      { "id": "e13-inventory_svc-inventory_db", "from": "inventory_svc", "to": "inventory_db", "label": "Reserve stock", "kind": "sync" },
+      { "id": "e14-inventory_svc-saga_replies", "from": "inventory_svc", "to": "saga_replies", "label": "Reserved / Released", "kind": "async" },
+      { "id": "e15-payment_cmds-payment_svc", "from": "payment_cmds", "to": "payment_svc", "kind": "async" },
+      { "id": "e16-payment_cmds-payments_dlq", "from": "payment_cmds", "to": "payments_dlq", "label": "After 5 attempts", "kind": "async" },
+      { "id": "e17-payment_svc-stripe", "from": "payment_svc", "to": "stripe", "label": "Idempotency-Key", "kind": "sync" },
+      { "id": "e18-payment_svc-saga_replies", "from": "payment_svc", "to": "saga_replies", "label": "Captured / Declined", "kind": "async" },
+      { "id": "e19-saga_replies-saga", "from": "saga_replies", "to": "saga", "label": "Next step", "kind": "async" },
+      { "id": "e20-payment_svc-vault", "from": "payment_svc", "to": "vault", "kind": "async", "relation": "secret" }
+    ]
+  }
+}

@@ -1,0 +1,486 @@
+{
+  "autoScale": { "freePlay": 1, "failover": 5, "both-write": 10 },
+  "brokerAssignments": { "brokers": {}, "consumers": {} },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "api-us",
+      "suggestion": "Checkout API: 1% utilized",
+      "converged": true,
+      "iterations": 6,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "users": ["Infinity", 20, 0, 1, 1, 0], "r53": ["Infinity", 20, 0, 1, 1, 0], "alb-us": ["Infinity", 10, 0, 1, 1, 0], "api-us": [1600, 10, 0.00625, 6, 6, 0], "table-us": ["Infinity", 20, 0, 1, 1, 0], "alb-eu": ["Infinity", 10, 0, 1, 1, 0], "api-eu": [1600, 10, 0.00625, 6, 6, 0], "table-eu": ["Infinity", 20, 0, 1, 1, 0] },
+      "connections": { "users-to-r53": 20, "r53-to-alb-us": 10, "r53-to-alb-eu": 10, "alb-us-to-api-us": 10, "alb-eu-to-api-eu": 10, "api-us-to-table-us": 10, "api-eu-to-table-eu": 10, "table-us-to-table-eu": 10, "table-eu-to-table-us": 10 },
+      "offeredTypes": { "users": ["Checkout"], "r53": ["Checkout"], "alb-us": ["Checkout"], "alb-eu": ["Checkout"], "api-us": ["Checkout"], "api-eu": ["Checkout"], "table-us": ["OrderWrite", "ReplicatedWrite"], "table-eu": ["OrderWrite", "ReplicatedWrite"] }
+    },
+    "explanations": {
+      "api-us": {
+        "id": "api-us",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 1600,
+        "offered": 10,
+        "replicas": 6,
+        "baseReplicas": 6,
+        "omittedContributors": 0,
+        "activeReplicas": 6,
+        "assignments": [],
+        "slots": 32,
+        "seconds": 0.12,
+        "utilization": 0.00625,
+        "growth": 0,
+        "contributors": [
+          { "edge": "alb-us-to-api-us", "node": "alb-us", "label": "Route 53", "rate": 10, "via": "Load balancer" }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 6,
+        "changes": null,
+        "converged": true
+      },
+      "api-eu": {
+        "id": "api-eu",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 1600,
+        "offered": 10,
+        "replicas": 6,
+        "baseReplicas": 6,
+        "omittedContributors": 0,
+        "activeReplicas": 6,
+        "assignments": [],
+        "slots": 32,
+        "seconds": 0.12,
+        "utilization": 0.00625,
+        "growth": 0,
+        "contributors": [
+          { "edge": "alb-eu-to-api-eu", "node": "alb-eu", "label": "Route 53", "rate": 10, "via": "Load balancer" }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 6,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "users": [{ "kind": "calls", "edge": "users-to-r53", "peer": "r53" }],
+      "r53": [
+        { "kind": "calls", "edge": "r53-to-alb-us", "peer": "alb-us", "filter": ["Checkout"] },
+        { "kind": "calls", "edge": "r53-to-alb-eu", "peer": "alb-eu", "filter": ["Checkout", "CheckoutFailover"] }
+      ],
+      "alb-us": [{ "kind": "calls", "edge": "alb-us-to-api-us", "peer": "api-us" }],
+      "api-us": [{ "kind": "calls", "edge": "api-us-to-table-us", "peer": "table-us" }],
+      "alb-eu": [{ "kind": "calls", "edge": "alb-eu-to-api-eu", "peer": "api-eu" }],
+      "api-eu": [{ "kind": "calls", "edge": "api-eu-to-table-eu", "peer": "table-eu" }]
+    },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "users": {
+        "profile": { "family": "client", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 20,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Checkout",
+        "healthChecks": false
+      },
+      "r53": {
+        "profile": { "family": "dns", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Route 53",
+        "healthChecks": false
+      },
+      "alb-us": {
+        "profile": { "family": "proxy", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Load balancer",
+        "healthChecks": false
+      },
+      "api-us": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 120,
+        "concurrency": 32,
+        "replicas": 6,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "emits": "OrderWrite",
+        "messageType": "Checkout API",
+        "healthChecks": false
+      },
+      "table-us": {
+        "profile": { "family": "nosql", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Orders global table",
+        "healthChecks": false
+      },
+      "alb-eu": {
+        "profile": { "family": "proxy", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Load balancer",
+        "healthChecks": false
+      },
+      "api-eu": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 120,
+        "concurrency": 32,
+        "replicas": 6,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "emits": "OrderWrite",
+        "messageType": "Checkout API",
+        "healthChecks": false
+      },
+      "table-eu": {
+        "profile": { "family": "nosql", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Orders global table",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "failover": {
+      "configured": false,
+      "simulation": "failover",
+      "analysis": {
+        "bottleneck": "api-eu",
+        "suggestion": "Checkout API: 9% utilized",
+        "converged": true,
+        "iterations": 6,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "users": ["Infinity", 200, 0, 1, 1, 0], "r53": ["Infinity", 200, 0, 1, 1, 0], "alb-us": ["Infinity", 50, 0, 1, 1, 0], "api-us": [1600, 50, 0.03125, 6, 6, 0], "table-us": ["Infinity", 200, 0, 1, 1, 0], "alb-eu": ["Infinity", 150, 0, 1, 1, 0], "api-eu": [1600, 150, 0.09375, 6, 6, 0], "table-eu": ["Infinity", 200, 0, 1, 1, 0] },
+        "connections": { "users-to-r53": 200, "r53-to-alb-us": 50, "r53-to-alb-eu": 150, "alb-us-to-api-us": 50, "alb-eu-to-api-eu": 150, "api-us-to-table-us": 50, "api-eu-to-table-eu": 150, "table-us-to-table-eu": 50, "table-eu-to-table-us": 150 },
+        "offeredTypes": { "users": ["Checkout", "CheckoutFailover"], "r53": ["Checkout", "CheckoutFailover"], "alb-us": ["Checkout"], "alb-eu": ["Checkout", "CheckoutFailover"], "api-us": ["Checkout"], "api-eu": ["Checkout", "CheckoutFailover"], "table-us": ["OrderWrite", "ReplicatedWrite"], "table-eu": ["OrderWrite", "ReplicatedWrite"] }
+      },
+      "explanations": {
+        "api-us": {
+          "id": "api-us",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 1600,
+          "offered": 50,
+          "replicas": 6,
+          "baseReplicas": 6,
+          "omittedContributors": 0,
+          "activeReplicas": 6,
+          "assignments": [],
+          "slots": 32,
+          "seconds": 0.12,
+          "utilization": 0.03125,
+          "growth": 0,
+          "contributors": [
+            { "edge": "alb-us-to-api-us", "node": "alb-us", "label": "Route 53", "rate": 50, "via": "Load balancer" }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 6,
+          "changes": null,
+          "converged": true
+        },
+        "api-eu": {
+          "id": "api-eu",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 1600,
+          "offered": 150,
+          "replicas": 6,
+          "baseReplicas": 6,
+          "omittedContributors": 0,
+          "activeReplicas": 6,
+          "assignments": [],
+          "slots": 32,
+          "seconds": 0.12,
+          "utilization": 0.09375,
+          "growth": 0,
+          "contributors": [
+            { "edge": "alb-eu-to-api-eu", "node": "alb-eu", "label": "Route 53", "rate": 150, "via": "Load balancer" }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 6,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": "(same as edit)"
+    },
+    "both-write": {
+      "configured": "(same as edit)",
+      "simulation": "both-write",
+      "analysis": {
+        "bottleneck": "api-us",
+        "suggestion": "Checkout API: 19% utilized",
+        "converged": true,
+        "iterations": 6,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "users": ["Infinity", 600, 0, 1, 1, 0], "r53": ["Infinity", 600, 0, 1, 1, 0], "alb-us": ["Infinity", 300, 0, 1, 1, 0], "api-us": [1600, 300, 0.1875, 6, 6, 0], "table-us": ["Infinity", 600, 0, 1, 1, 0], "alb-eu": ["Infinity", 300, 0, 1, 1, 0], "api-eu": [1600, 300, 0.1875, 6, 6, 0], "table-eu": ["Infinity", 600, 0, 1, 1, 0] },
+        "connections": { "users-to-r53": 600, "r53-to-alb-us": 300, "r53-to-alb-eu": 300, "alb-us-to-api-us": 300, "alb-eu-to-api-eu": 300, "api-us-to-table-us": 300, "api-eu-to-table-eu": 300, "table-us-to-table-eu": 300, "table-eu-to-table-us": 300 },
+        "offeredTypes": { "users": ["Checkout"], "r53": ["Checkout"], "alb-us": ["Checkout"], "alb-eu": ["Checkout"], "api-us": ["Checkout"], "api-eu": ["Checkout"], "table-us": ["OrderWrite", "ReplicatedWrite"], "table-eu": ["OrderWrite", "ReplicatedWrite"] }
+      },
+      "explanations": {
+        "api-us": {
+          "id": "api-us",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 1600,
+          "offered": 300,
+          "replicas": 6,
+          "baseReplicas": 6,
+          "omittedContributors": 0,
+          "activeReplicas": 6,
+          "assignments": [],
+          "slots": 32,
+          "seconds": 0.12,
+          "utilization": 0.1875,
+          "growth": 0,
+          "contributors": [
+            { "edge": "alb-us-to-api-us", "node": "alb-us", "label": "Route 53", "rate": 300, "via": "Load balancer" }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 6,
+          "changes": null,
+          "converged": true
+        },
+        "api-eu": {
+          "id": "api-eu",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 1600,
+          "offered": 300,
+          "replicas": 6,
+          "baseReplicas": 6,
+          "omittedContributors": 0,
+          "activeReplicas": 6,
+          "assignments": [],
+          "slots": 32,
+          "seconds": 0.12,
+          "utilization": 0.1875,
+          "growth": 0,
+          "contributors": [
+            { "edge": "alb-eu-to-api-eu", "node": "alb-eu", "label": "Route 53", "rate": 300, "via": "Load balancer" }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 6,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": "(same as edit)"
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "ok",
+          "top": "api-us",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Checkout API at 1% · 10/s of 1.6k/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "users": ["idle", "20/s · no limit", { "modeled": false }],
+            "r53": ["idle", "20/s · no limit", { "modeled": false }],
+            "alb-us": ["idle", "10/s · no limit", { "modeled": false }],
+            "api-us": ["ok", "1% · 10/s of 1.6k/s"],
+            "table-us": ["idle", "20/s · no limit", { "modeled": false }],
+            "alb-eu": ["idle", "10/s · no limit", { "modeled": false }],
+            "api-eu": ["ok", "1% · 10/s of 1.6k/s"],
+            "table-eu": ["idle", "20/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "ok",
+          "top": "api-us",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Checkout API at 3% · 50/s of 1.6k/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "users": ["idle", "100/s · no limit", { "modeled": false }],
+            "r53": ["idle", "100/s · no limit", { "modeled": false }],
+            "alb-us": ["idle", "50/s · no limit", { "modeled": false }],
+            "api-us": ["ok", "3% · 50/s of 1.6k/s"],
+            "table-us": ["idle", "100/s · no limit", { "modeled": false }],
+            "alb-eu": ["idle", "50/s · no limit", { "modeled": false }],
+            "api-eu": ["ok", "3% · 50/s of 1.6k/s"],
+            "table-eu": ["idle", "100/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "ok",
+          "top": "api-us",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Checkout API at 1% · 10/s of 800/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "users": ["idle", "20/s · no limit", { "modeled": false }],
+            "r53": ["idle", "20/s · no limit", { "modeled": false }],
+            "alb-us": ["idle", "10/s · no limit", { "modeled": false }],
+            "api-us": ["ok", "1% · 10/s of 800/s"],
+            "table-us": ["idle", "20/s · no limit", { "modeled": false }],
+            "alb-eu": ["idle", "10/s · no limit", { "modeled": false }],
+            "api-eu": ["ok", "1% · 10/s of 800/s"],
+            "table-eu": ["idle", "20/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "ok",
+          "top": "api-us",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Checkout API at 1% · 10/s of 1.6k/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "users": ["idle", "20/s · no limit", { "modeled": false }],
+            "r53": ["idle", "20/s · no limit", { "modeled": false }],
+            "alb-us": ["idle", "10/s · no limit", { "modeled": false }],
+            "api-us": ["ok", "1% · 10/s of 1.6k/s"],
+            "table-us": ["idle", "20/s · no limit", { "modeled": false }],
+            "alb-eu": ["idle", "10/s · no limit", { "modeled": false }],
+            "api-eu": ["ok", "1% · 10/s of 1.6k/s"],
+            "table-eu": ["idle", "20/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    },
+    "failover": {
+      "tone": "ok",
+      "top": "api-eu",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Checkout API at 9% · 150/s of 1.6k/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "users": ["idle", "200/s · no limit", { "modeled": false }],
+        "r53": ["idle", "200/s · no limit", { "modeled": false }],
+        "alb-us": ["idle", "50/s · no limit", { "modeled": false }],
+        "api-us": ["ok", "3% · 50/s of 1.6k/s"],
+        "table-us": ["idle", "200/s · no limit", { "modeled": false }],
+        "alb-eu": ["idle", "150/s · no limit", { "modeled": false }],
+        "api-eu": ["ok", "9% · 150/s of 1.6k/s"],
+        "table-eu": ["idle", "200/s · no limit", { "modeled": false }]
+      }
+    },
+    "both-write": {
+      "tone": "ok",
+      "top": "api-us",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Checkout API at 19% · 300/s of 1.6k/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "users": ["idle", "600/s · no limit", { "modeled": false }],
+        "r53": ["idle", "600/s · no limit", { "modeled": false }],
+        "alb-us": ["idle", "300/s · no limit", { "modeled": false }],
+        "api-us": ["ok", "19% · 300/s of 1.6k/s"],
+        "table-us": ["idle", "600/s · no limit", { "modeled": false }],
+        "alb-eu": ["idle", "300/s · no limit", { "modeled": false }],
+        "api-eu": ["ok", "19% · 300/s of 1.6k/s"],
+        "table-eu": ["idle", "600/s · no limit", { "modeled": false }]
+      }
+    }
+  }
+}

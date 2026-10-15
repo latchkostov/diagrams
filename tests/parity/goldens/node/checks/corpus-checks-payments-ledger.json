@@ -1,0 +1,128 @@
+{
+  "ran": [
+    "dead-letter",
+    "no-reader",
+    "sync-cycle",
+    "sync-chain",
+    "shared-database",
+    "entry-gateway",
+    "capacity",
+    "single-point",
+    "secret-identity",
+    "schema-registry"
+  ],
+  "off": [],
+  "findings": [
+    {
+      "id": "schema-registry:payments",
+      "rule": "schema-registry",
+      "severity": "warning",
+      "target": "payments",
+      "elements": ["payments", "api", "ledger"],
+      "fix": {
+        "ops": [
+          { "op": "add_node", "kind": "kafka.schema-registry", "label": "Schema Registry", "sublabel": "schemas", "key": "new-schema-registry" },
+          { "op": "connect", "from": "api", "to": "new-schema-registry", "relation": "depends" },
+          { "op": "connect", "from": "ledger", "to": "new-schema-registry", "relation": "depends" }
+        ],
+        "needsChoice": false
+      }
+    },
+    {
+      "id": "secret-identity:kv",
+      "rule": "secret-identity",
+      "severity": "suggestion",
+      "target": "kv",
+      "elements": ["kv", "api", "ledger"],
+      "fix": {
+        "ops": [
+          { "op": "add_node", "kind": "azure.managed-identity", "label": "Payments API identity", "sublabel": "workload identity", "key": "new-identity-1" },
+          { "op": "connect", "from": "api", "to": "new-identity-1", "relation": "identity" },
+          { "op": "add_node", "kind": "azure.managed-identity", "label": "Ledger writer identity", "sublabel": "workload identity", "key": "new-identity-2" },
+          { "op": "connect", "from": "ledger", "to": "new-identity-2", "relation": "identity" }
+        ],
+        "needsChoice": false,
+        "options": [
+          {
+            "kind": null,
+            "ops": [
+              { "op": "add_node", "kind": "azure.managed-identity", "label": "Managed Identity", "sublabel": "workload identity", "key": "new-identity-1" },
+              { "op": "connect", "from": "api", "to": "new-identity-1", "relation": "identity" },
+              { "op": "connect", "from": "ledger", "to": "new-identity-1", "relation": "identity" }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "ignored": [],
+  "fixes": {
+    "schema-registry:payments (default)": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "summary": "+1 node, +2 connections",
+      "results": [
+        {
+          "i": 0,
+          "op": "add_node",
+          "id": "schema-registry-1",
+          "label": "Schema Registry",
+          "stencil": { "id": "kafka.schema-registry", "label": "Schema Registry", "confidence": "high", "alternatives": [] }
+        },
+        { "i": 1, "op": "connect", "id": "e-1", "from": "api", "to": "schema-registry-1" },
+        { "i": 2, "op": "connect", "id": "e-2", "from": "ledger", "to": "schema-registry-1" }
+      ],
+      "nodes": 7,
+      "edges": 8,
+      "findingsAfter": ["secret-identity:kv"]
+    },
+    "secret-identity:kv (default)": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "summary": "+2 nodes, +2 connections",
+      "results": [
+        {
+          "i": 0,
+          "op": "add_node",
+          "id": "managed-identity-1",
+          "label": "Payments API identity",
+          "stencil": { "id": "azure.managed-identity", "label": "Managed Identity", "confidence": "high", "alternatives": [] }
+        },
+        { "i": 1, "op": "connect", "id": "e-1", "from": "api", "to": "managed-identity-1" },
+        {
+          "i": 2,
+          "op": "add_node",
+          "id": "managed-identity-2",
+          "label": "Ledger writer identity",
+          "stencil": { "id": "azure.managed-identity", "label": "Managed Identity", "confidence": "high", "alternatives": [] }
+        },
+        { "i": 3, "op": "connect", "id": "e-2", "from": "ledger", "to": "managed-identity-2" }
+      ],
+      "nodes": 8,
+      "edges": 8,
+      "findingsAfter": ["schema-registry:payments"]
+    },
+    "secret-identity:kv (option 1)": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "summary": "+1 node, +2 connections",
+      "results": [
+        {
+          "i": 0,
+          "op": "add_node",
+          "id": "managed-identity-1",
+          "label": "Managed Identity",
+          "stencil": { "id": "azure.managed-identity", "label": "Managed Identity", "confidence": "high", "alternatives": [] }
+        },
+        { "i": 1, "op": "connect", "id": "e-1", "from": "api", "to": "managed-identity-1" },
+        { "i": 2, "op": "connect", "id": "e-2", "from": "ledger", "to": "managed-identity-1" }
+      ],
+      "nodes": 7,
+      "edges": 8,
+      "findingsAfter": ["schema-registry:payments"]
+    }
+  }
+}

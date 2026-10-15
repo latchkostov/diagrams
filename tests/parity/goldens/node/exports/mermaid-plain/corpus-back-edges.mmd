@@ -1,0 +1,19 @@
+---
+title: Back-edges and loops
+---
+flowchart LR
+  api["API"]
+  svc["Orders"]
+  topic["orders<br/>orders.v1"]
+  retry["Retry worker"]
+  above[("Cache (above)")]
+  below[("DB (below)")]
+  api --> svc
+  svc -.-> topic
+  topic -.->|"failed"| retry
+  retry -.->|"back-edge: retry"| svc
+  topic -.->|"back-edge: skip"| api
+  svc --> above
+  svc --> below
+  retry -.->|"self-loop"| retry
+  linkStyle 1,2,3,4,7 stroke-dasharray: 6 4

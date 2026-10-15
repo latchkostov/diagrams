@@ -1,0 +1,102 @@
+{
+  "run": {
+    "time": 6500,
+    "totalMs": 15000,
+    "done": true,
+    "scale": 5,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "search", "label": "Search", "status": "pass", "value": 600 },
+      { "id": "warehouse", "label": "Warehouse", "status": "pass", "value": 600 },
+      { "id": "lake", "label": "Lake", "status": "pass", "value": 600 },
+      { "id": "customer-filter", "label": "Customer filter", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "note", "label": "A SQL Server backfill produces order CDC envelopes. Customer subscriptions skip this batch." },
+      { "atMs": 0, "kind": "traffic", "label": "600 SQL Server snapshot rows" },
+      { "atMs": 3000, "kind": "traffic", "label": "600 SQL Server snapshot rows ends" },
+      { "atMs": 5000, "kind": "note", "label": "Independent groups build search projections and retain raw rows." }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 1,
+      "nodes": {
+        "sql": { "backlog": 1, "replicas": [1, 1, 0] },
+        "debezium": { "replicas": [1, 1, 0] },
+        "orders-topic": { "lag": { "retail-projector": 0, "retail-raw-sink": 0 }, "replicas": [1, 1, 0] },
+        "customers-topic": { "lag": { "retail-projector": 0, "retail-raw-sink": 0 }, "replicas": [1, 1, 0] },
+        "processor": { "replicas": [1, 1, 0] },
+        "search": { "replicas": [1, 1, 0] },
+        "warehouse": { "replicas": [1, 1, 0] },
+        "s3-sink": { "replicas": [1, 1, 0] },
+        "lake": { "replicas": [1, 1, 0] },
+        "registry": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 6500,
+    "inSystem": 0,
+    "real": {
+      "sql": { "processed": 600, "throughput": 6.034431246019861, "replicas": [1, 1, 0] },
+      "debezium": { "processed": 600, "throughput": 9.529660598659817, "replicas": [1, 1, 0] },
+      "orders-topic": {
+        "processed": 600,
+        "throughput": 12.863696292310943,
+        "lag": { "retail-projector": 0, "retail-raw-sink": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "customers-topic": { "lag": { "retail-projector": 0, "retail-raw-sink": 0 }, "replicas": [1, 1, 0] },
+      "processor": { "processed": 600, "throughput": 20.2922319175177, "replicas": [1, 1, 0] },
+      "search": { "processed": 600, "throughput": 25.924211229301154, "replicas": [1, 1, 0] },
+      "warehouse": { "processed": 600, "throughput": 25.94059420440334, "replicas": [1, 1, 0] },
+      "s3-sink": { "processed": 600, "throughput": 20.328377235465037, "replicas": [1, 1, 0] },
+      "lake": { "processed": 600, "throughput": 25.95151468470171, "replicas": [1, 1, 0] },
+      "registry": { "processed": 600, "throughput": 11.639553739533387, "replicas": [1, 1, 0] }
+    },
+    "edges": { "sql-to-debezium": 120, "debezium-to-orders-topic": 120, "debezium-to-customers-topic": 0, "orders-topic-to-processor": 120, "customers-topic-to-processor": 0, "processor-to-search": 120, "processor-to-warehouse": 120, "orders-topic-to-s3-sink": 120, "customers-topic-to-s3-sink": 0, "s3-sink-to-lake": 120, "debezium-to-registry": 120 }
+  },
+  "events": {
+    "total": 2160,
+    "byKind": { "inject": 120, "process": 1080, "deliver": 960 },
+    "byNode": {
+      "sql": { "inject": 120, "process": 120 },
+      "debezium": { "deliver": 120, "process": 120 },
+      "registry": { "deliver": 120, "process": 120 },
+      "orders-topic": { "deliver": 120, "process": 120 },
+      "processor": { "deliver": 120, "process": 120 },
+      "s3-sink": { "deliver": 120, "process": 120 },
+      "search": { "deliver": 120, "process": 120 },
+      "warehouse": { "deliver": 120, "process": 120 },
+      "lake": { "deliver": 120, "process": 120 }
+    },
+    "perSecond": ["5825d01f4d4b", "460e35d8deab", "bc1e9a38f355", "b7e72082b036", "d0acbc538bc3", "-", "-"]
+  },
+  "notes": [
+    { "atMs": 0, "text": "A SQL Server backfill produces order CDC envelopes. Customer subscriptions skip this batch.", "focus": ["sql", "debezium", "orders-topic"] },
+    { "atMs": 5000, "text": "Independent groups build search projections and retain raw rows.", "focus": ["processor", "s3-sink"] }
+  ],
+  "latency": {
+    "journeys": { "done": 120, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 120, "min": 1450, "mean": 1514.5833333333333, "p50": 1520, "p90": 1550, "max": 1560 },
+    "waitMs": {
+      "debezium": { "count": 120, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "processor": { "count": 120, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "search": { "count": 120, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "warehouse": { "count": 120, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "s3-sink": { "count": 120, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "lake": { "count": 120, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "sql": { "count": 120, "min": 40, "mean": 44.916666666666664, "p50": 40, "p90": 50, "max": 50 },
+      "debezium": { "count": 120, "min": 130, "mean": 156.66666666666666, "p50": 160, "p90": 180, "max": 180 },
+      "processor": { "count": 120, "min": 130, "mean": 157.16666666666666, "p50": 160, "p90": 180, "max": 180 },
+      "search": { "count": 120, "min": 40, "mean": 45.75, "p50": 50, "p90": 50, "max": 50 },
+      "warehouse": { "count": 120, "min": 40, "mean": 45.25, "p50": 50, "p90": 50, "max": 50 },
+      "s3-sink": { "count": 120, "min": 130, "mean": 157.16666666666666, "p50": 160, "p90": 180, "max": 180 },
+      "lake": { "count": 120, "min": 40, "mean": 44.666666666666664, "p50": 40, "p90": 50, "max": 50 }
+    }
+  }
+}

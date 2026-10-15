@@ -1,0 +1,11 @@
+---
+title: "AppTableBatch #1 · 810 ms end to end"
+---
+sequenceDiagram
+  participant app_db as App database
+  participant airbyte as Airbyte
+  participant raw as Raw tables
+  app_db-)airbyte: AppTableBatch (+0.01 s)<br/>Incremental
+  Note over app_db,raw: ⏱ 300 ms at Airbyte: processing
+  airbyte->>raw: RawBatch (+0.61 s)<br/>COPY INTO
+  raw-->>airbyte: reply (+0.81 s)

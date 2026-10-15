@@ -1,0 +1,204 @@
+{
+  "ok": true,
+  "format": "asyncapi",
+  "warnings": [],
+  "report": {
+    "summary": {
+      "code": "importReport.summary",
+      "args": [
+        { "title": "3 services", "format": "AsyncAPI", "total": "all", "drawn": 12, "nodes": 12, "connections": 12, "guesses": 0 }
+      ]
+    },
+    "format": "AsyncAPI",
+    "source": "notifications-2.6.asyncapi.yaml, orders-service.asyncapi.yaml, shipping-service.asyncapi.yaml",
+    "title": "3 services",
+    "nodes": 12,
+    "connections": 12,
+    "boundaries": 2,
+    "guesses": [],
+    "inferred": [],
+    "notDrawn": [
+      {
+        "name": "Order service: 1 security scheme",
+        "reason": { "code": "importDetail.notComponentsOfTheSystem", "args": [] }
+      },
+      {
+        "name": "Order service: 1 payload schema",
+        "reason": { "code": "importDetail.notComponentsOfTheSystem", "args": [] }
+      }
+    ],
+    "unread": [],
+    "notes": [
+      {
+        "code": "importDetail.value0IsTheDeadletterRouteOf",
+        "args": [
+          { "value0": "shipping.orders-placed.dlq", "value1": "orders.placed.v1", "value2": "Shipping service" }
+        ]
+      },
+      {
+        "code": "importDetail.value0IsAQueueValue1Sends",
+        "args": [{ "value0": "order-notifications", "value1": "Order service", "value2": "notifications" }]
+      },
+      { "code": "importDetail.value0HasNoProducerInThese", "args": [{ "value0": "payments.completed.v1" }] },
+      { "code": "importDetail.value0HasNoProducerInThese", "args": [{ "value0": "payments.failed.v1" }] },
+      { "code": "importReport.watchTraffic", "args": [{ "title": "Imported traffic" }] }
+    ],
+    "traffic": [
+      { "nodeId": "order-service", "label": "Order service", "messageType": "OrderPlaced", "ratePerSec": 1, "seconds": 120 }
+    ]
+  },
+  "reportEnglish": {
+    "report.summary": "Imported “3 services” from AsyncAPI: 12 nodes, 12 connections.",
+    "report.notDrawn[0].reason": "not components of the system",
+    "report.notDrawn[1].reason": "not components of the system",
+    "report.notes[0]": "shipping.orders-placed.dlq is the dead-letter route of orders.placed.v1 (Shipping service sends its failures there)",
+    "report.notes[1]": "order-notifications is a queue; Order service sends to it through the exchange “notifications”",
+    "report.notes[2]": "payments.completed.v1 has no producer in these files",
+    "report.notes[3]": "payments.failed.v1 has no producer in these files",
+    "report.notes[4]": "Go live and pick “Imported traffic” to watch messages flow"
+  },
+  "replay": null,
+  "checks": [
+    "warning no-reader:topic-email.sent",
+    "warning no-reader:topic-orders.cancelled.v1",
+    "warning no-reader:topic-shipping.dispatched.v1",
+    "suggestion dead-letter:topic-order-notifications",
+    "suggestion no-reader:topic-shipping.orders-placed.dlq"
+  ],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "3 services",
+    "direction": "LR",
+    "groups": [
+      { "id": "boundary-rabbitmq-rabbitmq.shop.internal-5672", "label": "RabbitMQ · rabbitmq.shop.internal:5672", "tone": "neutral", "x": 400, "y": 40, "width": 306, "height": 296 },
+      { "id": "boundary-kafka-kafka-0.shop.internal-9092", "label": "Kafka · kafka-0.shop.internal:9092", "tone": "neutral", "x": 400, "y": 380, "width": 728, "height": 656 }
+    ],
+    "nodes": [
+      { "id": "notification-service", "stencil": "generic.service", "label": "Notification service", "x": 1268, "y": 440 },
+      { "id": "order-service", "stencil": "generic.service", "label": "Order service", "x": 40, "y": 500 },
+      { "id": "shipping-service", "stencil": "generic.service", "label": "Shipping service", "x": 1268, "y": 560 },
+      { "id": "topic-order-notifications", "stencil": "rabbitmq.queue", "label": "order-notifications", "x": 440, "y": 104, "group": "boundary-rabbitmq-rabbitmq.shop.internal-5672" },
+      { "id": "topic-email.sent", "stencil": "rabbitmq.exchange", "label": "email.sent", "x": 440, "y": 224, "group": "boundary-rabbitmq-rabbitmq.shop.internal-5672" },
+      {
+        "id": "topic-orders.placed.v1",
+        "stencil": "kafka.topic",
+        "label": "orders.placed.v1",
+        "x": 440,
+        "y": 444,
+        "group": "boundary-kafka-kafka-0.shop.internal-9092",
+        "props": { "partitions": 12, "contentType": "application/vnd.apache.avro" }
+      },
+      {
+        "id": "topic-orders.cancelled.v1",
+        "stencil": "kafka.topic",
+        "label": "orders.cancelled.v1",
+        "x": 440,
+        "y": 564,
+        "group": "boundary-kafka-kafka-0.shop.internal-9092",
+        "props": { "partitions": 6 }
+      },
+      { "id": "topic-payments.completed.v1", "stencil": "kafka.topic", "label": "payments.completed.v1", "x": 440, "y": 684, "group": "boundary-kafka-kafka-0.shop.internal-9092" },
+      { "id": "topic-payments.failed.v1", "stencil": "kafka.topic", "label": "payments.failed.v1", "x": 440, "y": 804, "group": "boundary-kafka-kafka-0.shop.internal-9092" },
+      { "id": "topic-shipping.dispatched.v1", "stencil": "kafka.topic", "label": "shipping.dispatched.v1", "x": 440, "y": 924, "group": "boundary-kafka-kafka-0.shop.internal-9092" },
+      {
+        "id": "topic-shipping.orders-placed.dlq",
+        "stencil": "kafka.topic",
+        "label": "shipping.orders-placed.dlq",
+        "x": 828,
+        "y": 684,
+        "group": "boundary-kafka-kafka-0.shop.internal-9092",
+        "props": { "contentType": "application/vnd.apache.avro" }
+      },
+      { "id": "schema-registry.shop.internal", "stencil": "kafka.schema-registry", "label": "schema-registry.shop.internal", "x": 1234, "y": 712 }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "from": "topic-order-notifications",
+        "to": "notification-service",
+        "kind": "async",
+        "props": { "filter": ["OrderConfirmationRequested"] }
+      },
+      {
+        "id": "e2",
+        "from": "notification-service",
+        "to": "topic-email.sent",
+        "kind": "async",
+        "props": { "emits": "EmailSent" }
+      },
+      {
+        "id": "e3",
+        "from": "order-service",
+        "to": "topic-orders.placed.v1",
+        "kind": "async",
+        "props": { "emits": "OrderPlaced" }
+      },
+      {
+        "id": "e4",
+        "from": "order-service",
+        "to": "topic-orders.cancelled.v1",
+        "kind": "async",
+        "props": { "emits": "OrderCancelled" }
+      },
+      {
+        "id": "e5",
+        "from": "topic-payments.completed.v1",
+        "to": "order-service",
+        "kind": "async",
+        "props": { "filter": ["PaymentCompleted"], "group": "order-service" }
+      },
+      {
+        "id": "e6",
+        "from": "topic-payments.failed.v1",
+        "to": "order-service",
+        "kind": "async",
+        "props": { "filter": ["PaymentFailed"], "group": "order-service" }
+      },
+      {
+        "id": "e7",
+        "from": "order-service",
+        "to": "topic-order-notifications",
+        "kind": "async",
+        "props": { "emits": "OrderConfirmationRequested" }
+      },
+      {
+        "id": "e8",
+        "from": "topic-orders.placed.v1",
+        "to": "shipping-service",
+        "kind": "async",
+        "props": { "filter": ["OrderPlaced"], "group": "shipping-service" }
+      },
+      {
+        "id": "e9",
+        "from": "shipping-service",
+        "to": "topic-shipping.dispatched.v1",
+        "kind": "async",
+        "props": { "emits": "ShipmentDispatched" }
+      },
+      {
+        "id": "e10",
+        "from": "topic-orders.placed.v1",
+        "to": "topic-shipping.orders-placed.dlq",
+        "kind": "async",
+        "props": { "dlq": true }
+      },
+      { "id": "e11", "from": "order-service", "to": "schema-registry.shop.internal", "relation": "depends" },
+      { "id": "e12", "from": "shipping-service", "to": "schema-registry.shop.internal", "relation": "depends" }
+    ],
+    "simulations": [
+      {
+        "id": "imported-traffic",
+        "title": "Imported traffic",
+        "description": "2 minutes of steady traffic where messages start, from the import.",
+        "traffic": [
+          {
+            "id": "t1",
+            "node": "order-service",
+            "messageType": "OrderPlaced",
+            "shape": { "kind": "constant", "ratePerSec": 1, "durationMs": 120000 }
+          }
+        ]
+      }
+    ]
+  }
+}

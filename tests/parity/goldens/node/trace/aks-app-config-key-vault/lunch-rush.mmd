@@ -1,0 +1,18 @@
+---
+title: "PlaceOrder #1 · 1.37 s end to end · 1 copy"
+---
+sequenceDiagram
+  participant web as Storefront
+  participant fd as Front Door
+  participant api as Orders API
+  participant sql as orders-db
+  participant sb as orders.created
+  participant notify as Order confirmation
+  web->>fd: PlaceOrder (+0.00 s)<br/>HTTPS
+  fd-->>web: reply (+0.27 s)
+  fd->>api: PlaceOrder (+0.27 s)<br/>POST /orders
+  api-->>fd: reply (+0.59 s)
+  api->>sql: OrderCreated (+0.59 s)<br/>EF Core
+  api-)sb: OrderCreated (+0.59 s)
+  sql-->>api: reply (+0.83 s)
+  sb-)notify: OrderCreated (+0.89 s)<br/>Subscription

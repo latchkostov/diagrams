@@ -1,0 +1,145 @@
+{
+  "autoScale": { "freePlay": 1 },
+  "brokerAssignments": { "brokers": {}, "consumers": {} },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "a",
+      "suggestion": "Order service: 0% utilized",
+      "converged": true,
+      "iterations": 2,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "a": ["Infinity", 2, 0, 1, 1, 0], "b": ["Infinity", 4, 0, 1, 1, 0], "c": ["Infinity", 2, 0, 1, 1, 0] },
+      "connections": { "ab": 2 },
+      "offeredTypes": { "a": ["Order service"], "b": ["Payments gateway", "Order service"], "c": ["Worker"] }
+    },
+    "explanations": {},
+    "capabilities": {},
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "a": {
+        "profile": { "family": "client", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Order service",
+        "healthChecks": false
+      },
+      "b": {
+        "profile": { "family": "client", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Payments gateway",
+        "healthChecks": false
+      },
+      "c": {
+        "profile": { "family": "client", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {},
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "a": ["idle", "2/s · no limit", { "modeled": false }],
+            "b": ["idle", "4/s · no limit", { "modeled": false }],
+            "c": ["idle", "2/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "a": ["idle", "10/s · no limit", { "modeled": false }],
+            "b": ["idle", "20/s · no limit", { "modeled": false }],
+            "c": ["idle", "10/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "a": ["idle", "2/s · no limit", { "modeled": false }],
+            "b": ["idle", "4/s · no limit", { "modeled": false }],
+            "c": ["idle", "2/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "a": ["idle", "2/s · no limit", { "modeled": false }],
+            "b": ["idle", "4/s · no limit", { "modeled": false }],
+            "c": ["idle", "2/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    }
+  }
+}

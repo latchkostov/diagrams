@@ -1,0 +1,227 @@
+<mxfile host="Diagrams" agent="Diagrams" version="24.0.0" type="device">
+  <diagram id="dg-5j2bqv" name="Event-driven data platform">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <object id="0" dg_format="diagrams/v1" dg_description="Operational events stream through Kafka into Snowflake; dbt builds marts and reverse ETL publishes segments back to Kafka." dg_direction="LR" dg_simulations="[{&quot;id&quot;:&quot;one-order&quot;,&quot;title&quot;:&quot;Follow one order end to end&quot;,&quot;description&quot;:&quot;One checkout travels through Kafka, Snowflake and dbt, then comes back out as a segment change.&quot;,&quot;seed&quot;:7,&quot;scale&quot;:1,&quot;traffic&quot;:[{&quot;id&quot;:&quot;order&quot;,&quot;node&quot;:&quot;storefront&quot;,&quot;messageType&quot;:&quot;CheckoutRequest&quot;,&quot;label&quot;:&quot;One checkout&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;burst&quot;,&quot;count&quot;:1}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;trace&quot;,&quot;node&quot;:&quot;checkout&quot;}},{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;A shopper checks out. Follow this one order through Kafka, Snowflake and dbt, and back out to Kafka as a segment change.&quot;,&quot;focus&quot;:[&quot;storefront&quot;,&quot;checkout&quot;,&quot;orders-topic&quot;],&quot;pause&quot;:true}},{&quot;atMs&quot;:1000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The Snowflake Kafka connector streams the event into a RAW table within about a second. There is no nightly batch window.&quot;,&quot;focus&quot;:[&quot;orders-topic&quot;,&quot;snowpipe&quot;,&quot;raw&quot;]}},{&quot;atMs&quot;:2600,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;dbt's incremental models turn the raw row into marts. This order moves the customer into a new segment.&quot;,&quot;focus&quot;:[&quot;raw&quot;,&quot;dbt&quot;,&quot;marts&quot;]}},{&quot;atMs&quot;:5600,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Reverse ETL compares the mart with its last sync and publishes only the changed row to customer-segments.v1.&quot;,&quot;focus&quot;:[&quot;marts&quot;,&quot;reverse-etl&quot;,&quot;segments-topic&quot;]}},{&quot;atMs&quot;:8000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Personalization and the marketing tool consume the change like any other event, each in its own consumer group.&quot;,&quot;focus&quot;:[&quot;segments-topic&quot;,&quot;personalization&quot;,&quot;marketing&quot;],&quot;pause&quot;:true}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;raw&quot;,&quot;label&quot;:&quot;The order lands in RAW&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;raw&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:1,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;marts&quot;,&quot;label&quot;:&quot;dbt builds it into the marts&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;marts&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:1,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;cache&quot;,&quot;label&quot;:&quot;Personalization caches the new segment&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;segment-cache&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:1,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;marketing&quot;,&quot;label&quot;:&quot;The marketing tool receives it&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;marketing&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:1,&quot;when&quot;:&quot;end&quot;}]},{&quot;id&quot;:&quot;load-spike&quot;,&quot;title&quot;:&quot;Warehouse load spike&quot;,&quot;description&quot;:&quot;Month-end invoices spike to 600/s on top of steady orders and CDC; Kafka absorbs the burst while the loader catches up.&quot;,&quot;seed&quot;:7,&quot;scale&quot;:20,&quot;traffic&quot;:[{&quot;id&quot;:&quot;orders&quot;,&quot;node&quot;:&quot;storefront&quot;,&quot;messageType&quot;:&quot;CheckoutRequest&quot;,&quot;label&quot;:&quot;Steady orders: 200/s&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:200,&quot;durationMs&quot;:10000}},{&quot;id&quot;:&quot;invoices&quot;,&quot;node&quot;:&quot;billing-webhooks&quot;,&quot;messageType&quot;:&quot;InvoicePaid&quot;,&quot;label&quot;:&quot;Month-end invoices peak at 600/s&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;spike&quot;,&quot;baseRate&quot;:20,&quot;peakRate&quot;:600,&quot;atMs&quot;:3000,&quot;peakMs&quot;:3000,&quot;durationMs&quot;:10000}},{&quot;id&quot;:&quot;accounts&quot;,&quot;node&quot;:&quot;accounts-db&quot;,&quot;messageType&quot;:&quot;AccountChanged&quot;,&quot;label&quot;:&quot;Account changes: 50/s&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:50,&quot;durationMs&quot;:10000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Orders, invoices and account changes all stream into Snowflake. Each dot is 20 events. The connector loads about 600 rows a second.&quot;,&quot;focus&quot;:[&quot;orders-topic&quot;,&quot;billing-topic&quot;,&quot;accounts-topic&quot;,&quot;snowpipe&quot;]}},{&quot;atMs&quot;:3000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Month-end: invoice webhooks jump to 600 a second. The loader falls behind, and Kafka absorbs the burst as consumer lag.&quot;,&quot;focus&quot;:[&quot;billing-webhooks&quot;,&quot;billing-topic&quot;,&quot;snowpipe&quot;],&quot;pause&quot;:true}},{&quot;atMs&quot;:6500,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Producers never slowed down. Once the spike passes, the connector drains the lag and RAW catches up.&quot;,&quot;focus&quot;:[&quot;snowpipe&quot;,&quot;raw&quot;]}},{&quot;atMs&quot;:9000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Only order-driven segment changes flow back out through reverse ETL. Invoices and account rows stay in the marts.&quot;,&quot;focus&quot;:[&quot;marts&quot;,&quot;reverse-etl&quot;,&quot;segments-topic&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;lag&quot;,&quot;label&quot;:&quot;The loader falls behind during the spike&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;billing-topic&quot;,&quot;field&quot;:&quot;lag&quot;,&quot;group&quot;:&quot;snowflake-sink&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;at&quot;,&quot;atMs&quot;:5500},{&quot;id&quot;:&quot;drained&quot;,&quot;label&quot;:&quot;Lag drains to zero&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;billing-topic&quot;,&quot;field&quot;:&quot;lag&quot;,&quot;group&quot;:&quot;snowflake-sink&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;raw&quot;,&quot;label&quot;:&quot;All 4,440 events land in RAW&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;raw&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:4440,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;no-drop&quot;,&quot;label&quot;:&quot;Nothing is dropped&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;billing-topic&quot;,&quot;field&quot;:&quot;dropped&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;always&quot;},{&quot;id&quot;:&quot;segments&quot;,&quot;label&quot;:&quot;2,000 segment changes reach marketing&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;marketing&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:2000,&quot;when&quot;:&quot;end&quot;}]}]">
+          <mxCell />
+        </object>
+        <mxCell id="1" parent="0" />
+        <object id="dg-g-kafka" label="Kafka · Confluent Cloud" dg_id="kafka" dg_tone="neutral">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="760" y="40" width="340" height="592" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-snowflake" label="Snowflake · ANALYTICS" dg_id="snowflake" dg_tone="neutral">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="1520" y="160" width="340" height="392" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-billing-webhooks" label="Billing webhooks&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Stripe · invoice.paid&lt;/span&gt;" dg_id="billing-webhooks" dg_stencil="generic.webhook" dg_props="{&quot;ratePerSec&quot;:5,&quot;messageType&quot;:&quot;InvoicePaid&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#EC48991A;strokeColor=#EC4899;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="60" y="86" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-storefront" label="Storefront&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Web and mobile checkout&lt;/span&gt;" dg_id="storefront" dg_stencil="client.browser" dg_props="{&quot;ratePerSec&quot;:20,&quot;messageType&quot;:&quot;CheckoutRequest&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#6366F11A;strokeColor=#6366F1;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="60" y="206" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-accounts-db" label="Accounts database&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;OLTP · logical replication&lt;/span&gt;" dg_id="accounts-db" dg_stencil="postgres" dg_props="{&quot;messageType&quot;:&quot;AccountChanged&quot;,&quot;latencyMs&quot;:2}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3367911A;strokeColor=#336791;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="60" y="326" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-segment-cache" label="Segment cache&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;customerId → segments&lt;/span&gt;" dg_id="segment-cache" dg_stencil="redis.cache" dg_props="{&quot;latencyMs&quot;:2}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#DC382D1A;strokeColor=#DC382D;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="60" y="526" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-webhook-receiver" label="Webhook receiver&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Verify signature · ack 200&lt;/span&gt;" dg_id="webhook-receiver" dg_stencil="service.node" dg_props="{&quot;concurrency&quot;:64,&quot;latencyMs&quot;:80}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#5FA04E1A;strokeColor=#5FA04E;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="440" y="86" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-checkout" label="Checkout service&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Commits order · publishes&lt;/span&gt;" dg_id="checkout" dg_stencil="service.go" dg_props="{&quot;concurrency&quot;:64,&quot;latencyMs&quot;:120,&quot;emits&quot;:&quot;OrderPlaced&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#00ADD81A;strokeColor=#00ADD8;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="440" y="206" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-debezium" label="Debezium connector&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Postgres WAL → events&lt;/span&gt;" dg_id="debezium" dg_stencil="debezium" dg_props="{&quot;ratePerSec&quot;:10,&quot;messageType&quot;:&quot;AccountChanged&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#65A30D1A;strokeColor=#65A30D;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="440" y="326" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-personalization" label="Personalization service&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Next-best offer&lt;/span&gt;" dg_id="personalization" dg_stencil="service.java" dg_props="{&quot;group&quot;:&quot;personalization&quot;,&quot;concurrency&quot;:64,&quot;latencyMs&quot;:100}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E76F001A;strokeColor=#E76F00;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="440" y="526" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-marketing" label="Marketing automation&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Braze · campaigns&lt;/span&gt;" dg_id="marketing" dg_stencil="generic.marketing" dg_props="{&quot;group&quot;:&quot;marketing-sync&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#F43F5E1A;strokeColor=#F43F5E;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="440" y="646" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-billing-topic" label="billing.invoices.v1&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;key: customerId&lt;/span&gt;" dg_id="billing-topic" dg_stencil="kafka.topic" dg_props="{&quot;partitions&quot;:6}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="dg-g-kafka">
+            <mxGeometry x="60" y="46" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-orders-topic" label="orders.v1&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;key: orderId&lt;/span&gt;" dg_id="orders-topic" dg_stencil="kafka.topic" dg_props="{&quot;partitions&quot;:6}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="dg-g-kafka">
+            <mxGeometry x="60" y="166" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-accounts-topic" label="cdc.accounts.v1&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Debezium · key: accountId&lt;/span&gt;" dg_id="accounts-topic" dg_stencil="kafka.topic" dg_props="{&quot;partitions&quot;:6}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="dg-g-kafka">
+            <mxGeometry x="60" y="286" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-segments-topic" label="customer-segments.v1&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;key: customerId&lt;/span&gt;" dg_id="segments-topic" dg_stencil="kafka.topic" dg_props="{&quot;partitions&quot;:6}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="dg-g-kafka">
+            <mxGeometry x="60" y="486" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-schema-registry" label="Schema registry&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Avro · backward compatible&lt;/span&gt;" dg_id="schema-registry" dg_stencil="kafka.schema-registry" dg_props="{&quot;compatibility&quot;:&quot;BACKWARD&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="1186" y="86" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-snowpipe" label="Snowflake connector&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Snowpipe Streaming&lt;/span&gt;" dg_id="snowpipe" dg_stencil="snowflake.snowpipe" dg_props="{&quot;group&quot;:&quot;snowflake-sink&quot;,&quot;replicas&quot;:6,&quot;concurrency&quot;:4,&quot;latencyMs&quot;:40,&quot;emits&quot;:{&quot;OrderPlaced&quot;:&quot;RawOrderRow&quot;,&quot;InvoicePaid&quot;:&quot;RawInvoiceRow&quot;,&quot;AccountChanged&quot;:&quot;RawAccountRow&quot;}}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#29B5E81A;strokeColor=#29B5E8;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="1200" y="206" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-reverse-etl" label="Reverse ETL&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Hightouch · diffs only&lt;/span&gt;" dg_id="reverse-etl" dg_stencil="generic.reverse-etl" dg_props="{&quot;concurrency&quot;:400,&quot;latencyMs&quot;:1500,&quot;emits&quot;:&quot;CustomerSegmentChanged&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#14B8A61A;strokeColor=#14B8A6;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="1200" y="526" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-raw" label="Raw tables&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;RAW.KAFKA_* · VARIANT&lt;/span&gt;" dg_id="raw" dg_stencil="snowflake" dg_props="{&quot;latencyMs&quot;:1}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#29B5E81A;strokeColor=#29B5E8;fontSize=12;" vertex="1" parent="dg-g-snowflake">
+            <mxGeometry x="60" y="46" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-marts" label="Marts&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Segments · revenue · orders&lt;/span&gt;" dg_id="marts" dg_stencil="snowflake" dg_props="{&quot;latencyMs&quot;:1}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#29B5E81A;strokeColor=#29B5E8;fontSize=12;" vertex="1" parent="dg-g-snowflake">
+            <mxGeometry x="60" y="286" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-airflow" label="Airflow&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;dbt build · every 15 min&lt;/span&gt;" dg_id="airflow" dg_stencil="airflow">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#017CEE1A;strokeColor=#017CEE;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="1952" y="86" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-dbt" label="dbt models&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Incremental models&lt;/span&gt;" dg_id="dbt" dg_stencil="dbt" dg_props="{&quot;concurrency&quot;:3000,&quot;latencyMs&quot;:2500,&quot;emits&quot;:{&quot;RawOrderRow&quot;:&quot;CustomerSegmentRow&quot;,&quot;RawInvoiceRow&quot;:&quot;RevenueRow&quot;,&quot;RawAccountRow&quot;:&quot;CustomerRow&quot;}}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#FF694A1A;strokeColor=#FF694A;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="1960" y="326" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-bi" label="Revenue dashboards&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Tableau · live&lt;/span&gt;" dg_id="bi" dg_stencil="tableau" dg_props="{}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E976271A;strokeColor=#E97627;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="1960" y="566" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-billing-webhooks-to-webhook-receiver" label="HTTPS · signed" dg_id="billing-webhooks-to-webhook-receiver" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-billing-webhooks" target="dg-n-webhook-receiver">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-storefront-to-checkout" label="POST /checkout" dg_id="storefront-to-checkout" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-storefront" target="dg-n-checkout">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-accounts-db-to-debezium" label="WAL" dg_id="accounts-db-to-debezium" dg_kind="async" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-accounts-db" target="dg-n-debezium">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-webhook-receiver-to-billing-topic" label="InvoicePaid" dg_id="webhook-receiver-to-billing-topic" dg_kind="async" dg_props="{&quot;travelMs&quot;:300}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-webhook-receiver" target="dg-n-billing-topic">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-checkout-to-orders-topic" label="OrderPlaced" dg_id="checkout-to-orders-topic" dg_kind="async" dg_props="{&quot;travelMs&quot;:300}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-checkout" target="dg-n-orders-topic">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-debezium-to-accounts-topic" label="AccountChanged" dg_id="debezium-to-accounts-topic" dg_kind="async" dg_props="{&quot;travelMs&quot;:300}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-debezium" target="dg-n-accounts-topic">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-billing-topic-to-snowpipe" label="" dg_id="billing-topic-to-snowpipe" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;group&quot;:&quot;snowflake-sink&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-billing-topic" target="dg-n-snowpipe">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-orders-topic-to-snowpipe" label="group: snowflake-sink" dg_id="orders-topic-to-snowpipe" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;group&quot;:&quot;snowflake-sink&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-orders-topic" target="dg-n-snowpipe">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-accounts-topic-to-snowpipe" label="" dg_id="accounts-topic-to-snowpipe" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;group&quot;:&quot;snowflake-sink&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-accounts-topic" target="dg-n-snowpipe">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-snowpipe-to-schema-registry" label="Avro schemas" dg_id="snowpipe-to-schema-registry" dg_kind="async" dg_relation="depends">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#556075;dashed=1;dashPattern=1 4;dfRelation=depends;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="dg-n-snowpipe" target="dg-n-schema-registry">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-snowpipe-to-raw" label="insertRows" dg_id="snowpipe-to-raw" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-snowpipe" target="dg-n-raw">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-raw-to-dbt" label="New rows" dg_id="raw-to-dbt" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;filter&quot;:[&quot;Raw*&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-raw" target="dg-n-dbt">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-airflow-to-dbt" label="dbt build" dg_id="airflow-to-dbt" dg_kind="async" dg_relation="depends">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#556075;dashed=1;dashPattern=1 4;dfRelation=depends;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="dg-n-airflow" target="dg-n-dbt">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-dbt-to-marts" label="MERGE models" dg_id="dbt-to-marts" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200,&quot;filter&quot;:[&quot;CustomerSegmentRow&quot;,&quot;RevenueRow&quot;,&quot;CustomerRow&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-dbt" target="dg-n-marts">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-bi-to-marts" label="Live queries" dg_id="bi-to-marts" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-bi" target="dg-n-marts">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-marts-to-reverse-etl" label="Changed segments" dg_id="marts-to-reverse-etl" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;filter&quot;:[&quot;CustomerSegmentRow&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-marts" target="dg-n-reverse-etl">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-reverse-etl-to-segments-topic" label="Segment changes" dg_id="reverse-etl-to-segments-topic" dg_kind="async" dg_props="{&quot;travelMs&quot;:300}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-reverse-etl" target="dg-n-segments-topic">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-segments-topic-to-personalization" label="group: personalization" dg_id="segments-topic-to-personalization" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;group&quot;:&quot;personalization&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-segments-topic" target="dg-n-personalization">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-segments-topic-to-marketing" label="group: marketing-sync" dg_id="segments-topic-to-marketing" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;group&quot;:&quot;marketing-sync&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-segments-topic" target="dg-n-marketing">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-personalization-to-segment-cache" label="SET segments" dg_id="personalization-to-segment-cache" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-personalization" target="dg-n-segment-cache">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,14 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Complete export fixture",
+    "direction": "TB",
+    "groups": [{ "id": "g_zone", "label": "Zone", "tone": "neutral", "x": 40, "y": 40, "width": 300, "height": 336 }],
+    "nodes": [
+      { "id": "source", "stencil": "generic.service", "label": "Client", "sublabel": "Requests", "x": 80, "y": 104, "group": "g_zone" },
+      { "id": "worker", "stencil": "generic.service", "label": "Worker", "sublabel": "API", "x": 80, "y": 264, "group": "g_zone" }
+    ],
+    "edges": [{ "id": "e1-source-worker", "from": "source", "to": "worker", "label": "Call", "kind": "sync" }]
+  }
+}

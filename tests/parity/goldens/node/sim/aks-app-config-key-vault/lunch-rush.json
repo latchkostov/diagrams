@@ -1,0 +1,131 @@
+{
+  "run": {
+    "time": 12870,
+    "totalMs": 20000,
+    "done": true,
+    "scale": 2,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "written", "label": "Every order is written", "status": "pass", "value": 400 },
+      { "id": "confirmed", "label": "Every order is confirmed", "status": "pass", "value": 400 },
+      { "id": "no-drops", "label": "Nothing is dropped", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "note", "label": "Orders flow through Front Door to the API, then to SQL and Service Bus." },
+      { "atMs": 0, "kind": "traffic", "label": "400 orders over 10 seconds" },
+      { "atMs": 4000, "kind": "note", "label": "No messages go to App Configuration or Key Vault: the API read them at startup and keeps them cached." },
+      { "atMs": 10000, "kind": "traffic", "label": "400 orders over 10 seconds ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "web": { "replicas": [1, 1, 0] },
+        "fd": { "replicas": [1, 1, 0] },
+        "api": { "replicas": [3, 3, 0] },
+        "sql": { "replicas": [1, 1, 0] },
+        "sb": { "lag": { "confirmations": 0 }, "replicas": [1, 1, 0] },
+        "notify": { "replicas": [1, 1, 0] },
+        "ai": { "replicas": [1, 1, 0] },
+        "appcfg": { "replicas": [1, 1, 0] },
+        "kv": { "replicas": [1, 1, 0] },
+        "mi": { "replicas": [1, 1, 0] },
+        "entra": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 32,
+      "nodes": {
+        "web": { "processed": 200, "throughput": 19.601077651563553, "replicas": [1, 1, 0] },
+        "fd": { "processed": 194, "inFlight": 2, "throughput": 19.674923135302933, "replicas": [1, 1, 0] },
+        "api": { "processed": 188, "inFlight": 2, "throughput": 20.244887881069808, "replicas": [3, 3, 0] },
+        "sql": { "processed": 183, "inFlight": 1, "throughput": 20.1559704659259, "replicas": [1, 1, 0] },
+        "sb": {
+          "processed": 182,
+          "throughput": 20.2359775678947,
+          "lag": { "confirmations": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "notify": { "processed": 173, "inFlight": 3, "throughput": 20.328271013419585, "replicas": [1, 1, 0] },
+        "ai": { "replicas": [1, 1, 0] },
+        "appcfg": { "replicas": [1, 1, 0] },
+        "kv": { "replicas": [1, 1, 0] },
+        "mi": { "replicas": [1, 1, 0] },
+        "entra": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 12870,
+    "inSystem": 0,
+    "real": {
+      "web": { "processed": 400, "throughput": 2.3366868624278836, "replicas": [1, 1, 0] },
+      "fd": { "processed": 400, "throughput": 3.0180706247819082, "replicas": [1, 1, 0] },
+      "api": { "processed": 400, "throughput": 4.178733640169851, "replicas": [3, 3, 0] },
+      "sql": { "processed": 400, "throughput": 5.338195735881039, "replicas": [1, 1, 0] },
+      "sb": {
+        "processed": 400,
+        "throughput": 5.6407004086973975,
+        "lag": { "confirmations": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "notify": { "processed": 400, "throughput": 8.840153251246447, "replicas": [1, 1, 0] },
+      "ai": { "replicas": [1, 1, 0] },
+      "appcfg": { "replicas": [1, 1, 0] },
+      "kv": { "replicas": [1, 1, 0] },
+      "mi": { "replicas": [1, 1, 0] },
+      "entra": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "web-to-fd": 200, "fd-to-api": 200, "api-to-sql": 200, "api-to-sb": 200, "sb-to-notify": 200, "api-to-appcfg": 0, "appcfg-to-kv": 0, "api-to-mi": 0, "mi-to-entra": 0, "api-to-ai": 0 }
+  },
+  "events": {
+    "total": 2400,
+    "byKind": { "inject": 200, "process": 1200, "deliver": 1000 },
+    "byNode": {
+      "web": { "inject": 200, "process": 200 },
+      "fd": { "deliver": 200, "process": 200 },
+      "api": { "deliver": 200, "process": 200 },
+      "sql": { "deliver": 200, "process": 200 },
+      "sb": { "deliver": 200, "process": 200 },
+      "notify": { "deliver": 200, "process": 200 }
+    },
+    "perSecond": [
+      "4e0bae37f310",
+      "04dcbc2ca0df",
+      "fb730ecb6c05",
+      "564feaa3ad61",
+      "0ce50ea3ba76",
+      "53ee9c1314c6",
+      "95e528e8f528",
+      "a3e480603a55",
+      "9d769e704a58",
+      "70d342c5492c",
+      "82f2cdc21fde",
+      "dcc34481d7d1",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 0, "text": "Orders flow through Front Door to the API, then to SQL and Service Bus.", "focus": ["fd", "api", "sql", "sb"] },
+    { "atMs": 4000, "text": "No messages go to App Configuration or Key Vault: the API read them at startup and keeps them cached.", "focus": ["api", "appcfg", "kv"] }
+  ],
+  "latency": {
+    "journeys": { "done": 200, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 200, "min": 1290, "mean": 1343.85, "p50": 1350, "p90": 1370, "max": 1410 },
+    "waitMs": {
+      "fd": { "count": 200, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "api": { "count": 200, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "sql": { "count": 200, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "notify": { "count": 200, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "fd": { "count": 200, "min": 50, "mean": 65.3, "p50": 70, "p90": 70, "max": 80 },
+      "api": { "count": 200, "min": 100, "mean": 124.75, "p50": 130, "p90": 140, "max": 150 },
+      "sql": { "count": 200, "min": 40, "mean": 45.25, "p50": 50, "p90": 50, "max": 50 },
+      "notify": { "count": 200, "min": 130, "mean": 153.8, "p50": 150, "p90": 180, "max": 180 }
+    }
+  }
+}

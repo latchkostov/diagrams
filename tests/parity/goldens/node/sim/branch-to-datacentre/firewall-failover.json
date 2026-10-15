@@ -1,0 +1,155 @@
+{
+  "run": {
+    "time": 15700,
+    "totalMs": 22000,
+    "done": true,
+    "scale": 10,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "waits", "label": "Requests wait while it fails over", "status": "pass", "value": 0 },
+      { "id": "no-drops", "label": "The firewall never drops a request", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "note", "label": "Customers come in over the internet and the branch over SD-WAN. Both pass the firewall pair: one unit carries the traffic, the other stands by." },
+      { "atMs": 0, "kind": "traffic", "label": "Checkouts: 400/s" },
+      { "atMs": 0, "kind": "traffic", "label": "Back office: 40/s" },
+      { "atMs": 4000, "kind": "props", "label": "props: firewall" },
+      { "atMs": 4000, "kind": "note", "label": "The active firewall fails. For a few seconds, while the standby notices and takes over its sessions, requests wait at the pair." },
+      { "atMs": 7500, "kind": "note", "label": "The standby carries everything now, at the same throughput: nothing was dropped. Until the failed unit is back, though, the pair has no spare." },
+      { "atMs": 12000, "kind": "traffic", "label": "Checkouts: 400/s ends" },
+      { "atMs": 12000, "kind": "traffic", "label": "Back office: 40/s ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "customers": { "replicas": [1, 1, 0] },
+        "staff": { "replicas": [1, 1, 0] },
+        "branch-router": { "replicas": [1, 1, 0] },
+        "edge-router": { "replicas": [2, 2, 0] },
+        "firewall": { "replicas": [2, 2, 0] },
+        "spine-1": { "replicas": [1, 1, 0] },
+        "spine-2": { "replicas": [1, 1, 0] },
+        "leaf": { "replicas": [2, 2, 0] },
+        "adc": { "replicas": [2, 2, 0] },
+        "web-1": { "replicas": [2, 2, 0] },
+        "web-2": { "replicas": [2, 2, 0] },
+        "orders-db": { "replicas": [1, 1, 0] },
+        "payments": { "replicas": [2, 2, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 121,
+      "nodes": {
+        "customers": { "processed": 400, "throughput": 39.79914400525013, "replicas": [1, 1, 0] },
+        "staff": { "processed": 40, "throughput": 3.538268275513526, "replicas": [1, 1, 0] },
+        "branch-router": { "processed": 39, "throughput": 4.321650630822844, "replicas": [1, 1, 0] },
+        "edge-router": { "processed": 427, "inFlight": 1, "throughput": 43.95065973587837, "replicas": [2, 2, 0] },
+        "firewall": { "processed": 418, "throughput": 48.78286557530239, "replicas": [1, 1, 0] },
+        "spine-1": { "processed": 204, "inFlight": 1, "throughput": 24.319652535622925, "replicas": [1, 1, 0] },
+        "spine-2": { "processed": 204, "throughput": 24.778894464319336, "replicas": [1, 1, 0] },
+        "leaf": { "processed": 399, "throughput": 50.67010044745278, "replicas": [2, 2, 0] },
+        "adc": { "processed": 390, "inFlight": 1, "throughput": 52.560906027185915, "replicas": [2, 2, 0] },
+        "web-1": { "processed": 190, "inFlight": 1, "throughput": 31.050834398269387, "replicas": [2, 2, 0] },
+        "web-2": { "processed": 190, "inFlight": 1, "throughput": 31.400644706474775, "replicas": [2, 2, 0] },
+        "orders-db": { "processed": 371, "throughput": 66.91744347899312, "replicas": [1, 1, 0] },
+        "payments": { "processed": 296, "backlog": 40, "inFlight": 4, "throughput": 67.92764392704753, "replicas": [2, 2, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 15700,
+    "inSystem": 0,
+    "real": {
+      "customers": { "processed": 4800, "throughput": 10.088623513630505, "replicas": [1, 1, 0] },
+      "staff": { "processed": 480, "throughput": 1.1233043620145298, "replicas": [1, 1, 0] },
+      "branch-router": { "processed": 480, "throughput": 1.3720070460178952, "replicas": [1, 1, 0] },
+      "edge-router": { "processed": 5280, "throughput": 15.112922923989986, "replicas": [2, 2, 0] },
+      "firewall": { "processed": 5280, "throughput": 18.798250867382272, "replicas": [1, 1, 0] },
+      "spine-1": { "processed": 2640, "throughput": 11.32540003491357, "replicas": [1, 1, 0] },
+      "spine-2": { "processed": 2640, "throughput": 11.865589625738743, "replicas": [1, 1, 0] },
+      "leaf": { "processed": 5280, "throughput": 28.61021513303038, "replicas": [2, 2, 0] },
+      "adc": { "processed": 5280, "throughput": 35.29579470026194, "replicas": [2, 2, 0] },
+      "web-1": { "processed": 2640, "throughput": 21.922706656235974, "replicas": [2, 2, 0] },
+      "web-2": { "processed": 2640, "throughput": 22.935153927822512, "replicas": [2, 2, 0] },
+      "orders-db": { "processed": 5280, "throughput": 55.340158419151244, "replicas": [1, 1, 0] },
+      "payments": { "processed": 4800, "throughput": 49.494640679820925, "replicas": [2, 2, 0] }
+    },
+    "edges": { "customers-edge": 480, "staff-branch": 48, "branch-edge": 48, "edge-firewall": 528, "firewall-spine-1": 264, "firewall-spine-2": 264, "firewall-payments": 0, "spine-1-leaf": 264, "spine-2-leaf": 264, "leaf-adc": 528, "adc-web-1": 264, "adc-web-2": 264, "web-1-db": 264, "web-2-db": 264, "web-1-payments": 239, "web-2-payments": 241 }
+  },
+  "events": {
+    "total": 9505,
+    "byKind": { "inject": 528, "process": 4752, "deliver": 4224, "status": 1 },
+    "byNode": {
+      "customers": { "inject": 480, "process": 480 },
+      "edge-router": { "deliver": 528, "process": 528 },
+      "staff": { "inject": 48, "process": 48 },
+      "firewall": { "deliver": 528, "process": 528, "status": 1 },
+      "branch-router": { "deliver": 48, "process": 48 },
+      "spine-1": { "deliver": 264, "process": 264 },
+      "spine-2": { "deliver": 264, "process": 264 },
+      "leaf": { "deliver": 528, "process": 528 },
+      "adc": { "deliver": 528, "process": 528 },
+      "web-1": { "deliver": 264, "process": 264 },
+      "web-2": { "deliver": 264, "process": 264 },
+      "orders-db": { "deliver": 528, "process": 528 },
+      "payments": { "deliver": 480, "process": 480 }
+    },
+    "perSecond": [
+      "a0abb115134a",
+      "636922047343",
+      "dd4fb1bd0ab0",
+      "3e62dcf966df",
+      "ddccd6a1b434",
+      "e340f0b7f5aa",
+      "8f32a4d9d7b3",
+      "d5dd42f725fc",
+      "3d71a8f4fd5f",
+      "118ea307d250",
+      "131c45dd21a9",
+      "43d6c1f2e11a",
+      "52ea1e118253",
+      "548da926f0c9",
+      "bf19b4c1809e",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 0, "text": "Customers come in over the internet and the branch over SD-WAN. Both pass the firewall pair: one unit carries the traffic, the other stands by.", "focus": ["firewall"] },
+    { "atMs": 4000, "text": "The active firewall fails. For a few seconds, while the standby notices and takes over its sessions, requests wait at the pair.", "focus": ["firewall"] },
+    { "atMs": 7500, "text": "The standby carries everything now, at the same throughput: nothing was dropped. Until the failed unit is back, though, the pair has no spare.", "focus": ["firewall", "adc"] }
+  ],
+  "latency": {
+    "journeys": { "done": 477, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 477, "min": 1520, "mean": 2237.2955974842766, "p50": 1540, "p90": 3880, "max": 4510 },
+    "waitMs": {
+      "branch-router": { "count": 41, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "edge-router": { "count": 477, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "firewall": { "count": 477, "min": 0, "mean": 359.45492662473794, "p50": 0, "p90": 1700, "max": 2860 },
+      "spine-1": { "count": 240, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "spine-2": { "count": 237, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "leaf": { "count": 477, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "adc": { "count": 477, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "web-1": { "count": 238, "min": 0, "mean": 96.09243697478992, "p50": 0, "p90": 410, "max": 570 },
+      "web-2": { "count": 239, "min": 0, "mean": 94.26778242677824, "p50": 0, "p90": 400, "max": 560 },
+      "orders-db": { "count": 477, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "payments": { "count": 436, "min": 0, "mean": 213.30275229357798, "p50": 0, "p90": 710, "max": 1040 }
+    },
+    "processMs": {
+      "branch-router": { "count": 41, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "edge-router": { "count": 477, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "firewall": { "count": 477, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "spine-1": { "count": 240, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "spine-2": { "count": 237, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "leaf": { "count": 477, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "adc": { "count": 477, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "web-1": { "count": 238, "min": 30, "mean": 35.588235294117645, "p50": 40, "p90": 40, "max": 40 },
+      "web-2": { "count": 239, "min": 30, "mean": 34.76987447698745, "p50": 30, "p90": 40, "max": 40 },
+      "orders-db": { "count": 477, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "payments": { "count": 436, "min": 40, "mean": 44.44954128440367, "p50": 40, "p90": 50, "max": 50 }
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "validate": "Usage: node scripts/validate.mjs <file.diagram.json> [more files…]\n",
+  "layout": "Usage: node scripts/layout.mjs <file.diagram.json> [--force] [--out <file>]\n",
+  "shareLink": "Usage: node scripts/share-link.mjs <file.diagram.json> [--base <url>]\n",
+  "exportHtml": "Usage: node scripts/export-html.mjs <file.diagram.json> [--out <path>] [--theme light|dark] [--banner \"text\"] [--title \"text\"] [--sim <id>] [--no-autoplay] [--password] [--force]\n"
+}

@@ -1,0 +1,27 @@
+{
+  "ran": [
+    "dead-letter",
+    "no-reader",
+    "sync-cycle",
+    "sync-chain",
+    "shared-database",
+    "entry-gateway",
+    "capacity",
+    "single-point",
+    "secret-identity",
+    "schema-registry"
+  ],
+  "off": [],
+  "findings": [
+    {
+      "id": "no-reader:topic",
+      "rule": "no-reader",
+      "severity": "warning",
+      "target": "topic",
+      "elements": ["topic", "checkout"],
+      "fix": { "ops": null, "needsChoice": true }
+    }
+  ],
+  "ignored": [],
+  "fixes": {}
+}

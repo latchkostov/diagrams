@@ -18,3 +18,5 @@ deploy/self-host/**/*.json
 deploy/self-host/github-pages/meta-csp.html
 # Helm's Go templates are not plain YAML.
 deploy/self-host/helm/templates
+# Parity goldens are compared byte for byte; their printer (tests/parity/lib/stable.ts) formats them.
+tests/parity/goldens

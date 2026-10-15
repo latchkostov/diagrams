@@ -1,0 +1,152 @@
+{
+  "trace": { "rootId": 4, "type": "AppTableBatch", "origin": "app-db", "startedAt": 20, "done": true, "partial": false, "truncated": false, "steps": 11, "endedAt": 1500 },
+  "steps": [
+    { "t": 20, "kind": "emit", "id": 4, "type": "AppTableBatch", "node": "app-db" },
+    { "t": 20, "kind": "done", "id": 4, "type": "AppTableBatch", "node": "app-db" },
+    { "t": 20, "kind": "send", "id": 4, "type": "AppTableBatch", "node": "app-db", "edge": "app-db-to-airbyte", "via": "message", "until": 320 },
+    { "t": 320, "kind": "arrive", "id": 4, "type": "AppTableBatch", "node": "airbyte", "edge": "app-db-to-airbyte" },
+    { "t": 320, "kind": "start", "id": 4, "type": "AppTableBatch", "node": "airbyte" },
+    { "t": 1300, "kind": "done", "id": 4, "type": "AppTableBatch", "node": "airbyte" },
+    { "t": 1300, "kind": "send", "id": 4, "type": "RawBatch", "node": "airbyte", "edge": "airbyte-to-raw", "via": "message", "until": 1500 },
+    { "t": 1500, "kind": "arrive", "id": 4, "type": "RawBatch", "node": "raw", "edge": "airbyte-to-raw" },
+    { "t": 1500, "kind": "send", "id": 4, "type": "RawBatch", "node": "raw", "edge": "airbyte-to-raw", "via": "reply", "until": 1700 },
+    { "t": 1500, "kind": "done", "id": 4, "type": "RawBatch", "node": "raw" },
+    { "t": 1500, "kind": "end", "id": 4, "type": "RawBatch", "node": "raw", "reason": "stored" }
+  ],
+  "journey": {
+    "rootId": 4,
+    "type": "AppTableBatch",
+    "origin": "app-db",
+    "startedAt": 20,
+    "totalMs": 1480,
+    "done": true,
+    "partial": false,
+    "truncated": false,
+    "rows": [
+      { "key": "0", "kind": "origin", "t": 0, "id": 4, "type": "AppTableBatch", "node": "app-db", "copy": false },
+      { "key": "3", "kind": "hop", "t": 300, "id": 4, "type": "AppTableBatch", "node": "airbyte", "from": "app-db", "edge": "app-db-to-airbyte", "sync": false, "latencyMs": 300, "waitMs": 0, "travelMs": 300, "renamed": false, "copy": false },
+      { "key": "7", "kind": "hop", "t": 1480, "id": 4, "type": "RawBatch", "node": "raw", "from": "airbyte", "edge": "airbyte-to-raw", "sync": true, "latencyMs": 1180, "waitMs": 0, "processMs": 980, "travelMs": 200, "renamed": true, "copy": false }
+    ],
+    "visits": [
+      { "id": 4, "node": "app-db", "at": 0, "done": 0, "left": 0 },
+      { "id": 4, "node": "airbyte", "at": 300, "start": 300, "done": 1280, "left": 1280 },
+      { "id": 4, "node": "raw", "at": 1480, "done": 1480 }
+    ],
+    "ids": [4],
+    "copies": 0,
+    "retries": 0,
+    "failures": 0,
+    "deadLettered": 0,
+    "dropped": 0,
+    "blocked": 0,
+    "kept": [],
+    "nodes": ["app-db", "airbyte", "raw"],
+    "edges": ["app-db-to-airbyte", "airbyte-to-raw"],
+    "rowOf": { "0": "0", "3": "3", "7": "7" }
+  },
+  "sequence": {
+    "title": "AppTableBatch #4",
+    "summary": "1.48 s end to end",
+    "participants": [
+      { "id": "app-db", "label": "App database" },
+      { "id": "airbyte", "label": "Airbyte" },
+      { "id": "raw", "label": "Raw tables" }
+    ],
+    "items": [
+      { "kind": "arrow", "t": 0, "until": 300, "from": "app-db", "to": "airbyte", "style": "async", "label": "AppTableBatch", "detail": "Incremental", "id": 4, "type": "AppTableBatch" },
+      { "kind": "gap", "t": 300, "ms": 980, "text": "980 ms at Airbyte: processing", "node": "airbyte" },
+      { "kind": "arrow", "t": 1280, "until": 1480, "from": "airbyte", "to": "raw", "style": "sync", "label": "RawBatch", "detail": "COPY INTO", "id": 4, "type": "RawBatch" },
+      { "kind": "arrow", "t": 1480, "until": 1680, "from": "raw", "to": "airbyte", "style": "reply", "label": "reply", "id": 4, "type": "RawBatch" }
+    ],
+    "totalMs": 1480,
+    "done": true,
+    "partial": false,
+    "truncated": false
+  },
+  "mermaidPlain": "---\ntitle: \"AppTableBatch #4 · 1.48 s end to end\"\n---\nsequenceDiagram\n  participant app_db as App database\n  participant airbyte as Airbyte\n  participant raw as Raw tables\n  app_db-)airbyte: AppTableBatch (+0.00 s)<br/>Incremental\n  Note over app_db,raw: ⏱ 980 ms at Airbyte: processing\n  airbyte->>raw: RawBatch (+1.28 s)<br/>COPY INTO\n  raw-->>airbyte: reply (+1.48 s)\n",
+  "svg": {
+    "light": { "sha256": "9052b7160f9966190492604cfa004b2ff41840054001638c47c9ff0077c65558", "bytes": 6146, "width": 502, "height": 376, "headerHeight": 142 },
+    "dark": { "sha256": "dc08bdd77738fe36244378eed87739c4e562a43972e7e598c40fd40c8279acee", "bytes": 6145, "width": 502, "height": 376, "headerHeight": 142 }
+  },
+  "slowMotion": {
+    "rootId": 4,
+    "type": "AppTableBatch",
+    "origin": "app-db",
+    "beats": [
+      {
+        "kind": "establish",
+        "msg": 4,
+        "type": "AppTableBatch",
+        "node": "app-db",
+        "anchor": { "edge": "app-db-to-airbyte", "end": 0 },
+        "start": 0,
+        "duration": 800,
+        "realFrom": 0,
+        "realTo": 0,
+        "caption": "App database sends AppTableBatch",
+        "rowKey": "0",
+        "i": 0,
+        "color": "#e09a26",
+        "tone": "plain"
+      },
+      { "kind": "travel", "msg": 4, "type": "AppTableBatch", "edge": "app-db-to-airbyte", "reverse": false, "start": 800, "duration": 1000, "realFrom": 0, "realTo": 300, "caption": "AppTableBatch", "tone": "plain", "i": 1, "color": "#e09a26", "rowKey": "3" },
+      {
+        "kind": "process",
+        "msg": 4,
+        "type": "AppTableBatch",
+        "node": "airbyte",
+        "anchor": { "edge": "app-db-to-airbyte", "end": 1 },
+        "start": 1800,
+        "duration": 1600,
+        "realFrom": 300,
+        "realTo": 1280,
+        "caption": "Airbyte · Incremental · 980 ms → RawBatch",
+        "i": 2,
+        "color": "#e09a26",
+        "tone": "plain",
+        "short": "Incremental · 980 ms → RawBatch"
+      },
+      { "kind": "travel", "msg": 4, "type": "RawBatch", "edge": "airbyte-to-raw", "reverse": false, "start": 3400, "duration": 1000, "realFrom": 1280, "realTo": 1480, "caption": "RawBatch", "tone": "plain", "i": 3, "color": "#ca6578", "rowKey": "7" },
+      {
+        "kind": "write",
+        "msg": 4,
+        "type": "RawBatch",
+        "node": "raw",
+        "anchor": { "edge": "airbyte-to-raw", "end": 1 },
+        "start": 4400,
+        "duration": 900,
+        "realFrom": 1480,
+        "realTo": 1480,
+        "caption": "Raw tables · write RawBatch",
+        "sink": 300,
+        "i": 4,
+        "color": "#ca6578",
+        "tone": "plain",
+        "short": "write RawBatch"
+      },
+      { "kind": "reply", "msg": 4, "type": "RawBatch", "edge": "airbyte-to-raw", "reverse": true, "start": 5300, "duration": 600, "realFrom": 1480, "realTo": 1680, "i": 5, "color": "#ca6578", "tone": "plain" },
+      { "kind": "end", "msg": 4, "type": "AppTableBatch", "node": "raw", "start": 5700, "duration": 1200, "realFrom": 1480, "realTo": 1480, "caption": "Done · 1.48 s · 1 write", "tone": "done", "i": 6, "color": "#e09a26" }
+    ],
+    "duration": 6900,
+    "realTotal": 1480,
+    "stops": [0, 800, 3400, 5700],
+    "nodes": ["app-db", "airbyte", "raw"],
+    "edges": ["app-db-to-airbyte", "airbyte-to-raw"],
+    "hiddenCopies": 0,
+    "unfinished": false,
+    "summary": "Done · 1.48 s · 1 write",
+    "reduced": false,
+    "rowStart": { "0": 0, "3": 800, "7": 3400 }
+  },
+  "slowMotionReduced": {
+    "duration": 9000,
+    "beats": [
+      ["establish", 0, 1500],
+      ["travel", 1500, 1500],
+      ["process", 3000, 1500],
+      ["travel", 4500, 1500],
+      ["write", 6000, 1500],
+      ["end", 7500, 1500]
+    ]
+  }
+}

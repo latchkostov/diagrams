@@ -1,0 +1,20 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Cycle of 4",
+    "direction": "LR",
+    "nodes": [
+      { "id": "c1", "stencil": "generic.service", "label": "Service 1", "x": 40, "y": 40 },
+      { "id": "c2", "stencil": "generic.topic", "label": "Topic 2", "sublabel": "ring.2", "x": 403, "y": 40 },
+      { "id": "c3", "stencil": "generic.service", "label": "Service 3", "x": 763, "y": 40 },
+      { "id": "c4", "stencil": "generic.topic", "label": "Topic 4", "sublabel": "ring.4", "x": 1123, "y": 40 }
+    ],
+    "edges": [
+      { "id": "e1-c1-c2", "from": "c1", "to": "c2", "kind": "async" },
+      { "id": "e2-c2-c3", "from": "c2", "to": "c3", "kind": "async" },
+      { "id": "e3-c3-c4", "from": "c3", "to": "c4", "kind": "async" },
+      { "id": "e4-c4-c1", "from": "c4", "to": "c1", "label": "back to start", "kind": "async" }
+    ]
+  }
+}

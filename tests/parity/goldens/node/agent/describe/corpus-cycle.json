@@ -1,0 +1,132 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"Cycle of 4\" · direction LR · 4 nodes, 4 connections, 0 boundaries, 0 simulations\ndescription: \"Messages loop back to the first node.\"\nnodes:\n  \"c1\" \"service.dotnet\" (\".NET Service\") \"Service 1\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"r1\",\"peer\":\"c2\"},{\"kind\":\"consumes\",\"edge\":\"r4\",\"peer\":\"c4\",\"group\":\"r4\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"c1\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"c4\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"c2\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 2\" / \"ring.2\" capabilities=[] explanation=undefined\n  \"c3\" \"service.dotnet\" (\".NET Service\") \"Service 3\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"r2\",\"peer\":\"c2\",\"group\":\"r2\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"r3\",\"peer\":\"c4\"}] explanation={\"id\":\"c3\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"c2\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"c4\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 4\" / \"ring.4\" capabilities=[] explanation=undefined\nconnections:\n  \"r1\" \"c1\" -> \"c2\" async\n  \"r2\" \"c2\" -> \"c3\" async\n  \"r3\" \"c3\" -> \"c4\" async\n  \"r4\" \"c4\" -> \"c1\" async \"back to start\""
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "Cycle of 4",
+      "description": "Messages loop back to the first node.",
+      "direction": "LR",
+      "nodes": [
+        {
+          "id": "c1",
+          "stencil": "service.dotnet",
+          "label": "Service 1",
+          "x": 260,
+          "y": 106,
+          "capabilities": [
+            { "kind": "publishes", "edge": "r1", "peer": "c2" },
+            {
+              "kind": "consumes",
+              "edge": "r4",
+              "peer": "c4",
+              "group": "r4",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "c1",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 16,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "c4",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        },
+        { "id": "c2", "stencil": "kafka.topic", "label": "Topic 2", "sublabel": "ring.2", "x": 480, "y": 260, "capabilities": [] },
+        {
+          "id": "c3",
+          "stencil": "service.dotnet",
+          "label": "Service 3",
+          "x": 260,
+          "y": 414,
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "r2",
+              "peer": "c2",
+              "group": "r2",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            },
+            { "kind": "publishes", "edge": "r3", "peer": "c4" }
+          ],
+          "explanation": {
+            "id": "c3",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 16,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "c2",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        },
+        { "id": "c4", "stencil": "kafka.topic", "label": "Topic 4", "sublabel": "ring.4", "x": 40, "y": 260, "capabilities": [] }
+      ],
+      "edges": [
+        { "id": "r1", "from": "c1", "to": "c2", "kind": "async" },
+        { "id": "r2", "from": "c2", "to": "c3", "kind": "async" },
+        { "id": "r3", "from": "c3", "to": "c4", "kind": "async" },
+        { "id": "r4", "from": "c4", "to": "c1", "kind": "async", "label": "back to start" }
+      ],
+      "groups": [],
+      "annotations": [],
+      "simulations": [],
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"Cycle of 4\" · direction LR · 3 nodes, 2 connections, 0 boundaries, 0 simulations\ndescription: \"Messages loop back to the first node.\"\nnodes:\n  \"c1\" \"service.dotnet\" (\".NET Service\") \"Service 1\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"r1\",\"peer\":\"c2\"},{\"kind\":\"consumes\",\"edge\":\"r4\",\"peer\":\"c4\",\"group\":\"r4\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"c1\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"c4\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"c2\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 2\" / \"ring.2\" capabilities=[] explanation=undefined\n  \"c4\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 4\" / \"ring.4\" capabilities=[] explanation=undefined\nconnections:\n  \"r1\" \"c1\" -> \"c2\" async\n  \"r4\" \"c4\" -> \"c1\" async \"back to start\""
+  }
+}

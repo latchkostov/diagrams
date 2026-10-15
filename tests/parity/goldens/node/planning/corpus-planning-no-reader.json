@@ -1,0 +1,153 @@
+{
+  "autoScale": { "freePlay": 1 },
+  "brokerAssignments": { "brokers": {}, "consumers": {} },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "topic",
+      "suggestion": "Order events: resume the node or add a ready consumer.",
+      "converged": true,
+      "iterations": 2,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "checkout": ["Infinity", 3, 0, 1, 1, 0], "topic": [0, 3, "Infinity", 1, 1, 0] },
+      "connections": { "publish": 3 },
+      "offeredTypes": { "checkout": ["Checkout"], "topic": ["Checkout"] }
+    },
+    "explanations": {
+      "topic": {
+        "id": "topic",
+        "role": "topic",
+        "status": "up",
+        "reason": "no-reader",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0,
+        "utilization": "Infinity",
+        "growth": 3,
+        "contributors": [{ "edge": "publish", "node": "checkout", "label": "Checkout", "rate": 3 }],
+        "target": 0.5,
+        "changes": null,
+        "addConsumer": "topic",
+        "fixId": "no-reader:topic",
+        "converged": true
+      }
+    },
+    "capabilities": { "checkout": [{ "kind": "publishes", "edge": "publish", "peer": "topic" }] },
+    "sizing": null,
+    "redundancy": { "topic": { "replicas": 2, "enough": true } },
+    "resolved": {
+      "checkout": {
+        "profile": { "family": "client", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 3,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Checkout",
+        "healthChecks": false
+      },
+      "topic": {
+        "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+        "profile": { "family": "log", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Order events",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {},
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "warn",
+          "top": "topic",
+          "headline": "Nobody reads Order events",
+          "detail": "It keeps what's published, but nothing consumes it. Partitions can't change that: add a consumer.",
+          "fix": null,
+          "addConsumer": "topic",
+          "converged": true,
+          "nodes": {
+            "checkout": ["idle", "3/s · no limit", { "modeled": false }],
+            "topic": ["warn", "Nobody reads this yet · 3/s kept", { "noReader": true }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "warn",
+          "top": "topic",
+          "headline": "Nobody reads Order events",
+          "detail": "It keeps what's published, but nothing consumes it. Partitions can't change that: add a consumer.",
+          "fix": null,
+          "addConsumer": "topic",
+          "converged": true,
+          "nodes": {
+            "checkout": ["idle", "15/s · no limit", { "modeled": false }],
+            "topic": ["warn", "Nobody reads this yet · 15/s kept", { "noReader": true }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "warn",
+          "top": "topic",
+          "headline": "Nobody reads Order events",
+          "detail": "It keeps what's published, but nothing consumes it. Partitions can't change that: add a consumer.",
+          "fix": null,
+          "addConsumer": "topic",
+          "converged": true,
+          "nodes": {
+            "checkout": ["idle", "3/s · no limit", { "modeled": false }],
+            "topic": ["warn", "Nobody reads this yet · 3/s kept", { "noReader": true }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": { "topic": { "partitions": 6 } }, "rates": {} },
+        "view": {
+          "tone": "warn",
+          "top": "topic",
+          "headline": "Nobody reads Order events",
+          "detail": "It keeps what's published, but nothing consumes it. Partitions can't change that: add a consumer.",
+          "fix": null,
+          "addConsumer": "topic",
+          "converged": true,
+          "nodes": {
+            "checkout": ["idle", "3/s · no limit", { "modeled": false }],
+            "topic": ["warn", "Nobody reads this yet · 3/s kept", { "noReader": true }]
+          }
+        },
+        "partitionsNotes": { "topic": "Nobody reads it yet, so more partitions change nothing." }
+      }
+    }
+  }
+}

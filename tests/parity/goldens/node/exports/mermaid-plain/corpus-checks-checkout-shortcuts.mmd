@@ -1,0 +1,17 @@
+---
+title: Checkout shortcuts
+---
+flowchart LR
+  subgraph g_team ["Orders team"]
+    orders["Order service"]
+    db[("orders-db")]
+  end
+  web(["Storefront"])
+  app(["Mobile app"])
+  gw["Commerce gateway<br/>TLS · /api"]
+  billing["Billing"]
+  web -->|"HTTPS"| gw
+  gw -->|"POST /orders"| orders
+  app -->|"POST /orders"| orders
+  orders -->|"Commit order"| db
+  billing -->|"Read order totals"| db

@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "checkout": [40, 100], "topic": [400, 40], "topic2": [400, 160], "orders": [760, 100], "payments": [1120, 40], "queue": [1120, 160] },
+    "TB": { "checkout": [180, 40], "topic": [40, 200], "topic2": [320, 200], "orders": [180, 360], "queue": [40, 520], "payments": [320, 520] }
+  },
+  "tidy": { "checkout": [0, 80], "orders": [640, 80], "topic": [320, 20], "topic2": [320, 140], "payments": [960, 20], "queue": [960, 140] },
+  "arrange": {
+    "alignLeft": { "checkout": [0, 140], "orders": [0, 140], "topic": [0, 20], "topic2": [0, 260], "payments": [0, 140], "queue": [0, 400] },
+    "alignMiddle": { "checkout": [0, 210], "orders": [640, 210], "topic": [320, 210], "topic2": [320, 210], "payments": [960, 210], "queue": [640, 210] },
+    "distributeH": { "checkout": [0, 140], "orders": [576, 140], "topic": [192, 20], "topic2": [384, 260], "payments": [960, 140], "queue": [768, 400] },
+    "distributeV": { "checkout": [0, 96], "orders": [640, 172], "topic": [320, 20], "topic2": [320, 324], "payments": [960, 248], "queue": [640, 400] },
+    "spreadH": { "checkout": [0, 20], "orders": [840, 20], "topic": [320, 20], "topic2": [580, 20], "payments": [1360, 20], "queue": [1100, 20] },
+    "boundaryAround": { "x": -40, "y": -44, "width": 1260, "height": 556 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "checkout": [40, 100], "orders": [760, 100], "topic": [400, 40], "topic2": [400, 160], "payments": [1120, 40], "queue": [1120, 160] },
+    "groups": {}
+  }
+}

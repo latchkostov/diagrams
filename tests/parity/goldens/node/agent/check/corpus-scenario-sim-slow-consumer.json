@@ -1,0 +1,74 @@
+{
+  "all": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "capacity:slow",
+          "rule": "capacity",
+          "severity": "warning",
+          "title": "Reports can't keep up",
+          "message": "At the diagram's own rates, it gets 6/s and handles 0.67/s (900%): its backlog only grows.",
+          "targets": ["slow"],
+          "fix": {
+            "label": "Set replicas to 17 and telemetry partitions to 17",
+            "ops": [
+              { "op": "update", "target": "slow", "props": { "replicas": 17 } },
+              { "op": "update", "target": "topic", "props": { "partitions": 17 } }
+            ]
+          }
+        }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  },
+  "warnings": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "capacity:slow",
+          "rule": "capacity",
+          "severity": "warning",
+          "title": "Reports can't keep up",
+          "message": "At the diagram's own rates, it gets 6/s and handles 0.67/s (900%): its backlog only grows.",
+          "targets": ["slow"],
+          "fix": {
+            "label": "Set replicas to 17 and telemetry partitions to 17",
+            "ops": [
+              { "op": "update", "target": "slow", "props": { "replicas": 17 } },
+              { "op": "update", "target": "topic", "props": { "partitions": 17 } }
+            ]
+          }
+        }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  },
+  "oneRule": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "capacity:slow",
+          "rule": "capacity",
+          "severity": "warning",
+          "title": "Reports can't keep up",
+          "message": "At the diagram's own rates, it gets 6/s and handles 0.67/s (900%): its backlog only grows.",
+          "targets": ["slow"],
+          "fix": {
+            "label": "Set replicas to 17 and telemetry partitions to 17",
+            "ops": [
+              { "op": "update", "target": "slow", "props": { "replicas": 17 } },
+              { "op": "update", "target": "topic", "props": { "partitions": 17 } }
+            ]
+          }
+        }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  }
+}

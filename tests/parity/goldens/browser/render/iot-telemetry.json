@@ -1,0 +1,43 @@
+{
+  "viewport": "translate(21.1111px, 274.778px) scale(0.472222)",
+  "nodes": {
+    "group:azure": { "kind": "group", "box": "translate(380px, 0px) 1480×632", "text": "Azure · industrial telemetry" },
+    "devices": { "kind": "node", "box": "translate(40px, 280px) 260×72", "text": "Factory sensors Temperature · vibration · deviceId" },
+    "hub": { "kind": "node", "box": "translate(420px, 280px) 260×72", "text": "plant.telemetry.v1 Partition key: deviceId · retention: 7d" },
+    "hot": { "kind": "node", "box": "translate(800px, 160px) 235×72", "text": "Device state projector Consumer group: hot-state" },
+    "stream": { "kind": "node", "box": "translate(800px, 400px) 247×72", "text": "Telemetry streaming Consumer group: lake-stream" },
+    "cosmos": { "kind": "node", "box": "translate(1180px, 160px) 260×72", "text": "Latest device state Partition key: /deviceId · TTL 7d" },
+    "blob": { "kind": "node", "box": "translate(1180px, 400px) 260×72", "text": "Telemetry lake Delta · plant/date/hour partitions" },
+    "alerts": { "kind": "node", "box": "translate(1180px, 40px) 260×72", "text": "plant.alerts TemperatureExceeded · DeviceOffline" },
+    "delivery": { "kind": "node", "box": "translate(1560px, 40px) 260×72", "text": "Alert delivery Severity filter · on-call routing" },
+    "email": { "kind": "node", "box": "translate(1940px, 40px) 260×72", "text": "Plant operations On-call mailbox · incident details" },
+    "grafana": { "kind": "node", "box": "translate(1560px, 160px) 260×72", "text": "Plant health dashboard Fleet health · live temperature" },
+    "metrics": { "kind": "node", "box": "translate(1180px, 520px) 260×72", "text": "Streaming metrics Consumer lag · processing latency" }
+  },
+  "edges": {
+    "devices-to-hub": "M300,316 L420,316",
+    "hub-to-hot": "M680,309 L730,309 Q740,309 740,299 L740,206 Q740,196 750,196 L800,196",
+    "hub-to-stream": "M680,323 L730,323 Q740,323 740,333 L740,426 Q740,436 750,436 L800,436",
+    "hot-to-cosmos": "M1035,203 L1104,203 Q1107.5,203 1107.5,199.5 L1107.5,199.5 Q1107.5,196 1111,196 L1180,196",
+    "stream-to-blob": "M1047,429 L1110,429 Q1113.5,429 1113.5,432.5 L1113.5,432.5 Q1113.5,436 1117,436 L1180,436",
+    "hot-to-alerts": "M1035,189 L1097.5,189 Q1107.5,189 1107.5,179 L1107.5,86 Q1107.5,76 1117.5,76 L1180,76",
+    "alerts-to-delivery": "M1440,76 L1560,76",
+    "delivery-to-email": "M1820,76 L1940,76",
+    "grafana-to-cosmos": "M1560,189 L1503.5,189 Q1500,189 1500,192.5 L1500,192.5 Q1500,196 1496.5,196 L1440,196",
+    "metrics-to-stream": "M1180,556 L1123.5,556 Q1113.5,556 1113.5,546 L1113.5,453 Q1113.5,443 1103.5,443 L1047,443",
+    "grafana-to-metrics": "M1560,203 L1510,203 Q1500,203 1500,213 L1500,546 Q1500,556 1490,556 L1440,556"
+  },
+  "labels": {
+    "devices-to-hub": { "style": "transform: translate(-50%, -50%) translate(354px, 316px); --fe-w: 77px; --fe-h: 32px;", "text": "AMQP/TLS · telemetry" },
+    "hub-to-hot": { "style": "transform: translate(-50%, -50%) translate(740px, 252.5px); --fe-w: 113px; --fe-h: 19px;", "text": "group: hot-state" },
+    "hub-to-stream": { "style": "transform: translate(-50%, -50%) translate(740px, 379.5px); --fe-w: 125px; --fe-h: 19px;", "text": "group: lake-stream" },
+    "hot-to-cosmos": { "style": "transform: translate(-50%, -50%) translate(1072.25px, 203px); --fe-w: 59px; --fe-h: 45px;", "text": "Upsert latest reading" },
+    "stream-to-blob": { "style": "transform: translate(-50%, -50%) translate(1101.25px, 429px); --fe-w: 89px; --fe-h: 32px;", "text": "Commit Delta microbatch" },
+    "hot-to-alerts": { "style": "transform: translate(-50%, -50%) translate(1107.5px, 132.5px); --fe-w: 131px; --fe-h: 19px;", "text": "TemperatureExceeded" },
+    "alerts-to-delivery": { "style": "transform: translate(-50%, -50%) translate(1504px, 76px); --fe-w: 101px; --fe-h: 32px;", "text": "Filtered alert subscription" },
+    "delivery-to-email": { "style": "transform: translate(-50%, -50%) translate(1874px, 76px); --fe-w: 89px; --fe-h: 32px;", "text": "Incident notification" },
+    "grafana-to-cosmos": { "style": "transform: translate(-50%, -50%) translate(1529px, 189px); --fe-w: 53px; --fe-h: 45px;", "text": "Query device state" },
+    "metrics-to-stream": { "style": "transform: translate(-50%, -50%) translate(1113.5px, 499.5px); --fe-w: 161px; --fe-h: 19px;", "text": "Scrape streaming metrics" },
+    "grafana-to-metrics": { "style": "transform: translate(-50%, -50%) translate(1500px, 379.5px); --fe-w: 53px; --fe-h: 19px;", "text": "PromQL" }
+  }
+}

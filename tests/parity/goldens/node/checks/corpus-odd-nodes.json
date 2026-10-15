@@ -1,0 +1,27 @@
+{
+  "ran": [
+    "dead-letter",
+    "no-reader",
+    "sync-cycle",
+    "sync-chain",
+    "shared-database",
+    "entry-gateway",
+    "capacity",
+    "single-point",
+    "secret-identity",
+    "schema-registry"
+  ],
+  "off": [],
+  "findings": [
+    {
+      "id": "no-reader:long-sub",
+      "rule": "no-reader",
+      "severity": "warning",
+      "target": "long-sub",
+      "elements": ["long-sub", "long-label"],
+      "fix": { "ops": null, "needsChoice": true }
+    }
+  ],
+  "ignored": [],
+  "fixes": {}
+}

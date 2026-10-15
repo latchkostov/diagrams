@@ -1,0 +1,16 @@
+{
+  "evidence": {
+    "played": [
+      { "id": "lunch-rush", "title": "Lunch rush", "playedMs": 12870, "capped": false },
+      { "id": "flash-sale", "title": "Flash sale", "playedMs": 12830, "capped": false }
+    ],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [],
+    "dropped": []
+  },
+  "planned": [],
+  "counted": 0,
+  "findings": [],
+  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 2 saved simulations (at most 60 s each)." }
+}

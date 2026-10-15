@@ -1,0 +1,13 @@
+---
+title: Planning: logs and subscriptions
+---
+flowchart LR
+  source(["Publisher"])
+  broker["Events"]
+  worker["Readers"]
+  dead["Recovery"]
+  cluster["Cluster"]
+  source -.-> broker
+  broker -.->|"billing"| worker
+  broker -.->|"Recovery"| dead
+  linkStyle 0,1,2 stroke-dasharray: 6 4

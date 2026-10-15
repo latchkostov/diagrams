@@ -1,0 +1,45 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Kafka order pipeline",
+    "direction": "LR",
+    "groups": [
+      { "id": "g_aks", "label": "AKS · commerce workloads + Kafka", "tone": "k8s", "x": 840, "y": 100, "width": 1115, "height": 416 }
+    ],
+    "nodes": [
+      { "id": "orders", "stencil": "service.dotnet", "label": "Order service", "sublabel": ".NET 10 · group: orders-payments", "x": 880, "y": 284, "group": "g_aks" },
+      { "id": "order_events", "stencil": "generic.service", "label": "orders.created.v1", "sublabel": "OrderPlaced · keyed by orderId", "x": 1295, "y": 404, "group": "g_aks" },
+      { "id": "inventory", "stencil": "generic.service", "label": "Inventory service", "sublabel": "group: inventory-reservations", "x": 1695, "y": 164, "group": "g_aks" },
+      { "id": "payments", "stencil": "generic.service", "label": "Payments service", "sublabel": "group: payment-authorizations", "x": 1695, "y": 284, "group": "g_aks" },
+      { "id": "notifications", "stencil": "client.user", "label": "Notification service", "sublabel": "group: customer-notifications", "x": 1695, "y": 404, "group": "g_aks" },
+      { "id": "shopper", "stencil": "client.browser", "label": "Storefront", "sublabel": "Browser / mobile checkout", "x": 80, "y": 224 },
+      { "id": "gateway", "stencil": "generic.service", "label": "Commerce gateway", "sublabel": "TLS termination · /api/orders", "x": 480, "y": 224 },
+      { "id": "stock_db", "stencil": "generic.database", "label": "Inventory database", "sublabel": "Reservations · SKU availability", "x": 2116, "y": 104 },
+      { "id": "payment_db", "stencil": "generic.database", "label": "Payment ledger", "sublabel": "Idempotency keys · authorizations", "x": 2116, "y": 224 },
+      { "id": "notify_cache", "stencil": "generic.database", "label": "Notification dedupe", "sublabel": "Order / template key · TTL 24h", "x": 2116, "y": 464 },
+      { "id": "payment_events", "stencil": "generic.service", "label": "payments.completed.v1", "sublabel": "PaymentCompleted · keyed by orderId", "x": 2116, "y": 344 },
+      { "id": "order_db", "stencil": "generic.database", "label": "Orders database", "sublabel": "Order state · transactional outbox", "x": 1295, "y": 164 },
+      { "id": "schemas", "stencil": "kafka.schema-registry", "label": "Schema registry", "sublabel": "Avro · backward compatible", "x": 1295, "y": 284 },
+      { "id": "metrics", "stencil": "generic.service", "label": "Commerce metrics", "sublabel": "Scrape interval: 15s", "x": 480, "y": 344 },
+      { "id": "dashboard", "stencil": "generic.service", "label": "Order operations", "sublabel": "Lag · checkout latency · failures", "x": 80, "y": 344 }
+    ],
+    "edges": [
+      { "id": "e1-shopper-gateway", "from": "shopper", "to": "gateway", "label": "HTTPS", "kind": "sync" },
+      { "id": "e2-gateway-orders", "from": "gateway", "to": "orders", "label": "POST /orders", "kind": "sync" },
+      { "id": "e3-orders-order_db", "from": "orders", "to": "order_db", "label": "Commit order + outbox", "kind": "sync" },
+      { "id": "e4-orders-order_events", "from": "orders", "to": "order_events", "label": "OrderPlaced", "kind": "async" },
+      { "id": "e5-order_events-inventory", "from": "order_events", "to": "inventory", "label": "Reserve inventory", "kind": "async" },
+      { "id": "e6-order_events-payments", "from": "order_events", "to": "payments", "label": "Authorize payment", "kind": "async" },
+      { "id": "e7-order_events-notifications", "from": "order_events", "to": "notifications", "label": "Send confirmation", "kind": "async" },
+      { "id": "e8-inventory-stock_db", "from": "inventory", "to": "stock_db", "label": "Reserve SKUs", "kind": "sync" },
+      { "id": "e9-payments-payment_db", "from": "payments", "to": "payment_db", "label": "Record authorization", "kind": "sync" },
+      { "id": "e10-notifications-notify_cache", "from": "notifications", "to": "notify_cache", "label": "SET NX · dedupe", "kind": "sync" },
+      { "id": "e11-payments-payment_events", "from": "payments", "to": "payment_events", "label": "PaymentCompleted", "kind": "async" },
+      { "id": "e12-payment_events-orders", "from": "payment_events", "to": "orders", "label": "group: orders-payments", "kind": "async" },
+      { "id": "e13-orders-schemas", "from": "orders", "to": "schemas", "label": "Fetch Avro schema", "kind": "sync" },
+      { "id": "e14-metrics-orders", "from": "metrics", "to": "orders", "label": "GET /metrics", "kind": "sync" },
+      { "id": "e15-dashboard-metrics", "from": "dashboard", "to": "metrics", "label": "PromQL", "kind": "sync" }
+    ]
+  }
+}

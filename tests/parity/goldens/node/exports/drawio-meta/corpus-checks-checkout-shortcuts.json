@@ -1,0 +1,64 @@
+{
+  "withIcons": {
+    "sha256": "ffdf50bd7da42c73c498db9ad81621d929da244eea6862f09c4535bf1faf571a",
+    "bytes": 20066,
+    "inlined": { "client.browser": "client-browser 0022934839e05a07", "client.mobile": "client-mobile d67b2ae30eb449e3", "nginx": "nginx 8d6595e217ce21f1", "postgres": "postgresql 5bc8dcc1fbb1ec10", "service.dotnet": "dotnet 625b7d68f63c47d9", "service.java": "java a7012363e0756258" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Checkout shortcuts",
+        "description": "Checkout through the commerce gateway, a mobile app that calls the order service directly, and billing reading order totals.",
+        "groups": [
+          { "id": "team", "label": "Orders team", "tone": "k8s", "x": 600, "y": 60, "width": 620, "height": 170 }
+        ],
+        "nodes": [
+          {
+            "id": "web",
+            "stencil": "client.browser",
+            "label": "Storefront",
+            "x": 0,
+            "y": 0,
+            "props": { "ratePerSec": 20 }
+          },
+          {
+            "id": "app",
+            "stencil": "client.mobile",
+            "label": "Mobile app",
+            "x": 0,
+            "y": 220,
+            "props": { "ratePerSec": 10 }
+          },
+          { "id": "gw", "stencil": "nginx", "label": "Commerce gateway", "sublabel": "TLS · /api", "x": 300, "y": 0 },
+          {
+            "id": "orders",
+            "stencil": "service.dotnet",
+            "label": "Order service",
+            "x": 640,
+            "y": 110,
+            "props": { "concurrency": 64, "latencyMs": 120 },
+            "group": "team"
+          },
+          { "id": "db", "stencil": "postgres", "label": "orders-db", "x": 960, "y": 110, "group": "team" },
+          {
+            "id": "billing",
+            "stencil": "service.java",
+            "label": "Billing",
+            "x": 960,
+            "y": 400,
+            "props": { "concurrency": 32, "latencyMs": 80 }
+          }
+        ],
+        "edges": [
+          { "id": "web-gw", "from": "web", "to": "gw", "label": "HTTPS", "kind": "sync" },
+          { "id": "gw-orders", "from": "gw", "to": "orders", "label": "POST /orders", "kind": "sync" },
+          { "id": "app-orders", "from": "app", "to": "orders", "label": "POST /orders", "kind": "sync" },
+          { "id": "orders-db", "from": "orders", "to": "db", "label": "Commit order", "kind": "sync" },
+          { "id": "billing-db", "from": "billing", "to": "db", "label": "Read order totals", "kind": "sync" }
+        ]
+      }
+    }
+  ]
+}

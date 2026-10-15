@@ -1,0 +1,12 @@
+---
+title: Retries and dead-lettering
+---
+flowchart LR
+  api["Orders API"]
+  queue["orders<br/>orders"]
+  worker["Fulfilment"]
+  dlq["Dead-letter queue<br/>orders/$deadletterqueue"]
+  api -.-> queue
+  queue -.-> worker
+  queue -.-> dlq
+  linkStyle 0,1,2 stroke-dasharray: 6 4

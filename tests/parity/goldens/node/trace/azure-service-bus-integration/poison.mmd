@@ -1,0 +1,26 @@
+---
+title: "InvoiceHighValue #2 · 3.53 s end to end · 1 copy · 4 retries · dead-lettered"
+---
+sequenceDiagram
+  participant ingest as Invoice intake
+  participant invoices as invoices
+  participant blob as Invoice originals
+  participant approval_sub as approval-workflow
+  participant workflow as Invoice approval
+  participant commands as invoice.commands
+  participant worker as Ledger worker
+  participant dlq as invoice.commands DLQ
+  ingest-)invoices: InvoiceHighValue (+0.13 s)<br/>InvoiceAccepted
+  ingest->>blob: InvoiceHighValue (+0.13 s)<br/>Archive original PDF
+  blob-->>ingest: reply (+0.37 s)
+  invoices-)approval_sub: InvoiceHighValue (+0.43 s)<br/>amount > 10000
+  approval_sub-)workflow: InvoiceHighValue (+0.73 s)<br/>Peek-lock delivery
+  workflow-)commands: PostInvoice (+1.19 s)
+  commands-)worker: PostInvoice (+1.49 s)<br/>Execute command
+  Note over worker: ✕ attempts 1–5 failed
+  Note over ingest,dlq: ⏱ 1.00 s at Ledger worker: failing and retrying
+  worker--)commands: back to the broker after attempt 5 (+2.93 s)
+  Note over commands: Dead-lettered after 5 deliveries
+  rect rgba(209, 57, 63, 0.14)
+    commands-)dlq: PostInvoice (dead letter) (+3.23 s)
+  end

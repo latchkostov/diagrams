@@ -1,0 +1,171 @@
+{
+  "run": {
+    "time": 11410,
+    "totalMs": 18000,
+    "done": true,
+    "scale": 2,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "fulfillment", "label": "Fulfillment", "status": "pass", "value": 290 },
+      { "id": "archive", "label": "Archive", "status": "pass", "value": 290 },
+      { "id": "receipts", "label": "Receipts", "status": "pass", "value": 290 },
+      { "id": "no-dlq", "label": "No dlq", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "note", "label": "SNS fans each order into isolated fulfillment, archive and receipt queues." },
+      { "atMs": 0, "kind": "traffic", "label": "290 orders: steady demand and a flash sale" },
+      { "atMs": 3000, "kind": "note", "label": "The flash sale peaks at 100 orders per second." },
+      { "atMs": 8000, "kind": "traffic", "label": "290 orders: steady demand and a flash sale ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "client": { "replicas": [1, 1, 0] },
+        "api": { "replicas": [1, 1, 0] },
+        "intake": { "replicas": [1, 1, 0] },
+        "sns": { "lag": { "fulfillment-q": 0, "archive-q": 0, "receipt-q": 0 }, "replicas": [1, 1, 0] },
+        "fulfillment-q": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "archive-q": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "receipt-q": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "fulfill": { "replicas": [1, 1, 0] },
+        "archive": { "replicas": [1, 1, 0] },
+        "receipt": { "replicas": [1, 1, 0] },
+        "ddb": { "replicas": [1, 1, 0] },
+        "s3": { "replicas": [1, 1, 0] },
+        "receipt-db": { "replicas": [1, 1, 0] },
+        "schedule": { "lag": { "schedule-to-reconcile": 0 }, "replicas": [1, 1, 0] },
+        "reconcile": { "replicas": [1, 1, 0] },
+        "dlq": { "lag": { "queue": 0 }, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 0,
+      "nodes": {
+        "client": { "processed": 145, "throughput": 1.3413011208376804, "replicas": [1, 1, 0] },
+        "api": { "processed": 145, "throughput": 1.7304575494591616, "replicas": [1, 1, 0] },
+        "intake": { "processed": 145, "throughput": 2.450117972776555, "replicas": [1, 1, 0] },
+        "sns": {
+          "processed": 145,
+          "throughput": 3.30731332515269,
+          "lag": { "fulfillment-q": 0, "archive-q": 0, "receipt-q": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "fulfillment-q": {
+          "processed": 145,
+          "throughput": 4.46440602137083,
+          "lag": { "queue": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "archive-q": { "processed": 145, "throughput": 4.46440602137083, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "receipt-q": { "processed": 145, "throughput": 4.46440602137083, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "fulfill": { "processed": 145, "throughput": 7.018410263841808, "replicas": [1, 1, 0] },
+        "archive": { "processed": 145, "throughput": 6.966358456314965, "replicas": [1, 1, 0] },
+        "receipt": { "processed": 145, "throughput": 7.095248698497621, "replicas": [1, 1, 0] },
+        "ddb": { "processed": 145, "throughput": 8.95830477587138, "replicas": [1, 1, 0] },
+        "s3": { "processed": 145, "throughput": 8.904014436021583, "replicas": [1, 1, 0] },
+        "receipt-db": { "processed": 145, "throughput": 9.082309805866279, "replicas": [1, 1, 0] },
+        "schedule": { "lag": { "schedule-to-reconcile": 0 }, "replicas": [1, 1, 0] },
+        "reconcile": { "replicas": [1, 1, 0] },
+        "dlq": { "lag": { "queue": 0 }, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 11410,
+    "inSystem": 0,
+    "real": {
+      "client": { "processed": 290, "throughput": 0.6549393186773983, "replicas": [1, 1, 0] },
+      "api": { "processed": 290, "throughput": 0.8449591749652291, "replicas": [1, 1, 0] },
+      "intake": { "processed": 290, "throughput": 1.1963596919738324, "replicas": [1, 1, 0] },
+      "sns": {
+        "processed": 290,
+        "throughput": 1.6149166672397894,
+        "lag": { "fulfillment-q": 0, "archive-q": 0, "receipt-q": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "fulfillment-q": {
+        "processed": 290,
+        "throughput": 2.1799094867749114,
+        "lag": { "queue": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "archive-q": { "processed": 290, "throughput": 2.1799094867749114, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "receipt-q": { "processed": 290, "throughput": 2.1799094867749114, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "fulfill": { "processed": 290, "throughput": 3.426995448664262, "replicas": [1, 1, 0] },
+      "archive": { "processed": 290, "throughput": 3.4015792502969178, "replicas": [1, 1, 0] },
+      "receipt": { "processed": 290, "throughput": 3.4645146240827467, "replicas": [1, 1, 0] },
+      "ddb": { "processed": 290, "throughput": 4.374219878940742, "replicas": [1, 1, 0] },
+      "s3": { "processed": 290, "throughput": 4.347710635311851, "replicas": [1, 1, 0] },
+      "receipt-db": { "processed": 290, "throughput": 4.43476986924173, "replicas": [1, 1, 0] },
+      "schedule": { "lag": { "schedule-to-reconcile": 0 }, "replicas": [1, 1, 0] },
+      "reconcile": { "replicas": [1, 1, 0] },
+      "dlq": { "lag": { "queue": 0 }, "noConsumer": true, "replicas": [1, 1, 0] }
+    },
+    "edges": { "client-to-api": 145, "api-to-intake": 145, "intake-to-sns": 145, "sns-to-fulfillment-q": 145, "sns-to-archive-q": 145, "sns-to-receipt-q": 145, "fulfillment-q-to-fulfill": 145, "archive-q-to-archive": 145, "receipt-q-to-receipt": 145, "fulfill-to-ddb": 145, "archive-to-s3": 145, "receipt-to-receipt-db": 145, "schedule-to-reconcile": 0, "reconcile-to-ddb": 0, "fulfillment-q-to-dlq": 0 }
+  },
+  "events": {
+    "total": 3770,
+    "byKind": { "inject": 145, "process": 1885, "deliver": 1740 },
+    "byNode": {
+      "client": { "inject": 145, "process": 145 },
+      "api": { "deliver": 145, "process": 145 },
+      "intake": { "deliver": 145, "process": 145 },
+      "sns": { "deliver": 145, "process": 145 },
+      "fulfillment-q": { "deliver": 145, "process": 145 },
+      "archive-q": { "deliver": 145, "process": 145 },
+      "receipt-q": { "deliver": 145, "process": 145 },
+      "fulfill": { "deliver": 145, "process": 145 },
+      "archive": { "deliver": 145, "process": 145 },
+      "receipt": { "deliver": 145, "process": 145 },
+      "receipt-db": { "deliver": 145, "process": 145 },
+      "ddb": { "deliver": 145, "process": 145 },
+      "s3": { "deliver": 145, "process": 145 }
+    },
+    "perSecond": [
+      "d42b27dae2d7",
+      "629be473889b",
+      "b9339a455e0f",
+      "2ca6cf3ebbd0",
+      "0b355e28d03a",
+      "6b1f511ff635",
+      "d353c854c79f",
+      "e4662d2fcc68",
+      "1e008f8d9309",
+      "b4502c3c1d8d",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 0, "text": "SNS fans each order into isolated fulfillment, archive and receipt queues.", "focus": ["sns"] },
+    { "atMs": 3000, "text": "The flash sale peaks at 100 orders per second.", "focus": ["client", "fulfillment-q", "archive-q", "receipt-q"] }
+  ],
+  "latency": {
+    "journeys": { "done": 145, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 145, "min": 1870, "mean": 1935.103448275862, "p50": 1940, "p90": 1970, "max": 1980 },
+    "waitMs": {
+      "api": { "count": 145, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "intake": { "count": 145, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "fulfill": { "count": 145, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "archive": { "count": 145, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "receipt": { "count": 145, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "ddb": { "count": 145, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "s3": { "count": 145, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "receipt-db": { "count": 145, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "api": { "count": 145, "min": 50, "mean": 65.51724137931035, "p50": 70, "p90": 70, "max": 80 },
+      "intake": { "count": 145, "min": 130, "mean": 154.75862068965517, "p50": 150, "p90": 180, "max": 180 },
+      "fulfill": { "count": 145, "min": 130, "mean": 154.48275862068965, "p50": 160, "p90": 180, "max": 180 },
+      "archive": { "count": 145, "min": 130, "mean": 154.06896551724137, "p50": 150, "p90": 180, "max": 180 },
+      "receipt": { "count": 145, "min": 130, "mean": 155.93103448275863, "p50": 150, "p90": 180, "max": 180 },
+      "ddb": { "count": 145, "min": 40, "mean": 44.89655172413793, "p50": 40, "p90": 50, "max": 50 },
+      "s3": { "count": 145, "min": 40, "mean": 45.37931034482759, "p50": 50, "p90": 50, "max": 50 },
+      "receipt-db": { "count": 145, "min": 40, "mean": 45.310344827586206, "p50": 50, "p90": 50, "max": 50 }
+    }
+  }
+}

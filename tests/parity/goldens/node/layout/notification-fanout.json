@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "carrier": [40, 220], "shipping": [400, 220], "events": [762, 220], "router": [1122, 220], "email-q": [1488, 40], "preferences": [1488, 160], "sms-q": [1488, 280], "push-q": [1488, 400], "email-sender": [1850, 100], "sms-limiter": [1850, 220], "push-sender": [1850, 340], "sendgrid": [2213, 40], "key-vault": [2213, 160], "twilio": [2213, 280], "push": [2213, 400] },
+    "TB": { "carrier": [470, 40], "shipping": [470, 200], "events": [470, 360], "router": [470, 520], "preferences": [40, 680], "email-q": [330, 680], "sms-q": [610, 680], "push-q": [900, 680], "email-sender": [180, 840], "sms-limiter": [470, 840], "push-sender": [760, 840], "sendgrid": [40, 1000], "key-vault": [330, 1000], "twilio": [610, 1000], "push": [900, 1000] }
+  },
+  "tidy": { "carrier": [40, 220], "shipping": [400, 220], "events": [762, 220], "preferences": [1488, 160], "router": [1122, 220], "email-q": [1488, 40], "sms-q": [1488, 280], "push-q": [1488, 400], "email-sender": [1850, 100], "sms-limiter": [1850, 220], "push-sender": [1850, 340], "sendgrid": [2213, 40], "key-vault": [2213, 160], "twilio": [2213, 280], "push": [2213, 400] },
+  "arrange": {
+    "alignLeft": { "carrier": [40, 280], "shipping": [40, 280], "events": [40, 280], "preferences": [40, 120], "router": [40, 280], "email-q": [40, 40], "sms-q": [40, 280], "push-q": [40, 400], "email-sender": [40, 40], "sms-limiter": [40, 280], "push-sender": [40, 400], "sendgrid": [40, 40], "key-vault": [40, 160], "twilio": [40, 280], "push": [40, 400] },
+    "alignMiddle": { "carrier": [40, 220], "shipping": [420, 220], "events": [800, 220], "preferences": [1180, 220], "router": [1180, 220], "email-q": [1560, 220], "sms-q": [1560, 220], "push-q": [1560, 220], "email-sender": [1940, 220], "sms-limiter": [1940, 220], "push-sender": [1940, 220], "sendgrid": [2320, 220], "key-vault": [1940, 220], "twilio": [2320, 220], "push": [2320, 220] },
+    "distributeH": { "carrier": [40, 280], "shipping": [202, 280], "events": [366, 280], "preferences": [528, 120], "router": [693, 280], "email-q": [861, 40], "sms-q": [1023, 280], "push-q": [1185, 400], "email-sender": [1347, 40], "sms-limiter": [1509, 280], "push-sender": [1671, 400], "sendgrid": [1996, 40], "key-vault": [1834, 160], "twilio": [2158, 280], "push": [2320, 400] },
+    "distributeV": { "carrier": [40, 169], "shipping": [420, 194], "events": [800, 220], "preferences": [1180, 117], "router": [1180, 246], "email-q": [1560, 40], "sms-q": [1560, 271], "push-q": [1560, 349], "email-sender": [1940, 66], "sms-limiter": [1940, 297], "push-sender": [1940, 374], "sendgrid": [2320, 91], "key-vault": [1940, 143], "twilio": [2320, 323], "push": [2320, 400] },
+    "spreadH": { "carrier": [40, 40], "shipping": [420, 40], "events": [800, 40], "preferences": [1180, 40], "router": [1442, 40], "email-q": [1708, 40], "sms-q": [1968, 40], "push-q": [2228, 40], "email-sender": [2488, 40], "sms-limiter": [2748, 40], "push-sender": [3008, 40], "sendgrid": [3528, 40], "key-vault": [3268, 40], "twilio": [3788, 40], "push": [4048, 40] },
+    "boundaryAround": { "x": 0, "y": -24, "width": 2580, "height": 536 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": ["azure"],
+    "placedNotes": [],
+    "nodes": { "carrier": [40, 220], "shipping": [400, 220], "events": [762, 220], "preferences": [1488, 160], "router": [1122, 220], "email-q": [1488, 40], "sms-q": [1488, 280], "push-q": [1488, 400], "email-sender": [1850, 100], "sms-limiter": [1850, 220], "push-sender": [1850, 340], "sendgrid": [2213, -160], "key-vault": [2213, 160], "twilio": [2213, 560], "push": [2213, 680] },
+    "groups": { "azure": [360, -24, 2113, 536] }
+  }
+}

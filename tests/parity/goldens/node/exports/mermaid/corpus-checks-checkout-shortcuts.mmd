@@ -1,0 +1,18 @@
+---
+title: Checkout shortcuts
+---
+flowchart LR
+  subgraph g_team ["Orders team"]
+    orders["Order service"]
+    db[("orders-db")]
+  end
+  web(["Storefront"])
+  app(["Mobile app"])
+  gw["Commerce gateway<br/>TLS · /api"]
+  billing["Billing"]
+  web -->|"HTTPS"| gw
+  gw -->|"POST /orders"| orders
+  app -->|"POST /orders"| orders
+  orders -->|"Commit order"| db
+  billing -->|"Read order totals"| db
+%% diagrams:{"v":1,"description":"Checkout through the commerce gateway, a mobile app that calls the order service directly, and billing reading order totals.","nodes":{"web":["web","client.browser"],"app":["app","client.mobile"],"gw":["gw","nginx"],"orders":["orders","service.dotnet"],"db":["db","postgres"],"billing":["billing","service.java"]},"groups":{"g_team":["team","k8s"]},"edges":["web-gw","gw-orders","app-orders","orders-db","billing-db"],"relations":{}}

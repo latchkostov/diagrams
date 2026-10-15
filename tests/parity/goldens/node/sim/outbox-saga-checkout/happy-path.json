@@ -1,0 +1,228 @@
+{
+  "run": {
+    "time": 11570,
+    "totalMs": 16000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "stock", "label": "20 reservations", "status": "pass", "value": 20 },
+      { "id": "charges", "label": "20 cards charged once each", "status": "pass", "value": 20 },
+      { "id": "receipts", "label": "20 receipts sent", "status": "pass", "value": 20 },
+      { "id": "orders", "label": "20 orders created, 20 confirmed", "status": "pass", "value": 40 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "trace", "label": "trace: order-api" },
+      { "atMs": 0, "kind": "note", "label": "The order row and its OrderCreated event commit in one database transaction. No dual write, so no lost events." },
+      { "atMs": 0, "kind": "traffic", "label": "20 checkouts" },
+      { "atMs": 900, "kind": "note", "label": "The outbox relay tails the write-ahead log and publishes each outbox row to Kafka." },
+      { "atMs": 2500, "kind": "note", "label": "The saga runs one step at a time: reserve stock, charge the card, then confirm the order. Every step is saved, so a restart resumes where it left off." },
+      { "atMs": 4000, "kind": "traffic", "label": "20 checkouts ends" },
+      { "atMs": 6000, "kind": "note", "label": "OrderConfirmed goes out through the same outbox, and the customer gets a receipt." }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "client": { "replicas": [1, 1, 0] },
+        "order-api": { "replicas": [1, 1, 0] },
+        "orders-db": { "replicas": [1, 1, 0] },
+        "outbox-relay": { "replicas": [1, 1, 0] },
+        "order-events": { "lag": { "saga": 0, "notifications": 0 }, "replicas": [1, 1, 0] },
+        "notifications": { "replicas": [1, 1, 0] },
+        "email": { "replicas": [1, 1, 0] },
+        "saga": { "replicas": [1, 1, 0] },
+        "saga-db": { "replicas": [1, 1, 0] },
+        "inventory-cmds": { "lag": { "inventory": 0 }, "replicas": [1, 1, 0] },
+        "saga-replies": { "lag": { "saga": 0 }, "replicas": [1, 1, 0] },
+        "payment-cmds": { "lag": { "payments": 0 }, "replicas": [1, 1, 0] },
+        "payments-dlq": { "noConsumer": true, "replicas": [1, 1, 0] },
+        "inventory-svc": { "replicas": [1, 1, 0] },
+        "payment-svc": { "replicas": [1, 1, 0] },
+        "inventory-db": { "replicas": [1, 1, 0] },
+        "stripe": { "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 1,
+      "nodes": {
+        "client": { "processed": 20, "throughput": 0.012825831476570525, "replicas": [1, 1, 0] },
+        "order-api": { "processed": 40, "throughput": 1.3577633833249587, "replicas": [1, 1, 0] },
+        "orders-db": { "processed": 40, "throughput": 1.680309412589042, "replicas": [1, 1, 0] },
+        "outbox-relay": { "processed": 40, "throughput": 2.223407301061701, "replicas": [1, 1, 0] },
+        "order-events": {
+          "processed": 40,
+          "throughput": 3.0012859281669217,
+          "lag": { "saga": 0, "notifications": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "notifications": { "processed": 20, "throughput": 4.471763966648436, "replicas": [1, 1, 0] },
+        "email": { "processed": 19, "throughput": 4.394661371819977, "replicas": [1, 1, 0] },
+        "saga": { "processed": 60, "throughput": 1.1621314880774953, "replicas": [1, 1, 0] },
+        "saga-db": { "processed": 60, "throughput": 1.4426182079277348, "replicas": [1, 1, 0] },
+        "inventory-cmds": {
+          "processed": 20,
+          "throughput": 0.07472853827768483,
+          "lag": { "inventory": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "saga-replies": {
+          "processed": 40,
+          "throughput": 0.7757780793218173,
+          "lag": { "saga": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "payment-cmds": {
+          "processed": 20,
+          "throughput": 0.29320667744430856,
+          "lag": { "payments": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "payments-dlq": { "noConsumer": true, "replicas": [1, 1, 0] },
+        "inventory-svc": { "processed": 20, "throughput": 0.11294564029440424, "replicas": [1, 1, 0] },
+        "payment-svc": { "processed": 20, "throughput": 0.46176489607266563, "replicas": [1, 1, 0] },
+        "inventory-db": { "processed": 20, "throughput": 0.1406071837919702, "replicas": [1, 1, 0] },
+        "stripe": { "processed": 20, "throughput": 0.5640009176846974, "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 11570,
+    "inSystem": 0,
+    "real": {
+      "client": { "processed": 20, "throughput": 0.0026683524484235497, "replicas": [1, 1, 0] },
+      "order-api": { "processed": 40, "throughput": 0.28247613068152844, "replicas": [1, 1, 0] },
+      "orders-db": { "processed": 40, "throughput": 0.34958027815830817, "replicas": [1, 1, 0] },
+      "outbox-relay": { "processed": 40, "throughput": 0.46256917740331627, "replicas": [1, 1, 0] },
+      "order-events": {
+        "processed": 40,
+        "throughput": 0.6244030782310522,
+        "lag": { "saga": 0, "notifications": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "notifications": { "processed": 20, "throughput": 0.9303289498989358, "replicas": [1, 1, 0] },
+      "email": { "processed": 20, "throughput": 1.136306345402813, "replicas": [1, 1, 0] },
+      "saga": { "processed": 60, "throughput": 0.24177585735992002, "replicas": [1, 1, 0] },
+      "saga-db": { "processed": 60, "throughput": 0.30012976813988623, "replicas": [1, 1, 0] },
+      "inventory-cmds": {
+        "processed": 20,
+        "throughput": 0.015546912373254658,
+        "lag": { "inventory": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "saga-replies": {
+        "processed": 40,
+        "throughput": 0.16139689198108798,
+        "lag": { "saga": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "payment-cmds": {
+        "processed": 20,
+        "throughput": 0.061000236677197756,
+        "lag": { "payments": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "payments-dlq": { "noConsumer": true, "replicas": [1, 1, 0] },
+      "inventory-svc": { "processed": 20, "throughput": 0.023497796331479963, "replicas": [1, 1, 0] },
+      "payment-svc": { "processed": 20, "throughput": 0.09606796200950908, "replicas": [1, 1, 0] },
+      "inventory-db": { "processed": 20, "throughput": 0.029252647192707787, "replicas": [1, 1, 0] },
+      "stripe": { "processed": 20, "throughput": 0.11733767376924069, "replicas": [1, 1, 0] },
+      "vault": { "replicas": [1, 1, 0] }
+    },
+    "edges": {
+      "client-to-order-api": 20,
+      "order-api-to-orders-db": 40,
+      "orders-db-to-outbox-relay": 40,
+      "outbox-relay-to-order-events": 40,
+      "order-events-to-saga": 20,
+      "order-events-to-notifications": 20,
+      "notifications-to-email": 20,
+      "saga-to-saga-db": 60,
+      "saga-to-inventory-cmds": 20,
+      "saga-to-payment-cmds": 20,
+      "saga-to-order-api": 20,
+      "inventory-cmds-to-inventory-svc": 20,
+      "inventory-svc-to-inventory-db": 20,
+      "inventory-svc-to-saga-replies": 20,
+      "payment-cmds-to-payment-svc": 20,
+      "payment-cmds-to-payments-dlq": 0,
+      "payment-svc-to-stripe": 20,
+      "payment-svc-to-saga-replies": 20,
+      "saga-replies-to-saga": 40,
+      "payment-svc-to-vault": 0
+    }
+  },
+  "events": {
+    "total": 1000,
+    "byKind": { "inject": 20, "process": 500, "deliver": 480 },
+    "byNode": {
+      "client": { "inject": 20, "process": 20 },
+      "order-api": { "deliver": 40, "process": 40 },
+      "orders-db": { "deliver": 40, "process": 40 },
+      "outbox-relay": { "deliver": 40, "process": 40 },
+      "order-events": { "deliver": 40, "process": 40 },
+      "saga": { "deliver": 60, "process": 60 },
+      "saga-db": { "deliver": 60, "process": 60 },
+      "inventory-cmds": { "deliver": 20, "process": 20 },
+      "inventory-svc": { "deliver": 20, "process": 20 },
+      "inventory-db": { "deliver": 20, "process": 20 },
+      "saga-replies": { "deliver": 40, "process": 40 },
+      "payment-cmds": { "deliver": 20, "process": 20 },
+      "payment-svc": { "deliver": 20, "process": 20 },
+      "stripe": { "deliver": 20, "process": 20 },
+      "notifications": { "deliver": 20, "process": 20 },
+      "email": { "deliver": 20, "process": 20 }
+    },
+    "perSecond": [
+      "613a68685a03",
+      "f6623e637b4f",
+      "d7400e89fef9",
+      "e65228d06f4d",
+      "595f9b2e9729",
+      "638ff2b7d38c",
+      "27c2aa7e3d0e",
+      "7b88663978b0",
+      "1005dde11089",
+      "ac88293d9378",
+      "0dbe5f0f99aa",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 0, "text": "The order row and its OrderCreated event commit in one database transaction. No dual write, so no lost events.", "focus": ["order-api", "orders-db"] },
+    { "atMs": 900, "text": "The outbox relay tails the write-ahead log and publishes each outbox row to Kafka.", "focus": ["orders-db", "outbox-relay", "order-events"] },
+    { "atMs": 2500, "text": "The saga runs one step at a time: reserve stock, charge the card, then confirm the order. Every step is saved, so a restart resumes where it left off.", "focus": ["saga", "saga-db", "inventory-cmds", "payment-cmds", "saga-replies"] },
+    { "atMs": 6000, "text": "OrderConfirmed goes out through the same outbox, and the customer gets a receipt.", "focus": ["order-events", "notifications", "email"] }
+  ],
+  "latency": {
+    "journeys": { "done": 20, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 20, "min": 6000, "mean": 6051.5, "p50": 6050, "p90": 6100, "max": 6120 },
+    "waitMs": {
+      "order-api": { "count": 40, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "orders-db": { "count": 40, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "outbox-relay": { "count": 40, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "notifications": { "count": 20, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "saga": { "count": 60, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "saga-db": { "count": 60, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "inventory-svc": { "count": 20, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "payment-svc": { "count": 20, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "inventory-db": { "count": 20, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "order-api": { "count": 40, "min": 90, "mean": 105.75, "p50": 110, "p90": 120, "max": 120 },
+      "orders-db": { "count": 40, "min": 10, "mean": 14.75, "p50": 10, "p90": 20, "max": 20 },
+      "outbox-relay": { "count": 40, "min": 70, "mean": 85, "p50": 90, "p90": 100, "max": 100 },
+      "notifications": { "count": 20, "min": 90, "mean": 111, "p50": 110, "p90": 120, "max": 120 },
+      "saga": { "count": 60, "min": 50, "mean": 55.166666666666664, "p50": 60, "p90": 60, "max": 60 },
+      "saga-db": { "count": 60, "min": 10, "mean": 15, "p50": 20, "p90": 20, "max": 20 },
+      "inventory-svc": { "count": 20, "min": 90, "mean": 111, "p50": 110, "p90": 120, "max": 120 },
+      "payment-svc": { "count": 20, "min": 130, "mean": 153, "p50": 150, "p90": 180, "max": 180 },
+      "inventory-db": { "count": 20, "min": 10, "mean": 17.5, "p50": 20, "p90": 20, "max": 20 }
+    }
+  }
+}

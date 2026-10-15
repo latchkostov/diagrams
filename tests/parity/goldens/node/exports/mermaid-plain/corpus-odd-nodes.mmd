@@ -1,0 +1,14 @@
+---
+title: Odd nodes
+---
+flowchart LR
+  normal["orders<br/>orders.created.v1"]
+  unknown["Unknown stencil<br/>acme.quantum-bus"]
+  long_label["Customer Communication Preferences Synchronisation Service"]
+  long_sub["notifications<br/>sb://contoso-prod-eastus2.servicebus.windows.net/topics/customer-notification-preferences-changed"]
+  no_sub[("DB")]
+  empty_label[("empty-label")]
+  normal -.-> unknown
+  long_label -.-> long_sub
+  no_sub --> empty_label
+  linkStyle 0,1 stroke-dasharray: 6 4

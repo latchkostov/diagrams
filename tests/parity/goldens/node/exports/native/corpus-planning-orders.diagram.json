@@ -1,0 +1,38 @@
+{
+  "format": "diagrams/v1",
+  "title": "Planning: shared capacity",
+  "nodes": [
+    {
+      "id": "checkout",
+      "stencil": "client.browser",
+      "label": "Checkout",
+      "x": 0,
+      "y": 140,
+      "props": {
+        "ratePerSec": 3
+      }
+    },
+    {
+      "id": "orders",
+      "stencil": "service.dotnet",
+      "label": "Orders",
+      "x": 640,
+      "y": 140,
+      "props": {
+        "latencyMs": 4000,
+        "jitter": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "request",
+      "from": "checkout",
+      "to": "orders",
+      "kind": "sync",
+      "props": {
+        "travelMs": 0
+      }
+    }
+  ]
+}

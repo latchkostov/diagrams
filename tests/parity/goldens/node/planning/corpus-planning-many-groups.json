@@ -1,0 +1,1728 @@
+{
+  "autoScale": { "freePlay": 1 },
+  "brokerAssignments": {
+    "brokers": {
+      "topic": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+    },
+    "consumers": {
+      "worker-0": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "worker-1": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "worker-2": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "worker-3": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "worker-4": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "worker-5": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "worker-6": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "worker-7": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "worker-8": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "worker-9": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "worker-10": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "worker-11": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "worker-12": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "worker-13": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "worker-14": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "worker-15": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "worker-16": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "worker-17": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "worker-18": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "worker-19": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "worker-20": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "worker-21": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "worker-22": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "worker-23": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      }
+    }
+  },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "worker-0",
+      "suggestion": "Worker 0: resume the node or add a ready consumer.",
+      "converged": true,
+      "iterations": 3,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": {
+        "checkout": ["Infinity", 3, 0, 1, 1, 0],
+        "topic": [0, 3, "Infinity", 1, 1, 0],
+        "worker-0": [0, 3, "Infinity", 1, 1, 0, { "status": "down" }],
+        "worker-1": [0, 3, "Infinity", 1, 1, 0, { "status": "down" }],
+        "worker-2": [0, 3, "Infinity", 1, 1, 0, { "status": "down" }],
+        "worker-3": [0, 3, "Infinity", 1, 1, 0, { "status": "down" }],
+        "worker-4": [0, 3, "Infinity", 1, 1, 0, { "status": "down" }],
+        "worker-5": [0, 3, "Infinity", 1, 1, 0, { "status": "down" }],
+        "worker-6": [0, 3, "Infinity", 1, 1, 0, { "status": "down" }],
+        "worker-7": [0, 3, "Infinity", 1, 1, 0, { "status": "down" }],
+        "worker-8": [0, 3, "Infinity", 1, 1, 0, { "status": "down" }],
+        "worker-9": [0, 3, "Infinity", 1, 1, 0, { "status": "down" }],
+        "worker-10": [0, 3, "Infinity", 1, 1, 0, { "status": "down" }],
+        "worker-11": [0, 3, "Infinity", 1, 1, 0, { "status": "down" }],
+        "worker-12": [0, 3, "Infinity", 1, 1, 0, { "status": "down" }],
+        "worker-13": [0, 3, "Infinity", 1, 1, 0, { "status": "down" }],
+        "worker-14": [0, 3, "Infinity", 1, 1, 0, { "status": "down" }],
+        "worker-15": [0, 3, "Infinity", 1, 1, 0, { "status": "down" }],
+        "worker-16": [0, 3, "Infinity", 1, 1, 0, { "status": "down" }],
+        "worker-17": [0, 3, "Infinity", 1, 1, 0, { "status": "down" }],
+        "worker-18": [0, 3, "Infinity", 1, 1, 0, { "status": "down" }],
+        "worker-19": [0, 3, "Infinity", 1, 1, 0, { "status": "down" }],
+        "worker-20": [0, 3, "Infinity", 1, 1, 0, { "status": "down" }],
+        "worker-21": [0, 3, "Infinity", 1, 1, 0, { "status": "down" }],
+        "worker-22": [0, 3, "Infinity", 1, 1, 0, { "status": "down" }],
+        "worker-23": [0, 3, "Infinity", 1, 1, 0, { "status": "down" }]
+      },
+      "connections": { "publish": 3, "read-0": 3, "read-1": 3, "read-2": 3, "read-3": 3, "read-4": 3, "read-5": 3, "read-6": 3, "read-7": 3, "read-8": 3, "read-9": 3, "read-10": 3, "read-11": 3, "read-12": 3, "read-13": 3, "read-14": 3, "read-15": 3, "read-16": 3, "read-17": 3, "read-18": 3, "read-19": 3, "read-20": 3, "read-21": 3, "read-22": 3, "read-23": 3 },
+      "offeredTypes": {
+        "checkout": ["Checkout"],
+        "topic": ["Checkout"],
+        "worker-0": ["Checkout"],
+        "worker-1": ["Checkout"],
+        "worker-2": ["Checkout"],
+        "worker-3": ["Checkout"],
+        "worker-4": ["Checkout"],
+        "worker-5": ["Checkout"],
+        "worker-6": ["Checkout"],
+        "worker-7": ["Checkout"],
+        "worker-8": ["Checkout"],
+        "worker-9": ["Checkout"],
+        "worker-10": ["Checkout"],
+        "worker-11": ["Checkout"],
+        "worker-12": ["Checkout"],
+        "worker-13": ["Checkout"],
+        "worker-14": ["Checkout"],
+        "worker-15": ["Checkout"],
+        "worker-16": ["Checkout"],
+        "worker-17": ["Checkout"],
+        "worker-18": ["Checkout"],
+        "worker-19": ["Checkout"],
+        "worker-20": ["Checkout"],
+        "worker-21": ["Checkout"],
+        "worker-22": ["Checkout"],
+        "worker-23": ["Checkout"]
+      }
+    },
+    "explanations": {
+      "worker-0": {
+        "id": "worker-0",
+        "role": "processor",
+        "status": "down",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": "Infinity",
+        "growth": 3,
+        "contributors": [{ "edge": "read-0", "node": "topic", "label": "Order events", "rate": 3 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "worker-1": {
+        "id": "worker-1",
+        "role": "processor",
+        "status": "down",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": "Infinity",
+        "growth": 3,
+        "contributors": [{ "edge": "read-1", "node": "topic", "label": "Order events", "rate": 3 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "worker-2": {
+        "id": "worker-2",
+        "role": "processor",
+        "status": "down",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": "Infinity",
+        "growth": 3,
+        "contributors": [{ "edge": "read-2", "node": "topic", "label": "Order events", "rate": 3 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "worker-3": {
+        "id": "worker-3",
+        "role": "processor",
+        "status": "down",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": "Infinity",
+        "growth": 3,
+        "contributors": [{ "edge": "read-3", "node": "topic", "label": "Order events", "rate": 3 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "worker-4": {
+        "id": "worker-4",
+        "role": "processor",
+        "status": "down",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": "Infinity",
+        "growth": 3,
+        "contributors": [{ "edge": "read-4", "node": "topic", "label": "Order events", "rate": 3 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "worker-5": {
+        "id": "worker-5",
+        "role": "processor",
+        "status": "down",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": "Infinity",
+        "growth": 3,
+        "contributors": [{ "edge": "read-5", "node": "topic", "label": "Order events", "rate": 3 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "worker-6": {
+        "id": "worker-6",
+        "role": "processor",
+        "status": "down",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": "Infinity",
+        "growth": 3,
+        "contributors": [{ "edge": "read-6", "node": "topic", "label": "Order events", "rate": 3 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "worker-7": {
+        "id": "worker-7",
+        "role": "processor",
+        "status": "down",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": "Infinity",
+        "growth": 3,
+        "contributors": [{ "edge": "read-7", "node": "topic", "label": "Order events", "rate": 3 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "worker-8": {
+        "id": "worker-8",
+        "role": "processor",
+        "status": "down",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": "Infinity",
+        "growth": 3,
+        "contributors": [{ "edge": "read-8", "node": "topic", "label": "Order events", "rate": 3 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "worker-9": {
+        "id": "worker-9",
+        "role": "processor",
+        "status": "down",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": "Infinity",
+        "growth": 3,
+        "contributors": [{ "edge": "read-9", "node": "topic", "label": "Order events", "rate": 3 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "worker-10": {
+        "id": "worker-10",
+        "role": "processor",
+        "status": "down",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": "Infinity",
+        "growth": 3,
+        "contributors": [{ "edge": "read-10", "node": "topic", "label": "Order events", "rate": 3 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "worker-11": {
+        "id": "worker-11",
+        "role": "processor",
+        "status": "down",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": "Infinity",
+        "growth": 3,
+        "contributors": [{ "edge": "read-11", "node": "topic", "label": "Order events", "rate": 3 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "worker-12": {
+        "id": "worker-12",
+        "role": "processor",
+        "status": "down",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": "Infinity",
+        "growth": 3,
+        "contributors": [{ "edge": "read-12", "node": "topic", "label": "Order events", "rate": 3 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "worker-13": {
+        "id": "worker-13",
+        "role": "processor",
+        "status": "down",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": "Infinity",
+        "growth": 3,
+        "contributors": [{ "edge": "read-13", "node": "topic", "label": "Order events", "rate": 3 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "worker-14": {
+        "id": "worker-14",
+        "role": "processor",
+        "status": "down",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": "Infinity",
+        "growth": 3,
+        "contributors": [{ "edge": "read-14", "node": "topic", "label": "Order events", "rate": 3 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "worker-15": {
+        "id": "worker-15",
+        "role": "processor",
+        "status": "down",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": "Infinity",
+        "growth": 3,
+        "contributors": [{ "edge": "read-15", "node": "topic", "label": "Order events", "rate": 3 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "worker-16": {
+        "id": "worker-16",
+        "role": "processor",
+        "status": "down",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": "Infinity",
+        "growth": 3,
+        "contributors": [{ "edge": "read-16", "node": "topic", "label": "Order events", "rate": 3 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "worker-17": {
+        "id": "worker-17",
+        "role": "processor",
+        "status": "down",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": "Infinity",
+        "growth": 3,
+        "contributors": [{ "edge": "read-17", "node": "topic", "label": "Order events", "rate": 3 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "worker-18": {
+        "id": "worker-18",
+        "role": "processor",
+        "status": "down",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": "Infinity",
+        "growth": 3,
+        "contributors": [{ "edge": "read-18", "node": "topic", "label": "Order events", "rate": 3 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "worker-19": {
+        "id": "worker-19",
+        "role": "processor",
+        "status": "down",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": "Infinity",
+        "growth": 3,
+        "contributors": [{ "edge": "read-19", "node": "topic", "label": "Order events", "rate": 3 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "worker-20": {
+        "id": "worker-20",
+        "role": "processor",
+        "status": "down",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": "Infinity",
+        "growth": 3,
+        "contributors": [{ "edge": "read-20", "node": "topic", "label": "Order events", "rate": 3 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "worker-21": {
+        "id": "worker-21",
+        "role": "processor",
+        "status": "down",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": "Infinity",
+        "growth": 3,
+        "contributors": [{ "edge": "read-21", "node": "topic", "label": "Order events", "rate": 3 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "worker-22": {
+        "id": "worker-22",
+        "role": "processor",
+        "status": "down",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": "Infinity",
+        "growth": 3,
+        "contributors": [{ "edge": "read-22", "node": "topic", "label": "Order events", "rate": 3 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "worker-23": {
+        "id": "worker-23",
+        "role": "processor",
+        "status": "down",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 3,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "topic",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": "Infinity",
+        "growth": 3,
+        "contributors": [{ "edge": "read-23", "node": "topic", "label": "Order events", "rate": 3 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "checkout": [{ "kind": "publishes", "edge": "publish", "peer": "topic" }],
+      "worker-0": [
+        {
+          "kind": "consumes",
+          "edge": "read-0",
+          "peer": "topic",
+          "group": "group-0",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "worker-1": [
+        {
+          "kind": "consumes",
+          "edge": "read-1",
+          "peer": "topic",
+          "group": "group-1",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "worker-2": [
+        {
+          "kind": "consumes",
+          "edge": "read-2",
+          "peer": "topic",
+          "group": "group-2",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "worker-3": [
+        {
+          "kind": "consumes",
+          "edge": "read-3",
+          "peer": "topic",
+          "group": "group-3",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "worker-4": [
+        {
+          "kind": "consumes",
+          "edge": "read-4",
+          "peer": "topic",
+          "group": "group-4",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "worker-5": [
+        {
+          "kind": "consumes",
+          "edge": "read-5",
+          "peer": "topic",
+          "group": "group-5",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "worker-6": [
+        {
+          "kind": "consumes",
+          "edge": "read-6",
+          "peer": "topic",
+          "group": "group-6",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "worker-7": [
+        {
+          "kind": "consumes",
+          "edge": "read-7",
+          "peer": "topic",
+          "group": "group-7",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "worker-8": [
+        {
+          "kind": "consumes",
+          "edge": "read-8",
+          "peer": "topic",
+          "group": "group-8",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "worker-9": [
+        {
+          "kind": "consumes",
+          "edge": "read-9",
+          "peer": "topic",
+          "group": "group-9",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "worker-10": [
+        {
+          "kind": "consumes",
+          "edge": "read-10",
+          "peer": "topic",
+          "group": "group-10",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "worker-11": [
+        {
+          "kind": "consumes",
+          "edge": "read-11",
+          "peer": "topic",
+          "group": "group-11",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "worker-12": [
+        {
+          "kind": "consumes",
+          "edge": "read-12",
+          "peer": "topic",
+          "group": "group-12",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "worker-13": [
+        {
+          "kind": "consumes",
+          "edge": "read-13",
+          "peer": "topic",
+          "group": "group-13",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "worker-14": [
+        {
+          "kind": "consumes",
+          "edge": "read-14",
+          "peer": "topic",
+          "group": "group-14",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "worker-15": [
+        {
+          "kind": "consumes",
+          "edge": "read-15",
+          "peer": "topic",
+          "group": "group-15",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "worker-16": [
+        {
+          "kind": "consumes",
+          "edge": "read-16",
+          "peer": "topic",
+          "group": "group-16",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "worker-17": [
+        {
+          "kind": "consumes",
+          "edge": "read-17",
+          "peer": "topic",
+          "group": "group-17",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "worker-18": [
+        {
+          "kind": "consumes",
+          "edge": "read-18",
+          "peer": "topic",
+          "group": "group-18",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "worker-19": [
+        {
+          "kind": "consumes",
+          "edge": "read-19",
+          "peer": "topic",
+          "group": "group-19",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "worker-20": [
+        {
+          "kind": "consumes",
+          "edge": "read-20",
+          "peer": "topic",
+          "group": "group-20",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "worker-21": [
+        {
+          "kind": "consumes",
+          "edge": "read-21",
+          "peer": "topic",
+          "group": "group-21",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "worker-22": [
+        {
+          "kind": "consumes",
+          "edge": "read-22",
+          "peer": "topic",
+          "group": "group-22",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "worker-23": [
+        {
+          "kind": "consumes",
+          "edge": "read-23",
+          "peer": "topic",
+          "group": "group-23",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ]
+    },
+    "sizing": null,
+    "redundancy": {
+      "topic": { "replicas": 2, "enough": true },
+      "worker-0": { "replicas": 2, "enough": true },
+      "worker-1": { "replicas": 2, "enough": true },
+      "worker-2": { "replicas": 2, "enough": true },
+      "worker-3": { "replicas": 2, "enough": true },
+      "worker-4": { "replicas": 2, "enough": true },
+      "worker-5": { "replicas": 2, "enough": true },
+      "worker-6": { "replicas": 2, "enough": true },
+      "worker-7": { "replicas": 2, "enough": true },
+      "worker-8": { "replicas": 2, "enough": true },
+      "worker-9": { "replicas": 2, "enough": true },
+      "worker-10": { "replicas": 2, "enough": true },
+      "worker-11": { "replicas": 2, "enough": true },
+      "worker-12": { "replicas": 2, "enough": true },
+      "worker-13": { "replicas": 2, "enough": true },
+      "worker-14": { "replicas": 2, "enough": true },
+      "worker-15": { "replicas": 2, "enough": true },
+      "worker-16": { "replicas": 2, "enough": true },
+      "worker-17": { "replicas": 2, "enough": true },
+      "worker-18": { "replicas": 2, "enough": true },
+      "worker-19": { "replicas": 2, "enough": true },
+      "worker-20": { "replicas": 2, "enough": true },
+      "worker-21": { "replicas": 2, "enough": true },
+      "worker-22": { "replicas": 2, "enough": true },
+      "worker-23": { "replicas": 2, "enough": true }
+    },
+    "resolved": {
+      "checkout": {
+        "profile": { "family": "client", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 3,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Checkout",
+        "healthChecks": false
+      },
+      "topic": {
+        "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+        "profile": { "family": "log", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Order events",
+        "healthChecks": false
+      },
+      "worker-0": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker 0",
+        "healthChecks": false
+      },
+      "worker-1": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker 1",
+        "healthChecks": false
+      },
+      "worker-2": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker 2",
+        "healthChecks": false
+      },
+      "worker-3": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker 3",
+        "healthChecks": false
+      },
+      "worker-4": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker 4",
+        "healthChecks": false
+      },
+      "worker-5": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker 5",
+        "healthChecks": false
+      },
+      "worker-6": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker 6",
+        "healthChecks": false
+      },
+      "worker-7": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker 7",
+        "healthChecks": false
+      },
+      "worker-8": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker 8",
+        "healthChecks": false
+      },
+      "worker-9": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker 9",
+        "healthChecks": false
+      },
+      "worker-10": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker 10",
+        "healthChecks": false
+      },
+      "worker-11": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker 11",
+        "healthChecks": false
+      },
+      "worker-12": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker 12",
+        "healthChecks": false
+      },
+      "worker-13": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker 13",
+        "healthChecks": false
+      },
+      "worker-14": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker 14",
+        "healthChecks": false
+      },
+      "worker-15": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker 15",
+        "healthChecks": false
+      },
+      "worker-16": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker 16",
+        "healthChecks": false
+      },
+      "worker-17": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker 17",
+        "healthChecks": false
+      },
+      "worker-18": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker 18",
+        "healthChecks": false
+      },
+      "worker-19": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker 19",
+        "healthChecks": false
+      },
+      "worker-20": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker 20",
+        "healthChecks": false
+      },
+      "worker-21": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker 21",
+        "healthChecks": false
+      },
+      "worker-22": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker 22",
+        "healthChecks": false
+      },
+      "worker-23": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker 23",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {},
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "over",
+          "top": "worker-0",
+          "headline": "Worker 0 and 23 more are down",
+          "detail": "Messages wait in Order events until they're back.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "checkout": ["idle", "3/s · no limit", { "modeled": false }],
+            "topic": ["over", "No capacity · 3/s waiting"],
+            "worker-0": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-1": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-2": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-3": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-4": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-5": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-6": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-7": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-8": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-9": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-10": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-11": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-12": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-13": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-14": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-15": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-16": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-17": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-18": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-19": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-20": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-21": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-22": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-23": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "over",
+          "top": "worker-0",
+          "headline": "Worker 0 and 23 more are down",
+          "detail": "Messages wait in Order events until they're back.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "checkout": ["idle", "15/s · no limit", { "modeled": false }],
+            "topic": ["over", "No capacity · 15/s waiting"],
+            "worker-0": ["over", "Down · 15/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-1": ["over", "Down · 15/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-2": ["over", "Down · 15/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-3": ["over", "Down · 15/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-4": ["over", "Down · 15/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-5": ["over", "Down · 15/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-6": ["over", "Down · 15/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-7": ["over", "Down · 15/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-8": ["over", "Down · 15/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-9": ["over", "Down · 15/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-10": ["over", "Down · 15/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-11": ["over", "Down · 15/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-12": ["over", "Down · 15/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-13": ["over", "Down · 15/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-14": ["over", "Down · 15/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-15": ["over", "Down · 15/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-16": ["over", "Down · 15/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-17": ["over", "Down · 15/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-18": ["over", "Down · 15/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-19": ["over", "Down · 15/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-20": ["over", "Down · 15/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-21": ["over", "Down · 15/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-22": ["over", "Down · 15/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-23": ["over", "Down · 15/s waiting in Order events", { "waitsIn": ["Order events"] }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "over",
+          "top": "worker-0",
+          "headline": "Worker 0 and 23 more are down",
+          "detail": "Messages wait in Order events until they're back.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "checkout": ["idle", "3/s · no limit", { "modeled": false }],
+            "topic": ["over", "No capacity · 3/s waiting"],
+            "worker-0": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-1": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-2": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-3": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-4": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-5": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-6": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-7": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-8": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-9": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-10": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-11": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-12": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-13": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-14": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-15": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-16": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-17": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-18": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-19": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-20": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-21": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-22": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-23": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": { "topic": { "partitions": 6 } }, "rates": {} },
+        "view": {
+          "tone": "over",
+          "top": "worker-0",
+          "headline": "Worker 0 and 23 more are down",
+          "detail": "Messages wait in Order events until they're back.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "checkout": ["idle", "3/s · no limit", { "modeled": false }],
+            "topic": ["over", "No capacity · 3/s waiting"],
+            "worker-0": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-1": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-2": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-3": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-4": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-5": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-6": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-7": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-8": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-9": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-10": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-11": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-12": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-13": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-14": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-15": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-16": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-17": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-18": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-19": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-20": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-21": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-22": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }],
+            "worker-23": ["over", "Down · 3/s waiting in Order events", { "waitsIn": ["Order events"] }]
+          }
+        },
+        "partitionsNotes": { "topic": "Its largest consumer group has 1 replica: partitions past 1 add no speed." }
+      }
+    }
+  }
+}

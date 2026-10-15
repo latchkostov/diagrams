@@ -1,0 +1,53 @@
+{
+  "evidence": {
+    "played": [{ "id": "outage", "title": "Outage", "playedMs": 60000, "capped": true }],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [],
+    "dropped": []
+  },
+  "planned": [],
+  "counted": 0,
+  "findings": [
+    { "id": "capacity:orders", "rule": "capacity", "severity": "warning", "target": "orders", "elements": ["orders"] },
+    {
+      "id": "dead-letter:queue",
+      "rule": "dead-letter",
+      "severity": "suggestion",
+      "target": "queue",
+      "elements": ["queue", "orders", "other"],
+      "fix": {
+        "ops": [
+          { "op": "add_node", "kind": "generic.queue", "label": "Queue DLQ", "key": "new-dlq" },
+          { "op": "connect", "from": "queue", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
+          { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
+        ],
+        "needsChoice": false
+      }
+    }
+  ],
+  "agentReport": {
+    "findings": [
+      { "id": "capacity:orders", "rule": "capacity", "severity": "warning", "title": "Orders can't keep up", "message": "At the diagram's own rates, it gets 3/s and handles 1/s (300%): its backlog only grows.", "targets": ["orders"] },
+      {
+        "id": "dead-letter:queue",
+        "rule": "dead-letter",
+        "severity": "suggestion",
+        "title": "Queue has no dead-letter queue",
+        "message": "If Orders and Other can't handle a message, it's dropped after 3 deliveries. A command queue is where losing messages hurts most.",
+        "targets": ["queue", "orders", "other"],
+        "fix": {
+          "label": "Add dead-letter queue",
+          "ops": [
+            { "op": "add_node", "kind": "generic.queue", "label": "Queue DLQ", "key": "new-dlq" },
+            { "op": "connect", "from": "queue", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
+            { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
+          ]
+        }
+      }
+    ],
+    "summary": "1 warning, 1 suggestion.",
+    "simulations": "Played 1 saved simulation (at most 60 s each; some stopped there).",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
+}

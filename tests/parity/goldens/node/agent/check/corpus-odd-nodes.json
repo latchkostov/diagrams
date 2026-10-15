@@ -1,0 +1,37 @@
+{
+  "all": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "no-reader:long-sub",
+          "rule": "no-reader",
+          "severity": "warning",
+          "title": "Nobody reads notifications",
+          "message": "Customer Communication Preferences Synchronisation Service publishes to notifications, but nothing consumes it: it keeps every message, unread.",
+          "targets": ["long-sub", "long-label"],
+          "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads notifications, then add it and connect long-sub to it." }
+        }
+      ],
+      "summary": "1 warning, 0 suggestions."
+    }
+  },
+  "warnings": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "no-reader:long-sub",
+          "rule": "no-reader",
+          "severity": "warning",
+          "title": "Nobody reads notifications",
+          "message": "Customer Communication Preferences Synchronisation Service publishes to notifications, but nothing consumes it: it keeps every message, unread.",
+          "targets": ["long-sub", "long-label"],
+          "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads notifications, then add it and connect long-sub to it." }
+        }
+      ],
+      "summary": "1 warning, 0 suggestions."
+    }
+  },
+  "oneRule": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 2 checks ran." } }
+}

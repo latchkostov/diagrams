@@ -1,0 +1,71 @@
+{
+  "ran": [
+    "dead-letter",
+    "no-reader",
+    "sync-cycle",
+    "sync-chain",
+    "shared-database",
+    "entry-gateway",
+    "capacity",
+    "single-point",
+    "secret-identity",
+    "schema-registry"
+  ],
+  "off": [],
+  "findings": [
+    {
+      "id": "capacity:worker",
+      "rule": "capacity",
+      "severity": "warning",
+      "target": "worker",
+      "elements": ["worker"],
+      "fix": { "ops": [{ "op": "update", "target": "worker", "props": { "replicas": 4 } }], "needsChoice": false }
+    },
+    {
+      "id": "secret-identity:vault\ninjected\tsecret",
+      "rule": "secret-identity",
+      "severity": "suggestion",
+      "target": "vault\ninjected\tsecret",
+      "elements": ["vault\ninjected\tsecret", "worker"],
+      "fix": {
+        "ops": [
+          { "op": "add_node", "kind": "azure.managed-identity", "label": "Worker identity", "sublabel": "workload identity", "key": "new-identity-1" },
+          { "op": "connect", "from": "worker", "to": "new-identity-1", "relation": "identity" }
+        ],
+        "needsChoice": false
+      }
+    }
+  ],
+  "ignored": [],
+  "fixes": {
+    "capacity:worker (default)": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "summary": "1 changed",
+      "results": [{ "i": 0, "op": "update", "id": "worker" }],
+      "nodes": 3,
+      "edges": 2,
+      "findingsAfter": ["secret-identity:vault\ninjected\tsecret"]
+    },
+    "secret-identity:vault\ninjected\tsecret (default)": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "summary": "+1 node, +1 connection",
+      "results": [
+        {
+          "i": 0,
+          "op": "add_node",
+          "id": "managed-identity-1",
+          "label": "Worker identity",
+          "stencil": { "id": "azure.managed-identity", "label": "Managed Identity", "confidence": "high", "alternatives": [] }
+        },
+        { "i": 1, "op": "connect", "id": "e-1", "from": "worker", "to": "managed-identity-1" }
+      ],
+      "nodes": 4,
+      "edges": 3,
+      "findingsAfter": ["capacity:worker"]
+    }
+  }
+}

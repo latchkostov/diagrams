@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "source": [40, 40], "cluster": [40, 160], "broker": [400, 100], "worker": [760, 40], "dead": [760, 160] },
+    "TB": { "source": [40, 40], "cluster": [320, 40], "broker": [180, 200], "dead": [40, 360], "worker": [320, 360] }
+  },
+  "tidy": { "source": [0, 100], "broker": [300, 160], "worker": [660, 100], "dead": [660, 220], "cluster": [0, 220] },
+  "arrange": {
+    "alignLeft": { "source": [0, 100], "broker": [0, 100], "worker": [0, 220], "dead": [0, 320], "cluster": [0, 320] },
+    "alignMiddle": { "source": [0, 210], "broker": [320, 210], "worker": [640, 210], "dead": [320, 210], "cluster": [0, 210] },
+    "distributeH": { "source": [0, 100], "broker": [320, 100], "worker": [640, 220], "dead": [480, 320], "cluster": [160, 320] },
+    "distributeV": { "source": [0, 100], "broker": [320, 155], "worker": [640, 210], "dead": [320, 265], "cluster": [0, 320] },
+    "spreadH": { "source": [0, 100], "broker": [520, 100], "worker": [1040, 100], "dead": [780, 100], "cluster": [260, 100] },
+    "boundaryAround": { "x": -40, "y": 36, "width": 940, "height": 396 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "source": [40, 40], "broker": [400, 100], "worker": [760, 40], "dead": [760, 160], "cluster": [40, 160] },
+    "groups": {}
+  }
+}

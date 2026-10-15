@@ -1,0 +1,249 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "app": { "replicas": [1, 1, 0] },
+        "collector": { "replicas": [1, 1, 0] },
+        "pubsub-topic": { "lag": { "dataflow": 0, "archive": 0 }, "replicas": [1, 1, 0] },
+        "dataflow": { "replicas": [4, 4, 0] },
+        "raw-archive": { "replicas": [1, 1, 0] },
+        "bigquery": { "replicas": [1, 1, 0] },
+        "looker": { "replicas": [1, 1, 0] },
+        "dead-letters": { "lag": { "dlq-archive": 0 }, "replicas": [1, 1, 0] },
+        "dead-bucket": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 70,
+      "nodes": {
+        "app": { "processed": 500, "throughput": 50.24771657031149, "replicas": [1, 1, 0] },
+        "collector": { "processed": 487, "inFlight": 3, "throughput": 49.4898823954206, "replicas": [1, 1, 0] },
+        "pubsub-topic": {
+          "processed": 472,
+          "throughput": 49.50399318138365,
+          "lag": { "dataflow": 0, "archive": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "dataflow": { "processed": 456, "inFlight": 1, "throughput": 50.718557025861855, "replicas": [4, 4, 0] },
+        "raw-archive": { "processed": 457, "throughput": 49.51401372403579, "replicas": [1, 1, 0] },
+        "bigquery": { "processed": 445, "throughput": 49.70641245865491, "replicas": [1, 1, 0] },
+        "looker": { "replicas": [1, 1, 0] },
+        "dead-letters": { "lag": { "dlq-archive": 0 }, "replicas": [1, 1, 0] },
+        "dead-bucket": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 70,
+      "nodes": {
+        "app": { "processed": 1000, "throughput": 50.249997813114526, "replicas": [1, 1, 0] },
+        "collector": { "processed": 988, "inFlight": 2, "throughput": 50.496282305774486, "replicas": [1, 1, 0] },
+        "pubsub-topic": {
+          "processed": 973,
+          "throughput": 50.478866046948966,
+          "lag": { "dataflow": 0, "archive": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "dataflow": { "processed": 955, "inFlight": 3, "throughput": 49.76241176745843, "replicas": [4, 4, 0] },
+        "raw-archive": { "processed": 958, "throughput": 50.50112245240009, "replicas": [1, 1, 0] },
+        "bigquery": { "processed": 945, "throughput": 49.74312624321331, "replicas": [1, 1, 0] },
+        "looker": { "replicas": [1, 1, 0] },
+        "dead-letters": { "lag": { "dlq-archive": 0 }, "replicas": [1, 1, 0] },
+        "dead-bucket": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 71,
+      "nodes": {
+        "app": { "processed": 1500, "throughput": 50.2499979166828, "replicas": [1, 1, 0] },
+        "collector": { "processed": 1487, "inFlight": 3, "throughput": 49.47947253725253, "replicas": [1, 1, 0] },
+        "pubsub-topic": {
+          "processed": 1473,
+          "throughput": 50.51846050727835,
+          "lag": { "dataflow": 0, "archive": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "dataflow": { "processed": 1455, "inFlight": 2, "throughput": 49.70026080850153, "replicas": [4, 4, 0] },
+        "raw-archive": { "processed": 1457, "throughput": 49.51129547866541, "replicas": [1, 1, 0] },
+        "bigquery": { "processed": 1445, "throughput": 49.7222107826641, "replicas": [1, 1, 0] },
+        "looker": { "replicas": [1, 1, 0] },
+        "dead-letters": { "lag": { "dlq-archive": 0 }, "replicas": [1, 1, 0] },
+        "dead-bucket": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 70,
+      "nodes": {
+        "app": { "processed": 2000, "throughput": 50.24999791668725, "replicas": [1, 1, 0] },
+        "collector": { "processed": 1988, "inFlight": 2, "throughput": 50.464867641624046, "replicas": [1, 1, 0] },
+        "pubsub-topic": {
+          "processed": 1973,
+          "throughput": 50.48067530272342,
+          "lag": { "dataflow": 0, "archive": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "dataflow": { "processed": 1955, "inFlight": 3, "throughput": 49.7391332279206, "replicas": [4, 4, 0] },
+        "raw-archive": { "processed": 1958, "throughput": 50.48258430247566, "replicas": [1, 1, 0] },
+        "bigquery": { "processed": 1945, "throughput": 49.72521195737709, "replicas": [1, 1, 0] },
+        "looker": { "replicas": [1, 1, 0] },
+        "dead-letters": { "lag": { "dlq-archive": 0 }, "replicas": [1, 1, 0] },
+        "dead-bucket": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 69,
+      "nodes": {
+        "app": { "processed": 2500, "throughput": 50.24999791668725, "replicas": [1, 1, 0] },
+        "collector": { "processed": 2487, "inFlight": 3, "throughput": 49.50592243117279, "replicas": [1, 1, 0] },
+        "pubsub-topic": {
+          "processed": 2472,
+          "throughput": 49.52699766823261,
+          "lag": { "dataflow": 0, "archive": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "dataflow": { "processed": 2456, "inFlight": 2, "throughput": 50.73864841612629, "replicas": [4, 4, 0] },
+        "raw-archive": { "processed": 2458, "throughput": 50.50229864813284, "replicas": [1, 1, 0] },
+        "bigquery": { "processed": 2445, "throughput": 49.74108047642441, "replicas": [1, 1, 0] },
+        "looker": { "replicas": [1, 1, 0] },
+        "dead-letters": { "lag": { "dlq-archive": 0 }, "replicas": [1, 1, 0] },
+        "dead-bucket": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 71,
+      "nodes": {
+        "app": { "processed": 3000, "throughput": 50.24999791668725, "replicas": [1, 1, 0] },
+        "collector": { "processed": 2988, "inFlight": 2, "throughput": 50.489954918089666, "replicas": [1, 1, 0] },
+        "pubsub-topic": {
+          "processed": 2973,
+          "throughput": 50.48043249029172,
+          "lag": { "dataflow": 0, "archive": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "dataflow": { "processed": 2955, "inFlight": 2, "throughput": 49.72216856524687, "replicas": [4, 4, 0] },
+        "raw-archive": { "processed": 2957, "throughput": 49.48814015633839, "replicas": [1, 1, 0] },
+        "bigquery": { "processed": 2945, "throughput": 49.71765669817617, "replicas": [1, 1, 0] },
+        "looker": { "replicas": [1, 1, 0] },
+        "dead-letters": { "lag": { "dlq-archive": 0 }, "replicas": [1, 1, 0] },
+        "dead-bucket": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 71,
+    "real": {
+      "app": { "processed": 3000, "throughput": 50.24999791668725, "replicas": [1, 1, 0] },
+      "collector": { "processed": 2988, "inFlight": 2, "throughput": 50.489954918089666, "replicas": [1, 1, 0] },
+      "pubsub-topic": {
+        "processed": 2973,
+        "throughput": 50.48043249029172,
+        "lag": { "dataflow": 0, "archive": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "dataflow": { "processed": 2955, "inFlight": 2, "throughput": 49.72216856524687, "replicas": [4, 4, 0] },
+      "raw-archive": { "processed": 2957, "throughput": 49.48814015633839, "replicas": [1, 1, 0] },
+      "bigquery": { "processed": 2945, "throughput": 49.71765669817617, "replicas": [1, 1, 0] },
+      "looker": { "replicas": [1, 1, 0] },
+      "dead-letters": { "lag": { "dlq-archive": 0 }, "replicas": [1, 1, 0] },
+      "dead-bucket": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "app-to-collector": 2990, "collector-to-topic": 2973, "topic-to-dataflow": 2957, "topic-to-raw-archive": 2957, "dataflow-to-bigquery": 2945, "dataflow-to-dead-letters": 0, "dead-letters-to-dead-bucket": 0, "looker-to-bigquery": 0 }
+  },
+  "events": {
+    "total": 32640,
+    "byKind": { "process": 17818, "deliver": 14822 },
+    "byNode": {
+      "app": { "process": 3000 },
+      "collector": { "deliver": 2990, "process": 2988 },
+      "pubsub-topic": { "deliver": 2973, "process": 2973 },
+      "dataflow": { "deliver": 2957, "process": 2955 },
+      "raw-archive": { "deliver": 2957, "process": 2957 },
+      "bigquery": { "deliver": 2945, "process": 2945 }
+    },
+    "perSecond": [
+      "94dc6ac09779",
+      "261c8c56ec80",
+      "1740f4f2fb62",
+      "b71f231eac07",
+      "9fe2b6ef7f1f",
+      "b6cf58b23f47",
+      "3d95aa53b219",
+      "3bacb507ecff",
+      "fc1c07c771d7",
+      "49fb659f8ad1",
+      "07c467bd93b1",
+      "0f65ca008720",
+      "214f1d2b85d8",
+      "96ab6ad633c0",
+      "0c324a2d4dca",
+      "59ab91556bc1",
+      "1301c7e23ec3",
+      "b06ccd3bb94a",
+      "e07ced8d2ffa",
+      "b1aac4c7c90e",
+      "cf4de036ce02",
+      "c977f453398d",
+      "f9977a25de41",
+      "6a24dd9d458e",
+      "9ca6a1e90f63",
+      "9cb725f84e66",
+      "3e5907211eb6",
+      "7eed8ceb598a",
+      "9e9e17308c73",
+      "2b38048a3620",
+      "4ad31b367640",
+      "97575ba92d6f",
+      "004c665e20d1",
+      "b63a8b7d8706",
+      "0ef291994fd6",
+      "3c45a74533a3",
+      "4626831c571c",
+      "d2362f3ec0db",
+      "863f2045032e",
+      "b178838009da",
+      "bc754e6c7d38",
+      "5147dfa753e0",
+      "e0de61977aff",
+      "4dfe8a38d4a3",
+      "2b113a88778b",
+      "eea30d8e4003",
+      "aa07b999e388",
+      "dfabf26072a6",
+      "e83eb1af132c",
+      "46106853e92c",
+      "83c159bf7e79",
+      "a6f87644107a",
+      "08eb92267904",
+      "1b6f3b4dc886",
+      "2f1a32749b14",
+      "e98cd21a1ca1",
+      "e09e8533b1ca",
+      "9ad5274e39b2",
+      "5fd3fdd58017",
+      "b693dde724ff",
+      "73049d3e2812"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 2945, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 2945, "min": 1080, "mean": 1089.9219015280137, "p50": 1090, "p90": 1100, "max": 1100 },
+    "waitMs": {
+      "collector": { "count": 2945, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "dataflow": { "count": 2945, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "collector": { "count": 2945, "min": 40, "mean": 45.011884550084886, "p50": 50, "p90": 50, "max": 50 },
+      "dataflow": { "count": 2945, "min": 40, "mean": 44.91001697792869, "p50": 40, "p90": 50, "max": 50 }
+    }
+  }
+}

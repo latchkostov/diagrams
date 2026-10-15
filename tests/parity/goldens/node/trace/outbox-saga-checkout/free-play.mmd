@@ -1,0 +1,53 @@
+---
+title: "PlaceOrder #1 · 6.01 s end to end · 5 copies"
+---
+sequenceDiagram
+  participant client as Mobile checkout
+  participant order_api as Order service
+  participant orders_db as Orders database
+  participant outbox_relay as Outbox relay
+  participant order_events as orders.events
+  participant saga as Checkout saga
+  participant saga_db as Saga state
+  participant inventory_cmds as inventory.commands
+  participant inventory_svc as Inventory service
+  participant inventory_db as Inventory database
+  participant saga_replies as saga.replies
+  participant payment_cmds as payments.commands
+  participant payment_svc as Payment service
+  participant stripe as Stripe
+  participant notifications as Notification service
+  participant email as SendGrid
+  client->>order_api: PlaceOrder (+0.00 s)<br/>POST /orders
+  order_api-->>client: reply (+0.29 s)
+  order_api->>orders_db: OrderCreated (+0.29 s)<br/>Order + outbox, one tx
+  orders_db-->>order_api: reply (+0.51 s)
+  orders_db-)outbox_relay: OrderCreated (+0.51 s)<br/>WAL
+  outbox_relay-)order_events: OrderCreated (+0.80 s)<br/>Outbox events
+  order_events-)saga: OrderCreated (+1.10 s)
+  saga->>saga_db: ReserveInventory (+1.45 s)<br/>Persist step
+  saga-)inventory_cmds: ReserveInventory (+1.45 s)<br/>Reserve / Release
+  saga_db-->>saga: reply (+1.66 s)
+  inventory_cmds-)inventory_svc: ReserveInventory (+1.75 s)
+  inventory_svc->>inventory_db: InventoryReserved (+2.16 s)<br/>Reserve stock
+  inventory_svc-)saga_replies: InventoryReserved (+2.16 s)<br/>Reserved / Released
+  inventory_db-->>inventory_svc: reply (+2.37 s)
+  saga_replies-)saga: InventoryReserved (+2.46 s)<br/>Next step
+  saga->>saga_db: ChargePayment (+2.81 s)<br/>Persist step
+  saga-)payment_cmds: ChargePayment (+2.81 s)
+  saga_db-->>saga: reply (+3.03 s)
+  payment_cmds-)payment_svc: ChargePayment (+3.11 s)
+  payment_svc->>stripe: PaymentCaptured (+3.55 s)<br/>Idempotency-Key
+  payment_svc-)saga_replies: PaymentCaptured (+3.55 s)<br/>Captured / Declined
+  stripe-->>payment_svc: reply (+3.75 s)
+  saga_replies-)saga: PaymentCaptured (+3.85 s)<br/>Next step
+  saga->>saga_db: ConfirmOrder (+4.20 s)<br/>Persist step
+  saga-)order_api: ConfirmOrder (+4.20 s)<br/>Confirm / Cancel
+  saga_db-->>saga: reply (+4.41 s)
+  order_api->>orders_db: OrderConfirmed (+4.62 s)<br/>Order + outbox, one tx
+  orders_db-->>order_api: reply (+4.84 s)
+  orders_db-)outbox_relay: OrderConfirmed (+4.84 s)<br/>WAL
+  outbox_relay-)order_events: OrderConfirmed (+5.12 s)<br/>Outbox events
+  order_events-)notifications: OrderConfirmed (+5.42 s)<br/>Confirmed · Cancelled
+  notifications->>email: ReceiptEmail (+5.81 s)<br/>Send email
+  email-->>notifications: reply (+6.01 s)

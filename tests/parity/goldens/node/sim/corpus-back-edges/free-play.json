@@ -1,0 +1,177 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "api": { "replicas": [1, 1, 0] },
+        "svc": { "replicas": [1, 1, 0] },
+        "topic": { "lag": { "down": 0, "back-far": 0 }, "replicas": [1, 1, 0] },
+        "retry": { "replicas": [1, 1, 0] },
+        "above": { "replicas": [1, 1, 0] },
+        "below": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 0,
+      "nodes": {
+        "api": { "replicas": [1, 1, 0] },
+        "svc": { "replicas": [1, 1, 0] },
+        "topic": { "lag": { "down": 0, "back-far": 0 }, "replicas": [1, 1, 0] },
+        "retry": { "replicas": [1, 1, 0] },
+        "above": { "replicas": [1, 1, 0] },
+        "below": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 0,
+      "nodes": {
+        "api": { "replicas": [1, 1, 0] },
+        "svc": { "replicas": [1, 1, 0] },
+        "topic": { "lag": { "down": 0, "back-far": 0 }, "replicas": [1, 1, 0] },
+        "retry": { "replicas": [1, 1, 0] },
+        "above": { "replicas": [1, 1, 0] },
+        "below": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 0,
+      "nodes": {
+        "api": { "replicas": [1, 1, 0] },
+        "svc": { "replicas": [1, 1, 0] },
+        "topic": { "lag": { "down": 0, "back-far": 0 }, "replicas": [1, 1, 0] },
+        "retry": { "replicas": [1, 1, 0] },
+        "above": { "replicas": [1, 1, 0] },
+        "below": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 0,
+      "nodes": {
+        "api": { "replicas": [1, 1, 0] },
+        "svc": { "replicas": [1, 1, 0] },
+        "topic": { "lag": { "down": 0, "back-far": 0 }, "replicas": [1, 1, 0] },
+        "retry": { "replicas": [1, 1, 0] },
+        "above": { "replicas": [1, 1, 0] },
+        "below": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 0,
+      "nodes": {
+        "api": { "replicas": [1, 1, 0] },
+        "svc": { "replicas": [1, 1, 0] },
+        "topic": { "lag": { "down": 0, "back-far": 0 }, "replicas": [1, 1, 0] },
+        "retry": { "replicas": [1, 1, 0] },
+        "above": { "replicas": [1, 1, 0] },
+        "below": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 0,
+      "nodes": {
+        "api": { "replicas": [1, 1, 0] },
+        "svc": { "replicas": [1, 1, 0] },
+        "topic": { "lag": { "down": 0, "back-far": 0 }, "replicas": [1, 1, 0] },
+        "retry": { "replicas": [1, 1, 0] },
+        "above": { "replicas": [1, 1, 0] },
+        "below": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 0,
+    "real": {
+      "api": { "replicas": [1, 1, 0] },
+      "svc": { "replicas": [1, 1, 0] },
+      "topic": { "lag": { "down": 0, "back-far": 0 }, "replicas": [1, 1, 0] },
+      "retry": { "replicas": [1, 1, 0] },
+      "above": { "replicas": [1, 1, 0] },
+      "below": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "fwd-1": 0, "fwd-2": 0, "down": 0, "back": 0, "back-far": 0, "up": 0, "down-2": 0, "self": 0 }
+  },
+  "events": {
+    "total": 0,
+    "byKind": {},
+    "byNode": {},
+    "perSecond": [
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 0, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": null,
+    "waitMs": {},
+    "processMs": {}
+  }
+}

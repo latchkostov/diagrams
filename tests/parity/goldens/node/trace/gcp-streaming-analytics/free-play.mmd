@@ -1,0 +1,17 @@
+---
+title: "ClickEvent #1 · 1.09 s end to end · 1 copy"
+---
+sequenceDiagram
+  participant app as Mobile and web apps
+  participant collector as Event collector
+  participant pubsub_topic as clickstream
+  participant dataflow as Sessionize job
+  participant raw_archive as Raw archive
+  participant bigquery as Analytics dataset
+  app->>collector: ClickEvent (+0.00 s)<br/>HTTPS batches
+  collector-->>app: reply (+0.24 s)
+  collector-)pubsub_topic: ClickEvent (+0.24 s)<br/>Publish
+  pubsub_topic-)dataflow: ClickEvent (+0.54 s)<br/>sub: dataflow
+  pubsub_topic-)raw_archive: ClickEvent (+0.54 s)<br/>Cloud Storage subscription
+  dataflow->>bigquery: SessionRow (+0.89 s)<br/>Sessions
+  bigquery-->>dataflow: reply (+1.09 s)

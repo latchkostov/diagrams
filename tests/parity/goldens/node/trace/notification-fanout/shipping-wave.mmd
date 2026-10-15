@@ -1,0 +1,29 @@
+---
+title: "ParcelScanned #1 · 1.83 s end to end · 2 copies"
+---
+sequenceDiagram
+  participant carrier as Carrier tracking
+  participant shipping as Shipping service
+  participant events as order-events
+  participant router as Notification router
+  participant preferences as Preferences
+  participant email_q as email
+  participant push_q as push
+  participant email_sender as Email sender
+  participant push_sender as Push sender
+  participant sendgrid as SendGrid
+  participant push as FCM and APNs
+  carrier->>shipping: ParcelScanned (+0.00 s)<br/>Webhook
+  shipping-->>carrier: reply (+0.25 s)
+  shipping-)events: OrderShipped (+0.25 s)
+  events-)router: OrderShipped (+0.55 s)<br/>Subscription
+  router->>preferences: OrderShipped (+0.91 s)<br/>Read preferences
+  router-)email_q: OrderShipped (+0.91 s)<br/>If email
+  router-)push_q: OrderShipped (+0.91 s)<br/>If push
+  preferences-->>router: reply (+1.11 s)
+  email_q-)email_sender: OrderShipped (+1.21 s)
+  push_q-)push_sender: OrderShipped (+1.21 s)
+  email_sender->>sendgrid: EmailSent (+1.62 s)<br/>Mail Send API
+  push_sender->>push: PushSent (+1.63 s)<br/>Send
+  sendgrid-->>email_sender: reply (+1.82 s)
+  push-->>push_sender: reply (+1.83 s)

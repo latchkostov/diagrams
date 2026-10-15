@@ -1,0 +1,82 @@
+{
+  "all": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "dead-letter:email-q",
+          "rule": "dead-letter",
+          "severity": "suggestion",
+          "title": "email has no dead-letter queue",
+          "message": "If Email sender can't handle a message, it's dropped after 3 deliveries. A command queue is where losing messages hurts most.",
+          "targets": ["email-q", "email-sender"],
+          "fix": {
+            "label": "Add dead-letter queue",
+            "ops": [
+              { "op": "add_node", "kind": "azure.service-bus.queue", "label": "email DLQ", "sublabel": "$DeadLetterQueue", "key": "new-dlq" },
+              { "op": "connect", "from": "email-q", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
+              { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
+            ]
+          }
+        }
+      ],
+      "summary": "0 warnings, 4 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding.",
+      "more": "3 more findings omitted; call check_diagram with rules to see them."
+    }
+  },
+  "warnings": { "isError": false, "output": { "findings": [], "summary": "0 warnings, 4 suggestions." } },
+  "oneRule": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "dead-letter:email-q",
+          "rule": "dead-letter",
+          "severity": "suggestion",
+          "title": "email has no dead-letter queue",
+          "message": "If Email sender can't handle a message, it's dropped after 3 deliveries. A command queue is where losing messages hurts most.",
+          "targets": ["email-q", "email-sender"],
+          "fix": {
+            "label": "Add dead-letter queue",
+            "ops": [
+              { "op": "add_node", "kind": "azure.service-bus.queue", "label": "email DLQ", "sublabel": "$DeadLetterQueue", "key": "new-dlq" },
+              { "op": "connect", "from": "email-q", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
+              { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
+            ]
+          }
+        }
+      ],
+      "summary": "0 warnings, 3 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding.",
+      "more": "2 more findings omitted; call check_diagram with rules to see them."
+    }
+  },
+  "simulations": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "dead-letter:email-q",
+          "rule": "dead-letter",
+          "severity": "suggestion",
+          "title": "email has no dead-letter queue",
+          "message": "If Email sender can't handle a message, it's dropped after 3 deliveries. A command queue is where losing messages hurts most.",
+          "targets": ["email-q", "email-sender"],
+          "fix": {
+            "label": "Add dead-letter queue",
+            "ops": [
+              { "op": "add_node", "kind": "azure.service-bus.queue", "label": "email DLQ", "sublabel": "$DeadLetterQueue", "key": "new-dlq" },
+              { "op": "connect", "from": "email-q", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
+              { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
+            ]
+          }
+        }
+      ],
+      "summary": "0 warnings, 4 suggestions.",
+      "simulations": "Played 2 saved simulations (at most 60 s each).",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding.",
+      "more": "3 more findings omitted; call check_diagram with rules to see them."
+    }
+  }
+}

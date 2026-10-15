@@ -1,0 +1,42 @@
+{
+  "ok": true,
+  "format": "mermaid",
+  "warnings": ["1 invisible link was ignored."],
+  "report": null,
+  "reportEnglish": {},
+  "replay": null,
+  "checks": ["suggestion dead-letter:sb"],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "flowchart",
+    "direction": "LR",
+    "groups": [
+      { "id": "azure", "label": "Azure subscription", "tone": "azure", "x": 400, "y": 160, "width": 1020, "height": 236 }
+    ],
+    "nodes": [
+      { "id": "user", "stencil": "client.user", "label": "Customer", "x": 80, "y": 104 },
+      { "id": "api", "stencil": "service.dotnet", "label": "Order API", "sublabel": "ASP.NET Core", "x": 440, "y": 284, "group": "azure" },
+      { "id": "sb", "stencil": "azure.service-bus.queue", "label": "Service Bus orders", "x": 800, "y": 284, "group": "azure" },
+      { "id": "fn", "stencil": "azure.functions", "label": "Billing Azure Function", "x": 1160, "y": 224, "group": "azure" },
+      { "id": "db", "stencil": "postgres", "label": "Postgres ledger", "x": 1548, "y": 104 },
+      { "id": "mail", "stencil": "generic.email", "label": "Email", "x": 1548, "y": 224 },
+      { "id": "audit", "stencil": "generic.service", "label": "Audit \"log\"", "x": 1548, "y": 344 },
+      { "id": "report", "stencil": "generic.service", "label": "report", "x": 1908, "y": 224 },
+      { "id": "hidden", "stencil": "generic.service", "label": "hidden", "x": 80, "y": 224 },
+      { "id": "kafka", "stencil": "kafka.topic", "label": "Kafka orders topic", "x": 80, "y": 344 },
+      { "id": "worker", "stencil": "generic.service", "label": "Stock worker", "x": 440, "y": 164 },
+      { "id": "redis", "stencil": "redis.cache", "label": "Redis cache", "x": 800, "y": 164 }
+    ],
+    "edges": [
+      { "id": "e1-user-api", "from": "user", "to": "api", "label": "POST /orders", "kind": "sync" },
+      { "id": "e2-api-sb", "from": "api", "to": "sb", "label": "OrderPlaced", "kind": "async" },
+      { "id": "e3-sb-fn", "from": "sb", "to": "fn", "label": "fan out", "kind": "async" },
+      { "id": "e4-fn-db", "from": "fn", "to": "db", "kind": "sync" },
+      { "id": "e5-fn-mail", "from": "fn", "to": "mail", "kind": "sync" },
+      { "id": "e6-fn-audit", "from": "fn", "to": "audit", "kind": "sync" },
+      { "id": "e7-db-report", "from": "db", "to": "report", "kind": "sync" },
+      { "id": "e8-kafka-worker", "from": "kafka", "to": "worker", "kind": "sync" },
+      { "id": "e9-worker-redis", "from": "worker", "to": "redis", "kind": "sync" }
+    ]
+  }
+}

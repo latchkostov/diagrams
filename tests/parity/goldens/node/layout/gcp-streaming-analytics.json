@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "looker": [40, 40], "app": [40, 160], "collector": [409, 100], "pubsub-topic": [783, 100], "dataflow": [1154, 40], "raw-archive": [1154, 160], "bigquery": [1535, 40], "dead-letters": [1535, 160], "dead-bucket": [1895, 100] },
+    "TB": { "app": [40, 40], "looker": [340, 40], "collector": [190, 200], "pubsub-topic": [190, 360], "dataflow": [40, 520], "raw-archive": [340, 520], "dead-letters": [40, 680], "bigquery": [340, 680], "dead-bucket": [190, 840] }
+  },
+  "tidy": { "app": [40, 240], "collector": [409, 180], "pubsub-topic": [783, 180], "dataflow": [1154, 120], "raw-archive": [1154, 240], "bigquery": [1535, 120], "looker": [40, 120], "dead-letters": [1535, 240], "dead-bucket": [1895, 180] },
+  "arrange": {
+    "alignLeft": { "app": [40, 240], "collector": [40, 240], "pubsub-topic": [40, 240], "dataflow": [40, 120], "raw-archive": [40, 360], "bigquery": [40, 120], "looker": [40, 120], "dead-letters": [40, 240], "dead-bucket": [40, 240] },
+    "alignMiddle": { "app": [40, 240], "collector": [420, 240], "pubsub-topic": [800, 240], "dataflow": [1180, 240], "raw-archive": [1180, 240], "bigquery": [1560, 240], "looker": [1940, 240], "dead-letters": [1560, 240], "dead-bucket": [1940, 240] },
+    "distributeH": { "app": [40, 240], "collector": [277, 240], "pubsub-topic": [523, 240], "dataflow": [762, 120], "raw-archive": [1015, 360], "bigquery": [1246, 120], "looker": [1709, 120], "dead-letters": [1477, 240], "dead-bucket": [1940, 240] },
+    "distributeV": { "app": [40, 210], "collector": [420, 240], "pubsub-topic": [800, 270], "dataflow": [1180, 120], "raw-archive": [1180, 360], "bigquery": [1560, 150], "looker": [1940, 180], "dead-letters": [1560, 300], "dead-bucket": [1940, 330] },
+    "spreadH": { "app": [40, 120], "collector": [420, 120], "pubsub-topic": [800, 120], "dataflow": [1180, 120], "raw-archive": [1461, 120], "bigquery": [1721, 120], "looker": [2241, 120], "dead-letters": [1981, 120], "dead-bucket": [2501, 120] },
+    "boundaryAround": { "x": 0, "y": 56, "width": 2200, "height": 416 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": ["gcp"],
+    "placedNotes": [],
+    "nodes": { "app": [40, 320], "collector": [409, 100], "pubsub-topic": [783, 100], "dataflow": [1154, 40], "raw-archive": [1154, 160], "bigquery": [1535, 40], "looker": [40, 40], "dead-letters": [1535, 160], "dead-bucket": [1895, 100] },
+    "groups": { "gcp": [0, -24, 2155, 296] }
+  }
+}

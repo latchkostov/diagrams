@@ -1,0 +1,34 @@
+---
+title: "Retail checkout #1 · 1.89 s end to end · 2 copies"
+---
+sequenceDiagram
+  participant client as Retail checkout
+  participant api as Orders API
+  participant intake as Create order
+  participant sns as order-events
+  participant fulfillment_q as fulfillment-orders
+  participant archive_q as order-archive
+  participant receipt_q as order-receipts
+  participant fulfill as Reserve fulfillment
+  participant archive as Archive orders
+  participant receipt as Prepare receipt
+  participant receipt_db as Receipt state
+  participant s3 as Order archive
+  participant ddb as Order state
+  client->>api: Retail checkout (+0.00 s)<br/>HTTPS
+  api-->>client: reply (+0.25 s)
+  api->>intake: Retail checkout (+0.25 s)<br/>POST /orders
+  intake-->>api: reply (+0.58 s)
+  intake-)sns: OrderPlaced (+0.58 s)
+  sns-)fulfillment_q: OrderPlaced (+0.88 s)<br/>Fulfillment subscription
+  sns-)archive_q: OrderPlaced (+0.88 s)<br/>Archive subscription
+  sns-)receipt_q: OrderPlaced (+0.88 s)<br/>Receipt subscription
+  fulfillment_q-)fulfill: OrderPlaced (+1.18 s)<br/>Event source · batch 10
+  archive_q-)archive: OrderPlaced (+1.18 s)<br/>Event source · batch 100
+  receipt_q-)receipt: OrderPlaced (+1.18 s)<br/>Event source · batch 10
+  receipt->>receipt_db: ReceiptPrepared (+1.63 s)<br/>Put receipt status
+  archive->>s3: OrderArchived (+1.64 s)<br/>PutObject
+  fulfill->>ddb: FulfillmentReserved (+1.65 s)<br/>Conditional update
+  s3-->>archive: reply (+1.88 s)
+  receipt_db-->>receipt: reply (+1.88 s)
+  ddb-->>fulfill: reply (+1.89 s)

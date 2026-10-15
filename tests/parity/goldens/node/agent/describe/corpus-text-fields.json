@@ -1,0 +1,32 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"Fields\" · direction LR · 3 nodes, 1 connections, 1 boundaries, 0 simulations\ndescription: \"Platform overview\\nOwned by the core team\"\nnodes:\n  \"a\" \"client.browser\" (\"Web Browser\") \"Order service\" in \"core\" capabilities=[] explanation=undefined\n  \"b\" \"client.browser\" (\"Web Browser\") \"Payments gateway\" in \"core\" capabilities=[] explanation=undefined\n  \"c\" \"client.browser\" (\"Web Browser\") \"Worker\" capabilities=[] explanation=undefined\nconnections:\n  \"ab\" \"a\" -> \"b\" async \"writes\"\nboundary \"core\" \"Core platform\" (neutral): \"a\", \"b\"\nnote \"n1\" \"Sticky reminder\\nSecond line here\""
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "Fields",
+      "description": "Platform overview\nOwned by the core team",
+      "direction": "LR",
+      "nodes": [
+        { "id": "a", "stencil": "client.browser", "label": "Order service", "x": 0, "y": 0, "group": "core", "capabilities": [] },
+        { "id": "b", "stencil": "client.browser", "label": "Payments gateway", "x": 400, "y": 0, "group": "core", "capabilities": [] },
+        { "id": "c", "stencil": "client.browser", "label": "Worker", "x": 0, "y": 300, "capabilities": [] }
+      ],
+      "edges": [{ "id": "ab", "from": "a", "to": "b", "kind": "async", "label": "writes" }],
+      "groups": [
+        { "id": "core", "label": "Core platform", "tone": "neutral", "x": -40, "y": -60, "width": 740, "height": 180 }
+      ],
+      "annotations": [
+        { "id": "n1", "kind": "note", "text": "Sticky reminder\nSecond line here", "x": 400, "y": 300, "width": 240, "height": 110 }
+      ],
+      "simulations": [],
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"Fields\" · direction LR · 2 nodes, 1 connections, 1 boundaries, 0 simulations\ndescription: \"Platform overview\\nOwned by the core team\"\nnodes:\n  \"a\" \"client.browser\" (\"Web Browser\") \"Order service\" in \"core\" capabilities=[] explanation=undefined\n  \"b\" \"client.browser\" (\"Web Browser\") \"Payments gateway\" in \"core\" capabilities=[] explanation=undefined\nconnections:\n  \"ab\" \"a\" -> \"b\" async \"writes\"\nboundary \"core\" \"Core platform\" (neutral): \"a\", \"b\""
+  }
+}

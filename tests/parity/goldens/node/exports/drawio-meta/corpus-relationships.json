@@ -1,0 +1,39 @@
+{
+  "withIcons": {
+    "sha256": "4b263a5c990497e51c0831707c86d0fbb9505a1237a39c28ddbc6b71cb26505d",
+    "bytes": 6021,
+    "inlined": { "client.browser": "client-browser 0022934839e05a07", "service.go": "go 6f494b4da5a84f2a" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Relationship regressions",
+        "nodes": [
+          {
+            "id": "source",
+            "stencil": "client.browser",
+            "label": "Caller",
+            "x": 0,
+            "y": 120,
+            "props": { "ratePerSec": 10 }
+          },
+          {
+            "id": "worker",
+            "stencil": "service.go",
+            "label": "Worker",
+            "x": 360,
+            "y": 120,
+            "props": { "latencyMs": 200, "concurrency": 1 }
+          },
+          { "id": "vault\ninjected\tsecret", "stencil": "azure.key-vault", "label": "Vault", "sublabel": "Injected label", "x": 720, "y": 120 }
+        ],
+        "edges": [
+          { "id": "demand", "from": "source", "to": "worker", "label": "secret", "kind": "async" },
+          { "id": "credential", "from": "worker", "to": "vault\ninjected\tsecret", "kind": "async", "relation": "secret" }
+        ]
+      }
+    }
+  ]
+}

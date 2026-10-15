@@ -1,0 +1,37 @@
+---
+title: Relationships
+---
+flowchart LR
+  message_a["message source"]
+  message_b["message target"]
+  request_a["request source"]
+  request_b["request target"]
+  config_a["config source"]
+  config_b["config target"]
+  secret_a["secret source"]
+  secret_b["secret target"]
+  identity_a["identity source"]
+  identity_b["identity target"]
+  telemetry_a["telemetry source"]
+  telemetry_b["telemetry target"]
+  deploy_a["deploy source"]
+  deploy_b["deploy target"]
+  depends_a["depends source"]
+  depends_b["depends target"]
+  kv["Key Vault"]
+  message_a -.->|"Message"| message_b
+  request_a -->|"Request"| request_b
+  config_a -.->|"reads config"| config_b
+  secret_a -.->|"reads secrets"| secret_b
+  identity_a -.->|"gets tokens from: execution role"| identity_b
+  telemetry_a -.->|"sends telemetry to"| telemetry_b
+  deploy_a -.->|"deploys to: helm upgrade"| deploy_b
+  depends_a -.->|"depends on: resolves orders.internal"| depends_b
+  config_b -.->|"reads secrets"| kv
+  linkStyle 0 stroke-dasharray: 6 4
+  linkStyle 2 stroke:#2A8A83,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 3,8 stroke:#A6720C,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 4 stroke:#5A61C4,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 5 stroke:#7C6D98,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 6 stroke:#3B8752,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 7 stroke:#556075,stroke-width:1.25px,stroke-dasharray: 2 4

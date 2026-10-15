@@ -1,0 +1,233 @@
+{
+  "format": "diagrams/v1",
+  "title": "Group tones",
+  "description": "Every boundary tone, with cross-boundary edges.",
+  "groups": [
+    {
+      "id": "azure",
+      "label": "azure boundary",
+      "tone": "azure",
+      "x": 10,
+      "y": -10,
+      "width": 290,
+      "height": 282
+    },
+    {
+      "id": "aws",
+      "label": "aws boundary",
+      "tone": "aws",
+      "x": 423.99999999999994,
+      "y": -10,
+      "width": 290,
+      "height": 282
+    },
+    {
+      "id": "gcp",
+      "label": "gcp boundary",
+      "tone": "gcp",
+      "x": 837.9999999999999,
+      "y": -10,
+      "width": 290,
+      "height": 282
+    },
+    {
+      "id": "k8s",
+      "label": "k8s boundary",
+      "tone": "k8s",
+      "x": 10,
+      "y": 350,
+      "width": 290,
+      "height": 282
+    },
+    {
+      "id": "onprem",
+      "label": "onprem boundary",
+      "tone": "onprem",
+      "x": 423.99999999999994,
+      "y": 350,
+      "width": 290,
+      "height": 282
+    },
+    {
+      "id": "neutral",
+      "label": "neutral boundary",
+      "tone": "neutral",
+      "x": 837.9999999999999,
+      "y": 350,
+      "width": 290,
+      "height": 282
+    }
+  ],
+  "nodes": [
+    {
+      "id": "azure-1",
+      "stencil": "service.node",
+      "label": "azure service",
+      "x": 40,
+      "y": 40,
+      "group": "azure"
+    },
+    {
+      "id": "azure-2",
+      "stencil": "kafka.topic",
+      "label": "azure topic",
+      "sublabel": "azure.events",
+      "x": 40,
+      "y": 160,
+      "group": "azure"
+    },
+    {
+      "id": "aws-1",
+      "stencil": "service.node",
+      "label": "aws service",
+      "x": 453.99999999999994,
+      "y": 40,
+      "group": "aws"
+    },
+    {
+      "id": "aws-2",
+      "stencil": "kafka.topic",
+      "label": "aws topic",
+      "sublabel": "aws.events",
+      "x": 453.99999999999994,
+      "y": 160,
+      "group": "aws"
+    },
+    {
+      "id": "gcp-1",
+      "stencil": "service.node",
+      "label": "gcp service",
+      "x": 867.9999999999999,
+      "y": 40,
+      "group": "gcp"
+    },
+    {
+      "id": "gcp-2",
+      "stencil": "kafka.topic",
+      "label": "gcp topic",
+      "sublabel": "gcp.events",
+      "x": 867.9999999999999,
+      "y": 160,
+      "group": "gcp"
+    },
+    {
+      "id": "k8s-1",
+      "stencil": "service.node",
+      "label": "k8s service",
+      "x": 40,
+      "y": 400,
+      "group": "k8s"
+    },
+    {
+      "id": "k8s-2",
+      "stencil": "kafka.topic",
+      "label": "k8s topic",
+      "sublabel": "k8s.events",
+      "x": 40,
+      "y": 520,
+      "group": "k8s"
+    },
+    {
+      "id": "onprem-1",
+      "stencil": "service.node",
+      "label": "onprem service",
+      "x": 453.99999999999994,
+      "y": 400,
+      "group": "onprem"
+    },
+    {
+      "id": "onprem-2",
+      "stencil": "kafka.topic",
+      "label": "onprem topic",
+      "sublabel": "onprem.events",
+      "x": 453.99999999999994,
+      "y": 520,
+      "group": "onprem"
+    },
+    {
+      "id": "neutral-1",
+      "stencil": "service.node",
+      "label": "neutral service",
+      "x": 867.9999999999999,
+      "y": 400,
+      "group": "neutral"
+    },
+    {
+      "id": "neutral-2",
+      "stencil": "kafka.topic",
+      "label": "neutral topic",
+      "sublabel": "neutral.events",
+      "x": 867.9999999999999,
+      "y": 520,
+      "group": "neutral"
+    }
+  ],
+  "edges": [
+    {
+      "id": "azure-in",
+      "from": "azure-1",
+      "to": "azure-2",
+      "kind": "async"
+    },
+    {
+      "id": "aws-in",
+      "from": "aws-1",
+      "to": "aws-2",
+      "kind": "async"
+    },
+    {
+      "id": "aws-cross",
+      "from": "azure-2",
+      "to": "aws-1",
+      "kind": "async"
+    },
+    {
+      "id": "gcp-in",
+      "from": "gcp-1",
+      "to": "gcp-2",
+      "kind": "async"
+    },
+    {
+      "id": "gcp-cross",
+      "from": "aws-2",
+      "to": "gcp-1",
+      "kind": "async"
+    },
+    {
+      "id": "k8s-in",
+      "from": "k8s-1",
+      "to": "k8s-2",
+      "kind": "async"
+    },
+    {
+      "id": "k8s-cross",
+      "from": "gcp-2",
+      "to": "k8s-1",
+      "kind": "async"
+    },
+    {
+      "id": "onprem-in",
+      "from": "onprem-1",
+      "to": "onprem-2",
+      "kind": "async"
+    },
+    {
+      "id": "onprem-cross",
+      "from": "k8s-2",
+      "to": "onprem-1",
+      "kind": "async"
+    },
+    {
+      "id": "neutral-in",
+      "from": "neutral-1",
+      "to": "neutral-2",
+      "kind": "async"
+    },
+    {
+      "id": "neutral-cross",
+      "from": "onprem-2",
+      "to": "neutral-1",
+      "kind": "async"
+    }
+  ]
+}

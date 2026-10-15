@@ -1,0 +1,12 @@
+---
+title: Delivery losses
+---
+flowchart LR
+  web(["Web"])
+  q["orders"]
+  worker["Worker"]
+  dlq["orders-dlq"]
+  web -.-> q
+  q -.-> worker
+  q -.-> dlq
+  linkStyle 0,1,2 stroke-dasharray: 6 4

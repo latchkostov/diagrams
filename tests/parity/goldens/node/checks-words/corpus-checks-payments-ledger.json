@@ -1,0 +1,65 @@
+{
+  "summary": "1 warning, 1 suggestion.",
+  "findings": {
+    "schema-registry:payments": {
+      "title": "Avro on payments.v1, but no schema registry",
+      "message": "payments.v1 carries Avro; Payments API writes it and Ledger writer reads it. With no schema registry, consumers can't look up the schema a record was written with, and nothing checks that a new one is compatible.",
+      "rationale": "Kafka's Avro and Protobuf serializers write a schema id from the registry in front of every record, and the registry refuses a schema change that would break its readers. Without it, producers and consumers have to agree on schemas some other way.",
+      "fix": { "label": "Add Schema Registry" }
+    },
+    "secret-identity:kv": {
+      "title": "2 services read secrets without an identity",
+      "message": "Payments API and Ledger writer read secrets from payments-kv, but the diagram doesn't say what they sign in as. With a managed identity, they get in with no stored credential to leak or rotate.",
+      "rationale": "A service needs a credential to open a vault, and one stored with the service is just one more secret. A workload identity (an Azure managed identity, an AWS IAM role, a Google Cloud service account) signs it in with nothing to store or rotate, and one per service gives each only the access it needs (least privilege).",
+      "fix": {
+        "label": "Add managed identities",
+        "options": [{ "label": "Add one shared managed identity", "short": "One shared identity" }]
+      }
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "schema-registry:payments",
+        "rule": "schema-registry",
+        "severity": "warning",
+        "title": "Avro on payments.v1, but no schema registry",
+        "message": "payments.v1 carries Avro; Payments API writes it and Ledger writer reads it. With no schema registry, consumers can't look up the schema a record was written with, and nothing checks that a new one is compatible.",
+        "targets": ["payments", "api", "ledger"],
+        "fix": {
+          "label": "Add Schema Registry",
+          "ops": [
+            { "op": "add_node", "kind": "kafka.schema-registry", "label": "Schema Registry", "sublabel": "schemas", "key": "new-schema-registry" },
+            { "op": "connect", "from": "api", "to": "new-schema-registry", "relation": "depends" },
+            { "op": "connect", "from": "ledger", "to": "new-schema-registry", "relation": "depends" }
+          ]
+        }
+      }
+    ],
+    "summary": "1 warning, 1 suggestion.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding.",
+    "more": "1 more finding omitted; call check_diagram with rules to see them."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      {
+        "id": "schema-registry:payments",
+        "rule": "schema-registry",
+        "severity": "warning",
+        "title": "Avro on payments.v1, but no schema registry",
+        "message": "payments.v1 carries Avro; Payments API writes it and Ledger writer reads it. With no schema registry, consumers can't look up the schema a record was written with, and nothing checks that a new one is compatible.",
+        "targets": ["payments", "api", "ledger"],
+        "fix": {
+          "label": "Add Schema Registry",
+          "ops": [
+            { "op": "add_node", "kind": "kafka.schema-registry", "label": "Schema Registry", "sublabel": "schemas", "key": "new-schema-registry" },
+            { "op": "connect", "from": "api", "to": "new-schema-registry", "relation": "depends" },
+            { "op": "connect", "from": "ledger", "to": "new-schema-registry", "relation": "depends" }
+          ]
+        }
+      }
+    ],
+    "summary": "1 warning, 1 suggestion.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
+}

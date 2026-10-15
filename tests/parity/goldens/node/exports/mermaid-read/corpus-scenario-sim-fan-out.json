@@ -1,0 +1,21 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Fan-out to 3 consumer groups",
+    "direction": "LR",
+    "nodes": [
+      { "id": "orders", "stencil": "generic.service", "label": "Orders API", "x": 40, "y": 160 },
+      { "id": "topic", "stencil": "generic.service", "label": "orders", "sublabel": "orders.created", "x": 400, "y": 160 },
+      { "id": "billing", "stencil": "generic.service", "label": "Billing", "sublabel": "group: billing", "x": 760, "y": 40 },
+      { "id": "shipping", "stencil": "generic.service", "label": "Shipping", "sublabel": "group: shipping", "x": 760, "y": 160 },
+      { "id": "analytics", "stencil": "generic.service", "label": "Analytics", "sublabel": "group: analytics", "x": 760, "y": 280 }
+    ],
+    "edges": [
+      { "id": "e1-orders-topic", "from": "orders", "to": "topic", "kind": "async" },
+      { "id": "e2-topic-billing", "from": "topic", "to": "billing", "kind": "async" },
+      { "id": "e3-topic-shipping", "from": "topic", "to": "shipping", "kind": "async" },
+      { "id": "e4-topic-analytics", "from": "topic", "to": "analytics", "kind": "async" }
+    ]
+  }
+}

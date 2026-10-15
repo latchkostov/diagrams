@@ -1,0 +1,147 @@
+<mxfile host="Diagrams" agent="Diagrams" version="24.0.0" type="device">
+  <diagram id="dg-xyngd3" name="Webhook ingestion at scale">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <object id="0" dg_format="diagrams/v1" dg_description="Partner webhooks are verified and acknowledged fast, buffered in RabbitMQ, retried with backoff, dead-lettered and replayed on demand." dg_direction="LR" dg_simulations="[{&quot;id&quot;:&quot;bulk-sync&quot;,&quot;title&quot;:&quot;Partner bulk sync: 5,000 in 5 seconds&quot;,&quot;description&quot;:&quot;A partner replays a day of changes at 1,000 webhooks a second; receivers ack immediately and the queue absorbs the rest.&quot;,&quot;seed&quot;:7,&quot;scale&quot;:20,&quot;traffic&quot;:[{&quot;id&quot;:&quot;bulk&quot;,&quot;node&quot;:&quot;partners&quot;,&quot;messageType&quot;:&quot;WebhookEvent&quot;,&quot;label&quot;:&quot;1,000 webhooks/s for 5 seconds&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:1000,&quot;durationMs&quot;:5000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;A partner sends 1,000 webhooks a second. The receiver only verifies the signature, stores the body and publishes, so it answers 202 in milliseconds. Each dot is 20 webhooks.&quot;,&quot;focus&quot;:[&quot;partners&quot;,&quot;receiver&quot;,&quot;raw&quot;],&quot;pause&quot;:true}},{&quot;atMs&quot;:2500,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Workers apply about 400 a second. The queue holds the difference, so the partner never sees a timeout and never retries.&quot;,&quot;focus&quot;:[&quot;queue&quot;,&quot;workers&quot;]}},{&quot;atMs&quot;:8000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The backlog drains. Event IDs are recorded, so a partner's duplicate delivery is applied once.&quot;,&quot;focus&quot;:[&quot;workers&quot;,&quot;dedupe&quot;,&quot;integration-db&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;buffered&quot;,&quot;label&quot;:&quot;The queue absorbs the burst&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;queue&quot;,&quot;field&quot;:&quot;lag&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;at&quot;,&quot;atMs&quot;:4000},{&quot;id&quot;:&quot;drained&quot;,&quot;label&quot;:&quot;The backlog drains&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;queue&quot;,&quot;field&quot;:&quot;lag&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;applied&quot;,&quot;label&quot;:&quot;All 5,000 changes applied&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;integration-db&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:5000,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;stored&quot;,&quot;label&quot;:&quot;All 5,000 bodies stored for replay&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;raw&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:5000,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;no-dlq&quot;,&quot;label&quot;:&quot;Nothing is dead-lettered&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;queue&quot;,&quot;field&quot;:&quot;deadLettered&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;always&quot;}]},{&quot;id&quot;:&quot;outage-replay&quot;,&quot;title&quot;:&quot;Database outage, then replay&quot;,&quot;description&quot;:&quot;The integration database fails for six seconds. Retries with backoff save some events; the rest are dead-lettered and replayed by the on-call engineer.&quot;,&quot;seed&quot;:7,&quot;scale&quot;:1,&quot;setup&quot;:{&quot;status&quot;:{&quot;dlq&quot;:&quot;paused&quot;}},&quot;traffic&quot;:[{&quot;id&quot;:&quot;steady&quot;,&quot;node&quot;:&quot;partners&quot;,&quot;messageType&quot;:&quot;WebhookEvent&quot;,&quot;label&quot;:&quot;30 webhooks/s for 8 seconds&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:30,&quot;durationMs&quot;:8000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:1000,&quot;action&quot;:{&quot;do&quot;:&quot;props&quot;,&quot;node&quot;:&quot;workers&quot;,&quot;props&quot;:{&quot;failureRate&quot;:1}}},{&quot;atMs&quot;:1000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The integration database goes down. Workers reject each delivery, and it comes back after a short backoff.&quot;,&quot;focus&quot;:[&quot;workers&quot;,&quot;integration-db&quot;,&quot;queue&quot;]}},{&quot;atMs&quot;:6500,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;After five tries a webhook is parked in the dead-letter queue rather than retried forever. Nothing is lost: partners already got their 202.&quot;,&quot;focus&quot;:[&quot;queue&quot;,&quot;dlq&quot;],&quot;pause&quot;:true}},{&quot;atMs&quot;:7000,&quot;action&quot;:{&quot;do&quot;:&quot;props&quot;,&quot;node&quot;:&quot;workers&quot;,&quot;props&quot;:{&quot;failureRate&quot;:0}}},{&quot;atMs&quot;:7000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The database is back. Webhooks still retrying go through by themselves.&quot;,&quot;focus&quot;:[&quot;workers&quot;,&quot;integration-db&quot;]}},{&quot;atMs&quot;:10000,&quot;action&quot;:{&quot;do&quot;:&quot;status&quot;,&quot;node&quot;:&quot;dlq&quot;,&quot;status&quot;:&quot;up&quot;}},{&quot;atMs&quot;:10000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The on-call engineer replays the DLQ. Republished events run through the same idempotent workers.&quot;,&quot;focus&quot;:[&quot;operator&quot;,&quot;replay&quot;,&quot;dlq&quot;,&quot;exchange&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;parked&quot;,&quot;label&quot;:&quot;Webhooks are parked, not dropped&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;queue&quot;,&quot;field&quot;:&quot;deadLettered&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;at&quot;,&quot;atMs&quot;:9500},{&quot;id&quot;:&quot;applied&quot;,&quot;label&quot;:&quot;All 240 webhooks are applied&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;integration-db&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:240,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;dlq-empty&quot;,&quot;label&quot;:&quot;The DLQ is empty after the replay&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;dlq&quot;,&quot;field&quot;:&quot;backlog&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;no-drop&quot;,&quot;label&quot;:&quot;Nothing is dropped&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;queue&quot;,&quot;field&quot;:&quot;dropped&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;always&quot;}]}]">
+          <mxCell />
+        </object>
+        <mxCell id="1" parent="0" />
+        <object id="dg-g-k8s" label="Kubernetes" dg_id="k8s" dg_tone="k8s">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#326CE5;strokeColor=#326CE5;" vertex="1" parent="1">
+            <mxGeometry x="760" y="240" width="1480" height="312" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-partners" label="Partner webhooks&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Shopify · Stripe · GitHub&lt;/span&gt;" dg_id="partners" dg_stencil="generic.webhook" dg_props="{&quot;ratePerSec&quot;:20,&quot;messageType&quot;:&quot;WebhookEvent&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#EC48991A;strokeColor=#EC4899;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="60" y="286" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-edge" label="Cloudflare&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;WAF · IP allowlists&lt;/span&gt;" dg_id="edge" dg_stencil="cloudflare" dg_props="{&quot;latencyMs&quot;:1}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#F380201A;strokeColor=#F38020;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="440" y="286" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-raw" label="Raw payloads&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Kept 30 days for replay&lt;/span&gt;" dg_id="raw" dg_stencil="aws.s3" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="sketch=0;outlineConnect=0;fontColor=#232F3E;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;fillColor=#7AA116;resIcon=mxgraph.aws4.s3;" vertex="1" parent="1">
+            <mxGeometry x="882" y="128" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-receiver" label="Webhook receiver&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Verify HMAC · 202 fast&lt;/span&gt;" dg_id="receiver" dg_stencil="service.go" dg_props="{&quot;replicas&quot;:4,&quot;concurrency&quot;:128,&quot;latencyMs&quot;:30}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#00ADD81A;strokeColor=#00ADD8;fontSize=12;" vertex="1" parent="dg-g-k8s">
+            <mxGeometry x="60" y="46" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-exchange" label="webhooks&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Topic exchange&lt;/span&gt;" dg_id="exchange" dg_stencil="rabbitmq.exchange" dg_props="{&quot;partitions&quot;:64}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#FF66001A;strokeColor=#FF6600;fontSize=12;" vertex="1" parent="dg-g-k8s">
+            <mxGeometry x="440" y="46" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-replay" label="Replay tool&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Republish on demand&lt;/span&gt;" dg_id="replay" dg_stencil="service.node" dg_props="{&quot;concurrency&quot;:64,&quot;latencyMs&quot;:50}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#5FA04E1A;strokeColor=#5FA04E;fontSize=12;" vertex="1" parent="dg-g-k8s">
+            <mxGeometry x="440" y="206" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-queue" label="webhooks.process&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Quorum · delivery limit 5&lt;/span&gt;" dg_id="queue" dg_stencil="rabbitmq.queue" dg_props="{&quot;maxDeliveryCount&quot;:5}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#FF66001A;strokeColor=#FF6600;fontSize=12;" vertex="1" parent="dg-g-k8s">
+            <mxGeometry x="820" y="46" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-dlq" label="webhooks.dlq&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Parked after 5 tries&lt;/span&gt;" dg_id="dlq" dg_stencil="rabbitmq.queue" dg_props="{&quot;isDeadLetter&quot;:true}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#FF66001A;strokeColor=#FF6600;fontSize=12;" vertex="1" parent="dg-g-k8s">
+            <mxGeometry x="820" y="206" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-workers" label="Webhook workers&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Retry with backoff&lt;/span&gt;" dg_id="workers" dg_stencil="k8s.deployment" dg_props="{&quot;replicas&quot;:4,&quot;concurrency&quot;:16,&quot;latencyMs&quot;:160,&quot;retryBackoffMs&quot;:300,&quot;emits&quot;:&quot;PartnerChangeApplied&quot;}">
+          <mxCell style="aspect=fixed;sketch=0;html=1;dashed=0;whitespace=wrap;verticalLabelPosition=bottom;verticalAlign=top;fillColor=#2875E2;strokeColor=#ffffff;shape=mxgraph.kubernetes.icon2;prIcon=deploy;" vertex="1" parent="dg-g-k8s">
+            <mxGeometry x="1265" y="52" width="50" height="48" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-dedupe" label="Seen event IDs&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;SET NX · TTL 7 days&lt;/span&gt;" dg_id="dedupe" dg_stencil="redis.cache" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#DC382D1A;strokeColor=#DC382D;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="1960" y="126" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-integration-db" label="Integration database&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Orders · products · refunds&lt;/span&gt;" dg_id="integration-db" dg_stencil="postgres" dg_props="{&quot;latencyMs&quot;:1}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3367911A;strokeColor=#336791;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="2340" y="286" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-operator" label="On-call engineer&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Runbook: replay DLQ&lt;/span&gt;" dg_id="operator" dg_stencil="client.team">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3B82F61A;strokeColor=#3B82F6;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="1200" y="606" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-vault" label="Vault&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;HMAC signing secrets&lt;/span&gt;" dg_id="vault" dg_stencil="vault">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#EAB3081A;strokeColor=#EAB308;fontSize=12;" vertex="1" parent="dg-g-k8s">
+            <mxGeometry x="60" y="206" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-partners-to-edge" label="HTTPS POST" dg_id="partners-to-edge" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-partners" target="dg-n-edge">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-edge-to-receiver" label="/hooks/:partner" dg_id="edge-to-receiver" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-edge" target="dg-n-receiver">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-receiver-to-raw" label="PUT body" dg_id="receiver-to-raw" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-receiver" target="dg-n-raw">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-receiver-to-exchange" label="Publish" dg_id="receiver-to-exchange" dg_kind="async" dg_props="{&quot;travelMs&quot;:300}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-receiver" target="dg-n-exchange">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-exchange-to-queue" label="webhook.#" dg_id="exchange-to-queue" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;group&quot;:&quot;process&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-exchange" target="dg-n-queue">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-queue-to-workers" label="Prefetch 4" dg_id="queue-to-workers" dg_kind="async" dg_props="{&quot;travelMs&quot;:300}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-queue" target="dg-n-workers">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-queue-to-dlq" label="Dead-letter" dg_id="queue-to-dlq" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;dlq&quot;:true}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-queue" target="dg-n-dlq">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-workers-to-dedupe" label="Idempotency check" dg_id="workers-to-dedupe" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-workers" target="dg-n-dedupe">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-workers-to-integration-db" label="Apply change" dg_id="workers-to-integration-db" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-workers" target="dg-n-integration-db">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-dlq-to-replay" label="Drain" dg_id="dlq-to-replay" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;dlq&quot;:false}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-dlq" target="dg-n-replay">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-replay-to-exchange" label="Republish" dg_id="replay-to-exchange" dg_kind="async" dg_props="{&quot;travelMs&quot;:300}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-replay" target="dg-n-exchange">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-operator-to-replay" label="Start replay" dg_id="operator-to-replay" dg_kind="async" dg_relation="depends">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#556075;dashed=1;dashPattern=1 4;dfRelation=depends;" edge="1" parent="1" source="dg-n-operator" target="dg-n-replay">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-receiver-to-vault" label="" dg_id="receiver-to-vault" dg_kind="async" dg_relation="secret">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#A6720C;dashed=1;dashPattern=1 4;dfRelation=secret;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="dg-n-receiver" target="dg-n-vault">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

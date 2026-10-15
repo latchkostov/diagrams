@@ -1,0 +1,506 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"Azure invoice integration\" · direction LR · 14 nodes, 14 connections, 1 boundaries, 2 simulations\ndescription: \"Partner invoices fan out through filtered Service Bus subscriptions; commands use retries and dead lettering.\"\nnodes:\n  \"partner\" \"client.partner\" (\"Partner System\") \"Contoso ERP\" / \"Invoice integration · OAuth2\" props={\"ratePerSec\":8} capabilities=[{\"kind\":\"calls\",\"edge\":\"partner-to-apim\",\"peer\":\"apim\"}] explanation=undefined\n  \"apim\" \"azure.api-management\" (\"API Management\") \"Partner API\" / \"/v1/invoices · JWT validation\" props={} in \"azure\" capabilities=[{\"kind\":\"calls\",\"edge\":\"apim-to-ingest\",\"peer\":\"ingest\"}] explanation=undefined\n  \"ingest\" \"azure.functions\" (\"Azure Functions\") \"Invoice intake\" / \"Validate · normalize · publish\" props={\"concurrency\":64,\"latencyMs\":150,\"emits\":{\"InvoiceSubmitted\":\"InvoiceAccepted\"}} in \"azure\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"ingest-to-invoices\",\"peer\":\"invoices\"},{\"kind\":\"calls\",\"edge\":\"ingest-to-blob\",\"peer\":\"blob\"}] explanation={\"id\":\"ingest\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":426.6666666666667,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":64,\"seconds\":0.15,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"invoices\" \"azure.service-bus.topic\" (\"Service Bus Topic\") \"invoices\" / \"InvoiceAccepted · session: tenantId\" props={\"sessionEnabled\":true,\"partitions\":64} in \"azure\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"invoices-to-approval-sub\",\"peer\":\"approval-sub\",\"filter\":[\"InvoiceHighValue\"]},{\"kind\":\"publishes\",\"edge\":\"invoices-to-posting-sub\",\"peer\":\"posting-sub\",\"filter\":[\"InvoiceAccepted\"]}] explanation=undefined\n  \"approval-sub\" \"generic.queue\" (\"Queue\") \"approval-workflow\" / \"Subscription · amount > 10000\" props={\"filter\":\"amount > 10000\",\"maxDeliveryCount\":10} in \"azure\" capabilities=[] explanation=undefined\n  \"posting-sub\" \"generic.queue\" (\"Queue\") \"ledger-posting\" / \"Subscription · all accepted invoices\" props={\"maxDeliveryCount\":10} in \"azure\" capabilities=[] explanation=undefined\n  \"workflow\" \"azure.logic-apps\" (\"Logic Apps\") \"Invoice approval\" / \"Finance approval workflow\" props={\"concurrency\":64,\"latencyMs\":150,\"emits\":\"PostInvoice\"} in \"azure\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"approval-sub-to-workflow\",\"peer\":\"approval-sub\",\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"workflow-to-commands\",\"peer\":\"commands\"}] explanation={\"id\":\"workflow\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":426.6666666666667,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":64,\"seconds\":0.15,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"worker\" \"azure.container-apps\" (\"Container Apps\") \"Ledger worker\" / \"KEDA · group: ledger-posting\" props={\"group\":\"ledger-posting\",\"concurrency\":64,\"latencyMs\":150,\"emits\":\"InvoicePosted\"} in \"azure\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"posting-sub-to-worker\",\"peer\":\"posting-sub\",\"filter\":[\"InvoiceAccepted\"],\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"consumes\",\"edge\":\"commands-to-worker\",\"peer\":\"commands\",\"filter\":[\"PostInvoice\"],\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"worker-to-cosmos\",\"peer\":\"cosmos\"}] explanation={\"id\":\"worker\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":426.6666666666667,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":64,\"seconds\":0.15,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"commands\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"invoice.commands\" / \"PostInvoice · session: tenantId\" props={\"maxDeliveryCount\":5,\"lockDurationSec\":60,\"sessionEnabled\":true} in \"azure\" capabilities=[] explanation=undefined\n  \"dlq\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"invoice.commands DLQ\" / \"$DeadLetterQueue · operator replay\" props={\"isDeadLetter\":true} in \"azure\" capabilities=[] explanation={\"id\":\"dlq\",\"role\":\"queue\",\"status\":\"up\",\"reason\":\"no-reader\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"changes\":null,\"addConsumer\":\"dlq\",\"fixId\":\"no-reader:dlq\",\"converged\":true}\n  \"cosmos\" \"azure.cosmos-db\" (\"Cosmos DB\") \"Invoice ledger\" / \"Partition key: /tenantId\" props={} in \"azure\" capabilities=[] explanation=undefined\n  \"blob\" \"azure.blob-storage\" (\"Blob Storage\") \"Invoice originals\" / \"invoices-raw · immutable archive\" props={} in \"azure\" capabilities=[] explanation=undefined\n  \"vault\" \"azure.key-vault\" (\"Key Vault\") \"Integration secrets\" / \"ERP credentials · managed identity\" props={} in \"azure\" capabilities=[] explanation=undefined\n  \"insights\" \"azure.app-insights\" (\"Application Insights\") \"Integration telemetry\" / \"Trace by invoiceId · DLQ alerts\" props={} in \"azure\" capabilities=[] explanation=undefined\nconnections:\n  \"partner-to-apim\" \"partner\" -> \"apim\" sync \"HTTPS\"\n  \"apim-to-ingest\" \"apim\" -> \"ingest\" sync \"POST /v1/invoices\"\n  \"ingest-to-invoices\" \"ingest\" -> \"invoices\" async \"InvoiceAccepted\"\n  \"invoices-to-approval-sub\" \"invoices\" -> \"approval-sub\" async \"amount > 10000\"\n  \"invoices-to-posting-sub\" \"invoices\" -> \"posting-sub\" async \"All invoices\"\n  \"approval-sub-to-workflow\" \"approval-sub\" -> \"workflow\" async \"Peek-lock delivery\"\n  \"posting-sub-to-worker\" \"posting-sub\" -> \"worker\" async \"Peek-lock delivery\"\n  \"workflow-to-commands\" \"workflow\" -> \"commands\" async \"PostInvoice\"\n  \"commands-to-worker\" \"commands\" -> \"worker\" async \"Execute command\"\n  \"commands-to-dlq\" \"commands\" -> \"dlq\" async \"After 5 failed deliveries\"\n  \"worker-to-cosmos\" \"worker\" -> \"cosmos\" sync \"Upsert ledger\"\n  \"ingest-to-blob\" \"ingest\" -> \"blob\" sync \"Archive original PDF\"\n  \"ingest-to-vault\" \"ingest\" -> \"vault\" secret dependency\n  \"ingest-to-insights\" \"ingest\" -> \"insights\" telemetry dependency \"Traces / exceptions\"\nboundary \"azure\" \"Azure · enterprise integration\" (azure): \"apim\", \"ingest\", \"invoices\", \"approval-sub\", \"posting-sub\", \"workflow\", \"worker\", \"commands\", \"dlq\", \"cosmos\", \"blob\", \"vault\", \"insights\"\nsimulation \"month-end\" \"Month-end invoice batch\": {\"kind\":\"burst\",\"count\":300,\"spreadMs\":3000} from \"ingest\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"The ERP submits 300 high-value invoices. Only the approval subscription accepts them.\",\"focus\":[\"partner\",\"invoices\",\"approval-sub\"]}},{\"atMs\":5000,\"action\":{\"do\":\"note\",\"text\":\"Approved invoices become PostInvoice commands; originals remain archived.\",\"focus\":[\"workflow\",\"commands\",\"cosmos\"]}}]; expectations=[{\"id\":\"ledger\",\"label\":\"Ledger\",\"metric\":{\"node\":\"cosmos\",\"field\":\"processed\"},\"op\":\"==\",\"value\":300,\"when\":\"end\"},{\"id\":\"archive\",\"label\":\"Archive\",\"metric\":{\"node\":\"blob\",\"field\":\"processed\"},\"op\":\"==\",\"value\":300,\"when\":\"end\"},{\"id\":\"approval\",\"label\":\"Approval\",\"metric\":{\"node\":\"workflow\",\"field\":\"processed\"},\"op\":\"==\",\"value\":300,\"when\":\"end\"},{\"id\":\"no-dlq\",\"label\":\"No dlq\",\"metric\":{\"node\":\"commands\",\"field\":\"deadLettered\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]\nsimulation \"poison\" \"Poison invoices\": {\"kind\":\"burst\",\"count\":30,\"spreadMs\":1000} from \"ingest\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"A schema mismatch makes every ledger attempt fail. Commands are retried five times.\",\"focus\":[\"worker\",\"commands\"]}},{\"atMs\":10000,\"action\":{\"do\":\"note\",\"text\":\"Poison commands are quarantined in the DLQ for operator replay.\",\"focus\":[\"commands\",\"dlq\"],\"pause\":true}},{\"atMs\":12000,\"action\":{\"do\":\"props\",\"node\":\"worker\",\"props\":{\"failureRate\":0}}}]; expectations=[{\"id\":\"quarantined\",\"label\":\"Poison invoices reach the DLQ\",\"metric\":{\"node\":\"commands\",\"field\":\"deadLettered\"},\"op\":\">\",\"value\":0,\"when\":\"end\"},{\"id\":\"dlq-retains\",\"label\":\"All 30 poison invoices are retained\",\"metric\":{\"node\":\"dlq\",\"field\":\"backlog\"},\"op\":\"==\",\"value\":30,\"when\":\"end\"},{\"id\":\"no-ledger-write\",\"label\":\"No ledger write\",\"metric\":{\"node\":\"cosmos\",\"field\":\"processed\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"}]"
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "Azure invoice integration",
+      "description": "Partner invoices fan out through filtered Service Bus subscriptions; commands use retries and dead lettering.",
+      "direction": "LR",
+      "nodes": [
+        {
+          "id": "partner",
+          "stencil": "client.partner",
+          "label": "Contoso ERP",
+          "sublabel": "Invoice integration · OAuth2",
+          "x": 40,
+          "y": 280,
+          "props": { "ratePerSec": 8 },
+          "capabilities": [{ "kind": "calls", "edge": "partner-to-apim", "peer": "apim" }]
+        },
+        {
+          "id": "apim",
+          "stencil": "azure.api-management",
+          "label": "Partner API",
+          "sublabel": "/v1/invoices · JWT validation",
+          "x": 420,
+          "y": 280,
+          "group": "azure",
+          "props": {},
+          "capabilities": [{ "kind": "calls", "edge": "apim-to-ingest", "peer": "ingest" }]
+        },
+        {
+          "id": "ingest",
+          "stencil": "azure.functions",
+          "label": "Invoice intake",
+          "sublabel": "Validate · normalize · publish",
+          "x": 800,
+          "y": 280,
+          "group": "azure",
+          "props": { "concurrency": 64, "latencyMs": 150, "emits": { "InvoiceSubmitted": "InvoiceAccepted" } },
+          "capabilities": [
+            { "kind": "publishes", "edge": "ingest-to-invoices", "peer": "invoices" },
+            { "kind": "calls", "edge": "ingest-to-blob", "peer": "blob" }
+          ],
+          "explanation": {
+            "id": "ingest",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 426.6666666666667,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 64,
+            "seconds": 0.15,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "invoices",
+          "stencil": "azure.service-bus.topic",
+          "label": "invoices",
+          "sublabel": "InvoiceAccepted · session: tenantId",
+          "x": 1180,
+          "y": 280,
+          "group": "azure",
+          "props": { "sessionEnabled": true, "partitions": 64 },
+          "capabilities": [
+            { "kind": "publishes", "edge": "invoices-to-approval-sub", "peer": "approval-sub", "filter": ["InvoiceHighValue"] },
+            { "kind": "publishes", "edge": "invoices-to-posting-sub", "peer": "posting-sub", "filter": ["InvoiceAccepted"] }
+          ]
+        },
+        {
+          "id": "approval-sub",
+          "stencil": "generic.queue",
+          "label": "approval-workflow",
+          "sublabel": "Subscription · amount > 10000",
+          "x": 1560,
+          "y": 160,
+          "group": "azure",
+          "props": { "filter": "amount > 10000", "maxDeliveryCount": 10 },
+          "capabilities": []
+        },
+        {
+          "id": "posting-sub",
+          "stencil": "generic.queue",
+          "label": "ledger-posting",
+          "sublabel": "Subscription · all accepted invoices",
+          "x": 1560,
+          "y": 400,
+          "group": "azure",
+          "props": { "maxDeliveryCount": 10 },
+          "capabilities": []
+        },
+        {
+          "id": "workflow",
+          "stencil": "azure.logic-apps",
+          "label": "Invoice approval",
+          "sublabel": "Finance approval workflow",
+          "x": 1940,
+          "y": 160,
+          "group": "azure",
+          "props": { "concurrency": 64, "latencyMs": 150, "emits": "PostInvoice" },
+          "capabilities": [
+            { "kind": "consumes", "edge": "approval-sub-to-workflow", "peer": "approval-sub", "retry": "requeue", "retryBackoffMs": 0 },
+            { "kind": "publishes", "edge": "workflow-to-commands", "peer": "commands" }
+          ],
+          "explanation": {
+            "id": "workflow",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 426.6666666666667,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 64,
+            "seconds": 0.15,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "worker",
+          "stencil": "azure.container-apps",
+          "label": "Ledger worker",
+          "sublabel": "KEDA · group: ledger-posting",
+          "x": 1940,
+          "y": 400,
+          "group": "azure",
+          "props": { "group": "ledger-posting", "concurrency": 64, "latencyMs": 150, "emits": "InvoicePosted" },
+          "capabilities": [
+            { "kind": "consumes", "edge": "posting-sub-to-worker", "peer": "posting-sub", "filter": ["InvoiceAccepted"], "retry": "requeue", "retryBackoffMs": 0 },
+            { "kind": "consumes", "edge": "commands-to-worker", "peer": "commands", "filter": ["PostInvoice"], "retry": "requeue", "retryBackoffMs": 0 },
+            { "kind": "calls", "edge": "worker-to-cosmos", "peer": "cosmos" }
+          ],
+          "explanation": {
+            "id": "worker",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 426.6666666666667,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 64,
+            "seconds": 0.15,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "commands",
+          "stencil": "azure.service-bus.queue",
+          "label": "invoice.commands",
+          "sublabel": "PostInvoice · session: tenantId",
+          "x": 2320,
+          "y": 160,
+          "group": "azure",
+          "props": { "maxDeliveryCount": 5, "lockDurationSec": 60, "sessionEnabled": true },
+          "capabilities": []
+        },
+        {
+          "id": "dlq",
+          "stencil": "azure.service-bus.queue",
+          "label": "invoice.commands DLQ",
+          "sublabel": "$DeadLetterQueue · operator replay",
+          "x": 2320,
+          "y": 40,
+          "group": "azure",
+          "props": { "isDeadLetter": true },
+          "capabilities": [],
+          "explanation": {
+            "id": "dlq",
+            "role": "queue",
+            "status": "up",
+            "reason": "no-reader",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": null,
+            "seconds": 0,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "changes": null,
+            "addConsumer": "dlq",
+            "fixId": "no-reader:dlq",
+            "converged": true
+          }
+        },
+        {
+          "id": "cosmos",
+          "stencil": "azure.cosmos-db",
+          "label": "Invoice ledger",
+          "sublabel": "Partition key: /tenantId",
+          "x": 2320,
+          "y": 400,
+          "group": "azure",
+          "props": {},
+          "capabilities": []
+        },
+        {
+          "id": "blob",
+          "stencil": "azure.blob-storage",
+          "label": "Invoice originals",
+          "sublabel": "invoices-raw · immutable archive",
+          "x": 1180,
+          "y": 520,
+          "group": "azure",
+          "props": {},
+          "capabilities": []
+        },
+        {
+          "id": "vault",
+          "stencil": "azure.key-vault",
+          "label": "Integration secrets",
+          "sublabel": "ERP credentials · managed identity",
+          "x": 800,
+          "y": 40,
+          "group": "azure",
+          "props": {},
+          "capabilities": []
+        },
+        {
+          "id": "insights",
+          "stencil": "azure.app-insights",
+          "label": "Integration telemetry",
+          "sublabel": "Trace by invoiceId · DLQ alerts",
+          "x": 800,
+          "y": 520,
+          "group": "azure",
+          "props": {},
+          "capabilities": []
+        }
+      ],
+      "edges": [
+        {
+          "id": "partner-to-apim",
+          "from": "partner",
+          "to": "apim",
+          "label": "HTTPS",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "apim-to-ingest",
+          "from": "apim",
+          "to": "ingest",
+          "label": "POST /v1/invoices",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "ingest-to-invoices",
+          "from": "ingest",
+          "to": "invoices",
+          "label": "InvoiceAccepted",
+          "kind": "async",
+          "props": { "travelMs": 300 }
+        },
+        {
+          "id": "invoices-to-approval-sub",
+          "from": "invoices",
+          "to": "approval-sub",
+          "label": "amount > 10000",
+          "kind": "async",
+          "props": { "travelMs": 300, "filter": ["InvoiceHighValue"], "group": "finance-approval" }
+        },
+        {
+          "id": "invoices-to-posting-sub",
+          "from": "invoices",
+          "to": "posting-sub",
+          "label": "All invoices",
+          "kind": "async",
+          "props": { "travelMs": 300, "filter": ["InvoiceAccepted"], "group": "ledger-posting" }
+        },
+        {
+          "id": "approval-sub-to-workflow",
+          "from": "approval-sub",
+          "to": "workflow",
+          "label": "Peek-lock delivery",
+          "kind": "async",
+          "props": { "travelMs": 300 }
+        },
+        {
+          "id": "posting-sub-to-worker",
+          "from": "posting-sub",
+          "to": "worker",
+          "label": "Peek-lock delivery",
+          "kind": "async",
+          "props": { "travelMs": 300, "filter": ["InvoiceAccepted"] }
+        },
+        {
+          "id": "workflow-to-commands",
+          "from": "workflow",
+          "to": "commands",
+          "label": "PostInvoice",
+          "kind": "async",
+          "props": { "travelMs": 300 }
+        },
+        {
+          "id": "commands-to-worker",
+          "from": "commands",
+          "to": "worker",
+          "label": "Execute command",
+          "kind": "async",
+          "props": { "travelMs": 300, "filter": ["PostInvoice"] }
+        },
+        {
+          "id": "commands-to-dlq",
+          "from": "commands",
+          "to": "dlq",
+          "label": "After 5 failed deliveries",
+          "kind": "async",
+          "props": { "travelMs": 300 }
+        },
+        {
+          "id": "worker-to-cosmos",
+          "from": "worker",
+          "to": "cosmos",
+          "label": "Upsert ledger",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "ingest-to-blob",
+          "from": "ingest",
+          "to": "blob",
+          "label": "Archive original PDF",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        { "id": "ingest-to-vault", "from": "ingest", "to": "vault", "kind": "sync", "relation": "secret" },
+        { "id": "ingest-to-insights", "from": "ingest", "to": "insights", "label": "Traces / exceptions", "kind": "async", "relation": "telemetry" }
+      ],
+      "groups": [
+        { "id": "azure", "label": "Azure · enterprise integration", "tone": "azure", "x": 380, "y": 0, "width": 2240, "height": 632 }
+      ],
+      "annotations": [],
+      "simulations": [
+        {
+          "id": "month-end",
+          "title": "Month-end invoice batch",
+          "seed": 7,
+          "traffic": [
+            {
+              "id": "batch",
+              "node": "ingest",
+              "messageType": "InvoiceHighValue",
+              "label": "300 high-value month-end invoices",
+              "shape": { "kind": "burst", "count": 300, "spreadMs": 3000 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 0,
+              "action": { "do": "note", "text": "The ERP submits 300 high-value invoices. Only the approval subscription accepts them.", "focus": ["partner", "invoices", "approval-sub"] }
+            },
+            {
+              "atMs": 5000,
+              "action": { "do": "note", "text": "Approved invoices become PostInvoice commands; originals remain archived.", "focus": ["workflow", "commands", "cosmos"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "ledger",
+              "label": "Ledger",
+              "metric": { "node": "cosmos", "field": "processed" },
+              "op": "==",
+              "value": 300,
+              "when": "end"
+            },
+            {
+              "id": "archive",
+              "label": "Archive",
+              "metric": { "node": "blob", "field": "processed" },
+              "op": "==",
+              "value": 300,
+              "when": "end"
+            },
+            {
+              "id": "approval",
+              "label": "Approval",
+              "metric": { "node": "workflow", "field": "processed" },
+              "op": "==",
+              "value": 300,
+              "when": "end"
+            },
+            {
+              "id": "no-dlq",
+              "label": "No dlq",
+              "metric": { "node": "commands", "field": "deadLettered" },
+              "op": "==",
+              "value": 0,
+              "when": "always"
+            }
+          ],
+          "scale": 2
+        },
+        {
+          "id": "poison",
+          "title": "Poison invoices",
+          "seed": 7,
+          "traffic": [
+            {
+              "id": "poison-batch",
+              "node": "ingest",
+              "messageType": "InvoiceHighValue",
+              "label": "30 malformed posting requests",
+              "shape": { "kind": "burst", "count": 30, "spreadMs": 1000 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 0,
+              "action": { "do": "note", "text": "A schema mismatch makes every ledger attempt fail. Commands are retried five times.", "focus": ["worker", "commands"] }
+            },
+            {
+              "atMs": 10000,
+              "action": { "do": "note", "text": "Poison commands are quarantined in the DLQ for operator replay.", "focus": ["commands", "dlq"], "pause": true }
+            },
+            { "atMs": 12000, "action": { "do": "props", "node": "worker", "props": { "failureRate": 0 } } }
+          ],
+          "expectations": [
+            {
+              "id": "quarantined",
+              "label": "Poison invoices reach the DLQ",
+              "metric": { "node": "commands", "field": "deadLettered" },
+              "op": ">",
+              "value": 0,
+              "when": "end"
+            },
+            {
+              "id": "dlq-retains",
+              "label": "All 30 poison invoices are retained",
+              "metric": { "node": "dlq", "field": "backlog" },
+              "op": "==",
+              "value": 30,
+              "when": "end"
+            },
+            {
+              "id": "no-ledger-write",
+              "label": "No ledger write",
+              "metric": { "node": "cosmos", "field": "processed" },
+              "op": "==",
+              "value": 0,
+              "when": "end"
+            }
+          ],
+          "setup": { "props": { "worker": { "failureRate": 1, "retry": "inplace", "retryBackoffMs": 100 } } },
+          "durationMs": 20000,
+          "scale": 1
+        }
+      ],
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"Azure invoice integration\" · direction LR · 2 nodes, 1 connections, 1 boundaries, 0 simulations\ndescription: \"Partner invoices fan out through filtered Service Bus subscriptions; commands use retries and dead lettering.\"\nnodes:\n  \"partner\" \"client.partner\" (\"Partner System\") \"Contoso ERP\" / \"Invoice integration · OAuth2\" props={\"ratePerSec\":8} capabilities=[{\"kind\":\"calls\",\"edge\":\"partner-to-apim\",\"peer\":\"apim\"}] explanation=undefined\n  \"apim\" \"azure.api-management\" (\"API Management\") \"Partner API\" / \"/v1/invoices · JWT validation\" props={} in \"azure\" capabilities=[{\"kind\":\"calls\",\"edge\":\"apim-to-ingest\",\"peer\":\"ingest\"}] explanation=undefined\nconnections:\n  \"partner-to-apim\" \"partner\" -> \"apim\" sync \"HTTPS\"\nboundary \"azure\" \"Azure · enterprise integration\" (azure): \"apim\""
+  }
+}

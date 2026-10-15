@@ -1,0 +1,1222 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "n": { "replicas": [1, 1, 0] },
+        "n-1": { "lag": { "e-n-1-1": 0, "e-n-1-2": 0, "e-n-1-3": 0 }, "replicas": [1, 1, 0] },
+        "n-1-1": { "replicas": [1, 1, 0] },
+        "n-1-1-1": { "lag": { "e-n-1-1-1-1": 0, "e-n-1-1-1-2": 0, "e-n-1-1-1-3": 0 }, "replicas": [1, 1, 0] },
+        "n-1-1-1-1": { "replicas": [1, 1, 0] },
+        "n-1-1-1-1-1": {
+          "lag": { "e-n-1-1-1-1-1-1": 0, "e-n-1-1-1-1-1-2": 0, "e-n-1-1-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-1-1-1": { "replicas": [1, 1, 0] },
+        "n-1-1-1-1-1-2": { "replicas": [1, 1, 0] },
+        "n-1-1-1-1-1-3": { "replicas": [1, 1, 0] },
+        "n-1-1-1-2": { "replicas": [1, 1, 0] },
+        "n-1-1-1-2-1": {
+          "lag": { "e-n-1-1-1-2-1-1": 0, "e-n-1-1-1-2-1-2": 0, "e-n-1-1-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-2-1-1": { "replicas": [1, 1, 0] },
+        "n-1-1-1-2-1-2": { "replicas": [1, 1, 0] },
+        "n-1-1-1-2-1-3": { "replicas": [1, 1, 0] },
+        "n-1-1-1-3": { "replicas": [1, 1, 0] },
+        "n-1-1-1-3-1": {
+          "lag": { "e-n-1-1-1-3-1-1": 0, "e-n-1-1-1-3-1-2": 0, "e-n-1-1-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-3-1-1": { "replicas": [1, 1, 0] },
+        "n-1-1-1-3-1-2": { "replicas": [1, 1, 0] },
+        "n-1-1-1-3-1-3": { "replicas": [1, 1, 0] },
+        "n-1-2": { "replicas": [1, 1, 0] },
+        "n-1-2-1": { "lag": { "e-n-1-2-1-1": 0, "e-n-1-2-1-2": 0, "e-n-1-2-1-3": 0 }, "replicas": [1, 1, 0] },
+        "n-1-2-1-1": { "replicas": [1, 1, 0] },
+        "n-1-2-1-1-1": {
+          "lag": { "e-n-1-2-1-1-1-1": 0, "e-n-1-2-1-1-1-2": 0, "e-n-1-2-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-1-1-1": { "replicas": [1, 1, 0] },
+        "n-1-2-1-1-1-2": { "replicas": [1, 1, 0] },
+        "n-1-2-1-1-1-3": { "replicas": [1, 1, 0] },
+        "n-1-2-1-2": { "replicas": [1, 1, 0] },
+        "n-1-2-1-2-1": {
+          "lag": { "e-n-1-2-1-2-1-1": 0, "e-n-1-2-1-2-1-2": 0, "e-n-1-2-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-2-1-1": { "replicas": [1, 1, 0] },
+        "n-1-2-1-2-1-2": { "replicas": [1, 1, 0] },
+        "n-1-2-1-2-1-3": { "replicas": [1, 1, 0] },
+        "n-1-2-1-3": { "replicas": [1, 1, 0] },
+        "n-1-2-1-3-1": {
+          "lag": { "e-n-1-2-1-3-1-1": 0, "e-n-1-2-1-3-1-2": 0, "e-n-1-2-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-3-1-1": { "replicas": [1, 1, 0] },
+        "n-1-2-1-3-1-2": { "replicas": [1, 1, 0] },
+        "n-1-2-1-3-1-3": { "replicas": [1, 1, 0] },
+        "n-1-3": { "replicas": [1, 1, 0] },
+        "n-1-3-1": { "lag": { "e-n-1-3-1-1": 0, "e-n-1-3-1-2": 0, "e-n-1-3-1-3": 0 }, "replicas": [1, 1, 0] },
+        "n-1-3-1-1": { "replicas": [1, 1, 0] },
+        "n-1-3-1-1-1": {
+          "lag": { "e-n-1-3-1-1-1-1": 0, "e-n-1-3-1-1-1-2": 0, "e-n-1-3-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-1-1-1": { "replicas": [1, 1, 0] },
+        "n-1-3-1-1-1-2": { "replicas": [1, 1, 0] },
+        "n-1-3-1-1-1-3": { "replicas": [1, 1, 0] },
+        "n-1-3-1-2": { "replicas": [1, 1, 0] },
+        "n-1-3-1-2-1": {
+          "lag": { "e-n-1-3-1-2-1-1": 0, "e-n-1-3-1-2-1-2": 0, "e-n-1-3-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-2-1-1": { "replicas": [1, 1, 0] },
+        "n-1-3-1-2-1-2": { "replicas": [1, 1, 0] },
+        "n-1-3-1-2-1-3": { "replicas": [1, 1, 0] },
+        "n-1-3-1-3": { "replicas": [1, 1, 0] },
+        "n-1-3-1-3-1": {
+          "lag": { "e-n-1-3-1-3-1-1": 0, "e-n-1-3-1-3-1-2": 0, "e-n-1-3-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-3-1-1": { "replicas": [1, 1, 0] },
+        "n-1-3-1-3-1-2": { "replicas": [1, 1, 0] },
+        "n-1-3-1-3-1-3": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 31,
+      "nodes": {
+        "n": { "processed": 20, "throughput": 2.528714056021835, "replicas": [1, 1, 0] },
+        "n-1": {
+          "processed": 19,
+          "throughput": 2.0702749853092155,
+          "lag": { "e-n-1-1": 0, "e-n-1-2": 0, "e-n-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1": { "processed": 18, "throughput": 2.2357713050751533, "replicas": [1, 1, 0] },
+        "n-1-1-1": {
+          "processed": 17,
+          "throughput": 1.814752134337265,
+          "lag": { "e-n-1-1-1-1": 0, "e-n-1-1-1-2": 0, "e-n-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-1": { "processed": 16, "inFlight": 1, "throughput": 1.9799163080995836, "replicas": [1, 1, 0] },
+        "n-1-1-1-1-1": {
+          "processed": 15,
+          "throughput": 1.594718824677381,
+          "lag": { "e-n-1-1-1-1-1-1": 0, "e-n-1-1-1-1-1-2": 0, "e-n-1-1-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-1-1-1": { "processed": 15, "throughput": 2.248641574147538, "replicas": [1, 1, 0] },
+        "n-1-1-1-1-1-2": { "processed": 15, "throughput": 2.2510018040793947, "replicas": [1, 1, 0] },
+        "n-1-1-1-1-1-3": { "processed": 15, "throughput": 2.2471463017259508, "replicas": [1, 1, 0] },
+        "n-1-1-1-2": { "processed": 16, "inFlight": 1, "throughput": 1.9324662645705604, "replicas": [1, 1, 0] },
+        "n-1-1-1-2-1": {
+          "processed": 15,
+          "throughput": 1.5934393133152949,
+          "lag": { "e-n-1-1-1-2-1-1": 0, "e-n-1-1-1-2-1-2": 0, "e-n-1-1-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-2-1-1": { "processed": 15, "throughput": 2.252186893694648, "replicas": [1, 1, 0] },
+        "n-1-1-1-2-1-2": { "processed": 15, "throughput": 2.2446662965201143, "replicas": [1, 1, 0] },
+        "n-1-1-1-2-1-3": { "processed": 15, "throughput": 2.2597680750360056, "replicas": [1, 1, 0] },
+        "n-1-1-1-3": { "processed": 16, "inFlight": 1, "throughput": 1.9403937721353148, "replicas": [1, 1, 0] },
+        "n-1-1-1-3-1": {
+          "processed": 15,
+          "throughput": 1.562712606548922,
+          "lag": { "e-n-1-1-1-3-1-1": 0, "e-n-1-1-1-3-1-2": 0, "e-n-1-1-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-3-1-1": { "processed": 15, "throughput": 2.200672549217263, "replicas": [1, 1, 0] },
+        "n-1-1-1-3-1-2": { "processed": 15, "throughput": 2.208917293752921, "replicas": [1, 1, 0] },
+        "n-1-1-1-3-1-3": { "processed": 15, "throughput": 2.203189894512313, "replicas": [1, 1, 0] },
+        "n-1-2": { "processed": 18, "throughput": 2.1911422320964498, "replicas": [1, 1, 0] },
+        "n-1-2-1": {
+          "processed": 17,
+          "throughput": 1.8131910873865926,
+          "lag": { "e-n-1-2-1-1": 0, "e-n-1-2-1-2": 0, "e-n-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-1": { "processed": 16, "inFlight": 1, "throughput": 1.9066121801056708, "replicas": [1, 1, 0] },
+        "n-1-2-1-1-1": {
+          "processed": 15,
+          "throughput": 1.5380332200601894,
+          "lag": { "e-n-1-2-1-1-1-1": 0, "e-n-1-2-1-1-1-2": 0, "e-n-1-2-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-1-1-1": { "processed": 15, "throughput": 2.1704390580907247, "replicas": [1, 1, 0] },
+        "n-1-2-1-1-1-2": { "processed": 15, "throughput": 2.1762942818474937, "replicas": [1, 1, 0] },
+        "n-1-2-1-1-1-3": { "processed": 15, "throughput": 2.163965854281038, "replicas": [1, 1, 0] },
+        "n-1-2-1-2": { "processed": 16, "inFlight": 1, "throughput": 1.9462892046001181, "replicas": [1, 1, 0] },
+        "n-1-2-1-2-1": {
+          "processed": 15,
+          "throughput": 1.570670607986007,
+          "lag": { "e-n-1-2-1-2-1-1": 0, "e-n-1-2-1-2-1-2": 0, "e-n-1-2-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-2-1-1": { "processed": 15, "throughput": 2.2167282422300945, "replicas": [1, 1, 0] },
+        "n-1-2-1-2-1-2": { "processed": 15, "throughput": 2.21595075735186, "replicas": [1, 1, 0] },
+        "n-1-2-1-2-1-3": { "processed": 15, "throughput": 2.2101517767465015, "replicas": [1, 1, 0] },
+        "n-1-2-1-3": { "processed": 16, "inFlight": 1, "throughput": 1.9419531595603259, "replicas": [1, 1, 0] },
+        "n-1-2-1-3-1": {
+          "processed": 15,
+          "throughput": 1.5434739342583477,
+          "lag": { "e-n-1-2-1-3-1-1": 0, "e-n-1-2-1-3-1-2": 0, "e-n-1-2-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-3-1-1": { "processed": 15, "throughput": 2.173216504011502, "replicas": [1, 1, 0] },
+        "n-1-2-1-3-1-2": { "processed": 15, "throughput": 2.1710011575008283, "replicas": [1, 1, 0] },
+        "n-1-2-1-3-1-3": { "processed": 15, "throughput": 2.183053084733869, "replicas": [1, 1, 0] },
+        "n-1-3": { "processed": 18, "throughput": 2.225533786159841, "replicas": [1, 1, 0] },
+        "n-1-3-1": {
+          "processed": 17,
+          "throughput": 1.812905202661368,
+          "lag": { "e-n-1-3-1-1": 0, "e-n-1-3-1-2": 0, "e-n-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-1": { "processed": 16, "inFlight": 1, "throughput": 1.866537862263943, "replicas": [1, 1, 0] },
+        "n-1-3-1-1-1": {
+          "processed": 16,
+          "throughput": 2.519562573051064,
+          "lag": { "e-n-1-3-1-1-1-1": 0, "e-n-1-3-1-1-1-2": 0, "e-n-1-3-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-1-1-1": { "processed": 15, "throughput": 2.1588435606301286, "replicas": [1, 1, 0] },
+        "n-1-3-1-1-1-2": { "processed": 15, "throughput": 2.1498838487133263, "replicas": [1, 1, 0] },
+        "n-1-3-1-1-1-3": { "processed": 15, "throughput": 2.15079528158085, "replicas": [1, 1, 0] },
+        "n-1-3-1-2": { "processed": 16, "inFlight": 1, "throughput": 1.8790586261677442, "replicas": [1, 1, 0] },
+        "n-1-3-1-2-1": {
+          "processed": 16,
+          "throughput": 2.53646383648419,
+          "lag": { "e-n-1-3-1-2-1-1": 0, "e-n-1-3-1-2-1-2": 0, "e-n-1-3-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-2-1-1": { "processed": 15, "throughput": 2.1833184165002932, "replicas": [1, 1, 0] },
+        "n-1-3-1-2-1-2": { "processed": 15, "throughput": 2.1913380661378485, "replicas": [1, 1, 0] },
+        "n-1-3-1-2-1-3": { "processed": 15, "throughput": 2.1967054776039783, "replicas": [1, 1, 0] },
+        "n-1-3-1-3": { "processed": 16, "inFlight": 1, "throughput": 1.8746292595696552, "replicas": [1, 1, 0] },
+        "n-1-3-1-3-1": {
+          "processed": 16,
+          "throughput": 2.530484816969777,
+          "lag": { "e-n-1-3-1-3-1-1": 0, "e-n-1-3-1-3-1-2": 0, "e-n-1-3-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-3-1-1": { "processed": 15, "throughput": 2.2137389452512592, "replicas": [1, 1, 0] },
+        "n-1-3-1-3-1-2": { "processed": 15, "throughput": 2.209447439889224, "replicas": [1, 1, 0] },
+        "n-1-3-1-3-1-3": { "processed": 15, "throughput": 2.211785724851686, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 27,
+      "nodes": {
+        "n": { "processed": 40, "throughput": 2.528828859462367, "replicas": [1, 1, 0] },
+        "n-1": {
+          "processed": 39,
+          "throughput": 2.0704299537445583,
+          "lag": { "e-n-1-1": 0, "e-n-1-2": 0, "e-n-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1": { "processed": 38, "throughput": 2.2092901191051317, "replicas": [1, 1, 0] },
+        "n-1-1-1": {
+          "processed": 37,
+          "throughput": 1.8261853386591163,
+          "lag": { "e-n-1-1-1-1": 0, "e-n-1-1-1-2": 0, "e-n-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-1": { "processed": 36, "inFlight": 1, "throughput": 1.8870669832662537, "replicas": [1, 1, 0] },
+        "n-1-1-1-1-1": {
+          "processed": 35,
+          "throughput": 1.5422572794310265,
+          "lag": { "e-n-1-1-1-1-1-1": 0, "e-n-1-1-1-1-1-2": 0, "e-n-1-1-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-1-1-1": { "processed": 35, "throughput": 2.18064244400392, "replicas": [1, 1, 0] },
+        "n-1-1-1-1-1-2": { "processed": 35, "throughput": 2.1716725556915355, "replicas": [1, 1, 0] },
+        "n-1-1-1-1-1-3": { "processed": 35, "throughput": 2.1805636026881854, "replicas": [1, 1, 0] },
+        "n-1-1-1-2": { "processed": 36, "inFlight": 1, "throughput": 1.8972590131249631, "replicas": [1, 1, 0] },
+        "n-1-1-1-2-1": {
+          "processed": 35,
+          "throughput": 1.47231018609451,
+          "lag": { "e-n-1-1-1-2-1-1": 0, "e-n-1-1-1-2-1-2": 0, "e-n-1-1-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-2-1-1": { "processed": 35, "throughput": 2.0718184943305955, "replicas": [1, 1, 0] },
+        "n-1-1-1-2-1-2": { "processed": 35, "throughput": 2.0700594625346116, "replicas": [1, 1, 0] },
+        "n-1-1-1-2-1-3": { "processed": 35, "throughput": 2.080925309162819, "replicas": [1, 1, 0] },
+        "n-1-1-1-3": { "processed": 36, "inFlight": 1, "throughput": 1.8849863734356505, "replicas": [1, 1, 0] },
+        "n-1-1-1-3-1": {
+          "processed": 35,
+          "throughput": 1.539448749926059,
+          "lag": { "e-n-1-1-1-3-1-1": 0, "e-n-1-1-1-3-1-2": 0, "e-n-1-1-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-3-1-1": { "processed": 35, "throughput": 2.1815800857682244, "replicas": [1, 1, 0] },
+        "n-1-1-1-3-1-2": { "processed": 35, "throughput": 2.1755841262584874, "replicas": [1, 1, 0] },
+        "n-1-1-1-3-1-3": { "processed": 35, "throughput": 2.173722181361176, "replicas": [1, 1, 0] },
+        "n-1-2": { "processed": 38, "throughput": 2.1073826709456784, "replicas": [1, 1, 0] },
+        "n-1-2-1": {
+          "processed": 37,
+          "throughput": 1.7339538209866998,
+          "lag": { "e-n-1-2-1-1": 0, "e-n-1-2-1-2": 0, "e-n-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-1": { "processed": 36, "inFlight": 1, "throughput": 1.8087154614582859, "replicas": [1, 1, 0] },
+        "n-1-2-1-1-1": {
+          "processed": 36,
+          "throughput": 2.4415104960483585,
+          "lag": { "e-n-1-2-1-1-1-1": 0, "e-n-1-2-1-1-1-2": 0, "e-n-1-2-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-1-1-1": { "processed": 35, "throughput": 2.1043193092339214, "replicas": [1, 1, 0] },
+        "n-1-2-1-1-1-2": { "processed": 35, "throughput": 2.103431197184663, "replicas": [1, 1, 0] },
+        "n-1-2-1-1-1-3": { "processed": 35, "throughput": 2.0927940705962262, "replicas": [1, 1, 0] },
+        "n-1-2-1-2": { "processed": 36, "inFlight": 1, "throughput": 1.8599248165023785, "replicas": [1, 1, 0] },
+        "n-1-2-1-2-1": {
+          "processed": 35,
+          "throughput": 1.5056191865681132,
+          "lag": { "e-n-1-2-1-2-1-1": 0, "e-n-1-2-1-2-1-2": 0, "e-n-1-2-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-2-1-1": { "processed": 35, "throughput": 2.1256146004916303, "replicas": [1, 1, 0] },
+        "n-1-2-1-2-1-2": { "processed": 35, "throughput": 2.117863479921056, "replicas": [1, 1, 0] },
+        "n-1-2-1-2-1-3": { "processed": 35, "throughput": 2.1291454031396144, "replicas": [1, 1, 0] },
+        "n-1-2-1-3": { "processed": 36, "inFlight": 1, "throughput": 1.8654140162994846, "replicas": [1, 1, 0] },
+        "n-1-2-1-3-1": {
+          "processed": 35,
+          "throughput": 1.5029282454188113,
+          "lag": { "e-n-1-2-1-3-1-1": 0, "e-n-1-2-1-3-1-2": 0, "e-n-1-2-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-3-1-1": { "processed": 35, "throughput": 2.121218366077364, "replicas": [1, 1, 0] },
+        "n-1-2-1-3-1-2": { "processed": 35, "throughput": 2.1165328654829887, "replicas": [1, 1, 0] },
+        "n-1-2-1-3-1-3": { "processed": 35, "throughput": 2.1288610462937507, "replicas": [1, 1, 0] },
+        "n-1-3": { "processed": 38, "throughput": 2.174953499423091, "replicas": [1, 1, 0] },
+        "n-1-3-1": {
+          "processed": 37,
+          "throughput": 1.8251648989421438,
+          "lag": { "e-n-1-3-1-1": 0, "e-n-1-3-1-2": 0, "e-n-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-1": { "processed": 36, "inFlight": 1, "throughput": 1.948704009724737, "replicas": [1, 1, 0] },
+        "n-1-3-1-1-1": {
+          "processed": 35,
+          "throughput": 1.6051558782095063,
+          "lag": { "e-n-1-3-1-1-1-1": 0, "e-n-1-3-1-1-1-2": 0, "e-n-1-3-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-1-1-1": { "processed": 35, "throughput": 2.256765656547429, "replicas": [1, 1, 0] },
+        "n-1-3-1-1-1-2": { "processed": 35, "throughput": 2.2590170663614093, "replicas": [1, 1, 0] },
+        "n-1-3-1-1-1-3": { "processed": 35, "throughput": 2.274674418981694, "replicas": [1, 1, 0] },
+        "n-1-3-1-2": { "processed": 36, "inFlight": 1, "throughput": 1.943361497219986, "replicas": [1, 1, 0] },
+        "n-1-3-1-2-1": {
+          "processed": 35,
+          "throughput": 1.5667186163929294,
+          "lag": { "e-n-1-3-1-2-1-1": 0, "e-n-1-3-1-2-1-2": 0, "e-n-1-3-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-2-1-1": { "processed": 35, "throughput": 2.2119810136876654, "replicas": [1, 1, 0] },
+        "n-1-3-1-2-1-2": { "processed": 35, "throughput": 2.2109777206094576, "replicas": [1, 1, 0] },
+        "n-1-3-1-2-1-3": { "processed": 35, "throughput": 2.210305069588768, "replicas": [1, 1, 0] },
+        "n-1-3-1-3": { "processed": 36, "inFlight": 1, "throughput": 1.8870330219092242, "replicas": [1, 1, 0] },
+        "n-1-3-1-3-1": {
+          "processed": 35,
+          "throughput": 1.5219087521348245,
+          "lag": { "e-n-1-3-1-3-1-1": 0, "e-n-1-3-1-3-1-2": 0, "e-n-1-3-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-3-1-1": { "processed": 35, "throughput": 2.142941830249397, "replicas": [1, 1, 0] },
+        "n-1-3-1-3-1-2": { "processed": 35, "throughput": 2.147624992929679, "replicas": [1, 1, 0] },
+        "n-1-3-1-3-1-3": { "processed": 35, "throughput": 2.1525801167941663, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 33,
+      "nodes": {
+        "n": { "processed": 60, "throughput": 2.528828864674435, "replicas": [1, 1, 0] },
+        "n-1": {
+          "processed": 59,
+          "throughput": 2.070429960780115,
+          "lag": { "e-n-1-1": 0, "e-n-1-2": 0, "e-n-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1": { "processed": 58, "throughput": 2.2260681397619964, "replicas": [1, 1, 0] },
+        "n-1-1-1": {
+          "processed": 57,
+          "throughput": 1.801654231177934,
+          "lag": { "e-n-1-1-1-1": 0, "e-n-1-1-1-2": 0, "e-n-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-1": { "processed": 56, "inFlight": 1, "throughput": 1.8706819079586017, "replicas": [1, 1, 0] },
+        "n-1-1-1-1-1": {
+          "processed": 56,
+          "throughput": 2.5251564496309964,
+          "lag": { "e-n-1-1-1-1-1-1": 0, "e-n-1-1-1-1-1-2": 0, "e-n-1-1-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-1-1-1": { "processed": 55, "throughput": 2.1570376704633674, "replicas": [1, 1, 0] },
+        "n-1-1-1-1-1-2": { "processed": 55, "throughput": 2.1533724821234235, "replicas": [1, 1, 0] },
+        "n-1-1-1-1-1-3": { "processed": 55, "throughput": 2.157565660013658, "replicas": [1, 1, 0] },
+        "n-1-1-1-2": { "processed": 56, "inFlight": 1, "throughput": 1.8990952719906915, "replicas": [1, 1, 0] },
+        "n-1-1-1-2-1": {
+          "processed": 55,
+          "throughput": 1.5381910866464774,
+          "lag": { "e-n-1-1-1-2-1-1": 0, "e-n-1-1-1-2-1-2": 0, "e-n-1-1-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-2-1-1": { "processed": 55, "throughput": 2.1745878121498103, "replicas": [1, 1, 0] },
+        "n-1-1-1-2-1-2": { "processed": 55, "throughput": 2.1768246991999516, "replicas": [1, 1, 0] },
+        "n-1-1-1-2-1-3": { "processed": 55, "throughput": 2.162341362582895, "replicas": [1, 1, 0] },
+        "n-1-1-1-3": { "processed": 56, "inFlight": 1, "throughput": 1.8752380222629126, "replicas": [1, 1, 0] },
+        "n-1-1-1-3-1": {
+          "processed": 55,
+          "throughput": 1.5059871679768948,
+          "lag": { "e-n-1-1-1-3-1-1": 0, "e-n-1-1-1-3-1-2": 0, "e-n-1-1-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-3-1-1": { "processed": 55, "throughput": 2.136137823283611, "replicas": [1, 1, 0] },
+        "n-1-1-1-3-1-2": { "processed": 55, "throughput": 2.129414483177334, "replicas": [1, 1, 0] },
+        "n-1-1-1-3-1-3": { "processed": 55, "throughput": 2.127027098297722, "replicas": [1, 1, 0] },
+        "n-1-2": { "processed": 58, "throughput": 2.222376454811458, "replicas": [1, 1, 0] },
+        "n-1-2-1": {
+          "processed": 57,
+          "throughput": 1.7845783809849447,
+          "lag": { "e-n-1-2-1-1": 0, "e-n-1-2-1-2": 0, "e-n-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-1": { "processed": 56, "inFlight": 1, "throughput": 1.8694223059688093, "replicas": [1, 1, 0] },
+        "n-1-2-1-1-1": {
+          "processed": 56,
+          "throughput": 2.5234561647910336,
+          "lag": { "e-n-1-2-1-1-1-1": 0, "e-n-1-2-1-1-1-2": 0, "e-n-1-2-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-1-1-1": { "processed": 55, "throughput": 2.1818182342722623, "replicas": [1, 1, 0] },
+        "n-1-2-1-1-1-2": { "processed": 55, "throughput": 2.1951236057301764, "replicas": [1, 1, 0] },
+        "n-1-2-1-1-1-3": { "processed": 55, "throughput": 2.192912874514941, "replicas": [1, 1, 0] },
+        "n-1-2-1-2": { "processed": 56, "inFlight": 1, "throughput": 1.8210993397818522, "replicas": [1, 1, 0] },
+        "n-1-2-1-2-1": {
+          "processed": 56,
+          "throughput": 2.458226983275374,
+          "lag": { "e-n-1-2-1-2-1-1": 0, "e-n-1-2-1-2-1-2": 0, "e-n-1-2-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-2-1-1": { "processed": 55, "throughput": 2.100509100680423, "replicas": [1, 1, 0] },
+        "n-1-2-1-2-1-2": { "processed": 55, "throughput": 2.098522672354813, "replicas": [1, 1, 0] },
+        "n-1-2-1-2-1-3": { "processed": 55, "throughput": 2.0970326081054274, "replicas": [1, 1, 0] },
+        "n-1-2-1-3": { "processed": 56, "inFlight": 1, "throughput": 1.8263124523089644, "replicas": [1, 1, 0] },
+        "n-1-2-1-3-1": {
+          "processed": 56,
+          "throughput": 2.465263949134981,
+          "lag": { "e-n-1-2-1-3-1-1": 0, "e-n-1-2-1-3-1-2": 0, "e-n-1-2-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-3-1-1": { "processed": 55, "throughput": 2.1559511123650137, "replicas": [1, 1, 0] },
+        "n-1-2-1-3-1-2": { "processed": 55, "throughput": 2.154199131377764, "replicas": [1, 1, 0] },
+        "n-1-2-1-3-1-3": { "processed": 55, "throughput": 2.154115946644771, "replicas": [1, 1, 0] },
+        "n-1-3": { "processed": 58, "throughput": 2.1442550542170653, "replicas": [1, 1, 0] },
+        "n-1-3-1": {
+          "processed": 57,
+          "throughput": 1.7837263323018997,
+          "lag": { "e-n-1-3-1-1": 0, "e-n-1-3-1-2": 0, "e-n-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-1": { "processed": 56, "inFlight": 1, "throughput": 1.8683208127565984, "replicas": [1, 1, 0] },
+        "n-1-3-1-1-1": {
+          "processed": 55,
+          "throughput": 1.506852010218278,
+          "lag": { "e-n-1-3-1-1-1-1": 0, "e-n-1-3-1-1-1-2": 0, "e-n-1-3-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-1-1-1": { "processed": 55, "throughput": 2.1275764664732875, "replicas": [1, 1, 0] },
+        "n-1-3-1-1-1-2": { "processed": 55, "throughput": 2.1283691395401183, "replicas": [1, 1, 0] },
+        "n-1-3-1-1-1-3": { "processed": 55, "throughput": 2.1264250284015915, "replicas": [1, 1, 0] },
+        "n-1-3-1-2": { "processed": 56, "inFlight": 1, "throughput": 1.852783316325499, "replicas": [1, 1, 0] },
+        "n-1-3-1-2-1": {
+          "processed": 55,
+          "throughput": 1.4959791696550473,
+          "lag": { "e-n-1-3-1-2-1-1": 0, "e-n-1-3-1-2-1-2": 0, "e-n-1-3-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-2-1-1": { "processed": 55, "throughput": 2.111486436326184, "replicas": [1, 1, 0] },
+        "n-1-3-1-2-1-2": { "processed": 55, "throughput": 2.1042916018495226, "replicas": [1, 1, 0] },
+        "n-1-3-1-2-1-3": { "processed": 55, "throughput": 2.1189894106255305, "replicas": [1, 1, 0] },
+        "n-1-3-1-3": { "processed": 56, "inFlight": 1, "throughput": 1.8778206363448529, "replicas": [1, 1, 0] },
+        "n-1-3-1-3-1": {
+          "processed": 55,
+          "throughput": 1.5196754307592995,
+          "lag": { "e-n-1-3-1-3-1-1": 0, "e-n-1-3-1-3-1-2": 0, "e-n-1-3-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-3-1-1": { "processed": 55, "throughput": 2.147630988514153, "replicas": [1, 1, 0] },
+        "n-1-3-1-3-1-2": { "processed": 55, "throughput": 2.1444510638677667, "replicas": [1, 1, 0] },
+        "n-1-3-1-3-1-3": { "processed": 55, "throughput": 2.144165988010848, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 35,
+      "nodes": {
+        "n": { "processed": 80, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "n-1": {
+          "processed": 79,
+          "throughput": 2.0704299607804355,
+          "lag": { "e-n-1-1": 0, "e-n-1-2": 0, "e-n-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1": { "processed": 78, "throughput": 2.149151966081032, "replicas": [1, 1, 0] },
+        "n-1-1-1": {
+          "processed": 77,
+          "throughput": 1.7565101569732238,
+          "lag": { "e-n-1-1-1-1": 0, "e-n-1-1-1-2": 0, "e-n-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-1": { "processed": 76, "inFlight": 1, "throughput": 1.9063109369006175, "replicas": [1, 1, 0] },
+        "n-1-1-1-1-1": {
+          "processed": 75,
+          "throughput": 1.5376265842666255,
+          "lag": { "e-n-1-1-1-1-1-1": 0, "e-n-1-1-1-1-1-2": 0, "e-n-1-1-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-1-1-1": { "processed": 75, "throughput": 2.1711918856799715, "replicas": [1, 1, 0] },
+        "n-1-1-1-1-1-2": { "processed": 75, "throughput": 2.176809169565765, "replicas": [1, 1, 0] },
+        "n-1-1-1-1-1-3": { "processed": 75, "throughput": 2.1671194219796326, "replicas": [1, 1, 0] },
+        "n-1-1-1-2": { "processed": 76, "inFlight": 1, "throughput": 1.837808223375258, "replicas": [1, 1, 0] },
+        "n-1-1-1-2-1": {
+          "processed": 76,
+          "throughput": 2.4807816169586956,
+          "lag": { "e-n-1-1-1-2-1-1": 0, "e-n-1-1-1-2-1-2": 0, "e-n-1-1-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-2-1-1": { "processed": 75, "throughput": 2.131471085166708, "replicas": [1, 1, 0] },
+        "n-1-1-1-2-1-2": { "processed": 75, "throughput": 2.139341922368681, "replicas": [1, 1, 0] },
+        "n-1-1-1-2-1-3": { "processed": 75, "throughput": 2.140704855114746, "replicas": [1, 1, 0] },
+        "n-1-1-1-3": { "processed": 76, "inFlight": 1, "throughput": 1.8969312501669404, "replicas": [1, 1, 0] },
+        "n-1-1-1-3-1": {
+          "processed": 75,
+          "throughput": 1.5249653315168685,
+          "lag": { "e-n-1-1-1-3-1-1": 0, "e-n-1-1-1-3-1-2": 0, "e-n-1-1-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-3-1-1": { "processed": 75, "throughput": 2.1473605745615467, "replicas": [1, 1, 0] },
+        "n-1-1-1-3-1-2": { "processed": 75, "throughput": 2.1550084396949827, "replicas": [1, 1, 0] },
+        "n-1-1-1-3-1-3": { "processed": 75, "throughput": 2.1467463304905072, "replicas": [1, 1, 0] },
+        "n-1-2": { "processed": 78, "throughput": 2.191296092481988, "replicas": [1, 1, 0] },
+        "n-1-2-1": {
+          "processed": 77,
+          "throughput": 1.778542297588166,
+          "lag": { "e-n-1-2-1-1": 0, "e-n-1-2-1-2": 0, "e-n-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-1": { "processed": 76, "inFlight": 1, "throughput": 1.8451514205860617, "replicas": [1, 1, 0] },
+        "n-1-2-1-1-1": {
+          "processed": 76,
+          "throughput": 2.4906938963894647,
+          "lag": { "e-n-1-2-1-1-1-1": 0, "e-n-1-2-1-1-1-2": 0, "e-n-1-2-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-1-1-1": { "processed": 75, "throughput": 2.1860603203638496, "replicas": [1, 1, 0] },
+        "n-1-2-1-1-1-2": { "processed": 75, "throughput": 2.186452978999658, "replicas": [1, 1, 0] },
+        "n-1-2-1-1-1-3": { "processed": 75, "throughput": 2.1947110736356166, "replicas": [1, 1, 0] },
+        "n-1-2-1-2": { "processed": 76, "inFlight": 1, "throughput": 1.8660809561205176, "replicas": [1, 1, 0] },
+        "n-1-2-1-2-1": {
+          "processed": 76,
+          "throughput": 2.5189458142691263,
+          "lag": { "e-n-1-2-1-2-1-1": 0, "e-n-1-2-1-2-1-2": 0, "e-n-1-2-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-2-1-1": { "processed": 75, "throughput": 2.1885441576929905, "replicas": [1, 1, 0] },
+        "n-1-2-1-2-1-2": { "processed": 75, "throughput": 2.1993031696519245, "replicas": [1, 1, 0] },
+        "n-1-2-1-2-1-3": { "processed": 75, "throughput": 2.1904296937917134, "replicas": [1, 1, 0] },
+        "n-1-2-1-3": { "processed": 76, "inFlight": 1, "throughput": 1.844136326207762, "replicas": [1, 1, 0] },
+        "n-1-2-1-3-1": {
+          "processed": 76,
+          "throughput": 2.489323662302396,
+          "lag": { "e-n-1-2-1-3-1-1": 0, "e-n-1-2-1-3-1-2": 0, "e-n-1-2-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-3-1-1": { "processed": 75, "throughput": 2.1921206858639954, "replicas": [1, 1, 0] },
+        "n-1-2-1-3-1-2": { "processed": 75, "throughput": 2.1900248977001175, "replicas": [1, 1, 0] },
+        "n-1-2-1-3-1-3": { "processed": 75, "throughput": 2.192849833584628, "replicas": [1, 1, 0] },
+        "n-1-3": { "processed": 78, "throughput": 2.1800212202259894, "replicas": [1, 1, 0] },
+        "n-1-3-1": {
+          "processed": 77,
+          "throughput": 1.820842732774203,
+          "lag": { "e-n-1-3-1-1": 0, "e-n-1-3-1-2": 0, "e-n-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-1": { "processed": 76, "inFlight": 1, "throughput": 1.8844975536042514, "replicas": [1, 1, 0] },
+        "n-1-3-1-1-1": {
+          "processed": 76,
+          "throughput": 2.543805620588125,
+          "lag": { "e-n-1-3-1-1-1-1": 0, "e-n-1-3-1-1-1-2": 0, "e-n-1-3-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-1-1-1": { "processed": 75, "throughput": 2.17879949009283, "replicas": [1, 1, 0] },
+        "n-1-3-1-1-1-2": { "processed": 75, "throughput": 2.190706283958032, "replicas": [1, 1, 0] },
+        "n-1-3-1-1-1-3": { "processed": 75, "throughput": 2.1913335018691655, "replicas": [1, 1, 0] },
+        "n-1-3-1-2": { "processed": 76, "inFlight": 1, "throughput": 1.9367064145344994, "replicas": [1, 1, 0] },
+        "n-1-3-1-2-1": {
+          "processed": 75,
+          "throughput": 1.5471167404626527,
+          "lag": { "e-n-1-3-1-2-1-1": 0, "e-n-1-3-1-2-1-2": 0, "e-n-1-3-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-2-1-1": { "processed": 75, "throughput": 2.1852596308352368, "replicas": [1, 1, 0] },
+        "n-1-3-1-2-1-2": { "processed": 75, "throughput": 2.190055880136446, "replicas": [1, 1, 0] },
+        "n-1-3-1-2-1-3": { "processed": 75, "throughput": 2.174455539907029, "replicas": [1, 1, 0] },
+        "n-1-3-1-3": { "processed": 76, "inFlight": 1, "throughput": 1.9168235437660022, "replicas": [1, 1, 0] },
+        "n-1-3-1-3-1": {
+          "processed": 75,
+          "throughput": 1.5308961261880278,
+          "lag": { "e-n-1-3-1-3-1-1": 0, "e-n-1-3-1-3-1-2": 0, "e-n-1-3-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-3-1-1": { "processed": 75, "throughput": 2.1684751715814414, "replicas": [1, 1, 0] },
+        "n-1-3-1-3-1-2": { "processed": 75, "throughput": 2.16014705179508, "replicas": [1, 1, 0] },
+        "n-1-3-1-3-1-3": { "processed": 75, "throughput": 2.1613579334864244, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 33,
+      "nodes": {
+        "n": { "processed": 100, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "n-1": {
+          "processed": 99,
+          "throughput": 2.0704299607804355,
+          "lag": { "e-n-1-1": 0, "e-n-1-2": 0, "e-n-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1": { "processed": 98, "throughput": 2.186153433864505, "replicas": [1, 1, 0] },
+        "n-1-1-1": {
+          "processed": 97,
+          "throughput": 1.7716004345590002,
+          "lag": { "e-n-1-1-1-1": 0, "e-n-1-1-1-2": 0, "e-n-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-1": { "processed": 96, "inFlight": 1, "throughput": 1.910797196163031, "replicas": [1, 1, 0] },
+        "n-1-1-1-1-1": {
+          "processed": 95,
+          "throughput": 1.5436824008450634,
+          "lag": { "e-n-1-1-1-1-1-1": 0, "e-n-1-1-1-1-1-2": 0, "e-n-1-1-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-1-1-1": { "processed": 95, "throughput": 2.1869033272857394, "replicas": [1, 1, 0] },
+        "n-1-1-1-1-1-2": { "processed": 95, "throughput": 2.185713595596306, "replicas": [1, 1, 0] },
+        "n-1-1-1-1-1-3": { "processed": 95, "throughput": 2.1888883652933333, "replicas": [1, 1, 0] },
+        "n-1-1-1-2": { "processed": 96, "inFlight": 1, "throughput": 1.9386681263548688, "replicas": [1, 1, 0] },
+        "n-1-1-1-2-1": {
+          "processed": 95,
+          "throughput": 1.5282066423018101,
+          "lag": { "e-n-1-1-1-2-1-1": 0, "e-n-1-1-1-2-1-2": 0, "e-n-1-1-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-2-1-1": { "processed": 95, "throughput": 2.157651791702482, "replicas": [1, 1, 0] },
+        "n-1-1-1-2-1-2": { "processed": 95, "throughput": 2.153760446853681, "replicas": [1, 1, 0] },
+        "n-1-1-1-2-1-3": { "processed": 95, "throughput": 2.159913508762218, "replicas": [1, 1, 0] },
+        "n-1-1-1-3": { "processed": 96, "inFlight": 1, "throughput": 1.9097958376598043, "replicas": [1, 1, 0] },
+        "n-1-1-1-3-1": {
+          "processed": 95,
+          "throughput": 1.5107912612513923,
+          "lag": { "e-n-1-1-1-3-1-1": 0, "e-n-1-1-1-3-1-2": 0, "e-n-1-1-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-3-1-1": { "processed": 95, "throughput": 2.1323246483395044, "replicas": [1, 1, 0] },
+        "n-1-1-1-3-1-2": { "processed": 95, "throughput": 2.12841563910208, "replicas": [1, 1, 0] },
+        "n-1-1-1-3-1-3": { "processed": 95, "throughput": 2.1416028268602143, "replicas": [1, 1, 0] },
+        "n-1-2": { "processed": 98, "throughput": 2.175918898119048, "replicas": [1, 1, 0] },
+        "n-1-2-1": {
+          "processed": 97,
+          "throughput": 1.7926417359365268,
+          "lag": { "e-n-1-2-1-1": 0, "e-n-1-2-1-2": 0, "e-n-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-1": { "processed": 96, "inFlight": 1, "throughput": 1.9322619856588592, "replicas": [1, 1, 0] },
+        "n-1-2-1-1-1": {
+          "processed": 95,
+          "throughput": 1.5726568359987705,
+          "lag": { "e-n-1-2-1-1-1-1": 0, "e-n-1-2-1-1-1-2": 0, "e-n-1-2-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-1-1-1": { "processed": 95, "throughput": 2.2218759434841093, "replicas": [1, 1, 0] },
+        "n-1-2-1-1-1-2": { "processed": 95, "throughput": 2.2306551241200507, "replicas": [1, 1, 0] },
+        "n-1-2-1-1-1-3": { "processed": 95, "throughput": 2.222166368322371, "replicas": [1, 1, 0] },
+        "n-1-2-1-2": { "processed": 96, "inFlight": 1, "throughput": 1.8570705886261731, "replicas": [1, 1, 0] },
+        "n-1-2-1-2-1": {
+          "processed": 95,
+          "throughput": 1.5017663819305882,
+          "lag": { "e-n-1-2-1-2-1-1": 0, "e-n-1-2-1-2-1-2": 0, "e-n-1-2-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-2-1-1": { "processed": 95, "throughput": 2.120082418676154, "replicas": [1, 1, 0] },
+        "n-1-2-1-2-1-2": { "processed": 95, "throughput": 2.1171094596625415, "replicas": [1, 1, 0] },
+        "n-1-2-1-2-1-3": { "processed": 95, "throughput": 2.114189842125975, "replicas": [1, 1, 0] },
+        "n-1-2-1-3": { "processed": 96, "inFlight": 1, "throughput": 1.872903141390188, "replicas": [1, 1, 0] },
+        "n-1-2-1-3-1": {
+          "processed": 96,
+          "throughput": 2.5281548011423056,
+          "lag": { "e-n-1-2-1-3-1-1": 0, "e-n-1-2-1-3-1-2": 0, "e-n-1-2-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-3-1-1": { "processed": 95, "throughput": 2.17101154604908, "replicas": [1, 1, 0] },
+        "n-1-2-1-3-1-2": { "processed": 95, "throughput": 2.1690565778870354, "replicas": [1, 1, 0] },
+        "n-1-2-1-3-1-3": { "processed": 95, "throughput": 2.1696783775004183, "replicas": [1, 1, 0] },
+        "n-1-3": { "processed": 98, "throughput": 2.1953325681618465, "replicas": [1, 1, 0] },
+        "n-1-3-1": {
+          "processed": 97,
+          "throughput": 1.7601655491475876,
+          "lag": { "e-n-1-3-1-1": 0, "e-n-1-3-1-2": 0, "e-n-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-1": { "processed": 96, "inFlight": 1, "throughput": 1.8281794661053923, "replicas": [1, 1, 0] },
+        "n-1-3-1-1-1": {
+          "processed": 96,
+          "throughput": 2.4677841541519543,
+          "lag": { "e-n-1-3-1-1-1-1": 0, "e-n-1-3-1-1-1-2": 0, "e-n-1-3-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-1-1-1": { "processed": 95, "throughput": 2.132053606238632, "replicas": [1, 1, 0] },
+        "n-1-3-1-1-1-2": { "processed": 95, "throughput": 2.1329634571892893, "replicas": [1, 1, 0] },
+        "n-1-3-1-1-1-3": { "processed": 95, "throughput": 2.1352288704823024, "replicas": [1, 1, 0] },
+        "n-1-3-1-2": { "processed": 96, "inFlight": 1, "throughput": 1.9055354882809181, "replicas": [1, 1, 0] },
+        "n-1-3-1-2-1": {
+          "processed": 96,
+          "throughput": 2.572203862004633,
+          "lag": { "e-n-1-3-1-2-1-1": 0, "e-n-1-3-1-2-1-2": 0, "e-n-1-3-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-2-1-1": { "processed": 95, "throughput": 2.247846065570754, "replicas": [1, 1, 0] },
+        "n-1-3-1-2-1-2": { "processed": 95, "throughput": 2.254922480962626, "replicas": [1, 1, 0] },
+        "n-1-3-1-2-1-3": { "processed": 95, "throughput": 2.2569691114339867, "replicas": [1, 1, 0] },
+        "n-1-3-1-3": { "processed": 96, "inFlight": 1, "throughput": 1.8673193581678305, "replicas": [1, 1, 0] },
+        "n-1-3-1-3-1": {
+          "processed": 96,
+          "throughput": 2.5206174821800107,
+          "lag": { "e-n-1-3-1-3-1-1": 0, "e-n-1-3-1-3-1-2": 0, "e-n-1-3-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-3-1-1": { "processed": 95, "throughput": 2.1753220178011317, "replicas": [1, 1, 0] },
+        "n-1-3-1-3-1-2": { "processed": 95, "throughput": 2.1856272337558904, "replicas": [1, 1, 0] },
+        "n-1-3-1-3-1-3": { "processed": 95, "throughput": 2.191319048893254, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 35,
+      "nodes": {
+        "n": { "processed": 120, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "n-1": {
+          "processed": 119,
+          "throughput": 2.0704299607804355,
+          "lag": { "e-n-1-1": 0, "e-n-1-2": 0, "e-n-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1": { "processed": 118, "throughput": 2.2134330078031708, "replicas": [1, 1, 0] },
+        "n-1-1-1": {
+          "processed": 117,
+          "throughput": 1.8084240077070295,
+          "lag": { "e-n-1-1-1-1": 0, "e-n-1-1-1-2": 0, "e-n-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-1": { "processed": 116, "inFlight": 1, "throughput": 1.9213618053195167, "replicas": [1, 1, 0] },
+        "n-1-1-1-1-1": {
+          "processed": 115,
+          "throughput": 1.5682477627745763,
+          "lag": { "e-n-1-1-1-1-1-1": 0, "e-n-1-1-1-1-1-2": 0, "e-n-1-1-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-1-1-1": { "processed": 115, "throughput": 2.2227571106173305, "replicas": [1, 1, 0] },
+        "n-1-1-1-1-1-2": { "processed": 115, "throughput": 2.2134559371334324, "replicas": [1, 1, 0] },
+        "n-1-1-1-1-1-3": { "processed": 115, "throughput": 2.2102005182308044, "replicas": [1, 1, 0] },
+        "n-1-1-1-2": { "processed": 116, "inFlight": 1, "throughput": 1.8814048332672852, "replicas": [1, 1, 0] },
+        "n-1-1-1-2-1": {
+          "processed": 116,
+          "throughput": 2.5396308848019027,
+          "lag": { "e-n-1-1-1-2-1-1": 0, "e-n-1-1-1-2-1-2": 0, "e-n-1-1-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-2-1-1": { "processed": 115, "throughput": 2.2088702421849837, "replicas": [1, 1, 0] },
+        "n-1-1-1-2-1-2": { "processed": 115, "throughput": 2.211760510733196, "replicas": [1, 1, 0] },
+        "n-1-1-1-2-1-3": { "processed": 115, "throughput": 2.1999400033113314, "replicas": [1, 1, 0] },
+        "n-1-1-1-3": { "processed": 116, "inFlight": 1, "throughput": 1.9423362436966822, "replicas": [1, 1, 0] },
+        "n-1-1-1-3-1": {
+          "processed": 115,
+          "throughput": 1.5653346688945007,
+          "lag": { "e-n-1-1-1-3-1-1": 0, "e-n-1-1-1-3-1-2": 0, "e-n-1-1-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-1-1-3-1-1": { "processed": 115, "throughput": 2.2114818070438846, "replicas": [1, 1, 0] },
+        "n-1-1-1-3-1-2": { "processed": 115, "throughput": 2.2002369342131596, "replicas": [1, 1, 0] },
+        "n-1-1-1-3-1-3": { "processed": 115, "throughput": 2.2142063611906244, "replicas": [1, 1, 0] },
+        "n-1-2": { "processed": 118, "throughput": 2.1578791654302885, "replicas": [1, 1, 0] },
+        "n-1-2-1": {
+          "processed": 117,
+          "throughput": 1.7567878100352479,
+          "lag": { "e-n-1-2-1-1": 0, "e-n-1-2-1-2": 0, "e-n-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-1": { "processed": 116, "inFlight": 1, "throughput": 1.9415903116256297, "replicas": [1, 1, 0] },
+        "n-1-2-1-1-1": {
+          "processed": 115,
+          "throughput": 1.6158560744352886,
+          "lag": { "e-n-1-2-1-1-1-1": 0, "e-n-1-2-1-1-1-2": 0, "e-n-1-2-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-1-1-1": { "processed": 115, "throughput": 2.278347910317224, "replicas": [1, 1, 0] },
+        "n-1-2-1-1-1-2": { "processed": 115, "throughput": 2.2752772826128953, "replicas": [1, 1, 0] },
+        "n-1-2-1-1-1-3": { "processed": 115, "throughput": 2.286224346606304, "replicas": [1, 1, 0] },
+        "n-1-2-1-2": { "processed": 116, "inFlight": 1, "throughput": 1.8701204958404776, "replicas": [1, 1, 0] },
+        "n-1-2-1-2-1": {
+          "processed": 116,
+          "throughput": 2.524398622538666,
+          "lag": { "e-n-1-2-1-2-1-1": 0, "e-n-1-2-1-2-1-2": 0, "e-n-1-2-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-2-1-1": { "processed": 115, "throughput": 2.226576569880447, "replicas": [1, 1, 0] },
+        "n-1-2-1-2-1-2": { "processed": 115, "throughput": 2.222901170802745, "replicas": [1, 1, 0] },
+        "n-1-2-1-2-1-3": { "processed": 115, "throughput": 2.2336633846172775, "replicas": [1, 1, 0] },
+        "n-1-2-1-3": { "processed": 116, "inFlight": 1, "throughput": 1.8910572061769284, "replicas": [1, 1, 0] },
+        "n-1-2-1-3-1": {
+          "processed": 116,
+          "throughput": 2.5526602253879926,
+          "lag": { "e-n-1-2-1-3-1-1": 0, "e-n-1-2-1-3-1-2": 0, "e-n-1-2-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-2-1-3-1-1": { "processed": 115, "throughput": 2.212190577430239, "replicas": [1, 1, 0] },
+        "n-1-2-1-3-1-2": { "processed": 115, "throughput": 2.2027570017241196, "replicas": [1, 1, 0] },
+        "n-1-2-1-3-1-3": { "processed": 115, "throughput": 2.2241654088771763, "replicas": [1, 1, 0] },
+        "n-1-3": { "processed": 118, "throughput": 2.152074109814384, "replicas": [1, 1, 0] },
+        "n-1-3-1": {
+          "processed": 117,
+          "throughput": 1.7718430171646191,
+          "lag": { "e-n-1-3-1-1": 0, "e-n-1-3-1-2": 0, "e-n-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-1": { "processed": 116, "inFlight": 1, "throughput": 1.850665112245236, "replicas": [1, 1, 0] },
+        "n-1-3-1-1-1": {
+          "processed": 116,
+          "throughput": 2.49813660163786,
+          "lag": { "e-n-1-3-1-1-1-1": 0, "e-n-1-3-1-1-1-2": 0, "e-n-1-3-1-1-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-1-1-1": { "processed": 115, "throughput": 2.1295837974655107, "replicas": [1, 1, 0] },
+        "n-1-3-1-1-1-2": { "processed": 115, "throughput": 2.1319345038635356, "replicas": [1, 1, 0] },
+        "n-1-3-1-1-1-3": { "processed": 115, "throughput": 2.125885181813655, "replicas": [1, 1, 0] },
+        "n-1-3-1-2": { "processed": 116, "inFlight": 1, "throughput": 1.8921985203417186, "replicas": [1, 1, 0] },
+        "n-1-3-1-2-1": {
+          "processed": 115,
+          "throughput": 1.5390835441067752,
+          "lag": { "e-n-1-3-1-2-1-1": 0, "e-n-1-3-1-2-1-2": 0, "e-n-1-3-1-2-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-2-1-1": { "processed": 115, "throughput": 2.173849445300976, "replicas": [1, 1, 0] },
+        "n-1-3-1-2-1-2": { "processed": 115, "throughput": 2.1721962871379894, "replicas": [1, 1, 0] },
+        "n-1-3-1-2-1-3": { "processed": 115, "throughput": 2.180140779325273, "replicas": [1, 1, 0] },
+        "n-1-3-1-3": { "processed": 116, "inFlight": 1, "throughput": 1.8617807364536112, "replicas": [1, 1, 0] },
+        "n-1-3-1-3-1": {
+          "processed": 116,
+          "throughput": 2.513141124877241,
+          "lag": { "e-n-1-3-1-3-1-1": 0, "e-n-1-3-1-3-1-2": 0, "e-n-1-3-1-3-1-3": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "n-1-3-1-3-1-1": { "processed": 115, "throughput": 2.1721692462379414, "replicas": [1, 1, 0] },
+        "n-1-3-1-3-1-2": { "processed": 115, "throughput": 2.1723370630220225, "replicas": [1, 1, 0] },
+        "n-1-3-1-3-1-3": { "processed": 115, "throughput": 2.1700277382991695, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 35,
+    "real": {
+      "n": { "processed": 120, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+      "n-1": {
+        "processed": 119,
+        "throughput": 2.0704299607804355,
+        "lag": { "e-n-1-1": 0, "e-n-1-2": 0, "e-n-1-3": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "n-1-1": { "processed": 118, "throughput": 2.2134330078031708, "replicas": [1, 1, 0] },
+      "n-1-1-1": {
+        "processed": 117,
+        "throughput": 1.8084240077070295,
+        "lag": { "e-n-1-1-1-1": 0, "e-n-1-1-1-2": 0, "e-n-1-1-1-3": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "n-1-1-1-1": { "processed": 116, "inFlight": 1, "throughput": 1.9213618053195167, "replicas": [1, 1, 0] },
+      "n-1-1-1-1-1": {
+        "processed": 115,
+        "throughput": 1.5682477627745763,
+        "lag": { "e-n-1-1-1-1-1-1": 0, "e-n-1-1-1-1-1-2": 0, "e-n-1-1-1-1-1-3": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "n-1-1-1-1-1-1": { "processed": 115, "throughput": 2.2227571106173305, "replicas": [1, 1, 0] },
+      "n-1-1-1-1-1-2": { "processed": 115, "throughput": 2.2134559371334324, "replicas": [1, 1, 0] },
+      "n-1-1-1-1-1-3": { "processed": 115, "throughput": 2.2102005182308044, "replicas": [1, 1, 0] },
+      "n-1-1-1-2": { "processed": 116, "inFlight": 1, "throughput": 1.8814048332672852, "replicas": [1, 1, 0] },
+      "n-1-1-1-2-1": {
+        "processed": 116,
+        "throughput": 2.5396308848019027,
+        "lag": { "e-n-1-1-1-2-1-1": 0, "e-n-1-1-1-2-1-2": 0, "e-n-1-1-1-2-1-3": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "n-1-1-1-2-1-1": { "processed": 115, "throughput": 2.2088702421849837, "replicas": [1, 1, 0] },
+      "n-1-1-1-2-1-2": { "processed": 115, "throughput": 2.211760510733196, "replicas": [1, 1, 0] },
+      "n-1-1-1-2-1-3": { "processed": 115, "throughput": 2.1999400033113314, "replicas": [1, 1, 0] },
+      "n-1-1-1-3": { "processed": 116, "inFlight": 1, "throughput": 1.9423362436966822, "replicas": [1, 1, 0] },
+      "n-1-1-1-3-1": {
+        "processed": 115,
+        "throughput": 1.5653346688945007,
+        "lag": { "e-n-1-1-1-3-1-1": 0, "e-n-1-1-1-3-1-2": 0, "e-n-1-1-1-3-1-3": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "n-1-1-1-3-1-1": { "processed": 115, "throughput": 2.2114818070438846, "replicas": [1, 1, 0] },
+      "n-1-1-1-3-1-2": { "processed": 115, "throughput": 2.2002369342131596, "replicas": [1, 1, 0] },
+      "n-1-1-1-3-1-3": { "processed": 115, "throughput": 2.2142063611906244, "replicas": [1, 1, 0] },
+      "n-1-2": { "processed": 118, "throughput": 2.1578791654302885, "replicas": [1, 1, 0] },
+      "n-1-2-1": {
+        "processed": 117,
+        "throughput": 1.7567878100352479,
+        "lag": { "e-n-1-2-1-1": 0, "e-n-1-2-1-2": 0, "e-n-1-2-1-3": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "n-1-2-1-1": { "processed": 116, "inFlight": 1, "throughput": 1.9415903116256297, "replicas": [1, 1, 0] },
+      "n-1-2-1-1-1": {
+        "processed": 115,
+        "throughput": 1.6158560744352886,
+        "lag": { "e-n-1-2-1-1-1-1": 0, "e-n-1-2-1-1-1-2": 0, "e-n-1-2-1-1-1-3": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "n-1-2-1-1-1-1": { "processed": 115, "throughput": 2.278347910317224, "replicas": [1, 1, 0] },
+      "n-1-2-1-1-1-2": { "processed": 115, "throughput": 2.2752772826128953, "replicas": [1, 1, 0] },
+      "n-1-2-1-1-1-3": { "processed": 115, "throughput": 2.286224346606304, "replicas": [1, 1, 0] },
+      "n-1-2-1-2": { "processed": 116, "inFlight": 1, "throughput": 1.8701204958404776, "replicas": [1, 1, 0] },
+      "n-1-2-1-2-1": {
+        "processed": 116,
+        "throughput": 2.524398622538666,
+        "lag": { "e-n-1-2-1-2-1-1": 0, "e-n-1-2-1-2-1-2": 0, "e-n-1-2-1-2-1-3": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "n-1-2-1-2-1-1": { "processed": 115, "throughput": 2.226576569880447, "replicas": [1, 1, 0] },
+      "n-1-2-1-2-1-2": { "processed": 115, "throughput": 2.222901170802745, "replicas": [1, 1, 0] },
+      "n-1-2-1-2-1-3": { "processed": 115, "throughput": 2.2336633846172775, "replicas": [1, 1, 0] },
+      "n-1-2-1-3": { "processed": 116, "inFlight": 1, "throughput": 1.8910572061769284, "replicas": [1, 1, 0] },
+      "n-1-2-1-3-1": {
+        "processed": 116,
+        "throughput": 2.5526602253879926,
+        "lag": { "e-n-1-2-1-3-1-1": 0, "e-n-1-2-1-3-1-2": 0, "e-n-1-2-1-3-1-3": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "n-1-2-1-3-1-1": { "processed": 115, "throughput": 2.212190577430239, "replicas": [1, 1, 0] },
+      "n-1-2-1-3-1-2": { "processed": 115, "throughput": 2.2027570017241196, "replicas": [1, 1, 0] },
+      "n-1-2-1-3-1-3": { "processed": 115, "throughput": 2.2241654088771763, "replicas": [1, 1, 0] },
+      "n-1-3": { "processed": 118, "throughput": 2.152074109814384, "replicas": [1, 1, 0] },
+      "n-1-3-1": {
+        "processed": 117,
+        "throughput": 1.7718430171646191,
+        "lag": { "e-n-1-3-1-1": 0, "e-n-1-3-1-2": 0, "e-n-1-3-1-3": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "n-1-3-1-1": { "processed": 116, "inFlight": 1, "throughput": 1.850665112245236, "replicas": [1, 1, 0] },
+      "n-1-3-1-1-1": {
+        "processed": 116,
+        "throughput": 2.49813660163786,
+        "lag": { "e-n-1-3-1-1-1-1": 0, "e-n-1-3-1-1-1-2": 0, "e-n-1-3-1-1-1-3": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "n-1-3-1-1-1-1": { "processed": 115, "throughput": 2.1295837974655107, "replicas": [1, 1, 0] },
+      "n-1-3-1-1-1-2": { "processed": 115, "throughput": 2.1319345038635356, "replicas": [1, 1, 0] },
+      "n-1-3-1-1-1-3": { "processed": 115, "throughput": 2.125885181813655, "replicas": [1, 1, 0] },
+      "n-1-3-1-2": { "processed": 116, "inFlight": 1, "throughput": 1.8921985203417186, "replicas": [1, 1, 0] },
+      "n-1-3-1-2-1": {
+        "processed": 115,
+        "throughput": 1.5390835441067752,
+        "lag": { "e-n-1-3-1-2-1-1": 0, "e-n-1-3-1-2-1-2": 0, "e-n-1-3-1-2-1-3": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "n-1-3-1-2-1-1": { "processed": 115, "throughput": 2.173849445300976, "replicas": [1, 1, 0] },
+      "n-1-3-1-2-1-2": { "processed": 115, "throughput": 2.1721962871379894, "replicas": [1, 1, 0] },
+      "n-1-3-1-2-1-3": { "processed": 115, "throughput": 2.180140779325273, "replicas": [1, 1, 0] },
+      "n-1-3-1-3": { "processed": 116, "inFlight": 1, "throughput": 1.8617807364536112, "replicas": [1, 1, 0] },
+      "n-1-3-1-3-1": {
+        "processed": 116,
+        "throughput": 2.513141124877241,
+        "lag": { "e-n-1-3-1-3-1-1": 0, "e-n-1-3-1-3-1-2": 0, "e-n-1-3-1-3-1-3": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "n-1-3-1-3-1-1": { "processed": 115, "throughput": 2.1721692462379414, "replicas": [1, 1, 0] },
+      "n-1-3-1-3-1-2": { "processed": 115, "throughput": 2.1723370630220225, "replicas": [1, 1, 0] },
+      "n-1-3-1-3-1-3": { "processed": 115, "throughput": 2.1700277382991695, "replicas": [1, 1, 0] }
+    },
+    "edges": {
+      "e-n-1": 119,
+      "e-n-1-1": 118,
+      "e-n-1-1-1": 117,
+      "e-n-1-1-1-1": 117,
+      "e-n-1-1-1-1-1": 115,
+      "e-n-1-1-1-1-1-1": 115,
+      "e-n-1-1-1-1-1-2": 115,
+      "e-n-1-1-1-1-1-3": 115,
+      "e-n-1-1-1-2": 117,
+      "e-n-1-1-1-2-1": 116,
+      "e-n-1-1-1-2-1-1": 115,
+      "e-n-1-1-1-2-1-2": 115,
+      "e-n-1-1-1-2-1-3": 115,
+      "e-n-1-1-1-3": 117,
+      "e-n-1-1-1-3-1": 115,
+      "e-n-1-1-1-3-1-1": 115,
+      "e-n-1-1-1-3-1-2": 115,
+      "e-n-1-1-1-3-1-3": 115,
+      "e-n-1-2": 118,
+      "e-n-1-2-1": 117,
+      "e-n-1-2-1-1": 117,
+      "e-n-1-2-1-1-1": 115,
+      "e-n-1-2-1-1-1-1": 115,
+      "e-n-1-2-1-1-1-2": 115,
+      "e-n-1-2-1-1-1-3": 115,
+      "e-n-1-2-1-2": 117,
+      "e-n-1-2-1-2-1": 116,
+      "e-n-1-2-1-2-1-1": 115,
+      "e-n-1-2-1-2-1-2": 115,
+      "e-n-1-2-1-2-1-3": 115,
+      "e-n-1-2-1-3": 117,
+      "e-n-1-2-1-3-1": 116,
+      "e-n-1-2-1-3-1-1": 115,
+      "e-n-1-2-1-3-1-2": 115,
+      "e-n-1-2-1-3-1-3": 115,
+      "e-n-1-3": 118,
+      "e-n-1-3-1": 117,
+      "e-n-1-3-1-1": 117,
+      "e-n-1-3-1-1-1": 116,
+      "e-n-1-3-1-1-1-1": 115,
+      "e-n-1-3-1-1-1-2": 115,
+      "e-n-1-3-1-1-1-3": 115,
+      "e-n-1-3-1-2": 117,
+      "e-n-1-3-1-2-1": 115,
+      "e-n-1-3-1-2-1-1": 115,
+      "e-n-1-3-1-2-1-2": 115,
+      "e-n-1-3-1-2-1-3": 115,
+      "e-n-1-3-1-3": 117,
+      "e-n-1-3-1-3-1": 116,
+      "e-n-1-3-1-3-1-1": 115,
+      "e-n-1-3-1-3-1-2": 115,
+      "e-n-1-3-1-3-1-3": 115
+    }
+  },
+  "events": {
+    "total": 12155,
+    "byKind": { "process": 6133, "deliver": 6022 },
+    "byNode": {
+      "n": { "process": 120 },
+      "n-1": { "deliver": 119, "process": 119 },
+      "n-1-1": { "deliver": 118, "process": 118 },
+      "n-1-2": { "deliver": 118, "process": 118 },
+      "n-1-3": { "deliver": 118, "process": 118 },
+      "n-1-1-1": { "deliver": 117, "process": 117 },
+      "n-1-2-1": { "deliver": 117, "process": 117 },
+      "n-1-3-1": { "deliver": 117, "process": 117 },
+      "n-1-1-1-1": { "deliver": 117, "process": 116 },
+      "n-1-1-1-2": { "deliver": 117, "process": 116 },
+      "n-1-1-1-3": { "deliver": 117, "process": 116 },
+      "n-1-2-1-1": { "deliver": 117, "process": 116 },
+      "n-1-2-1-2": { "deliver": 117, "process": 116 },
+      "n-1-2-1-3": { "deliver": 117, "process": 116 },
+      "n-1-3-1-1": { "deliver": 117, "process": 116 },
+      "n-1-3-1-2": { "deliver": 117, "process": 116 },
+      "n-1-3-1-3": { "deliver": 117, "process": 116 },
+      "n-1-1-1-3-1": { "deliver": 115, "process": 115 },
+      "n-1-2-1-2-1": { "deliver": 116, "process": 116 },
+      "n-1-2-1-1-1": { "deliver": 115, "process": 115 },
+      "n-1-1-1-2-1": { "deliver": 116, "process": 116 },
+      "n-1-2-1-3-1": { "deliver": 116, "process": 116 },
+      "n-1-1-1-1-1": { "deliver": 115, "process": 115 },
+      "n-1-3-1-1-1": { "deliver": 116, "process": 116 },
+      "n-1-3-1-3-1": { "deliver": 116, "process": 116 },
+      "n-1-3-1-2-1": { "deliver": 115, "process": 115 },
+      "n-1-1-1-3-1-1": { "deliver": 115, "process": 115 },
+      "n-1-1-1-3-1-2": { "deliver": 115, "process": 115 },
+      "n-1-1-1-3-1-3": { "deliver": 115, "process": 115 },
+      "n-1-2-1-2-1-1": { "deliver": 115, "process": 115 },
+      "n-1-2-1-2-1-2": { "deliver": 115, "process": 115 },
+      "n-1-2-1-2-1-3": { "deliver": 115, "process": 115 },
+      "n-1-2-1-1-1-1": { "deliver": 115, "process": 115 },
+      "n-1-2-1-1-1-2": { "deliver": 115, "process": 115 },
+      "n-1-2-1-1-1-3": { "deliver": 115, "process": 115 },
+      "n-1-1-1-2-1-1": { "deliver": 115, "process": 115 },
+      "n-1-1-1-2-1-2": { "deliver": 115, "process": 115 },
+      "n-1-1-1-2-1-3": { "deliver": 115, "process": 115 },
+      "n-1-2-1-3-1-1": { "deliver": 115, "process": 115 },
+      "n-1-2-1-3-1-2": { "deliver": 115, "process": 115 },
+      "n-1-2-1-3-1-3": { "deliver": 115, "process": 115 },
+      "n-1-1-1-1-1-1": { "deliver": 115, "process": 115 },
+      "n-1-1-1-1-1-2": { "deliver": 115, "process": 115 },
+      "n-1-1-1-1-1-3": { "deliver": 115, "process": 115 },
+      "n-1-3-1-1-1-1": { "deliver": 115, "process": 115 },
+      "n-1-3-1-1-1-2": { "deliver": 115, "process": 115 },
+      "n-1-3-1-1-1-3": { "deliver": 115, "process": 115 },
+      "n-1-3-1-3-1-1": { "deliver": 115, "process": 115 },
+      "n-1-3-1-3-1-2": { "deliver": 115, "process": 115 },
+      "n-1-3-1-3-1-3": { "deliver": 115, "process": 115 },
+      "n-1-3-1-2-1-1": { "deliver": 115, "process": 115 },
+      "n-1-3-1-2-1-2": { "deliver": 115, "process": 115 },
+      "n-1-3-1-2-1-3": { "deliver": 115, "process": 115 }
+    },
+    "perSecond": [
+      "8f7799016300",
+      "a506a3c8bdd5",
+      "3e11670ba31e",
+      "b09ea0f12f26",
+      "89b98de8e00d",
+      "deaf625b93e7",
+      "f868d7856bc6",
+      "1e19a5989904",
+      "b6d19a7c2cb0",
+      "b3f6f32c88a9",
+      "d747fb2e5d24",
+      "f2a826fe93c6",
+      "e2583652cfb3",
+      "ab8262b60b6e",
+      "69fb3ba38f4f",
+      "a849148eaa52",
+      "e82f464416bc",
+      "9408f85b4bd1",
+      "0525a00c6a9c",
+      "3852f44265f4",
+      "371a258abaa4",
+      "e4dcc00641b6",
+      "4392c0c6f360",
+      "2f7d6a1046b7",
+      "748f4a9ecfa4",
+      "ecc9ed5c3720",
+      "31c3c3f3664e",
+      "827faf59f949",
+      "521f458d1151",
+      "2753bbaad2c5",
+      "c6dd814d869b",
+      "e50af48f68d2",
+      "9d728be121b3",
+      "fa1841dc2db6",
+      "7103c4094464",
+      "fb31c93bee27",
+      "71842fa88ebc",
+      "96a420ecb193",
+      "74eb564d14c0",
+      "3f52bf8d00ef",
+      "0cd314189788",
+      "7c4e4a6771d0",
+      "b2fcba7a7d2f",
+      "93ecc5074ff0",
+      "1e9847efdaec",
+      "ec6a3bd3f04f",
+      "fc605df925f5",
+      "ee4f0555c9c7",
+      "ef6355465c80",
+      "ab6f1ec419ea",
+      "813b1e61aa8b",
+      "1a37a6f373d4",
+      "04af06bbdddb",
+      "eef45aee24ca",
+      "23484716d436",
+      "8e81be13109d",
+      "8b30c885dfa3",
+      "c79b4781136f",
+      "f12d2d685459",
+      "c2e7d4f45b89",
+      "288c0f652874"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 115, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 115, "min": 2350, "mean": 2409.6521739130435, "p50": 2410, "p90": 2440, "max": 2450 },
+    "waitMs": {
+      "n-1-1": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-1-1-1": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-1-1-1-1-1": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-1-1-1-1-2": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-1-1-1-1-3": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-1-1-2": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-1-1-2-1-1": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-1-1-2-1-2": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-1-1-2-1-3": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-1-1-3": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-1-1-3-1-1": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-1-1-3-1-2": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-1-1-3-1-3": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-2": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-2-1-1": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-2-1-1-1-1": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-2-1-1-1-2": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-2-1-1-1-3": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-2-1-2": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-2-1-2-1-1": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-2-1-2-1-2": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-2-1-2-1-3": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-2-1-3": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-2-1-3-1-1": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-2-1-3-1-2": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-2-1-3-1-3": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-3": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-3-1-1": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-3-1-1-1-1": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-3-1-1-1-2": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-3-1-1-1-3": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-3-1-2": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-3-1-2-1-1": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-3-1-2-1-2": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-3-1-2-1-3": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-3-1-3": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-3-1-3-1-1": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-3-1-3-1-2": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "n-1-3-1-3-1-3": { "count": 115, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "n-1-1": { "count": 115, "min": 210, "mean": 255.47826086956522, "p50": 260, "p90": 290, "max": 300 },
+      "n-1-1-1-1": { "count": 115, "min": 210, "mean": 254.43478260869566, "p50": 260, "p90": 290, "max": 300 },
+      "n-1-1-1-1-1-1": { "count": 115, "min": 40, "mean": 44.869565217391305, "p50": 40, "p90": 50, "max": 50 },
+      "n-1-1-1-1-1-2": { "count": 115, "min": 40, "mean": 45.56521739130435, "p50": 50, "p90": 50, "max": 50 },
+      "n-1-1-1-1-1-3": { "count": 115, "min": 40, "mean": 45.04347826086956, "p50": 50, "p90": 50, "max": 50 },
+      "n-1-1-1-2": { "count": 115, "min": 210, "mean": 253.7391304347826, "p50": 260, "p90": 300, "max": 300 },
+      "n-1-1-1-2-1-1": { "count": 115, "min": 40, "mean": 44.95652173913044, "p50": 40, "p90": 50, "max": 50 },
+      "n-1-1-1-2-1-2": { "count": 115, "min": 40, "mean": 44.869565217391305, "p50": 40, "p90": 50, "max": 50 },
+      "n-1-1-1-2-1-3": { "count": 115, "min": 40, "mean": 45.04347826086956, "p50": 50, "p90": 50, "max": 50 },
+      "n-1-1-1-3": { "count": 115, "min": 210, "mean": 253.30434782608697, "p50": 250, "p90": 290, "max": 300 },
+      "n-1-1-1-3-1-1": { "count": 115, "min": 40, "mean": 45.30434782608695, "p50": 50, "p90": 50, "max": 50 },
+      "n-1-1-1-3-1-2": { "count": 115, "min": 40, "mean": 45.47826086956522, "p50": 50, "p90": 50, "max": 50 },
+      "n-1-1-1-3-1-3": { "count": 115, "min": 40, "mean": 45.04347826086956, "p50": 50, "p90": 50, "max": 50 },
+      "n-1-2": { "count": 115, "min": 210, "mean": 251.04347826086956, "p50": 250, "p90": 300, "max": 300 },
+      "n-1-2-1-1": { "count": 115, "min": 210, "mean": 254.43478260869566, "p50": 250, "p90": 290, "max": 300 },
+      "n-1-2-1-1-1-1": { "count": 115, "min": 40, "mean": 45.30434782608695, "p50": 50, "p90": 50, "max": 50 },
+      "n-1-2-1-1-1-2": { "count": 115, "min": 40, "mean": 45.04347826086956, "p50": 50, "p90": 50, "max": 50 },
+      "n-1-2-1-1-1-3": { "count": 115, "min": 40, "mean": 45.391304347826086, "p50": 50, "p90": 50, "max": 50 },
+      "n-1-2-1-2": { "count": 115, "min": 210, "mean": 253.2173913043478, "p50": 250, "p90": 290, "max": 300 },
+      "n-1-2-1-2-1-1": { "count": 115, "min": 40, "mean": 44.34782608695652, "p50": 40, "p90": 50, "max": 50 },
+      "n-1-2-1-2-1-2": { "count": 115, "min": 40, "mean": 44.608695652173914, "p50": 40, "p90": 50, "max": 50 },
+      "n-1-2-1-2-1-3": { "count": 115, "min": 40, "mean": 44.26086956521739, "p50": 40, "p90": 50, "max": 50 },
+      "n-1-2-1-3": { "count": 115, "min": 210, "mean": 251.3913043478261, "p50": 250, "p90": 300, "max": 300 },
+      "n-1-2-1-3-1-1": { "count": 115, "min": 40, "mean": 44.78260869565217, "p50": 40, "p90": 50, "max": 50 },
+      "n-1-2-1-3-1-2": { "count": 115, "min": 40, "mean": 45.04347826086956, "p50": 50, "p90": 50, "max": 50 },
+      "n-1-2-1-3-1-3": { "count": 115, "min": 40, "mean": 45.04347826086956, "p50": 50, "p90": 50, "max": 50 },
+      "n-1-3": { "count": 115, "min": 210, "mean": 252.52173913043478, "p50": 250, "p90": 290, "max": 300 },
+      "n-1-3-1-1": { "count": 115, "min": 210, "mean": 248.69565217391303, "p50": 250, "p90": 290, "max": 300 },
+      "n-1-3-1-1-1-1": { "count": 115, "min": 40, "mean": 44.34782608695652, "p50": 40, "p90": 50, "max": 50 },
+      "n-1-3-1-1-1-2": { "count": 115, "min": 40, "mean": 44.95652173913044, "p50": 40, "p90": 50, "max": 50 },
+      "n-1-3-1-1-1-3": { "count": 115, "min": 40, "mean": 44.78260869565217, "p50": 40, "p90": 50, "max": 50 },
+      "n-1-3-1-2": { "count": 115, "min": 210, "mean": 256.4347826086956, "p50": 260, "p90": 300, "max": 300 },
+      "n-1-3-1-2-1-1": { "count": 115, "min": 40, "mean": 44.95652173913044, "p50": 40, "p90": 50, "max": 50 },
+      "n-1-3-1-2-1-2": { "count": 115, "min": 40, "mean": 44.08695652173913, "p50": 40, "p90": 50, "max": 50 },
+      "n-1-3-1-2-1-3": { "count": 115, "min": 40, "mean": 44.869565217391305, "p50": 40, "p90": 50, "max": 50 },
+      "n-1-3-1-3": { "count": 115, "min": 210, "mean": 255.47826086956522, "p50": 260, "p90": 290, "max": 300 },
+      "n-1-3-1-3-1-1": { "count": 115, "min": 40, "mean": 46, "p50": 50, "p90": 50, "max": 50 },
+      "n-1-3-1-3-1-2": { "count": 115, "min": 40, "mean": 45.30434782608695, "p50": 50, "p90": 50, "max": 50 },
+      "n-1-3-1-3-1-3": { "count": 115, "min": 40, "mean": 44.95652173913044, "p50": 40, "p90": 50, "max": 50 }
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "all": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "shared-database:billing-db",
+          "rule": "shared-database",
+          "severity": "warning",
+          "title": "Billing uses Order service's database",
+          "message": "orders-db sits in Orders team with Order service, which uses it. Billing, outside Orders team, goes to it directly: a change to its tables now has to ship in both.",
+          "targets": ["billing-db", "billing", "db", "orders"],
+          "fix": {
+            "label": "Ask Order service instead",
+            "ops": [
+              { "op": "connect", "from": "billing", "to": "orders", "kind": "sync", "key": "ask-orders-1", "label": "Read order totals" },
+              { "op": "remove", "targets": ["billing-db"] }
+            ]
+          }
+        }
+      ],
+      "summary": "1 warning, 1 suggestion.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding. fix.others are other ways to make the same change: if the person prefers one, send its ops instead.",
+      "more": "1 more finding omitted; call check_diagram with rules to see them."
+    }
+  },
+  "warnings": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "shared-database:billing-db",
+          "rule": "shared-database",
+          "severity": "warning",
+          "title": "Billing uses Order service's database",
+          "message": "orders-db sits in Orders team with Order service, which uses it. Billing, outside Orders team, goes to it directly: a change to its tables now has to ship in both.",
+          "targets": ["billing-db", "billing", "db", "orders"],
+          "fix": {
+            "label": "Ask Order service instead",
+            "ops": [
+              { "op": "connect", "from": "billing", "to": "orders", "kind": "sync", "key": "ask-orders-1", "label": "Read order totals" },
+              { "op": "remove", "targets": ["billing-db"] }
+            ]
+          }
+        }
+      ],
+      "summary": "1 warning, 1 suggestion.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  },
+  "oneRule": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 2 checks ran." } }
+}

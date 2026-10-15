@@ -1,0 +1,69 @@
+{
+  "withIcons": {
+    "sha256": "d1075f80a5e321cd41edc8bfc781a819ce3e1e668c390213a18f94201fa4eb3f",
+    "bytes": 132798,
+    "inlined": { "kafka.topic": "kafka 81e432d1da74c5fe", "service.node": "nodejs ad81b1a87b698cc5" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Edge sides",
+        "description": "sourceSide × targetSide: all 16 combinations.",
+        "nodes": [
+          { "id": "tt-a", "stencil": "service.node", "label": "top →", "sublabel": "from top", "x": 40, "y": 40 },
+          { "id": "tt-b", "stencil": "kafka.topic", "label": "→ top", "sublabel": "to top", "x": 340, "y": 150 },
+          { "id": "tr-a", "stencil": "service.node", "label": "top →", "sublabel": "from top", "x": 680, "y": 40 },
+          { "id": "tr-b", "stencil": "kafka.topic", "label": "→ right", "sublabel": "to right", "x": 980, "y": 150 },
+          { "id": "tb-a", "stencil": "service.node", "label": "top →", "sublabel": "from top", "x": 1320, "y": 40 },
+          { "id": "tb-b", "stencil": "kafka.topic", "label": "→ bottom", "sublabel": "to bottom", "x": 1620, "y": 150 },
+          { "id": "tl-a", "stencil": "service.node", "label": "top →", "sublabel": "from top", "x": 1960, "y": 40 },
+          { "id": "tl-b", "stencil": "kafka.topic", "label": "→ left", "sublabel": "to left", "x": 2260, "y": 150 },
+          { "id": "rt-a", "stencil": "service.node", "label": "right →", "sublabel": "from right", "x": 40, "y": 340 },
+          { "id": "rt-b", "stencil": "kafka.topic", "label": "→ top", "sublabel": "to top", "x": 340, "y": 450 },
+          { "id": "rr-a", "stencil": "service.node", "label": "right →", "sublabel": "from right", "x": 680, "y": 340 },
+          { "id": "rr-b", "stencil": "kafka.topic", "label": "→ right", "sublabel": "to right", "x": 980, "y": 450 },
+          { "id": "rb-a", "stencil": "service.node", "label": "right →", "sublabel": "from right", "x": 1320, "y": 340 },
+          { "id": "rb-b", "stencil": "kafka.topic", "label": "→ bottom", "sublabel": "to bottom", "x": 1620, "y": 450 },
+          { "id": "rl-a", "stencil": "service.node", "label": "right →", "sublabel": "from right", "x": 1960, "y": 340 },
+          { "id": "rl-b", "stencil": "kafka.topic", "label": "→ left", "sublabel": "to left", "x": 2260, "y": 450 },
+          { "id": "bt-a", "stencil": "service.node", "label": "bottom →", "sublabel": "from bottom", "x": 40, "y": 640 },
+          { "id": "bt-b", "stencil": "kafka.topic", "label": "→ top", "sublabel": "to top", "x": 340, "y": 750 },
+          { "id": "br-a", "stencil": "service.node", "label": "bottom →", "sublabel": "from bottom", "x": 680, "y": 640 },
+          { "id": "br-b", "stencil": "kafka.topic", "label": "→ right", "sublabel": "to right", "x": 980, "y": 750 },
+          { "id": "bb-a", "stencil": "service.node", "label": "bottom →", "sublabel": "from bottom", "x": 1320, "y": 640 },
+          { "id": "bb-b", "stencil": "kafka.topic", "label": "→ bottom", "sublabel": "to bottom", "x": 1620, "y": 750 },
+          { "id": "bl-a", "stencil": "service.node", "label": "bottom →", "sublabel": "from bottom", "x": 1960, "y": 640 },
+          { "id": "bl-b", "stencil": "kafka.topic", "label": "→ left", "sublabel": "to left", "x": 2260, "y": 750 },
+          { "id": "lt-a", "stencil": "service.node", "label": "left →", "sublabel": "from left", "x": 40, "y": 940 },
+          { "id": "lt-b", "stencil": "kafka.topic", "label": "→ top", "sublabel": "to top", "x": 340, "y": 1050 },
+          { "id": "lr-a", "stencil": "service.node", "label": "left →", "sublabel": "from left", "x": 680, "y": 940 },
+          { "id": "lr-b", "stencil": "kafka.topic", "label": "→ right", "sublabel": "to right", "x": 980, "y": 1050 },
+          { "id": "lb-a", "stencil": "service.node", "label": "left →", "sublabel": "from left", "x": 1320, "y": 940 },
+          { "id": "lb-b", "stencil": "kafka.topic", "label": "→ bottom", "sublabel": "to bottom", "x": 1620, "y": 1050 },
+          { "id": "ll-a", "stencil": "service.node", "label": "left →", "sublabel": "from left", "x": 1960, "y": 940 },
+          { "id": "ll-b", "stencil": "kafka.topic", "label": "→ left", "sublabel": "to left", "x": 2260, "y": 1050 }
+        ],
+        "edges": [
+          { "id": "side-tt", "from": "tt-a", "to": "tt-b", "label": "top→top", "kind": "async", "sourceSide": "top", "targetSide": "top" },
+          { "id": "side-tr", "from": "tr-a", "to": "tr-b", "label": "top→right", "kind": "async", "sourceSide": "top", "targetSide": "right" },
+          { "id": "side-tb", "from": "tb-a", "to": "tb-b", "label": "top→bottom", "kind": "async", "sourceSide": "top", "targetSide": "bottom" },
+          { "id": "side-tl", "from": "tl-a", "to": "tl-b", "label": "top→left", "kind": "async", "sourceSide": "top", "targetSide": "left" },
+          { "id": "side-rt", "from": "rt-a", "to": "rt-b", "label": "right→top", "kind": "async", "sourceSide": "right", "targetSide": "top" },
+          { "id": "side-rr", "from": "rr-a", "to": "rr-b", "label": "right→right", "kind": "async", "sourceSide": "right", "targetSide": "right" },
+          { "id": "side-rb", "from": "rb-a", "to": "rb-b", "label": "right→bottom", "kind": "async", "sourceSide": "right", "targetSide": "bottom" },
+          { "id": "side-rl", "from": "rl-a", "to": "rl-b", "label": "right→left", "kind": "async", "sourceSide": "right", "targetSide": "left" },
+          { "id": "side-bt", "from": "bt-a", "to": "bt-b", "label": "bottom→top", "kind": "async", "sourceSide": "bottom", "targetSide": "top" },
+          { "id": "side-br", "from": "br-a", "to": "br-b", "label": "bottom→right", "kind": "async", "sourceSide": "bottom", "targetSide": "right" },
+          { "id": "side-bb", "from": "bb-a", "to": "bb-b", "label": "bottom→bottom", "kind": "async", "sourceSide": "bottom", "targetSide": "bottom" },
+          { "id": "side-bl", "from": "bl-a", "to": "bl-b", "label": "bottom→left", "kind": "async", "sourceSide": "bottom", "targetSide": "left" },
+          { "id": "side-lt", "from": "lt-a", "to": "lt-b", "label": "left→top", "kind": "async", "sourceSide": "left", "targetSide": "top" },
+          { "id": "side-lr", "from": "lr-a", "to": "lr-b", "label": "left→right", "kind": "async", "sourceSide": "left", "targetSide": "right" },
+          { "id": "side-lb", "from": "lb-a", "to": "lb-b", "label": "left→bottom", "kind": "async", "sourceSide": "left", "targetSide": "bottom" },
+          { "id": "side-ll", "from": "ll-a", "to": "ll-b", "label": "left→left", "kind": "async", "sourceSide": "left", "targetSide": "left" }
+        ]
+      }
+    }
+  ]
+}

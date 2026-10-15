@@ -1,0 +1,214 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "devices": { "replicas": [1, 1, 0] },
+        "topic": { "lag": { "topic-fast": 0, "topic-slow": 0 }, "replicas": [1, 1, 0] },
+        "fast": { "replicas": [1, 1, 0] },
+        "slow": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 57,
+      "nodes": {
+        "devices": { "processed": 60, "throughput": 6.50149458286941, "replicas": [1, 1, 0] },
+        "topic": {
+          "processed": 58,
+          "backlog": 49,
+          "throughput": 6.288426216780301,
+          "lag": { "topic-fast": 0, "topic-slow": 49 },
+          "replicas": [1, 1, 0]
+        },
+        "fast": { "processed": 55, "inFlight": 1, "throughput": 5.657915567649732, "replicas": [1, 1, 0] },
+        "slow": { "processed": 6, "backlog": 2, "inFlight": 1, "throughput": 0.8111563241692312, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 111,
+      "nodes": {
+        "devices": { "processed": 120, "throughput": 6.501789750266822, "replicas": [1, 1, 0] },
+        "topic": {
+          "processed": 118,
+          "backlog": 103,
+          "throughput": 6.288824651091408,
+          "lag": { "topic-fast": 0, "topic-slow": 103 },
+          "replicas": [1, 1, 0]
+        },
+        "fast": { "processed": 115, "inFlight": 1, "throughput": 5.595126430440789, "replicas": [1, 1, 0] },
+        "slow": { "processed": 12, "backlog": 2, "inFlight": 1, "throughput": 0.3584686937372583, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 164,
+      "nodes": {
+        "devices": { "processed": 180, "throughput": 6.501789763667403, "replicas": [1, 1, 0] },
+        "topic": {
+          "processed": 178,
+          "backlog": 156,
+          "throughput": 6.288824669180301,
+          "lag": { "topic-fast": 0, "topic-slow": 156 },
+          "replicas": [1, 1, 0]
+        },
+        "fast": { "processed": 175, "inFlight": 1, "throughput": 5.591880089853886, "replicas": [1, 1, 0] },
+        "slow": { "processed": 19, "backlog": 2, "inFlight": 1, "throughput": 0.7822205077847902, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 218,
+      "nodes": {
+        "devices": { "processed": 240, "throughput": 6.501789763668005, "replicas": [1, 1, 0] },
+        "topic": {
+          "processed": 238,
+          "backlog": 210,
+          "throughput": 6.288824669181117,
+          "lag": { "topic-fast": 0, "topic-slow": 210 },
+          "replicas": [1, 1, 0]
+        },
+        "fast": { "processed": 235, "inFlight": 1, "throughput": 5.638129621509294, "replicas": [1, 1, 0] },
+        "slow": { "processed": 25, "backlog": 2, "inFlight": 1, "throughput": 0.7774335698074746, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 272,
+      "nodes": {
+        "devices": { "processed": 300, "throughput": 6.501789763668005, "replicas": [1, 1, 0] },
+        "topic": {
+          "processed": 298,
+          "backlog": 264,
+          "throughput": 6.288824669181117,
+          "lag": { "topic-fast": 0, "topic-slow": 264 },
+          "replicas": [1, 1, 0]
+        },
+        "fast": { "processed": 295, "inFlight": 1, "throughput": 5.618050155152828, "replicas": [1, 1, 0] },
+        "slow": { "processed": 31, "backlog": 2, "inFlight": 1, "throughput": 0.2274608227303776, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 325,
+      "nodes": {
+        "devices": { "processed": 360, "throughput": 6.501789763668005, "replicas": [1, 1, 0] },
+        "topic": {
+          "processed": 358,
+          "backlog": 317,
+          "throughput": 6.288824669181117,
+          "lag": { "topic-fast": 0, "topic-slow": 317 },
+          "replicas": [1, 1, 0]
+        },
+        "fast": { "processed": 355, "inFlight": 1, "throughput": 5.601039569227296, "replicas": [1, 1, 0] },
+        "slow": { "processed": 38, "backlog": 2, "inFlight": 1, "throughput": 0.6485731779965812, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 325,
+    "real": {
+      "devices": { "processed": 360, "throughput": 6.501789763668005, "replicas": [1, 1, 0] },
+      "topic": {
+        "processed": 358,
+        "backlog": 317,
+        "throughput": 6.288824669181117,
+        "lag": { "topic-fast": 0, "topic-slow": 317 },
+        "replicas": [1, 1, 0]
+      },
+      "fast": { "processed": 355, "inFlight": 1, "throughput": 5.601039569227296, "replicas": [1, 1, 0] },
+      "slow": { "processed": 38, "backlog": 2, "inFlight": 1, "throughput": 0.6485731779965812, "replicas": [1, 1, 0] }
+    },
+    "edges": { "devices-topic": 358, "topic-fast": 356, "topic-slow": 41 }
+  },
+  "events": {
+    "total": 1866,
+    "byKind": { "process": 1111, "deliver": 755 },
+    "byNode": {
+      "devices": { "process": 360 },
+      "topic": { "deliver": 358, "process": 358 },
+      "fast": { "deliver": 356, "process": 355 },
+      "slow": { "deliver": 41, "process": 38 }
+    },
+    "perSecond": [
+      "5025bf219969",
+      "8fe3a61ae6ec",
+      "4c15fe1e21bd",
+      "68174e06f8aa",
+      "5bff78bb22f5",
+      "7bc4bc638cee",
+      "a5d336248189",
+      "e60b34f7efc6",
+      "7a2a41c16940",
+      "ff607f9e17fb",
+      "5049d4ac33c8",
+      "c1b781cfbcc0",
+      "deaa3ec754c8",
+      "cb64a0137006",
+      "346c3dc44146",
+      "7eb0688a83b1",
+      "19749a807b96",
+      "7b0d6376b3b5",
+      "f9729246f91f",
+      "d73c4fd479f6",
+      "cc7854805912",
+      "a67eede56bf6",
+      "58db111949a6",
+      "4bd32165a069",
+      "678609c6b4ce",
+      "61c9fb60ef8d",
+      "b44987ac5101",
+      "0aafa3527678",
+      "8e872b2c065f",
+      "3e65924248d3",
+      "eeb843b78f6d",
+      "b5ca483e0897",
+      "73e4e2cd2245",
+      "27ee4e9f449e",
+      "20ec5364d319",
+      "745754c95b00",
+      "2ef5d9065de9",
+      "b54bf234faea",
+      "0373863dff9a",
+      "cb6409379cf3",
+      "3fb5336286d9",
+      "3e65188b5b52",
+      "ad1296a1d190",
+      "e3480e3c05a4",
+      "719b24bf6bda",
+      "1c82ac930eb1",
+      "2d9edf14514e",
+      "1e3bd4e9e09f",
+      "a5f3f6c815ac",
+      "4b55bace63e8",
+      "eb4a8828dcc8",
+      "657b265e42a1",
+      "65ce796dbdef",
+      "1c815e9b6e58",
+      "efa16f851c21",
+      "f89c16386e47",
+      "1ddc903245e2",
+      "bb8e1b90efee",
+      "205ccb534d04",
+      "4328e03458b9",
+      "eb8739c7a40e"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 31, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 31, "min": 1840, "mean": 24872.90322580645, "p50": 22380, "p90": 47330, "max": 53000 },
+    "waitMs": {
+      "fast": { "count": 31, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "slow": { "count": 31, "min": 0, "mean": 2599.032258064516, "p50": 2690, "p90": 3080, "max": 3130 }
+    },
+    "processMs": {
+      "fast": { "count": 31, "min": 70, "mean": 87.74193548387096, "p50": 90, "p90": 100, "max": 100 },
+      "slow": { "count": 31, "min": 1240, "mean": 1540.3225806451612, "p50": 1590, "p90": 1760, "max": 1800 }
+    }
+  }
+}

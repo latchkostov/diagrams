@@ -1,0 +1,373 @@
+{
+  "file": { "sha256": "30e28534aa4893adb237e353ea2eb32c4560e7679f32485f53006d302ae35f41", "bytes": 38228 },
+  "payload": {
+    "version": 1,
+    "diagram": {
+      "format": "diagrams/v1",
+      "title": "RAG support assistant",
+      "description": "Changed docs are chunked and embedded into a vector index; questions retrieve context for an LLM, and ratings feed an eval loop.",
+      "direction": "LR",
+      "nodes": [
+        {
+          "id": "user",
+          "stencil": "client.browser",
+          "label": "Help center chat",
+          "sublabel": "Customers ask questions",
+          "x": 40,
+          "y": 160,
+          "props": { "ratePerSec": 2, "messageType": "Question" }
+        },
+        {
+          "id": "rag-api",
+          "stencil": "service.python",
+          "label": "RAG API",
+          "sublabel": "Retrieve · prompt · stream",
+          "x": 420,
+          "y": 160,
+          "props": { "concurrency": 200, "latencyMs": 120 }
+        },
+        {
+          "id": "cache",
+          "stencil": "redis.cache",
+          "label": "Semantic cache",
+          "sublabel": "Similar question → answer",
+          "x": 420,
+          "y": 320,
+          "props": { "latencyMs": 1 }
+        },
+        {
+          "id": "feedback",
+          "stencil": "kafka.topic",
+          "label": "rag.feedback",
+          "sublabel": "Answers + ratings",
+          "x": 800,
+          "y": 40,
+          "props": { "partitions": 6 }
+        },
+        {
+          "id": "llm",
+          "stencil": "anthropic.claude",
+          "label": "Claude API",
+          "sublabel": "Answers with citations",
+          "x": 800,
+          "y": 160,
+          "props": { "concurrency": 200, "latencyMs": 1800 }
+        },
+        {
+          "id": "vector-db",
+          "stencil": "generic.vector-db",
+          "label": "Vector index",
+          "sublabel": "pgvector · HNSW",
+          "x": 800,
+          "y": 320,
+          "props": { "latencyMs": 1 }
+        },
+        {
+          "id": "eval-job",
+          "stencil": "generic.batch-job",
+          "label": "Eval job",
+          "sublabel": "LLM-as-judge · group: evals",
+          "x": 1180,
+          "y": 40,
+          "props": { "concurrency": 20, "latencyMs": 300, "emits": "EvalScore" }
+        },
+        {
+          "id": "quality",
+          "stencil": "grafana",
+          "label": "Answer quality",
+          "sublabel": "Groundedness · thumbs up",
+          "x": 1560,
+          "y": 40,
+          "props": {}
+        },
+        {
+          "id": "docs",
+          "stencil": "generic.webhook",
+          "label": "Content updates",
+          "sublabel": "Confluence · Drive webhooks",
+          "x": 40,
+          "y": 480,
+          "props": { "ratePerSec": 0.2, "messageType": "PageChanged" }
+        },
+        {
+          "id": "ingest-q",
+          "stencil": "generic.queue",
+          "label": "Ingest jobs",
+          "sublabel": "One job per changed page",
+          "x": 420,
+          "y": 480,
+          "props": { "maxDeliveryCount": 5 }
+        },
+        {
+          "id": "embed-worker",
+          "stencil": "service.python",
+          "label": "Chunk and embed",
+          "sublabel": "~800 tokens · 100 overlap",
+          "x": 800,
+          "y": 480,
+          "props": { "replicas": 4, "concurrency": 4, "latencyMs": 200, "emits": "ChunkVectors" }
+        },
+        {
+          "id": "embeddings",
+          "stencil": "openai",
+          "label": "Embeddings API",
+          "sublabel": "text-embedding-3-large",
+          "x": 1180,
+          "y": 480,
+          "props": { "concurrency": 400, "latencyMs": 150 }
+        },
+        { "id": "vault", "stencil": "vault", "label": "Vault", "sublabel": "LLM API keys", "x": 1180, "y": 320 }
+      ],
+      "edges": [
+        {
+          "id": "user-to-rag-api",
+          "from": "user",
+          "to": "rag-api",
+          "label": "POST /ask",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "rag-api-to-cache",
+          "from": "rag-api",
+          "to": "cache",
+          "label": "Cache lookup",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "rag-api-to-vector-db",
+          "from": "rag-api",
+          "to": "vector-db",
+          "label": "Top-k chunks",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "rag-api-to-llm",
+          "from": "rag-api",
+          "to": "llm",
+          "label": "Prompt + context",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "rag-api-to-feedback",
+          "from": "rag-api",
+          "to": "feedback",
+          "label": "Rated answers",
+          "kind": "async",
+          "props": { "travelMs": 300, "share": 0.25, "emits": "AnswerRated" }
+        },
+        {
+          "id": "feedback-to-eval-job",
+          "from": "feedback",
+          "to": "eval-job",
+          "label": "group: evals",
+          "kind": "async",
+          "props": { "travelMs": 300, "group": "evals" }
+        },
+        {
+          "id": "eval-job-to-llm",
+          "from": "eval-job",
+          "to": "llm",
+          "label": "Grade answer",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "eval-job-to-quality",
+          "from": "eval-job",
+          "to": "quality",
+          "label": "Scores",
+          "kind": "async",
+          "props": { "travelMs": 300 }
+        },
+        {
+          "id": "docs-to-ingest-q",
+          "from": "docs",
+          "to": "ingest-q",
+          "label": "Page changed",
+          "kind": "async",
+          "props": { "travelMs": 300 }
+        },
+        {
+          "id": "ingest-q-to-embed-worker",
+          "from": "ingest-q",
+          "to": "embed-worker",
+          "label": "Competing workers",
+          "kind": "async",
+          "props": { "travelMs": 300 }
+        },
+        {
+          "id": "embed-worker-to-embeddings",
+          "from": "embed-worker",
+          "to": "embeddings",
+          "label": "Embed batch",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        {
+          "id": "embed-worker-to-vector-db",
+          "from": "embed-worker",
+          "to": "vector-db",
+          "label": "Upsert chunks",
+          "kind": "sync",
+          "props": { "travelMs": 200 }
+        },
+        { "id": "rag-api-to-vault", "from": "rag-api", "to": "vault", "kind": "async", "relation": "secret", "sourceSide": "bottom", "targetSide": "top" },
+        { "id": "embed-worker-to-vault", "from": "embed-worker", "to": "vault", "kind": "async", "relation": "secret", "sourceSide": "right", "targetSide": "bottom" }
+      ],
+      "simulations": [
+        {
+          "id": "launch-day",
+          "title": "Launch day questions",
+          "description": "Questions climb to 40 a second after a product launch; a quarter of answers are rated and graded.",
+          "seed": 7,
+          "scale": 1,
+          "traffic": [
+            {
+              "id": "questions",
+              "node": "user",
+              "messageType": "Question",
+              "label": "Questions ramp from 5 to 40 a second",
+              "shape": {
+                "kind": "ramp",
+                "startRate": 5,
+                "stages": [{ "durationMs": 4000, "targetRate": 40 }, { "durationMs": 4000, "targetRate": 40 }]
+              }
+            }
+          ],
+          "timeline": [
+            { "atMs": 0, "action": { "do": "trace", "node": "rag-api" } },
+            {
+              "atMs": 0,
+              "action": { "do": "note", "text": "Each question checks the semantic cache, retrieves the closest chunks from the vector index, and sends them to the LLM as context.", "focus": ["rag-api", "cache", "vector-db", "llm"], "pause": true }
+            },
+            {
+              "atMs": 3000,
+              "action": { "do": "note", "text": "Generation is the slow step, about two seconds. Plenty of requests in flight keeps throughput up while each answer streams.", "focus": ["llm"] }
+            },
+            {
+              "atMs": 6000,
+              "action": { "do": "note", "text": "About a quarter of answers get a rating. An eval job asks the LLM to grade them for groundedness, and the scores feed a dashboard.", "focus": ["feedback", "eval-job", "quality"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "retrieved",
+              "label": "Every question retrieves context",
+              "metric": { "node": "vector-db", "field": "processed" },
+              "op": "==",
+              "value": 250,
+              "when": "end"
+            },
+            {
+              "id": "rated",
+              "label": "Rated answers are graded",
+              "metric": { "node": "quality", "field": "processed" },
+              "op": ">",
+              "value": 30,
+              "when": "end"
+            },
+            {
+              "id": "llm-keeps-up",
+              "label": "Nothing is dropped",
+              "metric": { "node": "llm", "field": "dropped" },
+              "op": "==",
+              "value": 0,
+              "when": "always"
+            }
+          ]
+        },
+        {
+          "id": "reindex",
+          "title": "Re-index the knowledge base",
+          "description": "A docs migration changes 1,200 pages at once; the ingest queue absorbs them while questions are still answered.",
+          "seed": 7,
+          "scale": 4,
+          "traffic": [
+            {
+              "id": "questions",
+              "node": "user",
+              "messageType": "Question",
+              "label": "Questions: 20 a second",
+              "shape": { "kind": "constant", "ratePerSec": 20, "durationMs": 12000 }
+            },
+            {
+              "id": "migration",
+              "node": "docs",
+              "messageType": "PageChanged",
+              "label": "1,200 pages change at once",
+              "shape": { "kind": "burst", "count": 1200, "atMs": 1000, "spreadMs": 1000 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 1000,
+              "action": { "do": "note", "text": "A docs migration touches 1,200 pages at once. The queue takes them all; four workers embed about 80 pages a second. Each dot is four messages.", "focus": ["docs", "ingest-q", "embed-worker"], "pause": true }
+            },
+            {
+              "atMs": 5000,
+              "action": { "do": "note", "text": "Questions are still answered while the backlog drains. The index gets fresher page by page.", "focus": ["rag-api", "vector-db"] }
+            },
+            {
+              "atMs": 11000,
+              "action": { "do": "note", "text": "The queue is empty and every page is re-embedded. Nothing was lost, even though the burst outran the workers.", "focus": ["ingest-q", "embeddings", "vector-db"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "backlog",
+              "label": "The queue absorbs the burst",
+              "metric": { "node": "ingest-q", "field": "lag" },
+              "op": ">",
+              "value": 0,
+              "when": "at",
+              "atMs": 4000
+            },
+            {
+              "id": "drained",
+              "label": "Every job finishes",
+              "metric": { "node": "ingest-q", "field": "lag" },
+              "op": "==",
+              "value": 0,
+              "when": "end"
+            },
+            {
+              "id": "embedded",
+              "label": "1,200 pages re-embedded",
+              "metric": { "node": "embeddings", "field": "processed" },
+              "op": "==",
+              "value": 1200,
+              "when": "end"
+            },
+            {
+              "id": "index",
+              "label": "Index: 1,200 upserts + 240 searches",
+              "metric": { "node": "vector-db", "field": "processed" },
+              "op": "==",
+              "value": 1440,
+              "when": "end"
+            }
+          ]
+        }
+      ]
+    },
+    "icons": {
+      "claude": { "sha256": "92c8e8294c0794c7ff878c9daad755274023883a9d0288fd78342420a02063d1", "bytes": 2217 },
+      "client-browser": { "sha256": "c66b629864dc684d451c1c280107fe74cdd69ffb9d17be64673c90c7c92434f7", "bytes": 476 },
+      "generic-batch-job": { "sha256": "c5e8748f24bb852e0fc782d36cb9a95bf4b4333cc0313a228b980298f041c2ee", "bytes": 732 },
+      "generic-queue": { "sha256": "63feee04fc08e8f77f5087efc0c1a72b5963c15b40f2a5c4205b280b773ea54c", "bytes": 543 },
+      "generic-vector-db": { "sha256": "525a0c2baf3ad1ef492fc149b5faba6a704432980113d1a82f8ddd455188185f", "bytes": 616 },
+      "generic-webhook": { "sha256": "f73d0eda19274f25a80e339ef1119c82f8aed73222085462017cf001b6c0ebed", "bytes": 595 },
+      "grafana": { "sha256": "47b2cb370fb846522ea552fc41a39ffb273b24d0a7fe51dd73342e3c1b78b090", "bytes": 6627 },
+      "kafka": { "sha256": "938a96212aef8da520eca3435f23c1a3304ce25fbfaf0e5712ce548353abc5ef", "bytes": 4092 },
+      "openai": { "sha256": "b5abb28ccb95207d8d9df053abb48d32e2ca0b49da7eb6438405a1b1810eee3a", "bytes": 1940 },
+      "python": { "sha256": "24ad742e3267f1dbf1cdd067693d7972380f3982a63e0142dd2f6e2a08bde610", "bytes": 1797 },
+      "redis": { "sha256": "985d03e20de4a6caf7eccc34ba6b73e2a5bab3aa1dc1b0d3e0613b5342a1e30e", "bytes": 3257 },
+      "vault": { "sha256": "85504d51abd2458c156b7b65ae6590805bc10bf64065272705bb9cdd0f7eb7e5", "bytes": 549 }
+    },
+    "options": { "theme": "light", "startSimulation": "launch-day", "exportedOn": "2026-01-01" }
+  }
+}

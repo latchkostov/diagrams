@@ -1,0 +1,47 @@
+---
+title: Outbox and saga checkout
+---
+flowchart LR
+  subgraph g_kafka ["Kafka · saga channels"]
+    inventory_cmds["inventory.commands<br/>Reserve · Release"]
+    saga_replies["saga.replies<br/>Step results"]
+    payment_cmds["payments.commands<br/>ChargePayment"]
+    payments_dlq["payments.commands.dlq<br/>Dead letters · replayable"]
+  end
+  client(["Mobile checkout<br/>Place order"])
+  order_api["Order service<br/>Owns order state"]
+  orders_db[("Orders database<br/>orders + outbox table")]
+  outbox_relay["Outbox relay<br/>Debezium outbox router"]
+  order_events["orders.events<br/>key: orderId"]
+  notifications["Notification service<br/>group: notifications"]
+  email(["SendGrid<br/>Receipts"])
+  saga["Checkout saga<br/>Orchestrator · group: saga"]
+  saga_db[("Saga state<br/>One row per checkout")]
+  inventory_svc["Inventory service<br/>group: inventory"]
+  payment_svc["Payment service<br/>group: payments"]
+  inventory_db[("Inventory database<br/>Reservations by orderId")]
+  stripe(["Stripe<br/>Payment intents"])
+  vault["Vault<br/>Stripe API key"]
+  client -->|"POST /orders"| order_api
+  order_api -->|"Order + outbox, one tx"| orders_db
+  orders_db -.->|"WAL"| outbox_relay
+  outbox_relay -.->|"Outbox events"| order_events
+  order_events -.->|"OrderCreated"| saga
+  order_events -.->|"Confirmed · Cancelled"| notifications
+  notifications -->|"Send email"| email
+  saga -->|"Persist step"| saga_db
+  saga -.->|"Reserve / Release"| inventory_cmds
+  saga -.->|"ChargePayment"| payment_cmds
+  saga -.->|"Confirm / Cancel"| order_api
+  inventory_cmds -.-> inventory_svc
+  inventory_svc -->|"Reserve stock"| inventory_db
+  inventory_svc -.->|"Reserved / Released"| saga_replies
+  payment_cmds -.-> payment_svc
+  payment_cmds -.->|"After 5 attempts"| payments_dlq
+  payment_svc -->|"Idempotency-Key"| stripe
+  payment_svc -.->|"Captured / Declined"| saga_replies
+  saga_replies -.->|"Next step"| saga
+  payment_svc -.->|"reads secrets"| vault
+  linkStyle 2,3,4,5,8,9,10,11,13,14,15,17,18 stroke-dasharray: 6 4
+  linkStyle 19 stroke:#A6720C,stroke-width:1.25px,stroke-dasharray: 2 4
+%% diagrams:{"v":1,"description":"A transactional outbox publishes order events; a saga orchestrates inventory and payment, compensating when a step fails.","nodes":{"client":["client","client.mobile"],"order_api":["order-api","service.dotnet"],"orders_db":["orders-db","postgres"],"outbox_relay":["outbox-relay","kafka.connect"],"order_events":["order-events","kafka.topic"],"notifications":["notifications","service.node"],"email":["email","sendgrid"],"saga":["saga","generic.saga"],"saga_db":["saga-db","postgres"],"inventory_cmds":["inventory-cmds","kafka.topic"],"saga_replies":["saga-replies","kafka.topic"],"payment_cmds":["payment-cmds","kafka.topic"],"payments_dlq":["payments-dlq","kafka.topic"],"inventory_svc":["inventory-svc","service.java"],"payment_svc":["payment-svc","service.go"],"inventory_db":["inventory-db","postgres"],"stripe":["stripe","stripe"],"vault":["vault","vault"]},"groups":{"g_kafka":["kafka","neutral"]},"edges":["client-to-order-api","order-api-to-orders-db","orders-db-to-outbox-relay","outbox-relay-to-order-events","order-events-to-saga","order-events-to-notifications","notifications-to-email","saga-to-saga-db","saga-to-inventory-cmds","saga-to-payment-cmds","saga-to-order-api","inventory-cmds-to-inventory-svc","inventory-svc-to-inventory-db","inventory-svc-to-saga-replies","payment-cmds-to-payment-svc","payment-cmds-to-payments-dlq","payment-svc-to-stripe","payment-svc-to-saga-replies","saga-replies-to-saga","payment-svc-to-vault"],"relations":{"19":"secret"}}

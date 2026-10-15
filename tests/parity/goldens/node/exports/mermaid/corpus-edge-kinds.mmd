@@ -1,0 +1,22 @@
+---
+title: Edge kinds
+---
+flowchart LR
+  async_a["async source"]
+  async_b["async target"]
+  sync_a["sync source"]
+  sync_b["sync target"]
+  labelled_a["labelled source"]
+  labelled_b["labelled target"]
+  long_label_a["long-label source"]
+  long_label_b["long-label target"]
+  bi_a["bidirectional A"]
+  bi_b["bidirectional B"]
+  async_a -.-> async_b
+  sync_a --> sync_b
+  labelled_a -.->|"OrderPlaced"| labelled_b
+  long_label_a -->|"POST /orders/{id}/payments (idempotent, retries ×3)"| long_label_b
+  bi_a -->|"request"| bi_b
+  bi_b -.->|"callback"| bi_a
+  linkStyle 0,2,5 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"async (dashed), sync (solid), labels, and a two-way pair.","nodes":{"async_a":["async-a","service.node"],"async_b":["async-b","kafka.topic"],"sync_a":["sync-a","aws.api-gateway"],"sync_b":["sync-b","service.java"],"labelled_a":["labelled-a","service.go"],"labelled_b":["labelled-b","aws.sqs"],"long_label_a":["long-label-a","azure.api-management"],"long_label_b":["long-label-b","azure.functions"],"bi_a":["bi-a","service.python"],"bi_b":["bi-b","service.dotnet"]},"edges":["edge-async","edge-sync","edge-labelled","edge-long-label","bi-ab","bi-ba"],"relations":{}}

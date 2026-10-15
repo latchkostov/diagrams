@@ -1,0 +1,10 @@
+---
+title: Complete export fixture
+---
+flowchart TB
+  subgraph g_zone ["Zone"]
+    source(["Client<br/>Requests"])
+    worker["Worker<br/>API"]
+  end
+  source -->|"Call"| worker
+%% diagrams:{"v":1,"description":"All saved fields","nodes":{"source":["source","client.browser"],"worker":["worker","service.go"]},"groups":{"g_zone":["zone","neutral"]},"edges":["request"],"relations":{}}

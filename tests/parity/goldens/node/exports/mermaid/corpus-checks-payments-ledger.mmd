@@ -1,0 +1,19 @@
+---
+title: Payments ledger
+---
+flowchart LR
+  web(["Checkout"])
+  api["Payments API<br/>Charges cards"]
+  payments["payments.v1<br/>Avro · key: orderId"]
+  ledger["Ledger writer"]
+  db[("Ledger<br/>One entry per payment")]
+  kv["payments-kv<br/>Stripe and ledger keys"]
+  web -->|"POST /payments"| api
+  api -.->|"PaymentTaken"| payments
+  payments -.-> ledger
+  ledger --> db
+  api -.->|"reads secrets"| kv
+  ledger -.->|"reads secrets"| kv
+  linkStyle 1,2 stroke-dasharray: 6 4
+  linkStyle 4,5 stroke:#A6720C,stroke-width:1.25px,stroke-dasharray: 2 4
+%% diagrams:{"v":1,"description":"Checkout takes a payment through the Payments API, which publishes it to Kafka as Avro; the ledger writer records it. Both read their keys from Key Vault.","nodes":{"web":["web","client.browser"],"api":["api","azure.container-apps"],"payments":["payments","kafka.topic"],"ledger":["ledger","azure.functions"],"db":["db","azure.cosmos-db"],"kv":["kv","azure.key-vault"]},"edges":["web-api","api-payments","payments-ledger","ledger-db","api-kv","ledger-kv"],"relations":{"4":"secret","5":"secret"}}

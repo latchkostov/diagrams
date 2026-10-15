@@ -1,0 +1,26 @@
+---
+title: "OrderRowChanged #2 · 6.43 s end to end · 3 copies"
+---
+sequenceDiagram
+  participant sql as Retail SQL Server
+  participant debezium as Debezium SQL Server
+  participant orders_topic as retail.dbo.orders
+  participant registry as CDC schemas
+  participant processor as Retail projections
+  participant s3_sink as S3 sink connector
+  participant search as Retail search
+  participant warehouse as Retail warehouse
+  participant lake as Retail raw lake
+  sql-)debezium: OrderRowChanged (+0.04 s)<br/>CDC · transaction log
+  debezium-)orders_topic: OrderRowChanged (+0.48 s)<br/>Order row changes
+  debezium->>registry: OrderRowChanged (+0.48 s)<br/>Register schema
+  registry-->>debezium: reply (+0.68 s)
+  orders_topic-)processor: OrderRowChanged (+0.78 s)<br/>group: retail-projector
+  orders_topic-)s3_sink: OrderRowChanged (+0.78 s)<br/>group: retail-raw-sink
+  processor->>search: SearchDocument (+1.24 s)<br/>Bulk index / delete
+  processor->>warehouse: WarehouseRow (+1.24 s)<br/>Batch MERGE
+  s3_sink->>lake: OrderRowChanged (+1.25 s)<br/>PutObject · Parquet
+  warehouse-->>processor: reply (+1.49 s)
+  lake-->>s3_sink: reply (+1.50 s)
+  Note over sql,lake: ⏱ 4.73 s at Retail search: processing
+  search-->>processor: reply (+6.43 s)

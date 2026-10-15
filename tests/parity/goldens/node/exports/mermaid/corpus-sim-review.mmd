@@ -1,0 +1,11 @@
+---
+title: Delivery losses
+---
+flowchart LR
+  web(["Web"])
+  q["orders"]
+  worker["Worker"]
+  web -.-> q
+  q -.-> worker
+  linkStyle 0,1 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"nodes":{"web":["web","client.browser"],"q":["q","aws.sqs"],"worker":["worker","service.go"]},"edges":["web-q","q-worker"],"relations":{}}

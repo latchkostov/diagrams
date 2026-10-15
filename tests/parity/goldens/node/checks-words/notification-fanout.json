@@ -1,0 +1,56 @@
+{
+  "summary": "0 warnings, 4 suggestions.",
+  "findings": {
+    "dead-letter:email-q": {
+      "title": "email has no dead-letter queue",
+      "message": "If Email sender can't handle a message, it's dropped after 3 deliveries. A command queue is where losing messages hurts most.",
+      "rationale": "A message that keeps failing is redelivered up to the broker's delivery limit, then goes to the broker's dead-letter route, or is dropped when there isn't one (or its filter doesn't take the message). A dead-letter queue keeps it to inspect and replay.",
+      "fix": { "label": "Add dead-letter queue" }
+    },
+    "dead-letter:sms-q": {
+      "title": "sms has no dead-letter queue",
+      "message": "If SMS rate limiter can't handle a message, it's dropped after 3 deliveries. A command queue is where losing messages hurts most.",
+      "rationale": "A message that keeps failing is redelivered up to the broker's delivery limit, then goes to the broker's dead-letter route, or is dropped when there isn't one (or its filter doesn't take the message). A dead-letter queue keeps it to inspect and replay.",
+      "fix": { "label": "Add dead-letter queue" }
+    },
+    "dead-letter:push-q": {
+      "title": "push has no dead-letter queue",
+      "message": "If Push sender can't handle a message, it's dropped after 3 deliveries. A command queue is where losing messages hurts most.",
+      "rationale": "A message that keeps failing is redelivered up to the broker's delivery limit, then goes to the broker's dead-letter route, or is dropped when there isn't one (or its filter doesn't take the message). A dead-letter queue keeps it to inspect and replay.",
+      "fix": { "label": "Add dead-letter queue" }
+    },
+    "secret-identity:key-vault": {
+      "title": "2 services read secrets without an identity",
+      "message": "Email sender and SMS rate limiter read secrets from notify-kv, but the diagram doesn't say what they sign in as. With a managed identity, they get in with no stored credential to leak or rotate.",
+      "rationale": "A service needs a credential to open a vault, and one stored with the service is just one more secret. A workload identity (an Azure managed identity, an AWS IAM role, a Google Cloud service account) signs it in with nothing to store or rotate, and one per service gives each only the access it needs (least privilege).",
+      "fix": {
+        "label": "Add managed identities",
+        "options": [{ "label": "Add one shared managed identity", "short": "One shared identity" }]
+      }
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "dead-letter:email-q",
+        "rule": "dead-letter",
+        "severity": "suggestion",
+        "title": "email has no dead-letter queue",
+        "message": "If Email sender can't handle a message, it's dropped after 3 deliveries. A command queue is where losing messages hurts most.",
+        "targets": ["email-q", "email-sender"],
+        "fix": {
+          "label": "Add dead-letter queue",
+          "ops": [
+            { "op": "add_node", "kind": "azure.service-bus.queue", "label": "email DLQ", "sublabel": "$DeadLetterQueue", "key": "new-dlq" },
+            { "op": "connect", "from": "email-q", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
+            { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
+          ]
+        }
+      }
+    ],
+    "summary": "0 warnings, 4 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding.",
+    "more": "3 more findings omitted; call check_diagram with rules to see them."
+  },
+  "agentReportWarnings": { "findings": [], "summary": "0 warnings, 4 suggestions." }
+}

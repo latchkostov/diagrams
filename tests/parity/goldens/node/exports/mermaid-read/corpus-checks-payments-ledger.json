@@ -1,0 +1,24 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Payments ledger",
+    "direction": "LR",
+    "nodes": [
+      { "id": "web", "stencil": "generic.service", "label": "Checkout", "x": 40, "y": 100 },
+      { "id": "api", "stencil": "generic.service", "label": "Payments API", "sublabel": "Charges cards", "x": 409, "y": 100 },
+      { "id": "payments", "stencil": "generic.service", "label": "payments.v1", "sublabel": "Avro · key: orderId", "x": 769, "y": 100 },
+      { "id": "ledger", "stencil": "generic.service", "label": "Ledger writer", "x": 1129, "y": 100 },
+      { "id": "db", "stencil": "generic.database", "label": "Ledger", "sublabel": "One entry per payment", "x": 1489, "y": 40 },
+      { "id": "kv", "stencil": "generic.service", "label": "payments-kv", "sublabel": "Stripe and ledger keys", "x": 1489, "y": 160 }
+    ],
+    "edges": [
+      { "id": "e1-web-api", "from": "web", "to": "api", "label": "POST /payments", "kind": "sync" },
+      { "id": "e2-api-payments", "from": "api", "to": "payments", "label": "PaymentTaken", "kind": "async" },
+      { "id": "e3-payments-ledger", "from": "payments", "to": "ledger", "kind": "async" },
+      { "id": "e4-ledger-db", "from": "ledger", "to": "db", "kind": "sync" },
+      { "id": "e5-api-kv", "from": "api", "to": "kv", "kind": "async", "relation": "secret" },
+      { "id": "e6-ledger-kv", "from": "ledger", "to": "kv", "kind": "async", "relation": "secret" }
+    ]
+  }
+}

@@ -1,0 +1,798 @@
+{
+  "steps": [
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "topic-1",
+            "label": "parity.events",
+            "stencil": { "id": "kafka.topic", "label": "Kafka Topic", "confidence": "high", "alternatives": ["pulsar.topic", "confluent.cloud", "aws.msk"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-1", "from": "billing-webhooks", "to": "topic-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+2 nodes, +2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "dotnet-1",
+            "label": "Parity reader",
+            "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-2", "from": "topic-1", "to": "dotnet-1" },
+          {
+            "i": 2,
+            "op": "add_node",
+            "id": "key-vault-1",
+            "label": "Parity secrets",
+            "stencil": { "id": "azure.key-vault", "label": "Key Vault", "confidence": "high", "alternatives": [] }
+          },
+          { "i": 3, "op": "connect", "id": "e-3", "from": "dotnet-1", "to": "key-vault-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +2 connections, −1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "insert_between",
+            "id": "queue-1",
+            "label": "buffer",
+            "stencil": { "id": "rabbitmq.queue", "label": "RabbitMQ Queue", "confidence": "high", "alternatives": ["aws.mq"] },
+            "from": "billing-webhooks",
+            "to": "webhook-receiver"
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "update", "id": "storefront" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "update",
+            "id": "accounts-db",
+            "stencil": { "id": "aws.lambda", "label": "AWS Lambda", "confidence": "high", "alternatives": [] }
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 boundary, 2 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_boundary", "id": "boundary-1", "label": "Parity zone" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 note",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_note", "id": "note-1" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "title or direction changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "set_meta" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "−1 node, −2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "remove", "ids": ["dotnet-1", "e-2", "e-3"] }]
+      }
+    },
+    {
+      "isError": true,
+      "output": {
+        "ok": false,
+        "i": 0,
+        "error": "Unknown reference \"no-such-node\".",
+        "ref": "no-such-node",
+        "candidates": [
+          { "id": "billing-webhooks", "label": "Billing webhooks", "stencil": "generic.webhook" },
+          { "id": "storefront", "label": "Renamed by parity", "stencil": "client.browser" },
+          { "id": "accounts-db", "label": "Accounts database", "stencil": "aws.lambda" },
+          { "id": "segment-cache", "label": "Segment cache", "stencil": "redis.cache" },
+          { "id": "webhook-receiver", "label": "Webhook receiver", "stencil": "service.node" },
+          { "id": "checkout", "label": "Checkout service", "stencil": "service.go" },
+          { "id": "debezium", "label": "Debezium connector", "stencil": "debezium" },
+          { "id": "personalization", "label": "Personalization service", "stencil": "service.java" },
+          { "id": "marketing", "label": "Marketing automation", "stencil": "generic.marketing" },
+          { "id": "billing-topic", "label": "billing.invoices.v1", "stencil": "kafka.topic" },
+          { "id": "orders-topic", "label": "orders.v1", "stencil": "kafka.topic" },
+          { "id": "accounts-topic", "label": "cdc.accounts.v1", "stencil": "kafka.topic" },
+          { "id": "segments-topic", "label": "customer-segments.v1", "stencil": "kafka.topic" },
+          { "id": "schema-registry", "label": "Schema registry", "stencil": "kafka.schema-registry" },
+          { "id": "snowpipe", "label": "Snowflake connector", "stencil": "snowflake.snowpipe" },
+          { "id": "reverse-etl", "label": "Reverse ETL", "stencil": "generic.reverse-etl" },
+          { "id": "raw", "label": "Raw tables", "stencil": "snowflake" },
+          { "id": "marts", "label": "Marts", "stencil": "snowflake" },
+          { "id": "airflow", "label": "Airflow", "stencil": "airflow" },
+          { "id": "dbt", "label": "dbt models", "stencil": "dbt" }
+        ],
+        "hint": "Use an id from candidates, or call describe_diagram.",
+        "applied": false
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "dryRun": true,
+        "summary": "+1 node",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "postgres-1",
+            "label": "Dry run only",
+            "stencil": { "id": "postgres", "label": "PostgreSQL", "confidence": "high", "alternatives": ["gcp.cloud-sql", "aws.aurora", "supabase"] }
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "isError": false,
+      "output": { "ok": true, "id": "sim-1", "title": "Parity rush", "summary": "Added simulation \"Parity rush\": 4 traffic, 2 events, 1 expectations.", "undo": "One undo step reverts this call.", "play": "The user plays it in live view (L), or from the command palette." }
+    },
+    {
+      "isError": true,
+      "output": { "ok": false, "error": "constant traffic needs ratePerSec.", "hint": "Check the input against the tool's schema and try again." }
+    }
+  ],
+  "applied": [
+    { "tool": "edit_diagram", "summary": "+1 node, +1 connection", "changed": ["topic-1", "e-1"] },
+    {
+      "tool": "edit_diagram",
+      "summary": "+2 nodes, +2 connections",
+      "changed": ["dotnet-1", "key-vault-1", "e-2", "e-3"],
+      "choices": [
+        {
+          "nodeId": "dotnet-1",
+          "kind": ".NET consumer",
+          "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] },
+          "node": {
+            "id": "dotnet-1",
+            "stencil": "service.dotnet",
+            "label": "Parity reader",
+            "x": 640,
+            "y": 752,
+            "props": { "replicas": 3 }
+          }
+        }
+      ]
+    },
+    { "tool": "edit_diagram", "summary": "+1 node, +2 connections, −1 connection", "changed": ["queue-1", "e-4", "e-5"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["storefront"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["accounts-db"] },
+    { "tool": "edit_diagram", "summary": "+1 boundary, 2 changed", "changed": ["boundary-1", "billing-webhooks", "storefront"] },
+    { "tool": "edit_diagram", "summary": "+1 note", "changed": ["note-1"] },
+    { "tool": "edit_diagram", "summary": "title or direction changed", "changed": [] },
+    { "tool": "edit_diagram", "summary": "−1 node, −2 connections", "changed": [] },
+    { "tool": "set_simulation", "summary": "Added simulation “Parity rush”", "changed": ["billing-webhooks"] }
+  ],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Parity edit",
+    "description": "Operational events stream through Kafka into Snowflake; dbt builds marts and reverse ETL publishes segments back to Kafka.",
+    "direction": "TB",
+    "groups": [
+      { "id": "kafka", "label": "Kafka · Confluent Cloud", "tone": "neutral", "x": 760, "y": 40, "width": 340, "height": 592 },
+      { "id": "snowflake", "label": "Snowflake · ANALYTICS", "tone": "neutral", "x": 1520, "y": 160, "width": 340, "height": 392 },
+      { "id": "boundary-1", "label": "Parity zone", "tone": "neutral", "x": 0, "y": 16, "width": 308, "height": 296 }
+    ],
+    "nodes": [
+      {
+        "id": "billing-webhooks",
+        "stencil": "generic.webhook",
+        "label": "Billing webhooks",
+        "sublabel": "Stripe · invoice.paid",
+        "x": 40,
+        "y": 80,
+        "props": { "ratePerSec": 5, "messageType": "InvoicePaid" },
+        "group": "boundary-1"
+      },
+      {
+        "id": "storefront",
+        "stencil": "client.browser",
+        "label": "Renamed by parity",
+        "sublabel": "Web and mobile checkout",
+        "x": 40,
+        "y": 200,
+        "props": { "ratePerSec": 20, "messageType": "CheckoutRequest", "latencyMs": 120 },
+        "group": "boundary-1"
+      },
+      {
+        "id": "accounts-db",
+        "stencil": "aws.lambda",
+        "label": "Accounts database",
+        "sublabel": "OLTP · logical replication",
+        "x": 40,
+        "y": 320,
+        "props": { "messageType": "AccountChanged", "latencyMs": 2 }
+      },
+      {
+        "id": "segment-cache",
+        "stencil": "redis.cache",
+        "label": "Segment cache",
+        "sublabel": "customerId → segments",
+        "x": 40,
+        "y": 520,
+        "props": { "latencyMs": 2 }
+      },
+      {
+        "id": "webhook-receiver",
+        "stencil": "service.node",
+        "label": "Webhook receiver",
+        "sublabel": "Verify signature · ack 200",
+        "x": 420,
+        "y": 80,
+        "props": { "concurrency": 64, "latencyMs": 80 }
+      },
+      {
+        "id": "checkout",
+        "stencil": "service.go",
+        "label": "Checkout service",
+        "sublabel": "Commits order · publishes",
+        "x": 420,
+        "y": 200,
+        "props": { "concurrency": 64, "latencyMs": 120, "emits": "OrderPlaced" }
+      },
+      {
+        "id": "debezium",
+        "stencil": "debezium",
+        "label": "Debezium connector",
+        "sublabel": "Postgres WAL → events",
+        "x": 420,
+        "y": 320,
+        "props": { "ratePerSec": 10, "messageType": "AccountChanged" }
+      },
+      {
+        "id": "personalization",
+        "stencil": "service.java",
+        "label": "Personalization service",
+        "sublabel": "Next-best offer",
+        "x": 420,
+        "y": 520,
+        "props": { "group": "personalization", "concurrency": 64, "latencyMs": 100 }
+      },
+      {
+        "id": "marketing",
+        "stencil": "generic.marketing",
+        "label": "Marketing automation",
+        "sublabel": "Braze · campaigns",
+        "x": 420,
+        "y": 640,
+        "props": { "group": "marketing-sync" }
+      },
+      {
+        "id": "billing-topic",
+        "stencil": "kafka.topic",
+        "label": "billing.invoices.v1",
+        "sublabel": "key: customerId",
+        "x": 800,
+        "y": 80,
+        "group": "kafka",
+        "props": { "partitions": 6 }
+      },
+      {
+        "id": "orders-topic",
+        "stencil": "kafka.topic",
+        "label": "orders.v1",
+        "sublabel": "key: orderId",
+        "x": 800,
+        "y": 200,
+        "group": "kafka",
+        "props": { "partitions": 6 }
+      },
+      {
+        "id": "accounts-topic",
+        "stencil": "kafka.topic",
+        "label": "cdc.accounts.v1",
+        "sublabel": "Debezium · key: accountId",
+        "x": 800,
+        "y": 320,
+        "group": "kafka",
+        "props": { "partitions": 6 }
+      },
+      {
+        "id": "segments-topic",
+        "stencil": "kafka.topic",
+        "label": "customer-segments.v1",
+        "sublabel": "key: customerId",
+        "x": 800,
+        "y": 520,
+        "group": "kafka",
+        "props": { "partitions": 6 }
+      },
+      {
+        "id": "schema-registry",
+        "stencil": "kafka.schema-registry",
+        "label": "Schema registry",
+        "sublabel": "Avro · backward compatible",
+        "x": 1166,
+        "y": 80,
+        "props": { "compatibility": "BACKWARD" }
+      },
+      {
+        "id": "snowpipe",
+        "stencil": "snowflake.snowpipe",
+        "label": "Snowflake connector",
+        "sublabel": "Snowpipe Streaming",
+        "x": 1180,
+        "y": 200,
+        "props": {
+          "group": "snowflake-sink",
+          "replicas": 6,
+          "concurrency": 4,
+          "latencyMs": 40,
+          "emits": { "OrderPlaced": "RawOrderRow", "InvoicePaid": "RawInvoiceRow", "AccountChanged": "RawAccountRow" }
+        }
+      },
+      {
+        "id": "reverse-etl",
+        "stencil": "generic.reverse-etl",
+        "label": "Reverse ETL",
+        "sublabel": "Hightouch · diffs only",
+        "x": 1180,
+        "y": 520,
+        "props": { "concurrency": 400, "latencyMs": 1500, "emits": "CustomerSegmentChanged" }
+      },
+      {
+        "id": "raw",
+        "stencil": "snowflake",
+        "label": "Raw tables",
+        "sublabel": "RAW.KAFKA_* · VARIANT",
+        "x": 1560,
+        "y": 200,
+        "group": "snowflake",
+        "props": { "latencyMs": 1 }
+      },
+      {
+        "id": "marts",
+        "stencil": "snowflake",
+        "label": "Marts",
+        "sublabel": "Segments · revenue · orders",
+        "x": 1560,
+        "y": 440,
+        "group": "snowflake",
+        "props": { "latencyMs": 1 }
+      },
+      { "id": "airflow", "stencil": "airflow", "label": "Airflow", "sublabel": "dbt build · every 15 min", "x": 1932, "y": 80 },
+      {
+        "id": "dbt",
+        "stencil": "dbt",
+        "label": "dbt models",
+        "sublabel": "Incremental models",
+        "x": 1940,
+        "y": 320,
+        "props": {
+          "concurrency": 3000,
+          "latencyMs": 2500,
+          "emits": { "RawOrderRow": "CustomerSegmentRow", "RawInvoiceRow": "RevenueRow", "RawAccountRow": "CustomerRow" }
+        }
+      },
+      {
+        "id": "bi",
+        "stencil": "tableau",
+        "label": "Revenue dashboards",
+        "sublabel": "Tableau · live",
+        "x": 1940,
+        "y": 560,
+        "props": {}
+      },
+      { "id": "topic-1", "stencil": "kafka.topic", "label": "parity.events", "x": 340, "y": 416 },
+      { "id": "key-vault-1", "stencil": "azure.key-vault", "label": "Parity secrets", "x": 40, "y": -56 },
+      { "id": "queue-1", "stencil": "rabbitmq.queue", "label": "buffer", "x": 340, "y": 752 }
+    ],
+    "edges": [
+      {
+        "id": "storefront-to-checkout",
+        "from": "storefront",
+        "to": "checkout",
+        "label": "POST /checkout",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "accounts-db-to-debezium",
+        "from": "accounts-db",
+        "to": "debezium",
+        "label": "WAL",
+        "kind": "async",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "webhook-receiver-to-billing-topic",
+        "from": "webhook-receiver",
+        "to": "billing-topic",
+        "label": "InvoicePaid",
+        "kind": "async",
+        "props": { "travelMs": 300 }
+      },
+      {
+        "id": "checkout-to-orders-topic",
+        "from": "checkout",
+        "to": "orders-topic",
+        "label": "OrderPlaced",
+        "kind": "async",
+        "props": { "travelMs": 300 }
+      },
+      {
+        "id": "debezium-to-accounts-topic",
+        "from": "debezium",
+        "to": "accounts-topic",
+        "label": "AccountChanged",
+        "kind": "async",
+        "props": { "travelMs": 300 }
+      },
+      {
+        "id": "billing-topic-to-snowpipe",
+        "from": "billing-topic",
+        "to": "snowpipe",
+        "kind": "async",
+        "props": { "travelMs": 300, "group": "snowflake-sink" }
+      },
+      {
+        "id": "orders-topic-to-snowpipe",
+        "from": "orders-topic",
+        "to": "snowpipe",
+        "label": "group: snowflake-sink",
+        "kind": "async",
+        "props": { "travelMs": 300, "group": "snowflake-sink" }
+      },
+      {
+        "id": "accounts-topic-to-snowpipe",
+        "from": "accounts-topic",
+        "to": "snowpipe",
+        "kind": "async",
+        "props": { "travelMs": 300, "group": "snowflake-sink" }
+      },
+      { "id": "snowpipe-to-schema-registry", "from": "snowpipe", "to": "schema-registry", "label": "Avro schemas", "kind": "async", "relation": "depends", "sourceSide": "top", "targetSide": "bottom" },
+      {
+        "id": "snowpipe-to-raw",
+        "from": "snowpipe",
+        "to": "raw",
+        "label": "insertRows",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "raw-to-dbt",
+        "from": "raw",
+        "to": "dbt",
+        "label": "New rows",
+        "kind": "async",
+        "props": { "travelMs": 300, "filter": ["Raw*"] }
+      },
+      { "id": "airflow-to-dbt", "from": "airflow", "to": "dbt", "label": "dbt build", "kind": "async", "relation": "depends", "sourceSide": "bottom", "targetSide": "top" },
+      {
+        "id": "dbt-to-marts",
+        "from": "dbt",
+        "to": "marts",
+        "label": "MERGE models",
+        "kind": "sync",
+        "props": { "travelMs": 200, "filter": ["CustomerSegmentRow", "RevenueRow", "CustomerRow"] }
+      },
+      {
+        "id": "bi-to-marts",
+        "from": "bi",
+        "to": "marts",
+        "label": "Live queries",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "marts-to-reverse-etl",
+        "from": "marts",
+        "to": "reverse-etl",
+        "label": "Changed segments",
+        "kind": "async",
+        "props": { "travelMs": 300, "filter": ["CustomerSegmentRow"] }
+      },
+      {
+        "id": "reverse-etl-to-segments-topic",
+        "from": "reverse-etl",
+        "to": "segments-topic",
+        "label": "Segment changes",
+        "kind": "async",
+        "props": { "travelMs": 300 }
+      },
+      {
+        "id": "segments-topic-to-personalization",
+        "from": "segments-topic",
+        "to": "personalization",
+        "label": "group: personalization",
+        "kind": "async",
+        "props": { "travelMs": 300, "group": "personalization" }
+      },
+      {
+        "id": "segments-topic-to-marketing",
+        "from": "segments-topic",
+        "to": "marketing",
+        "label": "group: marketing-sync",
+        "kind": "async",
+        "props": { "travelMs": 300, "group": "marketing-sync" }
+      },
+      {
+        "id": "personalization-to-segment-cache",
+        "from": "personalization",
+        "to": "segment-cache",
+        "label": "SET segments",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      { "id": "e-1", "from": "billing-webhooks", "to": "topic-1", "kind": "async" },
+      {
+        "id": "e-4",
+        "from": "billing-webhooks",
+        "to": "queue-1",
+        "kind": "sync",
+        "label": "HTTPS · signed",
+        "props": { "travelMs": 200 }
+      },
+      { "id": "e-5", "from": "queue-1", "to": "webhook-receiver", "kind": "sync", "props": { "travelMs": 200 } }
+    ],
+    "simulations": [
+      {
+        "id": "one-order",
+        "title": "Follow one order end to end",
+        "description": "One checkout travels through Kafka, Snowflake and dbt, then comes back out as a segment change.",
+        "seed": 7,
+        "scale": 1,
+        "traffic": [
+          {
+            "id": "order",
+            "node": "storefront",
+            "messageType": "CheckoutRequest",
+            "label": "One checkout",
+            "shape": { "kind": "burst", "count": 1 }
+          }
+        ],
+        "timeline": [
+          { "atMs": 0, "action": { "do": "trace", "node": "checkout" } },
+          {
+            "atMs": 0,
+            "action": { "do": "note", "text": "A shopper checks out. Follow this one order through Kafka, Snowflake and dbt, and back out to Kafka as a segment change.", "focus": ["storefront", "checkout", "orders-topic"], "pause": true }
+          },
+          {
+            "atMs": 1000,
+            "action": { "do": "note", "text": "The Snowflake Kafka connector streams the event into a RAW table within about a second. There is no nightly batch window.", "focus": ["orders-topic", "snowpipe", "raw"] }
+          },
+          {
+            "atMs": 2600,
+            "action": { "do": "note", "text": "dbt's incremental models turn the raw row into marts. This order moves the customer into a new segment.", "focus": ["raw", "dbt", "marts"] }
+          },
+          {
+            "atMs": 5600,
+            "action": { "do": "note", "text": "Reverse ETL compares the mart with its last sync and publishes only the changed row to customer-segments.v1.", "focus": ["marts", "reverse-etl", "segments-topic"] }
+          },
+          {
+            "atMs": 8000,
+            "action": { "do": "note", "text": "Personalization and the marketing tool consume the change like any other event, each in its own consumer group.", "focus": ["segments-topic", "personalization", "marketing"], "pause": true }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "raw",
+            "label": "The order lands in RAW",
+            "metric": { "node": "raw", "field": "processed" },
+            "op": "==",
+            "value": 1,
+            "when": "end"
+          },
+          {
+            "id": "marts",
+            "label": "dbt builds it into the marts",
+            "metric": { "node": "marts", "field": "processed" },
+            "op": "==",
+            "value": 1,
+            "when": "end"
+          },
+          {
+            "id": "cache",
+            "label": "Personalization caches the new segment",
+            "metric": { "node": "segment-cache", "field": "processed" },
+            "op": "==",
+            "value": 1,
+            "when": "end"
+          },
+          {
+            "id": "marketing",
+            "label": "The marketing tool receives it",
+            "metric": { "node": "marketing", "field": "processed" },
+            "op": "==",
+            "value": 1,
+            "when": "end"
+          }
+        ]
+      },
+      {
+        "id": "load-spike",
+        "title": "Warehouse load spike",
+        "description": "Month-end invoices spike to 600/s on top of steady orders and CDC; Kafka absorbs the burst while the loader catches up.",
+        "seed": 7,
+        "scale": 20,
+        "traffic": [
+          {
+            "id": "orders",
+            "node": "storefront",
+            "messageType": "CheckoutRequest",
+            "label": "Steady orders: 200/s",
+            "shape": { "kind": "constant", "ratePerSec": 200, "durationMs": 10000 }
+          },
+          {
+            "id": "invoices",
+            "node": "billing-webhooks",
+            "messageType": "InvoicePaid",
+            "label": "Month-end invoices peak at 600/s",
+            "shape": { "kind": "spike", "baseRate": 20, "peakRate": 600, "atMs": 3000, "peakMs": 3000, "durationMs": 10000 }
+          },
+          {
+            "id": "accounts",
+            "node": "accounts-db",
+            "messageType": "AccountChanged",
+            "label": "Account changes: 50/s",
+            "shape": { "kind": "constant", "ratePerSec": 50, "durationMs": 10000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 0,
+            "action": { "do": "note", "text": "Orders, invoices and account changes all stream into Snowflake. Each dot is 20 events. The connector loads about 600 rows a second.", "focus": ["orders-topic", "billing-topic", "accounts-topic", "snowpipe"] }
+          },
+          {
+            "atMs": 3000,
+            "action": { "do": "note", "text": "Month-end: invoice webhooks jump to 600 a second. The loader falls behind, and Kafka absorbs the burst as consumer lag.", "focus": ["billing-webhooks", "billing-topic", "snowpipe"], "pause": true }
+          },
+          {
+            "atMs": 6500,
+            "action": { "do": "note", "text": "Producers never slowed down. Once the spike passes, the connector drains the lag and RAW catches up.", "focus": ["snowpipe", "raw"] }
+          },
+          {
+            "atMs": 9000,
+            "action": { "do": "note", "text": "Only order-driven segment changes flow back out through reverse ETL. Invoices and account rows stay in the marts.", "focus": ["marts", "reverse-etl", "segments-topic"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "lag",
+            "label": "The loader falls behind during the spike",
+            "metric": { "node": "billing-topic", "field": "lag", "group": "snowflake-sink" },
+            "op": ">",
+            "value": 0,
+            "when": "at",
+            "atMs": 5500
+          },
+          {
+            "id": "drained",
+            "label": "Lag drains to zero",
+            "metric": { "node": "billing-topic", "field": "lag", "group": "snowflake-sink" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          },
+          {
+            "id": "raw",
+            "label": "All 4,440 events land in RAW",
+            "metric": { "node": "raw", "field": "processed" },
+            "op": "==",
+            "value": 4440,
+            "when": "end"
+          },
+          {
+            "id": "no-drop",
+            "label": "Nothing is dropped",
+            "metric": { "node": "billing-topic", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "always"
+          },
+          {
+            "id": "segments",
+            "label": "2,000 segment changes reach marketing",
+            "metric": { "node": "marketing", "field": "processed" },
+            "op": "==",
+            "value": 2000,
+            "when": "end"
+          }
+        ]
+      },
+      {
+        "id": "sim-1",
+        "title": "Parity rush",
+        "durationMs": 20000,
+        "traffic": [
+          {
+            "id": "traffic-1",
+            "node": "billing-webhooks",
+            "shape": { "kind": "constant", "ratePerSec": 20, "fromMs": 0, "durationMs": 10000 }
+          },
+          {
+            "id": "traffic-2",
+            "node": "billing-webhooks",
+            "shape": { "kind": "burst", "count": 50, "atMs": 5000, "spreadMs": 2000 },
+            "messageType": "ParityBurst"
+          },
+          {
+            "id": "traffic-3",
+            "node": "billing-webhooks",
+            "shape": {
+              "kind": "ramp",
+              "fromMs": 0,
+              "startRate": 1,
+              "stages": [{ "durationMs": 8000, "targetRate": 30 }]
+            }
+          },
+          {
+            "id": "traffic-4",
+            "node": "billing-webhooks",
+            "shape": { "kind": "spike", "baseRate": 5, "peakRate": 40, "atMs": 12000, "peakMs": 1000, "durationMs": 4000 }
+          }
+        ],
+        "timeline": [
+          { "atMs": 6000, "action": { "do": "status", "node": "accounts-db", "status": "down" } },
+          { "atMs": 6000, "action": { "do": "note", "text": "It goes down", "focus": ["accounts-db"] } }
+        ],
+        "expectations": [
+          {
+            "id": "expectation-1",
+            "label": "Nothing dropped",
+            "metric": { "node": "accounts-db", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ],
+        "scale": 2
+      }
+    ],
+    "annotations": [
+      { "id": "note-1", "kind": "note", "text": "Pinned by the parity harness", "x": 2246, "y": 200, "width": 240, "height": 160 }
+    ]
+  }
+}

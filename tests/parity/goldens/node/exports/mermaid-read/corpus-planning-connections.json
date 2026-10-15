@@ -1,0 +1,24 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Planning: shared capacity",
+    "direction": "LR",
+    "nodes": [
+      { "id": "checkout", "stencil": "generic.service", "label": "Checkout", "x": 40, "y": 100 },
+      { "id": "orders", "stencil": "generic.service", "label": "Orders", "x": 760, "y": 100 },
+      { "id": "topic", "stencil": "generic.topic", "label": "Order events", "x": 400, "y": 40 },
+      { "id": "topic2", "stencil": "generic.service", "label": "Returns", "x": 400, "y": 160 },
+      { "id": "payments", "stencil": "generic.service", "label": "Payments", "x": 1120, "y": 40 },
+      { "id": "queue", "stencil": "generic.service", "label": "Audit", "x": 1120, "y": 160 }
+    ],
+    "edges": [
+      { "id": "e1-checkout-topic", "from": "checkout", "to": "topic", "kind": "async" },
+      { "id": "e2-checkout-topic2", "from": "checkout", "to": "topic2", "kind": "async" },
+      { "id": "e3-topic-orders", "from": "topic", "to": "orders", "kind": "async" },
+      { "id": "e4-topic2-orders", "from": "topic2", "to": "orders", "kind": "async" },
+      { "id": "e5-orders-payments", "from": "orders", "to": "payments", "kind": "sync" },
+      { "id": "e6-orders-queue", "from": "orders", "to": "queue", "kind": "async" }
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+---
+title: Gateway round-robin
+---
+flowchart LR
+  web(["Browser"])
+  gw["API Gateway"]
+  b1["Backend 1"]
+  b2["Backend 2"]
+  b3["Backend 3"]
+  web --> gw
+  gw --> b1
+  gw --> b2
+  gw --> b3

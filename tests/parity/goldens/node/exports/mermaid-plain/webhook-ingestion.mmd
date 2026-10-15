@@ -1,0 +1,35 @@
+---
+title: Webhook ingestion at scale
+---
+flowchart LR
+  subgraph g_k8s ["Kubernetes"]
+    receiver["Webhook receiver<br/>Verify HMAC · 202 fast"]
+    exchange["webhooks<br/>Topic exchange"]
+    replay["Replay tool<br/>Republish on demand"]
+    queue["webhooks.process<br/>Quorum · delivery limit 5"]
+    dlq["webhooks.dlq<br/>Parked after 5 tries"]
+    workers["Webhook workers<br/>Retry with backoff"]
+    vault["Vault<br/>HMAC signing secrets"]
+  end
+  partners(["Partner webhooks<br/>Shopify · Stripe · GitHub"])
+  edge["Cloudflare<br/>WAF · IP allowlists"]
+  raw[("Raw payloads<br/>Kept 30 days for replay")]
+  dedupe[("Seen event IDs<br/>SET NX · TTL 7 days")]
+  integration_db[("Integration database<br/>Orders · products · refunds")]
+  operator(["On-call engineer<br/>Runbook: replay DLQ"])
+  partners -->|"HTTPS POST"| edge
+  edge -->|"/hooks/:partner"| receiver
+  receiver -->|"PUT body"| raw
+  receiver -.->|"Publish"| exchange
+  exchange -.->|"webhook.#"| queue
+  queue -.->|"Prefetch 4"| workers
+  queue -.->|"Dead-letter"| dlq
+  workers -->|"Idempotency check"| dedupe
+  workers -->|"Apply change"| integration_db
+  dlq -.->|"Drain"| replay
+  replay -.->|"Republish"| exchange
+  operator -.->|"depends on: Start replay"| replay
+  receiver -.->|"reads secrets"| vault
+  linkStyle 3,4,5,6,9,10 stroke-dasharray: 6 4
+  linkStyle 11 stroke:#556075,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 12 stroke:#A6720C,stroke-width:1.25px,stroke-dasharray: 2 4

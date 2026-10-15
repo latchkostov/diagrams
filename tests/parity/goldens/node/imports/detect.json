@@ -1,0 +1,20 @@
+{
+  "tests/fixtures/imports/compose/docker-compose.yml": "compose",
+  "tests/fixtures/imports/asyncapi/notifications-2.6.asyncapi.yaml": "asyncapi",
+  "tests/fixtures/imports/asyncapi/orders-service.asyncapi.yaml": "asyncapi",
+  "tests/fixtures/imports/asyncapi/shipping-service.asyncapi.yaml": "asyncapi",
+  "tests/fixtures/imports/k8s/00-namespaces.yaml": "kubernetes",
+  "tests/fixtures/imports/k8s/data.yaml": "kubernetes",
+  "tests/fixtures/imports/k8s/ingress.yaml": "kubernetes",
+  "tests/fixtures/imports/k8s/orders-api.yaml": "kubernetes",
+  "tests/fixtures/imports/k8s/payments-worker.yaml": "kubernetes",
+  "tests/fixtures/imports/terraform/aws-plan.json": "terraform",
+  "tests/fixtures/imports/terraform/azure-state.json": "terraform",
+  "tests/fixtures/imports/hostile/recursive-ref.asyncapi.yaml": "asyncapi",
+  "tests/fixtures/imports/hostile/yaml-bomb.yaml": "compose",
+  "tests/parity/corpus/imports/flowchart.mmd": "mermaid",
+  "tests/parity/corpus/imports/graph-td.mmd": "mermaid",
+  "tests/parity/corpus/imports/not-a-flowchart.mmd": "mermaid",
+  "src/interop/drawio/fixtures/azure-orders.drawio": "drawio",
+  "src/interop/drawio/fixtures/two-pages-compressed.drawio": "drawio"
+}

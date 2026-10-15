@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "web": [40, 100], "q": [400, 100], "worker": [760, 40], "dlq": [760, 160] },
+    "TB": { "web": [180, 40], "q": [180, 200], "dlq": [40, 360], "worker": [320, 360] }
+  },
+  "tidy": { "web": [0, 160], "q": [360, 160], "worker": [720, 100], "dlq": [720, 220] },
+  "arrange": {
+    "alignLeft": { "web": [0, 100], "q": [0, 100], "worker": [0, 100], "dlq": [0, 400] },
+    "alignMiddle": { "web": [0, 250], "q": [400, 250], "worker": [800, 250], "dlq": [400, 250] },
+    "distributeH": { "web": [0, 100], "q": [267, 100], "worker": [800, 100], "dlq": [533, 400] },
+    "distributeV": { "web": [0, 100], "q": [400, 200], "worker": [800, 300], "dlq": [400, 400] },
+    "spreadH": { "web": [0, 100], "q": [400, 100], "worker": [920, 100], "dlq": [660, 100] },
+    "boundaryAround": { "x": -40, "y": 36, "width": 1100, "height": 476 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "web": [40, 100], "q": [400, 100], "worker": [760, 40], "dlq": [760, 160] },
+    "groups": {}
+  }
+}

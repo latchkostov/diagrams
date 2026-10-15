@@ -1,0 +1,52 @@
+{
+  "withIcons": {
+    "sha256": "8530d397f849a21998af7c56a8d236ec8bae0943beababd19827e33e24fa2cca",
+    "bytes": 13129,
+    "inlined": { "client.browser": "client-browser 0022934839e05a07", "generic.queue": "generic-queue e831fa8bafcc6fa3", "generic.service": "generic-service 6ec0da29f56c9e80", "kafka.topic": "kafka 81e432d1da74c5fe", "service.dotnet": "dotnet 625b7d68f63c47d9" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Planning: shared capacity",
+        "nodes": [
+          {
+            "id": "checkout",
+            "stencil": "client.browser",
+            "label": "Checkout",
+            "x": 0,
+            "y": 140,
+            "props": { "ratePerSec": 3 }
+          },
+          {
+            "id": "orders",
+            "stencil": "service.dotnet",
+            "label": "Orders",
+            "x": 640,
+            "y": 140,
+            "props": { "latencyMs": 4000, "jitter": 0 }
+          },
+          { "id": "topic", "stencil": "kafka.topic", "label": "Order events", "x": 320, "y": 20 },
+          { "id": "topic2", "stencil": "azure.service-bus.topic", "label": "Returns", "x": 320, "y": 260 },
+          { "id": "payments", "stencil": "generic.service", "label": "Payments", "x": 960, "y": 140 },
+          { "id": "queue", "stencil": "generic.queue", "label": "Audit", "x": 640, "y": 400 }
+        ],
+        "edges": [
+          { "id": "publish", "from": "checkout", "to": "topic", "kind": "async", "props": { "travelMs": 0 } },
+          { "id": "publish2", "from": "checkout", "to": "topic2", "kind": "async" },
+          {
+            "id": "consume",
+            "from": "topic",
+            "to": "orders",
+            "kind": "async",
+            "props": { "group": "billing", "filter": ["Checkout"] }
+          },
+          { "id": "consume2", "from": "topic2", "to": "orders", "kind": "async", "props": { "group": "returns" } },
+          { "id": "call", "from": "orders", "to": "payments", "kind": "sync" },
+          { "id": "audit", "from": "orders", "to": "queue", "kind": "async", "props": { "emits": "OrderHandled" } }
+        ]
+      }
+    }
+  ]
+}

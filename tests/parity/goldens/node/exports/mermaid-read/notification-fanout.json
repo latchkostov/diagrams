@@ -1,0 +1,45 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Notification fan-out",
+    "direction": "LR",
+    "groups": [
+      { "id": "g_azure", "label": "Azure · notifications", "tone": "azure", "x": 400, "y": 40, "width": 2113, "height": 536 }
+    ],
+    "nodes": [
+      { "id": "shipping", "stencil": "generic.service", "label": "Shipping service", "sublabel": "Publishes OrderShipped", "x": 440, "y": 284, "group": "g_azure" },
+      { "id": "events", "stencil": "generic.topic", "label": "order-events", "sublabel": "Topic", "x": 802, "y": 284, "group": "g_azure" },
+      { "id": "preferences", "stencil": "generic.database", "label": "Preferences", "sublabel": "Channels · quiet hours", "x": 1528, "y": 104, "group": "g_azure" },
+      { "id": "router", "stencil": "generic.email", "label": "Notification router", "sublabel": "sub: notifications", "x": 1162, "y": 284, "group": "g_azure" },
+      { "id": "email_q", "stencil": "generic.email", "label": "email", "sublabel": "~90% opted in", "x": 1528, "y": 224, "group": "g_azure" },
+      { "id": "sms_q", "stencil": "generic.service", "label": "sms", "sublabel": "~30% opted in", "x": 1528, "y": 344, "group": "g_azure" },
+      { "id": "push_q", "stencil": "generic.service", "label": "push", "sublabel": "~70% have the app", "x": 1528, "y": 464, "group": "g_azure" },
+      { "id": "email_sender", "stencil": "generic.email", "label": "Email sender", "sublabel": "Templates · 500/s", "x": 1890, "y": 164, "group": "g_azure" },
+      { "id": "sms_limiter", "stencil": "aws.s3", "label": "SMS rate limiter", "sublabel": "Token bucket · 50/s", "x": 1890, "y": 284, "group": "g_azure" },
+      { "id": "push_sender", "stencil": "generic.service", "label": "Push sender", "sublabel": "Batches of 500", "x": 1890, "y": 404, "group": "g_azure" },
+      { "id": "key_vault", "stencil": "generic.service", "label": "notify-kv", "sublabel": "Provider API keys", "x": 2253, "y": 464, "group": "g_azure" },
+      { "id": "carrier", "stencil": "generic.service", "label": "Carrier tracking", "sublabel": "Parcel scanned", "x": 80, "y": 284 },
+      { "id": "sendgrid", "stencil": "generic.email", "label": "SendGrid", "sublabel": "Email", "x": 2253, "y": 104 },
+      { "id": "twilio", "stencil": "generic.service", "label": "Twilio", "sublabel": "SMS", "x": 2253, "y": 224 },
+      { "id": "push", "stencil": "client.mobile", "label": "FCM and APNs", "sublabel": "Mobile push", "x": 2253, "y": 344 }
+    ],
+    "edges": [
+      { "id": "e1-carrier-shipping", "from": "carrier", "to": "shipping", "label": "Webhook", "kind": "sync" },
+      { "id": "e2-shipping-events", "from": "shipping", "to": "events", "label": "OrderShipped", "kind": "async" },
+      { "id": "e3-events-router", "from": "events", "to": "router", "label": "Subscription", "kind": "async" },
+      { "id": "e4-router-preferences", "from": "router", "to": "preferences", "label": "Read preferences", "kind": "sync" },
+      { "id": "e5-router-email_q", "from": "router", "to": "email_q", "label": "If email", "kind": "async" },
+      { "id": "e6-router-sms_q", "from": "router", "to": "sms_q", "label": "If SMS", "kind": "async" },
+      { "id": "e7-router-push_q", "from": "router", "to": "push_q", "label": "If push", "kind": "async" },
+      { "id": "e8-email_q-email_sender", "from": "email_q", "to": "email_sender", "kind": "async" },
+      { "id": "e9-sms_q-sms_limiter", "from": "sms_q", "to": "sms_limiter", "kind": "async" },
+      { "id": "e10-push_q-push_sender", "from": "push_q", "to": "push_sender", "kind": "async" },
+      { "id": "e11-email_sender-sendgrid", "from": "email_sender", "to": "sendgrid", "label": "Mail Send API", "kind": "sync" },
+      { "id": "e12-sms_limiter-twilio", "from": "sms_limiter", "to": "twilio", "label": "Messages API", "kind": "sync" },
+      { "id": "e13-push_sender-push", "from": "push_sender", "to": "push", "label": "Send", "kind": "sync" },
+      { "id": "e14-email_sender-key_vault", "from": "email_sender", "to": "key_vault", "kind": "async", "relation": "secret" },
+      { "id": "e15-sms_limiter-key_vault", "from": "sms_limiter", "to": "key_vault", "kind": "async", "relation": "secret" }
+    ]
+  }
+}

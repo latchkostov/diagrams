@@ -1,0 +1,10 @@
+---
+title: "Retail SQL Server #1 · 680 ms end to end"
+---
+sequenceDiagram
+  participant sql as Retail SQL Server
+  participant debezium as Debezium SQL Server
+  participant registry as CDC schemas
+  sql-)debezium: Retail SQL Server (+0.05 s)<br/>CDC · transaction log
+  debezium->>registry: Retail SQL Server (+0.48 s)<br/>Register schema
+  registry-->>debezium: reply (+0.68 s)

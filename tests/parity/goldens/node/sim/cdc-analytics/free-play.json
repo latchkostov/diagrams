@@ -1,0 +1,209 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "sql": { "replicas": [1, 1, 0] },
+        "debezium": { "replicas": [1, 1, 0] },
+        "orders-topic": { "lag": { "retail-projector": 0, "retail-raw-sink": 0 }, "replicas": [1, 1, 0] },
+        "customers-topic": { "lag": { "retail-projector": 0, "retail-raw-sink": 0 }, "replicas": [1, 1, 0] },
+        "processor": { "replicas": [1, 1, 0] },
+        "search": { "replicas": [1, 1, 0] },
+        "warehouse": { "replicas": [1, 1, 0] },
+        "s3-sink": { "replicas": [1, 1, 0] },
+        "lake": { "replicas": [1, 1, 0] },
+        "registry": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 0,
+      "nodes": {
+        "sql": { "replicas": [1, 1, 0] },
+        "debezium": { "replicas": [1, 1, 0] },
+        "orders-topic": { "lag": { "retail-projector": 0, "retail-raw-sink": 0 }, "replicas": [1, 1, 0] },
+        "customers-topic": { "lag": { "retail-projector": 0, "retail-raw-sink": 0 }, "replicas": [1, 1, 0] },
+        "processor": { "replicas": [1, 1, 0] },
+        "search": { "replicas": [1, 1, 0] },
+        "warehouse": { "replicas": [1, 1, 0] },
+        "s3-sink": { "replicas": [1, 1, 0] },
+        "lake": { "replicas": [1, 1, 0] },
+        "registry": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 0,
+      "nodes": {
+        "sql": { "replicas": [1, 1, 0] },
+        "debezium": { "replicas": [1, 1, 0] },
+        "orders-topic": { "lag": { "retail-projector": 0, "retail-raw-sink": 0 }, "replicas": [1, 1, 0] },
+        "customers-topic": { "lag": { "retail-projector": 0, "retail-raw-sink": 0 }, "replicas": [1, 1, 0] },
+        "processor": { "replicas": [1, 1, 0] },
+        "search": { "replicas": [1, 1, 0] },
+        "warehouse": { "replicas": [1, 1, 0] },
+        "s3-sink": { "replicas": [1, 1, 0] },
+        "lake": { "replicas": [1, 1, 0] },
+        "registry": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 0,
+      "nodes": {
+        "sql": { "replicas": [1, 1, 0] },
+        "debezium": { "replicas": [1, 1, 0] },
+        "orders-topic": { "lag": { "retail-projector": 0, "retail-raw-sink": 0 }, "replicas": [1, 1, 0] },
+        "customers-topic": { "lag": { "retail-projector": 0, "retail-raw-sink": 0 }, "replicas": [1, 1, 0] },
+        "processor": { "replicas": [1, 1, 0] },
+        "search": { "replicas": [1, 1, 0] },
+        "warehouse": { "replicas": [1, 1, 0] },
+        "s3-sink": { "replicas": [1, 1, 0] },
+        "lake": { "replicas": [1, 1, 0] },
+        "registry": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 0,
+      "nodes": {
+        "sql": { "replicas": [1, 1, 0] },
+        "debezium": { "replicas": [1, 1, 0] },
+        "orders-topic": { "lag": { "retail-projector": 0, "retail-raw-sink": 0 }, "replicas": [1, 1, 0] },
+        "customers-topic": { "lag": { "retail-projector": 0, "retail-raw-sink": 0 }, "replicas": [1, 1, 0] },
+        "processor": { "replicas": [1, 1, 0] },
+        "search": { "replicas": [1, 1, 0] },
+        "warehouse": { "replicas": [1, 1, 0] },
+        "s3-sink": { "replicas": [1, 1, 0] },
+        "lake": { "replicas": [1, 1, 0] },
+        "registry": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 0,
+      "nodes": {
+        "sql": { "replicas": [1, 1, 0] },
+        "debezium": { "replicas": [1, 1, 0] },
+        "orders-topic": { "lag": { "retail-projector": 0, "retail-raw-sink": 0 }, "replicas": [1, 1, 0] },
+        "customers-topic": { "lag": { "retail-projector": 0, "retail-raw-sink": 0 }, "replicas": [1, 1, 0] },
+        "processor": { "replicas": [1, 1, 0] },
+        "search": { "replicas": [1, 1, 0] },
+        "warehouse": { "replicas": [1, 1, 0] },
+        "s3-sink": { "replicas": [1, 1, 0] },
+        "lake": { "replicas": [1, 1, 0] },
+        "registry": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 0,
+      "nodes": {
+        "sql": { "replicas": [1, 1, 0] },
+        "debezium": { "replicas": [1, 1, 0] },
+        "orders-topic": { "lag": { "retail-projector": 0, "retail-raw-sink": 0 }, "replicas": [1, 1, 0] },
+        "customers-topic": { "lag": { "retail-projector": 0, "retail-raw-sink": 0 }, "replicas": [1, 1, 0] },
+        "processor": { "replicas": [1, 1, 0] },
+        "search": { "replicas": [1, 1, 0] },
+        "warehouse": { "replicas": [1, 1, 0] },
+        "s3-sink": { "replicas": [1, 1, 0] },
+        "lake": { "replicas": [1, 1, 0] },
+        "registry": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 0,
+    "real": {
+      "sql": { "replicas": [1, 1, 0] },
+      "debezium": { "replicas": [1, 1, 0] },
+      "orders-topic": { "lag": { "retail-projector": 0, "retail-raw-sink": 0 }, "replicas": [1, 1, 0] },
+      "customers-topic": { "lag": { "retail-projector": 0, "retail-raw-sink": 0 }, "replicas": [1, 1, 0] },
+      "processor": { "replicas": [1, 1, 0] },
+      "search": { "replicas": [1, 1, 0] },
+      "warehouse": { "replicas": [1, 1, 0] },
+      "s3-sink": { "replicas": [1, 1, 0] },
+      "lake": { "replicas": [1, 1, 0] },
+      "registry": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "sql-to-debezium": 0, "debezium-to-orders-topic": 0, "debezium-to-customers-topic": 0, "orders-topic-to-processor": 0, "customers-topic-to-processor": 0, "processor-to-search": 0, "processor-to-warehouse": 0, "orders-topic-to-s3-sink": 0, "customers-topic-to-s3-sink": 0, "s3-sink-to-lake": 0, "debezium-to-registry": 0 }
+  },
+  "events": {
+    "total": 0,
+    "byKind": {},
+    "byNode": {},
+    "perSecond": [
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 0, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": null,
+    "waitMs": {},
+    "processMs": {}
+  }
+}

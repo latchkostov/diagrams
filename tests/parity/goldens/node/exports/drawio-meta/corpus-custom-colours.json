@@ -1,0 +1,24 @@
+{
+  "withIcons": {
+    "sha256": "b064d9da5dcbb65884c0d87974a3349d31a3b3d595a06f3bce828e561ac88b3b",
+    "bytes": 2340,
+    "inlined": {}
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Custom colours",
+        "nodes": [],
+        "edges": [],
+        "annotations": [
+          { "id": "zone1", "kind": "zone", "text": "Default zone", "x": 240, "y": 160, "width": 220, "height": 110 },
+          { "id": "text1", "kind": "text", "text": "Caption", "x": 0, "y": 0, "width": 180, "height": 30, "color": "neutral" },
+          { "id": "note1", "kind": "note", "text": "Transparent note", "x": 240, "y": 0, "width": 200, "height": 100, "color": "#abc8" },
+          { "id": "shape1", "kind": "shape", "text": "Transparent shape", "x": 0, "y": 160, "width": 180, "height": 90, "shape": "rect", "color": "#11223344" }
+        ]
+      }
+    }
+  ]
+}

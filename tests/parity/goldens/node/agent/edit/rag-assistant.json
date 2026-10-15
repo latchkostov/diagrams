@@ -1,0 +1,628 @@
+{
+  "steps": [
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "topic-1",
+            "label": "parity.events",
+            "stencil": { "id": "kafka.topic", "label": "Kafka Topic", "confidence": "high", "alternatives": ["pulsar.topic", "confluent.cloud", "aws.msk"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-1", "from": "user", "to": "topic-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+2 nodes, +2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "dotnet-1",
+            "label": "Parity reader",
+            "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-2", "from": "topic-1", "to": "dotnet-1" },
+          {
+            "i": 2,
+            "op": "add_node",
+            "id": "key-vault-1",
+            "label": "Parity secrets",
+            "stencil": { "id": "azure.key-vault", "label": "Key Vault", "confidence": "high", "alternatives": [] }
+          },
+          { "i": 3, "op": "connect", "id": "e-3", "from": "dotnet-1", "to": "key-vault-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +2 connections, −1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "insert_between",
+            "id": "queue-1",
+            "label": "buffer",
+            "stencil": { "id": "rabbitmq.queue", "label": "RabbitMQ Queue", "confidence": "high", "alternatives": ["aws.mq"] },
+            "from": "user",
+            "to": "rag-api"
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "update", "id": "rag-api" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "update",
+            "id": "cache",
+            "stencil": { "id": "aws.lambda", "label": "AWS Lambda", "confidence": "high", "alternatives": [] }
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 boundary, 2 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_boundary", "id": "boundary-1", "label": "Parity zone" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 note",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_note", "id": "note-1" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "title or direction changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "set_meta" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "−1 node, −2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "remove", "ids": ["dotnet-1", "e-2", "e-3"] }]
+      }
+    },
+    {
+      "isError": true,
+      "output": {
+        "ok": false,
+        "i": 0,
+        "error": "Unknown reference \"no-such-node\".",
+        "ref": "no-such-node",
+        "candidates": [
+          { "id": "user", "label": "Help center chat", "stencil": "client.browser" },
+          { "id": "rag-api", "label": "Renamed by parity", "stencil": "service.python" },
+          { "id": "cache", "label": "Semantic cache", "stencil": "aws.lambda" },
+          { "id": "feedback", "label": "rag.feedback", "stencil": "kafka.topic" },
+          { "id": "llm", "label": "Claude API", "stencil": "anthropic.claude" },
+          { "id": "vector-db", "label": "Vector index", "stencil": "generic.vector-db" },
+          { "id": "eval-job", "label": "Eval job", "stencil": "generic.batch-job" },
+          { "id": "quality", "label": "Answer quality", "stencil": "grafana" },
+          { "id": "docs", "label": "Content updates", "stencil": "generic.webhook" },
+          { "id": "ingest-q", "label": "Ingest jobs", "stencil": "generic.queue" },
+          { "id": "embed-worker", "label": "Chunk and embed", "stencil": "service.python" },
+          { "id": "embeddings", "label": "Embeddings API", "stencil": "openai" },
+          { "id": "vault", "label": "Vault", "stencil": "vault" },
+          { "id": "topic-1", "label": "parity.events", "stencil": "kafka.topic" },
+          { "id": "key-vault-1", "label": "Parity secrets", "stencil": "azure.key-vault" },
+          { "id": "queue-1", "label": "buffer", "stencil": "rabbitmq.queue" },
+          { "id": "note-1", "label": "Pinned by the parity harness" }
+        ],
+        "hint": "Use an id from candidates, or call describe_diagram.",
+        "applied": false
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "dryRun": true,
+        "summary": "+1 node",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "postgres-1",
+            "label": "Dry run only",
+            "stencil": { "id": "postgres", "label": "PostgreSQL", "confidence": "high", "alternatives": ["gcp.cloud-sql", "aws.aurora", "supabase"] }
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "isError": false,
+      "output": { "ok": true, "id": "sim-1", "title": "Parity rush", "summary": "Added simulation \"Parity rush\": 4 traffic, 2 events, 1 expectations.", "undo": "One undo step reverts this call.", "play": "The user plays it in live view (L), or from the command palette." }
+    },
+    {
+      "isError": true,
+      "output": { "ok": false, "error": "constant traffic needs ratePerSec.", "hint": "Check the input against the tool's schema and try again." }
+    }
+  ],
+  "applied": [
+    { "tool": "edit_diagram", "summary": "+1 node, +1 connection", "changed": ["topic-1", "e-1"] },
+    {
+      "tool": "edit_diagram",
+      "summary": "+2 nodes, +2 connections",
+      "changed": ["dotnet-1", "key-vault-1", "e-2", "e-3"],
+      "choices": [
+        {
+          "nodeId": "dotnet-1",
+          "kind": ".NET consumer",
+          "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] },
+          "node": {
+            "id": "dotnet-1",
+            "stencil": "service.dotnet",
+            "label": "Parity reader",
+            "x": 648,
+            "y": 608,
+            "props": { "replicas": 3 }
+          }
+        }
+      ]
+    },
+    { "tool": "edit_diagram", "summary": "+1 node, +2 connections, −1 connection", "changed": ["queue-1", "e-4", "e-5"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["rag-api"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["cache"] },
+    { "tool": "edit_diagram", "summary": "+1 boundary, 2 changed", "changed": ["boundary-1", "user", "rag-api"] },
+    { "tool": "edit_diagram", "summary": "+1 note", "changed": ["note-1"] },
+    { "tool": "edit_diagram", "summary": "title or direction changed", "changed": [] },
+    { "tool": "edit_diagram", "summary": "−1 node, −2 connections", "changed": [] },
+    { "tool": "set_simulation", "summary": "Added simulation “Parity rush”", "changed": ["user"] }
+  ],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Parity edit",
+    "description": "Changed docs are chunked and embedded into a vector index; questions retrieve context for an LLM, and ratings feed an eval loop.",
+    "direction": "TB",
+    "nodes": [
+      {
+        "id": "user",
+        "stencil": "client.browser",
+        "label": "Help center chat",
+        "sublabel": "Customers ask questions",
+        "x": 40,
+        "y": 160,
+        "props": { "ratePerSec": 2, "messageType": "Question" },
+        "group": "boundary-1"
+      },
+      {
+        "id": "rag-api",
+        "stencil": "service.python",
+        "label": "Renamed by parity",
+        "sublabel": "Retrieve · prompt · stream",
+        "x": 420,
+        "y": 160,
+        "props": { "concurrency": 200, "latencyMs": 120 },
+        "group": "boundary-1"
+      },
+      {
+        "id": "cache",
+        "stencil": "aws.lambda",
+        "label": "Semantic cache",
+        "sublabel": "Similar question → answer",
+        "x": 420,
+        "y": 320,
+        "props": { "latencyMs": 1 }
+      },
+      {
+        "id": "feedback",
+        "stencil": "kafka.topic",
+        "label": "rag.feedback",
+        "sublabel": "Answers + ratings",
+        "x": 800,
+        "y": 40,
+        "props": { "partitions": 6 }
+      },
+      {
+        "id": "llm",
+        "stencil": "anthropic.claude",
+        "label": "Claude API",
+        "sublabel": "Answers with citations",
+        "x": 800,
+        "y": 160,
+        "props": { "concurrency": 200, "latencyMs": 1800 }
+      },
+      {
+        "id": "vector-db",
+        "stencil": "generic.vector-db",
+        "label": "Vector index",
+        "sublabel": "pgvector · HNSW",
+        "x": 800,
+        "y": 320,
+        "props": { "latencyMs": 1 }
+      },
+      {
+        "id": "eval-job",
+        "stencil": "generic.batch-job",
+        "label": "Eval job",
+        "sublabel": "LLM-as-judge · group: evals",
+        "x": 1180,
+        "y": 40,
+        "props": { "concurrency": 20, "latencyMs": 300, "emits": "EvalScore" }
+      },
+      {
+        "id": "quality",
+        "stencil": "grafana",
+        "label": "Answer quality",
+        "sublabel": "Groundedness · thumbs up",
+        "x": 1560,
+        "y": 40,
+        "props": {}
+      },
+      {
+        "id": "docs",
+        "stencil": "generic.webhook",
+        "label": "Content updates",
+        "sublabel": "Confluence · Drive webhooks",
+        "x": 40,
+        "y": 480,
+        "props": { "ratePerSec": 0.2, "messageType": "PageChanged" }
+      },
+      {
+        "id": "ingest-q",
+        "stencil": "generic.queue",
+        "label": "Ingest jobs",
+        "sublabel": "One job per changed page",
+        "x": 420,
+        "y": 480,
+        "props": { "maxDeliveryCount": 5 }
+      },
+      {
+        "id": "embed-worker",
+        "stencil": "service.python",
+        "label": "Chunk and embed",
+        "sublabel": "~800 tokens · 100 overlap",
+        "x": 800,
+        "y": 480,
+        "props": { "replicas": 4, "concurrency": 4, "latencyMs": 200, "emits": "ChunkVectors" }
+      },
+      {
+        "id": "embeddings",
+        "stencil": "openai",
+        "label": "Embeddings API",
+        "sublabel": "text-embedding-3-large",
+        "x": 1180,
+        "y": 480,
+        "props": { "concurrency": 400, "latencyMs": 150 }
+      },
+      { "id": "vault", "stencil": "vault", "label": "Vault", "sublabel": "LLM API keys", "x": 1180, "y": 320 },
+      { "id": "topic-1", "stencil": "kafka.topic", "label": "parity.events", "x": 348, "y": 608 },
+      { "id": "key-vault-1", "stencil": "azure.key-vault", "label": "Parity secrets", "x": 40, "y": 24 },
+      { "id": "queue-1", "stencil": "rabbitmq.queue", "label": "buffer", "x": 348, "y": 720 }
+    ],
+    "edges": [
+      {
+        "id": "rag-api-to-cache",
+        "from": "rag-api",
+        "to": "cache",
+        "label": "Cache lookup",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "rag-api-to-vector-db",
+        "from": "rag-api",
+        "to": "vector-db",
+        "label": "Top-k chunks",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "rag-api-to-llm",
+        "from": "rag-api",
+        "to": "llm",
+        "label": "Prompt + context",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "rag-api-to-feedback",
+        "from": "rag-api",
+        "to": "feedback",
+        "label": "Rated answers",
+        "kind": "async",
+        "props": { "travelMs": 300, "share": 0.25, "emits": "AnswerRated" }
+      },
+      {
+        "id": "feedback-to-eval-job",
+        "from": "feedback",
+        "to": "eval-job",
+        "label": "group: evals",
+        "kind": "async",
+        "props": { "travelMs": 300, "group": "evals" }
+      },
+      {
+        "id": "eval-job-to-llm",
+        "from": "eval-job",
+        "to": "llm",
+        "label": "Grade answer",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "eval-job-to-quality",
+        "from": "eval-job",
+        "to": "quality",
+        "label": "Scores",
+        "kind": "async",
+        "props": { "travelMs": 300 }
+      },
+      {
+        "id": "docs-to-ingest-q",
+        "from": "docs",
+        "to": "ingest-q",
+        "label": "Page changed",
+        "kind": "async",
+        "props": { "travelMs": 300 }
+      },
+      {
+        "id": "ingest-q-to-embed-worker",
+        "from": "ingest-q",
+        "to": "embed-worker",
+        "label": "Competing workers",
+        "kind": "async",
+        "props": { "travelMs": 300 }
+      },
+      {
+        "id": "embed-worker-to-embeddings",
+        "from": "embed-worker",
+        "to": "embeddings",
+        "label": "Embed batch",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "embed-worker-to-vector-db",
+        "from": "embed-worker",
+        "to": "vector-db",
+        "label": "Upsert chunks",
+        "kind": "sync",
+        "props": { "travelMs": 200 }
+      },
+      { "id": "rag-api-to-vault", "from": "rag-api", "to": "vault", "kind": "async", "relation": "secret", "sourceSide": "bottom", "targetSide": "top" },
+      { "id": "embed-worker-to-vault", "from": "embed-worker", "to": "vault", "kind": "async", "relation": "secret", "sourceSide": "right", "targetSide": "bottom" },
+      { "id": "e-1", "from": "user", "to": "topic-1", "kind": "async" },
+      {
+        "id": "e-4",
+        "from": "user",
+        "to": "queue-1",
+        "kind": "sync",
+        "label": "POST /ask",
+        "props": { "travelMs": 200 }
+      },
+      { "id": "e-5", "from": "queue-1", "to": "rag-api", "kind": "sync", "props": { "travelMs": 200 } }
+    ],
+    "simulations": [
+      {
+        "id": "launch-day",
+        "title": "Launch day questions",
+        "description": "Questions climb to 40 a second after a product launch; a quarter of answers are rated and graded.",
+        "seed": 7,
+        "scale": 1,
+        "traffic": [
+          {
+            "id": "questions",
+            "node": "user",
+            "messageType": "Question",
+            "label": "Questions ramp from 5 to 40 a second",
+            "shape": {
+              "kind": "ramp",
+              "startRate": 5,
+              "stages": [{ "durationMs": 4000, "targetRate": 40 }, { "durationMs": 4000, "targetRate": 40 }]
+            }
+          }
+        ],
+        "timeline": [
+          { "atMs": 0, "action": { "do": "trace", "node": "rag-api" } },
+          {
+            "atMs": 0,
+            "action": { "do": "note", "text": "Each question checks the semantic cache, retrieves the closest chunks from the vector index, and sends them to the LLM as context.", "focus": ["rag-api", "cache", "vector-db", "llm"], "pause": true }
+          },
+          {
+            "atMs": 3000,
+            "action": { "do": "note", "text": "Generation is the slow step, about two seconds. Plenty of requests in flight keeps throughput up while each answer streams.", "focus": ["llm"] }
+          },
+          {
+            "atMs": 6000,
+            "action": { "do": "note", "text": "About a quarter of answers get a rating. An eval job asks the LLM to grade them for groundedness, and the scores feed a dashboard.", "focus": ["feedback", "eval-job", "quality"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "retrieved",
+            "label": "Every question retrieves context",
+            "metric": { "node": "vector-db", "field": "processed" },
+            "op": "==",
+            "value": 250,
+            "when": "end"
+          },
+          {
+            "id": "rated",
+            "label": "Rated answers are graded",
+            "metric": { "node": "quality", "field": "processed" },
+            "op": ">",
+            "value": 30,
+            "when": "end"
+          },
+          {
+            "id": "llm-keeps-up",
+            "label": "Nothing is dropped",
+            "metric": { "node": "llm", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "always"
+          }
+        ]
+      },
+      {
+        "id": "reindex",
+        "title": "Re-index the knowledge base",
+        "description": "A docs migration changes 1,200 pages at once; the ingest queue absorbs them while questions are still answered.",
+        "seed": 7,
+        "scale": 4,
+        "traffic": [
+          {
+            "id": "questions",
+            "node": "user",
+            "messageType": "Question",
+            "label": "Questions: 20 a second",
+            "shape": { "kind": "constant", "ratePerSec": 20, "durationMs": 12000 }
+          },
+          {
+            "id": "migration",
+            "node": "docs",
+            "messageType": "PageChanged",
+            "label": "1,200 pages change at once",
+            "shape": { "kind": "burst", "count": 1200, "atMs": 1000, "spreadMs": 1000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 1000,
+            "action": { "do": "note", "text": "A docs migration touches 1,200 pages at once. The queue takes them all; four workers embed about 80 pages a second. Each dot is four messages.", "focus": ["docs", "ingest-q", "embed-worker"], "pause": true }
+          },
+          {
+            "atMs": 5000,
+            "action": { "do": "note", "text": "Questions are still answered while the backlog drains. The index gets fresher page by page.", "focus": ["rag-api", "vector-db"] }
+          },
+          {
+            "atMs": 11000,
+            "action": { "do": "note", "text": "The queue is empty and every page is re-embedded. Nothing was lost, even though the burst outran the workers.", "focus": ["ingest-q", "embeddings", "vector-db"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "backlog",
+            "label": "The queue absorbs the burst",
+            "metric": { "node": "ingest-q", "field": "lag" },
+            "op": ">",
+            "value": 0,
+            "when": "at",
+            "atMs": 4000
+          },
+          {
+            "id": "drained",
+            "label": "Every job finishes",
+            "metric": { "node": "ingest-q", "field": "lag" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          },
+          {
+            "id": "embedded",
+            "label": "1,200 pages re-embedded",
+            "metric": { "node": "embeddings", "field": "processed" },
+            "op": "==",
+            "value": 1200,
+            "when": "end"
+          },
+          {
+            "id": "index",
+            "label": "Index: 1,200 upserts + 240 searches",
+            "metric": { "node": "vector-db", "field": "processed" },
+            "op": "==",
+            "value": 1440,
+            "when": "end"
+          }
+        ]
+      },
+      {
+        "id": "sim-1",
+        "title": "Parity rush",
+        "durationMs": 20000,
+        "traffic": [
+          {
+            "id": "traffic-1",
+            "node": "user",
+            "shape": { "kind": "constant", "ratePerSec": 20, "fromMs": 0, "durationMs": 10000 }
+          },
+          {
+            "id": "traffic-2",
+            "node": "user",
+            "shape": { "kind": "burst", "count": 50, "atMs": 5000, "spreadMs": 2000 },
+            "messageType": "ParityBurst"
+          },
+          {
+            "id": "traffic-3",
+            "node": "user",
+            "shape": {
+              "kind": "ramp",
+              "fromMs": 0,
+              "startRate": 1,
+              "stages": [{ "durationMs": 8000, "targetRate": 30 }]
+            }
+          },
+          {
+            "id": "traffic-4",
+            "node": "user",
+            "shape": { "kind": "spike", "baseRate": 5, "peakRate": 40, "atMs": 12000, "peakMs": 1000, "durationMs": 4000 }
+          }
+        ],
+        "timeline": [
+          { "atMs": 6000, "action": { "do": "status", "node": "cache", "status": "down" } },
+          { "atMs": 6000, "action": { "do": "note", "text": "It goes down", "focus": ["cache"] } }
+        ],
+        "expectations": [
+          {
+            "id": "expectation-1",
+            "label": "Nothing dropped",
+            "metric": { "node": "cache", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ],
+        "scale": 2
+      }
+    ],
+    "groups": [
+      { "id": "boundary-1", "label": "Parity zone", "tone": "neutral", "x": 0, "y": 96, "width": 707, "height": 176 }
+    ],
+    "annotations": [
+      { "id": "note-1", "kind": "note", "text": "Pinned by the parity harness", "x": 40, "y": 280, "width": 240, "height": 160 }
+    ]
+  }
+}

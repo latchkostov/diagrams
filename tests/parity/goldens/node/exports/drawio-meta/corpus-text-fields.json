@@ -1,0 +1,29 @@
+{
+  "withIcons": {
+    "sha256": "7f8a688df8b596627c4785e80b9003154e3ac9fdebdd35521decc2313ceab6b4",
+    "bytes": 4290,
+    "inlined": { "client.browser": "client-browser 0022934839e05a07" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Fields",
+        "description": "Platform overview\nOwned by the core team",
+        "groups": [
+          { "id": "core", "label": "Core platform", "tone": "neutral", "x": -40, "y": -60, "width": 740, "height": 180 }
+        ],
+        "nodes": [
+          { "id": "a", "stencil": "client.browser", "label": "Order service", "x": 0, "y": 0, "group": "core" },
+          { "id": "b", "stencil": "client.browser", "label": "Payments gateway", "x": 400, "y": 0, "group": "core" },
+          { "id": "c", "stencil": "client.browser", "label": "Worker", "x": 0, "y": 300 }
+        ],
+        "edges": [{ "id": "ab", "from": "a", "to": "b", "label": "writes", "kind": "async" }],
+        "annotations": [
+          { "id": "n1", "kind": "note", "text": "Sticky reminder\nSecond line here", "x": 400, "y": 300, "width": 240, "height": 110 }
+        ]
+      }
+    }
+  ]
+}

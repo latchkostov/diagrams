@@ -1,0 +1,456 @@
+{
+  "format": "diagrams/v1",
+  "title": "GCP streaming analytics",
+  "description": "Clickstream events flow through Pub/Sub and a Dataflow streaming job into BigQuery for Looker, with a raw archive and dead letters.",
+  "direction": "LR",
+  "groups": [
+    {
+      "id": "gcp",
+      "label": "Google Cloud · analytics project",
+      "tone": "gcp",
+      "x": 380,
+      "y": 80,
+      "width": 1860,
+      "height": 392
+    }
+  ],
+  "nodes": [
+    {
+      "id": "app",
+      "stencil": "client.mobile",
+      "label": "Mobile and web apps",
+      "sublabel": "Clickstream SDK",
+      "x": 40,
+      "y": 240,
+      "props": {
+        "ratePerSec": 50,
+        "messageType": "ClickEvent"
+      }
+    },
+    {
+      "id": "collector",
+      "stencil": "gcp.cloud-run",
+      "label": "Event collector",
+      "sublabel": "Validate · batch publish",
+      "x": 420,
+      "y": 240,
+      "group": "gcp",
+      "props": {
+        "concurrency": 400,
+        "latencyMs": 40
+      }
+    },
+    {
+      "id": "pubsub-topic",
+      "stencil": "gcp.pubsub",
+      "label": "clickstream",
+      "sublabel": "Topic · 7-day retention",
+      "x": 800,
+      "y": 240,
+      "group": "gcp",
+      "props": {
+        "partitions": 64
+      }
+    },
+    {
+      "id": "dataflow",
+      "stencil": "gcp.dataflow",
+      "label": "Sessionize job",
+      "sublabel": "Streaming · 1-min windows",
+      "x": 1180,
+      "y": 120,
+      "group": "gcp",
+      "props": {
+        "group": "dataflow",
+        "replicas": 4,
+        "concurrency": 4,
+        "latencyMs": 40,
+        "emits": {
+          "ClickEvent": "SessionRow",
+          "MalformedEvent": "DeadLetter"
+        }
+      }
+    },
+    {
+      "id": "raw-archive",
+      "stencil": "gcp.cloud-storage",
+      "label": "Raw archive",
+      "sublabel": "Avro · by hour",
+      "x": 1180,
+      "y": 360,
+      "group": "gcp",
+      "props": {
+        "latencyMs": 0
+      }
+    },
+    {
+      "id": "bigquery",
+      "stencil": "gcp.bigquery",
+      "label": "Analytics dataset",
+      "sublabel": "Storage Write API",
+      "x": 1560,
+      "y": 120,
+      "group": "gcp",
+      "props": {
+        "latencyMs": 0
+      }
+    },
+    {
+      "id": "looker",
+      "stencil": "looker",
+      "label": "Product dashboards",
+      "sublabel": "Funnels · retention",
+      "x": 1940,
+      "y": 120,
+      "group": "gcp",
+      "props": {}
+    },
+    {
+      "id": "dead-letters",
+      "stencil": "gcp.pubsub",
+      "label": "clickstream-dlq",
+      "sublabel": "Unparseable events",
+      "x": 1560,
+      "y": 240,
+      "group": "gcp",
+      "props": {
+        "partitions": 64
+      }
+    },
+    {
+      "id": "dead-bucket",
+      "stencil": "gcp.cloud-storage",
+      "label": "Dead letters",
+      "sublabel": "Inspect · replay",
+      "x": 1940,
+      "y": 240,
+      "group": "gcp",
+      "props": {
+        "latencyMs": 1
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "app-to-collector",
+      "from": "app",
+      "to": "collector",
+      "label": "HTTPS batches",
+      "kind": "sync",
+      "props": {
+        "travelMs": 200
+      }
+    },
+    {
+      "id": "collector-to-topic",
+      "from": "collector",
+      "to": "pubsub-topic",
+      "label": "Publish",
+      "kind": "async",
+      "props": {
+        "travelMs": 300
+      }
+    },
+    {
+      "id": "topic-to-dataflow",
+      "from": "pubsub-topic",
+      "to": "dataflow",
+      "label": "sub: dataflow",
+      "kind": "async",
+      "props": {
+        "travelMs": 300,
+        "group": "dataflow"
+      }
+    },
+    {
+      "id": "topic-to-raw-archive",
+      "from": "pubsub-topic",
+      "to": "raw-archive",
+      "label": "Cloud Storage subscription",
+      "kind": "async",
+      "props": {
+        "travelMs": 300,
+        "group": "archive"
+      }
+    },
+    {
+      "id": "dataflow-to-bigquery",
+      "from": "dataflow",
+      "to": "bigquery",
+      "label": "Sessions",
+      "kind": "sync",
+      "props": {
+        "travelMs": 200,
+        "filter": [
+          "SessionRow"
+        ]
+      }
+    },
+    {
+      "id": "dataflow-to-dead-letters",
+      "from": "dataflow",
+      "to": "dead-letters",
+      "label": "Parse errors",
+      "kind": "async",
+      "props": {
+        "travelMs": 300,
+        "filter": [
+          "DeadLetter"
+        ]
+      }
+    },
+    {
+      "id": "dead-letters-to-dead-bucket",
+      "from": "dead-letters",
+      "to": "dead-bucket",
+      "label": "sub: archive",
+      "kind": "async",
+      "props": {
+        "travelMs": 300,
+        "group": "dlq-archive",
+        "dlq": false
+      }
+    },
+    {
+      "id": "looker-to-bigquery",
+      "from": "looker",
+      "to": "bigquery",
+      "label": "SQL",
+      "kind": "sync",
+      "props": {
+        "travelMs": 200
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "morning-ramp",
+      "title": "Morning ramp to 2,000 events/s",
+      "description": "Traffic ramps from 200 to 2,000 events a second; a bad SDK release sends 200 malformed events.",
+      "seed": 7,
+      "scale": 50,
+      "setup": {
+        "props": {
+          "dataflow": {
+            "replicas": 24
+          }
+        }
+      },
+      "traffic": [
+        {
+          "id": "clicks",
+          "node": "app",
+          "messageType": "ClickEvent",
+          "label": "Ramp 200 → 2,000 events/s",
+          "shape": {
+            "kind": "ramp",
+            "startRate": 200,
+            "stages": [
+              {
+                "durationMs": 8000,
+                "targetRate": 2000
+              }
+            ]
+          }
+        },
+        {
+          "id": "malformed",
+          "node": "app",
+          "messageType": "MalformedEvent",
+          "label": "200 malformed events",
+          "shape": {
+            "kind": "burst",
+            "count": 200,
+            "atMs": 4000,
+            "spreadMs": 1000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 0,
+          "action": {
+            "do": "note",
+            "text": "Clicks ramp up as people wake up. Pub/Sub keeps each subscription separate: Dataflow and the raw archive each get every event. Each dot is 50 events.",
+            "focus": [
+              "app",
+              "pubsub-topic",
+              "dataflow",
+              "raw-archive"
+            ]
+          }
+        },
+        {
+          "atMs": 4000,
+          "action": {
+            "do": "note",
+            "text": "A bad SDK release sends malformed events. Dataflow routes them to a dead-letter topic instead of failing the pipeline.",
+            "focus": [
+              "dataflow",
+              "dead-letters",
+              "dead-bucket"
+            ],
+            "pause": true
+          }
+        },
+        {
+          "atMs": 7000,
+          "action": {
+            "do": "note",
+            "text": "Sessions stream into BigQuery within seconds, so Looker's dashboards are current.",
+            "focus": [
+              "bigquery",
+              "looker"
+            ]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "archive",
+          "label": "Every event is archived raw",
+          "metric": {
+            "node": "raw-archive",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 9000,
+          "when": "end"
+        },
+        {
+          "id": "sessions",
+          "label": "8,800 valid events reach BigQuery",
+          "metric": {
+            "node": "bigquery",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 8800,
+          "when": "end"
+        },
+        {
+          "id": "dead",
+          "label": "200 malformed events are kept for replay",
+          "metric": {
+            "node": "dead-bucket",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 200,
+          "when": "end"
+        }
+      ]
+    },
+    {
+      "id": "autoscale",
+      "title": "Backlog until Dataflow autoscales",
+      "description": "600 events a second meet two workers; the subscription backlog grows until autoscaling adds six more.",
+      "seed": 7,
+      "scale": 20,
+      "setup": {
+        "props": {
+          "dataflow": {
+            "replicas": 2
+          }
+        }
+      },
+      "traffic": [
+        {
+          "id": "clicks",
+          "node": "app",
+          "messageType": "ClickEvent",
+          "label": "600 events/s for 10 seconds",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 600,
+            "durationMs": 10000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 0,
+          "action": {
+            "do": "note",
+            "text": "Two Dataflow workers handle about 200 events a second, but 600 arrive. Unacknowledged messages pile up in the subscription.",
+            "focus": [
+              "pubsub-topic",
+              "dataflow"
+            ]
+          }
+        },
+        {
+          "atMs": 4000,
+          "action": {
+            "do": "props",
+            "node": "dataflow",
+            "props": {
+              "replicas": 8
+            }
+          }
+        },
+        {
+          "atMs": 4000,
+          "action": {
+            "do": "note",
+            "text": "Autoscaling sees the backlog and adds six workers. The raw archive was never behind: its subscription is independent.",
+            "focus": [
+              "dataflow",
+              "raw-archive"
+            ],
+            "pause": true
+          }
+        },
+        {
+          "atMs": 9000,
+          "action": {
+            "do": "note",
+            "text": "With 800 events a second of capacity, the backlog drains and BigQuery catches up.",
+            "focus": [
+              "pubsub-topic",
+              "bigquery"
+            ]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "backlog",
+          "label": "Backlog grows with two workers",
+          "metric": {
+            "node": "pubsub-topic",
+            "field": "lag",
+            "group": "dataflow"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "at",
+          "atMs": 3500
+        },
+        {
+          "id": "drained",
+          "label": "Backlog drains after autoscaling",
+          "metric": {
+            "node": "pubsub-topic",
+            "field": "lag",
+            "group": "dataflow"
+          },
+          "op": "==",
+          "value": 0,
+          "when": "end"
+        },
+        {
+          "id": "sessions",
+          "label": "All 6,000 events reach BigQuery",
+          "metric": {
+            "node": "bigquery",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 6000,
+          "when": "end"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,128 @@
+{
+  "format": "diagrams/v1",
+  "title": "Checkout shared ids",
+  "description": "Checkout shortcuts from a hand-written file that gives the Ledger service and Billing's flow into the database one id, billing-db.",
+  "nodes": [
+    {
+      "id": "web",
+      "stencil": "client.browser",
+      "label": "Storefront",
+      "x": 0,
+      "y": 0,
+      "props": {
+        "ratePerSec": 20
+      }
+    },
+    {
+      "id": "app",
+      "stencil": "client.mobile",
+      "label": "Mobile app",
+      "x": 0,
+      "y": 220,
+      "props": {
+        "ratePerSec": 10
+      }
+    },
+    {
+      "id": "gw",
+      "stencil": "nginx",
+      "label": "Commerce gateway",
+      "sublabel": "TLS · /api",
+      "x": 300,
+      "y": 0
+    },
+    {
+      "id": "orders",
+      "stencil": "service.dotnet",
+      "label": "Order service",
+      "x": 640,
+      "y": 110,
+      "group": "team",
+      "props": {
+        "concurrency": 64,
+        "latencyMs": 120
+      }
+    },
+    {
+      "id": "db",
+      "stencil": "postgres",
+      "label": "orders-db",
+      "x": 960,
+      "y": 110,
+      "group": "team"
+    },
+    {
+      "id": "billing",
+      "stencil": "service.java",
+      "label": "Billing",
+      "x": 960,
+      "y": 400,
+      "props": {
+        "concurrency": 32,
+        "latencyMs": 80
+      }
+    },
+    {
+      "id": "billing-db",
+      "stencil": "service.go",
+      "label": "Ledger",
+      "x": 1300,
+      "y": 400
+    }
+  ],
+  "edges": [
+    {
+      "id": "web-gw",
+      "from": "web",
+      "to": "gw",
+      "kind": "sync",
+      "label": "HTTPS"
+    },
+    {
+      "id": "gw-orders",
+      "from": "gw",
+      "to": "orders",
+      "kind": "sync",
+      "label": "POST /orders"
+    },
+    {
+      "id": "app-orders",
+      "from": "app",
+      "to": "orders",
+      "kind": "sync",
+      "label": "POST /orders"
+    },
+    {
+      "id": "orders-db",
+      "from": "orders",
+      "to": "db",
+      "kind": "sync",
+      "label": "Commit order"
+    },
+    {
+      "id": "billing-db",
+      "from": "billing",
+      "to": "db",
+      "kind": "sync",
+      "label": "Read order totals"
+    },
+    {
+      "id": "ledger-in",
+      "from": "billing",
+      "to": "billing-db",
+      "kind": "async",
+      "label": "Invoice issued"
+    }
+  ],
+  "groups": [
+    {
+      "id": "team",
+      "label": "Orders team",
+      "tone": "k8s",
+      "x": 600,
+      "y": 60,
+      "width": 620,
+      "height": 170
+    }
+  ]
+}

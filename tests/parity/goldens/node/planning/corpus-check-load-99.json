@@ -1,0 +1,187 @@
+{
+  "autoScale": { "freePlay": 1 },
+  "brokerAssignments": { "brokers": {}, "consumers": {} },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "api",
+      "suggestion": "api: 99% utilized",
+      "converged": true,
+      "iterations": 3,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "web": ["Infinity", 15.9, 0, 1, 1, 0], "api": [16, 15.9, 0.99375, 1, 1, 0], "db": ["Infinity", 15.9, 0, 1, 1, 0] },
+      "connections": { "call": 15.9, "write": 15.9 },
+      "offeredTypes": { "web": ["Web"], "api": ["Web"], "db": ["Web"] }
+    },
+    "explanations": {
+      "api": {
+        "id": "api",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 16,
+        "offered": 15.9,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": 0.99375,
+        "growth": 0,
+        "contributors": [{ "edge": "call", "node": "web", "label": "Web", "rate": 15.9 }],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "targetReplicas": 2,
+        "changes": [{ "nodeId": "api", "key": "replicas", "from": 1, "to": 2 }],
+        "fixId": "capacity:api",
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "web": [{ "kind": "calls", "edge": "call", "peer": "api" }],
+      "api": [{ "kind": "calls", "edge": "write", "peer": "db" }]
+    },
+    "sizing": [{ "nodeId": "api", "key": "replicas", "from": 1, "to": 2 }],
+    "redundancy": { "api": { "replicas": 2, "enough": true } },
+    "resolved": {
+      "web": {
+        "profile": { "family": "client", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 15.9,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Web",
+        "healthChecks": false
+      },
+      "api": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "api",
+        "healthChecks": false
+      },
+      "db": {
+        "profile": { "family": "sql", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Ledger",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {},
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "hot",
+          "top": "api",
+          "headline": "api is near capacity",
+          "detail": "99% · 16/s of 16/s",
+          "fix": {
+            "changes": [{ "nodeId": "api", "key": "replicas", "from": 1, "to": 2, "label": "api" }],
+            "label": "api 1 → 2 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "web": ["idle", "16/s · no limit", { "modeled": false }],
+            "api": ["hot", "99% · 16/s of 16/s"],
+            "db": ["idle", "16/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "over",
+          "top": "api",
+          "headline": "api is over capacity",
+          "detail": "497% · 80/s of 16/s",
+          "fix": {
+            "changes": [{ "nodeId": "api", "key": "replicas", "from": 1, "to": 10, "label": "api" }],
+            "label": "api 1 → 10 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "web": ["idle", "80/s · no limit", { "modeled": false }],
+            "api": ["over", "497% · 80/s of 16/s"],
+            "db": ["idle", "80/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "hot",
+          "top": "api",
+          "headline": "api is near capacity",
+          "detail": "99% · 16/s of 16/s",
+          "fix": {
+            "changes": [{ "nodeId": "api", "key": "replicas", "from": 1, "to": 4, "label": "api" }],
+            "label": "api 1 → 4 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "web": ["idle", "16/s · no limit", { "modeled": false }],
+            "api": ["hot", "99% · 16/s of 16/s"],
+            "db": ["idle", "16/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "hot",
+          "top": "api",
+          "headline": "api is near capacity",
+          "detail": "99% · 16/s of 16/s",
+          "fix": {
+            "changes": [{ "nodeId": "api", "key": "replicas", "from": 1, "to": 2, "label": "api" }],
+            "label": "api 1 → 2 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "web": ["idle", "16/s · no limit", { "modeled": false }],
+            "api": ["hot", "99% · 16/s of 16/s"],
+            "db": ["idle", "16/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    }
+  }
+}

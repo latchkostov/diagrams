@@ -1,0 +1,14 @@
+{
+  "text": {
+    "isError": true,
+    "output": { "ok": false, "error": "Two elements shared the id \"billing-db\"; one was renamed to \"billing-db-2\".", "hint": "Check the input against the tool's schema and try again." }
+  },
+  "json": {
+    "isError": true,
+    "output": { "ok": false, "error": "Two elements shared the id \"billing-db\"; one was renamed to \"billing-db-2\".", "hint": "Check the input against the tool's schema and try again." }
+  },
+  "focus": {
+    "isError": true,
+    "output": { "ok": false, "error": "Two elements shared the id \"billing-db\"; one was renamed to \"billing-db-2\".", "hint": "Check the input against the tool's schema and try again." }
+  }
+}

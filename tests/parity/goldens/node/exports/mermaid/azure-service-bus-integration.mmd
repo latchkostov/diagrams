@@ -1,0 +1,38 @@
+---
+title: Azure invoice integration
+---
+flowchart LR
+  subgraph g_azure ["Azure · enterprise integration"]
+    apim["Partner API<br/>/v1/invoices · JWT validation"]
+    ingest["Invoice intake<br/>Validate · normalize · publish"]
+    invoices["invoices<br/>InvoiceAccepted · session: tenantId"]
+    approval_sub["approval-workflow<br/>Subscription · amount > 10000"]
+    posting_sub["ledger-posting<br/>Subscription · all accepted invoices"]
+    workflow["Invoice approval<br/>Finance approval workflow"]
+    worker["Ledger worker<br/>KEDA · group: ledger-posting"]
+    commands["invoice.commands<br/>PostInvoice · session: tenantId"]
+    dlq["invoice.commands DLQ<br/>$DeadLetterQueue · operator replay"]
+    cosmos[("Invoice ledger<br/>Partition key: /tenantId")]
+    blob[("Invoice originals<br/>invoices-raw · immutable archive")]
+    vault["Integration secrets<br/>ERP credentials · managed identity"]
+    insights["Integration telemetry<br/>Trace by invoiceId · DLQ alerts"]
+  end
+  partner(["Contoso ERP<br/>Invoice integration · OAuth2"])
+  partner -->|"HTTPS"| apim
+  apim -->|"POST /v1/invoices"| ingest
+  ingest -.->|"InvoiceAccepted"| invoices
+  invoices -.->|"amount > 10000"| approval_sub
+  invoices -.->|"All invoices"| posting_sub
+  approval_sub -.->|"Peek-lock delivery"| workflow
+  posting_sub -.->|"Peek-lock delivery"| worker
+  workflow -.->|"PostInvoice"| commands
+  commands -.->|"Execute command"| worker
+  commands -.->|"After 5 failed deliveries"| dlq
+  worker -->|"Upsert ledger"| cosmos
+  ingest -->|"Archive original PDF"| blob
+  ingest -.->|"reads secrets"| vault
+  ingest -.->|"sends telemetry to: Traces / exceptions"| insights
+  linkStyle 2,3,4,5,6,7,8,9 stroke-dasharray: 6 4
+  linkStyle 12 stroke:#A6720C,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 13 stroke:#7C6D98,stroke-width:1.25px,stroke-dasharray: 2 4
+%% diagrams:{"v":1,"description":"Partner invoices fan out through filtered Service Bus subscriptions; commands use retries and dead lettering.","nodes":{"partner":["partner","client.partner"],"apim":["apim","azure.api-management"],"ingest":["ingest","azure.functions"],"invoices":["invoices","azure.service-bus.topic"],"approval_sub":["approval-sub","generic.queue"],"posting_sub":["posting-sub","generic.queue"],"workflow":["workflow","azure.logic-apps"],"worker":["worker","azure.container-apps"],"commands":["commands","azure.service-bus.queue"],"dlq":["dlq","azure.service-bus.queue"],"cosmos":["cosmos","azure.cosmos-db"],"blob":["blob","azure.blob-storage"],"vault":["vault","azure.key-vault"],"insights":["insights","azure.app-insights"]},"groups":{"g_azure":["azure","azure"]},"edges":["partner-to-apim","apim-to-ingest","ingest-to-invoices","invoices-to-approval-sub","invoices-to-posting-sub","approval-sub-to-workflow","posting-sub-to-worker","workflow-to-commands","commands-to-worker","commands-to-dlq","worker-to-cosmos","ingest-to-blob","ingest-to-vault","ingest-to-insights"],"relations":{"12":"secret","13":"telemetry"},"syncDependencies":[12]}

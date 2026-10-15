@@ -1,0 +1,29 @@
+{
+  "withIcons": {
+    "sha256": "0ca8dc71d797d40c6b5f025c490242b276e7588cda134ffa0a13c572e99490a8",
+    "bytes": 15601,
+    "inlined": { "client.browser": "client-browser 0022934839e05a07", "service.go": "go 6f494b4da5a84f2a" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Sync chain of 3 hops",
+        "nodes": [
+          { "id": "web", "stencil": "client.browser", "label": "Web", "x": 0, "y": 100 },
+          { "id": "s0", "stencil": "service.go", "label": "s0", "x": 300, "y": 100 },
+          { "id": "s1", "stencil": "service.go", "label": "s1", "x": 600, "y": 100 },
+          { "id": "s2", "stencil": "service.go", "label": "s2", "x": 900, "y": 100 },
+          { "id": "s3", "stencil": "service.go", "label": "s3", "x": 1200, "y": 100 }
+        ],
+        "edges": [
+          { "id": "e-web", "from": "web", "to": "s0", "kind": "sync" },
+          { "id": "e0", "from": "s0", "to": "s1", "kind": "sync" },
+          { "id": "e1", "from": "s1", "to": "s2", "kind": "sync" },
+          { "id": "e2", "from": "s2", "to": "s3", "kind": "sync" }
+        ]
+      }
+    }
+  ]
+}

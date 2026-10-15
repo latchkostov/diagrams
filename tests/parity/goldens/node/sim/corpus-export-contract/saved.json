@@ -1,0 +1,41 @@
+{
+  "run": {
+    "time": 5000,
+    "totalMs": 5000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [{ "id": "processed", "label": "All processed", "status": "pass", "value": 3 }],
+    "markers": [
+      { "atMs": 0, "kind": "note", "label": "Start" },
+      { "atMs": 100, "kind": "traffic", "label": "Requests" },
+      { "atMs": 200, "kind": "traffic", "label": "Requests ends" },
+      { "atMs": 300, "kind": "props", "label": "props: worker" }
+    ]
+  },
+  "checkpoints": [
+    { "atMs": 0, "inSystem": 0, "nodes": { "source": { "replicas": [1, 1, 0] }, "worker": { "replicas": [1, 1, 0] } } }
+  ],
+  "final": {
+    "atMs": 5000,
+    "inSystem": 0,
+    "real": {
+      "source": { "processed": 3, "throughput": 0.023462041349805136, "replicas": [1, 1, 0] },
+      "worker": { "processed": 3, "throughput": 0.025083365418385534, "replicas": [1, 1, 0] }
+    },
+    "edges": { "request": 3 }
+  },
+  "events": {
+    "total": 12,
+    "byKind": { "inject": 3, "process": 6, "deliver": 3 },
+    "byNode": { "source": { "inject": 3, "process": 3 }, "worker": { "deliver": 3, "process": 3 } },
+    "perSecond": ["168958176a8b", "-", "-", "-", "-", "-"]
+  },
+  "notes": [{ "atMs": 0, "text": "Start", "focus": ["source"] }],
+  "latency": {
+    "journeys": { "done": 3, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 3, "min": 70, "mean": 70, "p50": 70, "p90": 70, "max": 70 },
+    "waitMs": { "worker": { "count": 3, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 } },
+    "processMs": { "worker": { "count": 3, "min": 40, "mean": 40, "p50": 40, "p90": 40, "max": 40 } }
+  }
+}

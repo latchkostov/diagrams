@@ -1,0 +1,30 @@
+{
+  "withIcons": {
+    "sha256": "980395968cf53670b283db497ab1ab24f4f1527b34301c8241d2ec67f15195de",
+    "bytes": 7368,
+    "inlined": { "service.go": "go 6f494b4da5a84f2a" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Competing consumers",
+        "description": "Three workers pull from one queue.",
+        "nodes": [
+          { "id": "producer", "stencil": "service.go", "label": "Producer", "x": 40, "y": 160 },
+          { "id": "broker", "stencil": "azure.service-bus.queue", "label": "jobs queue", "sublabel": "jobs", "x": 400, "y": 160 },
+          { "id": "w1", "stencil": "azure.functions", "label": "Worker 1", "x": 760, "y": 40 },
+          { "id": "w2", "stencil": "azure.functions", "label": "Worker 2", "x": 760, "y": 160 },
+          { "id": "w3", "stencil": "azure.functions", "label": "Worker 3", "x": 760, "y": 280 }
+        ],
+        "edges": [
+          { "id": "producer-broker", "from": "producer", "to": "broker", "kind": "async" },
+          { "id": "broker-w1", "from": "broker", "to": "w1", "kind": "async" },
+          { "id": "broker-w2", "from": "broker", "to": "w2", "kind": "async" },
+          { "id": "broker-w3", "from": "broker", "to": "w3", "kind": "async" }
+        ]
+      }
+    }
+  ]
+}

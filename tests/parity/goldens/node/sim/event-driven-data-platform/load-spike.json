@@ -1,0 +1,251 @@
+{
+  "run": {
+    "time": 18700,
+    "totalMs": 20000,
+    "done": true,
+    "scale": 20,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "lag", "label": "The loader falls behind during the spike", "status": "pass", "value": 0 },
+      { "id": "drained", "label": "Lag drains to zero", "status": "pass", "value": 0 },
+      { "id": "raw", "label": "All 4,440 events land in RAW", "status": "pass", "value": 4440 },
+      { "id": "no-drop", "label": "Nothing is dropped", "status": "pass", "value": 0 },
+      { "id": "segments", "label": "2,000 segment changes reach marketing", "status": "pass", "value": 2000 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "note", "label": "Orders, invoices and account changes all stream into Snowflake. Each dot is 20 events. The connector loads about 600 rows a second." },
+      { "atMs": 0, "kind": "traffic", "label": "Steady orders: 200/s" },
+      { "atMs": 0, "kind": "traffic", "label": "Month-end invoices peak at 600/s" },
+      { "atMs": 0, "kind": "traffic", "label": "Account changes: 50/s" },
+      { "atMs": 3000, "kind": "note", "label": "Month-end: invoice webhooks jump to 600 a second. The loader falls behind, and Kafka absorbs the burst as consumer lag." },
+      { "atMs": 6500, "kind": "note", "label": "Producers never slowed down. Once the spike passes, the connector drains the lag and RAW catches up." },
+      { "atMs": 9000, "kind": "note", "label": "Only order-driven segment changes flow back out through reverse ETL. Invoices and account rows stay in the marts." },
+      { "atMs": 10000, "kind": "traffic", "label": "Steady orders: 200/s ends" },
+      { "atMs": 10000, "kind": "traffic", "label": "Month-end invoices peak at 600/s ends" },
+      { "atMs": 10000, "kind": "traffic", "label": "Account changes: 50/s ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "billing-webhooks": { "replicas": [1, 1, 0] },
+        "storefront": { "replicas": [1, 1, 0] },
+        "accounts-db": { "replicas": [1, 1, 0] },
+        "segment-cache": { "replicas": [1, 1, 0] },
+        "webhook-receiver": { "replicas": [1, 1, 0] },
+        "checkout": { "replicas": [1, 1, 0] },
+        "debezium": { "replicas": [1, 1, 0] },
+        "personalization": { "replicas": [1, 1, 0] },
+        "marketing": { "replicas": [1, 1, 0] },
+        "billing-topic": { "lag": { "snowflake-sink": 0 }, "replicas": [1, 1, 0] },
+        "orders-topic": { "lag": { "snowflake-sink": 0 }, "replicas": [1, 1, 0] },
+        "accounts-topic": { "lag": { "snowflake-sink": 0 }, "replicas": [1, 1, 0] },
+        "segments-topic": { "lag": { "personalization": 0, "marketing-sync": 0 }, "replicas": [1, 1, 0] },
+        "schema-registry": { "replicas": [1, 1, 0] },
+        "snowpipe": { "replicas": [6, 6, 0] },
+        "reverse-etl": { "replicas": [1, 1, 0] },
+        "raw": { "replicas": [1, 1, 0] },
+        "marts": { "replicas": [1, 1, 0] },
+        "airflow": { "replicas": [1, 1, 0] },
+        "dbt": { "replicas": [1, 1, 0] },
+        "bi": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 102,
+      "nodes": {
+        "billing-webhooks": { "processed": 97, "throughput": 1.0924235117103593, "replicas": [1, 1, 0] },
+        "storefront": { "processed": 100, "throughput": 9.555553002781108, "replicas": [1, 1, 0] },
+        "accounts-db": { "processed": 24, "backlog": 1, "throughput": 2.063842150496086, "replicas": [1, 1, 0] },
+        "segment-cache": { "processed": 29, "inFlight": 1, "throughput": 8.57732086004454, "replicas": [1, 1, 0] },
+        "webhook-receiver": { "processed": 96, "throughput": 1.431929694805538, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 96, "inFlight": 2, "throughput": 9.701577594444013, "replicas": [1, 1, 0] },
+        "debezium": { "processed": 24, "throughput": 2.520782495023133, "replicas": [1, 1, 0] },
+        "personalization": { "processed": 32, "throughput": 9.63322958612466, "replicas": [1, 1, 0] },
+        "marketing": { "processed": 32, "throughput": 8.694436054467747, "replicas": [1, 1, 0] },
+        "billing-topic": {
+          "processed": 96,
+          "throughput": 1.9329029103628708,
+          "lag": { "snowflake-sink": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "orders-topic": {
+          "processed": 93,
+          "throughput": 9.699452585173171,
+          "lag": { "snowflake-sink": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "accounts-topic": {
+          "processed": 23,
+          "throughput": 2.28082234083995,
+          "lag": { "snowflake-sink": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "segments-topic": {
+          "processed": 32,
+          "throughput": 6.440996647701783,
+          "lag": { "personalization": 0, "marketing-sync": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "schema-registry": { "replicas": [1, 1, 0] },
+        "snowpipe": { "processed": 208, "throughput": 21.359292618265012, "replicas": [6, 6, 0] },
+        "reverse-etl": { "processed": 32, "throughput": 4.77160767596735, "replicas": [1, 1, 0] },
+        "raw": { "processed": 205, "throughput": 22.94819768260627, "replicas": [1, 1, 0] },
+        "marts": { "processed": 124, "throughput": 29.38336994297753, "replicas": [1, 1, 0] },
+        "airflow": { "replicas": [1, 1, 0] },
+        "dbt": { "processed": 131, "inFlight": 70, "throughput": 29.993364522943097, "replicas": [1, 1, 0] },
+        "bi": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 18700,
+    "inSystem": 0,
+    "real": {
+      "billing-webhooks": { "processed": 1940, "throughput": 0.006988075601359575, "replicas": [1, 1, 0] },
+      "storefront": { "processed": 2000, "throughput": 0.03518482139662847, "replicas": [1, 1, 0] },
+      "accounts-db": { "processed": 500, "throughput": 0.010258219122050891, "replicas": [1, 1, 0] },
+      "segment-cache": { "processed": 2000, "throughput": 40.026470190231265, "replicas": [1, 1, 0] },
+      "webhook-receiver": { "processed": 1940, "throughput": 0.009113463607506466, "replicas": [1, 1, 0] },
+      "checkout": { "processed": 2000, "throughput": 0.04831201070542247, "replicas": [1, 1, 0] },
+      "debezium": { "processed": 500, "throughput": 0.012529417129484348, "replicas": [1, 1, 0] },
+      "personalization": { "processed": 2000, "throughput": 32.444826157996815, "replicas": [1, 1, 0] },
+      "marketing": { "processed": 2000, "throughput": 29.147981747598635, "replicas": [1, 1, 0] },
+      "billing-topic": {
+        "processed": 1940,
+        "throughput": 0.012301889118115954,
+        "lag": { "snowflake-sink": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "orders-topic": {
+        "processed": 2000,
+        "throughput": 0.06521439316242057,
+        "lag": { "snowflake-sink": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "accounts-topic": {
+        "processed": 500,
+        "throughput": 0.016912944066028064,
+        "lag": { "snowflake-sink": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "segments-topic": {
+        "processed": 2000,
+        "throughput": 21.59335597471925,
+        "lag": { "personalization": 0, "marketing-sync": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "schema-registry": { "replicas": [1, 1, 0] },
+      "snowpipe": { "processed": 4440, "throughput": 0.1549192994446001, "replicas": [6, 6, 0] },
+      "reverse-etl": { "processed": 2000, "throughput": 15.996751551738482, "replicas": [1, 1, 0] },
+      "raw": { "processed": 4440, "throughput": 0.19112054078867177, "replicas": [1, 1, 0] },
+      "marts": { "processed": 4440, "throughput": 3.966611265679294, "replicas": [1, 1, 0] },
+      "airflow": { "replicas": [1, 1, 0] },
+      "dbt": { "processed": 4440, "throughput": 3.215272601847504, "replicas": [1, 1, 0] },
+      "bi": { "replicas": [1, 1, 0] }
+    },
+    "edges": {
+      "billing-webhooks-to-webhook-receiver": 97,
+      "storefront-to-checkout": 100,
+      "accounts-db-to-debezium": 25,
+      "webhook-receiver-to-billing-topic": 97,
+      "checkout-to-orders-topic": 100,
+      "debezium-to-accounts-topic": 25,
+      "billing-topic-to-snowpipe": 97,
+      "orders-topic-to-snowpipe": 100,
+      "accounts-topic-to-snowpipe": 25,
+      "snowpipe-to-schema-registry": 0,
+      "snowpipe-to-raw": 222,
+      "raw-to-dbt": 222,
+      "airflow-to-dbt": 0,
+      "dbt-to-marts": 222,
+      "bi-to-marts": 0,
+      "marts-to-reverse-etl": 100,
+      "reverse-etl-to-segments-topic": 100,
+      "segments-topic-to-personalization": 100,
+      "segments-topic-to-marketing": 100,
+      "personalization-to-segment-cache": 100
+    }
+  },
+  "events": {
+    "total": 4108,
+    "byKind": { "inject": 222, "process": 2054, "deliver": 1832 },
+    "byNode": {
+      "storefront": { "inject": 100, "process": 100 },
+      "checkout": { "deliver": 100, "process": 100 },
+      "accounts-db": { "inject": 25, "process": 25 },
+      "debezium": { "deliver": 25, "process": 25 },
+      "orders-topic": { "deliver": 100, "process": 100 },
+      "accounts-topic": { "deliver": 25, "process": 25 },
+      "snowpipe": { "deliver": 222, "process": 222 },
+      "billing-webhooks": { "inject": 97, "process": 97 },
+      "webhook-receiver": { "deliver": 97, "process": 97 },
+      "raw": { "deliver": 222, "process": 222 },
+      "dbt": { "deliver": 222, "process": 222 },
+      "billing-topic": { "deliver": 97, "process": 97 },
+      "marts": { "deliver": 222, "process": 222 },
+      "reverse-etl": { "deliver": 100, "process": 100 },
+      "segments-topic": { "deliver": 100, "process": 100 },
+      "personalization": { "deliver": 100, "process": 100 },
+      "marketing": { "deliver": 100, "process": 100 },
+      "segment-cache": { "deliver": 100, "process": 100 }
+    },
+    "perSecond": [
+      "2795528ac1e2",
+      "f2cf4ac60f8f",
+      "02005e71e8ef",
+      "fc1b5ce52870",
+      "9c2068f8e607",
+      "107b38874f4d",
+      "f4d6be44d46f",
+      "ecf21e74702e",
+      "1b9a6fbe2d24",
+      "e403dd8dce0a",
+      "271afaba808d",
+      "9837d46e6ab9",
+      "f6d6e1653428",
+      "8d7180b2e2c8",
+      "d1d1893e6eb4",
+      "a876708571d5",
+      "d8401c64148b",
+      "fd87816fb8f9",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 0, "text": "Orders, invoices and account changes all stream into Snowflake. Each dot is 20 events. The connector loads about 600 rows a second.", "focus": ["orders-topic", "billing-topic", "accounts-topic", "snowpipe"] },
+    { "atMs": 3000, "text": "Month-end: invoice webhooks jump to 600 a second. The loader falls behind, and Kafka absorbs the burst as consumer lag.", "focus": ["billing-webhooks", "billing-topic", "snowpipe"] },
+    { "atMs": 6500, "text": "Producers never slowed down. Once the spike passes, the connector drains the lag and RAW catches up.", "focus": ["snowpipe", "raw"] },
+    { "atMs": 9000, "text": "Only order-driven segment changes flow back out through reverse ETL. Invoices and account rows stay in the marts.", "focus": ["marts", "reverse-etl", "segments-topic"] }
+  ],
+  "latency": {
+    "journeys": { "done": 189, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 189, "min": 3660, "mean": 5689.73544973545, "p50": 4680, "p90": 8600, "max": 9910 },
+    "waitMs": {
+      "segment-cache": { "count": 75, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "webhook-receiver": { "count": 94, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "checkout": { "count": 75, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "personalization": { "count": 75, "min": 0, "mean": 0.26666666666666666, "p50": 0, "p90": 0, "max": 10 },
+      "snowpipe": { "count": 189, "min": 0, "mean": 43.80952380952381, "p50": 50, "p90": 60, "max": 120 },
+      "reverse-etl": { "count": 75, "min": 0, "mean": 0.13333333333333333, "p50": 0, "p90": 0, "max": 10 },
+      "raw": { "count": 189, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "marts": { "count": 189, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "dbt": { "count": 189, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "accounts-db": { "count": 20, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "segment-cache": { "count": 75, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "webhook-receiver": { "count": 94, "min": 70, "mean": 85.63829787234043, "p50": 90, "p90": 100, "max": 100 },
+      "checkout": { "count": 75, "min": 100, "mean": 124.66666666666667, "p50": 130, "p90": 140, "max": 150 },
+      "personalization": { "count": 75, "min": 90, "mean": 105.46666666666667, "p50": 110, "p90": 120, "max": 120 },
+      "snowpipe": { "count": 189, "min": 40, "mean": 45.34391534391534, "p50": 50, "p90": 50, "max": 50 },
+      "reverse-etl": { "count": 75, "min": 1210, "mean": 1477.0666666666666, "p50": 1470, "p90": 1750, "max": 1790 },
+      "raw": { "count": 189, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "marts": { "count": 189, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "dbt": { "count": 189, "min": 2010, "mean": 2481.5873015873017, "p50": 2450, "p90": 2910, "max": 3000 }
+    }
+  }
+}

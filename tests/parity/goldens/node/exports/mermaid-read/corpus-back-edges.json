@@ -1,0 +1,26 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Back-edges and loops",
+    "direction": "LR",
+    "nodes": [
+      { "id": "api", "stencil": "generic.service", "label": "API", "x": 40, "y": 160 },
+      { "id": "svc", "stencil": "generic.service", "label": "Orders", "x": 400, "y": 160 },
+      { "id": "topic", "stencil": "generic.service", "label": "orders", "sublabel": "orders.v1", "x": 760, "y": 40 },
+      { "id": "retry", "stencil": "generic.service", "label": "Retry worker", "x": 1120, "y": 160 },
+      { "id": "above", "stencil": "generic.database", "label": "Cache (above)", "x": 760, "y": 160 },
+      { "id": "below", "stencil": "generic.database", "label": "DB (below)", "x": 760, "y": 280 }
+    ],
+    "edges": [
+      { "id": "e1-api-svc", "from": "api", "to": "svc", "kind": "sync" },
+      { "id": "e2-svc-topic", "from": "svc", "to": "topic", "kind": "async" },
+      { "id": "e3-topic-retry", "from": "topic", "to": "retry", "label": "failed", "kind": "async" },
+      { "id": "e4-retry-svc", "from": "retry", "to": "svc", "label": "back-edge: retry", "kind": "async" },
+      { "id": "e5-topic-api", "from": "topic", "to": "api", "label": "back-edge: skip", "kind": "async" },
+      { "id": "e6-svc-above", "from": "svc", "to": "above", "kind": "sync" },
+      { "id": "e7-svc-below", "from": "svc", "to": "below", "kind": "sync" },
+      { "id": "e8-retry-retry", "from": "retry", "to": "retry", "label": "self-loop", "kind": "async" }
+    ]
+  }
+}

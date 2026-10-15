@@ -1,0 +1,35 @@
+{
+  "withIcons": {
+    "sha256": "efbd01ebd5fe68717dcf86bf0732db3effb3f9233edbed7c9f14f347783f70af",
+    "bytes": 3401,
+    "inlined": { "client.browser": "client-browser 0022934839e05a07", "service.dotnet": "dotnet 625b7d68f63c47d9" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Planning: shared capacity",
+        "nodes": [
+          {
+            "id": "checkout",
+            "stencil": "client.browser",
+            "label": "Checkout",
+            "x": 0,
+            "y": 140,
+            "props": { "ratePerSec": 3 }
+          },
+          {
+            "id": "orders",
+            "stencil": "service.dotnet",
+            "label": "Orders",
+            "x": 640,
+            "y": 140,
+            "props": { "latencyMs": 4000, "jitter": 0 }
+          }
+        ],
+        "edges": [{ "id": "request", "from": "checkout", "to": "orders", "kind": "sync", "props": { "travelMs": 0 } }]
+      }
+    }
+  ]
+}

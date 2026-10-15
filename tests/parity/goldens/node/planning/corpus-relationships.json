@@ -1,0 +1,184 @@
+{
+  "autoScale": { "freePlay": 1 },
+  "brokerAssignments": { "brokers": {}, "consumers": {} },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "worker",
+      "suggestion": "Worker: raise replicas from 1 to 2.",
+      "converged": true,
+      "iterations": 2,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": ["Infinity", 10, 0, 1, 1, 0], "worker": [5, 10, 2, 1, 1, 0], "vault\ninjected\tsecret": ["Infinity", 0, 0, 1, 1, 0] },
+      "connections": { "demand": 10 },
+      "offeredTypes": { "source": ["Caller"], "worker": ["Caller"] }
+    },
+    "explanations": {
+      "worker": {
+        "id": "worker",
+        "role": "processor",
+        "status": "up",
+        "reason": "capacity",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 5,
+        "offered": 10,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 1,
+        "seconds": 0.2,
+        "utilization": 2,
+        "growth": 5,
+        "contributors": [{ "edge": "demand", "node": "source", "label": "Caller", "rate": 10 }],
+        "target": 0.5,
+        "minimumReplicas": 2,
+        "targetReplicas": 4,
+        "changes": [{ "nodeId": "worker", "key": "replicas", "from": 1, "to": 4 }],
+        "fixId": "capacity:worker",
+        "converged": true
+      }
+    },
+    "capabilities": {},
+    "sizing": [{ "nodeId": "worker", "key": "replicas", "from": 1, "to": 4 }],
+    "redundancy": { "worker": { "replicas": 4, "enough": true } },
+    "resolved": {
+      "source": {
+        "profile": { "family": "client", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 10,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Caller",
+        "healthChecks": false
+      },
+      "worker": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 200,
+        "concurrency": 1,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Worker",
+        "healthChecks": false
+      },
+      "vault\ninjected\tsecret": {
+        "profile": { "family": "dependency", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Vault\nInjected label",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {},
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "over",
+          "top": "worker",
+          "headline": "Worker is over capacity",
+          "detail": "200% · 10/s of 5/s",
+          "fix": {
+            "changes": [{ "nodeId": "worker", "key": "replicas", "from": 1, "to": 4, "label": "Worker" }],
+            "label": "Worker 1 → 4 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "10/s · no limit", { "modeled": false }],
+            "worker": ["over", "200% · 10/s of 5/s"],
+            "vault\ninjected\tsecret": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "over",
+          "top": "worker",
+          "headline": "Worker is over capacity",
+          "detail": "10× · 50/s of 5/s",
+          "fix": {
+            "changes": [{ "nodeId": "worker", "key": "replicas", "from": 1, "to": 19, "label": "Worker" }],
+            "label": "Worker 1 → 19 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "50/s · no limit", { "modeled": false }],
+            "worker": ["over", "10× · 50/s of 5/s"],
+            "vault\ninjected\tsecret": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "over",
+          "top": "worker",
+          "headline": "Worker is over capacity",
+          "detail": "200% · 10/s of 5/s",
+          "fix": {
+            "changes": [{ "nodeId": "worker", "key": "replicas", "from": 1, "to": 8, "label": "Worker" }],
+            "label": "Worker 1 → 8 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "10/s · no limit", { "modeled": false }],
+            "worker": ["over", "200% · 10/s of 5/s"],
+            "vault\ninjected\tsecret": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "over",
+          "top": "worker",
+          "headline": "Worker is over capacity",
+          "detail": "200% · 10/s of 5/s",
+          "fix": {
+            "changes": [{ "nodeId": "worker", "key": "replicas", "from": 1, "to": 4, "label": "Worker" }],
+            "label": "Worker 1 → 4 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "10/s · no limit", { "modeled": false }],
+            "worker": ["over", "200% · 10/s of 5/s"],
+            "vault\ninjected\tsecret": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    }
+  }
+}

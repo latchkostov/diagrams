@@ -75,6 +75,10 @@ build that bundles the test storage provider, so `pnpm build` on CI proves produ
   needed a retry to the job summary, and uploads the JSON report (`e2e-durations-<n>`, 30 days) for
   timing analysis. On failure it uploads its HTML report and traces (`playwright-output-<n>`), and
   **Merged E2E report** merges every shard's blob report into one (`playwright-report-merged`).
+- **Output parity:** `pnpm parity` (docs/PARITY.md) on every event: what the app produces from a diagram
+  (simulations, checks, exports, imports, agent tools, layout, languages, the canvas, images, Interactive HTML)
+  against committed goldens. The browser tier runs in Playwright's Linux image through Docker, as it does locally.
+  Update the goldens with `pnpm parity:update` when a change means to alter output.
 - **CI:** the one check to require for merging. It passes when every job that had to run passed; a
   skipped e2e matrix counts as passed. On a passing pull request run it uploads a
   `ci-tested-tree-<tree>` marker, which the merge's push run looks up to skip the matrix.

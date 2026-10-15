@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "devices": [40, 100], "topic": [400, 100], "fast": [760, 40], "slow": [760, 160] },
+    "TB": { "devices": [180, 40], "topic": [180, 200], "fast": [40, 360], "slow": [320, 360] }
+  },
+  "tidy": { "devices": [40, 100], "topic": [400, 100], "fast": [760, 40], "slow": [760, 160] },
+  "arrange": {
+    "alignLeft": { "devices": [40, 160], "topic": [40, 160], "fast": [40, 40], "slow": [40, 280] },
+    "alignMiddle": { "devices": [40, 160], "topic": [400, 160], "fast": [760, 160], "slow": [760, 160] },
+    "distributeH": { "devices": [40, 160], "topic": [280, 160], "fast": [520, 40], "slow": [760, 280] },
+    "distributeV": { "devices": [40, 120], "topic": [400, 200], "fast": [760, 40], "slow": [760, 280] },
+    "spreadH": { "devices": [40, 40], "topic": [400, 40], "fast": [760, 40], "slow": [1020, 40] },
+    "boundaryAround": { "x": 0, "y": -24, "width": 1020, "height": 416 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "devices": [40, 100], "topic": [400, 100], "fast": [760, 40], "slow": [760, 160] },
+    "groups": {}
+  }
+}

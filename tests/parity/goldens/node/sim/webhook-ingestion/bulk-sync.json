@@ -1,0 +1,153 @@
+{
+  "run": {
+    "time": 15570,
+    "totalMs": 18000,
+    "done": true,
+    "scale": 20,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "buffered", "label": "The queue absorbs the burst", "status": "pass", "value": 0 },
+      { "id": "drained", "label": "The backlog drains", "status": "pass", "value": 0 },
+      { "id": "applied", "label": "All 5,000 changes applied", "status": "pass", "value": 5000 },
+      { "id": "stored", "label": "All 5,000 bodies stored for replay", "status": "pass", "value": 5000 },
+      { "id": "no-dlq", "label": "Nothing is dead-lettered", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "note", "label": "A partner sends 1,000 webhooks a second. The receiver only verifies the signature, stores the body and publishes, so it answers 202 in milliseconds. Each dot is 20 webhooks." },
+      { "atMs": 0, "kind": "traffic", "label": "1,000 webhooks/s for 5 seconds" },
+      { "atMs": 2500, "kind": "note", "label": "Workers apply about 400 a second. The queue holds the difference, so the partner never sees a timeout and never retries." },
+      { "atMs": 5000, "kind": "traffic", "label": "1,000 webhooks/s for 5 seconds ends" },
+      { "atMs": 8000, "kind": "note", "label": "The backlog drains. Event IDs are recorded, so a partner's duplicate delivery is applied once." }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "partners": { "replicas": [1, 1, 0] },
+        "edge": { "replicas": [1, 1, 0] },
+        "raw": { "replicas": [1, 1, 0] },
+        "receiver": { "replicas": [4, 4, 0] },
+        "exchange": { "lag": { "process": 0 }, "replicas": [1, 1, 0] },
+        "replay": { "replicas": [1, 1, 0] },
+        "queue": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "workers": { "replicas": [4, 4, 0] },
+        "dedupe": { "replicas": [1, 1, 0] },
+        "integration-db": { "replicas": [1, 1, 0] },
+        "operator": { "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 85,
+      "nodes": {
+        "partners": { "processed": 250, "throughput": 0.33968035226802945, "replicas": [1, 1, 0] },
+        "edge": { "processed": 250, "throughput": 0.41488651915298896, "replicas": [1, 1, 0] },
+        "raw": { "processed": 250, "throughput": 0.6410312059626597, "replicas": [1, 1, 0] },
+        "receiver": { "processed": 250, "throughput": 0.5248319620042957, "replicas": [4, 4, 0] },
+        "exchange": {
+          "processed": 250,
+          "throughput": 0.7084490464088918,
+          "lag": { "process": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "replay": { "replicas": [1, 1, 0] },
+        "queue": {
+          "processed": 250,
+          "backlog": 67,
+          "throughput": 0.9563061850138619,
+          "lag": { "queue": 67 },
+          "replicas": [1, 1, 0]
+        },
+        "dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "workers": { "processed": 172, "backlog": 1, "inFlight": 4, "throughput": 19.653236930165043, "replicas": [4, 4, 0] },
+        "dedupe": { "processed": 169, "throughput": 20.70320678621456, "replicas": [1, 1, 0] },
+        "integration-db": { "processed": 168, "inFlight": 1, "throughput": 19.906260765177297, "replicas": [1, 1, 0] },
+        "operator": { "replicas": [1, 1, 0] },
+        "vault": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 15570,
+    "inSystem": 0,
+    "real": {
+      "partners": { "processed": 5000, "throughput": 0.02588690671306667, "replicas": [1, 1, 0] },
+      "edge": { "processed": 5000, "throughput": 0.0316183392595746, "replicas": [1, 1, 0] },
+      "raw": { "processed": 5000, "throughput": 0.04885273734003332, "replicas": [1, 1, 0] },
+      "receiver": { "processed": 5000, "throughput": 0.03999723843232634, "replicas": [4, 4, 0] },
+      "exchange": {
+        "processed": 5000,
+        "throughput": 0.053990624576593066,
+        "lag": { "process": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "replay": { "replicas": [1, 1, 0] },
+      "queue": { "processed": 5000, "throughput": 0.07287972011124344, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "workers": { "processed": 5000, "throughput": 74.16687928641339, "replicas": [4, 4, 0] },
+      "dedupe": { "processed": 5000, "throughput": 90.5876309245576, "replicas": [1, 1, 0] },
+      "integration-db": { "processed": 5000, "throughput": 91.49805175110835, "replicas": [1, 1, 0] },
+      "operator": { "replicas": [1, 1, 0] },
+      "vault": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "partners-to-edge": 250, "edge-to-receiver": 250, "receiver-to-raw": 250, "receiver-to-exchange": 250, "exchange-to-queue": 250, "queue-to-workers": 250, "queue-to-dlq": 0, "workers-to-dedupe": 250, "workers-to-integration-db": 250, "dlq-to-replay": 0, "replay-to-exchange": 0, "operator-to-replay": 0, "receiver-to-vault": 0 }
+  },
+  "events": {
+    "total": 4500,
+    "byKind": { "inject": 250, "process": 2250, "deliver": 2000 },
+    "byNode": {
+      "partners": { "inject": 250, "process": 250 },
+      "edge": { "deliver": 250, "process": 250 },
+      "receiver": { "deliver": 250, "process": 250 },
+      "raw": { "deliver": 250, "process": 250 },
+      "exchange": { "deliver": 250, "process": 250 },
+      "queue": { "deliver": 250, "process": 250 },
+      "workers": { "deliver": 250, "process": 250 },
+      "dedupe": { "deliver": 250, "process": 250 },
+      "integration-db": { "deliver": 250, "process": 250 }
+    },
+    "perSecond": [
+      "a6ccd4451c91",
+      "c0ea6806c64f",
+      "022c2f7c9bce",
+      "a3eb6028f4b0",
+      "07e84d8ef19e",
+      "50cd54f77f8e",
+      "6d682ad85637",
+      "96f3ad8ffcf9",
+      "2791b8f1fe1b",
+      "d870b1a78b8c",
+      "091286d37ba3",
+      "4ea1baf2e268",
+      "af133d253e87",
+      "0c92d67ee7da",
+      "2d739030d84e",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 0, "text": "A partner sends 1,000 webhooks a second. The receiver only verifies the signature, stores the body and publishes, so it answers 202 in milliseconds. Each dot is 20 webhooks.", "focus": ["partners", "receiver", "raw"] },
+    { "atMs": 2500, "text": "Workers apply about 400 a second. The queue holds the difference, so the partner never sees a timeout and never retries.", "focus": ["queue", "workers"] },
+    { "atMs": 8000, "text": "The backlog drains. Event IDs are recorded, so a partner's duplicate delivery is applied once.", "focus": ["workers", "dedupe", "integration-db"] }
+  ],
+  "latency": {
+    "journeys": { "done": 213, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 213, "min": 1700, "mean": 5147.605633802817, "p50": 5240, "p90": 7780, "max": 9070 },
+    "waitMs": {
+      "edge": { "count": 213, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "receiver": { "count": 213, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "workers": { "count": 213, "min": 0, "mean": 82.67605633802818, "p50": 80, "p90": 110, "max": 190 },
+      "integration-db": { "count": 213, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "edge": { "count": 213, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "receiver": { "count": 213, "min": 30, "mean": 35.2112676056338, "p50": 40, "p90": 40, "max": 40 },
+      "workers": { "count": 213, "min": 130, "mean": 164.4131455399061, "p50": 170, "p90": 190, "max": 200 },
+      "integration-db": { "count": 213, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    }
+  }
+}

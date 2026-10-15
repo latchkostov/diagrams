@@ -1,0 +1,72 @@
+<mxfile host="Diagrams" agent="Diagrams" version="24.0.0" type="device">
+  <diagram id="dg-9lpfcl" name="Planning: shared capacity">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <object id="0" dg_format="diagrams/v1">
+          <mxCell />
+        </object>
+        <mxCell id="1" parent="0" />
+        <object id="dg-n-checkout" label="Checkout" dg_id="checkout" dg_stencil="client.browser" dg_props="{&quot;ratePerSec&quot;:3}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#6366F11A;strokeColor=#6366F1;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="20" y="146" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-orders" label="Orders" dg_id="orders" dg_stencil="service.dotnet" dg_props="{&quot;latencyMs&quot;:4000,&quot;jitter&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#512BD41A;strokeColor=#512BD4;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="660" y="146" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-topic" label="Order events" dg_id="topic" dg_stencil="kafka.topic">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="340" y="26" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-topic2" label="Returns" dg_id="topic2" dg_stencil="azure.service-bus.topic">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/integration/Service_Bus.svg;" vertex="1" parent="1">
+            <mxGeometry x="402" y="268" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-payments" label="Payments" dg_id="payments" dg_stencil="generic.service">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#6366F11A;strokeColor=#6366F1;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="980" y="146" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-queue" label="Audit" dg_id="queue" dg_stencil="generic.queue">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#F59E0B1A;strokeColor=#F59E0B;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="660" y="406" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-publish" label="" dg_id="publish" dg_kind="async" dg_props="{&quot;travelMs&quot;:0}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-checkout" target="dg-n-topic">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-publish2" label="" dg_id="publish2" dg_kind="async">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-checkout" target="dg-n-topic2">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-consume" label="" dg_id="consume" dg_kind="async" dg_props="{&quot;group&quot;:&quot;billing&quot;,&quot;filter&quot;:[&quot;Checkout&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-topic" target="dg-n-orders">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-consume2" label="" dg_id="consume2" dg_kind="async" dg_props="{&quot;group&quot;:&quot;returns&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-topic2" target="dg-n-orders">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-call" label="" dg_id="call" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-orders" target="dg-n-payments">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-audit" label="" dg_id="audit" dg_kind="async" dg_props="{&quot;emits&quot;:&quot;OrderHandled&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-orders" target="dg-n-queue">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

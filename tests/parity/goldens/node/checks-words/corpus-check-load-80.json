@@ -1,0 +1,47 @@
+{
+  "summary": "1 warning, 0 suggestions.",
+  "findings": {
+    "single-point:api": {
+      "title": "Every request goes through one api",
+      "message": "It runs 1 replica at 80% of what it can handle, and every request from Web goes through it: if it stops or slows, Web gets nothing.",
+      "rationale": "Redundancy is what turns one instance's availability into a service's: with two replicas, one can stop (a deploy, a crash, a node drained) while the other answers.",
+      "fix": { "label": "Set replicas to 2" }
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "single-point:api",
+        "rule": "single-point",
+        "severity": "warning",
+        "title": "Every request goes through one api",
+        "message": "It runs 1 replica at 80% of what it can handle, and every request from Web goes through it: if it stops or slows, Web gets nothing.",
+        "targets": ["api", "web"],
+        "fix": {
+          "label": "Set replicas to 2",
+          "ops": [{ "op": "update", "target": "api", "props": { "replicas": 2 } }]
+        }
+      }
+    ],
+    "summary": "1 warning, 0 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      {
+        "id": "single-point:api",
+        "rule": "single-point",
+        "severity": "warning",
+        "title": "Every request goes through one api",
+        "message": "It runs 1 replica at 80% of what it can handle, and every request from Web goes through it: if it stops or slows, Web gets nothing.",
+        "targets": ["api", "web"],
+        "fix": {
+          "label": "Set replicas to 2",
+          "ops": [{ "op": "update", "target": "api", "props": { "replicas": 2 } }]
+        }
+      }
+    ],
+    "summary": "1 warning, 0 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
+}

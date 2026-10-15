@@ -1,0 +1,24 @@
+---
+title: GCP streaming analytics
+---
+flowchart LR
+  subgraph g_gcp ["Google Cloud · analytics project"]
+    collector["Event collector<br/>Validate · batch publish"]
+    pubsub_topic["clickstream<br/>Topic · 7-day retention"]
+    dataflow["Sessionize job<br/>Streaming · 1-min windows"]
+    raw_archive[("Raw archive<br/>Avro · by hour")]
+    bigquery[("Analytics dataset<br/>Storage Write API")]
+    looker["Product dashboards<br/>Funnels · retention"]
+    dead_letters["clickstream-dlq<br/>Unparseable events"]
+    dead_bucket[("Dead letters<br/>Inspect · replay")]
+  end
+  app(["Mobile and web apps<br/>Clickstream SDK"])
+  app -->|"HTTPS batches"| collector
+  collector -.->|"Publish"| pubsub_topic
+  pubsub_topic -.->|"sub: dataflow"| dataflow
+  pubsub_topic -.->|"Cloud Storage subscription"| raw_archive
+  dataflow -->|"Sessions"| bigquery
+  dataflow -.->|"Parse errors"| dead_letters
+  dead_letters -.->|"sub: archive"| dead_bucket
+  looker -->|"SQL"| bigquery
+  linkStyle 1,2,3,5,6 stroke-dasharray: 6 4

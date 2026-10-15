@@ -1,0 +1,182 @@
+{
+  "run": {
+    "time": 11180,
+    "totalMs": 18000,
+    "done": true,
+    "scale": 5,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "appended", "label": "All 400 commands are appended", "status": "pass", "value": 400 },
+      { "id": "published", "label": "All 400 events are shared", "status": "pass", "value": 400 },
+      { "id": "statements", "label": "Statements: 400 entries + 400 searches", "status": "pass", "value": 800 },
+      { "id": "caught-up", "label": "Projections catch up", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "note", "label": "Payday. Commands go to the write side; queries never touch it. Each dot is five requests." },
+      { "atMs": 0, "kind": "traffic", "label": "Deposits: 40/s" },
+      { "atMs": 0, "kind": "traffic", "label": "Withdrawals: 10/s" },
+      { "atMs": 0, "kind": "traffic", "label": "Balance checks: 150/s" },
+      { "atMs": 0, "kind": "traffic", "label": "Statement searches: 50/s" },
+      { "atMs": 2500, "kind": "note", "label": "The event store is the source of truth: an append-only log of what happened. Each projection keeps its own position in it." },
+      { "atMs": 6000, "kind": "note", "label": "Queries read denormalized tables, so reads stay fast however long an account's history grows." },
+      { "atMs": 8000, "kind": "traffic", "label": "Deposits: 40/s ends" },
+      { "atMs": 8000, "kind": "traffic", "label": "Withdrawals: 10/s ends" },
+      { "atMs": 8000, "kind": "traffic", "label": "Balance checks: 150/s ends" },
+      { "atMs": 8000, "kind": "traffic", "label": "Statement searches: 50/s ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "app": { "replicas": [1, 1, 0] },
+        "gateway": { "replicas": [1, 1, 0] },
+        "command-handler": { "replicas": [1, 1, 0] },
+        "event-store": { "lag": { "integration": 0, "balances": 0, "statements": 0 }, "replicas": [1, 1, 0] },
+        "publisher": { "replicas": [1, 1, 0] },
+        "integration-topic": { "lag": { "fraud": 0 }, "replicas": [1, 1, 0] },
+        "query-api": { "replicas": [1, 1, 0] },
+        "balances-db": { "replicas": [1, 1, 0] },
+        "statements": { "replicas": [1, 1, 0] },
+        "balance-proj": { "replicas": [1, 1, 0] },
+        "statement-proj": { "replicas": [1, 1, 0] },
+        "fraud": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 0,
+      "nodes": {
+        "app": { "processed": 400, "throughput": 7.095209399739214, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 400, "throughput": 8.666108330565429, "replicas": [1, 1, 0] },
+        "command-handler": { "processed": 80, "throughput": 2.385054502543, "replicas": [1, 1, 0] },
+        "event-store": {
+          "processed": 80,
+          "throughput": 2.913112147768348,
+          "lag": { "integration": 0, "balances": 0, "statements": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "publisher": { "processed": 80, "throughput": 4.157488505619831, "replicas": [1, 1, 0] },
+        "integration-topic": {
+          "processed": 80,
+          "throughput": 5.6120224767069145,
+          "lag": { "fraud": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "query-api": { "processed": 320, "throughput": 8.554250620498651, "replicas": [1, 1, 0] },
+        "balances-db": { "processed": 320, "throughput": 12.937525519309848, "replicas": [1, 1, 0] },
+        "statements": { "processed": 160, "throughput": 7.982270689427986, "replicas": [1, 1, 0] },
+        "balance-proj": { "processed": 80, "throughput": 4.117009649158779, "replicas": [1, 1, 0] },
+        "statement-proj": { "processed": 80, "throughput": 4.285996966052338, "replicas": [1, 1, 0] },
+        "fraud": { "processed": 80, "throughput": 8.067694500742165, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 11180,
+    "inSystem": 0,
+    "real": {
+      "app": { "processed": 2000, "throughput": 10.901034972313843, "replicas": [1, 1, 0] },
+      "gateway": { "processed": 2000, "throughput": 13.314554181984589, "replicas": [1, 1, 0] },
+      "command-handler": { "processed": 400, "throughput": 3.664382695181834, "replicas": [1, 1, 0] },
+      "event-store": {
+        "processed": 400,
+        "throughput": 4.475687130849484,
+        "lag": { "integration": 0, "balances": 0, "statements": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "publisher": { "processed": 400, "throughput": 6.387539118777856, "replicas": [1, 1, 0] },
+      "integration-topic": {
+        "processed": 400,
+        "throughput": 8.622275938218536,
+        "lag": { "fraud": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "query-api": { "processed": 1600, "throughput": 13.142696701723935, "replicas": [1, 1, 0] },
+      "balances-db": { "processed": 1600, "throughput": 19.877132610967486, "replicas": [1, 1, 0] },
+      "statements": { "processed": 800, "throughput": 12.263910343101152, "replicas": [1, 1, 0] },
+      "balance-proj": { "processed": 400, "throughput": 6.325347659011017, "replicas": [1, 1, 0] },
+      "statement-proj": { "processed": 400, "throughput": 6.584978706884228, "replicas": [1, 1, 0] },
+      "fraud": { "processed": 400, "throughput": 12.395154948036753, "replicas": [1, 1, 0] }
+    },
+    "edges": {
+      "app-to-gateway": 400,
+      "gateway-to-command-handler": 80,
+      "gateway-to-query-api": 320,
+      "command-handler-to-event-store": 80,
+      "event-store-to-publisher": 80,
+      "publisher-to-integration-topic": 80,
+      "event-store-to-balance-proj": 80,
+      "event-store-to-statement-proj": 80,
+      "balance-proj-to-balances-db": 80,
+      "statement-proj-to-statements": 80,
+      "query-api-to-balances-db": 240,
+      "query-api-to-statements": 80,
+      "integration-topic-to-fraud": 80
+    }
+  },
+  "events": {
+    "total": 4320,
+    "byKind": { "inject": 400, "process": 2160, "deliver": 1760 },
+    "byNode": {
+      "app": { "inject": 400, "process": 400 },
+      "gateway": { "deliver": 400, "process": 400 },
+      "query-api": { "deliver": 320, "process": 320 },
+      "command-handler": { "deliver": 80, "process": 80 },
+      "balances-db": { "deliver": 320, "process": 320 },
+      "statements": { "deliver": 160, "process": 160 },
+      "event-store": { "deliver": 80, "process": 80 },
+      "publisher": { "deliver": 80, "process": 80 },
+      "balance-proj": { "deliver": 80, "process": 80 },
+      "statement-proj": { "deliver": 80, "process": 80 },
+      "integration-topic": { "deliver": 80, "process": 80 },
+      "fraud": { "deliver": 80, "process": 80 }
+    },
+    "perSecond": [
+      "69b367bda6e7",
+      "af27b4f8c945",
+      "1e2986b74426",
+      "a78684e8b586",
+      "10617a4dbb81",
+      "dcced3a16d35",
+      "67a3868c2c0e",
+      "73281d4a6228",
+      "a9b41fd058e7",
+      "bdd6d97ecc8a",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 0, "text": "Payday. Commands go to the write side; queries never touch it. Each dot is five requests.", "focus": ["gateway", "command-handler", "query-api"] },
+    { "atMs": 2500, "text": "The event store is the source of truth: an append-only log of what happened. Each projection keeps its own position in it.", "focus": ["event-store", "balance-proj", "statement-proj", "publisher"] },
+    { "atMs": 6000, "text": "Queries read denormalized tables, so reads stay fast however long an account's history grows.", "focus": ["query-api", "balances-db", "statements"] }
+  ],
+  "latency": {
+    "journeys": { "done": 400, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 400, "min": 640, "mean": 855.175, "p50": 650, "p90": 1700, "max": 1730 },
+    "waitMs": {
+      "gateway": { "count": 400, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "command-handler": { "count": 80, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "publisher": { "count": 80, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "query-api": { "count": 320, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "balances-db": { "count": 320, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "statements": { "count": 160, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "balance-proj": { "count": 80, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "statement-proj": { "count": 80, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "fraud": { "count": 80, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "gateway": { "count": 400, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "command-handler": { "count": 80, "min": 50, "mean": 64.375, "p50": 60, "p90": 70, "max": 80 },
+      "publisher": { "count": 80, "min": 50, "mean": 55.625, "p50": 60, "p90": 60, "max": 60 },
+      "query-api": { "count": 320, "min": 20, "mean": 25.3125, "p50": 30, "p90": 30, "max": 30 },
+      "balances-db": { "count": 320, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "statements": { "count": 160, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "balance-proj": { "count": 80, "min": 40, "mean": 44.625, "p50": 40, "p90": 50, "max": 50 },
+      "statement-proj": { "count": 80, "min": 70, "mean": 83.5, "p50": 80, "p90": 90, "max": 100 },
+      "fraud": { "count": 80, "min": 50, "mean": 64.625, "p50": 70, "p90": 70, "max": 80 }
+    }
+  }
+}

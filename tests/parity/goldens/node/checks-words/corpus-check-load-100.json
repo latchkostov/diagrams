@@ -1,0 +1,77 @@
+{
+  "summary": "2 warnings, 0 suggestions.",
+  "findings": {
+    "capacity:api": {
+      "title": "api can't keep up",
+      "message": "At the diagram's own rates, it gets 16/s and handles 16/s (100%): its backlog only grows.",
+      "rationale": "Demand above what a service can handle never drains: latency and backlog grow until something times out. Live view's Show capacity has the same numbers.",
+      "fix": { "label": "Set replicas to 2" }
+    },
+    "single-point:api": {
+      "title": "Every request goes through one api",
+      "message": "It runs 1 replica at 100% of what it can handle, and every request from Web goes through it: if it stops or slows, Web gets nothing.",
+      "rationale": "Redundancy is what turns one instance's availability into a service's: with two replicas, one can stop (a deploy, a crash, a node drained) while the other answers.",
+      "fix": { "label": "Set replicas to 2" }
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "capacity:api",
+        "rule": "capacity",
+        "severity": "warning",
+        "title": "api can't keep up",
+        "message": "At the diagram's own rates, it gets 16/s and handles 16/s (100%): its backlog only grows.",
+        "targets": ["api"],
+        "fix": {
+          "label": "Set replicas to 2",
+          "ops": [{ "op": "update", "target": "api", "props": { "replicas": 2 } }]
+        }
+      },
+      {
+        "id": "single-point:api",
+        "rule": "single-point",
+        "severity": "warning",
+        "title": "Every request goes through one api",
+        "message": "It runs 1 replica at 100% of what it can handle, and every request from Web goes through it: if it stops or slows, Web gets nothing.",
+        "targets": ["api", "web"],
+        "fix": {
+          "label": "Set replicas to 2",
+          "ops": [{ "op": "update", "target": "api", "props": { "replicas": 2 } }]
+        }
+      }
+    ],
+    "summary": "2 warnings, 0 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      {
+        "id": "capacity:api",
+        "rule": "capacity",
+        "severity": "warning",
+        "title": "api can't keep up",
+        "message": "At the diagram's own rates, it gets 16/s and handles 16/s (100%): its backlog only grows.",
+        "targets": ["api"],
+        "fix": {
+          "label": "Set replicas to 2",
+          "ops": [{ "op": "update", "target": "api", "props": { "replicas": 2 } }]
+        }
+      },
+      {
+        "id": "single-point:api",
+        "rule": "single-point",
+        "severity": "warning",
+        "title": "Every request goes through one api",
+        "message": "It runs 1 replica at 100% of what it can handle, and every request from Web goes through it: if it stops or slows, Web gets nothing.",
+        "targets": ["api", "web"],
+        "fix": {
+          "label": "Set replicas to 2",
+          "ops": [{ "op": "update", "target": "api", "props": { "replicas": 2 } }]
+        }
+      }
+    ],
+    "summary": "2 warnings, 0 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
+}

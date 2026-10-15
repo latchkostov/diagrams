@@ -1,0 +1,16 @@
+{
+  "evidence": {
+    "played": [
+      { "id": "flash-sale", "title": "Flash sale: 300 orders/s", "playedMs": 15330, "capped": false },
+      { "id": "three-pl-outage", "title": "3PL outage and DLQ redrive", "playedMs": 13430, "capped": false }
+    ],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [],
+    "dropped": []
+  },
+  "planned": [],
+  "counted": 0,
+  "findings": [],
+  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 2 saved simulations (at most 60 s each)." }
+}

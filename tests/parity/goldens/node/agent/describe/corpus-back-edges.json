@@ -1,0 +1,131 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"Back-edges and loops\" · direction LR · 6 nodes, 8 connections, 0 boundaries, 0 simulations\ndescription: \"Targets behind, above and below their sources.\"\nnodes:\n  \"api\" \"aws.api-gateway\" (\"Amazon API Gateway\") \"API\" capabilities=[{\"kind\":\"calls\",\"edge\":\"fwd-1\",\"peer\":\"svc\"}] explanation=undefined\n  \"svc\" \"service.node\" (\"Node.js Service\") \"Orders\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"fwd-2\",\"peer\":\"topic\"},{\"kind\":\"calls\",\"edge\":\"up\",\"peer\":\"above\"},{\"kind\":\"calls\",\"edge\":\"down-2\",\"peer\":\"below\"}] explanation={\"id\":\"svc\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"topic\" \"kafka.topic\" (\"Kafka Topic\") \"orders\" / \"orders.v1\" capabilities=[] explanation=undefined\n  \"retry\" \"service.go\" (\"Go Service\") \"Retry worker\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"down\",\"peer\":\"topic\",\"group\":\"down\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"retry\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"above\" \"redis.cache\" (\"Redis Cache\") \"Cache (above)\" capabilities=[] explanation=undefined\n  \"below\" \"postgres\" (\"PostgreSQL\") \"DB (below)\" capabilities=[] explanation=undefined\nconnections:\n  \"fwd-1\" \"api\" -> \"svc\" sync\n  \"fwd-2\" \"svc\" -> \"topic\" async\n  \"down\" \"topic\" -> \"retry\" async \"failed\"\n  \"back\" \"retry\" -> \"svc\" async \"back-edge: retry\"\n  \"back-far\" \"topic\" -> \"api\" async \"back-edge: skip\"\n  \"up\" \"svc\" -> \"above\" sync\n  \"down-2\" \"svc\" -> \"below\" sync\n  \"self\" \"retry\" -> \"retry\" async \"self-loop\""
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "Back-edges and loops",
+      "description": "Targets behind, above and below their sources.",
+      "direction": "LR",
+      "nodes": [
+        {
+          "id": "api",
+          "stencil": "aws.api-gateway",
+          "label": "API",
+          "x": 40,
+          "y": 160,
+          "capabilities": [{ "kind": "calls", "edge": "fwd-1", "peer": "svc" }]
+        },
+        {
+          "id": "svc",
+          "stencil": "service.node",
+          "label": "Orders",
+          "x": 400,
+          "y": 160,
+          "capabilities": [
+            { "kind": "publishes", "edge": "fwd-2", "peer": "topic" },
+            { "kind": "calls", "edge": "up", "peer": "above" },
+            { "kind": "calls", "edge": "down-2", "peer": "below" }
+          ],
+          "explanation": {
+            "id": "svc",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 16,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        },
+        { "id": "topic", "stencil": "kafka.topic", "label": "orders", "sublabel": "orders.v1", "x": 760, "y": 160, "capabilities": [] },
+        {
+          "id": "retry",
+          "stencil": "service.go",
+          "label": "Retry worker",
+          "x": 760,
+          "y": 400,
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "down",
+              "peer": "topic",
+              "group": "down",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "retry",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 16,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "topic",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        },
+        { "id": "above", "stencil": "redis.cache", "label": "Cache (above)", "x": 400, "y": -8, "capabilities": [] },
+        { "id": "below", "stencil": "postgres", "label": "DB (below)", "x": 400, "y": 400, "capabilities": [] }
+      ],
+      "edges": [
+        { "id": "fwd-1", "from": "api", "to": "svc", "kind": "sync" },
+        { "id": "fwd-2", "from": "svc", "to": "topic", "kind": "async" },
+        { "id": "down", "from": "topic", "to": "retry", "kind": "async", "label": "failed" },
+        { "id": "back", "from": "retry", "to": "svc", "kind": "async", "label": "back-edge: retry" },
+        { "id": "back-far", "from": "topic", "to": "api", "kind": "async", "label": "back-edge: skip" },
+        { "id": "up", "from": "svc", "to": "above", "kind": "sync" },
+        { "id": "down-2", "from": "svc", "to": "below", "kind": "sync" },
+        { "id": "self", "from": "retry", "to": "retry", "kind": "async", "label": "self-loop" }
+      ],
+      "groups": [],
+      "annotations": [],
+      "simulations": [],
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"Back-edges and loops\" · direction LR · 3 nodes, 2 connections, 0 boundaries, 0 simulations\ndescription: \"Targets behind, above and below their sources.\"\nnodes:\n  \"api\" \"aws.api-gateway\" (\"Amazon API Gateway\") \"API\" capabilities=[{\"kind\":\"calls\",\"edge\":\"fwd-1\",\"peer\":\"svc\"}] explanation=undefined\n  \"svc\" \"service.node\" (\"Node.js Service\") \"Orders\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"fwd-2\",\"peer\":\"topic\"},{\"kind\":\"calls\",\"edge\":\"up\",\"peer\":\"above\"},{\"kind\":\"calls\",\"edge\":\"down-2\",\"peer\":\"below\"}] explanation={\"id\":\"svc\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"topic\" \"kafka.topic\" (\"Kafka Topic\") \"orders\" / \"orders.v1\" capabilities=[] explanation=undefined\nconnections:\n  \"fwd-1\" \"api\" -> \"svc\" sync\n  \"back-far\" \"topic\" -> \"api\" async \"back-edge: skip\""
+  }
+}

@@ -1,0 +1,13 @@
+---
+title: Cycle of 4
+---
+flowchart LR
+  c1["Service 1"]
+  c2["Topic 2<br/>ring.2"]
+  c3["Service 3"]
+  c4["Topic 4<br/>ring.4"]
+  c1 -.-> c2
+  c2 -.-> c3
+  c3 -.-> c4
+  c4 -.->|"back to start"| c1
+  linkStyle 0,1,2,3 stroke-dasharray: 6 4
