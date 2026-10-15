@@ -39,26 +39,12 @@ runs:
           pnpm-workspace.yaml
     - run: pnpm install --frozen-lockfile
       shell: bash
-    - name: Playwright version
-      id: pw
-      shell: bash
-      run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
-    - name: Cache Playwright browsers
-      id: pw-cache
-      uses: actions/cache@v6
-      with:
-        path: ~/.cache/ms-playwright
-        key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
-    - name: Install Chromium
-      if: steps.pw-cache.outputs.cache-hit != 'true'
-      shell: bash
-      run: pnpm exec playwright install --with-deps chromium
+    - uses: ./.github/actions/chromium-cache
     # The builds the servers use run while apt installs Chromium's system libraries: the production build
     # (the subpath project, every target) and, for the build target, the e2e build with test hooks.
     - name: System deps and builds
       shell: bash
       env:
-        CACHE_HIT: ${{ steps.pw-cache.outputs.cache-hit }}
         TARGET: ${{ inputs.target }}
         SHARD: ${{ inputs.shard }}
         TOTAL: ${{ inputs.total }}
@@ -93,7 +79,7 @@ runs:
             pnpm exec vite build --outDir tests/.output/locked-dist --emptyOutDir --logLevel error > "$RUNNER_TEMP/locked-build.log" 2>&1 &
           locked=$! ;;
         esac
-        if [ "$CACHE_HIT" = "true" ]; then pnpm exec playwright install-deps chromium; fi
+        pnpm exec playwright install-deps chromium
         status=0
         if [ -n "$e2e" ]; then
           wait "$e2e" || { echo "::error::e2e build failed"; cat "$RUNNER_TEMP/e2e-build.log"; status=1; }

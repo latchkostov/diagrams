@@ -259,8 +259,9 @@ jobs:
             pnpm-lock.yaml
             pnpm-workspace.yaml
       - run: pnpm install --frozen-lockfile
-      - name: Install browser for container smoke test
-        run: pnpm exec playwright install --with-deps chromium
+      - uses: ./.github/actions/chromium-cache
+      - name: Install system dependencies for container smoke test
+        run: pnpm exec playwright install-deps chromium
       - run: pnpm self-host:smoke
       - uses: azure/setup-helm@v5.0.1
       - run: helm lint deploy/self-host/helm
