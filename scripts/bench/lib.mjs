@@ -46,8 +46,9 @@ const median = (xs) => {
 };
 
 /**
- * Merges every part file in `dir` into one results object. Time metrics get `normalized`: the value divided by its
- * environment's calibration (the median over the parts of that environment), so runs on different machines compare.
+ * Merges every part file in `dir` into one results object. Time metrics get `normalized`: the value divided by the
+ * calibration its own suite measured (Node: at the suite's start and end; browser: in a page at the same throttle), the
+ * reading closest in time to it, so runs on different machines, or on a busy and an idle one, compare.
  */
 export function merge(dir, meta) {
   const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith(".json")) : [];
@@ -61,7 +62,7 @@ export function merge(dir, meta) {
   for (const p of parts) {
     info[`${p.env}-${p.suite}`] = { ...(info[`${p.env}-${p.suite}`] ?? {}), ...p.info };
     for (const m of p.metrics) {
-      const cal = calibration[m.env];
+      const cal = Number.isFinite(p.calibrationMs) && p.calibrationMs > 0 ? p.calibrationMs : calibration[m.env];
       const out = { ...m };
       if (m.kind === "time" && Number.isFinite(cal) && cal > 0) out.normalized = Number((m.value / cal).toFixed(4));
       metrics.set(m.id, out);
