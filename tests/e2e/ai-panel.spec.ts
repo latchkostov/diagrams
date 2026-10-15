@@ -1,4 +1,4 @@
-import { openExample } from "./fixtures";
+import { currentDiagram, openExample } from "./fixtures";
 import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
 import { MOD, SLUG, must, nodeCount, openAdvanced, savedDiagram } from "./ai-helpers";
 import { readFileSync } from "node:fs";
@@ -165,14 +165,22 @@ test.describe("AI panel dock", () => {
     await openAdvanced(page);
     await applyTurn(page, "Add a billing worker", ADD_WORKER);
     // Corrupt this diagram's stored conversation: one turn with a broken snapshot, one not a turn at all.
-    await page.evaluate(() => {
-      const key = Object.keys(localStorage).find((k) => k.startsWith("diagrams.ai-thread.v1:"));
-      if (!key) throw new Error("no stored conversation");
-      localStorage.setItem(
-        key,
-        JSON.stringify({ turns: [{ id: "t1", request: "Old", kind: "change", after: { nodes: "oops" } }, 7] }),
-      );
-    });
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+    await page.evaluate(
+      (slug) => {
+        const session = JSON.parse(localStorage.getItem(`diagrams.doc.v1:${slug.slice(3)}`) ?? "null") as {
+          sessionId?: string;
+        } | null;
+        if (!session?.sessionId) throw new Error("no stored document session");
+        const key = `diagrams.ai-thread.v1:${session.sessionId}`;
+        if (!localStorage.getItem(key)) throw new Error("no stored conversation");
+        localStorage.setItem(
+          key,
+          JSON.stringify({ turns: [{ id: "t1", request: "Old", kind: "change", after: { nodes: "oops" } }, 7] }),
+        );
+      },
+      await currentDiagram(page),
+    );
     await page.reload();
     await expect(page.getByTestId("ai-turn-0")).toContainText("Old");
     await expect(page.getByTestId("ai-turn-1")).toHaveCount(0);

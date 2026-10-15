@@ -470,6 +470,10 @@ for (const byDefault of [false, true]) {
     );
     // The previously bound destination is unchanged; completion never binds a new destination.
     expect(stored.target).toEqual(targetBefore);
+    await page.getByTestId("canvas-wrap").focus();
+    await page.keyboard.press(`${MOD}+s`);
+    await expect(page.getByTestId("toast-private-save-device")).toBeVisible();
+    expect(await testFile(page)).toEqual(before);
     expect(page.url()).not.toContain("quillfeather");
     expect(new URL(page.url()).hash).toBe("");
     await openShareChooser(page);

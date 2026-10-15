@@ -24,8 +24,7 @@ export const STORAGE_KEYS = {
 /** Persisted content follows the picker into an owned copy; source keys are only for seeding. */
 export async function savedDiagram(page: Page): Promise<DiagramFile> {
   let diagram: DiagramFile | undefined;
-  // Promotion removes the source before React publishes the new picker slug. Retry the
-  // whole lookup, so that brief handoff cannot pair an old slug with newly moved storage.
+  // Wait for persistence and the picker to publish the current document.
   await expect
     .poll(
       async () => {

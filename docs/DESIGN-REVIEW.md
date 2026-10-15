@@ -9,6 +9,14 @@ fills. Conversion retains the existing error treatment and gives translated reco
 oversized labels. No controls or chrome were added. Production browser regressions cover the shortcut,
 contrast and existing nested movement; the accessibility, groups, clipboard, layout and interop suites pass.
 
+## Example gallery round 5 (2026-10-15)
+
+The designer agent's scoped source and test review found no blocking UX issue. Promotion copies the
+conversation and destination into a fresh document while preserving the mounted canvas and Undo.
+Other tabs retain their conversations and edits. Storage failure uses the existing Save/export notice
+and retry path; Private copies cancel pending cloud saves. No controls or chrome were added.
+This was a source review; production Playwright covers the browser flows separately.
+
 ## Example gallery final review fixes (2026-10-15)
 
 The designer agent's scoped, read-only source review found no blocking UX issues. Open and Run it
@@ -4109,7 +4117,7 @@ remounting the canvas. Explicit title edits keep the chosen name, so typing is n
 structural edits get a generated “(copy)” name. First persistence is immediate, with later saves debounced.
 Its generated name is applied through history without creating another step or
 losing AI/check-fix tags. The copy notice sits below the picker so it cannot replace an Undo toast.
-Source sessions get fresh identities across reloads and tabs; copy autosaves use the copy's own baseline.
+Examples keep one stable identity across reloads and tabs; each copy gets its own fresh identity and autosave baseline.
 
 The designer-agent source and screenshot gate approved the gallery in light/dark at 1280 × 800 and
 390 × 844. Accepted review fixes: include older current work within the cap; calculate overflow from all

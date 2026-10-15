@@ -6,9 +6,7 @@
 import type { DiagramFile } from "../../model/types";
 import { validateDiagram } from "../../interop/native";
 import type { StencilChoice } from "./apply";
-import { AI_THREAD_PREFIX } from "../../lib/aiThreadKey";
-import { retainedExampleConversation, saveExampleConversation } from "../../lib/exampleConversations";
-import { safeStorage } from "../../lib/storage";
+import { readConversation, saveConversation } from "../../lib/exampleConversations";
 
 export interface ThreadTurn {
   id: string;
@@ -45,7 +43,6 @@ export interface ThreadTurn {
   tool?: string;
 }
 
-const PREFIX = AI_THREAD_PREFIX;
 /** Turns kept per diagram, and how many of the newest keep their "after" snapshot. */
 export const MAX_TURNS = 40;
 export const MAX_SNAPSHOTS = 10;
@@ -156,14 +153,9 @@ export function validTurn(raw: unknown): ThreadTurn | null {
   return turn;
 }
 
-const keyFor = (documentId: string) => PREFIX + documentId;
-
 export function loadThread(documentId: string): ThreadTurn[] {
   try {
-    const retained = retainedExampleConversation(documentId);
-    const raw = JSON.parse(
-      (retained === undefined ? localStorage.getItem(keyFor(documentId)) : retained) ?? "null",
-    ) as { turns?: unknown } | null;
+    const raw = JSON.parse(readConversation(documentId) ?? "null") as { turns?: unknown } | null;
     if (!Array.isArray(raw?.turns)) return [];
     return capThread(raw.turns.map(validTurn).filter((t): t is ThreadTurn => !!t));
   } catch {
@@ -173,15 +165,7 @@ export function loadThread(documentId: string): ThreadTurn[] {
 
 /** Saves the capped thread; when storage is full, retries without snapshots. False when nothing could be saved. */
 export function saveThread(documentId: string, turns: readonly ThreadTurn[]): boolean {
-  const key = keyFor(documentId);
-  // Through safe storage, like every write: blocked or full storage is a false, never a throw, and a tab from before
-  // Clear everything on this device writes nothing (./lib/storage.ts).
-  const complete = turns.length ? JSON.stringify({ turns: capThread(turns) }) : null;
-  const write = (raw: string | null) =>
-    saveExampleConversation(documentId, raw, complete) ??
-    (raw === null ? safeStorage.removeItem(key) : safeStorage.setItem(key, raw));
-  if (!turns.length) return write(null);
-  return write(complete) || write(JSON.stringify({ turns: capThread(turns).map(({ after: _after, ...t }) => t) }));
+  return saveConversation(documentId, turns.length ? JSON.stringify({ turns: capThread(turns) }) : null);
 }
 
 let seq = 0;

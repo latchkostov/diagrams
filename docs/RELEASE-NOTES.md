@@ -36,6 +36,23 @@
   error adds one message in all 38 languages and updates their `edit` hashes.
   Diagram, simulation, layout, export and browser goldens remain unchanged.
 
+## Example gallery round 5: copy-only promotion (2026-10-15)
+
+- Promotion copies the current conversation into a new document with a fresh identity. It never
+  changes or deletes the example's conversation, session marker, autosave or destination. Examples
+  keep a stable identity; legacy keys are read-only fallbacks. Other tabs keep their work.
+- Removed session migration, its retries and identity caches, and promotion-time cleanup. Old entries
+  remain: they are small, and reclaiming them is unnecessary risk to live tabs. The canvas mount stays
+  separate from document identity, preserving Undo, unread AI counts, copy naming and gallery flows.
+- Conversation saves and promotion share the snapshot-dropping storage fallback. Failed publication
+  rolls back only the new copy; the existing storage notice and retry preserve pending edits. Pending
+  saves follow their first copy once, for the operation's lifetime; Private copies block cloud writes.
+- All six round-5 findings are addressed, consolidating the three reports of the same cross-tab loss.
+  Ownership rotation, conditional deletion, migration debouncing and cleanup timers were rejected in
+  favor of eliminating those transitions. The lazy-load race gate matches development and build URLs.
+- No parity goldens change: diagram, simulation, layout, export, agent and language outputs are unchanged.
+  The skill viewer is refreshed; plugin version 1.1.21 is exactly one patch above master.
+
 ## Showcase review fixes (2026-10-15)
 
 - Phone Live menus and expectation summaries remain visible and usable with Inputs open. Inputs stays

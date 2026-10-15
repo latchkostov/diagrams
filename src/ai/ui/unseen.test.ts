@@ -21,6 +21,15 @@ describe("unseen agent changes", () => {
     unseen.clear("b");
   });
 
+  it("copies the count without changing the source document", () => {
+    unseen.bump("source");
+    unseen.copy("source", "copy");
+    expect(unseen.get("copy")).toBe(1);
+    unseen.clear("copy");
+    expect(unseen.get("source")).toBe(1);
+    unseen.clear("source");
+  });
+
   it("names the rail button with the count", () => {
     expect(railLabel(0)).toBe("AI panel");
     expect(railLabel(1)).toBe("AI panel, 1 new change");

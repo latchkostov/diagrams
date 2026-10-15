@@ -604,7 +604,7 @@ function CanvasInner({
   useLayoutEffect(() => {
     copyCallback.current = onExampleCopy;
   });
-  const copiedExample = useRef<string | null>(null);
+  const copiedExample = useRef<{ slug: string; identity: string } | null>(null);
   const exampleCopyFailed = useRef(false);
   /** Returns whether the diagram differs from its original, or undefined when there was nothing to write. */
   const flushSave = useCallback(
@@ -623,7 +623,7 @@ function CanvasInner({
             const sourceTitle = d.title;
             const canvasTitle = sourceTitle.trim() ? copy.title : sourceTitle;
             renameHistoryTitle(sourceTitle, canvasTitle);
-            copiedExample.current = copy.slug;
+            copiedExample.current = { slug: copy.slug, identity: getDiagramIdentity(copy.slug) };
             saveBaseline.current = JSON.stringify({ ...d, title: copy.title });
             d = { ...d, title: canvasTitle };
             json = JSON.stringify(d);
@@ -637,7 +637,9 @@ function CanvasInner({
           return mod;
         }
       }
-      if (writeAutosave(copiedExample.current ?? slug, mod ? d : null, identity)) lastSaved.current = json;
+      const destination = copiedExample.current?.slug ?? slug;
+      if (writeAutosave(destination, mod ? d : null, copiedExample.current?.identity ?? identity))
+        lastSaved.current = json;
       return mod;
     },
     [readOnly, identity, renameHistoryTitle, original.title],

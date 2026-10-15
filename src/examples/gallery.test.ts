@@ -27,6 +27,7 @@ describe("example gallery", () => {
     expect(filterExamples(publicItems, "not present anywhere")).toEqual([]);
     expect(filterExamples(publicItems, "Network devices")[0].items.map((e) => e.slug)).toEqual([
       "branch-to-datacentre",
+      "contoso-dmz",
     ]);
   });
   it("combines search and feature filters, without empty theme sections", () => {

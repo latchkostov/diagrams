@@ -53,6 +53,7 @@ import { CommandPalette } from "./palette/CommandPalette";
 import { paletteHost } from "./palette/host";
 import { lazyComponent, whenIdle } from "./lib/lazyLoad";
 import { AiMount } from "./ai/ui/AiMount";
+import { unseen } from "./ai/ui/unseen";
 import { AI_PANEL } from "./lib/deployment";
 import { t, useLocale } from "./i18n";
 import "./styles/interop.css";
@@ -175,6 +176,9 @@ function MainApp() {
   // Identity changes only when the open document is replaced. It stays put when a blank draft
   // becomes a library entry on its first edit, so the canvas doesn't remount.
   const canvasIdentity = getDiagramIdentity(slug);
+  // A copy is a new document, but keeps this canvas mount and its Undo history.
+  const [canvasMount, setCanvasMount] = useState({ identity: canvasIdentity, key: 0 });
+  if (canvasMount.identity !== canvasIdentity) setCanvasMount({ identity: canvasIdentity, key: canvasMount.key + 1 });
   // The live keys in the URL (live, sim, traffic, ...) describe the diagram on screen, which can differ
   // from the URL's example while one is loading. A layout effect, so it's current before the live
   // view's effects write them.
@@ -478,7 +482,7 @@ function MainApp() {
                 <ViewLoading />
               ) : (
                 <CanvasView
-                  key={canvasIdentity}
+                  key={canvasMount.key}
                   ref={canvasCallbackRef}
                   slug={slug}
                   focusRequest={exampleFocus?.slug === slug ? exampleFocus.request : undefined}
@@ -490,11 +494,13 @@ function MainApp() {
                   onExampleCopy={
                     examples.some((e) => e.slug === slug)
                       ? (source, copy, title) => {
+                          unseen.copy(getDiagramIdentity(source), getDiagramIdentity(copy));
                           setCopyNotice(title);
                           setLoadedSlug((current) => (current === source ? copy : current));
                           // A flush while leaving a diagram keeps the copy without replacing newer navigation.
                           if (new URLSearchParams(window.location.search).get("example") === source) {
-                            showDiagram({ identity: canvasIdentity, example: copy });
+                            setCanvasMount({ identity: getDiagramIdentity(copy), key: canvasMount.key });
+                            showDiagram({ identity: getDiagramIdentity(copy), example: copy });
                             setUrl({ example: copy }, { replace: true });
                           }
                         }
