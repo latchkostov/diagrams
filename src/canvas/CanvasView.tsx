@@ -1,5 +1,4 @@
 import { useCaptionContrast } from "./useCaptionContrast";
-
 import { retainConversation } from "../lib/exampleConversations";
 import { isDenyRule } from "../stencils/netDevices";
 import { edgeSettings, isDependency, RELATION_META, settingsSummary } from "../model/relations";

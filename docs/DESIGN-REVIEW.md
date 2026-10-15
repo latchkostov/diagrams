@@ -1,5 +1,13 @@
 # Design review
 
+## Gallery rebase integration review (#118, 2026-10-15)
+
+Scoped source review preserves both gallery session/copy behavior and nested-boundary membership,
+caption contrast and keyboard navigation. The Lab retains both fixtures. Showcase tags reuse the
+existing translated vocabulary and filter; no controls or chrome were added. API quotas support the
+Rate limits tag, while concurrency and measured capacity get no misleading tag. The regression checks
+all six showcases and combined search/filter behavior. Browser validation is recorded separately.
+
 ## Nested boundaries final verification (#115, 2026-10-15)
 
 The designer's scoped source review confirmed the shortcut, carried-descendant undo selection and

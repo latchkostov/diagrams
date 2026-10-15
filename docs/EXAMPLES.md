@@ -14,7 +14,7 @@ Keep the feature vocabulary small. Stable IDs are translated by `src/examples/ga
 | ID               | Label           | Evidence required                                                      |
 | ---------------- | --------------- | ---------------------------------------------------------------------- |
 | `partitions`     | Partitions      | A node explicitly configures more than one partition.                  |
-| `rateLimits`     | Rate limits     | A rate-limiter stencil models a constrained channel.                   |
+| `rateLimits`     | Rate limits     | A rate-limiter stencil or explicit API quota models a rate limit.      |
 | `networkDevices` | Network devices | A router, switch, firewall or ADC from the supported network families. |
 
 `scripts/example-shows.ts` computes these tags from actual diagram settings. Do not infer autoscaling

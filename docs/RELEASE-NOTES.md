@@ -1,5 +1,18 @@
 # Release notes
 
+## Example gallery integration with master (#118, 2026-10-15)
+
+- Rebased the gallery onto nested boundaries and zones (#115), the six showcases (#120) and the
+  nightly reliability fixes (#121). Both Lab presets and both sides of the design/release history remain.
+- Showcase metadata uses the existing tags: Partitions for partitions-vs-subscriptions and
+  shared-worker-pool, Network devices for contoso-dmz, and Rate limits for shared-api-quotas. Rate-limit
+  discovery now recognizes explicit positive API quotas as well as rate-limiter stencils. The measured
+  capacity and serverless concurrency examples stay untagged: none of the existing tags describes them.
+- Regenerated the agent skill and HTML viewer; plugin 1.1.22 is exactly one patch above master.
+- Parity: only `node/i18n/catalogs.json` changed. It combines both PRs' messages: 1,689 per language,
+  retaining master's nested-boundary `edit` hashes and adding the gallery's 17-message `examples` area
+  in all 38 languages. All other 1,633 goldens are unchanged; the eight existing browser deferrals remain.
+
 ## Nested boundaries final verification (#115, 2026-10-15)
 
 - Removed boundary and annotation parents stay removed after autosave and library duplication.

@@ -35,7 +35,7 @@ describe("example gallery", () => {
       filterExamples(publicItems, "", "rateLimits")
         .flatMap((s) => s.items)
         .map((e) => e.slug),
-    ).toEqual(["notification-fanout"]);
+    ).toEqual(["shared-api-quotas", "notification-fanout"]);
     expect(filterExamples(publicItems, "Kafka", "networkDevices")).toEqual([]);
   });
   it("uses only features actually configured in the public examples", () => {
@@ -44,6 +44,26 @@ describe("example gallery", () => {
     expect(tags("notification-fanout")).toEqual(["partitions", "rateLimits"]);
     expect(tags("nightly-batch-elt")).toEqual([]);
     expect(publicItems.some((e) => e.shows?.includes("autoscaling"))).toBe(false);
+  });
+  it("tags each showcase only with features its configuration demonstrates", () => {
+    const expected: Record<string, string[]> = {
+      "partitions-vs-subscriptions": ["partitions"],
+      "shared-worker-pool": ["partitions"],
+      "shared-api-quotas": ["rateLimits"],
+      "serverless-burst-buffer": [],
+      "measured-order-capacity": [],
+      "contoso-dmz": ["networkDevices"],
+    };
+    for (const [slug, tags] of Object.entries(expected)) {
+      expect(publicItems.find((e) => e.slug === slug)?.shows, slug).toEqual(tags);
+      for (const tag of tags) {
+        expect(
+          filterExamples(publicItems, slug, tag)
+            .flatMap((s) => s.items)
+            .map((e) => e.slug),
+        ).toEqual([slug]);
+      }
+    }
   });
   it("publishes only supported, evidence-backed tags and saved simulation ids", async () => {
     for (const e of publicItems) {

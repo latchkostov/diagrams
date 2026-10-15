@@ -1,5 +1,4 @@
 import { nestedBoundariesFixture } from "./nestedBoundariesFixture";
-
 import { GalleryCatalogLab } from "./GalleryCatalogLab";
 import { ColourPickerLab } from "./ColourPickerLab";
 import { customColoursFixture } from "./customColoursFixture";
