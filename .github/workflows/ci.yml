@@ -111,7 +111,7 @@ jobs:
             pnpm-lock.yaml
             pnpm-workspace.yaml
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec tsc --noEmit
+      - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm test:coverage
