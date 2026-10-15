@@ -217,7 +217,9 @@ goldens match, with the eight previously documented browser deferrals.
   and guessed fit delays are removed.
 - Browser parity waits for fonts, measured nodes, pending fits and stable geometry; changing badge text cannot
   prevent convergence. CPU-throttle and parallel-worker stress options are documented in `docs/PARITY.md`.
-- Refreshed the Claude Code viewer with the same fit behavior; the plugin is 1.1.19.
+- Refreshed the Claude Code viewer with the same fit behavior; the plugin is 1.1.20.
+- Interactive HTML parity now pins the viewer's own opening fit again: the fit waits for fonts, measured nodes and
+  settled chrome, so the explicit zoom-and-fit steps added by the toolchain review are no longer needed.
 - No parity golden changed: every node box, word, route, label, viewport, export and image keeps its existing contract.
 
 ## Showcase review fixes (2026-10-15)
