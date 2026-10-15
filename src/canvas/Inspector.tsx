@@ -567,7 +567,19 @@ function NodePanel({
           <AdmissionFields
             stencil={node.data.stencil}
             props={props}
-            set={(patch) => editor.setNodeProps(node.id, patch)}
+            set={(patch, key) => editor.setNodeProps(node.id, patch, key ? merge(key) : undefined)}
+            advanced={
+              role === "processor" ? (
+                <SimInput
+                  name="emits"
+                  field={SIM_FIELDS.emits!}
+                  value={props.emits}
+                  onChange={(value) =>
+                    editor.setNodeProps(node.id, { emits: value as NodeSimProps["emits"] }, merge("emits"))
+                  }
+                />
+              ) : undefined
+            }
           />
         ) : device ? (
           <DeviceFields

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createEngine } from "./engine";
+import { createSimulationRun } from "./simulation";
 import { realSnapshot } from "./units";
 import type { DiagramFile } from "../model/types";
 import type { ApiBehaviour, Quota } from "../model/admission";
@@ -7,7 +8,9 @@ import { localRateQuota } from "../model/admissionPresets";
 import { resolveNodeProps } from "./defaults";
 import { analyzeCapacity } from "./capacity";
 import { sizingFix } from "./capacityPlanning";
-import { attemptAdmission, emptyAdmission, configureAdmission } from "./admission";
+import { attemptAdmission, emptyAdmission, configureAdmission, releaseAdmission } from "./admission";
+import * as admissionModule from "./admission";
+import * as native from "../interop/native";
 import { validateDiagram } from "../interop/native";
 import { buildJourney } from "../trace/journey";
 import { explainNode } from "../planning/explanation";
@@ -15,7 +18,8 @@ import { explanationSimulation } from "../planning/explanation";
 import { admissionCapacities } from "./admissionPlanning";
 import { upgradePlanning } from "../planning/migration";
 import * as topology from "./topology";
-import { capacityView } from "../live/capacityModel";
+import { countingReads } from "../test/complexity";
+import { capacityView, freePlaySaveProps } from "../live/capacityModel";
 
 const q = (amount = 10, extra: Partial<Quota> = {}): Quota => ({
   id: "rate",
@@ -40,6 +44,219 @@ const load = (d: DiagramFile, scale = 1) => {
   return e;
 };
 describe("P3 managed admission", () => {
+  it("endpoint quota namespaces agree between planning and playback", () => {
+    const d = diagram({ quotas: [q(100)] });
+    d.nodes[0].props!.endpoints = [{ id: "global", method: "GET", path: "/", behaviour: { quotas: [q(2)] } }];
+    d.nodes.push({ id: "source", stencil: "client.user", label: "Calls", x: 0, y: 0, props: { ratePerSec: 10 } });
+    d.edges.push({ id: "call", from: "source", to: "api", kind: "sync", props: { endpointId: "global", travelMs: 0 } });
+    expect(analyzeCapacity(d).nodes.api.capacity).toBe(2);
+    const e = load(d);
+    e.inject("source", 3);
+    e.step(200);
+    expect(e.snapshot().nodes.api).toMatchObject({ processed: 2, rejected: 1 });
+  });
+  it("reference-only callers inherit an implicit account allocation", () => {
+    const a = { api: { maxInFlight: 2, sharedConcurrency: "account" }, endpoints: [] };
+    const b = { api: { sharedConcurrency: "account" }, endpoints: [] };
+    const state = emptyAdmission();
+    configureAdmission(state, [a, b]);
+    const first = attemptAdmission(state, "a", a, undefined, undefined, 0, 1);
+    expect(first).toHaveProperty("lease");
+    expect(attemptAdmission(state, "b", b, undefined, undefined, 0, 1)).toHaveProperty("lease");
+    expect(attemptAdmission(state, "b", b, undefined, undefined, 0, 1)).toEqual({ rejected: "concurrency" });
+    if ("lease" in first) releaseAdmission(state, first.lease);
+    expect(attemptAdmission(state, "b", b, undefined, undefined, 0, 1)).toHaveProperty("lease");
+    expect([
+      ...admissionCapacities(
+        [a, b].map((policy, i) => ({ id: String(i), policy, offered: 10, latencyMs: 1000, endpoints: [{ rate: 10 }] })),
+      ).values(),
+    ]).toEqual([1, 1]);
+  });
+  it.each([0, 5])("a request that cannot fit in a token bucket has zero usable capacity (burst %s)", (burst) => {
+    const d = diagram({ quotas: [q(10, { unit: "tokens", burst })], costPerRequest: { tokens: 6 } });
+    d.nodes.push({ id: "source", stencil: "client.user", label: "Calls", x: 0, y: 0, props: { ratePerSec: 10 } });
+    d.edges.push({ id: "call", from: "source", to: "api", kind: "sync", props: { travelMs: 0 } });
+    expect(analyzeCapacity(d).nodes.api.capacity).toBe(0);
+    const e = load(d);
+    e.inject("source", 1);
+    e.step(2000);
+    e.inject("source", 1);
+    e.step(200);
+    expect(e.snapshot().nodes.api).toMatchObject({ processed: 0, rejected: 2 });
+  });
+  it("managed consumers retain each input group's partition assignment and drain staged work", () => {
+    const d = diagram({}, "aws.lambda");
+    Object.assign(d.nodes[0].props!, {
+      scaling: "fixed",
+      replicas: 8,
+      concurrency: 1,
+      latencyMs: 1000,
+      preset: "managed-measured",
+    });
+    for (const [id, partitions] of [
+      ["small", 1],
+      ["large", 8],
+    ] as const) {
+      d.nodes.push({ id, stencil: "kafka.topic", label: id, x: 0, y: 0, props: { partitions } });
+      d.edges.push({ id: `feed-${id}`, from: id, to: "api", kind: "async", props: { travelMs: 0 } });
+    }
+    const e = load(d);
+    e.inject("small", 3);
+    e.step(100);
+    expect(e.snapshot().nodes.api).toMatchObject({ inFlight: 1, activeReplicas: 8, rejected: 0 });
+    e.step(4000);
+    expect(e.snapshot().nodes.api).toMatchObject({ processed: 3, inFlight: 0, rejected: 0 });
+  });
+  it("saving Capacity x on a fixed managed fleet preserves playback and its independent allocation", () => {
+    const d = diagram({}, "aws.lambda");
+    Object.assign(d.nodes[0].props!, {
+      scaling: "fixed",
+      replicas: 8,
+      concurrency: 1,
+      maxConcurrency: 100,
+      preset: "managed-measured",
+    });
+    const e = load(d);
+    e.setCapacityMultiplier(0.5);
+    e.inject("api", 8);
+    expect(e.snapshot().nodes.api).toMatchObject({ inFlight: 4, rejected: 4 });
+    const saved = freePlaySaveProps(d, { props: {}, rates: {}, capacity: 0.5 });
+    expect(saved.api).toEqual({ replicas: 4 });
+    Object.assign(d.nodes[0].props!, saved.api);
+    const restored = load(d);
+    restored.inject("api", 8);
+    expect(restored.snapshot().nodes.api).toMatchObject({ inFlight: 4, rejected: 4 });
+    expect(d.nodes[0].props!.maxConcurrency).toBe(100);
+  });
+  it("unrelated managed edits and a source timeline do not revalidate or reconfigure admissions", () => {
+    const d = diagram();
+    d.nodes = Array.from({ length: 24 }, (_, i) => ({ ...d.nodes[0], id: String(i) }));
+    d.nodes.push({ id: "source", stencil: "client.user", label: "Calls", x: 0, y: 0 });
+    const e = load(d);
+    const configure = vi.spyOn(admissionModule, "reconfigureAdmission");
+    const validate = vi.spyOn(native, "validAdmissionData");
+    try {
+      for (let i = 0; i < 24; i++) e.setNodeProps(String(i), { latencyMs: 50 });
+      for (let i = 0; i < 1000; i++) e.setNodeProps("source", { ratePerSec: i });
+      expect(configure.mock.calls.length).toBe(0);
+      expect(validate).not.toHaveBeenCalled();
+    } finally {
+      configure.mockRestore();
+      validate.mockRestore();
+    }
+  });
+  it("local policy edits compile only the affected node; static admission attempts serialize no keys", () => {
+    const d = diagram();
+    d.nodes = Array.from({ length: 24 }, (_, i) => ({ ...d.nodes[0], id: String(i) }));
+    const e = load(d);
+    // Compile/warm both execution paths before counting work.
+    e.inject("0", 1);
+    e.inject("1", 1);
+    const validate = vi.spyOn(native, "validAdmissionData");
+    const serialize = vi.spyOn(JSON, "stringify");
+    try {
+      e.setNodeProps("0", { api: { quotas: [q(20)] } });
+      expect(validate).toHaveBeenCalledTimes(1);
+      const edits = serialize.mock.calls.length;
+      expect(edits).toBeLessThanOrEqual(12); // Independent of the other 23 managed policies.
+      e.inject("0", 8);
+      e.inject("1", 8);
+      expect(serialize.mock.calls.length).toBe(edits);
+    } finally {
+      validate.mockRestore();
+      serialize.mockRestore();
+    }
+  });
+  it("large endpoint policies perform no endpoint searches or key serialization after compilation", () => {
+    const quotas = Array.from({ length: 32 }, (_, i) => q(10000, { id: String(i) }));
+    const endpoints = countingReads(
+      Array.from({ length: 500 }, (_, i) => ({
+        id: String(i),
+        method: "GET" as const,
+        path: "/",
+        behaviour: { quotas },
+      })),
+    );
+    const policy = { api: { quotas }, endpoints: endpoints.items };
+    const state = emptyAdmission();
+    configureAdmission(state, [policy]);
+    expect(attemptAdmission(state, "api", policy, "499", undefined, 0, 1)).toHaveProperty("lease");
+    const reads = endpoints.reads();
+    const serialize = vi.spyOn(JSON, "stringify");
+    try {
+      for (let i = 0; i < 100; i++)
+        expect(attemptAdmission(state, "api", policy, String(i), undefined, 0, 1)).toHaveProperty("lease");
+      expect(serialize.mock.calls.length).toBe(0);
+      expect(endpoints.reads()).toBe(reads);
+    } finally {
+      serialize.mockRestore();
+    }
+  });
+  it("time-zero source patches do not visit managed definitions during simulation initialization", () => {
+    const d = diagram();
+    d.nodes[0].props!.endpoints = Array.from({ length: 500 }, (_, i) => ({ id: String(i), method: "GET", path: "/" }));
+    d.nodes.push({ id: "source", stencil: "client.user", label: "Calls", x: 0, y: 0 });
+    const configure = vi.spyOn(admissionModule, "reconfigureAdmission");
+    try {
+      createSimulationRun(d, {
+        id: "patches",
+        title: "Patches",
+        traffic: [],
+        timeline: Array.from({ length: 1000 }, (_, i) => ({
+          atMs: 0,
+          action: { do: "props", node: "source", props: { ratePerSec: i } },
+        })),
+      });
+      expect(configure).toHaveBeenCalledTimes(1); // Initial load only, independent of timeline length.
+    } finally {
+      configure.mockRestore();
+    }
+  });
+  it("shared allocation edits invalidate reference-only callers while retaining active leases", () => {
+    const d = diagram({ maxInFlight: 2, sharedConcurrency: "account" });
+    d.nodes.push({
+      ...d.nodes[0],
+      id: "other",
+      props: { api: { sharedConcurrency: "account" }, latencyMs: 100, jitter: 0 },
+    });
+    const e = load(d);
+    e.inject("other", 1);
+    e.setNodeProps("api", { api: { maxInFlight: 1, sharedConcurrency: "account" } });
+    e.inject("other", 1);
+    expect(e.snapshot().nodes.other).toMatchObject({ inFlight: 1, rejected: 1 });
+    const saved = e.checkpoint();
+    e.step(200);
+    e.inject("other", 1);
+    expect(e.snapshot().nodes.other.rejected).toBe(1);
+    e.restore(saved);
+    e.inject("other", 1);
+    expect(e.snapshot().nodes.other.rejected).toBe(2);
+  });
+  it("endpoint ids must be unique in imports and runtime resolution", () => {
+    const d = diagram({});
+    d.nodes[0].props!.endpoints = [100, 0].map((maxInFlight) => ({
+      id: "get",
+      method: "GET",
+      path: "/",
+      behaviour: { maxInFlight },
+    }));
+    expect(validateDiagram(d).ok).toBe(false);
+    const e = load(d);
+    e.inject("api", 1);
+    expect(e.snapshot().nodes.api).toMatchObject({ processed: 0, rejected: 1 });
+  });
+  it.each([42, null, "", {}, "x".repeat(201)])("malformed endpoint references fail closed (%j)", (endpointId) => {
+    const d = diagram({});
+    d.nodes[0].props!.endpoints = [{ id: "42", method: "GET", path: "/", behaviour: { maxInFlight: 0 } }];
+    d.nodes.push({ id: "source", stencil: "client.user", label: "Calls", x: 0, y: 0, props: { ratePerSec: 10 } });
+    d.edges.push({ id: "call", from: "source", to: "api", kind: "sync", props: { endpointId, travelMs: 0 } });
+    expect(validateDiagram(d).ok).toBe(false);
+    expect(analyzeCapacity(d).nodes.api.capacity).toBe(0);
+    const e = load(d);
+    e.inject("source", 1);
+    e.step(200);
+    expect(e.snapshot().nodes.api).toMatchObject({ processed: 0, rejected: 1 });
+  });
   it.each(["generic.external-api", "aws.api-gateway"])(
     "%s outage releases local and shared reservations",
     (stencil) => {
@@ -113,24 +330,26 @@ describe("P3 managed admission", () => {
     e.step(2000);
     expect(e.snapshot().nodes.api).toMatchObject({ processed: 10, rejected: 0 });
   });
-  it("managed capacity indexes incoming edges once", () => {
+  it("managed capacity visits incoming edges in linear work", () => {
     const d = diagram();
-    d.nodes = Array.from({ length: 20 }, (_, i) => ({ ...d.nodes[0], id: String(i) }));
+    d.nodes = Array.from({ length: 24 }, (_, i) => ({ ...d.nodes[0], id: String(i) }));
+    d.nodes.push({ id: "source", stencil: "client.user", label: "Calls", x: 0, y: 0, props: { ratePerSec: 10 } });
+    d.edges = d.nodes
+      .slice(0, -1)
+      .map((node) => ({ id: `call-${node.id}`, from: "source", to: node.id, kind: "sync" }));
     const compile = topology.compileTopology;
-    let scans = 0;
+    let reads = () => 0;
     const spy = vi.spyOn(topology, "compileTopology").mockImplementation((...args) => {
       const compiled = compile(...args);
-      compiled.edges = new Proxy(compiled.edges, {
-        get(target, key, receiver) {
-          if (key === "filter") scans++;
-          return Reflect.get(target, key, receiver) as unknown;
-        },
-      });
+      const counted = countingReads(compiled.edges);
+      compiled.edges = counted.items;
+      reads = counted.reads;
       return compiled;
     });
     try {
       analyzeCapacity(d);
-      expect(scans).toBeLessThanOrEqual(2);
+      expect(reads()).toBeGreaterThanOrEqual(d.edges.length);
+      expect(reads()).toBeLessThanOrEqual(4 * (d.nodes.length + d.edges.length));
     } finally {
       spy.mockRestore();
     }

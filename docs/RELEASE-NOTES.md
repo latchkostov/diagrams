@@ -1,10 +1,24 @@
 # Release notes
 
+<<<<<<< HEAD
 ## Competitive landscape research (2026-10-14)
 
 - Added a [sourced competitive landscape](research/competitive-landscape.md) covering diagram editors,
   architecture modelling, cloud tools and recent system-design simulators, with explicit verification
   limits, canvas comparisons and ranked opportunities. This is research; app behaviour is unchanged.
+=======
+## Planning P3 review fixes (2026-10-14)
+
+- Managed consumers respect each Kafka input group's partition assignment and drain prefetched work
+  as slots free. Saving Capacity × preserves fixed managed fleets without changing account allocations.
+- Capacity analysis and playback share quota identities and implicit account allocations. Endpoint
+  budgets cannot collide with parent budgets, and buckets too small for one request have zero capacity.
+- Live edits rebuild only affected admission policies; requests reuse compiled endpoint requirements.
+  Checks remain deterministic across languages and translate cached rejection estimates when displayed.
+- Managed processors retain **Emits** under **Advanced**. Admission fields explain invalid drafts and
+  the retained setting, and group Undo by field. Imports reject duplicate endpoint IDs and malformed
+  endpoint references; runtime references fail closed.
+>>>>>>> 8ea1aba (Fix Planning P3 admission policies and review regressions)
 
 ## Stencil catalog review fixes (2026-10-14)
 

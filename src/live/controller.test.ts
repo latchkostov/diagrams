@@ -4,6 +4,7 @@ import type { SimRole } from "../model/types";
 import { LiveController, structuralKey } from "./controller";
 import kafka from "../examples/kafka-order-pipeline.json";
 import { emptyInputs, freePlaySaveProps } from "./capacityModel";
+import * as admissions from "../sim/admission";
 
 const roles: Record<string, SimRole> = { src: "source", q: "queue", svc: "processor", db: "store" };
 const roleOf = (stencil: string) => roles[stencil] ?? "none";
@@ -41,6 +42,42 @@ const play = (c: LiveController, ms: number) => {
 };
 
 describe("LiveController", () => {
+  it("batches managed input and diagram edits into one admission reconfiguration", () => {
+    const d: DiagramFile = {
+      format: "diagrams/v2",
+      title: "Shared account",
+      planning: { revision: "p3" },
+      nodes: ["a", "b"].map((id) => ({
+        id,
+        stencil: "generic.external-api",
+        label: id,
+        x: 0,
+        y: 0,
+        props: { api: { maxInFlight: 2, sharedConcurrency: "account" } },
+      })),
+      edges: [],
+    };
+    const c = new LiveController(d);
+    const configure = vi.spyOn(admissions, "reconfigureAdmission");
+    try {
+      const props = Object.fromEntries(
+        d.nodes.map((node) => [node.id, { api: { maxInFlight: 3, sharedConcurrency: "account" } }]),
+      );
+      c.setInputs({ ...emptyInputs(), props });
+      expect(configure).toHaveBeenCalledTimes(1);
+      configure.mockClear();
+      // Clear overrides before reconciling authored values.
+      c.setInputs(emptyInputs());
+      configure.mockClear();
+      const next = structuredClone(d);
+      for (const node of next.nodes) node.props = { api: { maxInFlight: 4, sharedConcurrency: "account" } };
+      expect(c.updateDiagram(next)).toBe("patched");
+      expect(configure).toHaveBeenCalledTimes(1);
+    } finally {
+      configure.mockRestore();
+      c.dispose();
+    }
+  });
   it("free play: inject flows downstream only while playing", () => {
     const c = new LiveController(diagram(), { roleOf });
     c.inject("api", 10);

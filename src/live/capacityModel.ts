@@ -748,7 +748,11 @@ export function freePlaySaveProps(d: DiagramFile, inputs: LiveInputs): Record<st
     for (const n of d.nodes) {
       // Capacity × scales what has capacity in units: a service's replicas and a network device's units.
       const props = baseProps(d, n, null, inputs.props[n.id]);
-      if (props.admission || (roleOf(n) !== "processor" && !props.device)) continue;
+      if (
+        (props.admission && props.admission.fixedSlotsPerReplica === undefined) ||
+        (roleOf(n) !== "processor" && !props.device)
+      )
+        continue;
       const replicas = Math.max(1, Math.round(props.replicas * capacity));
       out[n.id] = { ...out[n.id], replicas };
     }

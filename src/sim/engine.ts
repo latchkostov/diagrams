@@ -17,7 +17,7 @@ import {
 import { resolveScale, resolveMultiplier } from "./units";
 import {
   attemptAdmission,
-  configureAdmission,
+  type AdmissionPolicy,
   reconfigureAdmission,
   emptyAdmission,
   releaseAdmission,
@@ -465,6 +465,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const changed = new Set<string>(),
       limits = new Set<Group>();
     const units = new Map<Node, number>();
+    const admissionChanges: { id: string; policy?: AdmissionPolicy }[] = [];
     for (const [id, patch] of Object.entries(patches)) {
       const node = nodes.get(id);
       if (!node) continue;
@@ -475,7 +476,26 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         if (value === undefined) Reflect.deleteProperty(node.rawProps, key);
         else node.rawProps[key] = structuredClone(value);
       }
-      node.props = resolveProps(node.role, node.label, node.rawProps, node.stencil, planning);
+      const admissionChanged = [
+        "api",
+        "endpoints",
+        "preset",
+        "presetRevision",
+        "scaling",
+        "maxConcurrency",
+        "replicas",
+        "concurrency",
+      ].some((key) => key in patch);
+      node.props = resolveProps(
+        node.role,
+        node.label,
+        node.rawProps,
+        node.stencil,
+        planning,
+        admissionChanged ? undefined : previous.admission,
+      );
+      if (admissionChanged && (previous.admission || node.props.admission))
+        admissionChanges.push({ id, policy: node.props.admission });
       if (node.role === "source") sourceRate += node.props.ratePerSec - previous.ratePerSec;
       if (
         Math.max(1, Math.round(node.props.replicas * capacityMultiplier)) !== node.replicas ||
@@ -485,12 +505,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (node.props.concurrency !== previous.concurrency || node.props.latencyMs !== previous.latencyMs)
         for (const group of groupsByConsumer.get(id) ?? []) limits.add(group);
     }
-    reconfigureAdmission(
-      admission,
-      [...nodes.values()].flatMap((n) => (n.props.admission ? [{ id: n.id, policy: n.props.admission }] : [])),
-      planning,
-      time,
-    );
+    if (admissionChanges.length) reconfigureAdmission(admission, admissionChanges, planning, time);
     const next = resolveMultiplier(multiplier, capacityMultiplier);
     if (next !== capacityMultiplier) {
       capacityMultiplier = next;
@@ -749,13 +764,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const outcome = attemptAdmission(
       admission,
       node.id,
-      policy.fixedSlotsPerReplica === undefined
-        ? policy
-        : { ...policy, slots: Math.min(policy.slots ?? Infinity, node.activeReplicas * policy.fixedSlotsPerReplica) },
+      policy,
       work.via?.endpointId,
       planning,
       time,
       scale,
+      policy.fixedSlotsPerReplica === undefined
+        ? policy.slots
+        : Math.min(policy.slots ?? Infinity, node.activeReplicas * policy.fixedSlotsPerReplica),
     );
     if ("rejected" in outcome) {
       node.rejected++;
@@ -784,6 +800,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       return;
     }
     if (node.props.admission) {
+      const group = work.delivery?.group;
+      if (group && !work.held && !hold(group, node, work)) {
+        let queue = group.staged.get(node.id);
+        if (!queue) group.staged.set(node.id, (queue = new Deque()));
+        queue.push(work);
+        node.staged++;
+        return;
+      }
       if (!reserveAdmission(node, work)) return;
       if (node.status === "paused") node.pending.push(work);
       else if (work.remaining <= 0) finish(node, work);
@@ -977,6 +1001,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             node.serviceCredit -= 1;
           }
           const work = node.pending.shift()!;
+          if (node.props.admission && !work.lease && node.status === "up" && !reserveAdmission(node, work)) continue;
           if (node.status === "down" || work.remaining <= 0 || isBroker(node) || node.role === "source") {
             finish(node, work);
             if (work.retained) {
@@ -1005,10 +1030,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function reset(): void {
     admission = emptyAdmission();
-    configureAdmission(
+    reconfigureAdmission(
       admission,
-      [...nodes.values()].flatMap((n) => (n.props.admission ? [n.props.admission] : [])),
+      [...nodes.values()].flatMap((n) => (n.props.admission ? [{ id: n.id, policy: n.props.admission }] : [])),
       planning,
+      0,
     );
     refreshSourceRate();
     time = 0;

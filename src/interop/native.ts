@@ -1,5 +1,11 @@
 import { DIAGRAM_FORMAT, type Simulation, type DiagramFile } from "../model/types";
-import { propsProblem, SIM_LIMITS, unsupportedPreset, invalidPlanningDelay } from "../model/simProps";
+import {
+  propsProblem,
+  SIM_LIMITS,
+  unsupportedPreset,
+  invalidPlanningDelay,
+  invalidEndpointReference,
+} from "../model/simProps";
 
 // The simulation settings' bounds, for the editors that share this chunk (the inspector, the Inputs panel).
 export { SIM_LIMITS };
@@ -10,14 +16,14 @@ import { sanitizeChecks } from "../model/checks";
 import { idClaimer } from "../model/ids";
 import { t } from "../i18n/core";
 import { checkJsonSchema } from "../model/jsonSchema";
-import { apiSchema, endpointsSchema, planningSchema } from "../model/admissionSchema";
+import { apiSchema, checkEndpoints, planningSchema } from "../model/admissionSchema";
 
 /** Free-form editor properties use the same bounded admission contract as imported files.
  * Keep this in the already-preloaded validator, so Live adds no startup request. */
 export function validAdmissionData(api: unknown, endpoints: unknown): boolean {
   try {
     if (api !== undefined) checkJsonSchema(api, apiSchema);
-    if (endpoints !== undefined) checkJsonSchema(endpoints, endpointsSchema);
+    if (endpoints !== undefined) checkEndpoints(endpoints);
     return true;
   } catch {
     return false;
@@ -360,6 +366,7 @@ export function validateDiagram(data: unknown): NativeResult {
     if (out.props !== undefined && !isObj(out.props)) delete out.props;
     if (invalidPlanningDelay(out.props))
       return { ok: false, error: t("planning.delayInvalid", { id: e.id, limit: SIM_LIMITS.timeMs }) };
+    if (invalidEndpointReference(out.props)) return { ok: false, error: t("admission.endpointInvalid", { id: e.id }) };
     // A deny rule fails closed: anything that isn't true or false is read as deny, never as allow, and said.
     const deny = (out.props as Record<string, unknown> | undefined)?.deny;
     if (deny !== undefined && typeof deny !== "boolean") {

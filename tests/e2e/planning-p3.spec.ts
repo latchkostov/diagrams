@@ -11,10 +11,11 @@ import {
   STORAGE_KEYS,
 } from "./fixtures";
 const slug = "kafka-order-pipeline";
-async function seed(page: Page, stencil: string, live = false, locale = "en", inherited = false) {
+async function seed(page: Page, stencil: string, live = false, locale = "en", inherited = false, emits = false) {
   await page.setViewportSize({ width: 1280, height: 800 });
   const d = planningP3Fixture(stencil);
   if (inherited) d.nodes[1].props = {};
+  if (emits) d.nodes[1].props = { ...d.nodes[1].props, emits: { "*": "Processed" } };
   await page.addInitScript(
     ({ key, d, locale }) => {
       localStorage.setItem(key, JSON.stringify(d));
@@ -71,10 +72,72 @@ test("P3: zero local rate is invalid and cannot silently remove the existing bud
   await page.getByTestId("admission-rate").fill("1");
   await page.getByTestId("admission-rate").press("Tab");
   await page.getByTestId("admission-rate").fill("0");
+  await expect(page.getByTestId("admission-rate")).toHaveAttribute("aria-invalid", "true");
+  const feedback = page.getByTestId("admission-limit-rate");
+  await expect(feedback).toContainText("Kept: 1");
+  await expect(page.getByTestId("admission-rate")).toHaveAttribute(
+    "aria-describedby",
+    (await feedback.getAttribute("id")) as string,
+  );
   await page.getByTestId("admission-rate").press("Tab");
   await expect(page.getByTestId("admission-rate")).toHaveValue("1");
+  await expect(feedback).toBeVisible();
   expectNoErrors(consoleErrors);
 });
+test("P3: invalid numeric drafts explain the range and retained setting", async ({ page, consoleErrors }, info) => {
+  await seed(page, "aws.lambda");
+  await page.getByTestId("node-api").click();
+  const allocation = page.getByTestId("admission-allocation");
+  await allocation.fill("1200");
+  await allocation.pressSequentially("0");
+  await expect(allocation).toHaveValue("12000");
+  await expect(allocation).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByTestId("admission-limit-allocation")).toContainText("10,000");
+  await expect(page.getByTestId("admission-limit-allocation")).toContainText("Kept: 1,200");
+  await page.getByTestId("admission-limit-allocation").scrollIntoViewIfNeeded();
+  await expect(page.getByTestId("admission-limit-allocation")).toBeInViewport();
+  await page.screenshot({ path: info.outputPath("p3-invalid-allocation.png") });
+  await allocation.press("Tab");
+  await expect(allocation).toHaveValue("1200");
+  await expect(page.getByTestId("admission-limit-allocation")).toBeVisible();
+  expectNoErrors(consoleErrors);
+});
+test("P3: admission undo groups slow typing by field", async ({ page, consoleErrors }) => {
+  await page.clock.install(); // Install before mounting history, so every debounce timer uses this clock.
+  await seed(page, "generic.external-api");
+  await page.getByTestId("node-api").click();
+  await pauseClock(page);
+  const latency = page.getByTestId("admission-latency");
+  await latency.fill("1");
+  await page.clock.runFor(1000); // Advance the history clock beyond its debounce, without a wall-clock wait.
+  await latency.pressSequentially("2");
+  await latency.press("Tab");
+  await page.getByTestId("admission-concurrency").fill("3");
+  await page.getByTestId("admission-concurrency").press("Tab");
+  await page.getByTestId("undo-button").click();
+  await expect(page.getByTestId("admission-concurrency")).toHaveValue("2");
+  await expect(latency).toHaveValue("12");
+  await page.getByTestId("undo-button").click();
+  await expect(latency).toHaveValue("1000");
+  expectNoErrors(consoleErrors);
+});
+for (const stencil of ["aws.lambda", "openai"])
+  test(`P3: ${stencil} keeps Emits editable under Advanced`, async ({ page, consoleErrors }) => {
+    await seed(page, stencil, false, "en", false, true);
+    await page.getByTestId("node-api").click();
+    await page.getByTestId("admission-advanced-toggle").click();
+    const emits = page.getByTestId("inspector-field-emits");
+    await expect(emits).toHaveValue("* → Processed");
+    await emits.fill("Renamed");
+    await emits.press("Tab");
+    await expect(emits).toHaveValue("Renamed");
+    await emits.fill("");
+    await emits.press("Tab");
+    await expect(emits).toHaveValue("");
+    await page.keyboard.press("Control+z");
+    await expect(emits).toHaveValue("* → Processed");
+    expectNoErrors(consoleErrors);
+  });
 test("P3: numeric keyboard drafts survive clearing and fractional entry", async ({ page, consoleErrors }) => {
   await seed(page, "generic.external-api");
   await page.getByTestId("node-api").click();

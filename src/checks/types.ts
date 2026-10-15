@@ -38,6 +38,7 @@ export interface CheckFixOption {
 }
 
 export interface Finding {
+  admissionRejection?: { text: string; rate: number };
   /** Neutral rationale descriptor; rationale stays English for workers and agents. */
   brokerRationale?: "no-reader";
   brokerAssignment?: { text: string; spec: BrokerSpec; active: number; configured: number };

@@ -76,6 +76,7 @@ export function resolveProps(
   props: Record<string, unknown>,
   stencil: string | undefined,
   planning: PlanningModel | undefined,
+  previousAdmission?: AdmissionPolicy,
 ): ResolvedProps {
   const authored = props;
   const profile = profileOf(stencil);
@@ -111,7 +112,8 @@ export function resolveProps(
         profile?.family === "model-api" ||
         profile?.family === "api-gateway")) ||
       ((props.api !== undefined || props.endpoints !== undefined) && (hasServiceTime(role) || role === "sink")));
-  const invalidAdmission = managed && !validAdmissionData(props.api, props.endpoints);
+  const invalidAdmission =
+    previousAdmission?.invalid ?? (managed && !previousAdmission && !validAdmissionData(props.api, props.endpoints));
   const api =
     managed && !invalidAdmission && props.api && typeof props.api === "object" && !Array.isArray(props.api)
       ? (props.api as NonNullable<NodeSimProps["api"]>)
@@ -132,32 +134,34 @@ export function resolveProps(
     stencil === "stripe" && pinned?.id?.startsWith("stripe-")
       ? api.quotas?.find((q) => q.sharedGroup)?.sharedGroup
       : undefined;
-  const resolvedEndpoints = endpoints.map((endpoint) =>
-    stripeScope && endpoint.behaviour?.quotas === undefined
-      ? {
-          ...endpoint,
-          behaviour: {
-            ...endpoint.behaviour,
-            quotas: [
-              {
-                id: "endpoint-rate",
-                unit: "requests" as const,
-                amount: 25,
-                windowMs: 1000,
-                algorithm: "token-bucket" as const,
-                sharedGroup: `${stripeScope}:${endpoint.method}:${endpoint.path}`,
-              },
-            ],
-          },
-        }
-      : endpoint,
-  );
+  const resolvedEndpoints =
+    previousAdmission?.endpoints ??
+    endpoints.map((endpoint) =>
+      stripeScope && endpoint.behaviour?.quotas === undefined
+        ? {
+            ...endpoint,
+            behaviour: {
+              ...endpoint.behaviour,
+              quotas: [
+                {
+                  id: "endpoint-rate",
+                  unit: "requests" as const,
+                  amount: 25,
+                  windowMs: 1000,
+                  algorithm: "token-bucket" as const,
+                  sharedGroup: `${stripeScope}:${endpoint.method}:${endpoint.path}`,
+                },
+              ],
+            },
+          }
+        : endpoint,
+    );
   const metadata = (key: string) =>
     typeof props[key] === "number" && Number.isFinite(props[key]) && props[key] > 0 ? props[key] : undefined;
   return {
     ...(managed
       ? {
-          admission: {
+          admission: previousAdmission ?? {
             ...(invalidAdmission ? { invalid: true } : {}),
             api,
             endpoints: resolvedEndpoints,

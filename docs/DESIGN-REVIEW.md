@@ -1,5 +1,23 @@
 # Design review
 
+## Round 41: Planning P3 review fixes (2026-10-14)
+
+Scoped source and production screenshot review preserves the chrome budget: no toolbar controls
+were added. Managed processors reuse the existing Emits editor inside Advanced, while the
+main admission fields stay unchanged. Numeric draft feedback appears only for invalid input,
+names the range/step and retained value, and is associated with its input and status announcement.
+The production screenshot shows the complete two-line message without clipping after scrolling
+that field into view. Browser checks cover editing/removing Emits and independent per-field Undo.
+
+Arabic and expanded pseudo-locale controls fit at 1280 × 800 without horizontal overflow.
+The existing inspector scrolls for its deeper settings. This was a scoped review of the affected
+surfaces, not a whole-app visual or screen-reader audit. New validation messages currently use
+English fallback outside English; existing P3 translations are retained.
+
+All 17 review findings are accepted, including overlapping code/coverage findings. Dispositions,
+alternatives declined and deliberate regression evidence are recorded in
+[Planning P3 review fixes](research/planning-p3-review-fixes.md).
+
 ## Round 40: stencil catalog review fixes (2026-10-14)
 
 The required designer-agent source and production screenshot review found no remaining actionable UX

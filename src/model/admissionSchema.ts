@@ -1,5 +1,7 @@
 import { QUOTA_UNITS } from "./admission";
 import type { JsonSchema } from "./jsonSchema";
+import { checkJsonSchema } from "./jsonSchema";
+import type { ApiEndpoint } from "./admission";
 const id = { type: "string", minLength: 1, maxLength: 200 };
 const quantity = { type: "number", minimum: 0, maximum: 1e12 };
 const positive = { type: "number", minimum: 0.000001, maximum: 1e12 };
@@ -57,6 +59,13 @@ export const endpointsSchema: JsonSchema = {
     },
   },
 };
+/** IDs, rather than entire endpoint records, identify a request target. */
+export function checkEndpoints(value: unknown): void {
+  checkJsonSchema(value, endpointsSchema);
+  const endpoints = value as ApiEndpoint[];
+  if (new Set(endpoints.map((endpoint) => endpoint.id)).size !== endpoints.length)
+    throw new Error("endpoints: endpoint ids must be unique within a node.");
+}
 const retry: JsonSchema = {
   type: "object",
   additionalProperties: false,

@@ -1,6 +1,6 @@
 import { checkJsonSchema, type JsonSchema } from "./jsonSchema";
 import type { NodeSimProps, EdgeSimProps } from "../sim/types";
-import { apiSchema, endpointsSchema, callerSchema } from "./admissionSchema";
+import { apiSchema, endpointsSchema, callerSchema, checkEndpoints } from "./admissionSchema";
 
 /**
  * The file format's bounds on simulation settings, which every place that edits them uses too (the inspector, the
@@ -85,6 +85,17 @@ export const edgeSimPropsSchema: JsonSchema = {
   additionalProperties: true,
   properties: edgeProperties,
 };
+export function invalidEndpointReference(props: unknown): boolean {
+  if (!props || typeof props !== "object" || Array.isArray(props)) return false;
+  const value = (props as Record<string, unknown>).endpointId;
+  if (value === undefined) return false;
+  try {
+    checkJsonSchema(value, edgeProperties.endpointId, "endpointId");
+    return false;
+  } catch {
+    return true;
+  }
+}
 
 /** P1 edge metadata uses the same bounds at both file and clipboard boundaries. */
 export function invalidPlanningDelay(props: unknown): boolean {
@@ -137,7 +148,8 @@ export function propsProblem(value: unknown): string | undefined {
     if (field === undefined || !Object.hasOwn(nodeProperties, key)) continue;
     const schema: JsonSchema = nodeProperties[key as keyof typeof nodeProperties];
     try {
-      checkJsonSchema(field, schema, key);
+      if (key === "endpoints") checkEndpoints(field);
+      else checkJsonSchema(field, schema, key);
     } catch {
       if (typeof field === "number" && typeof schema.maximum === "number" && field > schema.maximum)
         return `${key} ${number(field)} is over the ${number(schema.maximum)} limit`;

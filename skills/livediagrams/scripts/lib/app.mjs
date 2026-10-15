@@ -168,6 +168,12 @@ var endpointsSchema = {
 		}
 	}
 };
+/** IDs, rather than entire endpoint records, identify a request target. */
+function checkEndpoints(value) {
+	checkJsonSchema(value, endpointsSchema);
+	const endpoints = value;
+	if (new Set(endpoints.map((endpoint) => endpoint.id)).size !== endpoints.length) throw new Error("endpoints: endpoint ids must be unique within a node.");
+}
 var callerSchema = {
 	type: "object",
 	additionalProperties: false,
@@ -388,6 +394,17 @@ var nodeSimPropsSchema = {
 	additionalProperties: true,
 	properties: nodeProperties
 };
+function invalidEndpointReference(props) {
+	if (!props || typeof props !== "object" || Array.isArray(props)) return false;
+	const value = props.endpointId;
+	if (value === void 0) return false;
+	try {
+		checkJsonSchema(value, edgeProperties.endpointId, "endpointId");
+		return false;
+	} catch {
+		return true;
+	}
+}
 /** P1 edge metadata uses the same bounds at both file and clipboard boundaries. */
 function invalidPlanningDelay(props) {
 	if (!props || typeof props !== "object" || Array.isArray(props)) return false;
@@ -427,7 +444,8 @@ function propsProblem(value) {
 		if (field === void 0 || !Object.hasOwn(nodeProperties, key)) continue;
 		const schema = nodeProperties[key];
 		try {
-			checkJsonSchema(field, schema, key);
+			if (key === "endpoints") checkEndpoints(field);
+			else checkJsonSchema(field, schema, key);
 		} catch {
 			if (typeof field === "number" && typeof schema.maximum === "number" && field > schema.maximum) return `${key} ${number(field)} is over the ${number(schema.maximum)} limit`;
 			if (typeof field === "number" && typeof schema.minimum === "number" && field < schema.minimum) return `${key} ${number(field)} is under the minimum of ${number(schema.minimum)}`;
@@ -859,13 +877,13 @@ function validateDiagram(data) {
 			const props = isObj$1(sim.setup) && isObj$1(sim.setup.props) ? sim.setup.props : {};
 			for (const [id, value] of Object.entries(props)) if (unsupportedPreset(value)) return {
 				ok: false,
-				error: t(1077, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
+				error: t(1080, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
 			};
 			if (Array.isArray(sim.timeline)) for (const step of sim.timeline) {
 				const action = isObj$1(step) && isObj$1(step.action) ? step.action : void 0;
 				if (action?.do === "props" && unsupportedPreset(action.props)) return {
 					ok: false,
-					error: t(1077, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
+					error: t(1080, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
 				};
 			}
 		}
@@ -967,7 +985,7 @@ function validateDiagram(data) {
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
 		if (unsupportedPreset(out.props)) return {
 			ok: false,
-			error: t(1077, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
+			error: t(1080, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
 		};
 		const problem = out.props === void 0 ? void 0 : propsProblem(out.props);
 		if (problem) return {
@@ -1044,10 +1062,14 @@ function validateDiagram(data) {
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
 		if (invalidPlanningDelay(out.props)) return {
 			ok: false,
-			error: t(1022, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
+			error: t(1025, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
 				id: e.id,
 				limit: SIM_LIMITS.timeMs
 			})
+		};
+		if (invalidEndpointReference(out.props)) return {
+			ok: false,
+			error: t(5, (v) => "Connection " + v.id + ": endpointId must be nonempty text of at most 200 characters.", { id: e.id })
 		};
 		const deny = out.props?.deny;
 		if (deny !== void 0 && typeof deny !== "boolean") {

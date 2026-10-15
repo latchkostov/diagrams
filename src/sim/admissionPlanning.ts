@@ -1,4 +1,5 @@
 import { configureAdmission, emptyAdmission, type AdmissionPolicy } from "./admission";
+import { quotaKey, concurrencyKey, sharedConcurrencyKey, slotsKey, type AdmissionScope } from "./admissionPolicy";
 import type { Quota } from "../model/admission";
 import type { PlanningModel } from "../model/types";
 
@@ -38,8 +39,8 @@ export function admissionCapacities(
     let seconds = 0;
     for (const call of entry.endpoints) {
       if (!(call.rate > 0)) continue;
-      const endpoint = call.id ? entry.policy.endpoints.find((e) => e.id === call.id) : undefined;
-      if (call.id && !endpoint) {
+      const endpoint = call.id !== undefined ? entry.policy.endpoints.find((e) => e.id === call.id) : undefined;
+      if (call.id !== undefined && !endpoint) {
         result.set(entry.id, 0);
         continue;
       }
@@ -58,42 +59,33 @@ export function admissionCapacities(
       seconds += (call.rate * latency) / 1000;
       const costs = { ...entry.policy.api.costPerRequest, ...api?.costPerRequest };
       const once = new Set<string>();
-      const quota = (q: Quota, scope: string) => {
-        const key = JSON.stringify(q.sharedGroup ? ["quota", q.sharedGroup] : [entry.id, scope, q.id]);
+      const quota = (q: Quota, scope: AdmissionScope) => {
+        const key = quotaKey(entry.id, scope, q);
         if (once.has(key)) return;
         once.add(key);
         const cost = costs[q.unit] ?? (q.unit === "requests" ? 1 : undefined);
-        if (cost === undefined) {
+        if (cost === undefined || cost > (q.burst ?? q.amount)) {
           result.set(entry.id, 0);
           return;
         }
         add(key, (q.amount * 1000) / q.windowMs, call.rate * cost, entry.id);
       };
-      for (const q of entry.policy.api.quotas ?? []) quota(q, "global");
-      for (const q of api?.quotas ?? []) quota(q, call.id!);
+      for (const q of entry.policy.api.quotas ?? []) quota(q, ["node"]);
+      for (const q of api?.quotas ?? []) quota(q, ["endpoint", call.id!]);
       if (api?.maxInFlight !== undefined)
-        add(
-          JSON.stringify([entry.id, call.id, "concurrency"]),
-          api.maxInFlight,
-          (call.rate * latency) / 1000,
-          entry.id,
-        );
+        add(concurrencyKey(entry.id, ["endpoint", call.id!]), api.maxInFlight, (call.rate * latency) / 1000, entry.id);
       const shared = new Map<string, number>();
-      for (const [behaviour, fallback] of [
-        [entry.policy.api, entry.policy.accountConcurrency],
-        [api, undefined],
-      ] as const) {
+      for (const behaviour of [entry.policy.api, api]) {
         if (!behaviour?.sharedConcurrency) continue;
         const id = behaviour.sharedConcurrency;
-        const allocation =
-          planning?.sharedAllocations?.find((a) => a.id === id)?.maxInFlight ?? fallback ?? behaviour.maxInFlight ?? 0;
+        const allocation = sharedState.allocations.get(id) ?? 0;
         shared.set(id, allocation);
       }
       for (const [id, allocation] of shared)
-        add(JSON.stringify(["concurrency", id]), allocation, (call.rate * latency) / 1000, entry.id);
+        add(sharedConcurrencyKey(id), allocation, (call.rate * latency) / 1000, entry.id);
     }
     const slots = Math.min(entry.policy.slots ?? Infinity, entry.policy.api.maxInFlight ?? Infinity);
-    if (slots < Infinity) add(JSON.stringify([entry.id, "slots"]), slots, seconds, entry.id);
+    if (slots < Infinity) add(slotsKey(entry.id), slots, seconds, entry.id);
   }
   for (const budget of budgets.values())
     if (budget.demand > 0)

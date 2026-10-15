@@ -1,4 +1,3 @@
-import { t } from "../../i18n";
 import { englishAssignmentLabel } from "../../model/brokers";
 import { resolveNodeProps } from "../../sim/defaults";
 import type { DiagramOp } from "../../ai";
@@ -119,6 +118,12 @@ export const capacity: CheckRule = {
           : ` ${top.idleReplicas} of its ${top.replicas} replicas sit idle: a consumer group can't use more consumers than partitions.`
         : "";
     const fix = scaleFix(ctx, top);
+    const admissionRejection = top.managed
+      ? {
+          text: `${formatRate(Math.max(0, top.offered - top.capacity))} may be rejected.`,
+          rate: Math.max(0, top.offered - top.capacity),
+        }
+      : undefined;
     return [
       {
         id: `capacity:${top.id}`,
@@ -127,10 +132,11 @@ export const capacity: CheckRule = {
         target: top.id,
         elements: [top.id],
         title: `${name} can't keep up`,
-        message: `At ${rates}, ${load}: ${top.managed ? t("admission.rejectEstimate", { rate: formatRate(Math.max(0, top.offered - top.capacity)) }) : "its backlog only grows."}${idle}${analysis.converged ? "" : " A feedback loop didn't settle, so these are estimates."}`,
+        message: `At ${rates}, ${load}: ${top.managed ? admissionRejection!.text : "its backlog only grows."}${idle}${analysis.converged ? "" : " A feedback loop didn't settle, so these are estimates."}`,
         rationale:
           "Demand above what a service can handle never drains: latency and backlog grow until something times out. Live view's Show capacity has the same numbers.",
         ...(brokerAssignment ? { brokerAssignment } : {}),
+        ...(admissionRejection ? { admissionRejection } : {}),
         ...(fix ? { fix } : {}),
       },
     ];
