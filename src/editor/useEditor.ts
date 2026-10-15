@@ -405,7 +405,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       height: n.height ?? n.measured?.height ?? 0,
     }));
   const memberBoxes = (ns: readonly FlowNode[]): MemberBox[] =>
-    ns.filter((n) => isDiagram(n) || isAnnotation(n)).map((n) => ({ ...box(n), group: n.data.group }));
+    ns.filter(isDiagram).map((n) => ({ ...box(n), group: n.data.group }));
   /**
    * Nodes `ids` (at their new places) settled into boundaries (D12): each one in the boundary around its
    * centre, and that boundary grown to hold it when it pokes out (never onto another boundary or a node that
