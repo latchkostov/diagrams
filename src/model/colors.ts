@@ -63,10 +63,20 @@ export function contrastRatio(lum1: number, lum2: number): number {
   return (Math.max(lum1, lum2) + 0.05) / (Math.min(lum1, lum2) + 0.05);
 }
 
+function luminanceToRgbChannel(lum: number): number {
+  const s = Math.max(0, Math.min(1, lum));
+  const c = s <= 0.0031308 ? s * 12.92 : 1.055 * Math.pow(s, 1 / 2.4) - 0.055;
+  return Math.round(c * 255);
+}
+
 /** Returns the hex color if it meets AA contrast (>= 4.5) against the background luminance, or fallback if illegible. */
 export function accessibleColor(hex: string, bgLuminance: number, fallback: string): string {
   const rgba = parseHexRgba(hex);
-  if (!rgba || rgba.a < 0.5) return fallback;
-  const lum = relativeLuminance(rgba.r, rgba.g, rgba.b);
+  if (!rgba) return fallback;
+  const bg = luminanceToRgbChannel(bgLuminance);
+  const blendedR = Math.round(rgba.r * rgba.a + bg * (1 - rgba.a));
+  const blendedG = Math.round(rgba.g * rgba.a + bg * (1 - rgba.a));
+  const blendedB = Math.round(rgba.b * rgba.a + bg * (1 - rgba.a));
+  const lum = relativeLuminance(blendedR, blendedG, blendedB);
   return contrastRatio(lum, bgLuminance) >= 4.5 ? hex : fallback;
 }

@@ -326,6 +326,20 @@ export function validateDiagram(data: unknown): NativeResult {
     g.id = id;
   }
   for (const n of nodes) if (n.group !== undefined) n.group = groupIdFor.get(n.group);
+  for (const g of groups) {
+    if (g.group !== undefined) {
+      const mapped = groupIdFor.get(g.group);
+      if (mapped && mapped !== g.id) g.group = mapped;
+      else delete g.group;
+    }
+  }
+  for (const a of annotations) {
+    if (a.group !== undefined) {
+      const mapped = groupIdFor.get(a.group);
+      if (mapped) a.group = mapped;
+      else delete a.group;
+    }
+  }
 
   const edges: Record<string, unknown>[] = [];
   const rawEdges = raw.edges === undefined ? [] : raw.edges;

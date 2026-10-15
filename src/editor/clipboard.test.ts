@@ -168,6 +168,48 @@ describe("clipboard", () => {
     expect(uniqueId("orders-2", new Set(["orders-1"]))).toBe("orders-2");
     expect(uniqueId("orders", new Set(["orders-1", "orders-2"]))).toBe("orders-3");
   });
+
+  it.each([
+    [
+      "parent-first",
+      [
+        { id: "parent", label: "Parent", x: 0, y: 0, width: 400, height: 400 },
+        { id: "child", label: "Child", x: 50, y: 50, width: 200, height: 200, group: "parent" },
+      ],
+    ],
+    [
+      "child-first",
+      [
+        { id: "child", label: "Child", x: 50, y: 50, width: 200, height: 200, group: "parent" },
+        { id: "parent", label: "Parent", x: 0, y: 0, width: 400, height: 400 },
+      ],
+    ],
+  ])("remaps nested parents regardless of group order (%s)", (_label, groups) => {
+    const payload = {
+      format: CLIP_FORMAT,
+      groups,
+      nodes: [{ id: "n1", stencil: "service.go", label: "N", x: 60, y: 60, group: "child" }],
+      edges: [],
+    };
+    const taken = {
+      nodes: new Set(["n1"]),
+      groups: new Set(["parent", "child"]),
+      edges: new Set<string>(),
+    };
+    const remapped = remapPayload(payload, taken, { x: 100, y: 100 });
+    const parentCopy = remapped.groups.find((g) => g.label === "Parent")!;
+    const childCopy = remapped.groups.find((g) => g.label === "Child")!;
+    const nodeCopy = remapped.nodes[0];
+
+    // IDs are fresh
+    expect(parentCopy.id).not.toBe("parent");
+    expect(childCopy.id).not.toBe("child");
+    expect(nodeCopy.id).not.toBe("n1");
+
+    // Parent relationship is remapped to the new parent ID regardless of order
+    expect(childCopy.group).toBe(parentCopy.id);
+    expect(nodeCopy.group).toBe(childCopy.id);
+  });
 });
 
 it("filters, validates and remaps mixed foreground order through clipboard JSON", () => {

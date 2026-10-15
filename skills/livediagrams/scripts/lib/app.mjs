@@ -1037,6 +1037,16 @@ function validateDiagram(data) {
 		g.id = id;
 	}
 	for (const n of nodes) if (n.group !== void 0) n.group = groupIdFor.get(n.group);
+	for (const g of groups) if (g.group !== void 0) {
+		const mapped = groupIdFor.get(g.group);
+		if (mapped && mapped !== g.id) g.group = mapped;
+		else delete g.group;
+	}
+	for (const a of annotations) if (a.group !== void 0) {
+		const mapped = groupIdFor.get(a.group);
+		if (mapped) a.group = mapped;
+		else delete a.group;
+	}
 	const edges = [];
 	const rawEdges = raw.edges === void 0 ? [] : raw.edges;
 	if (!Array.isArray(rawEdges)) return {

@@ -301,5 +301,11 @@ describe("annotation colors", () => {
     // Transparent / invalid hex -> returns fallback
     expect(accessibleColor("#00000000", whiteLum, "#0f172a")).toBe("#0f172a");
     expect(accessibleColor("not-a-color", whiteLum, "#0f172a")).toBe("#0f172a");
+
+    // Alpha blending: low opacity washes out against background, high opacity retains contrast
+    expect(accessibleColor("#00000040", whiteLum, "#0f172a")).toBe("#0f172a");
+    expect(accessibleColor("#000000e6", whiteLum, "#0f172a")).toBe("#000000e6");
+    expect(accessibleColor("#ffffff40", darkLum, "#f8fafc")).toBe("#f8fafc");
+    expect(accessibleColor("#ffffffe6", darkLum, "#f8fafc")).toBe("#ffffffe6");
   });
 });

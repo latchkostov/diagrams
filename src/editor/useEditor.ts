@@ -79,7 +79,6 @@ import { isHexColor } from "../model/colors";
 import {
   centre,
   contains,
-  groupAtPoint,
   membershipAfterResize,
   planKeep,
   settleMembership,
@@ -90,6 +89,12 @@ import {
 import { tidyLayout } from "./tidy";
 import { choiceOf } from "./relationActions";
 import { dependencyVisibility } from "../canvas/dependencyVisibility";
+import {
+  planBoundaryAdoption,
+  descendantGroupIds,
+  type GroupBox,
+  type HierarchyElementBox,
+} from "../model/groupHierarchy";
 
 // The EditorApi implementation over React Flow state. Built once per canvas; reads the latest
 // committed props so menus / shortcuts never see stale state.
@@ -217,31 +222,33 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     height: n.measured?.height ?? n.height ?? deps().nodeSize.height,
   });
   const diagram = () => fromFlow(deps().meta, rf.getNodes(), rf.getEdges());
-  const members = (groupId: string): FlowNode[] => rf.getNodes().filter((n) => n.data.group === groupId);
-  const allDescendantGroupIds = (groupId: string): Set<string> => {
-    const all = rf.getNodes();
-    const res = new Set<string>([groupId]);
+  const directMembers = (groupId: string): FlowNode[] => rf.getNodes().filter((n) => n.data.group === groupId);
+  const expandSelection = (sel: Partial<Selection>, allNodes: readonly FlowNode[]) => {
+    const groupIds = new Set(sel.groupIds ?? []);
     let expanded = true;
     while (expanded) {
       expanded = false;
-      for (const n of all) {
-        if (isGroup(n) && n.data.group && res.has(n.data.group) && !res.has(n.data.groupId)) {
-          res.add(n.data.groupId);
+      for (const n of allNodes) {
+        if (isGroup(n) && n.data.group && groupIds.has(n.data.group) && !groupIds.has(n.data.groupId)) {
+          groupIds.add(n.data.groupId);
           expanded = true;
         }
       }
     }
-    return res;
-  };
-  const allDescendants = (groupId: string): FlowNode[] => {
-    const groups = allDescendantGroupIds(groupId);
-    return rf
-      .getNodes()
-      .filter((n) =>
-        isGroup(n)
-          ? groups.has(n.data.groupId) && n.data.groupId !== groupId
-          : Boolean(n.data.group && groups.has(n.data.group)),
-      );
+    const nodeIds = new Set(sel.nodeIds ?? []);
+    for (const n of allNodes) {
+      if (!isGroup(n) && n.data.group && groupIds.has(n.data.group)) {
+        nodeIds.add(n.id);
+      }
+    }
+    const flowIds = new Set<string>();
+    for (const id of nodeIds) flowIds.add(id);
+    for (const g of groupIds) flowIds.add(GROUP_PREFIX + g);
+    return {
+      groupIds: [...groupIds],
+      nodeIds: [...nodeIds],
+      flowIds,
+    };
   };
   const hint = (merge?: string) => deps().history.hint(merge);
   /**
@@ -379,15 +386,8 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     const past = pastAll(b, others);
     return { x: Math.ceil(past.x / 10) * 10, y: snap10(past.y) };
   };
-  /** The flow ids a selection covers: a boundary brings its members along. */
-  const flowIdsOf = (sel: Partial<Selection>): Set<string> => {
-    const out = new Set(sel.nodeIds ?? []);
-    for (const g of sel.groupIds ?? []) {
-      out.add(GROUP_PREFIX + g);
-      for (const m of members(g)) out.add(m.id);
-    }
-    return out;
-  };
+  /** The flow ids a selection covers: a boundary brings its members along (recursively). */
+  const flowIdsOf = (sel: Partial<Selection>): Set<string> => expandSelection(sel, rf.getNodes()).flowIds;
   /** The selection of the copies made of `sel` (`ids`: old flow id → new). */
   const copiedSelection = (sel: Partial<Selection>, ids: Map<string, string>): Selection => ({
     nodeIds: (sel.nodeIds ?? []).map((id) => ids.get(id) ?? id),
@@ -778,11 +778,11 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       const set = new Set(ids);
       hint(opts?.merge);
       deps().setNodes((ns) =>
-        ns.map((n) =>
-          isGroup(n) && set.has(n.data.groupId) && patch.tone && n.data.tone !== patch.tone
-            ? { ...n, data: { ...n.data, tone: patch.tone } }
-            : n,
-        ),
+        ns.map((n) => {
+          if (!isGroup(n) || !set.has(n.data.groupId)) return n;
+          const nextTone = "tone" in patch ? (patch.tone ?? "neutral") : n.data.tone;
+          return nextTone !== n.data.tone ? { ...n, data: { ...n.data, tone: nextTone } } : n;
+        }),
       );
     },
     updateNode: (id, patch, opts) => {
@@ -864,8 +864,8 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     },
     updateGroup: (id, patch, opts) => {
       hint(opts?.merge);
-      deps().setNodes((ns) =>
-        ns.map((n) => {
+      deps().setNodes((ns) => {
+        const nextNodes = ns.map((n) => {
           if (!isGroup(n) || n.data.groupId !== id) return n;
           return {
             ...n,
@@ -875,12 +875,19 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
             data: {
               ...n.data,
               label: patch.label ?? n.data.label,
-              tone: patch.tone ?? n.data.tone,
+              tone: "tone" in patch ? (patch.tone ?? "neutral") : n.data.tone,
               group: "group" in patch ? patch.group || undefined : n.data.group,
             },
           };
-        }),
-      );
+        });
+        if (patch.width !== undefined || patch.height !== undefined) {
+          const r = membershipAfterResize(id, memberBoxes(nextNodes), groupRects(nextNodes));
+          if (r.group.size) {
+            return nextNodes.map((n) => (r.group.has(n.id) ? withGroup(n, r.group.get(n.id)) : n));
+          }
+        }
+        return nextNodes;
+      });
     },
     updateMeta: (patch, opts) => {
       hint(opts?.merge);
@@ -1190,19 +1197,53 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       const set = new Set(ids);
       const isSelected = (n: FlowNode) =>
         set.has(n.id) || (isGroup(n) && (set.has(n.data.groupId) || set.has(GROUP_PREFIX + n.data.groupId)));
-      const nodes = rf.getNodes().filter(isSelected);
+      const ns = rf.getNodes();
+      const nodes = ns.filter(isSelected);
       if (!nodes.length) return null;
       const id = uniqueId("boundary", takenIds());
       const label = tone in toneLabel ? toneLabel[tone as GroupTone] : t("chrome.untitledBoundary");
       const bounds = boundaryAround(nodes.map(box));
-      const nonSelectedGroups = groupRects(rf.getNodes().filter((n) => !isSelected(n)));
-      const c = centre(bounds);
-      const outerGroup = groupAtPoint(nonSelectedGroups, c.x, c.y);
+      const existingGroups: GroupBox[] = ns.filter(isGroup).map((g) => ({
+        id: g.data.groupId,
+        x: g.position.x,
+        y: g.position.y,
+        width: g.width ?? g.measured?.width ?? 0,
+        height: g.height ?? g.measured?.height ?? 0,
+        group: g.data.group,
+      }));
+      const selectedGroupIds = new Set(nodes.filter(isGroup).map((g) => (g as GroupFlowNode).data.groupId));
+      const allSelectedAndDescendants = new Set(selectedGroupIds);
+      for (const gid of selectedGroupIds) {
+        for (const desc of descendantGroupIds(gid, existingGroups)) {
+          allSelectedAndDescendants.add(desc);
+        }
+      }
+      const bArea = bounds.width * bounds.height;
+      const bc = centre(bounds);
+      const candidateParents = existingGroups.filter(
+        (g) => !allSelectedAndDescendants.has(g.id) && g.width * g.height > bArea,
+      );
+      let best: GroupBox | undefined;
+      for (const g of candidateParents) {
+        if (contains({ x: g.x, y: g.y, width: g.width, height: g.height }, bc.x, bc.y)) {
+          if (!best || g.width * g.height < best.width * best.height) {
+            best = g;
+          }
+        }
+      }
+      const outerGroup = best?.id;
       const group = groupToFlow({ id, label, tone, group: outerGroup, ...bounds });
       deps().setNodes((cur): FlowNode[] => [
         { ...group, selected: true },
         ...cur.map((n): FlowNode => {
-          const next = isSelected(n) ? withGroup(n, id) : n;
+          let next = n;
+          if (isGroup(n) && selectedGroupIds.has(n.data.groupId)) {
+            if (!n.data.group || !allSelectedAndDescendants.has(n.data.group)) {
+              next = withGroup(n, id);
+            }
+          } else if (isSelected(n)) {
+            next = withGroup(n, id);
+          }
           return next.selected ? { ...next, selected: false } : next;
         }),
       ]);
@@ -1219,13 +1260,11 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       );
     },
     deleteGroupWithContents: (groupId) => {
-      const desc = allDescendants(groupId);
-      const groupIds = [groupId, ...desc.filter(isGroup).map((g) => g.data.groupId)];
-      const nodeIds = desc.filter((n) => !isGroup(n)).map((n) => n.id);
+      const { groupIds, nodeIds } = expandSelection({ groupIds: [groupId] }, rf.getNodes());
       api.deleteElements({ groupIds, nodeIds });
     },
     fitGroupToContents: (groupId) => {
-      const m = members(groupId);
+      const m = directMembers(groupId);
       if (m.length) api.updateGroup(groupId, boundaryAround(m.map(box)));
     },
     convertGroupToZone: (groupId, opts) => {
@@ -1267,6 +1306,13 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
             return next.selected ? { ...next, selected: false } : next;
           }),
       ]);
+      if (typeof document !== "undefined" && typeof requestAnimationFrame !== "undefined") {
+        requestAnimationFrame(() => {
+          document
+            .querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(id)}"]`)
+            ?.focus({ preventScroll: true });
+        });
+      }
       return id;
     },
     convertZoneToBoundary: (zoneId, opts) => {
@@ -1285,36 +1331,30 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
         width: zw,
         height: zh,
       };
-      const existingGroups = groupRects(ns.filter(isGroup));
-      const zc = centre(zoneBox);
-      const outerGroup = zoneNode.data.group ?? groupAtPoint(existingGroups, zc.x, zc.y);
-
-      // Find any sub-boundaries that sit inside zoneBox (smaller than zone)
-      const childGroupIds = new Set<string>();
-      for (const n of ns) {
-        if (!isGroup(n)) continue;
-        const gw = n.width ?? n.measured?.width ?? 0;
-        const gh = n.height ?? n.measured?.height ?? 0;
-        const gc = { x: n.position.x + gw / 2, y: n.position.y + gh / 2 };
-        if (contains(zoneBox, gc.x, gc.y) && gw * gh < zw * zh) {
-          childGroupIds.add(n.data.groupId);
-        }
-      }
-
-      // Collect elements inside zoneBox (excluding items already inside child boundaries)
-      const directInsideIds = new Set<string>();
-      for (const n of ns) {
-        if (n.id === zoneId) continue;
-        if (isGroup(n)) continue;
-        if (n.data.group && childGroupIds.has(n.data.group)) continue;
-        const nw = n.measured?.width ?? n.width ?? 0;
-        const nh = n.measured?.height ?? n.height ?? 0;
-        const cx = n.position.x + nw / 2;
-        const cy = n.position.y + nh / 2;
-        if (contains(zoneBox, cx, cy)) {
-          directInsideIds.add(n.id);
-        }
-      }
+      const existingGroups: GroupBox[] = ns.filter(isGroup).map((g) => ({
+        id: g.data.groupId,
+        x: g.position.x,
+        y: g.position.y,
+        width: g.width ?? g.measured?.width ?? 0,
+        height: g.height ?? g.measured?.height ?? 0,
+        group: g.data.group,
+      }));
+      const elements: HierarchyElementBox[] = ns
+        .filter((n) => n.id !== zoneId && !isGroup(n))
+        .map((n) => ({
+          id: n.id,
+          x: n.position.x,
+          y: n.position.y,
+          width: n.measured?.width ?? n.width ?? 0,
+          height: n.measured?.height ?? n.height ?? 0,
+          group: n.data.group,
+        }));
+      const adoption = planBoundaryAdoption({
+        bounds: zoneBox,
+        existingGroups,
+        elements,
+        requestedParentId: zoneNode.data.group,
+      });
       const zoneColor = zoneNode.data.color;
       const colorToTone: Record<string, GroupTone> = {
         blue: "azure",
@@ -1334,26 +1374,35 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
         id,
         label: zoneNode.data.text || t("chrome.untitledBoundary"),
         tone,
-        group: outerGroup,
+        group: adoption.outerGroupId,
         x: Math.round(zoneNode.position.x),
         y: Math.round(zoneNode.position.y),
         width: Math.round(zw),
         height: Math.round(zh),
       });
+      const adoptedGroupIds = new Set(adoption.adoptedGroupIds);
+      const adoptedElementIds = new Set(adoption.adoptedElementIds);
       deps().setNodes((cur): FlowNode[] => [
         { ...groupNode, selected: true },
         ...cur
           .filter((n) => n.id !== zoneId)
           .map((n): FlowNode => {
             let next: FlowNode = n;
-            if (isGroup(n) && childGroupIds.has(n.data.groupId)) {
+            if (isGroup(n) && adoptedGroupIds.has(n.data.groupId)) {
               next = withGroup(n, id);
-            } else if (directInsideIds.has(n.id)) {
+            } else if (adoptedElementIds.has(n.id)) {
               next = withGroup(n, id);
             }
             return next.selected ? { ...next, selected: false } : next;
           }),
       ]);
+      if (typeof document !== "undefined" && typeof requestAnimationFrame !== "undefined") {
+        requestAnimationFrame(() => {
+          document
+            .querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(GROUP_PREFIX + id)}"]`)
+            ?.focus({ preventScroll: true });
+        });
+      }
       return id;
     },
     bringToFront: (ids) => {
@@ -1373,26 +1422,13 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     },
     moveSelection: (dx, dy) => {
       const ns = rf.getNodes();
-      const groups = new Set(ns.filter((n) => isGroup(n) && n.selected).map((n) => (n as GroupFlowNode).data.groupId));
-      if (groups.size) {
-        let expanded = true;
-        while (expanded) {
-          expanded = false;
-          for (const n of ns) {
-            if (isGroup(n) && n.data.group && groups.has(n.data.group) && !groups.has(n.data.groupId)) {
-              groups.add(n.data.groupId);
-              expanded = true;
-            }
-          }
-        }
-      }
-      const moving = new Set(
-        ns.filter((n) => n.selected || (n.data.group !== undefined && groups.has(n.data.group))).map((n) => n.id),
-      );
-      if (!moving.size) return;
+      const selGroups = ns.filter((n) => isGroup(n) && n.selected).map((n) => (n as GroupFlowNode).data.groupId);
+      const selNodes = ns.filter((n) => !isGroup(n) && n.selected).map((n) => n.id);
+      const { flowIds } = expandSelection({ groupIds: selGroups, nodeIds: selNodes }, ns);
+      if (!flowIds.size) return;
       hint("nudge");
       deps().setNodes((cur) =>
-        cur.map((n) => (moving.has(n.id) ? { ...n, position: { x: n.position.x + dx, y: n.position.y + dy } } : n)),
+        cur.map((n) => (flowIds.has(n.id) ? { ...n, position: { x: n.position.x + dx, y: n.position.y + dy } } : n)),
       );
     },
     nudge: (dx, dy, far) => {
@@ -1446,8 +1482,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     },
     cut: (sel) => {
       api.copy(sel);
-      const groupIds = sel.groupIds ?? [];
-      const nodeIds = [...(sel.nodeIds ?? []), ...groupIds.flatMap((g) => members(g).map((n) => n.id))];
+      const { nodeIds, groupIds } = expandSelection(sel, rf.getNodes());
       api.deleteElements({ nodeIds, groupIds, edgeIds: sel.edgeIds });
     },
     paste: async (at) => {

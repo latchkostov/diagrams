@@ -66,6 +66,7 @@ import {
 import { privacyOf } from "../lib/localOnly";
 import { PRIVACY_REQUEST, usePrivacyFlags } from "../lib/usePrivacy";
 import type { AnnotationKind, AnnotationShape, DiagramFile } from "../model/types";
+import { wouldCreateCycle } from "../model/groupHierarchy";
 import {
   edgeAriaLabel,
   fromFlow,
@@ -1414,20 +1415,31 @@ function CanvasInner({
         }
         if (draggedGroups.length) {
           const ns = store.getState().nodes;
+          const targetFlowIds = copies
+            ? draggedGroups.map((g) => copies.get(g.id) ?? g.id)
+            : draggedGroups.map((g) => g.id);
+          const targetNodes = ns.filter((n): n is GroupFlowNode => isGroupNode(n) && targetFlowIds.includes(n.id));
+          const targetGroupIds = new Set(targetNodes.map((n) => n.data.groupId));
           const otherGroups = ns
-            .filter((n): n is GroupFlowNode => isGroupNode(n) && !dragged.some((d) => d.id === n.id))
+            .filter(
+              (n): n is GroupFlowNode =>
+                isGroupNode(n) && !targetGroupIds.has(n.data.groupId) && !dragged.some((d) => d.id === n.id),
+            )
             .map((g) => ({
               id: g.data.groupId,
               x: g.position.x,
               y: g.position.y,
               width: g.width ?? g.measured?.width ?? 0,
               height: g.height ?? g.measured?.height ?? 0,
+              group: g.data.group,
             }));
-          for (const g of draggedGroups) {
+          for (const g of targetNodes) {
             const gw = g.width ?? g.measured?.width ?? 0;
             const gh = g.height ?? g.measured?.height ?? 0;
             const gc = { x: g.position.x + gw / 2, y: g.position.y + gh / 2 };
-            const validOuters = otherGroups.filter((og) => og.width * og.height > gw * gh);
+            const validOuters = otherGroups.filter(
+              (og) => og.width * og.height > gw * gh && !wouldCreateCycle(g.data.groupId, og.id, otherGroups),
+            );
             const outerId = groupAtPoint(validOuters, gc.x, gc.y);
             if (g.data.group !== outerId) {
               editor.updateGroup(g.data.groupId, { group: outerId });

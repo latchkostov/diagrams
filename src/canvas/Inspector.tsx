@@ -1,8 +1,10 @@
 import { stencilLabel, vendorLabel } from "../i18n/stencils";
 import { ANNOTATION_LIMITS } from "../model/annotations";
+import { eligibleParentGroupIds } from "../model/groupHierarchy";
 import {
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -1081,24 +1083,20 @@ function isFanOut(editor: EditorApi, sourceId: string, kind: string | undefined)
   return FAN_OUT_ROLES.has(role) || (role === "store" && kind !== "sync");
 }
 
-function isDescendantGroup(candidateId: string, targetId: string, allGroups: GroupFlowNode[]): boolean {
-  const byId = new Map(allGroups.map((g) => [g.data.groupId, g]));
-  let current: string | undefined = candidateId;
-  const visited = new Set<string>();
-  while (current && !visited.has(current)) {
-    visited.add(current);
-    if (current === targetId) return true;
-    current = byId.get(current)?.data.group;
-  }
-  return false;
-}
-
 function GroupPanel({ group, editor, groups }: InspectorProps & { group: GroupFlowNode }) {
   const naming = useNameFields(editor, "group", group.data.groupId, group.id);
   const id = group.data.groupId;
   const isCustomTone = !isPresetGroupTone(group.data.tone) && Boolean(group.data.tone);
   const resolvedTone = resolveGroupTone(group.data.tone);
   const [pickerAnchor, setPickerAnchor] = useState<{ rect: DOMRect; merge: string } | null>(null);
+  const eligibleParents = useMemo(
+    () =>
+      eligibleParentGroupIds(
+        id,
+        groups.map((g) => ({ id: g.data.groupId, group: g.data.group })),
+      ),
+    [id, groups],
+  );
 
   return (
     <Section>
@@ -1189,7 +1187,7 @@ function GroupPanel({ group, editor, groups }: InspectorProps & { group: GroupFl
         >
           <option value="">None</option>
           {groups
-            .filter((g) => g.data.groupId !== id && !isDescendantGroup(g.data.groupId, id, groups))
+            .filter((g) => eligibleParents.has(g.data.groupId))
             .map((g) => (
               <option key={g.id} value={g.data.groupId}>
                 {g.data.label}

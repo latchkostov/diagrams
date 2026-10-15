@@ -174,10 +174,13 @@ export function remapPayload(p: ClipboardPayload, taken: TakenIds, offset: { x: 
   const used = new Set([...taken.nodes, ...taken.edges, ...taken.groups]);
   const gmap = new Map<string, string>();
   const nmap = new Map<string, string>();
-  const groups = p.groups.map((g) => {
+  for (const g of p.groups) {
     const id = uniqueId(g.id, used);
     used.add(id);
     gmap.set(g.id, id);
+  }
+  const groups = p.groups.map((g) => {
+    const id = gmap.get(g.id)!;
     const group = g.group ? (gmap.get(g.group) ?? g.group) : undefined;
     return { ...g, id, group, x: g.x + offset.x, y: g.y + offset.y };
   });

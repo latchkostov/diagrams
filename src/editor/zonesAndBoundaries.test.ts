@@ -429,4 +429,166 @@ describe("Zones and Boundaries conversion and grouping", () => {
     const n1 = nodes.find((n) => n.id === "n1") as DiagramFlowNode;
     expect(n1.data.group).toBe("outer");
   });
+
+  it("converting a centred enclosing zone preserves an acyclic hierarchy", () => {
+    // Zone centre is at (250, 250). Smaller boundary is at (200, 200, 100x100), enclosing (250, 250).
+    const diagram: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Centred zone",
+      groups: [{ id: "inner", label: "Inner", tone: "aws", x: 200, y: 200, width: 100, height: 100 }],
+      nodes: [
+        { id: "n-inner", stencil: "service.node", label: "Inside Inner", x: 220, y: 220, group: "inner" },
+        { id: "n-zone", stencil: "service.node", label: "Inside Zone", x: 50, y: 50 },
+      ],
+      annotations: [
+        { id: "z-centred", kind: "zone", text: "Centred Zone", x: 0, y: 0, width: 500, height: 500, color: "blue" },
+      ],
+      edges: [],
+    };
+
+    const { api, commit, getNodes } = setup(diagram);
+    const boundaryId = api.convertZoneToBoundary("z-centred");
+    commit();
+
+    expect(boundaryId).toBeDefined();
+    const nodes = getNodes();
+
+    // The new boundary has NO parent (inner boundary cannot be parent of outer)
+    const newBoundary = nodes.find((n) => n.id === `group:${boundaryId}`) as GroupFlowNode;
+    expect(newBoundary.data.group).toBeUndefined();
+
+    // Inner boundary references the new boundary as its parent
+    const innerBoundary = nodes.find((n) => n.id === "group:inner") as GroupFlowNode;
+    expect(innerBoundary.data.group).toBe(boundaryId);
+
+    // Node in inner stays in inner
+    const nInner = nodes.find((n) => n.id === "n-inner") as DiagramFlowNode;
+    expect(nInner.data.group).toBe("inner");
+
+    // Node in zone belongs to new boundary
+    const nZone = nodes.find((n) => n.id === "n-zone") as DiagramFlowNode;
+    expect(nZone.data.group).toBe(boundaryId);
+  });
+
+  it("converted boundary keeps existing nesting of enclosed boundaries", () => {
+    const diagram: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Nested boundaries inside zone",
+      groups: [
+        { id: "b1", label: "B1", tone: "azure", x: 100, y: 100, width: 300, height: 300 },
+        { id: "b2", label: "B2", tone: "aws", x: 150, y: 150, width: 100, height: 100, group: "b1" },
+      ],
+      nodes: [],
+      annotations: [
+        { id: "z-big", kind: "zone", text: "Big Zone", x: 0, y: 0, width: 600, height: 600, color: "green" },
+      ],
+      edges: [],
+    };
+
+    const { api, commit, getNodes } = setup(diagram);
+    const boundaryId = api.convertZoneToBoundary("z-big");
+    commit();
+
+    const nodes = getNodes();
+    const newBoundary = nodes.find((n) => n.id === `group:${boundaryId}`) as GroupFlowNode;
+    expect(newBoundary.data.group).toBeUndefined();
+
+    // B1 is directly adopted by new boundary
+    const b1 = nodes.find((n) => n.id === "group:b1") as GroupFlowNode;
+    expect(b1.data.group).toBe(boundaryId);
+
+    // B2 keeps its existing parent B1, not flattened to the new boundary
+    const b2 = nodes.find((n) => n.id === "group:b2") as GroupFlowNode;
+    expect(b2.data.group).toBe("b1");
+  });
+
+  it("resizing boundary through inspector Width/Height applies membership rules and adopts nodes", () => {
+    const diagram: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Resize via inspector",
+      groups: [{ id: "box", label: "Box", tone: "neutral", x: 0, y: 0, width: 200, height: 200 }],
+      nodes: [{ id: "outside", stencil: "service.node", label: "Target", x: 300, y: 100 }],
+      edges: [],
+    };
+
+    const { api, commit, getNodes } = setup(diagram);
+
+    // Node is outside initially
+    expect((getNodes().find((n) => n.id === "outside") as DiagramFlowNode).data.group).toBeUndefined();
+
+    // Grow width to 500 so node at x=300 is enclosed
+    api.updateGroup("box", { width: 500 });
+    commit();
+
+    // Node is now adopted
+    expect((getNodes().find((n) => n.id === "outside") as DiagramFlowNode).data.group).toBe("box");
+
+    // Shrink width back to 200
+    api.updateGroup("box", { width: 200 });
+    commit();
+
+    // Node is released
+    expect((getNodes().find((n) => n.id === "outside") as DiagramFlowNode).data.group).toBeUndefined();
+  });
+
+  it("cutting an outer boundary deletes nested boundaries and member nodes", () => {
+    const diagram: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Cut hierarchy",
+      groups: [
+        { id: "parent", label: "Parent", tone: "azure", x: 0, y: 0, width: 500, height: 500 },
+        { id: "child", label: "Child", tone: "aws", x: 50, y: 50, width: 200, height: 200, group: "parent" },
+      ],
+      nodes: [
+        { id: "n-child", stencil: "service.node", label: "Child Node", x: 70, y: 70, group: "child" },
+        { id: "n-parent", stencil: "service.node", label: "Parent Node", x: 350, y: 70, group: "parent" },
+        { id: "n-sibling", stencil: "service.node", label: "Sibling Node", x: 600, y: 70 },
+      ],
+      edges: [],
+    };
+
+    const { api, commit, getNodes } = setup(diagram);
+    api.cut({ groupIds: ["parent"] });
+    commit();
+
+    const nodes = getNodes();
+    // Parent, child group, and both member nodes are deleted
+    expect(nodes.some((n) => n.id === "group:parent")).toBe(false);
+    expect(nodes.some((n) => n.id === "group:child")).toBe(false);
+    expect(nodes.some((n) => n.id === "n-child")).toBe(false);
+    expect(nodes.some((n) => n.id === "n-parent")).toBe(false);
+
+    // Sibling node outside remains intact
+    expect(nodes.some((n) => n.id === "n-sibling")).toBe(true);
+  });
+
+  it("colour Reset clears custom tone to neutral", () => {
+    const diagram: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Color Reset",
+      groups: [{ id: "g1", label: "Custom Tone Group", tone: "#ff5500", x: 0, y: 0, width: 300, height: 200 }],
+      nodes: [],
+      edges: [],
+    };
+
+    const { api, commit, getNodes } = setup(diagram);
+    const before = (getNodes().find((n) => n.id === "group:g1") as GroupFlowNode).data.tone;
+    expect(before).toBe("#ff5500");
+
+    // Reset tone with { tone: undefined }
+    api.updateGroup("g1", { tone: undefined });
+    commit();
+
+    const after = (getNodes().find((n) => n.id === "group:g1") as GroupFlowNode).data.tone;
+    expect(after).toBe("neutral");
+
+    // Test bulk updateGroups reset
+    api.updateGroup("g1", { tone: "#00aaff" });
+    commit();
+    expect((getNodes().find((n) => n.id === "group:g1") as GroupFlowNode).data.tone).toBe("#00aaff");
+
+    api.updateGroups(["g1"], { tone: undefined });
+    commit();
+    expect((getNodes().find((n) => n.id === "group:g1") as GroupFlowNode).data.tone).toBe("neutral");
+  });
 });

@@ -56,6 +56,30 @@ describe("native format validation", () => {
     expect(r.warnings.length).toBeGreaterThanOrEqual(4);
   });
 
+  it("remaps group references on groups and annotations after group ID deduplication", () => {
+    const r = validateDiagram({
+      ...base,
+      groups: [
+        { id: "parent", label: "Parent", x: 0, y: 0, width: 200, height: 200 },
+        { id: "child", label: "Child", x: 10, y: 10, width: 80, height: 80, group: "parent" },
+        // Collision with an existing node ID "a" -> gets claimed as "a-2"
+        { id: "a", label: "Clashing Group", x: 20, y: 20, width: 50, height: 50, group: "parent" },
+      ],
+      nodes: [{ ...base.nodes[0], group: "child" }],
+      annotations: [
+        { id: "note1", kind: "note", text: "Inside child", x: 15, y: 15, width: 40, height: 40, group: "child" },
+        { id: "note2", kind: "note", text: "Inside clashing", x: 25, y: 25, width: 40, height: 40, group: "a" },
+      ],
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const clashingGroup = r.diagram.groups?.find((g) => g.label === "Clashing Group");
+    expect(clashingGroup?.id).toBe("a-2");
+    expect(clashingGroup?.group).toBe("parent");
+    expect(r.diagram.annotations?.find((a) => a.id === "note1")?.group).toBe("child");
+    expect(r.diagram.annotations?.find((a) => a.id === "note2")?.group).toBe("a-2");
+  });
+
   it("validates diagram color and warns on invalid values", () => {
     const valid = validateDiagram({ ...base, color: "blue" });
     expect(valid.ok && valid.diagram.color).toBe("blue");

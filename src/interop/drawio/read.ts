@@ -447,11 +447,14 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
   // ---- groups
   const groups: DiagramGroup[] = [];
   const groupIdByCell = new Map<string, string>();
+  const groupIdByRawId = new Map<string, string>();
   for (const c of groupCells) {
     const o = absOrigin(c.id);
     const label = htmlToLines(c.value, c.style.html === "1").join(" ");
-    const id = groupId(c.data.dg_id ?? c.id);
+    const rawId = c.data.dg_id ?? c.id;
+    const id = groupId(rawId);
     groupIdByCell.set(c.id, id);
+    if (c.data.dg_id) groupIdByRawId.set(c.data.dg_id, id);
     const tone =
       (isHexColor(c.data.dg_tone) ? c.data.dg_tone : undefined) ??
       (["azure", "aws", "gcp", "k8s", "onprem", "neutral"] as const).find((t) => t === c.data.dg_tone) ??
@@ -465,6 +468,28 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
       width: snap(c.geo!.width * sx),
       height: snap(c.geo!.height * sy),
     });
+  }
+
+  for (let i = 0; i < groupCells.length; i++) {
+    const c = groupCells[i];
+    const g = groups[i];
+    let parentGroup: string | undefined;
+    if (c.data.dg_group) {
+      parentGroup =
+        groupIdByRawId.get(c.data.dg_group) ??
+        (groups.some((cand) => cand.id === c.data.dg_group) ? c.data.dg_group : undefined);
+    }
+    if (!parentGroup) {
+      let cur = c.parent;
+      for (let depth = 0; cur && depth < 50; depth++) {
+        parentGroup = groupIdByCell.get(cur);
+        if (parentGroup) break;
+        cur = byId.get(cur)?.parent;
+      }
+    }
+    if (parentGroup && parentGroup !== g.id) {
+      g.group = parentGroup;
+    }
   }
 
   // Membership: nearest container ancestor, else the smallest group containing the card's centre.
@@ -522,6 +547,20 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
     const color = c.data.dg_color;
     const size =
       (c.data.dg_text_size as AnnotationTextSize | undefined) ?? (ours ? undefined : textSizeFor(c.style.fontSize));
+    let group: string | undefined;
+    if (c.data.dg_group) {
+      group =
+        groupIdByRawId.get(c.data.dg_group) ??
+        (groups.some((cand) => cand.id === c.data.dg_group) ? c.data.dg_group : undefined);
+    }
+    if (!group) {
+      let cur = c.parent;
+      for (let depth = 0; cur && depth < 50; depth++) {
+        group = groupIdByCell.get(cur);
+        if (group) break;
+        cur = byId.get(cur)?.parent;
+      }
+    }
     annotations.push({
       id,
       kind,
@@ -532,6 +571,7 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
       y: annotationCoordinate(y),
       width,
       height,
+      ...(group ? { group } : {}),
       ...(kind === "shape" ? { shape: shape ?? "rect" } : {}),
       ...(isColorValue(color) ? { color } : {}),
       ...(size && ANNOTATION_TEXT_SIZES.includes(size) ? { textSize: size } : {}),
