@@ -77,10 +77,10 @@ export function useOverlayFit(root: RefObject<HTMLElement | null>, opts: { style
   return (o: FitOptions & { duration?: number; only?: ReadonlySet<string>; onlyEdges?: ReadonlySet<string> } = {}) => {
     const el = root.current;
     const s = store.getState() as State;
-    if (!el || !s.width || !s.height) return;
+    if (!el || !el.clientWidth || !el.clientHeight) return;
     const v = fitAvoiding(
       contentRects(s, routing, o.only, o.onlyEdges),
-      { width: s.width, height: s.height },
+      { width: el.clientWidth, height: el.clientHeight },
       overlayRects(el),
       o,
     );

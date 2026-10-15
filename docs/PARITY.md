@@ -16,6 +16,21 @@ pnpm parity sim checks # only parity files whose path contains "sim" or "checks"
 A filtered run skips the stale-golden check. The browser tier needs Docker running (see "Browser tier").
 Without it, `pnpm parity:node` still checks everything that doesn't need a browser.
 
+## Immediate fits and cancellable refinements (2026-10-15)
+
+The measurement gate refines an already fitted canvas. Opening restores React Flow's initial
+fit; committed nodes and panel geometry also fit before paint. A refinement still uses the
+existing measured routes, fonts and chrome, preserving the settled goldens. Captured input
+cancels the waiting refinement before dispatch, and stops an active fit transition at its
+current viewport. Readiness subscribers for ordered document commands remain independent.
+
+The production regressions hold only font readiness promises, preserving real font metrics.
+They inspect the first visible frame, press a node while the final fit is held and compare its
+screen box/viewport across release, and open the inspector before releasing the gate. These
+checks cover the usable intermediate view as well as the final settled drawing. Waiting for
+the full gate before permitting interactions was rejected because it preserves the opening
+UX regression. No assertions are relaxed and no golden is re-recorded for this correction.
+
 ## Final P2 review follow-up (2026-10-15)
 
 - Opening checks still run independently, but the optional title-card warning count renders only

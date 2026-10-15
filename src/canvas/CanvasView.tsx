@@ -32,6 +32,7 @@ import {
   ReactFlowProvider,
   useEdgesState,
   useNodesState,
+  useNodesInitialized,
   useReactFlow,
   useStore,
   useStoreApi,
@@ -495,31 +496,79 @@ function CanvasInner({
   const fitView_ = useOverlayFit(wrapper, { style: edgeStyle, direction: meta.direction ?? "LR" });
   const { request: afterMeasured, whenReady, interrupt: interruptMeasuredFit } = useMeasuredTask(wrapper, nodes, edges);
   const [openingFitDone, setOpeningFitDone] = useState(false);
-  const interruptFit = useCallback(() => {
-    interruptMeasuredFit();
-    setOpeningFitDone(true);
-  }, [interruptMeasuredFit]);
+  const fitEpoch = useRef(0);
+  const earlyFit = useRef<(() => void) | null>(null);
   const fitStarting = useRef<object | null>(null);
+  const fitTransition = useRef<object | null>(null);
+  const interruptFit = useCallback(() => {
+    fitEpoch.current++;
+    earlyFit.current = null;
+    interruptMeasuredFit();
+    if (fitTransition.current) {
+      fitTransition.current = null;
+      // Stop an already-started refinement too, before the press reaches its target.
+      const own = {};
+      fitStarting.current = own;
+      void setViewport(getViewport()).then(() => {
+        if (fitStarting.current === own) fitStarting.current = null;
+      });
+    }
+    setOpeningFitDone(true);
+  }, [getViewport, interruptMeasuredFit, setViewport]);
+  useEffect(() => {
+    // Capture input before React Flow, a portal menu or a keyboard command handles it.
+    // Cancelling a refinement does not turn a fitted view into a manually panned one.
+    window.addEventListener("pointerdown", interruptFit, true);
+    window.addEventListener("wheel", interruptFit, { capture: true, passive: true });
+    window.addEventListener("keydown", interruptFit, true);
+    window.addEventListener("contextmenu", interruptFit, true);
+    return () => {
+      window.removeEventListener("pointerdown", interruptFit, true);
+      window.removeEventListener("wheel", interruptFit, true);
+      window.removeEventListener("keydown", interruptFit, true);
+      window.removeEventListener("contextmenu", interruptFit, true);
+    };
+  }, [interruptFit]);
   const firstFit = useRef(false);
   /** True while the view is a fit (the whole diagram in view), false once the user pans or zooms. */
   const showingAll = useRef(true);
   const overlayFit = useCallback(
-    (o?: Parameters<typeof fitView_>[0]) => {
+    (o?: Parameters<typeof fitView_>[0], animate = false) => {
+      const epoch = fitEpoch.current;
+      showingAll.current = true;
       const runFit = () => {
-        showingAll.current = true;
+        if (epoch !== fitEpoch.current || !showingAll.current) return;
         firstFit.current = true;
         const own = {};
         fitStarting.current = own;
+        fitTransition.current = own;
         const finished = fitView_(o);
         // Checks run independently of fonts/measurements. Their optional warning row arrives
         // after the opening viewport is computed, whichever asynchronous result wins the race.
         setOpeningFitDone(true);
         void Promise.resolve(finished).then(() => {
           if (fitStarting.current === own) fitStarting.current = null;
+          if (fitTransition.current === own) fitTransition.current = null;
         });
         return finished;
       };
+      // Fit the committed geometry now. Fonts/chrome readiness only refines this view;
+      // it must never leave an interactive canvas at its default transform.
+      const immediate = (duration: number) => {
+        if (epoch !== fitEpoch.current || !showingAll.current) return;
+        const own = {};
+        fitStarting.current = own;
+        fitTransition.current = own;
+        void Promise.resolve(fitView_({ ...o, duration })).then(() => {
+          if (fitStarting.current === own) fitStarting.current = null;
+          if (fitTransition.current === own) fitTransition.current = null;
+        });
+      };
+      earlyFit.current = () => immediate(0);
+      immediate(animate ? (o?.duration ?? 0) : 0);
       afterMeasured(() => {
+        if (epoch !== fitEpoch.current || !showingAll.current) return;
+        earlyFit.current = null;
         // The reset row belongs to this edit's chrome, not the later debounced storage write.
         const mod = flushSave();
         if (mod !== undefined && mod !== modified) {
@@ -532,7 +581,14 @@ function CanvasInner({
     },
     [afterMeasured, fitView_, flushSave, modified],
   );
-  const fit = useCallback(() => overlayFit({ maxZoom: 1.25, duration: 300 }), [overlayFit]);
+  const nodesInitialized = useNodesInitialized();
+  const paneSize = useStore((s) => `${s.width}:${s.height}`);
+  useLayoutEffect(() => {
+    // React Flow's initial measurements and document commands can commit after the
+    // request. Apply their known geometry before paint, without waiting for fonts.
+    earlyFit.current?.();
+  }, [nodes, edges, nodesInitialized, paneSize]);
+  const fit = useCallback(() => overlayFit({ maxZoom: 1.25, duration: 300 }, true), [overlayFit]);
   // Privacy: the diagram's provenance (Private switch, local-only example), re-read when the library changes.
   const privacyFlags = usePrivacyFlags(slug);
   const privacyNow = () => privacyOf({ ...privacyFlags, editor: { getDiagram: () => fromFlow(meta, nodes, edges) } });
@@ -741,8 +797,8 @@ function CanvasInner({
     if (!el || el === document.body || !el.isConnected) wrapper.current?.focus({ preventScroll: true });
   }, [presenting]);
 
-  // Opening and mode changes share one fit, after the pane and floating chrome measure.
-  useEffect(() => {
+  // Opening/mode changes fit before paint, then refine when measurements settle.
+  useLayoutEffect(() => {
     overlayFit({
       maxZoom: (presenting ? FIT_PRESENT : FIT).maxZoom,
       margin: presenting ? 64 : 40,
@@ -1880,7 +1936,7 @@ function CanvasInner({
   // so nothing ends up under the panel or its rail. A view the user panned or zoomed stays put.
   const panelsKey = `${paletteHidden}:${inspectorHidden}`;
   const lastPanels = useRef(panelsKey);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (lastPanels.current === panelsKey) return;
     lastPanels.current = panelsKey;
     if (!showingAll.current || live || presenting || !nothingSelected) return;
@@ -2326,6 +2382,8 @@ function CanvasInner({
           {!hideChrome && copyNotice && <CopyNotice text={copyNotice} />}
           <ReactFlow<FlowNode, DiagramFlowEdge>
             nodes={ariaNodes}
+            fitView
+            fitViewOptions={presenting ? FIT_PRESENT : FIT}
             // Focus brings a node into view clear of the chrome (revealFocused above).
             autoPanOnNodeFocus={false}
             edges={ariaEdges}
@@ -2354,7 +2412,7 @@ function CanvasInner({
               hideTip();
               // A pan or zoom by hand (an event), or by a command such as Shift+0 (no event, and not
               // our own fit starting), means the view is the user's now, not a fit.
-              if (e || !fitStarting.current) {
+              if (e || (!fitStarting.current && (firstFit.current || fitEpoch.current > 0))) {
                 interruptFit();
                 showingAll.current = false;
               }

@@ -7,6 +7,125 @@ import { measuredHierarchyFixture } from "../../src/lab/nestedBoundariesFixture"
 import { boundaryAround } from "../../src/editor/arrange";
 import { holdResizeObservers } from "../parity/browser/holdReadiness";
 
+// Keep actual font downloads/metrics intact; hold only the readiness promise consumed
+// by the refinement gate. The editor must already be usable before this is released.
+function holdFitFonts() {
+  const load = document.fonts.load.bind(document.fonts);
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  document.fonts.load = async (...args) => {
+    const fonts = await load(...args);
+    await held;
+    return fonts;
+  };
+  window.addEventListener("release-fit-fonts", release);
+}
+
+test("the first visible frame is fitted while font readiness is pending", async ({ page }) => {
+  await page.addInitScript(holdFitFonts);
+  await page.addInitScript(() => {
+    const sample = () => {
+      const nodes = [...document.querySelectorAll<HTMLElement>('[data-testid^="rf__node-"]')];
+      if (!nodes.length || nodes.some((n) => getComputedStyle(n).visibility !== "visible")) {
+        requestAnimationFrame(sample);
+        return;
+      }
+      const pane = document.querySelector('[data-testid="canvas-wrap"]')?.getBoundingClientRect();
+      if (!pane) throw new Error("Expected the first visible canvas");
+      Object.assign(window, {
+        firstVisibleFit: {
+          transform: nodes[0].parentElement?.parentElement?.style.transform,
+          clear: nodes.every((node) => {
+            const r = node.getBoundingClientRect();
+            return r.left >= pane.left && r.right <= pane.right && r.top >= pane.top && r.bottom <= pane.bottom;
+          }),
+        },
+      });
+    };
+    requestAnimationFrame(sample);
+  });
+  await page.goto("./?view=canvas&example=kafka-order-pipeline");
+  await expect(page.getByTestId("node-shopper")).toBeVisible();
+  const first = await page.evaluate(
+    () => (window as unknown as { firstVisibleFit: { transform: string; clear: boolean } }).firstVisibleFit,
+  );
+  expect(first.clear).toBe(true);
+  expect(Number(/scale\(([^)]+)\)/.exec(first.transform)?.[1])).toBeLessThan(1);
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-fit-pending", "true");
+  await page.evaluate(() => window.dispatchEvent(new Event("release-fit-fonts")));
+  await settledCanvas(page);
+});
+
+test("pressing a node cancels a pending refinement without moving its screen box", async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.addInitScript(holdFitFonts);
+  await page.goto("./?view=canvas&example=aws-fanout");
+  const canvas = page.getByTestId("canvas-wrap");
+  const node = page.getByTestId("node-client");
+  await expect(node).toBeVisible();
+  await expect(canvas).toHaveAttribute("data-fit-pending", "true");
+  // Make the eventual chrome refinement observably different from the early fit.
+  await page.getByTestId("diagram-card").evaluate((el) => {
+    const row = document.createElement("div");
+    row.dataset.testid = "held-fit-chrome";
+    row.style.height = "160px";
+    el.append(row);
+  });
+  const before = await node.boundingBox();
+  if (!before) throw new Error("Expected the client card");
+  const view = (await readCanvas(page)).viewport;
+  await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
+  await page.mouse.down();
+  await expect(canvas).toHaveAttribute("data-fit-pending", "false");
+  await page.evaluate(() => window.dispatchEvent(new Event("release-fit-fonts")));
+  // Deliver the held signal with the pointer still down, then let queued frames run.
+  await node.evaluate(async () => {
+    for (let frame = 0; frame < 12; frame++) await new Promise(requestAnimationFrame);
+  });
+  expect((await readCanvas(page)).viewport).toBe(view);
+  expect(await node.boundingBox()).toEqual(before);
+  await page.mouse.up();
+  expect((await settledCanvas(page)).viewport).toBe(view);
+  expect(await node.boundingBox()).toEqual(before);
+});
+
+test("opening a panel fits immediately while a refinement is pending", async ({ page }) => {
+  await page.addInitScript(holdFitFonts);
+  await page.goto("./?view=canvas&example=kafka-order-pipeline");
+  const canvas = page.getByTestId("canvas-wrap");
+  await expect(page.getByTestId("node-shopper")).toBeVisible();
+  await expect(canvas).toHaveAttribute("data-fit-pending", "true");
+  await page.getByTestId("inspector-toggle").click();
+  await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
+  await expect
+    .poll(() =>
+      canvas.evaluate((el) => {
+        const pane = el.getBoundingClientRect();
+        return [...el.querySelectorAll<HTMLElement>('[data-testid^="rf__node-"]')].every((node) => {
+          const r = node.getBoundingClientRect();
+          return r.left >= pane.left && r.right <= pane.right && r.top >= pane.top && r.bottom <= pane.bottom;
+        });
+      }),
+    )
+    .toBe(true);
+  await expect(canvas).toHaveAttribute("data-fit-pending", "true");
+  await page.evaluate(() => window.dispatchEvent(new Event("release-fit-fonts")));
+  await settledCanvas(page);
+});
+
+test("a keyboard zoom during opening owns the view before the first refinement", async ({ page }) => {
+  await page.addInitScript(holdFitFonts);
+  await page.goto("./?view=canvas&example=kafka-order-pipeline");
+  await expect(page.getByTestId("node-shopper")).toBeVisible();
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-fit-pending", "true");
+  await page.keyboard.press("Shift+Digit0");
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-fit-pending", "false");
+  await page.evaluate(() => window.dispatchEvent(new Event("release-fit-fonts")));
+  const before = (await settledCanvas(page)).viewport;
+  await page.getByTestId("inspector-toggle").click();
+  expect((await settledCanvas(page)).viewport).toBe(before);
+});
+
 // Pin the mutation itself before comparing fits: two identical drawings could both be
 // the original, unlaid-out document. Positions are platform-independent; card fonts aren't.
 function expectLaidOut(drawn: Drawn) {

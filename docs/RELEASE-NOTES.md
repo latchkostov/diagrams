@@ -60,6 +60,13 @@
 
 ## Browser parity integration with master (2026-10-15)
 
+- Restore a fitted opening frame and immediate refits when panels or Auto-layout change the canvas.
+  Font and geometry readiness refine the automatic view; any input cancels that refinement before
+  the gesture is handled, including a node press, menu, wheel or keyboard command. Active fit
+  transitions stop at the current viewport too, so they cannot move a target under the pointer.
+  Regressions hold font readiness to check the first visible frame, a stationary node press and
+  a panel opened during a pending refinement. Every existing parity golden must remain unchanged;
+  this fix introduces no new diagram output or golden recordings.
 - Final P2 follow-up: the title-card warning count waits until the opening viewport is computed
   (or the person takes control). Checks still run independently; delayed fonts, measurements and
   worker delivery produce the same opening view without a harness override or a blank warning row.
