@@ -16,7 +16,7 @@ Keep the feature vocabulary small. Stable IDs are translated by `src/examples/ga
 | `partitions`     | Partitions      | A node explicitly configures more than one partition.                  |
 | `rateLimits`     | Rate limits     | A rate-limiter stencil or explicit API quota models a rate limit.      |
 | `networkDevices` | Network devices | A router, switch, firewall or ADC from the supported network families. |
-| `autoscaling`    | Autoscaling     | An explicit p3-a1 resource workload with HPA enabled.                  |
+| `autoscaling`    | Autoscaling     | An explicit p3-a1 resource workload with an executable policy on.      |
 
 `scripts/example-shows.ts` computes these tags from actual diagram settings. Do not infer autoscaling
 from the presence of a serverless vendor icon: the example must demonstrate the feature. Add a tag

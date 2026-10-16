@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import { planScaling, planWork, PLANNER_LIMITS } from "./scalingPlanner";
 import { plannerFixture } from "../lab/plannerFixture";
 import type { DiagramFile } from "../model/types";
-import type { AutoscalingConfig } from "../model/autoscaling";
+import type { AppServiceController, AutoscalingConfig } from "../model/autoscaling";
+import { cloudFixture } from "../lab/cloudFixture";
 
 const plan = (d: DiagramFile) => planScaling(structuredClone(d))[0];
 
@@ -32,13 +33,25 @@ describe("scenario sizing planner", () => {
     expect(p.suggestions[0].fix).toBeUndefined();
     expect(p.suggestions[0].verified!.rejected).toBeGreaterThan(0);
   });
-  it("keeps startup backlog visible when the maximum suffices, and suggests a warm minimum", () => {
+  it("suggests a warm minimum only when a backlog goal fails while replicas start", () => {
     const d = plannerFixture("http", 10);
+    expect(plan(d).suggestions).toEqual([]);
+    d.simulations![0].expectations = [
+      {
+        id: "fast",
+        label: "Orders never queue",
+        metric: { node: "worker", field: "backlog" },
+        op: "<",
+        value: 5,
+        when: "always",
+      },
+    ];
     const p = plan(d);
     const [s] = p.suggestions;
     expect(s).toMatchObject({ kind: "min", from: 1 });
     expect(s.startupBacklog).toBeGreaterThan(0);
     expect(s.verified!.startupBacklog).toBeLessThan(s.startupBacklog);
+    expect(s.fix).toBeDefined();
   });
   it("reports unavailable when the planning budget is exceeded, before running anything", () => {
     const d = plannerFixture();
@@ -53,7 +66,7 @@ describe("scenario sizing planner", () => {
   it("bounds runs per simulation however many scalers it verifies (8× scalers, same runs and ticks)", () => {
     const counts = [1, 8].map((n) => {
       const d = plannerFixture();
-      d.simulations![0].durationMs = 60_000;
+      d.simulations![0].durationMs = 220_000;
       for (let i = 1; i < n; i++) {
         d.nodes.push({ ...structuredClone(d.nodes[1]), id: `worker-${i}`, y: 180 + i * 120 });
         d.edges.push({ ...d.edges[0], id: `requests-${i}`, to: `worker-${i}` });
@@ -80,5 +93,30 @@ describe("scenario sizing planner", () => {
     const d = plannerFixture();
     d.simulations![0].setup = { props: { worker: { autoscaling: { mode: "off" } } } };
     expect(plan(d)).toMatchObject({ status: "unavailable", reason: "policy" });
+  });
+});
+
+describe("scenario sizing targets", () => {
+  it("lowers a target the backlog-bound fleet never reached, and verifies it", () => {
+    const d = cloudFixture("app-service");
+    const a = d.nodes[1].props!.autoscaling as { controller: AppServiceController };
+    Object.assign(a.controller, { evaluationMs: 5000, maxReplicas: 5 });
+    Object.assign(a.controller.rules[0], { windowMs: 10_000, cooldownMs: 15_000 });
+    Object.assign(a.controller.rules[1], { windowMs: 10_000, cooldownMs: 20_000 });
+    d.simulations = [
+      {
+        id: "sale",
+        title: "Flash sale",
+        seed: 17,
+        durationMs: 150_000,
+        traffic: [{ id: "sale", node: "source", shape: { kind: "constant", ratePerSec: 40, durationMs: 60_000 } }],
+      },
+    ];
+    const [s] = plan(d).suggestions;
+    // Slot-bound at 64% CPU, a 70% scale-out rule never fires while the queue grows.
+    expect(s).toMatchObject({ kind: "target", from: 70, to: 57, adapter: "appService", metricKind: "cpu" });
+    const fixed = s.fix![0].props.autoscaling as { controller: AppServiceController };
+    expect(fixed.controller.rules[0].threshold).toBe(57);
+    expect(s.verified!.backlog).toBeLessThan(s.backlog);
   });
 });

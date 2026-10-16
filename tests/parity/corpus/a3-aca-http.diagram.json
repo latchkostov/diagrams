@@ -1,0 +1,133 @@
+{
+  "format": "diagrams/v2",
+  "planning": {
+    "revision": "p3-a1"
+  },
+  "title": "a3-aca-http",
+  "description": "Invented booking API on Container Apps. An HTTP request wakes it from zero; HTTP rate scales it 1, 4, 8; it returns to zero after the cooldown. Teaching timings: 20 s final-zero cooldown and 30 s scale-down stabilization instead of 300 s.",
+  "nodes": [
+    {
+      "id": "source",
+      "x": 80,
+      "y": 180,
+      "stencil": "client.browser",
+      "label": "Travellers",
+      "props": {
+        "ratePerSec": 0
+      }
+    },
+    {
+      "id": "worker",
+      "x": 780,
+      "y": 180,
+      "stencil": "azure.container-apps",
+      "label": "Booking API",
+      "props": {
+        "replicas": 1,
+        "concurrency": 4,
+        "latencyMs": 250,
+        "jitter": 0,
+        "resources": {
+          "preset": "io-service",
+          "presetRevision": "1",
+          "cpuMsPerMessage": 40,
+          "baselineMemoryMiB": 128,
+          "memoryMiBPerMessage": 2,
+          "cpuRequestMilli": 500,
+          "cpuLimitMilli": 1000,
+          "memoryRequestMiB": 256,
+          "memoryLimitMiB": 512,
+          "startup": {
+            "delayMs": 2000,
+            "jitterFraction": 0
+          },
+          "terminationGraceMs": 30000,
+          "modelRevision": "a2"
+        },
+        "autoscaling": {
+          "mode": "on",
+          "modelRevision": "a3",
+          "preset": "aca-http",
+          "presetRevision": "1",
+          "controller": {
+            "kind": "aca",
+            "minReplicas": 0,
+            "initialReplicas": 0,
+            "maxReplicas": 10,
+            "pollingMs": 5000,
+            "cooldownMs": 20000,
+            "http": {
+              "concurrentRequests": 10
+            },
+            "triggers": [],
+            "settings": {
+              "syncMs": 15000,
+              "tolerance": 0.1,
+              "initialReadinessDelayMs": 30000,
+              "cpuInitializationPeriodMs": 300000,
+              "metrics": [],
+              "up": {
+                "stabilizationMs": 0,
+                "selectPolicy": "Max",
+                "policies": [
+                  {
+                    "type": "Pods",
+                    "value": 3,
+                    "periodMs": 15000
+                  },
+                  {
+                    "type": "Percent",
+                    "value": 100,
+                    "periodMs": 15000
+                  }
+                ]
+              },
+              "down": {
+                "stabilizationMs": 30000,
+                "selectPolicy": "Max",
+                "policies": [
+                  {
+                    "type": "Percent",
+                    "value": 100,
+                    "periodMs": 15000
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "requests",
+      "from": "source",
+      "to": "worker",
+      "kind": "sync",
+      "props": {
+        "travelMs": 10
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "morning-bookings",
+      "title": "Morning bookings",
+      "seed": 11,
+      "durationMs": 120000,
+      "traffic": [
+        {
+          "id": "bookings",
+          "node": "source",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 60,
+            "fromMs": 5000,
+            "durationMs": 40000
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -2029,6 +2029,9 @@ const en = {
   "autoscaling.planMin":
     "{scaled, select, true {At {traffic}× traffic in “{simulation}”} other {In “{simulation}”}}, up to {backlog, number} messages waited while {platform} started replicas. Keep {to, number} warm (minimum {from, number} → {to, number}).",
   "autoscaling.planAt": " at {metric}",
+  "autoscaling.planTarget":
+    "{scaled, select, true {At {traffic}× traffic in “{simulation}”} other {In “{simulation}”}}, the backlog grew while {platform} stayed below its target{metric}. Lower the target to {to, number} so it scales out.",
+  "autoscaling.planFixTarget": "Lower target to {to, number}",
   "autoscaling.planStartup": "Up to {count, number} messages waited while replicas started.",
   "autoscaling.planVerified": "A same-seed rerun verified it.",
   "autoscaling.planUnverified": "A same-seed rerun didn't confirm an improvement, so no fix is offered.",

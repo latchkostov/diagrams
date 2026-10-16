@@ -34,8 +34,9 @@ export interface PlanSuggestion {
   node: string;
   adapter: PlanAdapter;
   /** max: raise the maximum; min: keep instances warm for the burst; partitions: the input caps useful readers;
-   *  quota: an admission quota binds, more instances can't help. */
-  kind: "max" | "min" | "partitions" | "quota";
+   *  quota: an admission quota binds, more instances can't help; target: the backlog grew while the scaler's metric
+   *  stayed under its target, so lower the target. */
+  kind: "max" | "min" | "partitions" | "quota" | "target";
   /** Authored values (before Capacity ×). */
   from: number;
   to: number;
@@ -80,6 +81,12 @@ interface Observation {
   endBacklog: number;
   peakDesired: number;
   rejected: number;
+  /** The scaler's own desired count when the startup backlog peaked. */
+  startupDesired?: number;
+  /** The simulation's backlog goals about this node or its inputs that failed. */
+  goalsFailed: string[];
+  /** The highest metric seen under its target while the backlog grew and the scaler held its count. */
+  below?: { metric: number; target: number; metricKind?: string };
 }
 interface Watched {
   id: string;
@@ -143,6 +150,54 @@ function startWork(d: DiagramFile, sim: Simulation): number {
   return ((sent * resolveMultiplier(sim.multipliers?.traffic)) / resolveScale(sim.scale)) * widest;
 }
 
+/** The metric a decision read, in the planner's vocabulary (the UI translates each kind with its unit). */
+function kindOf(decision: ScalingDecision): string | undefined {
+  return (
+    decision.metricKind ??
+    (decision.resource
+      ? `${decision.resource}${decision.targetKind === "averageValue" ? (decision.resource === "cpu" ? "Milli" : "MiB") : "Request"}`
+      : decision.broker
+        ? "backlog"
+        : undefined)
+  );
+}
+/** The policy with its primary target set to `value`, when `metricKind` is what that target measures. */
+function withTarget(
+  a: AutoscalingConfig,
+  metricKind: string | undefined,
+  value: number,
+): AutoscalingConfig | undefined {
+  if (a.mode !== "on") return undefined;
+  const next = structuredClone(a);
+  const c = next.controller;
+  if (c.kind === "hpa" || (c.kind === "keda" && !c.triggers.length)) {
+    const m = c.settings.metrics[0];
+    if (!m || !metricKind?.startsWith(m.source.resource)) return undefined;
+    m.target =
+      m.target.kind === "utilization"
+        ? { kind: "utilization", percentOfRequest: value }
+        : { kind: "averageValue", value };
+  } else if (c.kind === "keda" || (c.kind === "aca" && !c.http)) {
+    if (metricKind !== "backlog" || !c.triggers[0]) return undefined;
+    c.triggers[0].target = value;
+  } else if (c.kind === "aca") {
+    if (metricKind !== "httpRate" || !c.http) return undefined;
+    c.http.concurrentRequests = value;
+  } else if (c.kind === "ecs") {
+    const tt = c.targetTracking[0];
+    if (tt && tt.metric === metricKind) tt.target = value;
+    else if (!tt && c.stepScaling[0]?.metric === metricKind) c.stepScaling[0].threshold = value;
+    else return undefined;
+  } else if (c.kind === "appService") {
+    const rule = c.rules.find((r) => r.direction === "increase");
+    if (!rule || rule.metric !== metricKind) return undefined;
+    rule.threshold = value;
+  } else if (metricKind === "cpu") c.targetCpuPct = Math.max(1, Math.min(100, value));
+  else if (metricKind === "concurrency") c.targetConcurrencyPct = Math.max(1, Math.min(100, value));
+  else return undefined;
+  return next;
+}
+
 /** Plays one run and records, once per simulated second, what each watched scaler did. */
 function observe(d: DiagramFile, sim: Simulation, watched: Watched[], counter: { ticks: number }) {
   const run = createSimulationRun(d, sim);
@@ -154,7 +209,16 @@ function observe(d: DiagramFile, sim: Simulation, watched: Watched[], counter: {
   const seen = new Map<string, Observation>(
     watched.map((w) => [
       w.id,
-      { maxed: false, wanted: 0, backlog: 0, startupBacklog: 0, endBacklog: 0, peakDesired: 0, rejected: 0 },
+      {
+        maxed: false,
+        wanted: 0,
+        backlog: 0,
+        startupBacklog: 0,
+        endBacklog: 0,
+        peakDesired: 0,
+        rejected: 0,
+        goalsFailed: [] as string[],
+      },
     ]),
   );
   const recent = new Map(watched.map((w) => [w.id, [] as number[]]));
@@ -187,7 +251,10 @@ function observe(d: DiagramFile, sim: Simulation, watched: Watched[], counter: {
       o.endBacklog = backlog;
       o.rejected = (engine.measure({ node: w.id, field: "rejected" }) ?? 0) * scale;
       if (!f) continue;
-      if (f.starting > 0) o.startupBacklog = Math.max(o.startupBacklog, backlog);
+      if (f.starting > 0 && backlog > o.startupBacklog) {
+        o.startupBacklog = backlog;
+        o.startupDesired = f.desired;
+      }
       o.peakDesired = Math.max(o.peakDesired, f.desired);
       const decision: ScalingDecision | undefined = f.decision;
       const max = maxOf.get(w.id) ?? replicaRange(w.controller, multiplier).max;
@@ -212,16 +279,25 @@ function observe(d: DiagramFile, sim: Simulation, watched: Watched[], counter: {
             wanted,
             metric: decision.metric,
             target: decision.target,
-            metricKind:
-              decision.metricKind ??
-              (decision.resource
-                ? `${decision.resource}${decision.targetKind === "averageValue" ? (decision.resource === "cpu" ? "Milli" : "MiB") : "Request"}`
-                : decision.broker
-                  ? "backlog"
-                  : undefined),
+            metricKind: kindOf(decision),
           });
       }
       if (decision?.reason === "partitions" && decision.broker) o.partitions = decision.broker;
+      // The backlog grew over 15 s, the scaler held its count below the maximum, and its metric sat under target:
+      // the target, not the range, keeps it from scaling (a slot-bound service whose CPU never reaches it).
+      const growing = history.length >= 15 && backlog > history[0] && backlog > f.ready * w.slots;
+      if (
+        growing &&
+        decision &&
+        decision.metric !== undefined &&
+        decision.target &&
+        decision.metric < decision.target &&
+        decision.desired === f.desired &&
+        f.desired < max &&
+        decision.reason !== "override" &&
+        decision.metric > (o.below?.metric ?? 0)
+      )
+        o.below = { metric: decision.metric, target: decision.target, metricKind: kindOf(decision) };
     }
   };
   let time = 0;
@@ -233,6 +309,26 @@ function observe(d: DiagramFile, sim: Simulation, watched: Watched[], counter: {
     if (now === time) break;
     time = now;
     sample();
+  }
+  // Goals: the simulation's own backlog/lag/in-flight expectations about each scaler or its input brokers.
+  const failed = new Set(
+    run
+      .state()
+      .expectations.filter((e) => e.status === "fail")
+      .map((e) => e.id),
+  );
+  for (const w of watched) {
+    const about = new Set([w.id, ...w.inputs.map(([broker]) => broker)]);
+    seen.get(w.id)!.goalsFailed = (sim.expectations ?? [])
+      .filter(
+        (e) =>
+          "node" in e.metric &&
+          about.has(e.metric.node) &&
+          ["backlog", "lag", "inFlight"].includes(e.metric.field) &&
+          (e.op === "<" || e.op === "<=") &&
+          failed.has(e.id),
+      )
+      .map((e) => e.id);
   }
   return seen;
 }
@@ -319,8 +415,29 @@ function planSimulation(d: DiagramFile, sim: Simulation, counter: { ticks: numbe
         to,
         fix: [{ node: w.id, props: { autoscaling: withRange(a, "maxReplicas", to) } }],
       });
-    } else if (!o.maxed && o.startupBacklog > 0 && o.peakDesired > replicaRange(c, multiplier).min) {
-      const to = Math.min(c.maxReplicas, authored(o.peakDesired));
+    } else if (!o.maxed && o.below) {
+      // Lower the target under what the backlog-bound fleet showed, so the controller acts on it.
+      const to = Math.max(1, Math.floor(o.below.metric * 0.9));
+      const autoscaling = to < o.below.target ? withTarget(a, o.below.metricKind, to) : undefined;
+      if (autoscaling)
+        suggestions.push({
+          ...common,
+          kind: "target",
+          metric: o.below.metric,
+          target: o.below.target,
+          metricKind: o.below.metricKind,
+          from: o.below.target,
+          to,
+          fix: [{ node: w.id, props: { autoscaling } }],
+        });
+    } else if (
+      !o.maxed &&
+      o.goalsFailed.length &&
+      o.startupBacklog > 0 &&
+      (o.startupDesired ?? 0) > replicaRange(c, multiplier).min
+    ) {
+      // A backlog goal failed while replicas started: keep what the scaler wanted then warm from the start.
+      const to = Math.min(c.maxReplicas, authored(o.startupDesired ?? 0));
       if (to > c.minReplicas)
         suggestions.push({
           ...common,
@@ -365,10 +482,12 @@ function planSimulation(d: DiagramFile, sim: Simulation, counter: { ticks: numbe
       // Sizing is judged on what still waits at the end; startup backlog is the minimum's concern.
       const improved =
         s.kind === "min"
-          ? after.startupBacklog < before.startupBacklog
-          : s.kind === "partitions" || before.endBacklog > 0
-            ? after.endBacklog < before.endBacklog
-            : !after.maxed;
+          ? after.goalsFailed.length < before.goalsFailed.length
+          : s.kind === "target"
+            ? after.backlog < before.backlog
+            : s.kind === "partitions" || before.endBacklog > 0
+              ? after.endBacklog < before.endBacklog
+              : !after.maxed;
       if (improved) return { ...s, verified };
       // Raising the maximum didn't drain the backlog: the input's partitions bound its useful readers.
       const w = watched.find((x) => x.id === s.node)!;
@@ -381,8 +500,11 @@ function planSimulation(d: DiagramFile, sim: Simulation, counter: { ticks: numbe
     });
     if (!refined) break;
   }
-  // A fix the runs couldn't verify is offered only as words.
-  suggestions = suggestions.map((s) => (s.fix && !s.verified ? { ...s, fix: undefined } : s));
+  // A fix the runs couldn't verify is offered only as words. A lower target or a warm minimum is a
+  // speculative remedy: unless a rerun bears it out it isn't reported at all.
+  suggestions = suggestions
+    .filter((s) => !((s.kind === "target" || s.kind === "min") && !(s.fix && s.verified)))
+    .map((s) => (s.fix && !s.verified ? { ...s, fix: undefined } : s));
   counter.ticks += local.ticks;
   counter.runs += runs;
   return { ...base, status: "planned", suggestions, runs, ticks: local.ticks };

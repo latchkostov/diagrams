@@ -47,7 +47,7 @@ export interface Finding {
   };
   /** A3 scenario sizing (src/checks/scalingFindings.ts): neutral fields the UI translates. */
   scalingPlan?: {
-    kind: "max" | "min" | "partitions" | "quota" | "unavailable";
+    kind: "max" | "min" | "partitions" | "quota" | "target" | "unavailable";
     /** The scaled node's name, as the title shows it. */
     name: string;
     simulation: string;

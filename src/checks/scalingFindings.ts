@@ -42,6 +42,8 @@ export function planMessage(plan: ScalingPlan, s: PlanSuggestion, names: (id: st
       return `${where}, ${platform} wants ${s.wanted} replicas but only ${s.from} partitions of ${names(s.broker!)} can be read; more replicas would sit idle. Raise partitions to ${s.to}.${proof}`;
     case "quota":
       return `${where}, ${platform} hits max ${s.from}${at}, but an admission quota still refuses ${count(s.verified?.rejected ?? 0)} requests with more replicas. More replicas can't add allocation.`;
+    case "target":
+      return `${where}, the backlog grew while ${platform} stayed below its target${at}. Lower the target to ${s.to} so it scales out.${proof}`;
     case "min":
       return `${where}, up to ${count(s.startupBacklog)} messages waited while ${platform} started replicas. Keep ${s.to} warm (minimum ${s.from} → ${s.to}).${proof}`;
   }
@@ -101,7 +103,9 @@ export function scalingFindings(ctx: CheckContext): Map<string, Finding> {
                     ? `Set ${ctx.name(s.broker!)} partitions to ${s.to}`
                     : s.kind === "min"
                       ? `Keep ${s.to} warm`
-                      : `Raise max to ${s.to}`,
+                      : s.kind === "target"
+                        ? `Lower target to ${s.to}`
+                        : `Raise max to ${s.to}`,
                 ops,
               },
             }

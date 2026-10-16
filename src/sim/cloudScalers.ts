@@ -191,6 +191,7 @@ export function evaluateCloud(
       decision.adapter = "aca";
       if (decision.broker === node && decision.resource === undefined) {
         decision.metricKind = "httpRate";
+        decision.windowMs = 15_000;
         decision.broker = undefined;
       }
     }
@@ -268,7 +269,11 @@ function evaluateCloudRun(
     decision.target = c.targetCpuPct;
     decision.resource = undefined;
     decision.targetKind = undefined;
-  } else if (decision.metric !== undefined) decision.metricKind = "concurrency";
+  } else if (decision.metric !== undefined) {
+    decision.metricKind = "concurrency";
+    // The concurrency recommendation reads its longest window.
+    decision.windowMs = Math.max(...c.concurrencyWindowsMs);
+  }
   return decision;
 }
 
@@ -367,7 +372,10 @@ function evaluateAppService(
     return f.desired < fallback ? decide(fallback, "default") : decide(f.desired, "missing");
   }
   const ins = c.rules.map((rule, i) => ({ rule, i })).filter(({ rule }) => rule.direction === "decrease");
-  if (!ins.length || !ins.every(({ i }) => triggered[i])) return decide(f.desired, "tolerance");
+  // Holding steady still reports the first scale-out rule's metric against its threshold.
+  const watch = c.rules.findIndex((rule, i) => rule.direction === "increase" && values[i] !== undefined);
+  if (!ins.length || !ins.every(({ i }) => triggered[i]))
+    return decide(f.desired, "tolerance", watch < 0 ? undefined : watch);
   const waiting = ins.find(({ rule }) => !eligible(rule));
   if (waiting) return decide(f.desired, "cooldown", waiting.i);
   // All scale-in rules agree: the fewest removed. Then defer or shrink less where it would flap.

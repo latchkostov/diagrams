@@ -75,13 +75,15 @@ export function planSentence(p: Plan): string {
           })
         : p.kind === "quota"
           ? t("autoscaling.planQuota", { ...where, platform, from: p.from ?? 0, rejected: p.rejected ?? 0 })
-          : t("autoscaling.planMin", {
-              ...where,
-              platform,
-              backlog: p.startupBacklog ?? 0,
-              from: p.from ?? 0,
-              to: p.to ?? 0,
-            });
+          : p.kind === "target"
+            ? t("autoscaling.planTarget", { ...where, platform, metric, to: p.to ?? 0 })
+            : t("autoscaling.planMin", {
+                ...where,
+                platform,
+                backlog: p.startupBacklog ?? 0,
+                from: p.from ?? 0,
+                to: p.to ?? 0,
+              });
   return `${sentence}${proof}${startup}`;
 }
 
@@ -91,7 +93,9 @@ export function planFixLabel(p: Plan): string | undefined {
     ? t("autoscaling.planFixPartitions", { name: p.broker ?? "", to: p.to })
     : p.kind === "min"
       ? t("autoscaling.planFixMin", { to: p.to })
-      : p.kind === "max"
-        ? t("autoscaling.planFixMax", { to: p.to })
-        : undefined;
+      : p.kind === "target"
+        ? t("autoscaling.planFixTarget", { to: p.to })
+        : p.kind === "max"
+          ? t("autoscaling.planFixMax", { to: p.to })
+          : undefined;
 }

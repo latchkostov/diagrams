@@ -1585,6 +1585,37 @@ exports[`public examples route cleanly (estimated card sizes) > cdc-analytics.js
 ]
 `;
 
+exports[`public examples route cleanly (estimated card sizes) > cloud-run-timetable-api.json 1`] = `
+[
+  {
+    "id": "requests",
+    "points": [
+      {
+        "x": 300,
+        "y": 216,
+      },
+      {
+        "x": 440,
+        "y": 216,
+      },
+    ],
+  },
+  {
+    "id": "reads",
+    "points": [
+      {
+        "x": 674,
+        "y": 216,
+      },
+      {
+        "x": 800,
+        "y": 216,
+      },
+    ],
+  },
+]
+`;
+
 exports[`public examples route cleanly (estimated card sizes) > contoso-dmz.json 1`] = `
 [
   {
