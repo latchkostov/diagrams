@@ -1,4 +1,10 @@
-import { resourceCapacity, replicaRange, type ComputeResources, type ExecutableController } from "../model/autoscaling";
+import {
+  resourceCapacity,
+  replicaRange,
+  unmeasured,
+  type ComputeResources,
+  type ExecutableController,
+} from "../model/autoscaling";
 import type { ResolvedProps } from "./defaults";
 
 /** Steady-state replicas each A3 policy's own target asks for at `offered` real messages/s. */
@@ -77,7 +83,7 @@ export function resourcePlan(p: ResolvedProps, offered: number, assigned: number
   const targetReplicas = needed.length ? Math.max(range?.min ?? 1, ...needed) : undefined;
   const polled = c?.kind === "keda" || (c?.kind === "aca" && c.triggers.length > 0) ? c : undefined;
   return {
-    ...(r.preset === "kubernetes-unmeasured" ? { unmeasured: true } : {}),
+    ...(unmeasured(r) ? { unmeasured: true } : {}),
     ...(polled
       ? {
           keda: {

@@ -15,6 +15,7 @@ import {
   hpaLesson,
   kedaLesson,
   resourceLesson,
+  unmeasured,
   type CloudController,
   type CloudPreset,
   type ComputeResources,
@@ -207,7 +208,7 @@ export function AutoscalingFields({
   const resourceFields =
     valid && r ? (
       <>
-        {r.preset === "kubernetes-unmeasured" && (
+        {unmeasured(r) && (
           <>
             <p>{t("autoscaling.unmeasured")}</p>
             <button

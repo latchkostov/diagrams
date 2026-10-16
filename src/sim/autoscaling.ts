@@ -2,7 +2,7 @@ import { createCpuPartBudget, type CpuPartBudget } from "./resourceWork";
 import type { SampledWork } from "./sampledResources";
 import type { ComputeResources, HpaController, ScalingMetric } from "../model/autoscaling";
 import type { CloudState } from "./cloudScalers";
-import { replicaRange } from "../model/autoscaling";
+import { replicaRange, unmeasured } from "../model/autoscaling";
 import { mulberry32 } from "./rng";
 
 export interface ScalingDecision {
@@ -703,7 +703,7 @@ export function resourceReadout(
     executedCpuMs: f.totalCpu,
     unsafe,
     estimated: scale > 1,
-    ...(r.preset === "kubernetes-unmeasured"
+    ...(unmeasured(r)
       ? { unmeasured: true as const, cpuRequestPct: undefined, memoryRequestPct: undefined, memoryLimitPct: undefined }
       : {}),
   };
@@ -764,7 +764,7 @@ export function replicaPage(f: Fleet, r: ComputeResources, now: number, scale: n
       memoryRequestPct: r.memoryRequestMiB ? (memory / r.memoryRequestMiB) * 100 : undefined,
       memoryLimitPct: r.memoryLimitMiB ? (memory / r.memoryLimitMiB) * 100 : undefined,
       unsafe: r.memoryLimitMiB !== undefined && memory > r.memoryLimitMiB,
-      ...(r.preset === "kubernetes-unmeasured"
+      ...(unmeasured(r)
         ? {
             unmeasured: true as const,
             cpuRequestPct: undefined,

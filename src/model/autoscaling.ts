@@ -26,6 +26,11 @@ export interface ComputeResources {
   /** Imported request defaulting from a limit; all other supplied denominators came from requests. */
   requestDefaults?: ("cpu" | "memory")[];
 }
+/** Imported sizes (requests/limits, a task or instance size) without measured per-message costs. */
+export const UNMEASURED_PRESETS = ["kubernetes-unmeasured", "cloud-unmeasured"];
+export function unmeasured(r: Pick<ComputeResources, "preset"> | undefined): boolean {
+  return !!r && UNMEASURED_PRESETS.includes(r.preset);
+}
 export interface DirectionBehaviour {
   stabilizationMs: number;
   selectPolicy: "Max" | "Min" | "Disabled";

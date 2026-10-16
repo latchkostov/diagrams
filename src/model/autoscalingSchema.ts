@@ -1,5 +1,6 @@
 import { checkJsonSchema, type JsonSchema } from "./jsonSchema";
 import type { AutoscalingConfig, ComputeResources, EcsStepScaling, ExecutableController } from "./autoscaling";
+import { unmeasured as isUnmeasured } from "./autoscaling";
 
 const quantity = { type: "number", minimum: 0, maximum: 1e9 };
 const positive = { type: "number", minimum: 0.000001, maximum: 1e9 };
@@ -399,7 +400,7 @@ export function autoscalingProblem(resources: unknown, autoscaling: unknown): st
   const r = resources as ComputeResources;
   const c = a.controller;
   const metrics = "settings" in c ? c.settings.metrics : [];
-  const unmeasured = r.preset === "kubernetes-unmeasured";
+  const unmeasured = isUnmeasured(r);
   if (unmeasured && (metrics.length || cloudResourceMetrics(c).length))
     return "Imported requests and limits do not measure CPU or memory per message. Choose a workload lesson before resource predictions.";
   for (const m of metrics) {
