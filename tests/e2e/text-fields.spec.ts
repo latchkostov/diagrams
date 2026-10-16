@@ -48,11 +48,10 @@ const selected = (field: Locator) =>
 /** A point on the field's first word: just inside its padding, half a line down. */
 async function firstWord(field: Locator) {
   return field.evaluate((el: Field) => {
-    const r = el.getBoundingClientRect();
     const s = getComputedStyle(el);
     const line = parseFloat(s.lineHeight) || parseFloat(s.fontSize) * 1.3;
-    const top = el instanceof HTMLTextAreaElement ? parseFloat(s.paddingTop) + line / 2 : r.height / 2;
-    return { x: r.left + parseFloat(s.paddingLeft) + parseFloat(s.borderLeftWidth) + 8, y: r.top + top };
+    const top = el instanceof HTMLTextAreaElement ? parseFloat(s.paddingTop) + line / 2 : el.clientHeight / 2;
+    return { x: parseFloat(s.paddingLeft) + 8, y: top };
   });
 }
 
@@ -60,14 +59,16 @@ async function firstWord(field: Locator) {
  * A double-click selects the first word, a triple-click the first line (`line`). Trimmed: Windows takes the space
  * after a word with it, and a textarea's line its line break, as they do everywhere on that platform.
  */
-async function expectNativeSelection(page: Page, field: Locator, word: string, line: string) {
+async function expectNativeSelection(field: Locator, word: string, line: string) {
   // Opening an in-canvas editor can refit the viewport after focus has already arrived.
   await waitForStableBox(field);
   const at = await firstWord(field);
-  await page.mouse.dblclick(at.x, at.y);
+  // Resolve the field afresh for each gesture: lazy capabilities can move the AI
+  // request between the word assertion and the triple-click.
+  await field.dblclick({ position: at });
   await expect(field).toBeFocused();
   await expect.poll(async () => (await selected(field)).trim()).toBe(word);
-  await page.mouse.click(at.x, at.y, { clickCount: 3 });
+  await field.click({ position: at, clickCount: 3 });
   await expect.poll(async () => (await selected(field)).trim()).toBe(line);
   await expect(field).toBeFocused();
 }
@@ -480,7 +481,7 @@ test.describe("renaming in the inspector", () => {
     const editor = page.getByTestId("annotation-editor");
     await expect(editor).toBeFocused();
     await expect.poll(() => selected(editor)).toBe("Sticky reminder\nSecond line here");
-    await expectNativeSelection(page, editor, "Sticky", "Sticky reminder");
+    await expectNativeSelection(editor, "Sticky", "Sticky reminder");
     // The triple-click took the paragraph, its line break too (as a textarea does).
     await page.keyboard.type("First line");
     await expect(editor).toHaveValue(/^First line\n?Second line here$/);
@@ -647,7 +648,7 @@ test.describe("selecting text with the mouse", () => {
   test("in the inspector: a word, then the whole field; typing replaces it", async ({ page, consoleErrors }) => {
     await page.getByTestId("node-a").dblclick();
     const label = page.getByTestId("inspector-field-label");
-    await expectNativeSelection(page, label, "Order", "Order service");
+    await expectNativeSelection(label, "Order", "Order service");
     await page.keyboard.type("Billing");
     await expect(label).toHaveValue("Billing");
     await expect(page.getByTestId("node-a")).toContainText("Billing");
@@ -657,7 +658,7 @@ test.describe("selecting text with the mouse", () => {
     await page.keyboard.press("Escape");
     const description = page.getByTestId("inspector-field-description");
     await expect(description).toBeVisible();
-    await expectNativeSelection(page, description, "Platform", "Platform overview");
+    await expectNativeSelection(description, "Platform", "Platform overview");
     expectNoErrors(consoleErrors);
   });
 
@@ -677,7 +678,7 @@ test.describe("selecting text with the mouse", () => {
       .click();
     const field = page.getByTestId("library-rename-input");
     await field.fill("Platform overview");
-    await expectNativeSelection(page, field, "Platform", "Platform overview");
+    await expectNativeSelection(field, "Platform", "Platform overview");
     await expectVisibleSelection(field);
   });
 
@@ -688,7 +689,7 @@ test.describe("selecting text with the mouse", () => {
     const quick = page.getByTestId("quick-add-search");
     await expect(quick).toBeFocused();
     await page.keyboard.type("redis cache");
-    await expectNativeSelection(page, quick, "redis", "redis cache");
+    await expectNativeSelection(quick, "redis", "redis cache");
     // Esc clears the search, then closes.
     await page.keyboard.press("Escape");
     await expect(quick).toHaveValue("");
@@ -700,7 +701,7 @@ test.describe("selecting text with the mouse", () => {
     const command = page.getByTestId("command-input");
     await expect(command).toBeFocused();
     await page.keyboard.type("zoom to fit");
-    await expectNativeSelection(page, command, "zoom", "zoom to fit");
+    await expectNativeSelection(command, "zoom", "zoom to fit");
     await page.keyboard.type("undo");
     await expect(command).toHaveValue("undo");
     await page.keyboard.press("Escape");
@@ -710,13 +711,17 @@ test.describe("selecting text with the mouse", () => {
     if (!(await stencils.isVisible())) await page.getByTestId("palette-toggle").click();
     await expect(stencils).toBeVisible();
     await stencils.fill("service bus");
-    await expectNativeSelection(page, stencils, "service", "service bus");
+    await expectNativeSelection(stencils, "service", "service bus");
 
     // The AI panel's request (Advanced).
     await openAdvanced(page);
     const request = page.getByTestId("ai-request");
     await request.fill("Explain the payments flow");
-    await expectNativeSelection(page, request, "Explain", "Explain the payments flow");
+    // Deterministically exercise the late panel layout change seen on a cold browser.
+    await request.evaluate((el) => {
+      el.addEventListener("dblclick", () => ((el as HTMLElement).style.marginTop = "48px"), { once: true });
+    });
+    await expectNativeSelection(request, "Explain", "Explain the payments flow");
     expectNoErrors(consoleErrors);
   });
 });

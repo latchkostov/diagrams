@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { chromiumLaunchArgs } from "./scripts/e2e-chromium";
 
 /**
  * E2E config. Five projects:
@@ -27,8 +28,14 @@ import { defineConfig, devices } from "@playwright/test";
  * served with a self-hosted copy's headers (PREVIEW_HEADERS=self-host), not the public site's.
  * Every test gets a fresh browser context, so localStorage (settings, autosave) starts empty.
  * All outputs live in tests/.output (gitignored by tests/.gitignore).
+ * E2E_CHROMIUM_ONLY=1 serves only the app and selects only chromium, for the local production gate.
+ * It avoids unused dev/preview servers and their watchers scanning accumulated trace/export HTML.
+ * E2E_GATE=1 forbids focused tests and disables reuse for every webServer, including explicit ports.
  */
 const CI = !!process.env.CI;
+// A verification stamp must describe this checkout: every server must be ours.
+const GATE = process.env.E2E_GATE === "1";
+const reuseServer = (explicit: boolean) => !GATE && (explicit || !CI);
 
 /** A port from the environment, or the default; `explicit` says whether the caller chose it. */
 function port(name: string, fallback: number, explicitFallback = false): { port: number; explicit: boolean } {
@@ -42,6 +49,7 @@ function port(name: string, fallback: number, explicitFallback = false): { port:
 const TARGET = process.env.E2E_TARGET ?? (CI ? "build" : "dev");
 if (TARGET !== "build" && TARGET !== "dev") throw new Error(`E2E_TARGET must be "build" or "dev", got "${TARGET}"`);
 const BUILD = TARGET === "build";
+const chromiumOnly = process.env.E2E_CHROMIUM_ONLY === "1";
 
 const app = port("E2E_PORT", 5191);
 const devServer = BUILD ? port("E2E_DEV_PORT", app.port + 1, app.explicit) : app;
@@ -67,7 +75,7 @@ export const LOCKED_ENV = {
   // One language: English for everyone, whatever the browser asks for, with no Language choice.
   VITE_LOCALES: "en",
 };
-const skipPreview = process.env.E2E_SKIP_PREVIEW === "1";
+const skipPreview = chromiumOnly || process.env.E2E_SKIP_PREVIEW === "1";
 const prebuilt = process.env.E2E_PREBUILT === "1";
 
 /**
@@ -112,7 +120,7 @@ const OWN_BUILD = /(subpath|self-host|self-host-locked)\.spec\.ts/;
 const devWebServer = {
   command: `pnpm dev --port ${devServer.port} --strictPort --host ${LOOPBACK}`,
   url: `http://localhost:${devServer.port}`,
-  reuseExistingServer: devServer.explicit || !CI,
+  reuseExistingServer: reuseServer(devServer.explicit),
   timeout: 60_000,
   // Keep optimizer/HMR diagnostics in CI logs: a reload must never look like a missing UI element.
   stdout: "pipe" as const,
@@ -123,7 +131,7 @@ export default defineConfig({
   testDir: "./tests/e2e",
   outputDir: "./tests/.output/results",
   fullyParallel: true,
-  forbidOnly: CI,
+  forbidOnly: GATE || CI,
   retries: CI ? 2 : 0,
   // GitHub's Linux runners have 4 vCPUs: three browsers plus the preview server.
   workers: CI ? 3 : undefined,
@@ -141,7 +149,7 @@ export default defineConfig({
     : [["list"], ["html", { outputFolder: "./tests/.output/report", open: "never" }]],
   use: {
     baseURL: `http://localhost:${app.port}`,
-    launchOptions: { args: [`--host-resolver-rules=MAP localhost ${LOOPBACK}`] },
+    launchOptions: { args: chromiumLaunchArgs(LOOPBACK) },
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "off",
@@ -182,9 +190,9 @@ export default defineConfig({
             testMatch: spec,
           })),
         ]),
-  ],
+  ].filter((project) => !chromiumOnly || project.name === "chromium"),
   webServer: [
-    devWebServer,
+    ...(BUILD && chromiumOnly ? [] : [devWebServer]),
     ...(BUILD
       ? [
           {
@@ -192,7 +200,7 @@ export default defineConfig({
             command: serve(E2E_DIST, `--port ${app.port} --strictPort`),
             url: `http://localhost:${app.port}`,
             env: { VITE_E2E: "1" },
-            reuseExistingServer: app.explicit || !CI,
+            reuseExistingServer: reuseServer(app.explicit),
             timeout: 180_000,
             stdout: "ignore" as const,
             stderr: "pipe" as const,
@@ -207,7 +215,7 @@ export default defineConfig({
             command: serve(PREVIEW_DIST, `--port ${preview.port} --strictPort --base ${PREVIEW_BASE}`),
             url: `http://localhost:${preview.port}${PREVIEW_BASE}`,
             env: { VITE_E2E: "" },
-            reuseExistingServer: preview.explicit || !CI,
+            reuseExistingServer: reuseServer(preview.explicit),
             timeout: 180_000,
             stdout: "ignore" as const,
             stderr: "pipe" as const,
@@ -219,7 +227,7 @@ export default defineConfig({
             url: `http://localhost:${at.port}/`,
             // Embeds framed by the host pages tests/e2e/self-host-helpers.ts serves on 127.0.0.1.
             env: { VITE_E2E: "", PREVIEW_HEADERS: "self-host", PREVIEW_FRAME_ANCESTORS: "http://127.0.0.1:*", ...env },
-            reuseExistingServer: at.explicit || !CI,
+            reuseExistingServer: reuseServer(at.explicit),
             timeout: 180_000,
             stdout: "ignore" as const,
             stderr: "pipe" as const,

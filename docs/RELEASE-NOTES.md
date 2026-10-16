@@ -1,5 +1,71 @@
 # Release notes
 
+## Verification gate review fixes (2026-10-16)
+
+- The full local gate owns its app server: gate mode disables reuse for every
+  Playwright server, and an occupied port anywhere in its five-port range fails
+  before checks begin with a clear remedy. This prevents testing another checkout.
+- Nonignored untracked files block verification both before checks and before the
+  HEAD stamp. Gitignored local files remain allowed. Focused Vitest and Playwright
+  tests now fail the full gate even outside CI.
+- A fresh E2E bundle is built once per gate and reused across six shards. A failed
+  build cannot run shards against an older bundle or stamp HEAD. The installed and
+  versioned runners stay in sync. No output goldens change; product UI is unchanged.
+- Review triage: all seven findings are valid. The two P1s and the security P2
+  describe the same server-ownership issue; both focused-test P2s share one fix.
+  No finding is rejected. Regression tests cover every underlying issue, including
+  occupied ports, ignored/untracked files, focused-test CLI rejection and build reuse.
+- The first full gate also caught a flow-building test issuing Alt+arrow while its
+  selection's inspector reveal was still moving the viewport. Selection now waits for
+  that layout before the next gesture. A clock-controlled regression fails at the
+  canvas boundary assertion when those waits are removed; existing placement,
+  connection and Undo assertions remain intact. No application geometry changes.
+
+## Reliable local verification (2026-10-15)
+
+- The full push gate now runs every shard after failures and reports complete JSON-based
+  totals. Its versioned runner retains each run's traces/reports, includes the entry-size
+  check, uses three browsers with zero retries, and never stamps a partial or failed run.
+  The Windows `~/bin/verify-push.sh` is updated from the versioned, regression-tested runner.
+- Retained run directories use short unique names, with the complete commit SHA in the
+  log and verification stamp. This leaves room for offline exports under Windows MAX_PATH:
+  a 260-character password-export path was readable by Node but rejected by Chrome.
+  A path-budget regression preserves this headroom without shortening the tested filename.
+- Full gates serialize across worktrees using an OS-owned repository lock. Three concurrent
+  gates saturated the Windows host and stalled page startup/input in otherwise passing tests.
+  A barrier-based regression proves the second gate waits and is released after the first
+  gate fails. No retries, ignored browser errors, antivirus exclusions or longer UI timeouts
+  replace these checks.
+- The production-only gate starts its one app server. Four unused servers previously built
+  and watched files for every shard, including accumulated trace/export HTML. Normal
+  multi-project Playwright runs retain all servers and projects; no Chromium test is removed.
+- Startup timing still advances the full pre-play clock delay, but skips paused animation
+  frames. A frame-count guard catches the redundant replay that exhausted the local timeout;
+  every simulation tick after Play is still delivered. An observed Windows asset-buffer
+  failure remains guarded by the console-error assertion; no network error is filtered out.
+- Browser regressions wait for the mounted canvas before Save, a replacement example before
+  returning to its predecessor, the inspector's reveal before Fit, and real fonts before
+  comparing Undo geometry. Text gestures resolve their field for each click; a forced late
+  panel shift covers the previously stale coordinates. All existing save, privacy, chip,
+  selection and history assertions remain.
+- Compiler compatibility probes are split by compiler; the full import cap has its own test.
+  Only these intentional integration/stress cases receive CI's 40-second hang backstop.
+  The import still maps, lays out and validates 5,000 nodes; no performance guard is relaxed.
+- The import column-complexity guard counts internal array reads instead of timing batches
+  of fresh maps. It retains the eighth-input comparison and 24x limit, with less fixture work;
+  repeated spread/concat copying still fails the guard without depending on garbage collection.
+- Windows test browsers disable Chromium's TCP port randomization while retaining every
+  pinned Playwright feature flag. A tiny standalone loopback page reproduced a connect failure
+  with Windows error 10055 before any HTTP request; normal Chromium had one such failure in
+  4,800 navigations, versus none in 4,800 with the feature disabled (both probe orders).
+  This workaround changes neither the app nor Windows settings. Its narrow internal API
+  integration is covered by config tests and must be reviewed when Playwright is upgraded.
+  Navigation and console-error assertions still fail on any network error; there are no retries.
+- UX review: no product controls or behavior change. No showcase is needed. No output golden
+  changes are intended; no goldens are re-recorded. Global timeout increases, automatic
+  retries, smaller cap fixtures and changes to production save/layout behavior were rejected:
+  they would hide failures, reduce coverage, or change the app without evidence of a defect.
+
 ## Autoscaling A3: cloud adapters and scenario sizing (2026-10-16)
 
 - **Four cloud scalers on the shared A1/A2 lifecycle.** A compute node's Simulation inspector offers one preset

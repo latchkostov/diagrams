@@ -267,6 +267,11 @@ describe("big imports: the boundaries with the most flows, and a picker", () => 
     const all = ok(replayOutcome(g));
     expect(all.diagram.nodes).toHaveLength(400);
     expect(all.report.pick).toBeUndefined();
+  });
+
+  it("Draw everything keeps the cap and the remaining boundaries in the picker", { timeout: 40_000 }, () => {
+    // This exercises mapping, layout and validation of all 5,000 nodes. Like CI,
+    // allow load/coverage overhead; the assertions guard the cap, not elapsed time.
     // Over the cap, it draws as much as fits, the most flows first, and the picker has the rest.
     const huge = ok(replayOutcome(graphOf(Array.from({ length: 60 }, () => [100, 1] as [number, number]))));
     expect(huge.diagram.nodes).toHaveLength(MAX_DRAWN);

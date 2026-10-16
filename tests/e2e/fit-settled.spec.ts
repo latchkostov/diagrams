@@ -6,6 +6,7 @@ import example from "../../src/examples/aws-fanout.json" with { type: "json" };
 import { measuredHierarchyFixture } from "../../src/lab/nestedBoundariesFixture";
 import { boundaryAround } from "../../src/editor/arrange";
 import { holdResizeObservers } from "../parity/browser/holdReadiness";
+import { readyFonts } from "../../src/canvas/fonts";
 
 // Keep actual font downloads/metrics intact; hold only the readiness promise consumed
 // by the refinement gate. The editor must already be usable before this is released.
@@ -445,6 +446,8 @@ test("Undo cancels Auto-layout while measurements are held and preserves history
   await page.addInitScript(holdResizeObservers, true);
   await page.goto("./?view=canvas&example=aws-fanout");
   await expect(page.getByTestId("diagram-title")).toBeVisible();
+  // Hold observer delivery, not font loading: both snapshots need the same real metrics.
+  await page.getByTestId("canvas-wrap").evaluate(readyFonts);
   const boxes = async () =>
     Object.fromEntries(
       Object.entries((await readCanvas(page)).nodes).map(([id, node]) => [id, (node as { box: string }).box]),
