@@ -29,6 +29,8 @@ export interface LiveLabStageProps {
   diagram: DiagramFile;
   initial?: LiveViewProps["initial"];
   presenting?: boolean;
+  /** Keyboard lifecycle preview: allow leaving live while its host rerenders. */
+  alwaysOn?: boolean;
 }
 
 /** A Lab stage: the real canvas renderers with the live view always on (no editor, no saving). */
@@ -44,7 +46,7 @@ export function LiveLabStage(props: LiveLabStageProps) {
 
 type Ui = ContextType<typeof DiagramContext>;
 
-function Stage({ diagram, initial, presenting = false }: LiveLabStageProps) {
+function Stage({ diagram, initial, presenting = false, alwaysOn = true }: LiveLabStageProps) {
   const { theme } = useSettings();
   const flow = useMemo(() => toFlow(diagram), [diagram]);
   const [nodes, , onNodesChange] = useNodesState<FlowNode>(flow.nodes);
@@ -83,7 +85,7 @@ function Stage({ diagram, initial, presenting = false }: LiveLabStageProps) {
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1.3} color="var(--dot)" />
           <Controls showInteractive={false} position="bottom-left" />
-          <LiveView diagram={diagram} presenting={presenting} initial={initial} alwaysOn />
+          <LiveView diagram={diagram} presenting={presenting} initial={initial} alwaysOn={alwaysOn} />
         </ReactFlow>
       </div>
     </DiagramContext.Provider>

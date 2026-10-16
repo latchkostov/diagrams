@@ -1,5 +1,19 @@
 # Release notes
 
+## Nightly keyboard and test readiness (#129, 2026-10-16)
+
+- Escape reliably leaves Live after closing the simulation panel, including when a host render
+  commits during the keypress. The session keeps its keyboard subscription across host renders;
+  a Lab regression forces that ordering and fails with the previous callback.
+- The export round trip finishes the export notification before importing; the capacity focus
+  check fits its target before clicking. Layout audits use one public fixture per test, and the
+  saved-simulation naming check opens its public run directly. Storm persistence waits for the
+  reloaded live session and allows two full page loads. All existing contract assertions remain.
+- UX review: keyboard back-out levels and focus destinations are unchanged; no product controls
+  added. The skill viewer is refreshed at plugin 1.1.28, one patch above origin/master.
+- Output parity on refreshed master: all 1,863 goldens unchanged; none re-recorded. Investigation and verification:
+  [nightly #129](NIGHTLY-129.md).
+
 ## Collaboration architecture research (2026-10-15)
 
 - Added [a sourced collaboration recommendation](research/collaboration.md): optional anonymous E2E rooms,

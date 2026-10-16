@@ -97,6 +97,12 @@ export function LiveView(props: LiveViewProps) {
     setLive((l) => !l);
   }, []);
   const goLive = useCallback(() => setLive(true), []);
+  // Session publication rerenders this host. Keep its keyboard subscription intact:
+  // replacing a listener during an earlier capture handler loses that same keypress.
+  const exit = useCallback(() => {
+    paletteHost.cancelRun();
+    setLive(false);
+  }, []);
   // "Toggle live" and "Run simulation" in the command palette.
   useLiveHost(toggle, goLive, enabled && !props.alwaysOn && !!props.editor);
   // React Flow fills its store in an effect; start the session once nodes are there and measured.
@@ -193,10 +199,7 @@ export function LiveView(props: LiveViewProps) {
         <LiveSession
           {...props}
           params={firstSession ? params : { ...params, live: true, sim: null, speed: null, paused: false }}
-          onExit={() => {
-            paletteHost.cancelRun();
-            setLive(false);
-          }}
+          onExit={exit}
           onSession={props.onHandle ? setSession : undefined}
         />
       )}

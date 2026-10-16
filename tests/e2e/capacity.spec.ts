@@ -1,6 +1,6 @@
 import { savedDiagram } from "./fixtures";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, gotoLive } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, gotoLive, fitDiagram } from "./fixtures";
 
 // Inputs & capacity: the presenter's what-if flow (Black Friday at 3×, the heat map, Apply fix),
 // undo, "Save to simulation" across a reload, the heat map in edit mode, and real units.
@@ -467,6 +467,9 @@ test.describe("fourth review capacity regressions", () => {
     await expect(page.getByTestId("capacity-layer")).toHaveCount(0);
     await page.keyboard.press("c");
     await expect(page.getByTestId("capacity-layer")).toBeAttached();
+    // Closing Inputs and leaving live changes the available canvas width. Keyboard
+    // input can cancel that refit; bring the whole diagram into view before clicking.
+    await fitDiagram(page);
     await page.getByTestId("node-payments").click();
     await page.getByTestId("inspector-section-node-simulation").click();
     await page.getByTestId("inspector-field-latencyMs").fill("20000");

@@ -1,4 +1,5 @@
 import { kedaFixture } from "./kedaFixture";
+import { LiveKeyboardLab } from "./LiveKeyboardLab";
 import { measuredHierarchyFixture, nestedBoundariesFixture } from "./nestedBoundariesFixture";
 import { captionContrastFixture } from "./captionContrastFixture";
 import { GalleryCatalogLab } from "./GalleryCatalogLab";
@@ -576,6 +577,14 @@ const liveSpeed: ControlDef = {
 const livePresent: ControlDef = { type: "boolean", key: "livepresent", label: "Presentation sizing", default: false };
 
 const livePresets: Preset[] = [
+  {
+    kind: "render",
+    id: "live-keyboard",
+    title: "Live: keyboard lifecycle",
+    group: "Simulation",
+    description: "A host render during Escape must not replace the live session's keyboard listener.",
+    render: () => <LiveKeyboardLab />,
+  },
   {
     kind: "render",
     id: "live-particles-stress",
