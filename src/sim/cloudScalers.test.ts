@@ -1,6 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
 import * as fleets from "./autoscaling";
 import { Deque } from "./deque";
+import { createSimulationRun } from "./simulation";
+import { resolveNodeProps } from "./defaults";
+import timetable from "../examples/cloud-run-timetable-api.json";
+import type { DiagramFile } from "../model/types";
 import { createFleet, type Fleet } from "./autoscaling";
 import { evaluateCloud, percentChange, resetCloud, stepFor, type CloudReads } from "./cloudScalers";
 import { createEngine } from "./engine";
@@ -582,5 +586,57 @@ describe("bounded per-tick adapter work", () => {
           reads.mockRestore();
         }
       }
+  });
+});
+
+describe("A3 playback determinism", () => {
+  const showcase = () => structuredClone(timetable as DiagramFile);
+  it("replays the same decisions after a checkpoint restore", () => {
+    for (const preset of ["ecs-alb", "aca-http", "app-service", "cloud-run"] as const) {
+      const d = cloudFixture(preset);
+      d.nodes[0].props = { ratePerSec: 60 };
+      const sim = { id: "s", title: "S", seed: 3, durationMs: 120_000, traffic: [] };
+      const run = createSimulationRun(d, sim);
+      run.engine.setTraffic(true);
+      run.step(20_000);
+      const cp = run.checkpoint();
+      const trace = () => {
+        const out: unknown[] = [];
+        for (let i = 0; i < 20; i++) {
+          run.step(1000);
+          out.push(run.engine.fleet("worker"));
+        }
+        return out;
+      };
+      const first = trace();
+      run.restore(cp);
+      expect(trace(), preset).toEqual(first);
+    }
+  });
+  it("sampled traffic (scale 10) tracks the exact run's fleet", () => {
+    const peaks = [1, 10].map((scale) => {
+      const d = showcase();
+      const sim = { ...d.simulations![0], scale };
+      const run = createSimulationRun(d, sim);
+      let peak = 0;
+      while (!run.state().done) {
+        if (run.state().waiting) run.resume();
+        run.step(1000);
+        peak = Math.max(peak, run.engine.fleet("worker")!.desired);
+      }
+      return { peak, end: run.engine.fleet("worker")!.desired };
+    });
+    expect(peaks[1].peak).toBe(peaks[0].peak);
+    expect(peaks.map((p) => p.end)).toEqual([0, 0]);
+  });
+});
+
+describe("the P3 boundary", () => {
+  it("never attaches a cloud policy to a native serverless node", () => {
+    const d = cloudFixture("cloud-run");
+    d.nodes[1].stencil = "aws.lambda";
+    const p = resolveNodeProps(d, d.nodes[1]);
+    expect(p.autoscaling).toBeUndefined();
+    expect(p.autoscalingProblem).toMatch(/managed allocation/);
   });
 });
