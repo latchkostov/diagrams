@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {{traffic}× forgalomnál a(z) „{simulation}” szimulációban} other {A(z) „{simulation}” szimulációban}} legfeljebb {backlog, number} üzenet várakozott, amíg a(z) {platform} replikákat indított. Tartson {to, number} replikát készenlétben (minimum: {from, number} → {to, number}).",
   "autoscaling.planAt": "; metrika: {metric}",
   "autoscaling.planStartup": "Legfeljebb {count, number} üzenet várakozott a replikák indulása alatt.",
-  "autoscaling.planVerified": "Egy azonos maggal végzett újrafuttatás igazolta.",
-  "autoscaling.planUnverified": "Egy azonos maggal végzett újrafuttatás nem igazolt javulást, ezért nincs javasolt javítás.",
   "autoscaling.planUnavailable": "A forgatókönyv-méretezés nem érhető el ehhez a diagramhoz: a(z) „{simulation}” szimuláció több munkát igényel, mint amennyit a tervezési keret enged. A lejátszás ettől még megmutatja, mi történik.",
   "autoscaling.planWhy": "Ugyanazzal a motorral és maggal futott, mint a lejátszás. Egy javaslat csak akkor javítás, ha egy vele végzett újrafuttatás igazolja.",
   "autoscaling.planFixMax": "Maximum emelése erre: {to, number}",

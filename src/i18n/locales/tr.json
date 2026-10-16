@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {\"{simulation}\" simülasyonunda {traffic}× trafikte} other {\"{simulation}\" simülasyonunda}} {platform} replikaları başlatırken en fazla {backlog, number} ileti bekledi. {to, number} replikayı hazır tutun (en az {from, number} → {to, number}).",
   "autoscaling.planAt": " (ölçüm: {metric})",
   "autoscaling.planStartup": "Replikalar başlarken en fazla {count, number} ileti bekledi.",
-  "autoscaling.planVerified": "Aynı seed ile yeniden çalıştırma bunu doğruladı.",
-  "autoscaling.planUnverified": "Aynı seed ile yeniden çalıştırma bir iyileşme doğrulamadı, bu yüzden düzeltme önerilmiyor.",
   "autoscaling.planUnavailable": "Senaryo boyutlandırması bu diyagram için kullanılamıyor: \"{simulation}\" simülasyonu, planlama bütçesinin izin verdiğinden fazla simüle edilmiş iş gerektiriyor. Oynatma yine de olanları gösterir.",
   "autoscaling.planWhy": "Oynatmayla aynı motor ve seed ile çalıştırıldı. Bir öneri, ancak onunla yapılan yeniden çalıştırma doğruladığında düzeltme sayılır.",
   "autoscaling.planFixMax": "Üst sınırı yükselt: {to, number}",

@@ -32,6 +32,29 @@ const CLOUD_PRESETS: { preset: CloudPreset; kind: CloudController["kind"]; varia
   { preset: "app-service", kind: "appService", variant: "rules" },
   { preset: "cloud-run", kind: "cloudRun", variant: "concurrency" },
 ];
+/** Each platform's own stencil offers only that platform's presets; other services see every platform. */
+const STENCIL_PLATFORM: Record<string, CloudController["kind"]> = {
+  "aws.ecs": "ecs",
+  "azure.container-apps": "aca",
+  "azure.app-service": "appService",
+  "gcp.cloud-run": "cloudRun",
+};
+const PROVIDER: Record<CloudController["kind"], string> = {
+  ecs: "AWS",
+  aca: "Azure",
+  appService: "Azure",
+  cloudRun: "Google Cloud",
+};
+/** Cloud presets grouped by provider. A Kubernetes Deployment has none; the current preset always stays listed. */
+function cloudGroups(stencil: string, current: CloudPreset | null): [string, typeof CLOUD_PRESETS][] {
+  if (stencil === "k8s.deployment") return [];
+  const own = STENCIL_PLATFORM[stencil];
+  const groups = new Map<string, typeof CLOUD_PRESETS>();
+  for (const entry of CLOUD_PRESETS)
+    if (!own || entry.kind === own || entry.preset === current)
+      groups.set(PROVIDER[entry.kind], [...(groups.get(PROVIDER[entry.kind]) ?? []), entry]);
+  return [...groups];
+}
 /** The preset a saved controller corresponds to, from its shape rather than its stored name. */
 function cloudPresetOf(c: CloudController): CloudPreset {
   if (c.kind === "ecs")
@@ -365,23 +388,30 @@ export function AutoscalingFields({
           }}
         >
           <option value="fixed">{t("admission.fixed")}</option>
-          <option value="hpa-service">{t("autoscaling.lesson")}</option>
-          {(
-            [
-              ["kafka", "Kafka"],
-              ["azure-servicebus", "Service Bus"],
-              ["aws-sqs-queue", "SQS"],
-              ["rabbitmq", "RabbitMQ"],
-            ] as const
-          ).map(([type, broker]) => (
-            <option key={type} value={`keda-${type}`}>
-              {t("autoscaling.kedaPreset", { broker })}
-            </option>
-          ))}
-          {(stencil === "k8s.deployment" ? [] : CLOUD_PRESETS).map(({ preset, kind, variant }) => (
-            <option key={preset} value={`cloud-${preset}`}>
-              {t("autoscaling.cloudPreset", { platform: PLATFORM[kind], variant })}
-            </option>
+          {/* eslint-disable-next-line local/no-literal-ui-text -- a product name */}
+          <optgroup label="Kubernetes">
+            <option value="hpa-service">{t("autoscaling.lesson")}</option>
+            {(
+              [
+                ["kafka", "Kafka"],
+                ["azure-servicebus", "Service Bus"],
+                ["aws-sqs-queue", "SQS"],
+                ["rabbitmq", "RabbitMQ"],
+              ] as const
+            ).map(([type, broker]) => (
+              <option key={type} value={`keda-${type}`}>
+                {t("autoscaling.kedaPreset", { broker })}
+              </option>
+            ))}
+          </optgroup>
+          {cloudGroups(stencil, cloud ? cloudPresetOf(cloud) : cloudPending).map(([provider, presets]) => (
+            <optgroup key={provider} label={provider}>
+              {presets.map(({ preset, kind, variant }) => (
+                <option key={preset} value={`cloud-${preset}`}>
+                  {t("autoscaling.cloudPreset", { platform: PLATFORM[kind], variant })}
+                </option>
+              ))}
+            </optgroup>
           ))}
           {a?.mode === "unsupported" && <option value="unsupported">{t("autoscaling.unsupported")}</option>}
         </select>
@@ -405,9 +435,7 @@ export function AutoscalingFields({
       {cloudPending && (
         <details open data-testid="autoscaling-binding">
           <summary data-testid="autoscaling-binding-toggle">{t("ai.advanced")}</summary>
-          <p role="status">
-            {cloudPending === "ecs-alb" ? t("autoscaling.lbRequired") : t("autoscaling.bindingRequired")}
-          </p>
+          <p role="status">{cloudPending === "ecs-alb" ? t("autoscaling.lbRequired") : t("autoscaling.busRequired")}</p>
           {cloudPending === "ecs-alb" ? (
             <label className="insp-field">
               <span className="insp-label">{t("autoscaling.loadBalancer")}</span>

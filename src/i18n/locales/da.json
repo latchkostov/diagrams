@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {Ved {traffic}× trafik i »{simulation}«} other {I »{simulation}«}} ventede op til {backlog, number} beskeder i backlog, mens {platform} startede replikaer. Hold {to, number} varme (minimum {from, number} → {to, number}).",
   "autoscaling.planAt": " ved {metric}",
   "autoscaling.planStartup": "Op til {count, number} beskeder ventede, mens replikaer startede.",
-  "autoscaling.planVerified": "En ny kørsel med samme seed bekræftede det.",
-  "autoscaling.planUnverified": "En ny kørsel med samme seed bekræftede ikke en forbedring, så der tilbydes ingen rettelse.",
   "autoscaling.planUnavailable": "Scenariedimensionering er ikke tilgængelig for dette diagram: »{simulation}« kræver mere simuleret arbejde, end planlægningsbudgettet tillader. Afspilningen viser stadig, hvad der sker.",
   "autoscaling.planWhy": "Afspillet med samme motor og seed som afspilningen. Et forslag er kun en rettelse, når en ny kørsel med det bekræfter det.",
   "autoscaling.planFixMax": "Hæv maksimum til {to, number}",

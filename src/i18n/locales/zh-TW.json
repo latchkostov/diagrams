@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {在「{simulation}」中流量為 {traffic}× 時} other {在「{simulation}」中}}，{platform} 啟動複本期間最多有 {backlog, number} 則訊息在等待。請保持 {to, number} 個預熱複本（最小值 {from, number} → {to, number}）。",
   "autoscaling.planAt": "（此時 {metric}）",
   "autoscaling.planStartup": "複本啟動期間最多有 {count, number} 則訊息在等待。",
-  "autoscaling.planVerified": "使用相同種子重新執行已驗證這一點。",
-  "autoscaling.planUnverified": "使用相同種子重新執行未確認有改善，因此不提供修正。",
   "autoscaling.planUnavailable": "此圖表無法進行情境規模估算：「{simulation}」所需的模擬工作量超出規劃預算。播放仍會顯示發生的情況。",
   "autoscaling.planWhy": "使用與播放相同的引擎和種子執行。只有套用該建議重新執行並得到證實，建議才算是修正。",
   "autoscaling.planFixMax": "將上限提高到 {to, number}",

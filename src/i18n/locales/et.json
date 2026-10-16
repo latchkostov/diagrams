@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {{traffic}× liikluse korral simulatsioonis „{simulation}“} other {Simulatsioonis „{simulation}“}} ootas backlogis kuni {backlog, number} sõnumit, samal ajal kui {platform} replikaid käivitas. Hoidke {to, number} valmis (miinimum {from, number} → {to, number}).",
   "autoscaling.planAt": " ({metric})",
   "autoscaling.planStartup": "Kuni {count, number} sõnumit ootas replikate käivitumise ajal.",
-  "autoscaling.planVerified": "Sama seediga kordusjooks kinnitas seda.",
-  "autoscaling.planUnverified": "Sama seediga kordusjooks ei kinnitanud paranemist, seega parandust ei pakuta.",
   "autoscaling.planUnavailable": "Stsenaariumi dimensioneerimine pole selle diagrammi jaoks saadaval: „{simulation}“ vajab rohkem simuleeritud tööd, kui planeerimiseelarve lubab. Taasesitus näitab siiski, mis juhtub.",
   "autoscaling.planWhy": "Esitatud sama mootori ja seediga nagu taasesitus. Soovitus on parandus ainult siis, kui seda sisaldav kordusjooks seda kinnitab.",
   "autoscaling.planFixMax": "Tõsta maksimum väärtusele {to, number}",

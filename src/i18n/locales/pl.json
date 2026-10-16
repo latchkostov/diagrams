@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {Przy ruchu {traffic}× w symulacji „{simulation}”} other {W symulacji „{simulation}”}} podczas uruchamiania replik przez {platform} czekało do {backlog, number} wiadomości. Utrzymuj {to, number} w gotowości (minimum {from, number} → {to, number}).",
   "autoscaling.planAt": " przy {metric}",
   "autoscaling.planStartup": "Podczas uruchamiania replik czekało do {count, number} wiadomości.",
-  "autoscaling.planVerified": "Potwierdzone powtórką z tym samym ziarnem.",
-  "autoscaling.planUnverified": "Ponowne uruchomienie z tym samym ziarnem nie potwierdziło poprawy, więc nie proponujemy poprawki.",
   "autoscaling.planUnavailable": "Rozmiary wg scenariusza są niedostępne dla tego diagramu: symulacja „{simulation}” wymaga więcej symulowanej pracy, niż pozwala budżet planowania. Odtwarzanie nadal pokazuje, co się dzieje.",
   "autoscaling.planWhy": "Odtworzono tym samym silnikiem i ziarnem co odtwarzanie. Sugestia jest poprawką tylko wtedy, gdy potwierdzi ją ponowne uruchomienie z jej użyciem.",
   "autoscaling.planFixMax": "Zwiększ maksimum do {to, number}",

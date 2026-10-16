@@ -53,6 +53,8 @@ export interface Finding {
     simulation: string;
     traffic: number;
     platform?: string;
+    /** What this platform calls its replicas. */
+    unit?: "tasks" | "instances" | "replicas";
     from?: number;
     to?: number;
     wanted?: number;

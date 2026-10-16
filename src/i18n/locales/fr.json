@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {Avec un trafic à {traffic}× dans « {simulation} »} other {Dans « {simulation} »}}, jusqu’à {backlog, number} messages ont attendu pendant que {platform} démarrait des réplicas. Gardez {to, number} réplicas prêts (minimum {from, number} → {to, number}).",
   "autoscaling.planAt": ", avec {metric}",
   "autoscaling.planStartup": "Jusqu’à {count, number} messages ont attendu pendant le démarrage des réplicas.",
-  "autoscaling.planVerified": "Une réexécution avec la même graine l’a confirmé.",
-  "autoscaling.planUnverified": "Une réexécution avec la même graine n’a pas confirmé d’amélioration ; aucune correction n’est proposée.",
   "autoscaling.planUnavailable": "Le dimensionnement du scénario n’est pas disponible pour ce diagramme : « {simulation} » demande plus de travail simulé que le budget de planification ne le permet. La lecture montre quand même ce qui se passe.",
   "autoscaling.planWhy": "Joué avec le même moteur et la même graine que la lecture. Une suggestion n’est une correction que si une réexécution avec celle-ci la confirme.",
   "autoscaling.planFixMax": "Porter le maximum à {to, number}",

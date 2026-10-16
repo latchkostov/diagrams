@@ -128,7 +128,7 @@ export function CloudScalerFields({
       );
     return n(
       "target",
-      t("autoscaling.scaleOutThreshold"),
+      step?.metric === "cpu" ? t("autoscaling.stepCpuAbove") : t("autoscaling.scaleOutThreshold"),
       step?.threshold,
       (next, v) => {
         if (next.kind === "ecs") next.stepScaling[0].threshold = v;
@@ -266,7 +266,7 @@ export function CloudScalerFields({
               },
               { min: 1000 },
             ),
-            number("cooldown", t("autoscaling.cooldown"), rule.cooldownMs, (n, v) => {
+            number("cooldown", t("autoscaling.scaleCooldown"), rule.cooldownMs, (n, v) => {
               if (n.kind === "appService") for (const r of n.rules) r.cooldownMs = v;
             }),
           ]
@@ -327,9 +327,6 @@ export function CloudScalerFields({
         integer
         change={(v) => v !== undefined && patch((n) => void (n.maxReplicas = v), "max")}
       />
-      <p className="insp-note" data-testid="autoscaling-assumption">
-        {t("autoscaling.assumption")}
-      </p>
       <p className="insp-note" data-testid="autoscaling-approximate">
         {t("autoscaling.approximate", { platform })}
       </p>
@@ -401,7 +398,7 @@ export function CloudScalerFields({
         {resourceFields}
         <NumberField
           name="initial"
-          label={t("autoscaling.initial")}
+          label={t("autoscaling.initialCount", { unit })}
           value={c.initialReplicas}
           min={c.minReplicas}
           max={c.maxReplicas}

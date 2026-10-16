@@ -61,11 +61,13 @@ function ScenarioSizing({ diagram, simulation, node }: { diagram: DiagramFile; s
   return (
     <p data-testid="autoscaling-plan">
       <strong>{t("autoscaling.planLive")}</strong>{" "}
-      {planSentence(
-        suggestion
-          ? planDescriptor(plan, suggestion, names)
-          : { kind: "unavailable", name: names(node), simulation: plan.title, traffic: plan.traffic },
-      )}
+      <span data-testid="autoscaling-plan-text">
+        {planSentence(
+          suggestion
+            ? planDescriptor(plan, suggestion, names)
+            : { kind: "unavailable", name: names(node), simulation: plan.title, traffic: plan.traffic },
+        )}
+      </span>
     </p>
   );
 }
@@ -97,7 +99,17 @@ export function LiveDetails({
     return groups;
   }, [d, s.id]);
   const node = d.nodes.find((n) => n.id === s.id);
-  const broker = node ? resolveNodeProps(d, node).broker : undefined;
+  const resolved = node ? resolveNodeProps(d, node) : undefined;
+  const broker = resolved?.broker;
+  // A3 adapters size CPU against the task or instance allocation, so one CPU figure uses that denominator.
+  const res = resolved?.resources;
+  const allocation = res?.cpuLimitMilli ?? res?.availableCpuMilli;
+  const cpuAllocated =
+    resolved?.autoscaling?.mode === "on" && resolved.autoscaling.modelRevision === "a3" && res?.cpuRequestMilli
+      ? allocation
+        ? res.cpuRequestMilli / allocation
+        : undefined
+      : undefined;
   return (
     <>
       {s.resources && s.fleet && <ScalingAnnouncement label={node?.label ?? s.id} fleet={s.fleet} />}
@@ -115,8 +127,12 @@ export function LiveDetails({
             blocked: formatNumber(s.blocked ?? 0),
           })}
         </p>
-        <ResourceDetails metrics={s} readPage={readPage} />
-        {s.fleet && simulation && <ScenarioSizing diagram={d} simulation={simulation} node={s.id} />}
+        <ResourceDetails
+          metrics={s}
+          readPage={readPage}
+          cpuAllocated={cpuAllocated}
+          scenario={s.fleet && simulation && <ScenarioSizing diagram={d} simulation={simulation} node={s.id} />}
+        />
         {s.rejected !== undefined && (
           <p data-testid="planning-live-rejected">
             {t("admission.rejected")} · {formatNumber(s.rejected)}

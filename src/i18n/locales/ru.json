@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {При трафике {traffic}× в «{simulation}»} other {В «{simulation}»}}, пока {platform} запускает реплики, ожидает до {backlog, number} сообщений. Держите {to, number} в готовности (минимум {from, number} → {to, number}).",
   "autoscaling.planAt": " при {metric}",
   "autoscaling.planStartup": "Пока запускались реплики, ожидало до {count, number} сообщений.",
-  "autoscaling.planVerified": "Подтверждено повторным запуском с тем же seed.",
-  "autoscaling.planUnverified": "Повторный запуск с тем же seed не подтвердил улучшения, поэтому исправление не предлагается.",
   "autoscaling.planUnavailable": "Подбор размера по сценарию недоступен для этой схемы: «{simulation}» требует больше симулируемой работы, чем позволяет бюджет планирования. Воспроизведение по-прежнему показывает, что происходит.",
   "autoscaling.planWhy": "Запущено на том же движке и с тем же seed, что и воспроизведение. Предложение считается исправлением, только если повторный запуск с ним это подтверждает.",
   "autoscaling.planFixMax": "Увеличить максимум до {to, number}",

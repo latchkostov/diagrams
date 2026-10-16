@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {Simulaatiossa ”{simulation}” {traffic}× liikenteellä} other {Simulaatiossa ”{simulation}”}} jopa {backlog, number} viestiä odotti, kun {platform} käynnisti replikoita. Pidä {to, number} valmiina (vähintään {from, number} → {to, number}).",
   "autoscaling.planAt": ", kun mittari on {metric}",
   "autoscaling.planStartup": "Jopa {count, number} viestiä odotti replikoiden käynnistyessä.",
-  "autoscaling.planVerified": "Uusinta-ajo samalla siemenellä vahvisti sen.",
-  "autoscaling.planUnverified": "Uusinta-ajo samalla siemenellä ei vahvistanut parannusta, joten korjausta ei tarjota.",
   "autoscaling.planUnavailable": "Skenaarion mitoitus ei ole käytettävissä tälle kaaviolle: ”{simulation}” vaatii enemmän simuloitua työtä kuin suunnittelubudjetti sallii. Toisto näyttää silti, mitä tapahtuu.",
   "autoscaling.planWhy": "Ajettu samalla moottorilla ja siemenellä kuin toisto. Ehdotus on korjaus vain, kun uusinta-ajo sen kanssa vahvistaa sen.",
   "autoscaling.planFixMax": "Nosta enimmäismäärä arvoon {to, number}",

@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {ที่ทราฟฟิก {traffic}× ใน “{simulation}”} other {ใน “{simulation}”}} มีข้อความรอสูงสุด {backlog, number} ข้อความระหว่างที่ {platform} เริ่มเรพลิกา เตรียมพร้อมไว้ {to, number} (ต่ำสุด {from, number} → {to, number})",
   "autoscaling.planAt": " ที่ {metric}",
   "autoscaling.planStartup": "มีข้อความรอสูงสุด {count, number} ข้อความระหว่างที่เรพลิกากำลังเริ่ม",
-  "autoscaling.planVerified": "การรันซ้ำด้วย seed เดิมยืนยันผลแล้ว",
-  "autoscaling.planUnverified": "การรันซ้ำด้วย seed เดิมไม่ยืนยันว่าดีขึ้น จึงไม่เสนอการแก้ไข",
   "autoscaling.planUnavailable": "ใช้การกำหนดขนาดตามสถานการณ์กับไดอะแกรมนี้ไม่ได้: “{simulation}” ต้องใช้งานจำลองมากกว่างบประมาณการวางแผนที่อนุญาต การเล่นจำลองยังคงแสดงสิ่งที่เกิดขึ้น",
   "autoscaling.planWhy": "รันด้วยเอนจินและ seed เดียวกับการเล่นจำลอง คำแนะนำจะถือเป็นการแก้ไขก็ต่อเมื่อการรันซ้ำพร้อมคำแนะนำนั้นยืนยันผลได้",
   "autoscaling.planFixMax": "เพิ่มค่าสูงสุดเป็น {to, number}",

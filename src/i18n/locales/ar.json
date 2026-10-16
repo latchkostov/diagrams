@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {عند {traffic}× من حركة المرور في «{simulation}»} other {في «{simulation}»}}، انتظرت حتى {backlog, number} من الرسائل المتراكمة بينما كان {platform} يشغّل النسخ المتماثلة. أبقِ {to, number} جاهزة (الحد الأدنى {from, number} → {to, number}).",
   "autoscaling.planAt": " عند {metric}",
   "autoscaling.planStartup": "انتظرت حتى {count, number} من الرسائل أثناء بدء النسخ المتماثلة.",
-  "autoscaling.planVerified": "أكّدت ذلك إعادة تشغيل بالبذرة نفسها.",
-  "autoscaling.planUnverified": "لم تؤكّد إعادة التشغيل بالبذرة نفسها حدوث تحسّن، لذا لا يُقترح أي إصلاح.",
   "autoscaling.planUnavailable": "تحجيم السيناريو غير متاح لهذا المخطط: تحتاج «{simulation}» إلى عمل محاكى أكثر مما تسمح به ميزانية التخطيط. لا يزال التشغيل يعرض ما يحدث.",
   "autoscaling.planWhy": "شُغّل بالمحرك والبذرة نفسيهما المستخدمين في التشغيل. لا يُعد الاقتراح إصلاحًا إلا عندما تؤكده إعادة تشغيل تتضمنه.",
   "autoscaling.planFixMax": "رفع الحد الأقصى إلى {to, number}",

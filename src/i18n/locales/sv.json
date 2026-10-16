@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {Vid {traffic}× trafik i ”{simulation}”} other {I ”{simulation}”}} väntade upp till {backlog, number} meddelanden medan {platform} startade repliker. Håll {to, number} varma (minimum {from, number} → {to, number}).",
   "autoscaling.planAt": " vid {metric}",
   "autoscaling.planStartup": "Upp till {count, number} meddelanden väntade medan repliker startade.",
-  "autoscaling.planVerified": "En ny körning med samma seed bekräftade det.",
-  "autoscaling.planUnverified": "En ny körning med samma seed bekräftade ingen förbättring, så ingen åtgärd föreslås.",
   "autoscaling.planUnavailable": "Scenariodimensionering är inte tillgänglig för det här diagrammet: ”{simulation}” kräver mer simulerat arbete än planeringsbudgeten tillåter. Uppspelningen visar ändå vad som händer.",
   "autoscaling.planWhy": "Körd med samma motor och seed som uppspelningen. Ett förslag blir en åtgärd först när en ny körning med det bekräftar det.",
   "autoscaling.planFixMax": "Höj maximum till {to, number}",

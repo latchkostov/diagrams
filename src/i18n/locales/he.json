@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {בתעבורה של {traffic}× בסימולציה \"{simulation}\"} other {בסימולציה \"{simulation}\"}}, עד {backlog, number} הודעות המתינו בזמן ש-{platform} הפעיל רפליקות. השאירו {to, number} רפליקות מוכנות (מינימום {from, number} → {to, number}).",
   "autoscaling.planAt": ", עם {metric}",
   "autoscaling.planStartup": "עד {count, number} הודעות המתינו בזמן הפעלת הרפליקות.",
-  "autoscaling.planVerified": "הרצה חוזרת עם אותו seed אימתה זאת.",
-  "autoscaling.planUnverified": "הרצה חוזרת עם אותו seed לא אישרה שיפור, ולכן לא מוצע תיקון.",
   "autoscaling.planUnavailable": "התאמת גודל לתרחיש אינה זמינה לדיאגרמה זו: \"{simulation}\" דורשת יותר עבודה מדומה ממה שתקציב התכנון מאפשר. ההפעלה עדיין מראה מה קורה.",
   "autoscaling.planWhy": "הורץ עם אותו מנוע ואותו seed כמו ההפעלה. הצעה נחשבת לתיקון רק כשהרצה חוזרת איתה מאשרת אותה.",
   "autoscaling.planFixMax": "הגדלת המקסימום ל-{to, number}",

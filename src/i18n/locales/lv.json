@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {Pie {traffic}× datplūsmas simulācijā „{simulation}”} other {Simulācijā „{simulation}”}}, kamēr {platform} palaida replikas, gaidīja līdz {backlog, number} ziņojumiem. Uzturiet gatavībā {to, number} (minimums {from, number} → {to, number}).",
   "autoscaling.planAt": " pie {metric}",
   "autoscaling.planStartup": "Kamēr replikas tika palaistas, gaidīja līdz {count, number} ziņojumiem.",
-  "autoscaling.planVerified": "Apstiprināts, atkārtojot ar to pašu sēklu.",
-  "autoscaling.planUnverified": "Atkārtota palaišana ar to pašu sēklu neapstiprināja uzlabojumu, tāpēc labojums netiek piedāvāts.",
   "autoscaling.planUnavailable": "Izmēri pēc scenārija šai diagrammai nav pieejami: simulācijai „{simulation}” vajag vairāk simulēta darba, nekā atļauj plānošanas budžets. Atskaņošana joprojām parāda, kas notiek.",
   "autoscaling.planWhy": "Izpildīts ar to pašu dzinēju un sēklu kā atskaņošana. Ieteikums ir labojums tikai tad, ja to apstiprina atkārtota palaišana ar to.",
   "autoscaling.planFixMax": "Palielināt maksimumu līdz {to, number}",

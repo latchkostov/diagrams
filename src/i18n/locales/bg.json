@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {При {traffic}× трафик в „{simulation}“} other {В „{simulation}“}} до {backlog, number} натрупани съобщения чакаха, докато {platform} стартираше реплики. Поддържайте {to, number} в готовност (минимум {from, number} → {to, number}).",
   "autoscaling.planAt": " при {metric}",
   "autoscaling.planStartup": "До {count, number} съобщения чакаха, докато репликите стартираха.",
-  "autoscaling.planVerified": "Повторно изпълнение със същия seed го потвърди.",
-  "autoscaling.planUnverified": "Повторно изпълнение със същия seed не потвърди подобрение, затова не се предлага корекция.",
   "autoscaling.planUnavailable": "Оразмеряването по сценарий не е достъпно за тази диаграма: „{simulation}“ изисква повече симулирана работа, отколкото позволява бюджетът за планиране. Възпроизвеждането все пак показва какво се случва.",
   "autoscaling.planWhy": "Изпълнено със същия енджин и seed като възпроизвеждането. Предложението е корекция само ако повторно изпълнение с него го потвърди.",
   "autoscaling.planFixMax": "Увеличи максимума до {to, number}",

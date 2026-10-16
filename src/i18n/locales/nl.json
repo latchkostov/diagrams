@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {Bij {traffic}× verkeer in “{simulation}”} other {In “{simulation}”}} wachtten tot {backlog, number} berichten terwijl {platform} replica's startte. Houd {to, number} warm (minimum {from, number} → {to, number}).",
   "autoscaling.planAt": " bij {metric}",
   "autoscaling.planStartup": "Tot {count, number} berichten wachtten terwijl replica's startten.",
-  "autoscaling.planVerified": "Bevestigd door een herhaalde run met dezelfde seed.",
-  "autoscaling.planUnverified": "Een herhaalde run met dezelfde seed bevestigde geen verbetering, dus er wordt geen oplossing aangeboden.",
   "autoscaling.planUnavailable": "Scenariodimensionering is niet beschikbaar voor dit diagram: “{simulation}” vraagt meer gesimuleerd werk dan het planningsbudget toestaat. Afspelen laat nog steeds zien wat er gebeurt.",
   "autoscaling.planWhy": "Gespeeld met dezelfde engine en seed als het afspelen. Een suggestie is pas een oplossing als een herhaalde run ermee dat bevestigt.",
   "autoscaling.planFixMax": "Max verhogen naar {to, number}",

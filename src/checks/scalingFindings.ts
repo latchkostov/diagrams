@@ -27,25 +27,37 @@ const count = (n: number) => Math.round(n).toLocaleString("en-US");
 export function planMessage(plan: ScalingPlan, s: PlanSuggestion, names: (id: string) => string): string {
   const where = `${plan.traffic === 1 ? "In" : `At ${round(plan.traffic)}× traffic in`} “${plan.title}”`;
   const platform = PLATFORM[s.adapter];
-  const unit = UNIT[s.metricKind ?? ""] ?? "";
+  const unit =
+    s.adapter === "ecs" ? "tasks" : s.adapter === "appService" || s.adapter === "cloudRun" ? "instances" : "replicas";
+  const metricUnit = UNIT[s.metricKind ?? ""] ?? "";
   const at =
     s.metric !== undefined && s.target !== undefined
-      ? ` at ${round(s.metric)}${unit} (target ${round(s.target)}${unit})`
+      ? ` at ${round(s.metric)}${metricUnit} (target ${round(s.target)}${metricUnit})`
       : "";
   const startup =
-    s.startupBacklog > 0 ? ` Up to ${count(s.startupBacklog)} messages waited while replicas started.` : "";
-  const proof = s.fix ? " A same-seed rerun verified it." : " A same-seed rerun didn't confirm an improvement.";
+    s.kind === "max" && s.startupBacklog > 0
+      ? ` Up to ${count(s.startupBacklog)} messages waited while ${unit} started.`
+      : "";
+  const confirmed = " A rerun with this change confirmed it.";
   switch (s.kind) {
     case "max":
-      return `${where}, ${platform} hits max ${s.from}${at}. Raise max to ${s.to}.${proof}${startup}`;
+      return `${where}, ${platform} hits its maximum of ${s.from}${at}.${startup} ${
+        s.fix
+          ? `Raise the maximum to ${s.to}.${confirmed}`
+          : `Raising it to ${s.to} didn't help in a rerun, so no fix is offered.`
+      }`;
     case "partitions":
-      return `${where}, ${platform} wants ${s.wanted} replicas but only ${s.from} partitions of ${names(s.broker!)} can be read; more replicas would sit idle. Raise partitions to ${s.to}.${proof}`;
+      return `${where}, ${platform} wants ${s.wanted} ${unit}, but only ${s.from} partitions of ${names(s.broker!)} can be read. ${
+        s.fix
+          ? `Raise the partitions to ${s.to}.${confirmed}`
+          : `Raising them to ${s.to} didn't help in a rerun, so no fix is offered.`
+      }`;
     case "quota":
-      return `${where}, ${platform} hits max ${s.from}${at}, but an admission quota still refuses ${count(s.verified?.rejected ?? 0)} requests with more replicas. More replicas can't add allocation.`;
+      return `${where}, ${platform} hits its maximum of ${s.from}${at}, but an admission quota still refuses ${count(s.verified?.rejected ?? 0)} requests with a higher maximum. More capacity can't add allocation.`;
     case "target":
-      return `${where}, the backlog grew while ${platform} stayed below its target${at}. Lower the target to ${s.to} so it scales out.${proof}`;
+      return `${where}, the backlog grew while ${platform} stayed below its target${at}. Lower the target to ${s.to} so it scales out sooner.${confirmed}`;
     case "min":
-      return `${where}, up to ${count(s.startupBacklog)} messages waited while ${platform} started replicas. Keep ${s.to} warm (minimum ${s.from} → ${s.to}).${proof}`;
+      return `${where}, up to ${count(s.startupBacklog)} messages waited while ${platform} started ${unit}. Set the minimum to ${s.to} (from ${s.from}).${confirmed}`;
   }
 }
 
@@ -102,10 +114,10 @@ export function scalingFindings(ctx: CheckContext): Map<string, Finding> {
                   s.kind === "partitions"
                     ? `Set ${ctx.name(s.broker!)} partitions to ${s.to}`
                     : s.kind === "min"
-                      ? `Keep ${s.to} warm`
+                      ? `Set minimum to ${s.to}`
                       : s.kind === "target"
                         ? `Lower target to ${s.to}`
-                        : `Raise max to ${s.to}`,
+                        : `Raise maximum to ${s.to}`,
                 ops,
               },
             }

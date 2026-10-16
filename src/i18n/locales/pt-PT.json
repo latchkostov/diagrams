@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {Com {traffic}× o tráfego em “{simulation}”} other {Em “{simulation}”}}, até {backlog, number} mensagens ficaram em espera enquanto {platform} iniciava réplicas. Mantenha {to, number} prontas (mínimo {from, number} → {to, number}).",
   "autoscaling.planAt": " com {metric}",
   "autoscaling.planStartup": "Até {count, number} mensagens ficaram em espera enquanto as réplicas arrancavam.",
-  "autoscaling.planVerified": "Uma nova execução com a mesma semente confirmou-o.",
-  "autoscaling.planUnverified": "Uma nova execução com a mesma semente não confirmou uma melhoria, por isso não é proposta nenhuma correção.",
   "autoscaling.planUnavailable": "O dimensionamento do cenário não está disponível para este diagrama: “{simulation}” precisa de mais trabalho simulado do que o orçamento de planeamento permite. A reprodução continua a mostrar o que acontece.",
   "autoscaling.planWhy": "Executado com o mesmo motor e a mesma semente da reprodução. Uma sugestão só é uma correção quando uma nova execução com ela o comprova.",
   "autoscaling.planFixMax": "Aumentar o máximo para {to, number}",

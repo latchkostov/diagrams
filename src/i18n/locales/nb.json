@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {Ved {traffic}× trafikk i «{simulation}»} other {I «{simulation}»}} ventet opptil {backlog, number} meldinger mens {platform} startet replikaer. Hold {to, number} varme (minimum {from, number} → {to, number}).",
   "autoscaling.planAt": " ved {metric}",
   "autoscaling.planStartup": "Opptil {count, number} meldinger ventet mens replikaer startet.",
-  "autoscaling.planVerified": "En ny kjøring med samme frø bekreftet det.",
-  "autoscaling.planUnverified": "En ny kjøring med samme frø bekreftet ingen forbedring, så ingen løsning tilbys.",
   "autoscaling.planUnavailable": "Scenariodimensjonering er ikke tilgjengelig for dette diagrammet: «{simulation}» krever mer simulert arbeid enn planleggingsbudsjettet tillater. Avspillingen viser fortsatt hva som skjer.",
   "autoscaling.planWhy": "Kjørt med samme motor og frø som avspillingen. Et forslag er en løsning bare når en ny kjøring med det bekrefter det.",
   "autoscaling.planFixMax": "Øk maks til {to, number}",

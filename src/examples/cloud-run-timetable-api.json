@@ -4,7 +4,7 @@
     "revision": "p3-a1"
   },
   "title": "Timetable API sleeps overnight",
-  "description": "An invented commuter timetable API on Cloud Run. Overnight it has no instances; the first morning requests wait while instances start on demand, and the morning rush scales it out until its maximum binds. Check diagram's scenario sizing replays the rush and suggests a higher maximum, verified by a same-seed rerun. After the rush it returns to zero. Teaching timings: 2 s evaluation, 6/12 s concurrency windows, 4 s idle retention and 2 s cold starts are shortened assumptions; Cloud Run's real cadence and cold starts are not published guarantees.",
+  "description": "An invented commuter timetable API on Cloud Run. It sleeps overnight, starts instances on demand for the first requests, and hits its maximum in the morning rush; Check diagram suggests a higher one. Timings are shortened for teaching.",
   "nodes": [
     {
       "id": "source",
@@ -154,7 +154,7 @@
           "atMs": 44000,
           "action": {
             "do": "note",
-            "text": "The rush ends; idle instances go, back to zero.",
+            "text": "The rush ends; idle instances shut down, back to zero.",
             "focus": ["worker"]
           }
         }

@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {在“{simulation}”中流量为 {traffic}× 时} other {在“{simulation}”中}}，{platform} 启动副本期间最多有 {backlog, number} 条消息在等待。请保持 {to, number} 个预热副本（最小值 {from, number} → {to, number}）。",
   "autoscaling.planAt": "（此时 {metric}）",
   "autoscaling.planStartup": "副本启动期间最多有 {count, number} 条消息在等待。",
-  "autoscaling.planVerified": "使用相同种子重新运行已验证这一点。",
-  "autoscaling.planUnverified": "使用相同种子重新运行未确认有改善，因此不提供修复。",
   "autoscaling.planUnavailable": "此图表无法进行场景规模测算：“{simulation}”所需的模拟工作量超出了规划预算。回放仍会显示发生的情况。",
   "autoscaling.planWhy": "使用与回放相同的引擎和种子运行。只有带上该建议重新运行并得到证实，建议才算作修复。",
   "autoscaling.planFixMax": "将上限提高到 {to, number}",

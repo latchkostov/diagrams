@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {Με {traffic}× κίνηση στο «{simulation}»} other {Στο «{simulation}»}}, έως {backlog, number} μηνύματα σε backlog περίμεναν όσο {platform} εκκινούσε αντίγραφα. Διατηρήστε {to, number} σε ετοιμότητα (ελάχιστο {from, number} → {to, number}).",
   "autoscaling.planAt": " με {metric}",
   "autoscaling.planStartup": "Έως {count, number} μηνύματα περίμεναν όσο εκκινούσαν τα αντίγραφα.",
-  "autoscaling.planVerified": "Μια επανεκτέλεση με το ίδιο seed το επιβεβαίωσε.",
-  "autoscaling.planUnverified": "Μια επανεκτέλεση με το ίδιο seed δεν επιβεβαίωσε βελτίωση, οπότε δεν προτείνεται διόρθωση.",
   "autoscaling.planUnavailable": "Η διαστασιολόγηση σεναρίου δεν είναι διαθέσιμη για αυτό το διάγραμμα: το «{simulation}» χρειάζεται περισσότερη προσομοιωμένη εργασία από όση επιτρέπει ο προϋπολογισμός σχεδιασμού. Η αναπαραγωγή εξακολουθεί να δείχνει τι συμβαίνει.",
   "autoscaling.planWhy": "Εκτελέστηκε με την ίδια μηχανή και το ίδιο seed με την αναπαραγωγή. Μια πρόταση είναι διόρθωση μόνο όταν μια επανεκτέλεση με αυτήν το επιβεβαιώνει.",
   "autoscaling.planFixMax": "Αύξηση μέγιστου σε {to, number}",

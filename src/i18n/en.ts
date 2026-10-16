@@ -1991,62 +1991,68 @@ const en = {
   "autoscaling.cloudPreset":
     "{platform} · {variant, select, cpu {CPU target} alb {ALB requests} step {Step scaling} http {HTTP requests} event {Event rule} rules {Scale rules} other {Concurrency}}",
   "autoscaling.cloudReason":
-    "{reason, select, alarm {Waiting for the alarm: {periods, number} of {needed, number} periods} step {Step adjustment} rule {Scale rule} flapping {Deferred: scaling in would trigger a scale-out} request {Requests are waiting: starting instances on demand} default {A metric can't be read: default capacity} cooldown {Waiting for the cooldown} target {Target} tolerance {Within tolerance} missing {No data: keeping capacity} max {Maximum reached} other {Unknown}}",
+    "{reason, select, alarm {Waiting for the alarm: {periods, number} of {needed, number} periods} step {Step adjustment} rule {Scale rule} flapping {Deferred: scaling in would trigger a scale-out} request {Requests are waiting: adding capacity on demand} default {A metric can't be read: default capacity} cooldown {Waiting for the cooldown} target {Target} tolerance {Within tolerance} missing {No data: keeping capacity} max {Maximum reached} other {Unknown}}",
   "autoscaling.cloudMetric":
-    "{kind, select, cpuRequest {CPU {value}% of request (target {target}%)} memoryRequest {Memory {value}% of request (target {target}%)} cpuMilli {CPU {value}m per replica (target {target}m)} memoryMiB {Memory {value} MiB per replica (target {target} MiB)} backlog {{value} messages (target {target} per worker)} cpu {CPU {value}% of allocated CPU (target {target}%)} memory {Memory {value}% of allocated memory (target {target}%)} concurrency {Concurrency {value}% of the maximum (target {target}%)} httpRate {HTTP {value} requests/s (target {target} per replica)} albRequestCountPerTarget {{value} requests per target per minute (target {target})} albRequestCount {{value} requests per minute (threshold {target})} httpQueue {{value} queued requests per instance (threshold {target})} other {{value} (target {target})}}",
+    "{kind, select, cpuRequest {{value}% of the CPU request (target {target}%)} memoryRequest {{value}% of the memory request (target {target}%)} cpuMilli {{value}m CPU per replica (target {target}m)} memoryMiB {{value} MiB memory per replica (target {target} MiB)} backlog {{value} waiting messages (target {target} per worker)} cpu {{value}% of allocated CPU (target {target}%)} memory {{value}% of allocated memory (target {target}%)} concurrency {{value}% of maximum concurrency (target {target}%)} httpRate {{value} HTTP requests/s (target {target} per replica)} albRequestCountPerTarget {{value} requests per task per minute (target {target})} albRequestCount {{value} load balancer requests per minute (threshold {target})} httpQueue {{value} queued requests per instance (threshold {target})} other {{value} (target {target})}}",
   "autoscaling.minCount":
     "{unit, select, tasks {Minimum tasks} instances {Minimum instances} other {Minimum replicas}}",
   "autoscaling.maxCount":
     "{unit, select, tasks {Maximum tasks} instances {Maximum instances} other {Maximum replicas}}",
+  "autoscaling.initialCount":
+    "{unit, select, tasks {Initially running tasks} instances {Initially running instances} other {Initially ready replicas}}",
   "autoscaling.taskCpuTarget": "CPU target (% of task CPU)",
-  "autoscaling.albTarget": "Requests per target per minute",
+  "autoscaling.albTarget": "Requests per task per minute (ALB)",
   "autoscaling.loadBalancer": "Load balancer",
   "autoscaling.httpTarget": "HTTP requests per second, per replica",
-  "autoscaling.concurrency": "Maximum concurrent requests per instance",
+  "autoscaling.concurrency": "Concurrency (requests per instance)",
   "autoscaling.concurrencyTarget": "Concurrency target (% of maximum)",
   "autoscaling.instanceCpuTarget": "CPU target (% of instance CPU)",
   "autoscaling.scaleOutAbove": "Scale out above CPU (% of instance)",
   "autoscaling.scaleInBelow": "Scale in below CPU (% of instance)",
+  "autoscaling.stepCpuAbove": "Scale out above CPU (% of task CPU)",
   "autoscaling.metricPeriod": "Metric period (ms)",
   "autoscaling.alarmOut": "Alarm periods to scale out (assumption)",
   "autoscaling.alarmIn": "Alarm periods to scale in (assumption)",
   "autoscaling.scaleOutCooldown": "Scale-out cooldown (ms)",
   "autoscaling.scaleInCooldown": "Scale-in cooldown (ms)",
+  "autoscaling.scaleCooldown": "Cooldown after scaling (ms)",
   "autoscaling.evaluation": "Evaluation interval (ms, assumption)",
   "autoscaling.ruleWindow": "Rule window (ms)",
   "autoscaling.scaleInDelay": "Idle instance retention (ms, assumption)",
   "autoscaling.cloudPolicy": "Policy (JSON)",
   "autoscaling.approximate":
-    "Approximate {platform} adapter. Settings marked as assumptions are not vendor guarantees; inspect Advanced.",
+    "An approximation of {platform} scaling. Workload costs and settings marked “assumption” are estimates, not {platform} guarantees.",
+  "autoscaling.cpuAllocated": "CPU: {value}% of allocated",
   "autoscaling.alarmPeriods": "Alarm: {periods, number} of {needed, number} periods",
   "autoscaling.planTitle": "{name}: scenario sizing",
   "autoscaling.planMax":
-    "{scaled, select, true {At {traffic}× traffic in “{simulation}”} other {In “{simulation}”}}, {platform} hits its maximum of {from, number}{metric}. Raise the maximum to {to, number}.",
+    "{scaled, select, true {At {traffic}× traffic in “{simulation}”} other {In “{simulation}”}}, {platform} hits its maximum of {from, number}{metric}.{startup} {verified, select, true {Raise the maximum to {to, number}. A rerun with this change confirmed it.} other {Raising it to {to, number} didn't help in a rerun, so no fix is offered.}}",
   "autoscaling.planPartitions":
-    "{scaled, select, true {At {traffic}× traffic in “{simulation}”} other {In “{simulation}”}}, {platform} wants {wanted, number} replicas but only {from, number} partitions of {broker} can be read. Raise the partitions to {to, number}.",
+    "{scaled, select, true {At {traffic}× traffic in “{simulation}”} other {In “{simulation}”}}, {platform} wants {wanted, number} {unit, select, tasks {tasks} instances {instances} other {replicas}}, but only {from, number} partitions of {broker} can be read. {verified, select, true {Raise the partitions to {to, number}. A rerun with this change confirmed it.} other {Raising them to {to, number} didn't help in a rerun, so no fix is offered.}}",
   "autoscaling.planQuota":
-    "{scaled, select, true {At {traffic}× traffic in “{simulation}”} other {In “{simulation}”}}, {platform} hits its maximum of {from, number}, but an admission quota still refuses {rejected, number} requests with more replicas. More replicas can't add allocation.",
+    "{scaled, select, true {At {traffic}× traffic in “{simulation}”} other {In “{simulation}”}}, {platform} hits its maximum of {from, number}, but an admission quota still refuses {rejected, number} requests with a higher maximum. More capacity can't add allocation.",
   "autoscaling.planMin":
-    "{scaled, select, true {At {traffic}× traffic in “{simulation}”} other {In “{simulation}”}}, up to {backlog, number} messages waited while {platform} started replicas. Keep {to, number} warm (minimum {from, number} → {to, number}).",
+    "{scaled, select, true {At {traffic}× traffic in “{simulation}”} other {In “{simulation}”}}, up to {backlog, number} messages waited while {platform} started {unit, select, tasks {tasks} instances {instances} other {replicas}}. Set the minimum to {to, number} (from {from, number}). A rerun with this change confirmed it.",
   "autoscaling.planAt": " at {metric}",
   "autoscaling.planTarget":
-    "{scaled, select, true {At {traffic}× traffic in “{simulation}”} other {In “{simulation}”}}, the backlog grew while {platform} stayed below its target{metric}. Lower the target to {to, number} so it scales out.",
+    "{scaled, select, true {At {traffic}× traffic in “{simulation}”} other {In “{simulation}”}}, the backlog grew while {platform} stayed below its target{metric}. Lower the target to {to, number} so it scales out sooner. A rerun with this change confirmed it.",
   "autoscaling.planFixTarget": "Lower target to {to, number}",
-  "autoscaling.planStartup": "Up to {count, number} messages waited while replicas started.",
-  "autoscaling.planVerified": "A same-seed rerun verified it.",
-  "autoscaling.planUnverified": "A same-seed rerun didn't confirm an improvement, so no fix is offered.",
+  "autoscaling.planStartup":
+    " Up to {count, number} messages waited while {unit, select, tasks {tasks} instances {instances} other {replicas}} started.",
   "autoscaling.planUnavailable":
     "Scenario sizing is unavailable for this diagram: “{simulation}” needs more simulated work than the planning budget allows. Playback still shows what happens.",
   "autoscaling.planWhy":
     "Played with the same engine and seed as playback. A suggestion is a fix only when a rerun with it bears it out.",
-  "autoscaling.planFixMax": "Raise max to {to, number}",
-  "autoscaling.planFixMin": "Keep {to, number} warm",
+  "autoscaling.planFixMax": "Raise maximum to {to, number}",
+  "autoscaling.planFixMin": "Set minimum to {to, number}",
   "autoscaling.planFixPartitions": "Set {name} partitions to {to, number}",
   "autoscaling.planLive": "Scenario sizing",
   "autoscaling.taskMemoryTarget": "Memory target (% of task memory)",
   "autoscaling.scaleOutThreshold": "Scale-out threshold",
   "autoscaling.lbRequired":
-    "Connect a load balancer with a request flow to this service, then choose it in Advanced. This preset is not saved until a load balancer is selected.",
+    "Connect a load balancer with a request flow to this service, then choose it below. This preset isn't saved until you do.",
+  "autoscaling.busRequired":
+    "Connect a Service Bus queue to this app, then choose it below. This preset isn't saved until you do.",
   "autoscaling.docs": "{platform} scaling documentation",
 } as const;
 export default en;

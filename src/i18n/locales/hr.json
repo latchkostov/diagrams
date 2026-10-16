@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {Pri {traffic}× prometu u simulaciji „{simulation}”} other {U simulaciji „{simulation}”}}, do {backlog, number} poruka čekalo je dok je {platform} pokretao replike. Držite {to, number} replika spremnima (minimum {from, number} → {to, number}).",
   "autoscaling.planAt": ", uz {metric}",
   "autoscaling.planStartup": "Do {count, number} poruka čekalo je dok su se replike pokretale.",
-  "autoscaling.planVerified": "Ponovno pokretanje s istim sjemenom to je potvrdilo.",
-  "autoscaling.planUnverified": "Ponovno pokretanje s istim sjemenom nije potvrdilo poboljšanje, pa popravak nije ponuđen.",
   "autoscaling.planUnavailable": "Dimenzioniranje scenarija nije dostupno za ovaj dijagram: simulacija „{simulation}” zahtijeva više rada nego što proračun planiranja dopušta. Reprodukcija i dalje prikazuje što se događa.",
   "autoscaling.planWhy": "Izvedeno istim pogonom i sjemenom kao reprodukcija. Prijedlog je popravak samo kad ga ponovno pokretanje s njim potvrdi.",
   "autoscaling.planFixMax": "Povećaj maksimum na {to, number}",

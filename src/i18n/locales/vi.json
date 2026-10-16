@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {Ở mức lưu lượng {traffic}× trong “{simulation}”} other {Trong “{simulation}”}}, tối đa {backlog, number} thông điệp phải chờ trong khi {platform} khởi động bản sao. Hãy giữ sẵn {to, number} (tối thiểu {from, number} → {to, number}).",
   "autoscaling.planAt": " khi {metric}",
   "autoscaling.planStartup": "Tối đa {count, number} thông điệp phải chờ trong khi bản sao khởi động.",
-  "autoscaling.planVerified": "Chạy lại với cùng seed đã xác nhận điều này.",
-  "autoscaling.planUnverified": "Lần chạy lại với cùng seed không xác nhận được cải thiện, nên không đề xuất cách khắc phục.",
   "autoscaling.planUnavailable": "Không thể định cỡ theo kịch bản cho sơ đồ này: “{simulation}” cần nhiều công việc mô phỏng hơn ngân sách lập kế hoạch cho phép. Phần phát lại vẫn cho thấy điều gì xảy ra.",
   "autoscaling.planWhy": "Chạy bằng cùng bộ máy và seed như phần phát lại. Một đề xuất chỉ là cách khắc phục khi lần chạy lại với nó chứng minh được điều đó.",
   "autoscaling.planFixMax": "Tăng tối đa lên {to, number}",

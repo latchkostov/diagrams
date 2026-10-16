@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {Pri {traffic}× prevádzke v „{simulation}“} other {V „{simulation}“}} čakalo až {backlog, number} správ, kým {platform} spúšťa repliky. Udržujte {to, number} pripravené (minimum {from, number} → {to, number}).",
   "autoscaling.planAt": " pri {metric}",
   "autoscaling.planStartup": "Kým sa repliky spúšťali, čakalo až {count, number} správ.",
-  "autoscaling.planVerified": "Overené opakovaným spustením s rovnakým seedom.",
-  "autoscaling.planUnverified": "Opakované spustenie s rovnakým seedom nepotvrdilo zlepšenie, preto sa oprava neponúka.",
   "autoscaling.planUnavailable": "Dimenzovanie podľa scenára nie je pre tento diagram k dispozícii: „{simulation}“ vyžaduje viac simulovanej práce, než povoľuje rozpočet plánovania. Prehrávanie stále ukazuje, čo sa deje.",
   "autoscaling.planWhy": "Spustené s rovnakým jadrom a seedom ako prehrávanie. Návrh je opravou, iba ak ho potvrdí opakované spustenie s ním.",
   "autoscaling.planFixMax": "Zvýšiť maximum na {to, number}",

@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {La trafic de {traffic}× în „{simulation}”} other {În „{simulation}”}}, până la {backlog, number} mesaje au așteptat cât timp {platform} pornea replici. Păstrați {to, number} pregătite (minim {from, number} → {to, number}).",
   "autoscaling.planAt": " la {metric}",
   "autoscaling.planStartup": "Până la {count, number} mesaje au așteptat cât timp porneau replicile.",
-  "autoscaling.planVerified": "O rulare repetată cu același seed a confirmat.",
-  "autoscaling.planUnverified": "O rulare repetată cu același seed nu a confirmat o îmbunătățire, deci nu se oferă nicio corecție.",
   "autoscaling.planUnavailable": "Dimensionarea scenariului nu este disponibilă pentru această diagramă: „{simulation}” necesită mai multă muncă simulată decât permite bugetul de planificare. Redarea arată în continuare ce se întâmplă.",
   "autoscaling.planWhy": "Rulat cu același motor și același seed ca redarea. O sugestie este o corecție doar dacă o rulare repetată cu ea o confirmă.",
   "autoscaling.planFixMax": "Măriți maximul la {to, number}",

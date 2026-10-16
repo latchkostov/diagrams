@@ -25,6 +25,8 @@ export function planDescriptor(
     simulation: plan.title,
     traffic: plan.traffic,
     platform: PLATFORM[s.adapter],
+    unit:
+      s.adapter === "ecs" ? "tasks" : s.adapter === "appService" || s.adapter === "cloudRun" ? "instances" : "replicas",
     from: s.from,
     to: s.to,
     wanted: s.wanted,
@@ -51,40 +53,42 @@ export function planSentence(p: Plan): string {
   if (p.kind === "unavailable") return t("autoscaling.planUnavailable", { simulation: p.simulation });
   const where = { scaled: String(p.traffic !== 1), traffic: n(p.traffic), simulation: p.simulation };
   const platform = p.platform ?? "";
+  const unit = p.unit ?? "replicas";
+  const verified = String(!!p.verified);
   const metric =
     p.metric !== undefined && p.target !== undefined
       ? t("autoscaling.planAt", { metric: metricPhrase(p.metricKind, p.metric, p.target) })
       : "";
-  const proof =
-    p.kind === "quota" ? "" : ` ${p.verified ? t("autoscaling.planVerified") : t("autoscaling.planUnverified")}`;
+  // Facts first, then the startup backlog, then the advice and what the rerun showed.
   const startup =
     p.kind === "max" && (p.startupBacklog ?? 0) > 0
-      ? ` ${t("autoscaling.planStartup", { count: p.startupBacklog ?? 0 })}`
+      ? t("autoscaling.planStartup", { count: p.startupBacklog ?? 0, unit })
       : "";
-  const sentence =
-    p.kind === "max"
-      ? t("autoscaling.planMax", { ...where, platform, from: p.from ?? 0, to: p.to ?? 0, metric })
-      : p.kind === "partitions"
-        ? t("autoscaling.planPartitions", {
-            ...where,
-            platform,
-            wanted: p.wanted ?? 0,
-            from: p.from ?? 0,
-            to: p.to ?? 0,
-            broker: p.broker ?? "",
-          })
-        : p.kind === "quota"
-          ? t("autoscaling.planQuota", { ...where, platform, from: p.from ?? 0, rejected: p.rejected ?? 0 })
-          : p.kind === "target"
-            ? t("autoscaling.planTarget", { ...where, platform, metric, to: p.to ?? 0 })
-            : t("autoscaling.planMin", {
-                ...where,
-                platform,
-                backlog: p.startupBacklog ?? 0,
-                from: p.from ?? 0,
-                to: p.to ?? 0,
-              });
-  return `${sentence}${proof}${startup}`;
+  return p.kind === "max"
+    ? t("autoscaling.planMax", { ...where, platform, from: p.from ?? 0, to: p.to ?? 0, metric, startup, verified })
+    : p.kind === "partitions"
+      ? t("autoscaling.planPartitions", {
+          ...where,
+          platform,
+          unit,
+          wanted: p.wanted ?? 0,
+          from: p.from ?? 0,
+          to: p.to ?? 0,
+          broker: p.broker ?? "",
+          verified,
+        })
+      : p.kind === "quota"
+        ? t("autoscaling.planQuota", { ...where, platform, from: p.from ?? 0, rejected: p.rejected ?? 0 })
+        : p.kind === "target"
+          ? t("autoscaling.planTarget", { ...where, platform, metric, to: p.to ?? 0 })
+          : t("autoscaling.planMin", {
+              ...where,
+              platform,
+              unit,
+              backlog: p.startupBacklog ?? 0,
+              from: p.from ?? 0,
+              to: p.to ?? 0,
+            });
 }
 
 export function planFixLabel(p: Plan): string | undefined {

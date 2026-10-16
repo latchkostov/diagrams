@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {За {traffic}× трафіку в «{simulation}»} other {У «{simulation}»}} під час запуску реплік у {platform} чекало до {backlog, number} повідомлень. Тримайте напоготові {to, number} (мінімум {from, number} → {to, number}).",
   "autoscaling.planAt": " при {metric}",
   "autoscaling.planStartup": "Під час запуску реплік чекало до {count, number} повідомлень.",
-  "autoscaling.planVerified": "Повторний запуск з тим самим seed це підтвердив.",
-  "autoscaling.planUnverified": "Повторний запуск з тим самим seed не підтвердив покращення, тому виправлення не пропонується.",
   "autoscaling.planUnavailable": "Розрахунок за сценарієм недоступний для цієї діаграми: «{simulation}» потребує більше симульованої роботи, ніж дозволяє бюджет планування. Відтворення все одно показує, що відбувається.",
   "autoscaling.planWhy": "Виконано тим самим рушієм і з тим самим seed, що й відтворення. Пропозиція стає виправленням, лише коли повторний запуск із нею це підтверджує.",
   "autoscaling.planFixMax": "Збільшити максимум до {to, number}",

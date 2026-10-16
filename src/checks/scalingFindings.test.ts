@@ -10,12 +10,12 @@ describe("scenario sizing in Checks", () => {
     const d = plannerFixture();
     const finding = runChecks(d).findings.find((f) => f.id === "capacity:worker")!;
     expect(finding.scalingPlan).toMatchObject({ kind: "max", from: 10, to: 14, verified: true, platform: "HPA" });
-    expect(finding.message).toContain("At 3× traffic in “Black Friday”, HPA hits max 10");
-    expect(finding.message).toContain("Raise max to 14");
+    expect(finding.message).toContain("At 3× traffic in “Black Friday”, HPA hits its maximum of 10");
+    expect(finding.message).toContain("Raise the maximum to 14");
     expect(finding.fix!.ops).toHaveLength(1);
     const shown = presentFinding(finding);
     expect(shown.message).toContain("Raise the maximum to 14");
-    expect(shown.fix!.label).toBe("Raise max to 14");
+    expect(shown.fix!.label).toBe("Raise maximum to 14");
     // The same result the planner returns to agents and playback.
     expect(finding.fix!.ops![0]).toMatchObject({
       op: "update",

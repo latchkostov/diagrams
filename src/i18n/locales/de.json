@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {Bei {traffic}× Traffic in „{simulation}“} other {In „{simulation}“}} warteten bis zu {backlog, number} Nachrichten, während {platform} Replikate startete. Halten Sie {to, number} warm (Minimum {from, number} → {to, number}).",
   "autoscaling.planAt": " bei {metric}",
   "autoscaling.planStartup": "Bis zu {count, number} Nachrichten warteten, während Replikate starteten.",
-  "autoscaling.planVerified": "Ein erneuter Lauf mit demselben Seed hat es bestätigt.",
-  "autoscaling.planUnverified": "Ein erneuter Lauf mit demselben Seed hat keine Verbesserung bestätigt, daher wird keine Korrektur angeboten.",
   "autoscaling.planUnavailable": "Die Szenariodimensionierung ist für dieses Diagramm nicht verfügbar: „{simulation}“ erfordert mehr simulierte Arbeit, als das Planungsbudget erlaubt. Die Wiedergabe zeigt trotzdem, was passiert.",
   "autoscaling.planWhy": "Mit derselben Engine und demselben Seed wie die Wiedergabe abgespielt. Ein Vorschlag gilt nur dann als Korrektur, wenn ein erneuter Lauf mit ihm das bestätigt.",
   "autoscaling.planFixMax": "Maximum auf {to, number} erhöhen",

@@ -1733,8 +1733,6 @@
     "autoscaling.planMin": "408fb6a1",
     "autoscaling.planAt": "e974c79a",
     "autoscaling.planStartup": "bcf95f1a",
-    "autoscaling.planVerified": "f5b3aa03",
-    "autoscaling.planUnverified": "5d693958",
     "autoscaling.planUnavailable": "2eb62c8e",
     "autoscaling.planWhy": "c3bb53a5",
     "autoscaling.planFixMax": "cbc0d832",

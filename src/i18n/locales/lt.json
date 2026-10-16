@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {Esant {traffic}× srautui simuliacijoje „{simulation}“} other {Simuliacijoje „{simulation}“}}, kol {platform} paleido replikas, laukė iki {backlog, number} pranešimų. Laikykite paruoštų replikų: {to, number} (mažiausiai {from, number} → {to, number}).",
   "autoscaling.planAt": " esant {metric}",
   "autoscaling.planStartup": "Kol replikos buvo paleidžiamos, laukė iki {count, number} pranešimų.",
-  "autoscaling.planVerified": "Patvirtinta pakartojus su ta pačia sėkla.",
-  "autoscaling.planUnverified": "Pakartotinis paleidimas su ta pačia sėkla nepatvirtino pagerėjimo, todėl pataisymas nesiūlomas.",
   "autoscaling.planUnavailable": "Šiai diagramai dydžiai pagal scenarijų negalimi: simuliacijai „{simulation}“ reikia daugiau simuliuojamo darbo, nei leidžia planavimo biudžetas. Atkūrimas vis tiek rodo, kas vyksta.",
   "autoscaling.planWhy": "Paleista tuo pačiu varikliu ir sėkla kaip atkūrimas. Pasiūlymas laikomas pataisymu tik tada, kai tai patvirtina pakartotinis paleidimas su juo.",
   "autoscaling.planFixMax": "Padidinti ribą iki {to, number}",

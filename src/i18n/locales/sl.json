@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {Pri {traffic}× prometu v „{simulation}“} other {V „{simulation}“}} je med zagonom replik {platform} čakalo do {backlog, number} sporočil. Ohranite {to, number} pripravljenih (najmanj {from, number} → {to, number}).",
   "autoscaling.planAt": " pri {metric}",
   "autoscaling.planStartup": "Med zagonom replik je čakalo do {count, number} sporočil.",
-  "autoscaling.planVerified": "Ponovni zagon z enakim semenom je to potrdil.",
-  "autoscaling.planUnverified": "Ponovni zagon z enakim semenom ni potrdil izboljšave, zato popravek ni na voljo.",
   "autoscaling.planUnavailable": "Dimenzioniranje po scenariju za ta diagram ni na voljo: „{simulation}“ zahteva več simuliranega dela, kot ga dovoljuje proračun načrtovanja. Predvajanje še vedno prikazuje, kaj se zgodi.",
   "autoscaling.planWhy": "Izvedeno z istim pogonom in semenom kot predvajanje. Predlog je popravek le, če ga ponovni zagon z njim potrdi.",
   "autoscaling.planFixMax": "Povečaj največje število na {to, number}",

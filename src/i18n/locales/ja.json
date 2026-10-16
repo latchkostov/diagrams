@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {「{simulation}」でトラフィックが {traffic}× のとき} other {「{simulation}」では}}、{platform} がレプリカを起動する間に最大 {backlog, number} 件のメッセージが待機しました。{to, number} 個をウォーム状態で維持してください（最小 {from, number} → {to, number}）。",
   "autoscaling.planAt": "（{metric} 時）",
   "autoscaling.planStartup": "レプリカの起動中に最大 {count, number} 件のメッセージが待機しました。",
-  "autoscaling.planVerified": "同じシードでの再実行で検証済みです。",
-  "autoscaling.planUnverified": "同じシードでの再実行で改善を確認できなかったため、修正は提示されません。",
   "autoscaling.planUnavailable": "このダイアグラムではシナリオに基づくサイジングを利用できません。「{simulation}」に必要なシミュレーション量が計画の上限を超えています。再生では引き続き動作を確認できます。",
   "autoscaling.planWhy": "再生と同じエンジンとシードで実行しています。提案は、それを適用した再実行で効果が確認された場合にのみ修正となります。",
   "autoscaling.planFixMax": "最大値を {to, number} に上げる",

@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {Con traffico {traffic}× nella simulazione «{simulation}»} other {Nella simulazione «{simulation}»}}, fino a {backlog, number} messaggi hanno atteso mentre {platform} avviava le repliche. Tieni pronte {to, number} repliche (minimo {from, number} → {to, number}).",
   "autoscaling.planAt": " con {metric}",
   "autoscaling.planStartup": "Fino a {count, number} messaggi hanno atteso durante l’avvio delle repliche.",
-  "autoscaling.planVerified": "Una riesecuzione con lo stesso seed l’ha verificato.",
-  "autoscaling.planUnverified": "Una riesecuzione con lo stesso seed non ha confermato un miglioramento, quindi non viene proposta alcuna correzione.",
   "autoscaling.planUnavailable": "Il dimensionamento dello scenario non è disponibile per questo diagramma: «{simulation}» richiede più lavoro di simulazione di quanto consenta il budget di pianificazione. La riproduzione mostra comunque cosa succede.",
   "autoscaling.planWhy": "Eseguito con lo stesso motore e seed della riproduzione. Un suggerimento è una correzione solo se una riesecuzione con esso lo conferma.",
   "autoscaling.planFixMax": "Aumenta il massimo a {to, number}",

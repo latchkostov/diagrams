@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { RealNodeMetrics } from "../sim/types";
 import type { ReplicaRow } from "../sim/autoscaling";
 import type { ResourcePlan } from "../sim/resourcePlanning";
@@ -58,9 +58,15 @@ export function ResourceEstimate({ plan: p }: { plan: ResourcePlan }) {
 export function ResourceDetails({
   metrics: s,
   readPage,
+  scenario,
+  cpuAllocated,
 }: {
   metrics: RealNodeMetrics;
   readPage?: (page: number) => ReplicaRow[];
+  /** Scenario sizing for the simulation playing: shown right after the counts. */
+  scenario?: ReactNode;
+  /** A3 adapters measure CPU against the allocated size: request ÷ allocation converts the request percent. */
+  cpuAllocated?: number;
 }) {
   const [page, setPage] = useState(0);
   const r = s.resources,
@@ -80,13 +86,21 @@ export function ResourceDetails({
     <div data-testid="autoscaling-live-details">
       {r.unmeasured && <p>{t("autoscaling.unmeasured")}</p>}
       <p data-testid="autoscaling-counts">{t("autoscaling.counts", f)}</p>
+      {scenario}
       <p data-testid="autoscaling-cpu">
-        {t("autoscaling.cpu", {
-          value:
-            r.cpuRequestPct === undefined
-              ? t("admission.unknownShort")
-              : formatNumber(r.cpuRequestPct, { maximumFractionDigits: 1 }),
-        })}
+        {cpuAllocated !== undefined
+          ? t("autoscaling.cpuAllocated", {
+              value:
+                r.cpuRequestPct === undefined
+                  ? t("admission.unknownShort")
+                  : formatNumber(r.cpuRequestPct * cpuAllocated, { maximumFractionDigits: 1 }),
+            })
+          : t("autoscaling.cpu", {
+              value:
+                r.cpuRequestPct === undefined
+                  ? t("admission.unknownShort")
+                  : formatNumber(r.cpuRequestPct, { maximumFractionDigits: 1 }),
+            })}
       </p>
       <p data-testid="autoscaling-memory">
         {t("autoscaling.memoryValue", {

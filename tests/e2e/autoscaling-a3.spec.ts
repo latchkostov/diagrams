@@ -148,7 +148,7 @@ test("Cloud Run showcase: sleeps, wakes on demand, hits its maximum with scenari
   await page.getByTestId("node-worker").dblclick();
   await page.getByTestId("planning-live-details-toggle").click();
   // Playback shows the planner's own verified suggestion, the same words Checks uses.
-  await expect(page.getByTestId("autoscaling-plan")).toContainText("Raise the maximum to 11");
+  await expect(page.getByTestId("autoscaling-plan-text")).toContainText("Raise the maximum to 11");
   await page.getByTestId("autoscaling-why-toggle").click();
   await expect(page.getByTestId("autoscaling-reason")).toBeVisible();
   await expect(page.getByTestId("autoscaling-metric")).toContainText("CPU");
@@ -176,11 +176,57 @@ test("Checks: the scenario sizing fix raises the maximum in one undo step", asyn
   await expect(page.getByTestId("checks-count")).toHaveText("1 warning", { timeout: 30_000 });
   await page.getByTestId("checks-count").click();
   const fix = page.getByTestId("check-fix-capacity:worker");
-  await expect(fix).toHaveText(/Raise max to 11/);
+  await expect(fix).toHaveText(/Raise maximum to 11/);
   await fix.click();
   await expect.poll(async () => (await policyOf(page))?.controller).toMatchObject({ maxReplicas: 11 });
   await expect(page.getByTestId("checks-count")).toHaveCount(0);
   await page.getByTestId("check-fix-undo").click();
   await expect.poll(async () => (await policyOf(page))?.controller).toMatchObject({ maxReplicas: 6 });
   expectNoErrors(consoleErrors);
+});
+
+test("Container Apps event preset: an explicit Service Bus choice focuses the target", async ({
+  page,
+  consoleErrors,
+}) => {
+  const d = fixed("aca-event");
+  d.nodes.push({ id: "queue2", stencil: "azure.service-bus.queue", label: "Refund jobs", x: 80, y: 420, props: {} });
+  d.edges.push({ id: "consume2", from: "queue2", to: "worker", kind: "async", props: { travelMs: 10 } });
+  await seed(page, d);
+  await page.getByTestId("autoscaling-preset").selectOption("cloud-aca-event");
+  await expect(page.getByTestId("autoscaling-binding")).toContainText("Service Bus queue");
+  expect(await policyOf(page)).toBeUndefined();
+  await page.getByTestId("autoscaling-source-select").selectOption(JSON.stringify(["queue2", undefined]));
+  await expect(page.getByTestId("autoscaling-target")).toBeFocused();
+  await expect(page.getByTestId("autoscaling-target")).toHaveValue("5");
+  await expect
+    .poll(async () => (await policyOf(page))?.controller)
+    .toMatchObject({ kind: "aca", triggers: [{ type: "azure-servicebus", source: { node: "queue2" } }] });
+  expectNoErrors(consoleErrors);
+});
+
+test("ECS ALB preset without a load balancer explains how to connect one and saves nothing", async ({ page }) => {
+  const d = fixed("ecs-alb");
+  d.edges = d.edges.filter((e) => e.id !== "requests");
+  await seed(page, d);
+  await page.getByTestId("autoscaling-preset").selectOption("cloud-ecs-alb");
+  await expect(page.getByTestId("autoscaling-binding")).toContainText("Connect a load balancer");
+  await expect(page.getByTestId("autoscaling-source-select")).toBeDisabled();
+  expect(await policyOf(page)).toBeUndefined();
+});
+
+test("Checks and live playback show the same scenario sizing sentence", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await gotoCanvas(page, slug);
+  await expect(page.getByTestId("checks-count")).toHaveText("1 warning", { timeout: 30_000 });
+  await page.getByTestId("checks-count").click();
+  const checks = (await page.getByTestId("check-select-capacity:worker").textContent()) ?? "";
+  await page.clock.install();
+  await gotoLive(page, `./?view=canvas&example=${slug}&live=1&sim=morning-rush&paused=1`);
+  await pauseClock(page);
+  await page.getByTestId("node-worker").dblclick();
+  await page.getByTestId("planning-live-details-toggle").click();
+  const live = page.getByTestId("autoscaling-plan-text");
+  await expect(live).toContainText("Raise the maximum to 11");
+  expect(checks).toContain((await live.textContent()) ?? "missing");
 });

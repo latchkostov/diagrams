@@ -1731,8 +1731,6 @@
   "autoscaling.planMin": "{scaled, select, true {“{simulation}” में {traffic}× ट्रैफ़िक पर} other {“{simulation}” में}}, {platform} के रेप्लिका शुरू करते समय {backlog, number} तक संदेश प्रतीक्षा में रहे। {to, number} रेप्लिका तैयार रखें (न्यूनतम {from, number} → {to, number})।",
   "autoscaling.planAt": ", जब {metric} होता है",
   "autoscaling.planStartup": "रेप्लिका शुरू होने तक {count, number} तक संदेश प्रतीक्षा में रहे।",
-  "autoscaling.planVerified": "उसी सीड के साथ दोबारा चलाने पर इसकी पुष्टि हुई।",
-  "autoscaling.planUnverified": "उसी सीड के साथ दोबारा चलाने पर सुधार की पुष्टि नहीं हुई, इसलिए कोई समाधान नहीं दिया गया।",
   "autoscaling.planUnavailable": "इस डायग्राम के लिए परिदृश्य साइज़िंग उपलब्ध नहीं है: “{simulation}” को प्लानिंग बजट से ज़्यादा सिमुलेशन काम चाहिए। प्लेबैक फिर भी दिखाता है कि क्या होता है।",
   "autoscaling.planWhy": "प्लेबैक वाले ही इंजन और सीड से चलाया गया। कोई सुझाव तभी समाधान है जब उसके साथ दोबारा चलाने पर वह सही साबित हो।",
   "autoscaling.planFixMax": "अधिकतम {to, number} करें",
