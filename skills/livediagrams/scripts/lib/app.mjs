@@ -5211,22 +5211,39 @@ var ObstacleIndex = class {
 	key(cx, cy) {
 		return cx * 1000003 + cy;
 	}
-	hitsOne(i, x1, y1, x2, y2) {
+	hitsOne(i, x1, y1, x2, y2, limit) {
+		if (this.tests >= limit) return void 0;
 		this.tests++;
 		return x1 < this.x2[i] && this.x1[i] < x2 && y1 < this.y2[i] && this.y1[i] < y2;
 	}
-	/** True when the box from (x1, y1) to (x2, y2) overlaps any obstacle. */
-	hits(x1, y1, x2, y2) {
-		for (const i of this.wide) if (this.hitsOne(i, x1, y1, x2, y2)) return true;
+	/** True on overlap, false when clear, undefined when the obstacle-test budget runs out. */
+	hits(x1, y1, x2, y2, limit) {
+		for (const i of this.wide) {
+			const hit = this.hitsOne(i, x1, y1, x2, y2, limit);
+			if (hit !== false) return hit;
+		}
 		const c = this.cell;
 		const cx1 = Math.floor(x1 / c);
 		const cy1 = Math.floor(y1 / c);
 		const cx2 = Math.floor(x2 / c);
 		const cy2 = Math.floor(y2 / c);
+		if (![
+			cx1,
+			cy1,
+			cx2,
+			cy2
+		].every(Number.isSafeInteger) || (cx2 - cx1 + 1) * (cy2 - cy1 + 1) > 64) {
+			for (let i = 0; i < this.x1.length; i++) {
+				const hit = this.hitsOne(i, x1, y1, x2, y2, limit);
+				if (hit !== false) return hit;
+			}
+			return false;
+		}
 		for (let cx = cx1; cx <= cx2; cx++) for (let cy = cy1; cy <= cy2; cy++) {
 			const list = this.cells.get(this.key(cx, cy));
-			if (list) {
-				for (const i of list) if (this.hitsOne(i, x1, y1, x2, y2)) return true;
+			if (list) for (const i of list) {
+				const hit = this.hitsOne(i, x1, y1, x2, y2, limit);
+				if (hit !== false) return hit;
 			}
 		}
 		return false;
@@ -5242,7 +5259,8 @@ var SEARCH_BUDGET = {
 * on a `step` grid in rings out to `maxRings` (nearest first; ties above before below, left before right), that
 * puts every one of `boxes`, grown by `margin`, clear of `others`, and that `accept` (if given) agrees to.
 * Obstacles are indexed once; only those within reach of the search count, and the work is bounded
-* (`SEARCH_BUDGET`). Returns null when the search runs out: callers keep things where they were, or use their
+* (`SEARCH_BUDGET`), with at most 64 cell visits per box per candidate and (2 * maxRings + 1)^2 candidates.
+* Returns null when the search runs out: callers keep things where they were, or use their
 * own guaranteed fallback (`pastAll`), never an overlapping spot.
 */
 function findClearTranslation(boxes, others, { margin = 16, step = 20, maxRings = 40, accept, budget = SEARCH_BUDGET } = {}) {
@@ -5267,8 +5285,9 @@ function findClearTranslation(boxes, others, { margin = 16, step = 20, maxRings 
 	/** Clear and accepted; undefined when the budget ran out. */
 	const fits = (dx, dy) => {
 		for (let i = 0; i < n; i++) {
-			if (index.hits(bx1[i] + dx, by1[i] + dy, bx2[i] + dx, by2[i] + dy)) return false;
-			if (index.tests > budget.tests) return void 0;
+			const hit = index.hits(bx1[i] + dx, by1[i] + dy, bx2[i] + dx, by2[i] + dy, budget.tests);
+			if (hit === void 0) return void 0;
+			if (hit) return false;
 		}
 		if (!accept) return true;
 		if (++accepts > budget.accepts) return void 0;
@@ -5491,7 +5510,11 @@ function placeNew(diagram, newIds, mode = "auto", touchedGroups = [], keepOutsid
 		});
 		if (n.group) refit(includeAncestors([n.group]));
 	}
-	if (next.nodes.some((n) => (full || fresh.has(n.id)) && foreignGroups(n, next.groups).some((g) => overlaps(sizedById.get(n.id), g)))) settleBoundaryCollisions(next, fresh, full, includeAncestors(touched));
+	if (next.nodes.some((n) => (full || fresh.has(n.id)) && foreignGroups(n, next.groups).some((g) => overlaps(sizedById.get(n.id), g))) || full && next.groups?.some((g, i, all) => all.some((other, j) => {
+		if (j <= i || !overlaps(g, other)) return false;
+		const related = ancestry ??= indexGroupAncestry(groups);
+		return !related(g.id, other.id) && !related(other.id, g.id);
+	}))) settleBoundaryCollisions(next, fresh, full, includeAncestors(touched));
 	return next;
 }
 /** Repair only a layout whose final refits left a foreign-boundary collision. Each
@@ -5667,6 +5690,15 @@ function layoutDiagram(input, opts = {}) {
 	});
 	const placedNotes = [];
 	if (Array.isArray(input.annotations)) {
+		const annotationAt = new Map((d.annotations ?? []).map((a) => [a.id, a]));
+		const annotations = input.annotations.map((raw) => {
+			const placed = isObj(raw) && hasBox(raw) && annotationAt.get(raw.id);
+			return placed ? {
+				...raw,
+				x: placed.x,
+				y: placed.y
+			} : raw;
+		});
 		const occupied = [
 			...d.nodes.map((n) => ({
 				x: n.x,
@@ -5674,11 +5706,11 @@ function layoutDiagram(input, opts = {}) {
 				...estimateCardSize(n.label, n.sublabel)
 			})),
 			...d.groups ?? [],
-			...input.annotations.filter((a) => isObj(a) && hasBox(a)).map((a) => a)
+			...annotations.filter((a) => isObj(a) && hasBox(a)).map((a) => a)
 		];
 		let x = occupied.length ? Math.min(...occupied.map((b) => b.x)) : 40;
 		const y = occupied.length ? Math.max(...occupied.map((b) => b.y + b.height)) + 60 : 40;
-		out.annotations = input.annotations.map((raw) => {
+		out.annotations = annotations.map((raw) => {
 			if (!isObj(raw) || hasBox(raw) || raw.kind !== "note" && raw.kind !== "text") return raw;
 			const a = { ...raw };
 			if (!isNum(a.width) || a.width < 1) a.width = 240;

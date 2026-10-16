@@ -161,7 +161,15 @@ export function placeNew(
   if (
     next.nodes.some(
       (n) => (full || fresh.has(n.id)) && foreignGroups(n, next.groups).some((g) => overlaps(sizedById.get(n.id)!, g)),
-    )
+    ) ||
+    (full &&
+      next.groups?.some((g, i, all) =>
+        all.some((other, j) => {
+          if (j <= i || !overlaps(g, other)) return false;
+          const related = (ancestry ??= indexGroupAncestry(groups));
+          return !related(g.id, other.id) && !related(other.id, g.id);
+        }),
+      ))
   )
     settleBoundaryCollisions(next, fresh, full, includeAncestors(touched));
   return next;

@@ -154,22 +154,40 @@ class ObstacleIndex {
   private key(cx: number, cy: number) {
     return cx * 1_000_003 + cy;
   }
-  private hitsOne(i: number, x1: number, y1: number, x2: number, y2: number) {
+  private hitsOne(i: number, x1: number, y1: number, x2: number, y2: number, limit: number) {
+    if (this.tests >= limit) return undefined;
     this.tests++;
     return x1 < this.x2[i] && this.x1[i] < x2 && y1 < this.y2[i] && this.y1[i] < y2;
   }
-  /** True when the box from (x1, y1) to (x2, y2) overlaps any obstacle. */
-  hits(x1: number, y1: number, x2: number, y2: number): boolean {
-    for (const i of this.wide) if (this.hitsOne(i, x1, y1, x2, y2)) return true;
+  /** True on overlap, false when clear, undefined when the obstacle-test budget runs out. */
+  hits(x1: number, y1: number, x2: number, y2: number, limit: number): boolean | undefined {
+    for (const i of this.wide) {
+      const hit = this.hitsOne(i, x1, y1, x2, y2, limit);
+      if (hit !== false) return hit;
+    }
     const c = this.cell;
     const cx1 = Math.floor(x1 / c);
     const cy1 = Math.floor(y1 / c);
     const cx2 = Math.floor(x2 / c);
     const cy2 = Math.floor(y2 / c);
+    // Candidate boundaries can cover arbitrarily much empty space. Query at most
+    // 64 grid cells; larger/unsafe ranges scan the finite obstacle arrays instead.
+    // These comparisons count toward the same search budget as indexed obstacles.
+    if (![cx1, cy1, cx2, cy2].every(Number.isSafeInteger) || (cx2 - cx1 + 1) * (cy2 - cy1 + 1) > 64) {
+      for (let i = 0; i < this.x1.length; i++) {
+        const hit = this.hitsOne(i, x1, y1, x2, y2, limit);
+        if (hit !== false) return hit;
+      }
+      return false;
+    }
     for (let cx = cx1; cx <= cx2; cx++)
       for (let cy = cy1; cy <= cy2; cy++) {
         const list = this.cells.get(this.key(cx, cy));
-        if (list) for (const i of list) if (this.hitsOne(i, x1, y1, x2, y2)) return true;
+        if (list)
+          for (const i of list) {
+            const hit = this.hitsOne(i, x1, y1, x2, y2, limit);
+            if (hit !== false) return hit;
+          }
       }
     return false;
   }
@@ -183,7 +201,8 @@ export const SEARCH_BUDGET = { tests: 400_000, accepts: 200 } as const;
  * on a `step` grid in rings out to `maxRings` (nearest first; ties above before below, left before right), that
  * puts every one of `boxes`, grown by `margin`, clear of `others`, and that `accept` (if given) agrees to.
  * Obstacles are indexed once; only those within reach of the search count, and the work is bounded
- * (`SEARCH_BUDGET`). Returns null when the search runs out: callers keep things where they were, or use their
+ * (`SEARCH_BUDGET`), with at most 64 cell visits per box per candidate and (2 * maxRings + 1)^2 candidates.
+ * Returns null when the search runs out: callers keep things where they were, or use their
  * own guaranteed fallback (`pastAll`), never an overlapping spot.
  */
 export function findClearTranslation(
@@ -220,8 +239,9 @@ export function findClearTranslation(
   /** Clear and accepted; undefined when the budget ran out. */
   const fits = (dx: number, dy: number): boolean | undefined => {
     for (let i = 0; i < n; i++) {
-      if (index.hits(bx1[i] + dx, by1[i] + dy, bx2[i] + dx, by2[i] + dy)) return false;
-      if (index.tests > budget.tests) return undefined;
+      const hit = index.hits(bx1[i] + dx, by1[i] + dy, bx2[i] + dx, by2[i] + dy, budget.tests);
+      if (hit === undefined) return undefined;
+      if (hit) return false;
     }
     if (!accept) return true;
     if (++accepts > budget.accepts) return undefined;

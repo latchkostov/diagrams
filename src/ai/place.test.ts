@@ -203,6 +203,31 @@ describe("placement", () => {
         expect(overlaps(box, group), `${box.id} overlaps ${group.id}`).toBe(false);
       }
     }
+    for (const group of result.groups!) {
+      const ancestors = ancestorGroupIds(group.id, result.groups!);
+      for (const other of result.groups!) {
+        if (
+          group.id === other.id ||
+          ancestors.has(other.id) ||
+          ancestorGroupIds(other.id, result.groups!).has(group.id)
+        )
+          continue;
+        expect(overlaps(group, other), `${group.id} overlaps ${other.id}`).toBe(false);
+      }
+    }
     expect(placeNew(d, [], "full")).toEqual(result);
+  });
+  it("keeps sibling boundary padding disjoint when cards are clear", () => {
+    const d: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Sibling padding",
+      nodes: ["a", "b", "a"].map((group, i) => ({ ...node(`n${i}`), label: "Service", group })),
+      edges: [],
+      groups: ["a", "b"].map((id) => ({ id, label: id, x: 0, y: 0, width: 1, height: 1 })),
+    };
+    const result = placeNew(d, [], "full");
+    for (const box of boxes(result))
+      for (const group of result.groups!) if (box.group !== group.id) expect(overlaps(box, group)).toBe(false);
+    expect(overlaps(result.groups![0], result.groups![1])).toBe(false);
   });
 });

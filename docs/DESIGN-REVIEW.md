@@ -1,5 +1,14 @@
 # Design review
 
+## Review follow-ups 3, round 1 (2026-10-16)
+
+The designer agent's focused source review found no blocking UX issue. Skill annotations keep their
+visual association with moved boundaries and preserve authored metadata. Sibling separation keeps
+intentional nested containment; large-box placement retains deterministic clear-space fallback.
+No controls, chrome, UI text, shortcuts or focus paths are added. This supports Beautiful by default,
+Nothing overlaps by default and No surprises. No fresh browser or assistive-technology walkthrough
+was performed for this source review; the production browser suite remains a separate gate.
+
 ## Review follow-ups 3 (2026-10-16)
 
 Scoped source and regression review: final AI placement keeps cards outside unrelated boundaries,

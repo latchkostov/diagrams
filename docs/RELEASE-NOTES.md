@@ -1,5 +1,35 @@
 # Release notes
 
+## Review follow-ups 3, round 1 (2026-10-16)
+
+- Skill layout now copies translated annotation positions from the app's placement result while
+  preserving authored metadata. Forced layout and missing-coordinate layout both keep member notes
+  inside moved boundaries, and new notes use the translated occupied area.
+- Large placement candidates query at most 64 grid cells each, scanning the finite obstacle list
+  instead for larger areas. Both paths enforce the obstacle-test budget, and exhausted searches keep
+  the deterministic clear-space fallback. AI boundary placement has at most 2,401 candidates, hence
+  at most 153,664 cell visits per box regardless of its area, plus the capped obstacle comparisons.
+  Counted regressions cover 300,000- and 1,000,000-pixel boxes, exhausted rings and the clear fallback.
+- Full layout repairs overlapping sibling boundary padding even when all cards are already clear.
+  Tests assert separation of unrelated boundaries while allowing intentional nested containment.
+- Temporarily restoring the three original implementation files fails all four new regressions;
+  restoring the fixes passes them. Refreshed the released skill viewer, retaining plugin 1.1.34
+  (exactly one patch above master). The focused designer source review found no UX issue or new chrome.
+- Eight skill-layout goldens intentionally change: for each example below, both
+  `node/layout/<example>.json` (only `skillLayout`) and `node/skill/scripts/<example>.json`
+  (only `layout`) record the same 80-pixel downward subtree move to clear sibling padding:
+
+  | Example                      | Boundary and members moved                                                                                      |
+  | ---------------------------- | --------------------------------------------------------------------------------------------------------------- |
+  | `aks-app-config-key-vault`   | `aks`, `api`                                                                                                    |
+  | `branch-to-datacentre`       | `dc`, `edge-router`, `firewall`, `spine-1`, `spine-2`, `leaf`, `adc`, `web-1`, `web-2`, `orders-db`, `payments` |
+  | `contoso-dmz`                | `trusted`, `switch`, `app`, `database`                                                                          |
+  | `event-driven-data-platform` | `snowflake`, `raw`, `marts`                                                                                     |
+
+  Every other golden stays unchanged, including browser output. Restoring only the old sibling-repair
+  trigger makes all 239 layout/skill goldens match, isolating these intentional changes from the
+  output-preserving search optimization and annotation projection.
+
 ## Review follow-ups 3 (2026-10-16)
 
 - AI placement rechecks the final boundary fits, so an ancestor growing around a direct member cannot

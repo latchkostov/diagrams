@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { countingReads, growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 import {
   boundsOf,
@@ -207,6 +207,39 @@ describe("a failed search is never a silent overlap", () => {
 });
 
 describe("findClearTranslation (the one free-place search)", () => {
+  it("bounds cell visits for huge candidates independently of their area", () => {
+    for (const extent of [300_000, 1_000_000]) {
+      let visits = 0;
+      const get = Map.prototype.get;
+      const spy = vi.spyOn(Map.prototype, "get").mockImplementation(function (
+        this: Map<unknown, unknown>,
+        key: unknown,
+      ) {
+        if (++visits > 64) throw new Error("Unbounded candidate cell scan");
+        return get.call(this, key);
+      });
+      let result;
+      let exhausted;
+      try {
+        // A reachable obstacle just outside the candidate: the original grid query walks
+        // its entire empty area before it can accept the unchanged position.
+        result = findClearTranslation([box(0, 0, extent, extent)], [box(extent + 100, 0)], { margin: 0 });
+        // Every candidate hits the central obstacle: exhaust all rings, then use
+        // the caller's deterministic, nonoverlapping fallback.
+        const blocked = box(0, 0, extent, extent);
+        const obstacles = [box(extent / 2, extent / 2)];
+        exhausted = findFree({ x: extent / 2, y: extent / 2 }, blocked, obstacles);
+        const offset = clearOffset(blocked, [blocked]);
+        if (!isClear({ ...blocked, x: offset.x, y: offset.y }, [blocked]))
+          throw new Error("Fallback overlaps its obstacle");
+      } finally {
+        spy.mockRestore();
+      }
+      expect(result).toEqual({ x: 0, y: 0 });
+      expect(exhausted).toBeNull();
+      expect(visits).toBeLessThanOrEqual(64);
+    }
+  });
   it("moves a group of boxes together, nearest first, clear of everything by the margin", () => {
     const boxes = [box(0, 0), box(300, 0)];
     const d = findClearTranslation(boxes, [box(300, 0)], { margin: COPY_MARGIN });
