@@ -228,3 +228,13 @@ removes event chunks, then individual events, then unneeded nodes. Events are 1-
 invariant, not guaranteed globally shortest. Replay one seed with `A1_FUZZ_SEED=3 pnpm exec vitest run
 src/sim/autoscaling.invariants.test.ts`. `A1_FUZZ_NIGHTLY=1` expands to 5,000 seeds in the nightly workflow.
 Keep new bookkeeping transitions in this generator as well as adding focused regressions.
+
+A3 adds a second generator in the same file: 140 seeds (5,000 with `A1_FUZZ_NIGHTLY=1`) cycle through the seven
+cloud presets (ECS CPU, ALB and step; Container Apps HTTP and event; App Service; Cloud Run) with shortened
+clocks, so alarms, cooldowns, flapping deferral, on-demand wakes and scale to zero all happen within a run.
+Events add disabling mid-run, fixed overrides followed by `resumeAutoscaling`, refusals and pause/resume. The
+oracle additionally checks that ECS never scales in on missing data or inside a scale-in cooldown, a Monitor
+rule never acts inside its cooldown or against its direction, request wakes come only from request scalers,
+and every delivery queued at a node holds its group slot (what lets request metrics count waiting pushed
+requests without scanning the queue). Replay one with `A3_FUZZ_SEED=61 pnpm exec vitest run
+src/sim/autoscaling.invariants.test.ts -t A3`.
