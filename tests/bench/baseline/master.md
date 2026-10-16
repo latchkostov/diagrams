@@ -1,13 +1,13 @@
 # Benchmark results
 
-2026-10-15T23:59:05.270Z · commit `d84fa1e184` on `test/benchmarks` · mode **full**
+2026-10-16T00:24:23.812Z · commit `0226d5942f` (uncommitted changes) on `test/benchmarks` · mode **full**
 
 | Environment |  |
 | --- | ---: |
 | Machine | AMD Ryzen 9 7950X 16-Core Processor, 32 threads, 68 GB, Windows_NT 10.0.26300 (x64) |
 | Runtime | Node v24.22.0, Chromium 156.0.8078.4, Playwright 1.64.1, Vite 8.3.4, React 19.3.1 |
 | Browser settings | CPU throttle 2× (main thread), 1440 × 900 at device scale factor 1, light, en-US, UTC |
-| Calibration | Node 11 ms, browser 26 ms (same-run baseline; "cu" = ms ÷ calibration) |
+| Calibration | Node 12 ms, browser 26 ms (same-run baseline; "cu" = ms ÷ calibration) |
 | CI | no |
 
 ## Gates: 70 of 70 pass
@@ -799,91 +799,91 @@
 
 | Metric | Value | Note |
 | --- | ---: | ---: |
-| `drag-pipeline@500/busy` | 4.77 s | main-thread time not idle |
-| `drag-pipeline@500/profiled` | 4.80 s | wall time profiled |
-| `drag-pipeline@500/self/` | 727 ms |  |
-| `drag-pipeline@500/self/(garbage collector)` | 114 ms |  |
-| `drag-pipeline@500/self/(program)` | 1.71 s |  |
-| `drag-pipeline@500/self/NodeWrapper` | 50 ms |  |
-| `drag-pipeline@500/self/createWorkInProgress` | 47 ms |  |
-| `drag-pipeline@500/self/getBoundingClientRect` | 80 ms |  |
-| `drag-pipeline@500/self/linkCost` | 203 ms |  |
-| `drag-pipeline@500/self/querySelector` | 36 ms |  |
-| `drag-pipeline@500/self/read$1` | 219 ms |  |
-| `drag-pipeline@500/self/route` | 50 ms |  |
-| `drag-pipeline@500/self/search$1` | 91 ms |  |
-| `drag-pipeline@500/self/segmentHitsRect` | 59 ms |  |
-| `drag-pipeline@500/self/setState` | 72 ms |  |
-| `drag-pipeline@500/self/shallow$1` | 53 ms |  |
-| `drag-pipeline@500/self/updateProperties` | 51 ms |  |
-| `live-pipeline@500/busy` | 3.87 s | main-thread time not idle |
-| `live-pipeline@500/profiled` | 4.09 s | wall time profiled |
-| `live-pipeline@500/self/` | 40 ms |  |
-| `live-pipeline@500/self/(program)` | 2.24 s |  |
-| `live-pipeline@500/self/NodeBadge` | 38 ms |  |
-| `live-pipeline@500/self/apply` | 66 ms |  |
-| `live-pipeline@500/self/commitMutationEffectsOnFiber` | 37 ms |  |
-| `live-pipeline@500/self/getAttribute` | 32 ms |  |
-| `live-pipeline@500/self/getPointAtLength` | 195 ms |  |
-| `live-pipeline@500/self/getTotalLength` | 69 ms |  |
-| `live-pipeline@500/self/querySelectorAll` | 82 ms |  |
-| `live-pipeline@500/self/readMarch` | 405 ms |  |
-| `live-pipeline@500/self/setTextContent` | 28 ms |  |
-| `live-pipeline@500/self/setValueForStyles` | 25 ms |  |
-| `live-pipeline@500/self/tick` | 38 ms |  |
-| `live-pipeline@500/self/updateEffect` | 26 ms |  |
-| `live-pipeline@500/self/updateProperties` | 40 ms |  |
-| `load-pipeline@1500/busy` | 4.14 s | main-thread time not idle |
-| `load-pipeline@1500/profiled` | 7.25 s | wall time profiled |
-| `load-pipeline@1500/self/` | 324 ms |  |
-| `load-pipeline@1500/self/(garbage collector)` | 88 ms |  |
-| `load-pipeline@1500/self/(program)` | 1.06 s |  |
-| `load-pipeline@1500/self/check` | 648 ms |  |
-| `load-pipeline@1500/self/checkIfSnapshotChanged` | 43 ms |  |
-| `load-pipeline@1500/self/getHostSibling` | 56 ms |  |
-| `load-pipeline@1500/self/memoizedSelector` | 45 ms |  |
-| `load-pipeline@1500/self/overlayRects` | 464 ms |  |
-| `load-pipeline@1500/self/read$1` | 57 ms |  |
-| `load-pipeline@1500/self/right` | 59 ms |  |
-| `load-pipeline@1500/self/routeOrthogonal` | 49 ms |  |
-| `load-pipeline@1500/self/search$1` | 38 ms |  |
-| `load-pipeline@1500/self/setProp` | 42 ms |  |
-| `load-pipeline@1500/self/setValueForAttribute` | 48 ms |  |
-| `load-pipeline@1500/self/updateDimensions` | 64 ms |  |
-| `select-pipeline@1500/busy` | 4.46 s | main-thread time not idle |
-| `select-pipeline@1500/profiled` | 4.46 s | wall time profiled |
-| `select-pipeline@1500/self/` | 1.43 s |  |
-| `select-pipeline@1500/self/(garbage collector)` | 163 ms |  |
-| `select-pipeline@1500/self/(program)` | 906 ms |  |
-| `select-pipeline@1500/self/NodeWrapper` | 81 ms |  |
-| `select-pipeline@1500/self/getBoundingClientRect` | 127 ms |  |
-| `select-pipeline@1500/self/querySelector` | 88 ms |  |
-| `select-pipeline@1500/self/read$1` | 198 ms |  |
-| `select-pipeline@1500/self/setState` | 52 ms |  |
-| `select-pipeline@1500/self/shallow$1` | 118 ms |  |
-| `select-pipeline@1500/self/shallowEqual` | 56 ms |  |
-| `select-pipeline@1500/self/updateEffect` | 61 ms |  |
-| `select-pipeline@1500/self/updateMemo` | 60 ms |  |
-| `select-pipeline@1500/self/updateProperties` | 100 ms |  |
-| `select-pipeline@1500/self/updateSimpleMemoComponent` | 47 ms |  |
-| `select-pipeline@1500/self/useNodeObserver` | 47 ms |  |
-| `typeName-mesh@500/busy` | 2.83 s | main-thread time not idle |
-| `typeName-mesh@500/profiled` | 3.43 s | wall time profiled |
-| `typeName-mesh@500/self/` | 544 ms |  |
-| `typeName-mesh@500/self/(garbage collector)` | 76 ms |  |
-| `typeName-mesh@500/self/(program)` | 285 ms |  |
-| `typeName-mesh@500/self/clip` | 51 ms |  |
-| `typeName-mesh@500/self/getBoundingClientRect` | 128 ms |  |
-| `typeName-mesh@500/self/inflate` | 73 ms |  |
-| `typeName-mesh@500/self/linkCost` | 209 ms |  |
-| `typeName-mesh@500/self/moveSegment` | 48 ms |  |
-| `typeName-mesh@500/self/query` | 69 ms |  |
-| `typeName-mesh@500/self/querySelectorAll` | 37 ms |  |
-| `typeName-mesh@500/self/read$1` | 127 ms |  |
-| `typeName-mesh@500/self/search$1` | 83 ms |  |
-| `typeName-mesh@500/self/segmentHitsRect` | 141 ms |  |
-| `typeName-mesh@500/self/shallow$1` | 38 ms |  |
-| `typeName-mesh@500/self/updateProperties` | 40 ms |  |
+| `drag-pipeline@500/busy` | 4.03 s | main-thread time not idle |
+| `drag-pipeline@500/profiled` | 4.07 s | wall time profiled |
+| `drag-pipeline@500/self/(anonymous in CanvasView.js)` | 58 ms |  |
+| `drag-pipeline@500/self/(anonymous in canvas-shared.js)` | 432 ms |  |
+| `drag-pipeline@500/self/(anonymous in index.js)` | 112 ms |  |
+| `drag-pipeline@500/self/(garbage collector)` | 54 ms |  |
+| `drag-pipeline@500/self/(program)` | 1.46 s |  |
+| `drag-pipeline@500/self/NodeWrapper (canvas-shared.js)` | 44 ms |  |
+| `drag-pipeline@500/self/getBoundingClientRect (native)` | 65 ms |  |
+| `drag-pipeline@500/self/inflate (canvas-shared.js)` | 35 ms |  |
+| `drag-pipeline@500/self/linkCost (canvas-shared.js)` | 174 ms |  |
+| `drag-pipeline@500/self/read$1 (index.js)` | 194 ms |  |
+| `drag-pipeline@500/self/route (canvas-shared.js)` | 38 ms |  |
+| `drag-pipeline@500/self/search$1 (canvas-shared.js)` | 86 ms |  |
+| `drag-pipeline@500/self/segmentHitsRect (canvas-shared.js)` | 49 ms |  |
+| `drag-pipeline@500/self/shallow$1 (canvas-shared.js)` | 48 ms |  |
+| `drag-pipeline@500/self/updateProperties (index.js)` | 40 ms |  |
+| `live-pipeline@500/busy` | 3.94 s | main-thread time not idle |
+| `live-pipeline@500/profiled` | 4.05 s | wall time profiled |
+| `live-pipeline@500/self/(anonymous in index.js)` | 13 ms |  |
+| `live-pipeline@500/self/(garbage collector)` | 14 ms |  |
+| `live-pipeline@500/self/(program)` | 2.62 s |  |
+| `live-pipeline@500/self/NodeBadge (LiveSession.js)` | 32 ms |  |
+| `live-pipeline@500/self/apply (LiveSession.js)` | 46 ms |  |
+| `live-pipeline@500/self/commitMutationEffectsOnFiber (index.js)` | 27 ms |  |
+| `live-pipeline@500/self/getAttribute (native)` | 22 ms |  |
+| `live-pipeline@500/self/getPointAtLength (native)` | 245 ms |  |
+| `live-pipeline@500/self/getTotalLength (native)` | 55 ms |  |
+| `live-pipeline@500/self/querySelectorAll (native)` | 56 ms |  |
+| `live-pipeline@500/self/readMarch (LiveSession.js)` | 324 ms |  |
+| `live-pipeline@500/self/setValueForStyles (index.js)` | 22 ms |  |
+| `live-pipeline@500/self/tick (simulation.js)` | 31 ms |  |
+| `live-pipeline@500/self/updateProperties (index.js)` | 29 ms |  |
+| `live-pipeline@500/self/useStore (canvas-shared.js)` | 15 ms |  |
+| `load-pipeline@1500/busy` | 5.69 s | main-thread time not idle |
+| `load-pipeline@1500/profiled` | 5.75 s | wall time profiled |
+| `load-pipeline@1500/self/(anonymous in canvas-shared.js)` | 336 ms |  |
+| `load-pipeline@1500/self/(garbage collector)` | 145 ms |  |
+| `load-pipeline@1500/self/(program)` | 709 ms |  |
+| `load-pipeline@1500/self/check (canvas-shared.js)` | 781 ms |  |
+| `load-pipeline@1500/self/getHostSibling (index.js)` | 76 ms |  |
+| `load-pipeline@1500/self/linkCost (canvas-shared.js)` | 69 ms |  |
+| `load-pipeline@1500/self/overlayRects (canvas-shared.js)` | 992 ms |  |
+| `load-pipeline@1500/self/read$1 (index.js)` | 95 ms |  |
+| `load-pipeline@1500/self/right (canvas-shared.js)` | 69 ms |  |
+| `load-pipeline@1500/self/routeOrthogonal (canvas-shared.js)` | 70 ms |  |
+| `load-pipeline@1500/self/search$1 (canvas-shared.js)` | 68 ms |  |
+| `load-pipeline@1500/self/setProp (index.js)` | 90 ms |  |
+| `load-pipeline@1500/self/setValueForAttribute (index.js)` | 98 ms |  |
+| `load-pipeline@1500/self/setValueForKnownAttribute (index.js)` | 65 ms |  |
+| `load-pipeline@1500/self/updateDimensions (canvas-shared.js)` | 111 ms |  |
+| `select-pipeline@1500/busy` | 3.58 s | main-thread time not idle |
+| `select-pipeline@1500/profiled` | 3.58 s | wall time profiled |
+| `select-pipeline@1500/self/(anonymous in CanvasView.js)` | 51 ms |  |
+| `select-pipeline@1500/self/(anonymous in canvas-shared.js)` | 678 ms |  |
+| `select-pipeline@1500/self/(anonymous in index.js)` | 293 ms |  |
+| `select-pipeline@1500/self/(garbage collector)` | 86 ms |  |
+| `select-pipeline@1500/self/(program)` | 609 ms |  |
+| `select-pipeline@1500/self/NodeWrapper (canvas-shared.js)` | 98 ms |  |
+| `select-pipeline@1500/self/getBoundingClientRect (native)` | 97 ms |  |
+| `select-pipeline@1500/self/querySelector (native)` | 76 ms |  |
+| `select-pipeline@1500/self/read$1 (index.js)` | 174 ms |  |
+| `select-pipeline@1500/self/setState (canvas-shared.js)` | 143 ms |  |
+| `select-pipeline@1500/self/shallow$1 (canvas-shared.js)` | 100 ms |  |
+| `select-pipeline@1500/self/shallowEqual (index.js)` | 58 ms |  |
+| `select-pipeline@1500/self/updateEffect (index.js)` | 54 ms |  |
+| `select-pipeline@1500/self/updateProperties (index.js)` | 92 ms |  |
+| `select-pipeline@1500/self/updateSimpleMemoComponent (index.js)` | 39 ms |  |
+| `typeName-mesh@500/busy` | 3.61 s | main-thread time not idle |
+| `typeName-mesh@500/profiled` | 4.38 s | wall time profiled |
+| `typeName-mesh@500/self/(anonymous in canvas-shared.js)` | 500 ms |  |
+| `typeName-mesh@500/self/(anonymous in index.js)` | 180 ms |  |
+| `typeName-mesh@500/self/(garbage collector)` | 112 ms |  |
+| `typeName-mesh@500/self/(program)` | 414 ms |  |
+| `typeName-mesh@500/self/clip (canvas-shared.js)` | 54 ms |  |
+| `typeName-mesh@500/self/getBoundingClientRect (native)` | 162 ms |  |
+| `typeName-mesh@500/self/inflate (canvas-shared.js)` | 70 ms |  |
+| `typeName-mesh@500/self/linkCost (canvas-shared.js)` | 206 ms |  |
+| `typeName-mesh@500/self/moveSegment (canvas-shared.js)` | 49 ms |  |
+| `typeName-mesh@500/self/query (canvas-shared.js)` | 78 ms |  |
+| `typeName-mesh@500/self/querySelectorAll (native)` | 50 ms |  |
+| `typeName-mesh@500/self/read$1 (index.js)` | 191 ms |  |
+| `typeName-mesh@500/self/search$1 (canvas-shared.js)` | 83 ms |  |
+| `typeName-mesh@500/self/segmentHitsRect (canvas-shared.js)` | 155 ms |  |
+| `typeName-mesh@500/self/shallow$1 (canvas-shared.js)` | 59 ms |  |
 
 ## renders
 

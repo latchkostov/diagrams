@@ -79,7 +79,7 @@ async function open(page: Page, family: string, n: number, query = "") {
   return { b, w };
 }
 
-test.skip(MODE === "gates", "report-only");
+test.skip(MODE !== "full", "report-only, at 500 and 1,500 nodes: full runs only");
 
 test("profile: typing a name, mesh@500", async ({ page }) => {
   const { b, w } = await open(page, "mesh", 500);

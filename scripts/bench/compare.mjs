@@ -4,10 +4,12 @@
 //
 // - Gates: every gate that fails in head (the only thing that fails this command, unless --fail-on-regression).
 // - Timings: compared normalised (ms ÷ the run's calibration), so a slower runner isn't a regression. A change counts
-//   when it's beyond the noise: 15%, or three times the larger coefficient of variation of the two samples, whichever
-//   is more, and at least 2 ms either way. Single-sample timings get 25%.
+//   when it's beyond the noise: 25%, or three times the larger coefficient of variation of the two samples, whichever
+//   is more, and at least 2 ms either way. Single-sample timings get 50%. (Two runs of one commit on a shared desktop
+//   differed by a median of 21% and a p90 of 61%: docs/BENCHMARKS.md § Measured variance.)
 // - Counts: every change, increases first (renders, commits, nodes and listeners left behind, operations).
-// - Sizes: every chunk that grew by more than 200 bytes gzip, with the modules that grew in it.
+// - Sizes: every chunk that grew by more than 200 bytes gzip, with the modules that grew in it; memory (heap bytes)
+//   up by a quarter and a megabyte or more.
 
 import fs from "node:fs";
 import process from "node:process";
@@ -36,6 +38,8 @@ const improvements = [];
 const counts = [];
 const ratios = [];
 const sizes = [];
+/** Heap and other memory bytes: noisy (V8's caches), so only a quarter more and a megabyte or more. */
+const heap = [];
 for (const [id, h] of H) {
   const b = B.get(id);
   if (!b) continue;
@@ -45,7 +49,7 @@ for (const [id, h] of H) {
     const hv = useNorm ? h.normalized : h.value;
     if (!(bv > 0) || !Number.isFinite(hv)) continue;
     const many = (b.stats?.n ?? 1) > 2 && (h.stats?.n ?? 1) > 2;
-    const tol = many ? Math.max(0.15, 3 * Math.max(b.stats.cov, h.stats.cov)) : 0.25;
+    const tol = many ? Math.max(0.25, 3 * Math.max(b.stats.cov, h.stats.cov)) : 0.5;
     const ratio = hv / bv;
     const higherIsBetter = RATES.has(h.unit);
     const worse = higherIsBetter ? ratio < 1 / (1 + tol) : ratio > 1 + tol;
@@ -56,7 +60,10 @@ for (const [id, h] of H) {
     else if (better && big) improvements.push(row);
   } else if (h.kind === "count" && h.value !== b.value) counts.push({ id, b, h, delta: h.value - b.value });
   else if (h.kind === "ratio" && h.value > b.value * 1.5) ratios.push({ id, b, h });
-  else if (h.kind === "bytes" && h.value - b.value > 200 && h.value > b.value * 1.005) sizes.push({ id, b, h });
+  else if (h.kind === "bytes" && h.suite === "bundle" && h.value - b.value > 200 && h.value > b.value * 1.005)
+    sizes.push({ id, b, h });
+  else if (h.kind === "bytes" && h.suite !== "bundle" && h.value > b.value * 1.25 && h.value - b.value > 1e6)
+    heap.push({ id, b, h });
 }
 const failed = [...H.values()].filter((m) => m.gate && !m.gate.pass);
 const added = [...H.keys()].filter((id) => !B.has(id));
@@ -154,6 +161,16 @@ if (sizes.length) {
   );
   const mods = grownModules();
   if (mods.length) out.push(table(["Chunk", "Module", "Rendered"], mods), "");
+}
+if (heap.length) {
+  out.push("## Memory up by a quarter or more", "");
+  out.push(
+    table(
+      ["Metric", "Base", "Head", "Change"],
+      heap.map((r) => [`\`${r.id}\``, fmt(r.b), fmt(r.h), `+${fmt(r.h, r.h.value - r.b.value)}`]),
+    ),
+    "",
+  );
 }
 if (improvements.length) {
   out.push("## Faster", "");

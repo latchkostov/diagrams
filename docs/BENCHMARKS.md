@@ -174,7 +174,26 @@ numbers sit.
 
 ### Measured variance
 
-VARIANCE_SECTION
+Measured on the baseline's machine, a 32-thread desktop shared with other work (as most developer machines and CI
+runners are):
+
+- **Within a run.** The coefficient of variation of a timing's samples: Node, median 11% (p75 16%, p90 23%, over 695
+  timings); browser timings with three runs, median 12% (p90 54%: interactions on the big workloads, where one run in
+  three meets a long frame the others don't).
+- **The calibration moved too.** Between the Node suites of one run it read 9.7 to 14.9 ms: the machine's speed changed
+  by half within an hour. That's why a time is normalised by its own suite's reading, not the run's.
+- **Run to run, one commit.** A quick run twenty minutes after the baseline, compared with it: the normalised timings
+  differed by a median of 21% (Node, several samples), 27% (browser, one run) and 14% (browser, three runs); p90 61%,
+  106% and 46%. The raw timings differed as much (median 20%): the noise here is bursts of contention, not a uniformly
+  slower machine, so normalising helps across machines more than across moments. With its thresholds (25%, or three
+  times the samples' CoV; 50% for one run), `pnpm bench:compare` flagged 33 of 653 timings as slower: 5% false
+  positives, which is why timings are a trend to read, never a gate.
+- **Gates.** Three back-to-back `pnpm bench:gates` runs, the baseline and the repeat: every gate passed every time. The
+  growth ratios moved by at most ±12% between runs (all 1.6× to 6× under their limits); bundle sizes and most counts
+  didn't move at all; the render counts that did move moved by a stray commit (one in twelve keys), which the budgets
+  leave room for and an extra render per key doesn't fit in.
+- **Counts that aren't gated** move more: live view's renders per second follow its frame rate, and drag counts follow
+  how many pointer events React batched into a frame (101 of 737 render counts differed in the repeat).
 
 ## Gates and report-only
 
@@ -215,8 +234,8 @@ min, max, mean, cov }, workload?: { family, n, nodes, edges, fingerprint }, gate
 - `tests/.output/bench/summary.md`: environment, gates, and every suite as a table (workloads in rows, sizes in columns).
 - `tests/.output/bench/profiles/*.cpuprofile`.
 - `pnpm bench:compare base.json head.json` prints (or writes with `--md`) the comparison: failed gates, timings slower
-  beyond their noise (normalised; noise is 15% or three times the larger CoV of the two, whichever is more, and at
-  least 2 ms; 25% for single-sample timings), counts that changed, growth ratios up by half, chunks that grew and the
+  beyond their noise (normalised; noise is 25% or three times the larger CoV of the two, whichever is more, and at
+  least 2 ms; 50% for single-sample timings), counts that changed, growth ratios up by half, chunks that grew and the
   modules that grew in them, and what got faster. It exits 1 on a failed gate (and, with `--fail-on-regression`, on a
   slower timing).
 
@@ -237,8 +256,9 @@ min, max, mean, cov }, workload?: { family, n, nodes, edges, fingerprint }, gate
 `tests/bench/baseline/master.json` (and its summary, `master.md`): `pnpm bench` on master `bf806a6` plus this suite,
 2026-10-15. AMD Ryzen 9 7950X (16 cores, 32 threads), 68 GB, Windows 11, Node 24.22.0, Chromium 156 (Playwright
 1.64.1), Vite 8.3.4, React 19.3.1, CPU throttle 2×. Calibration: Node 9.7 to 14.9 ms per suite (10.6 median), browser
-26 ms. 3,012 metrics; all 70 gates pass. It ran in four parts (`--keep`), each under the two-hour limit of the tool that
-ran it: the Node suites 25 minutes, cold load 45, interactions and features 30, the rest 35.
+26 ms. 3,012 metrics; all 70 gates pass. It ran in parts (`--keep`), each under the two-hour limit of the tool that ran
+it: the Node suites 25 minutes, cold load 45, interactions and features 30, the rest 35 (the profiles once more, after a
+fix to how they name anonymous functions).
 
 The headline numbers (medians, ms unless marked; browser numbers at 2× CPU throttle on the main thread):
 
@@ -331,8 +351,8 @@ target: what to change, where, and the evidence (metric ids are in `master.json`
    with the worker, 108 with the fallback); at 100 nodes the worker does help (4.9 ms against 14.5). Each publish (8 a
    second) renders 900 components at 500 nodes and 1,759 at 1,500 (`NodeBadge` for every node, `IdleChip`,
    `LiveIcon`). The live profile is `readMarch` (`getComputedStyle` for every marching path and its ancestors, each
-   tick; 405 ms of a 4 s profile), `getPointAtLength` and `getTotalLength` (264 ms), and style and layout ("(program)",
-   2.2 s). *Where:* `src/live/NodeBadges.tsx`, `src/live/liveScene.ts` (`readMarch`), `src/live/pathSampler.ts`, the
+   tick; 324 ms of a 4 s profile), `getPointAtLength` and `getTotalLength` (300 ms), and style and layout ("(program)",
+   2.6 s). *Where:* `src/live/NodeBadges.tsx`, `src/live/liveScene.ts` (`readMarch`), `src/live/pathSampler.ts`, the
    tick in `src/live/LiveSession.tsx`. *Target:* badges that subscribe to their own node's numbers; read the march
    styles when they change, not every tick; sample paths from the router's points instead of the SVG.
 7. **Selecting a node commits about ten times.** A click commits 9 to 10 times and renders 4,375 components at 500 nodes;
@@ -341,7 +361,7 @@ target: what to change, where, and the evidence (metric ids are in `master.json`
    `getBoundingClientRect`. *Target:* one commit for the selection and the inspector's opening; with 4 fixed, most of
    the rest goes too.
 8. **Layout reads on every store change while a diagram loads, and every node always in the DOM.** The load profile at
-   1,500 nodes spends 1.1 s of its 4.1 s busy in `useCovered`'s `check` (it loops over every node with
+   1,500 nodes spends 1.8 s of its 5.7 s busy in `useCovered`'s `check` (it loops over every node with
    `getBoundingClientRect` on each store change) and `overlayRects` (forced layout). At 5,000 nodes the page keeps
    110,508 DOM nodes and 248 MB of heap after GC: every node and edge is rendered, in view or not. *Where:*
    `src/canvas/useOverlayFit.ts`; React Flow's `onlyRenderVisibleElements`. *Target:* measure once per frame or on
