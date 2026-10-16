@@ -39,7 +39,8 @@ export class PrivateDiagramError extends Error {
 }
 
 export type SessionStatus = "waiting" | "connected" | "left";
-export type RejectReason = Rejection | GuardProblem | "apply-failed" | "quarantined" | "rate-limited" | "malformed";
+export type RejectReason =
+  Rejection | GuardProblem | "apply-failed" | "quarantined" | "rate-limited" | "reply-throttled" | "malformed";
 
 export interface SessionStats {
   framesSent: number;
@@ -64,13 +65,16 @@ export interface SessionOptions {
   presence?: Partial<PresenceState>;
 }
 
-/** A token bucket per sender on the room clock: bytes per window. */
+/** A token bucket per sender on the room clock: `cap` bytes per window. */
 class RateLimit {
   private buckets = new Map<string, { tokens: number; at: number }>();
-  constructor(private readonly clock: Clock) {}
+  constructor(
+    private readonly clock: Clock,
+    private readonly cap: number,
+  ) {}
   take(sender: string, bytes: number): boolean {
     const now = this.clock.now();
-    const cap = COLLAB_LIMITS.senderBytesPerWindow;
+    const cap = this.cap;
     const b = this.buckets.get(sender) ?? { tokens: cap, at: now };
     b.tokens = Math.min(cap, b.tokens + ((now - b.at) / COLLAB_LIMITS.senderWindowMs) * cap);
     b.at = now;
@@ -92,6 +96,9 @@ export class CollabSession {
   private readonly sealer: Sealer;
   private readonly opener: Opener;
   private readonly rate: RateLimit;
+  /** What this session sends back to each requester: a member asking for the whole room again and again can't make
+   *  it send megabytes per request. */
+  private readonly replies: RateLimit;
   private readonly quarantined = new Set<string>();
   private outbox: Promise<void> = Promise.resolve();
   private inbox: Promise<void> = Promise.resolve();
@@ -110,7 +117,8 @@ export class CollabSession {
     this.me = me;
     this.sealer = new Sealer(keys, sender);
     this.opener = new Opener(keys, sender);
-    this.rate = new RateLimit(clock);
+    this.rate = new RateLimit(clock, COLLAB_LIMITS.senderBytesPerWindow);
+    this.replies = new RateLimit(clock, COLLAB_LIMITS.replyBytesPerWindow);
     this.presence = new PresenceTable(clock);
   }
 
@@ -275,7 +283,10 @@ export class CollabSession {
           return this.reject("malformed");
         }
         const diff = this.doc.encodeDiff(sv);
-        if (!isEmptyUpdate(diff)) this.send("doc", frame(DOC.syncReply, diff), from);
+        if (!isEmptyUpdate(diff)) {
+          if (this.replies.take(opened.sender, diff.length)) this.send("doc", frame(DOC.syncReply, diff), from);
+          else this.reject("reply-throttled");
+        }
         if (this.doc.lacksFrom(sv)) this.requestSync(from);
         return;
       }

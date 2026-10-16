@@ -28,6 +28,8 @@ export const COLLAB_LIMITS = {
   /** Bytes a single sender may deliver per window (a token bucket on the room clock), document frames. */
   senderBytesPerWindow: 64 * 1024 * 1024,
   senderWindowMs: 10_000,
+  /** Bytes of sync replies a session sends one requester per window (the same window). */
+  replyBytesPerWindow: 16 * 1024 * 1024,
   /** Presence: what a peer's entry may say. */
   maxAliasChars: 40,
   /** Presence entries expire when their sender hasn't refreshed them for this long (room clock). */

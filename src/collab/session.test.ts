@@ -207,6 +207,30 @@ describe("sessions refuse hostile input", () => {
     expect(a.session.stats.rejected["rate-limited"]).toBeGreaterThanOrEqual(3);
   });
 
+  it("throttles what it sends back to a member who keeps asking for the whole room", async () => {
+    const { net, a, settle } = await room3();
+    a.edit((d) => ({
+      ...d,
+      nodes: [
+        ...d.nodes,
+        ...Array.from({ length: 2_000 }, (_, i) => ({
+          id: `bulk${i}`,
+          stencil: "postgres",
+          label: "x".repeat(200),
+          x: i,
+          y: 0,
+        })),
+      ],
+    }));
+    await settle();
+    const full = a.session.doc.encodeDiff().length;
+    const evil = await rogue(net);
+    const asks = Math.ceil(COLLAB_LIMITS.replyBytesPerWindow / full) + 3;
+    for (let i = 0; i < asks; i++) await evil.send("doc", frame(DOC.syncRequest, new Uint8Array([0])));
+    await settle();
+    expect(a.session.stats.rejected["reply-throttled"]).toBeGreaterThanOrEqual(3);
+  });
+
   it("an old-epoch member can't talk to the room", async () => {
     const { net, a, settle } = await room3();
     const stale = await rogue(net, { ...room, epoch: room.epoch + 1 });

@@ -31,6 +31,9 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
   ["the embed viewer", /[/\\]src[/\\]interop[/\\]embed[/\\]/],
   ["the Interactive HTML export", /[/\\]src[/\\]export[/\\]/],
   ["the Lab", /[/\\]src[/\\]lab[/\\]/],
+  // Collaboration (C0 is Lab-only: a production build has none of it). Rooms, their crypto and Yjs load on use.
+  ["collaboration", /[/\\]src[/\\]collab[/\\]/],
+  ["Yjs", /[/\\]node_modules[/\\](\.pnpm[/\\][^/\\]+[/\\]node_modules[/\\])?(yjs|lib0)[/\\]/],
   ["the live session", /[/\\]src[/\\]live[/\\]LiveSession\.tsx$/],
   ["recording", /[/\\]src[/\\]live[/\\]record[/\\]Recorder\.tsx$/],
   ["slow motion", /[/\\]src[/\\]live[/\\]slowmo[/\\]/],
