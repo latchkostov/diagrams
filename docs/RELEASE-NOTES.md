@@ -61,6 +61,32 @@
   five-port range on IPv4 and IPv6 before keeping their intended occupied member. A forced blocked
   neighbour regression fails with the old setup; the real preflight and its exact-port assertions
   remain intact. All 1,403 E2E tests passed in that run; the complete gate is repeated after this fix.
+
+## Image export review fixes (#142, 2026-10-16)
+
+- PNG and SVG exports capture the editor's document identity and monotonic edit revision. Renaming,
+  moving, reconnecting, undoing, replacing or otherwise editing the document between slices stops the
+  export and downloads nothing. The existing translated export-failure toast asks to try again.
+  Version reads are constant time: they reuse history's committed fingerprint and synchronous editor
+  mutation tracking, excluding selection, measurements, live counters and export-owned DOM changes.
+- Touch drags wait during export; touch capture is non-passive. Modifier-key releases still reach
+  keyboard state, and Cancel remains available by touch, mouse, Enter, Space and Escape.
+- Cancellation aborts pending image fetches and file reads, removes image sources and handlers, and
+  interrupts canvas/video cloning and decoding. Aborted resources cannot poison the successful-resource
+  cache. Progress counts elements consistently, advances through export phases and reaches 100% only
+  when the image is ready.
+- Regression coverage resumes stalled module/font requests after cancellation, verifies no late
+  download or error and then successfully exports again. Module interception matches both dev and
+  production URLs. Deliberate reversions prove the revision, input, progress and resource regressions.
+- No golden is changed or re-recorded. The localized failure and retry messages are reused to preserve
+  the catalog fingerprint too; a new diagnostic translation key and a model-based renderer were rejected
+  because they would change pinned output. The refreshed skill viewer keeps plugin 1.1.34, exactly one
+  patch above origin/master's 1.1.33.
+- The production timing recheck keeps the original frame improvement: at 1,500 nodes, SVG's longest
+  frame is 0.77 seconds and PNG's 10.65 seconds (previous branch: 0.56 and 9.39; recorded master:
+  32.30 and 28.87). Totals remain comparable at 28.01/43.98 seconds. These are single observations,
+  not timing assertions; details and all four comparisons are in [BENCHMARKS.md](BENCHMARKS.md).
+
 ## Responsive image export rebase onto Collaboration C0 (#141, 2026-10-16)
 
 - Rebased onto master with Collaboration C0, preserving both documentation histories and all translation

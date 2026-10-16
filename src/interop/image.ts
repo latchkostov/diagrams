@@ -21,6 +21,8 @@ export interface ImageOptions {
   onProgress?: (done: number) => void;
   /** Escape pressed while the export runs (its owner cancels it). */
   onEscape?: () => void;
+  /** Throws when the captured document identity or edit revision changes. */
+  check?: () => void;
 }
 
 type Bounds = { x: number; y: number; width: number; height: number };
@@ -98,6 +100,8 @@ const MAX_PIXELS = 16_000_000; // keep well under browsers' canvas limits
 
 /** The picture as a file: a PNG, or the SVG's text (what its data URL would decode to). */
 export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions = {}): Promise<Blob> {
+  opts.signal?.throwIfAborted();
+  opts.check?.();
   const viewport = findViewport();
   const content = bounds(viewport);
   if (!content) throw new Error("This diagram is empty, so there's nothing to export.");
@@ -116,28 +120,20 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
       ? css.backgroundColor
       : getComputedStyle(document.body).backgroundColor;
 
-  let changed = false;
-  const watch = new MutationObserver(() => (changed = true));
-  for (const layer of viewport.querySelectorAll(":scope > .react-flow__nodes, :scope > .react-flow__edges"))
-    watch.observe(layer, { childList: true });
   let defsClone: SVGElement | undefined;
   let unselect = () => {};
   const paint = new SvgPaint();
   const releaseInput = holdInput(opts.onEscape);
+  let slicer: import("./imageClone").Slicer | undefined;
   try {
     const [{ toPng, toSvgText, Slicer }, { getWebFontCSS }] = await unlessCancelled(
       Promise.all([import("./imageClone"), import("html-to-image/es/embed-webfonts")]),
       opts.signal,
     );
-    const slicer = new Slicer(viewport.getElementsByTagName("*").length, {
+    slicer = new Slicer(viewport.getElementsByTagName("*").length, {
       signal: opts.signal,
       onProgress: opts.onProgress,
-      // A node or an edge added or taken away meanwhile (an agent's edit, another diagram opened): the picture would
-      // mix two diagrams, so the export stops. Changes inside a node (live view's numbers) don't count.
-      check: () => {
-        if (changed || watch.takeRecords().length)
-          throw new Error("The diagram changed while it was being exported. Export it again.");
-      },
+      check: opts.check,
     });
     // Edge arrowheads are defined in an <svg><defs> outside the viewport; clone them inside for the shot.
     defsClone = document.querySelector("svg.df-defs")?.cloneNode(true) as SVGElement | undefined;
@@ -172,10 +168,15 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
         !(node instanceof HTMLElement && EDITING_ONLY.some((cls) => node.classList.contains(cls))) &&
         !(node instanceof SVGElement && EDITING_ONLY_SVG.some((cls) => node.classList.contains(cls))),
     };
-    if (kind === "png") return dataUrlToBlob(await toPng(viewport, options, slicer));
-    return new Blob([await toSvgText(viewport, options, slicer)], { type: "image/svg+xml;charset=utf-8" });
+    const image =
+      kind === "png"
+        ? dataUrlToBlob(await toPng(viewport, options, slicer))
+        : new Blob([await toSvgText(viewport, options, slicer)], { type: "image/svg+xml;charset=utf-8" });
+    slicer.stopIfAsked();
+    opts.onProgress?.(1);
+    return image;
   } finally {
-    watch.disconnect();
+    slicer?.dispose();
     releaseInput();
     paint.restore();
     unselect();
@@ -185,15 +186,21 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
 }
 
 /** `promise`, or the cancel's reason if the export is cancelled first (a stalled download never holds the page). */
-function unlessCancelled<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+async function unlessCancelled<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
   if (!signal) return promise;
   signal.throwIfAborted();
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) =>
-      signal.addEventListener("abort", () => reject(signal.reason as Error), { once: true }),
-    ),
-  ]);
+  let onAbort = () => {};
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        onAbort = () => reject(signal.reason as Error);
+        signal.addEventListener("abort", onAbort, { once: true });
+      }),
+    ]);
+  } finally {
+    signal.removeEventListener("abort", onAbort);
+  }
 }
 
 const EDITING_ONLY = [

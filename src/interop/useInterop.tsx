@@ -352,6 +352,12 @@ export function useInterop({
     attempt({ action: "image", name: kind.toUpperCase() }, async () => {
       const d = current();
       // A big diagram takes seconds: the toast shows how far it has got and offers Cancel (Escape too).
+      const version = canvasRef.current?.getDocumentVersion();
+      const check = () => {
+        if (canvasRef.current?.getDocumentVersion() !== version)
+          // Reuse the localized export failure + retry messages; no image is downloaded from mixed revisions.
+          throw new Error(t("storageDialog.tryAgain"));
+      };
       const cancel = new AbortController();
       const release = holdInput(() => cancel.abort());
       const busy = toast.busy(t("fileToast.renderingValue0", { value0: kind.toUpperCase() }), {
@@ -365,6 +371,8 @@ export function useInterop({
       });
       try {
         const { renderDiagramImage } = await Promise.race([import("./image"), aborted]);
+        cancel.signal.throwIfAborted();
+        check();
         // The picture carries its title, as presentation does (an untitled diagram has none to show).
         const title = d.title.trim();
         const header =
@@ -378,12 +386,14 @@ export function useInterop({
           signal: cancel.signal,
           onProgress: (done) => toast.progress(busy, done),
           onEscape: () => cancel.abort(),
+          check,
         });
         // Cancelled as it finished: still nothing downloaded.
         if (cancel.signal.aborted) {
           toast.dismiss(busy);
           return;
         }
+        check();
         const suffix =
           kind === "png" ? `${opts.scale === 1 ? "" : "@2x"}${opts.transparent ? "-transparent" : ""}` : "";
         // A download clicks its temporary anchor; it must no longer be captured by our input hold.

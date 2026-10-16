@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { test, expect, expectNoErrors, gotoCanvas, pageLoadTimeout, publicExamples } from "./fixtures";
+import { callTool, installFakeModelContext, toolNames } from "./ai-helpers";
 
 // Image export clones the canvas in time slices (src/interop/imageClone.ts, a port of html-to-image's clone): the
 // tab keeps painting, the toast shows how far it has got, and Cancel stops it. The port must draw what the library
@@ -42,31 +43,44 @@ function canonicalText(svg: string) {
 }
 
 test.describe("image export in slices", { tag: "@dev" }, () => {
-  test("a node added or taken away mid-export stops it, rather than drawing two diagrams", async ({ page }) => {
-    test.slow();
-    await openLanes(page);
-    const outcome = await page.evaluate(async () => {
-      const image = (await import("/src/interop/image.ts" as string)) as typeof import("../../src/interop/image");
-      const nodes = document.querySelector('[data-testid="canvas-wrap"] .react-flow__nodes');
-      const node = nodes?.lastElementChild;
-      if (!nodes || !node) throw new Error("no nodes");
-      let moved = false;
-      return image
-        .renderDiagramImage("svg", {
-          // As soon as the export reports progress, a node leaves and comes back (an agent's edit would be one).
-          onProgress: () => {
-            if (moved) return;
-            moved = true;
-            nodes.append(node);
-          },
-        })
-        .then(
-          () => "exported",
-          (err: unknown) => (err instanceof Error ? err.message : String(err)),
-        );
+  for (const edit of ["rename", "move", "reconnect", "remove", "add", "undo", "replace"] as const)
+    test(`a ${edit} between export slices invalidates the captured document version`, async ({ page }) => {
+      test.slow();
+      await openLanes(page);
+      const outcome = await page.evaluate(async (edit) => {
+        const image = (await import("/src/interop/image.ts" as string)) as typeof import("../../src/interop/image");
+        const { paletteHost } = (await import(
+          "/src/palette/host.ts" as string
+        )) as typeof import("../../src/palette/host");
+        const editor = paletteHost.get().canvas?.editor;
+        if (!editor) throw new Error("no editor");
+        if (edit === "undo") editor.updateNode("p0n0", { label: "Before undo" });
+        const version = editor.getDocumentVersion();
+        let moved = false;
+        return image
+          .renderDiagramImage("svg", {
+            check: () => {
+              if (editor.getDocumentVersion() !== version) throw new Error("changed");
+            },
+            onProgress: () => {
+              if (moved) return;
+              moved = true;
+              if (edit === "rename") editor.updateNode("p0n0", { label: "New name" });
+              if (edit === "move") editor.updateNode("p0n0", { x: 9999 });
+              if (edit === "reconnect") editor.reconnectEdge("e-p0n1", "target", "p1n0");
+              if (edit === "remove") editor.deleteElements({ nodeIds: ["p0n0"] });
+              if (edit === "add") editor.addNode("service.go");
+              if (edit === "undo") editor.undo();
+              if (edit === "replace") editor.applyDiagram({ ...editor.getDiagram(), title: "Replacement" });
+            },
+          })
+          .then(
+            () => "exported",
+            (err: unknown) => (err instanceof Error ? err.message : String(err)),
+          );
+      }, edit);
+      expect(outcome).toBe("changed");
     });
-    expect(outcome).toBe("The diagram changed while it was being exported. Export it again.");
-  });
 
   test("a cancel while the picture decodes stops the PNG: nothing drawn, nothing returned", async ({ page }) => {
     await gotoCanvas(page, publicExamples[0].slug);
@@ -86,9 +100,8 @@ test.describe("image export in slices", { tag: "@dev" }, () => {
         started();
         return new Promise<void>((resolve) => {
           release = () => {
-            const done = decode.call(this);
-            resolve(done);
-            return done;
+            resolve();
+            return Promise.resolve();
           };
         });
       };
@@ -100,7 +113,12 @@ test.describe("image export in slices", { tag: "@dev" }, () => {
       };
       const cancel = new AbortController();
       const options = { width: 800, height: 600, pixelRatio: 1, cacheBust: false };
-      const png = port.toPng(viewport, options, new port.Slicer(1, { signal: cancel.signal }));
+      const progress: number[] = [];
+      const png = port.toPng(
+        viewport,
+        options,
+        new port.Slicer(1, { signal: cancel.signal, sliceMs: 0, onProgress: (done) => progress.push(done) }),
+      );
       try {
         await decoding;
         cancel.abort();
@@ -111,13 +129,18 @@ test.describe("image export in slices", { tag: "@dev" }, () => {
         // The decoding finishes, and createImage's frame after it: anything that would draw has had its chance.
         await release();
         await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-        return { result, draws };
+        return {
+          result,
+          draws,
+          unfinishedProgress: progress.every((done) => done < 1),
+          monotonic: progress.every((done, i) => !i || done >= progress[i - 1]),
+        };
       } finally {
         HTMLImageElement.prototype.decode = decode;
         CanvasRenderingContext2D.prototype.drawImage = drawImage;
       }
     });
-    expect(outcome).toEqual({ result: "AbortError", draws: 0 });
+    expect(outcome).toEqual({ result: "AbortError", draws: 0, unfinishedProgress: true, monotonic: true });
   });
 
   for (const example of publicExamples.slice(0, 3))
@@ -343,18 +366,31 @@ test("an export started from the Image dialog hands the keyboard to its Cancel",
 });
 
 for (const [stalled, pattern, kind] of [
-  ["the initial export module", /\/image-[^/]+\.js(?:\?|$)/, undefined],
+  ["the initial export module", /(?:\/image-[^/]+\.js|\/src\/interop\/image\.ts)(?:\?|$)/, undefined],
   ["its code", /imageClone/, undefined],
   ["its fonts", /\.woff2?(\?|$)/, "fetch"],
 ] as const)
-  test(`a cancel while ${stalled} won't download releases the page`, async ({ page }) => {
+  test(`a cancel while ${stalled} won't download releases the page and stays cancelled after loading resumes`, async ({
+    page,
+    consoleErrors,
+  }) => {
     test.slow();
     // The request hangs: the export waits on it, and only a cancel ends the wait.
     let stalls = 0;
+    let resumed = false;
+    let finished = 0;
+    const modules: string[] = [];
+    const release = Promise.withResolvers<undefined>();
     await page.route(pattern, async (route) => {
       if (kind && route.request().resourceType() !== kind) return route.continue();
+      if (resumed) return route.continue();
       stalls++;
-      await new Promise(() => {});
+      if (!kind) modules.push(route.request().url());
+      const response = await route.fetch();
+      await release.promise;
+      await route.fulfill({ response });
+      await (await route.request().response())?.finished();
+      finished++;
     });
     await openLanes(page);
     let downloads = 0;
@@ -372,4 +408,104 @@ for (const [stalled, pattern, kind] of [
     await expect(page.getByTestId("rf__node-p2n0")).toHaveClass(/selected/);
     await expect(page.getByTestId("export-header")).toHaveCount(0);
     expect(downloads).toBe(0);
+    resumed = true;
+    release.resolve(undefined);
+    await expect.poll(() => finished).toBe(stalls);
+    await page.evaluate(async (urls) => {
+      await Promise.all(urls.map((url) => import(/* @vite-ignore */ url)));
+    }, modules);
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    expect(downloads).toBe(0);
+    await expect(page.getByTestId("toast")).toHaveCount(0);
+    // Module evaluation / the cached font promise can now finish. A subsequent export waits on that same work.
+    await page.getByTestId("file-button").click();
+    const [download] = await Promise.all([page.waitForEvent("download"), page.getByTestId("export-png").click()]);
+    expect(download.suggestedFilename()).toMatch(/\.png$/);
+    await expect(page.getByTestId("toast")).toHaveAttribute("data-kind", "success");
+    expect(downloads).toBe(1);
+    expectNoErrors(consoleErrors);
   });
+
+test("a WebMCP rename during export reports a localized retry and downloads no mixed revision", async ({
+  page,
+  consoleErrors,
+}) => {
+  test.slow();
+  await installFakeModelContext(page);
+  await openLanes(page);
+  await expect.poll(() => toolNames(page)).toContain("edit_diagram");
+  let downloads = 0;
+  page.on("download", () => downloads++);
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("export-png").click();
+  await expect(page.getByTestId("toast-progress")).toBeVisible();
+  const result = await callTool(page, "edit_diagram", {
+    ops: [{ op: "update", target: "p0n0", label: "Renamed during export" }],
+  });
+  expect(result.isError).toBe(false);
+  await expect(page.getByTestId("toast")).toHaveAttribute("data-kind", "error");
+  await expect(page.getByTestId("toast")).toContainText("Couldn't export the PNG. Try again");
+  expect(downloads).toBe(0);
+  await expect(page.getByTestId("export-header")).toHaveCount(0);
+  await page.getByTestId("node-p0n0").click();
+  await expect(page.getByTestId("rf__node-p0n0")).toHaveClass(/selected/);
+  expectNoErrors(consoleErrors);
+});
+
+test.describe("touch during export", () => {
+  test.use({ hasTouch: true });
+  test("a touch drag is held until export is cancelled", async ({ page }) => {
+    test.slow();
+    await openLanes(page);
+    const node = page.getByTestId("rf__node-p0n0");
+    const style = await node.getAttribute("style");
+    if (style === null) throw new Error("no node style");
+    const point = await page.getByTestId("node-p0n0").boundingBox();
+    if (!point) throw new Error("no node");
+    await page.getByTestId("file-button").click();
+    await page.getByTestId("export-png").click();
+    await expect(page.getByTestId("toast-progress")).toBeVisible();
+    const cdp = await page.context().newCDPSession(page);
+    const x = point.x + point.width / 2,
+      y = point.y + point.height / 2;
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x + 80, y: y + 60 }] });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await cdp.detach();
+    await expect(node).toHaveAttribute("style", style);
+    await page.getByTestId("image-export-cancel").tap();
+    await expect(page.getByTestId("toast")).toHaveCount(0);
+    await expect(node).toHaveAttribute("style", style);
+  });
+});
+
+test("PNG progress stays unfinished through decoding and finishes with the download", async ({
+  page,
+  consoleErrors,
+}) => {
+  test.slow();
+  await openLanes(page);
+  await page.evaluate(() => {
+    const decode = HTMLImageElement.prototype.decode;
+    const w = window as unknown as { __decoding: boolean; __resumeDecode: () => void };
+    w.__decoding = false;
+    HTMLImageElement.prototype.decode = function () {
+      HTMLImageElement.prototype.decode = decode;
+      const decoded = decode.call(this);
+      w.__decoding = true;
+      return new Promise<void>((resolve) => {
+        w.__resumeDecode = () => resolve(decoded);
+      });
+    };
+  });
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("export-png").click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __decoding: boolean }).__decoding)).toBe(true);
+  const value = await page.getByTestId("toast-progress").getAttribute("aria-valuenow");
+  expect(Number(value)).toBeLessThan(100);
+  const download = page.waitForEvent("download");
+  await page.evaluate(() => (window as unknown as { __resumeDecode: () => void }).__resumeDecode());
+  await download;
+  await expect(page.getByTestId("toast")).toHaveAttribute("data-kind", "success");
+  expectNoErrors(consoleErrors);
+});

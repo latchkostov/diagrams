@@ -18,6 +18,19 @@ Production phone regressions cover both explicit AI entry points, preserving uns
 fields and dirty state while using the existing single-panel slot. No chrome, wording or focus target
 is added. This was not an independent whole-app designer or assistive-technology walkthrough.
 
+## Image export review fixes (#142, 2026-10-16)
+
+The designer agent's scoped source review passes progress, Cancel/input accessibility and the chrome
+budget: the busy toast keeps its one Cancel action, touch is held, modifier releases pass through and
+100% is reserved for a completed picture. Browser regressions cover touch dragging, stalled decoding,
+resource cleanup and successful retry. No permanent control or focus target was added.
+
+The review preferred a specific translated explanation when an edit interrupts export. This task
+requires every golden, including the translation-catalog fingerprint, to remain unchanged, so the
+existing localized export-failure message with "Try again" is retained. It reports failure honestly
+and provides recovery; a dedicated diagnostic key is deferred under that explicit constraint. This
+was a scoped source review with browser regressions, not an assistive-technology walkthrough.
+
 ## Routing R1 rejected transactions (2026-10-16)
 
 Scoped source UX review: rejected managed calls now keep capacity analysis and its existing readouts

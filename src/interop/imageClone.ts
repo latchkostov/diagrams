@@ -35,8 +35,8 @@ SOFTWARE.
 
 import { applyStyle } from "html-to-image/es/apply-style";
 import { clonePseudoElements } from "html-to-image/es/clone-pseudos";
-import { isDataUrl, resourceToDataURL } from "html-to-image/es/dataurl";
-import { embedResources } from "html-to-image/es/embed-resources";
+import { isDataUrl, makeDataUrl } from "html-to-image/es/dataurl";
+import { parseURLs } from "html-to-image/es/embed-resources";
 import { embedWebFonts } from "html-to-image/es/embed-webfonts";
 import { getMimeType } from "html-to-image/es/mimes";
 import type { Options } from "html-to-image/es/types";
@@ -49,7 +49,7 @@ import {
   toArray,
 } from "html-to-image/es/util";
 
-/** Where a sliced export is: called after each slice with the share of the tree cloned so far (0 to 1). */
+/** Overall export progress: cloning takes the first 70%; only the finished renderer reports 1. */
 export type Progress = (done: number) => void;
 
 /**
@@ -57,25 +57,65 @@ export type Progress = (done: number) => void;
  * export at any slice (it throws).
  */
 export class Slicer {
+  private readonly cancel = new AbortController();
+  readonly signal: AbortSignal;
   /** Slices handed back so far (for tests). */
   yields = 0;
   private sliceStart = performance.now();
   private done = 0;
+  private reported = 0;
+  private images = new Set<HTMLImageElement | SVGImageElement>();
   constructor(
     private readonly total: number,
     private readonly opts: { signal?: AbortSignal; onProgress?: Progress; sliceMs?: number; check?: () => void } = {},
-  ) {}
+  ) {
+    this.signal = opts.signal ? AbortSignal.any([opts.signal, this.cancel.signal]) : this.cancel.signal;
+    this.signal.addEventListener(
+      "abort",
+      () => {
+        for (const image of this.images) {
+          image.onload = null;
+          image.onerror = null;
+          image.removeAttribute("src");
+          image.removeAttribute("srcset");
+          image.removeAttribute("href");
+          image.removeAttributeNS("http://www.w3.org/1999/xlink", "href");
+        }
+        this.images.clear();
+      },
+      { once: true },
+    );
+  }
+
+  /** A shallow/deep DOM clone can start an image load even before the embedding phase begins. */
+  trackImage(image: HTMLImageElement | SVGImageElement) {
+    this.images.add(image);
+  }
+
+  /** Release any resource work still in flight, including when a sibling failed. */
+  dispose() {
+    this.cancel.abort();
+  }
+
+  progress(done: number) {
+    this.reported = Math.max(this.reported, done);
+    this.opts.onProgress?.(this.reported);
+  }
 
   /** Throws if the export was cancelled, or if its `check` says it can't go on. */
   stopIfAsked() {
-    this.opts.signal?.throwIfAborted();
-    this.opts.check?.();
+    this.signal.throwIfAborted();
+    try {
+      this.opts.check?.();
+    } catch (error) {
+      this.cancel.abort(error);
+      throw error;
+    }
   }
 
   /** `promise`, unless the export is cancelled first: a stalled download (a font, an image) never holds the page. */
   async wait<T>(promise: Promise<T>): Promise<T> {
-    const signal = this.opts.signal;
-    if (!signal) return promise;
+    const signal = this.signal;
     signal.throwIfAborted();
     let onAbort = () => {};
     try {
@@ -105,7 +145,7 @@ export class Slicer {
     this.stopIfAsked();
     if (!this.gate) {
       if (performance.now() - this.sliceStart < (this.opts.sliceMs ?? 40)) return;
-      this.opts.onProgress?.(this.total ? Math.min(1, this.done / this.total) : 1);
+      this.progress(this.total ? Math.min(0.7, (0.7 * this.done) / this.total) : 0.7);
       this.gate = nextTask().then(() => {
         this.gate = undefined;
         this.yields++;
@@ -142,38 +182,53 @@ function nextTask(): Promise<void> {
 }
 
 /** The library's image loader, forwarding decode failures as well as load failures. */
-function createImage(url: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      void img.decode().then(() => requestAnimationFrame(() => resolve(img)), reject);
-    };
-    img.onerror = reject;
-    img.crossOrigin = "anonymous";
-    img.decoding = "async";
-    img.src = url;
-  });
+async function createImage(url: string, slicer: Slicer): Promise<HTMLImageElement> {
+  slicer.stopIfAsked();
+  const img = new Image();
+  let frame = 0;
+  const abort = () => img.removeAttribute("src");
+  slicer.signal.addEventListener("abort", abort, { once: true });
+  try {
+    return await slicer.wait(
+      new Promise((resolve, reject) => {
+        img.onload = () => {
+          void img.decode().then(() => {
+            if (!slicer.signal.aborted) frame = requestAnimationFrame(() => resolve(img));
+          }, reject);
+        };
+        img.onerror = reject;
+        img.crossOrigin = "anonymous";
+        img.decoding = "async";
+        img.src = url;
+      }),
+    );
+  } finally {
+    slicer.signal.removeEventListener("abort", abort);
+    img.onload = null;
+    img.onerror = null;
+    cancelAnimationFrame(frame);
+  }
 }
 
-async function cloneCanvasElement(canvas: HTMLCanvasElement) {
+async function cloneCanvasElement(canvas: HTMLCanvasElement, slicer: Slicer) {
   const dataURL = canvas.toDataURL();
   if (dataURL === "data:,") return canvas.cloneNode(false) as HTMLCanvasElement;
-  return createImage(dataURL);
+  return createImage(dataURL, slicer);
 }
 
-async function cloneVideoElement(video: HTMLVideoElement, options: Options) {
+async function cloneVideoElement(video: HTMLVideoElement, options: Options, slicer: Slicer) {
   if (video.currentSrc) {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     canvas.width = video.clientWidth;
     canvas.height = video.clientHeight;
     ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
-    return createImage(canvas.toDataURL());
+    return createImage(canvas.toDataURL(), slicer);
   }
   const poster = video.poster;
   const contentType = getMimeType(poster);
-  const dataURL = await resourceToDataURL(poster, contentType, options);
-  return createImage(dataURL);
+  const dataURL = await resourceToDataURL(poster, contentType, options, slicer);
+  return createImage(dataURL, slicer);
 }
 
 async function cloneIFrameElement(iframe: HTMLIFrameElement, options: Options, slicer: Slicer) {
@@ -186,10 +241,15 @@ async function cloneIFrameElement(iframe: HTMLIFrameElement, options: Options, s
 }
 
 async function cloneSingleNode(node: HTMLElement, options: Options, slicer: Slicer): Promise<HTMLElement> {
-  if (isInstanceOfElement(node, HTMLCanvasElement)) return cloneCanvasElement(node);
-  if (isInstanceOfElement(node, HTMLVideoElement)) return cloneVideoElement(node, options);
+  if (isInstanceOfElement(node, HTMLCanvasElement)) return slicer.wait(cloneCanvasElement(node, slicer));
+  if (isInstanceOfElement(node, HTMLVideoElement)) return slicer.wait(cloneVideoElement(node, options, slicer));
   if (isInstanceOfElement(node, HTMLIFrameElement)) return cloneIFrameElement(node, options, slicer);
-  return node.cloneNode(isSVGElement(node)) as HTMLElement;
+  const clone = node.cloneNode(isSVGElement(node)) as HTMLElement;
+  if (clone instanceof HTMLImageElement) slicer.trackImage(clone);
+  if (clone instanceof SVGImageElement) slicer.trackImage(clone);
+  if (isSVGElement(clone))
+    for (const image of clone.querySelectorAll<SVGImageElement>("image")) slicer.trackImage(image);
+  return clone;
 }
 
 const isSlotElement = (node: Node): node is HTMLSlotElement =>
@@ -214,7 +274,8 @@ async function cloneChildren(
   for (const child of children) {
     const clonedChild = await cloneNode(child, options, slicer);
     if (clonedChild) clonedNode.appendChild(clonedChild);
-    await slicer.step();
+    if (child.nodeType === Node.ELEMENT_NODE) await slicer.step();
+    else await slicer.breathe();
   }
   return clonedNode;
 }
@@ -300,23 +361,74 @@ async function ensureSVGSymbols(clone: HTMLElement, options: Options, slicer: Sl
 // The library's embedImages (embed-images.js), a node at a time with a slice check between them. Every node writes
 // only its own style or source, so the order they run in doesn't change what they write.
 
-async function embedProp(propName: string, node: HTMLElement, options: Options) {
+/** Completed resources only: an aborted attempt must never cache its placeholder for a later export. */
+const resources = new Map<string, string>();
+
+async function resourceToDataURL(url: string, contentType: string, options: Options, slicer: Slicer) {
+  slicer.stopIfAsked();
+  let key = options.includeQueryParams ? url : url.replace(/\?.*/, "");
+  if (/ttf|otf|eot|woff2?/i.test(key)) key = key.replace(/.*\//, "");
+  if (contentType) key = `[${contentType}]${key}`;
+  const cached = resources.get(key);
+  if (cached !== undefined) return cached;
+  let dataURL: string;
+  try {
+    const requestURL = options.cacheBust ? `${url}${/\?/.test(url) ? "&" : "?"}${Date.now()}` : url;
+    const res = await fetch(requestURL, { ...options.fetchRequestInit, signal: slicer.signal });
+    if (res.status === 404) throw new Error(`Resource "${res.url}" not found`);
+    const blob = await res.blob();
+    slicer.stopIfAsked();
+    const reader = new FileReader();
+    const abort = () => reader.abort();
+    slicer.signal.addEventListener("abort", abort, { once: true });
+    try {
+      const result = await slicer.wait(
+        new Promise<string>((resolve, reject) => {
+          reader.onerror = reject;
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        }),
+      );
+      dataURL = makeDataUrl(result.split(/,/)[1], contentType || res.headers.get("Content-Type") || "");
+    } finally {
+      slicer.signal.removeEventListener("abort", abort);
+      reader.onerror = null;
+      reader.onloadend = null;
+    }
+  } catch (error) {
+    slicer.stopIfAsked();
+    dataURL = options.imagePlaceholder || "";
+    console.warn(error instanceof Error ? error.message : String(error));
+  }
+  slicer.stopIfAsked();
+  resources.set(key, dataURL);
+  return dataURL;
+}
+
+async function embedProp(propName: string, node: HTMLElement, options: Options, slicer: Slicer) {
   const propValue = node.style?.getPropertyValue(propName);
   if (propValue) {
-    const cssString = await embedResources(propValue, null, options);
+    let cssString = propValue;
+    for (const url of parseURLs(propValue)) {
+      const dataURL = await resourceToDataURL(url, getMimeType(url), options, slicer);
+      const escaped = url.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      cssString = cssString.replace(new RegExp(`(url\\(['"]?)(${escaped})(['"]?\\))`, "g"), `$1${dataURL}$3`);
+      slicer.stopIfAsked();
+    }
     node.style.setProperty(propName, cssString, node.style.getPropertyPriority(propName));
     return true;
   }
   return false;
 }
 
-async function embedBackground(clonedNode: HTMLElement, options: Options) {
-  if (!(await embedProp("background", clonedNode, options))) await embedProp("background-image", clonedNode, options);
+async function embedBackground(clonedNode: HTMLElement, options: Options, slicer: Slicer) {
+  if (!(await embedProp("background", clonedNode, options, slicer)))
+    await embedProp("background-image", clonedNode, options, slicer);
   for (const prop of ["mask", "-webkit-mask", "mask-image", "-webkit-mask-image"])
-    if (await embedProp(prop, clonedNode, options)) break;
+    if (await embedProp(prop, clonedNode, options, slicer)) break;
 }
 
-async function embedImageNode(clonedNode: HTMLElement | SVGImageElement, options: Options) {
+async function embedImageNode(clonedNode: HTMLElement | SVGImageElement, options: Options, slicer: Slicer) {
   const isImageElement = isInstanceOfElement(clonedNode, HTMLImageElement);
   if (
     !(isImageElement && !isDataUrl(clonedNode.src)) &&
@@ -324,27 +436,42 @@ async function embedImageNode(clonedNode: HTMLElement | SVGImageElement, options
   )
     return;
   const url = isImageElement ? clonedNode.src : (clonedNode as SVGImageElement).href.baseVal;
-  const dataURL = await resourceToDataURL(url, getMimeType(url), options);
-  await new Promise((resolve, reject) => {
-    const target = clonedNode as HTMLImageElement & SVGImageElement;
-    target.onload = resolve;
-    target.onerror = options.onImageErrorHandler
-      ? (...attributes: unknown[]) => {
-          try {
-            resolve((options.onImageErrorHandler as (...a: unknown[]) => unknown)(...attributes));
-          } catch (error) {
-            reject(error as Error);
-          }
-        }
-      : reject;
-    const image = target as unknown as { decode?: unknown; loading?: string };
-    if (image.decode) image.decode = resolve;
-    if (image.loading === "lazy") image.loading = "eager";
-    if (isImageElement) {
-      (clonedNode as HTMLImageElement).srcset = "";
-      (clonedNode as HTMLImageElement).src = dataURL;
-    } else (clonedNode as SVGImageElement).href.baseVal = dataURL;
-  });
+  const dataURL = await resourceToDataURL(url, getMimeType(url), options, slicer);
+  const target = clonedNode as HTMLImageElement & SVGImageElement;
+  const image = target as unknown as { decode?: unknown; loading?: string };
+  const decode = image.decode;
+  const abort = () => {
+    if (isImageElement) target.removeAttribute("src");
+    else target.removeAttribute("href");
+  };
+  slicer.signal.addEventListener("abort", abort, { once: true });
+  try {
+    await slicer.wait(
+      new Promise((resolve, reject) => {
+        target.onload = resolve;
+        target.onerror = options.onImageErrorHandler
+          ? (...attributes: unknown[]) => {
+              try {
+                resolve((options.onImageErrorHandler as (...a: unknown[]) => unknown)(...attributes));
+              } catch (error) {
+                reject(error as Error);
+              }
+            }
+          : reject;
+        if (image.decode) image.decode = resolve;
+        if (image.loading === "lazy") image.loading = "eager";
+        if (isImageElement) {
+          (clonedNode as HTMLImageElement).srcset = "";
+          (clonedNode as HTMLImageElement).src = dataURL;
+        } else (clonedNode as SVGImageElement).href.baseVal = dataURL;
+      }),
+    );
+  } finally {
+    slicer.signal.removeEventListener("abort", abort);
+    target.onload = null;
+    target.onerror = null;
+    if (decode) image.decode = decode;
+  }
 }
 
 /** Image loads kept in flight at once while the walk goes on (the library had every one in flight). */
@@ -359,8 +486,8 @@ async function embedImages(root: Node, options: Options, slicer: Slicer): Promis
   const visit = async (node: Node): Promise<void> => {
     if (!isInstanceOfElement(node as Element, Element)) return;
     await slicer.breathe();
-    await embedBackground(node as HTMLElement, options);
-    const load = embedImageNode(node as HTMLElement, options);
+    await embedBackground(node as HTMLElement, options, slicer);
+    const load = embedImageNode(node as HTMLElement, options, slicer);
     loads.add(load);
     void load.then(
       () => loads.delete(load),
@@ -380,6 +507,7 @@ export async function cloneNode<T extends HTMLElement>(
   slicer: Slicer,
   isRoot = false,
 ): Promise<T | null> {
+  slicer.stopIfAsked();
   if (!isRoot && options.filter && !options.filter(node)) return null;
   let clone = await cloneSingleNode(node, options, slicer);
   clone = await cloneChildren(node, clone, options, slicer);
@@ -516,9 +644,12 @@ export async function toSvgText(node: HTMLElement, options: Options, slicer: Sli
 /** The clone with its fonts and images embedded and the options' style applied. */
 async function prepare(node: HTMLElement, options: Options, slicer: Slicer): Promise<HTMLElement> {
   const clonedNode = (await cloneNode(node, options, slicer, true))!;
+  slicer.progress(0.7);
   await slicer.pause();
   await slicer.wait(embedWebFonts(clonedNode, options));
+  slicer.progress(0.75);
   await slicer.wait(embedImages(clonedNode, options, slicer));
+  slicer.progress(0.8);
   await slicer.pause();
   applyStyle(clonedNode, options);
   return clonedNode;
@@ -529,7 +660,8 @@ export async function toPng(node: HTMLElement, options: Options, slicer: Slicer)
   const { width, height } = getImageSize(node, options);
   const svg = await toSvg(node, options, slicer);
   await slicer.pause();
-  const img = await slicer.wait(createImage(svg));
+  slicer.progress(0.9);
+  const img = await slicer.wait(createImage(svg, slicer));
   slicer.stopIfAsked();
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d")!;

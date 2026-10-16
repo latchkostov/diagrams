@@ -454,6 +454,24 @@ one observation, not a repeated median. Raw seconds:
 | PNG    | 500   | 26.91 → 15.44          | 16.80 → 3.43                   |
 | PNG    | 1,500 | 48.62 → 42.73          | 28.87 → 9.39                   |
 
+Review-fix recheck (2026-10-16): the same production `features` workflow at 500 and 1,500 nodes,
+Chromium 156.0.8078.4, 1440×900 and 2× CPU throttle, on ports 6218–6219 with no concurrent tests or
+builds. Artifacts: `tests/.output/bench-export-review/{results.json,summary.md}` (66 metrics, both
+cases passed). These compare the previous branch observations above with the revised branch;
+the master observations are the previously recorded baseline, not a new master run. Raw seconds:
+
+| Export | Nodes | Total, previous branch → review fix | Longest frame, previous branch → review fix |
+| ------ | ----- | ----------------------------------- | ------------------------------------------- |
+| SVG    | 500   | 10.97 → 8.86                        | 0.293 → 0.239                               |
+| SVG    | 1,500 | 29.68 → 28.01                       | 0.558 → 0.771                               |
+| PNG    | 500   | 15.44 → 14.51                       | 3.43 → 3.38                                 |
+| PNG    | 1,500 | 42.73 → 43.98                       | 9.39 → 10.65                                |
+
+The large frame reduction still holds; PNG decode/draw remains the unsliced limit. Each case is one
+observation and browser calibration is 20 ms, so small changes are not a new performance claim or
+budget. The revision-read regression also calls `getDocumentVersion()` 1,000 times without a node
+or edge read: no fingerprinting, serialization or traversal occurs in an export slice's check.
+
 Artifacts are `tests/.output/bench-export-{master,head}/{results.json,summary.md}` and
 `tests/.output/export-comparison.md`. Browser calibration moved from 37 to 23 ms; consequently
 the normalized comparator flags 24 report-only timing differences, including unrelated layout,
