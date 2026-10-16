@@ -6,6 +6,45 @@ import { LifecycleBudgetError } from "../model/resourceBudget";
 import * as budgets from "../model/resourceBudget";
 import { createEngine } from "./engine";
 
+it.each([
+  null,
+  true,
+  "on",
+  { mode: "on" },
+  { mode: "on", controller: null },
+  { mode: "on", controller: { maxReplicas: "many" } },
+  { mode: "on", controller: { maxReplicas: NaN } },
+  { mode: "on", controller: { maxReplicas: Infinity } },
+])("edits and clears malformed raw autoscaling safely (%j)", (autoscaling) => {
+  const engine = createEngine();
+  engine.load({
+    format: "diagrams/v2",
+    planning: { revision: "p3-a1" },
+    title: "Raw props",
+    nodes: [
+      {
+        id: "n",
+        stencil: "service.dotnet",
+        label: "Service",
+        x: 0,
+        y: 0,
+        props: { resources: resourceLesson(), autoscaling },
+      },
+    ],
+    edges: [],
+  });
+  expect(() => engine.setNodeProps("n", { replicas: 2 })).not.toThrow();
+  expect(() => engine.setNodeProps("n", { autoscaling: undefined })).not.toThrow();
+  // Invalid maxima must not turn the total into NaN and suppress a real budget refusal.
+  const nodes = Array.from({ length: 25 }, (_, i) => ({
+    id: `n${i}`,
+    rawProps: { resources: resourceLesson(), replicas: 1000, autoscaling },
+  }));
+  expect(() => validateAllocationActions(nodes, [{ node: "n0", props: { replicas: 1100 } }], 1)).toThrow(
+    LifecycleBudgetError,
+  );
+});
+
 it("engine preflight performs N + 2A contribution calculations", () => {
   const nodes = Array.from({ length: 5000 }, (_, i) => ({
     id: `n${i}`,
