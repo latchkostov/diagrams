@@ -285,6 +285,10 @@
   exactly one patch above master's 1.1.33. Full parity regeneration retains only the 19 intentional changes
   listed under Resizable Inspector below: catalog metadata for three messages and horizontal
   `tidy.viewport` translations in 18 layout records. No additional golden changes are accepted.
+- The first full gate caught an occupied-port test setup that assumed an OS-assigned port's neighbours
+  were free. Its setup now verifies the complete five-port range before keeping the intended blocker.
+  An occupied-neighbour regression fails when that check is removed; the exact-port assertions remain.
+  This changes test setup only and adds no output golden changes.
 
 ## Collaboration reply-byte regression coverage (2026-10-16)
 
