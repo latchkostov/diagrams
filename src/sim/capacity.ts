@@ -18,6 +18,26 @@ import type { NodeStatus } from "./types";
 import { resolveMultiplier } from "./units";
 import { iterationBound } from "./iterationBound";
 import { admissionCapacities } from "./admissionPlanning";
+import {
+  chooseAction,
+  compileFilter,
+  compileMix,
+  compileRoutes,
+  compileTable,
+  matchesRequest,
+  type CompiledMatch,
+  type CompiledMix,
+  type CompiledRoute,
+  type CompiledTable,
+} from "./requestRouting";
+import { routeTableCapable } from "../model/requestRouting";
+
+/** Configured demand for one request route at one node, real requests/s ("" is requests without an address). */
+export interface RouteDemand {
+  offered: number;
+  /** Refused by this router's table: no matching rule and no Default, or no eligible target (404). */
+  rejected: number;
+}
 
 export interface NodeCapacity {
   resourcePlan?: ResourcePlan;
@@ -50,6 +70,8 @@ export interface CapacityAnalysis {
   /** False for an amplifying/unbounded cycle or when the iteration/rate cap is reached. */
   converged: boolean;
   iterations: number;
+  /** Request routing: offered and refused demand per route at each node it reaches (routed documents only). */
+  routeDemand?: Record<string, Record<string, RouteDemand>>;
 }
 interface Entry {
   input: DiagramNode;
@@ -60,6 +82,9 @@ interface Entry {
   up: boolean;
   /** Down (not just paused): a gateway's health checks route around it. */
   down: boolean;
+  /** Request routing, compiled once per analysis as playback compiles it. */
+  table?: CompiledTable;
+  mix?: CompiledMix;
 }
 interface ConsumerGroup {
   broker: Entry;
@@ -192,6 +217,7 @@ export function analyzeCapacity(
   const trafficMultiplier = resolveMultiplier(simulation?.multipliers?.traffic);
   const capacityMultiplier = resolveMultiplier(simulation?.multipliers?.capacity);
   const entries = new Map<string, Entry>();
+  const routes = compileRoutes(diagram.planning);
   for (const input of diagram.nodes) {
     const role = stencilRole(input.stencil);
     const raw = { ...input.props, ...simulation?.setup?.props?.[input.id] };
@@ -211,6 +237,10 @@ export function analyzeCapacity(
       active: replicas,
       up: status !== "down" && status !== "paused",
       down: status === "down",
+      ...(routes && raw.routeTable !== undefined && routeTableCapable(input.stencil, role)
+        ? { table: compileTable(raw.routeTable) }
+        : {}),
+      ...(routes && role === "source" ? { mix: compileMix(raw.trafficMix, routes) } : {}),
     });
   }
   const compiled = compileTopology(diagram);
@@ -219,6 +249,53 @@ export function analyzeCapacity(
     compiled.edges.filter((edge) => !edge.deny && !edge.dlq),
   );
   const outgoing = compiled.outgoing;
+  // Request routing on connections, compiled as playback compiles it: a caller's address on its Request, a filter.
+  const callerRoute = new Map<string, CompiledRoute>();
+  const requestFilter = new Map<string, CompiledMatch>();
+  if (routes)
+    for (const edge of diagram.edges) {
+      const filter = compileFilter(edge.props?.requestFilter);
+      if (filter) requestFilter.set(edge.id, filter);
+      const role = entries.get(edge.from)?.role;
+      const id = edge.props?.requestRouteId;
+      if (
+        edge.kind === "sync" &&
+        typeof id === "string" &&
+        (role === "source" || role === "processor" || role === "none") &&
+        routes.has(id)
+      )
+        callerRoute.set(edge.id, routes.get(id)!);
+    }
+  // A traffic class: the business type plus, in a routed document, the request route and whether an unaddressed
+  // request arrives at a router as a Request (sync). Unrouted classes keep the plain type as their key.
+  interface TrafficClass {
+    type: string;
+    route?: CompiledRoute;
+    sync?: boolean;
+  }
+  const classes = new Map<string, TrafficClass>();
+  const classKey = (type: string, route?: CompiledRoute, sync?: boolean): string => {
+    if (!route && !sync) return type;
+    const key = `${type}\u0000${route?.id ?? ""}\u0000${sync ? "s" : ""}`;
+    if (!classes.has(key)) classes.set(key, { type, route, sync });
+    return key;
+  };
+  const classOf = (key: string): TrafficClass => classes.get(key) ?? { type: key };
+  const takes = (edge: CompiledEdge, c: TrafficClass) =>
+    acceptsType(edge.filter, c.type) &&
+    (!requestFilter.has(edge.id) || matchesRequest(requestFilter.get(edge.id)!, c.route));
+  /** The class leaving along an edge into `to`: an unaddressed Request into a router remembers it was a Request. */
+  const along = (edge: CompiledEdge, type: string, route: CompiledRoute | undefined) =>
+    classKey(type, route, !route && edge.sync && !!entries.get(edge.to)?.table);
+  const demand = new Map<string, Map<string, RouteDemand>>();
+  const routeDemandAt = (id: string, route: CompiledRoute | undefined): RouteDemand => {
+    let byRoute = demand.get(id);
+    if (!byRoute) demand.set(id, (byRoute = new Map()));
+    const key = route?.id ?? "";
+    let d = byRoute.get(key);
+    if (!d) byRoute.set(key, (d = { offered: 0, rejected: 0 }));
+    return d;
+  };
   const groups = new Map<string, ConsumerGroup[]>();
   const assigned = new Map<string, ConsumerAssignment>();
   for (const [id, compiledGroups] of compiled.groups) {
@@ -267,27 +344,42 @@ export function analyzeCapacity(
     rates.set(id, types);
     if (edge) connections[edge.id] = (connections[edge.id] ?? 0) + value;
   }
+  /** A source's traffic: split by its mix's proportions (addressed classes), or one unaddressed class. */
+  function enter(id: string, entry: Entry, type: string, rate: number): void {
+    if (!entry.mix) {
+      add(external, id, type, rate);
+      return;
+    }
+    entry.mix.routes.forEach((route, i) => add(external, id, classKey(type, route), rate * entry.mix!.proportions[i]));
+  }
   if (simulation) {
     for (const profile of simulation.traffic) {
       const entry = entries.get(profile.node);
       if (entry)
-        add(
-          external,
+        enter(
           profile.node,
+          entry,
           profile.messageType ?? entry.props.messageType,
           peakRate(profile.shape) * trafficMultiplier,
         );
     }
   } else {
     for (const [id, entry] of entries)
-      if (entry.role === "source") add(external, id, entry.props.messageType, entry.props.ratePerSec);
+      if (entry.role === "source") enter(id, entry, entry.props.messageType, entry.props.ratePerSec);
   }
   const groupRate = (group: ConsumerGroup, edge: CompiledEdge) => {
     const target = entries.get(edge.to)!;
     const allocated = group.allocations.get(edge.to) ?? 0;
     return allocated ? serviceRate(target, allocated, edge.endpointId) : 0;
   };
-  function split(next: Rates, candidates: CompiledEdge[], type: string, rate: number, weights: number[]): void {
+  function split(
+    next: Rates,
+    candidates: CompiledEdge[],
+    type: string,
+    rate: number,
+    weights: number[],
+    route?: CompiledRoute,
+  ): void {
     const infinite = weights.filter((weight) => weight === Infinity).length;
     const sum = weights.reduce((value, weight) => value + (Number.isFinite(weight) ? weight : 0), 0);
     candidates.forEach((edge, index) => {
@@ -299,60 +391,97 @@ export function analyzeCapacity(
           ? weights[index] / sum
           : 1 / candidates.length;
       // A deny rule's share is blocked at the broker and goes no further.
-      if (!edge.deny) add(next, edge.to, emittedType(edge.emits, type), rate * fraction, edge);
+      if (!edge.deny) add(next, edge.to, along(edge, emittedType(edge.emits, type), route), rate * fraction, edge);
     });
   }
-  function propagate(next: Rates, entry: Entry, type: string, rate: number, injected: boolean): void {
+  function propagate(next: Rates, entry: Entry, key: string, rate: number, injected: boolean): void {
     if (!rate) return;
     const id = entry.input.id;
+    const c = classOf(key);
+    let type = c.type;
+    const route = c.route;
+    if (routes) routeDemandAt(id, route).offered += rate;
     if (entry.role === "processor" || entry.role === "none") type = emittedType(entry.props.emits, type);
-    const routes = (outgoing.get(id) ?? []).filter((edge) => acceptsType(edge.filter, type));
+    const self = { type, route };
+    if (entry.table && entry.role === "gateway") {
+      // The router's table, as playback decides it: first matching rule, else Default, else refused.
+      const choice = chooseAction(entry.table, route, !!c.sync);
+      if (!("legacy" in choice)) {
+        const eligible: CompiledEdge[] = [];
+        const weights: number[] = [];
+        if ("action" in choice)
+          for (const target of choice.action.targets) {
+            const edge = target.weight > 0 ? (outgoing.get(id) ?? []).find((e) => e.id === target.edgeId) : undefined;
+            if (edge && takes(edge, self)) {
+              eligible.push(edge);
+              weights.push(target.weight);
+            }
+          }
+        if (!eligible.length) {
+          routeDemandAt(id, route).rejected += rate;
+          return;
+        }
+        const sum = weights.reduce((a, b) => a + b, 0);
+        eligible.forEach((edge, i) => {
+          // A deny rule's share is blocked at this router and goes no further.
+          if (!edge.deny)
+            add(next, edge.to, along(edge, emittedType(edge.emits, type), route), (rate * weights[i]) / sum, edge);
+        });
+        return;
+      }
+    }
+    const routesOut = (outgoing.get(id) ?? []).filter((edge) => takes(edge, { type, route: branchRoute(edge, route) }));
     if (brokerRole(entry.role)) {
       for (const group of groups.get(id) ?? []) {
-        const accepting = group.edges.filter((edge) => acceptsType(edge.filter, type));
+        const accepting = group.edges.filter((edge) => takes(edge, self));
         const allowed = accepting.filter((edge) => !edge.deny);
         const weights = allowed.map(
           (edge) => groupRate(group, edge) / allowed.filter((candidate) => candidate.to === edge.to).length,
         );
-        if (allowed.length === accepting.length) split(next, accepting, type, rate, weights);
+        if (allowed.length === accepting.length) split(next, accepting, type, rate, weights, route);
         else {
           // A deny rule is an unbounded exit (playback: always ready, no slot): each allowed route takes its round-robin
           // share at most what it can handle, and the rest is blocked at the broker.
           const share = rate / accepting.length;
           allowed.forEach((edge, i) =>
-            add(next, edge.to, emittedType(edge.emits, type), Math.min(share, weights[i]), edge),
+            add(next, edge.to, along(edge, emittedType(edge.emits, type), route), Math.min(share, weights[i]), edge),
           );
         }
       }
     } else if (entry.role === "gateway") {
       // Equal shares; health checks leave out targets that are down while another is up. A deny rule's share is
       // blocked at this node and goes no further.
-      const healthy = entry.props.healthChecks ? routes.filter((edge) => !entries.get(edge.to)!.down) : routes;
-      const pool = healthy.length ? healthy : routes;
+      const healthy = entry.props.healthChecks ? routesOut.filter((edge) => !entries.get(edge.to)!.down) : routesOut;
+      const pool = healthy.length ? healthy : routesOut;
       for (const edge of pool)
-        if (!edge.deny) add(next, edge.to, emittedType(edge.emits, type), rate / pool.length, edge);
+        if (!edge.deny) add(next, edge.to, along(edge, emittedType(edge.emits, type), route), rate / pool.length, edge);
     } else {
-      for (const edge of routes) {
+      for (const edge of routesOut) {
         if (edge.deny) continue;
         if (!injected && (entry.role === "sink" || (entry.role === "store" && edge.sync))) continue;
         const share =
           typeof edge.share === "number" && Number.isFinite(edge.share) ? Math.max(0, Math.min(1, edge.share)) : 1;
-        add(next, edge.to, emittedType(edge.emits, type), rate * share, edge);
+        add(next, edge.to, along(edge, emittedType(edge.emits, type), branchRoute(edge, route)), rate * share, edge);
       }
     }
+  }
+  /** A caller's explicit address on its own Request branch (playback sets it before that branch's filters). */
+  function branchRoute(edge: CompiledEdge, route: CompiledRoute | undefined): CompiledRoute | undefined {
+    return callerRoute.get(edge.id) ?? route;
   }
   let rates = external,
     converged = false,
     iterations = 0;
   for (; iterations < iterationCap; iterations++) {
     connections = Object.create(null);
+    demand.clear();
     const next: Rates = new Map([...external].map(([id, types]) => [id, new Map(types)]));
     for (const [id, types] of rates) {
       const entry = entries.get(id)!;
-      for (const [type, rate] of types) {
-        const injection = external.get(id)?.get(type) ?? 0;
-        propagate(next, entry, type, injection, true);
-        propagate(next, entry, type, Math.max(0, rate - injection), false);
+      for (const [key, rate] of types) {
+        const injection = external.get(id)?.get(key) ?? 0;
+        propagate(next, entry, key, injection, true);
+        propagate(next, entry, key, Math.max(0, rate - injection), false);
       }
     }
     let error = 0;
@@ -378,13 +507,11 @@ export function analyzeCapacity(
         );
         // A type a deny rule in this group accepts always has a way out (it's blocked), so it never limits the broker.
         const demands = [...(rates.get(id) ?? [])]
-          .filter(([type]) => !group.edges.some((edge) => edge.deny && acceptsType(edge.filter, type)))
-          .map(([type, rate]) => ({
+          .filter(([key]) => !group.edges.some((edge) => edge.deny && takes(edge, classOf(key))))
+          .map(([key, rate]) => ({
             rate,
             consumers: [
-              ...new Set(
-                group.edges.filter((edge) => !edge.deny && acceptsType(edge.filter, type)).map((edge) => edge.to),
-              ),
+              ...new Set(group.edges.filter((edge) => !edge.deny && takes(edge, classOf(key))).map((edge) => edge.to)),
             ],
           }))
           .filter((demand) => demand.consumers.length);
@@ -507,8 +634,16 @@ export function analyzeCapacity(
   }
   if (!converged) suggestion += " Cycle demand did not converge; inspect feedback routes.";
   const offeredTypes: Record<string, string[]> = Object.create(null);
-  for (const [id, types] of rates) offeredTypes[id] = [...types].filter(([, rate]) => rate > 0).map(([type]) => type);
+  for (const [id, types] of rates)
+    offeredTypes[id] = [...new Set([...types].filter(([, rate]) => rate > 0).map(([key]) => classOf(key).type))];
   return {
+    ...(routes
+      ? {
+          routeDemand: Object.fromEntries(
+            [...demand].map(([id, byRoute]) => [id, Object.fromEntries([...byRoute].map(([r, d]) => [r, { ...d }]))]),
+          ),
+        }
+      : {}),
     nodes,
     bottleneck,
     offeredTypes,

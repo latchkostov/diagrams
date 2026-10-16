@@ -2,24 +2,9 @@ import { QUOTA_UNITS } from "./admission";
 import type { JsonSchema } from "./jsonSchema";
 import { checkJsonSchema } from "./jsonSchema";
 import type { ApiBehaviour, ApiEndpoint } from "./admission";
-const id = { type: "string", minLength: 1, maxLength: 200 };
-const quantity = { type: "number", minimum: 0, maximum: 1e12 };
-const positive = { type: "number", minimum: 0.000001, maximum: 1e12 };
-const time = { type: "number", minimum: 0, maximum: 600000 };
-export const quotaSchema: JsonSchema = {
-  type: "object",
-  additionalProperties: false,
-  required: ["id", "unit", "amount", "windowMs", "algorithm"],
-  properties: {
-    id,
-    unit: { enum: QUOTA_UNITS },
-    amount: positive,
-    windowMs: { type: "number", minimum: 1, maximum: 86400000 },
-    algorithm: { type: "string", enum: ["token-bucket"] },
-    burst: quantity,
-    sharedGroup: id,
-  },
-};
+import { id, quantity, time, quotaSchema } from "./quotaSchema";
+import { requestRoutesSchema } from "./requestRouting";
+export { quotaSchema };
 export const allocationSchema: JsonSchema = {
   type: "object",
   additionalProperties: false,
@@ -91,6 +76,7 @@ export const planningSchema: JsonSchema = {
   additionalProperties: false,
   properties: {
     revision: { enum: ["p1", "p2", "p3", "p3-a1"] },
+    requestRoutes: requestRoutesSchema,
     sharedQuotas: { type: "array", maxItems: 128, items: quotaSchema },
     sharedAllocations: { type: "array", maxItems: 128, items: allocationSchema },
   },

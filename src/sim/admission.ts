@@ -1,6 +1,82 @@
 import type { ApiBehaviour, ApiEndpoint, Quota } from "../model/admission";
 import type { PlanningModel } from "../model/types";
-import { normalizeCall, quotaSignature, slotsKey, type CompiledCall } from "./admissionPolicy";
+import {
+  normalizeCall,
+  quotaKey,
+  quotaSignature,
+  slotsKey,
+  type CompiledCall,
+  type Requirement,
+} from "./admissionPolicy";
+
+export type QuotaRequirement = Requirement;
+
+/**
+ * A router action's quotas (request routing): local buckets scoped to the router and rule (key "" is Default), or
+ * the planning's shared definition, which every caller charges as one bucket. Requests only: one per request.
+ */
+export function quotaRequirements(
+  node: string,
+  key: string,
+  quotas: readonly Quota[],
+  planning: PlanningModel | undefined,
+): QuotaRequirement[] {
+  const shared = new Map((planning?.sharedQuotas ?? []).map((q) => [q.id, q]));
+  return quotas.map((declared) => ({
+    key: quotaKey(node, ["rule", key], declared),
+    quota: (declared.sharedGroup ? shared.get(declared.sharedGroup) : undefined) ?? declared,
+    cost: 1,
+  }));
+}
+
+/** Check every bucket, then charge them all, or none: the router's quota transaction without a P3 policy. */
+export function attemptQuotas(
+  state: AdmissionState,
+  requirements: readonly QuotaRequirement[],
+  now: number,
+  weight: number,
+): string | undefined {
+  const seen = new Set<string>();
+  for (const { key, quota, cost } of requirements) {
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const bucket = bucketAt(state, key, quota, now);
+    if (bucket.tokens + 1e-9 < weight * cost) return `${quota.id}: ${quota.unit}`;
+  }
+  seen.clear();
+  for (const { key, cost } of requirements) {
+    if (seen.has(key)) continue;
+    seen.add(key);
+    state.buckets.get(key)!.tokens -= weight * cost;
+  }
+  return undefined;
+}
+
+/** Live edits keep spent credit: refill to now on the old rate, then apply the new cap and rate (no fresh burst). */
+export function reconfigureQuotas(state: AdmissionState, requirements: readonly QuotaRequirement[], now: number): void {
+  for (const { key, quota } of requirements) {
+    const bucket = state.buckets.get(key);
+    if (!bucket) continue;
+    refill(bucket, now);
+    bucket.capacity = quota.burst ?? quota.amount;
+    bucket.rate = quota.amount / quota.windowMs;
+    bucket.tokens = Math.min(bucket.tokens, bucket.capacity);
+  }
+}
+
+function bucketAt(state: AdmissionState, key: string, quota: Quota, now: number): Bucket {
+  let bucket = state.buckets.get(key);
+  if (!bucket) {
+    bucket = {
+      tokens: quota.burst ?? quota.amount,
+      capacity: quota.burst ?? quota.amount,
+      rate: quota.amount / quota.windowMs,
+      time: now,
+    };
+    state.buckets.set(key, bucket);
+  } else refill(bucket, now);
+  return bucket;
+}
 
 export interface AdmissionPolicy {
   invalid?: boolean;
@@ -212,30 +288,26 @@ export function attemptAdmission(
   now: number,
   weight: number,
   slots = policy.slots,
+  extra: readonly Requirement[] = [],
 ): { lease: AdmissionLease; latencyMs?: number; errorRate?: number } | { rejected: string } {
   const compiled =
     state.compiled.get(policy.requirementsPolicy ?? policy)?.get(node) ?? compileNode(state, node, policy);
   const call = compiled.calls.get(endpointId);
   if (!call) return { rejected: "unknown endpoint" };
   if (call.rejected) return { rejected: call.rejected };
-  for (const { key, quota, cost } of call.requirements) {
-    let bucket = state.buckets.get(key);
-    if (!bucket) {
-      bucket = {
-        tokens: quota.burst ?? quota.amount,
-        capacity: quota.burst ?? quota.amount,
-        rate: quota.amount / quota.windowMs,
-        time: now,
-      };
-      state.buckets.set(key, bucket);
-    } else refill(bucket, now);
+  // A route rule's quotas join the node's in one transaction; a shared bucket named at both scopes is charged once.
+  const requirements = extra.length
+    ? [...call.requirements, ...extra.filter((r) => !call.requirements.some((c) => c.key === r.key))]
+    : call.requirements;
+  for (const { key, quota, cost } of requirements) {
+    const bucket = bucketAt(state, key, quota, now);
     if (bucket.tokens + 1e-9 < weight * cost) return { rejected: `${quota.id}: ${quota.unit}` };
   }
   if (slots !== undefined && (state.inFlight.get(compiled.slots) ?? 0) + weight > slots + 1e-9)
     return { rejected: "concurrency" };
   for (const [key, limit] of call.limits)
     if ((state.inFlight.get(key) ?? 0) + weight > limit + 1e-9) return { rejected: "concurrency" };
-  for (const { key, cost } of call.requirements) state.buckets.get(key)!.tokens -= weight * cost;
+  for (const { key, cost } of requirements) state.buckets.get(key)!.tokens -= weight * cost;
   const keys = [...call.limits.keys(), ...(slots === undefined ? [] : [compiled.slots])];
   for (const key of keys) state.inFlight.set(key, (state.inFlight.get(key) ?? 0) + weight);
   return { lease: { keys, weight }, latencyMs: call.latencyMs, errorRate: call.errorRate };

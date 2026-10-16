@@ -34,6 +34,13 @@ export function realNodeMetrics(node: NodeSimState, scale = 1): RealNodeMetrics 
             Object.entries(node.rejectionReasons).map(([reason, count]) => [reason, real(count)]),
           ),
         }),
+    ...(node.routeRejections === undefined
+      ? {}
+      : {
+          routeRejections: Object.fromEntries(
+            Object.entries(node.routeRejections).map(([route, count]) => [route, real(count)]),
+          ),
+        }),
     throughput: real(node.throughput),
     lag: Object.fromEntries(Object.entries(node.lag).map(([id, n]) => [id, real(n)])),
   };
@@ -46,6 +53,16 @@ export function realFrame(frame: SimFrame): RealSimFrame {
     ...frame,
     units: "real",
     inSystem: toRealUnits(frame.inSystem, scale),
+    ...(frame.routes === undefined
+      ? {}
+      : {
+          routes: Object.fromEntries(
+            Object.entries(frame.routes).map(([id, c]) => [
+              id,
+              { sent: c.sent * scale, rejected: c.rejected * scale, completed: c.completed * scale },
+            ]),
+          ),
+        }),
     nodes: Object.fromEntries(Object.entries(frame.nodes).map(([id, node]) => [id, realNodeMetrics(node, scale)])),
   };
 }

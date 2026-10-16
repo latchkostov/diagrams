@@ -2,13 +2,16 @@ import { resourcesSchema, autoscalingSchema, checkAutoscaling } from "./autoscal
 import { checkJsonSchema, type JsonSchema } from "./jsonSchema";
 import type { NodeSimProps, EdgeSimProps } from "../sim/types";
 import { apiSchema, endpointsSchema, callerSchema, checkEndpoints, checkApi } from "./admissionSchema";
+import { SIM_LIMITS } from "./simLimits";
+import {
+  checkRouteTable,
+  checkTrafficMix,
+  routeMatchSchema,
+  routeTableSchema,
+  trafficMixSchema,
+} from "./requestRouting";
 
-/**
- * The file format's bounds on simulation settings, which every place that edits them uses too (the inspector, the
- * Inputs panel, fixes): a rate up to 10 million messages a second (the live view samples big rates, so they cost
- * nothing to play), counts (replicas, partitions, concurrency, deliveries) up to 10,000, times up to 10 minutes.
- */
-export const SIM_LIMITS = { ratePerSec: 10_000_000, count: 10_000, timeMs: 600_000 } as const;
+export { SIM_LIMITS };
 const ADMISSION_PRESET_IDS = [
   "lambda-account",
   "stripe-live",
@@ -65,8 +68,12 @@ const nodeProperties = {
   ha: { type: "string", enum: ["standalone", "active-standby", "active-active"] },
   failoverMs: time,
   healthChecks: { type: "boolean" },
+  trafficMix: trafficMixSchema,
+  routeTable: routeTableSchema,
 } satisfies Record<keyof NodeSimProps, JsonSchema>;
 const edgeProperties = {
+  requestRouteId: { type: "string", minLength: 1, maxLength: 200 },
+  requestFilter: routeMatchSchema,
   endpointId: { type: "string", minLength: 1, maxLength: 200 },
   caller: callerSchema,
   group: { type: "string" },
@@ -132,11 +139,13 @@ export const simPropsPatchSchema: JsonSchema = {
       key,
       "anyOf" in schema
         ? { anyOf: [...(schema.anyOf as JsonSchema[]), { type: "null" }] }
-        : {
-            ...schema,
-            type: [schema.type, "null"],
-            ...("enum" in schema ? { enum: [...(schema.enum as unknown[]), null] } : {}),
-          },
+        : "oneOf" in schema
+          ? { anyOf: [schema, { type: "null" }] }
+          : {
+              ...schema,
+              type: [schema.type, "null"],
+              ...("enum" in schema ? { enum: [...(schema.enum as unknown[]), null] } : {}),
+            },
     ]),
   ),
 };
@@ -154,8 +163,14 @@ export function propsProblem(value: unknown): string | undefined {
     try {
       if (key === "endpoints") checkEndpoints(field);
       else if (key === "api") checkApi(field);
-      else checkJsonSchema(field, schema, key);
+      else if (key === "trafficMix" || key === "routeTable") {
+        // Routing records have their own grammar; their messages name the field and the bound.
+        if (key === "trafficMix") checkTrafficMix(field);
+        else checkRouteTable(field);
+        continue;
+      } else checkJsonSchema(field, schema, key);
     } catch (error) {
+      if (key === "trafficMix" || key === "routeTable") return error instanceof Error ? error.message : String(error);
       if (error instanceof Error && error.message.includes("ids must be unique")) return error.message;
       if (typeof field === "number" && typeof schema.maximum === "number" && field > schema.maximum)
         return `${key} ${number(field)} is over the ${number(schema.maximum)} limit`;

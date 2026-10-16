@@ -56,7 +56,28 @@ import {
   releaseAdmission,
   type AdmissionLease,
 } from "./admission";
+import {
+  chooseAction,
+  compileFilter,
+  compileMix,
+  compileRoutes,
+  compileTable,
+  drawStream,
+  matchesRequest,
+  nextByDeficit,
+  pickWeighted,
+  streamSeed,
+  type CompiledMatch,
+  type CompiledMix,
+  type CompiledRoute,
+  type CompiledTable,
+} from "./requestRouting";
+import { routeTableCapable } from "../model/requestRouting";
+import { quotaRequirements, attemptQuotas, reconfigureQuotas, type QuotaRequirement } from "./admission";
+import { QUOTA_UNITS } from "../model/admission";
+
 import type {
+  RouteCounts,
   EngineOptions,
   EngineCheckpoint,
   NodeSimProps,
@@ -67,12 +88,15 @@ import type {
   SimEngine,
   SimEvent,
   SimEventKind,
+  SimFrame,
   SimSnapshot,
   TraceStep,
   TraceStepKind,
 } from "./types";
 
 const STEP = 10;
+/** A refusal by a token bucket ("orders-limit: requests"): a 429, not a 404 or a concurrency cap. */
+const quotaReason = (reason: string) => QUOTA_UNITS.some((unit) => reason.endsWith(`: ${unit}`));
 const EWMA_ALPHA = 1 - Math.exp(-STEP / 1000);
 const EVENT_CAP = 200;
 /** A headless run created more messages than its shared budget (EngineOptions.messageBudget). */
@@ -88,6 +112,8 @@ interface Message {
   attempts: number;
   /** Shared by the root message and all its fan-out copies. */
   family: Family;
+  /** Request routing: the address this message carries (immutable, shared by copies and retries). */
+  request?: CompiledRoute;
 }
 interface Group {
   name: string;
@@ -133,6 +159,16 @@ interface Work {
   held?: boolean;
   /** In the node's working set: it has one of the node's slots (an in-place retry keeps it). */
   slotted?: boolean;
+  /** A router's table chose this connection on arrival; the work forwards there. */
+  route?: RouteDecision;
+}
+interface RouteDecision {
+  edge: Edge;
+  /** The matched rule id, or "" for Default. */
+  rule: string;
+  weight: number;
+  /** The action's quota requirements, charged with the router's own admission. */
+  quotas: QuotaRequirement[];
 }
 interface Node {
   fleet?: Fleet;
@@ -169,6 +205,21 @@ interface Node {
   serviceCredit: number;
   /** An active-standby pair failing over holds its traffic until this time. */
   holdUntil: number;
+  /** Request routing: a router's compiled table (absent: today's routing). */
+  table?: CompiledTable;
+  /** A source's compiled traffic mix (absent: unaddressed messages, as today). */
+  mix?: CompiledMix;
+  /** Per mix row: continuous traffic credit in sampled messages, and the weighted-deficit credit for fixed counts. */
+  mixCredit: number[];
+  mixDeficit: number[];
+  /** One selection stream per table action (rule id, "" for Default), seeded lazily from the run seed. */
+  streams: Map<string, number>;
+  /** Refusals by request route id ("" for requests without an address). */
+  routeRejections: Record<string, number>;
+  /** Each table action's quota requirements, by stream key. */
+  quotas: Map<string, QuotaRequirement[]>;
+  /** A router's ordinary outgoing connections by id, for its table's targets. */
+  targets: Map<string, Edge>;
 }
 interface Edge {
   endpointId?: string;
@@ -185,6 +236,10 @@ interface Edge {
   groupName: string;
   delivered: number;
   active: number;
+  /** A Request out of a caller with an explicit address: copies leaving here carry it. */
+  requestRoute?: CompiledRoute;
+  /** Only addressed requests matching this travel the connection. */
+  requestFilter?: CompiledMatch;
 }
 interface Trip {
   id: number;
@@ -195,10 +250,13 @@ interface Trip {
   end: number;
   drawn: boolean;
   delivery?: Delivery;
+  /** A reply refusing the request: 404 (no route) or 429 (a route quota). */
+  code?: number;
 }
 interface Injection {
   node: Node;
   type: string;
+  route?: CompiledRoute;
   start: number;
   interval: number;
   index: number;
@@ -231,6 +289,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   };
   const nodes = new Map<string, Node>();
   let planning: DiagramFile["planning"];
+  /** Request routing: the document's compiled routes (absent: routing is off and every setting dormant). */
+  let routes: Map<string, CompiledRoute> | undefined;
+  let routeCounts = new Map<string, RouteCounts>();
   let admission = emptyAdmission();
   let configuration: Record<string, Record<string, unknown>> | undefined;
   const edges: Edge[] = [];
@@ -338,17 +399,45 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   /** Records a lineage step for a message whose family is being traced (callers check first). */
   function step(message: Message, kind: TraceStepKind, node: string, extra?: Partial<TraceStep>): void {
-    lineage.record(message.family, { t: time, kind, id: message.id, type: message.type, node, ...extra });
+    lineage.record(message.family, {
+      t: time,
+      kind,
+      id: message.id,
+      type: message.type,
+      node,
+      ...extra,
+      ...(message.request ? { route: message.request.id } : {}),
+    });
   }
 
   /** A message's journey ends at `node`: consumed ("end") or lost ("drop"). */
-  function gone(node: Node, message: Message, kind: "end" | "drop" | "block" | "reject", reason: string): void {
+  function gone(
+    node: Node,
+    message: Message,
+    kind: "end" | "drop" | "block" | "reject",
+    reason: string,
+    extra?: Partial<TraceStep>,
+  ): void {
     inSystem--;
     message.family.alive--;
+    if (kind === "end" && message.request) countRoute(message.request).completed++;
     if (message.family.trace) {
-      step(message, kind, node.id, { reason });
+      step(message, kind, node.id, { reason, ...extra });
       lineage.settle(message.family);
     }
+  }
+
+  function countRoute(route: CompiledRoute): RouteCounts {
+    let counts = routeCounts.get(route.id);
+    if (!counts) routeCounts.set(route.id, (counts = { sent: 0, rejected: 0, completed: 0 }));
+    return counts;
+  }
+
+  /** The same message (or copy) with another address: a caller's explicit request route. Counts the call. */
+  function addressed(message: Message, route: CompiledRoute | undefined): Message {
+    if (message.request === route) return message;
+    if (route) countRoute(route).sent++;
+    return { ...message, request: route };
   }
 
   /** Headless planning's shared message budget: refuses the message before it is allocated. */
@@ -382,24 +471,34 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   /** A deny rule on `edge` stops the message at its source: blocked on purpose, not lost. */
-  function block(message: Message, edge: Edge): void {
+  function block(message: Message, edge: Edge, extra?: Partial<TraceStep>): void {
     const node = edge.from;
     node.blocked++;
     log("block", node, message, `deny rule to ${edge.to.label}`);
-    gone(node, message, "block", "deny rule");
+    gone(node, message, "block", "deny rule", extra);
   }
 
   /**
    * Every downstream delivery (a forward, a fan-out copy, a change feed, a broker's delivery, a dead letter) goes
    * through here, so a deny rule holds on every path. Replies and retries travel back and aren't deliveries.
    */
-  function deliver(edge: Edge, message: Message, kind: "message" | "dlq", delivery?: Delivery): void {
-    if (edge.deny) block(message, edge);
-    else travel(edge, message, kind, delivery);
+  function deliver(
+    edge: Edge,
+    message: Message,
+    kind: "message" | "dlq",
+    delivery?: Delivery,
+    extra?: Partial<TraceStep>,
+  ): void {
+    if (edge.deny) block(message, edge, extra);
+    else travel(edge, message, kind, delivery, 0, undefined, extra);
   }
 
-  function accepts(edge: Edge, type: string): boolean {
-    return acceptsType(edge.filter, type);
+  /** A connection takes a message when its type filter does and, if it has one, its request filter matches. */
+  function accepts(edge: Edge, message: Message): boolean {
+    return (
+      acceptsType(edge.filter, message.type) &&
+      (edge.requestFilter === undefined || matchesRequest(edge.requestFilter, message.request))
+    );
   }
 
   function rename(message: Message, type: string | undefined): Message {
@@ -663,6 +762,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
       if (admissionChanged && (previous.admission || node.props.admission))
         admissionChanges.push({ id, policy: node.props.admission });
+      // A setup or timeline patch replaces a mix or table whole (never a deep merge of rows or rules).
+      if ("trafficMix" in patch || "routeTable" in patch) compileNodeRouting(node);
       if (node.role === "source") sourceRate += node.props.ratePerSec - previous.ratePerSec;
       if (
         Math.max(1, Math.round(node.props.replicas * capacityMultiplier)) !== node.replicas ||
@@ -727,19 +828,28 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     return edge.share === undefined || edge.share >= 1 || (edge.share > 0 && random() < edge.share);
   }
 
-  function travel(edge: Edge, message: Message, kind: ParticleKind, delivery?: Delivery, delay = 0): void {
+  function travel(
+    edge: Edge,
+    message: Message,
+    kind: ParticleKind,
+    delivery?: Delivery,
+    delay = 0,
+    code?: number,
+    extra?: Partial<TraceStep>,
+  ): void {
     if (kind === "message" || kind === "dlq") message = rename(message, edge.emits);
     const visible = drawn < maxParticles;
     if (visible) drawn++;
     edge.active++;
     if (kind === "message" || kind === "dlq") edge.to.incoming++;
     const end = time + Math.max(STEP, edge.travelMs) + delay;
-    const trip = { id: nextParticle++, edge, message, kind, delivery, start: time, end, drawn: visible };
+    const trip: Trip = { id: nextParticle++, edge, message, kind, delivery, start: time, end, drawn: visible };
+    if (code) trip.code = code;
     pushDue(trips, trip);
     if (visible) drawnTrips.set(trip.id, trip);
     if (message.family.trace) {
       const back = kind === "reply" || kind === "retry";
-      step(message, "send", back ? edge.to.id : edge.from.id, { edge: edge.id, via: kind, until: end });
+      step(message, "send", back ? edge.to.id : edge.from.id, { edge: edge.id, via: kind, until: end, ...extra });
     }
   }
 
@@ -832,11 +942,19 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     return !work.delivery || !!work.held || hold(work.delivery.group, node, work);
   }
 
-  function reply(work: Work): void {
-    if (work.via?.sync) travel(work.via, work.message, "reply");
+  function reply(work: Work, code?: number): void {
+    if (work.via?.sync) travel(work.via, work.message, "reply", undefined, 0, code);
   }
 
-  function forward(node: Node, message: Message): void {
+  function forward(node: Node, message: Message, decision?: RouteDecision): void {
+    if (decision) {
+      // The router's table chose this connection on arrival: no round-robin, no fallback.
+      deliver(decision.edge, { ...message, attempts: 0 }, "message", undefined, {
+        rule: decision.rule,
+        weight: decision.weight,
+      });
+      return;
+    }
     if (node.role === "processor" || node.role === "none") {
       const emits = node.props.emits;
       const type =
@@ -847,8 +965,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             : emits?.["*"];
       message = rename(message, type);
     }
+    // A caller's explicit address applies to its own branch, before that branch's filters; others keep theirs.
     const outgoing = node.outgoing.filter(
-      (edge) => accepts(edge, message.type) && (node.role === "gateway" || takesShare(edge)),
+      (edge) =>
+        accepts(edge, edge.requestRoute ? addressedView(message, edge.requestRoute) : message) &&
+        (node.role === "gateway" || takesShare(edge)),
     );
     // A node with nowhere to send (e.g. a final worker) is a terminal consumer, not a drop.
     if (!outgoing.length) {
@@ -862,8 +983,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       deliver(pool[node.cursor++ % pool.length], { ...message, attempts: 0 }, "message");
     } else {
       const copies = fanOut(node, message, outgoing.length);
-      outgoing.forEach((edge, i) => deliver(edge, copies[i], "message"));
+      outgoing.forEach((edge, i) =>
+        deliver(edge, edge.requestRoute ? addressed(copies[i], edge.requestRoute) : copies[i], "message"),
+      );
     }
+  }
+
+  /** For filtering only: the branch's message as it would leave, without counting a call that may not happen. */
+  function addressedView(message: Message, route: CompiledRoute): Message {
+    return message.request === route ? message : { ...message, request: route };
   }
 
   function publish(node: Node, message: Message): void {
@@ -878,7 +1006,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
       return;
     }
-    const accepting = node.groups.filter((group) => group.edges.some((edge) => accepts(edge, message.type)));
+    const accepting = node.groups.filter((group) => group.edges.some((edge) => accepts(edge, message)));
     if (!accepting.length) {
       gone(node, message, "end", "no subscription accepts it");
       return;
@@ -958,14 +1086,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     else if (node.role === "sink") gone(node, work.message, "end", "received");
     else if (node.role === "store") {
       // Outgoing async edges from a store model change feeds / CDC: each gets a copy.
-      const feeds = node.outgoing.filter((edge) => !edge.sync && accepts(edge, work.message.type) && takesShare(edge));
+      const feeds = node.outgoing.filter((edge) => !edge.sync && accepts(edge, work.message) && takesShare(edge));
       if (!feeds.length) {
         gone(node, work.message, "end", "stored");
         return;
       }
       const copies = fanOut(node, work.message, feeds.length);
       feeds.forEach((edge, i) => deliver(edge, copies[i], "message"));
-    } else forward(node, work.message);
+    } else forward(node, work.message, work.route);
   }
 
   function reserveAdmission(node: Node, work: Work): boolean {
@@ -984,8 +1112,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       policy.fixedSlotsPerReplica === undefined
         ? policy.slots
         : Math.min(policy.slots ?? Infinity, node.activeReplicas * policy.fixedSlotsPerReplica),
+      work.route?.quotas,
     );
     if ("rejected" in outcome) {
+      if (node.table) {
+        refuse(node, work, outcome.rejected, quotaReason(outcome.rejected) ? 429 : undefined, work.route?.rule);
+        return false;
+      }
       node.rejected++;
       node.rejectionReasons[outcome.rejected] = (node.rejectionReasons[outcome.rejected] ?? 0) + 1;
       log("reject", node, work.message, outcome.rejected);
@@ -1017,6 +1150,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
       return;
     }
+    // A router with a table matches the address first: a refusal or a deny rule ends the request here, before any
+    // admission bucket or service time is spent.
+    if (node.table && !work.route && !routeOnArrival(node, work)) return;
     if (node.props.admission) {
       const group = work.delivery?.group;
       if (group && !work.held && !hold(group, node, work)) {
@@ -1054,12 +1190,103 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     } else admit(node, work);
   }
 
-  function emit(node: Node, type: string, injected: boolean): void {
+  /**
+   * The router's choice for an arriving request (research §3): first matching rule, else Default, else 404. Only the
+   * chosen action's positive-weight targets that pass the connection's filters are eligible; a matched rule is
+   * final, so filtering never falls through to a later rule or Default. One seeded draw from the action's own
+   * stream picks among them. False when the request ended here (refused, or a deny rule).
+   */
+  function routeOnArrival(node: Node, work: Work): boolean {
+    const message = work.message;
+    const choice = chooseAction(node.table!, message.request, !!work.via?.sync);
+    if ("legacy" in choice) return true;
+    if ("reject" in choice) {
+      refuse(node, work, choice.reject, 404);
+      return false;
+    }
+    const { action, rule } = choice;
+    const eligible: Edge[] = [];
+    const weights: number[] = [];
+    let total = 0;
+    for (const target of action.targets) {
+      if (!(target.weight > 0)) continue;
+      const edge = node.targets.get(target.edgeId);
+      if (!edge || !accepts(edge, message)) continue;
+      eligible.push(edge);
+      weights.push(target.weight);
+      total += target.weight;
+    }
+    if (!eligible.length) {
+      refuse(node, work, "route-no-eligible-target", 404, rule);
+      return false;
+    }
+    let index = 0;
+    if (eligible.length > 1) {
+      const state = node.streams.get(action.key) ?? streamSeed(seed, node.id, action.key);
+      const draw = drawStream(state);
+      node.streams.set(action.key, draw.state);
+      index = pickWeighted(weights, draw.value);
+    }
+    const edge = eligible[index];
+    work.route = { edge, rule, weight: weights[index] / total, quotas: node.quotas.get(action.key) ?? [] };
+    if (edge.deny) {
+      // A deny rule blocks at the sender, as today: blocked on purpose, no admission bucket debited.
+      acknowledge(work);
+      reply(work);
+      block(message, edge, { rule, weight: work.route.weight });
+      return false;
+    }
+    // A router without a P3 policy charges its rule's quotas now; a managed one charges them with its own (atomic).
+    if (!node.props.admission && work.route.quotas.length) {
+      const refused = attemptQuotas(admission, work.route.quotas, time, scale);
+      if (refused) {
+        refuse(node, work, refused, 429, rule);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * A router refuses a request: counted once as rejected (never dropped, failed or blocked), with its reason and
+   * route, a visual refused reply where the request edge has replies, and the branch ends (lineage released).
+   */
+  function refuse(node: Node, work: Work, reason: string, code: number | undefined, rule?: string): void {
+    const message = work.message;
+    node.rejected++;
+    node.rejectionReasons[reason] = (node.rejectionReasons[reason] ?? 0) + 1;
+    const key = message.request?.id ?? "";
+    node.routeRejections[key] = (node.routeRejections[key] ?? 0) + 1;
+    if (message.request) countRoute(message.request).rejected++;
+    log("reject", node, message, reason);
+    acknowledge(work);
+    reply(work, code);
+    gone(node, message, "reject", reason, rule === undefined ? undefined : { rule });
+  }
+
+  /** The route an injected message carries: the injection's explicit one, else the source's mix (weighted deficit). */
+  function injectedRoute(node: Node, explicit: CompiledRoute | undefined): CompiledRoute | undefined {
+    if (explicit || !node.mix) return explicit;
+    const index = nextByDeficit(node.mix.proportions, node.mixDeficit);
+    return index < 0 ? undefined : node.mix.routes[index];
+  }
+
+  function emit(node: Node, type: string, injected: boolean, route?: CompiledRoute): void {
     spend();
     const id = nextMessage++;
-    const message = { id, type, color: messageColor(type), attempts: 0, family: { root: id, alive: 1, parked: 0 } };
+    const message: Message = {
+      id,
+      type,
+      color: messageColor(type),
+      attempts: 0,
+      family: { root: id, alive: 1, parked: 0 },
+    };
+    if (route) {
+      message.request = route;
+      countRoute(route).sent++;
+    }
     inSystem++;
-    lineage.born(message.family, type, node.id);
+    lineage.born(message.family, type, node.id, route?.id);
     if (injected) log("inject", node, message);
     arrive(node, { message, remaining: latency(node), injected });
   }
@@ -1071,8 +1298,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     trip.message = { ...trip.delivery!.original, attempts: trip.message.attempts };
     if (trip.message.attempts >= broker.props.maxDeliveryCount) {
       // A denied dead-letter route blocks the message at the broker: on purpose, so not dead-lettered either.
-      if (broker.dlq?.deny && accepts(broker.dlq, trip.message.type)) block(trip.message, broker.dlq);
-      else if (broker.dlq && accepts(broker.dlq, trip.message.type)) {
+      if (broker.dlq?.deny && accepts(broker.dlq, trip.message)) block(trip.message, broker.dlq);
+      else if (broker.dlq && accepts(broker.dlq, trip.message)) {
         broker.deadLettered++;
         log("deadletter", broker, trip.message, `${trip.message.attempts} deliveries`);
         lineage.deadLettered(trip.message, broker.id, trip.message.attempts);
@@ -1095,7 +1322,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           const edge = group.edges[index];
           const target = edge.to;
           if (
-            accepts(edge, message.type) &&
+            accepts(edge, message) &&
             (edge.deny ||
               (free &&
                 target.status === "up" &&
@@ -1289,7 +1516,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function admitIncoming(): void {
     while (injections.length && injections[0].due <= time + 1e-8) {
       const batch = unschedule();
-      emit(batch.node, batch.type, true);
+      emit(batch.node, batch.type, true, injectedRoute(batch.node, batch.route));
       if (++batch.index < batch.count) {
         batch.due = batch.start + batch.index * batch.interval;
         schedule(batch);
@@ -1298,6 +1525,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (traffic && !engine.trafficLimit())
       for (const node of nodes.values()) {
         if (node.role !== "source" || node.status !== "up") continue;
+        if (node.mix) {
+          emitMix(node, node.mix);
+          continue;
+        }
         node.trafficCredit += (node.props.ratePerSec * STEP) / (1000 * scale);
         const count = Math.min(SOURCE_VOLUME_CAP - sourceEmitted, Math.floor(node.trafficCredit + 1e-10));
         node.trafficCredit -= count;
@@ -1324,6 +1555,24 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           remaining: latency(trip.edge.to),
         });
       }
+    }
+  }
+
+  /**
+   * A source's mix: each route earns its own fractional credit in simulation time (a share of the source's rate, or
+   * its own rate), so rare routes still emit on schedule and every route's count stays within one dot of its rate.
+   * Equal-time emissions go in mix order. Each dot is one route: a dot never mixes addresses.
+   */
+  function emitMix(node: Node, mix: CompiledMix): void {
+    for (let i = 0; i < mix.routes.length; i++) {
+      const rate = mix.mode === "shares" ? node.props.ratePerSec * mix.values[i] : mix.values[i];
+      node.mixCredit[i] += (rate * STEP) / (1000 * scale);
+      const count = Math.min(SOURCE_VOLUME_CAP - sourceEmitted, Math.floor(node.mixCredit[i] + 1e-10));
+      node.mixCredit[i] -= count;
+      sourceEmitted += count;
+      if (sourceEmitted === SOURCE_VOLUME_CAP && count)
+        log("status", node, undefined, "continuous traffic budget reached; restart to continue");
+      for (let k = 0; k < count; k++) emit(node, node.props.messageType, false, mix.routes[i]);
     }
   }
 
@@ -1564,6 +1813,28 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     });
   }
 
+  /** Compiles a node's routing settings (load, or a live patch of trafficMix/routeTable): never per tick or message. */
+  function compileNodeRouting(node: Node): void {
+    const raw = node.rawProps;
+    node.table =
+      routes && raw.routeTable !== undefined && routeTableCapable(node.stencil, node.role)
+        ? compileTable(raw.routeTable)
+        : undefined;
+    const quotas = new Map<string, QuotaRequirement[]>();
+    if (node.table)
+      for (const action of [
+        ...node.table.rules.map((r) => r.action),
+        ...(node.table.fallback ? [node.table.fallback] : []),
+      ])
+        if (action.quotas.length)
+          quotas.set(action.key, quotaRequirements(node.id, action.key, action.quotas, planning));
+    node.quotas = quotas;
+    for (const requirements of quotas.values()) reconfigureQuotas(admission, requirements, time);
+    node.mix = node.role === "source" ? compileMix(raw.trafficMix, routes) : undefined;
+    node.mixCredit = node.mix ? node.mix.routes.map(() => 0) : [];
+    node.mixDeficit = node.mix ? node.mix.routes.map(() => 0) : [];
+  }
+
   function refreshSourceRate(): void {
     sourceRate = 0;
     for (const node of nodes.values()) if (node.role === "source") sourceRate += node.props.ratePerSec;
@@ -1595,7 +1866,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     randomCalls = 0;
     randomState = mulberry32(seed);
     lineage.reset();
+    routeCounts = new Map();
     for (const node of nodes.values()) {
+      node.streams = new Map();
+      node.mixCredit.fill(0);
+      node.mixDeficit.fill(0);
+      node.routeRejections = Object.create(null);
       initializeFleet(node);
       node.pending.clear();
       node.staged = 0;
@@ -1667,6 +1943,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         events,
         admission: { buckets: admission.buckets, inFlight: admission.inFlight },
         lineage: lineage.state,
+        routeCounts,
       });
       const clock = {
         time,
@@ -1701,6 +1978,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             // structuredClone gives dictionaries Object.prototype back: a consumer called "constructor" must stay a key.
             Object.setPrototypeOf(group.activeByNode, null);
           }
+          Object.setPrototypeOf(node.rejectionReasons, null);
+          Object.setPrototypeOf(node.routeRejections, null);
           nodes.set(id, node);
         }
         indexGroups();
@@ -1710,6 +1989,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         injections.splice(0, injections.length, ...copy.injections);
         events.splice(0, events.length, ...copy.events);
         lineage.state = copy.lineage;
+        routeCounts = copy.routeCounts;
         admission = emptyAdmission();
         reconfigureAdmission(
           admission,
@@ -1823,20 +2103,44 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           trafficCredit: 0,
           serviceCredit: 0,
           holdUntil: 0,
+          mixCredit: [],
+          mixDeficit: [],
+          streams: new Map(),
+          routeRejections: Object.create(null),
+          quotas: new Map(),
+          targets: new Map(),
         });
       }
+      routes = compileRoutes(planning);
+      const edgeProps = routes ? new Map(diagram.edges.map((e) => [e.id, e.props])) : undefined;
       const edgeById = new Map<string, Edge>();
       const deadLetter = deadLetterRoutes(compiled);
       for (const input of compiled.edges) {
         const from = nodes.get(input.from)!,
           to = nodes.get(input.to)!;
         const edge: Edge = { ...input, from, to, delivered: 0, active: 0 };
+        const props = edgeProps?.get(edge.id);
+        if (props) {
+          // A caller's address belongs to a Request out of a source or service; on a router's edges it's dormant.
+          const caller = from.role === "source" || from.role === "processor" || from.role === "none";
+          const route =
+            caller && edge.sync && typeof props.requestRouteId === "string"
+              ? routes!.get(props.requestRouteId)
+              : undefined;
+          if (route) edge.requestRoute = route;
+          const filter = compileFilter(props.requestFilter);
+          if (filter) edge.requestFilter = filter;
+        }
         edges.push(edge);
         edgeById.set(edge.id, edge);
         // The route the dead-letter check reads as effective (deadLetterRoutes, topology.ts).
         if (deadLetter.get(from.id) === input) from.dlq = edge;
-        else if (!edge.dlq) from.outgoing.push(edge);
+        else if (!edge.dlq) {
+          from.outgoing.push(edge);
+          from.targets.set(edge.id, edge);
+        }
       }
+      for (const node of nodes.values()) compileNodeRouting(node);
       for (const [id, groups] of compiled.groups) {
         const node = nodes.get(id)!;
         node.groups = groups.map((group) => ({
@@ -1878,7 +2182,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           kind: trip.kind,
           progress: Math.min(1, Math.max(0, (time - trip.start) / (trip.end - trip.start))),
           type: trip.message.type,
-          color: trip.message.color,
+          color: trip.message.request?.color ?? trip.message.color,
+          ...(trip.message.request ? { route: trip.message.request.id, marker: trip.message.request.marker } : {}),
+          ...(trip.code ? { code: trip.code } : {}),
         });
       const nodeStates: Record<string, NodeSimState> = Object.create(null);
       for (const node of nodes.values()) {
@@ -1902,7 +2208,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           dropped: node.dropped,
           ...(node.outageDropped ? { outageDropped: node.outageDropped } : {}),
           ...(node.blocked ? { blocked: node.blocked } : {}),
-          ...(node.props.admission ? { rejected: node.rejected, rejectionReasons: { ...node.rejectionReasons } } : {}),
+          ...(node.props.admission || node.table
+            ? { rejected: node.rejected, rejectionReasons: { ...node.rejectionReasons } }
+            : {}),
+          ...(node.table ? { routeRejections: { ...node.routeRejections } } : {}),
           ...(held(node) ? { failingOver: true } : {}),
           throughput: node.throughput,
           ...(node.fleet && node.props.resources
@@ -1917,7 +2226,16 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           ...(isBroker(node) && !node.groups.length ? { noConsumer: true as const } : {}),
         };
       }
-      return { time, particles, nodes: nodeStates, inSystem, scale };
+      const frame: SimFrame = { time, particles, nodes: nodeStates, inSystem, scale };
+      if (routes) {
+        const counts: Record<string, RouteCounts> = Object.create(null);
+        for (const id of routes.keys()) {
+          const c = routeCounts.get(id);
+          counts[id] = c ? { ...c } : { sent: 0, rejected: 0, completed: 0 };
+        }
+        frame.routes = counts;
+      }
+      return frame;
     },
     snapshot(): SimSnapshot {
       const frame = engine.frame();
@@ -1932,12 +2250,25 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (!node || !Number.isFinite(count) || count < 1) return;
       count = Math.floor(count);
       const type = options.type ?? node.props.messageType;
+      // An explicit route must be one of the diagram's: never bind to something similar.
+      const route = options.routeId === undefined ? undefined : routes?.get(options.routeId);
+      if (options.routeId !== undefined && !route) return;
       const spread = Number.isFinite(options.spreadMs) ? Math.max(0, options.spreadMs!) : 0;
-      if (!spread || count === 1) for (let i = 0; i < count; i++) emit(node, type, true);
+      if (!spread || count === 1) for (let i = 0; i < count; i++) emit(node, type, true, injectedRoute(node, route));
       else {
-        emit(node, type, true);
+        emit(node, type, true, injectedRoute(node, route));
         const interval = spread / (count - 1);
-        schedule({ node, type, start: time, interval, index: 1, count, due: time + interval, order: nextInjection++ });
+        schedule({
+          node,
+          type,
+          ...(route ? { route } : {}),
+          start: time,
+          interval,
+          index: 1,
+          count,
+          due: time + interval,
+          order: nextInjection++,
+        });
       }
     },
     setNodeStatus(nodeId: string, status: NodeStatus): void {

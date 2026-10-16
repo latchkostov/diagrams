@@ -5,6 +5,7 @@ import { kindLabel, relationNoun } from "../i18n/chrome";
 import { annotationGeometryMessage, relationChangeMessage } from "./editMessages";
 import { useLayoutEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { createResourceValidator } from "../model/resourceValidation";
+import { createRoutingValidator } from "../model/routingValidation";
 import { newPlanningProps } from "../model/planning";
 import { useReactFlow, type ReactFlowInstance } from "@xyflow/react";
 import { flushSync } from "react-dom";
@@ -294,6 +295,7 @@ export function createEditor(
   };
 
   const validateResources = createResourceValidator();
+  const validateRouting = createRoutingValidator();
   const explainModelRequired = () =>
     notify(t("autoscaling.modelRequired"), {
       action: {
@@ -306,7 +308,7 @@ export function createEditor(
       },
     });
   const acceptNodes = (nodes: FlowNode[], edges = currentEdges(), meta = deps().meta): boolean => {
-    const error = validateResources({
+    const candidate = {
       ...meta,
       nodes: nodes.filter(isDiagram).map((n) => ({
         id: n.id,
@@ -314,9 +316,12 @@ export function createEditor(
         label: n.data.label,
         sublabel: n.data.sublabel,
         props: n.data.props,
+        x: 0,
+        y: 0,
       })),
       edges: edges.map((e) => ({ id: e.id, from: e.source, to: e.target, ...e.data })),
-    });
+    };
+    const error = validateResources(candidate) ?? validateRouting(candidate);
     if (!error) return true;
     if (error === t("autoscaling.modelRequired")) explainModelRequired();
     else notify(error);

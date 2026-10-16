@@ -23,6 +23,18 @@ import type { PlanningModel } from "../model/types";
 import type { AdmissionPolicy } from "./admission";
 import { admissionPresetFor, ADMISSION_REVISION } from "../model/admissionPresets";
 import { validAdmissionData } from "../model/admissionSchema";
+import { checkTrafficMix, routingEnabled, type TrafficMix } from "../model/requestRouting";
+
+/** A valid rates-mode mix's total rate on a routed document; undefined otherwise (shares use ratePerSec). */
+export function mixTotal(planning: PlanningModel | undefined, mix: unknown): number | undefined {
+  if (!routingEnabled(planning) || (mix as TrafficMix | undefined)?.mode !== "rates") return undefined;
+  try {
+    checkTrafficMix(mix);
+  } catch {
+    return undefined;
+  }
+  return (mix as Extract<TrafficMix, { mode: "rates" }>).entries.reduce((sum, entry) => sum + entry.ratePerSec, 0);
+}
 
 /** Only these roles spend service time, including paused and resumed work. */
 export const hasServiceTime = (role: SimRole): boolean =>
@@ -63,6 +75,8 @@ export type ResolvedProps = Required<
     | "connections"
     | "querySlots"
     | "ingestUnits"
+    | "trafficMix"
+    | "routeTable"
   >
 > &
   Pick<NodeSimProps, "emits"> & {
@@ -234,7 +248,9 @@ export function resolveProps(
       })),
       units: "real",
     },
-    ratePerSec: number("ratePerSec", 2),
+    // A rates-mode traffic mix supplies the total (its stored ratePerSec stays dormant until the mix is removed).
+    ratePerSec:
+      role === "source" ? (mixTotal(planning, props.trafficMix) ?? number("ratePerSec", 2)) : number("ratePerSec", 2),
     latencyMs:
       hasServiceTime(role) || managed
         ? number(

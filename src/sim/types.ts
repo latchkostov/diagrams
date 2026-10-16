@@ -24,8 +24,13 @@ export interface Particle {
   progress: number;
   /** Message type, e.g. "OrderPlaced". */
   type: string;
-  /** Hex colour for the particle (from the message type). */
+  /** Hex colour for the particle: its request route's colour when it carries an address, else its type's. */
   color: string;
+  /** Request routing: the route id and its marker, only on addressed messages (and their replies). */
+  route?: string;
+  marker?: import("../model/requestRouting").RouteMarker;
+  /** A reply that says the request was refused: 404 (no route) or 429 (a quota). */
+  code?: number;
 }
 
 /** Native engine message counts and rates are sampled units; time and replica counts are unscaled. */
@@ -62,6 +67,8 @@ export interface NodeSimState {
   /** Admission refusals (including throttling), separate from processing failures and losses. */
   rejected?: number;
   rejectionReasons?: Record<string, number>;
+  /** A router's refusals by request route id ("" for requests without an address). */
+  routeRejections?: Record<string, number>;
   /** An active-standby pair is failing over to its standby unit: traffic waits until it's done. */
   failingOver?: boolean;
   /** Smoothed throughput in messages / second (processed). */
@@ -94,7 +101,7 @@ export interface SimEvent {
   text: string;
 }
 
-export type SimFrame = Pick<SimSnapshot, "time" | "particles" | "nodes" | "inSystem" | "scale">;
+export type SimFrame = Pick<SimSnapshot, "time" | "particles" | "nodes" | "inSystem" | "scale" | "routes">;
 
 /** Converted message counts/rates; the tag makes this view explicit and prevents repeat conversion. */
 export type RealNodeMetrics = NodeSimState & { readonly units: "real" };
@@ -123,8 +130,17 @@ export interface SimSnapshot {
   edges: Record<string, EdgeSimState>;
   /** Most recent events, newest last, capped (~200). */
   events: SimEvent[];
+  /** Request routing: sampled counts per route id (only when the diagram has request routes). */
+  routes?: Record<string, RouteCounts>;
   /** Messages alive anywhere in the system (travelling, queued or in process). */
   inSystem: number;
+}
+
+/** Sampled counts for one request route: sent by sources and callers, refused by routers, finished. */
+export interface RouteCounts {
+  sent: number;
+  rejected: number;
+  completed: number;
 }
 
 /** Per-node tunables. Read from DiagramNode.props on load; can be changed live via setNodeProps. */
@@ -185,6 +201,10 @@ export interface NodeSimProps {
   failoverMs?: number;
   /** Gateways: skip targets that are down (default on for ADCs, off elsewhere). */
   healthChecks?: boolean;
+  /** Sources: the request routes they send and in what proportions or rates (request routing R1). */
+  trafficMix?: import("../model/requestRouting").TrafficMix;
+  /** HTTP routers: ordered rules choosing an outgoing connection by method, path and host (request routing R1). */
+  routeTable?: import("../model/requestRouting").RouteTable;
 }
 
 /** Per-edge tunables from DiagramEdge.props. */
@@ -211,6 +231,10 @@ export interface EdgeSimProps {
   emits?: string;
   /** A deny rule: messages routed here are blocked at the edge's source (counted as blocked, never dropped). */
   deny?: boolean;
+  /** A Request out of a source or service: the request route this call sends (an explicit caller address). */
+  requestRouteId?: string;
+  /** Only requests whose address matches travel this connection (a binding's routing key or header match). */
+  requestFilter?: import("../model/requestRouting").RouteMatch;
 }
 
 export interface InjectOptions {
@@ -218,6 +242,8 @@ export interface InjectOptions {
   type?: string;
   /** Spread the injection over this many ms instead of all at once. Default 0. */
   spreadMs?: number;
+  /** An explicit request route for every injected message; omitted, a source with a traffic mix uses its mix. */
+  routeId?: string;
 }
 
 // ---------- Message trace (src/sim/lineage.ts) ----------
@@ -260,6 +286,12 @@ export interface TraceStep {
   attempt?: number;
   /** drop / end: a short reason. */
   reason?: string;
+  /** Request routing: the address's route id, on every step of an addressed message. */
+  route?: string;
+  /** A router's choice (on its send) or refusal (on reject): the matched rule id, or "default". */
+  rule?: string;
+  /** The chosen target's share of its rule's eligible weights, 0..1 (on a router's send). */
+  weight?: number;
 }
 
 export interface MessageTrace {

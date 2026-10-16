@@ -2,7 +2,7 @@ import type { AdmissionPolicy, AdmissionState } from "./admission";
 import type { ApiEndpoint, Quota } from "../model/admission";
 
 /** Tagged identities shared by steady-state planning and simulation. IDs are opaque user content. */
-export type AdmissionScope = readonly ["node"] | readonly ["endpoint", string];
+export type AdmissionScope = readonly ["node"] | readonly ["endpoint", string] | readonly ["rule", string];
 export const quotaKey = (node: string, scope: AdmissionScope, quota: Quota) =>
   JSON.stringify(
     quota.sharedGroup ? ["shared", "quota", quota.sharedGroup] : ["local", node, "quota", ...scope, quota.id],
@@ -14,7 +14,7 @@ export const slotsKey = (node: string) => JSON.stringify(["local", node, "slots"
 export const quotaSignature = (q: Quota) =>
   JSON.stringify([q.unit, q.amount, q.windowMs, q.burst ?? q.amount, q.algorithm]);
 
-interface Requirement {
+export interface Requirement {
   key: string;
   quota: Quota;
   cost: number;
