@@ -100,7 +100,7 @@ function inspect(update: Uint8Array): GuardResult {
   return { ok: true, structs: structs.length };
 }
 
-export type LocalProblem = "key-too-long" | "string-too-long" | "too-deep" | "too-large" | "bad-id";
+export type LocalProblem = "key-too-long" | "string-too-long" | "too-deep" | "too-large" | "bad-id" | "room-full";
 
 /**
  * The same bounds, checked on a local step before it touches the document: an edit every peer would refuse is
@@ -108,15 +108,19 @@ export type LocalProblem = "key-too-long" | "string-too-long" | "too-deep" | "to
  */
 export function checkCommands(
   commands: readonly DiagramCommand[],
-): { ok: true } | { ok: false; problem: LocalProblem } {
+): { ok: true; bytes: number } | { ok: false; problem: LocalProblem } {
+  // An upper bound on the step's encoded size: UTF-8 bytes of every value and name (Yjs stores strings as UTF-8,
+  // numbers in at most 9 bytes), plus a generous allowance per field for Yjs's own structure.
+  const utf8 = new TextEncoder();
   let size = 0;
+  const PER_FIELD = 32;
   const keys = (o: Record<string, unknown> | undefined) =>
     Object.keys(o ?? {}).some((k) => k.length >= COLLAB_LIMITS.maxKeyChars);
   const value = (v: unknown): LocalProblem | undefined => {
     if (v === undefined) return undefined;
     if (valueDepthExceeds(v)) return "too-deep";
     if (tooLongString(v)) return "string-too-long";
-    size += JSON.stringify(v)?.length ?? 0;
+    size += utf8.encode(JSON.stringify(v) ?? "").length + PER_FIELD;
     return undefined;
   };
   for (const c of commands) {
@@ -125,6 +129,9 @@ export function checkCommands(
       return { ok: false, problem: "bad-id" };
     const fields = c.op === "put" ? c.record : "set" in c ? c.set : undefined;
     if (keys(fields)) return { ok: false, problem: "key-too-long" };
+    const unset = "unset" in c ? (c.unset ?? []) : [];
+    size += utf8.encode(`${id ?? ""}${Object.keys(fields ?? {}).join("")}${unset.join("")}`).length;
+    size += PER_FIELD * (1 + unset.length);
     for (const v of Object.values(fields ?? {})) {
       if (
         c.op === "put" &&
@@ -140,10 +147,10 @@ export function checkCommands(
     if (c.op === "order") {
       if (c.ids.some((x) => typeof x !== "string" || x.length >= COLLAB_LIMITS.maxStringChars))
         return { ok: false, problem: "bad-id" };
-      size += c.ids.length * 16;
+      size += c.ids.reduce((n, x) => n + utf8.encode(x).length + PER_FIELD, 0);
     }
   }
-  // A step must fit in one frame with room to spare (Yjs and envelope overhead).
-  if (size > COLLAB_LIMITS.maxDocFrameBytes / 2) return { ok: false, problem: "too-large" };
-  return { ok: true };
+  // A step must fit in one frame with room to spare.
+  if (size > COLLAB_LIMITS.maxStepBytes) return { ok: false, problem: "too-large" };
+  return { ok: true, bytes: size };
 }

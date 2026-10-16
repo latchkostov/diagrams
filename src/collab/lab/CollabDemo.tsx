@@ -7,7 +7,7 @@ import { newRoom } from "../keys";
 import { COLLAB_LIMITS } from "../limits";
 import { PRESENCE_COLOURS } from "../presence";
 import { MemoryNetwork } from "../transport/memory";
-import { demoDiagram } from "./demo";
+import { applyMoves, demoDiagram } from "./demo";
 import { SpikePanel } from "./SpikePanel";
 
 // Collaboration C0 in the Lab (dev and e2e builds only): three people in one page, joined by the in-memory network.
@@ -170,7 +170,7 @@ function Room({ room }: { room: LabRoom }) {
     <>
       <div className="collab-lab-controls" role="group" aria-label="Network">
         <span
-          className={converged ? "collab-ok" : "collab-warn"}
+          className={converged ? "collab-ok" : "collab-warn-status"}
           data-testid="collab-converged"
           data-converged={converged}
         >
@@ -361,21 +361,7 @@ function ClientPanel({ room, name }: { room: LabRoom; name: Name }) {
         {rejected.length > 0 && <> · refused {rejected.map(([r, n]) => `${r} ${n}`).join(", ")}</>}
       </p>
       <div className="collab-canvas">
-        {d && (
-          <LabCanvas
-            diagram={d}
-            minimap={false}
-            onMove={(id, x, y) =>
-              edit((cur) => ({
-                ...cur,
-                nodes: cur.nodes.map((n) => (n.id === id ? { ...n, x: Math.round(x), y: Math.round(y) } : n)),
-                annotations: cur.annotations?.map((a) =>
-                  a.id === id ? { ...a, x: Math.round(x), y: Math.round(y) } : a,
-                ),
-              }))
-            }
-          />
-        )}
+        {d && <LabCanvas diagram={d} minimap={false} onMove={(moves) => edit((cur) => applyMoves(cur, moves))} />}
       </div>
     </section>
   );

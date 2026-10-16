@@ -931,9 +931,23 @@
   border-radius: 50%;
   margin-right: 4px;
 }
-.collab-ok {
-  color: var(--success);
+.collab-ok,
+.collab-warn-status {
   font-weight: 600;
+}
+/* The status reads in body text colour; the dot beside it carries the colour, never the meaning alone. */
+.collab-ok::before,
+.collab-warn-status::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--success);
+}
+.collab-warn-status::before {
+  background: var(--warning-ink);
 }
 .collab-warn {
   color: var(--warning-ink);

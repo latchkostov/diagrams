@@ -337,11 +337,15 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
       }
       // Each offer is considered once (a tracker replaying it gets nowhere), and the peer budget is checked again
       // after the await: offers that arrived together must not all be admitted.
-      if (seenOffers.has(offerId)) return;
-      if (seenOffers.size >= 4096) seenOffers.clear();
-      seenOffers.add(offerId);
+      // Only authenticated offers are remembered (by signer and offer id), so a forgery reusing an offer id can't
+      // block the genuine offer arriving through another tracker.
+      const seen = `${msg.peer_id}|${offerId}`;
+      if (seenOffers.has(seen)) return;
       const sdp = await openSignal(opts.signal, opts.discovery, "offer", offerId, msg.peer_id, offer.sdp);
       if (!sdp) return event("offer from another room, replayed or tampered: ignored");
+      if (seenOffers.has(seen)) return;
+      if (seenOffers.size >= 4096) seenOffers.clear();
+      seenOffers.add(seen);
       if (closed || peers.has(from) || peers.size >= maxPeers) return event("offer ignored");
       const pc = new PC(config());
       const peer: Peer = { id: from, pc, open: false, nextMsg: 1, partial: new Map() };

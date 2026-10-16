@@ -7,7 +7,7 @@ import { deriveRoomKeys, newRoom } from "../keys";
 import { consumeRoomFragment, parseRoomLink, parseRoomValue, ROOM_PARAM, type RoomLink } from "../link";
 import { bytesToBase64Url } from "../../interop/codec";
 import { createTrackerTransport, SPIKE_STUN, SPIKE_TRACKERS, type TrackerTransport } from "../transport/tracker";
-import { demoDiagram } from "./demo";
+import { applyMoves, demoDiagram, endpointList } from "./demo";
 
 // The public-matchmaking spike (C0, Lab only). Nothing connects until "Connect" is pressed: the panel names every
 // public service first. Two tabs (or two browsers) with the same room key find each other through public
@@ -82,13 +82,10 @@ export function SpikePanel() {
       if (token !== attempt.current) return;
       const log = (e: string) => setEvents((list) => [...list.slice(-30), `${new Date().toLocaleTimeString()} ${e}`]);
       transport = createTrackerTransport({
-        trackers: trackers.split(/s+/).filter(Boolean),
+        trackers: endpointList(trackers),
         discovery: keys.discovery,
         signal: keys.signal,
-        iceServers: stun
-          .split(/s+/)
-          .filter(Boolean)
-          .map((urls) => ({ urls })),
+        iceServers: endpointList(stun).map((urls) => ({ urls })),
         onEvent: log,
       });
       const client = await openRoomClient({
@@ -239,18 +236,7 @@ export function SpikePanel() {
             ))}
           </ol>
           <div className="collab-canvas">
-            {d && (
-              <LabCanvas
-                diagram={d}
-                minimap={false}
-                onMove={(id, x, y) =>
-                  edit((cur) => ({
-                    ...cur,
-                    nodes: cur.nodes.map((n) => (n.id === id ? { ...n, x: Math.round(x), y: Math.round(y) } : n)),
-                  }))
-                }
-              />
-            )}
+            {d && <LabCanvas diagram={d} minimap={false} onMove={(moves) => edit((cur) => applyMoves(cur, moves))} />}
           </div>
         </div>
       )}

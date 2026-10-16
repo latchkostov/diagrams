@@ -2,6 +2,7 @@ import * as Y from "yjs";
 import type { DiagramFile } from "../model/types";
 import { applyCommands, type DiagramCommand } from "./commands";
 import { checkCommands, inspectUpdate, type GuardProblem, type LocalProblem } from "./guard";
+import { COLLAB_LIMITS } from "./limits";
 import {
   assemble,
   hydrate,
@@ -31,6 +32,8 @@ export const RESTORE = Symbol("collab:restore");
 
 /** Yjs exports DeleteSet as a value but not its type. */
 type DeleteSet = Parameters<typeof Y.iterateDeletedStructs>[1];
+type DeleteItem = DeleteSet["clients"] extends Map<number, (infer I)[]> ? I : never;
+type StackItemLike = { insertions: DeleteSet; deletions: DeleteSet };
 
 export type Projection =
   | { status: "ok"; diagram: DiagramFile; warnings: string[]; hidden: string[] }
@@ -89,6 +92,15 @@ export class CollabDoc {
   private lastGood: DiagramFile | undefined;
   private lastMerge: string | undefined;
   private listeners = new Set<() => void>();
+  /** An upper bound on the encoded state: its exact size when last measured, plus every update since. */
+  private roomBytes = 0;
+
+  /** Whether `bytes` more keep the room within one frame (measuring exactly only when the bound gets close). */
+  private roomHas(bytes: number): boolean {
+    if (this.roomBytes + bytes <= COLLAB_LIMITS.maxRoomBytes) return true;
+    this.roomBytes = Y.encodeStateAsUpdate(this.ydoc).length;
+    return this.roomBytes + bytes <= COLLAB_LIMITS.maxRoomBytes;
+  }
 
   constructor(opts: CollabDocOptions = {}) {
     this.ydoc = new Y.Doc();
@@ -119,13 +131,16 @@ export class CollabDoc {
   hydrate(diagram: DiagramFile): void {
     if (!this.isEmpty()) throw new Error("A room's document is hydrated once, by its creator.");
     const scratch = new Y.Doc();
-    scratch.clientID = this.ydoc.clientID;
     scratch.transact(() => hydrate(scratch, diagram));
     const update = Y.encodeStateAsUpdate(scratch);
     scratch.destroy();
     const check = inspectUpdate(update);
     if (!check.ok) throw new CollabLimitError(check.problem);
-    Y.applyUpdate(this.ydoc, update, HYDRATE);
+    if (update.length > COLLAB_LIMITS.maxRoomBytes) throw new CollabLimitError("too-large");
+    // Checked; now written under this document's own client id (applying the scratch update would make Yjs see
+    // its id arrive from elsewhere and pick a new one).
+    this.ydoc.transact(() => hydrate(this.ydoc, diagram), HYDRATE);
+    this.roomBytes = update.length;
   }
 
   isEmpty(): boolean {
@@ -143,10 +158,12 @@ export class CollabDoc {
     if (!commands.length) return { ok: true };
     const check = checkCommands(commands);
     if (!check.ok) return check;
+    if (!this.roomHas(check.bytes)) return { ok: false, problem: "room-full" };
     if (opts.merge === undefined || opts.merge !== this.lastMerge) this.undoManager.stopCapturing();
     this.lastMerge = opts.merge;
     this.stats.localTransactions++;
     this.ydoc.transact(() => applyCommands(this.ydoc, commands), this.local);
+    this.roomBytes += check.bytes;
     return { ok: true };
   }
 
@@ -159,6 +176,7 @@ export class CollabDoc {
     }
     try {
       Y.applyUpdate(this.ydoc, update, REMOTE);
+      this.roomBytes += update.length;
     } catch {
       this.stats.remoteRefused++;
       return { ok: false, problem: "apply-failed" };
@@ -170,14 +188,15 @@ export class CollabDoc {
   undo(): boolean {
     this.lastMerge = undefined;
     const item = this.undoManager.undo();
-    if (item) this.restoreRefused(item);
+    // The Undo pushed its own step onto the redo stack; values it restores belong to that step.
+    if (item) this.restoreRefused(item, this.undoManager.redoStack.at(-1));
     return item !== null;
   }
 
   redo(): boolean {
     this.lastMerge = undefined;
     const item = this.undoManager.redo();
-    if (item) this.restoreRefused(item);
+    if (item) this.restoreRefused(item, this.undoManager.undoStack.at(-1));
     return item !== null;
   }
 
@@ -187,7 +206,7 @@ export class CollabDoc {
    * position, a diagram without a title). For each field this step replaced, if it's now empty, write back the value
    * the step replaced, as a new change everyone receives. A field someone else currently holds is left alone.
    */
-  private restoreRefused(step: { insertions: DeleteSet; deletions: DeleteSet }): void {
+  private restoreRefused(step: StackItemLike, inverse: StackItemLike | undefined): void {
     const restores: [Y.Map<unknown>, string, unknown][] = [];
     this.ydoc.transact((tr) => {
       Y.iterateDeletedStructs(tr, step.deletions, (struct) => {
@@ -198,8 +217,18 @@ export class CollabDoc {
         restores.push([parent as Y.Map<unknown>, struct.parentSub, struct.content.getContent().at(-1)]);
       });
     });
-    if (restores.length)
-      this.ydoc.transact(() => restores.forEach(([map, key, value]) => map.set(key, value)), RESTORE);
+    if (!restores.length) return;
+    const client = this.ydoc.clientID;
+    const from = Y.getState(this.ydoc.store, client);
+    this.ydoc.transact(() => restores.forEach(([map, key, value]) => map.set(key, value)), RESTORE);
+    const to = Y.getState(this.ydoc.store, client);
+    // The restored values count as part of the Undo (or Redo) itself, so the next Redo (or Undo) takes them back
+    // like anything else it inserted, instead of seeing them as someone's later change to leave alone.
+    if (inverse && to > from) {
+      const added = Y.createDeleteSet();
+      added.clients.set(client, [{ clock: from, len: to - from } as DeleteItem]);
+      inverse.insertions = Y.mergeDeleteSets([inverse.insertions, added]);
+    }
   }
 
   canUndo = () => this.undoManager.canUndo();

@@ -16,3 +16,16 @@ export const demoDiagram = (): DiagramFile => ({
     { id: "orders-db", from: "orders", to: "db" },
   ],
 });
+
+/** The spike's endpoint fields: URLs separated by whitespace (spaces, newlines). */
+export const endpointList = (text: string): string[] => text.split(/\s+/).filter(Boolean);
+
+/** A batch of dropped positions (one drag or nudge of a selection) as one edit. */
+export function applyMoves(d: DiagramFile, moves: readonly { id: string; x: number; y: number }[]): DiagramFile {
+  const at = new Map(moves.map((m) => [m.id, { x: Math.round(m.x), y: Math.round(m.y) }]));
+  return {
+    ...d,
+    nodes: d.nodes.map((n) => (at.has(n.id) ? { ...n, ...at.get(n.id) } : n)),
+    ...(d.annotations && { annotations: d.annotations.map((a) => (at.has(a.id) ? { ...a, ...at.get(a.id) } : a)) }),
+  };
+}

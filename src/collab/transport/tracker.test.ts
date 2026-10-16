@@ -5,6 +5,7 @@ import { COLLAB_LIMITS } from "../limits";
 import { seededBytes } from "../random";
 import { CANARY, canaryDiagram, containsBytes, describeTransportConformance, openClient, roomFor } from "./conformance";
 import { fakeEnvironment, SDP_CANARIES } from "./fakeWebrtc";
+import { endpointList } from "../lab/demo";
 import { createTrackerTransport, openSignal, sealSignal, SPIKE_TRACKERS } from "./tracker";
 
 // The public-matchmaking spike's transport, tested offline: a fake tracker, fake WebSockets and fake peer
@@ -179,6 +180,63 @@ describe("public matchmaking: what a tracker sees (synthetic capture)", () => {
     expect(events.filter((e) => e.includes("replayed or tampered")).length).toBeGreaterThanOrEqual(2);
     a.close();
     b.close();
+  });
+
+  it("a forgery reusing an offer id doesn't block the genuine offer", async () => {
+    const env = fakeEnvironment();
+    const make = (random: (n: number) => Uint8Array, offers?: number) =>
+      env.wire.track(
+        createTrackerTransport({
+          trackers: ["wss://tracker.invalid"],
+          discovery: keys.discovery,
+          signal: keys.signal,
+          WebSocket: env.WebSocket,
+          RTCPeerConnection: env.RTCPeerConnection,
+          random,
+          clock: env.wire.clock,
+          offers,
+        }),
+      );
+    const a = make(seededBytes(801));
+    await env.wire.pump();
+    const offerMsg = env.wire.trackerLog
+      .map((raw) => JSON.parse(raw) as Record<string, unknown>)
+      .find((m) => Array.isArray(m.offers) && (m.offers as unknown[]).length)!;
+    const offer = (offerMsg.offers as { offer_id: string; offer: { type: string; sdp: string } }[])[0];
+    // b's id is the greatest, so it is the one that answers a's offers.
+    const rest = seededBytes(802);
+    let first = true;
+    // b joins the swarm without offers of its own, so the only way to connect is a's relayed offer.
+    const b = make((n) => (first ? ((first = false), new Uint8Array(n).fill(0xff)) : rest(n)), 0);
+    await env.wire.pump();
+    const relay = (sdp: string) =>
+      env.tracker.broadcast(
+        JSON.stringify({
+          action: "announce",
+          info_hash: offerMsg.info_hash,
+          peer_id: offerMsg.peer_id,
+          offer_id: offer.offer_id,
+          offer: { type: "offer", sdp },
+        }),
+      );
+    // The forgery first, then the genuine offer (as if through a second tracker).
+    relay("ld1.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+    relay(offer.offer.sdp);
+    await env.wire.pump();
+    const answered = env.wire.trackerLog
+      .map((raw) => JSON.parse(raw) as Record<string, unknown>)
+      .some((m) => m.answer && m.offer_id === offer.offer_id);
+    expect(answered).toBe(true);
+    a.close();
+    b.close();
+  });
+
+  it("reads endpoint lists split on whitespace, keeping every URL whole", () => {
+    expect(endpointList(`${SPIKE_TRACKERS.join("\n")}\n  `)).toEqual(SPIKE_TRACKERS);
+    expect(endpointList("stun:stun.cloudflare.com:3478 stun:other.example:3478")).toEqual([
+      "stun:stun.cloudflare.com:3478",
+      "stun:other.example:3478",
+    ]);
   });
 
   it("only talks to wss:// trackers (or a loopback ws:// one for local tests)", async () => {

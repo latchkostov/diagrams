@@ -285,6 +285,47 @@ describe("CollabDoc Undo is per person", () => {
     expect(metaOf(a.ydoc).has("title")).toBe(true);
   });
 
+  it.each([1, 3])("undo then redo of a concurrent same-field edit returns to where it was (A's client id %i)", (id) => {
+    const a = new CollabDoc({ clientId: id });
+    a.hydrate(sample());
+    expect(a.ydoc.clientID).toBe(id);
+    const b = new CollabDoc({ clientId: 2 });
+    sync(a, b);
+    edit(a, (d) => ({ ...d, title: "A" }));
+    edit(b, (d) => ({ ...d, title: "B" }));
+    sync(a, b);
+    const before = structuralText(diagramOf(a));
+    // When B's value won, A's edit is already invisible and Undo has nothing to do.
+    a.undo();
+    sync(a, b);
+    expect(metaOf(a.ydoc).has("title")).toBe(true);
+    if (structuralText(diagramOf(a)) !== before) {
+      expect(a.canRedo()).toBe(true);
+      expect(a.redo()).toBe(true);
+    } else a.redo();
+    sync(a, b);
+    expect(structuralText(diagramOf(a))).toBe(before);
+    expect(structuralText(diagramOf(b))).toBe(before);
+  });
+
+  it.each([1, 3])("undo then redo of a concurrent move restores the move (A's client id %i)", (id) => {
+    const a = new CollabDoc({ clientId: id });
+    a.hydrate(sample());
+    const b = new CollabDoc({ clientId: 2 });
+    sync(a, b);
+    edit(a, (d) => ({ ...d, nodes: d.nodes.map((n) => (n.id === "db" ? { ...n, x: 1 } : n)) }));
+    edit(b, (d) => ({ ...d, nodes: d.nodes.map((n) => (n.id === "db" ? { ...n, x: 2 } : n)) }));
+    sync(a, b);
+    const before = structuralText(diagramOf(a));
+    a.undo();
+    sync(a, b);
+    expect(a.project().hidden).toEqual([]);
+    a.redo();
+    sync(a, b);
+    expect(structuralText(diagramOf(a))).toBe(before);
+    expect(structuralText(diagramOf(b))).toBe(before);
+  });
+
   it.each([1, 2])("undo after a concurrent move never leaves a node without a position (client order %i)", (order) => {
     const a = new CollabDoc({ clientId: order === 1 ? 1 : 3 });
     a.hydrate(sample());

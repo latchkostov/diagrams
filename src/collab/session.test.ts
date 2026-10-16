@@ -169,6 +169,36 @@ describe("sessions", () => {
     expect(b.session.stats.rejected).toEqual({});
   });
 
+  it("refuses a step whose UTF-8 encoding wouldn't fit a frame, however short it is in characters", async () => {
+    const { net, a, b, settle } = await room3();
+    let wire = 0;
+    net.tap(() => wire++);
+    // 30 values of 100,000 three-byte characters: 3 million characters, 9 MB encoded.
+    const big = Object.fromEntries(Array.from({ length: 30 }, (_, i) => [`x${i}`, "\u4e2d".repeat(100_000)]));
+    expect(a.edit((d) => ({ ...d, ...big }))).toBe(false);
+    expect(a.binding.refused).toBe("too-large");
+    expect(Object.keys(a.diagram!)).not.toContain("x0");
+    await settle();
+    expect(wire).toBe(0);
+    a.edit((d) => ({ ...d, title: "Next" }));
+    await settle();
+    expect(b.diagram?.title).toBe("Next");
+  });
+
+  it("refuses a step that would grow the room past what one sync reply can carry", async () => {
+    const { a, b, settle } = await room3();
+    const chunk = (k: number) =>
+      Object.fromEntries(Array.from({ length: 10 }, (_, i) => [`y${k}_${i}`, "\u4e2d".repeat(99_000)]));
+    expect(a.edit((d) => ({ ...d, ...chunk(1) }))).toBe(true);
+    expect(a.edit((d) => ({ ...d, ...chunk(2) }))).toBe(true);
+    expect(a.edit((d) => ({ ...d, ...chunk(3) }))).toBe(false);
+    expect(a.binding.refused).toBe("room-full");
+    await settle();
+    // What the room holds still reaches a peer in one frame.
+    expect(a.session.doc.encodeDiff().length).toBeLessThan(COLLAB_LIMITS.maxDocFrameBytes);
+    expect(Object.keys(metaOf(b.session.doc.ydoc).toJSON())).toContain("y2_9");
+  });
+
   it("refuses to start a room with a diagram the room couldn't carry", async () => {
     const net = new MemoryNetwork();
     await expect(

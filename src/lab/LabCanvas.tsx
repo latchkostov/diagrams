@@ -43,7 +43,7 @@ interface Props {
    * nudge, with its new top-left position (top-level elements only). A live stage also takes each new `diagram` in
    * place, keeping selection, viewport and focus, instead of starting over.
    */
-  onMove?: (id: string, x: number, y: number) => void;
+  onMove?: (moves: { id: string; x: number; y: number }[]) => void;
 }
 
 export function LabCanvas(props: Props) {
@@ -77,9 +77,14 @@ function Stage({ diagram, minimap = true, onRendered, onMove }: Props) {
   const handleNodesChange: typeof onNodesChange = (changes) => {
     onNodesChange(changes);
     if (!onMove) return;
-    for (const c of changes)
-      if (c.type === "position" && c.position && c.dragging === false && !nodes.find((n) => n.id === c.id)?.parentId)
-        onMove(c.id, c.position.x, c.position.y);
+    // A drag or nudge of a selection lands as one batch: one edit for all of it.
+    const nested = new Set(nodes.filter((n) => n.parentId).map((n) => n.id));
+    const moves = changes.flatMap((c) =>
+      c.type === "position" && c.position && c.dragging === false && !nested.has(c.id)
+        ? [{ id: c.id, x: c.position.x, y: c.position.y }]
+        : [],
+    );
+    if (moves.length) onMove(moves);
   };
   const showDependencies = useShowDependencies();
   const visibleEdges = useMemo(() => projectDependencies(edges, showDependencies), [edges, showDependencies]);
