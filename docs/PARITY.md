@@ -83,6 +83,7 @@ it in ten isolated repeats or five complete library runs (45 tests). The test no
 document under `pauseClock()`, keeping its pending-edit and lifecycle-flush assertions. Ten repeats
 pass; suppressing the actual page-hide listener registration makes its flush assertion fail.
 This test-only correction changes no output golden or production persistence code.
+
 ## Static-page languages (2026-10-15)
 
 Only `goldens/node/i18n/catalogs.json` changes. All 37 catalogs gain `staticAuth` and `staticSkill`
@@ -90,7 +91,9 @@ area hashes for 31 translated messages, and the generated pseudo-locale gains th
 Message totals rise by 31; existing area hashes and English fallback counts are unchanged.
 This deliberately records the new catalog surface. Every diagram, simulation, import, export,
 canvas and image golden must remain unchanged. Baseline HTML hashes and browser DOM checks also
-pin unchanged English markup for the converted standalone pages; legal pages stay English-only.
+pin unchanged English content (ignoring the new stable binding attributes) for the converted
+standalone pages; legal pages stay English-only. The Node parity config explicitly compiles complete
+catalogs, while the app runtime excludes the standalone namespaces.
 
 ## Immediate fits and cancellable refinements (2026-10-15)
 

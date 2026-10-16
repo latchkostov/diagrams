@@ -22,6 +22,16 @@ const words = (code: string, key: keyof typeof en) => {
   )[key];
 };
 
+// Authored commands are an independent baseline: never derive expectations from translated DOM.
+const commands = {
+  marketplace: "/plugin marketplace add latchkostov/diagrams",
+  install: "/plugin install livediagrams@livediagrams",
+  codex:
+    "curl -LO https://www.livediagrams.dev/livediagrams-skill.zip && unzip livediagrams-skill.zip -d ~/.agents/skills/",
+  "codex-windows":
+    'iwr https://www.livediagrams.dev/livediagrams-skill.zip -OutFile livediagrams-skill.zip; Expand-Archive livediagrams-skill.zip "$HOME\\.agents\\skills"',
+};
+
 const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
 
 async function translatedProse(page: Page, code: string) {
@@ -222,9 +232,7 @@ test("copy feedback translates, preserves command bytes, and resets on the fake 
   );
   await copy.click();
   await expect(copy).toHaveText(words("de", "staticSkill.copied"));
-  expect(await page.evaluate(() => sessionStorage.getItem("copied"))).toBe(
-    ((await page.getByTestId("skill-cmd-codex-windows").textContent()) ?? "").replace(/\s+/g, " ").trim(),
-  );
+  expect(await page.evaluate(() => sessionStorage.getItem("copied"))).toBe(commands["codex-windows"]);
   await page.clock.runFor(2000);
   await expect(copy).toHaveText(words("de", "staticSkill.copy"));
   await page.evaluate(() =>
@@ -280,3 +288,129 @@ for (const error of [false, true]) {
     );
   });
 }
+
+for (const code of ["de", "ar", "en-XA"]) {
+  test(`translation preserves every install command in ${code}`, async ({ page }) => {
+    await page.addInitScript((locale) => {
+      localStorage.setItem("diagrams.locale", locale);
+      Object.defineProperty(navigator, "clipboard", {
+        value: {
+          writeText: (text: string) => {
+            sessionStorage.setItem("copied", text);
+            return Promise.resolve();
+          },
+        },
+      });
+    }, code);
+    await page.goto("./skill/");
+    await expect(page.getByTestId("skill-title")).toHaveText(words(code, "staticSkill.title"));
+    for (const [name, expected] of Object.entries(commands)) {
+      await expect(page.getByTestId(`skill-cmd-${name}`)).toHaveText(expected);
+      await page.getByTestId(`skill-copy-${name}`).click();
+      expect(await page.evaluate(() => sessionStorage.getItem("copied"))).toBe(expected);
+    }
+  });
+}
+
+test("translation follows stable blocks and slots after page edits", async ({ page, consoleErrors }) => {
+  await page.addInitScript(() => localStorage.setItem("diagrams.locale", "de"));
+  await page.route("**/skill/", async (route) => {
+    let html = await (await route.fetch()).text();
+    html = html.replaceAll(/(<h2[^>]*>[^<]*<\/h2>)/g, "$1<p>Introductory paragraph.</p>");
+    html = html.replace(
+      /(<ul data-testid="skill-outputs">)([\s\S]*?)(<\/ul>)/,
+      (_, open: string, items: string, close: string) =>
+        open + (items.match(/<li\b[\s\S]*?<\/li>/g) ?? []).reverse().join("\n") + close,
+    );
+    // Extra inline nodes must not steal preserved slots, even within the same paragraph.
+    html = html.replace(
+      'data-testid="skill-intro">',
+      'data-testid="skill-intro"><strong>Aside</strong><code>aside</code>',
+    );
+    await route.fulfill({ contentType: "text/html", body: html });
+  });
+  await page.goto("./skill/");
+  await expect(page.getByTestId("skill-back")).toHaveText(words("de", "staticSkill.back"));
+  await translatedProse(page, "de");
+  for (const name of ["html", "diagram", "image", "link"] as const) {
+    await expect(page.getByTestId(`skill-label-${name}`)).toHaveText(words("de", `staticSkill.${name}Label`));
+  }
+  await expect(page.getByTestId("skill-intro")).toContainText("livediagrams");
+  await expect(page.getByTestId("skill-intro")).toContainText(".diagram.json");
+  expectNoErrors(consoleErrors);
+});
+
+test("callback reaches the OAuth channel without an opener", async ({ page, context }) => {
+  await page.goto("./auth.html");
+  await page.evaluate(() => {
+    const channel = new BroadcastChannel("diagrams-oauth");
+    channel.onmessage = (event: MessageEvent<unknown>) => {
+      sessionStorage.setItem("received", JSON.stringify(event.data));
+      channel.close();
+    };
+  });
+  const callback = await context.newPage();
+  await callback.addInitScript(() => {
+    window.close = () => {};
+    const Channel = BroadcastChannel;
+    window.BroadcastChannel = class extends Channel {
+      override postMessage(value: unknown) {
+        sessionStorage.setItem("searchAtDelivery", location.search);
+        super.postMessage(value);
+      }
+    };
+  });
+  await callback.goto("./auth.html?state=channel-state&code=channel-code");
+  expect(await callback.evaluate(() => window.opener === null)).toBe(true);
+  await expect
+    .poll(() => page.evaluate(() => sessionStorage.getItem("received")))
+    .toBe(
+      JSON.stringify({
+        type: "diagrams-oauth",
+        params: { state: "channel-state", code: "channel-code" },
+      }),
+    );
+  expect(await callback.evaluate(() => sessionStorage.getItem("searchAtDelivery"))).toBe("");
+});
+
+test("callback reaches the opener when BroadcastChannel throws", async ({ page, context }) => {
+  await page.goto("./auth.html");
+  await page.evaluate(() =>
+    window.addEventListener("message", (event: MessageEvent<unknown>) => {
+      sessionStorage.setItem(
+        "received",
+        JSON.stringify({ value: event.data, origin: event.origin, source: event.source !== null }),
+      );
+    }),
+  );
+  await context.addInitScript(() => {
+    window.close = () => {};
+    Object.defineProperty(window, "BroadcastChannel", {
+      value: function () {
+        throw new Error("unavailable");
+      },
+    });
+    const opener = window.opener as Window | null;
+    if (opener) {
+      const deliver = opener.postMessage.bind(opener);
+      opener.postMessage = (value: unknown, targetOrigin: string) => {
+        sessionStorage.setItem("delivery", JSON.stringify({ search: location.search, targetOrigin }));
+        deliver(value, targetOrigin);
+      };
+    }
+  });
+  const popup = page.waitForEvent("popup");
+  await page.evaluate(() => window.open("./auth.html?state=opener-state&error=access_denied"));
+  const callback = await popup;
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem("received"))).not.toBeNull();
+  const origin = new URL(page.url()).origin;
+  expect(JSON.parse((await page.evaluate(() => sessionStorage.getItem("received"))) ?? "null")).toEqual({
+    value: { type: "diagrams-oauth", params: { state: "opener-state", error: "access_denied" } },
+    origin,
+    source: true,
+  });
+  expect(JSON.parse((await callback.evaluate(() => sessionStorage.getItem("delivery"))) ?? "null")).toEqual({
+    search: "",
+    targetOrigin: origin,
+  });
+});

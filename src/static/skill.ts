@@ -1,66 +1,42 @@
 import { t } from "../i18n/core";
 import { startStaticPage } from "./start";
-import { find, replaceContent, slot } from "./dom";
-
-const strong = "strong";
-const text = (selector: string, value: string) => (find(selector).textContent = value);
-const content = (selector: string, value: string, slots: Record<string, string> = {}) => {
-  const element = find(selector);
-  replaceContent(
-    element,
-    value,
-    Object.fromEntries(Object.entries(slots).map(([name, child]) => [name, element.querySelector(child)!])),
-  );
-};
+import { find, text, content, slot } from "./dom";
 
 void startStaticPage(() => {
   document.title = t("staticSkill.title");
   find('meta[name="description"]').setAttribute("content", t("staticSkill.description"));
-  text('[data-testid="skill-title"]', t("staticSkill.title"));
-  content("main > p:first-of-type", t("staticSkill.intro", { skill: slot("skill"), file: slot("file") }), {
-    skill: "strong",
-    file: "code",
-  });
-  text('[data-testid="skill-outputs"] > li:nth-child(1) > strong', t("staticSkill.htmlLabel"));
-  content('[data-testid="skill-outputs"] > li:nth-child(1)', t("staticSkill.html", { label: slot("label") }), {
-    label: strong,
-  });
-  text('[data-testid="skill-outputs"] > li:nth-child(2) > strong', t("staticSkill.diagramLabel"));
-  content(
-    '[data-testid="skill-outputs"] > li:nth-child(2)',
-    t("staticSkill.diagram", { label: slot("label"), file: slot("file") }),
-    { label: strong, file: "code" },
-  );
-  text('[data-testid="skill-outputs"] > li:nth-child(3) > strong', t("staticSkill.imageLabel"));
-  content('[data-testid="skill-outputs"] > li:nth-child(3)', t("staticSkill.image", { label: slot("label") }), {
-    label: strong,
-  });
-  text('[data-testid="skill-outputs"] > li:nth-child(4) > strong', t("staticSkill.linkLabel"));
-  content('[data-testid="skill-outputs"] > li:nth-child(4)', t("staticSkill.link", { label: slot("label") }), {
-    label: strong,
-  });
-  text("#claude-code + p", t("staticSkill.claudeCommands"));
-  text("#claude-apps", t("staticSkill.claudeApps"));
-  text("#claude-apps + p > strong", t("staticSkill.settings"));
-  content("#claude-apps + p", t("staticSkill.upload", { zip: slot("zip"), settings: slot("settings") }), {
-    zip: "a",
-    settings: "strong",
-  });
+  text("skill-title", t("staticSkill.title"));
+  content("skill-intro", t("staticSkill.intro", { skill: slot("skill"), file: slot("file") }), ["skill", "file"]);
+  text("skill-label-html", t("staticSkill.htmlLabel"));
+  content("skill-output-html", t("staticSkill.html", { label: slot("label") }), ["label"]);
+  text("skill-label-diagram", t("staticSkill.diagramLabel"));
+  content("skill-output-diagram", t("staticSkill.diagram", { label: slot("label"), file: slot("file") }), [
+    "label",
+    "file",
+  ]);
+  text("skill-label-image", t("staticSkill.imageLabel"));
+  content("skill-output-image", t("staticSkill.image", { label: slot("label") }), ["label"]);
+  text("skill-label-link", t("staticSkill.linkLabel"));
+  content("skill-output-link", t("staticSkill.link", { label: slot("label") }), ["label"]);
+  text("skill-claude-commands", t("staticSkill.claudeCommands"));
+  text("skill-claude-apps", t("staticSkill.claudeApps"));
+  text("skill-settings", t("staticSkill.settings"));
+  content("skill-upload", t("staticSkill.upload", { zip: slot("zip"), settings: slot("settings") }), [
+    "zip",
+    "settings",
+  ]);
   // Both code paths remain LTR, including in Arabic; keep command bytes exactly as authored.
-  content("#codex + p", t("staticSkill.unzip", { personal: slot("personal"), repo: slot("repo") }), {
-    personal: "code:first-child",
-    repo: "code:last-child",
-  });
-  text("#other-agents", t("staticSkill.otherAgents"));
-  content("#other-agents + p", t("staticSkill.other", { folder: slot("folder"), skill: slot("skill") }), {
-    folder: "code",
-    skill: "a",
-  });
-  text("#try-it", t("staticSkill.thenAsk"));
-  text("#try-it + p", t("staticSkill.request"));
-  text("#in-the-browser", t("staticSkill.browserTitle"));
-  text("#in-the-browser + p", t("staticSkill.browser"));
-  text('[data-testid="skill-back"]', t("staticSkill.back"));
+  content("skill-unzip", t("staticSkill.unzip", { personal: slot("personal"), repo: slot("repo") }), [
+    "personal",
+    "repo",
+  ]);
+  text("skill-other-agents", t("staticSkill.otherAgents"));
+  content("skill-other", t("staticSkill.other", { folder: slot("folder"), skill: slot("skill") }), ["folder", "skill"]);
+  text("skill-then-ask", t("staticSkill.thenAsk"));
+  text("skill-request", t("staticSkill.request"));
+  text("skill-browser-title", t("staticSkill.browserTitle"));
+  text("skill-browser", t("staticSkill.browser"));
+  text("skill-back", t("staticSkill.back"));
   document.querySelectorAll<HTMLElement>("code").forEach((code) => (code.dir = "ltr"));
   document.querySelectorAll<HTMLElement>(".cmd").forEach((command) => (command.dir = "ltr"));
   document

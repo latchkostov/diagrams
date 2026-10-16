@@ -77,11 +77,17 @@ export function numberedKeys(catalogs: Partial<Record<Key, string>>[]): Set<Key>
 const template = (text: string) => `\`${text.replace(/[\\`]|\$\{/g, (c) => `\\${c}`)}\``;
 
 /** A language's catalog module: by English text for plain messages, else by number. */
-export function compileCatalog(code: string, numbered: Set<Key>, dir = LOCALES_DIR, prefix = ""): string {
+export function compileCatalog(
+  code: string,
+  numbered: Set<Key>,
+  dir = LOCALES_DIR,
+  prefix = "",
+  excludeStandalone = false,
+): string {
   const messages: Partial<Record<Key, string>> = code === PSEUDO_LOCALE ? {} : readCatalog(code, dir);
   const entries: string[] = [];
   for (const key of keys) {
-    if (!key.startsWith(prefix)) continue;
+    if (!key.startsWith(prefix) || (excludeStandalone && /^(?:staticAuth|staticSkill)\./.test(key))) continue;
     let compiled: string;
     try {
       if (code === PSEUDO_LOCALE) compiled = compile(pseudoLocalize(parse(en[key])));
@@ -303,7 +309,7 @@ export function rewriteCalls(
 export interface I18nOptions {
   /** Offer catalogs at all (false for the Interactive HTML viewer, which stays English). Default true. */
   catalogs?: boolean;
-  /** Standalone pages carry only their area's messages, compiled with the same IDs as the app. */
+  /** Explicit scope: a standalone area, or "" for complete validation/parity catalogs. Omitted: app messages. */
   prefix?: string;
   /** Include the layout-testing language in a standalone dev script. */
   pseudo?: boolean;
@@ -371,7 +377,7 @@ export function i18n(options: I18nOptions = {}): Plugin {
       if (id.startsWith(`\0${CATALOG}`)) {
         const code = id.slice(`\0${CATALOG}`.length);
         if (code !== PSEUDO_LOCALE) this.addWatchFile(path.join(LOCALES_DIR, `${code}.json`));
-        return compileCatalog(code, numbered, LOCALES_DIR, options.prefix);
+        return compileCatalog(code, numbered, LOCALES_DIR, options.prefix, options.prefix === undefined);
       }
     },
     transform(code, id) {

@@ -1,5 +1,13 @@
 # Design review
 
+## Static-page review follow-up (2026-10-16)
+
+The designer agent approved the scoped source review with no actionable UX issue. Named blocks and
+inline slots preserve the English content, command bytes, links, controls and styling; language
+direction and LTR command rows retain their behavior. The page adds no chrome. The reviewer did not
+run browsers or tests; production browser regressions independently cover reordered content, command
+preservation, mobile/desktop overflow and delivery transports.
+
 ## Stencil names and agent defaults gate (2026-10-15)
 
 The designer agent's scoped source/test review found no blocking issue. Default names follow
@@ -14,6 +22,7 @@ The follow-up review also approved the explicit agent flow override and its corr
 It preserves the editor's existing user choice across stencil changes without adding controls.
 The browser regression now checks exact persisted names, avoiding a false match on stencil
 subtitles. This follow-up was also a read-only source review, without a browser walkthrough.
+
 ## Static-page languages (2026-10-15)
 
 The designer agent’s scoped source review confirmed unchanged English HTML and existing copy and

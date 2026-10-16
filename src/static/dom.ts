@@ -7,4 +7,19 @@ export function replaceContent(element: Element, text: string, slots: Record<str
 
 export const slot = (name: string) => `\uFFF0${name}\uFFF1`;
 
-export const find = (selector: string) => document.querySelector<HTMLElement>(selector)!;
+export function find(selector: string, root: ParentNode = document): HTMLElement {
+  const element = root.querySelector<HTMLElement>(selector);
+  if (!element) throw new Error(`Missing static page element: ${selector}`);
+  return element;
+}
+
+const element = (id: string) => find(`[data-testid="${id}"]`);
+
+export function text(id: string, value: string): void {
+  element(id).textContent = value;
+}
+
+export function content(id: string, value: string, slots: readonly string[]): void {
+  const target = element(id);
+  replaceContent(target, value, Object.fromEntries(slots.map((name) => [name, find(`[data-slot="${name}"]`, target)])));
+}

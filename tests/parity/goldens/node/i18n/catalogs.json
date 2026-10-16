@@ -1,6 +1,6 @@
 {
   "ar": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "f257b025e328",
@@ -45,6 +45,8 @@
       "shared": "7ca88e2e381b",
       "shortcuts": "4d9da073c0b2",
       "start": "bafde34c13ba",
+      "staticAuth": "6be613da3161",
+      "staticSkill": "1c793b82efd9",
       "status": "66c131baf5e0",
       "stencil": "73264ab06958",
       "storage": "a11204e26d9b",
@@ -54,7 +56,7 @@
     }
   },
   "bg": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "339cd5287f25",
@@ -99,6 +101,8 @@
       "shared": "01a4beabc6c9",
       "shortcuts": "810929e4ae0b",
       "start": "a95fdae506e3",
+      "staticAuth": "e183a06c37c0",
+      "staticSkill": "1ea1fcbef34f",
       "status": "b4c5b56f29a1",
       "stencil": "b12b63629228",
       "storage": "9be18ca3365d",
@@ -108,7 +112,7 @@
     }
   },
   "cs": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "c8683cb1d947",
@@ -153,6 +157,8 @@
       "shared": "da1af02cf29e",
       "shortcuts": "d817114b1786",
       "start": "bd89df67345a",
+      "staticAuth": "68e29cd71b01",
+      "staticSkill": "91ee5e273a8e",
       "status": "4db51b04b28c",
       "stencil": "3648e6670cb8",
       "storage": "b8f3c1f50ae2",
@@ -162,7 +168,7 @@
     }
   },
   "da": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "2309322c7e25",
@@ -207,6 +213,8 @@
       "shared": "056f73396882",
       "shortcuts": "55fa4826e59c",
       "start": "a7481b35022c",
+      "staticAuth": "d08d39dac555",
+      "staticSkill": "f341492cb6b1",
       "status": "180f29340fa1",
       "stencil": "e11600f313aa",
       "storage": "11004530f202",
@@ -216,7 +224,7 @@
     }
   },
   "de": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "866ad98895eb",
@@ -261,6 +269,8 @@
       "shared": "9963e3991b9e",
       "shortcuts": "0a358f899c69",
       "start": "a16af5061c12",
+      "staticAuth": "e399689bd65f",
+      "staticSkill": "dd0a7b570ff5",
       "status": "d3c853995296",
       "stencil": "b8a7424db700",
       "storage": "88851bd9d494",
@@ -270,7 +280,7 @@
     }
   },
   "el": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "c85e9b1328ba",
@@ -315,6 +325,8 @@
       "shared": "6d9d17a39ec8",
       "shortcuts": "98366649bfea",
       "start": "c29222d914df",
+      "staticAuth": "39c36a8e0889",
+      "staticSkill": "7ed143991249",
       "status": "79816c08ff26",
       "stencil": "0cb46dcd5ebc",
       "storage": "c8773643bfb2",
@@ -324,7 +336,7 @@
     }
   },
   "en-XA": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 0,
     "areas": {
       "admission": "0235ad03f4ed",
@@ -369,6 +381,8 @@
       "shared": "f3f01c37f820",
       "shortcuts": "d50a2c0f43ed",
       "start": "47af8707e23b",
+      "staticAuth": "be646f11a8af",
+      "staticSkill": "e83488163353",
       "status": "503ed3eef173",
       "stencil": "f1e87d953516",
       "storage": "cf4fa52c7a17",
@@ -378,7 +392,7 @@
     }
   },
   "es": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "8275061ad675",
@@ -423,6 +437,8 @@
       "shared": "3c383423d363",
       "shortcuts": "cfd8a17e2e53",
       "start": "dd5410530ac7",
+      "staticAuth": "4370b788e1e1",
+      "staticSkill": "0aaa28093f9e",
       "status": "38d49ce96caf",
       "stencil": "239a7c2f2338",
       "storage": "49077629b6f4",
@@ -432,7 +448,7 @@
     }
   },
   "et": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "bcda9d352f6d",
@@ -477,6 +493,8 @@
       "shared": "7e5576b49172",
       "shortcuts": "49de7e3b0414",
       "start": "417dcfdbcb5c",
+      "staticAuth": "2e79e9ffb931",
+      "staticSkill": "3fc3c7b77076",
       "status": "dc176209c530",
       "stencil": "2ad8d05c4c98",
       "storage": "f4e6708e3738",
@@ -486,7 +504,7 @@
     }
   },
   "fi": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "639abadda530",
@@ -531,6 +549,8 @@
       "shared": "61ff5e1072ad",
       "shortcuts": "9368274db6f4",
       "start": "767b2d837bfc",
+      "staticAuth": "65c842894306",
+      "staticSkill": "3263a257fbe5",
       "status": "53e4550ac086",
       "stencil": "e2b15c82ebcd",
       "storage": "09f103b4997b",
@@ -540,7 +560,7 @@
     }
   },
   "fr": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "c0da5634d917",
@@ -585,6 +605,8 @@
       "shared": "925fbd5ac936",
       "shortcuts": "7f089d9e5f80",
       "start": "4d88c45cd640",
+      "staticAuth": "d8643b2c6384",
+      "staticSkill": "1cca13ef99d2",
       "status": "ee7e5c4ade20",
       "stencil": "527fa31dc25a",
       "storage": "b264eecabc00",
@@ -594,7 +616,7 @@
     }
   },
   "he": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "60a5b99830c3",
@@ -639,6 +661,8 @@
       "shared": "9ae8447ea11e",
       "shortcuts": "dd1ba67a5517",
       "start": "9779160d3636",
+      "staticAuth": "53940464e907",
+      "staticSkill": "f86d9be52111",
       "status": "f5889010b433",
       "stencil": "1b0074d7f7f3",
       "storage": "9a1a18ff5a76",
@@ -648,7 +672,7 @@
     }
   },
   "hi": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "81b5998e2d74",
@@ -693,6 +717,8 @@
       "shared": "ab9fee0b76d6",
       "shortcuts": "57d4025a8822",
       "start": "7a638b7439f7",
+      "staticAuth": "e941ff80b301",
+      "staticSkill": "543f30a45d21",
       "status": "bd4ddc42540b",
       "stencil": "8e7308f4e95b",
       "storage": "9e9f78e27d58",
@@ -702,7 +728,7 @@
     }
   },
   "hr": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "250278672ecf",
@@ -747,6 +773,8 @@
       "shared": "3eac7f1432c8",
       "shortcuts": "a51ddce29ad1",
       "start": "c88e710908f4",
+      "staticAuth": "be07e76db9f8",
+      "staticSkill": "e110a524b021",
       "status": "9fc9c21c49d3",
       "stencil": "ef68bff5a9e0",
       "storage": "d38da412c209",
@@ -756,7 +784,7 @@
     }
   },
   "hu": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "a173caaa787a",
@@ -801,6 +829,8 @@
       "shared": "76c577440c1b",
       "shortcuts": "77e895921e7f",
       "start": "14abc2361406",
+      "staticAuth": "0974cc853bb8",
+      "staticSkill": "34024080e029",
       "status": "2599269ac1d4",
       "stencil": "54a331a291e6",
       "storage": "1d14f7d9cc67",
@@ -810,7 +840,7 @@
     }
   },
   "id": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "93080e86188c",
@@ -855,6 +885,8 @@
       "shared": "4e448003cad4",
       "shortcuts": "1422ba581483",
       "start": "aaf1676445bb",
+      "staticAuth": "161007a614de",
+      "staticSkill": "ee0baaa446dd",
       "status": "c5e523032475",
       "stencil": "7182fb1b5279",
       "storage": "44bdccdcde97",
@@ -864,7 +896,7 @@
     }
   },
   "it": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "9016b7c98d05",
@@ -909,6 +941,8 @@
       "shared": "a4a277800b4a",
       "shortcuts": "bff02b4c80ef",
       "start": "e02fb64ef456",
+      "staticAuth": "d6affb1614d3",
+      "staticSkill": "e47477eade55",
       "status": "eace84d8084f",
       "stencil": "02b6752cdc10",
       "storage": "5d8bc82786e7",
@@ -918,7 +952,7 @@
     }
   },
   "ja": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "03ac6ff46fda",
@@ -963,6 +997,8 @@
       "shared": "1780707682bb",
       "shortcuts": "a9747f6e6c86",
       "start": "cb1ce883509a",
+      "staticAuth": "19d530d501a9",
+      "staticSkill": "523c2aceaf1a",
       "status": "7572d509157a",
       "stencil": "c8f23a06c738",
       "storage": "10bd503d0032",
@@ -972,7 +1008,7 @@
     }
   },
   "ko": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "9668a36595b4",
@@ -1017,6 +1053,8 @@
       "shared": "2d5e138a480f",
       "shortcuts": "1f50fa3f0e72",
       "start": "5d4ab6060191",
+      "staticAuth": "b373ca6c9d4a",
+      "staticSkill": "8c747e6deb75",
       "status": "915b2705205f",
       "stencil": "578c5deb80b0",
       "storage": "0177b1781f68",
@@ -1026,7 +1064,7 @@
     }
   },
   "lt": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "d340551a2a22",
@@ -1071,6 +1109,8 @@
       "shared": "51a1a5e2e89d",
       "shortcuts": "aefa0bcd8330",
       "start": "9631f0122bdd",
+      "staticAuth": "9745ed8f55de",
+      "staticSkill": "489d21b968ed",
       "status": "59ca744e00bb",
       "stencil": "ac86bccdc8fa",
       "storage": "76b670531712",
@@ -1080,7 +1120,7 @@
     }
   },
   "lv": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "78e387261dc3",
@@ -1125,6 +1165,8 @@
       "shared": "7914ba59646c",
       "shortcuts": "28af1188c70e",
       "start": "725f0071861f",
+      "staticAuth": "a37272dffc68",
+      "staticSkill": "31d2f642f6d0",
       "status": "5ddc49be0cc9",
       "stencil": "59a05cd034d8",
       "storage": "4c36caf9b0ff",
@@ -1134,7 +1176,7 @@
     }
   },
   "nb": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "4c2373a03104",
@@ -1179,6 +1221,8 @@
       "shared": "5dc900e889ed",
       "shortcuts": "f15732687cca",
       "start": "e7a5c59400ae",
+      "staticAuth": "c2c1c2b62ed3",
+      "staticSkill": "97b54a220172",
       "status": "006c51685512",
       "stencil": "7e90e19ac05f",
       "storage": "07713b44b66b",
@@ -1188,7 +1232,7 @@
     }
   },
   "nl": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "9dca014cc22e",
@@ -1233,6 +1277,8 @@
       "shared": "680da57af225",
       "shortcuts": "a003e5254a8a",
       "start": "677b407e6ea4",
+      "staticAuth": "bdd1119d1ed4",
+      "staticSkill": "04b7b642a12c",
       "status": "646e9b2b45fc",
       "stencil": "9db2ccb379bb",
       "storage": "884a5295208d",
@@ -1242,7 +1288,7 @@
     }
   },
   "pl": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "570713cc3f9c",
@@ -1287,6 +1333,8 @@
       "shared": "50b91eaf8dce",
       "shortcuts": "713ab4b4e952",
       "start": "a58cf3952ace",
+      "staticAuth": "8076dd195625",
+      "staticSkill": "9249b7336a18",
       "status": "2627ebf612d2",
       "stencil": "7c05f86ca69c",
       "storage": "1cae378e2f9f",
@@ -1296,7 +1344,7 @@
     }
   },
   "pt-BR": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "b1b3aa0fdcce",
@@ -1341,6 +1389,8 @@
       "shared": "a343e85d9c7a",
       "shortcuts": "65eaedc11a8b",
       "start": "c7fba6052c7b",
+      "staticAuth": "656ab5fd3331",
+      "staticSkill": "3b75bf705618",
       "status": "1eea008aea70",
       "stencil": "1485b56a9d3d",
       "storage": "4fcadfb741e1",
@@ -1350,7 +1400,7 @@
     }
   },
   "pt-PT": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "269f381da119",
@@ -1395,6 +1445,8 @@
       "shared": "51c1c9523d3b",
       "shortcuts": "d33802139e1b",
       "start": "fea336983cfd",
+      "staticAuth": "cbcdb5463074",
+      "staticSkill": "472e8f630f8d",
       "status": "fb9fd6ac8d34",
       "stencil": "501e0fda5330",
       "storage": "6a7ac0d13fa5",
@@ -1404,7 +1456,7 @@
     }
   },
   "ro": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "2fc367bfb234",
@@ -1449,6 +1501,8 @@
       "shared": "9b0f1100455c",
       "shortcuts": "7e2cfd00b4b1",
       "start": "98bb5984eab0",
+      "staticAuth": "73aa83272802",
+      "staticSkill": "0ce9640a9788",
       "status": "9072bb9be9a3",
       "stencil": "26dcdae98e51",
       "storage": "1153b2a1efc0",
@@ -1458,7 +1512,7 @@
     }
   },
   "ru": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "dd2155d35792",
@@ -1503,6 +1557,8 @@
       "shared": "ec0a72d36007",
       "shortcuts": "fd92c9523642",
       "start": "8b9fabd362f5",
+      "staticAuth": "cec178ec9edf",
+      "staticSkill": "6ccbd87c867e",
       "status": "b08095fb98df",
       "stencil": "490e7dee786b",
       "storage": "d2c2146b16d8",
@@ -1512,7 +1568,7 @@
     }
   },
   "sk": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "de282cafe657",
@@ -1557,6 +1613,8 @@
       "shared": "34611e2b459f",
       "shortcuts": "13e0aaf26e24",
       "start": "6ccea06f2c13",
+      "staticAuth": "44d283241bf4",
+      "staticSkill": "53a9b599bbab",
       "status": "6d8927a86e37",
       "stencil": "c0b8b0c494fc",
       "storage": "e9d3cf805de1",
@@ -1566,7 +1624,7 @@
     }
   },
   "sl": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "46736cefd0aa",
@@ -1611,6 +1669,8 @@
       "shared": "8fbbc71b448b",
       "shortcuts": "06be791e3cd6",
       "start": "811dfd5b429f",
+      "staticAuth": "154cb29577f7",
+      "staticSkill": "eab62e053d1a",
       "status": "16d48362c436",
       "stencil": "2a189cc0279d",
       "storage": "a0b6a9cdf7a5",
@@ -1620,7 +1680,7 @@
     }
   },
   "sr-Latn": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "b1f254245925",
@@ -1665,6 +1725,8 @@
       "shared": "f5910bfcbb11",
       "shortcuts": "50fed797a871",
       "start": "ef59c7af8511",
+      "staticAuth": "0be57614ecf8",
+      "staticSkill": "59538b312cdd",
       "status": "8bc322321b76",
       "stencil": "30e3f28f0642",
       "storage": "2cae76b740a8",
@@ -1674,7 +1736,7 @@
     }
   },
   "sv": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "a1faad44500b",
@@ -1719,6 +1781,8 @@
       "shared": "db98309dc7cf",
       "shortcuts": "3f38f9e96958",
       "start": "130af05b5553",
+      "staticAuth": "354ad6c9d601",
+      "staticSkill": "e43b49e4671a",
       "status": "bcf184cf07f1",
       "stencil": "15de0597ca07",
       "storage": "7290a0f5eeb7",
@@ -1728,7 +1792,7 @@
     }
   },
   "th": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "4c7152546e6f",
@@ -1773,6 +1837,8 @@
       "shared": "00158260b688",
       "shortcuts": "230bff430354",
       "start": "20c78fea4cc6",
+      "staticAuth": "a612871b9619",
+      "staticSkill": "db4f700f3cf4",
       "status": "3bbee348b220",
       "stencil": "a79d07243818",
       "storage": "71bfa86822a2",
@@ -1782,7 +1848,7 @@
     }
   },
   "tr": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "c9ba84e9fc81",
@@ -1827,6 +1893,8 @@
       "shared": "ab0751d284a7",
       "shortcuts": "0c930adc7f87",
       "start": "b4a0f6da89e8",
+      "staticAuth": "c74a570f6e74",
+      "staticSkill": "71cdcd15de3e",
       "status": "4a2699192658",
       "stencil": "beb014439492",
       "storage": "4ca23b45fbfb",
@@ -1836,7 +1904,7 @@
     }
   },
   "uk": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "01c3b2a9ea61",
@@ -1881,6 +1949,8 @@
       "shared": "af0186a5a33c",
       "shortcuts": "6180eee293e7",
       "start": "39f67462a910",
+      "staticAuth": "d85e12b69507",
+      "staticSkill": "ca4d1f008a29",
       "status": "001c8efd8a68",
       "stencil": "c172954d73eb",
       "storage": "026f5bbd883f",
@@ -1890,7 +1960,7 @@
     }
   },
   "vi": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "e4040b83feb7",
@@ -1935,6 +2005,8 @@
       "shared": "0d4248202931",
       "shortcuts": "d8ccc3116df6",
       "start": "52f25410e99e",
+      "staticAuth": "90d8c1e14cd8",
+      "staticSkill": "22ca0db78caa",
       "status": "41ff3d241b93",
       "stencil": "a32028c8fa2e",
       "storage": "0fe87852fed8",
@@ -1944,7 +2016,7 @@
     }
   },
   "zh-CN": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "320934d4f256",
@@ -1989,6 +2061,8 @@
       "shared": "ccd1ca225041",
       "shortcuts": "6e28bcaf1929",
       "start": "f5a12feb680b",
+      "staticAuth": "83ab3b1aae57",
+      "staticSkill": "2cf87ee73e36",
       "status": "ab52ab65556c",
       "stencil": "a3f28f6151c7",
       "storage": "dde06b71a8bb",
@@ -1998,7 +2072,7 @@
     }
   },
   "zh-TW": {
-    "messages": 1828,
+    "messages": 1859,
     "fallback": 79,
     "areas": {
       "admission": "b8f5dc48650d",
@@ -2043,6 +2117,8 @@
       "shared": "a1cccd5c657e",
       "shortcuts": "d15809218052",
       "start": "a1a72f4c5bcc",
+      "staticAuth": "58b7ebb68ed5",
+      "staticSkill": "ba0d95bfeb6e",
       "status": "b1a86f2824f8",
       "stencil": "3df03cb9ce0e",
       "storage": "fa41125cfe1c",

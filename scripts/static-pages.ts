@@ -5,7 +5,7 @@ import { i18n } from "./i18n-plugin";
 
 const PAGES = { "auth.js": "auth", "skill/copy.js": "skill" };
 
-/** Classic scripts at the existing URLs: HTML stays byte-identical, even on offline/file:// copies. */
+/** Classic scripts at the existing URLs: English keeps the authored DOM, including on offline/file:// copies. */
 export async function buildStaticScript(root: string, page: string, mode = "production", dev = false) {
   const prefix = `static${page.charAt(0).toUpperCase()}${page.slice(1)}.`;
   const result = await build({

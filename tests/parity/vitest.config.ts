@@ -1,3 +1,4 @@
+import { i18n } from "../../scripts/i18n-plugin";
 import { publicExamplesOnly } from "../../scripts/public-examples-only";
 // The parity harness's Node tier (docs/PARITY.md): the app's own Vite config (the i18n transform, the virtual
 // modules), with only the parity files and no type checking (`pnpm typecheck` covers them). Run it through
@@ -9,7 +10,10 @@ process.env.PARITY_TIER = "node";
 
 export default defineConfig({
   ...app,
-  plugins: app.plugins ?? [publicExamplesOnly()],
+  // Parity covers every namespace; the app's runtime catalogs deliberately omit standalone pages.
+  plugins: (app.plugins ?? [publicExamplesOnly()]).map((plugin) =>
+    plugin && typeof plugin === "object" && "name" in plugin && plugin.name === "i18n" ? i18n({ prefix: "" }) : plugin,
+  ),
   test: {
     ...app.test,
     include: ["tests/parity/node/**/*.parity.ts"],
