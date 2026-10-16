@@ -4,6 +4,26 @@ import { captionContrastFixture } from "../../src/lab/captionContrastFixture";
 import { gotoLab } from "./fixtures";
 import { test, expect, expectNoErrors, gotoCanvas, waitForStableViewport, STORAGE_KEYS, type Page } from "./fixtures";
 
+/**
+ * Where elements are on the diagram (flow coordinates: screen boxes less the view's pan, over its zoom), read in one
+ * task so a pan can't land between two readings. Screen boxes alone move when the view does: a selection that opens
+ * the inspector pans the view to keep the selection clear of it.
+ */
+async function flowBoxes(page: Page, testIds: readonly string[]) {
+  return page.getByTestId("canvas-wrap").evaluate((wrap, ids) => {
+    const t = wrap.querySelector<HTMLElement>(".react-flow__viewport")?.style.transform ?? "";
+    const m = /translate\((-?[\d.]+)px, (-?[\d.]+)px\) scale\(([\d.]+)\)/.exec(t);
+    if (!m) throw new Error(`Unexpected transform: ${t}`);
+    const [vx, vy, zoom] = [Number(m[1]), Number(m[2]), Number(m[3])];
+    const pane = wrap.getBoundingClientRect();
+    return ids.map((id) => {
+      const r = wrap.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect();
+      if (!r) throw new Error(`Missing ${id}`);
+      return { x: (r.left - pane.left - vx) / zoom, y: (r.top - pane.top - vy) / zoom };
+    });
+  }, testIds);
+}
+
 async function boxOf(locator: import("@playwright/test").Locator) {
   const box = await locator.boundingBox();
   if (!box) throw new Error("Missing drag geometry");
@@ -252,10 +272,10 @@ test("dragging selected parent and child preserves nesting and undo/redo", async
   await page.getByTestId("group-label-grp-core").click();
   await page.getByTestId("group-label-child").click({ modifiers: ["Shift"] });
   await settledCanvas(page);
-  const elements = ["group-grp-core", "group-child", "node-member", "annotation-note"].map((id) =>
-    page.getByTestId(id),
-  );
-  const before = await Promise.all(elements.map(boxOf));
+  // The drag is aimed at the label where it is now: let any pan from the selection finish first.
+  await waitForStableViewport(page);
+  const ids = ["group-grp-core", "group-child", "node-member", "annotation-note"] as const;
+  const before = await flowBoxes(page, ids);
   const handle = await boxOf(page.getByTestId("group-label-grp-core"));
   const x = handle.x + handle.width / 2,
     y = handle.y + handle.height / 2;
@@ -264,7 +284,7 @@ test("dragging selected parent and child preserves nesting and undo/redo", async
   await page.mouse.move(x + 60, y + 40, { steps: 10 });
   await page.mouse.up();
   const assertMoved = async () => {
-    const after = await Promise.all(elements.map(boxOf));
+    const after = await flowBoxes(page, ids);
     const dx = after[0].x - before[0].x,
       dy = after[0].y - before[0].y;
     expect(dx).toBeGreaterThan(0);
@@ -280,10 +300,10 @@ test("dragging selected parent and child preserves nesting and undo/redo", async
   await expect(page.getByTestId("inspector-field-group")).toHaveValue("grp-core");
   await page.keyboard.press("Control+z");
   await expect(async () => {
-    for (let i = 0; i < elements.length; i++) {
-      const box = await boxOf(elements[i]);
-      expect(box.x).toBeCloseTo(before[i].x, 0);
-      expect(box.y).toBeCloseTo(before[i].y, 0);
+    const now = await flowBoxes(page, ids);
+    for (let i = 0; i < ids.length; i++) {
+      expect(now[i].x).toBeCloseTo(before[i].x, 0);
+      expect(now[i].y).toBeCloseTo(before[i].y, 0);
     }
   }).toPass();
   await page.keyboard.press("Escape");
