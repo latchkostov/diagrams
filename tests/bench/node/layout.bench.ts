@@ -7,8 +7,8 @@
 // - routeDragFrame: one node moved a few pixels with the router kept (a drag frame: only the edges it touches, or
 //   whose routes it crosses, are routed again). Its count of edges routed per frame is a gate.
 //
-// Gates: auto-layout grows linearly; routing (a known hotspot) stays below cubic; a drag frame routes a bounded number
-// of edges whatever the diagram's size.
+// Gates: auto-layout and full routing grow linearly; a drag frame routes a bounded number of edges, reads each node a
+// bounded number of times, and grows linearly, whatever the diagram's size.
 
 import { layeredLayout } from "../../../src/editor/layout";
 import { tidyLayout } from "../../../src/editor/tidy";
@@ -28,7 +28,7 @@ import {
   workload,
   workloadInfo,
 } from "./harness";
-import { QUADRATIC_LIMIT } from "../../../src/test/complexity";
+import { LINEAR_LIMIT } from "../../../src/test/complexity";
 
 const s = suite("layout");
 
@@ -105,21 +105,22 @@ s.gating("auto-layout grows linearly", () => {
   }
 });
 
-// Routing is superlinear today (docs/BENCHMARKS.md § Hotspots: each edge's search scales with the whole diagram, about
-// n^1.5 for the pipeline, n^2 for the mesh). Its gates hold it below cubic (QUADRATIC_LIMIT) until the refactor makes it
-// linear; then they move to LINEAR_LIMIT. 250 and 2,000 nodes, the pipeline only: the mesh at 2,000 takes ten seconds a
-// call, too slow to gate every pull request with.
+// Routing read the whole diagram for every edge it searched and every segment it nudged (docs/BENCHMARKS.md § Hotspots:
+// about n^1.5 for the pipeline, n^2 for the mesh), and its gates held it below cubic (QUADRATIC_LIMIT). With a spatial
+// index for both, full routing of the pipeline and a drag frame grow linearly (7x and 2x for 8x the nodes, from 23x and
+// 10x), and their gates moved to LINEAR_LIMIT. 250 and 2,000 nodes, the pipeline only: the mesh at 2,000 takes seconds
+// a call, too slow to gate every pull request with.
 const ROUTE_SMALL = 250;
 const ROUTE_LARGE = ROUTE_SMALL * GROWTH_FACTOR;
 
-s.gating("full routing stays below cubic", () => {
+s.gating("full routing grows linearly", () => {
   const si = routeInput(eventPipeline(ROUTE_SMALL));
   const li = routeInput(eventPipeline(ROUTE_LARGE));
   s.growth(
     "routeAll-pipeline",
     () => new Router().route(si),
     () => new Router().route(li),
-    QUADRATIC_LIMIT,
+    LINEAR_LIMIT,
   );
 });
 
@@ -142,5 +143,40 @@ s.gating("a drag frame routes a bounded number of edges", () => {
   }
   const small = dragger(routeInput(eventPipeline(ROUTE_SMALL)));
   const large = dragger(routeInput(eventPipeline(ROUTE_LARGE)));
-  s.growth("routeDragFrame-pipeline", small, large, QUADRATIC_LIMIT);
+  s.growth("routeDragFrame-pipeline", small, large, LINEAR_LIMIT);
+});
+
+// What a drag frame reads of each node's box, the worst of ten frames: the passes over every edge (sides, ports,
+// nudging, labels) read each node a few times, but searching for a moved edge's route, and nudging a segment, read
+// only the nodes near it. Before they had a spatial index, each of those read every node in the diagram: 1,814 reads
+// per node at 250 pipeline nodes, 11,453 at 2,000, 42,225 for the mesh at 500 (now 225, 152 and 874).
+s.gating("a drag frame reads each node a bounded number of times", () => {
+  for (const [name, input, limit] of [
+    ["pipeline", routeInput(eventPipeline(ROUTE_LARGE)), 400],
+    ["mesh", routeInput(serviceMesh(500)), 2_000],
+  ] as const) {
+    const reads = { on: false, count: 0 };
+    const nodes = input.nodes.map((n) => ({
+      ...n,
+      rect: new Proxy(n.rect, {
+        get(target, key, receiver) {
+          if (reads.on) reads.count++;
+          return Reflect.get(target, key, receiver) as unknown;
+        },
+      }),
+    }));
+    const frame = dragger({ ...input, nodes });
+    let worst = 0;
+    for (let i = 0; i < 10; i++) {
+      reads.count = 0;
+      reads.on = true;
+      frame();
+      reads.on = false;
+      worst = Math.max(worst, reads.count / nodes.length);
+    }
+    s.count(`routeDragFrame-readsPerNode-${name}`, Math.round(worst), {
+      limit,
+      why: "a moved edge's search and a nudged segment read the nodes near them, not every node in the diagram",
+    });
+  }
 });

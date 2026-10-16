@@ -9,6 +9,7 @@ import { routeOrthogonal } from "./orthogonal";
 import { nudgeRoutes } from "./nudge";
 import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
 import type { Point, Rect } from "./rect";
+import { RectIndex } from "./spatial";
 
 /**
  * Reads of the padded obstacles the router makes (every `inflate`d box), while `rectReads.on`; past `limit` the
@@ -139,6 +140,36 @@ it("nudges a segment reading only the obstacles near it, not every node of the d
   expect(reads.count / nodes.length).toBeLessThan(40);
   // The same routes and nodes, unproxied, nudge the same way.
   expect(nudgeRoutes(bundledRoutes(bundles), nodes)).toEqual(out);
+});
+
+it("routes an edge reading the obstacles near it, not every node of the diagram", () => {
+  // Counted, not timed. A drag frame searches again for the few edges it moves; preparing each search padded and
+  // tested every node in the diagram. With the router's index, a search reads the nodes near its own area.
+  const nodes: Rect[] = Array.from({ length: 2_000 }, (_, i) => ({
+    x: (i % 50) * 300,
+    y: Math.floor(i / 50) * 160,
+    width: 220,
+    height: 72,
+  }));
+  const { rects, reads } = countedRects(nodes);
+  const index = new RectIndex(rects);
+  const indexing = reads.count;
+  // A hundred short edges, each between two neighbours in a row.
+  const requests = Array.from({ length: 100 }, (_, k) => {
+    const i = (k % 40) * 50 + Math.floor(k / 40) * 7;
+    return {
+      source: { x: nodes[i].x + 220, y: nodes[i].y + 36 },
+      sourceDir: { x: 1, y: 0 },
+      target: { x: nodes[i + 1].x, y: nodes[i + 1].y + 36 },
+      targetDir: { x: -1, y: 0 },
+      obstacles: rects,
+    };
+  });
+  const routed = requests.map((r) => routeOrthogonal({ ...r, index }));
+  expect(routed.every((r) => r.ok)).toBe(true);
+  expect((reads.count - indexing) / nodes.length).toBeLessThan(10);
+  // The same routes without the index.
+  expect(requests.map((r) => routeOrthogonal({ ...r, obstacles: nodes }))).toEqual(routed);
 });
 
 const files = import.meta.glob<DiagramFile>("../../examples/*.json", { eager: true, import: "default" });

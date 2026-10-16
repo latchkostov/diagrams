@@ -16,8 +16,6 @@ const valid = (r: Rect) =>
   Number.isFinite(r.y + r.height) &&
   r.width >= 0 &&
   r.height >= 0;
-/** Whether `insert` keeps a rect (finite, no negative size): a caller must scan the others itself. */
-export const indexable = valid;
 const touches = (a: Rect, b: Rect) =>
   a.x <= b.x + b.width && b.x <= a.x + a.width && a.y <= b.y + b.height && b.y <= a.y + a.height;
 
@@ -118,5 +116,29 @@ export class SpatialGrid<T> {
         }
     }
     return [...seen];
+  }
+}
+
+/**
+ * Rects by position, for a pass that tests each against a box. `near` returns, in ascending order, the indices into
+ * `rects` of a superset of those touching the box, never fewer: a rect the grid can't hold (non-finite, or a negative
+ * size) is always among them, and a box the grid can't answer for returns every index. Callers keep their exact tests;
+ * the index only spares them the rects far away.
+ */
+export class RectIndex {
+  private grid = new SpatialGrid<number>();
+  private loose: number[] = [];
+  constructor(readonly rects: readonly Rect[]) {
+    rects.forEach((r, i) => {
+      if (valid(r)) this.grid.insert(r, i);
+      else this.loose.push(i);
+    });
+  }
+
+  near(box: Rect): number[] {
+    if (!valid(box)) return this.rects.map((_, i) => i);
+    const out = this.grid.query(box).map((e) => e.item);
+    out.push(...this.loose);
+    return out.sort((a, b) => a - b);
   }
 }

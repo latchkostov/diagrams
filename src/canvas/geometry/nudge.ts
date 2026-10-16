@@ -4,7 +4,7 @@
 // neighbours. Order within a track is chosen so that segments turn off without crossing each other.
 
 import { inflate, segmentHitsRect, type Point, type Rect } from "./rect";
-import { indexable, SpatialGrid } from "./spatial";
+import { RectIndex, SpatialGrid } from "./spatial";
 
 interface Seg {
   edge: string;
@@ -111,18 +111,12 @@ function clusters(segs: Seg[], tol: number): Seg[][] {
  * the index can't hold (non-finite or negative sizes) is always returned, so callers keep their exact tests.
  */
 class Obstacles {
-  private grid = new SpatialGrid<Rect>();
-  private loose: Rect[] = [];
+  private index: RectIndex;
   constructor(readonly all: readonly Rect[]) {
-    for (const r of all)
-      if (indexable(r)) this.grid.insert(r, r);
-      else this.loose.push(r);
+    this.index = new RectIndex(all);
   }
-  near(box: Rect): readonly Rect[] {
-    // A box the index can't answer for (a NaN point): every obstacle, as before the index.
-    if (!indexable(box)) return this.all;
-    const out = this.grid.query(box).map((e) => e.item);
-    return this.loose.length ? [...out, ...this.loose] : out;
+  near(box: Rect): Rect[] {
+    return this.index.near(box).map((i) => this.all[i]);
   }
 }
 

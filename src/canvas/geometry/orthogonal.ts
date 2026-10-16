@@ -8,6 +8,7 @@
 
 import { inflate, type Point, type Rect, right, bottom, simplify } from "./rect";
 import { obstacleGrid } from "./obstacleGrid";
+import type { RectIndex } from "./spatial";
 
 export interface SoftLine {
   /** "x": a vertical line at x = at spanning y in [from, to]; "y": horizontal. */
@@ -31,6 +32,11 @@ export interface OrthoRequest {
   pad?: number;
   /** Length of the straight stub leaving / entering a port before the first bend. */
   stub?: number;
+  /**
+   * `obstacles` indexed by position (a router routing many edges builds it once): the search area then reads only the
+   * obstacles near it, not every one in the diagram. Same route either way.
+   */
+  index?: RectIndex;
 }
 
 export interface OrthoOptions {
@@ -284,7 +290,7 @@ export function routeOrthogonal(
   const t1 = { x: req.target.x + req.targetDir.x * stub, y: req.target.y + req.targetDir.y * stub };
 
   // Pad obstacles, but never so much that a stub point ends up inside one (nodes placed very close).
-  const padded = req.obstacles.map((r) => {
+  const padOf = (r: Rect) => {
     const p = inflate(r, pad);
     const strict = (q: Point) => q.x > p.x && q.x < right(p) && q.y > p.y && q.y < bottom(p);
     if (!strict(s1) && !strict(t1)) return p;
@@ -297,13 +303,28 @@ export function routeOrthogonal(
       }),
     );
     return inflate(r, Math.max(0, Math.min(pad, need)));
-  });
+  };
+  let all: Rect[] | undefined;
+  const padded = () => (all ??= req.obstacles.map(padOf));
+  // A padded box lies within its obstacle grown by `pad` (by nothing when pad is negative), so the obstacles whose
+  // padded box can reach the region are among those near the region grown by as much: the index's candidates, in
+  // their original order, filtered exactly as every padded box would be.
+  const index = req.index;
+  const paddedOf = new Map<number, Rect>();
+  const near = (area: Rect): readonly Rect[] => {
+    if (!index) return padded();
+    return index.near(inflate(area, Math.max(0, pad) + 4)).map((i) => {
+      let p = paddedOf.get(i);
+      if (!p) paddedOf.set(i, (p = padOf(req.obstacles[i])));
+      return p;
+    });
+  };
 
   const margin = pad + 28;
   let region = inflate(boxOf([s1, t1]), margin);
   let obs: Rect[] = [];
   for (let iter = 0; iter < 6; iter++) {
-    obs = padded.filter(
+    obs = near(region).filter(
       (r) => r.x < right(region) && right(r) > region.x && r.y < bottom(region) && bottom(r) > region.y,
     );
     const grown = obs.reduce((acc, r) => unionRect(acc, inflate(r, margin)), region);
@@ -313,8 +334,8 @@ export function routeOrthogonal(
   const soft = req.soft ?? [];
   let path = search(s1, dirIndex(req.sourceDir), t1, dirIndex(req.targetDir), obs, region, soft, o);
   if (!path) {
-    region = padded.reduce((acc, r) => unionRect(acc, inflate(r, margin)), region);
-    path = search(s1, dirIndex(req.sourceDir), t1, dirIndex(req.targetDir), padded, region, soft, o);
+    region = padded().reduce((acc, r) => unionRect(acc, inflate(r, margin)), region);
+    path = search(s1, dirIndex(req.sourceDir), t1, dirIndex(req.targetDir), padded(), region, soft, o);
   }
   if (!path) return { points: simplify(elbow(req.source, s1, t1, req.target, req.sourceDir)), ok: false, region };
   return { points: simplify([req.source, ...path, req.target]), ok: true, region };
