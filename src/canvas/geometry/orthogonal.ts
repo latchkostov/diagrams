@@ -171,13 +171,13 @@ function uniqSorted(vals: number[]): number[] {
 }
 
 /** Spans [a, b) on a ruler, sorted by start, with the furthest end so far: overlap tests in O(log n). */
-interface Spans {
+export interface Spans {
   start: number[];
   maxEnd: number[];
 }
 
 /** Spans from [a, b] pairs. One with a NaN end can never overlap anything (every comparison is false): left out. */
-function spansOf(pairs: [number, number][]): Spans {
+export function spansOf(pairs: [number, number][]): Spans {
   const sorted = pairs.filter(([a, b]) => !Number.isNaN(a) && !Number.isNaN(b)).sort((p, q) => p[0] - q[0]);
   const start: number[] = [];
   const maxEnd: number[] = [];
@@ -191,7 +191,7 @@ function spansOf(pairs: [number, number][]): Spans {
 }
 
 /** Whether some span has `hi > a && lo < b`: among the spans starting before `hi`, one ends after `lo`. */
-function overlapsSpan(s: Spans, lo: number, hi: number): boolean {
+export function overlapsSpan(s: Spans, lo: number, hi: number): boolean {
   const k = lowerBound(s.start, hi);
   return k > 0 && s.maxEnd[k - 1] > lo;
 }
