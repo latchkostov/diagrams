@@ -381,6 +381,16 @@ target: what to change, where, and the evidence (metric ids are in `master.json`
    single frame of 30 s; SVG 44 s at 1,500. The Interactive HTML export of the same diagram takes 1 s. _Where:_
    `src/interop/image.ts` (html-to-image clones and inlines the whole canvas DOM). _Target:_ build the SVG from the model
    and the routes, as the HTML export builds its payload, and rasterise it in a worker with OffscreenCanvas.
+   _perf/3-export:_ building the picture from the model would draw a different picture (the export goldens pin this
+   one), and a worker can't draw HTML. The clone runs in time slices instead (`src/interop/imageClone.ts`, a port of
+   html-to-image's clone, image embedding and serialising that makes the same calls in the same order): the tab paints
+   between slices, the toast shows a progress bar and a Cancel (Escape too), and input is held meanwhile so nothing
+   changes the canvas mid-picture. The port's SVG and PNG equal the library's byte for byte (`tests/e2e/image-slices`).
+   Longest frame, interleaved with master's build: SVG 11.3 s → 0.28 s at 500 nodes and 32.6 s → 0.52 s at 1,500; PNG
+   14.2 s → 4.2 s and 33.2 s → 12.3 s; the whole export 16.1 → 12.3 s (SVG) and 21.6 → 16.1 s (PNG) at 500, 43.9 →
+   33.8 s and 55.7 → 45.4 s at 1,500 (the clone's per-property loop no longer walks each node's prototype chain 350
+   times, and the SVG file is saved from its text, not encoded into a data URL and decoded again). What's left is the
+   PNG's one frame: the browser decoding the picture (an SVG of 67 MB at 500 nodes) is a single task of its own.
 6. **Live view re-renders every node's badge on every publish, and reads styles and path lengths every tick.** At 500
    nodes the main thread is 95 to 100% busy and draws 5 to 9 frames a second, worker renderer or not (160 ms per frame
    with the worker, 108 with the fallback); at 100 nodes the worker does help (4.9 ms against 14.5). Each publish (8 a
