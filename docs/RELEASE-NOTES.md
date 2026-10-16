@@ -1,5 +1,15 @@
 # Release notes
 
+## Review follow-ups rebase (#139, 2026-10-16)
+
+- Rebased the existing fixes onto static-page translations (#138), preserving both documentation
+  histories and every English and translated message. Regenerated locale metadata; catalog validation
+  reports zero errors and zero stale messages, with the existing translation gaps and warnings.
+- Generated skill files start from master and are rebuilt from the combined sources. The refreshed
+  viewer ships as plugin 1.1.31, exactly one patch above master's 1.1.30.
+- Full parity regeneration leaves all 2,092 master goldens identical: no changed, added, missing or
+  stale records. This rebase adds no behavior changes and needs no golden exceptions.
+
 ## Static-page translation review fixes (2026-10-16)
 
 - Skill-page translations bind to named blocks and preserved inline slots, so adding paragraphs or
@@ -16,6 +26,29 @@
   `tests/parity/goldens/node/i18n/catalogs.json` changes: each of the 37 language catalogs and the
   pseudo-locale gain the `staticAuth` and `staticSkill` hashes for 31 messages. Existing area hashes,
   fallback counts and every other golden stay unchanged relative to master.
+
+## Boundary refit review, round 2 (#139, 2026-10-16)
+
+- Agent and pasted layouts exclude every ancestor boundary from placement obstacles, both
+  before and after fitting. Collision moves refit the member's boundary and its ancestors
+  bottom-up, preserving containment and membership.
+- Unboxed boundaries fit in one batch in both paste and skill layout. Geometry and hierarchy
+  are prepared once; collision adjustments reuse those indexes while keeping the existing
+  placement order. An operation-count regression compares 16 and 128 boundaries: restoring
+  either old loop produces 64× work and fails the 24× limit.
+- A production browser regression clicks Draw these on an unchanged degraded selection,
+  restores its KEDA policy, source and reader connection, and checks the original diagram
+  remains unchanged. Caption contrast tests count underlying cell and entry visits, including
+  duplicate entries, nonmatching overflow scans and aborted queries, on fresh and cached passes.
+- All seven review findings are valid: the ancestry P1 and three P2s describe one defect;
+  the batching P1 and both test gaps are addressed separately. Temporarily removing each fix
+  fails its regression. No findings are rejected. Deferring all collision fits until the end
+  was rejected because it changed existing flat-diagram placements; indexed immediate refits
+  preserve them. No output golden changes or re-recording are needed.
+- UX review: nested members stay inside their boundaries, recovery uses the existing report
+  action, and no product controls or wording are added. The Lab supplies the small retry fixture.
+  Generated skill layout and the released viewer are refreshed; plugin 1.1.30 remains exactly
+  one patch above origin/master. This fixes existing behavior and adds no showcase feature.
 
 ## Verification gate review fixes (2026-10-16)
 
@@ -106,6 +139,28 @@
   every creation and edit path, native reads, imports and agent operations; edits that would break them are
   refused atomically, and connection label edits are kept.
 - **Unchanged:** legacy, A1 and A2 diagrams play exactly as before; their parity outputs are unchanged.
+
+## Review follow-ups: fitting and persistence (2026-10-16)
+
+- Opening, fitting, panning and zooming a diagram do not save it or turn an example into
+  your own copy. A real edit still saves and promotes the example, including edits retained
+  from an earlier session. Fits no longer serialize the document to update persistence.
+- UX review: viewing an example leaves it an example; editing keeps the existing copy and
+  Undo behavior. No controls added.
+- Opening fits share cancellation with measured refinements, and empty canvases do not
+  leave a bootstrap fit waiting for their first node. Nested boundary fitting shares one
+  pure planner across the editor and agent placement. Position-only fits reuse font readiness;
+  Lab readiness stops reading nodes once reported.
+- On phones, opening AI switches away from Inputs; reopening Inputs folds AI. Caption contrast
+  retries work that previously exhausted its budget, bounds spatial queries including empty
+  cells, and skips unrelated annotation text. Malformed raw scaling properties remain editable.
+- Import recovery keeps the exact degraded selection, offers a same-boundary retry when it
+  can restore KEDA dependencies, distinguishes the drawn and retry counts, and reports omitted
+  policies only for retained workloads. Escape, click-away and inspector removal now have
+  frozen-clock naming-persistence coverage; the existing immediate save behavior is unchanged.
+- Output parity: no goldens changed. Readiness tests render their own comparison baseline,
+  removing their dependency on the order in which render tests update goldens. The skill viewer
+  is refreshed at plugin 1.1.30, one patch above origin/master.
 
 ## Nightly keyboard and test readiness (#129, 2026-10-16)
 

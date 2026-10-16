@@ -70,7 +70,7 @@ import { fitAvoiding, type Viewport } from "../canvas/geometry/fit";
 // Loaded on first use: the sequence generator, its SVG renderer and Mermaid writer.
 const SequenceDialog = lazy(() => import("./SequenceDialog").then((m) => ({ default: m.SequenceDialog })));
 import { buildJourney } from "../trace/journey";
-import { collapseDock, useAiDock } from "../ai/ui/dock";
+import { aiDock, collapseDock, useAiDock } from "../ai/ui/dock";
 
 import type { LiveSessionHandle, LiveViewProps } from "./LiveView";
 
@@ -410,7 +410,7 @@ export function LiveSession({
   // same way, or half the diagram stayed past the pane's edge (slow motion keeps its own camera).
   const dock = useAiDock();
   useEffect(() => {
-    if (!panel.open || !dock.open) return;
+    if (!panel.open) return;
     const phone = window.matchMedia("(max-width: 640px)");
     const fold = () => {
       if (phone.matches) collapseDock();
@@ -418,7 +418,21 @@ export function LiveSession({
     fold();
     phone.addEventListener("change", fold);
     return () => phone.removeEventListener("change", fold);
-  }, [panel.open, dock.open]);
+  }, [panel.open]);
+  useEffect(
+    () =>
+      aiDock.subscribe(() => {
+        if (!aiDock.get().open || !window.matchMedia("(max-width: 640px)").matches) return;
+        // Explicit AI opening owns the phone's one panel slot. Preserve a simulation draft
+        // exactly as closing its panel does, so switching back can resume it.
+        setPanel((current) => {
+          if (!current.open) return current;
+          if (current.kind === "sims") suspendedPanel.current = { sim: panelDraft.current };
+          return { ...current, open: false };
+        });
+      }),
+    [],
+  );
   const dockKey = `${dock.open}:${dock.open ? Math.round(dock.width / 40) : 0}`;
   const dockFitted = useRef(dockKey);
   useEffect(() => {

@@ -126,5 +126,5 @@ export { describeDiagram } from "./describe";
 export { buildSimulation } from "./simulate";
 export { resolveKind, findStencils } from "./stencils";
 export { resolveRef, ReferenceError } from "./refs";
-export { placeNew, fitGroupToContents } from "./place";
+export { placeNew, fitGroupToContents, fitGroups } from "./place";
 export * from "./schemas";

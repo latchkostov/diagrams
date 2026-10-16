@@ -158,7 +158,14 @@ export interface PickGroup {
   drawn: boolean;
 }
 
-/** A big import drawn in part (src/interop/infra/pick.ts): every boundary, and the whole import to draw another set. */
+/** Selected boundaries together with the bindings omitted from their dependency closure. */
+export interface SelectionPlan {
+  keys: readonly string[];
+  /** Policies deliberately left unresolved after automatic dependency work exhausted. */
+  unresolved?: ReadonlySet<string>;
+}
+
+/** A partial import's current drawing and whole graph, kept for choosing another set. */
 export interface ImportPick {
   format: FormatId;
   /** Nodes in the whole import. */
@@ -167,6 +174,8 @@ export interface ImportPick {
   groups: PickGroup[];
   /** The whole import, as data: names and connections, never the source text. */
   graph: ImportGraph;
+  /** The exact current drawing, including degraded dependency bindings. */
+  selection: SelectionPlan;
   /** Terraform: the import's Draw everything graph, so a picked diagram's report still offers it. */
   everything?: ImportGraph;
 }

@@ -1,7 +1,7 @@
 import { formatImportMessage } from "./importMessages";
 import { formatNumber, formatImportTraffic } from "../../i18n/format";
 import { t as tr, useLocale } from "../../i18n";
-import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Dialog } from "./Dialog";
 import { Glyph } from "./glyphs";
 import { toast } from "./toast";
@@ -12,9 +12,10 @@ import { stencilLabel } from "../../i18n/stencils";
 import { DIAGRAMS_CHANGED } from "../../lib/diagramIO";
 import { newDiagramsPrivate, useNewDiagramsPrivate } from "../../lib/privacyPrefs";
 import { safeStorage } from "../../lib/storage";
-import type { ImportGraph, ImportPick, ImportReport, ReportGuess } from "../infra/graph";
+import type { ImportGraph, ImportReport, ReportGuess } from "../infra/graph";
 import type { ImportOutcome } from "../formats";
-import { MAX_DRAWN, pickedNodes } from "../infra/pick";
+import { Breakable } from "./Breakable";
+import { ImportPickSection } from "./ImportPickSection";
 
 // The Import report (docs/research/imports.md § UX): what the import drew as a guess (with one-click stencil
 // chips), the connections it found in settings and the variable behind each, what it chose not to draw and
@@ -65,25 +66,6 @@ async function drawAgain(
   requestAnimationFrame(focus);
 }
 let swaps = 0;
-
-/**
- * An address or a path ("module.streaming.aws_lambda_event_source_mapping.analytics", `module.queues["eu"]`) that
- * wraps between its parts, after "." and "/" and before "[", never inside a name. `<wbr>` adds no text, so it still
- * copies as one string.
- */
-function Breakable({ text }: { text: string }) {
-  // One span, so a flex row (a report name) sees one item, not one per part.
-  return (
-    <span>
-      {text.split(/(?<=[./])|(?=\[)/).map((part, i) => (
-        <Fragment key={i}>
-          {i > 0 && <wbr />}
-          {part}
-        </Fragment>
-      ))}
-    </span>
-  );
-}
 
 export function ImportReportDialog({
   report,
@@ -218,7 +200,7 @@ export function ImportReportDialog({
       ))}
       <div className="ix-report">
         {report.pick && onReplay && (
-          <PickSection
+          <ImportPickSection
             pick={report.pick}
             onDraw={(keys) =>
               void drawAgain(
@@ -345,84 +327,6 @@ export function ImportReportDialog({
  * A big import, drawn in part: every boundary with its nodes and flows, the drawn ones ticked, and one button to
  * draw the ticked ones as a new diagram (this one stays as it is).
  */
-function PickSection({ pick, onDraw }: { pick: ImportPick; onDraw: (keys: string[]) => void }) {
-  const [chosen, setChosen] = useState(() => new Set(pick.groups.filter((g) => g.drawn).map((g) => g.key)));
-  const keys = pick.groups.filter((g) => chosen.has(g.key)).map((g) => g.key);
-  const count = pickedNodes(pick.graph, keys);
-  const same =
-    keys.length === pick.groups.filter((g) => g.drawn).length &&
-    pick.groups.every((g) => g.drawn === chosen.has(g.key));
-  const statusId = useId();
-  const over = count > MAX_DRAWN;
-  const unavailable = !keys.length || over || same;
-  const toggle = (key: string, on: boolean) =>
-    setChosen((prev) => {
-      const next = new Set(prev);
-      if (on) next.add(key);
-      else next.delete(key);
-      return next;
-    });
-  return (
-    <section className="ix-report-section" data-testid="import-report-pick">
-      <h3>
-        {tr("importReport.boundariesSelected", {
-          selected: keys.length,
-          total: pick.groups.length,
-        })}
-      </h3>
-      <p className="ix-report-note" data-testid="import-report-pick-lede">
-        {tr("importReport.pickLede", { count: pick.total })}
-      </p>
-      <ul className="ix-report-pick-list" data-testid="import-report-pick-list">
-        {pick.groups.map((g, i) => (
-          <li key={g.key} className="ix-report-row" data-testid={`import-report-pick-row-${i}`}>
-            <label className="ix-check ix-report-what">
-              <input
-                type="checkbox"
-                checked={chosen.has(g.key)}
-                onChange={(e) => toggle(g.key, e.target.checked)}
-                aria-describedby={statusId}
-                data-testid={`import-report-pick-${i}`}
-              />
-              <Breakable text={g.label} />
-            </label>
-            <span className="ix-report-why">{tr("importReport.groupCounts", { nodes: g.nodes, flows: g.flows })}</span>
-          </li>
-        ))}
-      </ul>
-      <div className="ix-report-pick-foot">
-        {/* Unavailable rather than disabled: it stays in the Tab order, and says why with the status beside it. */}
-        <button
-          className="btn"
-          aria-disabled={unavailable || undefined}
-          aria-describedby={statusId}
-          onClick={() => {
-            if (!unavailable) onDraw(keys);
-          }}
-          title={tr("importReport.opensANewDiagramWithTheTicked")}
-          data-testid="import-report-pick-draw"
-        >
-          {tr("importReport.drawThese", { count })}
-        </button>
-        {/* Announced as the ticks change: the total, and why the button is unavailable when it is. */}
-        <span
-          id={statusId}
-          role="status"
-          className={over ? "ix-report-pick-status is-over" : "ix-report-pick-status"}
-          data-testid="import-report-pick-status"
-        >
-          {over
-            ? tr("importReport.overLimit", { count, limit: formatNumber(MAX_DRAWN) })
-            : !keys.length
-              ? tr("importReport.nothingTicked")
-              : same
-                ? tr("importReport.alreadyDrawn", { count })
-                : tr("importReport.ticked", { count })}
-        </span>
-      </div>
-    </section>
-  );
-}
 
 function Section({
   title,

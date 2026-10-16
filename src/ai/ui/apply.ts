@@ -10,7 +10,7 @@ import { getStencil, FALLBACK_STENCIL } from "../../stencils/registry";
 import {
   applyOps,
   buildSimulation,
-  fitGroupToContents,
+  fitGroups,
   placeNew,
   ReferenceError,
   resolveKind,
@@ -186,7 +186,7 @@ export function fileToDiagram(
   if (unplaced.length && unplaced.length === diagram.nodes.length)
     diagram = placeNew(diagram, unplaced, "full", [], unplaced);
   else if (unplaced.length) diagram = placeNew(diagram, unplaced, "incremental", unboxed, unplaced);
-  else for (const id of unboxed) diagram = fitGroupToContents(diagram, id);
+  else diagram = fitGroups(diagram, new Set(unboxed));
   try {
     checkBudget(diagram);
   } catch (error) {

@@ -1,5 +1,5 @@
 import { currentDiagram, openExample } from "./fixtures";
-import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, gotoLive, expectNoErrors } from "./fixtures";
 import { MOD, SLUG, must, nodeCount, openAdvanced, savedDiagram } from "./ai-helpers";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -22,6 +22,29 @@ const ADD_DLQ = JSON.stringify([
   { op: "add_node", kind: "Service Bus queue", label: "billing-dlq", key: "q" },
   { op: "connect", from: "billing-worker", to: "q" },
 ]);
+
+for (const action of ["rail", "keyboard"]) {
+  test(`explicit AI opening from ${action} switches away from Inputs on a phone`, async ({ page }) => {
+    await page.setViewportSize({ width: 640, height: 900 });
+    await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1&paused=1`);
+    await page.getByTestId("live-capacity").click();
+    await expect(page.getByTestId("capacity-panel")).toBeVisible();
+    if (action === "rail") await page.getByTestId("ai-rail-open").click();
+    else await page.keyboard.press(`${MOD}+i`);
+    await expect(page.getByTestId("ai-panel")).toBeVisible();
+    await expect(page.getByTestId("capacity-panel")).toHaveCount(0);
+    await page.getByTestId("live-capacity").click();
+    await expect(page.getByTestId("capacity-panel")).toBeVisible();
+    await expect(page.getByTestId("ai-panel")).toHaveCount(0);
+    await page.setViewportSize({ width: 900, height: 900 });
+    await page.getByTestId("ai-rail-open").click();
+    await expect(page.getByTestId("ai-panel")).toBeVisible();
+    await expect(page.getByTestId("capacity-panel")).toBeVisible();
+    await page.setViewportSize({ width: 640, height: 900 });
+    await expect(page.getByTestId("ai-panel")).toHaveCount(0);
+    await expect(page.getByTestId("capacity-panel")).toBeVisible();
+  });
+}
 
 async function applyTurn(page: import("@playwright/test").Page, request: string, reply: string) {
   await page.getByTestId("ai-request").fill(request);

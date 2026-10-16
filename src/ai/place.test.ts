@@ -3,6 +3,7 @@ import type { DiagramFile } from "../model/types";
 import { overlaps } from "../canvas/placement";
 import { estimateCardSize } from "../canvas/nodes/size";
 import { fitGroupToContents, placeNew } from "./place";
+import { boundaryAround } from "../editor/arrange";
 
 const node = (id: string, x = 0, y = 0) => ({ id, stencil: "generic.service", label: id, x, y });
 const diagram = (): DiagramFile => ({
@@ -14,6 +15,33 @@ const diagram = (): DiagramFile => ({
 const boxes = (d: DiagramFile) => d.nodes.map((n) => ({ ...n, ...estimateCardSize(n.label, n.sublabel) }));
 
 describe("placement", () => {
+  it("fits child and annotation boxes, preserving empty boundaries", () => {
+    const empty = { id: "empty", label: "Empty", group: "outer", x: 900, y: 500, width: 0, height: 0 };
+    const child = { id: "inner", label: "Inner", group: "outer", x: 200, y: 100, width: 400, height: 300 };
+    const note = {
+      id: "note",
+      kind: "note" as const,
+      text: "Note",
+      group: "outer",
+      x: 700,
+      y: 200,
+      width: 100,
+      height: 100,
+    };
+    const d: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Nested",
+      nodes: [],
+      edges: [],
+      groups: [{ id: "outer", label: "Outer", x: 0, y: 0, width: 1, height: 1 }, child, empty],
+      annotations: [note],
+    };
+    const fitted = fitGroupToContents(d, "outer");
+    expect(fitted.groups![0]).toEqual({ ...d.groups![0], ...boundaryAround([child, empty, note]) });
+    expect(fitted.groups![1]).toBe(child);
+    expect(fitted.groups![2]).toBe(empty);
+    expect(fitGroupToContents(d, "empty")).toBe(d);
+  });
   it.each(["LR", "TB"] as const)("places downstream along %s without moving existing nodes", (direction) => {
     const d = diagram();
     d.direction = direction;

@@ -8,6 +8,31 @@ direction and LTR command rows retain their behavior. The page adds no chrome. T
 run browsers or tests; production browser regressions independently cover reordered content, command
 preservation, mobile/desktop overflow and delivery transports.
 
+## Boundary refit review, round 2 (2026-10-16)
+
+Scoped source and regression review: agent placement treats a member's complete boundary ancestry
+as containment, with bottom-up refits after collision moves. Existing collision order and flat-diagram
+output are preserved by reusing the prepared geometry. No controls, focus destinations or product
+wording change. The production browser test exercises the unchanged degraded selection's existing
+Draw these action through the real report and replay pipeline, preserving the original diagram.
+The small invented fixture lives in the Lab. This was not an independent whole-app designer walkthrough.
+
+## Review follow-ups batch 2 (2026-10-16)
+
+Scoped source and regression review: viewing/fitting an example leaves its storage and ownership
+alone, while edits keep the existing copy and Undo behavior. Queued opening fits and active fits
+yield to input; an empty canvas keeps its first node's placement. No controls or chrome added.
+
+Phone panel switching is reciprocal: explicit AI opening closes Inputs, and Inputs or crossing
+the phone breakpoint folds AI. The import report distinguishes the proposed retry from what is
+already drawn using existing translated wording; its unchanged selection remains actionable
+when dependencies were omitted. Infrastructure names retain their existing path wrapping.
+
+The new cases exercise production browser behavior and static rendering of the import picker;
+this was not an independent designer or whole-app assistive-technology walkthrough. Rejected
+implementation: a persistent font-cache MutationObserver added idle/live callbacks, so the
+cache instead compares native text and controlled typography inputs. Routing and cloud-autoscaling implementation remain outside this batch.
+
 ## Stencil names and agent defaults gate (2026-10-15)
 
 The designer agent's scoped source/test review found no blocking issue. Default names follow

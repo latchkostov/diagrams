@@ -7,7 +7,7 @@
 import type { DiagramFile } from "../../model/types";
 import { validateDiagram } from "../../interop/native";
 import { estimateCardSize } from "../../canvas/nodes/size";
-import { fitGroupToContents, placeNew } from "../place";
+import { fitGroups, placeNew } from "../place";
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -67,7 +67,7 @@ export function layoutDiagram(input: unknown, opts: { force?: boolean } = {}): L
     d = placeNew(d, ids, "full", [], ids);
     fitted = (d.groups ?? []).map((g) => g.id);
   } else {
-    for (const id of unboxed) d = fitGroupToContents(d, id);
+    d = fitGroups(d, unboxed);
     fitted = (d.groups ?? []).filter((g) => unboxed.has(g.id)).map((g) => g.id);
   }
 

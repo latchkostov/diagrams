@@ -1,12 +1,12 @@
 import { LifecycleBudgetError, MAX_LIFECYCLE_REPLICAS, resourceAllocationCount } from "../model/resourceBudget";
-import { t } from "../i18n";
+import { t } from "../i18n/core";
 import type { NodeSimProps } from "./types";
 
 const keys = ["resources", "replicas", "autoscaling"] as const;
-type Allocation = Pick<NodeSimProps, (typeof keys)[number]>;
+type Allocation = { [K in (typeof keys)[number]]?: unknown };
 type Action = { node: string; props: NodeSimProps };
 
-function project(props: NodeSimProps): Allocation {
+function project(props: Record<string, unknown>): Allocation {
   return { resources: props.resources, replicas: props.replicas, autoscaling: props.autoscaling };
 }
 function patch(previous: Allocation, props: NodeSimProps): Allocation {
@@ -16,13 +16,20 @@ function patch(previous: Allocation, props: NodeSimProps): Allocation {
 }
 function contribution(props: Allocation, multiplier: number) {
   const replicas = typeof props.replicas === "number" && Number.isFinite(props.replicas) ? props.replicas : 1;
-  const max = props.autoscaling?.mode === "on" ? props.autoscaling.controller.maxReplicas : 1;
+  const scaling = props.autoscaling;
+  const controller =
+    scaling && typeof scaling === "object" && "mode" in scaling && scaling.mode === "on" && "controller" in scaling
+      ? scaling.controller
+      : undefined;
+  const value =
+    controller && typeof controller === "object" && "maxReplicas" in controller ? controller.maxReplicas : undefined;
+  const max = typeof value === "number" && Number.isFinite(value) ? value : 1;
   return resourceAllocationCount(!!props.resources, Math.max(1, replicas, max), multiplier);
 }
 
 /** One projection per operation; each ordered edit replaces just one node's contribution. */
 export function validateAllocationActions(
-  nodes: Iterable<{ id: string; rawProps: NodeSimProps }>,
+  nodes: Iterable<{ id: string; rawProps: Record<string, unknown> }>,
   actions: readonly Action[],
   multiplier: number,
   { sequential = true, multiplierChanged = false } = {},

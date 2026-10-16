@@ -74,7 +74,7 @@ export class SpatialGrid<T> {
   query(rect: Rect): { rect: Rect; item: T }[];
   query(rect: Rect, budget: { remaining: number }): { rect: Rect; item: T }[] | null;
   query(rect: Rect, budget?: { remaining: number }): { rect: Rect; item: T }[] | null {
-    if (!valid(rect)) return [];
+    if (!valid(rect) || !this.entries.length) return [];
     const range = this.range(rect);
     if (!range) {
       const hits: Entry<T>[] = [];
@@ -86,6 +86,7 @@ export class SpatialGrid<T> {
     }
     const [x1, y1, x2, y2] = range;
     if (x1 === x2 && y1 === y2) {
+      if (budget && --budget.remaining < 0) return null;
       // One cell: its list holds an entry once, and never one from the overflow, so nothing needs de-duplicating.
       const hits: Entry<T>[] = [];
       for (const e of this.overflow) {
@@ -104,9 +105,11 @@ export class SpatialGrid<T> {
       if (touches(e.rect, rect)) seen.add(e);
     }
     for (let cx = x1; cx <= x2; cx++) {
+      if (budget && --budget.remaining < 0) return null;
       const column = this.cells.get(cx);
       if (column)
         for (let cy = y1; cy <= y2; cy++) {
+          if (budget && --budget.remaining < 0) return null;
           const list = column.get(cy);
           if (list)
             for (const e of list) {

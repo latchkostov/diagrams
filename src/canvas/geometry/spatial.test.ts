@@ -1,9 +1,35 @@
 import { readFileSync } from "node:fs";
 import { Worker } from "node:worker_threads";
 import { ModuleKind, ScriptTarget, transpileModule } from "typescript";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { SpatialGrid } from "./spatial";
 import type { Rect } from "./rect";
+
+it("charges empty columns and cells, and skips an empty grid entirely", () => {
+  const rect = { x: 0, y: 0, width: 10080, height: 10080 };
+  const empty = new SpatialGrid();
+  const get = vi.spyOn(Map.prototype, "get");
+  try {
+    expect(empty.query(rect, { remaining: 8 })).toEqual([]);
+    expect(get).not.toHaveBeenCalled();
+  } finally {
+    get.mockRestore();
+  }
+  const grid = new SpatialGrid();
+  grid.insert({ x: 0, y: 20000, width: 0, height: 0 }, "far row");
+  expect(grid.query(rect, { remaining: 8 })).toBeNull();
+  const columns = new SpatialGrid();
+  columns.insert({ x: 20000, y: 20000, width: 0, height: 0 }, "far column");
+  expect(columns.query(rect, { remaining: 8 })).toBeNull();
+});
+
+it.each([false, true])("bounds entry scans for overflow and oversized queries (%s)", (oversized) => {
+  const grid = new SpatialGrid();
+  for (let i = 0; i < 100; i++) grid.insert({ x: i, y: 0, width: oversized ? 1 : 1000000, height: 1 }, i);
+  const budget = { remaining: 3 };
+  expect(grid.query({ x: 0, y: 0, width: oversized ? 1000000 : 1, height: 1 }, budget)).toBeNull();
+  expect(budget.remaining).toBe(-1);
+});
 
 it("terminates for extreme coordinates, extents and cell sizes without losing valid hits", async () => {
   // Run hostile inputs off-thread so a regression reports a failure instead of hanging Vitest.

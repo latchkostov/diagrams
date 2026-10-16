@@ -1,5 +1,5 @@
 import type { AutoscalingConfig } from "../../model/autoscaling";
-import { diagnostic, type ImportGraph, type PickGroup } from "./graph";
+import { diagnostic, type ImportGraph, type PickGroup, type SelectionPlan } from "./graph";
 
 // Big imports (docs/research/imports.md § UX, "Big imports"): past PICK_OVER nodes, an import with boundaries
 // (namespaces, Terraform modules or resource groups, AsyncAPI servers, compose networks) draws the boundaries with
@@ -194,19 +194,15 @@ const byFlows = (a: Share, b: Share) =>
  * smaller one still opens. Undefined when the import fits the budget whole, or has fewer than two entries to choose
  * from; empty when no entry fits MAX_DRAWN on its own.
  */
-export function defaultPick(g: ImportGraph, budget = PICK_OVER): string[] | undefined {
-  return defaultSelection(g, budget).keys;
-}
-
 /** Keep the drawable selection and unresolved bindings together when dependency work runs out. */
 export function defaultSelection(
   g: ImportGraph,
   budget = PICK_OVER,
   workBudget = MAX_DEPENDENCY_WORK,
-): { keys?: string[]; unresolved?: Set<string> } {
-  if (g.components.length <= budget) return {};
+): SelectionPlan | undefined {
+  if (g.components.length <= budget) return undefined;
   const shares = sharesOf(g).sort(byFlows);
-  if (shares.length < 2) return {};
+  if (shares.length < 2) return undefined;
   const chosen: string[] = [];
   const picker = dependencyPicker(g, workBudget);
   let exhausted = false;
@@ -226,7 +222,7 @@ export function defaultSelection(
  * The import with only the chosen entries: their members, the loose nodes connected to them (all of them with
  * UNGROUPED), and the links between what's left.
  */
-export function pickGraph(g: ImportGraph, keys: readonly string[], unresolved = new Set<string>()): ImportGraph {
+export function pickGraph(g: ImportGraph, { keys, unresolved = new Set<string>() }: SelectionPlan): ImportGraph {
   const chosen = new Set(keys);
   const everyLoose = chosen.has(UNGROUPED);
   const kept = new Set(
@@ -274,7 +270,7 @@ export function pickGraph(g: ImportGraph, keys: readonly string[], unresolved = 
     notDrawn: [
       ...g.notDrawn,
       ...g.components
-        .filter((c) => unresolved.has(c.key))
+        .filter((c) => kept.has(c.key) && unresolved.has(c.key))
         .map((c) => ({
           name: c.context ? `${c.label} (${c.context})` : c.label,
           reason: diagnostic("importDetail.scalingWorkExhausted"),
@@ -287,7 +283,7 @@ export function pickGraph(g: ImportGraph, keys: readonly string[], unresolved = 
 }
 
 /** How many nodes a pick draws (what the report's button says). */
-export const pickedNodes = (g: ImportGraph, keys: readonly string[]) => pickGraph(g, keys).components.length;
+export const pickedNodes = (g: ImportGraph, selection: SelectionPlan) => pickGraph(g, selection).components.length;
 
 /** Every entry of the import for the report's list, the most flows first, with the drawn ones ticked. */
 export function pickGroups(g: ImportGraph, keys: readonly string[]): PickGroup[] {

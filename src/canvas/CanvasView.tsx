@@ -351,6 +351,7 @@ function CanvasInner({
   useCaptionContrast(wrapper, nodes, theme, meta.color);
   const [edges, setEdges, onEdgesChange] = useEdgesState<DiagramFlowEdge>(flow.edges);
   const [modified, setModified] = useState(loadedJson !== originalJson);
+  const [bootstrapFit] = useState(() => flow.nodes.some((n) => !n.hidden));
   const [paletteCollapsed, setPaletteCollapsed] = useState(() => {
     const saved = safeStorage.getItem(PALETTE_KEY);
     // Narrow windows always start with the canvas, not the stencil list.
@@ -460,9 +461,9 @@ function CanvasInner({
   );
 
   const renameHistoryTitle = history.renameTitle;
-  const latest = useRef({ meta, nodes, edges, slug });
+  const latest = useRef({ meta, nodes, edges, slug, revision: history.stateKey });
   useLayoutEffect(() => {
-    latest.current = { meta, nodes, edges, slug };
+    latest.current = { meta, nodes, edges, slug, revision: history.stateKey };
   });
   const lastSaved = useRef(loadedJson);
   const saveBaseline = useRef(originalJson);
@@ -476,6 +477,9 @@ function CanvasInner({
   const flushSave = useCallback(
     (override?: DiagramFile): boolean | undefined => {
       if (readOnly) return undefined;
+      // Measurements, selection and viewport changes are not document edits. In particular,
+      // opening a previously edited example must not promote it before a new edit occurs.
+      if (!override && latest.current.revision === lastSaved.current) return undefined;
       const { meta, nodes, edges, slug } = latest.current;
       let d = override ?? fromFlow(meta, nodes, edges);
       let json = JSON.stringify(d);
@@ -515,7 +519,11 @@ function CanvasInner({
 
   // Fit-view keeps content out from under the title card, minimap, controls and live bar.
   const fitView_ = useOverlayFit(wrapper, { style: edgeStyle, direction: meta.direction ?? "LR" });
-  const { request: afterMeasured, whenReady, interrupt: interruptMeasuredFit } = useMeasuredTask(wrapper, nodes, edges);
+  const {
+    request: afterMeasured,
+    whenReady,
+    interrupt: interruptMeasuredFit,
+  } = useMeasuredTask(wrapper, nodes, edges, `${theme}:${nodeVariant}:${locale}`);
   const [openingFitDone, setOpeningFitDone] = useState(false);
   const fitEpoch = useRef(0);
   const earlyFit = useRef<(() => void) | null>(null);
@@ -525,6 +533,13 @@ function CanvasInner({
     fitEpoch.current++;
     earlyFit.current = null;
     interruptMeasuredFit();
+    // React Flow's bootstrap waits for initial measurements too. It shares viewport
+    // ownership with our immediate/refinement fits, including before the first delivery.
+    const queued = store.getState();
+    if (queued.fitViewQueued) {
+      store.setState({ fitViewQueued: false, fitViewOptions: undefined, fitViewResolver: null });
+      queued.fitViewResolver?.resolve(false);
+    }
     if (fitTransition.current) {
       fitTransition.current = null;
       // Stop an already-started refinement too, before the press reaches its target.
@@ -535,7 +550,7 @@ function CanvasInner({
       });
     }
     setOpeningFitDone(true);
-  }, [getViewport, interruptMeasuredFit, setViewport]);
+  }, [getViewport, interruptMeasuredFit, setViewport, store]);
   useEffect(() => {
     // Capture input before React Flow, a portal menu or a keyboard command handles it.
     // Cancelling a refinement does not turn a fitted view into a manually panned one.
@@ -590,17 +605,10 @@ function CanvasInner({
       afterMeasured(() => {
         if (epoch !== fitEpoch.current || !showingAll.current) return;
         earlyFit.current = null;
-        // The reset row belongs to this edit's chrome, not the later debounced storage write.
-        const mod = flushSave();
-        if (mod !== undefined && mod !== modified) {
-          setModified(mod);
-          afterMeasured(runFit);
-          return;
-        }
         return runFit();
       });
     },
-    [afterMeasured, fitView_, flushSave, modified],
+    [afterMeasured, fitView_],
   );
   const nodesInitialized = useNodesInitialized();
   useLayoutEffect(() => {
@@ -2491,7 +2499,7 @@ function CanvasInner({
           {!hideChrome && copyNotice && <CopyNotice text={copyNotice} />}
           <ReactFlow<FlowNode, DiagramFlowEdge>
             nodes={ariaNodes}
-            fitView
+            fitView={bootstrapFit}
             fitViewOptions={presenting ? FIT_PRESENT : FIT}
             // Focus brings a node into view clear of the chrome (revealFocused above).
             autoPanOnNodeFocus={false}

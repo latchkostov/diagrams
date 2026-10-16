@@ -1,4 +1,4 @@
-import { useEffectEvent, useLayoutEffect, useRef, type RefObject } from "react";
+import { useEffectEvent, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { accessibleColor, type RgbaColor } from "../model/colors";
 import { resolveAnnotationColor } from "./annotations";
 import { SpatialGrid } from "./geometry/spatial";
@@ -43,7 +43,7 @@ type Region = { box: Rect; fill: RgbaColor; order: number };
 const FALLBACK = "var(--text)";
 // One shared operation budget bounds spatial queries and subdivision, even for hostile overlaps.
 export const CAPTION_WORK_LIMIT = 32_768;
-const results = new WeakMap<HTMLElement, Map<string, { key: string; ink: string; work: number }>>();
+const results = new WeakMap<HTMLElement, Map<string, { key: string; ink: string; work: number; complete: boolean }>>();
 
 function captionInk(hex: string, box: Rect, background: RgbaColor, regions: Region[], budget: { remaining: number }) {
   if (accessibleColor(hex, background, FALLBACK) === FALLBACK) return FALLBACK;
@@ -51,7 +51,7 @@ function captionInk(hex: string, box: Rect, background: RgbaColor, regions: Regi
   for (const region of regions) {
     const next: typeof cells = [];
     for (const cell of cells) {
-      if (--budget.remaining < 0) return FALLBACK;
+      if (--budget.remaining < 0) return null;
       const hit = intersection(cell.box, region.box);
       if (!hit) {
         next.push(cell);
@@ -72,7 +72,8 @@ function captionInk(hex: string, box: Rect, background: RgbaColor, regions: Regi
     cells = next;
   }
   for (const cell of cells) {
-    if (--budget.remaining < 0 || accessibleColor(hex, cell.fill, FALLBACK) === FALLBACK) return FALLBACK;
+    if (--budget.remaining < 0) return null;
+    if (accessibleColor(hex, cell.fill, FALLBACK) === FALLBACK) return FALLBACK;
   }
   return hex;
 }
@@ -111,39 +112,76 @@ export function measureCaptionContrast(canvas: HTMLElement, nodes: readonly Flow
       ?.map((entry) => entry.item)
       .filter((r) => intersection(box, r.box))
       .sort((a, b) => a.order - b.order);
+    retained.add(n.id);
+    if (!hits) {
+      el.style.setProperty("--ann-text-ink", FALLBACK);
+      continue;
+    }
     const key = JSON.stringify([color.hex, box, background, hits]);
     const previous = cache.get(n.id);
     const before = budget.remaining;
-    const ink =
-      previous?.key === key ? previous.ink : hits ? captionInk(color.hex, box, background, hits, budget) : FALLBACK;
-    if (previous?.key === key) budget.remaining -= previous.work;
-    cache.set(n.id, { key, ink, work: before - budget.remaining });
-    retained.add(n.id);
+    let ink: string;
+    // Incomplete work can be skipped only at an equal/smaller budget, never reused as
+    // a completed result. Removing earlier captions gives it a fresh evaluation.
+    if (previous?.key === key && (previous.complete || before < previous.work)) {
+      budget.remaining -= previous.work;
+      ink = budget.remaining < 0 ? FALLBACK : previous.ink;
+    } else {
+      const result = captionInk(color.hex, box, background, hits, budget);
+      ink = result ?? FALLBACK;
+      cache.set(n.id, { key, ink, work: before - budget.remaining, complete: result !== null });
+    }
     el.style.setProperty("--ann-text-ink", ink);
   }
   for (const id of cache.keys()) if (!retained.has(id)) cache.delete(id);
 }
 
-/** Selection and service-only changes do not schedule DOM measurement. */
-export function captionContrastKey(nodes: readonly FlowNode[]): string {
-  return JSON.stringify(
-    nodes
-      .filter((n) => n.type === "boundary" || n.type === "annotation")
-      .map((n) => [
-        n.id,
-        n.parentId,
-        n.position,
-        n.width,
-        n.height,
-        n.measured,
-        n.hidden,
-        n.zIndex,
-        n.type === "boundary"
-          ? [n.data.groupId, n.data.tone]
-          : [n.data.kind, n.data.color, n.data.text, n.data.textSize],
-      ]),
-  );
+const customCaption = (n: FlowNode) =>
+  n.type === "annotation" && n.data.kind === "text" && !resolveAnnotationColor(n.data.color, "text").isPreset;
+
+/** Cache only the relevant projection: notes/preset text never enter a signature, and
+ * service moves or unrelated host renders reuse it without serializing caption text. */
+export function createCaptionContrastKey() {
+  let previous: readonly FlowNode[] = [];
+  let key = "";
+  const projected = new WeakMap<FlowNode, string>();
+  return (nodes: readonly FlowNode[]): string => {
+    if (!nodes.some(customCaption)) {
+      previous = [];
+      return (key = "");
+    }
+    const relevant = nodes.filter(
+      (n) => n.type === "boundary" || (n.type === "annotation" && n.data.kind === "zone") || customCaption(n),
+    );
+    if (relevant.length === previous.length && relevant.every((n, i) => n === previous[i])) return key;
+    previous = relevant;
+    return (key = relevant
+      .map((n) => {
+        let projection = projected.get(n);
+        if (projection === undefined) {
+          projection = JSON.stringify([
+            n.id,
+            n.parentId,
+            n.position,
+            n.width,
+            n.height,
+            n.measured,
+            n.hidden,
+            n.zIndex,
+            n.type === "boundary"
+              ? [n.data.groupId, n.data.tone]
+              : n.type === "annotation"
+                ? [n.data.kind, n.data.color, n.data.kind === "text" ? n.data.text : undefined, n.data.textSize]
+                : undefined,
+          ]);
+          projected.set(n, projection);
+        }
+        return projection;
+      })
+      .join("\n"));
+  };
 }
+export const captionContrastKey = createCaptionContrastKey();
 
 export function useCaptionContrast(
   wrapper: RefObject<HTMLDivElement | null>,
@@ -152,7 +190,8 @@ export function useCaptionContrast(
   canvasColor?: string,
 ) {
   const background = useRef<{ key: string; color: RgbaColor | null } | null>(null);
-  const key = captionContrastKey(nodes);
+  const [keyOf] = useState(createCaptionContrastKey);
+  const key = keyOf(nodes);
   const measure = useEffectEvent(() => {
     const canvas = wrapper.current;
     if (
