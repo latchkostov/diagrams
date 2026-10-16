@@ -2056,5 +2056,42 @@ const en = {
   "autoscaling.docs": "{platform} scaling documentation",
   "autoscaling.checkMaxPlatform":
     "{platform} needs {needed, number} at its target; maximum {max, number}. Startup and partition limits still apply.",
+  "staticAuth.title": "Signing in · Live Diagrams",
+  "staticAuth.finishing": "Finishing sign-in…",
+  "staticAuth.nothing": "Nothing to do here. You can close this window.",
+  "staticAuth.failed": "Sign-in didn't finish. You can close this window.",
+  "staticAuth.signedIn": "Signed in. You can close this window.",
+  "staticSkill.title": "Use Live Diagrams with your AI agent",
+  "staticSkill.description":
+    "Install the Live Diagrams Agent Skill in Claude Code, Codex or the Claude apps: your agent draws architecture diagrams and returns a private interactive HTML file, a diagram file or a livediagrams.dev link.",
+  "staticSkill.intro":
+    'The {skill} Agent Skill lets your coding agent draw diagrams for you. Ask "diagram our order pipeline" and it writes a {file} file, checks it, and asks what you want back. Nothing is uploaded. It needs Node.js 20 or later, and no account or API key.',
+  "staticSkill.htmlLabel": "Interactive HTML file",
+  "staticSkill.html":
+    "{label}, recommended for work and company diagrams: one file that plays the simulations, works offline and makes no network requests. Only people who have the file can open it, and with a password only people who also have the password. You type the password in your own terminal, never in the chat.",
+  "staticSkill.diagramLabel": "Diagram file",
+  "staticSkill.diagram": "{label} ({file}), to keep editing at livediagrams.dev.",
+  "staticSkill.imageLabel": "Image",
+  "staticSkill.image": "{label}: it tells you how to export one from the app.",
+  "staticSkill.linkLabel": "Share link",
+  "staticSkill.link": "{label}: anyone who has the link can open the diagram, so private diagrams never get one.",
+  "staticSkill.claudeCommands": "Run these two commands in Claude Code:",
+  "staticSkill.claudeApps": "Claude apps (claude.ai, desktop)",
+  "staticSkill.settings": "Settings > Capabilities > Skills",
+  "staticSkill.upload": "Download {zip}, then upload it in {settings}.",
+  "staticSkill.unzip": "Unzip the skill into {personal} (for you) or {repo} (for one repository).",
+  "staticSkill.otherAgents": "Other agents",
+  "staticSkill.other":
+    "Agents that read the Agent Skills format: copy the {folder} folder from the zip into the agent's skills folder. The skill itself is {skill}.",
+  "staticSkill.thenAsk": "Then ask",
+  "staticSkill.request":
+    '"Diagram a Kafka order pipeline: an order service publishes orders.created, billing and inventory consume it, and failed messages go to a dead-letter queue." For a work diagram, ask for the HTML file and a "Confidential" banner.',
+  "staticSkill.browserTitle": "In the browser",
+  "staticSkill.browser":
+    "If your browser's AI assistant supports WebMCP, it can change the diagram open at livediagrams.dev directly. Type your request in the assistant, not in the page; each change appears in the page's AI panel with Undo.",
+  "staticSkill.back": "← Back to Live Diagrams",
+  "staticSkill.copy": "Copy",
+  "staticSkill.copied": "Copied",
+  "staticSkill.selectCopy": "Select and copy",
 } as const;
 export default en;

@@ -77,10 +77,11 @@ export function numberedKeys(catalogs: Partial<Record<Key, string>>[]): Set<Key>
 const template = (text: string) => `\`${text.replace(/[\\`]|\$\{/g, (c) => `\\${c}`)}\``;
 
 /** A language's catalog module: by English text for plain messages, else by number. */
-export function compileCatalog(code: string, numbered: Set<Key>, dir = LOCALES_DIR): string {
+export function compileCatalog(code: string, numbered: Set<Key>, dir = LOCALES_DIR, prefix = ""): string {
   const messages: Partial<Record<Key, string>> = code === PSEUDO_LOCALE ? {} : readCatalog(code, dir);
   const entries: string[] = [];
   for (const key of keys) {
+    if (!key.startsWith(prefix)) continue;
     let compiled: string;
     try {
       if (code === PSEUDO_LOCALE) compiled = compile(pseudoLocalize(parse(en[key])));
@@ -302,6 +303,10 @@ export function rewriteCalls(
 export interface I18nOptions {
   /** Offer catalogs at all (false for the Interactive HTML viewer, which stays English). Default true. */
   catalogs?: boolean;
+  /** Standalone pages carry only their area's messages, compiled with the same IDs as the app. */
+  prefix?: string;
+  /** Include the layout-testing language in a standalone dev script. */
+  pseudo?: boolean;
 }
 
 export function i18n(options: I18nOptions = {}): Plugin {
@@ -327,7 +332,7 @@ export function i18n(options: I18nOptions = {}): Plugin {
     name: "i18n",
     config(config, { command, mode }) {
       // The pseudo-locale is for spotting untranslated and overflowing UI: the dev server, Vitest and the e2e build.
-      pseudo = command === "serve" || process.env.VITE_E2E === "1";
+      pseudo = options.pseudo === true || command === "serve" || process.env.VITE_E2E === "1";
       if (options.catalogs === false) return;
       limit = readDeployment(resolveDeploymentEnv(mode, config.envDir || config.root || process.cwd())).locales;
       const have = new Set(["en", ...catalogLocales()]);
@@ -366,7 +371,7 @@ export function i18n(options: I18nOptions = {}): Plugin {
       if (id.startsWith(`\0${CATALOG}`)) {
         const code = id.slice(`\0${CATALOG}`.length);
         if (code !== PSEUDO_LOCALE) this.addWatchFile(path.join(LOCALES_DIR, `${code}.json`));
-        return compileCatalog(code, numbered);
+        return compileCatalog(code, numbered, LOCALES_DIR, options.prefix);
       }
     },
     transform(code, id) {

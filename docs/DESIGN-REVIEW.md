@@ -14,6 +14,22 @@ The follow-up review also approved the explicit agent flow override and its corr
 It preserves the editor's existing user choice across stencil changes without adding controls.
 The browser regression now checks exact persisted names, avoiding a false match on stencil
 subtitles. This follow-up was also a read-only source review, without a browser walkthrough.
+## Static-page languages (2026-10-15)
+
+The designer agent’s scoped source review confirmed unchanged English HTML and existing copy and
+navigation controls. Static pages share the app’s saved-preference and browser fallback, and
+bundle their catalog subset for direct and offline use. Commands remain LTR. The review flagged
+the Back arrow: Arabic and Hebrew now explicitly point right. Production regressions cover
+translated content, copy feedback and overflow at 390×844 and 1280×800, including Arabic and the
+pseudo-locale. No chrome was added. The source review did not include a whole-app or
+assistive-technology inspection.
+
+Seven source reviewers covered correctness, architecture, performance, tests, security,
+accessibility and types. The tests reviewer caught clocks that still advanced with real time;
+copy and OAuth regressions now pause them before navigation. Restoring the original English
+scripts makes the direct-language and OAuth-state regressions fail. Production screenshots
+were visually inspected in Arabic at both widths; headings, prose, links and wrapped commands
+remain readable without horizontal overflow.
 
 ## Deferred layout and interrupted-fit review (2026-10-15)
 

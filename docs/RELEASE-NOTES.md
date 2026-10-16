@@ -133,6 +133,16 @@
 - The full gate exposed a page-hide test whose first example edit could already be saved when it
   became an owned copy. The test now starts with an owned document and pauses the clock where it
   stands, preserving both pending-edit and lifecycle-flush assertions. No save behavior changes.
+## Static-page languages (2026-10-15)
+
+- Sign-in and `/skill/` now follow the app’s saved language, browser language, and English fallback
+  in all 37 translated locales. Direct links and offline copies include their translations.
+- English HTML remains byte-identical. Privacy and Terms remain intentionally English-only.
+  Commands, paths, download links and OAuth delivery retain their behavior; RTL prose reads in
+  its own direction while commands remain LTR. No controls were added.
+- Only `tests/parity/goldens/node/i18n/catalogs.json` changes: each language gains `staticAuth` and
+  `staticSkill` hashes for 31 new messages; catalog totals rise by 31, and existing area hashes
+  and English fallback counts remain unchanged. No diagram, simulation or export golden changes.
 
 ## Autoscaling A2 edit preservation (#125, 2026-10-15)
 
