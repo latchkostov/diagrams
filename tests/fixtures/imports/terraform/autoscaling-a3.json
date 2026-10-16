@@ -1,0 +1,1660 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.9.5",
+  "variables": {
+    "sb_connection": {
+      "value": "Endpoint=sb://variable-secret-1234"
+    }
+  },
+  "planned_values": {
+    "root_module": {
+      "resources": [
+        {
+          "address": "aws_lb.web",
+          "mode": "managed",
+          "type": "aws_lb",
+          "name": "web",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "name": "web",
+            "load_balancer_type": "application",
+            "internal": false
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "aws_lb_target_group.api",
+          "mode": "managed",
+          "type": "aws_lb_target_group",
+          "name": "api",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "name": "api",
+            "port": 8080,
+            "protocol": "HTTP",
+            "target_type": "ip"
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "aws_lb_listener.http",
+          "mode": "managed",
+          "type": "aws_lb_listener",
+          "name": "http",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "port": 80,
+            "protocol": "HTTP",
+            "default_action": [
+              {
+                "type": "forward"
+              }
+            ]
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "aws_ecs_cluster.main",
+          "mode": "managed",
+          "type": "aws_ecs_cluster",
+          "name": "main",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "name": "main"
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "aws_ecs_task_definition.api",
+          "mode": "managed",
+          "type": "aws_ecs_task_definition",
+          "name": "api",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "family": "api",
+            "cpu": "512",
+            "memory": "1024",
+            "network_mode": "awsvpc",
+            "requires_compatibilities": ["FARGATE"],
+            "container_definitions": "[{\"name\":\"api\",\"image\":\"acme/api:1\",\"environment\":[{\"name\":\"DB_PASSWORD\",\"value\":\"task-env-secret-4711\"}]}]"
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "aws_ecs_service.api",
+          "mode": "managed",
+          "type": "aws_ecs_service",
+          "name": "api",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "name": "api",
+            "desired_count": 2,
+            "launch_type": "FARGATE",
+            "load_balancer": [
+              {
+                "container_name": "api",
+                "container_port": 8080
+              }
+            ]
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "aws_appautoscaling_target.api",
+          "mode": "managed",
+          "type": "aws_appautoscaling_target",
+          "name": "api",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "service_namespace": "ecs",
+            "scalable_dimension": "ecs:service:DesiredCount",
+            "min_capacity": 1,
+            "max_capacity": 12
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "aws_appautoscaling_policy.cpu",
+          "mode": "managed",
+          "type": "aws_appautoscaling_policy",
+          "name": "cpu",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "name": "api-cpu",
+            "policy_type": "TargetTrackingScaling",
+            "service_namespace": "ecs",
+            "scalable_dimension": "ecs:service:DesiredCount",
+            "step_scaling_policy_configuration": [],
+            "predictive_scaling_policy_configuration": [],
+            "target_tracking_scaling_policy_configuration": [
+              {
+                "target_value": 60,
+                "scale_in_cooldown": 120,
+                "scale_out_cooldown": 30,
+                "disable_scale_in": false,
+                "customized_metric_specification": [],
+                "predefined_metric_specification": [
+                  {
+                    "predefined_metric_type": "ECSServiceAverageCPUUtilization",
+                    "resource_label": ""
+                  }
+                ]
+              }
+            ]
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "aws_appautoscaling_policy.requests",
+          "mode": "managed",
+          "type": "aws_appautoscaling_policy",
+          "name": "requests",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "name": "api-requests",
+            "policy_type": "TargetTrackingScaling",
+            "service_namespace": "ecs",
+            "scalable_dimension": "ecs:service:DesiredCount",
+            "target_tracking_scaling_policy_configuration": [
+              {
+                "target_value": 800,
+                "disable_scale_in": false,
+                "predefined_metric_specification": [
+                  {
+                    "predefined_metric_type": "ALBRequestCountPerTarget"
+                  }
+                ]
+              }
+            ]
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "aws_appautoscaling_policy.memory_step",
+          "mode": "managed",
+          "type": "aws_appautoscaling_policy",
+          "name": "memory_step",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "name": "api-memory-step",
+            "policy_type": "StepScaling",
+            "service_namespace": "ecs",
+            "scalable_dimension": "ecs:service:DesiredCount",
+            "step_scaling_policy_configuration": [
+              {
+                "adjustment_type": "ChangeInCapacity",
+                "cooldown": 60,
+                "metric_aggregation_type": "Average",
+                "step_adjustment": [
+                  {
+                    "metric_interval_lower_bound": "0",
+                    "metric_interval_upper_bound": "20",
+                    "scaling_adjustment": 1
+                  },
+                  {
+                    "metric_interval_lower_bound": "20",
+                    "metric_interval_upper_bound": "",
+                    "scaling_adjustment": 3
+                  }
+                ]
+              }
+            ]
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "aws_cloudwatch_metric_alarm.memory_high",
+          "mode": "managed",
+          "type": "aws_cloudwatch_metric_alarm",
+          "name": "memory_high",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "alarm_name": "api-memory-high",
+            "namespace": "AWS/ECS",
+            "metric_name": "MemoryUtilization",
+            "statistic": "Average",
+            "period": 60,
+            "evaluation_periods": 2,
+            "threshold": 75,
+            "comparison_operator": "GreaterThanOrEqualToThreshold",
+            "actions_enabled": true,
+            "treat_missing_data": "missing",
+            "ok_actions": [],
+            "insufficient_data_actions": [],
+            "metric_query": []
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "azurerm_resource_group.shop",
+          "mode": "managed",
+          "type": "azurerm_resource_group",
+          "name": "shop",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "name": "shop",
+            "location": "westeurope"
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "azurerm_servicebus_namespace.bus",
+          "mode": "managed",
+          "type": "azurerm_servicebus_namespace",
+          "name": "bus",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "name": "orders-bus",
+            "sku": "Standard"
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "azurerm_servicebus_queue.orders",
+          "mode": "managed",
+          "type": "azurerm_servicebus_queue",
+          "name": "orders",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "name": "orders"
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "azurerm_container_app.worker",
+          "mode": "managed",
+          "type": "azurerm_container_app",
+          "name": "worker",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "name": "worker",
+            "revision_mode": "Single",
+            "secret": [
+              {
+                "name": "sb-conn-secret",
+                "value": "Endpoint=sb://orders-bus.servicebus.windows.net/;SharedAccessKey=aca-secret-0815"
+              }
+            ],
+            "template": [
+              {
+                "min_replicas": 0,
+                "max_replicas": 15,
+                "cooldown_period_in_seconds": 120,
+                "polling_interval_in_seconds": 15,
+                "container": [
+                  {
+                    "name": "worker",
+                    "image": "acme/worker:2",
+                    "cpu": 0.5,
+                    "memory": "1Gi",
+                    "env": [
+                      {
+                        "name": "SB_CONNECTION",
+                        "secret_name": "sb-conn-secret"
+                      }
+                    ]
+                  }
+                ],
+                "http_scale_rule": [
+                  {
+                    "name": "http",
+                    "concurrent_requests": "50",
+                    "authentication": []
+                  }
+                ],
+                "custom_scale_rule": [
+                  {
+                    "name": "orders",
+                    "custom_rule_type": "azure-servicebus",
+                    "metadata": {
+                      "queueName": "orders",
+                      "namespace": "orders-bus",
+                      "messageCount": "20"
+                    },
+                    "authentication": [
+                      {
+                        "secret_name": "sb-conn-secret",
+                        "trigger_parameter": "connection"
+                      }
+                    ]
+                  }
+                ],
+                "tcp_scale_rule": [],
+                "azure_queue_scale_rule": [],
+                "init_container": [],
+                "volume": []
+              }
+            ]
+          },
+          "sensitive_values": {
+            "secret": true
+          }
+        },
+        {
+          "address": "azurerm_service_plan.web",
+          "mode": "managed",
+          "type": "azurerm_service_plan",
+          "name": "web",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "name": "web-plan",
+            "os_type": "Linux",
+            "sku_name": "P1v3"
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "azurerm_linux_web_app.storefront",
+          "mode": "managed",
+          "type": "azurerm_linux_web_app",
+          "name": "storefront",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "name": "storefront",
+            "https_only": true
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "azurerm_monitor_autoscale_setting.web",
+          "mode": "managed",
+          "type": "azurerm_monitor_autoscale_setting",
+          "name": "web",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "name": "web-autoscale",
+            "enabled": true,
+            "location": "westeurope",
+            "predictive": [],
+            "notification": [
+              {
+                "email": [
+                  {
+                    "custom_emails": ["ops@example.com"]
+                  }
+                ],
+                "webhook": [
+                  {
+                    "service_uri": "https://hooks.example.com/autoscale?token=notify-secret-99"
+                  }
+                ]
+              }
+            ],
+            "profile": [
+              {
+                "name": "default",
+                "capacity": [
+                  {
+                    "default": 2,
+                    "minimum": 1,
+                    "maximum": 6
+                  }
+                ],
+                "rule": [
+                  {
+                    "metric_trigger": [
+                      {
+                        "metric_name": "CpuPercentage",
+                        "metric_namespace": "microsoft.web/serverfarms",
+                        "operator": "GreaterThan",
+                        "statistic": "Average",
+                        "time_aggregation": "Average",
+                        "time_grain": "PT1M",
+                        "time_window": "PT5M",
+                        "threshold": 70,
+                        "divide_by_instance_count": false,
+                        "dimensions": []
+                      }
+                    ],
+                    "scale_action": [
+                      {
+                        "direction": "Increase",
+                        "type": "ChangeCount",
+                        "value": 1,
+                        "cooldown": "PT5M"
+                      }
+                    ]
+                  },
+                  {
+                    "metric_trigger": [
+                      {
+                        "metric_name": "CpuPercentage",
+                        "metric_namespace": "microsoft.web/serverfarms",
+                        "operator": "LessThan",
+                        "statistic": "Average",
+                        "time_aggregation": "Average",
+                        "time_grain": "PT1M",
+                        "time_window": "PT10M",
+                        "threshold": 30,
+                        "divide_by_instance_count": false,
+                        "dimensions": []
+                      }
+                    ],
+                    "scale_action": [
+                      {
+                        "direction": "Decrease",
+                        "type": "ChangeCount",
+                        "value": 1,
+                        "cooldown": "PT5M"
+                      }
+                    ]
+                  }
+                ],
+                "recurrence": [],
+                "fixed_date": []
+              }
+            ]
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "google_cloud_run_v2_service.checkout",
+          "mode": "managed",
+          "type": "google_cloud_run_v2_service",
+          "name": "checkout",
+          "provider_name": "registry.terraform.io/hashicorp/google",
+          "schema_version": 0,
+          "values": {
+            "name": "checkout",
+            "location": "europe-west1",
+            "ingress": "INGRESS_TRAFFIC_ALL",
+            "template": [
+              {
+                "scaling": [
+                  {
+                    "min_instance_count": 1,
+                    "max_instance_count": 40
+                  }
+                ],
+                "max_instance_request_concurrency": 50,
+                "containers": [
+                  {
+                    "image": "europe-docker.pkg.dev/acme/checkout:3",
+                    "resources": [
+                      {
+                        "limits": {
+                          "cpu": "2",
+                          "memory": "1Gi"
+                        },
+                        "cpu_idle": true
+                      }
+                    ],
+                    "env": [
+                      {
+                        "name": "API_KEY",
+                        "value": "cloud-run-env-secret-42"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "google_cloud_run_service.legacy",
+          "mode": "managed",
+          "type": "google_cloud_run_service",
+          "name": "legacy",
+          "provider_name": "registry.terraform.io/hashicorp/google",
+          "schema_version": 0,
+          "values": {
+            "name": "legacy",
+            "location": "europe-west1",
+            "template": [
+              {
+                "metadata": [
+                  {
+                    "annotations": {
+                      "autoscaling.knative.dev/minScale": "0",
+                      "autoscaling.knative.dev/maxScale": "5",
+                      "run.googleapis.com/cloudsql-instances": "acme:europe-west1:db"
+                    }
+                  }
+                ],
+                "spec": [
+                  {
+                    "container_concurrency": 10,
+                    "containers": [
+                      {
+                        "image": "gcr.io/acme/legacy:1",
+                        "resources": [
+                          {
+                            "limits": {
+                              "cpu": "1000m",
+                              "memory": "512Mi"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "sensitive_values": {}
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "aws_lb.web",
+      "mode": "managed",
+      "type": "aws_lb",
+      "name": "web",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "web",
+          "load_balancer_type": "application",
+          "internal": false
+        },
+        "after_unknown": {
+          "id": true,
+          "arn": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_lb_target_group.api",
+      "mode": "managed",
+      "type": "aws_lb_target_group",
+      "name": "api",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "api",
+          "port": 8080,
+          "protocol": "HTTP",
+          "target_type": "ip"
+        },
+        "after_unknown": {
+          "id": true,
+          "arn": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_lb_listener.http",
+      "mode": "managed",
+      "type": "aws_lb_listener",
+      "name": "http",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "port": 80,
+          "protocol": "HTTP",
+          "default_action": [
+            {
+              "type": "forward"
+            }
+          ]
+        },
+        "after_unknown": {
+          "id": true,
+          "arn": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_ecs_cluster.main",
+      "mode": "managed",
+      "type": "aws_ecs_cluster",
+      "name": "main",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "main"
+        },
+        "after_unknown": {
+          "id": true,
+          "arn": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_ecs_task_definition.api",
+      "mode": "managed",
+      "type": "aws_ecs_task_definition",
+      "name": "api",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "family": "api",
+          "cpu": "512",
+          "memory": "1024",
+          "network_mode": "awsvpc",
+          "requires_compatibilities": ["FARGATE"],
+          "container_definitions": "[{\"name\":\"api\",\"image\":\"acme/api:1\",\"environment\":[{\"name\":\"DB_PASSWORD\",\"value\":\"task-env-secret-4711\"}]}]"
+        },
+        "after_unknown": {
+          "id": true,
+          "arn": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_ecs_service.api",
+      "mode": "managed",
+      "type": "aws_ecs_service",
+      "name": "api",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "api",
+          "desired_count": 2,
+          "launch_type": "FARGATE",
+          "load_balancer": [
+            {
+              "container_name": "api",
+              "container_port": 8080
+            }
+          ]
+        },
+        "after_unknown": {
+          "id": true,
+          "arn": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_appautoscaling_target.api",
+      "mode": "managed",
+      "type": "aws_appautoscaling_target",
+      "name": "api",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "service_namespace": "ecs",
+          "scalable_dimension": "ecs:service:DesiredCount",
+          "min_capacity": 1,
+          "max_capacity": 12
+        },
+        "after_unknown": {
+          "id": true,
+          "arn": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_appautoscaling_policy.cpu",
+      "mode": "managed",
+      "type": "aws_appautoscaling_policy",
+      "name": "cpu",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "api-cpu",
+          "policy_type": "TargetTrackingScaling",
+          "service_namespace": "ecs",
+          "scalable_dimension": "ecs:service:DesiredCount",
+          "step_scaling_policy_configuration": [],
+          "predictive_scaling_policy_configuration": [],
+          "target_tracking_scaling_policy_configuration": [
+            {
+              "target_value": 60,
+              "scale_in_cooldown": 120,
+              "scale_out_cooldown": 30,
+              "disable_scale_in": false,
+              "customized_metric_specification": [],
+              "predefined_metric_specification": [
+                {
+                  "predefined_metric_type": "ECSServiceAverageCPUUtilization",
+                  "resource_label": ""
+                }
+              ]
+            }
+          ]
+        },
+        "after_unknown": {
+          "id": true,
+          "arn": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_appautoscaling_policy.requests",
+      "mode": "managed",
+      "type": "aws_appautoscaling_policy",
+      "name": "requests",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "api-requests",
+          "policy_type": "TargetTrackingScaling",
+          "service_namespace": "ecs",
+          "scalable_dimension": "ecs:service:DesiredCount",
+          "target_tracking_scaling_policy_configuration": [
+            {
+              "target_value": 800,
+              "disable_scale_in": false,
+              "predefined_metric_specification": [
+                {
+                  "predefined_metric_type": "ALBRequestCountPerTarget"
+                }
+              ]
+            }
+          ]
+        },
+        "after_unknown": {
+          "id": true,
+          "arn": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_appautoscaling_policy.memory_step",
+      "mode": "managed",
+      "type": "aws_appautoscaling_policy",
+      "name": "memory_step",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "api-memory-step",
+          "policy_type": "StepScaling",
+          "service_namespace": "ecs",
+          "scalable_dimension": "ecs:service:DesiredCount",
+          "step_scaling_policy_configuration": [
+            {
+              "adjustment_type": "ChangeInCapacity",
+              "cooldown": 60,
+              "metric_aggregation_type": "Average",
+              "step_adjustment": [
+                {
+                  "metric_interval_lower_bound": "0",
+                  "metric_interval_upper_bound": "20",
+                  "scaling_adjustment": 1
+                },
+                {
+                  "metric_interval_lower_bound": "20",
+                  "metric_interval_upper_bound": "",
+                  "scaling_adjustment": 3
+                }
+              ]
+            }
+          ]
+        },
+        "after_unknown": {
+          "id": true,
+          "arn": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.memory_high",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "memory_high",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "alarm_name": "api-memory-high",
+          "namespace": "AWS/ECS",
+          "metric_name": "MemoryUtilization",
+          "statistic": "Average",
+          "period": 60,
+          "evaluation_periods": 2,
+          "threshold": 75,
+          "comparison_operator": "GreaterThanOrEqualToThreshold",
+          "actions_enabled": true,
+          "treat_missing_data": "missing",
+          "ok_actions": [],
+          "insufficient_data_actions": [],
+          "metric_query": []
+        },
+        "after_unknown": {
+          "id": true,
+          "arn": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "azurerm_resource_group.shop",
+      "mode": "managed",
+      "type": "azurerm_resource_group",
+      "name": "shop",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "shop",
+          "location": "westeurope"
+        },
+        "after_unknown": {
+          "id": true,
+          "arn": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "azurerm_servicebus_namespace.bus",
+      "mode": "managed",
+      "type": "azurerm_servicebus_namespace",
+      "name": "bus",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "orders-bus",
+          "sku": "Standard"
+        },
+        "after_unknown": {
+          "id": true,
+          "arn": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "azurerm_servicebus_queue.orders",
+      "mode": "managed",
+      "type": "azurerm_servicebus_queue",
+      "name": "orders",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "orders"
+        },
+        "after_unknown": {
+          "id": true,
+          "arn": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "azurerm_container_app.worker",
+      "mode": "managed",
+      "type": "azurerm_container_app",
+      "name": "worker",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "worker",
+          "revision_mode": "Single",
+          "secret": [
+            {
+              "name": "sb-conn-secret",
+              "value": "Endpoint=sb://orders-bus.servicebus.windows.net/;SharedAccessKey=aca-secret-0815"
+            }
+          ],
+          "template": [
+            {
+              "min_replicas": 0,
+              "max_replicas": 15,
+              "cooldown_period_in_seconds": 120,
+              "polling_interval_in_seconds": 15,
+              "container": [
+                {
+                  "name": "worker",
+                  "image": "acme/worker:2",
+                  "cpu": 0.5,
+                  "memory": "1Gi",
+                  "env": [
+                    {
+                      "name": "SB_CONNECTION",
+                      "secret_name": "sb-conn-secret"
+                    }
+                  ]
+                }
+              ],
+              "http_scale_rule": [
+                {
+                  "name": "http",
+                  "concurrent_requests": "50",
+                  "authentication": []
+                }
+              ],
+              "custom_scale_rule": [
+                {
+                  "name": "orders",
+                  "custom_rule_type": "azure-servicebus",
+                  "metadata": {
+                    "queueName": "orders",
+                    "namespace": "orders-bus",
+                    "messageCount": "20"
+                  },
+                  "authentication": [
+                    {
+                      "secret_name": "sb-conn-secret",
+                      "trigger_parameter": "connection"
+                    }
+                  ]
+                }
+              ],
+              "tcp_scale_rule": [],
+              "azure_queue_scale_rule": [],
+              "init_container": [],
+              "volume": []
+            }
+          ]
+        },
+        "after_unknown": {
+          "id": true,
+          "arn": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "secret": true
+        }
+      }
+    },
+    {
+      "address": "azurerm_service_plan.web",
+      "mode": "managed",
+      "type": "azurerm_service_plan",
+      "name": "web",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "web-plan",
+          "os_type": "Linux",
+          "sku_name": "P1v3"
+        },
+        "after_unknown": {
+          "id": true,
+          "arn": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "azurerm_linux_web_app.storefront",
+      "mode": "managed",
+      "type": "azurerm_linux_web_app",
+      "name": "storefront",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "storefront",
+          "https_only": true
+        },
+        "after_unknown": {
+          "id": true,
+          "arn": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "azurerm_monitor_autoscale_setting.web",
+      "mode": "managed",
+      "type": "azurerm_monitor_autoscale_setting",
+      "name": "web",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "web-autoscale",
+          "enabled": true,
+          "location": "westeurope",
+          "predictive": [],
+          "notification": [
+            {
+              "email": [
+                {
+                  "custom_emails": ["ops@example.com"]
+                }
+              ],
+              "webhook": [
+                {
+                  "service_uri": "https://hooks.example.com/autoscale?token=notify-secret-99"
+                }
+              ]
+            }
+          ],
+          "profile": [
+            {
+              "name": "default",
+              "capacity": [
+                {
+                  "default": 2,
+                  "minimum": 1,
+                  "maximum": 6
+                }
+              ],
+              "rule": [
+                {
+                  "metric_trigger": [
+                    {
+                      "metric_name": "CpuPercentage",
+                      "metric_namespace": "microsoft.web/serverfarms",
+                      "operator": "GreaterThan",
+                      "statistic": "Average",
+                      "time_aggregation": "Average",
+                      "time_grain": "PT1M",
+                      "time_window": "PT5M",
+                      "threshold": 70,
+                      "divide_by_instance_count": false,
+                      "dimensions": []
+                    }
+                  ],
+                  "scale_action": [
+                    {
+                      "direction": "Increase",
+                      "type": "ChangeCount",
+                      "value": 1,
+                      "cooldown": "PT5M"
+                    }
+                  ]
+                },
+                {
+                  "metric_trigger": [
+                    {
+                      "metric_name": "CpuPercentage",
+                      "metric_namespace": "microsoft.web/serverfarms",
+                      "operator": "LessThan",
+                      "statistic": "Average",
+                      "time_aggregation": "Average",
+                      "time_grain": "PT1M",
+                      "time_window": "PT10M",
+                      "threshold": 30,
+                      "divide_by_instance_count": false,
+                      "dimensions": []
+                    }
+                  ],
+                  "scale_action": [
+                    {
+                      "direction": "Decrease",
+                      "type": "ChangeCount",
+                      "value": 1,
+                      "cooldown": "PT5M"
+                    }
+                  ]
+                }
+              ],
+              "recurrence": [],
+              "fixed_date": []
+            }
+          ]
+        },
+        "after_unknown": {
+          "id": true,
+          "arn": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "google_cloud_run_v2_service.checkout",
+      "mode": "managed",
+      "type": "google_cloud_run_v2_service",
+      "name": "checkout",
+      "provider_name": "registry.terraform.io/hashicorp/google",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "checkout",
+          "location": "europe-west1",
+          "ingress": "INGRESS_TRAFFIC_ALL",
+          "template": [
+            {
+              "scaling": [
+                {
+                  "min_instance_count": 1,
+                  "max_instance_count": 40
+                }
+              ],
+              "max_instance_request_concurrency": 50,
+              "containers": [
+                {
+                  "image": "europe-docker.pkg.dev/acme/checkout:3",
+                  "resources": [
+                    {
+                      "limits": {
+                        "cpu": "2",
+                        "memory": "1Gi"
+                      },
+                      "cpu_idle": true
+                    }
+                  ],
+                  "env": [
+                    {
+                      "name": "API_KEY",
+                      "value": "cloud-run-env-secret-42"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "after_unknown": {
+          "id": true,
+          "arn": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "google_cloud_run_service.legacy",
+      "mode": "managed",
+      "type": "google_cloud_run_service",
+      "name": "legacy",
+      "provider_name": "registry.terraform.io/hashicorp/google",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "legacy",
+          "location": "europe-west1",
+          "template": [
+            {
+              "metadata": [
+                {
+                  "annotations": {
+                    "autoscaling.knative.dev/minScale": "0",
+                    "autoscaling.knative.dev/maxScale": "5",
+                    "run.googleapis.com/cloudsql-instances": "acme:europe-west1:db"
+                  }
+                }
+              ],
+              "spec": [
+                {
+                  "container_concurrency": 10,
+                  "containers": [
+                    {
+                      "image": "gcr.io/acme/legacy:1",
+                      "resources": [
+                        {
+                          "limits": {
+                            "cpu": "1000m",
+                            "memory": "512Mi"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "after_unknown": {
+          "id": true,
+          "arn": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    }
+  ],
+  "configuration": {
+    "root_module": {
+      "resources": [
+        {
+          "address": "aws_lb.web",
+          "mode": "managed",
+          "type": "aws_lb",
+          "name": "web",
+          "provider_config_key": "aws",
+          "expressions": {
+            "name": {
+              "constant_value": "web"
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_lb_target_group.api",
+          "mode": "managed",
+          "type": "aws_lb_target_group",
+          "name": "api",
+          "provider_config_key": "aws",
+          "expressions": {
+            "name": {
+              "constant_value": "api"
+            },
+            "port": {
+              "constant_value": 8080
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_lb_listener.http",
+          "mode": "managed",
+          "type": "aws_lb_listener",
+          "name": "http",
+          "provider_config_key": "aws",
+          "expressions": {
+            "load_balancer_arn": {
+              "references": ["aws_lb.web.arn", "aws_lb.web"]
+            },
+            "default_action": [
+              {
+                "type": {
+                  "constant_value": "forward"
+                },
+                "target_group_arn": {
+                  "references": ["aws_lb_target_group.api.arn", "aws_lb_target_group.api"]
+                }
+              }
+            ]
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_ecs_cluster.main",
+          "mode": "managed",
+          "type": "aws_ecs_cluster",
+          "name": "main",
+          "provider_config_key": "aws",
+          "expressions": {
+            "name": {
+              "constant_value": "main"
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_ecs_task_definition.api",
+          "mode": "managed",
+          "type": "aws_ecs_task_definition",
+          "name": "api",
+          "provider_config_key": "aws",
+          "expressions": {
+            "family": {
+              "constant_value": "api"
+            },
+            "cpu": {
+              "constant_value": "512"
+            },
+            "memory": {
+              "constant_value": "1024"
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_ecs_service.api",
+          "mode": "managed",
+          "type": "aws_ecs_service",
+          "name": "api",
+          "provider_config_key": "aws",
+          "expressions": {
+            "name": {
+              "constant_value": "api"
+            },
+            "desired_count": {
+              "constant_value": 2
+            },
+            "cluster": {
+              "references": ["aws_ecs_cluster.main.id", "aws_ecs_cluster.main"]
+            },
+            "task_definition": {
+              "references": ["aws_ecs_task_definition.api.arn", "aws_ecs_task_definition.api"]
+            },
+            "load_balancer": [
+              {
+                "target_group_arn": {
+                  "references": ["aws_lb_target_group.api.arn", "aws_lb_target_group.api"]
+                },
+                "container_name": {
+                  "constant_value": "api"
+                },
+                "container_port": {
+                  "constant_value": 8080
+                }
+              }
+            ]
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_appautoscaling_target.api",
+          "mode": "managed",
+          "type": "aws_appautoscaling_target",
+          "name": "api",
+          "provider_config_key": "aws",
+          "expressions": {
+            "service_namespace": {
+              "constant_value": "ecs"
+            },
+            "scalable_dimension": {
+              "constant_value": "ecs:service:DesiredCount"
+            },
+            "min_capacity": {
+              "constant_value": 1
+            },
+            "max_capacity": {
+              "constant_value": 12
+            },
+            "resource_id": {
+              "references": [
+                "aws_ecs_cluster.main.name",
+                "aws_ecs_cluster.main",
+                "aws_ecs_service.api.name",
+                "aws_ecs_service.api"
+              ]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_appautoscaling_policy.cpu",
+          "mode": "managed",
+          "type": "aws_appautoscaling_policy",
+          "name": "cpu",
+          "provider_config_key": "aws",
+          "expressions": {
+            "resource_id": {
+              "references": ["aws_appautoscaling_target.api.resource_id", "aws_appautoscaling_target.api"]
+            },
+            "scalable_dimension": {
+              "references": ["aws_appautoscaling_target.api.scalable_dimension", "aws_appautoscaling_target.api"]
+            },
+            "service_namespace": {
+              "references": ["aws_appautoscaling_target.api.service_namespace", "aws_appautoscaling_target.api"]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_appautoscaling_policy.requests",
+          "mode": "managed",
+          "type": "aws_appautoscaling_policy",
+          "name": "requests",
+          "provider_config_key": "aws",
+          "expressions": {
+            "resource_id": {
+              "references": ["aws_appautoscaling_target.api.resource_id", "aws_appautoscaling_target.api"]
+            },
+            "target_tracking_scaling_policy_configuration": [
+              {
+                "predefined_metric_specification": [
+                  {
+                    "resource_label": {
+                      "references": [
+                        "aws_lb.web.arn_suffix",
+                        "aws_lb.web",
+                        "aws_lb_target_group.api.arn_suffix",
+                        "aws_lb_target_group.api"
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_appautoscaling_policy.memory_step",
+          "mode": "managed",
+          "type": "aws_appautoscaling_policy",
+          "name": "memory_step",
+          "provider_config_key": "aws",
+          "expressions": {
+            "resource_id": {
+              "references": ["aws_appautoscaling_target.api.resource_id", "aws_appautoscaling_target.api"]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_cloudwatch_metric_alarm.memory_high",
+          "mode": "managed",
+          "type": "aws_cloudwatch_metric_alarm",
+          "name": "memory_high",
+          "provider_config_key": "aws",
+          "expressions": {
+            "alarm_actions": {
+              "references": ["aws_appautoscaling_policy.memory_step.arn", "aws_appautoscaling_policy.memory_step"]
+            },
+            "dimensions": {
+              "references": [
+                "aws_ecs_cluster.main.name",
+                "aws_ecs_cluster.main",
+                "aws_ecs_service.api.name",
+                "aws_ecs_service.api"
+              ]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "azurerm_resource_group.shop",
+          "mode": "managed",
+          "type": "azurerm_resource_group",
+          "name": "shop",
+          "provider_config_key": "azurerm",
+          "expressions": {
+            "name": {
+              "constant_value": "shop"
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "azurerm_servicebus_namespace.bus",
+          "mode": "managed",
+          "type": "azurerm_servicebus_namespace",
+          "name": "bus",
+          "provider_config_key": "azurerm",
+          "expressions": {
+            "name": {
+              "constant_value": "orders-bus"
+            },
+            "resource_group_name": {
+              "references": ["azurerm_resource_group.shop.name", "azurerm_resource_group.shop"]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "azurerm_servicebus_queue.orders",
+          "mode": "managed",
+          "type": "azurerm_servicebus_queue",
+          "name": "orders",
+          "provider_config_key": "azurerm",
+          "expressions": {
+            "name": {
+              "constant_value": "orders"
+            },
+            "namespace_id": {
+              "references": ["azurerm_servicebus_namespace.bus.id", "azurerm_servicebus_namespace.bus"]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "azurerm_container_app.worker",
+          "mode": "managed",
+          "type": "azurerm_container_app",
+          "name": "worker",
+          "provider_config_key": "azurerm",
+          "expressions": {
+            "name": {
+              "constant_value": "worker"
+            },
+            "resource_group_name": {
+              "references": ["azurerm_resource_group.shop.name", "azurerm_resource_group.shop"]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "azurerm_service_plan.web",
+          "mode": "managed",
+          "type": "azurerm_service_plan",
+          "name": "web",
+          "provider_config_key": "azurerm",
+          "expressions": {
+            "name": {
+              "constant_value": "web-plan"
+            },
+            "resource_group_name": {
+              "references": ["azurerm_resource_group.shop.name", "azurerm_resource_group.shop"]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "azurerm_linux_web_app.storefront",
+          "mode": "managed",
+          "type": "azurerm_linux_web_app",
+          "name": "storefront",
+          "provider_config_key": "azurerm",
+          "expressions": {
+            "name": {
+              "constant_value": "storefront"
+            },
+            "service_plan_id": {
+              "references": ["azurerm_service_plan.web.id", "azurerm_service_plan.web"]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "azurerm_monitor_autoscale_setting.web",
+          "mode": "managed",
+          "type": "azurerm_monitor_autoscale_setting",
+          "name": "web",
+          "provider_config_key": "azurerm",
+          "expressions": {
+            "target_resource_id": {
+              "references": ["azurerm_service_plan.web.id", "azurerm_service_plan.web"]
+            },
+            "profile": [
+              {
+                "rule": [
+                  {
+                    "metric_trigger": [
+                      {
+                        "metric_resource_id": {
+                          "references": ["azurerm_service_plan.web.id", "azurerm_service_plan.web"]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "metric_trigger": [
+                      {
+                        "metric_resource_id": {
+                          "references": ["azurerm_service_plan.web.id", "azurerm_service_plan.web"]
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "google_cloud_run_v2_service.checkout",
+          "mode": "managed",
+          "type": "google_cloud_run_v2_service",
+          "name": "checkout",
+          "provider_config_key": "google",
+          "expressions": {
+            "name": {
+              "constant_value": "checkout"
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "google_cloud_run_service.legacy",
+          "mode": "managed",
+          "type": "google_cloud_run_service",
+          "name": "legacy",
+          "provider_config_key": "google",
+          "expressions": {
+            "name": {
+              "constant_value": "legacy"
+            }
+          },
+          "schema_version": 0
+        }
+      ]
+    }
+  }
+}

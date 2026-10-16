@@ -89,9 +89,12 @@ describe("ECS target tracking", () => {
     const routed = new Map([["lb", 0]]);
     const f = createFleet(2, 60_000);
     resetCloud(f, c, 0, "worker", quietReads(routed));
-    let total = 0;
+    let total = 0,
+      last = 0;
+    // perTarget requests per running task per minute since the previous evaluation.
     const minute = (perTarget: number, at: number) => {
-      total += (perTarget * f.ready * 60_000) / c.metricPeriodMs / 1;
+      total += (perTarget * f.ready * (at - last)) / 60_000;
+      last = at;
       routed.set("lb", total);
       return run(f, c, at, quietReads(routed));
     };

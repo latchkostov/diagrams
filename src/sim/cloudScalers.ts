@@ -36,6 +36,8 @@ export interface EcsState {
   kind: "ecs";
   /** Cumulative routed requests per load balancer at the previous period's end. */
   routed: Record<string, number>;
+  /** When those counts were read: a rate divides by the actual span, never less than one period. */
+  routedAt: number;
   /** Consecutive periods over / under each target-tracking policy's alarm thresholds. */
   out: number[];
   in: number[];
@@ -64,6 +66,7 @@ export function resetCloud(f: Fleet, c: CloudController, now: number, node: stri
     f.cloud = {
       kind: "ecs",
       routed,
+      routedAt: now,
       out: c.targetTracking.map(() => 0),
       in: c.targetTracking.map(() => 0),
       steps: c.stepScaling.map(() => 0),
@@ -76,6 +79,7 @@ export function resetCloud(f: Fleet, c: CloudController, now: number, node: stri
 export function shiftCloud(f: Fleet, duration: number): void {
   const s = f.cloud;
   if (s?.kind === "ecs") {
+    s.routedAt += duration;
     for (const cd of s.outCooldown) if (cd) cd.until += duration;
     s.inCooldownUntil = s.inCooldownUntil.map((until) => (until < 0 ? until : until + duration));
   } else if (s?.kind === "appService" && s.lastScaleAt !== undefined) s.lastScaleAt += duration;
@@ -439,6 +443,8 @@ function evaluateEcs(
   const period = c.metricPeriodMs;
   // One read per load balancer per period; every policy on it sees the same delta.
   const routed = new Map<string, number | undefined>();
+  const span = Math.max(period, now - s.routedAt);
+  s.routedAt = now;
   for (const p of [...c.targetTracking, ...c.stepScaling])
     if (p.source && !routed.has(p.source.node)) {
       const now = reads.routed(p.source.node);
@@ -449,7 +455,7 @@ function evaluateEcs(
     if (metric === "albRequestCount" || metric === "albRequestCountPerTarget") {
       const delta = source && routed.get(source.node);
       if (delta === undefined) return undefined;
-      const perMinute = (delta * 60_000) / period;
+      const perMinute = (delta * 60_000) / span;
       // Per target: no running task, no datapoint (insufficient data, never zero).
       return metric === "albRequestCount" ? perMinute : f.ready ? perMinute / f.ready : undefined;
     }

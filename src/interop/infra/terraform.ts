@@ -10,6 +10,21 @@ import { ignoredHost, isOutsideHost, parseUrl, productOf } from "./settings";
 import { configPath, newRefBudget, TF_LIMITS, TfConfig, type RefBudget, type Refs } from "./tfRefs";
 import { BoundedIndex } from "./tfIndex";
 import { GLUE, guessOf, nameAttr, notDrawnReason, stencilOf, toneOf } from "./tfTypes";
+import {
+  acaHasScaling,
+  acaScaling,
+  appServiceScaling,
+  cloudRunHasScaling,
+  cloudRunV1Scaling,
+  cloudRunV2Scaling,
+  ecsScaling,
+  ScalingUnsupported,
+  TF_SCALING_LIMITS,
+  unsupported,
+  type AlbResolver,
+  type ScalingResult,
+} from "./tfScaling";
+import { scalingReasonCode } from "../../model/scalingReason";
 import { ImportError, isMap, own, str } from "./yaml";
 
 // Terraform plan or state JSON (`terraform show -json`) → ImportGraph (docs/research/imports.md § Mapping:
@@ -17,7 +32,9 @@ import { ImportError, isMap, own, str } from "./yaml";
 // the JSON. Resources on the type table are drawn; subscriptions, event-source mappings and targets are flows
 // between them; references in the plan's `configuration` are dependencies (identity, secret and config by the
 // target's stencil); IAM grants and Azure role assignments give identity, secret and flow relationships where
-// they're clear. Everything else is listed in the report, grouped by type.
+// they're clear. ECS Application Auto Scaling (with its CloudWatch alarms), Azure Monitor autoscale on an App
+// Service plan, and the scaling blocks of Container Apps and Cloud Run become the scaled node's autoscaling policy
+// (tfScaling.ts). Everything else is listed in the report, grouped by type.
 //
 // Values are untrusted and mostly private. Only a whitelist of attributes is read (names, ARNs and ids to match
 // resources, an engine, a schedule, a protocol), never one marked sensitive (`sensitive_values`), and never a
@@ -791,6 +808,288 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
         "async",
         resourceEvidence(sch),
       );
+
+  // ------------------------------------------------ autoscaling (A3): ECS, Container Apps, App Service, Cloud Run
+  // tfScaling.ts reads one policy's blocks; here its resources are joined to the drawn node it scales. A node gets
+  // one policy: two policies (or one node standing for several instances) are a conflict, reported, never merged.
+  const scaling = new Map<Resource, { provider: string; kind: string; creates: (() => ScalingResult)[] }>();
+  const scale = (r: Resource, provider: string, kind: string, create: () => ScalingResult) => {
+    if (!drawn(r) || extras.has(r)) return;
+    const entry = scaling.get(r) ?? { provider, kind, creates: [] };
+    if (entry.creates.length < 2) entry.creates.push(create);
+    scaling.set(r, entry);
+  };
+  /** The one resource an attribute of this instance names: its reference, else its value. */
+  const oneTarget = (r: Resource, inst: Instance, attr: string, ok: (t: Resource) => boolean) => {
+    const byRef = targets(r, attr, REFS_ONLY, ok);
+    if (byRef.length) return byRef.length === 1 ? byRef[0] : undefined;
+    const v = strings(inst, [attr])[0];
+    const found = v && spend(1) ? byValue(v, ok) : [];
+    return found.length === 1 ? found[0] : undefined;
+  };
+  /** At most one more than a policy may have: the extra one refuses it as out of bounds. */
+  const appendCapped = <K, V>(m: Map<K, V[]>, k: K, v: V, max: number) => {
+    const list = m.get(k);
+    if (!list) m.set(k, [v]);
+    else if (list.length <= max) list.push(v);
+  };
+
+  // ECS: a scalable target and its policies, on resource id "service/<cluster>/<service>"; step policies' alarms.
+  const SERVICES = is("aws_ecs_service");
+  const SCALABLE = is("aws_appautoscaling_target");
+  const SCALING_POLICIES = is("aws_appautoscaling_policy");
+  const lastSegment = (v: string) => v.slice(v.lastIndexOf("/") + 1);
+  const clusters = new Map<Resource, string | undefined>();
+  const clusterOf = (s: Resource) => {
+    if (!clusters.has(s)) {
+      const named = first(s, ["cluster"]);
+      const byRef = named ? [] : targets(s, "cluster", REFS_ONLY, is("aws_ecs_cluster"));
+      clusters.set(s, named ? lastSegment(named) : byRef.length === 1 ? first(byRef[0], ["name"]) : undefined);
+    }
+    return clusters.get(s);
+  };
+  const servicesByName = new BoundedIndex<Resource>(50);
+  for (const s of resources.filter(SERVICES))
+    for (const n of new Set(s.instances.map((i) => strings(i, ["name"])[0])))
+      if (n) servicesByName.add(`${s.file}\u0001${n}`, s);
+  /** "service/<cluster>/<service>" → its service: by name, and by its cluster's last segment where that's known. */
+  const serviceNamed = (file: number, id: string | undefined) => {
+    const m = id ? /^service\/([^/]{1,255})\/([^/]{1,255})$/.exec(id) : null;
+    if (!m) return undefined;
+    const named = servicesByName.get(`${file}\u0001${m[2]}`);
+    const found = named.filter((s) => clusterOf(s) === m[1]);
+    return found.length === 1
+      ? found[0]
+      : named.length === 1 && clusterOf(named[0]) === undefined
+        ? named[0]
+        : undefined;
+  };
+  const isEcs = (inst: Instance) =>
+    strings(inst, ["service_namespace"])[0] === "ecs" &&
+    strings(inst, ["scalable_dimension"])[0] === "ecs:service:DesiredCount";
+  interface EcsJoin {
+    targets: Instance[];
+    policies: { res: Resource; inst: Instance }[];
+    scheduled: boolean;
+  }
+  const ecs = new Map<Resource, EcsJoin>();
+  const ecsOf = (s: Resource) => {
+    let e = ecs.get(s);
+    if (!e) ecs.set(s, (e = { targets: [], policies: [], scheduled: false }));
+    return e;
+  };
+  /** A scalable target's service: a reference to it, else the target's resource id. */
+  const scalableService = new Map<Resource, Resource | undefined>();
+  const targetIds = new BoundedIndex<Resource>(1);
+  for (const t of resources.filter(SCALABLE)) {
+    const byRef = targets(t, "resource_id", REFS_ONLY, SERVICES);
+    const served = new Set<Resource>();
+    for (const inst of t.instances) {
+      if (!isEcs(inst)) continue;
+      const id = strings(inst, ["resource_id"])[0];
+      const svc = byRef.length ? (byRef.length === 1 ? byRef[0] : undefined) : serviceNamed(t.file, id);
+      if (!svc) continue;
+      served.add(svc);
+      const e = ecsOf(svc);
+      // A second target is a conflict: no need to keep more.
+      if (e.targets.length < 2) e.targets.push(inst);
+      if (id) targetIds.add(`${t.file}\u0001${id}`, svc);
+    }
+    scalableService.set(t, served.size === 1 ? [...served][0] : undefined);
+  }
+  /** A policy's (or scheduled action's) service: through its target, its service, else its resource id. */
+  const policyService = (p: Resource, inst: Instance) => {
+    const namespace = strings(inst, ["service_namespace"])[0];
+    if (namespace !== undefined && namespace !== "ecs") return undefined;
+    const viaTarget = new Set(targets(p, "resource_id", REFS_ONLY, SCALABLE).map((t) => scalableService.get(t)));
+    if (viaTarget.size) return viaTarget.size === 1 ? [...viaTarget][0] : undefined;
+    const direct = targets(p, "resource_id", REFS_ONLY, SERVICES);
+    if (direct.length) return direct.length === 1 ? direct[0] : undefined;
+    const id = strings(inst, ["resource_id"])[0];
+    return id ? (targetIds.get(`${p.file}\u0001${id}`)[0] ?? serviceNamed(p.file, id)) : undefined;
+  };
+  const policyArns = new Map<string, Instance>();
+  for (const p of resources.filter(SCALING_POLICIES))
+    for (const inst of p.instances) {
+      const svc = policyService(p, inst);
+      if (!svc) continue;
+      const e = ecsOf(svc);
+      if (e.policies.length <= TF_SCALING_LIMITS.maxPolicies * 2) e.policies.push({ res: p, inst });
+      const arn = strings(inst, ["arn"])[0];
+      if (arn) policyArns.set(`${p.file}\u0001${arn}`, inst);
+    }
+  for (const a of resources.filter(is("aws_appautoscaling_scheduled_action")))
+    for (const inst of a.instances) {
+      const svc = policyService(a, inst);
+      if (svc) ecsOf(svc).scheduled = true;
+    }
+  /** The alarms that invoke each policy instance: by reference to the policy, else by its ARN. */
+  const alarmsOf = new Map<Instance, { res: Resource; inst: Instance }[]>();
+  for (const a of resources.filter(is("aws_cloudwatch_metric_alarm"))) {
+    const byRef = targets(a, "alarm_actions", REFS_ONLY, SCALING_POLICIES).filter((p) => p.instances.length === 1);
+    for (const inst of a.instances) {
+      const invoked = new Set(byRef.map((p) => p.instances[0]));
+      if (!byRef.length)
+        for (const arn of strings(inst, ["alarm_actions"])) {
+          const p = policyArns.get(`${a.file}\u0001${arn}`);
+          if (p) invoked.add(p);
+        }
+      for (const p of invoked) appendCapped(alarmsOf, p, { res: a, inst }, TF_SCALING_LIMITS.maxPolicies);
+    }
+  }
+  /** Load balancers routing requests to a service: a listener's target group that has the service as a target. */
+  const routes = new Set<string>();
+  for (const [tg, lbs] of tgLbs)
+    for (const svc of tgTargets.get(tg) ?? []) for (const lb of lbs) if (spend(1)) routes.add(`${lb}\u0000${svc}`);
+  /** The ALB an attribute names (by reference, else by the names in a label or dimension) that routes to `svc`. */
+  const albFor =
+    (r: Resource, attr: string, svc: Resource): AlbResolver =>
+    (names) => {
+      const found = new Set<string>(keys(targets(r, attr, REFS_ONLY, LBS)));
+      for (const tg of targets(r, attr, REFS_ONLY, TGS)) for (const lb of tgLbs.get(tg) ?? []) found.add(lb);
+      if (!found.size && names.loadBalancer)
+        for (const lb of keys(byName(r.file, ["aws_lb", "aws_alb"], names.loadBalancer))) found.add(lb);
+      if (!found.size && names.targetGroup)
+        for (const tg of byName(r.file, ["aws_lb_target_group", "aws_alb_target_group"], names.targetGroup))
+          for (const lb of tgLbs.get(tg) ?? []) found.add(lb);
+      const routing = [...found].filter((lb) => routes.has(`${lb}\u0000${svc.key}`));
+      return found.size === 1 && routing.length === 1 ? routing[0] : undefined;
+    };
+  for (const [svc, e] of ecs)
+    scale(svc, "AWS ECS", "ECS", () => {
+      if (e.targets.length > 1) unsupported("Conflicting controllers target this service; choose one policy");
+      if (!e.targets.length) unsupported("ECS scaling policy has no scalable target in these files");
+      if (e.scheduled) unsupported("Scheduled ECS scaling actions are not simulated");
+      const td = targets(svc, "task_definition", ["task_definition"], is("aws_ecs_task_definition"));
+      return ecsScaling({
+        target: e.targets[0],
+        service: svc.instances[0],
+        ...(td.length === 1 && td[0].instances.length ? { task: td[0].instances[0] } : {}),
+        policies: e.policies.map(({ res, inst }) => ({
+          block: inst,
+          loadBalancer: albFor(res, "target_tracking_scaling_policy_configuration", svc),
+          alarms: (alarmsOf.get(inst) ?? []).map(({ res: alarm, inst: block }) => ({
+            block,
+            loadBalancer: albFor(alarm, "dimensions", svc),
+            service: (dims) =>
+              dims.serviceName !== undefined
+                ? dims.serviceName === first(svc, ["name"]) &&
+                  (dims.clusterName === undefined || dims.clusterName === clusterOf(svc))
+                : targets(alarm, "dimensions", REFS_ONLY, SERVICES).includes(svc),
+          })),
+        })),
+      });
+    });
+
+  // Container Apps: the template, its Service Bus rules bound to the queue or topic of that name (in the namespace
+  // the rule names, where that's known).
+  const busEntities = new BoundedIndex<Resource>(50);
+  for (const q of resources.filter(SB))
+    for (const n of new Set(q.instances.map((i) => strings(i, ["name"])[0])))
+      if (n) busEntities.add(`${q.file}\u0001${q.type}\u0001${n}`, q);
+  const namespaces = new Map<Resource, string | undefined>();
+  const namespaceOf = (q: Resource) => {
+    if (!namespaces.has(q)) {
+      const id = first(q, ["namespace_id"]) ?? first(q, ["id"]);
+      const byRef = id ? [] : targets(q, "namespace_id", REFS_ONLY, is("azurerm_servicebus_namespace"));
+      namespaces.set(
+        q,
+        (id
+          ? /\/namespaces\/([^/]+)/i.exec(id)?.[1]
+          : byRef.length === 1
+            ? first(byRef[0], ["name"])
+            : undefined
+        )?.toLowerCase(),
+      );
+    }
+    return namespaces.get(q);
+  };
+  for (const app of resources.filter(is("azurerm_container_app"))) {
+    const inst = app.instances[0];
+    if (!inst || !acaHasScaling(inst)) continue;
+    scale(app, "Azure Container Apps", "Container Apps", () =>
+      acaScaling(inst, (names) => {
+        const type = names.queue ? "azurerm_servicebus_queue" : "azurerm_servicebus_topic";
+        const found = busEntities
+          .get(`${app.file}\u0001${type}\u0001${names.queue ?? names.topic}`)
+          .filter(
+            (q) =>
+              drawn(q) && (!names.namespace || [undefined, names.namespace.toLowerCase()].includes(namespaceOf(q))),
+          );
+        return found.length === 1 ? found[0].key : undefined;
+      }),
+    );
+  }
+
+  // App Service: Monitor autoscale on a plan that hosts exactly one drawn app. A shared plan's capacity has no one
+  // owner: each app on it is told so.
+  const PLANS = is("azurerm_service_plan", "azurerm_app_service_plan");
+  const WEB_APPS = is("azurerm_linux_web_app", "azurerm_windows_web_app", "azurerm_app_service");
+  const hosted = new Map<Resource, Resource[]>();
+  for (const app of resources.filter(
+    (r) => WEB_APPS(r) || is("azurerm_linux_function_app", "azurerm_windows_function_app", "azurerm_function_app")(r),
+  )) {
+    if (!drawn(app) || extras.has(app)) continue;
+    const plans = new Set([
+      ...targets(app, "service_plan_id", ["service_plan_id"], PLANS),
+      ...targets(app, "app_service_plan_id", ["app_service_plan_id"], PLANS),
+    ]);
+    for (const plan of plans) append(hosted, plan, app);
+  }
+  for (const s of resources.filter(is("azurerm_monitor_autoscale_setting")))
+    for (const inst of s.instances) {
+      const plan = oneTarget(s, inst, "target_resource_id", PLANS);
+      const apps = plan ? (hosted.get(plan) ?? []) : [];
+      if (!plan || !apps.length) continue;
+      if (apps.length > 1) {
+        for (const app of apps)
+          scale(app, "Azure App Service", "App Service", () =>
+            unsupported("Shared App Service plan: capacity ownership is ambiguous; choose one app"),
+          );
+        continue;
+      }
+      const ids = new Set(plan.instances.flatMap((i) => strings(i, ["id"])).map(norm));
+      /** A rule's metric resource: the plan by id, else (an unknown id in a plan) only references to the plan. */
+      const onPlan = (id: string | undefined) => {
+        if (id) return ids.has(norm(id));
+        const refs = s.refs?.get("profile") ?? [];
+        const named = refs.flatMap((ref) => configs[s.file]?.resolve(s.module, ref) ?? []);
+        return named.length > 0 && spend(named.length) && named.every((k) => byKey.get(`${s.file}\u0001${k}`) === plan);
+      };
+      scale(apps[0], "Azure App Service", "App Service", () =>
+        WEB_APPS(apps[0])
+          ? appServiceScaling(inst, onPlan)
+          : unsupported("App Service plan autoscale on a Functions app is not simulated"),
+      );
+    }
+
+  // Cloud Run: the service's own template (it always scales; a template that says nothing is left as drawn).
+  for (const svc of resources.filter(is("google_cloud_run_v2_service", "google_cloud_run_service"))) {
+    const v2 = svc.type === "google_cloud_run_v2_service";
+    const inst = svc.instances[0];
+    if (inst && cloudRunHasScaling(inst, v2))
+      scale(svc, "Google Cloud Run", "Cloud Run", () => (v2 ? cloudRunV2Scaling(inst) : cloudRunV1Scaling(inst)));
+  }
+
+  for (const [r, { provider, kind, creates }] of scaling) {
+    const c = components.byKey.get(r.key)!;
+    try {
+      if (r.count > 1)
+        unsupported("Conflicting controllers: this node stands for several instances; choose one policy");
+      if (creates.length > 1) unsupported("Conflicting controllers target this service; choose one policy");
+      const out = creates[0]();
+      c.props = { ...c.props, ...out.props, resources: out.resources, autoscaling: out.autoscaling };
+      note(diagnostic("importDetail.scalingMapped", { kind }));
+    } catch (error) {
+      if (!(error instanceof ScalingUnsupported)) throw error;
+      c.props = { ...c.props, autoscaling: { mode: "unsupported", provider, reason: error.message } };
+      note(
+        diagnostic("importDetail.scalingUnsupported", {
+          reason: diagnostic("importDetail.scalingReason", { reason: scalingReasonCode(error.message) }),
+        }),
+      );
+    }
+  }
 
   // ------------------------------------------------ references → dependencies (plan), and identities (state)
   const spec: Evidence = { source: "spec" };
