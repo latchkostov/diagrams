@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { DiagramFile } from "../model/types";
 import { validateDiagram } from "./native";
 import { diagramToDrawio } from "./drawio/write";
+import { importCompose } from "./infra/pipeline";
 
 // Ids are one namespace across nodes, connections, boundaries and notes: edit ops, checks and the canvas look an
 // id up across kinds. A file may still repeat one (hand- or agent-written, an old export): it opens with the
@@ -262,8 +263,7 @@ describe("ids unique across elements on load", () => {
 });
 
 describe("imports never give two elements one id", () => {
-  it("a compose service named like a connection id (e1) keeps its id and its connection", async () => {
-    const { importText } = await import("./formats");
+  it("a compose service named like a connection id (e1) keeps its id and its connection", () => {
     const compose = [
       "services:",
       "  e1:",
@@ -275,7 +275,8 @@ describe("imports never give two elements one id", () => {
       "      DATABASE_URL: postgres://e1:5432/orders",
       "",
     ].join("\n");
-    const outcome = await importText(compose, "docker-compose.yml");
+    // Exercise id allocation after the importer has loaded, rather than timing its cold module graph.
+    const outcome = importCompose([{ name: "docker-compose.yml", text: compose }]);
     if (outcome.ok !== true) throw new Error(JSON.stringify(outcome));
     const d = outcome.diagram;
     expect(d.nodes.map((n) => n.id)).toEqual(expect.arrayContaining(["e1", "e2"]));

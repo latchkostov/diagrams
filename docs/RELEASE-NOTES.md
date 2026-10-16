@@ -71,6 +71,12 @@
   existing translation gaps and warnings. No controls, wording or chrome change in this rebase.
 - Full output parity checks all 2,196 goldens with zero changed, added, missing or stale records.
   Every golden remains identical to master; none is re-recorded.
+- The first full gate passed all 1,411 E2E tests but found a cold-import timeout and a noisy consumer-limit
+  timing ratio in unit tests; the same unit command passed on a clean master checkout in this worktree.
+  The ID regression now calls the loaded Compose pipeline, retaining every assertion. The consumer-limit
+  regression counts runtime route and member reads at an eighth input and the same 24x limit. Restoring
+  per-consumer route scans fails at 1,440,001 reads instead of one; removing shared ID allocation still
+  fails the Compose regression. Production behavior and timeouts are unchanged.
 
 ## Collaboration reply-byte regression coverage (2026-10-16)
 

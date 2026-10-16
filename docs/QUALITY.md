@@ -104,6 +104,9 @@ ratios and operation counts; the ordinary local unit timeout remains five second
 The import column guard counts internal array element reads, including copies, with the
 same eighth-input comparison and 24x limit. It needs only two layouts rather than timing
 150 layouts and their fresh maps; garbage collection cannot change the measured work.
+The consumer-limit guard likewise counts runtime route and member reads across a scale change;
+per-consumer route scans fail independently of CPU load. The Compose ID regression calls the
+loaded pipeline, keeping cold module transformation outside its behavior assertions.
 The startup-readiness regression fast-forwards the fake clock while Live is paused;
 an animation-frame counter prevents accidentally replaying thousands of irrelevant paused frames.
 Playback still delivers every simulation tick and retains all readiness assertions.
