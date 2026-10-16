@@ -72,6 +72,11 @@
   The Lab accepts zero-area boundaries while waiting for every visible descendant to measure.
   Eight regressions cover these windows and fail with their fixes temporarily reverted.
   All 1,769 parity goldens remain unchanged: zero changed or added, with none re-recorded.
+- Complete correction verification: all six local CI shard lists pass 1,300 tests, and the
+  47 previously failing tests pass all 141 three-repeat runs, without retries. Two fresh full
+  parity runs and four alternating Docker stress runs are clean. Unit tests pass 7,201 with
+  four existing skips; build, size, i18n and refreshed skill freshness pass. Detailed negative
+  controls, preliminary failures and local dev-runner corrections are recorded in `docs/PARITY.md`.
 - Final P2 follow-up: the title-card warning count waits until the opening viewport is computed
   (or the person takes control). Checks still run independently; delayed fonts, measurements and
   worker delivery produce the same opening view without a harness override or a blank warning row.

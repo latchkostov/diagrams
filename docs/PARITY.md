@@ -53,6 +53,45 @@ UX review: the first drawing is usable, a press keeps its target still, and a ne
 leaves content clear. No control or placeholder is added. User pan/zoom ownership, lazy Checks
 mounts, ordered Auto-layout, Undo cancellation and idle observer cleanup retain their checks.
 
+### Complete correction verification
+
+All six whole-file CI shard lists from `node scripts/e2e-shard.mjs <n> 6` pass locally on the
+production `VITE_E2E=1` bundle, with `CI=true`, three workers and explicit ports 6330–6334:
+
+| Shard | Passed | Skipped | Retries |
+| ----- | ------ | ------- | ------- |
+| 1/6   | 227    | 0       | 0       |
+| 2/6   | 155    | 0       | 0       |
+| 3/6   | 208    | 0       | 0       |
+| 4/6   | 252    | 0       | 0       |
+| 5/6   | 255    | 0       | 0       |
+| 6/6   | 203    | 0       | 0       |
+
+The complete suite passes 1,300 tests, including dev, subpath, internal and locked projects.
+The supplied failure list resolves to exactly 47 tests in 21 files; `--repeat-each=3` passes
+all 141 runs without retries. No existing test assertion, selector or timeout is changed.
+
+- Two fresh `pnpm parity` runs each compare all 1,769 goldens: zero changed, added, missing or
+  stale. No update command is run.
+- Four subsequent Docker browser runs alternate `PARITY_WORKERS=24` with
+  `PARITY_CPU_THROTTLE=10 PARITY_WORKERS=8`. Each passes all 70 tests and compares all 84 browser
+  goldens unchanged, without retries, using the second fresh production bundle.
+- The full unit suite passes: 534 files, 7,201 tests, four existing skips, no type errors.
+  Production build, startup chunk test and entry budget pass (105.7/123.5 kB gzip).
+- Skill freshness passes with the refreshed viewer at plugin 1.1.26, exactly one patch above
+  origin/master's 1.1.25. i18n reports zero errors; existing translation gaps/warnings remain.
+- The implementation commit `7b6ceedf` also passes CI run
+  [38828615367](https://github.com/latchkostov/diagrams/actions/runs/38828615367).
+
+Earlier local dev trials had page-load and lazy-view timeouts while Vite scanned accumulated
+HTML exports and trace snapshots as dependency entries (its default is `**/*.html`). Temporary
+per-port dev caches were kept under `node_modules`, and the local dev server's dependency scan
+was limited to the actual `index.html` app entry. The five affected dev checks then pass without
+retries, followed by the clean shard runs above. This is a local runner configuration only;
+no product Vite configuration or test behavior is changed. Temporary servers are stopped.
+Automatic approval review blocked recursive scratch cleanup (`blocked by policy`, without a
+detailed reason), so generated scratch builds/results remain ignored. Master remains `66583484`.
+
 ## Final P2 review follow-up (2026-10-15)
 
 - Opening checks still run independently, but the optional title-card warning count renders only
