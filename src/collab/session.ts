@@ -19,6 +19,8 @@ import {
 import { DOC, frame, fragment, isEmptyUpdate, PRESENCE, Reassembler, unframe } from "./protocol";
 import { secureRandom, type RandomBytes } from "./random";
 import type { CollabTransport, PeerId } from "./transport/types";
+import { RoomRecovery } from "./recovery";
+import type { RecoveryStore } from "./recoveryStore";
 
 // A room session: one person's CollabDoc joined to a room over a transport, with the room's E2E envelopes on every
 // frame. Transport-neutral: it needs only the CollabTransport interface. All timing reads the room clock.
@@ -39,6 +41,7 @@ export class PrivateDiagramError extends Error {
 }
 
 export type SessionStatus = "waiting" | "connected" | "left";
+export type RoomStatus = "connecting" | "offline" | "saved-device" | "synced";
 export type RejectReason =
   | Rejection
   | GuardProblem
@@ -60,6 +63,8 @@ export interface SessionStats {
 }
 
 export interface SessionOptions {
+  /** Explicit Lab room only: ordinary local documents never use this store. */
+  recovery?: RecoveryStore;
   room: RoomLink;
   transport: CollabTransport;
   /** The diagram's privacy (the same state the Share gates read). A Private or local-only diagram never joins. */
@@ -102,6 +107,10 @@ export class CollabSession {
   /** This session's own presence. */
   me: PresenceState;
   status: SessionStatus = "waiting";
+  recovery?: RoomRecovery;
+  private synced = new Set<PeerId>();
+  private revision = 0;
+  private elementIds = 0;
 
   private readonly sealer: Sealer;
   private readonly opener: Opener;
@@ -116,12 +125,14 @@ export class CollabSession {
   private readonly queuedFrom = new Map<PeerId, number>();
   /** Set as leave() starts: nothing more is taken in. */
   private leaving = false;
+  private leaveJob?: Promise<void>;
   /** Large document messages arriving in fragments, and the ids of those this session sends. */
   private readonly reassembler: Reassembler;
   private nextMessage = 0;
   private readonly quarantined = new Set<string>();
   private outbox: Promise<void> = Promise.resolve();
   private inbox: Promise<void> = Promise.resolve();
+  private proofJob: Promise<void> = Promise.resolve();
   private stops: (() => void)[] = [];
   private listeners = new Set<() => void>();
 
@@ -152,15 +163,32 @@ export class CollabSession {
     const random = opts.random ?? secureRandom;
     const keys = await deriveRoomKeys(opts.room);
     const doc = opts.doc ?? new CollabDoc({ clientId: opts.clientId });
-    if (opts.initial) doc.hydrate(opts.initial);
+    const recovery = opts.recovery ? new RoomRecovery(opts.recovery, keys, () => session.emit()) : undefined;
+    await recovery?.restore(doc);
+    if (opts.initial && doc.isEmpty()) doc.hydrate(opts.initial);
     const me = { ...randomAlias(() => random(1)[0] / 256), ...opts.presence };
     const session = new CollabSession(keys, opts.transport, opts.clock ?? realClock, random(SENDER_ID_BYTES), doc, me);
+    session.recovery = recovery;
     session.start();
+    recovery?.watch(doc);
     return session;
   }
 
   get senderId(): string {
     return this.sealer.senderHex;
+  }
+
+  /** Allocation survives editor remounts within this session; a rejoin draws a new sender id. */
+  newId(base: string): string {
+    return `${base}-${this.senderId}-${++this.elementIds}`;
+  }
+
+  get roomStatus(): RoomStatus {
+    if (this.status === "left") return this.recovery?.saved ? "saved-device" : "offline";
+    const peers = this.transport.peers();
+    if (peers.length && peers.every((peer) => this.synced.has(peer)) && this.hasDocument) return "synced";
+    if (this.recovery?.saved) return "saved-device";
+    return this.status === "connected" || !this.hasDocument ? "connecting" : "offline";
   }
 
   /** Whether this session has a document yet (a joiner has none until a peer answers). */
@@ -186,14 +214,18 @@ export class CollabSession {
    *  frame is handled. */
   async idle(): Promise<void> {
     for (;;) {
-      const [o, i] = [this.outbox, this.inbox];
-      await Promise.all([o, i]);
-      if (o === this.outbox && i === this.inbox) return;
+      const [o, i, p] = [this.outbox, this.inbox, this.proofJob];
+      await Promise.all([o, i, p]);
+      if (o === this.outbox && i === this.inbox && p === this.proofJob) return;
     }
   }
 
   /** Leaves: says goodbye, stops timers and the transport. The local document stays (a local copy). */
-  async leave(): Promise<void> {
+  leave(): Promise<void> {
+    return (this.leaveJob ??= this.finishLeaving());
+  }
+
+  private async finishLeaving(): Promise<void> {
     if (this.status === "left" || this.leaving) return;
     this.leaving = true;
     try {
@@ -205,6 +237,7 @@ export class CollabSession {
       for (const stop of this.stops) stop();
       this.stops = [];
       this.transport.close();
+      await this.recovery?.close(this.doc);
       this.emit();
     }
   }
@@ -215,7 +248,14 @@ export class CollabSession {
     };
     this.doc.ydoc.on("update", onUpdate);
     this.stops.push(() => this.doc.ydoc.off("update", onUpdate));
-    this.stops.push(this.doc.onChange(() => this.emit()));
+    this.stops.push(
+      this.doc.onChange(() => {
+        this.revision++;
+        this.synced.clear();
+        this.emit();
+        void this.proveSync();
+      }),
+    );
     this.stops.push(
       this.transport.subscribe({
         frame: (from, bytes) => this.enqueue(from, bytes),
@@ -224,7 +264,11 @@ export class CollabSession {
           this.sendPresence(peer);
           this.updateStatus();
         },
-        leave: () => this.updateStatus(),
+        leave: (peer) => {
+          this.synced.delete(peer);
+          this.updateStatus();
+          this.emit();
+        },
       }),
     );
     this.stops.push(this.clock.every(COLLAB_LIMITS.antiEntropyMs, () => this.requestSync()));
@@ -260,6 +304,19 @@ export class CollabSession {
 
   private requestSync(to?: PeerId): void {
     this.sendDoc(frame(DOC.syncRequest, this.doc.stateVector()), to);
+    void this.proveSync(to);
+  }
+
+  private proveSync(to?: PeerId): void {
+    const revision = this.revision;
+    this.proofJob = this.proofJob
+      .then(async () => {
+        if (this.leaving || revision !== this.revision) return;
+        const proof = await this.doc.syncProof();
+        if (revision === this.revision && this.hasDocument && !this.leaving)
+          this.sendDoc(frame(DOC.syncProof, proof), to);
+      })
+      .catch(() => {});
   }
 
   private sendPresence(to?: PeerId): void {
@@ -340,6 +397,17 @@ export class CollabSession {
       if (!msg || msg.type === DOC.fragment) return this.reject("malformed");
     }
     switch (msg.type) {
+      case DOC.syncProof:
+      case DOC.syncAck: {
+        if (msg.payload.length !== 32 || !this.hasDocument || !this.transport.peers().includes(from)) return;
+        const revision = this.revision;
+        const proof = await this.doc.syncProof();
+        if (revision !== this.revision || !proof.every((b, i) => b === msg.payload[i])) return;
+        if (this.synced.size < COLLAB_LIMITS.maxSenders) this.synced.add(from);
+        if (msg.type === DOC.syncProof) this.sendDoc(frame(DOC.syncAck, proof), from);
+        this.emit();
+        return;
+      }
       case DOC.syncRequest: {
         if (!this.requests.take(opened.sender, 1)) return this.reject("request-throttled");
         let sv: Uint8Array;
@@ -361,6 +429,7 @@ export class CollabSession {
       case DOC.update: {
         const result = this.doc.applyRemote(msg.payload);
         if (!result.ok) {
+          this.synced.delete(from);
           this.quarantined.add(opened.sender);
           this.presence.remove(opened.sender);
           this.reject(result.problem);

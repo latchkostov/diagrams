@@ -106,6 +106,30 @@
   five-port range on IPv4 and IPv6 before keeping their intended occupied member. A forced blocked
   neighbour regression fails with the old setup; the real preflight and its exact-port assertions
   remain intact. All 1,403 E2E tests passed in that run; the complete gate is repeated after this fix.
+## Collaboration C1a: real editor and encrypted local recovery (2026-10-16)
+
+- The Lab's collaboration editor now uses the real canvas command/history path, per-person Undo/Redo
+  and session-unique create/paste ids. Remote edits preserve selection and property-field drafts/focus;
+  active gestures finish before remote projection, and a remotely deleted edit target returns keyboard
+  focus to the canvas. Ordinary diagrams retain their existing history and save destination.
+- Room generations keep encrypted Yjs checkpoints in IndexedDB, merging concurrent device writers.
+  Reopen with the Lab recovery link; its key is cleared from the address bar and never stored by the app.
+  Local copies expire after 30 days and evict oldest-first beyond 16 generations or 64 MiB. Corrupt records,
+  storage failures and invalid native projections have explicit recovery paths without discarding live work.
+- The compact Lab status distinguishes “Saved on this device” from “Connected and synced”; peer sync
+  proofs include deletions and every reachable peer. Local test transports cover isolated browser contexts,
+  same-origin tabs, navigation, expiry and suspension without public network traffic. All new copy uses i18n.
+- C1b share/join consent, IP disclosure, aliases/participants; C1c public transport/CSP/connectivity UX;
+  and C1d End session/rotation/stale-generation handling remain deferred. Collaboration stays out of
+  production bundles, with no new Private-diagram permission or outside endpoint.
+- Regression validation temporarily removes the fixes: 18 unit-level mutations and two browser-level
+  mutations fail their targeted tests, including real scoped Undo, encrypted-key separation, gestures,
+  corruption/quota recovery, eviction, deletion-aware sync, rendered commits and focus restoration.
+  All mutations are restored before the full gate.
+- The sole intentional parity change is `node/i18n/catalogs.json`: 17 new `collab.*` English messages add
+  a collaboration area hash and 17 English fallbacks in each non-English catalog; the pseudo-locale adds
+  the rendered area. Existing message-area hashes and every diagram, simulation, import/export and browser
+  golden remain unchanged. The refreshed agent viewer ships at plugin 1.1.34, one patch above master.
 
 ## Image export review fixes (#142, 2026-10-16)
 

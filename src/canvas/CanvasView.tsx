@@ -151,6 +151,7 @@ import { useFullscreen } from "../lib/fullscreen";
 import { t as tr, useLocale } from "../i18n";
 import { CopyNotice } from "./CopyNotice";
 import { useMeasuredTask } from "./useMeasuredTask";
+import type { EditorRoom } from "../editor/room";
 
 const nodeTypes: NodeTypes = canvasNodeTypes;
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
@@ -232,6 +233,8 @@ export interface CanvasHandle {
 }
 
 interface Props {
+  /** Lab-only room mount, with its own document identity and encrypted recovery. Stable for this canvas's life. */
+  room?: EditorRoom;
   slug: string;
   presenting: boolean;
   onExitPresent: () => void;
@@ -320,6 +323,7 @@ function CanvasInner({
   copyNotice,
   focusRequest,
   viewer,
+  room,
 }: Props) {
   const locale = useLocale();
   const { theme, nodeVariant, edgeStyle } = useSettings();
@@ -447,18 +451,34 @@ function CanvasInner({
     hideTip,
   );
 
+  const [announcement, setAnnouncement] = useState({ text: "", seq: 0 });
   const snapshot = useMemo<CanvasSnapshot>(() => ({ meta, nodes, edges }), [meta, nodes, edges]);
   /** Undo and Redo chose a selection: keyboard focus follows it (set up with the keyboard selection, below). */
   const onHistoryStep = useRef((_direction: "undo" | "redo", _selection: FlowSelection) => {});
   const history = useHistory(
     snapshot,
-    (s) => {
-      setEditing(null);
+    (s, remote) => {
+      const active = document.activeElement;
+      const removed =
+        remote &&
+        active instanceof HTMLElement &&
+        active.closest('[data-testid="inspector"]') &&
+        (nodes.some((n) => n.selected && !s.nodes.some((next) => next.id === n.id)) ||
+          edges.some((e) => e.selected && !s.edges.some((next) => next.id === e.id)));
+      if (removed)
+        requestAnimationFrame(() => {
+          if (active.isConnected) return;
+          wrapper.current?.focus({ preventScroll: true });
+          setAnnouncement((a) => ({ text: tr("collab.targetRemoved"), seq: a.seq + 1 }));
+        });
+      if (!remote) setEditing(null);
+      else setEditing((current) => (current && !s.nodes.some((n) => n.id === current.id) ? null : current));
       setMeta(s.meta);
       setNodes(s.nodes);
       setEdges(s.edges);
     },
     (direction, selection) => onHistoryStep.current(direction, selection),
+    room,
   );
 
   const renameHistoryTitle = history.renameTitle;
@@ -477,7 +497,7 @@ function CanvasInner({
   /** Returns whether the diagram differs from its original, or undefined when there was nothing to write. */
   const flushSave = useCallback(
     (override?: DiagramFile): boolean | undefined => {
-      if (readOnly) return undefined;
+      if (readOnly || room) return undefined;
       // Measurements, selection and viewport changes are not document edits. In particular,
       // opening a previously edited example must not promote it before a new edit occurs.
       if (!override && latest.current.revision === lastSaved.current) return undefined;
@@ -513,7 +533,7 @@ function CanvasInner({
         lastSaved.current = json;
       return mod;
     },
-    [readOnly, identity, renameHistoryTitle, original.title],
+    [readOnly, room, identity, renameHistoryTitle, original.title],
   );
   const firstExampleEdit = onExampleCopy !== undefined;
   const saveRevision = history.stateKey;
@@ -634,6 +654,7 @@ function CanvasInner({
   const privacyNow = () => privacyOf({ ...privacyFlags, editor: { getDiagram: () => fromFlow(meta, nodes, edges) } });
   const documentId = getDiagramIdentity(slug);
   const editor = useEditor({
+    newId: room ? (base) => room.newId(base) : undefined,
     getNodes: () => nodes,
     getEdges: () => edges,
     slug,
@@ -2206,7 +2227,7 @@ function CanvasInner({
     [nodes, readOnly, rovingId],
   );
   /** What the live region says (seq: the same words again are read again). */
-  const [announcement, setAnnouncement] = useState({ text: "", seq: 0 });
+
   const announce = useCallback((text: string) => setAnnouncement((a) => ({ text, seq: a.seq + 1 })), []);
   useLayoutEffect(() => {
     navigate.current = (step, from) => {

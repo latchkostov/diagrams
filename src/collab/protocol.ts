@@ -8,6 +8,8 @@ import { COLLAB_LIMITS } from "./limits";
 //   3 update         <Yjs update>         one local step, to everyone
 //   4 bye                                 leaving (presence goes at once rather than on expiry)
 //   5 fragment       <header> <part>      one part of a larger message (below)
+//   6 sync-proof     <SHA-256>             canonical state-vector and delete-set proof
+//   7 sync-ack       <SHA-256>             confirms the peer has that same state (not remote durability)
 //
 // Presence channel:
 //
@@ -16,7 +18,7 @@ import { COLLAB_LIMITS } from "./limits";
 // Peers never forward each other's updates (no loops); anti-entropy (a periodic sync-request) heals drops and
 // partitions instead, since a CRDT state vector names exactly what is missing.
 
-export const DOC = { syncRequest: 1, syncReply: 2, update: 3, bye: 4, fragment: 5 } as const;
+export const DOC = { syncRequest: 1, syncReply: 2, update: 3, bye: 4, fragment: 5, syncProof: 6, syncAck: 7 } as const;
 export const PRESENCE = { state: 1 } as const;
 
 export function frame(type: number, payload?: Uint8Array): Uint8Array {

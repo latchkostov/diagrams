@@ -291,6 +291,16 @@ export class CollabDoc {
     return Y.encodeStateVector(this.ydoc);
   }
 
+  /** A sync proof includes deletions: state vectors alone cannot acknowledge a delete. */
+  async syncProof(): Promise<Uint8Array> {
+    const clocks = [...Y.decodeStateVector(this.stateVector())].sort(([a], [b]) => a - b);
+    const deletes = [...Y.createDeleteSetFromStructStore(this.ydoc.store).clients]
+      .sort(([a], [b]) => a - b)
+      .map(([id, ranges]) => [id, ranges.map((r) => [r.clock, r.len])]);
+    const bytes = new TextEncoder().encode(JSON.stringify([clocks, deletes]));
+    return new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+  }
+
   /** What a peer with state vector `sv` lacks (everything, without one). */
   encodeDiff(sv?: Uint8Array): Uint8Array {
     return Y.encodeStateAsUpdate(this.ydoc, sv);

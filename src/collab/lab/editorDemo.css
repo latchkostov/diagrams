@@ -1,0 +1,8 @@
+.collab-editor-demo {
+  width: 100%;
+}
+.collab-real-editor {
+  position: relative;
+  height: 720px;
+  min-width: 0;
+}

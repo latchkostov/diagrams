@@ -786,6 +786,16 @@ runtime feature/example or re-record any golden. [Showcase roadmap rule][ld-road
 
 ## Phased delivery and acceptance gates
 
+**C1a slice (2026-10-16):** real editor command/history binding, scoped Undo, selection/property-edit
+preservation and encrypted per-generation IndexedDB recovery are implemented behind the Lab preset.
+The Lab recovery link and same-origin/injected test transport exercise reload/rejoin without a public
+endpoint. Storage/sync limits and residual risks are recorded in the [threat model](collaboration-threat-model.md#c1a-editor-and-local-recovery-2026-10-16).
+C1b owns production Share/Join/Leave, consent/IP disclosure, aliases and participants; C1c owns public
+trackers/STUN, collaboration-build CSP and connectivity/file fallback; C1d owns End session, rotation
+and stale-generation handling. These are still acceptance gates before enabling collaboration outside
+the Lab. Private diagrams remain excluded pending independent review; no TURN, backend or telemetry
+is introduced by this slice.
+
 All costs and effort below are **planning estimates**, not bids. A phase is incomplete until privacy,
 accessibility, docs, failure recovery and the specified tests pass. Engineering time includes tests
 and docs but excludes waiting for independent cryptographic review. Each future fix gets a regression

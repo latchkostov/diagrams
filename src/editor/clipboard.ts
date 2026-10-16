@@ -265,14 +265,19 @@ export function payloadOrigin(p: ClipboardPayload): { x: number; y: number } {
  * Gives every element a fresh id (not in `taken`), rewires edges and group references, and moves
  * everything by `offset`. Node `group` references to groups outside the payload are kept as-is.
  */
-export function remapPayload(p: ClipboardPayload, taken: TakenIds, offset: { x: number; y: number }): ClipboardPayload {
+export function remapPayload(
+  p: ClipboardPayload,
+  taken: TakenIds,
+  offset: { x: number; y: number },
+  allocateId = uniqueId,
+): ClipboardPayload {
   // One id space for every kind: a pasted node never takes a connection's or a boundary's id.
   const used = new Set([...taken.nodes, ...taken.edges, ...taken.groups]);
   const gmap = new Map<string, string>();
   const nmap = new Map<string, string>();
   const emap = new Map<string, string>();
   const groupIds = p.groups.map((g) => {
-    const id = uniqueId(g.id, used);
+    const id = allocateId(g.id, used);
     used.add(id);
     if (!gmap.has(g.id)) gmap.set(g.id, id);
     return id;
@@ -286,14 +291,14 @@ export function remapPayload(p: ClipboardPayload, taken: TakenIds, offset: { x: 
     taken.groups,
   );
   const nodes = p.nodes.map((n) => {
-    const id = uniqueId(n.id, used);
+    const id = allocateId(n.id, used);
     used.add(id);
     nmap.set(n.id, id);
     const group = n.group ? (gmap.get(n.group) ?? n.group) : undefined;
     return { ...structuredClone(n), id, group, x: n.x + offset.x, y: n.y + offset.y };
   });
   const annotations = (p.annotations ?? []).map((a) => {
-    const id = uniqueId(a.id, used);
+    const id = allocateId(a.id, used);
     used.add(id);
     nmap.set(a.id, id);
     const group = a.group ? (gmap.get(a.group) ?? a.group) : undefined;
@@ -306,7 +311,7 @@ export function remapPayload(p: ClipboardPayload, taken: TakenIds, offset: { x: 
     };
   });
   const edges = p.edges.map((e) => {
-    const id = uniqueId(e.id, used);
+    const id = allocateId(e.id, used);
     used.add(id);
     emap.set(e.id, id);
     return { ...remapConnection(e, nmap), id };

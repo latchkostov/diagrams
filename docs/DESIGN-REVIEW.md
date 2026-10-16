@@ -26,6 +26,18 @@ subtree together, without adding controls. Metadata and capacity caching change 
 Production phone regressions cover both explicit AI entry points, preserving unsaved simulation
 fields and dirty state while using the existing single-panel slot. No chrome, wording or focus target
 is added. This was not an independent whole-app designer or assistive-technology walkthrough.
+## Collaboration C1a (2026-10-16)
+
+Designer-agent source review and the Lab screenshot kept this slice behind a preset with no production
+toolbar additions. The real editor keeps its familiar controls. One compact text status distinguishes
+local durability and peer convergence; file-copy/raw-recovery actions appear only for relevant failures.
+The reviewer found a missing reopenable room capability, lost keyboard focus on remote deletion and
+silent clipboard failure. The Lab now offers an explicit recovery link with a selectable fallback,
+scrubs incoming fragments, explains retention/key handling, and returns focus/announces a removed target.
+Invalid-state wording makes no durability promise. Property edits to other elements never steal focus.
+Share/participants and public connectivity controls remain deferred to C1b/c. Browser regressions cover
+focus, recovery, copying, real same-origin tabs and isolated contexts; this review was not a fresh
+assistive-technology or whole-app visual walkthrough.
 
 ## Image export review fixes (#142, 2026-10-16)
 

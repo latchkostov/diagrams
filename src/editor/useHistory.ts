@@ -4,6 +4,8 @@ import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 import { canRedo, canUndo, present } from "./history";
 import { HistoryController } from "./historyController";
 import { selectionOf, snapshotKey as keyOf, type FlowSelection } from "./historySelection";
+import type { EditorRoom } from "./room";
+import { retainRemoteSelection } from "./remoteSnapshot";
 
 export interface CanvasSnapshot {
   meta: DiagramMeta;
@@ -53,11 +55,13 @@ const clean = (s: CanvasSnapshot): CanvasSnapshot => ({
  */
 export function useHistory(
   state: CanvasSnapshot,
-  apply: (s: CanvasSnapshot) => void,
+  apply: (s: CanvasSnapshot, remote?: boolean) => void,
   onStep?: (direction: "undo" | "redo", selection: FlowSelection) => void,
+  room?: EditorRoom,
 ): HistoryApi & { stateKey: string; renameTitle(from: string, to: string): void } {
-  const [ctl] = useState(() => new HistoryController(clean(state), Date.now()));
-  const [history, setHistory] = useState(ctl.history);
+  const [ctl] = useState(() => new HistoryController(clean(state), Date.now(), room));
+  const [localHistory, setHistory] = useState(ctl.history);
+  const history = room ? ctl.history : localHistory;
   const latest = useRef(state);
   const applyRef = useRef(apply);
   const onStepRef = useRef(onStep);
@@ -67,7 +71,6 @@ export function useHistory(
     applyRef.current = apply;
     onStepRef.current = onStep;
   });
-  useLayoutEffect(() => ctl.observe(state, stateKey), [ctl, state, stateKey, history]);
   const mergeKey = useRef<string | undefined>(undefined);
   const timer = useRef<number | undefined>(undefined);
   /** An uncommitted change exists (so Undo is available before the debounce fires). */
@@ -77,11 +80,40 @@ export function useHistory(
     window.clearTimeout(timer.current);
     timer.current = undefined;
     const s = latest.current;
-    if (s.nodes.some((n) => n.dragging || n.resizing)) return;
+    if (s.nodes.some((n) => n.dragging || n.resizing)) return false;
     const changed = ctl.commit(clean(s), mergeKey.current, Date.now());
     mergeKey.current = undefined;
     if (changed) setHistory(ctl.history);
-  }, [ctl]);
+    room?.flushRemote();
+    return true;
+  }, [ctl, room]);
+
+  useLayoutEffect(
+    () =>
+      room?.connect({
+        getSnapshot: () => latest.current,
+        flushPending: flush,
+        receive: (next) => {
+          const retained = retainRemoteSelection(latest.current, next);
+          ctl.receive(retained);
+          latest.current = retained;
+          setHistory(ctl.history);
+          applyRef.current(retained, true);
+        },
+      }),
+    [room, ctl, flush],
+  );
+
+  useLayoutEffect(() => {
+    ctl.observe(state, stateKey);
+    // Room commands commit with the rendered edit. Encryption and IDB can finish while the field
+    // still holds focus, and navigation cannot cancel an unsent debounce timer.
+    if (room && !state.nodes.some((n) => n.dragging || n.resizing)) {
+      ctl.commit(clean(state), mergeKey.current, Date.now());
+      mergeKey.current = undefined;
+      room.flushRemote();
+    }
+  }, [ctl, state, stateKey, history, room]);
 
   useEffect(() => {
     window.clearTimeout(timer.current);
@@ -170,10 +202,10 @@ export function useHistory(
 
   const top = useCallback(() => {
     const h = ctl.history;
-    if (h.index === 0) return undefined;
+    if (!room && h.index === 0) return undefined;
     const cur = present(h);
-    return keyOf(latest.current) === cur.key ? cur.mergeKey : undefined;
-  }, [ctl]);
+    return keyOf(latest.current) === cur.key ? ctl.top() : undefined;
+  }, [ctl, room]);
 
   return {
     stateKey,
@@ -186,7 +218,7 @@ export function useHistory(
     open,
     replace,
     top,
-    canUndo: canUndo(history) || pending,
-    canRedo: canRedo(history) && !pending,
+    canUndo: (room ? room.canUndo : canUndo(history)) || pending,
+    canRedo: (room ? room.canRedo : canRedo(history)) && !pending,
   };
 }

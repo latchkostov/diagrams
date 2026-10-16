@@ -8,9 +8,9 @@ import type { CollabSession } from "./session";
 // turns) ends in the editor's state; the editor calls `localChanged` after each committed step, and that one
 // call turns the step into commands (./commands.ts) against the base both sides last agreed on.
 //
-// C1 wires `localChanged` to the editor's history commit (useHistory, where every step is recorded) and routes
-// Undo/Redo to the session while a room is open, in place of the snapshot history. C0 proves the contract with the
-// Lab's clients and unit tests.
+// C1a wires `localChanged` to useHistory through CollaborativeEditorRoom and routes Undo/Redo to the scoped
+// session while a room is open. Ordinary canvases retain snapshot history. C0's in-memory clients use the same
+// binding without a React canvas.
 //
 // Privacy: the editor's `private` flag is the device's own. It is never sent, and a remote change can't set or
 // clear it. If the diagram becomes Private (or local-only) during a session, the next step leaves the room
@@ -21,12 +21,18 @@ export interface EditorPort {
   getDiagram(): DiagramFile | undefined;
   /** Replaces the editor's diagram with a remote result (already validated). Not a local step. */
   applyDiagram(next: DiagramFile): void;
+  /** Commit pending canvas edits against the old agreed base before pulling a peer's step. */
+  flushPending?(): boolean;
+  /** Match the editor's native round-trip defaults without publishing them as user edits. */
+  normalize?(next: DiagramFile): DiagramFile;
 }
 
 export class EditorBinding {
   private base: DiagramFile | undefined;
   private stop: () => void;
   private closed = false;
+  private writing = false;
+  private deferred = false;
   /** Why the last local step was refused, if it was. */
   refused: string | undefined;
 
@@ -59,9 +65,16 @@ export class EditorBinding {
     const commands = commandsFromDiff(this.base, now);
     if (!commands.length) {
       this.base = now;
+      this.flushRemote();
       return false;
     }
-    const result = this.session.doc.apply(commands, opts);
+    this.writing = true;
+    let result;
+    try {
+      result = this.session.doc.apply(commands, opts);
+    } finally {
+      this.writing = false;
+    }
     if (!result.ok) {
       // A step the room would refuse (a value past the bounds): undo it in the editor and say so.
       this.refused = result.problem;
@@ -70,6 +83,7 @@ export class EditorBinding {
     }
     this.base = now;
     this.refused = undefined;
+    this.flushRemote();
     return true;
   }
 
@@ -83,18 +97,34 @@ export class EditorBinding {
 
   async close(): Promise<void> {
     if (this.closed) return;
+    this.detach();
+    await this.session.leave();
+  }
+
+  detach(): void {
     this.closed = true;
     this.stop();
-    await this.session.leave();
+  }
+
+  flushRemote(): void {
+    if (this.deferred) this.pull(true);
   }
 
   /** Shared state changed (anyone's step, or Undo): show the projection, keeping this device's privacy flag. */
   private pull(force = false): void {
+    if (this.closed || this.writing) return;
+    // Make the local diff before replacing the agreed base. localChanged suppresses its own echo.
+    if (!force && this.editor.flushPending?.() === false) {
+      this.deferred = true;
+      return;
+    }
     if (this.closed) return;
+    this.deferred = false;
     const p = this.session.doc.project();
     if (p.status !== "ok") return; // the last valid diagram stays on screen; the session reports the problem
     const local = this.editor.getDiagram();
-    const next: DiagramFile = local?.private ? { ...p.diagram, private: true } : p.diagram;
+    const projected = this.editor.normalize?.(p.diagram) ?? p.diagram;
+    const next: DiagramFile = local?.private ? { ...projected, private: true } : projected;
     this.base = next;
     // Field by field, unchanged records by reference: a local step's own echo costs no serialisation.
     if (force || !local || commandsFromDiff(local, next).length) this.editor.applyDiagram(next);
