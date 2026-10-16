@@ -68,6 +68,13 @@ export class FakeClock implements Clock {
     this.t = end;
   }
 
+  /** When the next timer falls due, if any. */
+  nextDue(): number | undefined {
+    let next: number | undefined;
+    for (const t of this.timers.values()) if (next === undefined || t.at < next) next = t.at;
+    return next;
+  }
+
   /** Timers still scheduled (a session that left has none). */
   get pending(): number {
     return this.timers.size;

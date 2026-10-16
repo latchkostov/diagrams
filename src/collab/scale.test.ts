@@ -3,6 +3,7 @@ import { annotatedPipeline } from "../bench/workloads/annotated";
 import { serviceMesh } from "../bench/workloads/mesh";
 import type { DiagramFile } from "../model/types";
 import { GROWTH_FACTOR, growth, LINEAR_LIMIT } from "../test/complexity";
+import { validateDiagram } from "../interop/native";
 import { commandsFromDiff } from "./commands";
 import { CollabDoc } from "./doc";
 import { COLLAB_LIMITS } from "./limits";
@@ -51,9 +52,15 @@ describe("collaboration at 5,000 nodes", () => {
     }
   });
 
-  it("round-trips the workloads unchanged", () => {
-    for (const d of [mesh.small, annotatedPipeline(SMALL)])
-      expect(ok(hydrated(d))).toEqual(ok(hydrated(ok(hydrated(d)))));
+  it("round-trips the workloads unchanged, on the creator and on a peer that joined", () => {
+    for (const d of [mesh.small, annotatedPipeline(SMALL)]) {
+      // What the import validator makes of the workload is what a room must show: nothing dropped or reordered.
+      const expected = validateDiagram(structuredClone(d));
+      if (!expected.ok) throw new Error(expected.error);
+      const creator = hydrated(d);
+      expect(ok(creator)).toEqual(expected.diagram);
+      expect(ok(joined(creator, 2))).toEqual(expected.diagram);
+    }
   });
 
   it("one edit is one command, a constant-size update and one record re-read, at either size", () => {

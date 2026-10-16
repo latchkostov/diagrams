@@ -22,20 +22,35 @@ async function watchNetwork(page: Page) {
         }
       };
   });
-  const requests: string[] = [];
+  const requests: { method: string; url: string }[] = [];
   const sockets: string[] = [];
-  page.on("request", (r) => requests.push(r.url()));
+  page.on("request", (r) => requests.push({ method: r.method(), url: r.url() }));
   page.on("websocket", (ws) => sockets.push(ws.url()));
+  /** The Vite dev server's own hot-reload socket (`ws://<app host>/?token=…`): the one socket allowed, in dev only. */
+  const hmr = (u: string, host: string) => {
+    const url = new URL(u);
+    return url.host === host && url.pathname === "/" && url.searchParams.has("token");
+  };
+  const violations = async () => {
+    const origin = new URL(page.url()).origin;
+    const host = new URL(page.url()).host;
+    const web = requests.filter((r) => /^https?:/.test(r.url));
+    return [
+      // Loading the app's own files only: nothing sent anywhere, nothing fetched from anyone else.
+      ...web.filter((r) => new URL(r.url).origin !== origin).map((r) => `outside: ${r.method} ${r.url}`),
+      ...web.filter((r) => r.method !== "GET").map((r) => `upload: ${r.method} ${r.url}`),
+      ...sockets.filter((u) => !hmr(u, host)).map((u) => `socket: ${u}`),
+      ...((await page.evaluate(() => (window as unknown as { __peerConnections: number }).__peerConnections)) > 0
+        ? ["a peer connection"]
+        : []),
+    ];
+  };
   return {
+    violations,
     async expectNothingLeft() {
-      const origin = new URL(page.url()).origin;
-      const host = new URL(page.url()).host;
-      expect(requests.filter((u) => /^https?:/.test(u) && new URL(u).origin !== origin)).toEqual([]);
-      // The dev server's own hot-reload socket is the only one allowed (and only on the dev server).
-      expect(sockets.filter((u) => new URL(u).host !== host)).toEqual([]);
-      expect(await page.evaluate(() => (window as unknown as { __peerConnections: number }).__peerConnections)).toBe(0);
+      expect(await violations()).toEqual([]);
     },
-    loadedCollab: () => requests.some((u) => /[/\\]collab[/\\]|CollabDemo|yjs/i.test(u)),
+    loadedCollab: () => requests.some(({ url: u }) => /[/\\]collab[/\\]|CollabDemo|yjs/i.test(u)),
   };
 }
 
@@ -59,6 +74,24 @@ test("local use makes no network requests and never loads the collaboration code
   expect(net.loadedCollab()).toBe(false);
   expect(await yjsLoaded(page)).toBe(false);
   expectNoErrors(consoleErrors);
+});
+
+test("the network watcher itself catches a same-origin upload, a room socket and a peer connection", async ({
+  page,
+}) => {
+  const net = await watchNetwork(page);
+  await gotoCanvas(page, "kafka-order-pipeline");
+  await page.evaluate(async () => {
+    await fetch("./collab-upload-probe", { method: "POST", body: "x" }).catch(() => {});
+    const ws = new WebSocket(`${location.origin.replace(/^http/, "ws")}/room-probe`);
+    ws.onerror = () => {};
+    new RTCPeerConnection().close();
+  });
+  await expect.poll(async () => (await net.violations()).length).toBeGreaterThanOrEqual(3);
+  const found = (await net.violations()).join(" | ");
+  expect(found).toContain("upload: POST");
+  expect(found).toContain("socket: ");
+  expect(found).toContain("a peer connection");
 });
 
 test.describe("collaboration Lab (in-memory network)", () => {

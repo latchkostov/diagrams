@@ -8,7 +8,7 @@ import {
   jsonClone,
   metaOf,
   orderOf,
-  PROPS_KEY,
+  propsMap,
   RECORD_KINDS,
   recordMap,
   recordsOf,
@@ -93,11 +93,17 @@ export function commandsFromDiff(before: DiagramFile, after: DiagramFile): Diagr
         continue;
       }
       if (old === record) continue;
-      const nested = hasNestedProps(kind) && isPlainObject(old.props) && isPlainObject(record.props);
+      // Settings change key by key (absent props are an empty set of them), so concurrent edits of different
+      // settings, including a node's first ones, all survive.
+      const settings = (v: unknown) => v === undefined || isPlainObject(v);
+      const nested = hasNestedProps(kind) && settings(old.props) && settings(record.props);
       const patch = fieldPatch(old, record, nested ? "props" : undefined);
       if (patch) out.push({ op: "patch", kind, id, ...patch });
-      if (nested) {
-        const props = fieldPatch(old.props as Record<string, unknown>, record.props as Record<string, unknown>);
+      if (nested && old.props !== record.props) {
+        const props = fieldPatch(
+          (old.props ?? {}) as Record<string, unknown>,
+          (record.props ?? {}) as Record<string, unknown>,
+        );
         if (props) out.push({ op: "props", kind: kind as "nodes" | "edges", id, ...props });
       }
     }
@@ -146,15 +152,9 @@ export function applyCommands(doc: Y.Doc, commands: readonly DiagramCommand[]): 
       case "props": {
         const map = recordsOf(doc, c.kind).get(checkId(c.id));
         if (!(map instanceof Y.Map)) break;
-        let props = map.get(PROPS_KEY);
-        if (!(props instanceof Y.Map)) {
-          // The record had no props map (it was put without props): create it. Two peers doing this at once is a
-          // same-record race whose loser's keys are dropped, deterministically.
-          props = new Y.Map<unknown>();
-          map.set(PROPS_KEY, props);
-          map.delete("props");
-        }
-        const p = props as Y.Map<unknown>;
+        // Every node and edge is put with its props map; one from elsewhere without it gets one here.
+        const p = propsMap(map);
+        map.delete("props");
         for (const [k, v] of Object.entries(c.set ?? {})) if (v !== undefined) p.set(k, jsonClone(v));
         for (const k of c.unset ?? []) p.delete(k);
         break;

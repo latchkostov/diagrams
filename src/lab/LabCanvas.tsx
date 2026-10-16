@@ -38,7 +38,11 @@ interface Props {
   minimap?: boolean;
   /** Called once every node has been measured, with ms since this stage mounted. */
   onRendered?: (ms: number) => void;
-  /** Called when a node or annotation is dropped after a drag, with its new top-left position (top-level only). */
+  /**
+   * A live stage (the collaboration Lab): called when a node or annotation lands after a pointer drag or a keyboard
+   * nudge, with its new top-left position (top-level elements only). A live stage also takes each new `diagram` in
+   * place, keeping selection, viewport and focus, instead of starting over.
+   */
   onMove?: (id: string, x: number, y: number) => void;
 }
 
@@ -56,10 +60,27 @@ function Stage({ diagram, minimap = true, onRendered, onMove }: Props) {
   const { theme } = useSettings();
   const [start] = useState(() => performance.now());
   const flow = useMemo(() => toFlow(diagram), [diagram]);
-  const [nodes, , onNodesChange] = useNodesState<FlowNode>(flow.nodes);
+  const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(flow.nodes);
   const wrapper = useRef<HTMLDivElement>(null);
   useCaptionContrast(wrapper, nodes, theme, flow.meta.color);
-  const [edges, , onEdgesChange] = useEdgesState<DiagramFlowEdge>(flow.edges);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<DiagramFlowEdge>(flow.edges);
+  const live = onMove !== undefined;
+  const [shown, setShown] = useState(flow);
+  if (live && shown !== flow) {
+    setShown(flow);
+    setNodes((cur) => {
+      const selected = new Set(cur.filter((n) => n.selected).map((n) => n.id));
+      return flow.nodes.map((n) => (selected.has(n.id) ? { ...n, selected: true } : n));
+    });
+    setEdges(flow.edges);
+  }
+  const handleNodesChange: typeof onNodesChange = (changes) => {
+    onNodesChange(changes);
+    if (!onMove) return;
+    for (const c of changes)
+      if (c.type === "position" && c.position && c.dragging === false && !nodes.find((n) => n.id === c.id)?.parentId)
+        onMove(c.id, c.position.x, c.position.y);
+  };
   const showDependencies = useShowDependencies();
   const visibleEdges = useMemo(() => projectDependencies(edges, showDependencies), [edges, showDependencies]);
   const reported = useRef(false);
@@ -90,9 +111,8 @@ function Stage({ diagram, minimap = true, onRendered, onMove }: Props) {
         <ReactFlow<FlowNode, DiagramFlowEdge>
           nodes={nodes}
           edges={visibleEdges}
-          onNodesChange={onNodesChange}
+          onNodesChange={handleNodesChange}
           onEdgesChange={onEdgesChange}
-          onNodeDragStop={onMove && ((_e, node) => !node.parentId && onMove(node.id, node.position.x, node.position.y))}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           colorMode={theme}

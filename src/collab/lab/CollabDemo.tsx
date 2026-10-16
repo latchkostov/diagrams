@@ -239,7 +239,6 @@ function ClientPanel({ room, name }: { room: LabRoom; name: Name }) {
   const s = client.session;
   const d = client.diagram;
   const projection = s.doc.project();
-  const key = JSON.stringify(d ?? null);
   const rejected = Object.entries(s.stats.rejected);
   const edit = (change: (x: DiagramFile) => DiagramFile, merge?: string) =>
     void room.act(() => client.edit(change, merge));
@@ -364,7 +363,6 @@ function ClientPanel({ room, name }: { room: LabRoom; name: Name }) {
       <div className="collab-canvas">
         {d && (
           <LabCanvas
-            key={key}
             diagram={d}
             minimap={false}
             onMove={(id, x, y) =>

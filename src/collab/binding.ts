@@ -1,5 +1,4 @@
 import { canCollaborate, type CanvasPrivacyState } from "../lib/localOnly";
-import { structuralText } from "../model/diagramDiff";
 import type { DiagramFile } from "../model/types";
 import { commandsFromDiff } from "./commands";
 import type { CollabSession } from "./session";
@@ -28,6 +27,8 @@ export class EditorBinding {
   private base: DiagramFile | undefined;
   private stop: () => void;
   private closed = false;
+  /** Why the last local step was refused, if it was. */
+  refused: string | undefined;
 
   constructor(
     private readonly session: CollabSession,
@@ -56,9 +57,18 @@ export class EditorBinding {
       return false;
     }
     const commands = commandsFromDiff(this.base, now);
+    if (!commands.length) {
+      this.base = now;
+      return false;
+    }
+    const result = this.session.doc.apply(commands, opts);
+    if (!result.ok) {
+      // A step the room would refuse (a value past the bounds): undo it in the editor and say so.
+      this.refused = result.problem;
+      this.pull(true);
+      return false;
+    }
     this.base = now;
-    if (!commands.length) return false;
-    this.session.doc.apply(commands, opts);
     return true;
   }
 
@@ -78,13 +88,14 @@ export class EditorBinding {
   }
 
   /** Shared state changed (anyone's step, or Undo): show the projection, keeping this device's privacy flag. */
-  private pull(): void {
+  private pull(force = false): void {
     if (this.closed) return;
     const p = this.session.doc.project();
     if (p.status !== "ok") return; // the last valid diagram stays on screen; the session reports the problem
     const local = this.editor.getDiagram();
     const next: DiagramFile = local?.private ? { ...p.diagram, private: true } : p.diagram;
     this.base = next;
-    if (!local || structuralText(next) !== structuralText(local)) this.editor.applyDiagram(next);
+    // Field by field, unchanged records by reference: a local step's own echo costs no serialisation.
+    if (force || !local || commandsFromDiff(local, next).length) this.editor.applyDiagram(next);
   }
 }

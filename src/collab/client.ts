@@ -41,9 +41,12 @@ export class RoomClient {
     return this.binding.ready;
   }
 
-  /** A session-unique id: two people adding at once never pick the same one. */
+  /**
+   * An id no one else in the room will pick: the session's random sender id (new on every join) and a counter. Not
+   * the alias (two people can share one) and not a counter alone (it starts again on rejoin).
+   */
   newId(base: string) {
-    return `${base}-${this.name}${++this.ids}`;
+    return `${base}-${this.session.senderId.slice(0, 10)}-${++this.ids}`;
   }
 
   /** One editor step. False when nothing was sent (not ready, no change, or the room was left). */

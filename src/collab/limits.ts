@@ -30,6 +30,11 @@ export const COLLAB_LIMITS = {
   senderWindowMs: 10_000,
   /** Bytes of sync replies a session sends one requester per window (the same window). */
   replyBytesPerWindow: 16 * 1024 * 1024,
+  /** Sync requests a session answers per requester per window: anti-entropy needs about two. */
+  syncRequestsPerWindow: 12,
+  /** Bytes of received frames waiting to be handled, in total and from one transport peer. */
+  maxQueuedBytes: 48 * 1024 * 1024,
+  maxQueuedBytesPerPeer: 24 * 1024 * 1024,
   /** Presence: what a peer's entry may say. */
   maxAliasChars: 40,
   /** Presence entries expire when their sender hasn't refreshed them for this long (room clock). */

@@ -4,7 +4,7 @@ import { structuralText } from "../model/diagramDiff";
 import type { DiagramFile } from "../model/types";
 import { commandsFromDiff } from "./commands";
 import { CollabDoc } from "./doc";
-import { recordsOf } from "./schema";
+import { metaOf, recordsOf } from "./schema";
 
 export const sample = (): DiagramFile => ({
   format: "diagrams/v1",
@@ -96,6 +96,26 @@ describe("CollabDoc projection", () => {
     const topic = diagramOf(a).nodes.find((n) => n.id === "topic");
     expect(topic).toMatchObject({ label: "orders.v2", x: 300, y: 90, props: { partitions: 12, retention: 7 } });
     expect(structuralText(diagramOf(a))).toBe(structuralText(diagramOf(b)));
+  });
+
+  it("keeps both people's first settings on a node that had none, and an addition beside a removal of the last one", () => {
+    const a = new CollabDoc({ clientId: 1 });
+    a.hydrate(sample());
+    const b = new CollabDoc({ clientId: 2 });
+    sync(a, b);
+    const setProps = (id: string, props: Record<string, unknown> | undefined) => (d: DiagramFile) => ({
+      ...d,
+      nodes: d.nodes.map((n) => (n.id === id ? { ...n, props } : n)),
+    });
+    edit(a, setProps("db", { replicas: 3 }));
+    edit(b, setProps("db", { concurrency: 4 }));
+    sync(a, b);
+    expect(diagramOf(a).nodes.find((n) => n.id === "db")?.props).toEqual({ concurrency: 4, replicas: 3 });
+    // A removes the topic's only setting while B adds another: B's addition stays.
+    edit(a, setProps("topic", undefined));
+    edit(b, setProps("topic", { partitions: 6, retention: 7 }));
+    sync(a, b);
+    for (const d of [a, b]) expect(diagramOf(d).nodes.find((n) => n.id === "topic")?.props).toEqual({ retention: 7 });
   });
 
   it("moves are atomic: x and y come from the same person", () => {
@@ -259,8 +279,28 @@ describe("CollabDoc Undo is per person", () => {
     a.undo();
     sync(a, b);
     expect(diagramOf(a).title).toBe(diagramOf(b).title);
-    // Undo removes only A's value: B's survives whether or not it had won.
-    expect(diagramOf(a).title).toBe("B");
+    // Undo removes A's value: B's stays, or (when A's had overwritten it) the value before A's edit comes back.
+    // Never no value at all.
+    expect(["B", "Orders"]).toContain(diagramOf(a).title);
+    expect(metaOf(a.ydoc).has("title")).toBe(true);
+  });
+
+  it.each([1, 2])("undo after a concurrent move never leaves a node without a position (client order %i)", (order) => {
+    const a = new CollabDoc({ clientId: order === 1 ? 1 : 3 });
+    a.hydrate(sample());
+    const b = new CollabDoc({ clientId: 2 });
+    sync(a, b);
+    edit(a, (d) => ({ ...d, nodes: d.nodes.map((n) => (n.id === "db" ? { ...n, x: 1 } : n)) }));
+    edit(b, (d) => ({ ...d, nodes: d.nodes.map((n) => (n.id === "db" ? { ...n, x: 2 } : n)) }));
+    sync(a, b);
+    a.undo();
+    b.undo();
+    sync(a, b);
+    for (const d of [a, b]) {
+      expect(d.project().hidden).toEqual([]);
+      expect(diagramOf(d).nodes.map((n) => n.id)).toContain("db");
+    }
+    expect(structuralText(diagramOf(a))).toBe(structuralText(diagramOf(b)));
   });
 
   it("undo of my delete restores the node on every peer", () => {

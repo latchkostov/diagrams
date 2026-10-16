@@ -1,5 +1,6 @@
 import * as Y from "yjs";
 import { COLLAB_LIMITS } from "./limits";
+import type { DiagramCommand } from "./commands";
 import { ROOT_NAMES, valueDepthExceeds } from "./schema";
 
 // Bounds on a decoded Yjs update from another peer, checked before it touches the document. Every check here
@@ -32,8 +33,10 @@ const tooLongString = (v: unknown): boolean => {
     const x = stack.pop();
     if (typeof x === "string") {
       if (x.length > COLLAB_LIMITS.maxStringChars) return true;
-    } else if (Array.isArray(x)) stack.push(...x);
-    else if (typeof x === "object" && x !== null) {
+    } else if (Array.isArray(x)) {
+      // One at a time: spreading a hostile 200,000-element array into push() overflows the call stack.
+      for (const item of x) stack.push(item);
+    } else if (typeof x === "object" && x !== null) {
       for (const [k, child] of Object.entries(x)) {
         if (k.length > COLLAB_LIMITS.maxStringChars) return true;
         stack.push(child);
@@ -43,7 +46,16 @@ const tooLongString = (v: unknown): boolean => {
   return false;
 };
 
+/** Never throws: anything unexpected while inspecting is a refusal, not an exception in the receive loop. */
 export function inspectUpdate(update: Uint8Array): GuardResult {
+  try {
+    return inspect(update);
+  } catch {
+    return { ok: false, problem: "undecodable" };
+  }
+}
+
+function inspect(update: Uint8Array): GuardResult {
   if (update.length > COLLAB_LIMITS.maxDocFrameBytes) return { ok: false, problem: "too-large" };
   let decoded: ReturnType<typeof Y.decodeUpdate>;
   try {
@@ -86,4 +98,52 @@ export function inspectUpdate(update: Uint8Array): GuardResult {
         return { ok: false, problem: "clock-out-of-range" };
   }
   return { ok: true, structs: structs.length };
+}
+
+export type LocalProblem = "key-too-long" | "string-too-long" | "too-deep" | "too-large" | "bad-id";
+
+/**
+ * The same bounds, checked on a local step before it touches the document: an edit every peer would refuse is
+ * refused here instead, so it never reaches the wire and gets its sender quarantined by everyone else.
+ */
+export function checkCommands(
+  commands: readonly DiagramCommand[],
+): { ok: true } | { ok: false; problem: LocalProblem } {
+  let size = 0;
+  const keys = (o: Record<string, unknown> | undefined) =>
+    Object.keys(o ?? {}).some((k) => k.length >= COLLAB_LIMITS.maxKeyChars);
+  const value = (v: unknown): LocalProblem | undefined => {
+    if (v === undefined) return undefined;
+    if (valueDepthExceeds(v)) return "too-deep";
+    if (tooLongString(v)) return "string-too-long";
+    size += JSON.stringify(v)?.length ?? 0;
+    return undefined;
+  };
+  for (const c of commands) {
+    const id = "id" in c ? c.id : c.op === "put" ? c.record.id : undefined;
+    if (id !== undefined && (typeof id !== "string" || !id || id.length >= COLLAB_LIMITS.maxKeyChars))
+      return { ok: false, problem: "bad-id" };
+    const fields = c.op === "put" ? c.record : "set" in c ? c.set : undefined;
+    if (keys(fields)) return { ok: false, problem: "key-too-long" };
+    for (const v of Object.values(fields ?? {})) {
+      if (
+        c.op === "put" &&
+        v !== null &&
+        typeof v === "object" &&
+        !Array.isArray(v) &&
+        keys(v as Record<string, unknown>)
+      )
+        return { ok: false, problem: "key-too-long" };
+      const problem = value(v);
+      if (problem) return { ok: false, problem };
+    }
+    if (c.op === "order") {
+      if (c.ids.some((x) => typeof x !== "string" || x.length >= COLLAB_LIMITS.maxStringChars))
+        return { ok: false, problem: "bad-id" };
+      size += c.ids.length * 16;
+    }
+  }
+  // A step must fit in one frame with room to spare (Yjs and envelope overhead).
+  if (size > COLLAB_LIMITS.maxDocFrameBytes / 2) return { ok: false, problem: "too-large" };
+  return { ok: true };
 }

@@ -42,6 +42,15 @@ export function SpikePanel() {
   const titleInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => () => void conn?.client.session.leave(), [conn]);
+  const attempt = useRef(0);
+  const [connecting, setConnecting] = useState(false);
+  // Unmounting makes any attempt still in flight stale.
+  useEffect(
+    () => () => {
+      attempt.current++;
+    },
+    [],
+  );
   useSyncExternalStore(
     (fn) => conn?.client.session.onChange(fn) ?? (() => {}),
     () => conn?.client.session.doc.stats.projections ?? 0,
@@ -52,6 +61,10 @@ export function SpikePanel() {
     return () => clearInterval(id);
   }, [conn]);
 
+  /**
+   * Connecting takes a few awaits; an attempt that the panel no longer wants when they finish (it unmounted, or a
+   * newer attempt started) closes what it opened rather than leaving a transport and timers running.
+   */
   async function connect() {
     setError("");
     let room: RoomLink;
@@ -61,26 +74,41 @@ export function SpikePanel() {
       setError((err as Error).message);
       return;
     }
-    const keys = await deriveRoomKeys(room);
-    const log = (e: string) => setEvents((list) => [...list.slice(-30), `${new Date().toLocaleTimeString()} ${e}`]);
-    const transport = createTrackerTransport({
-      trackers: trackers.split(/\s+/).filter(Boolean),
-      discovery: keys.discovery,
-      signal: keys.signal,
-      iceServers: stun
-        .split(/\s+/)
-        .filter(Boolean)
-        .map((urls) => ({ urls })),
-      onEvent: log,
-    });
-    const client = await openRoomClient({
-      name: create ? "Creator" : "Guest",
-      transport,
-      room,
-      clock: realClock,
-      initial: create ? demoDiagram() : undefined,
-    });
-    setConn({ client, transport });
+    const token = ++attempt.current;
+    setConnecting(true);
+    let transport: TrackerTransport | undefined;
+    try {
+      const keys = await deriveRoomKeys(room);
+      if (token !== attempt.current) return;
+      const log = (e: string) => setEvents((list) => [...list.slice(-30), `${new Date().toLocaleTimeString()} ${e}`]);
+      transport = createTrackerTransport({
+        trackers: trackers.split(/s+/).filter(Boolean),
+        discovery: keys.discovery,
+        signal: keys.signal,
+        iceServers: stun
+          .split(/s+/)
+          .filter(Boolean)
+          .map((urls) => ({ urls })),
+        onEvent: log,
+      });
+      const client = await openRoomClient({
+        name: create ? "Creator" : "Guest",
+        transport,
+        room,
+        clock: realClock,
+        initial: create ? demoDiagram() : undefined,
+      });
+      if (token !== attempt.current) {
+        await client.session.leave();
+        return;
+      }
+      setConn({ client, transport });
+    } catch (err) {
+      transport?.close();
+      if (token === attempt.current) setError((err as Error).message);
+    } finally {
+      if (token === attempt.current) setConnecting(false);
+    }
   }
 
   async function disconnect() {
@@ -165,7 +193,7 @@ export function SpikePanel() {
           <button
             className="btn btn-primary"
             onClick={() => void connect()}
-            disabled={!key}
+            disabled={!key || connecting}
             data-testid="collab-spike-connect"
           >
             Connect via public matchmaking
@@ -210,7 +238,20 @@ export function SpikePanel() {
               <li key={i}>{e}</li>
             ))}
           </ol>
-          <div className="collab-canvas">{d && <LabCanvas key={JSON.stringify(d)} diagram={d} minimap={false} />}</div>
+          <div className="collab-canvas">
+            {d && (
+              <LabCanvas
+                diagram={d}
+                minimap={false}
+                onMove={(id, x, y) =>
+                  edit((cur) => ({
+                    ...cur,
+                    nodes: cur.nodes.map((n) => (n.id === id ? { ...n, x: Math.round(x), y: Math.round(y) } : n)),
+                  }))
+                }
+              />
+            )}
+          </div>
         </div>
       )}
     </section>

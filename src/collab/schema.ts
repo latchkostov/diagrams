@@ -98,11 +98,37 @@ export const recordsOf = (doc: Y.Doc, kind: RecordKind) => doc.getMap<unknown>(k
 export const orderOf = (doc: Y.Doc, kind: RecordKind) => doc.getArray<unknown>(orderRoot(kind));
 export const metaOf = (doc: Y.Doc) => doc.getMap<unknown>(META);
 
-/** A record's fields as a new Y.Map (for a put). */
+/**
+ * A record's fields as a new Y.Map (for a put). A node or an edge always gets its props map, empty or not, so the
+ * container is never created twice: two people adding the first settings of one node at once both keep theirs.
+ */
 export function recordMap(kind: RecordKind, record: Record<string, unknown>): Y.Map<unknown> {
   const map = new Y.Map<unknown>();
-  writeFields(map, kind, record, Object.keys(record), []);
+  const nested = hasNestedProps(kind);
+  if (nested) {
+    const props = new Y.Map<unknown>();
+    if (isPlainObject(record.props))
+      for (const [k, v] of Object.entries(record.props)) if (v !== undefined) props.set(k, jsonClone(v));
+    map.set(PROPS_KEY, props);
+  }
+  const fields = Object.keys(record).filter((k) => !(nested && k === "props" && isPlainObject(record.props)));
+  writeFields(map, kind, record, fields, []);
   return map;
+}
+
+/** A record's props map, made only when a record from elsewhere lacks one. */
+export function propsMap(map: Y.Map<unknown>): Y.Map<unknown> {
+  const existing = map.get(PROPS_KEY);
+  if (existing instanceof Y.Map) return existing as Y.Map<unknown>;
+  const made = new Y.Map<unknown>();
+  map.set(PROPS_KEY, made);
+  return made;
+}
+
+/** Sets a props map to exactly `value`'s keys, key by key (never replacing the container). */
+export function writeProps(props: Y.Map<unknown>, value: Record<string, unknown>): void {
+  for (const k of [...props.keys()]) if (value[k] === undefined) props.delete(k);
+  for (const [k, v] of Object.entries(value)) if (v !== undefined) props.set(k, jsonClone(v));
 }
 
 /**
@@ -128,22 +154,23 @@ export function writeFields(
     if (name === "id") continue;
     const value = record[name];
     if (geometry?.fields.includes(name)) touchGeo(name, value);
-    else if (name === "props" && hasNestedProps(kind) && isPlainObject(value)) {
-      const props = new Y.Map<unknown>();
-      for (const [k, v] of Object.entries(value)) if (v !== undefined) props.set(k, jsonClone(v));
-      map.set(PROPS_KEY, props);
+    else if (name === "props" && hasNestedProps(kind) && (isPlainObject(value) || value === undefined)) {
+      // Settings as an object live in the props map; a malformed non-object value (kept for the validator to judge)
+      // is a plain field beside it.
       map.delete("props");
+      writeProps(propsMap(map), isPlainObject(value) ? value : {});
     } else if (value === undefined) map.delete(escapeField(name));
     else {
-      if (name === "props") map.delete(PROPS_KEY);
+      // (A new record's props map is empty already, and can't be read before it joins a document.)
+      if (name === "props" && hasNestedProps(kind) && map.doc) writeProps(propsMap(map), {});
       map.set(escapeField(name), jsonClone(value));
     }
   }
   for (const name of unset) {
     if (geometry?.fields.includes(name)) touchGeo(name, undefined);
-    else if (name === "props") {
-      map.delete(PROPS_KEY);
+    else if (name === "props" && hasNestedProps(kind)) {
       map.delete("props");
+      writeProps(propsMap(map), {});
     } else map.delete(escapeField(name));
   }
   if (geo) map.set(geometry!.key, geo);
@@ -179,6 +206,7 @@ export function projectRecord(kind: RecordKind, id: string, value: unknown): Rec
         if (pv !== undefined) props[k] = pv;
       }
       if (Object.keys(props).length) fields.props = props;
+      else if (fields.props === undefined && value.has("props")) fields.props = readValue(value.get("props"));
     } else {
       const name = unescapeField(key);
       if (name === undefined || name === "id") continue;

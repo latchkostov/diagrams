@@ -18,21 +18,32 @@ export class FakeWire {
   readonly clock = new FakeClock();
   readonly channelTaps = new Set<(bytes: Uint8Array) => void>();
 
-  /** Runs queued deliveries until nothing is queued and pending promises (WebCrypto) have had their turn. */
-  async pump(idle: () => Promise<void> = async () => {}, quietRounds = 4): Promise<void> {
-    let quiet = 0;
-    for (let i = 0; i < 100_000 && quiet < quietRounds; i++) {
+  /** Transports whose signalling work `pump` waits for. */
+  private transports = new Set<{ settled(): Promise<void> }>();
+
+  track<T extends { settled(): Promise<void> }>(transport: T): T {
+    this.transports.add(transport);
+    return transport;
+  }
+
+  /**
+   * Runs queued deliveries until nothing is queued and nothing is in flight: the sessions (`idle`), the tracked
+   * transports' signalling, and timers due within a second of fake time (a quick re-announce). No real time passes.
+   */
+  async pump(idle: () => Promise<void> = async () => {}): Promise<void> {
+    for (let i = 0; i < 100_000; i++) {
       await idle();
-      await new Promise((r) => setTimeout(r, 0));
-      if (!this.queue.length) {
-        quiet++;
-        this.clock.advance(1_000);
+      await Promise.all([...this.transports].map((t) => t.settled()));
+      if (this.queue.length) {
+        const batch = this.queue.splice(0);
+        for (const run of batch) run();
         continue;
       }
-      quiet = 0;
-      const batch = this.queue.splice(0);
-      for (const run of batch) run();
+      const due = this.clock.nextDue();
+      if (due === undefined || due - this.clock.now() > 1_000) return;
+      this.clock.advance(due - this.clock.now());
     }
+    throw new Error("FakeWire.pump: never went quiet");
   }
 }
 
@@ -45,6 +56,11 @@ interface SwarmPeer {
 export class FakeTracker {
   private swarms = new Map<string, Map<string, SwarmPeer>>();
   constructor(readonly wire: FakeWire) {}
+
+  /** Sends a message to every peer in every swarm (a hostile tracker's replay). */
+  broadcast(raw: string): void {
+    for (const swarm of this.swarms.values()) for (const p of swarm.values()) p.socket.deliver(raw);
+  }
 
   receive(socket: FakeWebSocket, raw: string): void {
     this.wire.trackerLog.push(raw);

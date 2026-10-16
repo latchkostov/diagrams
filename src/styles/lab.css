@@ -932,11 +932,11 @@
   margin-right: 4px;
 }
 .collab-ok {
-  color: var(--ok, #15803d);
+  color: var(--success);
   font-weight: 600;
 }
 .collab-warn {
-  color: var(--warn-text, #b45309);
+  color: var(--warning-ink);
 }
 .collab-stats {
   margin: 0;

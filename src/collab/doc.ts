@@ -1,7 +1,7 @@
 import * as Y from "yjs";
 import type { DiagramFile } from "../model/types";
 import { applyCommands, type DiagramCommand } from "./commands";
-import { inspectUpdate, type GuardProblem } from "./guard";
+import { checkCommands, inspectUpdate, type GuardProblem, type LocalProblem } from "./guard";
 import {
   assemble,
   hydrate,
@@ -26,6 +26,11 @@ import {
 
 export const REMOTE = Symbol("collab:remote");
 export const HYDRATE = Symbol("collab:hydrate");
+/** Values an Undo (or Redo) meant to restore but Yjs couldn't (see `restoreRefused`). Not undoable themselves. */
+export const RESTORE = Symbol("collab:restore");
+
+/** Yjs exports DeleteSet as a value but not its type. */
+type DeleteSet = Parameters<typeof Y.iterateDeletedStructs>[1];
 
 export type Projection =
   | { status: "ok"; diagram: DiagramFile; warnings: string[]; hidden: string[] }
@@ -36,6 +41,14 @@ export type Projection =
       diagram: DiagramFile | undefined;
       hidden: string[];
     };
+
+/** A diagram too large (or with values too long or deep) for a room. */
+export class CollabLimitError extends Error {
+  constructor(readonly problem: string) {
+    super(`This diagram is beyond what a room can carry (${problem}).`);
+    this.name = "CollabLimitError";
+  }
+}
 
 export interface DocStats {
   /** Records read back from shared state since the document was made (a cache miss each). */
@@ -99,10 +112,20 @@ export class CollabDoc {
     return () => this.listeners.delete(fn);
   }
 
-  /** The room creator's initial copy. Only into an empty document. */
+  /**
+   * The room creator's initial copy. Only into an empty document. Built in a scratch document first and checked by
+   * the same guard as a peer's update, so a diagram the room would refuse never becomes the room's.
+   */
   hydrate(diagram: DiagramFile): void {
     if (!this.isEmpty()) throw new Error("A room's document is hydrated once, by its creator.");
-    this.ydoc.transact(() => hydrate(this.ydoc, diagram), HYDRATE);
+    const scratch = new Y.Doc();
+    scratch.clientID = this.ydoc.clientID;
+    scratch.transact(() => hydrate(scratch, diagram));
+    const update = Y.encodeStateAsUpdate(scratch);
+    scratch.destroy();
+    const check = inspectUpdate(update);
+    if (!check.ok) throw new CollabLimitError(check.problem);
+    Y.applyUpdate(this.ydoc, update, HYDRATE);
   }
 
   isEmpty(): boolean {
@@ -113,12 +136,18 @@ export class CollabDoc {
    * One editor step, as one transaction and one Undo step. `merge` joins it to the previous step when both carry
    * the same tag (typing a label), the way the editor's own history does; anything else starts a new step.
    */
-  apply(commands: readonly DiagramCommand[], opts: { merge?: string } = {}): void {
-    if (!commands.length) return;
+  apply(
+    commands: readonly DiagramCommand[],
+    opts: { merge?: string } = {},
+  ): { ok: true } | { ok: false; problem: LocalProblem } {
+    if (!commands.length) return { ok: true };
+    const check = checkCommands(commands);
+    if (!check.ok) return check;
     if (opts.merge === undefined || opts.merge !== this.lastMerge) this.undoManager.stopCapturing();
     this.lastMerge = opts.merge;
     this.stats.localTransactions++;
     this.ydoc.transact(() => applyCommands(this.ydoc, commands), this.local);
+    return { ok: true };
   }
 
   /** Applies a peer's update after the guard's state-independent checks. */
@@ -140,12 +169,37 @@ export class CollabDoc {
 
   undo(): boolean {
     this.lastMerge = undefined;
-    return this.undoManager.undo() !== null;
+    const item = this.undoManager.undo();
+    if (item) this.restoreRefused(item);
+    return item !== null;
   }
 
   redo(): boolean {
     this.lastMerge = undefined;
-    return this.undoManager.redo() !== null;
+    const item = this.undoManager.redo();
+    if (item) this.restoreRefused(item);
+    return item !== null;
+  }
+
+  /**
+   * Yjs restores a field's earlier value on Undo only when no one else wrote that field meanwhile; when someone did
+   * and their value has since been overwritten too, the field ends up with no value at all (a node without a
+   * position, a diagram without a title). For each field this step replaced, if it's now empty, write back the value
+   * the step replaced, as a new change everyone receives. A field someone else currently holds is left alone.
+   */
+  private restoreRefused(step: { insertions: DeleteSet; deletions: DeleteSet }): void {
+    const restores: [Y.Map<unknown>, string, unknown][] = [];
+    this.ydoc.transact((tr) => {
+      Y.iterateDeletedStructs(tr, step.deletions, (struct) => {
+        if (!(struct instanceof Y.Item) || struct.parentSub === null || Y.isDeleted(step.insertions, struct.id)) return;
+        if (!(struct.content instanceof Y.ContentAny)) return;
+        const parent = struct.parent;
+        if (!(parent instanceof Y.Map) || parent._item?.deleted || parent.has(struct.parentSub)) return;
+        restores.push([parent as Y.Map<unknown>, struct.parentSub, struct.content.getContent().at(-1)]);
+      });
+    });
+    if (restores.length)
+      this.ydoc.transact(() => restores.forEach(([map, key, value]) => map.set(key, value)), RESTORE);
   }
 
   canUndo = () => this.undoManager.canUndo();

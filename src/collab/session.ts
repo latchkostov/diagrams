@@ -40,7 +40,16 @@ export class PrivateDiagramError extends Error {
 
 export type SessionStatus = "waiting" | "connected" | "left";
 export type RejectReason =
-  Rejection | GuardProblem | "apply-failed" | "quarantined" | "rate-limited" | "reply-throttled" | "malformed";
+  | Rejection
+  | GuardProblem
+  | "apply-failed"
+  | "quarantined"
+  | "rate-limited"
+  | "reply-throttled"
+  | "request-throttled"
+  | "queue-full"
+  | "internal"
+  | "malformed";
 
 export interface SessionStats {
   framesSent: number;
@@ -99,6 +108,13 @@ export class CollabSession {
   /** What this session sends back to each requester: a member asking for the whole room again and again can't make
    *  it send megabytes per request. */
   private readonly replies: RateLimit;
+  /** Sync requests answered per requester: each costs an encode of what it lacks, before any reply is sent. */
+  private readonly requests: RateLimit;
+  /** Bytes of frames waiting in the inbox: in total and per transport peer. */
+  private queuedBytes = 0;
+  private readonly queuedFrom = new Map<PeerId, number>();
+  /** Set as leave() starts: nothing more is taken in. */
+  private leaving = false;
   private readonly quarantined = new Set<string>();
   private outbox: Promise<void> = Promise.resolve();
   private inbox: Promise<void> = Promise.resolve();
@@ -119,6 +135,7 @@ export class CollabSession {
     this.opener = new Opener(keys, sender);
     this.rate = new RateLimit(clock, COLLAB_LIMITS.senderBytesPerWindow);
     this.replies = new RateLimit(clock, COLLAB_LIMITS.replyBytesPerWindow);
+    this.requests = new RateLimit(clock, COLLAB_LIMITS.syncRequestsPerWindow);
     this.presence = new PresenceTable(clock);
   }
 
@@ -172,14 +189,19 @@ export class CollabSession {
 
   /** Leaves: says goodbye, stops timers and the transport. The local document stays (a local copy). */
   async leave(): Promise<void> {
-    if (this.status === "left") return;
-    this.send("doc", frame(DOC.bye));
-    await this.idle();
-    this.status = "left";
-    for (const stop of this.stops) stop();
-    this.stops = [];
-    this.transport.close();
-    this.emit();
+    if (this.status === "left" || this.leaving) return;
+    this.leaving = true;
+    try {
+      // Only the goodbye is waited for; frames still queued inbound are dropped (receive checks `leaving`).
+      this.send("doc", frame(DOC.bye));
+      await this.outbox.catch(() => {});
+    } finally {
+      this.status = "left";
+      for (const stop of this.stops) stop();
+      this.stops = [];
+      this.transport.close();
+      this.emit();
+    }
   }
 
   private start(): void {
@@ -253,13 +275,36 @@ export class CollabSession {
     });
   }
 
+  /**
+   * Queues a frame for handling, in order. What waits is bounded (in total and per transport peer) before anything
+   * is decrypted, so a flood can't pile up buffers; a frame past the bound is dropped and counted. Nothing a frame
+   * does can break the queue: a failure while handling one is counted and the next is handled.
+   */
   private enqueue(from: PeerId, bytes: Uint8Array): Promise<void> {
-    this.inbox = this.inbox.then(() => this.receive(from, bytes));
+    if (this.leaving || this.status === "left") return Promise.resolve();
+    const n = bytes.length;
+    const fromPeer = this.queuedFrom.get(from) ?? 0;
+    if (this.queuedBytes + n > COLLAB_LIMITS.maxQueuedBytes || fromPeer + n > COLLAB_LIMITS.maxQueuedBytesPerPeer) {
+      this.reject("queue-full");
+      return Promise.resolve();
+    }
+    this.queuedBytes += n;
+    this.queuedFrom.set(from, fromPeer + n);
+    const done = () => {
+      this.queuedBytes -= n;
+      const left = (this.queuedFrom.get(from) ?? n) - n;
+      if (left > 0) this.queuedFrom.set(from, left);
+      else this.queuedFrom.delete(from);
+    };
+    this.inbox = this.inbox
+      .then(() => this.receive(from, bytes))
+      .catch(() => this.reject("internal"))
+      .finally(done);
     return this.inbox;
   }
 
   private async receive(from: PeerId, bytes: Uint8Array): Promise<void> {
-    if (this.status === "left") return;
+    if (this.status === "left" || this.leaving) return;
     this.stats.framesReceived++;
     const opened = await this.opener.open(bytes);
     if (!opened.ok) return this.reject(opened.reason);
@@ -275,6 +320,7 @@ export class CollabSession {
     if (!this.rate.take(opened.sender, bytes.length)) return this.reject("rate-limited");
     switch (msg.type) {
       case DOC.syncRequest: {
+        if (!this.requests.take(opened.sender, 1)) return this.reject("request-throttled");
         let sv: Uint8Array;
         try {
           sv = msg.payload;

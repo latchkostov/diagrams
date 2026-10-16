@@ -55,17 +55,24 @@ const latin1 = (b: Uint8Array) => String.fromCharCode(...b);
 const fromLatin1 = (s: string) => Uint8Array.from(s, (c) => c.charCodeAt(0) & 0xff);
 const hex = (s: string) => Array.from(fromLatin1(s), (x) => x.toString(16).padStart(2, "0")).join("");
 
-/** Encrypts an SDP for the tracker, bound to the room, the direction and the offer id. */
+const signalAad = (discovery: Uint8Array, kind: string, offerId: string, signer: string) =>
+  textToBytes(`livediagrams/collab/v1/signal/${kind}/${bytesToBase64Url(discovery)}/${hex(offerId)}/${hex(signer)}`);
+
+/**
+ * Encrypts an SDP for the tracker, bound to the room, the direction, the offer id and the signer's tracker peer id:
+ * a tracker replaying it under another peer id, or as the other direction, produces something that doesn't open.
+ */
 export async function sealSignal(
   key: CryptoKey,
   discovery: Uint8Array,
   kind: "offer" | "answer",
   offerId: string,
+  signer: string,
   sdp: string,
   random: RandomBytes,
 ): Promise<string> {
   const iv = random(12);
-  const aad = textToBytes(`livediagrams/collab/v1/signal/${kind}/${bytesToBase64Url(discovery)}/${hex(offerId)}`);
+  const aad = signalAad(discovery, kind, offerId, signer);
   const ct = new Uint8Array(
     await crypto.subtle.encrypt(
       { name: "AES-GCM", iv: iv as BufferSource, additionalData: aad as BufferSource },
@@ -84,13 +91,14 @@ export async function openSignal(
   discovery: Uint8Array,
   kind: "offer" | "answer",
   offerId: string,
+  signer: string,
   sealed: unknown,
 ): Promise<string | undefined> {
   if (typeof sealed !== "string" || !sealed.startsWith(SIGNAL_PREFIX) || sealed.length > 64 * 1024) return undefined;
   try {
     const bytes = base64UrlToBytes(sealed.slice(SIGNAL_PREFIX.length));
     if (bytes.length < 12 + 16) return undefined;
-    const aad = textToBytes(`livediagrams/collab/v1/signal/${kind}/${bytesToBase64Url(discovery)}/${hex(offerId)}`);
+    const aad = signalAad(discovery, kind, offerId, signer);
     const pt = await crypto.subtle.decrypt(
       { name: "AES-GCM", iv: bytes.subarray(0, 12) as BufferSource, additionalData: aad as BufferSource },
       key,
@@ -114,6 +122,8 @@ interface Peer {
 export interface TrackerTransport extends CollabTransport {
   /** Sockets open now, peers connected now. */
   diagnostics(): { trackersOpen: number; peers: number; pendingOffers: number };
+  /** Resolves once no signalling work is in flight (tests drain the offline fake with it). */
+  settled(): Promise<void>;
 }
 
 export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
@@ -136,7 +146,17 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
   /** Our outstanding offers by offer id: the connection waiting for an answer. */
   const pending = new Map<string, { pc: RTCPeerConnection; channel: RTCDataChannel; at: number }>();
   let cancelTimer: (() => void) | undefined;
+  /** Quick re-announces: when one last went out, and when one last answered each greater peer. */
   let lastQuickAnnounce = -Infinity;
+  const quickFor = new Map<PeerId, number>();
+  const seenOffers = new Set<string>();
+  /** Signalling work in flight (announces, tracker messages). */
+  const inflight = new Set<Promise<unknown>>();
+  const track = (work: Promise<unknown>) => {
+    const p = work.catch(() => {}).finally(() => inflight.delete(p));
+    inflight.add(p);
+    return p;
+  };
 
   const config = (): RTCConfiguration => ({ iceServers: opts.iceServers ?? [] });
 
@@ -238,7 +258,10 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
     pending.set(offerId, { pc, channel, at: clock.now() });
     return {
       offer_id: offerId,
-      offer: { type: "offer", sdp: await sealSignal(opts.signal, opts.discovery, "offer", offerId, sdp, random) },
+      offer: {
+        type: "offer",
+        sdp: await sealSignal(opts.signal, opts.discovery, "offer", offerId, selfId, sdp, random),
+      },
     };
   }
 
@@ -271,7 +294,10 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
   function schedule(seconds: number) {
     cancelTimer?.();
     if (!closed)
-      cancelTimer = clock.after(seconds * 1000, () => void announce().then(() => schedule(opts.announceSeconds ?? 30)));
+      cancelTimer = clock.after(
+        seconds * 1000,
+        () => void track(announce().then(() => schedule(opts.announceSeconds ?? 30))),
+      );
   }
 
   async function onTrackerMessage(ws: WebSocket, raw: unknown) {
@@ -294,16 +320,29 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
     if (offer) {
       if (peers.has(from) || peers.size >= maxPeers) return;
       // One connection per pair: only the greater id answers. The lesser re-announces soon instead.
+      // Each greater peer gets a quick response at most every 5 s, and the quick announces themselves go out at most
+      // once a second (a newcomer is never left waiting for the slow periodic announce).
       if (self < from) {
-        if (clock.now() - lastQuickAnnounce > 5_000) {
-          lastQuickAnnounce = clock.now();
-          schedule(0.5);
+        const now = clock.now();
+        if (now - (quickFor.get(from) ?? -Infinity) > 5_000) {
+          if (quickFor.size >= 256) quickFor.clear();
+          quickFor.set(from, now);
+          // One already on its way serves this peer too.
+          if (!(lastQuickAnnounce > now)) {
+            lastQuickAnnounce = Math.max(now + 500, lastQuickAnnounce + 1_000);
+            schedule((lastQuickAnnounce - now) / 1000);
+          }
         }
         return;
       }
-      const sdp = await openSignal(opts.signal, opts.discovery, "offer", offerId, offer.sdp);
-      if (!sdp || closed || peers.has(from))
-        return event(sdp ? "offer ignored" : "offer from another room or tampered: ignored");
+      // Each offer is considered once (a tracker replaying it gets nowhere), and the peer budget is checked again
+      // after the await: offers that arrived together must not all be admitted.
+      if (seenOffers.has(offerId)) return;
+      if (seenOffers.size >= 4096) seenOffers.clear();
+      seenOffers.add(offerId);
+      const sdp = await openSignal(opts.signal, opts.discovery, "offer", offerId, msg.peer_id, offer.sdp);
+      if (!sdp) return event("offer from another room, replayed or tampered: ignored");
+      if (closed || peers.has(from) || peers.size >= maxPeers) return event("offer ignored");
       const pc = new PC(config());
       const peer: Peer = { id: from, pc, open: false, nextMsg: 1, partial: new Map() };
       peers.set(from, peer);
@@ -323,7 +362,7 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
           offer_id: offerId,
           answer: {
             type: "answer",
-            sdp: await sealSignal(opts.signal, opts.discovery, "answer", offerId, local, random),
+            sdp: await sealSignal(opts.signal, opts.discovery, "answer", offerId, selfId, local, random),
           },
         });
         event("answered an offer");
@@ -333,8 +372,9 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
     } else if (answer) {
       const waiting = pending.get(offerId);
       if (!waiting || peers.has(from)) return;
-      const sdp = await openSignal(opts.signal, opts.discovery, "answer", offerId, answer.sdp);
-      if (!sdp) return event("answer from another room or tampered: ignored");
+      const sdp = await openSignal(opts.signal, opts.discovery, "answer", offerId, msg.peer_id, answer.sdp);
+      if (!sdp) return event("answer from another room, replayed or tampered: ignored");
+      if (closed || !pending.has(offerId) || peers.has(from) || peers.size >= maxPeers) return;
       pending.delete(offerId);
       const peer: Peer = { id: from, pc: waiting.pc, open: false, nextMsg: 1, partial: new Map() };
       peers.set(from, peer);
@@ -355,9 +395,9 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
     sockets.push(ws);
     ws.onopen = () => {
       event("tracker connected");
-      void announce(ws);
+      void track(announce(ws));
     };
-    ws.onmessage = (e: MessageEvent) => void onTrackerMessage(ws, e.data);
+    ws.onmessage = (e: MessageEvent) => void track(onTrackerMessage(ws, e.data));
     ws.onclose = () => event("tracker closed");
     ws.onerror = () => event("tracker error");
   }
@@ -416,6 +456,9 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
       for (const o of pending.values()) o.pc.close();
       pending.clear();
       for (const id of [...peers.keys()]) drop(id);
+    },
+    async settled() {
+      while (inflight.size) await Promise.all([...inflight]);
     },
     diagnostics: () => ({
       trackersOpen: sockets.filter((s) => s.readyState === 1).length,

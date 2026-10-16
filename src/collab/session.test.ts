@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { textToBytes } from "../interop/codec";
 import { FakeClock } from "./clock";
@@ -6,6 +6,7 @@ import { Sealer } from "./envelope";
 import { deriveRoomKeys } from "./keys";
 import { COLLAB_LIMITS } from "./limits";
 import { DOC, frame, PRESENCE } from "./protocol";
+import { metaOf } from "./schema";
 import { seededBytes } from "./random";
 import { CollabSession, PrivateDiagramError } from "./session";
 import { canaryDiagram, openClient, roomFor, type TestClient } from "./transport/conformance";
@@ -82,6 +83,31 @@ describe("sessions", () => {
     expect(a.session.status).toBe("connected");
   });
 
+  it("new elements get ids no one else picks, across a rejoin and between people with the same alias", async () => {
+    const net = new MemoryNetwork();
+    const clock = new FakeClock();
+    const a = await openClient("same", net.connect(), room, clock, 1, { initial: canaryDiagram() });
+    let b = await openClient("same", net.connect(), room, clock, 2);
+    const clients = () => [a, b];
+    const settle = () => net.settle(async () => void (await Promise.all(clients().map((x) => x.session.idle()))));
+    await settle();
+    const add = (c: typeof a) =>
+      c.edit((d) => ({ ...d, nodes: [...d.nodes, { id: c.newId("n"), stencil: "postgres", label: "", x: 0, y: 0 }] }));
+    add(a);
+    add(b);
+    await settle();
+    const doc = b.session.doc;
+    const diagram = b.diagram;
+    await b.session.leave();
+    b = await openClient("same", net.connect(), room, clock, 3, { doc });
+    b.diagram = diagram;
+    await settle();
+    add(b);
+    await settle();
+    expect(a.diagram?.nodes).toHaveLength(5);
+    expect(new Set(a.diagram?.nodes.map((n) => n.id)).size).toBe(5);
+  });
+
   it("Undo is per person across the room", async () => {
     const { a, b, settle } = await room3();
     a.edit((d) => ({ ...d, title: "A's" }));
@@ -121,6 +147,35 @@ describe("sessions", () => {
     await settle();
     expect(b.diagram?.title).toBe("From A");
     expect(b.diagram?.private).toBe(true);
+  });
+
+  it("refuses a local step the room would refuse, reverting the editor, so nobody quarantines an honest person", async () => {
+    const { net, a, b, settle } = await room3();
+    let wire = 0;
+    net.tap(() => wire++);
+    expect(a.edit((d) => ({ ...d, title: "x".repeat(COLLAB_LIMITS.maxStringChars + 1) }))).toBe(false);
+    expect(a.binding.refused).toBe("string-too-long");
+    expect(a.diagram?.title).toBe(canaryDiagram().title);
+    expect(a.edit((d) => ({ ...d, nodes: d.nodes.map((n) => ({ ...n, props: { ["k".repeat(300)]: 1 } })) }))).toBe(
+      false,
+    );
+    expect(a.binding.refused).toBe("key-too-long");
+    await settle();
+    expect(wire).toBe(0);
+    // And the next ordinary step goes through as usual.
+    a.edit((d) => ({ ...d, title: "Fine" }));
+    await settle();
+    expect(b.diagram?.title).toBe("Fine");
+    expect(b.session.stats.rejected).toEqual({});
+  });
+
+  it("refuses to start a room with a diagram the room couldn't carry", async () => {
+    const net = new MemoryNetwork();
+    await expect(
+      openClient("a", net.connect(), room, new FakeClock(), 1, {
+        initial: { ...canaryDiagram(), title: "x".repeat(200_000) },
+      }),
+    ).rejects.toThrow(/beyond what a room can carry/);
   });
 
   it("stops its timers and transport on leave", async () => {
@@ -225,10 +280,50 @@ describe("sessions refuse hostile input", () => {
     await settle();
     const full = a.session.doc.encodeDiff().length;
     const evil = await rogue(net);
-    const asks = Math.ceil(COLLAB_LIMITS.replyBytesPerWindow / full) + 3;
+    const encode = vi.spyOn(a.session.doc, "encodeDiff");
+    const asks = 100;
     for (let i = 0; i < asks; i++) await evil.send("doc", frame(DOC.syncRequest, new Uint8Array([0])));
     await settle();
-    expect(a.session.stats.rejected["reply-throttled"]).toBeGreaterThanOrEqual(3);
+    // Requests past the budget are refused before any encoding; replies past the byte budget aren't sent.
+    expect(a.session.stats.rejected["request-throttled"]).toBeGreaterThanOrEqual(
+      asks - COLLAB_LIMITS.syncRequestsPerWindow,
+    );
+    expect(encode.mock.calls.length).toBeLessThanOrEqual(COLLAB_LIMITS.syncRequestsPerWindow + 2);
+    const sent = Math.min(COLLAB_LIMITS.syncRequestsPerWindow, Math.floor(COLLAB_LIMITS.replyBytesPerWindow / full));
+    expect(a.session.stats.rejected["reply-throttled"] ?? 0).toBeGreaterThanOrEqual(
+      COLLAB_LIMITS.syncRequestsPerWindow - sent,
+    );
+  });
+
+  it("a member's update with a huge array can't break the receive queue, and leave still cleans up", async () => {
+    const { net, clock, a, b, settle } = await room3();
+    const evil = await rogue(net);
+    const doc = new Y.Doc();
+    doc.getMap("meta").set("planning", new Array(200_000).fill(0));
+    await evil.send("doc", frame(DOC.update, Y.encodeStateAsUpdate(doc)));
+    await settle();
+    // The value is within every bound, so it's applied (the same everywhere); it isn't a valid planning model, so
+    // the room's diagram reports invalid. The point here: later frames are still handled.
+    expect(a.session.doc.project().status).toBe("invalid");
+    b.edit((d) => ({ ...d, title: "Still working" }));
+    await settle();
+    expect(metaOf(a.session.doc.ydoc).get("title")).toBe("Still working");
+    expect(a.session.stats.rejected.internal).toBeUndefined();
+    for (const x of [a, b]) await x.session.leave();
+    expect(a.session.status).toBe("left");
+    expect(clock.pending).toBeGreaterThan(0); // c is still in
+  });
+
+  it("drops frames past the inbox bound before decrypting them", async () => {
+    const { a } = await room3();
+    const s = a.session as unknown as { enqueue(from: string, bytes: Uint8Array): Promise<void> };
+    const big = new Uint8Array(COLLAB_LIMITS.maxDocFrameBytes);
+    const pending = Array.from({ length: 6 }, () => s.enqueue("flood", big));
+    expect(a.session.stats.rejected["queue-full"]).toBe(
+      6 - Math.floor(COLLAB_LIMITS.maxQueuedBytesPerPeer / big.length),
+    );
+    await Promise.all(pending);
+    expect(a.session.stats.rejected["bad-magic"]).toBe(Math.floor(COLLAB_LIMITS.maxQueuedBytesPerPeer / big.length));
   });
 
   it("an old-epoch member can't talk to the room", async () => {
