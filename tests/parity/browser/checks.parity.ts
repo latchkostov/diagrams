@@ -1,11 +1,17 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { test, expect } from "./fixtures";
 import { checksChrome, command, openExample, settledCanvas } from "./canvas";
-import { GOLDENS } from "../lib/golden";
 import { holdChecks, holdResizeObservers } from "./holdReadiness";
 
-test("layout waits for background warning chrome, even when its worker result is delayed", async ({ page }) => {
+test("layout waits for background warning chrome, even when its worker result is delayed", async ({
+  page,
+  context,
+}) => {
+  const baseline = await context.newPage();
+  await openExample(baseline, "shared-api-quotas");
+  await checksChrome(baseline, "shared-api-quotas");
+  await command(baseline, "Auto-layout", "canvas.auto-layout");
+  const expected = await settledCanvas(baseline);
+  await baseline.close();
   await page.addInitScript(holdChecks);
   await openExample(page, "shared-api-quotas");
   await expect
@@ -25,13 +31,13 @@ test("layout waits for background warning chrome, even when its worker result is
   await chrome;
   await command(page, "Auto-layout", "canvas.auto-layout");
   const drawn = await settledCanvas(page);
-  const golden = JSON.parse(readFileSync(join(GOLDENS, "browser/layout/shared-api-quotas.json"), "utf8")) as {
-    autoLayout: unknown;
-  };
-  expect(drawn).toEqual(golden.autoLayout);
+  expect(drawn).toEqual(expected);
 });
 
 test("opening fit remains deterministic across delayed warning delivery", async ({ page, context }) => {
+  const baseline = await context.newPage();
+  const expected = await openExample(baseline, "shared-api-quotas");
+  await baseline.close();
   const viewports: string[] = [];
   for (const [target, checksFirst] of [
     [page, true],
@@ -55,8 +61,5 @@ test("opening fit remains deterministic across delayed warning delivery", async 
     viewports.push(opening.viewport);
   }
   expect(viewports[0]).toBe(viewports[1]);
-  const golden = JSON.parse(readFileSync(join(GOLDENS, "browser/render/shared-api-quotas.json"), "utf8")) as {
-    viewport: string;
-  };
-  expect(viewports[0]).toBe(golden.viewport);
+  expect(viewports[0]).toBe(expected.viewport);
 });
