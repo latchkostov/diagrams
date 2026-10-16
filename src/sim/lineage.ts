@@ -20,6 +20,8 @@ export interface Family {
   alive: number;
   /** Copies kept by a broker with no consumers (a dead-letter queue): their journey is over. */
   parked: number;
+  /** Request routing: the routes this journey has finished once already (fan-out copies don't count twice). */
+  routesDone?: string[];
   trace?: MessageTrace;
 }
 

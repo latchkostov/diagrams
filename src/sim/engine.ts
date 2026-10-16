@@ -420,7 +420,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   ): void {
     inSystem--;
     message.family.alive--;
-    if (kind === "end" && message.request) countRoute(message.request).completed++;
+    // A journey finishes its route once, however many copies fan out and end.
+    if (kind === "end" && message.request) {
+      const done = (message.family.routesDone ??= []);
+      if (!done.includes(message.request.id)) {
+        done.push(message.request.id);
+        countRoute(message.request).completed++;
+      }
+    }
     if (message.family.trace) {
       step(message, kind, node.id, { reason, ...extra });
       lineage.settle(message.family);

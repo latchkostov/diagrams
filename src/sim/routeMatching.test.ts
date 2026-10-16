@@ -520,3 +520,80 @@ describe("request routing: the Lab's overlap fixture", () => {
     expect(e.snapshot().nodes.canary.dropped).toBeGreaterThan(0);
   });
 });
+
+describe("request routing: counts", () => {
+  it("a journey completes its route once, however many copies fan out and end", async () => {
+    const { readFileSync } = await import("node:fs");
+    const d = JSON.parse(readFileSync("tests/parity/corpus/r1-callers.diagram.json", "utf8")) as DiagramFile;
+    const r = createSimulationRun(d, d.simulations![0]);
+    for (let i = 0; i < 2000 && !r.state().done; i++) r.step(10);
+    const routes = r.engine.frame().routes!;
+    // SNS gives Audit and Billing a copy each of every order: still one finished journey per order.
+    expect(routes["orders-post"]).toEqual({ sent: 80, rejected: 0, completed: 80 });
+    expect(r.engine.snapshot().nodes.billing.processed).toBe(80);
+  });
+});
+
+describe("request routing: composition and admission order", () => {
+  it("renames, retries and dead letters keep the address and its colour", () => {
+    const d: DiagramFile = {
+      format: "diagrams/v2",
+      planning: { revision: "p3-a1", requestRoutes: routingFixture().planning!.requestRoutes },
+      title: "Retries",
+      nodes: [
+        {
+          id: "app",
+          stencil: "client.mobile",
+          label: "App",
+          x: 0,
+          y: 0,
+          props: { trafficMix: { mode: "shares", entries: [{ routeId: "orders-post", share: 1 }] } },
+        },
+        { id: "q", stencil: "aws.sqs", label: "Queue", x: 200, y: 0, props: { maxDeliveryCount: 2 } },
+        {
+          id: "worker",
+          stencil: "generic.service",
+          label: "Worker",
+          x: 400,
+          y: 0,
+          props: { latencyMs: 10, failureRate: 1, jitter: 0, emits: "Renamed" },
+        },
+        { id: "dlq", stencil: "aws.sqs", label: "Orders DLQ", x: 400, y: 200 },
+      ],
+      edges: [
+        { id: "app-q", from: "app", to: "q" },
+        { id: "q-worker", from: "q", to: "worker" },
+        { id: "q-dlq", from: "q", to: "dlq", props: { dlq: true } },
+      ],
+    };
+    const e = createEngine({ seed: 1, traceHistory: 10 });
+    e.load(d);
+    e.tracer.request({ next: "message" });
+    e.inject("app", 1);
+    let colours = new Set<string>();
+    for (let i = 0; i < 300; i++) {
+      e.step(10);
+      for (const p of e.frame().particles) colours.add(`${p.kind}:${p.route}:${p.marker}`);
+    }
+    const steps = e.tracer.current()!.steps;
+    expect(steps.some((s) => s.kind === "deadletter")).toBe(true);
+    expect(steps.every((s) => s.route === "orders-post")).toBe(true);
+    expect([...colours].every((c) => c.endsWith(":orders-post:circle"))).toBe(true);
+    colours = new Set();
+  });
+
+  it("a 404 debits no admission bucket: the router's quota still admits its full rate of matched requests", () => {
+    const table = structuredClone(ROUTING_TABLE);
+    table.rules = table.rules.slice(0, 1);
+    const d = routingFixture({ table, rate: 20 });
+    d.nodes[1].props!.api = {
+      quotas: [{ id: "gateway", unit: "requests", amount: 4, windowMs: 1000, burst: 4, algorithm: "token-bucket" }],
+    };
+    const e = run(d, 10_000, { drain: true });
+    const kong = e.snapshot().nodes.kong;
+    // 20/s: 4/s Orders (all within the 4/s quota) and 16/s refused 404 before admission.
+    expect(kong.rejectionReasons?.["route-not-found"]).toBe(160);
+    expect(kong.rejectionReasons?.["gateway: requests"] ?? 0).toBeLessThanOrEqual(1);
+    expect(delivered(e, "kong-orders") + delivered(e, "kong-canary")).toBeGreaterThanOrEqual(39);
+  });
+});

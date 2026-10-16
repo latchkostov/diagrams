@@ -220,7 +220,11 @@ export function TraceCard({
       aria-label={`Message trace: ${journey.type} #${journey.rootId}`}
     >
       <header className="tr-head">
-        <span className="tr-swatch" style={{ background: messageColor(journey.type) }} aria-hidden />
+        <span
+          className="tr-swatch"
+          style={{ background: words.look(journey.rows[0]?.route)?.color ?? messageColor(journey.type) }}
+          aria-hidden
+        />
         <div className="tr-titles">
           <strong title={`${journey.type} #${journey.rootId}`}>
             {journey.type} <span className="tr-id">#{journey.rootId}</span>

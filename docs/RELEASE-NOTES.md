@@ -26,6 +26,30 @@
   `tests/parity/goldens/node/i18n/catalogs.json` changes: each of the 37 language catalogs and the
   pseudo-locale gain the `staticAuth` and `staticSkill` hashes for 31 messages. Existing area hashes,
   fallback counts and every other golden stay unchanged relative to master.
+## Request routing R1: routes, mixes, route tables and colours (2026-10-16)
+
+- **Optional request routes.** A source can send several request kinds at different rates: its **Traffic mix**
+  lists request routes (method and path, with host, headers and query under Advanced) by share or by rate. Nothing
+  changes until someone adds one: diagrams without routes play and look exactly as before.
+- **Route tables on HTTP routers.** Kong, API Management, API Gateway, NGINX, Envoy and the other HTTP routers get a
+  **Route table** in the inspector (or Add routes… on the right-click): ordered rules matching method, path
+  (exact, starts with, or a template like /orders/{id}), host, headers and query, each sending to one or more
+  connections by weight, then a Default. The first table keeps today's connections in its Default; removing it
+  refuses everything else with 404. A matched rule never falls through; a down canary keeps its share. Optional
+  per-rule rate limits refuse with 429, a shared account quota is charged once.
+- **Colours you can tell apart.** In Live each route's requests take its own colour and marker (an
+  Okabe–Ito colour-universal palette, four shapes) with an outline that reads on both themes. The inspector's
+  **Routes** legend names each route with its counts; traces and slow motion say which rule sent a request where
+  ("POST /orders → rule 1 → Orders canary (10% split)") or why it was refused.
+- **Safe edits.** Deleting or reconnecting a connection a table sends to is refused with **Remove from route
+  table**, never silently rerouted; copies, agents (`set_meta` requestRoutes, node and connection props) and the
+  file format share one validation path. Capacity analysis, explanations and `describe_diagram` follow the same
+  routing.
+- **Showcase.** "Parcel API behind a route table" (Integration) is an invented parcel platform behind a Kong-style
+  gateway: a mobile app and carrier webhooks hit five routes at different rates, a 10% pricing canary, an old app
+  version refused 404, and carrier events saturating their service. It's tagged Routing in the gallery.
+- **Unchanged:** every existing diagram's simulation, checks, exports and rendering; their parity outputs are
+  unchanged. See [SIMULATION.md](SIMULATION.md#request-routing-r1-planningrequestroutes).
 
 ## Boundary refit review, round 2 (#139, 2026-10-16)
 
