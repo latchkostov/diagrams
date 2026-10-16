@@ -63,6 +63,19 @@ The unused dev, subpath, internal and locked servers otherwise also start for ea
 the dev watcher observes the accumulated trace/export HTML even though no test uses it.
 Normal Playwright runs keep all five projects and their servers.
 
+Gate mode (`E2E_GATE=1`) disables server reuse for every Playwright webServer, even
+with explicit ports, and forbids focused tests. Before running checks, the gate probes
+all five reserved ports on IPv4/IPv6 loopback and fails with the occupied port and a
+remedy. Playwright also rejects a server that appears after preflight. Both initial
+and final cleanliness checks reject nonignored untracked files; gitignored local files
+remain allowed. A rerun invalidates its earlier stamp before these checks.
+
+The gate builds the `VITE_E2E=1` bundle once, after the ordinary production build, then
+sets `E2E_PREBUILT=1` for all six shards. An inherited prebuilt setting is discarded;
+a failed fresh build skips shards and cannot stamp HEAD. The final unchanged-HEAD and
+clean-tree checks still apply. Vitest gets `--allowOnly=false` and Playwright gets
+`--forbid-only`, independently of the caller's CI setting.
+
 Failures do not stop the remaining checks or shards. Every shard reports passed, failed,
 flaky and skipped totals from Playwright's JSON report, including a non-zero exit or missing
 report as a gate failure. Logs, HTML reports, screenshots and traces stay in separate

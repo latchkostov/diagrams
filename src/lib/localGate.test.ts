@@ -1,6 +1,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, watch, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, win32 } from "node:path";
+import { createServer } from "node:net";
 import process from "node:process";
 import { expect, it } from "vitest";
 
@@ -12,14 +13,23 @@ git() {
     'rev-parse --show-toplevel') pwd ;;
     'rev-parse HEAD') printf '%040d\\n' 1 ;;
     'rev-parse --git-common-dir') echo "$GATE_PROBE_DIR/git" ;;
-    'status --porcelain --untracked-files=no') ;;
+    'status --porcelain --untracked-files='*)
+      if [ -n "\${GATE_PROBE_TREE:-}" ]; then command git -C "$GATE_PROBE_TREE" "$@"; return; fi
+      if [ "$GATE_PROBE_MODE" = untracked ] && [ "$*" != 'status --porcelain --untracked-files=no' ]; then echo '?? src/helper.ts'; fi
+      if [ "$GATE_PROBE_MODE" = late-untracked ] && [ -f "$GATE_PROBE_DIR/shards" ] && [ "$*" != 'status --porcelain --untracked-files=no' ]; then echo '?? src/helper.ts'; fi
+      ;;
     *) return 9 ;;
   esac
 }
 pnpm() {
   echo "$*" >> "$GATE_PROBE_DIR/steps"
   if [ -n "\${GATE_PROBE_BARRIER:-}" ] && [ "$*" = '-s lint' ]; then node "$GATE_PROBE_BARRIER"; fi
-  if [ "$GATE_PROBE_MODE" = unit ] && [ "$*" = '-s test' ]; then return 1; fi
+  if [ "$GATE_PROBE_MODE" = unit ] && [[ "$*" == '-s test'* ]]; then return 1; fi
+  if [ "$GATE_PROBE_MODE" = focused-unit ] && [[ "$*" == '-s test'*'--allowOnly=false'* ]]; then return 1; fi
+  if [[ "$*" == 'exec vite build'* ]]; then
+    [ "$VITE_E2E:\${E2E_PREBUILT:-}" = '1:' ] || return 9
+    if [ "$GATE_PROBE_MODE" = build ]; then return 1; fi
+  fi
 }
 npx() {
   local index="\${PLAYWRIGHT_JSON_OUTPUT_NAME%/results.json}"
@@ -27,7 +37,10 @@ npx() {
   echo "$index" >> "$GATE_PROBE_DIR/shards"
   # Guard the runner settings too: CI-sized concurrency, production and no retries.
   case " $* " in *' --workers=3 --retries=0 '*) ;; *) return 9 ;; esac
-  [ "$E2E_TARGET:$E2E_PORT:$E2E_LOCKED_PORT:$E2E_CHROMIUM_ONLY:$PLAYWRIGHT_HTML_OPEN" = 'build:6360:6364:1:never' ] || return 9
+  [ "$E2E_TARGET:$E2E_PORT:$E2E_LOCKED_PORT:$E2E_CHROMIUM_ONLY:$PLAYWRIGHT_HTML_OPEN:\${E2E_GATE:-}:\${E2E_PREBUILT:-}" = 'build:6360:6364:1:never:1:1' ] || return 9
+  if [ "$GATE_PROBE_MODE" = focused-e2e ]; then
+    case " $* " in *' --forbid-only '*) return 1 ;; esac
+  fi
   local passed=2 failed=0 flaky=0 code=0
   if [ "$index" = 3 ]; then
     case "$GATE_PROBE_MODE" in
@@ -47,6 +60,9 @@ it.each([
   { mode: "flaky", exit: 1, totals: "passed=11 failed=0 flaky=1 skipped=0 gate_failures=1" },
   { mode: "missing", exit: 1, totals: "passed=10 failed=0 flaky=0 skipped=0 gate_failures=1" },
   { mode: "unit", exit: 1, totals: "passed=12 failed=0 flaky=0 skipped=0 gate_failures=1" },
+  { mode: "focused-unit", exit: 1, totals: "passed=12 failed=0 flaky=0 skipped=0 gate_failures=1" },
+  { mode: "focused-e2e", exit: 1, totals: "passed=0 failed=0 flaky=0 skipped=0 gate_failures=6" },
+  { mode: "late-untracked", exit: 1, totals: "passed=12 failed=0 flaky=0 skipped=0 gate_failures=1" },
 ])("the local gate collects every shard and stamps only a complete success ($mode)", { timeout: 40_000 }, (probe) => {
   const output = resolve("tests/.output");
   mkdirSync(output, { recursive: true });
@@ -66,13 +82,17 @@ it.each([
         BASH_ENV: envFile.replaceAll("\\", "/"),
         GATE_PROBE_DIR: relative(process.cwd(), fixture).replaceAll("\\", "/"),
         GATE_PROBE_MODE: probe.mode,
+        E2E_PREBUILT: "1", // A caller's stale bundle must never skip the fresh build.
       },
     });
     expect(result.status, result.error?.message ?? result.stdout + result.stderr).toBe(probe.exit);
     expect(readFileSync(join(fixture, "shards"), "utf8").trim().split(/\r?\n/)).toEqual(["1", "2", "3", "4", "5", "6"]);
-    expect(readFileSync(join(fixture, "steps"), "utf8").trim().split(/\r?\n/)).toEqual(
-      ["lint", "typecheck", "format:check", "test", "build", "size", "parity"].map((step) => `-s ${step}`),
-    );
+    expect(readFileSync(join(fixture, "steps"), "utf8").trim().split(/\r?\n/)).toEqual([
+      ...["lint", "typecheck", "format:check", "test --allowOnly=false", "build", "size", "parity"].map(
+        (step) => `-s ${step}`,
+      ),
+      "exec vite build --outDir tests/.output/e2e-dist --emptyOutDir --logLevel error",
+    ]);
     expect(result.stdout).toContain(`SUMMARY: ${sha} | shards=6 ${probe.totals}`);
     const log = /^Log: (.+)$/m.exec(result.stdout)?.[1].trim();
     if (!log) throw new Error("Missing gate log path");
@@ -93,6 +113,154 @@ it.each([
     rmSync(fixture, { recursive: true, force: true });
   }
 });
+
+function gateProbe(mode: string, base = 6360) {
+  const output = resolve("tests/.output");
+  mkdirSync(output, { recursive: true });
+  const fixture = mkdtempSync(join(output, "gate-preflight-"));
+  const stamp = join(fixture, "git/verified", "1".padStart(40, "0"));
+  mkdirSync(dirname(stamp), { recursive: true });
+  writeFileSync(stamp, "stale success");
+  const envFile = join(fixture, "commands.sh");
+  writeFileSync(envFile, commands);
+  return {
+    fixture,
+    stamp,
+    run(extra: Record<string, string> = {}) {
+      const child = spawn("bash", ["scripts/verify-push.sh", String(base)], {
+        env: {
+          ...process.env,
+          BASH_ENV: envFile.replaceAll("\\", "/"),
+          GATE_PROBE_DIR: relative(process.cwd(), fixture).replaceAll("\\", "/"),
+          GATE_PROBE_MODE: mode,
+          ...extra,
+        },
+      });
+      return new Promise<{ code: number | null; output: string }>((resolve, reject) => {
+        let output = "";
+        child.stdout.on("data", (chunk: Buffer) => (output += chunk.toString()));
+        child.stderr.on("data", (chunk: Buffer) => (output += chunk.toString()));
+        child.on("error", reject);
+        child.on("close", (code) => resolve({ code, output }));
+      });
+    },
+    cleanup: () => rmSync(fixture, { recursive: true, force: true }),
+  };
+}
+
+it.each([0, 1, 2, 3, 4])(
+  "gate mode rejects an occupied port at offset %s before checks",
+  { timeout: 40_000 },
+  async (offset) => {
+    const server = createServer();
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(0, "127.0.0.1", resolve);
+    });
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("Missing probe port");
+    const probe = gateProbe("success", address.port - offset);
+    try {
+      const result = await probe.run();
+      expect(result.code, result.output).toBe(2);
+      expect(result.output).toContain(`port ${address.port} on 127.0.0.1 is unavailable`);
+      expect(existsSync(join(probe.fixture, "steps"))).toBe(false);
+      expect(existsSync(join(probe.fixture, "shards"))).toBe(false);
+      expect(existsSync(probe.stamp)).toBe(false);
+    } finally {
+      await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+      probe.cleanup();
+    }
+  },
+);
+
+it("rejects nonignored untracked files but permits gitignored files", { timeout: 40_000 }, async () => {
+  const probe = gateProbe("success");
+  const tree = join(probe.fixture, "tree");
+  mkdirSync(tree);
+  const git = (...args: string[]) => {
+    const result = spawnSync("git", ["-C", tree, ...args], { encoding: "utf8" });
+    expect(result.status, result.stderr).toBe(0);
+  };
+  try {
+    git("init", "--quiet");
+    writeFileSync(join(tree, ".git/info/exclude"), "ignored.txt\n");
+    writeFileSync(join(tree, "ignored.txt"), "local ignored data");
+    writeFileSync(join(tree, "helper.ts"), "export const helper = 1;\n");
+    const env = { GATE_PROBE_TREE: tree.replaceAll("\\", "/") };
+    const dirty = await probe.run(env);
+    expect(dirty.code, dirty.output).toBe(2);
+    expect(dirty.output).toContain("nonignored untracked changes");
+    expect(existsSync(join(probe.fixture, "steps"))).toBe(false);
+    expect(existsSync(probe.stamp)).toBe(false);
+    rmSync(join(tree, "helper.ts"));
+    const clean = await probe.run(env);
+    expect(clean.code, clean.output).toBe(0);
+    expect(existsSync(probe.stamp)).toBe(true);
+  } finally {
+    probe.cleanup();
+  }
+});
+
+it("does not run shards or stamp HEAD after the fresh E2E build fails", { timeout: 40_000 }, async () => {
+  const probe = gateProbe("build");
+  try {
+    const result = await probe.run({ E2E_PREBUILT: "1" });
+    expect(result.code, result.output).toBe(1);
+    expect(result.output).toContain("shards=0 passed=0 failed=0 flaky=0 skipped=0 gate_failures=1");
+    expect(result.output).toContain("Skipping e2e shards");
+    expect(existsSync(join(probe.fixture, "shards"))).toBe(false);
+    expect(existsSync(probe.stamp)).toBe(false);
+  } finally {
+    probe.cleanup();
+  }
+});
+
+it.each(["vitest", "playwright"])(
+  "%s rejects focused tests with the gate's CLI policy",
+  { timeout: 40_000 },
+  (runner) => {
+    const output = resolve("tests/.output");
+    mkdirSync(output, { recursive: true });
+    const fixture = mkdtempSync(join(output, "gate-focused-"));
+    const spec = join(fixture, runner === "vitest" ? "focused.test.ts" : "focused.spec.ts");
+    const config = join(fixture, "config.mjs");
+    writeFileSync(
+      spec,
+      `import { ${runner === "vitest" ? "it as test" : "test"} } from "${runner === "vitest" ? "vitest" : "@playwright/test"}";\ntest.only("focused", () => {});\n`,
+    );
+    writeFileSync(
+      config,
+      runner === "vitest"
+        ? `export default { test: { include: [${JSON.stringify(spec.replaceAll("\\", "/"))}] } };\n`
+        : `export default { testDir: ${JSON.stringify(fixture.replaceAll("\\", "/"))}, outputDir: ${JSON.stringify(join(fixture, "results").replaceAll("\\", "/"))} };\n`,
+    );
+    try {
+      // Paths are argv, never interpolated into shell source.
+      const result = spawnSync(
+        "bash",
+        [
+          "-c",
+          'pnpm exec "$@"',
+          "gate-focused",
+          runner,
+          runner === "vitest" ? "run" : "test",
+          "--config",
+          config.replaceAll("\\", "/"),
+          runner === "vitest" ? "--allowOnly=false" : "--forbid-only",
+        ],
+        {
+          encoding: "utf8",
+          timeout: 40_000,
+        },
+      );
+      expect(result.status, result.error?.message ?? result.stdout + result.stderr).toBe(1);
+      expect(result.stdout + result.stderr).toMatch(/\.only/);
+    } finally {
+      rmSync(fixture, { recursive: true, force: true });
+    }
+  },
+);
 
 it("queues gates sharing Git metadata and releases the lock after a failure", { timeout: 40_000 }, async () => {
   const output = resolve("tests/.output");

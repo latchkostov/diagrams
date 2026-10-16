@@ -1,5 +1,21 @@
 # Release notes
 
+## Verification gate review fixes (2026-10-16)
+
+- The full local gate owns its app server: gate mode disables reuse for every
+  Playwright server, and an occupied port anywhere in its five-port range fails
+  before checks begin with a clear remedy. This prevents testing another checkout.
+- Nonignored untracked files block verification both before checks and before the
+  HEAD stamp. Gitignored local files remain allowed. Focused Vitest and Playwright
+  tests now fail the full gate even outside CI.
+- A fresh E2E bundle is built once per gate and reused across six shards. A failed
+  build cannot run shards against an older bundle or stamp HEAD. The installed and
+  versioned runners stay in sync. No output goldens change; product UI is unchanged.
+- Review triage: all seven findings are valid. The two P1s and the security P2
+  describe the same server-ownership issue; both focused-test P2s share one fix.
+  No finding is rejected. Regression tests cover every underlying issue, including
+  occupied ports, ignored/untracked files, focused-test CLI rejection and build reuse.
+
 ## Reliable local verification (2026-10-15)
 
 - The full push gate now runs every shard after failures and reports complete JSON-based

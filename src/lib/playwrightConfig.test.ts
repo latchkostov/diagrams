@@ -20,6 +20,7 @@ it.each([
     E2E_SKIP_PREVIEW: "",
     E2E_SELF_HOST: "internal,locked",
     E2E_PREBUILT: "",
+    E2E_GATE: "",
     E2E_PORT: "6360",
     E2E_DEV_PORT: "6361",
     E2E_PREVIEW_PORT: "6362",
@@ -41,5 +42,34 @@ it.each([
     vi.resetModules();
     const { default: normal } = await import("../../playwright.config");
     expect(config.projects).toEqual(normal.projects?.filter((project) => project.name === "chromium"));
+  }
+});
+
+it.each(["build", "dev"])("gate mode owns every webServer and forbids focused tests (%s)", async (target) => {
+  vi.resetModules();
+  for (const [key, value] of Object.entries({
+    CI: "",
+    E2E_GATE: "1",
+    E2E_TARGET: target,
+    E2E_CHROMIUM_ONLY: "",
+    E2E_SKIP_PREVIEW: "",
+    E2E_SELF_HOST: "internal,locked",
+    E2E_PREBUILT: "1",
+    E2E_PORT: "6360",
+    E2E_DEV_PORT: "6361",
+    E2E_PREVIEW_PORT: "6362",
+    E2E_INTERNAL_PORT: "6363",
+    E2E_LOCKED_PORT: "6364",
+  }))
+    vi.stubEnv(key, value);
+  const { default: config } = await import("../../playwright.config");
+  const servers = Array.isArray(config.webServer) ? config.webServer : [];
+  expect(servers).toHaveLength(target === "build" ? 5 : 4);
+  for (const server of servers) expect(server.reuseExistingServer, server.url).toBe(false);
+  expect(config.forbidOnly).toBe(true);
+  if (target === "build") {
+    const app = servers.find((server) => server.url === "http://localhost:6360");
+    expect(app?.command).toContain("vite preview");
+    expect(app?.command).not.toContain("vite build");
   }
 });
