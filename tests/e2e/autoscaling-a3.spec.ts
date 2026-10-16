@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { cloudFixture } from "../../src/lab/cloudFixture";
@@ -229,4 +230,31 @@ test("Checks and live playback show the same scenario sizing sentence", async ({
   const live = page.getByTestId("autoscaling-plan-text");
   await expect(live).toContainText("Raise the maximum to 11");
   expect(checks).toContain((await live.textContent()) ?? "missing");
+});
+
+test("Terraform import: cloud scaling policies arrive executable, with the report saying so", async ({
+  page,
+  consoleErrors,
+}) => {
+  await page.addInitScript(() =>
+    localStorage.setItem("diagrams.inspector.open.v1", JSON.stringify({ "node-simulation": true })),
+  );
+  await gotoCanvas(page, "kafka-order-pipeline");
+  await page.getByTestId("import-input").setInputFiles({
+    name: "plan.json",
+    mimeType: "application/json",
+    buffer: readFileSync("tests/fixtures/imports/terraform/autoscaling-a3.json"),
+  });
+  await page.getByTestId("toast-import-details").click();
+  const report = page.getByTestId("import-report");
+  await expect(report).toContainText("Executable Cloud Run policy imported");
+  await expect(report).toContainText("Executable ECS policy imported");
+  await page.getByTestId("import-report-done").click();
+  const d = await savedDiagram(page);
+  const policy = (label: string) =>
+    (d.nodes.find((n) => n.label === label)?.props?.autoscaling as { mode?: string; controller?: { kind?: string } })
+      ?.controller?.kind;
+  expect(policy("checkout")).toBe("cloudRun");
+  expect(d.planning).toEqual({ revision: "p3-a1" });
+  expectNoErrors(consoleErrors);
 });
