@@ -972,9 +972,23 @@ capacity suffices. A simulation that sets its own policy for a node is skipped f
 
 Bounds: at most 4 runs per simulation (the scenario plus up to three verify/refine reruns, shared by all its
 scalers), 8 simulations, 600 s simulated per run, a work estimate (runs × ticks × diagram elements ≤ 60,000,000)
-checked before any engine exists, and the Run simulations start-work bound. Over budget the plan is
-**unavailable** with its reason, never partial. Results are memoized on the diagram's simulation-relevant
-content. Operation counts prove that eight times as many scalers cost no more runs or ticks.
+checked before any engine exists, and a start-work bound: the sampled messages each simulation sends, each times
+what one arrival can become downstream (every copy, compounded through every stage), at most 10,000,000. While
+runs play, one shared budget of 1,000,000 sampled messages (sent and copied, all runs of a diagram together)
+catches what the estimate can't see, such as a copying cycle: the engine refuses the message before creating it.
+A verification rerun whose fixes would take the diagram past its lifecycle budget isn't played. Over any budget
+the plan is **unavailable** with its reason, never partial, and the other checks still run. Results are memoized
+on what a simulation sees (`src/sim/simulationContent.ts`: node ids, stencils, labels, subtitles and props;
+connection ends, kinds, relationships and props; the simulations), so moving things or renaming a connection
+reuses them and renaming a node doesn't. Scalers and their distinct input groups are found from one index of the
+connections. Operation counts prove that eight times as many scalers cost no more runs or ticks, and eight times
+as many scalers and connections no more than linear work to find them.
+
+In the editor, planning runs only in the checks worker: no simulation plays on the UI thread. The background
+check returns its plans with its result, and the editor remembers the worker's results by simulation content
+(`src/lib/scenarioPlanner.ts`). `describe_diagram` and `check_diagram` wait for the worker's plan, a fix is
+re-checked against the plans its finding came from, and Copy prompt includes sizing once the worker has worked it
+out. Headless tools and tests plan where they're called.
 
 The same result appears in three places: Checks (the capacity rule's scenario sizing finding, with one undoable
 fix replacing the complete policy, or partitions and maximum together), agent analysis (`describe_diagram`

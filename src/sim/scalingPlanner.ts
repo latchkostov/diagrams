@@ -1,4 +1,4 @@
-import type { DiagramFile, Simulation } from "../model/types";
+import type { DiagramEdge, DiagramFile, Simulation } from "../model/types";
 import type { AutoscalingConfig, ExecutableController } from "../model/autoscaling";
 import { replicaRange } from "../model/autoscaling";
 import { stencilRole } from "../stencils/roles";
@@ -7,6 +7,10 @@ import { createSimulationRun, estimateTotalMs } from "./simulation";
 import { resolveMultiplier, resolveScale } from "./units";
 import { resolveNodeProps } from "./defaults";
 import type { ScalingDecision } from "./autoscaling";
+import { WorkBudgetError } from "./engine";
+import { LifecycleBudgetError, resourceBudgetExceeded } from "../model/resourceBudget";
+import { simulationContent } from "./simulationContent";
+import { offThreadPlans } from "../lib/scenarioPlanner";
 
 // Scenario sizing (docs/SIMULATION.md § A3 planner). For each saved simulation, play it headless with the same
 // engine, controllers and lifecycle as playback; watch every executable scaler; suggest the authored min or max
@@ -23,8 +27,11 @@ export const PLANNER_LIMITS = {
   simulations: 8,
   /** Estimated engine work (ticks × elements × runs) across a diagram's plans. Over it: unavailable. */
   work: 60_000_000,
-  /** Sampled messages × widest fan-out a simulation may start (as Run simulations). */
+  /** Sampled messages a simulation may start, each times what one arrival can become downstream (every copy). */
   startWork: 10_000_000,
+  /** Sampled messages (sent and copied) every run of one diagram's plans may create together (a few seconds of work;
+   *  eight times the busiest frozen plan). Over it: unavailable. */
+  messages: 1_000_000,
   /** Sampling interval of the observations. */
   sampleMs: 1000,
 } as const;
@@ -101,22 +108,41 @@ interface Watched {
 
 function scalers(d: DiagramFile): Watched[] {
   const nodes = new Map(d.nodes.map((n) => [n.id, n]));
+  // Broker connections into each node, indexed once: O(nodes + edges), however many scalers.
+  const incoming = new Map<string, DiagramEdge[]>();
+  for (const e of d.edges) {
+    const from = nodes.get(e.from);
+    if (!from || (e.relation && e.relation !== "flow") || !brokerRole(stencilRole(from.stencil))) continue;
+    const list = incoming.get(e.to);
+    if (list) list.push(e);
+    else incoming.set(e.to, [e]);
+  }
+  const partitionedBroker = new Map<string, boolean>();
   return d.nodes.flatMap((n) => {
     const p = resolveNodeProps(d, n);
     const a = p.autoscaling;
     if (!p.resources || a?.mode !== "on") return [];
-    const inputs: [string, string][] = [];
-    const partitioned: string[] = [];
-    for (const e of d.edges) {
-      const from = nodes.get(e.from);
-      if (e.to !== n.id || !from || (e.relation && e.relation !== "flow") || !brokerRole(stencilRole(from.stencil)))
-        continue;
-      const role = stencilRole(from.stencil);
-      inputs.push([from.id, role === "queue" ? "queue" : typeof e.props?.group === "string" ? e.props.group : e.id]);
-      if (resolveNodeProps(d, from).broker?.partitioned) partitioned.push(from.id);
+    // One input per distinct broker group: parallel connections from the same group are one reader's lag.
+    const inputs = new Map<string, [string, string]>();
+    const partitioned = new Set<string>();
+    for (const e of incoming.get(n.id) ?? []) {
+      const from = nodes.get(e.from)!;
+      const group =
+        stencilRole(from.stencil) === "queue" ? "queue" : typeof e.props?.group === "string" ? e.props.group : e.id;
+      inputs.set(JSON.stringify([from.id, group]), [from.id, group]);
+      let isPartitioned = partitionedBroker.get(from.id);
+      if (isPartitioned === undefined)
+        partitionedBroker.set(from.id, (isPartitioned = !!resolveNodeProps(d, from).broker?.partitioned));
+      if (isPartitioned) partitioned.add(from.id);
     }
     return [
-      { id: n.id, controller: a.controller, inputs, partitioned: [...new Set(partitioned)], slots: p.concurrency },
+      {
+        id: n.id,
+        controller: a.controller,
+        inputs: [...inputs.values()],
+        partitioned: [...partitioned],
+        slots: p.concurrency,
+      },
     ];
   });
 }
@@ -129,25 +155,64 @@ function ownsPolicy(sim: Simulation, node: string): boolean {
     )
   );
 }
+/**
+ * What one arrival at each node can become: itself, plus what every connection it sends a copy down becomes
+ * (an upper bound: a route that picks one connection still counts them all). Fan-out compounds through every stage.
+ * A connection back into the path counts nothing here: the run's message budget bounds cycles.
+ */
+function downstream(d: DiagramFile): (id: string) => number {
+  const out = new Map<string, string[]>();
+  for (const e of d.edges) {
+    if (e.relation && e.relation !== "flow") continue;
+    const list = out.get(e.from);
+    if (list) list.push(e.to);
+    else out.set(e.from, [e.to]);
+  }
+  const memo = new Map<string, number>();
+  const visiting = new Set<string>();
+  return (root) => {
+    if (memo.has(root)) return memo.get(root)!;
+    // Iterative post-order: a long chain never deepens the call stack.
+    const stack: [string, number][] = [[root, 0]];
+    visiting.add(root);
+    while (stack.length) {
+      const top = stack[stack.length - 1];
+      const next = out.get(top[0]) ?? [];
+      if (top[1] < next.length) {
+        const child = next[top[1]++];
+        if (!memo.has(child) && !visiting.has(child)) {
+          visiting.add(child);
+          stack.push([child, 0]);
+        }
+      } else {
+        stack.pop();
+        visiting.delete(top[0]);
+        let sum = 1;
+        for (const child of next) sum += memo.get(child) ?? 0;
+        memo.set(top[0], Math.min(sum, 1e15));
+      }
+    }
+    return memo.get(root)!;
+  };
+}
 function startWork(d: DiagramFile, sim: Simulation): number {
-  const fanOut = new Map<string, number>();
-  for (const e of d.edges) fanOut.set(e.from, (fanOut.get(e.from) ?? 0) + 1);
-  const widest = Math.max(1, ...fanOut.values());
+  const reach = downstream(d);
   const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.max(0, v) : 0);
   let sent = 0;
   for (const p of sim.traffic) {
     const s = p.shape;
     sent +=
-      s.kind === "burst"
+      reach(p.node) *
+      (s.kind === "burst"
         ? n(s.count)
         : s.kind === "constant"
           ? (n(s.ratePerSec) * n(s.durationMs)) / 1000
           : s.kind === "spike"
             ? (Math.max(n(s.baseRate), n(s.peakRate)) * n(s.durationMs)) / 1000
-            : s.stages.reduce((sum, st) => sum + (n(st.targetRate) * n(st.durationMs)) / 1000, n(s.startRate));
+            : s.stages.reduce((sum, st) => sum + (n(st.targetRate) * n(st.durationMs)) / 1000, n(s.startRate)));
   }
-  for (const { action } of sim.timeline ?? []) if (action.do === "inject") sent += n(action.count);
-  return ((sent * resolveMultiplier(sim.multipliers?.traffic)) / resolveScale(sim.scale)) * widest;
+  for (const { action } of sim.timeline ?? []) if (action.do === "inject") sent += reach(action.node) * n(action.count);
+  return (sent * resolveMultiplier(sim.multipliers?.traffic)) / resolveScale(sim.scale);
 }
 
 /** The metric a decision read, in the planner's vocabulary (the UI translates each kind with its unit). */
@@ -199,8 +264,13 @@ function withTarget(
 }
 
 /** Plays one run and records, once per simulated second, what each watched scaler did. */
-function observe(d: DiagramFile, sim: Simulation, watched: Watched[], counter: { ticks: number }) {
-  const run = createSimulationRun(d, sim);
+function observe(
+  d: DiagramFile,
+  sim: Simulation,
+  watched: Watched[],
+  counter: { ticks: number; messages: { remaining: number } },
+) {
+  const run = createSimulationRun(d, sim, { messageBudget: counter.messages });
   run.setTraceActions(false);
   const engine = run.engine;
   const scale = resolveScale(sim.scale);
@@ -352,7 +422,30 @@ function withRange(a: AutoscalingConfig, key: "maxReplicas" | "minReplicas", val
   return next;
 }
 
-function planSimulation(d: DiagramFile, sim: Simulation, counter: { ticks: number; runs: number }): ScalingPlan {
+type Counter = { ticks: number; runs: number; messages: { remaining: number } };
+function unavailable(sim: Simulation, reason: NonNullable<ScalingPlan["reason"]>): ScalingPlan {
+  return {
+    simulation: sim.id,
+    title: sim.title,
+    traffic: resolveMultiplier(sim.multipliers?.traffic),
+    horizonMs: Math.min(estimateTotalMs(sim), PLANNER_LIMITS.horizonMs),
+    status: "unavailable",
+    reason,
+    suggestions: [],
+    runs: 0,
+    ticks: 0,
+  };
+}
+/** A run over the message budget, or a candidate over the lifecycle budget, makes the plan unavailable. */
+function planSimulation(d: DiagramFile, sim: Simulation, counter: Counter): ScalingPlan {
+  try {
+    return planBounded(d, sim, counter);
+  } catch (error) {
+    if (error instanceof WorkBudgetError || error instanceof LifecycleBudgetError) return unavailable(sim, "budget");
+    throw error;
+  }
+}
+function planBounded(d: DiagramFile, sim: Simulation, counter: Counter): ScalingPlan {
   const horizonMs = Math.min(estimateTotalMs(sim), PLANNER_LIMITS.horizonMs);
   const base = {
     simulation: sim.id,
@@ -362,11 +455,13 @@ function planSimulation(d: DiagramFile, sim: Simulation, counter: { ticks: numbe
     suggestions: [] as PlanSuggestion[],
   };
   const watched = scalers(d).filter((w) => !ownsPolicy(sim, w.id));
+  // A diagram past its lifecycle budget doesn’t play at all; say so instead of failing the checks.
+  if (resourceBudgetExceeded(d)) throw new LifecycleBudgetError("The diagram exceeds the lifecycle budget");
   if (!watched.length) return { ...base, status: "unavailable", reason: "policy", runs: 0, ticks: 0 };
   if (startWork(d, sim) > PLANNER_LIMITS.startWork)
     return { ...base, status: "unavailable", reason: "start", runs: 0, ticks: 0 };
   const multiplier = resolveMultiplier(sim.multipliers?.capacity);
-  const local = { ticks: 0 };
+  const local = { ticks: 0, messages: counter.messages };
   let runs = 1;
   const first = observe(d, sim, watched, local);
   const nodes = new Map(d.nodes.map((n) => [n.id, n]));
@@ -450,7 +545,10 @@ function planSimulation(d: DiagramFile, sim: Simulation, counter: { ticks: numbe
   }
   // Verify (and refine) every suggestion together with the same seed. Keep only what the rerun bears out.
   while (suggestions.some((s) => s.fix && !s.verified) && runs < PLANNER_LIMITS.runs) {
-    const rerun = observe(apply(d, suggestions), sim, watched, local);
+    // A fix that would take the diagram past its lifecycle budget can't be played, so it isn't offered.
+    const candidate = apply(d, suggestions);
+    if (resourceBudgetExceeded(candidate)) throw new LifecycleBudgetError("Scenario sizing exceeds the budget");
+    const rerun = observe(candidate, sim, watched, local);
     runs++;
     let refined = false;
     suggestions = suggestions.map((s) => {
@@ -523,28 +621,40 @@ export function planWork(d: DiagramFile): number {
 }
 
 const cache = new Map<string, ScalingPlan[]>();
-/** Plans for every saved simulation with a scaler. Memoized on the diagram's simulation-relevant content. */
-export function planScaling(d: DiagramFile, counter = { ticks: 0, runs: 0 }): ScalingPlan[] {
-  if (d.planning?.revision !== "p3-a1" || !d.simulations?.length || !scalers(d).length) return [];
-  const key = JSON.stringify([d.planning, d.nodes.map((n) => [n.id, n.stencil, n.props]), d.edges, d.simulations]);
+/**
+ * Plans for every saved simulation with a scaler, played here. Memoized on what a simulation sees of the diagram
+ * (src/sim/simulationContent.ts): moving things or renaming a connection reuses the result; renaming a node doesn't.
+ */
+export function planScaling(
+  d: DiagramFile,
+  counter: { ticks: number; runs: number; messages?: number } = { ticks: 0, runs: 0 },
+): ScalingPlan[] {
+  if (d.planning?.revision !== "p3-a1" || !d.simulations?.length) return [];
+  const key = simulationContent(d);
   const hit = cache.get(key);
   if (hit) return hit;
+  if (!scalers(d).length) return [];
   const sims = d.simulations.slice(0, PLANNER_LIMITS.simulations);
+  const messages = { remaining: PLANNER_LIMITS.messages };
+  const run = { ticks: 0, runs: 0, messages };
   const plans =
     planWork(d) > PLANNER_LIMITS.work
-      ? sims.map((sim) => ({
-          simulation: sim.id,
-          title: sim.title,
-          traffic: resolveMultiplier(sim.multipliers?.traffic),
-          horizonMs: Math.min(estimateTotalMs(sim), PLANNER_LIMITS.horizonMs),
-          status: "unavailable" as const,
-          reason: "budget" as const,
-          suggestions: [],
-          runs: 0,
-          ticks: 0,
-        }))
-      : sims.map((sim) => planSimulation(d, sim, counter));
+      ? sims.map((sim) => unavailable(sim, "budget"))
+      : sims.map((sim) => planSimulation(d, sim, run));
+  counter.ticks += run.ticks;
+  counter.runs += run.runs;
+  counter.messages = (counter.messages ?? 0) + PLANNER_LIMITS.messages - messages.remaining;
   if (cache.size >= 4) cache.delete(cache.keys().next().value!);
   cache.set(key, plans);
   return plans;
+}
+
+/**
+ * Plans to read without blocking. In the editor (an off-thread planner registered, src/lib/scenarioPlanner.ts) only
+ * what the checks worker already worked out for exactly this content: undefined until then. Anywhere else (headless
+ * tools, the worker itself) planned here. Checks and agent descriptions read this; never a simulation on the UI thread.
+ */
+export function scenarioPlans(d: DiagramFile): ScalingPlan[] | undefined {
+  const editor = offThreadPlans(d);
+  return editor ? editor.plans : planScaling(d);
 }

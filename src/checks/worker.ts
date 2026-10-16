@@ -14,7 +14,9 @@ export interface CheckRequest {
   plan?: true;
 }
 export type CheckResponse =
-  { id: number; result: CheckResult } | { id: number; plans: ScalingPlan[] } | { id: number; error: string };
+  | { id: number; result: CheckResult; plans: ScalingPlan[] }
+  | { id: number; plans: ScalingPlan[] }
+  | { id: number; error: string };
 
 interface WorkerScope {
   onmessage: ((e: MessageEvent<CheckRequest>) => void) | null;
@@ -25,7 +27,10 @@ const scope = self as unknown as WorkerScope;
 scope.onmessage = (e) => {
   const { id, diagram, plan } = e.data;
   try {
-    scope.postMessage(plan ? { id, plans: planScaling(diagram) } : { id, result: runChecks(diagram) });
+    // The capacity check's plans go back with its result (memoized: no second run), for main-thread readers.
+    scope.postMessage(
+      plan ? { id, plans: planScaling(diagram) } : { id, result: runChecks(diagram), plans: planScaling(diagram) },
+    );
   } catch (err) {
     scope.postMessage({ id, error: err instanceof Error ? err.message : String(err) });
   }

@@ -75,6 +75,9 @@ import type {
 const STEP = 10;
 const EWMA_ALPHA = 1 - Math.exp(-STEP / 1000);
 const EVENT_CAP = 200;
+/** A headless run created more messages than its shared budget (EngineOptions.messageBudget). */
+export class WorkBudgetError extends Error {}
+
 export const SOURCE_RATE_CAP = 10_000;
 export const SOURCE_VOLUME_CAP = 200_000;
 
@@ -348,8 +351,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
   }
 
+  /** Headless planning's shared message budget: refuses the message before it is allocated. */
+  function spend(): void {
+    const budget = opts.messageBudget;
+    if (budget && --budget.remaining < 0) throw new WorkBudgetError("The run created more messages than its budget");
+  }
+
   /** A fan-out copy with its own id, in the same family (its parent keeps the original id). */
   function copy(node: Node, message: Message): Message {
+    spend();
     const next = { ...message, id: nextMessage++, attempts: 0 };
     inSystem++;
     message.family.alive++;
@@ -1045,6 +1055,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function emit(node: Node, type: string, injected: boolean): void {
+    spend();
     const id = nextMessage++;
     const message = { id, type, color: messageColor(type), attempts: 0, family: { root: id, alive: 1, parked: 0 } };
     inSystem++;

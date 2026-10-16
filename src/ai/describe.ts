@@ -8,7 +8,7 @@ import { resolveCapabilities } from "../planning/capabilities";
 import { explainNode } from "../planning/explanation";
 import { analyzeCapacity } from "../sim/capacity";
 import { compileTopology } from "../sim/topology";
-import { planScaling } from "../sim/scalingPlanner";
+import { scenarioPlans } from "../sim/scalingPlanner";
 import { planMessage } from "../checks/scalingFindings";
 
 const quote = (s: string) => JSON.stringify(s);
@@ -37,9 +37,12 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
   const connections = resolveCapabilities(d, topology);
   const analysis = d.nodes.length <= 200 && d.edges.length <= 500 ? analyzeCapacity(d) : undefined;
   const resolved = (id: string) => (analysis ? explainNode(d, id, { analysis, topology, fixes: false }) : undefined);
-  // Scenario sizing: the same bounded planner result Checks and live playback show.
+  // Scenario sizing: the same bounded planner result Checks and live playback show. In the editor, only what the
+  // checks worker already worked out (the agent tool waits for it); never a simulation on the UI thread.
   const plans = analysis
-    ? planScaling(d).filter((p) => (p.status === "unavailable" ? p.reason !== "policy" : p.suggestions.length))
+    ? (scenarioPlans(d) ?? []).filter((p) =>
+        p.status === "unavailable" ? p.reason !== "policy" : p.suggestions.length,
+      )
     : [];
   const name = (id: string) => d.nodes.find((n) => n.id === id)?.label ?? id;
   if (options.format === "json") {

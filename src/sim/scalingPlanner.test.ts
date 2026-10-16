@@ -4,6 +4,7 @@ import { plannerFixture } from "../lab/plannerFixture";
 import type { DiagramFile } from "../model/types";
 import type { AppServiceController, AutoscalingConfig } from "../model/autoscaling";
 import { cloudFixture } from "../lab/cloudFixture";
+import { createEngine, WorkBudgetError } from "./engine";
 
 const plan = (d: DiagramFile) => planScaling(structuredClone(d))[0];
 
@@ -61,7 +62,7 @@ describe("scenario sizing planner", () => {
     const counter = { ticks: 0, runs: 0 };
     const [p] = planScaling(d, counter);
     expect(p).toMatchObject({ status: "unavailable", reason: "budget", suggestions: [] });
-    expect(counter).toEqual({ ticks: 0, runs: 0 });
+    expect(counter).toEqual({ ticks: 0, runs: 0, messages: 0 });
   });
   it("bounds runs per simulation however many scalers it verifies (8× scalers, same runs and ticks)", () => {
     const counts = [1, 8].map((n) => {
@@ -118,5 +119,138 @@ describe("scenario sizing targets", () => {
     const fixed = s.fix![0].props.autoscaling as { controller: AppServiceController };
     expect(fixed.controller.rules[0].threshold).toBe(57);
     expect(s.verified!.backlog).toBeLessThan(s.backlog);
+  });
+});
+
+describe("planner bounds and cache (review round 1)", () => {
+  it("plans again when a source rename changes what a filter passes; a connection's label or position doesn't", () => {
+    const d = plannerFixture();
+    // The filter passes the source's messages: its label names them.
+    d.edges[0].props = { ...d.edges[0].props, filter: ["Traffic"] };
+    expect(planScaling(d)[0].suggestions[0]).toMatchObject({ kind: "max", to: 14 });
+    const cosmetic = structuredClone(d);
+    Object.assign(cosmetic.edges[0], { label: "orders", sourceSide: "right" });
+    cosmetic.nodes[0].x += 200;
+    const quiet = { ticks: 0, runs: 0 };
+    planScaling(cosmetic, quiet);
+    expect(quiet.runs).toBe(0);
+    const renamed = structuredClone(d);
+    renamed.nodes[0].label = "Other";
+    const counter = { ticks: 0, runs: 0 };
+    const [p] = planScaling(renamed, counter);
+    expect(counter.runs).toBeGreaterThan(0);
+    expect(p.suggestions).toEqual([]);
+  });
+  it("returns unavailable, not an exception, when verifying a fix would pass the lifecycle budget", () => {
+    const d = plannerFixture();
+    // Nine 2,500-replica services and one of 2,490 bring the diagram to the 100,000 lifecycle budget with max 10.
+    for (let i = 0; i < 10; i++)
+      d.nodes.push({
+        id: `fixed-${i}`,
+        stencil: "service.dotnet",
+        label: `Fixed ${i}`,
+        x: 0,
+        y: 400 + i * 10,
+        props: { replicas: i < 9 ? 2500 : 2490, resources: d.nodes[1].props!.resources },
+      });
+    const [p] = planScaling(d);
+    expect(p).toMatchObject({ status: "unavailable", reason: "budget", suggestions: [] });
+  });
+  it("refuses compounded fan-out before running: one message through eight ten-way stages", () => {
+    const d = plannerFixture();
+    d.simulations![0].traffic = [{ id: "one", node: "source", shape: { kind: "burst", count: 1 } }];
+    d.simulations![0].multipliers = { traffic: 1 };
+    d.simulations![0].durationMs = 10_000;
+    let previous = ["source"];
+    d.edges = [];
+    for (let stage = 0; stage < 8; stage++) {
+      const next: string[] = [];
+      for (const from of previous.slice(0, 1))
+        for (let k = 0; k < 10; k++) {
+          const id = `s${stage}-${k}`;
+          d.nodes.push({ id, stencil: "service.dotnet", label: id, x: 0, y: 0, props: { latencyMs: 0 } });
+          d.edges.push({ id: `${from}-${id}`, from, to: id, kind: "async", props: { travelMs: 0 } });
+          next.push(id);
+        }
+      // Every node of a stage feeds every node of the next: 10 × 10 × … copies.
+      if (stage > 0)
+        for (const from of previous.slice(1))
+          for (const to of next) d.edges.push({ id: `${from}-${to}`, from, to, kind: "async", props: { travelMs: 0 } });
+      previous = next;
+    }
+    d.edges.push({ id: "to-worker", from: "source", to: "worker", kind: "async", props: { travelMs: 0 } });
+    const counter = { ticks: 0, runs: 0 };
+    const [p] = planScaling(d, counter);
+    expect(p).toMatchObject({ status: "unavailable", reason: "start" });
+    expect(counter.runs).toBe(0);
+  });
+  it("stops a run at the message budget: a copying cycle the preflight can't see", () => {
+    const d = plannerFixture();
+    d.simulations![0].traffic = [{ id: "few", node: "source", shape: { kind: "burst", count: 10 } }];
+    d.simulations![0].multipliers = { traffic: 1 };
+    // a ⇄ b, each also copying on: every pass doubles the messages.
+    d.nodes.push(
+      { id: "a", stencil: "service.dotnet", label: "A", x: 0, y: 0, props: { latencyMs: 0 } },
+      { id: "b", stencil: "service.dotnet", label: "B", x: 0, y: 0, props: { latencyMs: 0 } },
+    );
+    d.edges.push(
+      { id: "s-a", from: "source", to: "a", kind: "async", props: { travelMs: 10 } },
+      { id: "a-b", from: "a", to: "b", kind: "async", props: { travelMs: 10 } },
+      { id: "a-b2", from: "a", to: "b", kind: "async", props: { travelMs: 10 } },
+      { id: "b-a", from: "b", to: "a", kind: "async", props: { travelMs: 10 } },
+      { id: "b-a2", from: "b", to: "a", kind: "async", props: { travelMs: 10 } },
+    );
+    const counter: { ticks: number; runs: number; messages?: number } = { ticks: 0, runs: 0 };
+    // A small budget keeps the test quick; the shipped one is the same check.
+    const limits = PLANNER_LIMITS as { messages: number };
+    const shipped = limits.messages;
+    limits.messages = 20_000;
+    try {
+      const [p] = planScaling(d, counter);
+      expect(p).toMatchObject({ status: "unavailable", reason: "budget" });
+    } finally {
+      limits.messages = shipped;
+    }
+    expect(counter.messages).toBeLessThanOrEqual(20_001);
+  });
+  it("the engine refuses the message past its shared budget, before creating it", () => {
+    const budget = { remaining: 100 };
+    const e = createEngine({ seed: 1, messageBudget: budget });
+    e.load(plannerFixture());
+    e.inject("source", 10);
+    expect(() => e.step(1000)).not.toThrow();
+    expect(budget.remaining).toBeLessThan(100);
+    expect(() => e.inject("source", 200)).toThrow(WorkBudgetError);
+    expect(budget.remaining).toBe(-1);
+  });
+  it("counts a broker group once however many parallel connections read it", () => {
+    const d = plannerFixture("partitions", 60);
+    const once = plan(d).suggestions[0];
+    d.edges.push({ ...d.edges[0], id: "consume-again" });
+    const twice = plan(d).suggestions[0];
+    expect(twice.endBacklog).toBe(once.endBacklog);
+    expect(twice.backlog).toBe(once.backlog);
+  });
+  it("finds scalers in work linear in the diagram (8× scalers and connections)", () => {
+    const reads = [500, 4000].map((n) => {
+      const d = plannerFixture();
+      for (let i = 0; i < n; i++) {
+        d.nodes.push({ id: `q${i}`, stencil: "azure.service-bus.queue", label: `Q${i}`, x: 0, y: 0, props: {} });
+        d.nodes.push({ id: `w${i}`, stencil: "service.dotnet", label: `W${i}`, x: 0, y: 0, props: d.nodes[1].props });
+        d.edges.push({ id: `e${i}`, from: `q${i}`, to: `w${i}`, kind: "async", props: {} });
+      }
+      let count = 0;
+      const edges = d.edges;
+      d.edges = new Proxy(edges, {
+        get(target, key, receiver) {
+          if (typeof key === "string" && /^\d+$/.test(key)) count++;
+          return Reflect.get(target, key, receiver);
+        },
+      });
+      // Over the work budget: unavailable without a run, after finding every scaler.
+      expect(planScaling(d)[0]).toMatchObject({ status: "unavailable", reason: "budget" });
+      return count;
+    });
+    expect(reads[1] / reads[0]).toBeLessThan(10);
   });
 });

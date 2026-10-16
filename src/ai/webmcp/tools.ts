@@ -23,6 +23,7 @@ import type { ToolDef } from "./adapter";
 import { EDIT_TOOLS } from "./toolList";
 import { choicesFrom, type StencilChoice } from "../ui/apply";
 import { turnId } from "../ui/thread";
+import { scenarioPlanner } from "../../lib/scenarioPlanner";
 
 export type ToolName = keyof typeof toolSchemas;
 
@@ -98,6 +99,16 @@ function sameDocument(host: WebMcpHost): () => void {
   };
 }
 
+/**
+ * Scenario sizing plays simulations, so in the editor it runs in the checks worker (memoized there): wait for its
+ * result for `diagram`, then describe or check on this thread without running one. A failed plan leaves sizing out.
+ */
+async function sizingReady(host: WebMcpHost, diagram: DiagramFile): Promise<void> {
+  const still = sameDocument(host);
+  await scenarioPlanner()?.(diagram).catch(() => undefined);
+  still();
+}
+
 function compact<T extends { results?: unknown[] }>(result: T): T {
   if (JSON.stringify(result).length <= OUTPUT_BUDGET || !result.results) return result;
   const results = [...result.results];
@@ -111,8 +122,9 @@ function compact<T extends { results?: unknown[] }>(result: T): T {
 
 export function buildTools(host: WebMcpHost, names: readonly ToolName[] = EDIT_TOOLS): ToolDef[] {
   const run: Record<ToolName, ToolDef["run"]> = {
-    describe_diagram(input) {
+    async describe_diagram(input) {
       checkSchema(input, toolSchemas.describe_diagram);
+      await sizingReady(host, needEditor(host).getDiagram());
       return describeDiagram(needEditor(host).getDiagram(), input as DescribeOptions);
     },
 
@@ -128,6 +140,7 @@ export function buildTools(host: WebMcpHost, names: readonly ToolName[] = EDIT_T
       const { runChecks, agentReport } = await import("../../checks");
       // Read the diagram after the load: it may have become private (or another one opened) meanwhile.
       const diagram = needEditor(host).getDiagram();
+      await sizingReady(host, diagram);
       if (!simulations || !diagram.simulations?.length)
         return agentReport(runChecks(diagram, rules ? { rules } : {}), include);
       // Run simulations, as the Checks card does: in a worker, bounded (a minute of each, about 15 s in all). It takes
