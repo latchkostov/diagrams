@@ -22,7 +22,8 @@ export function Toaster() {
   const action = useRef<HTMLButtonElement>(null);
   const focusAction = !!t?.action?.focus;
   const toastId = t?.id;
-  useLayoutEffect(() => {
+  // After the effects of the same commit: a dialog closing as the toast shows gives its opener the focus back first.
+  useEffect(() => {
     if (!focusAction) return;
     const before = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const button = action.current;

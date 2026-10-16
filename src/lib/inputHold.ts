@@ -5,8 +5,9 @@
 // theirs as they mount: src/main.tsx imports this module first, so its listener runs before every one of them. It does
 // nothing until a task holds the input.
 //
-// While held: Escape goes to the holder (an export cancels), Tab stays where it is (focus on the toast's Cancel), and
-// the toasts still take their own clicks and keys (the Cancel button; the editor leaves overlays' events alone).
+// While held: Escape goes to the latest holder (an export cancels), and only the toasts' own buttons still work: a
+// click, or Enter or Space on one (the export's Cancel has the focus). Every other key stays here, Tab included, so no
+// shortcut (Ctrl+K, Ctrl+O) opens anything over a task that is reading the page.
 
 const HELD = [
   "pointerdown",
@@ -23,16 +24,22 @@ const HELD = [
   "paste",
 ] as const;
 
-let holder: { onEscape?: () => void } | null = null;
+/** The tasks holding the input, latest last: one releasing doesn't free the page while another still reads it. */
+const holders: { onEscape?: () => void }[] = [];
+
+/** A toast's button pressed: a click, or a plain Enter or Space on it. */
+function pressesToastButton(e: Event) {
+  if (!(e.target instanceof Element) || !e.target.closest("[data-toast] button")) return false;
+  if (!(e instanceof KeyboardEvent)) return true;
+  return (e.key === "Enter" || e.key === " ") && !e.ctrlKey && !e.metaKey && !e.altKey;
+}
 
 function hold(e: Event) {
-  if (!holder) return;
-  const key = e instanceof KeyboardEvent ? e.key : undefined;
-  const inToast = e.target instanceof Element && !!e.target.closest("[data-toast]");
-  if (inToast && key !== "Escape" && key !== "Tab") return;
+  const holder = holders.at(-1);
+  if (!holder || pressesToastButton(e)) return;
   e.preventDefault();
   e.stopImmediatePropagation();
-  if (key === "Escape" && e.type === "keydown") holder.onEscape?.();
+  if (e instanceof KeyboardEvent && e.key === "Escape" && e.type === "keydown") holder.onEscape?.();
 }
 
 if (typeof window !== "undefined") for (const type of HELD) window.addEventListener(type, hold, true);
@@ -44,14 +51,15 @@ if (typeof window !== "undefined") for (const type of HELD) window.addEventListe
  */
 export function holdInput(onEscape?: () => void): () => void {
   const me = { onEscape };
-  holder = me;
-  window.addEventListener("wheel", hold, { capture: true, passive: false });
+  if (!holders.length) window.addEventListener("wheel", hold, { capture: true, passive: false });
+  holders.push(me);
   return () => {
-    if (holder !== me) return;
-    holder = null;
-    window.removeEventListener("wheel", hold, { capture: true });
+    const at = holders.indexOf(me);
+    if (at < 0) return;
+    holders.splice(at, 1);
+    if (!holders.length) window.removeEventListener("wheel", hold, { capture: true });
   };
 }
 
 /** Whether a task holds the input (for tests). */
-export const inputHeld = () => holder !== null;
+export const inputHeld = () => holders.length > 0;

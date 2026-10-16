@@ -79,11 +79,17 @@ test.describe("image export in slices", { tag: "@dev" }, () => {
       // Decoding waits for the test: the export is cancelled while it does.
       let started!: () => void;
       const decoding = new Promise<void>((resolve) => (started = resolve));
-      let release = () => {};
+      let release = (): Promise<void> => Promise.resolve();
       const decode = HTMLImageElement.prototype.decode;
       HTMLImageElement.prototype.decode = function (this: HTMLImageElement) {
         started();
-        return new Promise<void>((resolve) => (release = () => resolve(decode.call(this))));
+        return new Promise<void>((resolve) => {
+          release = () => {
+            const done = decode.call(this);
+            resolve(done);
+            return done;
+          };
+        });
       };
       const drawImage = CanvasRenderingContext2D.prototype.drawImage;
       let draws = 0;
@@ -101,8 +107,9 @@ test.describe("image export in slices", { tag: "@dev" }, () => {
           () => "returned a picture",
           (err: unknown) => (err instanceof DOMException ? err.name : String(err)),
         );
-        release();
-        await new Promise((r) => setTimeout(r, 50));
+        // The decoding finishes, and createImage's frame after it: anything that would draw has had its chance.
+        await release();
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
         return { result, draws };
       } finally {
         HTMLImageElement.prototype.decode = decode;
@@ -238,3 +245,56 @@ test("a long image export keeps the page painting, shows its progress and can be
   await expect(page.getByTestId("rf__node-p1n0")).toHaveClass(/selected/);
   expectNoErrors(consoleErrors);
 });
+
+/** Starts an export through File ▸ More formats ▸ Image… (the dialog closes as the export starts). */
+async function exportThroughDialog(page: Page) {
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-more-formats").click();
+  await page.getByTestId("export-image").click();
+  await page.getByTestId("image-export").click();
+}
+
+test("an export started from the Image dialog hands the keyboard to its Cancel", async ({ page }) => {
+  test.slow();
+  await openLanes(page);
+  let downloads = 0;
+  page.on("download", () => downloads++);
+  await exportThroughDialog(page);
+  await expect(page.getByTestId("toast-progress")).toBeVisible();
+  // The dialog gives its opener the focus back as it closes; Cancel takes it after that, and Enter presses it.
+  await expect(page.getByTestId("image-export-cancel")).toBeFocused();
+  await page.keyboard.press("Control+k");
+  await expect(page.getByTestId("command-palette")).toHaveCount(0);
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("toast")).toHaveCount(0);
+  expect(downloads).toBe(0);
+});
+
+for (const [stalled, pattern, kind] of [
+  ["its code", /imageClone/, undefined],
+  ["its fonts", /\.woff2?(\?|$)/, "fetch"],
+] as const)
+  test(`a cancel while ${stalled} won't download releases the page`, async ({ page }) => {
+    test.slow();
+    await openLanes(page);
+    // The request hangs: the export waits on it, and only a cancel ends the wait.
+    let stalls = 0;
+    await page.route(pattern, async (route) => {
+      if (kind && route.request().resourceType() !== kind) return route.continue();
+      stalls++;
+      await new Promise(() => {});
+    });
+    let downloads = 0;
+    page.on("download", () => downloads++);
+    await page.getByTestId("file-button").click();
+    await page.getByTestId("export-png").click();
+    await expect(page.getByTestId("image-export-cancel")).toBeFocused();
+    await expect.poll(() => stalls).toBeGreaterThan(0);
+    await page.getByTestId("image-export-cancel").click();
+    await expect(page.getByTestId("toast")).toHaveCount(0);
+    // The page is the user's again, and nothing the export added stays.
+    await page.getByTestId("node-p2n0").click();
+    await expect(page.getByTestId("rf__node-p2n0")).toHaveClass(/selected/);
+    await expect(page.getByTestId("export-header")).toHaveCount(0);
+    expect(downloads).toBe(0);
+  });

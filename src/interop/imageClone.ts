@@ -310,16 +310,30 @@ async function embedImageNode(clonedNode: HTMLElement | SVGImageElement, options
   });
 }
 
-async function embedImages(clonedNode: Node, options: Options, slicer: Slicer): Promise<void> {
-  if (isInstanceOfElement(clonedNode as Element, Element)) {
-    await embedBackground(clonedNode as HTMLElement, options);
-    await embedImageNode(clonedNode as HTMLElement, options);
-    // One child after another (the library started them all at once): each checks the slice before its own work.
-    for (const child of toArray<Node>(clonedNode.childNodes)) {
-      await slicer.breathe();
-      await embedImages(child, options, slicer);
-    }
-  }
+/** Image loads kept in flight at once while the walk goes on (the library had every one in flight). */
+const LOADS = 8;
+
+/**
+ * Visits the nodes one after another with a slice check between them (started all at once, thousands of siblings ran
+ * their work without one), and loads up to LOADS images meanwhile, so the icons still download side by side.
+ */
+async function embedImages(root: Node, options: Options, slicer: Slicer): Promise<void> {
+  const loads = new Set<Promise<void>>();
+  const visit = async (node: Node): Promise<void> => {
+    if (!isInstanceOfElement(node as Element, Element)) return;
+    await slicer.breathe();
+    await embedBackground(node as HTMLElement, options);
+    const load = embedImageNode(node as HTMLElement, options);
+    loads.add(load);
+    void load.then(
+      () => loads.delete(load),
+      () => {},
+    );
+    if (loads.size >= LOADS) await Promise.race(loads);
+    for (const child of toArray<Node>(node.childNodes)) await visit(child);
+  };
+  await visit(root);
+  await Promise.all(loads);
 }
 
 /** The library's cloneNode, sliced. */
