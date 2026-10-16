@@ -103,3 +103,25 @@ accepted.
 | P2: traffic-class keys serialized on every traversal   | Keys are interned by type, route and sync flag, so each class is serialized once per analysis. "serializes each traffic class once per analysis, however many passes and hops" counts the serializations (31,466 before, at most 4 now).                                                                                                                                                                                                                                                                                                                                                                                                                    |
 
 All three new tests failed on the previous head.
+
+### Final verification after rebasing onto static-page translations
+
+The focused test now asserts exact values at 50 req/s and 100 req/s per endpoint. With an A-only
+rule and a 100 req/s account, capacity is 200 and utilization is 0.5 or 1; neither route is throttled.
+With 100 req/s per endpoint and a 30 req/s account, capacity is 60, utilization is 200/60 and A has
+70 req/s throttled. Analysis capacity/utilization and playback counts are identical with or without
+the redundant reference. A rule's throttle readout reports its own buckets, so naming the endpoint's
+already-saturated bucket on the rule exposes that existing pressure without changing admission.
+
+The architecture/security common-rule fixture is covered separately at 50 req/s per endpoint for
+10 and 20 seconds: capacity 100, utilization 1, zero throttling and exactly 1,000/2,000 deliveries.
+Removing a common rule's quota is not a redundant-reference comparison: it also removes B's charge.
+Claiming those two policies have identical capacity was rejected; the five report scenarios themselves
+are all accepted and covered.
+
+Temporarily restoring all four implementation files from the fix's parent fails every one of these
+five quota cases, the seeded overlap test (seed 2), and the class-key serialization test. The latter
+now also covers an empty route catalog: its old implementation serializes 31,976 tuples, versus at most
+four with interning (31,466 in the addressed case). Restoring the fix passes the focused tests.
+The expanded routing invariant run passes 5,000 routing seeds and 1,000 overlap seeds. No product
+change beyond the original fix was needed; this follow-up strengthens its regression evidence.

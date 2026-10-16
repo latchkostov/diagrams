@@ -1,5 +1,13 @@
 # Design review
 
+## Routing R1 quota follow-up (2026-10-16)
+
+The designer agent's scoped source review found no actionable issue. The quota-composition and
+traffic-class interning changes add no controls, copy, chrome, focus targets or visual structure.
+Corrected capacity and throttling values fit the existing rate units and conditional readouts.
+Round 44's routing disclosure, legend and keyboard review remains applicable. No simplification
+was needed. This follow-up did not include a fresh browser or assistive-technology walkthrough.
+
 ## Static-page review follow-up (2026-10-16)
 
 The designer agent approved the scoped source review with no actionable UX issue. Named blocks and

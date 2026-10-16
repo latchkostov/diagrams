@@ -920,14 +920,17 @@ is a contract or catalogue fingerprint, none is a diagram's drawing, simulation 
 
 - `node/agent/tools.json`: the agent tool schemas gain `trafficMix` and `routeTable` (node props) and
   `requestRouteId` and `requestFilter` (edge props), and `set_meta` accepts `planning.requestRoutes`.
-- `node/skill/public-schemas.json`: `diagram.v1.json` gains the same optional properties (`pnpm schemas`).
-  Legacy v1/v2 props still forbid them, so older readers refuse a routed file rather than drop its routes.
+- `node/skill/public-schemas.json`: v2 diagram and ops schemas gain routing contracts; v1 and legacy
+  v2 props forbid them, so older formats refuse a routed file rather than drop its routes. The v2
+  definition list adds `LegacyEdgeProps`; the stencil schema is unchanged.
 - `node/skill/files.json`: `reference/format.md` documents request routes, mixes, route tables and the
   caller/edge fields.
 - `node/skill/current-stencils.json`: the "Most used in the examples" ranking re-sorts because the new
   showcase adds `client.mobile`, `service.java` and `service.python` nodes. The stencil list itself is unchanged.
 - `node/skill/validate.txt`: four new `VALID` lines for the frozen R1 corpus files below.
-- `node/i18n/catalogs.json`: about 120 `routing.*` messages and the "Routing" gallery theme in all 37 locales.
+- `node/i18n/catalogs.json`: 117 messages (`routing.*` and the "Routing" gallery theme) in all 37 locales
+  and the pseudo-locale, changing only the routing/examples area hashes. The rebase preserves master's
+  static-page areas, all unrelated area hashes and fallback counts.
 
 Added goldens freeze routing's behaviour in four new corpus diagrams and the showcase:
 
@@ -951,3 +954,8 @@ Review round 2 changed two of the new goldens, `node/planning/corpus-r1-quotas.j
 `node/agent/describe/corpus-r1-quotas.json`: rule quotas are now charged on the steady-state admission ledger
 instead of cutting demand mid-solve, so the quota corpus no longer reports a false "Cycle demand did not converge"
 and its downstream demand is the offered demand. No other golden changed.
+
+The PR #140 quota correction leaves all diagram goldens unchanged. After rebasing onto static-page
+translations, regeneration changes only `node/i18n/catalogs.json` relative to the pre-rebase routing
+goldens: the combined catalog retains both features. No golden was hand-merged. Relative to master,
+only the six routing-related shared fingerprints above change; every existing diagram golden matches.

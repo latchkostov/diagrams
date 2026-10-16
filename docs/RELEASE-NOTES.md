@@ -10,6 +10,26 @@
 - Full parity regeneration leaves all 2,092 master goldens identical: no changed, added, missing or
   stale records. This rebase adds no behavior changes and needs no golden exceptions.
 
+## Routing R1 quota review and master rebase (2026-10-16)
+
+- Managed route tables compose node, endpoint and matched-rule requirements per request, using the
+  same helper as playback. A shared quota on endpoint A and its rule is charged once even when
+  endpoint B has no quota. The review's 50/100 req/s cases report the correct capacity and utilization
+  without invented throttling; the 30 req/s limit keeps its real 70 req/s throttle on A.
+- Exact regressions cover all five P1 reports, including the common-rule case over both 10 and 20
+  seconds. Removing the fix fails every case. Serialization-count regressions cover addressed and
+  empty route catalogs; removing interning produces 31,466 and 31,976 serializations respectively.
+- The 5,000-seed routing fuzzer and 1,000 shared-overlap seeds pass. The agent-skill viewer is refreshed
+  at plugin 1.1.31, exactly one patch above master. The scoped source UX review found no issue.
+- The quota correction changes no frozen diagram output. Relative to master, routing adds 104
+  goldens for the public showcase and four invented corpus diagrams. Six shared goldens change:
+  `node/agent/tools.json` adds routing input contracts; `node/skill/public-schemas.json` records
+  routing contracts and legacy guards; `node/skill/files.json` records the generated routing format
+  reference; `node/skill/current-stencils.json` includes the showcase in usage rankings;
+  `node/skill/validate.txt` validates the four corpus diagrams; `node/i18n/catalogs.json` adds 117
+  messages (routing and the gallery tag), changing only the routing/examples areas. Master's static-page
+  translations and all existing non-routing diagram goldens are preserved. See [PARITY.md](PARITY.md#request-routing-r1-what-changed-and-why-2026-10-16).
+
 ## Static-page translation review fixes (2026-10-16)
 
 - Skill-page translations bind to named blocks and preserved inline slots, so adding paragraphs or
@@ -26,6 +46,7 @@
   `tests/parity/goldens/node/i18n/catalogs.json` changes: each of the 37 language catalogs and the
   pseudo-locale gain the `staticAuth` and `staticSkill` hashes for 31 messages. Existing area hashes,
   fallback counts and every other golden stay unchanged relative to master.
+
 ## Request routing R1: routes, mixes, route tables and colours (2026-10-16)
 
 - **Optional request routes.** A source can send several request kinds at different rates: its **Traffic mix**

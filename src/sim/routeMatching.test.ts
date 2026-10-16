@@ -840,18 +840,23 @@ describe("request routing: analysis follows rule quotas (review round 1)", () =>
    * A managed gateway whose endpoint A (GET /search) names the shared account and endpoint B (POST /orders) has no
    * quota; the search rule names the same account too when `onRule` (redundant: every search request comes through A).
    */
-  const overlap = (onRule: boolean) => {
+  const overlap = (onRule: boolean, rate: number, amount: number) => {
     const table = structuredClone(ROUTING_TABLE);
-    if (onRule) table.rules[1].quotas = [limit(100, { sharedGroup: "account" })];
-    const d = routingFixture({ table, rate: 80, mix: searchOnly });
-    d.planning = { ...d.planning!, sharedQuotas: [limit(100, { id: "account" })] };
+    if (onRule) table.rules[1].quotas = [limit(amount, { sharedGroup: "account" })];
+    const d = routingFixture({ table, rate, mix: searchOnly });
+    d.planning = { ...d.planning!, sharedQuotas: [limit(amount, { id: "account" })] };
     Object.assign(d.nodes[1], {
       stencil: "aws.api-gateway",
       props: {
         ...d.nodes[1].props,
         api: {},
         endpoints: [
-          { id: "a", method: "GET", path: "/search", behaviour: { quotas: [limit(100, { sharedGroup: "account" })] } },
+          {
+            id: "a",
+            method: "GET",
+            path: "/search",
+            behaviour: { quotas: [limit(amount, { sharedGroup: "account" })] },
+          },
           { id: "b", method: "POST", path: "/orders" },
         ],
       },
@@ -863,61 +868,115 @@ describe("request routing: analysis follows rule quotas (review round 1)", () =>
       label: "Orders app",
       x: 0,
       y: 300,
-      props: { ratePerSec: 80, trafficMix: { mode: "shares", entries: [{ routeId: "orders-post", share: 1 }] } },
+      props: { ratePerSec: rate, trafficMix: { mode: "shares", entries: [{ routeId: "orders-post", share: 1 }] } },
     });
     d.edges.push({ id: "app2-kong", from: "app2", to: "kong", kind: "sync", props: { endpointId: "b" } });
     expect(validateDiagram(d).ok).toBe(true);
     return d;
   };
 
-  it("an endpoint-and-rule shared quota is charged once alongside an unshared endpoint (PR review)", () => {
-    const [plain, redundant] = [overlap(false), overlap(true)];
-    const a = analyzeCapacity(redundant);
-    // 80 req/s through A charge the 100 req/s account once; B's 80 never touch it.
-    expect(a.routeDemand!.kong["search-get"].throttled).toBeCloseTo(0);
-    expect(a.nodes.kong.utilization).toBeLessThanOrEqual(1);
-    const b = analyzeCapacity(plain);
-    expect(a.nodes.kong.capacity).toBeCloseTo(b.nodes.kong.capacity);
-    expect(a.routeDemand!.kong).toEqual(b.routeDemand!.kong);
-    // Playback agrees: nothing rejected, and the redundant reference changes nothing.
-    const play = (d: DiagramFile) => {
-      const e = run(d, 10_000, { drain: true });
-      return {
-        rejected: e.snapshot().nodes.kong.rejected ?? 0,
-        search: delivered(e, "kong-search"),
-        orders: delivered(e, "kong-orders"),
+  it.each([
+    { rate: 50, amount: 100, capacity: 200, utilization: 0.5, throttled: 0 },
+    { rate: 100, amount: 100, capacity: 200, utilization: 1, throttled: 0 },
+    { rate: 100, amount: 30, capacity: 60, utilization: 200 / 60, throttled: 70 },
+  ])(
+    "an endpoint-and-rule shared quota is charged once alongside an unshared endpoint ($rate/s, quota $amount/s)",
+    ({ rate, amount, capacity, utilization, throttled }) => {
+      const [plain, redundant] = [overlap(false, rate, amount), overlap(true, rate, amount)];
+      const a = analyzeCapacity(redundant);
+      // Only A charges the account. Capacity uses the whole node's offered workload as its basis.
+      expect(a.nodes.kong.capacity).toBeCloseTo(capacity);
+      expect(a.nodes.kong.utilization).toBeCloseTo(utilization);
+      expect(a.routeDemand!.kong["search-get"].throttled).toBeCloseTo(throttled);
+      expect(a.routeDemand!.kong["orders-post"].throttled).toBe(0);
+      const b = analyzeCapacity(plain);
+      expect(a.nodes.kong.capacity).toBeCloseTo(b.nodes.kong.capacity);
+      expect(a.nodes.kong.utilization).toBeCloseTo(b.nodes.kong.utilization);
+      // A rule's throttled metric describes its own buckets; adding one exposes existing endpoint pressure.
+      if (!throttled) expect(a.routeDemand!.kong).toEqual(b.routeDemand!.kong);
+      // Playback agrees: the redundant reference changes nothing, even above the shared limit.
+      const play = (d: DiagramFile) => {
+        const e = run(d, 10_000, { drain: true });
+        return {
+          rejected: e.snapshot().nodes.kong.rejected ?? 0,
+          search: delivered(e, "kong-search"),
+          orders: delivered(e, "kong-orders") + delivered(e, "kong-canary"),
+        };
       };
-    };
-    const played = play(redundant);
-    expect(played.rejected).toBe(0);
-    expect(played.search).toBeGreaterThanOrEqual(799);
-    expect(play(plain)).toEqual(played);
-  });
-
-  it("serializes each traffic class once per analysis, however many passes and hops (PR review)", () => {
-    const d = routingFixture({ mix: searchOnly });
-    // A 200-service chain behind Search, and a feedback edge so the solver iterates.
-    for (let i = 0; i < 200; i++) {
-      d.nodes.push({ id: `c${i}`, stencil: "generic.service", label: `C${i}`, x: 800 + i, y: 0 });
-      d.edges.push({ id: `c${i}-in`, from: i ? `c${i - 1}` : "search", to: `c${i}`, kind: "async" });
-    }
-    d.edges.push({ id: "loop", from: "c199", to: "c0", kind: "async", props: { share: 0.5 } });
-    // Class keys are the (type, route, sync) tuples: count their serializations.
-    const stringify = vi.spyOn(JSON, "stringify");
-    const counted = (() => {
-      try {
-        const a = analyzeCapacity(d);
-        const tuples = stringify.mock.calls.filter(
-          ([value]) => Array.isArray(value) && value.length === 3 && typeof value[2] === "boolean",
-        ).length;
-        return { iterations: a.iterations, tuples };
-      } finally {
-        stringify.mockRestore();
+      const played = play(redundant);
+      if (!throttled) {
+        expect(played.rejected).toBe(0);
+        expect(played.search).toBe(rate * 10);
+      } else {
+        expect(played.rejected).toBeGreaterThan(0);
+        // Playback starts with a full bucket; steady-state planning deliberately excludes this burst.
+        expect(played.search).toBeGreaterThanOrEqual((rate - throttled) * 10);
+        expect(played.search).toBeLessThanOrEqual((rate - throttled) * 10 + amount);
       }
-    })();
-    expect(counted.iterations).toBeGreaterThan(10);
-    expect(counted.tuples).toBeLessThanOrEqual(4);
-  });
+      expect(played.orders).toBe(rate * 10);
+      expect(play(plain)).toEqual(played);
+    },
+  );
+
+  it.each([10_000, 20_000])(
+    "a common rule and endpoint A share one charge while endpoint B charges the rule (%s ms)",
+    (duration) => {
+      const d = overlap(true, 50, 100);
+      // Unlike a redundant reference on A's own rule, a common rule also charges B's requests.
+      d.nodes[1].props!.routeTable = {
+        rules: [
+          {
+            id: "all",
+            match: { path: { kind: "prefix", value: "/" } },
+            targets: [{ edgeId: "kong-search", weight: 1 }],
+            quotas: [limit(100, { sharedGroup: "account" })],
+          },
+        ],
+      };
+      expect(validateDiagram(d).ok).toBe(true);
+      const a = analyzeCapacity(d);
+      expect(a.nodes.kong.capacity).toBeCloseTo(100);
+      expect(a.nodes.kong.utilization).toBeCloseTo(1);
+      expect(a.routeDemand!.kong["search-get"].throttled).toBe(0);
+      expect(a.routeDemand!.kong["orders-post"].throttled).toBe(0);
+      const e = run(d, duration, { drain: true });
+      expect(e.snapshot().nodes.kong.rejected ?? 0).toBe(0);
+      expect(delivered(e, "kong-search")).toBe(duration / 10);
+    },
+  );
+
+  it.each(["addressed", "empty"])(
+    "serializes each traffic class once per analysis, however many passes and hops (%s routes)",
+    (mode) => {
+      const d = routingFixture({ mix: searchOnly });
+      if (mode === "empty") {
+        d.planning!.requestRoutes = [];
+        delete d.nodes[0].props!.trafficMix;
+        delete d.nodes[1].props!.routeTable;
+      }
+      // A 200-service chain behind Search, and a feedback edge so the solver iterates.
+      for (let i = 0; i < 200; i++) {
+        d.nodes.push({ id: `c${i}`, stencil: "generic.service", label: `C${i}`, x: 800 + i, y: 0 });
+        d.edges.push({ id: `c${i}-in`, from: i ? `c${i - 1}` : "search", to: `c${i}`, kind: "async" });
+      }
+      d.edges.push({ id: "loop", from: "c199", to: "c0", kind: "async", props: { share: 0.5 } });
+      // Class keys are the (type, route, sync) tuples: count their serializations.
+      const stringify = vi.spyOn(JSON, "stringify");
+      const counted = (() => {
+        try {
+          const a = analyzeCapacity(d);
+          const tuples = stringify.mock.calls.filter(
+            ([value]) => Array.isArray(value) && value.length === 3 && typeof value[2] === "boolean",
+          ).length;
+          return { iterations: a.iterations, tuples };
+        } finally {
+          stringify.mockRestore();
+        }
+      })();
+      expect(counted.iterations).toBeGreaterThan(10);
+      expect(counted.tuples).toBeLessThanOrEqual(4);
+    },
+  );
 
   /**
    * A managed gateway with two endpoints: A (its own quota in the shared account) takes the app's GET /search, which
