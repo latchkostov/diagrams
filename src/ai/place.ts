@@ -1,16 +1,28 @@
 import type { DiagramFile } from "../model/types";
 import { layeredLayout } from "../editor/layout";
-import { boundaryAround } from "../editor/arrange";
+import { planBoundaryRefits } from "../editor/boundaryFit";
 import { estimateCardSize } from "../canvas/nodes/size";
 import { placeNextTo, placeFree, overlaps, type Box } from "../canvas/placement";
 import type { LayoutMode } from "./index";
 
 export function fitGroupToContents(diagram: DiagramFile, groupId: string): DiagramFile {
-  const members = diagram.nodes
-    .filter((n) => n.group === groupId)
-    .map((n) => ({ ...n, ...estimateCardSize(n.label, n.sublabel) }));
-  return members.length
-    ? { ...diagram, groups: diagram.groups?.map((g) => (g.id === groupId ? { ...g, ...boundaryAround(members) } : g)) }
+  return fitGroups(diagram, new Set([groupId]));
+}
+
+function fitGroups(diagram: DiagramFile, requested?: ReadonlySet<string>): DiagramFile {
+  const refits = planBoundaryRefits(
+    diagram.groups ?? [],
+    [...diagram.nodes.map((n) => ({ ...n, ...estimateCardSize(n.label, n.sublabel) })), ...(diagram.annotations ?? [])],
+    requested,
+  );
+  return refits.size
+    ? {
+        ...diagram,
+        groups: diagram.groups?.map((g) => {
+          const bounds = refits.get(g.id);
+          return bounds ? { ...g, ...bounds } : g;
+        }),
+      }
     : diagram;
 }
 
@@ -95,7 +107,7 @@ export function placeNew(
   }
   let next = { ...diagram, nodes };
   const touched = new Set([...touchedGroups, ...nodes.filter((n) => fresh.has(n.id) && n.group).map((n) => n.group!)]);
-  for (const group of next.groups ?? []) if (full || touched.has(group.id)) next = fitGroupToContents(next, group.id);
+  next = fitGroups(next, full ? undefined : touched);
   // Fitting a boundary can enclose an unrelated addition, especially after a full layout.
   // Place those cards clear of every foreign boundary as well as the other cards.
   for (const n of next.nodes) {

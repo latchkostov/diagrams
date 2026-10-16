@@ -71,6 +71,7 @@ import { align, boundaryAround, distribute, spreadOverlaps, type Box, type Posit
 import { makePayload, parsePayload, remapPayload, type ClipboardPayload } from "./clipboard";
 import { stencilIdBase, uniqueId } from "./ids";
 import { layeredLayout } from "./layout";
+import { planBoundaryRefits } from "./boundaryFit";
 import type { HistoryApi } from "./useHistory";
 import type { EditorApi, EditorPrefs, NewNode, Selection, XY } from "./types";
 import { diagramDiff } from "./diagramDiff";
@@ -1697,44 +1698,16 @@ export function createEditor(
         const d = diagram();
         const pos = layeredLayout({ nodes: d.nodes, edges: d.edges, direction: d.direction });
         movePositions(pos);
-        // Refit direct contents bottom-up: parents use each child's new box, never its old
-        // measurement. Index once, so file order and hierarchy depth do not change the work.
         const moved = currentNodes();
-        const groups = new Map(moved.filter(isGroup).map((n) => [n.data.groupId, n]));
-        const members = new Map<string, FlowNode[]>();
-        const boxes = new Map(moved.map((n) => [n.id, box(n)]));
-        const remaining = new Map([...groups.keys()].map((id) => [id, 0]));
-        for (const n of moved) {
-          const parent = n.data.group;
-          if (!parent || !groups.has(parent)) continue;
-          const list = members.get(parent) ?? [];
-          list.push(n);
-          members.set(parent, list);
-          if (isGroup(n)) remaining.set(parent, remaining.get(parent)! + 1);
-        }
-        const ready = [...groups.keys()].filter((id) => remaining.get(id) === 0);
-        const refits = new Map<string, ReturnType<typeof boundaryAround>>();
-        while (ready.length) {
-          const id = ready.pop()!;
-          const group = groups.get(id)!;
-          const contents = members.get(id) ?? [];
-          if (contents.length) {
-            const bounds = boundaryAround(contents.map((n) => boxes.get(n.id)!));
-            boxes.set(group.id, { id: group.id, ...bounds });
-            refits.set(group.id, bounds);
-          }
-          const parent = group.data.group;
-          if (parent && remaining.has(parent)) {
-            const left = remaining.get(parent)! - 1;
-            remaining.set(parent, left);
-            if (!left) ready.push(parent);
-          }
-        }
+        const refits = planBoundaryRefits(
+          moved.filter(isGroup).map((n) => ({ ...box(n), id: n.data.groupId, group: n.data.group })),
+          moved.filter((n) => !isGroup(n)).map((n) => ({ ...box(n), group: n.data.group })),
+        );
         if (refits.size) {
           hint();
           deps().setNodes((ns) =>
             ns.map((n) => {
-              const bounds = refits.get(n.id);
+              const bounds = isGroup(n) ? refits.get(n.data.groupId) : undefined;
               return bounds
                 ? { ...n, position: { x: bounds.x, y: bounds.y }, width: bounds.width, height: bounds.height }
                 : n;
