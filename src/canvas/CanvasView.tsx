@@ -365,6 +365,7 @@ function CanvasInner({
   });
   useEffect(() => void safeStorage.setItem(PALETTE_KEY, paletteCollapsed ? "1" : "0"), [paletteCollapsed]);
   const [prefs, setPref] = useEditorPrefs();
+  const [sheetResize, setSheetResize] = useState(0);
   // Live mode and narrow windows fold the side panels away by default; opening one by hand wins.
   const [live, setLive] = useState(false);
   const [livePanelOpen, setLivePanelOpen] = useState(false);
@@ -2102,10 +2103,10 @@ function CanvasInner({
     if (!showingAll.current || live || presenting) return;
     overlayFit({ maxZoom: FIT.maxZoom, margin: 40, duration: 250 });
   };
-  // The AI panel opened, closed or was resized by more than a little: the pane changed size at its
+  // The AI panel opened, closed or was resized, or an Inspector resize completed: the pane changed size at its
   // right edge. A fit is refitted to the new pane; a view the user panned or zoomed keeps the selection
   // (or, with none, the diagram's centre) in view with a pan.
-  const dockKey = `${aiDock.open}:${aiDock.open ? Math.round(aiDock.width / 40) : 0}`;
+  const dockKey = `${aiDock.open}:${aiDock.open ? Math.round(aiDock.width / 40) : 0}:${sheetResize}`;
   const lastDock = useRef(dockKey);
   useEffect(() => {
     if (lastDock.current === dockKey) return;
@@ -2812,6 +2813,7 @@ function CanvasInner({
             nodeLabel={(id) => labels.get(id) ?? id}
             counts={{ nodes: nodeCount, edges: edges.length, groups: groupNodes.length }}
             collapsed={inspectorHidden}
+            onResize={() => setSheetResize((revision) => revision + 1)}
             onTextSettled={settleText}
             onToggle={() => {
               setPref("inspector", inspectorHidden);

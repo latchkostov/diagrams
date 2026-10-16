@@ -304,6 +304,37 @@
   This changes test synchronization only; the diagram privacy and evidence assertions stay intact.
 - Source UX review: no new controls, copy or chrome; the collaboration proof remains in the Lab.
 
+## Resizable Inspector (2026-10-16)
+
+- The Inspector defaults to `clamp(360px, 26.5vw, 640px)`, rounded to whole pixels: 362px at
+  1366, 509px at 1920, and 640px at 2560 and 3440. Its inner edge supports pointer capture,
+  keyboard steps (16px; Shift 64px), Home/End and Enter/double-click reset. The chosen width stays
+  on this device; reset removes it so the default scales again. Every Inspector mode shares it.
+- Manual widths run from 300px to the smaller of 60vw and the available space minus 480px of
+  canvas, accounting for the stencil rail and separate AI dock. At 1100px and below, or when those
+  bounds cannot fit, the existing 296px sheet and folding behavior remain; resizing is hidden.
+  Shrinking the window clamps the displayed width without overwriting the saved preference.
+- Pointer frames update a CSS variable through animation frames; only a finished resize requests
+  canvas refitting or selection preservation. Cancel restores the prior width. The handle supplies
+  focus, separator semantics, current bounds and localized instructions, with no settings control.
+- Route Match and Send to columns already divide the available width proportionally. Send to now
+  displays the full target list instead of an unconditional `+1`; both columns retain full-value
+  titles when space still runs out. The Lab includes a longer-path routing preview. The AI panel
+  occupies a separate dock and retains its existing persisted resizer, avoiding changes to its
+  separate state and loading behavior. UX review corrected constrained-window readability and
+  preserving the fitted drawing after resizing.
+- `pnpm parity:update` changes exactly 19 goldens. `node/i18n/catalogs.json` adds the three Inspector
+  messages and their area fingerprint (English fallback in untranslated catalogs). Each of the
+  following `browser/layout/<name>.json` files changes only `tidy.viewport`'s horizontal translation
+  to account for the wider open Inspector: `aks-app-config-key-vault`, `aws-fanout`,
+  `aws-serverless-orders`, `azure-service-bus-integration`, `branch-to-datacentre`, `cdc-analytics`,
+  `contoso-dmz`, `cqrs-event-sourcing`, `gcp-streaming-analytics`, `iot-telemetry`,
+  `kafka-order-pipeline`, `multi-region-active-active`, `nightly-batch-elt`,
+  `partitions-vs-subscriptions`, `serverless-burst-buffer`, `shared-api-quotas`, `shared-worker-pool`
+  and `webhook-ingestion`. All geometry, zoom, Auto-layout, simulation and export records remain
+  unchanged; no screenshot golden changes. The stale skill viewer is refreshed at plugin 1.1.33,
+  one patch above origin/master's 1.1.32.
+
 ## Routing R1 rejected admission transactions (2026-10-16)
 
 - The capacity planner owns admission transaction results by router, endpoint and matched action.

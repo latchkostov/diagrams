@@ -5,7 +5,7 @@ import { measuredHierarchyFixture, nestedBoundariesFixture } from "./nestedBound
 import { captionContrastFixture } from "./captionContrastFixture";
 import { GalleryCatalogLab } from "./GalleryCatalogLab";
 import { autoscalingFixture } from "./autoscalingFixture";
-import { routingFixture, routingOverlapFixture } from "./routingFixture";
+import { routingFixture, routingOverlapFixture, sheetRoutingFixture } from "./routingFixture";
 import { ColourPickerLab } from "./ColourPickerLab";
 import { customColoursFixture } from "./customColoursFixture";
 import { planningP3Fixture, planningP3BulkFixture } from "./planningP3Fixture";
@@ -466,6 +466,13 @@ const playgroundPresets: Preset[] = [
     title: "Request routing: order, filters and a down canary",
     group: "Playground",
     diagram: () => routingOverlapFixture(),
+  },
+  {
+    kind: "diagram",
+    id: "inspector-resize",
+    title: t("inspector.resizePreview"),
+    group: "Playground",
+    diagram: () => sheetRoutingFixture(),
   },
   {
     kind: "diagram",

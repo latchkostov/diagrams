@@ -66,10 +66,6 @@ import type { RouteCounts } from "../sim/types";
 
 type Doc = Pick<DiagramFile, "planning" | "nodes" | "edges" | "simulations">;
 
-/** "Pricing +1": the first target, and how many more (the full list is in the title and the row's name). */
-const targetsText = (labels: string[]) =>
-  labels.length > 1 ? t("routing.moreTargets", { target: labels[0], count: labels.length - 1 }) : (labels[0] ?? "");
-
 const markerName = (marker: RouteMarker) =>
   ({
     circle: t("routing.markerCircle"),
@@ -814,12 +810,17 @@ export function RouteTableFields({
               <span>{i + 1}</span>
               <span
                 className="mono route-cut"
+                data-testid={`routes-rule-${rule.id}-match`}
                 title={rule.label ? `${rule.label}: ${matchText(rule.match)}` : matchText(rule.match)}
               >
                 {matchText(rule.match)}
               </span>
-              <span className="route-cut" title={rule.targets.map((x) => labelOf(x.edgeId)).join(", ")}>
-                {targetsText(rule.targets.map((x) => labelOf(x.edgeId)))}
+              <span
+                className="route-cut"
+                data-testid={`routes-rule-${rule.id}-targets`}
+                title={rule.targets.map((x) => labelOf(x.edgeId)).join(", ")}
+              >
+                {rule.targets.map((x) => labelOf(x.edgeId)).join(", ")}
               </span>
               <span className="mono route-split">{splitText(rule)}</span>
             </button>
@@ -926,7 +927,7 @@ export function RouteTableFields({
               className="route-cut"
               title={fallback ? fallback.targets.map((x) => labelOf(x.edgeId)).join(", ") : undefined}
             >
-              {fallback ? targetsText(fallback.targets.map((x) => labelOf(x.edgeId))) : t("routing.reject404")}
+              {fallback ? fallback.targets.map((x) => labelOf(x.edgeId)).join(", ") : t("routing.reject404")}
             </span>
             <span className="mono route-split">{fallback ? splitText(fallback) : "—"}</span>
           </button>

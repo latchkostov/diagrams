@@ -10,6 +10,10 @@
 // stays.
 
 const en = {
+  "inspector.resizePreview": "Resizable inspector: longer route paths",
+  "inspector.resize": "Resize inspector",
+  "inspector.resizeHint":
+    "Drag to resize. Arrow keys resize; Shift takes larger steps. Home/End: minimum/maximum. Enter or double-click: reset.",
   "format.byteSize": "{size} {unit}",
   "format.importList": "{before} and {last}",
   "cloud.dropboxFileMissing": "That Dropbox file no longer exists, or it was moved out of the Diagrams folder.",
