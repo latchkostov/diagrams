@@ -1,5 +1,14 @@
 # Release notes
 
+## Collaboration reply-byte regression coverage (2026-10-16)
+
+- The reply-throttling test now builds its large room through steps checked against the active byte
+  limits and asserts every setup edit succeeds. It proves the reply-byte budget runs out before the
+  request-count budget, requires positive throttling and bounds actual encrypted reply traffic.
+- Audited scaled-limit collaboration setups; the room-measurement test now checks each accepted edit
+  and the `room-full` refusal reason. Temporarily bypassing reply-byte throttling fails the corrected
+  regression; the production guard is restored. No production behavior, UI or parity golden changes.
+
 ## Collaboration C0 rebase onto routing (#140, 2026-10-16)
 
 - Rebased onto #139 and #140, retaining both documentation histories and all translation keys and

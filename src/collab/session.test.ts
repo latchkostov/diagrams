@@ -2,10 +2,12 @@ import { describe, expect, it, onTestFinished, vi } from "vitest";
 import * as Y from "yjs";
 import { textToBytes } from "../interop/codec";
 import { FakeClock } from "./clock";
-import { Sealer } from "./envelope";
+import { commandsFromDiff } from "./commands";
+import { HEADER_BYTES, Sealer } from "./envelope";
+import { checkCommands } from "./guard";
 import { deriveRoomKeys } from "./keys";
 import { COLLAB_LIMITS } from "./limits";
-import { DOC, frame, PRESENCE } from "./protocol";
+import { DOC, fragment, frame, PRESENCE } from "./protocol";
 import { metaOf } from "./schema";
 import { refusalMessage } from "./lab/demo";
 import { seededBytes } from "./random";
@@ -67,6 +69,41 @@ function scaledLimits() {
 }
 /** Characters (three UTF-8 bytes each) in one large value, at that scale. */
 const CJK = Math.floor(99_000 / SCALE);
+
+/** Grow a real room through accepted steps, including under the scaled byte limits. */
+async function largeRoom() {
+  const clients = await room3();
+  const { a, settle } = clients;
+  const nodes = Array.from({ length: 2_000 }, (_, i) => ({
+    id: `bulk${i}`,
+    stencil: "postgres",
+    label: "x".repeat(200),
+    x: i,
+    y: 0,
+  }));
+  const initialNodes = a.diagram!.nodes.length;
+  let edits = 0;
+  for (let offset = 0; offset < nodes.length;) {
+    const before = a.diagram!;
+    let count = nodes.length - offset;
+    let next = { ...before, nodes: [...before.nodes, ...nodes.slice(offset, offset + count)] };
+    while (!checkCommands(commandsFromDiff(before, next)).ok && count > 1) {
+      count = Math.floor(count / 2);
+      next = { ...before, nodes: [...before.nodes, ...nodes.slice(offset, offset + count)] };
+    }
+    expect(checkCommands(commandsFromDiff(before, next)).ok).toBe(true);
+    expect(a.edit(() => next)).toBe(true);
+    edits++;
+    offset += count;
+    await settle();
+  }
+  expect(edits).toBeGreaterThan(1);
+  for (const client of clients.clients) {
+    expect(client.diagram?.nodes).toHaveLength(initialNodes + nodes.length);
+    expect(client.projection()).toBe(a.projection());
+  }
+  return clients;
+}
 
 const labels = (c: TestClient) => c.diagram?.nodes.map((n) => n.label);
 
@@ -211,7 +248,7 @@ describe("sessions", () => {
     expect(Object.keys(a.diagram!)).not.toContain("x0");
     await settle();
     expect(wire).toBe(0);
-    a.edit((d) => ({ ...d, title: "Next" }));
+    expect(a.edit((d) => ({ ...d, title: "Next" }))).toBe(true);
     await settle();
     expect(b.diagram?.title).toBe("Next");
   });
@@ -274,9 +311,12 @@ describe("sessions", () => {
     const { a } = await room3();
     const chunk = (k: number) =>
       Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`w${k}_${i}`, "\u4e2d".repeat(CJK)]));
-    for (const k of [1, 2, 3, 4]) a.edit((d) => ({ ...d, ...chunk(k) }));
+    for (const k of [1, 2, 3, 4]) expect(a.edit((d) => ({ ...d, ...chunk(k) }))).toBe(true);
     const before = a.session.doc.stats.roomMeasurements;
-    for (let i = 0; i < 5; i++) expect(a.edit((d) => ({ ...d, ...chunk(9) }))).toBe(false);
+    for (let i = 0; i < 5; i++) {
+      expect(a.edit((d) => ({ ...d, ...chunk(9) }))).toBe(false);
+      expect(a.binding.refused).toBe("room-full");
+    }
     expect(a.session.doc.stats.roomMeasurements - before).toBeLessThanOrEqual(1);
   }, 60_000);
 
@@ -376,23 +416,17 @@ describe("sessions refuse hostile input", () => {
 
   it("throttles what it sends back to a member who keeps asking for the whole room", async () => {
     scaledLimits();
-    const { net, a, settle } = await room3();
-    a.edit((d) => ({
-      ...d,
-      nodes: [
-        ...d.nodes,
-        ...Array.from({ length: 2_000 }, (_, i) => ({
-          id: `bulk${i}`,
-          stencil: "postgres",
-          label: "x".repeat(200),
-          x: i,
-          y: 0,
-        })),
-      ],
-    }));
-    await settle();
-    const full = a.session.doc.encodeDiff().length;
+    const { net, a, settle } = await largeRoom();
+    const fullState = a.session.doc.encodeDiff();
+    const fullStateBytes = fullState.length;
+    expect(fullStateBytes * COLLAB_LIMITS.syncRequestsPerWindow).toBeGreaterThan(COLLAB_LIMITS.replyBytesPerWindow);
     const evil = await rogue(net);
+    await settle(); // Exclude the new transport peer's initial sync/presence traffic.
+    let replyTraffic = 0;
+    const untap = net.tap((r) => {
+      if (r.from === a.session.transport.self && r.to === evil.transport.self) replyTraffic += r.bytes.length;
+    });
+    onTestFinished(untap);
     const encode = vi.spyOn(a.session.doc, "encodeDiff");
     const asks = 100;
     for (let i = 0; i < asks; i++) await evil.send("doc", frame(DOC.syncRequest, new Uint8Array([0])));
@@ -401,11 +435,17 @@ describe("sessions refuse hostile input", () => {
     expect(a.session.stats.rejected["request-throttled"]).toBeGreaterThanOrEqual(
       asks - COLLAB_LIMITS.syncRequestsPerWindow,
     );
-    expect(encode.mock.calls.length).toBeLessThanOrEqual(COLLAB_LIMITS.syncRequestsPerWindow + 2);
-    const sent = Math.min(COLLAB_LIMITS.syncRequestsPerWindow, Math.floor(COLLAB_LIMITS.replyBytesPerWindow / full));
-    expect(a.session.stats.rejected["reply-throttled"] ?? 0).toBeGreaterThanOrEqual(
-      COLLAB_LIMITS.syncRequestsPerWindow - sent,
-    );
+    expect(encode.mock.calls.length).toBeLessThanOrEqual(COLLAB_LIMITS.syncRequestsPerWindow);
+    const sent = Math.floor(COLLAB_LIMITS.replyBytesPerWindow / fullStateBytes);
+    const throttled = a.session.stats.rejected["reply-throttled"] ?? 0;
+    expect(throttled).toBeGreaterThan(0);
+    expect(throttled).toBeGreaterThanOrEqual(COLLAB_LIMITS.syncRequestsPerWindow - sent);
+    const reply = frame(DOC.syncReply, fullState);
+    const frames = reply.length > COLLAB_LIMITS.maxFragmentBytes ? fragment(reply, 1) : [reply];
+    // The byte bucket charges update bytes; the wire also carries framing, envelope headers and 16-byte GCM tags.
+    const wireBytesPerReply = frames.reduce((bytes, f) => bytes + f.length + HEADER_BYTES + 16, 0);
+    expect(replyTraffic).toBeGreaterThan(0);
+    expect(replyTraffic).toBeLessThanOrEqual(sent * wireBytesPerReply);
   });
 
   it("a member's update with a huge array can't break the receive queue, and leave still cleans up", async () => {
