@@ -40,6 +40,17 @@ planning module arriving after the click timeout; it now waits for page readines
 No product code, assertion or timeout changed. The corrected autoscaling and static-page specs
 pass all 74 tests without retries; restoring the original test reproduces the startup failure.
 
+A later Linux gate hit the existing compact-reply cost guard at 24.26× against its 24× limit.
+Twelve clean-master unit suites and 200 focused repetitions did not reproduce it, so it is not
+claimed as an upstream failure. That guard now counts node and edge reads at the same eightfold
+input sizes, retaining the 24× limit and the existing three-reads-per-node bound, with an equivalent
+edge bound. This follows the quality guide's preference for counting observable work instead of
+depending on allocation/JIT/GC timing. Rebuilding the index per endpoint fails at 70,000 node reads
+against 15,000 allowed; a quadratic node scan fails the 24× read-growth guard. Both temporary
+runtime mutations were restored, and all 142 conversion checks (including type tests) pass.
+The tests and performance reviewers approved the traversal guard's explicit scope: it counts
+input reads, not all work on copied maps or strings. No product code changed.
+
 ## Deferred layout and interrupted-fit review (2026-10-15)
 
 The designer agent's scoped source/regression review found no added chrome, wording or focus targets.
