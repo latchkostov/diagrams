@@ -26,6 +26,11 @@
   existing accepted-edit, positive-throttling and encrypted-traffic assertions pass unchanged.
 - Refreshed the skill viewer at plugin 1.1.34, one patch above master. No parity golden changes;
   the performance changes preserve outputs. Scoped UX review adds no controls, copy or chrome.
+- The first full gate exposed three occupied-port fixture failures: a usable ephemeral port does
+  not guarantee its neighbours are outside Windows' reserved ranges. Fixtures now check the complete
+  five-port range on IPv4 and IPv6 before keeping their intended occupied member. A forced blocked
+  neighbour regression fails with the old setup; the real preflight and its exact-port assertions
+  remain intact. All 1,403 E2E tests passed in that run; the complete gate is repeated after this fix.
 
 ## Collaboration reply-byte regression coverage (2026-10-16)
 

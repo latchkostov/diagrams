@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, watch, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, win32 } from "node:path";
-import { createServer } from "node:net";
+import { createServer, type Server } from "node:net";
 import process from "node:process";
 import { expect, it } from "vitest";
 
@@ -148,27 +148,97 @@ function gateProbe(mode: string, base = 6360) {
   };
 }
 
+// An ephemeral port says nothing about its neighbours. Reserve the whole range on both
+// address families, then release every listener except the intended occupied port.
+
+const close = async (server: Server) => {
+  if (!server.listening) return;
+  await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+};
+const listen = (server: Server, port: number, host: string) =>
+  new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen({ port, host, exclusive: true, ipv6Only: host === "::1" }, () => {
+      server.off("error", reject);
+      resolve();
+    });
+  });
+const codeOf = (error: unknown) =>
+  typeof error === "object" && error !== null && "code" in error ? error.code : undefined;
+
+async function occupiedRange(offset: number, firstBase = 0) {
+  for (let attempt = 0; attempt < 32; attempt++) {
+    const servers: Server[] = [];
+    let kept: Server | undefined;
+    const open = async (port: number, host: string) => {
+      const server = createServer();
+      servers.push(server);
+      await listen(server, port, host);
+      return server;
+    };
+    try {
+      const first = await open(attempt === 0 ? firstBase : 0, "127.0.0.1");
+      const address = first.address();
+      if (!address || typeof address === "string") throw new Error("Missing probe port");
+      const base = address.port;
+      if (base > 65531 || [5190, 6000].some((port) => base <= port && port <= base + 4)) continue;
+      const ipv4 = [first];
+      for (let i = 1; i < 5; i++) ipv4.push(await open(base + i, "127.0.0.1"));
+      for (let i = 0; i < 5; i++) {
+        try {
+          await open(base + i, "::1");
+        } catch (error) {
+          if (codeOf(error) !== "EAFNOSUPPORT" && codeOf(error) !== "EADDRNOTAVAIL") throw error;
+        }
+      }
+      const target = ipv4[offset];
+      await Promise.all(servers.filter((server) => server !== target).map(close));
+      kept = target;
+      return { base, port: base + offset, close: () => close(target) };
+    } catch (error) {
+      if (codeOf(error) !== "EACCES" && codeOf(error) !== "EADDRINUSE") throw error;
+    } finally {
+      await Promise.all(servers.filter((server) => server !== kept).map(close));
+    }
+  }
+  throw new Error("Could not reserve a complete five-port probe range");
+}
+
+it("occupied-port fixtures skip a range with an unavailable earlier sibling", { timeout: 40_000 }, async () => {
+  const blocked = await occupiedRange(2);
+  let occupied: Awaited<ReturnType<typeof occupiedRange>> | undefined;
+  let probe: ReturnType<typeof gateProbe> | undefined;
+  try {
+    occupied = await occupiedRange(4, blocked.base);
+    expect(occupied.base).not.toBe(blocked.base);
+    probe = gateProbe("success", occupied.base);
+    const result = await probe.run();
+    expect(result.code, result.output).toBe(2);
+    expect(result.output).toContain(`port ${occupied.port} on 127.0.0.1 is unavailable`);
+    expect(existsSync(join(probe.fixture, "steps"))).toBe(false);
+    expect(existsSync(join(probe.fixture, "shards"))).toBe(false);
+    expect(existsSync(probe.stamp)).toBe(false);
+  } finally {
+    await Promise.all([blocked.close(), occupied?.close()]);
+    probe?.cleanup();
+  }
+});
+
 it.each([0, 1, 2, 3, 4])(
   "gate mode rejects an occupied port at offset %s before checks",
   { timeout: 40_000 },
   async (offset) => {
-    const server = createServer();
-    await new Promise<void>((resolve, reject) => {
-      server.once("error", reject);
-      server.listen(0, "127.0.0.1", resolve);
-    });
-    const address = server.address();
-    if (!address || typeof address === "string") throw new Error("Missing probe port");
-    const probe = gateProbe("success", address.port - offset);
+    const occupied = await occupiedRange(offset);
+    const probe = gateProbe("success", occupied.base);
     try {
       const result = await probe.run();
       expect(result.code, result.output).toBe(2);
-      expect(result.output).toContain(`port ${address.port} on 127.0.0.1 is unavailable`);
+      expect(result.output).toContain(`port ${occupied.port} on 127.0.0.1 is unavailable`);
       expect(existsSync(join(probe.fixture, "steps"))).toBe(false);
       expect(existsSync(join(probe.fixture, "shards"))).toBe(false);
       expect(existsSync(probe.stamp)).toBe(false);
     } finally {
-      await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+      await occupied.close();
       probe.cleanup();
     }
   },
