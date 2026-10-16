@@ -14,6 +14,13 @@ export const slotsKey = (node: string) => JSON.stringify(["local", node, "slots"
 export const quotaSignature = (q: Quota) =>
   JSON.stringify([q.unit, q.amount, q.windowMs, q.burst ?? q.amount, q.algorithm]);
 
+/** Requirements by bucket key, first declaration kept: a bucket named twice (two aliases of one shared quota) is
+ * checked and charged once per attempt, whichever admission path charges it. */
+export function uniqueRequirements<R extends { key: string }>(requirements: readonly R[]): R[] {
+  const seen = new Set<string>();
+  return requirements.filter((r) => !seen.has(r.key) && !!seen.add(r.key));
+}
+
 export interface Requirement {
   key: string;
   quota: Quota;

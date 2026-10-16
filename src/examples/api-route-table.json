@@ -66,7 +66,7 @@
     ]
   },
   "title": "Parcel API behind a route table",
-  "description": "Parcelpoint, an invented parcel platform, puts one Kong-style gateway in front of its services. The mobile app sends four kinds of request in fixed proportions and carriers post webhooks; the gateway's ordered route table sends each to its service, with a 10% pricing canary. Requests from an old app version match no rule and are refused 404. Carrier events arrive faster than their service can take them, so its backlog grows. Each route has its own colour and marker in Live.",
+  "description": "An invented parcel API: a gateway's route table sends each app request to its service by method and path, and 10% of quotes to a canary. An old app version's requests match no rule and are rejected 404. In Live, each route has its own colour and shape.",
   "direction": "LR",
   "nodes": [
     {
@@ -401,7 +401,7 @@
           "atMs": 1000,
           "action": {
             "do": "note",
-            "text": "Each route has its own colour and marker; the gateway's table sends it to its service.",
+            "text": "Each route has its own colour and shape; the gateway's table sends it to its service.",
             "focus": ["gateway"]
           }
         },
@@ -409,7 +409,7 @@
           "atMs": 8000,
           "action": {
             "do": "note",
-            "text": "Requests from the old app match no rule: the gateway refuses them 404.",
+            "text": "Requests from the old app match no rule: the gateway rejects them 404.",
             "focus": ["gateway"]
           }
         },

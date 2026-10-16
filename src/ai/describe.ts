@@ -111,9 +111,9 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
     if (routes.length > shown.length) lines.push(`  … ${routes.length - shown.length} more routes omitted`);
     for (const [node, byRoute] of Object.entries(analysis?.routeDemand ?? {}))
       for (const [route, demand] of Object.entries(byRoute))
-        if (demand.rejected > 0 || nodes.some((n) => n.id === node && n.props?.routeTable))
+        if (demand.rejected > 0 || demand.throttled > 0 || nodes.some((n) => n.id === node && n.props?.routeTable))
           lines.push(
-            `route demand ${quote(node)} ${route ? quote(route) : "(no address)"}: offered ${round(demand.offered)} req/s, refused 404 ${round(demand.rejected)} req/s`,
+            `route demand ${quote(node)} ${route ? quote(route) : "(no address)"}: offered ${round(demand.offered)} req/s, refused 404 ${round(demand.rejected)} req/s, rate-limited 429 ${round(demand.throttled)} req/s`,
           );
   }
   for (const g of groups)

@@ -248,40 +248,77 @@ export function removeMixRow(mix: TrafficMix, routeId: string): TrafficMix | und
 export const METHODS: readonly HttpMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"];
 export { addressText };
 
+/** A table without the targets `ok` doesn't allow: a rule left with nothing goes, an empty Default becomes 404. */
+function strip(table: RouteTable, ok: ReadonlySet<string>): { table: RouteTable; lost: boolean; rules: number } {
+  const keep = (a: RouteAction) => a.targets.filter((t) => ok.has(t.edgeId));
+  const lost = [...table.rules, ...(table.default ? [table.default] : [])].some(
+    (a) => keep(a).length !== a.targets.length,
+  );
+  if (!lost) return { table, lost, rules: 0 };
+  const next: RouteTable = { rules: [] };
+  let rules = 0;
+  for (const rule of table.rules) {
+    const targets = keep(rule);
+    if (targets.some((t) => t.weight > 0)) next.rules.push({ ...rule, targets });
+    else rules++;
+  }
+  if (table.default) {
+    const targets = keep(table.default);
+    if (targets.some((t) => t.weight > 0)) next.default = { ...table.default, targets };
+  }
+  return { table: next, lost, rules };
+}
+
 /**
- * Route tables whose targets an edit took away (a deleted or reconnected connection, a deleted service): each
- * table without those targets. A rule left with nothing to send to is removed, and a Default left empty becomes
- * Reject 404, so nothing is ever widened or sent somewhere else. Undefined when no table lost a target.
+ * Route tables whose targets an edit took away (a deleted or reconnected connection, a deleted service), on nodes
+ * and in saved simulations' setup and timeline: each without those targets. A rule left with nothing to send to
+ * is removed, and a Default left empty becomes Reject 404, so nothing is ever widened or sent somewhere else.
+ * Undefined when no table lost a target.
  */
 export function strippedTables(
   d: RoutingDocument,
   context: RoutingContext,
-): { tables: Map<string, RouteTable>; rules: number } | undefined {
+): { tables: Map<string, RouteTable>; simulations?: DiagramFile["simulations"]; rules: number } | undefined {
   const allowed = routeTargetEdges(d, context.roleOf, context.isDlq);
   const tables = new Map<string, RouteTable>();
   let rules = 0;
+  const fix = (node: string, table: unknown): RouteTable | undefined => {
+    const t = table as RouteTable | undefined;
+    if (!t || !Array.isArray(t.rules)) return undefined;
+    const result = strip(t, allowed.get(node) ?? new Set<string>());
+    if (!result.lost) return undefined;
+    rules += result.rules;
+    return result.table;
+  };
   for (const node of d.nodes) {
-    const table = node.props?.routeTable as RouteTable | undefined;
-    if (!table || !Array.isArray(table.rules)) continue;
-    const ok = allowed.get(node.id) ?? new Set<string>();
-    const keep = (a: RouteAction) => a.targets.filter((t) => ok.has(t.edgeId));
-    const lost = [...table.rules, ...(table.default ? [table.default] : [])].some(
-      (a) => keep(a).length !== a.targets.length,
-    );
-    if (!lost) continue;
-    const next: RouteTable = { rules: [] };
-    for (const rule of table.rules) {
-      const targets = keep(rule);
-      if (targets.some((t) => t.weight > 0)) next.rules.push({ ...rule, targets });
-      else rules++;
-    }
-    if (table.default) {
-      const targets = keep(table.default);
-      if (targets.some((t) => t.weight > 0)) next.default = { ...table.default, targets };
-    }
-    tables.set(node.id, next);
+    const table = fix(node.id, node.props?.routeTable);
+    if (table) tables.set(node.id, table);
   }
-  return tables.size ? { tables, rules } : undefined;
+  let changed = false;
+  const simulations = d.simulations?.map((sim) => {
+    const setup = Object.entries(sim.setup?.props ?? {}).map(([node, patch]) => {
+      const table = fix(node, patch.routeTable);
+      if (!table) return [node, patch] as const;
+      changed = true;
+      return [node, { ...patch, routeTable: table }] as const;
+    });
+    const timeline = (sim.timeline ?? []).map((step) => {
+      if (step.action.do !== "props") return step;
+      const table = fix(step.action.node, step.action.props.routeTable);
+      if (!table) return step;
+      changed = true;
+      return { ...step, action: { ...step.action, props: { ...step.action.props, routeTable: table } } };
+    });
+    return {
+      ...sim,
+      ...(sim.setup
+        ? { setup: { ...sim.setup, ...(sim.setup.props ? { props: Object.fromEntries(setup) } : {}) } }
+        : {}),
+      ...(sim.timeline ? { timeline } : {}),
+    };
+  });
+  if (!tables.size && !changed) return undefined;
+  return { tables, ...(changed ? { simulations } : {}), rules };
 }
 
 /** The document with a first route table on a router (Default keeps today's connections): one undo step. */

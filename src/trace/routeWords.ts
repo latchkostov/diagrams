@@ -40,7 +40,9 @@ export function routeWords(diagram: Pick<DiagramFile, "nodes"> & Partial<Pick<Di
       const rules = node ? tables.get(node)?.rules : undefined;
       const index = rules?.findIndex((r) => r.id === rule) ?? -1;
       const named = index >= 0 ? rules![index].label : undefined;
-      return named ?? (index >= 0 ? t("routing.ruleNumber", { n: index + 1 }) : rule);
+      // "rule 3 (Labels)": a rule's name never reads as the service it sends to.
+      if (index < 0) return rule;
+      return named ? t("routing.ruleNamed", { n: index + 1, name: named }) : t("routing.ruleNumber", { n: index + 1 });
     },
     hop: (route, node, rule, weight) => {
       const address = words.address(route);

@@ -31,12 +31,15 @@ import {
   type CompiledTable,
 } from "./routeMatching";
 import { routeTableCapable } from "../model/requestRouting";
+import { quotaKey } from "./admissionPolicy";
 
 /** Configured demand for one request route at one node, real requests/s ("" is requests without an address). */
 export interface RouteDemand {
   offered: number;
   /** Refused by this router's table: no matching rule and no Default, or no eligible target (404). */
   rejected: number;
+  /** Over the matched rule's (or Default's) rate limits: rejected 429 at this router. */
+  throttled: number;
 }
 
 export interface NodeCapacity {
@@ -288,12 +291,66 @@ export function analyzeCapacity(
   const along = (edge: CompiledEdge, type: string, route: CompiledRoute | undefined) =>
     classKey(type, route, !route && edge.sync && !!entries.get(edge.to)?.table);
   const demand = new Map<string, Map<string, RouteDemand>>();
+  // A router's decision for a traffic class never changes with rates: decided once per analysis (not per iteration),
+  // with its eligible targets and its action's quota buckets.
+  interface Decision {
+    eligible: CompiledEdge[];
+    weights: number[];
+    sum: number;
+    buckets: { key: string; rate: number }[];
+  }
+  const decisions = new Map<string, Decision | "legacy">();
+  const sharedQuotas = new Map((diagram.planning?.sharedQuotas ?? []).map((q) => [q.id, q]));
+  function decide(
+    id: string,
+    table: CompiledTable,
+    key: string,
+    type: string,
+    route: CompiledRoute | undefined,
+    sync: boolean,
+  ): Decision | "legacy" {
+    const cacheKey = `${id}\u0000${key}`;
+    const known = decisions.get(cacheKey);
+    if (known) return known;
+    const choice = chooseAction(table, route, sync);
+    let decision: Decision | "legacy" = "legacy";
+    if (!("legacy" in choice)) {
+      const eligible: CompiledEdge[] = [];
+      const weights: number[] = [];
+      const self = { type, route };
+      if ("action" in choice)
+        for (const target of choice.action.targets) {
+          const edge = target.weight > 0 ? (outgoing.get(id) ?? []).find((e) => e.id === target.edgeId) : undefined;
+          if (edge && takes(edge, self)) {
+            eligible.push(edge);
+            weights.push(target.weight);
+          }
+        }
+      const buckets = new Map<string, number>();
+      if ("action" in choice)
+        for (const declared of choice.action.quotas) {
+          const quota = (declared.sharedGroup ? sharedQuotas.get(declared.sharedGroup) : undefined) ?? declared;
+          buckets.set(quotaKey(id, ["rule", choice.action.key], declared), (quota.amount * 1000) / quota.windowMs);
+        }
+      decision = {
+        eligible,
+        weights,
+        sum: weights.reduce((a, b) => a + b, 0),
+        buckets: [...buckets].map(([bucket, rate]) => ({ key: bucket, rate })),
+      };
+    }
+    decisions.set(cacheKey, decision);
+    return decision;
+  }
+  // Each quota bucket's offered rate, from the previous iteration (the fixed point settles them together).
+  let previousBuckets = new Map<string, number>();
+  let bucketOffered = new Map<string, number>();
   const routeDemandAt = (id: string, route: CompiledRoute | undefined): RouteDemand => {
     let byRoute = demand.get(id);
     if (!byRoute) demand.set(id, (byRoute = new Map()));
     const key = route?.id ?? "";
     let d = byRoute.get(key);
-    if (!d) byRoute.set(key, (d = { offered: 0, rejected: 0 }));
+    if (!d) byRoute.set(key, (d = { offered: 0, rejected: 0, throttled: 0 }));
     return d;
   };
   const groups = new Map<string, ConsumerGroup[]>();
@@ -404,28 +461,31 @@ export function analyzeCapacity(
     if (entry.role === "processor" || entry.role === "none") type = emittedType(entry.props.emits, type);
     const self = { type, route };
     if (entry.table && entry.role === "gateway") {
-      // The router's table, as playback decides it: first matching rule, else Default, else refused.
-      const choice = chooseAction(entry.table, route, !!c.sync);
-      if (!("legacy" in choice)) {
-        const eligible: CompiledEdge[] = [];
-        const weights: number[] = [];
-        if ("action" in choice)
-          for (const target of choice.action.targets) {
-            const edge = target.weight > 0 ? (outgoing.get(id) ?? []).find((e) => e.id === target.edgeId) : undefined;
-            if (edge && takes(edge, self)) {
-              eligible.push(edge);
-              weights.push(target.weight);
-            }
-          }
-        if (!eligible.length) {
+      const decision = decide(id, entry.table, key, type, route, !!c.sync);
+      if (decision !== "legacy") {
+        if (!decision.eligible.length) {
           routeDemandAt(id, route).rejected += rate;
           return;
         }
-        const sum = weights.reduce((a, b) => a + b, 0);
-        eligible.forEach((edge, i) => {
+        // The action's quotas admit at most their rate (shared buckets across every action that names them); the
+        // rest is rejected 429 here and goes no further, as in playback.
+        let admitted = rate;
+        for (const bucket of decision.buckets) {
+          bucketOffered.set(bucket.key, (bucketOffered.get(bucket.key) ?? 0) + rate);
+          const offered = previousBuckets.get(bucket.key) ?? 0;
+          if (offered > bucket.rate) admitted = Math.min(admitted, (rate * bucket.rate) / offered);
+        }
+        if (admitted < rate) routeDemandAt(id, route).throttled += rate - admitted;
+        decision.eligible.forEach((edge, i) => {
           // A deny rule's share is blocked at this router and goes no further.
           if (!edge.deny)
-            add(next, edge.to, along(edge, emittedType(edge.emits, type), route), (rate * weights[i]) / sum, edge);
+            add(
+              next,
+              edge.to,
+              along(edge, emittedType(edge.emits, type), route),
+              (admitted * decision.weights[i]) / decision.sum,
+              edge,
+            );
         });
         return;
       }
@@ -475,6 +535,8 @@ export function analyzeCapacity(
   for (; iterations < iterationCap; iterations++) {
     connections = Object.create(null);
     demand.clear();
+    previousBuckets = bucketOffered;
+    bucketOffered = new Map();
     const next: Rates = new Map([...external].map(([id, types]) => [id, new Map(types)]));
     for (const [id, types] of rates) {
       const entry = entries.get(id)!;

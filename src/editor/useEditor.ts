@@ -314,11 +314,7 @@ export function createEditor(
    * silently widened: the toast says so and offers to remove those targets in the same step (a rule left with nothing
    * goes, an empty Default becomes Reject 404). `retry` re-runs the edit with the repaired tables.
    */
-  const explainRouting = (
-    candidate: Parameters<typeof validateRouting>[0],
-    error: string,
-    retry?: (tables: Map<string, unknown>) => void,
-  ) => {
+  const explainRouting = (candidate: Parameters<typeof validateRouting>[0], error: string, retry?: () => void) => {
     const stripped = retry ? strippedTables(candidate, ROUTING_CONTEXT) : undefined;
     if (!stripped) {
       notify(error, { kind: "error" });
@@ -331,36 +327,40 @@ export function createEditor(
         get label() {
           return t("routing.removeTargets");
         },
-        run: () => retry!(stripped.tables),
+        // Re-run against the document as it is when clicked (later edits stay), repairing its tables then.
+        run: () => retry!(),
         testId: "toast-routing-repair",
       },
     });
   };
-  const withTables = (nodes: FlowNode[], tables: Map<string, unknown>): FlowNode[] =>
-    nodes.map((n) =>
-      isDiagram(n) && tables.has(n.id)
-        ? { ...n, data: { ...n.data, props: { ...n.data.props, routeTable: tables.get(n.id) } } }
-        : n,
-    );
-  const acceptNodes = (
-    nodes: FlowNode[],
-    edges = currentEdges(),
-    meta = deps().meta,
-    retry?: (tables: Map<string, unknown>) => void,
-  ): boolean => {
-    const candidate = {
-      ...meta,
-      nodes: nodes.filter(isDiagram).map((n) => ({
-        id: n.id,
-        stencil: n.data.stencil,
-        label: n.data.label,
-        sublabel: n.data.sublabel,
-        props: n.data.props,
-        x: 0,
-        y: 0,
-      })),
-      edges: edges.map((e) => ({ id: e.id, from: e.source, to: e.target, ...e.data })),
+  const routingDoc = (nodes: FlowNode[], edges: DiagramFlowEdge[], meta: DiagramMeta) => ({
+    ...meta,
+    nodes: nodes.filter(isDiagram).map((n) => ({
+      id: n.id,
+      stencil: n.data.stencil,
+      label: n.data.label,
+      sublabel: n.data.sublabel,
+      props: n.data.props,
+      x: 0,
+      y: 0,
+    })),
+    edges: edges.map((e) => ({ id: e.id, from: e.source, to: e.target, ...e.data })),
+  });
+  /** The candidate with its lost route-table targets removed (nodes and saved simulations), for the repair. */
+  const repaired = (nodes: FlowNode[], edges: DiagramFlowEdge[], meta: DiagramMeta) => {
+    const stripped = strippedTables(routingDoc(nodes, edges, meta), ROUTING_CONTEXT);
+    if (!stripped) return { nodes, meta };
+    return {
+      nodes: nodes.map((n) =>
+        isDiagram(n) && stripped.tables.has(n.id)
+          ? { ...n, data: { ...n.data, props: { ...n.data.props, routeTable: stripped.tables.get(n.id) } } }
+          : n,
+      ),
+      meta: stripped.simulations ? { ...meta, simulations: stripped.simulations } : meta,
     };
+  };
+  const acceptNodes = (nodes: FlowNode[], edges = currentEdges(), meta = deps().meta, retry?: () => void): boolean => {
+    const candidate = routingDoc(nodes, edges, meta);
     const resourceError = validateResources(candidate);
     const routingError = resourceError ? undefined : validateRouting(candidate);
     if (routingError) {
@@ -379,12 +379,18 @@ export function createEditor(
     updateEdges: (edges: DiagramFlowEdge[]) => DiagramFlowEdge[],
     opts?: { merge?: string },
     meta?: DiagramMeta,
+    /** The route-table repair: remove the targets this edit takes away, from the document as it is now. */
+    repair = false,
   ): boolean => {
-    const current = currentNodes(),
-      candidate = update(current);
+    const current = currentNodes();
+    let candidate = update(current);
     const edges = updateEdges(currentEdges());
-    const retry = (tables: Map<string, unknown>) =>
-      commitNodes((nodes) => withTables(update(nodes), tables), updateEdges, opts, meta);
+    if (repair) {
+      const fixed = repaired(candidate, edges, meta ?? deps().meta);
+      candidate = fixed.nodes;
+      if (fixed.meta !== (meta ?? deps().meta)) meta = fixed.meta;
+    }
+    const retry = repair ? undefined : () => void commitNodes(update, updateEdges, opts, meta, true);
     if (!acceptNodes(candidate, edges, meta, retry)) return false;
     // Metadata the insertion needs (request routes it brought) lands in the same step.
     if (meta && meta !== deps().meta) deps().setMeta(meta);
@@ -402,12 +408,8 @@ export function createEditor(
   };
   const commitEdges = (update: (edges: DiagramFlowEdge[]) => DiagramFlowEdge[], merge?: string) => {
     const candidate = update(currentEdges());
-    const retry = (tables: Map<string, unknown>) =>
-      commitNodes(
-        (nodes) => withTables(nodes, tables),
-        () => candidate,
-        merge === undefined ? undefined : { merge },
-      );
+    const retry = () =>
+      void commitNodes((nodes) => nodes, update, merge === undefined ? undefined : { merge }, undefined, true);
     if (!acceptNodes(currentNodes(), candidate, undefined, retry)) return false;
     deps().history.hint(merge);
     setEdges(candidate);

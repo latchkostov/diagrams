@@ -42,6 +42,13 @@ function routingInputs(d: RoutingDocument): unknown[] {
       if (p.routeTable !== undefined) routers.set(n.id, n.stencil);
     }
   }
+  // Tables in saved simulations (setup and timeline) name connections too.
+  for (const sim of d.simulations ?? []) {
+    for (const [node, patch] of Object.entries(sim.setup?.props ?? {}))
+      if (patch.routeTable !== undefined) routers.set(node, "");
+    for (const step of sim.timeline ?? [])
+      if (step.action.do === "props" && step.action.props.routeTable !== undefined) routers.set(step.action.node, "");
+  }
   if (routers.size) for (const n of d.nodes) labels.set(n.id, [n.stencil, n.label, n.sublabel]);
   for (const e of d.edges) {
     const p = e.props;

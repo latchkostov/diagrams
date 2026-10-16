@@ -107,6 +107,13 @@ test("adds a route table that keeps today's connections, edits a rule, reorders 
   await expect.poll(async () => (await table(page))?.default?.targets.length).toBe(3);
   await page.keyboard.press("Control+Shift+z");
   await expect.poll(async () => (await table(page))?.default).toBeUndefined();
+
+  // Deleting the first rule moves keyboard focus to the rule after it, and the toast offers Undo.
+  await page.getByTestId("node-kong").click();
+  await page.getByTestId("routes-rule-rule-2").click();
+  await page.getByTestId("routes-rule-rule-2-delete").click();
+  await expect(page.getByTestId("routes-rule-rule-1")).toBeFocused();
+  await expect(page.getByTestId("toast-rule-undo")).toBeVisible();
   expectNoErrors(consoleErrors);
 });
 
@@ -149,6 +156,43 @@ test("a source's traffic mix: new routes, shares that must add up, Normalize", a
   ]);
 });
 
+test("switching a rates mix to shares keeps the total; a route's draft follows Undo", async ({ page }) => {
+  const d = routingFixture({
+    rate: 2,
+    mix: {
+      mode: "rates",
+      entries: [
+        { routeId: "orders-post", ratePerSec: 20 },
+        { routeId: "search-get", ratePerSec: 80 },
+      ],
+    },
+  });
+  await seed(page, d);
+  await gotoCanvas(page, slug);
+  await waitForStableViewport(page);
+  await page.getByTestId("node-app").click();
+  await page.getByTestId("mix-mode-shares").click();
+  await expect.poll(async () => props(await savedDiagram(page), "app").ratePerSec).toBe(100);
+  await expect(page.getByTestId("mix-row-search-get-value")).toHaveValue("80");
+  // Keyboard: the arrow keys move the mode, one Tab stop.
+  await page.getByTestId("mix-mode-shares").press("ArrowRight");
+  await expect(page.getByTestId("mix-mode-rates")).toBeFocused();
+  await expect(page.getByTestId("mix-mode-rates")).toHaveAttribute("aria-checked", "true");
+
+  // A route's host, undone with the inspector still open, then its path edited: the host stays undone.
+  await page.getByTestId("mix-row-orders-post-edit").click();
+  await page.getByTestId("route-def-orders-post-address-advanced").locator("summary").click();
+  await page.getByTestId("route-def-orders-post-address-host").fill("api.example.com");
+  const host = async () =>
+    (await savedDiagram(page)).planning?.requestRoutes?.find((r) => r.id === "orders-post")?.address;
+  await expect.poll(async () => (await host())?.host).toBe("api.example.com");
+  await page.getByTestId("undo-button").click();
+  await expect.poll(async () => (await host())?.host).toBeUndefined();
+  await page.getByTestId("route-def-orders-post-address-path").fill("/orders/new");
+  await expect.poll(async () => (await host())?.path).toBe("/orders/new");
+  expect((await host())?.host).toBeUndefined();
+});
+
 test("deleting a service a rule sends to is refused with a repair that removes it from the table", async ({ page }) => {
   await seed(page, routingFixture());
   await gotoCanvas(page, slug);
@@ -159,6 +203,28 @@ test("deleting a service a rule sends to is refused with a repair that removes i
   await page.getByTestId("toast-routing-repair").click();
   await expect(page.getByTestId("node-search")).toHaveCount(0);
   // The search rule had nowhere left to send: removed with it, never widened to another connection.
+  await expect.poll(async () => (await table(page))?.rules.map((r) => r.id)).toEqual(["orders"]);
+});
+
+test("the repair re-runs the refused edit against the document as it is when clicked", async ({ page }) => {
+  await seed(page, routingFixture());
+  await gotoCanvas(page, slug);
+  await waitForStableViewport(page);
+  // Turning a table's target into a dependency is refused, with the repair offered.
+  await page.getByTestId("edge-label-kong-search").click();
+  await page.getByTestId("inspector-field-relation").click();
+  await page.getByTestId("context-menu-item-depends").click();
+  await expect(page.getByTestId("toast-routing-repair")).toBeVisible();
+  // Another edit meanwhile: a connection's new label.
+  await page.getByTestId("edge-label-app-kong").click();
+  await page.getByTestId("inspector-field-label").fill("Phone calls");
+  await page.getByTestId("toast-routing-repair").click();
+  await expect
+    .poll(async () => (await savedDiagram(page)).edges.find((e) => e.id === "app-kong")?.label)
+    .toBe("Phone calls");
+  await expect
+    .poll(async () => (await savedDiagram(page)).edges.find((e) => e.id === "kong-search")?.relation)
+    .toBe("depends");
   await expect.poll(async () => (await table(page))?.rules.map((r) => r.id)).toEqual(["orders"]);
 });
 
@@ -180,7 +246,7 @@ test("Live: the Routes legend in words, refusals counted, a traced 404 explained
   // Not colour alone: each row names its look and address in words.
   await expect(page.getByTestId("request-route-search-get-row")).toHaveAttribute(
     "aria-label",
-    /GET \/search, sky blue circle\. \d+ sent · 0 done · \d+ refused/,
+    /GET \/search, sky blue circle\. \d+ sent · 0 completed · \d+ rejected/,
   );
   await expect(page.getByTestId("request-route-orders-post-row")).toContainText("POST /orders");
   // A refused request, traced: the card says why.

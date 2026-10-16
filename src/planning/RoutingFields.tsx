@@ -1,4 +1,13 @@
-import { useId, useMemo, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import type { EditorApi } from "../editor/types";
 import type { DiagramFile, PlanningModel } from "../model/types";
 import {
@@ -41,9 +50,12 @@ import {
   withRouting,
 } from "../model/routingEdits";
 import { t, useLocale } from "../i18n";
-import { formatNumber, formatRate } from "../i18n/format";
+import { formatNumber } from "../i18n/format";
+import { explanationRate } from "./format";
 import { notify } from "../interop/ui/toast";
 import { planningHost } from "./host";
+import { RouteSwatch } from "../components/RouteSwatch";
+import { routingIntent } from "../editor/routingIntent";
 import type { RouteCounts } from "../sim/types";
 
 /**
@@ -54,30 +66,9 @@ import type { RouteCounts } from "../sim/types";
 
 type Doc = Pick<DiagramFile, "planning" | "nodes" | "edges" | "simulations">;
 
-/** A route's swatch and marker: never colour alone (the marker and the text say it too). */
-export function RouteSwatch({ route, size = 12 }: { route: Pick<RequestRoute, "id" | "appearance">; size?: number }) {
-  const look = routeLook(route);
-  return <MarkerGlyph color={look.color} marker={look.marker} size={size} />;
-}
-
-function MarkerGlyph({ color, marker, size }: { color: string; marker: RouteMarker; size: number }) {
-  const c = size / 2;
-  const r = size * 0.36;
-  const stroke = { fill: color, stroke: "var(--route-outline, #1f2328)", strokeWidth: 1.2 };
-  return (
-    <svg className="route-swatch" width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
-      {marker === "square" ? (
-        <rect x={c - r} y={c - r} width={r * 2} height={r * 2} {...stroke} />
-      ) : marker === "diamond" ? (
-        <path d={`M${c} ${c - r * 1.3}L${c + r * 1.3} ${c}L${c} ${c + r * 1.3}L${c - r * 1.3} ${c}Z`} {...stroke} />
-      ) : marker === "triangle" ? (
-        <path d={`M${c} ${c - r * 1.25}L${c + r * 1.2} ${c + r}L${c - r * 1.2} ${c + r}Z`} {...stroke} />
-      ) : (
-        <circle cx={c} cy={c} r={r} {...stroke} />
-      )}
-    </svg>
-  );
-}
+/** "Pricing +1": the first target, and how many more (the full list is in the title and the row's name). */
+const targetsText = (labels: string[]) =>
+  labels.length > 1 ? t("routing.moreTargets", { target: labels[0], count: labels.length - 1 }) : (labels[0] ?? "");
 
 const markerName = (marker: RouteMarker) =>
   ({
@@ -120,24 +111,22 @@ function applyRouted(editor: EditorApi, edit: (d: DiagramFile) => void, merge?: 
   }
 }
 
-/** Routing needs the current planning model; older diagrams offer the existing upgrade preview. */
-function NeedsModel({ editor }: { editor: EditorApi }) {
-  return (
-    <p className="insp-note" data-testid="routing-model-required">
-      {t("routing.modelRequired")}{" "}
-      <button
-        type="button"
-        className="link-btn"
-        data-testid="routing-upgrade"
-        onClick={() => {
-          editor.select({});
-          editor.openInspector("autoscaling-upgrade-preview");
-        }}
-      >
-        {t("routing.upgrade")}
-      </button>
-    </p>
-  );
+/**
+ * Calls `reset` when `value` changes to something this editor didn't send itself (Undo, Redo, another editor):
+ * local drafts never outlive the saved value they were typed over. Returns how the editor records what it sends.
+ */
+function useExternal<T>(value: T, reset: () => void) {
+  const sent = useRef<unknown>(value);
+  const seen = useRef<T>(value);
+  useEffect(() => {
+    if (Object.is(seen.current, value)) return;
+    seen.current = value;
+    if (JSON.stringify(sent.current) !== JSON.stringify(value)) reset();
+    sent.current = value;
+  });
+  return (value: unknown) => {
+    sent.current = value;
+  };
 }
 
 // ---------------------------------------------------------------- route definitions
@@ -173,6 +162,10 @@ function AddressEditor({
   const [draft, setDraft] = useState<{ path?: string; host?: string; headers?: string; query?: string }>({});
   const [problem, setProblem] = useState<string | undefined>();
   const problemId = useId();
+  const rememberAddress = useExternal(address, () => {
+    setDraft({});
+    setProblem(undefined);
+  });
   const commit = (next: Partial<typeof draft>) => {
     const merged = { ...draft, ...next };
     setDraft(merged);
@@ -198,6 +191,7 @@ function AddressEditor({
       };
       checkAddress(candidate, "address");
       setProblem(undefined);
+      rememberAddress(candidate);
       onChange(candidate);
     } catch (error) {
       setProblem(error instanceof Error ? error.message.replace(/^address\.?\w*:\s*/, "") : String(error));
@@ -290,7 +284,16 @@ function AddressEditor({
 }
 
 /** One shared route definition: its name, address and where it's used (edits change every place that uses it). */
-function RouteDefinition({ editor, route, doc }: { editor: EditorApi; route: RequestRoute; doc: Doc }) {
+function RouteDefinition({
+  editor,
+  route,
+  deletable = false,
+}: {
+  editor: EditorApi;
+  route: RequestRoute;
+  deletable?: boolean;
+}) {
+  const doc: Doc = editor.getDiagram();
   const routes = doc.planning?.requestRoutes ?? [];
   const used = routeUsage(doc, route.id);
   const save = (patch: Partial<RequestRoute>, field: string) =>
@@ -320,6 +323,22 @@ function RouteDefinition({ editor, route, doc }: { editor: EditorApi; route: Req
       <p className="insp-note" data-testid={`route-def-${route.id}-used`}>
         {used.length ? t("routing.usedBy", { places: used.join(", ") }) : t("routing.unused")}
       </p>
+      {deletable && (
+        <button
+          type="button"
+          className="link-btn"
+          disabled={used.length > 0}
+          title={used.length ? t("routing.deleteUsed") : undefined}
+          data-testid={`request-route-${route.id}-delete`}
+          onClick={() =>
+            editor.updateMeta({
+              planning: { ...doc.planning!, requestRoutes: routes.filter((r) => r.id !== route.id) },
+            })
+          }
+        >
+          {t("routing.deleteRoute")}
+        </button>
+      )}
     </div>
   );
 }
@@ -329,11 +348,18 @@ function NewRoute({
   onAdd,
   onCancel,
   testId,
+  focus = false,
 }: {
   onAdd: (a: RequestAddress, label?: string) => void;
   onCancel: () => void;
   testId: string;
+  /** Opened from the right-click: the Path field takes focus. */
+  focus?: boolean;
 }) {
+  const path0 = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (focus) path0.current?.focus();
+  }, [focus]);
   const [method, setMethod] = useState<HttpMethod>("GET");
   const [path, setPath] = useState("/");
   const [label, setLabel] = useState("");
@@ -365,6 +391,7 @@ function NewRoute({
           <span className="insp-label">{t("routing.path")}</span>
           <input
             className="insp-input mono"
+            ref={path0}
             value={path}
             spellCheck={false}
             data-testid={`${testId}-path`}
@@ -423,12 +450,17 @@ function MatchEditor({
 }) {
   const [draft, setDraft] = useState<{ value?: string; hosts?: string; headers?: string; query?: string }>({});
   const [problem, setProblem] = useState<string | undefined>();
+  const rememberMatch = useExternal(match, () => {
+    setDraft({});
+    setProblem(undefined);
+  });
   const kind: PathMatchKind | "any" = match.path?.kind ?? "any";
   const commit = (next: RouteMatch, d: typeof draft = {}) => {
     setDraft(d);
     try {
       checkRouteMatch(next, "match");
       setProblem(undefined);
+      rememberMatch(next);
       onChange(next);
     } catch (error) {
       setProblem(error instanceof Error ? error.message.replace(/^match\.?\w*:\s*/, "") : String(error));
@@ -505,7 +537,7 @@ function MatchEditor({
         </small>
       )}
       <details data-testid={`${testId}-advanced`}>
-        <summary>{t("ai.advanced")}</summary>
+        <summary>{t("routing.matchMore")}</summary>
         <label className="insp-field">
           <span className="insp-label">{t("routing.hosts")}</span>
           <input
@@ -638,6 +670,7 @@ function TargetsEditor({
           </div>
         );
       })}
+      <p className="insp-note">{t("routing.weightsHint")}</p>
     </fieldset>
   );
 }
@@ -701,21 +734,21 @@ export function RouteTableFields({
   planning: PlanningModel | undefined;
 }) {
   useLocale();
-  const [open, setOpen] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(() => (routingIntent.peek(nodeId) === "default" ? "default" : null));
+  const defaultRow = useRef<HTMLButtonElement>(null);
+  const rowRefs = useRef(new Map<string, HTMLButtonElement>());
+  useEffect(() => {
+    if (routingIntent.peek(nodeId) === "default") defaultRow.current?.focus();
+    routingIntent.clear(nodeId);
+  }, [nodeId]);
   const [announce, setAnnounce] = useState("");
   const table = props.routeTable as RouteTable | undefined;
   const doc = editor.getDiagram();
-  const flows = outgoingFlows(doc, nodeId).map((id) => doc.edges.find((x) => x.id === id)!);
-  // A connection is named by its target; two to the same node add the connection's own label.
-  const edges = flows.map((e) => {
-    const to = doc.nodes.find((n) => n.id === e.to)?.label ?? e.to;
-    const twice = flows.filter((f) => f.to === e.to).length > 1;
-    return { id: e.id, label: twice && e.label ? `${to} · ${e.label}` : to };
-  });
+  const edges = table ? connectionLabels(doc, nodeId) : [];
   const labelOf = (id: string) => edges.find((e) => e.id === id)?.label ?? id;
   const merge = (field: string) => ({ merge: `routing:table:${nodeId}:${field}` });
   const save = (next: RouteTable, field: string) => editor.setNodeProps(nodeId, { routeTable: next }, merge(field));
-  if (planning?.revision !== "p3-a1") return table ? null : <NeedsModel editor={editor} />;
+  if (planning?.revision !== "p3-a1") return null;
   if (!table)
     return (
       <div className="route-empty" data-testid="routes-empty">
@@ -761,19 +794,34 @@ export function RouteTableFields({
           <div key={rule.id} className={open === rule.id ? "route-open" : undefined}>
             <button
               type="button"
-
               className="route-row"
               aria-expanded={open === rule.id}
+              aria-label={t("routing.ruleRow", {
+                n: i + 1,
+                match: matchText(rule.match),
+                targets: rule.targets.map((x) => labelOf(x.edgeId)).join(", "),
+                split: splitText(rule),
+              })}
+              aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
+              ref={(el) => {
+                if (el) rowRefs.current.set(rule.id, el);
+                else rowRefs.current.delete(rule.id);
+              }}
               data-testid={`routes-rule-${rule.id}`}
               onClick={() => setOpen(open === rule.id ? null : rule.id)}
               onKeyDown={rowKeys(rule)}
             >
               <span>{i + 1}</span>
-              <span className="mono" title={rule.label}>
+              <span
+                className="mono route-cut"
+                title={rule.label ? `${rule.label}: ${matchText(rule.match)}` : matchText(rule.match)}
+              >
                 {matchText(rule.match)}
               </span>
-              <span>{rule.targets.map((x) => labelOf(x.edgeId)).join("; ")}</span>
-              <span className="mono">{splitText(rule)}</span>
+              <span className="route-cut" title={rule.targets.map((x) => labelOf(x.edgeId)).join(", ")}>
+                {targetsText(rule.targets.map((x) => labelOf(x.edgeId)))}
+              </span>
+              <span className="mono route-split">{splitText(rule)}</span>
             </button>
             {shadowed.has(i) && (
               <p className="insp-note route-warning" data-testid={`routes-shadowed-${rule.id}`}>
@@ -809,7 +857,7 @@ export function RouteTableFields({
                   onChange={(a) => save(updateRule(table, rule.id, { targets: a.targets }), `targets:${rule.id}`)}
                 />
                 <details>
-                  <summary>{t("ai.advanced")}</summary>
+                  <summary>{t("routing.rateLimitFold")}</summary>
                   <RateLimitField
                     action={rule}
                     testId={`routes-rule-${rule.id}-rate`}
@@ -842,7 +890,12 @@ export function RouteTableFields({
                     onClick={() => {
                       save(removeRule(table, rule.id), `delete:${rule.id}`);
                       setOpen(null);
+                      const next = table.rules[i + 1]?.id ?? table.rules[i - 1]?.id;
+                      requestAnimationFrame(() => (next ? rowRefs.current.get(next) : defaultRow.current)?.focus());
                       setAnnounce(t("routing.ruleRemoved", { rule: i + 1 }));
+                      notify(t("routing.ruleDeleted", { rule: i + 1 }), {
+                        action: { label: t("routing.undo"), run: () => editor.undo(), testId: "toast-rule-undo" },
+                      });
                     }}
                   >
                     {t("routing.deleteRule")}
@@ -856,6 +909,7 @@ export function RouteTableFields({
           <button
             type="button"
 
+            ref={defaultRow}
             className="route-row route-default"
             aria-expanded={open === "default"}
             data-testid="routes-default"
@@ -863,8 +917,13 @@ export function RouteTableFields({
           >
             <span>{t("routing.last")}</span>
             <span>{t("routing.default")}</span>
-            <span>{fallback ? fallback.targets.map((x) => labelOf(x.edgeId)).join("; ") : t("routing.reject404")}</span>
-            <span className="mono">{fallback ? splitText(fallback) : "—"}</span>
+            <span
+              className="route-cut"
+              title={fallback ? fallback.targets.map((x) => labelOf(x.edgeId)).join(", ") : undefined}
+            >
+              {fallback ? targetsText(fallback.targets.map((x) => labelOf(x.edgeId))) : t("routing.reject404")}
+            </span>
+            <span className="mono route-split">{fallback ? splitText(fallback) : "—"}</span>
           </button>
           {open === "default" && (
             <div className="route-details" data-testid="routes-default-details">
@@ -911,7 +970,6 @@ export function RouteTableFields({
       <div role="status" aria-live="polite" className="sr-only" data-testid="routes-announce">
         {announce}
       </div>
-      <p className="insp-note">{t("routing.weightsHint")}</p>
       <div className="route-actions">
         <button
           type="button"
@@ -950,6 +1008,19 @@ export function RouteTableFields({
   );
 }
 
+/** A router's outgoing connections named by their target (two to one node add their own label): linear passes. */
+function connectionLabels(doc: Doc, nodeId: string): { id: string; label: string }[] {
+  const ids = new Set(outgoingFlows(doc, nodeId));
+  const flows = doc.edges.filter((e) => ids.has(e.id));
+  const names = new Map(doc.nodes.map((n) => [n.id, n.label]));
+  const perTarget = new Map<string, number>();
+  for (const e of flows) perTarget.set(e.to, (perTarget.get(e.to) ?? 0) + 1);
+  return flows.map((e) => {
+    const to = names.get(e.to) ?? e.to;
+    return { id: e.id, label: (perTarget.get(e.to) ?? 0) > 1 && e.label ? `${to} · ${e.label}` : to };
+  });
+}
+
 function setProps(d: DiagramFile, nodeId: string, patch: Record<string, unknown>): void {
   const node = d.nodes.find((n) => n.id === nodeId);
   if (!node) return;
@@ -974,14 +1045,17 @@ export function TrafficMixFields({
   useLocale();
   const mix = props.trafficMix as TrafficMix | undefined;
   const routes = planning?.requestRoutes ?? [];
-  const [adding, setAdding] = useState(false);
+  // A right-click "Add traffic mix…" opens straight onto the new route's form.
+  const [adding, setAdding] = useState(() => routingIntent.peek(nodeId) === "new-route");
+  const [intended] = useState(adding);
+  useEffect(() => routingIntent.clear(nodeId), [nodeId]);
+  const [choosing, setChoosing] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, number> | null>(null);
-  const doc = editor.getDiagram();
   const merge = (field: string) => ({ merge: `routing:mix:${nodeId}:${field}` });
   const save = (next: TrafficMix | undefined, field: string) =>
     editor.setNodeProps(nodeId, { trafficMix: next }, merge(field));
-  if (planning?.revision !== "p3-a1") return mix ? null : <NeedsModel editor={editor} />;
+  if (planning?.revision !== "p3-a1") return null;
   const rate = typeof props.ratePerSec === "number" ? props.ratePerSec : 2;
   const addNew = (address: RequestAddress, label?: string) => {
     applyRouted(editor, (d) => {
@@ -995,42 +1069,51 @@ export function TrafficMixFields({
   };
   const unused = routes.filter((r) => !mix?.entries.some((e) => e.routeId === r.id));
   const adder = adding ? (
-    <NewRoute testId="mix-new-route" onAdd={addNew} onCancel={() => setAdding(false)} />
+    <NewRoute testId="mix-new-route" onAdd={addNew} onCancel={() => setAdding(false)} focus={intended} />
   ) : (
-    <div className="route-actions">
-      {unused.length > 0 ? (
-        <select
-          className="insp-input"
-          value=""
-          aria-label={t("routing.addRoute")}
-          data-testid="mix-add-route"
-          onChange={(e) => {
-            const id = e.currentTarget.value;
-            if (id === "__new") setAdding(true);
-            else if (id) {
-              if (mix) save(addMixRow(mix, id), `add:${id}`);
-              else applyRouted(editor, (d) => setProps(d, nodeId, { trafficMix: addMixRow(undefined, id) }));
-              setDraft(null);
-            }
-          }}
-        >
-          <option value="">{t("routing.addRoute")}</option>
+    <div className="route-actions route-adder">
+      <button
+        type="button"
+        className="btn btn-primary"
+        aria-expanded={unused.length ? choosing : undefined}
+        data-testid={unused.length ? "mix-add-route" : "mix-add-route-new"}
+        onClick={() => (unused.length ? setChoosing(!choosing) : setAdding(true))}
+      >
+        {mix ? t("routing.addRoute") : t("routing.addMix")}
+      </button>
+      {choosing && unused.length > 0 && (
+        <ul className="route-choices" data-testid="mix-add-route-choices">
           {unused.map((r) => (
-            <option key={r.id} value={r.id}>
-              {routeName(r)}
-            </option>
+            <li key={r.id}>
+              <button
+                type="button"
+                className="link-btn"
+                data-testid={`mix-add-route-${r.id}`}
+                onClick={() => {
+                  setChoosing(false);
+                  setDraft(null);
+                  if (mix) save(addMixRow(mix, r.id), `add:${r.id}`);
+                  else applyRouted(editor, (d) => setProps(d, nodeId, { trafficMix: addMixRow(undefined, r.id) }));
+                }}
+              >
+                <RouteSwatch route={r} /> {routeName(r)}
+              </button>
+            </li>
           ))}
-          <option value="__new">{t("routing.newRoute")}</option>
-        </select>
-      ) : (
-        <button
-          type="button"
-          className="btn btn-primary"
-          data-testid="mix-add-route-new"
-          onClick={() => setAdding(true)}
-        >
-          {mix ? t("routing.addRoute") : t("routing.addMix")}
-        </button>
+          <li>
+            <button
+              type="button"
+              className="link-btn"
+              data-testid="mix-add-route-new"
+              onClick={() => {
+                setChoosing(false);
+                setAdding(true);
+              }}
+            >
+              {t("routing.newRouteMenu")}
+            </button>
+          </li>
+        </ul>
       )}
     </div>
   );
@@ -1050,6 +1133,14 @@ export function TrafficMixFields({
   const sum = values.reduce((a, b) => a + b, 0);
   const total = shares ? rate : sum;
   const off = shares && Math.abs(sum - 100) > 1e-6;
+  const switchMode = (m: "shares" | "rates") => {
+    if (mix.mode === m) return;
+    setDraft(null);
+    // Rates → shares: the rows' total becomes the source's Rate, so the traffic stays what it was.
+    if (m === "shares")
+      editor.setNodeProps(nodeId, { trafficMix: switchMixMode(mix, rate), ratePerSec: sum }, merge("mode"));
+    else save(switchMixMode(mix, rate), "mode");
+  };
   const setShare = (routeId: string, percent: number) => {
     const next = {
       ...(draft ?? Object.fromEntries(mix.entries.map((e) => [e.routeId, (e as { share: number }).share * 100]))),
@@ -1073,13 +1164,19 @@ export function TrafficMixFields({
               type="button"
               role="radio"
               aria-checked={mix.mode === m}
+              tabIndex={mix.mode === m ? 0 : -1}
               className={mix.mode === m ? "is-on" : ""}
               data-testid={`mix-mode-${m}`}
-              onClick={() => {
-                if (mix.mode !== m) {
-                  setDraft(null);
-                  save(switchMixMode(mix, rate), "mode");
-                }
+              onClick={() => switchMode(m)}
+              onKeyDown={(e) => {
+                if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(e.key)) return;
+                e.preventDefault();
+                const other = m === "shares" ? "rates" : "shares";
+                const next = e.key === "Home" ? "shares" : e.key === "End" ? "rates" : other;
+                switchMode(next);
+                e.currentTarget.parentElement
+                  ?.querySelector<HTMLButtonElement>(`[data-testid="mix-mode-${next}"]`)
+                  ?.focus();
               }}
             >
               {m === "shares" ? t("routing.shares") : t("routing.rates")}
@@ -1089,8 +1186,8 @@ export function TrafficMixFields({
       </div>
       <p className="insp-note" data-testid="mix-total">
         {shares
-          ? t("routing.totalShares", { rate: formatRate(total) })
-          : t("routing.totalRates", { rate: formatRate(total) })}
+          ? t("routing.totalShares", { rate: explanationRate(total, "req/s") })
+          : t("routing.totalRates", { rate: explanationRate(total, "req/s") })}
       </p>
       <div className="route-table route-mix-table" role="group" aria-label={t("routing.mixLabel")}>
         <div className="route-row route-head" aria-hidden="true">
@@ -1165,7 +1262,7 @@ export function TrafficMixFields({
                   </button>
                 </span>
               </div>
-              {editing === entry.routeId && route && <RouteDefinition editor={editor} route={route} doc={doc} />}
+              {editing === entry.routeId && route && <RouteDefinition editor={editor} route={route} />}
             </div>
           );
         })}
@@ -1295,10 +1392,9 @@ export function RequestRoutesSection({
   const q = query.trim().toLowerCase();
   const matching = routes.filter((r) => !q || `${routeName(r)} ${addressText(r.address)}`.toLowerCase().includes(q));
   const shown = all || q ? matching : matching.slice(0, VISIBLE);
-  const doc = editor.getDiagram();
   return (
     <section className="insp-section" aria-label={t("routing.routesHeading")} data-testid="request-routes">
-      <h3>{live ? t("routing.legend") : t("routing.routesHeading")}</h3>
+      <h3>{t("routing.routesHeading")}</h3>
       {routes.length > VISIBLE && (
         <input
           className="insp-input"
@@ -1322,38 +1418,33 @@ export function RequestRoutesSection({
             : undefined;
           return (
             <li key={route.id} data-testid={`request-route-${route.id}`}>
-              <button
-                type="button"
-                className="route-legend-row"
-                aria-expanded={!live ? open === route.id : undefined}
-                aria-label={`${routeName(route)}, ${addressText(route.address)}, ${lookText(route)}${text ? `. ${text}` : ""}`}
-                data-testid={`request-route-${route.id}-row`}
-                onClick={() => !live && setOpen(open === route.id ? null : route.id)}
-              >
-                <RouteSwatch route={route} size={14} />
-                <span className="route-legend-name">{routeName(route)}</span>
-                <span className="route-legend-address mono">{addressText(route.address)}</span>
-                {text && <span className="route-legend-counts mono">{text}</span>}
-              </button>
-              {!live && open === route.id && (
-                <>
-                  <RouteDefinition editor={editor} route={route} doc={doc} />
-                  <button
-                    type="button"
-                    className="link-btn"
-                    disabled={routeUsage(doc, route.id).length > 0}
-                    title={routeUsage(doc, route.id).length ? t("routing.deleteUsed") : undefined}
-                    data-testid={`request-route-${route.id}-delete`}
-                    onClick={() =>
-                      editor.updateMeta({
-                        planning: { ...planning!, requestRoutes: routes.filter((r) => r.id !== route.id) },
-                      })
-                    }
-                  >
-                    {t("routing.deleteRoute")}
-                  </button>
-                </>
+              {live ? (
+                <div
+                  className="route-legend-row is-static"
+                  role="group"
+                  aria-label={`${routeName(route)}, ${addressText(route.address)}, ${lookText(route)}${text ? `. ${text}` : ""}`}
+                  data-testid={`request-route-${route.id}-row`}
+                >
+                  <RouteSwatch route={route} size={14} />
+                  <span className="route-legend-name">{routeName(route)}</span>
+                  <span className="route-legend-address mono">{addressText(route.address)}</span>
+                  {text && <span className="route-legend-counts mono">{text}</span>}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="route-legend-row"
+                  aria-expanded={open === route.id}
+                  aria-label={`${routeName(route)}, ${addressText(route.address)}, ${lookText(route)}`}
+                  data-testid={`request-route-${route.id}-row`}
+                  onClick={() => setOpen(open === route.id ? null : route.id)}
+                >
+                  <RouteSwatch route={route} size={14} />
+                  <span className="route-legend-name">{routeName(route)}</span>
+                  <span className="route-legend-address mono">{addressText(route.address)}</span>
+                </button>
               )}
+              {!live && open === route.id && <RouteDefinition editor={editor} route={route} deletable />}
             </li>
           );
         })}

@@ -1,5 +1,6 @@
 import { routeTableCapable, trafficMixCapable } from "../model/requestRouting";
-import { withRouteTable, withTrafficMix } from "../model/routingEdits";
+import { withRouteTable } from "../model/routingEdits";
+import { routingIntent } from "./routingIntent";
 import { stencilLabel, vendorLabel } from "../i18n/stencils";
 import { t } from "../i18n";
 import { categoryLabel, toneLabel, kindLabel, shapeLabel, colorLabel } from "../i18n/chrome";
@@ -667,7 +668,7 @@ export function builtinActions(): Action[] {
       get label() {
         return t("routing.addRoutes");
       },
-      icon: "sliders",
+      icon: "route",
       order: 210,
       when: (ctx) => {
         const node = ctx.nodeId ? ctx.editor.getNode(ctx.nodeId) : undefined;
@@ -680,6 +681,8 @@ export function builtinActions(): Action[] {
         );
       },
       run: (ctx) => {
+        // The same first table as the inspector's button; the inspector opens on its Default row.
+        routingIntent.set(ctx.nodeId!, "default");
         ctx.editor.applyDiagram(withRouteTable(ctx.editor.getDiagram(), ctx.nodeId!));
         ctx.editor.select({ nodeIds: [ctx.nodeId!] });
         ctx.editor.openInspector();
@@ -692,7 +695,7 @@ export function builtinActions(): Action[] {
       get label() {
         return t("routing.addMix");
       },
-      icon: "sliders",
+      icon: "traffic",
       order: 210,
       when: (ctx) => {
         const node = ctx.nodeId ? ctx.editor.getNode(ctx.nodeId) : undefined;
@@ -705,7 +708,8 @@ export function builtinActions(): Action[] {
         );
       },
       run: (ctx) => {
-        ctx.editor.applyDiagram(withTrafficMix(ctx.editor.getDiagram(), ctx.nodeId!));
+        // As the inspector's button: the new route's form, its Path focused; nothing changes until Add.
+        routingIntent.set(ctx.nodeId!, "new-route");
         ctx.editor.select({ nodeIds: [ctx.nodeId!] });
         ctx.editor.openInspector();
       },

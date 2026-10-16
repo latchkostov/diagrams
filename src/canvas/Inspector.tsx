@@ -106,6 +106,7 @@ import { managedKind } from "../model/admissionPresets";
 import { AdmissionFields, BulkAdmissionFields, AutoscalingFields } from "../planning/lazy";
 import { RouteTableFields, TrafficMixFields, EdgeRouteFields, RequestRoutesSection } from "../planning/lazy";
 import { routeTableCapable, trafficMixCapable } from "../model/requestRouting";
+import { routingIntent } from "../editor/routingIntent";
 import { nodeSimFields, edgeSimFields, inertNodeProps } from "./simFieldRules";
 import { SIM_LIMITS } from "../interop/native";
 import { t, useLocale } from "../i18n";
@@ -499,7 +500,10 @@ function NodePanel({
   ) : mixer ? (
     <TrafficMixFields editor={editor} nodeId={node.id} props={props} planning={meta.planning} />
   ) : null;
-  const routed = (router && props.routeTable !== undefined) || (mixer && props.trafficMix !== undefined);
+  const routed =
+    (router && props.routeTable !== undefined) ||
+    (mixer && props.trafficMix !== undefined) ||
+    ((router || mixer) && routingIntent.peek(node.id) !== undefined);
 
   return (
     <>

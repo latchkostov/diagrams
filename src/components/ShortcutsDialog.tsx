@@ -78,6 +78,8 @@ const TEXT: Row[] = [
   ["Mod+Enter", msg("shortcuts.text.modEnter")],
   ["Tab", msg("shortcuts.text.nextField")],
   ["Esc", () => t("shortcuts.text.doneEsc", { undo: formatCombo("Mod+Z") })],
+  // A route table's rule, focused in the inspector (src/planning/RoutingFields.tsx).
+  ["Alt+ArrowUp", msg("routing.shortcutReorder")],
 ];
 
 /** The File menu's keys (src/interop/ui/menus.tsx), shown there beside Open…, Save and Save to ▸ This device…. */

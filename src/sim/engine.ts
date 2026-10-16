@@ -442,7 +442,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   /** The same message (or copy) with another address: a caller's explicit request route. Counts the call. */
   function addressed(message: Message, route: CompiledRoute | undefined): Message {
-    if (message.request === route) return message;
+    if (message.request?.id === route?.id) return message;
     if (route) countRoute(route).sent++;
     return { ...message, request: route };
   }
@@ -998,7 +998,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   /** For filtering only: the branch's message as it would leave, without counting a call that may not happen. */
   function addressedView(message: Message, route: CompiledRoute): Message {
-    return message.request === route ? message : { ...message, request: route };
+    return message.request?.id === route.id ? message : { ...message, request: route };
   }
 
   function publish(node: Node, message: Message): void {

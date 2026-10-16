@@ -483,7 +483,7 @@ describe("request routing: configured analysis", () => {
     const table = structuredClone(ROUTING_TABLE);
     table.rules = table.rules.slice(0, 1);
     const a = analyzeCapacity(routingFixture({ table, rate: 100 }));
-    expect(a.routeDemand!.kong["search-get"]).toEqual({ offered: 80, rejected: 80 });
+    expect(a.routeDemand!.kong["search-get"]).toEqual({ offered: 80, rejected: 80, throttled: 0 });
     expect(a.connections["kong-search"] ?? 0).toBe(0);
     expect(a.nodes.search.offered).toBe(0);
   });
@@ -594,5 +594,141 @@ describe("request routing: composition and admission order", () => {
     expect(kong.rejectionReasons?.["route-not-found"]).toBe(160);
     expect(kong.rejectionReasons?.["gateway: requests"] ?? 0).toBeLessThanOrEqual(1);
     expect(delivered(e, "kong-orders") + delivered(e, "kong-canary")).toBeGreaterThanOrEqual(39);
+  });
+});
+
+describe("request routing: review round 1 regressions", () => {
+  it("two aliases of one shared quota on a rule charge its bucket once per request", () => {
+    const admitted = (aliases: number) => {
+      const table = structuredClone(ROUTING_TABLE);
+      table.rules[1].quotas = Array.from({ length: aliases }, (_, i) => ({
+        id: `alias-${i}`,
+        unit: "requests" as const,
+        amount: 10,
+        windowMs: 1000,
+        algorithm: "token-bucket" as const,
+        sharedGroup: "account",
+      }));
+      const d = routingFixture({
+        table,
+        rate: 50,
+        mix: { mode: "shares", entries: [{ routeId: "search-get", share: 1 }] },
+      });
+      d.planning!.sharedQuotas = [
+        { id: "account", unit: "requests", amount: 10, windowMs: 1000, algorithm: "token-bucket" },
+      ];
+      expect(validateDiagram(d).ok).toBe(true);
+      return delivered(run(d, 10_000, { drain: true }), "kong-search");
+    };
+    expect(admitted(2)).toBe(admitted(1));
+    expect(admitted(1)).toBeGreaterThan(100);
+  });
+
+  it("a caller's address that matches the message's is no new call after a checkpoint restore", () => {
+    const d = routingFixture({ rate: 10, mix: { mode: "shares", entries: [{ routeId: "orders-post", share: 1 }] } });
+    d.edges[0].props = { ...d.edges[0].props, requestRouteId: "orders-post" };
+    const play = (restore: boolean) => {
+      const e = createEngine({ seed: 4 });
+      e.load(d);
+      e.setTraffic(true);
+      e.step(1_000);
+      if (restore) e.restore(e.checkpoint());
+      e.setNodeProps("app", { trafficMix: { mode: "shares", entries: [{ routeId: "orders-post", share: 1 }] } });
+      e.step(4_000);
+      return e.frame().routes!["orders-post"].sent;
+    };
+    expect(play(true)).toBe(play(false));
+    expect(play(false)).toBe(50);
+  });
+});
+
+describe("request routing: analysis follows rule quotas (review round 1)", () => {
+  it("admits a rule's quota rate, rejects the rest 429, and forwards only what's admitted", () => {
+    const table = structuredClone(ROUTING_TABLE);
+    table.rules[1].quotas = [{ id: "limit", unit: "requests", amount: 10, windowMs: 1000, algorithm: "token-bucket" }];
+    const d = routingFixture({
+      table,
+      rate: 100,
+      mix: { mode: "shares", entries: [{ routeId: "search-get", share: 1 }] },
+    });
+    const a = analyzeCapacity(d);
+    expect(a.routeDemand!.kong["search-get"].offered).toBeCloseTo(100);
+    expect(a.routeDemand!.kong["search-get"].throttled).toBeCloseTo(90);
+    expect(a.connections["kong-search"]).toBeCloseTo(10);
+    expect(a.nodes.search.offered).toBeCloseTo(10);
+    // Playback agrees within the burst.
+    const e = run(d, 10_000, { drain: true });
+    expect(Math.abs(delivered(e, "kong-search") - 100)).toBeLessThanOrEqual(11);
+  });
+
+  it("a shared bucket named by two rules is one budget in analysis too", () => {
+    const shared = {
+      id: "account",
+      unit: "requests" as const,
+      amount: 30,
+      windowMs: 1000,
+      algorithm: "token-bucket" as const,
+    };
+    const table = structuredClone(ROUTING_TABLE);
+    table.rules[0].quotas = [{ ...shared, sharedGroup: "account" }];
+    table.rules[1].quotas = [{ ...shared, sharedGroup: "account" }];
+    const d = routingFixture({ table, rate: 100 });
+    d.planning!.sharedQuotas = [shared];
+    const a = analyzeCapacity(d);
+    const admitted =
+      (a.connections["kong-orders"] ?? 0) + (a.connections["kong-canary"] ?? 0) + (a.connections["kong-search"] ?? 0);
+    expect(admitted).toBeCloseTo(30);
+  });
+
+  it("decides each router's traffic class once per analysis, whatever the iterations", () => {
+    const table: RouteTable = {
+      rules: Array.from({ length: 40 }, (_, i) => ({
+        id: `r${i}`,
+        match: { path: { kind: "exact" as const, value: `/miss/${i}` } },
+        targets: [{ edgeId: "kong-orders", weight: 1 }],
+      })),
+      default: { targets: [{ edgeId: "kong-search", weight: 1 }] },
+    };
+    const d = routingFixture({ table });
+    // A feedback loop makes the analysis iterate.
+    d.edges.push({ id: "loop", from: "search", to: "kong", kind: "sync", props: { share: 0.5 } });
+    const before = routingCounters.predicates;
+    const a = analyzeCapacity(d);
+    expect(a.iterations).toBeGreaterThan(3);
+    // Two routes, each matched against 40 rules once (the loop's traffic is the same classes).
+    expect(routingCounters.predicates - before).toBeLessThanOrEqual(2 * 40 + 2 * 40);
+  });
+});
+
+describe("request routing: refused replies", () => {
+  const replyAfter = (d: DiagramFile, route: string) => {
+    const e = createEngine({ seed: 1 });
+    e.load(d);
+    e.inject("app", 1, { routeId: route });
+    // The request reaches the router after 10 ms; its refused reply is on the way back right after.
+    for (let i = 0; i < 10; i++) {
+      e.step(10);
+      const reply = e.frame().particles.find((p) => p.kind === "reply");
+      if (reply) return reply;
+    }
+    return undefined;
+  };
+  it("an unmatched Request returns a 404 reply carrying its route", () => {
+    const table = structuredClone(ROUTING_TABLE);
+    table.rules = table.rules.slice(0, 1);
+    expect(replyAfter(routingFixture({ table }), "search-get")).toMatchObject({
+      edgeId: "app-kong",
+      route: "search-get",
+      code: 404,
+    });
+  });
+  it("a rule quota's refusal returns a 429 reply", () => {
+    const table = structuredClone(ROUTING_TABLE);
+    table.rules[1].quotas = [
+      { id: "none", unit: "requests", amount: 0.000001, windowMs: 1000, burst: 0, algorithm: "token-bucket" },
+    ];
+    const d = routingFixture({ table });
+    d.nodes[1].stencil = "nginx";
+    expect(replyAfter(d, "search-get")).toMatchObject({ edgeId: "app-kong", route: "search-get", code: 429 });
   });
 });

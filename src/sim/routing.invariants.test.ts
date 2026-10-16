@@ -259,6 +259,22 @@ function play(d: DiagramFile, actions: Action[], seed: number, checkpointAt?: nu
             problems.push(
               `t=${step.t}: ${step.route} refused for rule ${step.rule}, expected ${JSON.stringify(choice)}`,
             );
+          // A no-eligible-target refusal is justified only when every positive-weight target fails its filters.
+          if (step.reason === "route-no-eligible-target" && "action" in choice) {
+            const eligible = choice.action.targets.filter((target) => {
+              const edge = edges.get(target.edgeId);
+              const filter = compileFilter(edge?.props?.requestFilter);
+              return (
+                target.weight > 0 &&
+                acceptsType(edge?.props?.filter, step.type) &&
+                (filter === undefined || matchesRequest(filter, route))
+              );
+            });
+            if (eligible.length)
+              problems.push(
+                `t=${step.t}: ${step.route} refused with eligible targets ${eligible.map((x) => x.edgeId)}`,
+              );
+          }
           continue;
         }
         if (!("action" in choice)) {

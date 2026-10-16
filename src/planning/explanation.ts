@@ -41,7 +41,7 @@ export interface Explanation {
   addConsumer?: string;
   converged: boolean;
   /** Request routing: configured demand by route here (most first, at most eight) and what the table refuses. */
-  routes?: { route: string; address: string; offered: number; rejected: number }[];
+  routes?: { route: string; address: string; offered: number; rejected: number; throttled: number }[];
   observed?: { throughput: number; waiting: number; processed: number; inFlight: number };
 }
 

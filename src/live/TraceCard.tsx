@@ -1,4 +1,6 @@
 import { routeWords, type RouteWords } from "../trace/routeWords";
+import { RouteSwatch } from "../components/RouteSwatch";
+import { routeName } from "../model/requestRouting";
 import { t, useLocale } from "../i18n";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import "../styles/trace.css";
@@ -205,6 +207,9 @@ export function TraceCard({
   }
 
   const status = journeyStatus(journey, diagram);
+  // An addressed journey is named by its route (its swatch and marker, not colour alone).
+  const rootRouteId = journey.rows[0]?.route;
+  const rootRoute = rootRouteId ? diagram.planning?.requestRoutes?.find((r) => r.id === rootRouteId) : undefined;
   return (
     <section
       ref={card}
@@ -220,14 +225,16 @@ export function TraceCard({
       aria-label={`Message trace: ${journey.type} #${journey.rootId}`}
     >
       <header className="tr-head">
-        <span
-          className="tr-swatch"
-          style={{ background: words.look(journey.rows[0]?.route)?.color ?? messageColor(journey.type) }}
-          aria-hidden
-        />
+        {rootRoute ? (
+          <RouteSwatch route={rootRoute} size={14} />
+        ) : (
+          <span className="tr-swatch" style={{ background: messageColor(journey.type) }} aria-hidden />
+        )}
         <div className="tr-titles">
-          <strong title={`${journey.type} #${journey.rootId}`}>
-            {journey.type} <span className="tr-id">#{journey.rootId}</span>
+          <strong
+            title={`${rootRoute ? (words.address(rootRoute.id) ?? journey.type) : journey.type} #${journey.rootId}`}
+          >
+            {rootRoute ? routeName(rootRoute) : journey.type} <span className="tr-id">#{journey.rootId}</span>
           </strong>
           <span>from {name(journey.origin)}</span>
         </div>

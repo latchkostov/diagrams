@@ -70,10 +70,10 @@ export function routingFixture(options: { rate?: number; mix?: TrafficMix; table
       service("search", "Search", 520, 240),
     ],
     edges: [
-      { id: "app-kong", from: "app", to: "kong", kind: "sync", props: { travelMs: 10 } },
+      { id: "app-kong", from: "app", to: "kong", kind: "sync", label: "Calls", props: { travelMs: 10 } },
       { id: "kong-orders", from: "kong", to: "orders", kind: "sync", props: { travelMs: 10 } },
       { id: "kong-canary", from: "kong", to: "canary", kind: "sync", props: { travelMs: 10 } },
-      { id: "kong-search", from: "kong", to: "search", kind: "sync", props: { travelMs: 10 } },
+      { id: "kong-search", from: "kong", to: "search", kind: "sync", label: "Search", props: { travelMs: 10 } },
     ],
   };
 }

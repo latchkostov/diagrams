@@ -114,3 +114,22 @@ describe("request routing bounds", () => {
     expect(validate(d)).toContain("kong-search");
   });
 });
+
+describe("routing validation: tables in saved simulations", () => {
+  it("re-checks a setup-only table's targets when its connection goes, and the repair fixes the simulation too", async () => {
+    const { strippedTables } = await import("../model/routingEdits");
+    const { ROUTING_CONTEXT } = await import("../model/routingValidation");
+    const d = routingFixture();
+    const table = d.nodes[1].props!.routeTable;
+    delete d.nodes[1].props!.routeTable;
+    d.simulations = [{ id: "s", title: "S", traffic: [], setup: { props: { kong: { routeTable: table } } } }];
+    const validate = createRoutingValidator();
+    expect(validate(d)).toBeUndefined();
+    const cut = { ...d, edges: d.edges.filter((e) => e.id !== "kong-search") };
+    expect(validate(cut)).toContain("kong-search");
+    const fixed = strippedTables(cut, ROUTING_CONTEXT)!;
+    expect(fixed.tables.size).toBe(0);
+    expect(fixed.rules).toBe(1);
+    expect(validateRouting({ ...cut, simulations: fixed.simulations })).toBeUndefined();
+  });
+});

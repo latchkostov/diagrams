@@ -5,6 +5,7 @@ import {
   quotaKey,
   quotaSignature,
   slotsKey,
+  uniqueRequirements,
   type CompiledCall,
   type Requirement,
 } from "./admissionPolicy";
@@ -22,11 +23,13 @@ export function quotaRequirements(
   planning: PlanningModel | undefined,
 ): QuotaRequirement[] {
   const shared = new Map((planning?.sharedQuotas ?? []).map((q) => [q.id, q]));
-  return quotas.map((declared) => ({
-    key: quotaKey(node, ["rule", key], declared),
-    quota: (declared.sharedGroup ? shared.get(declared.sharedGroup) : undefined) ?? declared,
-    cost: 1,
-  }));
+  return uniqueRequirements(
+    quotas.map((declared) => ({
+      key: quotaKey(node, ["rule", key], declared),
+      quota: (declared.sharedGroup ? shared.get(declared.sharedGroup) : undefined) ?? declared,
+      cost: 1,
+    })),
+  );
 }
 
 /** Check every bucket, then charge them all, or none: the router's quota transaction without a P3 policy. */
@@ -296,9 +299,7 @@ export function attemptAdmission(
   if (!call) return { rejected: "unknown endpoint" };
   if (call.rejected) return { rejected: call.rejected };
   // A route rule's quotas join the node's in one transaction; a shared bucket named at both scopes is charged once.
-  const requirements = extra.length
-    ? [...call.requirements, ...extra.filter((r) => !call.requirements.some((c) => c.key === r.key))]
-    : call.requirements;
+  const requirements = extra.length ? uniqueRequirements([...call.requirements, ...extra]) : call.requirements;
   for (const { key, quota, cost } of requirements) {
     const bucket = bucketAt(state, key, quota, now);
     if (bucket.tokens + 1e-9 < weight * cost) return { rejected: `${quota.id}: ${quota.unit}` };

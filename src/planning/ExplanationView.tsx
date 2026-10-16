@@ -120,6 +120,16 @@ export function ExplanationView({
           })}
         </p>
       )}
+      {x.routes?.some((r) => r.throttled > 0) && (
+        <p data-testid="planning-route-throttled">
+          {t("routing.explainThrottled", {
+            rate: rate(x.routes.reduce((sum, r) => sum + r.throttled, 0)),
+            routes: formatList(
+              x.routes.filter((r) => r.throttled > 0).map((r) => r.address || t("routing.unaddressed")),
+            ),
+          })}
+        </p>
+      )}
       {x.omittedContributors > 0 && (
         <p data-testid="planning-omitted">{t("planning.omittedContributors", { count: x.omittedContributors })}</p>
       )}
