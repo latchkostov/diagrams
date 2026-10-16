@@ -186,13 +186,20 @@ export function applyCommands(doc: Y.Doc, commands: readonly DiagramCommand[]): 
         throw new CommandError("Unknown command.");
     }
   }
-  // One pass per list for every removal in this step (bulk deletes stay linear).
+  // One pass per list for every removal in this step, deleting runs of neighbours with one call each, from the end
+  // (so earlier indices stay put): removing a whole list is one delete, not one per element (bulk deletes linear).
   for (const [kind, ids] of removals) {
     if (!ids.size) continue;
     const order = orderOf(doc, kind);
     const items = order.toArray();
-    for (let i = items.length - 1; i >= 0; i--)
-      if (typeof items[i] === "string" && ids.has(items[i] as string)) order.delete(i, 1);
+    const gone = (i: number) => typeof items[i] === "string" && ids.has(items[i] as string);
+    for (let end = items.length - 1; end >= 0; end--) {
+      if (!gone(end)) continue;
+      let start = end;
+      while (start > 0 && gone(start - 1)) start--;
+      order.delete(start, end - start + 1);
+      end = start;
+    }
   }
 }
 

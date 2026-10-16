@@ -21,15 +21,22 @@ import type { Faults } from "./memory";
 import { FrameTooLargeError, type CollabTransport, type PeerId } from "./types";
 
 export interface ConformanceHarness {
+  /** A new end on the harness's network. It may take a settle() to reach its peers (signalling). */
   connect(): CollabTransport;
   /** Delivers everything in flight, awaiting `idle` between rounds. */
   settle(idle?: () => Promise<void>): Promise<void>;
-  setFaults(f: Partial<Faults>): void;
-  partition(groups: PeerId[][]): void;
-  heal(): void;
   /** Every frame as it goes on the wire. */
   tap(fn: (bytes: Uint8Array) => void): () => void;
   maxFrameBytes: number;
+  /**
+   * Seeded fault injection, where the harness can do it (the in-memory network can). A harness without it runs the
+   * fault-free convergence and rejoin scenario only; a production transport's harness should add it.
+   */
+  faults?: {
+    set(f: Partial<Faults>): void;
+    partition(groups: PeerId[][]): void;
+    heal(): void;
+  };
 }
 
 /** A synthetic diagram whose words appear nowhere else: finding one on the wire means plaintext leaked. */
@@ -187,6 +194,7 @@ export function describeTransportConformance(name: string, makeHarness: (seed: n
       const h = makeHarness(1);
       const [a, b, c] = [h.connect(), h.connect(), h.connect()];
       const [ra, rb, rc] = [collect(a), collect(b), collect(c)];
+      await h.settle();
       a.send(new Uint8Array([1, 2, 3]));
       await h.settle();
       expect(ra.got).toHaveLength(0);
@@ -197,6 +205,7 @@ export function describeTransportConformance(name: string, makeHarness: (seed: n
       const h = makeHarness(2);
       const [a, b, c] = [h.connect(), h.connect(), h.connect()];
       const [rb, rc] = [collect(b), collect(c)];
+      await h.settle();
       a.send(new Uint8Array([9]), c.self);
       await h.settle();
       expect(rb.got).toHaveLength(0);
@@ -207,6 +216,7 @@ export function describeTransportConformance(name: string, makeHarness: (seed: n
       const h = makeHarness(3);
       const [a, b] = [h.connect(), h.connect()];
       const rb = collect(b);
+      await h.settle();
       const buf = new Uint8Array([1, 1, 1]);
       a.send(buf);
       buf.fill(7);
@@ -220,9 +230,12 @@ export function describeTransportConformance(name: string, makeHarness: (seed: n
       const ra = collect(a);
       const b = h.connect();
       const rb = collect(b);
+      await h.settle();
       expect(ra.events).toEqual([`join:${b.self}`]);
+      expect(rb.events).toEqual([`join:${a.self}`]);
       expect(a.peers()).toEqual([b.self]);
       b.close();
+      await h.settle();
       expect(ra.events).toEqual([`join:${b.self}`, `leave:${b.self}`]);
       b.send(new Uint8Array([1]));
       a.send(new Uint8Array([2]));
@@ -232,22 +245,37 @@ export function describeTransportConformance(name: string, makeHarness: (seed: n
       expect(a.peers()).toEqual([]);
     });
 
-    it("refuses a frame larger than it carries", () => {
+    it("refuses a frame larger than it carries", async () => {
       const h = makeHarness(5);
       const a = h.connect();
       h.connect();
+      await h.settle();
       expect(() => a.send(new Uint8Array(h.maxFrameBytes + 1))).toThrow(FrameTooLargeError);
     });
 
-    it("carries a room's largest document frame", () => {
-      expect(makeHarness(6).maxFrameBytes).toBeGreaterThanOrEqual(COLLAB_LIMITS.maxDocFrameBytes);
+    it("carries a room's largest document frame, intact", async () => {
+      const h = makeHarness(6);
+      expect(h.maxFrameBytes).toBeGreaterThanOrEqual(COLLAB_LIMITS.maxDocFrameBytes);
+      const [a, b] = [h.connect(), h.connect()];
+      const rb = collect(b);
+      await h.settle();
+      const big = seededBytes(6)(COLLAB_LIMITS.maxDocFrameBytes);
+      a.send(big);
+      await h.settle();
+      expect(rb.got).toHaveLength(1);
+      expect(rb.got[0].bytes.length).toBe(big.length);
+      expect(containsBytes(rb.got[0].bytes.subarray(0, 64), big.subarray(0, 64))).toBe(true);
+      expect(rb.got[0].bytes.every((v, i) => v === big[i])).toBe(true);
     });
   });
 
   describe(`${name}: encrypted sessions converge under faults`, () => {
     const SEEDS = Array.from({ length: 12 }, (_, i) => i + 1);
+    const scenario = makeHarness(0).faults
+      ? "drops, duplicates, reordering, partitions and a rejoin"
+      : "a rejoin (no fault injection)";
 
-    it.each(SEEDS)("three clients, drops, duplicates, reordering, partitions and a rejoin (seed %i)", async (seed) => {
+    it.each(SEEDS)(`three clients, ${scenario} (seed %i)`, async (seed) => {
       const h = makeHarness(seed);
       const clock = new FakeClock();
       const room = roomFor(seed);
@@ -262,11 +290,11 @@ export function describeTransportConformance(name: string, makeHarness: (seed: n
       await settle();
       expect(b.ready && c.ready).toBe(true);
 
-      h.setFaults({ drop: 0.2, duplicate: 0.2, reorder: true });
+      h.faults?.set({ drop: 0.2, duplicate: 0.2, reorder: true });
       for (let round = 0; round < 30; round++) {
         if (round === 8)
-          h.partition([[a.session.transport.self], [b.session.transport.self, c.session.transport.self]]);
-        if (round === 16) h.heal();
+          h.faults?.partition([[a.session.transport.self], [b.session.transport.self, c.session.transport.self]]);
+        if (round === 16) h.faults?.heal();
         if (round === 20) {
           // c leaves and rejoins with its local copy: a new session (new sender id, new keys' counters).
           const doc = c.session.doc;
@@ -279,8 +307,8 @@ export function describeTransportConformance(name: string, makeHarness: (seed: n
         clock.advance(1_000);
         await settle();
       }
-      h.setFaults({ drop: 0, duplicate: 0, reorder: false });
-      h.heal();
+      h.faults?.set({ drop: 0, duplicate: 0, reorder: false });
+      h.faults?.heal();
       clock.advance(COLLAB_LIMITS.antiEntropyMs);
       await settle();
       clock.advance(COLLAB_LIMITS.antiEntropyMs);

@@ -49,12 +49,12 @@ export class EditorBinding {
    */
   localChanged(opts: { merge?: string } = {}): boolean {
     if (this.closed || !this.base) return false;
-    if (!canCollaborate(this.privacy())) {
+    const now = this.editor.getDiagram();
+    if (!now) return false;
+    if (!canCollaborate(this.privacy()) || now.private) {
       void this.close();
       return false;
     }
-    const now = this.editor.getDiagram();
-    if (!now) return false;
     const commands = commandsFromDiff(this.base, now);
     this.base = now;
     if (!commands.length) return false;

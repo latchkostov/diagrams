@@ -116,7 +116,9 @@ export class CollabSession {
 
   /** Joins (or creates) a room. Throws PrivateDiagramError for a diagram that stays on this device. */
   static async open(opts: SessionOptions): Promise<CollabSession> {
-    if (!canCollaborate(opts.privacy)) throw new PrivateDiagramError();
+    // The diagram's own flag too: a Private file never joins, whatever state the caller passed.
+    if (!canCollaborate(opts.privacy) || opts.initial?.private || opts.privacy?.diagram?.private)
+      throw new PrivateDiagramError();
     const random = opts.random ?? secureRandom;
     const keys = await deriveRoomKeys(opts.room);
     const doc = opts.doc ?? new CollabDoc({ clientId: opts.clientId });

@@ -89,6 +89,8 @@ export class MemoryNetwork {
       },
       subscribe(handlers) {
         endpoint.handlers = handlers;
+        // A new end learns who is reachable already, as the ones already there learned of it.
+        for (const p of net.reachableFrom(endpoint.id)) handlers.join(p);
         return () => {
           if (endpoint.handlers === handlers) endpoint.handlers = undefined;
         };
