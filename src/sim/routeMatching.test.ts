@@ -570,7 +570,7 @@ describe("request routing: composition and admission order", () => {
     e.load(d);
     e.tracer.request({ next: "message" });
     e.inject("app", 1);
-    let colours = new Set<string>();
+    const colours = new Set<string>();
     for (let i = 0; i < 300; i++) {
       e.step(10);
       for (const p of e.frame().particles) colours.add(`${p.kind}:${p.route}:${p.marker}`);
@@ -579,7 +579,6 @@ describe("request routing: composition and admission order", () => {
     expect(steps.some((s) => s.kind === "deadletter")).toBe(true);
     expect(steps.every((s) => s.route === "orders-post")).toBe(true);
     expect([...colours].every((c) => c.endsWith(":orders-post:circle"))).toBe(true);
-    colours = new Set();
   });
 
   it("a 404 debits no admission bucket: the router's quota still admits its full rate of matched requests", () => {
