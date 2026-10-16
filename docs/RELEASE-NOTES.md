@@ -1,5 +1,32 @@
 # Release notes
 
+## Review follow-ups 3 (2026-10-16)
+
+- AI placement rechecks the final boundary fits, so an ancestor growing around a direct member cannot
+  swallow an earlier unrelated card. A collision repair settles child boundaries before their parents
+  and moves a settled subtree together; this also avoids endless retries between interleaved siblings.
+- Metadata-only edits skip placement work. Placement indexes ancestry with linear-size tree intervals,
+  and collects only the ancestors needed for a refit. At 1,000 nested boundaries, counted parent reads
+  fall from 512,491 to zero for metadata edits and to 12,991 for a deepest-boundary refit. A local probe
+  (median of 11 runs after three warmups) measured 72.1 ms to 0.0005 ms and 71.6 ms to 2.89 ms respectively.
+  Cyclic input is collapsed into shared ancestry components once, keeping queries constant-time too;
+  a 1,000-boundary cycle regression rejects the repeated-parent-walk fallback.
+- Capacity analysis normalizes each endpoint once per managed entry, then composes each matched action
+  with that cached call. The 500-endpoint, 64-action regression (plus an unaddressed call and a second
+  entry) falls from 32,065 normalizations to 502. Cached decisions also retain routed-demand keys:
+  a 100-gateway, 64-route chain falls from 329,600 serializations to 6,400, with identical analysis output;
+  its local median falls from 266.9 ms to 207.1 ms.
+- Phone regressions now preserve an unsaved simulation's title, traffic label and dirty state when AI
+  opens from either its rail or Ctrl+I, without saving a simulation. A shared-route regression sends
+  50 requests/s through each of a rejected and accepted endpoint: offered demand is 100 and throttled
+  demand is 70 under a common 30 requests/s rule, in both incoming-edge orders.
+- Temporarily reverting the layout and performance fixes fails their new regressions. Overwriting
+  endpoint contributions fails the reversed-edge readout test; removing AI's draft suspension fails
+  both phone tests. The collaboration reply-byte fixture is already fixed on master (40fe1225); its
+  existing accepted-edit, positive-throttling and encrypted-traffic assertions pass unchanged.
+- Refreshed the skill viewer at plugin 1.1.34, one patch above master. No parity golden changes;
+  the performance changes preserve outputs. Scoped UX review adds no controls, copy or chrome.
+
 ## Collaboration reply-byte regression coverage (2026-10-16)
 
 - The reply-throttling test now builds its large room through steps checked against the active byte

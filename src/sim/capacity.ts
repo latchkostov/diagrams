@@ -314,6 +314,7 @@ export function analyzeCapacity(
     sum: number;
     forwarded: number;
     action: string;
+    routedKey: string;
     requirements: QuotaRequirement[];
   }
   const decisions = new Map<string, Map<string, Decision | "legacy">>();
@@ -344,12 +345,14 @@ export function analyzeCapacity(
           }
         }
       const sum = weights.reduce((a, b) => a + b, 0);
+      const action = "action" in choice ? choice.action.key : "";
       decision = {
         eligible,
         weights,
         sum,
         forwarded: sum ? eligible.reduce((total, edge, i) => total + (edge.deny ? 0 : weights[i]), 0) / sum : 0,
-        action: "action" in choice ? choice.action.key : "",
+        action,
+        routedKey: JSON.stringify([id, route?.id ?? "", action]),
         // The same buckets, by the same identities, playback charges (shared quotas are one bucket everywhere).
         requirements: "action" in choice ? actionRequirements(id, choice.action.key, choice.action.quotas) : [],
       };
@@ -512,7 +515,7 @@ export function analyzeCapacity(
         // Rule quotas are admission limits like any other: the analysis carries offered demand downstream and
         // reports what the quotas would reject (429) from the settled ledger, never cutting demand mid-solve.
         if (decision.forwarded > 0) {
-          const routedKey = JSON.stringify([id, route?.id ?? "", decision.action]);
+          const routedKey = decision.routedKey;
           const known = routed.get(routedKey);
           if (known) known.demand.rate += rate * decision.forwarded;
           else

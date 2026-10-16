@@ -4,6 +4,7 @@ import { overlaps } from "../canvas/placement";
 import { estimateCardSize } from "../canvas/nodes/size";
 import { fitGroupToContents, placeNew } from "./place";
 import { boundaryAround } from "../editor/arrange";
+import { ancestorGroupIds } from "../model/groupHierarchy";
 
 const node = (id: string, x = 0, y = 0) => ({ id, stencil: "generic.service", label: id, x, y });
 const diagram = (): DiagramFile => ({
@@ -108,5 +109,100 @@ describe("placement", () => {
     const g = fitGroupToContents(d, "g").groups![0];
     expect(g.x).toBeLessThan(d.nodes[0].x);
     expect(g.y).toBeLessThan(d.nodes[0].y);
+  });
+  it("rechecks earlier cards when a direct member expands an ancestor after descendant fitting", () => {
+    const d: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Mixed membership",
+      nodes: [undefined, "inner", "outer", "inner"].map((group, i) => ({
+        ...node(`n${i}`),
+        label: "Service",
+        group,
+      })),
+      edges: [
+        { id: "a", from: "n1", to: "n2" },
+        { id: "b", from: "n1", to: "n3" },
+        { id: "c", from: "n2", to: "n3" },
+      ],
+      groups: [
+        { id: "outer", label: "Outer", x: 0, y: 0, width: 1, height: 1 },
+        { id: "inner", label: "Inner", group: "outer", x: 0, y: 0, width: 1, height: 1 },
+      ],
+    };
+    const result = placeNew(d, [], "full");
+    expect(result.nodes.map((n) => n.group)).toEqual(d.nodes.map((n) => n.group));
+    for (const box of boxes(result)) {
+      for (const group of result.groups!) {
+        if (box.group === group.id || (box.group === "inner" && group.id === "outer")) continue;
+        expect(overlaps(box, group), `${box.id} overlaps ${group.id}`).toBe(false);
+      }
+    }
+  });
+  it.each([false, true])("does no transitive ancestry preparation for metadata/refit edits (refit %s)", (refit) => {
+    let reads = 0;
+    const count = 1_000;
+    const d: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Deep boundaries",
+      nodes: Array.from({ length: count }, (_, i) => ({ ...node(`n${i}`), group: `g${i}` })),
+      edges: [],
+      groups: Array.from({ length: count }, (_, i) => ({
+        id: `g${i}`,
+        label: "Boundary",
+        get group() {
+          reads++;
+          return i ? `g${i - 1}` : undefined;
+        },
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+      })),
+    };
+    const result = placeNew(d, [], "none", refit ? [`g${count - 1}`] : []);
+    expect(result.nodes).toEqual(d.nodes);
+    expect(reads).toBeLessThan(count * 20);
+    if (!refit) expect(result).toBe(d);
+  });
+  it("settles interleaved sibling subtrees without repeatedly expanding their boundaries over each other", () => {
+    const d: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Interleaved membership",
+      nodes: ["b", "c", "a", "b", undefined, "b", undefined, "c"].map((group, i) => ({
+        ...node(`n${i}`),
+        label: "Service",
+        group,
+      })),
+      edges: [
+        { id: "a", from: "n0", to: "n4" },
+        { id: "b", from: "n1", to: "n3" },
+      ],
+      groups: [
+        { id: "a", label: "A", x: 0, y: 0, width: 1, height: 1 },
+        { id: "b", label: "B", x: 0, y: 0, width: 1, height: 1 },
+        { id: "c", label: "C", group: "a", x: 0, y: 0, width: 1, height: 1 },
+      ],
+      annotations: [
+        { id: "note", kind: "note", text: "Member note", group: "b", x: 0, y: 150, width: 120, height: 80 },
+      ],
+    };
+    const before = structuredClone(d);
+    const result = placeNew(d, [], "full");
+    expect(d).toEqual(before);
+    const note = result.annotations![0];
+    const boundary = result.groups!.find((g) => g.id === note.group)!;
+    expect(note).not.toMatchObject({ x: 0, y: 150 });
+    expect(note.x).toBeGreaterThanOrEqual(boundary.x);
+    expect(note.y).toBeGreaterThanOrEqual(boundary.y);
+    expect(note.x + note.width).toBeLessThanOrEqual(boundary.x + boundary.width);
+    expect(note.y + note.height).toBeLessThanOrEqual(boundary.y + boundary.height);
+    for (const box of boxes(result)) {
+      const ancestors = box.group ? ancestorGroupIds(box.group, result.groups!) : new Set<string>();
+      for (const group of result.groups!) {
+        if (box.group === group.id || ancestors.has(group.id)) continue;
+        expect(overlaps(box, group), `${box.id} overlaps ${group.id}`).toBe(false);
+      }
+    }
+    expect(placeNew(d, [], "full")).toEqual(result);
   });
 });

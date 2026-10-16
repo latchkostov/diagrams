@@ -1,5 +1,14 @@
 # Design review
 
+## Review follow-ups 3 (2026-10-16)
+
+Scoped source and regression review: final AI placement keeps cards outside unrelated boundaries,
+including when later refits grow ancestors. The repair preserves membership and moves a settled
+subtree together, without adding controls. Metadata and capacity caching change no readouts or copy.
+Production phone regressions cover both explicit AI entry points, preserving unsaved simulation
+fields and dirty state while using the existing single-panel slot. No chrome, wording or focus target
+is added. This was not an independent whole-app designer or assistive-technology walkthrough.
+
 ## Routing R1 rejected transactions (2026-10-16)
 
 Scoped source UX review: rejected managed calls now keep capacity analysis and its existing readouts

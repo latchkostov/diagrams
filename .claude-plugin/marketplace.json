@@ -9,7 +9,7 @@
     {
       "name": "livediagrams",
       "source": "./skills/livediagrams",
-      "version": "1.1.33",
+      "version": "1.1.34",
       "description": "Diagram architectures, messaging and data flows (Kafka, Service Bus, SQS, Pub/Sub…) as private, offline interactive HTML files, .diagram.json files or livediagrams.dev share links. No browser, account or API key.",
       "author": {
         "name": "Latch Kostov",

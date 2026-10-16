@@ -105,6 +105,58 @@ export function ancestorGroupIds(
   return result;
 }
 
+/** Constant-space-per-boundary ancestry for placement. Tree intervals avoid materializing
+ * every transitive ancestor set in a deep hierarchy. Collapse cycles once so malformed
+ * input also gets constant-time queries, with all cycle members sharing ancestry. */
+export function indexGroupAncestry(groups: readonly { id: string; group?: string }[]) {
+  const parents = new Map(groups.map((g) => [g.id, g.group]));
+  const component = new Map<string, string>();
+  for (const id of parents.keys()) {
+    if (component.has(id)) continue;
+    const path: string[] = [];
+    const positions = new Map<string, number>();
+    let cur: string | undefined = id;
+    while (cur && parents.has(cur) && !component.has(cur) && !positions.has(cur)) {
+      positions.set(cur, path.length);
+      path.push(cur);
+      cur = parents.get(cur);
+    }
+    const cycle = cur === undefined ? undefined : positions.get(cur);
+    if (cycle !== undefined) for (let i = cycle; i < path.length; i++) component.set(path[i], path[cycle]);
+    for (const member of path) if (!component.has(member)) component.set(member, member);
+  }
+  const children = new Map<string, string[]>();
+  const roots = new Set(component.values());
+  for (const [id, parent] of parents) {
+    const child = component.get(id)!;
+    const ancestor = parent === undefined ? undefined : component.get(parent);
+    if (ancestor === undefined || ancestor === child) continue;
+    const list = children.get(ancestor) ?? [];
+    list.push(child);
+    children.set(ancestor, list);
+    roots.delete(child);
+  }
+  const intervals = new Map<string, { start: number; end: number }>();
+  const pending = [...roots].map((id) => ({ id, exit: false }));
+  let cursor = 0;
+  while (pending.length) {
+    const { id, exit } = pending.pop()!;
+    if (exit) intervals.get(id)!.end = cursor;
+    else {
+      if (intervals.has(id)) continue;
+      intervals.set(id, { start: cursor++, end: 0 });
+      pending.push({ id, exit: true });
+      for (const child of children.get(id) ?? []) pending.push({ id: child, exit: false });
+    }
+  }
+  return (child: string, ancestor: string): boolean => {
+    if (child === ancestor) return true;
+    const a = intervals.get(component.get(ancestor) ?? ancestor);
+    const c = intervals.get(component.get(child) ?? child);
+    return !!a && !!c && a.start <= c.start && c.start < a.end;
+  };
+}
+
 /** Checks whether setting `proposedParentId` as parent of `childId` would create a parent cycle. */
 export function wouldCreateCycle(
   childId: string,

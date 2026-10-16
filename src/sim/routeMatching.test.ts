@@ -886,6 +886,27 @@ describe("request routing: analysis follows rule quotas (review round 1)", () =>
     expect(a.routeDemand!.kong["orders-post"].throttled).toBe(20);
   });
 
+  it.each([false, true])(
+    "aggregates rejected and accepted endpoint demand for the same route (reversed %s)",
+    (reverse) => {
+      const d = overlap(true, 50, 30);
+      d.nodes.find((n) => n.id === "app2")!.props!.trafficMix = searchOnly;
+      d.nodes[1].props!.endpoints = [
+        { id: "a", method: "GET", path: "/search", behaviour: { quotas: [limit(100, { unit: "tokens" })] } },
+        { id: "b", method: "POST", path: "/orders" },
+      ];
+      d.nodes[1].props!.routeTable = {
+        rules: [],
+        default: { targets: [{ edgeId: "kong-search", weight: 1 }], quotas: [limit(30)] },
+      };
+      if (reverse) d.edges.reverse();
+      expect(validateDiagram(d).ok).toBe(true);
+      const a = analyzeCapacity(d);
+      expect(a.nodes.kong.capacity).toBe(0);
+      expect(a.routeDemand!.kong["search-get"]).toEqual({ offered: 100, rejected: 0, throttled: 70 });
+    },
+  );
+
   /**
    * A managed gateway whose endpoint A (GET /search) names the shared account and endpoint B (POST /orders) has no
    * quota; the search rule names the same account too when `onRule` (redundant: every search request comes through A).
@@ -1027,6 +1048,58 @@ describe("request routing: analysis follows rule quotas (review round 1)", () =>
       expect(counted.tuples).toBeLessThanOrEqual(4);
     },
   );
+
+  it("serializes routed-demand keys once per cached decision on a quota-free gateway chain", () => {
+    const gatewayCount = 100;
+    const routeCount = 64;
+    const d = routingFixture();
+    d.planning!.requestRoutes = Array.from({ length: routeCount }, (_, i) => ({
+      id: `r${i}`,
+      address: { method: "GET", path: `/route${i}` },
+      appearance: { paletteSlot: 0, marker: "circle" },
+    }));
+    d.nodes = [d.nodes[0], d.nodes[4]];
+    d.nodes[0].props!.trafficMix = {
+      mode: "shares",
+      entries: d.planning!.requestRoutes.map((r) => ({ routeId: r.id, share: 1 / routeCount })),
+    };
+    d.edges = [{ id: "start", from: "app", to: "gw0", kind: "sync" }];
+    for (let i = 0; i < gatewayCount; i++) {
+      d.nodes.push({
+        id: `gw${i}`,
+        stencil: "kong",
+        label: "Gateway",
+        x: i * 240,
+        y: 0,
+        props: { routeTable: { rules: [], default: { targets: [{ edgeId: `out${i}`, weight: 1 }] } } },
+      });
+      d.edges.push({ id: `out${i}`, from: `gw${i}`, to: i + 1 < gatewayCount ? `gw${i + 1}` : "search", kind: "sync" });
+    }
+    expect(validateDiagram(d), JSON.stringify(validateDiagram(d))).toMatchObject({ ok: true });
+    const stringify = vi.spyOn(JSON, "stringify");
+    const counted = (() => {
+      try {
+        const result = analyzeCapacity(d);
+        const keys = stringify.mock.calls.filter(
+          ([v]) =>
+            Array.isArray(v) &&
+            v.length === 3 &&
+            typeof v[0] === "string" &&
+            v[0].startsWith("gw") &&
+            typeof v[1] === "string" &&
+            v[1].startsWith("r") &&
+            v[2] === "",
+        ).length;
+        return { result, keys };
+      } finally {
+        stringify.mockRestore();
+      }
+    })();
+    expect(counted.result.iterations).toBeGreaterThan(10);
+    expect(counted.result.routeDemand!.gw99.r0.offered).toBeCloseTo(100 / routeCount);
+    expect(counted.result.routeDemand!.gw99.r0.throttled).toBe(0);
+    expect(counted.keys).toBe(gatewayCount * routeCount);
+  });
 
   /**
    * A managed gateway with two endpoints: A (its own quota in the shared account) takes the app's GET /search, which

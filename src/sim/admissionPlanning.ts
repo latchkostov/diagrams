@@ -1,5 +1,11 @@
 import { configureAdmission, emptyAdmission, type AdmissionPolicy } from "./admission";
-import { normalizeCall, slotsKey, transactionRequirements, type Requirement } from "./admissionPolicy";
+import {
+  normalizeCall,
+  slotsKey,
+  transactionRequirements,
+  type CompiledCall,
+  type Requirement,
+} from "./admissionPolicy";
 import type { PlanningModel } from "../model/types";
 
 type ManagedEntry = {
@@ -68,6 +74,7 @@ export function admissionPlan(
     if (entry.policy.invalid) result.set(entry.id, 0);
     // Index declarations once and aggregate repeated targets before interpreting their requirements.
     const endpoints = new Map(entry.policy.endpoints.map((endpoint) => [endpoint.id, endpoint]));
+    const calls = new Map<string | undefined, CompiledCall>();
     // Rows by endpoint and matched action: each is one kind of admission transaction.
     const rows = new Map<
       string,
@@ -85,7 +92,11 @@ export function admissionPlan(
     let seconds = 0;
     for (const [rowKey, { id, action, rate, rule, routes }] of rows) {
       const endpoint = id === undefined ? undefined : endpoints.get(id);
-      const call = normalizeCall(sharedState, entry.id, entry.policy, endpoint);
+      let call = calls.get(id);
+      if (!call) {
+        call = normalizeCall(sharedState, entry.id, entry.policy, endpoint);
+        calls.set(id, call);
+      }
       const transaction: Transaction =
         (id !== undefined && !endpoint) || call.rejected
           ? { rejected: true }
