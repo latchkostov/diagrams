@@ -1,5 +1,16 @@
 # Release notes
 
+## Responsive image export rebase onto Review follow-ups 3 (#144, 2026-10-16)
+
+- Rebased the export branch onto master's boundary-refit, ancestry and capacity-cache changes,
+  preserving both documentation histories and all translation keys. Export behavior is unchanged.
+- Took master's skill/plugin files before refreshing the viewer; plugin 1.1.35 is exactly one patch
+  above master's 1.1.34. Full parity passes all 2,196 goldens unchanged: zero changed, added, missing
+  or stale records. No golden was re-recorded.
+- The production bundle regression passes: collaboration, Yjs and tracker code are absent from every
+  production chunk, with image export loading only when used. The scoped UX review finds no new
+  controls, wording or chrome; export progress and cancellation retain their existing tests.
+
 ## Review follow-ups 3, round 1 (2026-10-16)
 
 - Skill layout now copies translated annotation positions from the app's placement result while
