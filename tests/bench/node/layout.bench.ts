@@ -13,6 +13,7 @@
 import { layeredLayout } from "../../../src/editor/layout";
 import { tidyLayout } from "../../../src/editor/tidy";
 import { Router } from "../../../src/canvas/geometry/router";
+import { SearchBuffers } from "../../../src/canvas/geometry/orthogonal";
 import { FAMILY_IDS } from "../../../src/bench/workloads";
 import { eventPipeline } from "../../../src/bench/workloads/pipeline";
 import { serviceMesh } from "../../../src/bench/workloads/mesh";
@@ -179,4 +180,17 @@ s.gating("a drag frame reads each node a bounded number of times", () => {
       why: "a moved edge's search and a nudged segment read the nodes near them, not every node in the diagram",
     });
   }
+});
+
+// A pass's searches share their scratch arrays (distances, parents, link costs, occupancy), grown a few times to the
+// largest search; each search allocated and filled five of its own before (4,255 for this pass of 851 searches).
+s.gating("a routing pass allocates its search arrays a few times, not per edge", () => {
+  const input = routeInput(serviceMesh(500));
+  SearchBuffers.allocations = 0;
+  const router = new Router();
+  router.route(input);
+  s.count("routeAll-searchAllocations-mesh", SearchBuffers.allocations, {
+    limit: 40,
+    why: `${router.lastRouted} searches share one set of arrays, grown as a bigger search needs`,
+  });
 });

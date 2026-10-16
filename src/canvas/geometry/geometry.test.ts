@@ -7,7 +7,7 @@ import { pointAlong, roundedPath } from "./path";
 import { slotOffset, spreadPorts } from "./ports";
 import { intersects, segmentHitsRect, simplify, type Point, type Rect } from "./rect";
 import { Router, groupHeaderRect, routeDiagram, type RouteInput } from "./router";
-import { routeOrthogonal } from "./orthogonal";
+import { overlapsSpan, routeOrthogonal, spansOf, type SoftLine } from "./orthogonal";
 
 // The router's A* searches, counted (the real search runs).
 vi.mock("./orthogonal", async (importOriginal) => {
@@ -581,4 +581,67 @@ describe("Router", () => {
     });
     expect(v.filter((x) => x.kind === "edge-node" || x.kind === "label-node" || x.kind === "label-label")).toEqual([]);
   });
+});
+
+describe("hugged spans", () => {
+  // The same answer as testing every span (hi > a && lo < b), with a number of reads that grows as the log of the
+  // ruler's spans, not with them: a column of aligned nodes puts hundreds on one ruler.
+  it("answers as a scan of every span does, reading a logarithmic few", () => {
+    let seed = 7;
+    const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647) * 1000;
+    for (const size of [1, 2, 10, 1_000]) {
+      const pairs = Array.from({ length: size }, (): [number, number] => {
+        const a = rand();
+        return [a, a + rand() / 10];
+      });
+      const reads = { count: 0 };
+      const counted = (xs: number[]) =>
+        new Proxy(xs, {
+          get(target, key, receiver) {
+            if (typeof key === "string" && /^\d+$/.test(key)) reads.count++;
+            return Reflect.get(target, key, receiver) as unknown;
+          },
+        });
+      const built = spansOf(pairs);
+      const spans = { start: counted(built.start), maxEnd: counted(built.maxEnd) };
+      for (let q = 0; q < 200; q++) {
+        const lo = rand(),
+          hi = lo + rand() / 5;
+        reads.count = 0;
+        expect(overlapsSpan(spans, lo, hi)).toBe(pairs.some(([a, b]) => hi > a && lo < b));
+        expect(reads.count).toBeLessThanOrEqual(2 * Math.ceil(Math.log2(size + 1)) + 2);
+      }
+    }
+  });
+});
+
+describe("group borders", () => {
+  // A border along the straight way costs three times its length to run on: the route steps off it (12 px or more),
+  // on either axis.
+  const flip = (p: Point): Point => ({ x: p.y, y: p.x });
+  for (const vertical of [false, true]) {
+    const t = vertical ? flip : (p: Point) => p;
+    const tr = (r: Rect): Rect => (vertical ? { x: r.y, y: r.x, width: r.height, height: r.width } : r);
+    it(`keeps a ${vertical ? "vertical" : "horizontal"} route off a boundary's border it would run along`, () => {
+      const request = {
+        source: t({ x: 0, y: 0 }),
+        sourceDir: t({ x: 1, y: 0 }),
+        target: t({ x: 1_000, y: 0 }),
+        targetDir: t({ x: -1, y: 0 }),
+        obstacles: [tr({ x: -40, y: -20, width: 40, height: 40 }), tr({ x: 1_000, y: -20, width: 40, height: 40 })],
+      };
+      const border: SoftLine = { axis: vertical ? "x" : "y", at: 0, from: -100, to: 1_100 };
+      const plain = routeOrthogonal(request);
+      const bordered = routeOrthogonal({ ...request, soft: [border] });
+      expect(plain.points.map(t)).toEqual([
+        { x: 0, y: 0 },
+        { x: 1_000, y: 0 },
+      ]);
+      expect(bordered.points).not.toEqual(plain.points);
+      // Off the border between the stubs: every interior point at least 12 px from it.
+      const along = bordered.points.slice(2, -2).map(t);
+      expect(along.length).toBeGreaterThan(0);
+      for (const p of along) expect(Math.abs(p.y)).toBeGreaterThanOrEqual(12);
+    });
+  }
 });
