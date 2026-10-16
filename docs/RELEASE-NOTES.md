@@ -106,6 +106,13 @@
   every creation and edit path, native reads, imports and agent operations; edits that would break them are
   refused atomically, and connection label edits are kept.
 - **Unchanged:** legacy, A1 and A2 diagrams play exactly as before; their parity outputs are unchanged.
+## Review follow-ups: fitting and persistence (2026-10-16)
+
+- Opening, fitting, panning and zooming a diagram do not save it or turn an example into
+  your own copy. A real edit still saves and promotes the example, including edits retained
+  from an earlier session. Fits no longer serialize the document to update persistence.
+- UX review: viewing an example leaves it an example; editing keeps the existing copy and
+  Undo behavior. No controls added. No output goldens are expected to change.
 
 ## Nightly keyboard and test readiness (#129, 2026-10-16)
 

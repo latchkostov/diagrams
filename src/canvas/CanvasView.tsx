@@ -460,9 +460,9 @@ function CanvasInner({
   );
 
   const renameHistoryTitle = history.renameTitle;
-  const latest = useRef({ meta, nodes, edges, slug });
+  const latest = useRef({ meta, nodes, edges, slug, revision: history.stateKey });
   useLayoutEffect(() => {
-    latest.current = { meta, nodes, edges, slug };
+    latest.current = { meta, nodes, edges, slug, revision: history.stateKey };
   });
   const lastSaved = useRef(loadedJson);
   const saveBaseline = useRef(originalJson);
@@ -476,6 +476,9 @@ function CanvasInner({
   const flushSave = useCallback(
     (override?: DiagramFile): boolean | undefined => {
       if (readOnly) return undefined;
+      // Measurements, selection and viewport changes are not document edits. In particular,
+      // opening a previously edited example must not promote it before a new edit occurs.
+      if (!override && latest.current.revision === lastSaved.current) return undefined;
       const { meta, nodes, edges, slug } = latest.current;
       let d = override ?? fromFlow(meta, nodes, edges);
       let json = JSON.stringify(d);
@@ -590,17 +593,10 @@ function CanvasInner({
       afterMeasured(() => {
         if (epoch !== fitEpoch.current || !showingAll.current) return;
         earlyFit.current = null;
-        // The reset row belongs to this edit's chrome, not the later debounced storage write.
-        const mod = flushSave();
-        if (mod !== undefined && mod !== modified) {
-          setModified(mod);
-          afterMeasured(runFit);
-          return;
-        }
         return runFit();
       });
     },
-    [afterMeasured, fitView_, flushSave, modified],
+    [afterMeasured, fitView_],
   );
   const nodesInitialized = useNodesInitialized();
   useLayoutEffect(() => {

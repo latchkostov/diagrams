@@ -17,6 +17,63 @@ import {
 
 import type { Page } from "@playwright/test";
 
+test("opening and fitting an edited example never saves or promotes; a real edit does", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "diagrams.autosave.v1:aws-fanout",
+      JSON.stringify({
+        format: "diagrams/v1",
+        title: "Retained example edits",
+        nodes: [{ id: "retained", stencil: "generic.service", label: "Retained", x: 0, y: 0 }],
+        edges: [],
+      }),
+    );
+    const writes: string[] = [];
+    const set = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (/^diagrams\.(autosave|doc)\./.test(key)) writes.push(key);
+      return set.call(this, key, value);
+    };
+    Object.assign(window, { persistenceWrites: writes });
+  });
+  await page.goto("./?view=canvas&example=aws-fanout");
+  await settledCanvas(page);
+  await page.clock.install();
+  await pauseClock(page);
+  // Also deliver the ordinary autosave debounce: opening is still not an edit.
+  await page.clock.runFor(350);
+  await page.evaluate(() => {
+    const stringify = JSON.stringify;
+    const probe = { diagrams: 0 };
+    JSON.stringify = function (value, ...args) {
+      if (value?.format === "diagrams/v1" && Array.isArray(value.nodes)) probe.diagrams++;
+      return stringify.call(JSON, value, ...args);
+    } as typeof JSON.stringify;
+    Object.assign(window, { fitSerializations: probe });
+  });
+  await page.keyboard.press("Shift+Digit1");
+  await page.clock.runFor(400);
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pagehide")));
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { fitSerializations: { diagrams: number } }).fitSerializations.diagrams,
+    ),
+  ).toBe(0);
+  expect(await currentDiagram(page)).toBe("aws-fanout");
+  expect(await page.evaluate(() => (window as unknown as { persistenceWrites: string[] }).persistenceWrites)).toEqual(
+    [],
+  );
+
+  await page.getByTestId("node-retained").click();
+  await page.getByTestId("inspector-field-label").fill("A real edit");
+  await page.clock.runFor(350);
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+  expect((await savedDiagram(page)).nodes[0].label).toBe("A real edit");
+  expect(
+    await page.evaluate(() => (window as unknown as { persistenceWrites: string[] }).persistenceWrites.length),
+  ).toBeGreaterThan(0);
+});
+
 async function seedWork(page: Page, shared = false) {
   await page.addInitScript((shared) => {
     const entries = Array.from({ length: 9 }, (_, i) => {
