@@ -1,4 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+import * as fleets from "./autoscaling";
+import { Deque } from "./deque";
 import { createFleet, type Fleet } from "./autoscaling";
 import { evaluateCloud, percentChange, resetCloud, stepFor, type CloudReads } from "./cloudScalers";
 import { createEngine } from "./engine";
@@ -492,5 +494,93 @@ describe("request metrics count only pushed requests, over their documented wind
     // Prefetched deliveries queue at the instance, but none of them is an HTTP request.
     expect(e.frame().nodes.worker.backlog).toBeGreaterThan(0);
     expect(e.frame().nodes.worker.fleet).toMatchObject({ desired: 1 });
+  });
+});
+
+describe("bounded per-tick adapter work", () => {
+  it.each(["ecs-cpu", "aca-http", "app-service", "cloud-run"] as const)(
+    "%s: 8× more idle instances cost no more fleet visits per tick",
+    (preset) => {
+      const original = fleets.createFleet;
+      const run = (n: number) => {
+        let visits = 0;
+        const spy = vi.spyOn(fleets, "createFleet").mockImplementation((...args) => {
+          const f = original(...args);
+          for (let i = 0; i < n; i++) fleets.acquireReplica(f, 1);
+          for (const id of f.busy.keys()) fleets.releaseReplica(f, id, 1);
+          const wrap = <T>(items: MapIterator<T>): MapIterator<T> => {
+            const next = items.next.bind(items);
+            items.next = () => {
+              const item = next();
+              if (!item.done) visits++;
+              return item;
+            };
+            return items;
+          };
+          const values = f.busy.values.bind(f.busy),
+            entries = f.busy.entries.bind(f.busy);
+          f.busy.values = () => wrap(values());
+          f.busy[Symbol.iterator] = () => wrap(entries());
+          for (const key of ["ranges", "starts", "free", "busyIds", "samples"] as const)
+            Reflect.set(
+              f,
+              key,
+              new Proxy(f[key], {
+                get(target, key, receiver) {
+                  if (typeof key === "string" && /^\d+$/.test(key)) visits++;
+                  return Reflect.get(target, key, receiver) as unknown;
+                },
+              }),
+            );
+          return new Proxy(f, {
+            get(target, key, receiver) {
+              visits++;
+              return Reflect.get(target, key, receiver) as unknown;
+            },
+          });
+        });
+        try {
+          const d = cloudFixture(preset);
+          const a = d.nodes[1].props!.autoscaling as { controller: CloudController };
+          Object.assign(a.controller, { minReplicas: n, initialReplicas: n, maxReplicas: n });
+          if (a.controller.kind === "ecs") a.controller.metricPeriodMs = 1000;
+          if (a.controller.kind === "appService" || a.controller.kind === "cloudRun") a.controller.evaluationMs = 1000;
+          if (a.controller.kind === "aca") Object.assign(a.controller, { pollingMs: 1000 });
+          const e = createEngine();
+          e.load(d);
+          visits = 0;
+          for (let i = 0; i < 300; i++) {
+            e.step(10);
+            e.frame();
+          }
+          return visits;
+        } finally {
+          spy.mockRestore();
+        }
+      };
+      const small = run(1250),
+        large = run(10_000);
+      expect(small).toBeGreaterThan(0);
+      expect(large).toBe(small);
+    },
+  );
+  it("request scalers read waiting requests without traversing the queue (8× queued requests)", () => {
+    for (const preset of ["cloud-run", "aca-http", "app-service"] as const)
+      for (const count of [1000, 8000]) {
+        const d = cloudFixture(preset);
+        const a = d.nodes[1].props!.autoscaling as { controller: CloudController };
+        Object.assign(a.controller, { minReplicas: 1, initialReplicas: 1, maxReplicas: 1 });
+        const e = createEngine();
+        e.load(d);
+        e.inject("source", count);
+        e.step(100);
+        const reads = vi.spyOn(Deque.prototype, Symbol.iterator);
+        try {
+          e.step(2000);
+          expect(reads, `${preset} ${count}`).not.toHaveBeenCalled();
+        } finally {
+          reads.mockRestore();
+        }
+      }
   });
 });
