@@ -603,6 +603,8 @@ function CanvasInner({
   const privacyFlags = usePrivacyFlags(slug);
   const privacyNow = () => privacyOf({ ...privacyFlags, editor: { getDiagram: () => fromFlow(meta, nodes, edges) } });
   const editor = useEditor({
+    getNodes: () => nodes,
+    getEdges: () => edges,
     slug,
     isPrivate: () => privacyNow() !== null,
     makePrivate: () => {
@@ -655,6 +657,10 @@ function CanvasInner({
     hovered: () => hovered.current,
     reveal: () => revealSelection(),
     nameNew: (make, fallback) => nameNew.current(make, fallback),
+    flushSave: (diagram) => {
+      const mod = flushSave(diagram);
+      if (mod !== undefined) setModified(mod);
+    },
   });
 
   /** Alt+arrow and Alt+Shift+arrow (set below, once the flows they open are defined). */

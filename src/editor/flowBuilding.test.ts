@@ -252,16 +252,29 @@ const BASE: DiagramFile = {
 };
 
 /** hub alone at (1000, 400); a → b in a row far to the left, with a labelled request edge. */
-function setup(marks: EdgeMark[] = [], diagram: DiagramFile = BASE) {
+function setup(marks: EdgeMark[] = [], diagram: DiagramFile = BASE, lagStore = false) {
   const flow = toFlow(diagram);
   let nodes: FlowNode[] = flow.nodes;
   let edges: DiagramFlowEdge[] = flow.edges;
   const queue: (() => void)[] = [];
-  const commit = () => queue.splice(0).forEach((f) => f());
+  let storeNodes = nodes;
+  let storeEdges = edges;
+  const catchUp = () => {
+    storeNodes = nodes;
+    storeEdges = edges;
+  };
+  const commit = () => {
+    queue.splice(0).forEach((f) => f());
+    if (!lagStore) {
+      storeNodes = nodes;
+      storeEdges = edges;
+    }
+    editor.updateDeps(rf, deps, { getNodes: () => nodes, getEdges: () => edges });
+  };
   const rf = {
-    getNodes: () => nodes.map((n) => ({ ...n })),
-    getNode: (id: string) => nodes.find((n) => n.id === id),
-    getEdges: () => edges.map((e) => ({ ...e })),
+    getNodes: () => storeNodes.map((n) => ({ ...n })),
+    getNode: (id: string) => storeNodes.find((n) => n.id === id),
+    getEdges: () => storeEdges.map((e) => ({ ...e })),
   } as unknown as ReactFlowInstance<FlowNode, DiagramFlowEdge>;
   const reveal = vi.fn();
   const hint = vi.fn();
@@ -271,7 +284,8 @@ function setup(marks: EdgeMark[] = [], diagram: DiagramFile = BASE) {
       void queue.push(() => {
         deps.meta = typeof u === "function" ? u(deps.meta) : u;
       }),
-    history: { hint },
+    history: { hint, end: vi.fn() },
+    flushSave: vi.fn(),
     nodeSize: SIZE,
     viewCenter: () => ({ x: 1110, y: 1000 }),
     edgeMarks: () => marks,
@@ -284,7 +298,8 @@ function setup(marks: EdgeMark[] = [], diagram: DiagramFile = BASE) {
     setEdges: (u: Parameters<EditorDeps["setEdges"]>[0]) =>
       void queue.push(() => (edges = typeof u === "function" ? u(edges) : u)),
   } as unknown as EditorDeps;
-  const { api } = createEditor(rf, deps, { getNodes: () => nodes, getEdges: () => edges });
+  const editor = createEditor(rf, deps, { getNodes: () => storeNodes, getEdges: () => storeEdges });
+  const { api } = editor;
   const boxOf = (id: string): Box => {
     const n = nodes.find((x) => x.id === id);
     if (!n) throw new Error(`no node ${id}`);
@@ -293,10 +308,114 @@ function setup(marks: EdgeMark[] = [], diagram: DiagramFile = BASE) {
   const hits = (a: Box, b: Box) =>
     a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
   const overlapsAny = (id: string) => nodes.filter((n) => n.id !== id).some((n) => hits(boxOf(id), boxOf(n.id)));
-  return { api, boxOf, overlapsAny, edges: () => edges, nodes: () => nodes, reveal, hint, commit, deps };
+  return { api, boxOf, overlapsAny, edges: () => edges, nodes: () => nodes, reveal, hint, commit, catchUp, deps };
 }
 
 describe("the next node (Alt+arrow, the +)", () => {
+  it("finishing naming flushes the complete new node and connection before the autosave debounce", () => {
+    const t = setup();
+    const made = t.api.createConnected({ from: "hub", stencil: "redis.cache" })!;
+    t.commit();
+    t.api.updateNode(made.id, { label: "dedupe table", sublabel: "Cache" });
+    t.commit();
+    // The node's name may already have autosaved when the connection is typed. Finishing must save
+    // the connection too, even if its queued update has not rendered yet.
+    t.api.updateEdge(made.edge!, { label: "SET NX" });
+    t.api.doneNaming(made.merge);
+    expect(t.deps.flushSave).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        nodes: expect.arrayContaining([
+          expect.objectContaining({ id: made.id, label: "dedupe table", sublabel: "Cache" }),
+        ]),
+        edges: expect.arrayContaining([
+          expect.objectContaining({ id: made.edge, from: "hub", to: made.id, label: "SET NX" }),
+        ]),
+      }),
+    );
+    expect(t.deps.history.end).toHaveBeenCalledExactlyOnceWith(made.merge);
+  });
+  it("keeps every newly connected name keystroke across renders before React Flow catches up", () => {
+    const t = setup([], BASE, true);
+    const made = t.api.createConnected({ from: "hub", stencil: "redis.cache" })!;
+    t.commit();
+    t.catchUp();
+    for (const field of ["label", "sublabel"] as const) {
+      let value = "";
+      for (const key of field === "label" ? "dedupe table" : "Cache") {
+        t.api.updateNode(made.id, { [field]: (value += key) });
+        t.commit();
+      }
+    }
+    let label = "";
+    for (const key of "SET NX") {
+      t.api.updateEdge(made.edge!, { label: (label += key) });
+      t.commit();
+    }
+    // Enter returns focus/selection to the node. Its selection update must not restore the old edge.
+    t.api.select({ nodeIds: [made.id] });
+    t.commit();
+    expect(t.edges().find((e) => e.id === made.edge)?.data?.label).toBe("SET NX");
+    expect(t.nodes().find((n) => n.id === made.id)?.data).toMatchObject({ label: "dedupe table", sublabel: "Cache" });
+    expect(t.api.getNode(made.id)).toMatchObject({ label: "dedupe table", sublabel: "Cache" });
+    expect(t.api.getEdge(made.edge!)).toMatchObject({ from: "hub", to: made.id, label: "SET NX" });
+  });
+  it("retains edge and node edits, bulk edits and pasted content across lagging-store renders", () => {
+    const t = setup([], BASE, true);
+    t.api.updateEdge("ab", { label: "Stored", relation: "depends" });
+    t.commit();
+    t.api.setEdgeProps("ab", { description: "Connection details" });
+    t.commit();
+    t.api.updateNode("a", { label: "Orders", sublabel: "Public API" });
+    t.commit();
+    t.api.setNodeProps("a", { description: "Node details" });
+    t.commit();
+    t.api.updateMeta({ description: "Diagram details" });
+    t.commit();
+    t.api.updateNodes(["a", "b"], { group: "" });
+    t.commit();
+    t.api.setNodesProps(["a", "b"], { concurrency: 3 });
+    t.commit();
+    t.api.updateEdges(["ab"], { label: "Bulk label" });
+    t.commit();
+    t.api.reverseEdge("ab");
+    t.commit();
+    t.api.pastePayload(makePayload(BASE, ["a", "b"])!);
+    t.commit();
+    t.api.updateNode("hub", { label: "Still editing" });
+    t.commit();
+    const d = t.api.getDiagram();
+    expect(d.nodes).toHaveLength(BASE.nodes.length + 2);
+    expect(d.edges).toHaveLength(2);
+    expect(t.api.getNode("a")).toMatchObject({
+      label: "Orders",
+      sublabel: "Public API",
+      props: { description: "Node details", concurrency: 3 },
+    });
+    expect(t.api.getNode("b")!.props).toMatchObject({ concurrency: 3 });
+    expect(t.api.getEdge("ab")).toMatchObject({
+      from: "b",
+      to: "a",
+      label: "Bulk label",
+      relation: "depends",
+      props: { description: "Connection details" },
+    });
+    expect(d.description).toBe("Diagram details");
+    expect(validateDiagram(d).ok).toBe(true);
+  });
+  it.each(["reconnect", "insert", "insert-new"])("keeps queued edge edits through %s", (action) => {
+    const t = setup();
+    t.api.updateEdge("ab", { label: "Latest", relation: "depends" });
+    t.api.setEdgeProps("ab", { description: "Details" });
+    if (action === "reconnect") expect(t.api.reconnectEdge("ab", "target", "hub")).toBe(true);
+    if (action === "insert") expect(t.api.insertIntoEdge("ab", "hub")).toBe(true);
+    if (action === "insert-new") expect(t.api.insertNode("ab", "service.go")).not.toBeNull();
+    t.commit();
+    expect(t.api.getEdge("ab")).toMatchObject({
+      label: "Latest",
+      relation: "depends",
+      props: { description: "Details" },
+    });
+  });
   it("editing a name keeps the position identity; a real move updates it", () => {
     const t = setup();
     const before = t.nodes().find((n) => n.id === "a")!.position;

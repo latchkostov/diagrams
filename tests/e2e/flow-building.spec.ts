@@ -318,6 +318,12 @@ test.describe("the + chip and Alt+arrow (D3)", () => {
     await page.keyboard.press("Enter");
     await page.keyboard.type("dedupe table", { delay: 5 });
     await expect(page.getByTestId("inspector-field-label")).toHaveValue("dedupe table");
+    // CI read this intermediate autosave after Enter: the node was named, but its connection wasn't.
+    // Freeze that ordering so finishing naming must flush the connection rather than await its debounce.
+    await page.clock.install();
+    await pauseClock(page);
+    await page.clock.runFor(300);
+    await savedWhen(page, (s) => s.nodes.some((n) => n.label === "dedupe table"));
     await page.keyboard.press("Tab");
     await expect(page.getByTestId("inspector-field-sublabel")).toBeFocused();
     await page.keyboard.press("Tab");

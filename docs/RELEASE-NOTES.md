@@ -1,5 +1,27 @@
 # Release notes
 
+## Autoscaling A2 edit preservation (#125, 2026-10-15)
+
+- Finishing a name with Enter, Esc or a click away immediately saves its complete transaction,
+  including the new Connection field reached with Tab, Tab. The CI trace showed the typed label
+  on the canvas but an earlier autosave without it; the debounce no longer leaves that older save
+  after naming finishes. A fake-clock E2E regression fixes that ordering deterministically.
+- Editor transactions use the controlled canvas state instead of React Flow's store, which can
+  still contain the previous render until its passive effect runs and overwrite newer edits.
+- Reconnect and insert retain queued connection labels, relationships and properties. Regression
+  tests also cover node labels/subtitles, descriptions, reversal, bulk edits and paste across
+  delayed store updates. All six new unit regressions fail with the fixes removed.
+- Binding validation stays atomic; it is not bypassed for naming. UX review: existing keyboard,
+  inspector and undo flows retain their controls and behavior; no chrome added.
+- Rebased onto master’s settled-view fixes after the full E2E run exposed a nested-boundary redo
+  failure; both sides of the document conflicts are retained. The naming and edit fixes change no
+  output goldens. The stale skill viewer is refreshed; plugin 1.1.26 remains exactly one
+  patch above origin/master.
+- Full production E2E, all six shards and projects in the pinned Linux image: 1,312 passed,
+  1 failed, 0 flaky. The sole failure is the + chip placement predicate at
+  `tests/e2e/flow-building.spec.ts:204`, reproduced identically on clean `origin/master`
+  (`d2f6f03b`); the naming regression passes. Windows attempts encountered socket-buffer errors.
+
 ## Autoscaling A2 import recovery (#125, 2026-10-15)
 
 - Exhausted dependency work is distinct from an oversized boundary. Imports still draw fitting

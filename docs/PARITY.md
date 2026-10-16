@@ -217,6 +217,7 @@ gate need no hierarchy-specific fallback or new timing budget.
 - Final lint found six non-null assertions in the new browser regression; explicit checks replace
   them. Its added annotation-membership check compares by id because normalization draws zones
   before notes; the initial order-sensitive assertion failed, and the corrected targeted run passes.
+
 ## Autoscaling A2 round 2 review (2026-10-15)
 
 The rebase retained master and A2 code and documentation; no golden was hand-merged. The full

@@ -10,6 +10,7 @@ is not viewport takeover. Cancellation now follows actual viewport move events a
 programmatic fit starts have their own transition token. Browser regressions cover the real wheel
 interruption and count observer work after cleanup. This was a scoped source review backed by browser
 regressions, not a whole-app visual or assistive-technology walkthrough.
+
 ## Autoscaling A2 round 2 gate (#125, 2026-10-15)
 
 The designer agent reviewed the changed source and regression tests. Fixed workloads keep resources

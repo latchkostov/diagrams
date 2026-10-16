@@ -114,6 +114,7 @@ it.each(["undo", "redo", "replacement", "edit"] as const)(
   (command) => {
     const flow = toFlow(measuredHierarchyFixture);
     let nodes = flow.nodes;
+    let edges = flow.edges;
     let release!: () => void;
     const cancel = vi.fn();
     const undo = vi.fn();
@@ -122,12 +123,15 @@ it.each(["undo", "redo", "replacement", "edit"] as const)(
     const fit = vi.fn();
     const rf = {
       getNodes: () => nodes,
-      getEdges: () => flow.edges,
+      getEdges: () => edges,
     } as unknown as ReactFlowInstance<FlowNode, DiagramFlowEdge>;
     const { api } = createEditor(rf, {
       meta: flow.meta,
       setNodes: (update: Parameters<EditorDeps["setNodes"]>[0]) => {
         nodes = typeof update === "function" ? update(nodes) : update;
+      },
+      setEdges: (update: Parameters<EditorDeps["setEdges"]>[0]) => {
+        edges = typeof update === "function" ? update(edges) : update;
       },
       nodeSize: { width: 220, height: 72 },
       history: { hint: vi.fn(), undo, redo, replace, canUndo: true, canRedo: true },

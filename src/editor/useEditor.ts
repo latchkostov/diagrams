@@ -5,7 +5,7 @@ import { annotationGeometryMessage, relationChangeMessage } from "./editMessages
 import { useLayoutEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { createResourceValidator } from "../model/resourceValidation";
 import { newPlanningProps } from "../model/planning";
-import { useReactFlow, useStoreApi, type ReactFlowInstance } from "@xyflow/react";
+import { useReactFlow, type ReactFlowInstance } from "@xyflow/react";
 import { flushSync } from "react-dom";
 import {
   annotationToFlow,
@@ -75,7 +75,7 @@ import type { EditorApi, EditorPrefs, NewNode, Selection, XY } from "./types";
 import { diagramDiff } from "./diagramDiff";
 import { nudgeOnGrid } from "../canvas/guides";
 import { validateDiagram } from "../interop/native";
-import type { AnnotationColor, DiagramAnnotation, GroupTone } from "../model/types";
+import type { AnnotationColor, DiagramAnnotation, DiagramFile, GroupTone } from "../model/types";
 import { isHexColor } from "../model/colors";
 import {
   centre,
@@ -185,25 +185,18 @@ export interface EditorDeps {
    * be (an example, a shared diagram): then nothing is pasted.
    */
   makePrivate?: () => boolean;
+  /** Persist the whole naming transaction when Enter, Esc or leaving the fields finishes it. */
+  flushSave?: (diagram: DiagramFile) => void;
 }
 
-export function useEditor(deps: EditorDeps): EditorApi {
+type EditorState = Pick<ReactFlowInstance<FlowNode, DiagramFlowEdge>, "getNodes" | "getEdges">;
+
+export function useEditor(deps: EditorDeps & EditorState): EditorApi {
   const rf = useReactFlow<FlowNode, DiagramFlowEdge>();
-  const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const [, invalidateCommands] = useState(0);
-  const [editor] = useState(() =>
-    createEditor(
-      rf,
-      deps,
-      {
-        getNodes: () => store.getState().nodes,
-        getEdges: () => store.getState().edges,
-      },
-      () => invalidateCommands((n) => n + 1),
-    ),
-  );
+  const [editor] = useState(() => createEditor(rf, deps, deps, () => invalidateCommands((n) => n + 1)));
   useLayoutEffect(() => {
-    editor.updateDeps(rf, deps);
+    editor.updateDeps(rf, deps, deps);
   });
   return editor.api;
 }
@@ -232,7 +225,7 @@ function withGroup(n: FlowNode, group: string | undefined): FlowNode {
 export function createEditor(
   rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>,
   initialDeps: EditorDeps,
-  committed: Pick<ReactFlowInstance<FlowNode, DiagramFlowEdge>, "getNodes" | "getEdges"> = rf,
+  committed: EditorState = rf,
   commandsChanged: () => void = () => {},
 ) {
   let latest = initialDeps;
@@ -250,7 +243,8 @@ export function createEditor(
   // Stage editor updates in call order: React's node/edge queues may commit independently later.
   let stagedNodes: FlowNode[] | undefined;
   let stagedEdges: DiagramFlowEdge[] | undefined;
-  // Read the store arrays: React Flow's public getters clone every element. A render ends the batch.
+  // Read the controlled canvas state: React Flow's store catches up in a passive effect, so it can
+  // still hold the previous name/connection when a render ends the batch. Public getters also clone.
   const currentNodes = () => stagedNodes ?? committed.getNodes();
   const currentEdges = () => stagedEdges ?? committed.getEdges();
   const setNodes = (update: Parameters<EditorDeps["setNodes"]>[0], documentEdit = true) => {
@@ -274,7 +268,7 @@ export function createEditor(
     height: n.measured?.height ?? n.height ?? deps().nodeSize.height,
   });
   const pendingIds = new Set<string>();
-  const diagram = () => fromFlow(deps().meta, rf.getNodes(), rf.getEdges());
+  const diagram = () => fromFlow(deps().meta, committed.getNodes(), committed.getEdges());
   const directMembers = (groupId: string): FlowNode[] => rf.getNodes().filter((n) => n.data.group === groupId);
   const expandSelection = (sel: Partial<Selection>, allNodes: readonly FlowNode[]) => {
     const groupIds = expandGroupIds(
@@ -1109,7 +1103,7 @@ export function createEditor(
       return { id, edge: edge.id, merge };
     },
     insertNode: (edgeId, stencilId, at) => {
-      const es = rf.getEdges();
+      const es = currentEdges();
       const e = es.find((x) => x.id === edgeId);
       const a = e && rf.getNode(e.source);
       const b = e && rf.getNode(e.target);
@@ -1166,16 +1160,16 @@ export function createEditor(
       return id;
     },
     reconnectEdge: (edgeId, end, nodeId) => {
-      const target = rf.getNode(nodeId);
+      const target = currentNodes().find((n) => n.id === nodeId);
       if (!target || !takesEdges(target)) return false;
-      const next = reconnectEdge(rf.getEdges(), edgeId, end, nodeId);
+      const next = reconnectEdge(currentEdges(), edgeId, end, nodeId);
       if (!next) return false;
       return commitEdges(() => next);
     },
     insertIntoEdge: (edgeId, nodeId) => {
-      const n = rf.getNode(nodeId);
+      const n = currentNodes().find((n) => n.id === nodeId);
       if (!n || !takesEdges(n)) return false;
-      const r = splitFlowEdge(rf.getEdges(), edgeId, nodeId, takenIds());
+      const r = splitFlowEdge(currentEdges(), edgeId, nodeId, takenIds());
       if (!r) return false;
       return commitEdges(() => r.edges);
     },
@@ -1693,7 +1687,10 @@ export function createEditor(
       deps().history.begin(tag);
       return tag;
     },
-    doneNaming: (tag) => deps().history.end(tag),
+    doneNaming: (tag) => {
+      deps().history.end(tag);
+      deps().flushSave?.(fromFlow(deps().meta, currentNodes(), currentEdges()));
+    },
     openInspector: (field) => deps().openInspector(field),
     showShortcuts: () => deps().showShortcuts(),
     autoLayout: () => {
@@ -1766,10 +1763,11 @@ export function createEditor(
   };
   return {
     api,
-    updateDeps: (flow: ReactFlowInstance<FlowNode, DiagramFlowEdge>, next: EditorDeps) => {
+    updateDeps: (flow: ReactFlowInstance<FlowNode, DiagramFlowEdge>, next: EditorDeps, state = committed) => {
       if (next.slug !== latest.slug) cancelLayout();
       rf = flow;
       latest = next;
+      committed = state;
       stagedNodes = undefined;
       stagedEdges = undefined;
     },
