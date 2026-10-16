@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { chromiumLaunchArgs } from "./scripts/e2e-chromium";
 
 /**
  * E2E config. Five projects:
@@ -27,6 +28,8 @@ import { defineConfig, devices } from "@playwright/test";
  * served with a self-hosted copy's headers (PREVIEW_HEADERS=self-host), not the public site's.
  * Every test gets a fresh browser context, so localStorage (settings, autosave) starts empty.
  * All outputs live in tests/.output (gitignored by tests/.gitignore).
+ * E2E_CHROMIUM_ONLY=1 serves only the app and selects only chromium, for the local production gate.
+ * It avoids unused dev/preview servers and their watchers scanning accumulated trace/export HTML.
  */
 const CI = !!process.env.CI;
 
@@ -42,6 +45,7 @@ function port(name: string, fallback: number, explicitFallback = false): { port:
 const TARGET = process.env.E2E_TARGET ?? (CI ? "build" : "dev");
 if (TARGET !== "build" && TARGET !== "dev") throw new Error(`E2E_TARGET must be "build" or "dev", got "${TARGET}"`);
 const BUILD = TARGET === "build";
+const chromiumOnly = process.env.E2E_CHROMIUM_ONLY === "1";
 
 const app = port("E2E_PORT", 5191);
 const devServer = BUILD ? port("E2E_DEV_PORT", app.port + 1, app.explicit) : app;
@@ -67,7 +71,7 @@ export const LOCKED_ENV = {
   // One language: English for everyone, whatever the browser asks for, with no Language choice.
   VITE_LOCALES: "en",
 };
-const skipPreview = process.env.E2E_SKIP_PREVIEW === "1";
+const skipPreview = chromiumOnly || process.env.E2E_SKIP_PREVIEW === "1";
 const prebuilt = process.env.E2E_PREBUILT === "1";
 
 /**
@@ -141,7 +145,7 @@ export default defineConfig({
     : [["list"], ["html", { outputFolder: "./tests/.output/report", open: "never" }]],
   use: {
     baseURL: `http://localhost:${app.port}`,
-    launchOptions: { args: [`--host-resolver-rules=MAP localhost ${LOOPBACK}`] },
+    launchOptions: { args: chromiumLaunchArgs(LOOPBACK) },
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "off",
@@ -182,9 +186,9 @@ export default defineConfig({
             testMatch: spec,
           })),
         ]),
-  ],
+  ].filter((project) => !chromiumOnly || project.name === "chromium"),
   webServer: [
-    devWebServer,
+    ...(BUILD && chromiumOnly ? [] : [devWebServer]),
     ...(BUILD
       ? [
           {

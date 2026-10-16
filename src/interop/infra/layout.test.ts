@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { countingReads, GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
 import { compactColumns } from "./layout";
 
 // The importers' layout: the column restack on its own, at scale (the rest is covered through each reader's fixtures
@@ -24,26 +25,42 @@ describe("import layout: compacting columns", () => {
     expect(at.get("c")).toEqual({ x: 400, y: 290 });
   });
 
-  it("builds a column in linear time, however many units fan out into it", () => {
-    // A fan-out puts thousands of units in one column. Copying the column on every insertion would be quadratic: 8x
-    // the units, 64x the time. Compared against an eighth of the input, not a wall-clock budget; the fastest of a few
-    // runs evens out noise.
-    const fastest = (n: number) => {
+  it("builds a column with linear element reads, however many units fan out into it", () => {
+    // Count reads of the internal column arrays, including spread/concat copies. Repeated copying grows 64x
+    // for 8x the input; appending grows 8x. Unlike timing fresh batches of maps, this is independent of GC/load.
+    const work = (n: number) => {
       const units = Array.from({ length: n }, (_, i) => ({ id: `n${i}`, x: 0, y: 0, width: 220, height: 72 }));
-      const fresh = () => new Map(units.map((u, i) => [u.id, { x: 400, y: i * 500 }]));
-      let best = Infinity;
-      for (let run = 0; run < 5; run++) {
-        // Ten passes per timing, each on fresh positions made beforehand: long enough to time, nothing else in it.
-        const maps = Array.from({ length: 10 }, fresh);
-        const started = performance.now();
-        for (const at of maps) compactColumns(units, at);
-        best = Math.min(best, performance.now() - started);
-        expect(maps[0].get(`n${n - 1}`)?.y).toBe(Math.round(((n - 1) * 120) / 10) * 10);
+      const at = new Map(units.map((u, i) => [u.id, { x: 400, y: i * 500 }]));
+      const reads: (() => number)[] = [];
+      const original = Map.prototype.set as (
+        this: Map<unknown, unknown>,
+        key: unknown,
+        value: unknown,
+      ) => Map<unknown, unknown>;
+      const set = vi.spyOn(Map.prototype, "set").mockImplementation(function (
+        this: Map<unknown, unknown>,
+        key: unknown,
+        value: unknown,
+      ) {
+        if (Array.isArray(value)) {
+          const counted = countingReads(value as unknown[]);
+          reads.push(counted.reads);
+          value = counted.items;
+        }
+        return original.call(this, key, value);
+      });
+      try {
+        compactColumns(units, at);
+      } finally {
+        set.mockRestore();
       }
-      return best;
+      expect(at.size).toBe(n);
+      expect(at.get(`n${n - 1}`)?.y).toBe(Math.round(((n - 1) * 120) / 10) * 10);
+      const total = reads.reduce((sum, read) => sum + read(), 0);
+      expect(total).toBeGreaterThanOrEqual(n);
+      return total;
     };
-    fastest(2_000); // warm up the JIT
-    const ratio = fastest(16_000) / fastest(2_000);
-    expect(ratio).toBeLessThan(24);
+    const small = work(200);
+    expect(work(200 * GROWTH_FACTOR) / small).toBeLessThan(LINEAR_LIMIT);
   });
 });

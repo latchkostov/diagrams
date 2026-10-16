@@ -171,6 +171,8 @@ test.describe("the + chip and Alt+arrow (D3)", () => {
     const chips = page.getByTestId(/^grow-chip-/);
     await expect(chips).toHaveCount(0);
     await select(page, "api");
+    await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
+    await waitForStableViewport(page);
     await expect(chips).toHaveCount(1);
     // Downstream (right), clear of the card.
     const card = await box(page.getByTestId("node-api"));
@@ -188,6 +190,10 @@ test.describe("the + chip and Alt+arrow (D3)", () => {
 
     await page.keyboard.press("Escape");
     await select(page, "hub");
+    // Selection publishes before the deferred inspector opens and reveals it. Fit
+    // after that layout, otherwise the reveal and Fit are competing viewport commands.
+    await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
+    await waitForStableViewport(page);
     // Selecting opens the inspector, which narrows the canvas: the chip (right of the hub) can end up under it.
     // Fit the diagram into what's left, and click once the chip is clear of the inspector (a layout race: the
     // panel and the pan settle after the click that selected).

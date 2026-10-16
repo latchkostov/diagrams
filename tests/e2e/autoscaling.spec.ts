@@ -128,7 +128,28 @@ async function seed(
   await waitForStableViewport(page);
   if (live) {
     await pauseClock(page);
-    if (readinessDelay) await page.clock.runFor(readinessDelay);
+    // Live is paused: advance the pre-play wall clock without rendering thousands
+    // of irrelevant frames. Playback below still delivers every simulation tick.
+    if (readinessDelay) {
+      const frames = await page.evaluateHandle(() => {
+        const state = { count: 0, pending: 0 };
+        const tick = () => {
+          state.count++;
+          state.pending = requestAnimationFrame(tick);
+        };
+        state.pending = requestAnimationFrame(tick);
+        return state;
+      });
+      try {
+        await page.clock.fastForward(readinessDelay);
+        // Guard the work, not a wall-clock budget: replaying thousands of paused frames
+        // used most of the test timeout on Windows before playback even started.
+        expect(await frames.evaluate((state) => state.count)).toBeLessThanOrEqual(1);
+      } finally {
+        await frames.evaluate((state) => cancelAnimationFrame(state.pending));
+        await frames.dispose();
+      }
+    }
     await page.getByTestId("live-play").click();
   }
 }

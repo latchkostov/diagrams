@@ -39,6 +39,67 @@ warns. Measurements and migration decisions: [toolchain modernization](TOOLCHAIN
 
 ## E2E projects and ports
 
+### Full local push gate
+
+After committing, run `bash scripts/verify-push.sh 6360` (or the installed
+`bash /c/Users/latch/bin/verify-push.sh 6360` copy). Choose an unused five-port range;
+5190 and 6000 are forbidden. Install updates by copying the versioned script to that path;
+the installed script also works in older checkouts without this runner file.
+
+Full gates queue across worktrees of this repository. The key comes from their shared Git
+metadata: a native named mutex on Windows, `flock` on Linux. The OS owns the lock, so a failed
+or terminated gate cannot leave a stale PID lock behind. This prevents simultaneous unit
+worker pools, builds and browsers from starving one another. Three concurrent gates on the
+Windows host reached 96% CPU and stalled otherwise healthy page startup/input for 10–25 seconds.
+The queue regression holds one fake gate at a barrier, proves the second cannot enter, then
+verifies that a failed first gate releases the second. Assertions and test timeouts stay intact.
+
+The gate runs lint, typecheck, formatting, units, build, entry size and parity, then every
+whole-file E2E shard against the production bundle. It uses three browser workers, like CI,
+and zero retries. Local Playwright otherwise starts half the logical CPUs' worth of workers:
+on a 32-thread Windows machine that means sixteen concurrent browsers.
+It sets `E2E_CHROMIUM_ONLY=1`: the same `chromium` test selection, with only its app server.
+The unused dev, subpath, internal and locked servers otherwise also start for each shard;
+the dev watcher observes the accumulated trace/export HTML even though no test uses it.
+Normal Playwright runs keep all five projects and their servers.
+
+Failures do not stop the remaining checks or shards. Every shard reports passed, failed,
+flaky and skipped totals from Playwright's JSON report, including a non-zero exit or missing
+report as a gate failure. Logs, HTML reports, screenshots and traces stay in separate
+`tests/.output/local-gate/<run>/shard<N>/` directories, so the next shard/run cannot overwrite
+the evidence. Run directory names stay short: Chrome on Windows cannot open an offline
+export at MAX_PATH even when Node can read that same file. A platform-independent path
+budget regression reserves room for a long per-test folder and nested export.
+A final `SUMMARY:` line gives the complete totals. Only a complete success
+stamps the unchanged, clean HEAD in Git's `verified` directory; starting a rerun removes
+its earlier stamp. The orchestration tests replace commands with fakes and verify all six
+shards run after an earlier failure, without starting browsers or servers.
+
+The two compiler probes and the full 5,000-node Draw everything case have explicit 40-second
+hang backstops on every machine, matching CI's intent. The compiler probes are separated by
+compiler; the cap case is separated from the small import. They assert compatibility,
+no emission and the real import cap, rather than performance. Complexity tests retain their
+ratios and operation counts; the ordinary local unit timeout remains five seconds.
+The import column guard counts internal array element reads, including copies, with the
+same eighth-input comparison and 24x limit. It needs only two layouts rather than timing
+150 layouts and their fresh maps; garbage collection cannot change the measured work.
+The startup-readiness regression fast-forwards the fake clock while Live is paused;
+an animation-frame counter prevents accidentally replaying thousands of irrelevant paused frames.
+Playback still delivers every simulation tick and retains all readiness assertions.
+
+Windows Chromium test browsers also disable `TcpPortRandomizationWin`. A standalone tiny
+loopback page reproduced `ERR_NO_BUFFER_SPACE`, with the netlog recording Windows error
+10055 at TCP connect before HTTP. Across both probe orders, default Chromium 156.0.8078.4
+had one connect failure in 4,800 navigations; disabling the feature had none in 4,800.
+The host had ample free memory and available ephemeral ports, and used CUBIC. No Windows
+network/antivirus settings, app code, error assertions or retries are changed.
+`scripts/e2e-chromium.ts` reads the pinned Playwright runtime's native default feature list
+without launching a browser. Chrome honors only the last `--disable-features` switch, so
+appending a bare workaround would silently re-enable Playwright's other disabled features.
+The config regressions catch removal of the workaround and clobbered defaults; Linux/macOS
+launch arguments stay unchanged. Review/remove this deliberately narrow internal API
+integration when upgrading Playwright/Chromium; it must never enter an app bundle.
+
 `pnpm test:e2e` starts its own servers and runs three Playwright projects:
 
 | Project    | What it tests                                                                  | Server                            |

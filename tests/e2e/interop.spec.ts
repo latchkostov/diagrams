@@ -714,7 +714,11 @@ for (const deferred of [false, true]) {
     if (deferred) await expect.poll(() => page.evaluate(() => !!window.__fs.release)).toBe(true);
     else await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(1);
     await openExample(page, "notification-fanout");
+    // openExample deliberately returns before the download. Actually leave the initiating
+    // canvas before returning: cancelling a pending navigation keeps that session alive.
+    await expect(page.getByTestId("node-carrier")).toBeVisible();
     await openExample(page, "kafka-order-pipeline");
+    await expect(page.getByTestId("node-shopper")).toBeVisible();
     if (deferred) {
       await page.evaluate(() => {
         window.__fs.defer = false;

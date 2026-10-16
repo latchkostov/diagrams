@@ -442,6 +442,8 @@ for (const byDefault of [false, true]) {
     consoleErrors,
   }) => {
     await page.goto(`./?view=canvas&example=${SLUG}&storage=test`);
+    // The top-bar badge precedes the lazy canvas; Save needs its mounted handle.
+    await expect(page.getByTestId("canvas-view")).toBeVisible();
     await expect(page.getByTestId("example-badge")).toBeVisible();
     await page.getByTestId("file-button").click();
     await page.getByTestId("file-save-to").click();
