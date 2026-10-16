@@ -29,3 +29,15 @@ export function applyMoves(d: DiagramFile, moves: readonly { id: string; x: numb
     ...(d.annotations && { annotations: d.annotations.map((a) => (at.has(a.id) ? { ...a, ...at.get(a.id) } : a)) }),
   };
 }
+
+/** Why a local step wasn't sent, in words (the Lab shows it as an alert). */
+export function refusalMessage(problem: string): string {
+  const what: Record<string, string> = {
+    "too-large": "it was larger than a room accepts in one step",
+    "string-too-long": "a text in it was longer than a room accepts",
+    "key-too-long": "a field name in it was longer than a room accepts",
+    "too-deep": "a value in it was nested too deeply",
+    "bad-id": "an element id in it wasn't usable",
+  };
+  return `Your last change wasn't shared and was undone: ${what[problem] ?? problem}. Make it smaller, or export a copy.`;
+}

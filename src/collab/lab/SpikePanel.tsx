@@ -7,7 +7,7 @@ import { deriveRoomKeys, newRoom } from "../keys";
 import { consumeRoomFragment, parseRoomLink, parseRoomValue, ROOM_PARAM, type RoomLink } from "../link";
 import { bytesToBase64Url } from "../../interop/codec";
 import { createTrackerTransport, SPIKE_STUN, SPIKE_TRACKERS, type TrackerTransport } from "../transport/tracker";
-import { applyMoves, demoDiagram, endpointList } from "./demo";
+import { applyMoves, demoDiagram, endpointList, refusalMessage } from "./demo";
 
 // The public-matchmaking spike (C0, Lab only). Nothing connects until "Connect" is pressed: the panel names every
 // public service first. Two tabs (or two browsers) with the same room key find each other through public
@@ -230,6 +230,11 @@ export function SpikePanel() {
               Set title
             </button>
           </div>
+          {client.binding.refused && (
+            <p role="alert" data-testid="collab-spike-refused">
+              {refusalMessage(client.binding.refused)}
+            </p>
+          )}
           <ol className="collab-spike-log mono" data-testid="collab-spike-log">
             {events.map((e, i) => (
               <li key={i}>{e}</li>

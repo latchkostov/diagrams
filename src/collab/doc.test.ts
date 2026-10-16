@@ -215,6 +215,29 @@ describe("CollabDoc projection", () => {
   });
 });
 
+describe("CollabDoc sync replies", () => {
+  it("splits a large reply by client into parts that rebuild the same state", () => {
+    const a = new CollabDoc({ clientId: 1 });
+    a.hydrate(sample());
+    const b = new CollabDoc({ clientId: 2 });
+    sync(a, b);
+    for (let i = 0; i < 20; i++)
+      edit(b, (d) => ({
+        ...d,
+        nodes: [...d.nodes, { id: `b${i}`, stencil: "postgres", label: "x".repeat(500), x: i, y: 0 }],
+      }));
+    sync(a, b);
+    const whole = a.encodeDiff();
+    const parts = a.encodeDiffParts(undefined, Math.floor(whole.length / 2));
+    expect(parts.length).toBe(2);
+    const c = new CollabDoc({ clientId: 3 });
+    for (const p of [...parts].reverse()) expect(c.applyRemote(p).ok).toBe(true);
+    expect(structuralText(diagramOf(c))).toBe(structuralText(diagramOf(a)));
+    // What a peer already has isn't sent again.
+    expect(a.encodeDiffParts(c.stateVector(), 10)).toHaveLength(1);
+  });
+});
+
 describe("CollabDoc Undo is per person", () => {
   const setup = () => {
     const a = new CollabDoc({ clientId: 1 });

@@ -44,11 +44,11 @@ const relabel = (d: DiagramFile, i: number): DiagramFile => ({
 });
 
 describe("collaboration at 5,000 nodes", () => {
-  it("fits a full 5,000-node room in one document frame", () => {
+  it("fits a full 5,000-node room in one document message (sent as 1 MiB fragments)", () => {
     for (const d of [mesh.large, annotatedPipeline(LARGE)]) {
       const bytes = hydrated(d).encodeDiff().length;
       log(`full state, ${d.nodes.length} nodes / ${d.edges.length} edges: ${bytes} bytes`);
-      expect(bytes).toBeLessThan(COLLAB_LIMITS.maxDocFrameBytes / 2);
+      expect(bytes).toBeLessThan(COLLAB_LIMITS.maxMessageBytes / 8);
     }
   });
 

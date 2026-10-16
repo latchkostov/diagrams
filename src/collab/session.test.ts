@@ -7,6 +7,7 @@ import { deriveRoomKeys } from "./keys";
 import { COLLAB_LIMITS } from "./limits";
 import { DOC, frame, PRESENCE } from "./protocol";
 import { metaOf } from "./schema";
+import { refusalMessage } from "./lab/demo";
 import { seededBytes } from "./random";
 import { CollabSession, PrivateDiagramError } from "./session";
 import { canaryDiagram, openClient, roomFor, type TestClient } from "./transport/conformance";
@@ -155,6 +156,7 @@ describe("sessions", () => {
     net.tap(() => wire++);
     expect(a.edit((d) => ({ ...d, title: "x".repeat(COLLAB_LIMITS.maxStringChars + 1) }))).toBe(false);
     expect(a.binding.refused).toBe("string-too-long");
+    expect(refusalMessage("string-too-long")).toMatch(/wasn't shared/);
     expect(a.diagram?.title).toBe(canaryDiagram().title);
     expect(a.edit((d) => ({ ...d, nodes: d.nodes.map((n) => ({ ...n, props: { ["k".repeat(300)]: 1 } })) }))).toBe(
       false,
@@ -169,12 +171,12 @@ describe("sessions", () => {
     expect(b.session.stats.rejected).toEqual({});
   });
 
-  it("refuses a step whose UTF-8 encoding wouldn't fit a frame, however short it is in characters", async () => {
+  it("refuses a step whose UTF-8 encoding is past the step bound, however short it is in characters", async () => {
     const { net, a, b, settle } = await room3();
     let wire = 0;
     net.tap(() => wire++);
-    // 30 values of 100,000 three-byte characters: 3 million characters, 9 MB encoded.
-    const big = Object.fromEntries(Array.from({ length: 30 }, (_, i) => [`x${i}`, "\u4e2d".repeat(100_000)]));
+    // 60 values of 99,000 three-byte characters: 6 million characters, 18 MB encoded.
+    const big = Object.fromEntries(Array.from({ length: 60 }, (_, i) => [`x${i}`, "\u4e2d".repeat(99_000)]));
     expect(a.edit((d) => ({ ...d, ...big }))).toBe(false);
     expect(a.binding.refused).toBe("too-large");
     expect(Object.keys(a.diagram!)).not.toContain("x0");
@@ -185,18 +187,26 @@ describe("sessions", () => {
     expect(b.diagram?.title).toBe("Next");
   });
 
-  it("refuses a step that would grow the room past what one sync reply can carry", async () => {
-    const { a, b, settle } = await room3();
+  it("a fresh peer joins after concurrent large edits: big messages travel as fragments", async () => {
+    const { net, clock, a, b, c, settle } = await room3();
     const chunk = (k: number) =>
       Object.fromEntries(Array.from({ length: 10 }, (_, i) => [`y${k}_${i}`, "\u4e2d".repeat(99_000)]));
     expect(a.edit((d) => ({ ...d, ...chunk(1) }))).toBe(true);
-    expect(a.edit((d) => ({ ...d, ...chunk(2) }))).toBe(true);
-    expect(a.edit((d) => ({ ...d, ...chunk(3) }))).toBe(false);
-    expect(a.binding.refused).toBe("room-full");
     await settle();
-    // What the room holds still reaches a peer in one frame.
-    expect(a.session.doc.encodeDiff().length).toBeLessThan(COLLAB_LIMITS.maxDocFrameBytes);
-    expect(Object.keys(metaOf(b.session.doc.ydoc).toJSON())).toContain("y2_9");
+    // Concurrently, about 3 MB each, past any single frame.
+    expect(a.edit((d) => ({ ...d, ...chunk(2) }))).toBe(true);
+    expect(b.edit((d) => ({ ...d, ...chunk(3) }))).toBe(true);
+    await settle();
+    const full = a.session.doc.encodeDiff().length;
+    expect(full).toBeGreaterThan(8 * 1024 * 1024);
+    let largest = 0;
+    net.tap((r) => void (largest = Math.max(largest, r.bytes.length)));
+    const d = await openClient("d", net.connect(), room, clock, 14);
+    await net.settle(async () => void (await Promise.all([a, b, c, d].map((x) => x.session.idle()))));
+    expect(largest).toBeLessThanOrEqual(COLLAB_LIMITS.maxDocFrameBytes);
+    expect(d.projection()).toBe(a.projection());
+    expect(Object.keys(metaOf(d.session.doc.ydoc).toJSON())).toEqual(expect.arrayContaining(["y1_0", "y2_9", "y3_9"]));
+    expect(d.session.stats.rejected).toEqual({});
   });
 
   it("refuses to start a room with a diagram the room couldn't carry", async () => {
@@ -348,12 +358,11 @@ describe("sessions refuse hostile input", () => {
     const { a } = await room3();
     const s = a.session as unknown as { enqueue(from: string, bytes: Uint8Array): Promise<void> };
     const big = new Uint8Array(COLLAB_LIMITS.maxDocFrameBytes);
-    const pending = Array.from({ length: 6 }, () => s.enqueue("flood", big));
-    expect(a.session.stats.rejected["queue-full"]).toBe(
-      6 - Math.floor(COLLAB_LIMITS.maxQueuedBytesPerPeer / big.length),
-    );
+    const fits = Math.floor(COLLAB_LIMITS.maxQueuedBytesPerPeer / big.length);
+    const pending = Array.from({ length: fits + 6 }, () => s.enqueue("flood", big));
+    expect(a.session.stats.rejected["queue-full"]).toBe(6);
     await Promise.all(pending);
-    expect(a.session.stats.rejected["bad-magic"]).toBe(Math.floor(COLLAB_LIMITS.maxQueuedBytesPerPeer / big.length));
+    expect(a.session.stats.rejected["bad-magic"]).toBe(fits);
   });
 
   it("an old-epoch member can't talk to the room", async () => {

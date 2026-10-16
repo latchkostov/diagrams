@@ -69,6 +69,7 @@ export class EditorBinding {
       return false;
     }
     this.base = now;
+    this.refused = undefined;
     return true;
   }
 

@@ -7,7 +7,7 @@ import { newRoom } from "../keys";
 import { COLLAB_LIMITS } from "../limits";
 import { PRESENCE_COLOURS } from "../presence";
 import { MemoryNetwork } from "../transport/memory";
-import { applyMoves, demoDiagram } from "./demo";
+import { applyMoves, demoDiagram, refusalMessage } from "./demo";
 import { SpikePanel } from "./SpikePanel";
 
 // Collaboration C0 in the Lab (dev and e2e builds only): three people in one page, joined by the in-memory network.
@@ -348,6 +348,11 @@ function ClientPanel({ room, name }: { room: LabRoom; name: Name }) {
           Leave and rejoin
         </button>
       </div>
+      {client.binding.refused && (
+        <p role="alert" data-testid={`collab-${name}-refused`}>
+          {refusalMessage(client.binding.refused)}
+        </p>
+      )}
       {projection.status === "invalid" && (
         <p role="alert" data-testid={`collab-${name}-invalid`}>
           The room's diagram doesn't validate: {projection.error}

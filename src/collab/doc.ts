@@ -2,7 +2,6 @@ import * as Y from "yjs";
 import type { DiagramFile } from "../model/types";
 import { applyCommands, type DiagramCommand } from "./commands";
 import { checkCommands, inspectUpdate, type GuardProblem, type LocalProblem } from "./guard";
-import { COLLAB_LIMITS } from "./limits";
 import {
   assemble,
   hydrate,
@@ -92,15 +91,6 @@ export class CollabDoc {
   private lastGood: DiagramFile | undefined;
   private lastMerge: string | undefined;
   private listeners = new Set<() => void>();
-  /** An upper bound on the encoded state: its exact size when last measured, plus every update since. */
-  private roomBytes = 0;
-
-  /** Whether `bytes` more keep the room within one frame (measuring exactly only when the bound gets close). */
-  private roomHas(bytes: number): boolean {
-    if (this.roomBytes + bytes <= COLLAB_LIMITS.maxRoomBytes) return true;
-    this.roomBytes = Y.encodeStateAsUpdate(this.ydoc).length;
-    return this.roomBytes + bytes <= COLLAB_LIMITS.maxRoomBytes;
-  }
 
   constructor(opts: CollabDocOptions = {}) {
     this.ydoc = new Y.Doc();
@@ -136,11 +126,9 @@ export class CollabDoc {
     scratch.destroy();
     const check = inspectUpdate(update);
     if (!check.ok) throw new CollabLimitError(check.problem);
-    if (update.length > COLLAB_LIMITS.maxRoomBytes) throw new CollabLimitError("too-large");
     // Checked; now written under this document's own client id (applying the scratch update would make Yjs see
     // its id arrive from elsewhere and pick a new one).
     this.ydoc.transact(() => hydrate(this.ydoc, diagram), HYDRATE);
-    this.roomBytes = update.length;
   }
 
   isEmpty(): boolean {
@@ -158,12 +146,10 @@ export class CollabDoc {
     if (!commands.length) return { ok: true };
     const check = checkCommands(commands);
     if (!check.ok) return check;
-    if (!this.roomHas(check.bytes)) return { ok: false, problem: "room-full" };
     if (opts.merge === undefined || opts.merge !== this.lastMerge) this.undoManager.stopCapturing();
     this.lastMerge = opts.merge;
     this.stats.localTransactions++;
     this.ydoc.transact(() => applyCommands(this.ydoc, commands), this.local);
-    this.roomBytes += check.bytes;
     return { ok: true };
   }
 
@@ -176,7 +162,6 @@ export class CollabDoc {
     }
     try {
       Y.applyUpdate(this.ydoc, update, REMOTE);
-      this.roomBytes += update.length;
     } catch {
       this.stats.remoteRefused++;
       return { ok: false, problem: "apply-failed" };
@@ -241,6 +226,25 @@ export class CollabDoc {
   /** What a peer with state vector `sv` lacks (everything, without one). */
   encodeDiff(sv?: Uint8Array): Uint8Array {
     return Y.encodeStateAsUpdate(this.ydoc, sv);
+  }
+
+  /**
+   * The same as one or more updates of at most `max` bytes each where possible: split by Yjs client (each part
+   * names everything but one client as already known). A single client's part larger than `max` stays whole.
+   */
+  encodeDiffParts(sv: Uint8Array | undefined, max: number): Uint8Array[] {
+    const whole = this.encodeDiff(sv);
+    if (whole.length <= max) return [whole];
+    const theirs = sv ? Y.decodeStateVector(sv) : new Map<number, number>();
+    const ours = Y.decodeStateVector(this.stateVector());
+    const parts: Uint8Array[] = [];
+    for (const client of ours.keys()) {
+      const target = new Map(ours);
+      target.set(client, theirs.get(client) ?? 0);
+      const part = Y.encodeStateAsUpdate(this.ydoc, encodeStateVector(target));
+      if (!(part.length <= 2 && part.every((b) => b === 0))) parts.push(part);
+    }
+    return parts.length ? parts : [whole];
   }
 
   /** Whether a peer's state vector has something this document lacks. */
@@ -346,4 +350,22 @@ function locate(type: Y.AbstractType<any>): { root: string; id?: string } | unde
   } catch {
     return undefined;
   }
+}
+
+/** A Yjs (v1) state vector: a count, then client and clock pairs, all unsigned LEB128 varints. */
+function encodeStateVector(sv: Map<number, number>): Uint8Array {
+  const out: number[] = [];
+  const varuint = (n: number) => {
+    while (n > 0x7f) {
+      out.push(0x80 | (n & 0x7f));
+      n = Math.floor(n / 128);
+    }
+    out.push(n);
+  };
+  varuint(sv.size);
+  for (const [client, clock] of sv) {
+    varuint(client);
+    varuint(clock);
+  }
+  return Uint8Array.from(out);
 }

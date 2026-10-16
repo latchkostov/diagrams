@@ -3,16 +3,23 @@
 // updates before they are applied, and the projected diagram through the same validator as an imported file.
 
 export const COLLAB_LIMITS = {
-  /** A document frame (an update, a sync reply): ciphertext bytes, checked before decrypting. A full
-   *  5,000-node diagram's state is well under this (src/collab/scale.test.ts measures it). */
-  maxDocFrameBytes: 8 * 1024 * 1024,
-  /** A local step's estimated encoded size (an upper bound): half a frame. */
-  maxStepBytes: 4 * 1024 * 1024,
   /**
-   * The whole room's encoded state: a joiner receives it in one sync reply, so it must fit one frame with room for
-   * the envelope. Every honest peer refuses a local step that would take the room past it.
+   * A document message (an update, a sync reply) larger than this travels as fragments of this size, each sealed in
+   * a frame of its own (./protocol.ts), so no frame is ever large and a room isn't bounded by a frame.
    */
-  maxRoomBytes: 8 * 1024 * 1024 - 64 * 1024,
+  maxFragmentBytes: 1024 * 1024,
+  /** A document frame: one fragment plus headers, ciphertext bytes, checked before decrypting. */
+  maxDocFrameBytes: 1024 * 1024 + 1024,
+  /**
+   * A whole document message once reassembled: one update or one sync reply. A full 5,000-node diagram is about
+   * 2 MB (src/collab/scale.test.ts); a sync reply larger than this is split by Yjs client.
+   */
+  maxMessageBytes: 32 * 1024 * 1024,
+  /** Messages one sender may have half-delivered at once, and how long a half-delivered one is kept (room clock). */
+  maxPartialMessages: 4,
+  partialTtlMs: 30_000,
+  /** A local step's encoded size, bounded from above before it's applied (./guard.ts): half a message. */
+  maxStepBytes: 16 * 1024 * 1024,
   /** A presence frame (alias, colour, status). */
   maxPresenceFrameBytes: 4 * 1024,
   /** Distinct senders (sessions) a room tracks replay state and presence for. A new sender past this is refused. */

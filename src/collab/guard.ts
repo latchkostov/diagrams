@@ -56,7 +56,7 @@ export function inspectUpdate(update: Uint8Array): GuardResult {
 }
 
 function inspect(update: Uint8Array): GuardResult {
-  if (update.length > COLLAB_LIMITS.maxDocFrameBytes) return { ok: false, problem: "too-large" };
+  if (update.length > COLLAB_LIMITS.maxMessageBytes) return { ok: false, problem: "too-large" };
   let decoded: ReturnType<typeof Y.decodeUpdate>;
   try {
     decoded = Y.decodeUpdate(update);
@@ -100,27 +100,59 @@ function inspect(update: Uint8Array): GuardResult {
   return { ok: true, structs: structs.length };
 }
 
-export type LocalProblem = "key-too-long" | "string-too-long" | "too-deep" | "too-large" | "bad-id" | "room-full";
+export type LocalProblem = "key-too-long" | "string-too-long" | "too-deep" | "too-large" | "bad-id";
+
+const utf8 = new TextEncoder();
+const VAR = 5; // a varuint of up to 2^35
+/** Yjs's own structure per stored value (one Item): info, its id, origins, parent and the key, at most. */
+const PER_ITEM = 64;
+const PER_DELETION = 16;
+
+/**
+ * An upper bound on how many bytes lib0's `writeAny` (which Yjs uses for every value a map holds) takes for `v`:
+ * a type tag, then numbers in at most 8 bytes, strings and keys as UTF-8 with a length, arrays and objects with a
+ * count. Iterative, so a hostile value can't overflow the stack.
+ */
+export function anyBound(value: unknown): number {
+  let size = 0;
+  const stack: unknown[] = [value];
+  while (stack.length) {
+    const v = stack.pop();
+    size += 1;
+    if (typeof v === "string") size += VAR + utf8.encode(v).length;
+    else if (typeof v === "number" || typeof v === "bigint") size += 8;
+    else if (Array.isArray(v)) {
+      size += VAR;
+      for (const item of v) stack.push(item);
+    } else if (v instanceof Uint8Array) size += VAR + v.length;
+    else if (v !== null && typeof v === "object")
+      for (const [k, child] of Object.entries(v)) {
+        size += VAR + VAR + utf8.encode(k).length;
+        stack.push(child);
+      }
+  }
+  return size + VAR;
+}
+
+const keyBytes = (k: string) => utf8.encode(k).length;
+const itemBound = (key: string, value: unknown) => PER_ITEM + keyBytes(key) + anyBound(value);
 
 /**
  * The same bounds, checked on a local step before it touches the document: an edit every peer would refuse is
- * refused here instead, so it never reaches the wire and gets its sender quarantined by everyone else.
+ * refused here instead, so it never reaches the wire and gets its sender quarantined by everyone else. `bytes` is an
+ * upper bound on the step's encoded update, following how ./schema.ts stores each command (one Item per field, per
+ * props key, per order entry; a deletion per value it replaces); scale.test.ts checks it against real encodings.
  */
 export function checkCommands(
   commands: readonly DiagramCommand[],
 ): { ok: true; bytes: number } | { ok: false; problem: LocalProblem } {
-  // An upper bound on the step's encoded size: UTF-8 bytes of every value and name (Yjs stores strings as UTF-8,
-  // numbers in at most 9 bytes), plus a generous allowance per field for Yjs's own structure.
-  const utf8 = new TextEncoder();
   let size = 0;
-  const PER_FIELD = 32;
-  const keys = (o: Record<string, unknown> | undefined) =>
+  const longKey = (o: Record<string, unknown> | undefined) =>
     Object.keys(o ?? {}).some((k) => k.length >= COLLAB_LIMITS.maxKeyChars);
-  const value = (v: unknown): LocalProblem | undefined => {
+  const check = (v: unknown): LocalProblem | undefined => {
     if (v === undefined) return undefined;
     if (valueDepthExceeds(v)) return "too-deep";
     if (tooLongString(v)) return "string-too-long";
-    size += utf8.encode(JSON.stringify(v) ?? "").length + PER_FIELD;
     return undefined;
   };
   for (const c of commands) {
@@ -128,29 +160,26 @@ export function checkCommands(
     if (id !== undefined && (typeof id !== "string" || !id || id.length >= COLLAB_LIMITS.maxKeyChars))
       return { ok: false, problem: "bad-id" };
     const fields = c.op === "put" ? c.record : "set" in c ? c.set : undefined;
-    if (keys(fields)) return { ok: false, problem: "key-too-long" };
-    const unset = "unset" in c ? (c.unset ?? []) : [];
-    size += utf8.encode(`${id ?? ""}${Object.keys(fields ?? {}).join("")}${unset.join("")}`).length;
-    size += PER_FIELD * (1 + unset.length);
-    for (const v of Object.values(fields ?? {})) {
-      if (
-        c.op === "put" &&
-        v !== null &&
-        typeof v === "object" &&
-        !Array.isArray(v) &&
-        keys(v as Record<string, unknown>)
-      )
-        return { ok: false, problem: "key-too-long" };
-      const problem = value(v);
+    if (longKey(fields)) return { ok: false, problem: "key-too-long" };
+    // The record itself (a put: its map, its props map and its order entry), or the field it replaces.
+    size += PER_ITEM * 3 + keyBytes(id ?? "") * 2 + PER_DELETION;
+    for (const [k, v] of Object.entries(fields ?? {})) {
+      const problem = check(v);
       if (problem) return { ok: false, problem };
+      if (c.op === "put" && v !== null && typeof v === "object" && !Array.isArray(v)) {
+        if (longKey(v as Record<string, unknown>)) return { ok: false, problem: "key-too-long" };
+        // Props (and anything object-valued) may be stored key by key: count both ways.
+        for (const [pk, pv] of Object.entries(v)) size += itemBound(pk, pv);
+      }
+      size += itemBound(k, v) + PER_DELETION;
     }
+    for (const k of "unset" in c ? (c.unset ?? []) : []) size += PER_ITEM + keyBytes(k) + PER_DELETION;
     if (c.op === "order") {
       if (c.ids.some((x) => typeof x !== "string" || x.length >= COLLAB_LIMITS.maxStringChars))
         return { ok: false, problem: "bad-id" };
-      size += c.ids.reduce((n, x) => n + utf8.encode(x).length + PER_FIELD, 0);
+      for (const x of c.ids) size += itemBound("", x) + PER_DELETION;
     }
   }
-  // A step must fit in one frame with room to spare.
   if (size > COLLAB_LIMITS.maxStepBytes) return { ok: false, problem: "too-large" };
   return { ok: true, bytes: size };
 }

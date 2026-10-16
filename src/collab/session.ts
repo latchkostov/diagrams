@@ -16,7 +16,7 @@ import {
   type PeerPresence,
   type PresenceState,
 } from "./presence";
-import { DOC, frame, isEmptyUpdate, PRESENCE, unframe } from "./protocol";
+import { DOC, frame, fragment, isEmptyUpdate, PRESENCE, Reassembler, unframe } from "./protocol";
 import { secureRandom, type RandomBytes } from "./random";
 import type { CollabTransport, PeerId } from "./transport/types";
 
@@ -48,6 +48,7 @@ export type RejectReason =
   | "reply-throttled"
   | "request-throttled"
   | "queue-full"
+  | "too-many-partials"
   | "internal"
   | "malformed";
 
@@ -115,6 +116,9 @@ export class CollabSession {
   private readonly queuedFrom = new Map<PeerId, number>();
   /** Set as leave() starts: nothing more is taken in. */
   private leaving = false;
+  /** Large document messages arriving in fragments, and the ids of those this session sends. */
+  private readonly reassembler: Reassembler;
+  private nextMessage = 0;
   private readonly quarantined = new Set<string>();
   private outbox: Promise<void> = Promise.resolve();
   private inbox: Promise<void> = Promise.resolve();
@@ -136,6 +140,7 @@ export class CollabSession {
     this.rate = new RateLimit(clock, COLLAB_LIMITS.senderBytesPerWindow);
     this.replies = new RateLimit(clock, COLLAB_LIMITS.replyBytesPerWindow);
     this.requests = new RateLimit(clock, COLLAB_LIMITS.syncRequestsPerWindow);
+    this.reassembler = new Reassembler(clock);
     this.presence = new PresenceTable(clock);
   }
 
@@ -193,7 +198,7 @@ export class CollabSession {
     this.leaving = true;
     try {
       // Only the goodbye is waited for; frames still queued inbound are dropped (receive checks `leaving`).
-      this.send("doc", frame(DOC.bye));
+      this.sendDoc(frame(DOC.bye));
       await this.outbox.catch(() => {});
     } finally {
       this.status = "left";
@@ -206,7 +211,7 @@ export class CollabSession {
 
   private start(): void {
     const onUpdate = (update: Uint8Array, origin: unknown) => {
-      if (origin !== REMOTE) this.send("doc", frame(DOC.update, update));
+      if (origin !== REMOTE) this.sendDoc(frame(DOC.update, update));
     };
     this.doc.ydoc.on("update", onUpdate);
     this.stops.push(() => this.doc.ydoc.off("update", onUpdate));
@@ -252,11 +257,18 @@ export class CollabSession {
   }
 
   private requestSync(to?: PeerId): void {
-    this.send("doc", frame(DOC.syncRequest, this.doc.stateVector()), to);
+    this.sendDoc(frame(DOC.syncRequest, this.doc.stateVector()), to);
   }
 
   private sendPresence(to?: PeerId): void {
     this.send("presence", frame(PRESENCE.state, encodePresence(this.me)), to);
+  }
+
+  /** A document message: in one frame, or as fragments when it's larger than one. */
+  private sendDoc(message: Uint8Array, to?: PeerId): void {
+    if (message.length > COLLAB_LIMITS.maxMessageBytes) return this.reject("too-large");
+    if (message.length <= COLLAB_LIMITS.maxFragmentBytes) return this.send("doc", message, to);
+    for (const part of fragment(message, ++this.nextMessage)) this.send("doc", part, to);
   }
 
   /** Seals and sends in order. Sealing is asynchronous; the outbox keeps frames in the order they were made. */
@@ -309,7 +321,7 @@ export class CollabSession {
     const opened = await this.opener.open(bytes);
     if (!opened.ok) return this.reject(opened.reason);
     if (this.quarantined.has(opened.sender)) return this.reject("quarantined");
-    const msg = unframe(opened.plaintext);
+    let msg = unframe(opened.plaintext);
     if (!msg) return this.reject("malformed");
     if (opened.channel === "presence") {
       const state = msg.type === PRESENCE.state ? parsePresence(msg.payload) : undefined;
@@ -318,6 +330,13 @@ export class CollabSession {
       return;
     }
     if (!this.rate.take(opened.sender, bytes.length)) return this.reject("rate-limited");
+    if (msg.type === DOC.fragment) {
+      const part = this.reassembler.add(opened.sender, msg.payload);
+      if ("error" in part) return this.reject(part.error);
+      if ("pending" in part) return;
+      msg = unframe(part.done);
+      if (!msg || msg.type === DOC.fragment) return this.reject("malformed");
+    }
     switch (msg.type) {
       case DOC.syncRequest: {
         if (!this.requests.take(opened.sender, 1)) return this.reject("request-throttled");
@@ -328,9 +347,9 @@ export class CollabSession {
         } catch {
           return this.reject("malformed");
         }
-        const diff = this.doc.encodeDiff(sv);
-        if (!isEmptyUpdate(diff)) {
-          if (this.replies.take(opened.sender, diff.length)) this.send("doc", frame(DOC.syncReply, diff), from);
+        for (const diff of this.doc.encodeDiffParts(sv, COLLAB_LIMITS.maxMessageBytes - 16)) {
+          if (isEmptyUpdate(diff)) continue;
+          if (this.replies.take(opened.sender, diff.length)) this.sendDoc(frame(DOC.syncReply, diff), from);
           else this.reject("reply-throttled");
         }
         if (this.doc.lacksFrom(sv)) this.requestSync(from);
