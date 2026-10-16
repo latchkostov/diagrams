@@ -44,7 +44,7 @@ function selfTimes(p: Profile) {
         ?.replace(/-[\w-]{8}\.js$/, ".js") ?? "";
     // V8's own entries: (idle), (program) (time in the browser outside JavaScript: style, layout, paint and the rest)
     // and (garbage collector).
-    const key = /^(.*)$/.test(f.functionName)
+    const key = /^\(.*\)$/.test(f.functionName)
       ? f.functionName
       : f.functionName
         ? `${f.functionName} (${file || "native"})`

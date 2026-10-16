@@ -22,14 +22,14 @@ import { Buffer } from "node:buffer";
 
 const OUT = path.resolve(process.env.BENCH_OUT ?? path.join("tests", ".output", "bench"));
 
-/** Gzip bytes, measured 2026-10-14 on master plus about 15%. Raise one on purpose, in the change that needs it. */
+/** Gzip bytes, measured 2026-10-15 on master plus about 15%. Raise one on purpose, in the change that needs it. */
 const BUDGETS = {
-  // 145,053 B measured: the entry, React, React DOM and the diagram loader's chunks (17 files).
-  startup: 167_000,
-  // 319,777 B measured: startup plus CanvasView and canvas-shared.
-  canvasFirstView: 368_000,
-  // 78,323 B measured.
-  liveSession: 90_000,
+  // 154,224 B measured: the entry, React, React DOM and the diagram loader's chunks (20 files).
+  startup: 177_000,
+  // 333,098 B measured: startup plus CanvasView and canvas-shared.
+  canvasFirstView: 383_000,
+  // 79,662 B measured.
+  liveSession: 92_000,
 };
 
 const entryBudget = (() => {

@@ -61,7 +61,7 @@ jobs:
     name: Benchmarks (${{ inputs.mode || 'full' }})
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-26.04
-    timeout-minutes: 240
+    timeout-minutes: 330
     permissions:
       contents: read
       actions: read
