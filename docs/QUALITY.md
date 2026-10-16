@@ -236,5 +236,7 @@ Events add disabling mid-run, fixed overrides followed by `resumeAutoscaling`, r
 oracle additionally checks that ECS never scales in on missing data or inside a scale-in cooldown, a Monitor
 rule never acts inside its cooldown or against its direction, request wakes come only from request scalers,
 and every delivery queued at a node holds its group slot (what lets request metrics count waiting pushed
-requests without scanning the queue). Replay one with `A3_FUZZ_SEED=61 pnpm exec vitest run
-src/sim/autoscaling.invariants.test.ts -t A3`.
+requests without scanning the queue). A clamp of a resumed override to the range bound is the range's move, not
+the policy's. Replay one with `A3_FUZZ_SEED=61 pnpm exec vitest run src/sim/autoscaling.invariants.test.ts -t A3`.
+Minimal reproductions the nightly run finds are kept in `tests/fixtures/autoscaling/a3-nightly-repros.json` and
+replay on every run.
