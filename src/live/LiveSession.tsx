@@ -153,6 +153,7 @@ export function LiveSession({
   onPanelChange,
   onSession,
   privateDiagram,
+  paneRevision = 0,
 }: SessionProps) {
   const locale = useLocale();
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
@@ -433,7 +434,7 @@ export function LiveSession({
       }),
     [],
   );
-  const dockKey = `${dock.open}:${dock.open ? Math.round(dock.width / 40) : 0}`;
+  const dockKey = `${dock.open}:${dock.open ? Math.round(dock.width / 40) : 0}:${paneRevision}`;
   const dockFitted = useRef(dockKey);
   useEffect(() => {
     if (dockKey === dockFitted.current) return;

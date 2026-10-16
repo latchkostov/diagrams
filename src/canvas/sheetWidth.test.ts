@@ -17,6 +17,7 @@ describe("inspector width", () => {
     expect(sheetBounds(1920, 1600)).toEqual({ min: 300, max: 1120 });
     expect(sheetWidth(1920, 1600, 2000)).toBe(1120);
     expect(sheetWidth(1920, 1600, 200)).toBe(300);
+    expect(sheetWidth(3440, 3440, 3000)).toBe(2064);
     expect(sheetWidth(1000, 700, 600)).toBe(296);
     expect(sheetWidth(900, 652)).toBe(296);
     expect(sheetWidth(1200, 780, 600)).toBe(300);

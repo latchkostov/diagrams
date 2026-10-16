@@ -2682,6 +2682,7 @@ function CanvasInner({
             {/* Nothing to simulate on a blank canvas: the Live toggle appears with the first node. */}
             {(nodeCount > 0 || live) && (
               <LiveView
+                paneRevision={sheetResize}
                 readOnly={readOnly}
                 initial={viewer?.live}
                 onHandle={receiveLiveHandle}

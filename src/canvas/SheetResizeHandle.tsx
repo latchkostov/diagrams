@@ -23,9 +23,10 @@ export function SheetResizeHandle({ onResize }: { onResize?: () => void }) {
         0,
       );
     const paint = (width: number | null) => {
-      shown = sheetWidth(window.innerWidth, available(), width);
+      const room = available();
+      const bounds = sheetBounds(window.innerWidth, room);
+      shown = sheetWidth(window.innerWidth, room, width);
       sheet.style.setProperty("--sheet-width", `${shown}px`);
-      const bounds = sheetBounds(window.innerWidth, available());
       handle.hidden = bounds.min === bounds.max;
       handle.setAttribute("aria-valuenow", String(shown));
       handle.setAttribute("aria-valuemin", String(Math.round(bounds.min)));

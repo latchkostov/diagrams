@@ -38,6 +38,8 @@ export interface LiveHandle {
 }
 
 export interface LiveViewProps {
+  /** Completed Inspector resizes, so Live preserves its own camera policy after the pane changes. */
+  paneRevision?: number;
   /** The canvas editor. Absent in the Lab: no authoring, no saving, no context-menu actions. */
   editor?: EditorApi;
   presenting: boolean;

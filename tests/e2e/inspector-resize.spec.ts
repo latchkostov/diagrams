@@ -1,18 +1,19 @@
 import type { Page } from "@playwright/test";
 import { sheetRoutingFixture } from "../../src/lab/routingFixture";
-import { test, expect, gotoCanvas, waitForStableViewport, STORAGE_KEYS, savedDiagram } from "./fixtures";
+import { test, expect, gotoCanvas, gotoLive, waitForStableViewport, STORAGE_KEYS, savedDiagram } from "./fixtures";
 
 const key = "diagrams.inspector.width.v1";
 const width = (page: Page) => page.getByTestId("inspector").evaluate((el) => el.getBoundingClientRect().width);
 const stored = (page: Page) => page.evaluate((key) => localStorage.getItem(key), key);
 
-async function open(page: Page, viewport = 1920) {
+async function open(page: Page, viewport = 1920, live = false) {
   await page.setViewportSize({ width: viewport, height: 1000 });
   await page.addInitScript(({ storage, diagram }) => localStorage.setItem(storage, JSON.stringify(diagram)), {
     storage: STORAGE_KEYS.autosavePrefix + "kafka-order-pipeline",
     diagram: sheetRoutingFixture(),
   });
-  await gotoCanvas(page, "kafka-order-pipeline");
+  if (live) await gotoLive(page, "./?view=canvas&example=kafka-order-pipeline&live=1&paused=1");
+  else await gotoCanvas(page, "kafka-order-pipeline");
   await waitForStableViewport(page);
   await page.getByTestId("node-kong").dblclick();
   await expect(page.getByTestId("routes-table")).toBeVisible();
@@ -125,6 +126,64 @@ test("a completed resize keeps a fitted diagram in the canvas", async ({ page })
       return nodes.every((node) => node && node.x >= pane.x && node.x + node.width <= pane.x + pane.width);
     })
     .toBe(true);
+});
+
+test("Live preserves its camera after an Inspector resize", async ({ page }) => {
+  await open(page, 1920, true);
+  await page.getByTestId("fit-view-button").click();
+  await waitForStableViewport(page);
+  await page.getByTestId("inspector-resize").press("End");
+  await expect
+    .poll(async () => {
+      const pane = await page.getByTestId("canvas-wrap").boundingBox();
+      if (!pane) throw new Error("Canvas is missing");
+      const nodes = await Promise.all(
+        ["app", "kong", "orders", "canary", "search"].map((id) => page.getByTestId(`node-${id}`).boundingBox()),
+      );
+      return nodes.every((node) => node && node.x >= pane.x && node.x + node.width <= pane.x + pane.width);
+    })
+    .toBe(true);
+});
+
+test("manual width stops at 60vw on an ultrawide viewport", async ({ page }) => {
+  await open(page, 3440);
+  await page.getByTestId("inspector-resize").press("End");
+  await expect.poll(() => width(page)).toBe(2064);
+});
+
+test("drag frames finish geometry reads before writing the sheet width", async ({ page }) => {
+  await open(page);
+  await page.getByTestId("inspector").evaluate((sheet) => {
+    let dirty = false;
+    let lateReads = 0;
+    const rect = Element.prototype.getBoundingClientRect;
+    const set = CSSStyleDeclaration.prototype.setProperty;
+    sheet.setAttribute("data-late-reads", "0");
+    Element.prototype.getBoundingClientRect = function () {
+      if (dirty && this.parentElement === sheet.parentElement) {
+        sheet.setAttribute("data-late-reads", String(++lateReads));
+      }
+      return rect.call(this);
+    };
+    CSSStyleDeclaration.prototype.setProperty = function (name, value, priority) {
+      if (this === sheet.style && name === "--sheet-width") {
+        dirty = true;
+        queueMicrotask(() => {
+          dirty = false;
+        });
+      }
+      set.call(this, name, value, priority);
+    };
+  });
+  const handle = page.getByTestId("inspector-resize");
+  const box = await handle.boundingBox();
+  if (!box) throw new Error("Resize handle is missing");
+  await page.mouse.move(box.x + 4, box.y + 150);
+  await page.mouse.down();
+  await page.mouse.move(box.x - 200, box.y + 150, { steps: 12 });
+  await page.mouse.up();
+  await expect.poll(() => width(page)).toBeGreaterThan(700);
+  await expect(page.getByTestId("inspector")).toHaveAttribute("data-late-reads", "0");
 });
 
 test("cancelled pointer resize restores the previous choice", async ({ page }) => {

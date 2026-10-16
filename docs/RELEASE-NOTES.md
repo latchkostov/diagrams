@@ -317,6 +317,9 @@
 - Pointer frames update a CSS variable through animation frames; only a finished resize requests
   canvas refitting or selection preservation. Cancel restores the prior width. The handle supplies
   focus, separator semantics, current bounds and localized instructions, with no settings control.
+  Geometry is read before the width write, avoiding forced layout in a drag frame. Live receives
+  completed resizes through its existing camera policy, including narration focus and slow-motion
+  ownership. Operation-count and Live-camera regressions fail with those review fixes removed.
 - Route Match and Send to columns already divide the available width proportionally. Send to now
   displays the full target list instead of an unconditional `+1`; both columns retain full-value
   titles when space still runs out. The Lab includes a longer-path routing preview. The AI panel
@@ -333,7 +336,8 @@
   `partitions-vs-subscriptions`, `serverless-burst-buffer`, `shared-api-quotas`, `shared-worker-pool`
   and `webhook-ingestion`. All geometry, zoom, Auto-layout, simulation and export records remain
   unchanged; no screenshot golden changes. The stale skill viewer is refreshed at plugin 1.1.33,
-  one patch above origin/master's 1.1.32.
+  one patch above origin/master's 1.1.32. The generated agent bundle is refreshed for the shifted
+  translation IDs; its freshness regression passes.
 
 ## Routing R1 rejected admission transactions (2026-10-16)
 
