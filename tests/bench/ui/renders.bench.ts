@@ -91,17 +91,13 @@ for (const [family, sizes] of CASES)
 
       const results: Record<string, Awaited<ReturnType<typeof counted>>> = {};
 
-      // Pan, ten frames.
+      // Pan, ten frames of a middle-button drag (a left drag draws a selection box), checked to have panned.
       const spot = await b.emptySpot({ x: 0.5, y: 0.45 });
-      results.pan = await counted(b, 10, async () => {
-        await page.mouse.move(spot.x, spot.y);
-        await page.mouse.down();
-        for (let i = 1; i <= 10; i++) {
-          await page.mouse.move(spot.x + i * 12, spot.y + i * 4);
-          await b.frames(1);
-        }
-        await page.mouse.up();
-      });
+      const before = await b.viewport();
+      results.pan = await counted(b, 10, () => b.pan(spot, 10));
+      const after = await b.viewport();
+      expect(after.k, "panning keeps the scale").toBe(before.k);
+      expect(after.x !== before.x || after.y !== before.y, "the pan moved the viewport").toBe(true);
 
       // Select: the first click opens the inspector; count the next six clicks (three nodes, twice: a stray commit is
       // then a sixth of a count per click).

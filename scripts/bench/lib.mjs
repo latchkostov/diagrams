@@ -93,6 +93,7 @@ export const fmt = (m, v = m.value) => {
   if (m.unit === "ms")
     return v >= 1000 ? `${(v / 1000).toFixed(2)} s` : v >= 10 ? `${v.toFixed(0)} ms` : `${v.toFixed(2)} ms`;
   if (m.unit === "x") return `${v.toFixed(1)}×`;
+  if (m.unit === "%") return `${v.toFixed(1)}%`;
   return Number.isInteger(v) ? v.toLocaleString("en-US") : v.toFixed(2);
 };
 

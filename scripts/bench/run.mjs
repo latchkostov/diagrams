@@ -42,7 +42,14 @@ const env = { ...process.env, BENCH_MODE: mode, BENCH_OUT: out };
 function run(title, cmd, cmdArgs) {
   console.log(`\n▸ ${title}`);
   const started = Date.now();
-  const r = spawnSync(cmd, cmdArgs, { stdio: "inherit", env, shell: process.platform === "win32" });
+  // Node scripts run on this Node, no shell. pnpm needs a shell on Windows (it's a .cmd), so each argument is quoted
+  // there: a path with spaces stays one argument, and nothing in one is read as a command.
+  const win = process.platform === "win32" && cmd !== "node";
+  const quote = (a) => (/^[\w./:=@,-]+$/.test(a) ? a : `"${a.replaceAll('"', '\\"')}"`);
+  const r =
+    cmd === "node"
+      ? spawnSync(process.execPath, cmdArgs, { stdio: "inherit", env })
+      : spawnSync(cmd, win ? cmdArgs.map(quote) : cmdArgs, { stdio: "inherit", env, shell: win });
   console.log(
     `  ${title}: ${r.status === 0 ? "ok" : `failed (${r.status})`} in ${((Date.now() - started) / 1000).toFixed(0)} s`,
   );

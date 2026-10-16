@@ -59,6 +59,7 @@ export function loadWorkload(family: string, n: number) {
     nodes: { id: string; group?: string }[];
     edges: unknown[];
     groups?: { id: string }[];
+    annotations?: { id: string }[];
   };
   return { text, d, info: { family, n, nodes: d.nodes.length, edges: d.edges.length } satisfies WorkloadInfo };
 }
@@ -123,7 +124,7 @@ export function uiSuite(name: string) {
       rec.add({
         id: id(scenario, o.detail, o.w && `${o.w.family}@${o.w.n}`),
         scenario,
-        kind: o.unit === "bytes" ? "bytes" : "count",
+        kind: o.unit === "bytes" ? "bytes" : o.unit === "%" ? "percent" : "count",
         unit: o.unit ?? "count",
         value,
         ...(o.w ? { workload: o.w } : {}),
@@ -185,6 +186,46 @@ export class Bench {
       })
       .toBeGreaterThan(0);
     return { wallMs: Date.now() - started };
+  }
+
+  /** The canvas viewport: translation and scale (React Flow's transform, read as the e2e fixtures read it). */
+  async viewport(): Promise<{ x: number; y: number; k: number }> {
+    const t = await this.page.evaluate(
+      () =>
+        document.querySelector('[data-testid="canvas-wrap"]')?.querySelector<HTMLElement>(".react-flow__viewport")
+          ?.style.transform ?? "",
+    );
+    const m = /translate\(([-\d.]+)px,\s*([-\d.]+)px\)\s*scale\(([-\d.]+)\)/.exec(t);
+    if (!m) throw new Error(`no viewport transform: "${t}"`);
+    return { x: Number(m[1]), y: Number(m[2]), k: Number(m[3]) };
+  }
+
+  /**
+   * Pans as the editor does: a middle-button drag on the empty canvas (a left drag draws a selection box in edit mode),
+   * a frame per step.
+   */
+  async pan(from: { x: number; y: number }, steps: number) {
+    await this.page.mouse.move(from.x, from.y);
+    await this.page.mouse.down({ button: "middle" });
+    for (let i = 1; i <= steps; i++) {
+      await this.page.mouse.move(from.x + i * 12, from.y + i * 4);
+      await this.frames(1);
+    }
+    await this.page.mouse.up({ button: "middle" });
+  }
+
+  /** Zooms as the editor does: the wheel with Control held (a plain wheel pans), `steps` notches, two frames each. */
+  async zoom(at: { x: number; y: number }, steps: number, direction: "in" | "out") {
+    await this.page.mouse.move(at.x, at.y);
+    await this.page.keyboard.down("Control");
+    try {
+      for (let i = 0; i < steps; i++) {
+        await this.page.mouse.wheel(0, direction === "in" ? -120 : 120);
+        await this.frames(2);
+      }
+    } finally {
+      await this.page.keyboard.up("Control");
+    }
   }
 
   /**

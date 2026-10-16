@@ -1,5 +1,6 @@
 // Interactions on an open diagram (docs/BENCHMARKS.md § Metrics), on the e2e build at the pinned CPU throttle:
-// - pan (dragging the empty canvas) and zoom (the wheel): main-thread ms per step, frame intervals, longest frame;
+// - pan (a middle-button drag on the empty canvas) and zoom (Control and the wheel), each checked to have moved or
+//   scaled the viewport: main-thread ms per step, frame intervals, longest frame;
 // - select: a click on a node until the inspector shows it, the first one opening the folded inspector (input to
 //   the frame it's painted in);
 // - typing: a node's name (the label field), its secondary line and a number (latency) in the inspector, a key every
@@ -120,34 +121,31 @@ for (const [family, sizes] of FAMILIES)
           await b.open(w);
           await b.settle(3_000, 300_000);
 
-          // Pan: the empty canvas dragged a frame at a time.
+          // Pan: the empty canvas dragged with the middle button, a frame at a time.
           const spot = await b.emptySpot({ x: 0.5, y: 0.45 });
+          const before = await b.viewport();
           const pan = await b.gesture(async () => {
-            await page.mouse.move(spot.x, spot.y);
-            await page.mouse.down();
-            for (let i = 1; i <= steps; i++) {
-              await page.mouse.move(spot.x + i * 12, spot.y + i * 4);
-              await b.frames(1);
-            }
-            await page.mouse.up();
+            await b.pan(spot, steps);
             return steps;
           });
+          const panned = await b.viewport();
+          if (panned.k !== before.k || (panned.x === before.x && panned.y === before.y))
+            throw new Error(`the pan didn't pan: ${JSON.stringify([before, panned])}`);
           push("pan-taskMsPerStep", pan.taskMsPerStep);
           push("pan-frameP90", pan.frameP90);
           push("pan-longestFrame", pan.longestFrame);
           push("pan-inputToPaint", ...pan.paints);
           await b.settle(500);
 
-          // Zoom: the wheel at the canvas centre, in then out.
+          // Zoom: Control and the wheel at the canvas centre, in, then back out (not measured).
           const centre = await b.emptySpot();
           const zoom = await b.gesture(async () => {
-            await page.mouse.move(centre.x, centre.y);
-            for (let i = 0; i < 8; i++) {
-              await page.mouse.wheel(0, i < 4 ? -120 : 120);
-              await b.frames(2);
-            }
-            return 8;
+            await b.zoom(centre, 6, "in");
+            return 6;
           });
+          const zoomed = await b.viewport();
+          if (!(zoomed.k > panned.k)) throw new Error(`the zoom didn't zoom: ${JSON.stringify([panned, zoomed])}`);
+          await b.zoom(centre, 6, "out");
           push("zoom-taskMsPerStep", zoom.taskMsPerStep);
           push("zoom-frameP90", zoom.frameP90);
           push("zoom-longestFrame", zoom.longestFrame);

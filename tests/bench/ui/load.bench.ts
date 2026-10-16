@@ -11,6 +11,8 @@
 import { Bench, MODE, loadWorkload, repeat, runsFor, test, uiSizes, uiSuite, VIEWPORT, type AppHooks } from "./harness";
 
 const s = uiSuite("load");
+/** src/canvas/checks/useChecks.ts: above this many canvas elements checks wait for their card to open. */
+const BIG_DIAGRAM = 1_500;
 
 // Report-only: the gates are elsewhere (renders.bench.ts, memory.bench.ts).
 test.skip(MODE === "gates", "report-only");
@@ -22,19 +24,23 @@ for (const family of FAMILIES)
       const w = loadWorkload(family, n);
       const v: Record<string, number[]> = {};
       let timedOut = 0;
+      const elements = w.d.nodes.length + (w.d.groups?.length ?? 0) + (w.d.annotations?.length ?? 0);
+      const checksExpected = elements <= BIG_DIAGRAM;
       const push = (k: string, x: number) => (v[k] ??= []).push(x);
       await repeat(runsFor(n), async () => {
         const context = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: 1 });
         try {
           const page = await context.newPage();
           const b = await Bench.create(page);
-          // When the first check run has finished (the e2e build's window.__checks), polled once a frame from the start.
-          await page.addInitScript(() => {
-            const win = window as unknown as { __checksAt?: number };
-            void window.__bench
-              .until(() => ((window as AppHooks).__checks?.finished ?? 0) > 0)
-              .then((t) => (win.__checksAt = t));
-          });
+          // When the first check run has finished (the e2e build's window.__checks), polled once a frame from the start;
+          // only where checks run by themselves (BIG_DIAGRAM: canvas elements, boundaries and annotations included).
+          if (checksExpected)
+            await page.addInitScript(() => {
+              const win = window as unknown as { __checksAt?: number };
+              void window.__bench
+                .until(() => ((window as AppHooks).__checks?.finished ?? 0) > 0)
+                .then((t) => (win.__checksAt = t));
+            });
           // A load that shows nothing in five minutes is a result too (the mesh at 5,000 nodes, today).
           const LIMIT = 300_000;
           const opened = await b.open(w, { timeoutMs: LIMIT }).then(
@@ -52,13 +58,15 @@ for (const family of FAMILIES)
           const e = await b.entries();
           // The readings above waited for any frame still running: the page settled when the last long one ended.
           const settled = Math.max(quiet, ...e.loaf.map((f) => f.start + f.duration));
-          const checksAt = await page
-            .waitForFunction(() => (window as unknown as { __checksAt?: number }).__checksAt, undefined, {
-              timeout: 120_000,
-            })
-            .then((h) => h.jsonValue() as Promise<number>)
-            .catch(() => NaN);
-          push("checksDone", checksAt);
+          if (checksExpected) {
+            const checksAt = await page
+              .waitForFunction(() => (window as unknown as { __checksAt?: number }).__checksAt, undefined, {
+                timeout: 120_000,
+              })
+              .then((h) => h.jsonValue() as Promise<number>)
+              .catch(() => NaN);
+            push("checksDone", checksAt);
+          }
           const upTo = e.loaf.filter((f) => f.start <= settled);
           push("firstNode", e.firstNode);
           push("settled", settled);
@@ -92,7 +100,7 @@ for (const family of FAMILIES)
         "longestFrame",
         "blocking",
       ])
-        if (v[k].some(Number.isFinite)) s.time(k, v[k], w.info);
+        if (v[k]?.some(Number.isFinite)) s.time(k, v[k], w.info);
       const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor((xs.length - 1) / 2)];
       s.count("heapAfterLoad", median(v.heapAfterLoad), { w: w.info, unit: "bytes" });
       s.count("domNodes", median(v.domNodes), { w: w.info });

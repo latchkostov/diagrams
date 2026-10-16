@@ -12,8 +12,9 @@ export const SCHEMA = "livediagrams-bench/v1";
  * - count: operations, renders, commits, bytes of DOM… deterministic, so a gate can hold them.
  * - ratio: a growth ratio (large / small at GROWTH_FACTOR), a complexity gate.
  * - bytes: sizes (bundle, heap).
+ * - percent: a share (main-thread utilisation): never normalised, compared as a count.
  */
-export type MetricKind = "time" | "count" | "ratio" | "bytes";
+export type MetricKind = "time" | "count" | "ratio" | "bytes" | "percent";
 
 export interface Stats {
   n: number;

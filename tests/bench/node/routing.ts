@@ -1,24 +1,25 @@
 // Inputs for the routing and layout benchmarks, as the canvas builds them (src/canvas/edges/useEdgeRoute.ts).
 
-import { groupHeaderRect, Router, type RouteInput } from "../../../src/canvas/geometry/router";
+import type { InternalNode } from "@xyflow/react";
+import { Router, type RouteInput } from "../../../src/canvas/geometry/router";
+import { routeInputFromStore } from "../../../src/canvas/edges/useEdgeRoute";
+import { toFlow } from "../../../src/canvas/convert";
+import type { FlowNode } from "../../../src/canvas/types";
+import { DEFAULT_EDGE_STYLE } from "../../../src/harness/edgeStyles";
 import { estimateCardSize } from "../../../src/canvas/nodes/size";
 import type { DiagramFile } from "../../../src/model/types";
 
-/** What the canvas hands the router (src/canvas/edges/useEdgeRoute.ts), from the file's positions. */
+/**
+ * What the canvas hands the router, assembled by the canvas's own code (`routeInputFromStore`, src/canvas/edges/
+ * useEdgeRoute.ts) from the file's flow nodes as React Flow would hold them before measuring: notes and shapes are
+ * obstacles, shapes are edge ends, dependency labels lead with their glyph.
+ */
 export function routeInput(d: DiagramFile): RouteInput {
-  return {
-    direction: d.direction ?? "LR",
-    nodes: d.nodes.map((n) => ({ id: n.id, rect: { x: n.x, y: n.y, ...estimateCardSize(n.label, n.sublabel) } })),
-    groups: (d.groups ?? []).map((g) => ({ id: g.id, rect: g, header: groupHeaderRect(g, g.label) })),
-    edges: d.edges.map((e) => ({
-      id: e.id,
-      source: e.from,
-      target: e.to,
-      label: e.label,
-      sourceSide: e.sourceSide,
-      targetSide: e.targetSide,
-    })),
-  };
+  const flow = toFlow(d);
+  const internal = flow.nodes.map(
+    (n) => ({ ...n, internals: { positionAbsolute: n.position } }) as unknown as InternalNode<FlowNode>,
+  );
+  return routeInputFromStore(internal, flow.edges, { style: DEFAULT_EDGE_STYLE, direction: d.direction ?? "LR" });
 }
 
 export const boxes = (d: DiagramFile) =>

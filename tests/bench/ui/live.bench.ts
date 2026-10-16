@@ -92,7 +92,7 @@ for (const [family, sizes] of LIVE)
             // The worker renderer falls back to the main thread when it can't start or keep up (it did at 5,000 nodes):
             // record which one drew, so the numbers aren't read as the worker's.
             s.count("rendererFellBack", r.renderer === renderer ? 0 : 1, { w: w.info, detail });
-            s.time("mainBusyPct", [r.busyPct], w.info, detail, "% of wall time the main thread was busy");
+            s.count("mainBusyPct", r.busyPct, { w: w.info, detail, unit: "%" });
             s.time("mainMsPerFrame", [r.msPerFrame], w.info, detail, "main-thread task ms per animation frame");
             s.time("longestFrame", [r.longest], w.info, detail);
             s.count("fps", r.fps, { w: w.info, detail, unit: "frames/s" });

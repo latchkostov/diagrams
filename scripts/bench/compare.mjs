@@ -31,7 +31,8 @@ const B = byId(base);
 const H = byId(head);
 
 const pct = (r) => `${r >= 1 ? "+" : "−"}${Math.abs((r - 1) * 100).toFixed(0)}%`;
-const RATES = new Set(["frames/s", "per second"]);
+/** Throughput, where more is better. Renders and commits per second are work: they're counts (more is worse). */
+const RATES = new Set(["frames/s"]);
 
 const regressions = [];
 const improvements = [];
@@ -54,11 +55,14 @@ for (const [id, h] of H) {
     const higherIsBetter = RATES.has(h.unit);
     const worse = higherIsBetter ? ratio < 1 / (1 + tol) : ratio > 1 + tol;
     const better = higherIsBetter ? ratio > 1 + tol : ratio < 1 / (1 + tol);
-    const big = h.unit !== "ms" || Math.abs(h.value - b.value) >= 2;
+    // At least 2 ms either way, in head's milliseconds: the normalised difference times head's calibration.
+    const headCal = useNorm && h.normalized > 0 ? h.value / h.normalized : 1;
+    const big = h.unit !== "ms" || Math.abs(hv - bv) * (useNorm ? headCal : 1) >= 2;
     const row = { id, b, h, ratio, tol };
     if (worse && big) regressions.push(row);
     else if (better && big) improvements.push(row);
-  } else if (h.kind === "count" && h.value !== b.value) counts.push({ id, b, h, delta: h.value - b.value });
+  } else if ((h.kind === "count" || h.kind === "percent") && h.value !== b.value)
+    counts.push({ id, b, h, delta: h.value - b.value });
   else if (h.kind === "ratio" && h.value > b.value * 1.5) ratios.push({ id, b, h });
   else if (h.kind === "bytes" && h.suite === "bundle" && h.value - b.value > 200 && h.value > b.value * 1.005)
     sizes.push({ id, b, h });
