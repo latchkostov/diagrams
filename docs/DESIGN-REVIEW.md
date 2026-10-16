@@ -1,5 +1,20 @@
 # Design review
 
+## Stencil names and agent defaults gate (2026-10-15)
+
+The designer agent's scoped source/test review found no blocking issue. Default names follow
+stencil changes through one shared model helper; custom names and explicit label patches stay
+intact. Single-node, bulk and agent paths keep their existing undo transactions. Agent connections
+reuse the editor's relationship inference, including outgoing Deploys, while explicit relationships
+win and ordinary targets retain flow defaults. No chrome, controls, wording, focus targets or
+navigation are added. This was a scoped source review, without a whole-app visual walkthrough or
+independent browser/test execution by the reviewer.
+
+The follow-up review also approved the explicit agent flow override and its corrected schema.
+It preserves the editor's existing user choice across stencil changes without adding controls.
+The browser regression now checks exact persisted names, avoiding a false match on stencil
+subtitles. This follow-up was also a read-only source review, without a browser walkthrough.
+
 ## Deferred layout and interrupted-fit review (2026-10-15)
 
 The designer agent's scoped source/regression review found no added chrome, wording or focus targets.

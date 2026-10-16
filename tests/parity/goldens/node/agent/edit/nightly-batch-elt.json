@@ -134,7 +134,7 @@
         "candidates": [
           { "id": "airflow", "label": "Airflow", "stencil": "airflow" },
           { "id": "app-db", "label": "Renamed by parity", "stencil": "postgres" },
-          { "id": "crm", "label": "Salesforce", "stencil": "aws.lambda" },
+          { "id": "crm", "label": "AWS Lambda", "stencil": "aws.lambda" },
           { "id": "billing", "label": "Stripe", "stencil": "stripe" },
           { "id": "airbyte", "label": "Airbyte", "stencil": "airbyte" },
           { "id": "raw", "label": "Raw tables", "stencil": "snowflake" },
@@ -233,7 +233,7 @@
       {
         "id": "crm",
         "stencil": "aws.lambda",
-        "label": "Salesforce",
+        "label": "AWS Lambda",
         "sublabel": "Accounts · opportunities",
         "x": 40,
         "y": 320,

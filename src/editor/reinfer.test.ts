@@ -72,6 +72,39 @@ function setup(diagram: DiagramFile = BASE) {
 const toast = vi.mocked(notify);
 beforeEach(() => toast.mockClear());
 
+describe("a stencil change follows the default name", () => {
+  it.each(["single", "bulk"])("%s edit renames only default names, in the same undo step", (path) => {
+    const t = setup({
+      ...BASE,
+      nodes: BASE.nodes.map((n) => (n.id === "kv" ? { ...n, label: "Credentials" } : n)),
+    });
+    if (path === "single") {
+      t.api.updateNode("cfg", { stencil: "azure.key-vault" });
+    } else {
+      t.api.updateNodes(["cfg", "kv"], { stencil: "azure.key-vault" });
+    }
+    t.commit();
+    expect(t.api.getNode("cfg")).toMatchObject({ stencil: "azure.key-vault", label: "Key Vault" });
+    expect(t.api.getNode("kv")?.label).toBe("Credentials");
+    expect(t.undoSteps()).toBe(1);
+    toast.mock.calls[0][1]!.action!.run();
+    expect(t.api.getNode("cfg")).toMatchObject({ stencil: "generic.service", label: "Service" });
+    expect(t.api.getNode("kv")).toMatchObject({ stencil: "generic.service", label: "Credentials" });
+    expect(t.undoSteps()).toBe(0);
+  });
+
+  it("keeps a custom name and an explicitly supplied name, even the old default", () => {
+    const t = setup();
+    t.api.updateNode("cfg", { label: "Credentials" });
+    t.commit();
+    t.api.updateNode("cfg", { stencil: "azure.key-vault" });
+    t.api.updateNode("kv", { stencil: "azure.key-vault", label: "Service" });
+    t.commit();
+    expect(t.api.getNode("cfg")?.label).toBe("Credentials");
+    expect(t.api.getNode("kv")?.label).toBe("Service");
+  });
+});
+
 describe("a stencil change re-infers its edges", () => {
   it("a generic node turned App Configuration: its flows become Config, in one undo step, with a toast", () => {
     const t = setup();

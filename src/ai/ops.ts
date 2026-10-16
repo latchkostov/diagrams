@@ -1,4 +1,5 @@
 import { connectionProps } from "../model/connectionDefaults";
+import { changeNodeStencil } from "../model/changeNodeStencil";
 import { splitEdge } from "../model/edgeSplit";
 import type { DiagramFile, DiagramNode } from "../model/types";
 import { uniqueId, stencilIdBase } from "../editor/ids";
@@ -131,7 +132,7 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
             )
               throw new Error("Connections must end on nodes or shapes.");
           const id = uniqueId("e", allIds());
-          // No kind: what drawing the connection would give (a Request into a database, a Message into a topic).
+          // Omitted kind/relation: the same defaults as drawing a connection in the editor.
           const stencil = (ref: string) => next.nodes.find((n) => n.id === ref)?.stencil;
           next.edges.push({
             id,
@@ -141,10 +142,9 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
               { id: from, stencil: stencil(from) },
               { id: to, stencil: stencil(to) },
               next.planning,
-              { kind: op.kind, relation: op.relation ?? "flow" },
+              { kind: op.kind, relation: op.relation },
             ),
             ...(op.label !== undefined ? { label: op.label } : {}),
-            ...(op.relation ? { relation: op.relation } : {}),
           });
           Object.assign(result, { id, from, to });
           break;
@@ -160,16 +160,16 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
           if (n) {
             if (n.group) touched.add(n.group);
             if (op.members || op.tone) throw new Error("members and tone require a boundary.");
-            if (op.label !== undefined) n.label = op.label;
             if (op.sublabel === null) delete n.sublabel;
             else if (op.sublabel !== undefined) n.sublabel = op.sublabel;
             if (op.kind !== undefined) {
-              result.stencil = resolveKind(op.kind, n.label);
+              result.stencil = resolveKind(op.kind, op.label ?? n.label);
               const before = n.stencil;
-              n.stencil = result.stencil.id;
+              Object.assign(n, changeNodeStencil(n, result.stencil.id));
               // As on the canvas: the node's connections follow its new stencil (src/stencils/relations.ts).
               if (n.stencil !== before) reinferEdges(next, n.id, result, relationBudget);
             }
+            if (op.label !== undefined) n.label = op.label;
             if (op.props) n.props = mergeProps(n.props, op.props);
             if (op.in === null) {
               delete n.group;

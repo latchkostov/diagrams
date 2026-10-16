@@ -1,7 +1,7 @@
 // JSON Schema draft 2020-12. Shared by paste, WebMCP and static schema generation.
 import { aiNodePropsSchema, simPropsPatchSchema } from "../model/simProps";
 import { CHECK_RULES } from "../model/checks";
-import { DEPENDENCY_RELATIONS } from "../model/relations";
+import { EDGE_RELATIONS } from "../model/relations";
 export type { JsonSchema } from "../model/jsonSchema";
 import type { JsonSchema } from "../model/jsonSchema";
 /** An agent's note for the person, on every tool that changes the diagram: shown with the change. */
@@ -181,9 +181,9 @@ export const edit_diagramSchema: JsonSchema = {
                 },
                 relation: {
                   type: "string",
-                  enum: DEPENDENCY_RELATIONS,
+                  enum: EDGE_RELATIONS,
                   description:
-                    "Leave out for a flow. A dependency instead (dotted, carries no traffic): secret, identity, config, telemetry, deploy or depends, e.g. a service -> Key Vault is secret.",
+                    "Left out: infer from the stencils as in the editor (e.g. into Key Vault: secret; otherwise a flow). An explicit relation wins; flow carries traffic, while config, secret, identity, telemetry, deploy and depends are dotted dependencies with no traffic.",
                 },
                 key: {
                   type: "string",

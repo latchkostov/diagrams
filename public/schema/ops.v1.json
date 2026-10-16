@@ -88,6 +88,7 @@
               "relation": {
                 "type": "string",
                 "enum": [
+                  "flow",
                   "config",
                   "secret",
                   "identity",
@@ -95,7 +96,7 @@
                   "deploy",
                   "depends"
                 ],
-                "description": "Leave out for a flow. A dependency instead (dotted, carries no traffic): secret, identity, config, telemetry, deploy or depends, e.g. a service -> Key Vault is secret."
+                "description": "Left out: infer from the stencils as in the editor (e.g. into Key Vault: secret; otherwise a flow). An explicit relation wins; flow carries traffic, while config, secret, identity, telemetry, deploy and depends are dotted dependencies with no traffic."
               },
               "key": {
                 "type": "string",
@@ -13733,6 +13734,7 @@
                     "relation": {
                       "type": "string",
                       "enum": [
+                        "flow",
                         "config",
                         "secret",
                         "identity",
@@ -13740,7 +13742,7 @@
                         "deploy",
                         "depends"
                       ],
-                      "description": "Leave out for a flow. A dependency instead (dotted, carries no traffic): secret, identity, config, telemetry, deploy or depends, e.g. a service -> Key Vault is secret."
+                      "description": "Left out: infer from the stencils as in the editor (e.g. into Key Vault: secret; otherwise a flow). An explicit relation wins; flow carries traffic, while config, secret, identity, telemetry, deploy and depends are dotted dependencies with no traffic."
                     },
                     "key": {
                       "type": "string",

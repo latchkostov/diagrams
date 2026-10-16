@@ -1,4 +1,4 @@
-import { test, expect, gotoCanvas, gotoGallery, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, gotoGallery, expectNoErrors, savedDiagram } from "./fixtures";
 import { SLUG, callTool, must, installFakeModelContext, nodeCount, openAdvanced, toolNames } from "./ai-helpers";
 
 // WebMCP: a fake document.modelContext (installed before the app loads) records registerTool, so the
@@ -92,6 +92,65 @@ test.describe("WebMCP tools", () => {
     });
     expect(JSON.parse(dry.text)).toMatchObject({ ok: true, dryRun: true });
     expect(await nodeCount(page)).toBe(before);
+  });
+
+  test("stencil default names and inferred agent dependencies share one undo step", async ({ page, consoleErrors }) => {
+    const added = await callTool(page, "edit_diagram", {
+      ops: [{ op: "add_node", kind: "generic.service", label: "Service" }],
+    });
+    expect(added.isError).toBe(false);
+    const { results } = JSON.parse(added.text) as { results: { id: string }[] };
+    const id = results[0].id;
+    const node = page.getByTestId(`node-${id}`);
+    await expect(node).toContainText("Service");
+
+    const changed = await callTool(page, "edit_diagram", {
+      ops: [
+        { op: "update", target: id, kind: "azure.key-vault" },
+        { op: "connect", from: "payments", to: id },
+        { op: "connect", from: "payments", to: id, relation: "config" },
+        { op: "connect", from: "payments", to: id, relation: "flow", kind: "sync" },
+      ],
+    });
+    expect(changed.isError).toBe(false);
+    await expect(node).toContainText("Key Vault");
+    await expect
+      .poll(async () => {
+        const d = await savedDiagram(page);
+        const n = d.nodes.find((n) => n.id === id);
+        return {
+          node: { stencil: n?.stencil, label: n?.label },
+          relations: d.edges.filter((e) => e.to === id).map((e) => e.relation),
+        };
+      })
+      .toEqual({
+        node: { stencil: "azure.key-vault", label: "Key Vault" },
+        relations: ["secret", "config", undefined],
+      });
+
+    await page.getByTestId("ai-toast-undo").click();
+    await expect(node).toContainText("Service");
+    await expect
+      .poll(async () => {
+        const d = await savedDiagram(page);
+        const n = d.nodes.find((n) => n.id === id);
+        return { stencil: n?.stencil, label: n?.label, edges: d.edges.filter((e) => e.to === id) };
+      })
+      .toEqual({ stencil: "generic.service", label: "Service", edges: [] });
+
+    // The inspector uses the same model change as the agent.
+    await node.dblclick();
+    await page.getByTestId("inspector-field-stencil").click();
+    await page.getByTestId("stencil-picker-search").fill("postgres");
+    await page.getByTestId("context-menu-item-pick-stencil:postgres").click();
+    await expect(node).toContainText("PostgreSQL");
+    await expect
+      .poll(async () => {
+        const n = (await savedDiagram(page)).nodes.find((n) => n.id === id);
+        return { stencil: n?.stencil, label: n?.label };
+      })
+      .toEqual({ stencil: "postgres", label: "PostgreSQL" });
+    expectNoErrors(consoleErrors);
   });
 
   test("find_stencils, set_simulation and get_share_link", async ({ page }) => {

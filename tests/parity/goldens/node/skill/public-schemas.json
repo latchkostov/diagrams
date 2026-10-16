@@ -32,6 +32,6 @@
       "LegacySimulation"
     ]
   },
-  "ops.v1.json": { "sha256": "b06e66f9385657b03fd095f8e4b20fbb5bd80e7075e9020b4a2753b9ea1ab878", "bytes": 1082721, "properties": ["ops", "layout", "dryRun", "summary"], "defs": ["Ref", "NodeProps", "Tone", "PropsPatch"] },
+  "ops.v1.json": { "sha256": "b0be975827fd377ff6ea477d355ff210b61a893e35d30454d9462ef421a7513c", "bytes": 1082947, "properties": ["ops", "layout", "dryRun", "summary"], "defs": ["Ref", "NodeProps", "Tone", "PropsPatch"] },
   "stencils.json": { "sha256": "1a8f75fb03a6cea7b02a6ef81f75773e892d17bb7813c4b1001f8f118ca28736", "bytes": 78451, "properties": [], "defs": [] }
 }

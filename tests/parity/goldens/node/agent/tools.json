@@ -3910,7 +3910,7 @@
                     "to": { "$ref": "#/$defs/Ref" },
                     "label": { "type": "string", "maxLength": 200 },
                     "kind": { "type": "string", "enum": ["async", "sync"], "description": "async = messages/events; sync = request/response, writes to a database. Left out: sync into a database, gateway, outside or model API, or out of a client or gateway; async into or out of a queue, topic or stream, and otherwise." },
-                    "relation": { "type": "string", "enum": ["config", "secret", "identity", "telemetry", "deploy", "depends"], "description": "Leave out for a flow. A dependency instead (dotted, carries no traffic): secret, identity, config, telemetry, deploy or depends, e.g. a service -> Key Vault is secret." },
+                    "relation": { "type": "string", "enum": ["flow", "config", "secret", "identity", "telemetry", "deploy", "depends"], "description": "Left out: infer from the stencils as in the editor (e.g. into Key Vault: secret; otherwise a flow). An explicit relation wins; flow carries traffic, while config, secret, identity, telemetry, deploy and depends are dotted dependencies with no traffic." },
                     "key": { "type": "string", "minLength": 1, "maxLength": 50 }
                   }
                 },
