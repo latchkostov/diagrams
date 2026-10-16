@@ -61,6 +61,16 @@
   five-port range on IPv4 and IPv6 before keeping their intended occupied member. A forced blocked
   neighbour regression fails with the old setup; the real preflight and its exact-port assertions
   remain intact. All 1,403 E2E tests passed in that run; the complete gate is repeated after this fix.
+## Responsive image export rebase onto Collaboration C0 (#141, 2026-10-16)
+
+- Rebased onto master with Collaboration C0, preserving both documentation histories and all translation
+  keys. The production bundle guard still excludes collaboration, Yjs and tracker code from every chunk;
+  sliced image export remains lazy and adds no collaboration imports.
+- Restored generated skill files from master before refreshing the viewer. Plugin 1.1.34 is exactly one
+  patch above master's 1.1.33. Catalog validation reports zero errors and zero stale messages, with the
+  existing translation gaps and warnings. No controls, wording or chrome change in this rebase.
+- Full output parity checks all 2,196 goldens with zero changed, added, missing or stale records.
+  Every golden remains identical to master; none is re-recorded.
 
 ## Collaboration reply-byte regression coverage (2026-10-16)
 
