@@ -9,6 +9,7 @@ import type { ImportGraph, ImportReport } from "./graph";
 import { importKubernetes, outcomeOf, replayOutcome } from "./pipeline";
 import {
   defaultPick,
+  defaultSelection,
   MAX_DEPENDENCY_WORK,
   MAX_DRAWN,
   PICK_OVER,
@@ -462,6 +463,7 @@ it.each(
 
 it("reuses an oversized shared closure without expanding it per boundary", () => {
   const graph = scalingGraph(MAX_DRAWN);
+  graph.components.find((c) => c.key === "topic")!.group = "worker-0";
   for (const worker of graph.components.slice(0, MAX_DRAWN)) {
     worker.group = worker.key;
     graph.groups.push({ key: worker.key, label: worker.key });
@@ -473,9 +475,130 @@ it("reuses an oversized shared closure without expanding it per boundary", () =>
       evidence: { source: "spec" },
     });
   }
-  const keys = defaultPick(graph, 1)!;
+  let keys: string[] = [];
+  const visits = setVisits(() => {
+    keys = defaultPick(graph, 1)!;
+  });
+  // The broker cannot be selected on its own before an oversized closure is attempted.
+  expect(keys).toEqual(["readers"]);
+  expect(visits).toBeGreaterThan(MAX_DRAWN);
+  expect(visits).toBeLessThan(MAX_DEPENDENCY_WORK);
   expect(keys.some((key) => key.startsWith("worker-"))).toBe(false);
   expect(pickedNodes(graph, keys)).toBeLessThanOrEqual(MAX_DRAWN);
+});
+
+it("does not mark an already-expanded shared closure again for accepted boundaries", () => {
+  const count = (size: number) => {
+    const graph = scalingGraph(size);
+    for (const worker of graph.components.slice(0, size)) {
+      worker.group = worker.key;
+      graph.groups.push({ key: worker.key, label: worker.key });
+      const source = `source-${worker.key}`;
+      const policy = kedaLesson("kafka", { node: "topic", group: "readers" });
+      policy.controller.triggers.push(kedaLesson("aws-sqs-queue", { node: source }).controller.triggers[0]);
+      worker.props!.autoscaling = policy;
+      graph.components.push({ key: source, label: "Topic", hint: { name: "topic" }, group: worker.key });
+      graph.links.push({
+        from: "topic",
+        to: worker.key,
+        relation: "flow",
+        props: { group: "readers" },
+        evidence: { source: "spec" },
+      });
+    }
+    // One shared route reaches all scalers and their individual source vertices.
+    graph.components[0].props!.autoscaling = kedaLesson("kafka", { node: "topic", group: "readers" });
+    graph.groups.push({ key: "extra", label: "Extra" });
+    graph.components.push(
+      ...Array.from({ length: MAX_DRAWN + 1 }, (_, i) => ({
+        key: `extra-${i}`,
+        label: "Extra",
+        hint: { name: "extra" },
+        group: "extra",
+      })),
+    );
+    return setVisits(() => {
+      expect(defaultPick(graph, MAX_DRAWN)).toHaveLength(size + 2);
+    });
+  };
+  const small = count(200),
+    large = count(200 * GROWTH_FACTOR);
+  expect(large / small).toBeLessThan(LINEAR_LIMIT);
+  expect(large).toBeLessThan(MAX_DEPENDENCY_WORK);
+});
+
+it.each([5, 6])("keeps a drawable selection at dependency work budget %s", (workBudget) => {
+  const graph = scalingGraph(1);
+  for (let i = 0; i < 2; i++)
+    graph.links.push({ from: "worker-0", to: "worker-0", relation: "flow", evidence: { source: "spec" } });
+  const selection = defaultSelection(graph, 1, workBudget);
+  const picked = pickGraph(graph, selection.keys!, selection.unresolved);
+  const { diagram, report } = ok(outcomeOf("kubernetes", picked));
+  expect(validateDiagram(diagram).ok).toBe(true);
+  if (workBudget === 5) {
+    expect(diagram.nodes).toHaveLength(1);
+    expect(diagram.nodes[0].props?.autoscaling).toMatchObject({ mode: "unsupported" });
+    expect(report.notDrawn).toContainEqual({
+      name: "Worker 0",
+      reason: { code: "importDetail.scalingWorkExhausted", args: [] },
+    });
+    expect(report.notDrawn.map((row) => formatImportMessage(row.reason)).join(" ")).toContain(
+      "Import a smaller selection",
+    );
+  } else {
+    expect(selection.unresolved).toBeUndefined();
+    expect(diagram.nodes).toHaveLength(3);
+    expect(diagram.nodes[0].props?.autoscaling).toMatchObject({ mode: "on" });
+    expect(report.notDrawn).toEqual([]);
+  }
+});
+
+it("opens a small boundary when rejected closures exhaust the work cap", () => {
+  const graph = scalingGraph(25);
+  graph.components = graph.components.slice(0, 25);
+  graph.groups = [
+    { key: "readers", label: "Readers" },
+    { key: "small", label: "Small" },
+  ];
+  graph.links = [];
+  for (let i = 0; i <= MAX_DRAWN; i++)
+    graph.components.push({ key: `reader-${i}`, label: "Reader", hint: { name: "reader" }, group: "readers" });
+  for (const worker of graph.components.slice(0, 25)) {
+    const source = `source-${worker.key}`;
+    worker.group = worker.key;
+    worker.props!.autoscaling = kedaLesson("kafka", { node: source, group: "readers" });
+    graph.groups.push({ key: worker.key, label: worker.key });
+    graph.components.push({
+      key: source,
+      label: "Topic",
+      hint: { name: "topic" },
+      stencil: "kafka.topic",
+      group: worker.key,
+    });
+    for (let i = 0; i <= MAX_DRAWN; i++)
+      graph.links.push({
+        from: source,
+        to: `reader-${i}`,
+        relation: "flow",
+        props: { group: "readers" },
+        evidence: { source: "spec" },
+      });
+  }
+  graph.components.push({ key: "small", label: "Small", hint: { name: "small" }, group: "small" });
+  const before = structuredClone(graph);
+  const { diagram, report } = ok(outcomeOf("kubernetes", graph, { budget: 3 }));
+  expect(diagram.nodes).toHaveLength(3);
+  expect(diagram.nodes.some((n) => n.label === "Small")).toBe(true);
+  expect(validateDiagram(diagram).ok).toBe(true);
+  expect(report.pick!.groups.find((g) => g.key === "small")!.drawn).toBe(true);
+  expect(report.pick!.groups.some((g) => !g.drawn)).toBe(true);
+  expect(report.notDrawn.map((row) => formatImportMessage(row.reason)).join(" ")).toMatch(
+    /dependencies were not resolved.*Import a smaller selection/,
+  );
+  expect(graph).toEqual(before);
+  const recovered = ok(replayOutcome(graph, "kubernetes", ["small"]));
+  expect(recovered.diagram.nodes).toHaveLength(1);
+  expect(recovered.report.notDrawn).toEqual([]);
 });
 
 it("bounds total closure expansion even across distinct overlapping routes", () => {

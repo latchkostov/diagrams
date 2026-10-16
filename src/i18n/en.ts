@@ -358,6 +358,8 @@ const en = {
   "importReport.trafficDuration": "{rate} for {duration}",
   "importReport.aGuess": ", a guess",
   "importReport.boundariesSelected": "Boundaries ({selected, number} of {total, number} selected)",
+  "importDetail.scalingWorkExhausted":
+    "Scaler dependencies were not resolved because the import's dependency work limit was reached. Scaling was not imported for this workload. Import a smaller selection to include its broker and consumer group route.",
   "importReport.scalingDependencies":
     "Required scaling sources and consumer-group routes are included automatically, even outside the selected boundaries.",
   "importDetail.scalingSourceOmitted":

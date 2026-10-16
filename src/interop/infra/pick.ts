@@ -65,7 +65,7 @@ function dependenciesOf(g: ImportGraph) {
 /** Bound automatic closure caching and candidate expansion across the whole import, not per boundary. */
 export const MAX_DEPENDENCY_WORK = MAX_DRAWN * 24;
 
-function dependencyPicker(g: ImportGraph) {
+function dependencyPicker(g: ImportGraph, workBudget: number) {
   const { existing, dependencies } = dependenciesOf(g);
   const cache = new Map<
     Set<string>,
@@ -80,13 +80,13 @@ function dependencyPicker(g: ImportGraph) {
   const expanded = new Set<Set<string>>();
   let work = 0;
   let generation = 0;
-  return (roots: Set<string>, limit: number): boolean => {
+  const include = (roots: Set<string>, limit: number, expand = true): "included" | "oversized" | "exhausted" => {
     const added = new Set<string>();
     const vertices = new Set<Set<string>>();
     for (const key of roots) {
       if (!drawn.has(key)) added.add(key);
-      for (const vertex of dependencies.get(key) ?? []) vertices.add(vertex);
-      if (++work > MAX_DEPENDENCY_WORK || drawn.size + added.size > limit) return false;
+      if (expand) for (const vertex of dependencies.get(key) ?? []) vertices.add(vertex);
+      if (drawn.size + added.size > limit) return "oversized";
     }
     for (const vertex of vertices) {
       if (expanded.has(vertex)) continue;
@@ -97,9 +97,8 @@ function dependencyPicker(g: ImportGraph) {
         // Iterative traversal handles chained policies and cycles without recursive stack growth.
         for (const next of reachable) {
           for (const key of next) {
-            if (++work > MAX_DEPENDENCY_WORK) {
-              complete = false;
-              break;
+            if (++work > workBudget) {
+              return "exhausted";
             }
             if (!existing.has(key)) continue;
             nodes.add(key);
@@ -115,31 +114,37 @@ function dependencyPicker(g: ImportGraph) {
       }
       const closure = cache.get(vertex);
       // The closure alone cannot fit: reject without scanning it again for each boundary.
-      if (!closure || closure.nodes.size > limit) return false;
+      if (!closure || closure.nodes.size > limit) return "oversized";
       // Cache the intersection with the current drawing too: a nearly fitting shared route must
       // not scan all its already drawn readers again for every rejected workload.
       if (closure.pending?.generation !== generation) {
         const nodes = new Set<string>();
         for (const key of closure.nodes) {
-          if (++work > MAX_DEPENDENCY_WORK) return false;
+          if (++work > workBudget) return "exhausted";
           if (!drawn.has(key)) nodes.add(key);
         }
         closure.pending = { generation, nodes };
       }
-      if (drawn.size + closure.pending.nodes.size > limit) return false;
+      if (drawn.size + closure.pending.nodes.size > limit) return "oversized";
       for (const key of closure.pending.nodes) {
-        if (++work > MAX_DEPENDENCY_WORK) return false;
+        if (++work > workBudget) return "exhausted";
         if (!drawn.has(key)) added.add(key);
-        if (drawn.size + added.size > limit) return false;
+        if (drawn.size + added.size > limit) return "oversized";
       }
     }
     if (added.size) generation++;
     for (const key of added) drawn.add(key);
     for (const vertex of vertices) {
+      if (expanded.has(vertex)) continue;
       const closure = cache.get(vertex);
       if (closure) for (const ref of closure.vertices) expanded.add(ref);
     }
-    return true;
+    return "included";
+  };
+  return {
+    include,
+    unresolved: () =>
+      new Set([...dependencies].filter(([, refs]) => [...refs].some((ref) => !expanded.has(ref))).map(([key]) => key)),
   };
 }
 
@@ -190,22 +195,38 @@ const byFlows = (a: Share, b: Share) =>
  * from; empty when no entry fits MAX_DRAWN on its own.
  */
 export function defaultPick(g: ImportGraph, budget = PICK_OVER): string[] | undefined {
-  if (g.components.length <= budget) return undefined;
+  return defaultSelection(g, budget).keys;
+}
+
+/** Keep the drawable selection and unresolved bindings together when dependency work runs out. */
+export function defaultSelection(
+  g: ImportGraph,
+  budget = PICK_OVER,
+  workBudget = MAX_DEPENDENCY_WORK,
+): { keys?: string[]; unresolved?: Set<string> } {
+  if (g.components.length <= budget) return {};
   const shares = sharesOf(g).sort(byFlows);
-  if (shares.length < 2) return undefined;
+  if (shares.length < 2) return {};
   const chosen: string[] = [];
-  const include = dependencyPicker(g);
+  const picker = dependencyPicker(g, workBudget);
+  let exhausted = false;
   for (const s of shares) {
-    if (include(s.loose, chosen.length ? budget : MAX_DRAWN)) chosen.push(s.key);
+    const limit = chosen.length ? budget : MAX_DRAWN;
+    let result = picker.include(s.loose, limit, !exhausted);
+    if (result === "exhausted") {
+      exhausted = true;
+      result = picker.include(s.loose, limit, false);
+    }
+    if (result === "included") chosen.push(s.key);
   }
-  return chosen;
+  return { keys: chosen, ...(exhausted ? { unresolved: picker.unresolved() } : {}) };
 }
 
 /**
  * The import with only the chosen entries: their members, the loose nodes connected to them (all of them with
  * UNGROUPED), and the links between what's left.
  */
-export function pickGraph(g: ImportGraph, keys: readonly string[]): ImportGraph {
+export function pickGraph(g: ImportGraph, keys: readonly string[], unresolved = new Set<string>()): ImportGraph {
   const chosen = new Set(keys);
   const everyLoose = chosen.has(UNGROUPED);
   const kept = new Set(
@@ -221,17 +242,44 @@ export function pickGraph(g: ImportGraph, keys: readonly string[]): ImportGraph 
   const beforeScaling = kept.size;
   const { existing, dependencies } = dependenciesOf(g);
   const expanded = new Set<Set<string>>();
-  for (const key of kept)
+  for (const key of kept) {
+    if (unresolved.has(key)) continue;
     for (const vertex of dependencies.get(key) ?? []) {
       if (expanded.has(vertex)) continue;
       expanded.add(vertex);
       for (const dependency of vertex) if (existing.has(dependency)) kept.add(dependency);
     }
+  }
   const groups = new Set(g.components.filter((c) => kept.has(c.key)).map((c) => c.group));
   return {
     ...g,
     notes: kept.size > beforeScaling ? [...g.notes, diagnostic("importReport.scalingDependencies")] : g.notes,
-    components: g.components.filter((c) => kept.has(c.key)),
+    components: g.components
+      .filter((c) => kept.has(c.key))
+      .map((c) =>
+        unresolved.has(c.key)
+          ? {
+              ...c,
+              props: {
+                ...c.props,
+                autoscaling: {
+                  mode: "unsupported",
+                  provider: g.format,
+                  reason: "KEDA dependency expansion work exhausted; import a smaller selection",
+                },
+              },
+            }
+          : c,
+      ),
+    notDrawn: [
+      ...g.notDrawn,
+      ...g.components
+        .filter((c) => unresolved.has(c.key))
+        .map((c) => ({
+          name: c.context ? `${c.label} (${c.context})` : c.label,
+          reason: diagnostic("importDetail.scalingWorkExhausted"),
+        })),
+    ],
     links: g.links.filter((l) => kept.has(l.from) && kept.has(l.to)),
     groups: g.groups.filter((gr) => groups.has(gr.key)),
     ...(g.traffic ? { traffic: g.traffic.filter((t) => kept.has(t.key)) } : {}),

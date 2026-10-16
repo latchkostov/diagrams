@@ -1,5 +1,19 @@
 # Release notes
 
+## Autoscaling A2 import recovery (#125, 2026-10-15)
+
+- Exhausted dependency work is distinct from an oversized boundary. Imports still draw fitting
+  boundaries and nodes, retain resolved scaling bindings, and omit unresolved bindings with named
+  report entries explaining how to recover by importing a smaller selection.
+- Accepted boundaries skip marking already-expanded closures. Regressions cover exhaustion before
+  any successful selection, exact work-budget completion, recovery, oversized closure caching and
+  eightfold operation-count growth; deliberate reversions fail.
+- UX review: recovery stays in the existing import report and boundary selection; no controls added.
+  The stale skill viewer is refreshed, with plugin 1.1.26 exactly one patch above master.
+- Only `node/i18n/catalogs.json` changes: one English import-recovery message adds one message and
+  updates the import-detail hash in every catalog; untranslated catalogs gain one English fallback.
+  All diagram, simulation, import, export and browser goldens remain unchanged.
+
 ## Autoscaling A2 final import review (#125, 2026-10-15)
 
 - Import selection indexes shared KEDA broker/group routes once and caches their dependency closures

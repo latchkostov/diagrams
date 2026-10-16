@@ -440,6 +440,16 @@ recording everything (each event, each rendered message) would be ten times the 
 point to anyway. On a failure, every actual output is written to `tests/.output/parity/actual/` and every diff to
 `tests/.output/parity/diffs/` (CI uploads both as `parity-output`), so the full detail is one download away.
 
+## Autoscaling A2 import recovery (#125, 2026-10-15)
+
+Only `node/i18n/catalogs.json` changes: the new `importDetail.scalingWorkExhausted` message
+raises every catalog's message count from 1,778 to 1,779 and changes its `importDetail` hash.
+The 37 untranslated catalogs gain one English fallback (78 to 79); the pseudo-locale's fallback
+count remains zero. All other 1,853 goldens retain their output. No diagram, simulation, import,
+export or browser golden is re-recorded. Focused tests cover dependency-work exhaustion and exact
+completion outside the frozen corpus, including drawable fallback, named recovery reports and
+successful reselection. Deliberate reversions also reject repeated closure marking and rebuilding.
+
 ## Updating
 
 `pnpm parity:update` re-runs everything with `PARITY_UPDATE=1`, rewrites the goldens that changed, adds new ones,
