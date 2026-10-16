@@ -24,6 +24,7 @@ import { InspectorFocusLab } from "./InspectorFocusLab";
 import { TroubleCallout } from "../live/CapacityLayer";
 import "../styles/capacity.css";
 import { FilePrompts } from "./FilePrompts";
+import { CollabLab } from "./CollabLab";
 // The Lab's preset registry. Every entry renders the *current* components with fixed data, so
 // opening ?view=lab&preset=<id> is a quick visual check of whatever you're working on.
 //
@@ -429,6 +430,15 @@ const playgroundPresets: Preset[] = [
         },
       ] satisfies Preset[])
     : []),
+  {
+    kind: "render",
+    id: "collab-c0",
+    title: "Collaboration C0: three clients",
+    group: "Playground",
+    description:
+      "Three end-to-end encrypted sessions in this tab over an in-memory network (nothing leaves the page), and the public-matchmaking spike, which connects only on request.",
+    render: () => <CollabLab />,
+  },
   {
     kind: "diagram",
     id: "autoscaling-a1",

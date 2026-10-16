@@ -242,7 +242,8 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
     };
   }
 
-  async function announce() {
+  /** Announces fresh offers to `only` (a tracker that just opened) or to every open tracker. */
+  async function announce(only?: WebSocket) {
     if (closed) return;
     for (const [id, o] of pending)
       if (clock.now() - o.at > OFFER_TTL_MS) {
@@ -252,7 +253,7 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
     const room = maxPeers - peers.size;
     const n = Math.max(0, Math.min(offersPerAnnounce, room));
     const offers = (await Promise.all(Array.from({ length: n }, () => makeOffer()))).filter((o) => o !== undefined);
-    for (const ws of sockets)
+    for (const ws of only ? [only] : sockets)
       send(ws, {
         action: "announce",
         info_hash: infoHash,
@@ -354,7 +355,7 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
     sockets.push(ws);
     ws.onopen = () => {
       event("tracker connected");
-      void announce();
+      void announce(ws);
     };
     ws.onmessage = (e: MessageEvent) => void onTrackerMessage(ws, e.data);
     ws.onclose = () => event("tracker closed");

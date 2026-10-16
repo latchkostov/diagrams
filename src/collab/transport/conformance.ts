@@ -10,13 +10,12 @@
 import { describe, expect, it } from "vitest";
 import { structuralText } from "../../model/diagramDiff";
 import type { DiagramFile } from "../../model/types";
-import { EditorBinding } from "../binding";
+import { openRoomClient, RoomClient } from "../client";
 import { FakeClock } from "../clock";
 import { CollabDoc } from "../doc";
 import { COLLAB_LIMITS } from "../limits";
 import type { RoomLink } from "../link";
 import { seededBytes, seededRandom } from "../random";
-import { CollabSession } from "../session";
 import type { Faults } from "./memory";
 import { FrameTooLargeError, type CollabTransport, type PeerId } from "./types";
 
@@ -53,80 +52,29 @@ export const canaryDiagram = (): DiagramFile => ({
 
 export const roomFor = (seed: number): RoomLink => ({ epoch: 0, secret: seededBytes(seed * 7919 + 1)(32) });
 
-/** One person: a session, a plain in-memory editor (an EditorPort) and the binding between them. */
-export class TestClient {
-  diagram: DiagramFile | undefined;
-  binding!: EditorBinding;
-  private ids = 0;
+export { RoomClient as TestClient } from "../client";
 
-  constructor(
-    readonly name: string,
-    public session: CollabSession,
-  ) {
-    this.bind();
-  }
-
-  bind(): void {
-    this.binding = new EditorBinding(
-      this.session,
-      {
-        getDiagram: () => this.diagram!,
-        applyDiagram: (next) => {
-          this.diagram = next;
-        },
-      },
-      () => ({ diagram: this.diagram }),
-    );
-  }
-
-  get ready() {
-    return this.binding.ready;
-  }
-
-  /** A session-unique id: concurrent adds by two people never collide. */
-  newId(base: string) {
-    return `${base}-${this.name}${++this.ids}`;
-  }
-
-  edit(change: (d: DiagramFile) => DiagramFile, merge?: string): boolean {
-    if (!this.ready) return false;
-    this.diagram = change(structuredClone(this.diagram!));
-    return this.binding.localChanged({ merge });
-  }
-
-  projection(): string {
-    const p = this.session.doc.project();
-    if (p.status !== "ok") throw new Error(`${this.name}: ${p.error}`);
-    return structuralText({ diagram: p.diagram, hidden: [...p.hidden].sort() });
-  }
-}
-
-export async function openClient(
+export function openClient(
   name: string,
   transport: CollabTransport,
   room: RoomLink,
   clock: FakeClock,
   seed: number,
   opts: { initial?: DiagramFile; doc?: CollabDoc } = {},
-): Promise<TestClient> {
-  const session = await CollabSession.open({
-    room,
+): Promise<RoomClient> {
+  return openRoomClient({
+    name,
     transport,
-    privacy: { diagram: opts.initial },
-    initial: opts.initial,
-    doc: opts.doc,
+    room,
     clock,
     random: seededBytes(seed),
     clientId: opts.doc ? undefined : seed,
-    presence: { alias: name },
+    ...opts,
   });
-  const client = new TestClient(name, session);
-  if (opts.initial) client.diagram = session.doc.project().diagram;
-  return client;
 }
 
 /** A seeded random step: add, rename, move, re-prop, connect, delete, Undo or Redo. */
-export function randomStep(c: TestClient, rnd: () => number): void {
+export function randomStep(c: RoomClient, rnd: () => number): void {
   if (!c.ready) return;
   const d = c.diagram!;
   const pick = <T>(xs: readonly T[]) => xs[Math.floor(rnd() * xs.length)];

@@ -38,6 +38,8 @@ interface Props {
   minimap?: boolean;
   /** Called once every node has been measured, with ms since this stage mounted. */
   onRendered?: (ms: number) => void;
+  /** Called when a node or annotation is dropped after a drag, with its new top-left position (top-level only). */
+  onMove?: (id: string, x: number, y: number) => void;
 }
 
 export function LabCanvas(props: Props) {
@@ -50,7 +52,7 @@ export function LabCanvas(props: Props) {
 
 type Ui = ContextType<typeof DiagramContext>;
 
-function Stage({ diagram, minimap = true, onRendered }: Props) {
+function Stage({ diagram, minimap = true, onRendered, onMove }: Props) {
   const { theme } = useSettings();
   const [start] = useState(() => performance.now());
   const flow = useMemo(() => toFlow(diagram), [diagram]);
@@ -90,6 +92,7 @@ function Stage({ diagram, minimap = true, onRendered }: Props) {
           edges={visibleEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
+          onNodeDragStop={onMove && ((_e, node) => !node.parentId && onMove(node.id, node.position.x, node.position.y))}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           colorMode={theme}
