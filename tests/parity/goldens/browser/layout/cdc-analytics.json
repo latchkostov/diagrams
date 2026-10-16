@@ -1,0 +1,88 @@
+{
+  "autoLayout": {
+    "viewport": "translate(40px, 326.097px) scale(0.532081)",
+    "nodes": {
+      "group:onprem": { "kind": "group", "box": "translate(0px, 96px) 315×176", "text": "On-prem · retail datacenter" },
+      "group:platform": { "kind": "group", "box": "translate(396px, -24px) 1161×416", "text": "Kubernetes · CDC platform" },
+      "sql": { "kind": "node", "box": "translate(40px, 160px) 235×72", "text": "Retail SQL Server retail-prod · CDC enabled" },
+      "debezium": { "kind": "node", "box": "translate(436px, 160px) 260×72", "text": "Debezium SQL Server retail-cdc · snapshot then tail" },
+      "orders-topic": { "kind": "node", "box": "translate(836px, 160px) 253×72", "text": "retail.dbo.orders CDC envelope · key: order_id" },
+      "customers-topic": { "kind": "node", "box": "translate(836px, 280px) 260×72", "text": "retail.dbo.customers CDC envelope · key: customer_id" },
+      "processor": { "kind": "node", "box": "translate(1257px, 100px) 260×72", "text": "Retail projections Kafka Streams · group: retail-projector" },
+      "search": { "kind": "node", "box": "translate(1657px, 40px) 260×72", "text": "Retail search orders-v1 · customer-v1 indexes" },
+      "warehouse": { "kind": "node", "box": "translate(1657px, 160px) 260×72", "text": "Retail warehouse RETAIL_ANALYTICS · MERGE by key" },
+      "s3-sink": { "kind": "node", "box": "translate(1257px, 220px) 235×72", "text": "S3 sink connector retail-raw-sink · Parquet" },
+      "lake": { "kind": "node", "box": "translate(1657px, 280px) 260×72", "text": "Retail raw lake s3://retail-cdc-raw/table/date/" },
+      "registry": { "kind": "node", "box": "translate(836px, 40px) 260×72", "text": "CDC schemas Avro envelopes · compatibility checks" }
+    },
+    "edges": {
+      "sql-to-debezium": "M275,196 L436,196",
+      "debezium-to-orders-topic": "M696,196 L836,196",
+      "debezium-to-customers-topic": "M696,210 L756,210 Q766,210 766,220 L766,306 Q766,316 776,316 L836,316",
+      "orders-topic-to-processor": "M1089,189 L1150,189 Q1160,189 1160,179 L1160,139 Q1160,129 1170,129 L1257,129",
+      "customers-topic-to-processor": "M1096,309 L1161,309 Q1171,309 1171,299 L1171,153 Q1171,143 1181,143 L1257,143",
+      "processor-to-search": "M1517,129 L1577,129 Q1587,129 1587,119 L1587,86 Q1587,76 1597,76 L1657,76",
+      "processor-to-warehouse": "M1517,143 L1577,143 Q1587,143 1587,153 L1587,186 Q1587,196 1597,196 L1657,196",
+      "orders-topic-to-s3-sink": "M1089,203 L1183,203 Q1193,203 1193,213 L1193,239 Q1193,249 1203,249 L1257,249",
+      "customers-topic-to-s3-sink": "M1096,323 L1172,323 Q1182,323 1182,313 L1182,273 Q1182,263 1192,263 L1257,263",
+      "s3-sink-to-lake": "M1492,256 L1577,256 Q1587,256 1587,266 L1587,306 Q1587,316 1597,316 L1657,316",
+      "debezium-to-registry": "M696,182 L756,182 Q766,182 766,172 L766,86 Q766,76 776,76 L836,76"
+    },
+    "labels": {
+      "sql-to-debezium": { "style": "transform: translate(-50%, -50%) translate(359.5px, 196px); --fe-w: 143px; --fe-h: 19px;", "text": "CDC · transaction log" },
+      "debezium-to-orders-topic": { "style": "transform: translate(-50%, -50%) translate(760px, 196px); --fe-w: 119px; --fe-h: 19px;", "text": "Order row changes" },
+      "debezium-to-customers-topic": { "style": "transform: translate(-50%, -50%) translate(766px, 263px); --fe-w: 137px; --fe-h: 19px;", "text": "Customer row changes" },
+      "orders-topic-to-processor": { "style": "transform: translate(-50%, -50%) translate(1171.5px, 129px); --fe-w: 155px; --fe-h: 19px;", "text": "group: retail-projector" },
+      "customers-topic-to-processor": { "style": "transform: translate(-50%, -50%) translate(1171px, 226px); --fe-w: 155px; --fe-h: 19px;", "text": "group: retail-projector" },
+      "processor-to-search": { "style": "transform: translate(-50%, -50%) translate(1587px, 102.5px); --fe-w: 131px; --fe-h: 19px;", "text": "Bulk index / delete" },
+      "processor-to-warehouse": { "style": "transform: translate(-50%, -50%) translate(1563px, 143px); --fe-w: 83px; --fe-h: 19px;", "text": "Batch MERGE" },
+      "orders-topic-to-s3-sink": { "style": "transform: translate(-50%, -50%) translate(1172px, 203px); --fe-w: 149px; --fe-h: 19px;", "text": "group: retail-raw-sink" },
+      "customers-topic-to-s3-sink": { "style": "transform: translate(-50%, -50%) translate(1182px, 293px); --fe-w: 107px; --fe-h: 32px;", "text": "group: retail-raw-sink" },
+      "s3-sink-to-lake": { "style": "transform: translate(-50%, -50%) translate(1570.5px, 256px); --fe-w: 131px; --fe-h: 19px;", "text": "PutObject · Parquet" },
+      "debezium-to-registry": { "style": "transform: translate(-50%, -50%) translate(766px, 129px); --fe-w: 107px; --fe-h: 19px;", "text": "Register schema" }
+    }
+  },
+  "tidy": {
+    "viewport": "translate(34.2598px, 326.097px) scale(0.532081)",
+    "nodes": {
+      "group:onprem": { "kind": "group", "box": "translate(0px, 90px) 321×302", "text": "On-prem · retail datacenter" },
+      "group:platform": { "kind": "group", "box": "translate(380px, 0px) 1180×632", "text": "Kubernetes · CDC platform" },
+      "sql": { "kind": "node", "box": "translate(40px, 160px) 235×72", "text": "Retail SQL Server retail-prod · CDC enabled" },
+      "debezium": { "kind": "node", "box": "translate(430px, 160px) 260×72", "text": "Debezium SQL Server retail-cdc · snapshot then tail" },
+      "orders-topic": { "kind": "node", "box": "translate(830px, 160px) 253×72", "text": "retail.dbo.orders CDC envelope · key: order_id" },
+      "customers-topic": { "kind": "node", "box": "translate(830px, 280px) 260×72", "text": "retail.dbo.customers CDC envelope · key: customer_id" },
+      "processor": { "kind": "node", "box": "translate(1251px, 100px) 260×72", "text": "Retail projections Kafka Streams · group: retail-projector" },
+      "search": { "kind": "node", "box": "translate(1651px, 40px) 260×72", "text": "Retail search orders-v1 · customer-v1 indexes" },
+      "warehouse": { "kind": "node", "box": "translate(1651px, 160px) 260×72", "text": "Retail warehouse RETAIL_ANALYTICS · MERGE by key" },
+      "s3-sink": { "kind": "node", "box": "translate(1251px, 220px) 235×72", "text": "S3 sink connector retail-raw-sink · Parquet" },
+      "lake": { "kind": "node", "box": "translate(1651px, 280px) 260×72", "text": "Retail raw lake s3://retail-cdc-raw/table/date/" },
+      "registry": { "kind": "node", "box": "translate(830px, 40px) 260×72", "text": "CDC schemas Avro envelopes · compatibility checks" }
+    },
+    "edges": {
+      "sql-to-debezium": "M275,196 L430,196",
+      "debezium-to-orders-topic": "M690,196 L830,196",
+      "debezium-to-customers-topic": "M690,210 L750,210 Q760,210 760,220 L760,306 Q760,316 770,316 L830,316",
+      "orders-topic-to-processor": "M1083,189 L1144,189 Q1154,189 1154,179 L1154,139 Q1154,129 1164,129 L1251,129",
+      "customers-topic-to-processor": "M1090,309 L1155,309 Q1165,309 1165,299 L1165,153 Q1165,143 1175,143 L1251,143",
+      "processor-to-search": "M1511,129 L1571,129 Q1581,129 1581,119 L1581,86 Q1581,76 1591,76 L1651,76",
+      "processor-to-warehouse": "M1511,143 L1571,143 Q1581,143 1581,153 L1581,186 Q1581,196 1591,196 L1651,196",
+      "orders-topic-to-s3-sink": "M1083,203 L1177,203 Q1187,203 1187,213 L1187,239 Q1187,249 1197,249 L1251,249",
+      "customers-topic-to-s3-sink": "M1090,323 L1166,323 Q1176,323 1176,313 L1176,273 Q1176,263 1186,263 L1251,263",
+      "s3-sink-to-lake": "M1486,256 L1571,256 Q1581,256 1581,266 L1581,306 Q1581,316 1591,316 L1651,316",
+      "debezium-to-registry": "M690,182 L750,182 Q760,182 760,172 L760,86 Q760,76 770,76 L830,76"
+    },
+    "labels": {
+      "sql-to-debezium": { "style": "transform: translate(-50%, -50%) translate(346.5px, 196px); --fe-w: 107px; --fe-h: 32px;", "text": "CDC · transaction log" },
+      "debezium-to-orders-topic": { "style": "transform: translate(-50%, -50%) translate(754px, 196px); --fe-w: 119px; --fe-h: 19px;", "text": "Order row changes" },
+      "debezium-to-customers-topic": { "style": "transform: translate(-50%, -50%) translate(760px, 263px); --fe-w: 137px; --fe-h: 19px;", "text": "Customer row changes" },
+      "orders-topic-to-processor": { "style": "transform: translate(-50%, -50%) translate(1165.5px, 129px); --fe-w: 155px; --fe-h: 19px;", "text": "group: retail-projector" },
+      "customers-topic-to-processor": { "style": "transform: translate(-50%, -50%) translate(1165px, 226px); --fe-w: 155px; --fe-h: 19px;", "text": "group: retail-projector" },
+      "processor-to-search": { "style": "transform: translate(-50%, -50%) translate(1581px, 102.5px); --fe-w: 131px; --fe-h: 19px;", "text": "Bulk index / delete" },
+      "processor-to-warehouse": { "style": "transform: translate(-50%, -50%) translate(1557px, 143px); --fe-w: 83px; --fe-h: 19px;", "text": "Batch MERGE" },
+      "orders-topic-to-s3-sink": { "style": "transform: translate(-50%, -50%) translate(1166px, 203px); --fe-w: 149px; --fe-h: 19px;", "text": "group: retail-raw-sink" },
+      "customers-topic-to-s3-sink": { "style": "transform: translate(-50%, -50%) translate(1176px, 293px); --fe-w: 107px; --fe-h: 32px;", "text": "group: retail-raw-sink" },
+      "s3-sink-to-lake": { "style": "transform: translate(-50%, -50%) translate(1564.5px, 256px); --fe-w: 131px; --fe-h: 19px;", "text": "PutObject · Parquet" },
+      "debezium-to-registry": { "style": "transform: translate(-50%, -50%) translate(760px, 129px); --fe-w: 107px; --fe-h: 19px;", "text": "Register schema" }
+    }
+  }
+}

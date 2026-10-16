@@ -1,0 +1,96 @@
+{
+  "autoLayout": {
+    "viewport": "translate(23.4818px, 335.628px) scale(0.412955)",
+    "nodes": {
+      "group:write": { "kind": "group", "box": "translate(723px, 36px) 677×236", "text": "Write side" },
+      "group:read": { "kind": "group", "box": "translate(723px, 96px) 1434×296", "text": "Read side" },
+      "app": { "kind": "node", "box": "translate(40px, 160px) 220×72", "text": "Banking app Commands and queries" },
+      "gateway": { "kind": "node", "box": "translate(400px, 160px) 220×72", "text": "API gateway Routes by verb" },
+      "command-handler": { "kind": "node", "box": "translate(763px, 100px) 220×72", "text": "Command handler Load · decide · append" },
+      "event-store": { "kind": "node", "box": "translate(1140px, 160px) 220×72", "text": "Event store Stream per account" },
+      "publisher": { "kind": "node", "box": "translate(1500px, 40px) 220×72", "text": "Event publisher group: integration" },
+      "integration-topic": { "kind": "node", "box": "translate(1882px, 40px) 220×72", "text": "accounts.events.v1 Public contract" },
+      "query-api": { "kind": "node", "box": "translate(763px, 220px) 220×72", "text": "Query API Reads only" },
+      "balances-db": { "kind": "node", "box": "translate(1882px, 160px) 235×72", "text": "Balances Read model · one row each" },
+      "statements": { "kind": "node", "box": "translate(1882px, 280px) 223×72", "text": "Statements Read model · searchable" },
+      "balance-proj": { "kind": "node", "box": "translate(1500px, 160px) 220×72", "text": "Balance projection group: balances" },
+      "statement-proj": { "kind": "node", "box": "translate(1500px, 280px) 220×72", "text": "Statement projection group: statements" },
+      "fraud": { "kind": "node", "box": "translate(2263px, 160px) 247×72", "text": "Fraud scoring Another team · group: fraud" }
+    },
+    "edges": {
+      "app-to-gateway": "M260,196 L400,196",
+      "gateway-to-command-handler": "M620,189 L730,189 Q740,189 740,179 L740,146 Q740,136 750,136 L763,136",
+      "gateway-to-query-api": "M620,203 L668.5,203 Q678.5,203 678.5,213 L678.5,246 Q678.5,256 688.5,256 L763,256",
+      "command-handler-to-event-store": "M983,136 L1051.5,136 Q1061.5,136 1061.5,146 L1061.5,186 Q1061.5,196 1071.5,196 L1140,196",
+      "event-store-to-publisher": "M1360,182 L1420,182 Q1430,182 1430,172 L1430,86 Q1430,76 1440,76 L1500,76",
+      "publisher-to-integration-topic": "M1720,76 L1882,76",
+      "event-store-to-balance-proj": "M1360,196 L1500,196",
+      "event-store-to-statement-proj": "M1360,210 L1420,210 Q1430,210 1430,220 L1430,306 Q1430,316 1440,316 L1500,316",
+      "balance-proj-to-balances-db": "M1720,196 L1797.5,196 Q1801,196 1801,192.5 L1801,192.5 Q1801,189 1804.5,189 L1882,189",
+      "statement-proj-to-statements": "M1720,316 L1797.5,316 Q1801,316 1801,319.5 L1801,319.5 Q1801,323 1804.5,323 L1882,323",
+      "query-api-to-balances-db": "M983,249 L1791,249 Q1801,249 1801,239 L1801,213 Q1801,203 1811,203 L1882,203",
+      "query-api-to-statements": "M983,263 L997.5,263 Q999,263 999,261.5 L999,261.5 Q999,260 1000.5,260 L1791,260 Q1801,260 1801,270 L1801,299 Q1801,309 1811,309 L1882,309",
+      "integration-topic-to-fraud": "M2102,76 L2180,76 Q2190,76 2190,86 L2190,186 Q2190,196 2200,196 L2263,196"
+    },
+    "labels": {
+      "app-to-gateway": { "style": "transform: translate(-50%, -50%) translate(324px, 196px); --fe-w: 47px; --fe-h: 19px;", "text": "HTTPS" },
+      "gateway-to-command-handler": { "style": "transform: translate(-50%, -50%) translate(681px, 189px); --fe-w: 107px; --fe-h: 19px;", "text": "POST · commands" },
+      "gateway-to-query-api": { "style": "transform: translate(-50%, -50%) translate(703.75px, 256px); --fe-w: 95px; --fe-h: 19px;", "text": "GET · queries" },
+      "command-handler-to-event-store": { "style": "transform: translate(-50%, -50%) translate(1043.25px, 136px); --fe-w: 107px; --fe-h: 32px;", "text": "Append · expectedVersion" },
+      "event-store-to-publisher": { "style": "transform: translate(-50%, -50%) translate(1430px, 129px); --fe-w: 89px; --fe-h: 19px;", "text": "Subscription" },
+      "publisher-to-integration-topic": { "style": "transform: translate(-50%, -50%) translate(1795px, 76px); --fe-w: 125px; --fe-h: 19px;", "text": "Integration events" },
+      "balance-proj-to-balances-db": { "style": "transform: translate(-50%, -50%) translate(1824.5px, 189px); --fe-w: 101px; --fe-h: 19px;", "text": "Upsert balance" },
+      "statement-proj-to-statements": { "style": "transform: translate(-50%, -50%) translate(1834.5px, 323px); --fe-w: 83px; --fe-h: 19px;", "text": "Index entry" },
+      "query-api-to-balances-db": { "style": "transform: translate(-50%, -50%) translate(1383px, 249px); --fe-w: 77px; --fe-h: 19px;", "text": "GetBalance" },
+      "query-api-to-statements": { "style": "transform: translate(-50%, -50%) translate(1480px, 260px); --fe-w: 89px; --fe-h: 19px;", "text": "GetStatement" },
+      "integration-topic-to-fraud": { "style": "transform: translate(-50%, -50%) translate(2190px, 136px); --fe-w: 89px; --fe-h: 19px;", "text": "group: fraud" }
+    }
+  },
+  "tidy": {
+    "viewport": "translate(23.4818px, 335.628px) scale(0.412955)",
+    "nodes": {
+      "group:write": { "kind": "group", "box": "translate(760px, 120px) 720×152", "text": "Write side" },
+      "group:read": { "kind": "group", "box": "translate(760px, 360px) 1100×392", "text": "Read side" },
+      "app": { "kind": "node", "box": "translate(40px, 340px) 220×72", "text": "Banking app Commands and queries" },
+      "gateway": { "kind": "node", "box": "translate(420px, 340px) 220×72", "text": "API gateway Routes by verb" },
+      "command-handler": { "kind": "node", "box": "translate(800px, 160px) 220×72", "text": "Command handler Load · decide · append" },
+      "event-store": { "kind": "node", "box": "translate(1180px, 160px) 220×72", "text": "Event store Stream per account" },
+      "publisher": { "kind": "node", "box": "translate(1560px, 160px) 220×72", "text": "Event publisher group: integration" },
+      "integration-topic": { "kind": "node", "box": "translate(1940px, 160px) 220×72", "text": "accounts.events.v1 Public contract" },
+      "query-api": { "kind": "node", "box": "translate(800px, 520px) 220×72", "text": "Query API Reads only" },
+      "balances-db": { "kind": "node", "box": "translate(1180px, 400px) 235×72", "text": "Balances Read model · one row each" },
+      "statements": { "kind": "node", "box": "translate(1180px, 640px) 223×72", "text": "Statements Read model · searchable" },
+      "balance-proj": { "kind": "node", "box": "translate(1560px, 400px) 220×72", "text": "Balance projection group: balances" },
+      "statement-proj": { "kind": "node", "box": "translate(1560px, 640px) 220×72", "text": "Statement projection group: statements" },
+      "fraud": { "kind": "node", "box": "translate(1940px, 40px) 247×72", "text": "Fraud scoring Another team · group: fraud" }
+    },
+    "edges": {
+      "app-to-gateway": "M260,376 L420,376",
+      "gateway-to-command-handler": "M640,369 L697,369 Q707,369 707,359 L707,206 Q707,196 717,196 L800,196",
+      "gateway-to-query-api": "M640,383 L697,383 Q707,383 707,393 L707,546 Q707,556 717,556 L800,556",
+      "command-handler-to-event-store": "M1020,196 L1180,196",
+      "event-store-to-publisher": "M1400,182 L1537,182 Q1544,182 1544,189 L1544,189 Q1544,196 1551,196 L1560,196",
+      "publisher-to-integration-topic": "M1780,196 L1940,196",
+      "event-store-to-balance-proj": "M1400,196 L1480,196 Q1490,196 1490,206 L1490,419 Q1490,429 1500,429 L1560,429",
+      "event-store-to-statement-proj": "M1400,210 L1469,210 Q1479,210 1479,220 L1479,659 Q1479,669 1489,669 L1560,669",
+      "balance-proj-to-balances-db": "M1560,443 L1440,443 Q1436.5,443 1436.5,439.5 L1436.5,439.5 Q1436.5,436 1433,436 L1415,436",
+      "statement-proj-to-statements": "M1560,683 L1429,683 Q1425.5,683 1425.5,679.5 L1425.5,679.5 Q1425.5,676 1422,676 L1403,676",
+      "query-api-to-balances-db": "M1020,549 L1090,549 Q1100,549 1100,539 L1100,446 Q1100,436 1110,436 L1180,436",
+      "query-api-to-statements": "M1020,563 L1090,563 Q1100,563 1100,573 L1100,666 Q1100,676 1110,676 L1180,676",
+      "integration-topic-to-fraud": "M2050,160 L2050,142.8 Q2050,136 2056.8,136 L2056.8,136 Q2063.5,136 2063.5,129.3 L2063.5,112"
+    },
+    "labels": {
+      "app-to-gateway": { "style": "transform: translate(-50%, -50%) translate(334px, 376px); --fe-w: 47px; --fe-h: 19px;", "text": "HTTPS" },
+      "gateway-to-command-handler": { "style": "transform: translate(-50%, -50%) translate(707px, 282.5px); --fe-w: 107px; --fe-h: 19px;", "text": "POST · commands" },
+      "gateway-to-query-api": { "style": "transform: translate(-50%, -50%) translate(707px, 469.5px); --fe-w: 95px; --fe-h: 19px;", "text": "GET · queries" },
+      "command-handler-to-event-store": { "style": "transform: translate(-50%, -50%) translate(1094px, 196px); --fe-w: 107px; --fe-h: 32px;", "text": "Append · expectedVersion" },
+      "event-store-to-publisher": { "style": "transform: translate(-50%, -50%) translate(1473px, 182px); --fe-w: 89px; --fe-h: 19px;", "text": "Subscription" },
+      "publisher-to-integration-topic": { "style": "transform: translate(-50%, -50%) translate(1854px, 196px); --fe-w: 125px; --fe-h: 19px;", "text": "Integration events" },
+      "balance-proj-to-balances-db": { "style": "transform: translate(-50%, -50%) translate(1497.25px, 443px); --fe-w: 101px; --fe-h: 19px;", "text": "Upsert balance" },
+      "statement-proj-to-statements": { "style": "transform: translate(-50%, -50%) translate(1491.75px, 683px); --fe-w: 83px; --fe-h: 19px;", "text": "Index entry" },
+      "query-api-to-balances-db": { "style": "transform: translate(-50%, -50%) translate(1100px, 492.5px); --fe-w: 77px; --fe-h: 19px;", "text": "GetBalance" },
+      "query-api-to-statements": { "style": "transform: translate(-50%, -50%) translate(1100px, 619.5px); --fe-w: 89px; --fe-h: 19px;", "text": "GetStatement" },
+      "integration-topic-to-fraud": { "style": "transform: translate(-50%, -50%) translate(2050px, 146px); --fe-w: 89px; --fe-h: 19px;", "text": "group: fraud" }
+    }
+  }
+}
