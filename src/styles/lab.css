@@ -880,3 +880,99 @@
   font-size: 10.5px;
   color: var(--text-3);
 }
+
+/* Collaboration C0 (the collab-c0 preset). */
+.collab-lab {
+  display: grid;
+  gap: 16px;
+}
+.collab-lab-intro {
+  max-width: 80ch;
+  margin: 0;
+}
+.collab-lab-controls,
+.collab-actions,
+.collab-spike-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+}
+.collab-lab-clients {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 12px;
+}
+.collab-client,
+.collab-spike {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+.collab-title {
+  margin: 0;
+  font-weight: 600;
+}
+.collab-peers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.collab-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+.collab-ok,
+.collab-warn-status {
+  font-weight: 600;
+}
+/* The status reads in body text colour; the dot beside it carries the colour, never the meaning alone. */
+.collab-ok::before,
+.collab-warn-status::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--success);
+}
+.collab-warn-status::before {
+  background: var(--warning-ink);
+}
+.collab-warn {
+  color: var(--warning-ink);
+}
+.collab-stats {
+  margin: 0;
+  font-size: 12px;
+}
+.collab-canvas {
+  position: relative;
+  height: 260px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.collab-spike-log {
+  max-height: 160px;
+  overflow: auto;
+  font-size: 12px;
+  margin: 0;
+}
+.collab-spike-form label {
+  display: grid;
+  gap: 2px;
+}
+.collab-spike-form input:not([type="checkbox"]) {
+  min-width: 34ch;
+}

@@ -55,6 +55,17 @@ export function canUseAiTools(state: CanvasPrivacyState | null | undefined): boo
   return AI_TOOLS && !isLocalOnly(state);
 }
 
+/**
+ * Collaboration rooms (C0: a Lab proof, docs/research/collaboration.md). Off in every production build: only the dev
+ * server and the e2e build have it, behind the Lab. Never for a diagram that stays on this device (Private or
+ * local-only): C0 has no consent flow that could make an exception, and a Private diagram must not leave the
+ * device. Never in a copy deployed without links either: a room is a kind of link.
+ */
+export const COLLABORATION_LAB = import.meta.env.DEV || import.meta.env.VITE_E2E === "1";
+export function canCollaborate(state: CanvasPrivacyState | null | undefined): boolean {
+  return COLLABORATION_LAB && SHARE_LINKS && !isLocalOnly(state);
+}
+
 /** Saving to Google Drive, OneDrive or Dropbox. Files on this device are always allowed (the person's own act). */
 export function canSaveToCloud(state: CanvasPrivacyState | null | undefined): boolean {
   return !isLocalOnly(state);
