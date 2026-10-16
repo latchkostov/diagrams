@@ -1,5 +1,17 @@
-import { structuralText } from "../model/diagramDiff";
 import type { CanvasSnapshot } from "./useHistory";
+
+/** Immutable records share nested values across projections. Only changed branches need comparing. */
+function same(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (!a || !b || typeof a !== "object" || typeof b !== "object") return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  const left = a as Record<string, unknown>,
+    right = b as Record<string, unknown>;
+  const keys = Object.keys(left);
+  return (
+    keys.length === Object.keys(right).length && keys.every((k) => Object.hasOwn(right, k) && same(left[k], right[k]))
+  );
+}
 
 /** Indexed once per projection, including large bulk selections. IDs are React Flow IDs. */
 export function remoteTargetRemoved(
@@ -22,7 +34,7 @@ export function retainRemoteSelection(current: CanvasSnapshot, next: CanvasSnaps
   const nodes = new Map(current.nodes.map((n) => [n.id, n]));
   const edges = new Map(current.edges.map((e) => [e.id, e]));
   return {
-    meta: structuralText(current.meta) === structuralText(next.meta) ? current.meta : next.meta,
+    meta: same(current.meta, next.meta) ? current.meta : next.meta,
     nodes: next.nodes.map((n) => {
       const old = nodes.get(n.id);
       if (!old) return n;
@@ -31,8 +43,9 @@ export function retainRemoteSelection(current: CanvasSnapshot, next: CanvasSnaps
         old.parentId === n.parentId &&
         old.width === n.width &&
         old.height === n.height &&
-        structuralText(old.data) === structuralText(n.data) &&
-        structuralText(old.position) === structuralText(n.position)
+        same(old.data, n.data) &&
+        old.position.x === n.position.x &&
+        old.position.y === n.position.y
       )
         return old;
       return { ...n, selected: old.selected, measured: old.measured };
@@ -40,8 +53,16 @@ export function retainRemoteSelection(current: CanvasSnapshot, next: CanvasSnaps
     edges: next.edges.map((e) => {
       const old = edges.get(e.id);
       if (!old) return e;
-      const retained = { ...e, selected: old.selected };
-      return structuralText(old) === structuralText(retained) ? old : retained;
+      if (
+        old.source === e.source &&
+        old.target === e.target &&
+        old.type === e.type &&
+        old.ariaLabel === e.ariaLabel &&
+        same(old.data, e.data) &&
+        same(old.domAttributes, e.domAttributes)
+      )
+        return old;
+      return { ...e, selected: old.selected };
     }),
   };
 }

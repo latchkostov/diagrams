@@ -5,6 +5,7 @@ import type { EditorRoom } from "./room";
 import {
   selectionOf,
   snapshotKey,
+  roomSnapshotKey,
   stepWithSelection,
   type CanvasHistory,
   type FlowSelection,
@@ -27,7 +28,6 @@ export class HistoryController {
    */
   private transaction: string | undefined;
   private roomStep: { mergeKey?: string; at: number; tag: string } | undefined;
-  private sequence = 0;
   private roomCoalescingBroken = false;
 
   constructor(
@@ -35,7 +35,7 @@ export class HistoryController {
     at: number,
     private readonly room?: EditorRoom,
   ) {
-    this.history = createHistory(snapshotKey(state), state, at);
+    this.history = createHistory(this.key(state), state, at);
     this.settled = selectionOf(state);
   }
 
@@ -55,7 +55,11 @@ export class HistoryController {
   }
 
   /** The canvas rendered `state` (its `key`): while it matches the present step, its selection is settled. */
-  observe(state: CanvasSnapshot, key = snapshotKey(state)) {
+  key(state: CanvasSnapshot): string {
+    return this.room ? roomSnapshotKey(state) : snapshotKey(state);
+  }
+
+  observe(state: CanvasSnapshot, key = this.key(state)) {
     if (key === present(this.history).key) this.settled = selectionOf(state);
   }
 
@@ -66,7 +70,7 @@ export class HistoryController {
    */
   commit(state: CanvasSnapshot, mergeKey: string | undefined, at: number): boolean {
     const prev = this.history;
-    const key = snapshotKey(state);
+    const key = this.key(state);
     // Another edit in between closes the creation: the name typed after it is a step of its own.
     if (this.transaction !== undefined && mergeKey !== this.transaction && key !== present(prev).key)
       this.transaction = undefined;
@@ -79,7 +83,7 @@ export class HistoryController {
         mergeKey !== undefined &&
         last.mergeKey === mergeKey &&
         (at - last.at <= MERGE_WINDOW_MS || mergeKey === this.transaction);
-      this.roomStep = { mergeKey, at, tag: merge ? last.tag : `room-step:${++this.sequence}` };
+      this.roomStep = { mergeKey, at, tag: merge ? last.tag : this.room.newId("room-step") };
       this.roomCoalescingBroken = false;
       const start = this.settled;
       // A room keeps only a baseline here; Undo belongs to the scoped driver, never to snapshots.
@@ -123,7 +127,7 @@ export class HistoryController {
 
   /** Remote baseline: preserves an open naming transaction and never creates an undo entry. */
   receive(state: CanvasSnapshot, at = 0) {
-    this.history = createHistory(snapshotKey(state), state, at);
+    this.history = createHistory(this.key(state), state, at);
     this.settled = selectionOf(state);
   }
 
@@ -138,7 +142,7 @@ export class HistoryController {
       entries: this.history.entries.map((entry) => {
         if (entry.value.meta.title !== from) return entry;
         const value = { ...entry.value, meta: { ...entry.value.meta, title: to } };
-        return { ...entry, value, key: snapshotKey(value) };
+        return { ...entry, value, key: this.key(value) };
       }),
     };
   }

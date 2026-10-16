@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { DiagramMeta } from "../canvas/convert";
+import { fromFlow, type DiagramMeta } from "../canvas/convert";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 import { canRedo, canUndo, present } from "./history";
 import { HistoryController } from "./historyController";
-import { selectionOf, withSelection, snapshotKey as keyOf, type FlowSelection } from "./historySelection";
+import { selectionOf, withSelection, type FlowSelection } from "./historySelection";
 import type { EditorRoom } from "./room";
 import { retainRemoteSelection } from "./remoteSnapshot";
+import type { CanvasPrivacyState } from "../lib/localOnly";
 
 export interface CanvasSnapshot {
   meta: DiagramMeta;
@@ -58,16 +59,26 @@ export function useHistory(
   apply: (s: CanvasSnapshot, remote?: boolean) => void,
   onStep?: (direction: "undo" | "redo", selection: FlowSelection) => void,
   room?: EditorRoom,
-): HistoryApi & { stateKey: string; renameTitle(from: string, to: string): void } {
+  privacy?: CanvasPrivacyState,
+): HistoryApi & {
+  stateKey: string;
+  beginGesture(): void;
+  endGesture(): void;
+  renameTitle(from: string, to: string): void;
+} {
   const [ctl] = useState(() => new HistoryController(clean(state), Date.now(), room));
   const [localHistory, setHistory] = useState(ctl.history);
   const history = room ? ctl.history : localHistory;
   const latest = useRef(state);
+  const privacyRef = useRef(privacy);
+  const gesture = useRef<string | undefined>(undefined);
+  const gestureTimer = useRef<number | undefined>(undefined);
   const applyRef = useRef(apply);
   const onStepRef = useRef(onStep);
-  const stateKey = useMemo(() => keyOf(state), [state]);
+  const stateKey = useMemo(() => ctl.key(state), [ctl, state]);
   useLayoutEffect(() => {
     latest.current = state;
+    privacyRef.current = privacy;
     applyRef.current = apply;
     onStepRef.current = onStep;
   });
@@ -81,7 +92,7 @@ export function useHistory(
     timer.current = undefined;
     const s = latest.current;
     if (s.nodes.some((n) => n.dragging || n.resizing)) return false;
-    const changed = ctl.commit(clean(s), mergeKey.current, Date.now());
+    const changed = ctl.commit(clean(s), gesture.current ?? mergeKey.current, Date.now());
     mergeKey.current = undefined;
     if (changed) setHistory(ctl.history);
     room?.flushRemote();
@@ -93,6 +104,7 @@ export function useHistory(
       room?.connect({
         getSnapshot: () => latest.current,
         flushPending: flush,
+        getPrivacy: (next) => ({ ...privacyRef.current, diagram: fromFlow(next.meta, next.nodes, next.edges) }),
         receive: (next, step) => {
           const retained = step ? withSelection(next, step.selection) : retainRemoteSelection(latest.current, next);
           ctl.receive(retained);
@@ -106,22 +118,29 @@ export function useHistory(
   );
 
   useLayoutEffect(() => {
+    if (room && !room.checkPrivacy()) return;
     ctl.observe(state, stateKey);
     // Room commands commit with the rendered edit. Encryption and IDB can finish while the field
     // still holds focus, and navigation cannot cancel an unsent debounce timer.
     if (room && !state.nodes.some((n) => n.dragging || n.resizing)) {
-      ctl.commit(clean(state), mergeKey.current, Date.now());
+      ctl.commit(clean(state), gesture.current ?? mergeKey.current, Date.now());
       mergeKey.current = undefined;
       room.flushRemote();
     }
-  }, [ctl, state, stateKey, history, room]);
+  }, [ctl, state, stateKey, history, room, privacy]);
 
   useEffect(() => {
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(flush, DEBOUNCE_MS);
   }, [state.meta, state.nodes, state.edges, flush]);
 
-  useEffect(() => () => window.clearTimeout(timer.current), []);
+  useEffect(
+    () => () => {
+      window.clearTimeout(timer.current);
+      window.clearTimeout(gestureTimer.current);
+    },
+    [],
+  );
 
   const go = useCallback(
     (direction: "undo" | "redo") => {
@@ -160,13 +179,39 @@ export function useHistory(
       // inside the transaction rather than after it closes.
       window.setTimeout(() => {
         if (ctl.openTransaction !== tag) return;
-        if (timer.current !== undefined || keyOf(latest.current) !== present(ctl.history).key) flush();
+        if (timer.current !== undefined || ctl.key(latest.current) !== present(ctl.history).key) flush();
         ctl.end(tag);
       }, 0);
     },
     [ctl, flush],
   );
   const open = useCallback(() => ctl.openTransaction, [ctl]);
+  const beginGesture = useCallback(() => {
+    if (!room) return;
+    if (gesture.current && gestureTimer.current === undefined) return;
+    flush();
+    if (gesture.current) ctl.end(gesture.current);
+    window.clearTimeout(gestureTimer.current);
+    gestureTimer.current = undefined;
+    const tag = room?.newId("gesture");
+    if (tag) {
+      gesture.current = tag;
+      ctl.begin(tag);
+    }
+  }, [ctl, flush, room]);
+  const endGesture = useCallback(() => {
+    const tag = gesture.current;
+    if (!tag) return;
+    window.clearTimeout(gestureTimer.current);
+    // Settlement updates in this event must render before the capture closes.
+    gestureTimer.current = window.setTimeout(() => {
+      gestureTimer.current = undefined;
+      if (!tag || gesture.current !== tag) return;
+      flush();
+      ctl.end(tag);
+      gesture.current = undefined;
+    }, 0);
+  }, [ctl, flush]);
 
   const replace = useCallback(
     (snapshot: CanvasSnapshot, key?: string, before?: CanvasSnapshot) => {
@@ -205,11 +250,13 @@ export function useHistory(
     const h = ctl.history;
     if (!room && h.index === 0) return undefined;
     const cur = present(h);
-    return keyOf(latest.current) === cur.key ? ctl.top() : undefined;
+    return ctl.key(latest.current) === cur.key ? ctl.top() : undefined;
   }, [ctl, room]);
 
   return {
     stateKey,
+    beginGesture,
+    endGesture,
     undo,
     redo,
     renameTitle,

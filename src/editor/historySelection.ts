@@ -37,6 +37,31 @@ const fileOf = (s: CanvasSnapshot) => {
  */
 export const snapshotKey = (s: CanvasSnapshot) => JSON.stringify(fileOf(s));
 
+const roomRecordKeys = new WeakMap<object, { group?: string; text: string }>();
+
+/** A room retains unchanged Flow objects. Serialize only changed records, including after a remote
+ * projection; measurements and selection alone still never count as edits. The final ordered key
+ * is linear in bytes, but revisiting/sorting every nested settings object is unnecessary. */
+export function roomSnapshotKey(s: CanvasSnapshot): string {
+  const { nodes, edges, groups, annotations, ...meta } = fileOf(s);
+  const sources = new Map(s.nodes.map((n) => [n.id, n]));
+  const edgeSources = new Map(s.edges.map((e) => [e.id, e]));
+  const record = (value: { id: string; group?: string }, source: object | undefined) => {
+    const old = source && roomRecordKeys.get(source);
+    if (old && old.group === value.group) return old.text;
+    const text = JSON.stringify(value);
+    if (source) roomRecordKeys.set(source, { group: value.group, text });
+    return text;
+  };
+  return [
+    JSON.stringify(meta),
+    nodes.map((n) => record(n, sources.get(n.id))).join(","),
+    edges.map((e) => record(e, edgeSources.get(e.id))).join(","),
+    (groups ?? []).map((g) => record(g, sources.get(GROUP_PREFIX + g.id))).join(","),
+    (annotations ?? []).map((a) => record(a, sources.get(a.id))).join(","),
+  ].join("\n");
+}
+
 export const selectionOf = (s: Pick<CanvasSnapshot, "nodes" | "edges">): FlowSelection => ({
   nodes: s.nodes.filter((n) => n.selected).map((n) => n.id),
   edges: s.edges.filter((e) => e.selected).map((e) => e.id),

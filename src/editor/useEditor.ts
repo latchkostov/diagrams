@@ -1247,7 +1247,7 @@ export function createEditor(
           props: newPlanningProps(s.simRole, deps().meta.planning, s.id),
         },
       };
-      const r = splitFlowEdge(es, edgeId, id, takenIds().add(id));
+      const r = splitFlowEdge(es, edgeId, id, takenIds().add(id), allocateId);
       if (!r) return null;
       const merge = `new:${id}`;
       beginCreation(merge);
@@ -1282,7 +1282,7 @@ export function createEditor(
     insertIntoEdge: (edgeId, nodeId) => {
       const n = currentNodes().find((n) => n.id === nodeId);
       if (!n || !takesEdges(n)) return false;
-      const r = splitFlowEdge(currentEdges(), edgeId, nodeId, takenIds());
+      const r = splitFlowEdge(currentEdges(), edgeId, nodeId, takenIds(), allocateId);
       if (!r) return false;
       return commitEdges(() => r.edges);
     },

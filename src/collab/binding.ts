@@ -2,6 +2,7 @@ import { canCollaborate, type CanvasPrivacyState } from "../lib/localOnly";
 import type { DiagramFile } from "../model/types";
 import { commandsFromDiff } from "./commands";
 import type { CollabSession } from "./session";
+import type { RoomRefusal } from "../editor/room";
 
 // Joins an editor to a room session. The editor needs only two things (EditorApi has both): read its diagram, and
 // replace it with a validated one. Every editor mutation path (menus, shortcuts, the inspector, drags, paste, AI
@@ -34,7 +35,7 @@ export class EditorBinding {
   private writing = false;
   private deferred = false;
   /** Why the last local step was refused, if it was. */
-  refused: string | undefined;
+  refused: RoomRefusal | undefined;
 
   constructor(
     private readonly session: CollabSession,
@@ -50,18 +51,24 @@ export class EditorBinding {
     return !this.closed && this.base !== undefined;
   }
 
+  checkPrivacy(): boolean {
+    if (this.closed) return false;
+    if (canCollaborate(this.privacy()) && !this.editor.getDiagram()?.private) return true;
+    this.refused = "private";
+    void this.close();
+    return false;
+  }
+
   /**
    * The editor committed a step. Sends what changed since the agreed base, as one room step (`merge` joins it to
    * the previous one, as the editor's history does). Returns false when nothing was sent.
    */
   localChanged(opts: { merge?: string } = {}): boolean {
+    this.refused = undefined;
     if (this.closed || !this.base) return false;
     const now = this.editor.getDiagram();
     if (!now) return false;
-    if (!canCollaborate(this.privacy()) || now.private) {
-      void this.close();
-      return false;
-    }
+    if (!this.checkPrivacy()) return false;
     const commands = commandsFromDiff(this.base, now);
     if (!commands.length) {
       this.base = now;

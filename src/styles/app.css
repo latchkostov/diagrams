@@ -1171,3 +1171,19 @@ kbd {
   line-height: 1.5;
   pointer-events: none;
 }
+
+.room-edit-alert {
+  padding: 10px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-1);
+  box-shadow: var(--shadow-2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.grp-resize-hit {
+  position: absolute;
+  inset: 0;
+}

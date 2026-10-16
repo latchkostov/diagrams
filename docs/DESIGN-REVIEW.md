@@ -26,6 +26,23 @@ subtree together, without adding controls. Metadata and capacity caching change 
 Production phone regressions cover both explicit AI entry points, preserving unsaved simulation
 fields and dirty state while using the existing single-panel slot. No chrome, wording or focus target
 is added. This was not an independent whole-app designer or assistive-technology walkthrough.
+## Collaboration C1a review round 1 (2026-10-16)
+
+The required designer-agent source review found and resolved two recovery dead ends: a refusal or
+Private-stop message recommended a file copy while its button was hidden, and a persistent canvas
+alert could cover content outside the overlay-aware fit system. Feedback now lives in normal flow
+in the Lab's existing status area. Save a file copy appears for refusals and Private drafts as well
+as storage failures. A Private draft says sharing stopped, is not labelled saved, and downloads the
+current canvas with its privacy flag. A later successful edit clears an ordinary rejection.
+
+Final source re-review passed with no remaining actionable finding. Focus recovery acts only when
+an editor control disconnects and focus falls to the body; surviving input focus and caret stay put.
+Distinct announcements cover deleted elements and properties removed by stencil changes. Drop and
+resize settlement share the gesture's Undo capture without additional controls. There are no new
+production toolbar/menu items. Production-build browser regressions exercise focus, alert semantics,
+file-copy recovery, Private downloads and boundary Undo. The designer reviewed source and tests;
+they did not independently perform a browser or assistive-technology walkthrough.
+
 ## Collaboration C1a (2026-10-16)
 
 Designer-agent source review and the Lab screenshot kept this slice behind a preset with no production

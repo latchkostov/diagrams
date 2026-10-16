@@ -11,6 +11,7 @@ import { IndexedDbRecoveryStore } from "../recoveryStore";
 import { CollabSession } from "../session";
 import { broadcastWire, labBridge } from "./bridge";
 import { demoDiagram } from "./demo";
+import { RoomRefusalNotice } from "../../editor/RoomRefusalNotice";
 import "./editorDemo.css";
 
 export function EditorDemo() {
@@ -73,7 +74,7 @@ export function EditorDemo() {
         transport: (transport = labBridge(wire)),
         privacy: {},
         // A fixture joiner waits for a peer or a recovered checkpoint, never creates a competing seed.
-        initial: entry.joining ? undefined : demoDiagram(),
+        initial: entry.joining ? undefined : (fixture?.initial ?? demoDiagram()),
         recovery: new IndexedDbRecoveryStore(),
       });
       if (disposed) {
@@ -119,6 +120,11 @@ function RoomEditor({ room, roomKey }: { room: CollaborativeEditorRoom; roomKey:
   const recoveryUrl = new URL(formatRoomLink(base.href, roomKey));
   recoveryUrl.search = new URLSearchParams({ view: "lab", preset: "collab-c1a" }).toString();
   const session = room.session;
+  const refusal = useSyncExternalStore(
+    (fn) => room.onChange(fn),
+    () => room.refusal,
+  );
+  const privateDraft = refusal === "private";
   useSyncExternalStore(
     (fn) => session.onChange(fn),
     () =>
@@ -160,24 +166,24 @@ function RoomEditor({ room, roomKey }: { room: CollaborativeEditorRoom; roomKey:
       <div
         role="status"
         data-testid="collab-room-status"
-        data-status={session.roomStatus}
-        data-saved={session.recovery?.saved ? "true" : "false"}
+        data-status={privateDraft ? "offline" : session.roomStatus}
+        data-saved={!privateDraft && session.recovery?.saved ? "true" : "false"}
       >
-        {
-          {
-            "saved-device": t("collab.savedDevice"),
-            synced: t("collab.synced"),
-            connecting: t("collab.connecting"),
-            offline: t("collab.offline"),
-          }[session.roomStatus]
-        }
+        {privateDraft
+          ? t("collab.privateDraft")
+          : {
+              "saved-device": t("collab.savedDevice"),
+              synced: t("collab.synced"),
+              connecting: t("collab.connecting"),
+              offline: t("collab.offline"),
+            }[session.roomStatus]}
         {session.recovery?.problem && (
           <span data-testid="collab-recovery-problem">
             {" "}
             {session.recovery.problem === "corrupt" ? t("collab.corrupt") : t("collab.storageUnavailable")}
           </span>
         )}
-        {session.recovery?.problem && ready && (
+        {(session.recovery?.problem || refusal) && ready && (
           <button
             className="btn"
             data-testid="collab-save-copy"
@@ -190,6 +196,7 @@ function RoomEditor({ room, roomKey }: { room: CollaborativeEditorRoom; roomKey:
           </button>
         )}
       </div>
+      {refusal && <RoomRefusalNotice reason={refusal} />}
       {projection.status === "invalid" && (
         <div role="alert" data-testid="collab-invalid-document">
           <p>{t("collab.invalidDocument")}</p>

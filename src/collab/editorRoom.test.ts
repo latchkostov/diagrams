@@ -1,4 +1,4 @@
-import { expect, it, onTestFinished } from "vitest";
+import { expect, it, onTestFinished, vi } from "vitest";
 import type { ReactFlowInstance } from "@xyflow/react";
 import { fromFlow, toFlow } from "../canvas/convert";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
@@ -16,9 +16,15 @@ import { CollabSession } from "./session";
 import { roomFor } from "./transport/conformance";
 import { MemoryNetwork } from "./transport/memory";
 import { seededRandom } from "./random";
+import type { CanvasPrivacyState } from "../lib/localOnly";
+import type { DiagramFile } from "../model/types";
+
+vi.mock("../lib/localOnly.dev", () => ({
+  matchesLocalExample: (d: DiagramFile) => d.nodes.some((n) => n.label === "Restricted test draft"),
+}));
 
 /** Drives the exact controller used by useHistory, including pending renders and remote baselines. */
-function editor(session: CollabSession) {
+function editor(session: CollabSession, privacy: (next: CanvasSnapshot) => CanvasPrivacyState = () => ({})) {
   let state: CanvasSnapshot = toFlow(session.doc.project().diagram!);
   const room = new CollaborativeEditorRoom(session, () => ({}));
   const history = new HistoryController(state, 0, room);
@@ -94,6 +100,7 @@ function editor(session: CollabSession) {
   } satisfies EditorDeps;
   const ctl = createEditor(rf, deps);
   const disconnect = room.connect({
+    getPrivacy: privacy,
     getSnapshot: () => state,
     flushPending: flush,
     receive: (next, step) => {
@@ -112,6 +119,7 @@ function editor(session: CollabSession) {
     render,
     history,
     room,
+    disconnect,
     state: () => state,
     gesture: (id: string, x: number, dragging: boolean) => {
       state = {
@@ -372,4 +380,160 @@ it("converges real command paths under seeded concurrent property edits, moves, 
     }
     await Promise.all([a.leave(), b.leave()]);
   }
+});
+
+it.each(["new", "existing"])("concurrent %s-node splits on different edges retain both connections", async (mode) => {
+  const { A, B, settle } = await setup();
+  let ids: string[];
+  if (mode === "new") {
+    ids = [A.api.insertNode("web-api", "service.go")!.id, B.api.insertNode("orders-db", "service.go")!.id];
+  } else {
+    ids = [A.api.addNode("service.go"), B.api.addNode("service.go")];
+    A.flush();
+    B.flush();
+    await settle();
+    expect(A.api.insertIntoEdge("web-api", ids[0])).toBe(true);
+    expect(B.api.insertIntoEdge("orders-db", ids[1])).toBe(true);
+  }
+  A.flush();
+  B.flush();
+  await settle();
+  const d = A.diagram();
+  expect(d).toEqual(B.diagram());
+  expect(d.edges).toHaveLength(5);
+  for (const [id, from, to] of [
+    [ids[0], "web", "api"],
+    [ids[1], "orders", "db"],
+  ]) {
+    expect(d.edges.filter((e) => e.to === id).map((e) => e.from)).toEqual([from]);
+    expect(d.edges.filter((e) => e.from === id).map((e) => e.to)).toEqual([to]);
+  }
+});
+
+it("scopes capture identities across detach and remount on the same session", async () => {
+  const { A, a, settle } = await setup();
+  A.api.updateNode("api", { label: "First mounted editor" });
+  A.flush();
+  A.disconnect();
+  const mounted = editor(a);
+  mounted.api.updateNode("db", { label: "Remounted editor" });
+  mounted.flush();
+  expect(a.doc.undoManager.undoStack).toHaveLength(2);
+  mounted.api.undo();
+  await settle();
+  expect(mounted.api.getNode("api")?.label).toBe("First mounted editor");
+  expect(mounted.api.getNode("db")?.label).toBe("Orders DB");
+});
+
+it("concurrent room pastes preserve internal references", async () => {
+  const { A, B, settle } = await setup();
+  const original = demoDiagram();
+  const connected = {
+    ...original,
+    groups: [{ id: "cluster", label: "Cluster", x: 200, y: 20, width: 600, height: 240 }],
+    nodes: original.nodes.filter((n) => ["api", "orders"].includes(n.id)).map((n) => ({ ...n, group: "cluster" })),
+    edges: original.edges.filter((e) => e.id === "api-orders"),
+    annotations: [
+      {
+        id: "caption",
+        kind: "note" as const,
+        text: "Dispatch",
+        x: 200,
+        y: 180,
+        width: 100,
+        height: 60,
+        group: "cluster",
+      },
+    ],
+  };
+  const payload = makePayload(connected, [], ["cluster"])!;
+  expect(payload.edges).toHaveLength(1);
+  expect(payload.annotations).toHaveLength(1);
+  A.api.pastePayload(payload);
+  B.api.pastePayload(payload);
+  A.flush();
+  B.flush();
+  await settle();
+  const d = A.diagram();
+  expect(d).toEqual(B.diagram());
+  expect(d.nodes).toHaveLength(8);
+  expect(d.edges).toHaveLength(5);
+  expect(d.groups).toHaveLength(2);
+  expect(d.annotations).toHaveLength(2);
+  const endpoints = new Set<string>();
+  for (const group of d.groups!) {
+    const members = d.nodes.filter((n) => n.group === group.id);
+    expect(members).toHaveLength(2);
+    expect(d.annotations!.filter((n) => n.group === group.id)).toHaveLength(1);
+    const ids = new Set(members.map((n) => n.id));
+    const edges = d.edges.filter((e) => ids.has(e.from) || ids.has(e.to));
+    expect(edges).toHaveLength(1);
+    expect(ids.has(edges[0].from) && ids.has(edges[0].to)).toBe(true);
+    for (const id of ids) {
+      expect(endpoints.has(id)).toBe(false);
+      expect(["api", "orders"]).not.toContain(id);
+      endpoints.add(id);
+    }
+  }
+});
+
+it("exposes typed refusals, rolls back the edit, and notifies the editor accessibly", async () => {
+  const { A } = await setup();
+  A.disconnect();
+  let state = A.state();
+  const refused = vi.fn();
+  const detach = A.room.connect({
+    getSnapshot: () => state,
+    flushPending: () => true,
+    receive: (next) => {
+      state = next;
+    },
+    refused,
+  });
+  onTestFinished(detach);
+  const before = state;
+  const next = {
+    ...state,
+    nodes: state.nodes.map((n) =>
+      n.id === "api" ? { ...n, data: { ...n.data, props: { ["k".repeat(256)]: "value" } } } : n,
+    ),
+  } as CanvasSnapshot;
+  expect(A.room.commit(next)).toEqual({ status: "refused", reason: "key-too-long" });
+  expect(refused).toHaveBeenCalledWith("key-too-long");
+  expect(fromFlow(state.meta, state.nodes, state.edges)).toEqual(fromFlow(before.meta, before.nodes, before.edges));
+  expect(A.room.commit(state)).toEqual({ status: "unchanged" });
+  expect(A.room.commit({ ...state, meta: { ...state.meta, title: "Accepted" } })).toEqual({ status: "applied" });
+});
+
+it.each(["private", "localOnly"] as const)(
+  "stops sharing when effective %s changes without a document edit",
+  async (flag) => {
+    const { A, a, B, settle } = await setup();
+    A.disconnect();
+    let restricted = false;
+    const mounted = editor(a, () => ({ [flag]: restricted }));
+    restricted = true;
+    expect(mounted.room.checkPrivacy()).toBe(false);
+    mounted.api.updateNode("api", { label: "Keep on this device" });
+    mounted.flush();
+    await a.leave();
+    await settle();
+    expect(a.status).toBe("left");
+    expect(B.api.getNode("api")?.label).toBe("API");
+    expect(a.doc.project().diagram?.nodes.find((n) => n.id === "api")?.label).toBe("API");
+  },
+);
+
+it("checks the candidate diagram's effective privacy before publishing or checkpointing a label edit", async () => {
+  const { A, a, B, settle } = await setup();
+  A.disconnect();
+  const mounted = editor(a, (next) => ({ diagram: fromFlow(next.meta, next.nodes, next.edges) }));
+  mounted.api.updateNode("api", { label: "Restricted test draft" });
+  mounted.flush();
+  await a.leave();
+  await settle();
+  expect(a.status).toBe("left");
+  expect(mounted.api.getNode("api")?.label).toBe("Restricted test draft");
+  expect(B.api.getNode("api")?.label).toBe("API");
+  expect(a.doc.project().diagram?.nodes.find((n) => n.id === "api")?.label).toBe("API");
 });

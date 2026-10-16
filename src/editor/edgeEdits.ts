@@ -40,10 +40,11 @@ export function splitFlowEdge(
   edgeId: string,
   nodeId: string,
   taken: ReadonlySet<string> = new Set(edges.map((x) => x.id)),
+  allocate: typeof uniqueId = uniqueId,
 ): { edges: DiagramFlowEdge[]; first: string; second: string } | null {
   const e = edges.find((x) => x.id === edgeId);
   if (!e || e.source === nodeId || e.target === nodeId) return null;
-  const second = uniqueId("e", new Set([...taken, ...edges.map((x) => x.id)]));
+  const second = allocate("e", new Set([...taken, ...edges.map((x) => x.id)]));
   const [a, b] = splitEdge(edgeFromFlow(e), nodeId, { first: e.id, second }).map(edgeToFlow);
   const out: DiagramFlowEdge[] = [];
   for (const x of edges) {

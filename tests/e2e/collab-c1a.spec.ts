@@ -1,6 +1,12 @@
-import type { BrowserContext, Page } from "@playwright/test";
+import type { BrowserContext, Page, Locator } from "@playwright/test";
 import type { LabPacket } from "../../src/collab/lab/bridge";
 import { test, expect, expectNoErrors, gotoLab, pauseClock, waitForStableViewport } from "./fixtures";
+
+async function bounds(locator: Locator) {
+  const rect = await locator.boundingBox();
+  if (!rect) throw new Error("Expected a visible element: " + locator.toString());
+  return rect;
+}
 
 type TestWindow = Window & {
   __c1Deliver(packet: LabPacket): void;
@@ -189,7 +195,7 @@ test("blocked clipboard keeps a selectable Lab recovery link", async ({ page, co
   expectNoErrors(consoleErrors);
 });
 
-test("all peers leave, reload recovers locally, offline work merges on rejoin, and unrelated autosave stays untouched", async ({
+test("room recovery preserves an existing local autosave across reload and rejoin", async ({
   browser,
   context,
   page,
@@ -199,7 +205,16 @@ test("all peers leave, reload recovers locally, offline work merges on rejoin, a
   const other = await browser.newContext({ baseURL });
   const b = await other.newPage();
   const wire = await relay([context, other], 61);
+  const localKey = "diagrams.autosave.v1:kafka-order-pipeline";
+  const localValue = JSON.stringify({
+    format: "diagrams/v1",
+    title: "Local notebook",
+    nodes: [{ id: "local-service", stencil: "service.go", label: "Local work survives", x: 0, y: 0 }],
+    edges: [],
+  });
   try {
+    await gotoLab(page, "nodes-states");
+    await page.evaluate(([key, value]) => localStorage.setItem(key, value), [localKey, localValue]);
     await open(page);
     await open(b, true);
     await name(page, "api", "Before everybody left");
@@ -231,6 +246,10 @@ test("all peers leave, reload recovers locally, offline work merges on rejoin, a
         .join(""),
     );
     expect(leaked).not.toContain("Offline local API");
+    expect(await page.evaluate((key) => localStorage.getItem(key), localKey)).toBe(localValue);
+    await page.goto("./?view=canvas&example=kafka-order-pipeline");
+    await expect(page.getByTestId("node-local-service")).toContainText("Local work survives");
+    expect(await page.evaluate((key) => localStorage.getItem(key), localKey)).toBe(localValue);
     expectNoErrors(consoleErrors);
   } finally {
     await other.close();
@@ -297,23 +316,24 @@ test("the normal Lab recovery link reopens encrypted work without an injected ke
   await open(page);
   await page.evaluate(() => {
     (window as TestWindow).__c1CipherReads = 0;
-    const getAll = IDBObjectStore.prototype.getAll;
-    IDBObjectStore.prototype.getAll = function () {
+    const get = IDBObjectStore.prototype.get;
+    IDBObjectStore.prototype.get = function (query) {
       if (this.name === "rooms")
         (window as TestWindow).__c1CipherReads = ((window as TestWindow).__c1CipherReads ?? 0) + 1;
-      return getAll.call(this);
+      return get.call(this, query);
+    };
+    const getAll = IDBObjectStore.prototype.getAll;
+    IDBObjectStore.prototype.getAll = function (...args) {
+      if (this.name === "rooms")
+        (window as TestWindow).__c1CipherReads = ((window as TestWindow).__c1CipherReads ?? 0) + 1;
+      return getAll.apply(this, args);
     };
   });
   await page.getByTestId("collab-copy-recovery-link").click();
   await expect(page.getByTestId("collab-copy-recovery-link")).toHaveText("Recovery link copied");
   const link = await page.evaluate(() => navigator.clipboard.readText());
   expect(link).toContain("#room=v1.");
-  await page.getByTestId("node-api").dblclick();
-  await pauseClock(page);
-  await page.getByTestId("inspector-field-label").fill("Saved without debounce");
   await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-status", "saved-device");
-  expect(await page.evaluate(() => (window as TestWindow).__c1CipherReads)).toBe(0);
-  await page.clock.resume();
   // Exercise the metadata-only eviction schema's migration from the first Lab database.
   await gotoLab(page, "nodes-states");
   await page.evaluate(async () => {
@@ -346,6 +366,31 @@ test("the normal Lab recovery link reopens encrypted work without an injected ke
     });
     legacy.close();
   });
+  await page.goto(link);
+  await expect(page.getByTestId("node-api")).toBeVisible();
+  await waitForStableViewport(page);
+  await page.evaluate(() => {
+    (window as TestWindow).__c1CipherReads = 0;
+    const get = IDBObjectStore.prototype.get;
+    IDBObjectStore.prototype.get = function (query) {
+      if (this.name === "rooms")
+        (window as TestWindow).__c1CipherReads = ((window as TestWindow).__c1CipherReads ?? 0) + 1;
+      return get.call(this, query);
+    };
+    const getAll = IDBObjectStore.prototype.getAll;
+    IDBObjectStore.prototype.getAll = function (...args) {
+      if (this.name === "rooms")
+        (window as TestWindow).__c1CipherReads = ((window as TestWindow).__c1CipherReads ?? 0) + 1;
+      return getAll.apply(this, args);
+    };
+  });
+  await page.getByTestId("node-api").dblclick();
+  await pauseClock(page);
+  await page.getByTestId("inspector-field-label").fill("Saved without debounce");
+  await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-status", "saved-device");
+  expect(await page.evaluate(() => (window as TestWindow).__c1CipherReads)).toBe(0);
+  await page.clock.resume();
+  // The invitation key is consumed from the fragment; reopening uses the saved recovery link.
   await page.goto(link);
   await expect(page.getByTestId("node-api")).toContainText("Saved without debounce");
   await expect.poll(() => new URL(page.url()).hash).toBe("");
@@ -404,5 +449,230 @@ test("leaving the Lab while recovery opens disposes the transport before its cha
   await page.evaluate(() => (window as TestWindow).__releaseRecoveryOpen?.());
   await expect.poll(() => page.evaluate(() => (window as TestWindow).__recoveryChannelsClosed ?? 0)).toBeGreaterThan(0);
   await page.clock.runFor(40_000);
+  expectNoErrors(consoleErrors);
+});
+
+test("remote stencil changes restore focus when the focused inspector control disappears", async ({
+  browser,
+  context,
+  page,
+  baseURL,
+  consoleErrors,
+}) => {
+  const other = await browser.newContext({ baseURL });
+  const b = await other.newPage();
+  await relay([context, other], 131);
+  try {
+    await open(page);
+    await open(b, true);
+    await page.getByTestId("node-api").click();
+    await page.getByTestId("inspector-section-node-simulation").click();
+    const control = page.getByTestId("inspector-field-latencyMs");
+    await expect(control).toBeVisible();
+    await control.focus();
+    await b.getByTestId("node-api").click();
+    await b.getByTestId("inspector-field-stencil").click();
+    await b.getByTestId("stencil-picker-search").fill("kafka topic");
+    await b.getByTestId("context-menu-item-pick-stencil:kafka.topic").click();
+    await expect(control).toHaveCount(0);
+    await expect(page.getByTestId("node-api")).toBeVisible();
+    await page.bringToFront();
+    await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+    await expect(page.getByTestId("canvas-announce")).toContainText("A peer changed the properties");
+    await page.keyboard.press("Tab");
+    await expect
+      .poll(() =>
+        page
+          .getByTestId(/^node-(web|api|orders|db)$/)
+          .evaluateAll((els) => els.some((el) => document.activeElement?.contains(el))),
+      )
+      .toBe(true);
+    await b.getByTestId("undo-button").click();
+    await page.getByTestId("node-api").click();
+    await expect(control).toBeVisible();
+    await control.focus();
+    await pauseClock(page);
+    await b.getByTestId("inspector-field-stencil").click();
+    await b.getByTestId("stencil-picker-search").fill("kafka topic");
+    await b.getByTestId("context-menu-item-pick-stencil:kafka.topic").click();
+    await expect(control).toHaveCount(0);
+    // A user choosing another surviving control before the recovery frame keeps that focus.
+    const survivor = page.getByTestId("inspector-field-label");
+    await survivor.focus();
+    await page.clock.runFor(32);
+    await expect(survivor).toBeFocused();
+    await page.clock.resume();
+    expectNoErrors(consoleErrors);
+  } finally {
+    await other.close();
+  }
+});
+
+test("a room rejection is an accessible, actionable alert and a later valid edit recovers", async ({
+  page,
+  consoleErrors,
+}) => {
+  await open(page);
+  await page.getByTestId("node-api").click();
+  await page.getByTestId("inspector-section-node-properties").click();
+  await page.getByTestId("inspector-prop-new").fill("k".repeat(256));
+  await page.getByTestId("inspector-prop-add").click();
+  const alert = page.getByTestId("collab-edit-refused");
+  await expect(alert).toHaveAttribute("role", "alert");
+  await expect(alert).toContainText("Your last change was undone");
+  await expect(alert).toContainText("Shorten it and try again");
+  await expect(page.getByTestId(`inspector-prop-remove-${"k".repeat(256)}`)).toHaveCount(0);
+  await page.getByTestId("inspector-prop-new").fill("region");
+  await page.getByTestId("inspector-prop-add").click();
+  await expect(page.getByTestId("inspector-prop-remove-region")).toBeVisible();
+  await expect(alert).toHaveCount(0);
+  expectNoErrors(consoleErrors);
+});
+
+test("pasting Private content stops sharing before the paste reaches peers or room recovery", async ({
+  browser,
+  context,
+  page,
+  baseURL,
+  consoleErrors,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  const other = await browser.newContext({ baseURL });
+  const b = await other.newPage();
+  await relay([context, other], 132);
+  try {
+    await open(page);
+    await open(b, true);
+    await page.evaluate(() =>
+      navigator.clipboard.writeText(
+        JSON.stringify({
+          format: "diagrams/clip-v1",
+          private: true,
+          groups: [],
+          edges: [],
+          nodes: [{ id: "private-input", stencil: "service.go", label: "Device-only draft", x: 0, y: 0 }],
+        }),
+      ),
+    );
+    await page.getByTestId("canvas-wrap").focus();
+    await page.keyboard.press("Control+v");
+    await expect(page.getByTestId("collab-edit-refused")).toContainText("Sharing stopped");
+    const made = page.getByTestId(/^node-private-input-/);
+    await expect(made).toContainText("Device-only draft");
+    await expect(b.getByTestId(/^node-private-input-/)).toHaveCount(0);
+    await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-status", "offline");
+    await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-saved", "false");
+    const downloading = page.waitForEvent("download");
+    await page.getByTestId("collab-save-copy").click();
+    const stream = await (await downloading).createReadStream();
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+    const copy = JSON.parse(Buffer.concat(chunks).toString()) as { private?: boolean; nodes: { label: string }[] };
+    expect(copy.private).toBe(true);
+    expect(copy.nodes.some((n) => n.label === "Device-only draft")).toBe(true);
+    await page.reload();
+    await expect(page.getByTestId("node-api")).toBeVisible();
+    await expect(page.getByTestId(/^node-private-input-/)).toHaveCount(0);
+    expectNoErrors(consoleErrors);
+  } finally {
+    await other.close();
+  }
+});
+
+const boundaryDiagram = {
+  format: "diagrams/v1" as const,
+  title: "Boundary gestures",
+  groups: [{ id: "cluster", label: "Cluster", x: 0, y: 0, width: 440, height: 300 }],
+  nodes: [
+    { id: "api", stencil: "service.go", label: "API", x: 40, y: 80, group: "cluster" },
+    { id: "outside", stencil: "service.go", label: "Outside", x: 600, y: 80 },
+  ],
+  edges: [],
+};
+
+test("a room drop restores position, membership and boundary growth with one Undo", async ({
+  context,
+  page,
+  consoleErrors,
+}) => {
+  await relay([context], 133);
+  await page.addInitScript((initial) => {
+    if (!window.__collabC1) throw new Error("Missing Lab fixture");
+    window.__collabC1.initial = initial;
+  }, boundaryDiagram);
+  await open(page);
+  const node = page.getByTestId("node-api"),
+    group = page.getByTestId("group-cluster");
+  await node.click();
+  await waitForStableViewport(page);
+  const before = await bounds(node),
+    boundary = await bounds(group);
+  const scale = before.width / 220;
+  await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2 + 160 * scale, { steps: 12 });
+  await page.mouse.up();
+  await expect.poll(async () => (await bounds(group)).height).toBeGreaterThan(boundary.height);
+  await page.getByTestId("undo-button").click();
+  await expect
+    .poll(async () => {
+      const now = await bounds(node),
+        outside = await bounds(page.getByTestId("node-outside"));
+      return Math.round((now.y - outside.y) / (now.width / 220));
+    })
+    .toBe(0);
+  await expect
+    .poll(async () => Math.round((await bounds(group)).height / ((await bounds(node)).width / 220)))
+    .toBe(300);
+  await expect(page.getByTestId("inspector-field-group")).toHaveValue("cluster");
+  // Leaving the boundary uses the toast's Undo, which must also restore the move.
+  const start = await bounds(node);
+  await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2 + 350 * scale, { steps: 12 });
+  await page.mouse.up();
+  await expect(page.getByTestId("membership-undo")).toBeVisible();
+  await page.getByTestId("membership-undo").click();
+  await expect
+    .poll(async () => {
+      const now = await bounds(node),
+        outside = await bounds(page.getByTestId("node-outside"));
+      return Math.round((now.y - outside.y) / (now.width / 220));
+    })
+    .toBe(0);
+  await expect(page.getByTestId("inspector-field-group")).toHaveValue("cluster");
+  expectNoErrors(consoleErrors);
+});
+
+test("a room resize and deferred membership adoption are one Undo step", async ({ context, page, consoleErrors }) => {
+  await relay([context], 134);
+  await page.addInitScript((initial) => {
+    if (!window.__collabC1) throw new Error("Missing Lab fixture");
+    window.__collabC1.initial = initial;
+  }, boundaryDiagram);
+  await open(page);
+  await page.getByTestId("group-label-cluster").click();
+  await waitForStableViewport(page);
+  const group = page.getByTestId("group-cluster"),
+    before = await bounds(group);
+  const handle = page.getByTestId("group-resize-cluster-bottom-right");
+  const box = await bounds(handle);
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + before.width, box.y + box.height / 2, { steps: 12 });
+  await page.mouse.up();
+  await expect(page.getByTestId("membership-undo")).toBeVisible();
+  await page.getByTestId("fit-view-button").click();
+  await waitForStableViewport(page);
+  await page.getByTestId("node-outside").click();
+  await expect(page.getByTestId("inspector-field-group")).toHaveValue("cluster");
+  await page.getByTestId("undo-button").click();
+  await expect
+    .poll(async () =>
+      Math.round((await bounds(group)).width / ((await bounds(page.getByTestId("node-outside"))).width / 220)),
+    )
+    .toBe(440);
+  await page.getByTestId("node-outside").click();
+  await expect(page.getByTestId("inspector-field-group")).toHaveValue("");
   expectNoErrors(consoleErrors);
 });

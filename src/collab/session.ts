@@ -409,7 +409,11 @@ export class CollabSession {
         if (!this.proofs.take(opened.sender, 1)) return this.reject("proof-throttled");
         const revision = this.revision;
         const proof = await this.doc.syncProof();
-        if (revision !== this.revision || !proof.every((b, i) => b === msg.payload[i])) return;
+        if (revision !== this.revision) return;
+        if (!proof.every((b, i) => b === msg.payload[i])) {
+          if (this.synced.delete(from)) this.emit();
+          return;
+        }
         if (this.synced.size < COLLAB_LIMITS.maxSenders) this.synced.add(from);
         if (msg.type === DOC.syncProof) this.sendDoc(frame(DOC.syncAck, proof), from);
         this.emit();

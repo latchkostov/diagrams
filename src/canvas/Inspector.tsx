@@ -371,6 +371,9 @@ export function Inspector(p: InspectorProps) {
       data-testid="inspector"
       aria-label="Inspector"
       data-inspector-mode={title.toLowerCase()}
+      data-inspector-target={
+        n === 1 ? (p.selectedNodes[0] ?? p.selectedEdges[0] ?? p.selectedGroups[0] ?? annotations[0])?.id : undefined
+      }
     >
       <div className="insp-head">
         <span className="insp-title" data-testid="inspector-title">

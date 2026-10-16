@@ -1,5 +1,5 @@
 import { memo, type CSSProperties } from "react";
-import { NodeResizer, type NodeProps } from "@xyflow/react";
+import { NodeResizeControl, ResizeControlVariant, type NodeProps } from "@xyflow/react";
 import { useDiagram } from "../DiagramContext";
 import type { GroupFlowNode } from "../types";
 
@@ -24,14 +24,25 @@ function GroupNodeImpl({ data, selected }: NodeProps<GroupFlowNode>) {
       <svg className="grp-outline" width="100%" height="100%" aria-hidden data-testid={`group-outline-${data.groupId}`}>
         <rect width="100%" height="100%" rx={20} fill="none" stroke="transparent" strokeWidth={8} />
       </svg>
-      <NodeResizer
-        isVisible={selected}
-        minWidth={160}
-        minHeight={100}
-        lineClassName="grp-resize-line"
-        handleClassName="grp-resize-handle"
-        onResizeEnd={boundaryResized ? () => boundaryResized(data.groupId) : undefined}
-      />
+      {selected &&
+        (["top", "right", "bottom", "left", "top-left", "top-right", "bottom-left", "bottom-right"] as const).map(
+          (position) => {
+            const line = !position.includes("-");
+            return (
+              <NodeResizeControl
+                key={position}
+                position={position}
+                variant={line ? ResizeControlVariant.Line : ResizeControlVariant.Handle}
+                minWidth={160}
+                minHeight={100}
+                className={line ? "grp-resize-line" : "grp-resize-handle"}
+                onResizeEnd={boundaryResized ? () => boundaryResized(data.groupId) : undefined}
+              >
+                <span className="grp-resize-hit" data-testid={`group-resize-${data.groupId}-${position}`} />
+              </NodeResizeControl>
+            );
+          },
+        )}
       <div className="grp-label grp-drag" data-testid={`group-label-${data.groupId}`}>
         <span className="grp-swatch" />
         {data.label}

@@ -1,5 +1,5 @@
 import { fromFlow, toFlow } from "../canvas/convert";
-import type { EditorRoom, RoomStepMeta } from "../editor/room";
+import type { EditorRoom, RoomStepMeta, RoomCommitResult, RoomRefusal } from "../editor/room";
 import { selectionAfterRedo, selectionAfterUndo, selectionOf } from "../editor/historySelection";
 import type { CanvasSnapshot } from "../editor/useHistory";
 import type { CanvasPrivacyState } from "../lib/localOnly";
@@ -18,6 +18,19 @@ export class CollaborativeEditorRoom implements EditorRoom {
   private port?: Parameters<EditorRoom["connect"]>[0];
   private stepping = false;
   private stepped?: CanvasSnapshot;
+  refusal?: RoomRefusal;
+  private listeners = new Set<() => void>();
+
+  onChange(fn: () => void) {
+    this.listeners.add(fn);
+    return () => this.listeners.delete(fn);
+  }
+  private report(reason: RoomRefusal | undefined) {
+    this.port?.refused?.(reason);
+    if (reason === this.refusal) return;
+    this.refusal = reason;
+    for (const fn of this.listeners) fn();
+  }
 
   constructor(
     readonly session: CollabSession,
@@ -44,7 +57,7 @@ export class CollaborativeEditorRoom implements EditorRoom {
         },
         flushPending: () => port.flushPending(),
       },
-      this.privacy,
+      () => port.getPrivacy?.(this.committed ?? port.getSnapshot()) ?? this.privacy(),
     );
     this.binding = binding;
     return () => {
@@ -57,11 +70,17 @@ export class CollaborativeEditorRoom implements EditorRoom {
     };
   }
 
-  commit(next: CanvasSnapshot, merge?: string, meta?: RoomStepMeta): void {
+  commit(next: CanvasSnapshot, merge?: string, meta?: RoomStepMeta): RoomCommitResult {
     const previous = this.session.doc.undoManager.undoStack.at(-1);
     this.committed = next;
     try {
-      this.binding?.localChanged({ merge });
+      const applied = this.binding?.localChanged({ merge });
+      const reason = this.binding?.refused;
+      if (reason) {
+        this.report(reason);
+        return { status: "refused", reason };
+      }
+      if (applied) this.report(undefined);
       const top = this.session.doc.undoManager.undoStack.at(-1);
       const old = top?.meta.get(STEP) as LocalStep | undefined;
       if (top && meta && (top !== previous || (old && old.capture === merge)))
@@ -70,6 +89,7 @@ export class CollaborativeEditorRoom implements EditorRoom {
           start: old && old.capture === merge ? old.start : meta.start,
           capture: merge,
         } satisfies LocalStep);
+      return { status: applied ? "applied" : "unchanged" };
     } finally {
       this.committed = undefined;
     }
@@ -113,7 +133,14 @@ export class CollaborativeEditorRoom implements EditorRoom {
     return (this.session.doc.undoManager.undoStack.at(-1)?.meta.get(STEP) as LocalStep | undefined)?.mergeKey;
   }
   flushRemote() {
+    if (!this.checkPrivacy()) return;
     this.binding?.flushRemote();
+  }
+  checkPrivacy() {
+    if (!this.binding) return true;
+    const allowed = this.binding.checkPrivacy();
+    if (!allowed && this.binding.refused) this.report(this.binding.refused);
+    return allowed;
   }
   get canUndo() {
     return this.session.doc.undoManager.canUndo();

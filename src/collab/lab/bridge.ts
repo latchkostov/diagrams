@@ -1,5 +1,6 @@
 import { bytesToBase64Url } from "../../interop/codec";
 import type { RoomLink } from "../link";
+import type { DiagramFile } from "../../model/types";
 import { secureRandom } from "../random";
 import { realClock, type Clock } from "../clock";
 import { COLLAB_LIMITS } from "../limits";
@@ -19,6 +20,7 @@ export interface LabWire {
 export interface CollabLabFixture {
   room: RoomLink;
   wire: LabWire;
+  initial?: DiagramFile;
 }
 
 /** Same-origin tabs only. This is a local Lab transport, never public matchmaking. */

@@ -106,6 +106,26 @@
   five-port range on IPv4 and IPv6 before keeping their intended occupied member. A forced blocked
   neighbour regression fails with the old setup; the real preflight and its exact-port assertions
   remain intact. All 1,403 E2E tests passed in that run; the complete gate is repeated after this fix.
+## Collaboration C1a: review round 1 (2026-10-16)
+
+- Concurrent edge inserts keep both peers' connections, and a drop or resize with its boundary
+  settlement is one per-person Undo step. Undo captures stay distinct across editor remounts.
+- Room edits now use incremental comparisons and encrypted recovery journals. On the same 5,000-node,
+  8,281-edge workload, median remote selection retention fell from 85.677 to 4.788 ms, and encrypted
+  in-memory recovery saving from 74.754 to 0.186 ms (2,396,961 to 42 encrypted plaintext bytes per rename).
+  Full checkpoints compact periodically; same-device tabs merge only newly appended journal entries.
+- Effective canvas privacy stops sharing before restricted edits enter the room or its recovery store.
+  Private drafts have honest unsaved status and a downloadable Private file copy. Refused edits explain
+  their reason accessibly and offer recovery; remote changes that remove a focused property control
+  restore keyboard focus. Clock corrections preserve valid encrypted work, and differing peer proofs
+  invalidate sync. Stronger tests cover existing autosaves and pasted internal references.
+- All 14 review findings and deliberate-reversion regressions are detailed in
+  [the review resolutions](COLLAB-C1A-REVIEW.md). The designer-agent source review passed after moving
+  feedback into the Lab status area and exposing its file-copy action; no global controls were added.
+- Only `node/i18n/catalogs.json` intentionally changes: nine English `collab.*` additions update message
+  counts, English fallbacks and collaboration-area fingerprints. All other message areas and every
+  diagram, simulation, layout, import/export and browser golden remain unchanged.
+
 ## Collaboration C1a: real editor and encrypted local recovery (2026-10-16)
 
 - The Lab's collaboration editor now uses the real canvas command/history path, per-person Undo/Redo
