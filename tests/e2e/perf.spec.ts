@@ -250,4 +250,68 @@ test.describe("perf: interactions", { tag: "@dev" }, () => {
     expect(longest).toBeLessThan(FROZEN);
     expectNoErrors(consoleErrors);
   });
+
+  // React Flow re-renders a node's wrapper (and its minimap rect) when the canvas hands it a new handler or a new
+  // node object: an inline handler re-rendered all of them on every click, key and drag frame. The cards that change
+  // render; the other nodes don't (the example has 15, so one pass over them all would read as 15 or more).
+  test("clicking, typing a name and dragging re-render the nodes that change, not every node", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await openDiagram(page);
+    const every = await page.locator(".react-flow__node").count();
+    expect(every).toBeGreaterThanOrEqual(15);
+    const { counts: click } = await measure(page, async () => {
+      await page.getByTestId("node-orders").click();
+      await page.getByTestId("node-payments").click();
+    });
+    expect(click.CanvasInner ?? 0, JSON.stringify(click)).toBeGreaterThan(0);
+    expect(click.NodeWrapper ?? 0, JSON.stringify(click)).toBeLessThan(every);
+    expect(click.NodeComponentWrapperInner ?? 0, JSON.stringify(click)).toBeLessThan(every);
+
+    await page.getByTestId("node-inventory").dblclick();
+    const label = page.getByTestId("inspector-field-label");
+    await expect(label).toBeFocused();
+    await label.press("End");
+    const { counts: typing } = await measure(page, async () => {
+      for (const key of "-v2") {
+        await page.keyboard.type(key);
+        await expect(label).toHaveValue(new RegExp(`${key}$`));
+      }
+    });
+    await expect(page.getByTestId("node-inventory")).toContainText("Inventory service-v2");
+    expect(typing.NodeWrapper ?? 0, JSON.stringify(typing)).toBeGreaterThan(0);
+    expect(typing.NodeWrapper ?? 0, JSON.stringify(typing)).toBeLessThan(every);
+    expect(typing.NodeComponentWrapperInner ?? 0, JSON.stringify(typing)).toBeLessThan(every);
+    await label.press("Enter");
+    await page.keyboard.press("Escape");
+
+    const box = await page.getByTestId("node-notifications").boundingBox();
+    if (!box) throw new Error("no node");
+    const { counts: drag } = await measure(page, async () => {
+      await page.mouse.move(box.x + box.width * 0.3, box.y + box.height / 2);
+      await page.mouse.down();
+      for (let i = 1; i <= 6; i++)
+        await page.mouse.move(box.x + box.width * 0.3 + i * 8, box.y + box.height / 2 + i * 4);
+      await page.mouse.up();
+    });
+    expect(drag.CanvasInner ?? 0, JSON.stringify(drag)).toBeGreaterThan(0);
+    expect(drag.NodeWrapper ?? 0, JSON.stringify(drag)).toBeLessThan(every);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("a node's tooltip shows and hides without rendering the canvas", async ({ page, consoleErrors }) => {
+    await openDiagram(page);
+    const box = await page.getByTestId("node-orders").boundingBox();
+    if (!box) throw new Error("no node");
+    const { counts } = await measure(page, async () => {
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 2 });
+      await expect(page.getByTestId("node-tooltip")).toBeVisible();
+      await page.mouse.move(box.x + box.width / 2, box.y - 60, { steps: 2 });
+      await expect(page.getByTestId("node-tooltip")).toHaveCount(0);
+    });
+    expect(counts.NodeTooltip ?? 0, JSON.stringify(counts)).toBeGreaterThan(0);
+    expect(counts.CanvasInner ?? 0, JSON.stringify(counts)).toBe(0);
+    expectNoErrors(consoleErrors);
+  });
 });
