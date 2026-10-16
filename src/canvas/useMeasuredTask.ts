@@ -3,22 +3,28 @@ import { useStoreApi } from "@xyflow/react";
 import { flushSync } from "react-dom";
 import type { DiagramFlowEdge, FlowNode } from "./types";
 import { OVERLAY_SELECTOR, overlayRects } from "./useOverlayFit";
-import { readyFonts } from "./fonts";
+import { createFontReadiness } from "./fontReadiness";
 import { settledTask } from "./settledTask";
 
 /** One fit transaction: committed React state, delivered ResizeObservers, loaded fonts, and
  * stable routes/chrome. No guessed delay, frame limit, or unmeasured default-size fallback. */
-export function useMeasuredTask(root: RefObject<HTMLElement | null>, nodes: FlowNode[], edges: DiagramFlowEdge[]) {
+export function useMeasuredTask(
+  root: RefObject<HTMLElement | null>,
+  nodes: FlowNode[],
+  edges: DiagramFlowEdge[],
+  typography = "",
+) {
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const [gate] = useState(() => measuredGate(store));
-  useLayoutEffect(() => gate.commit(root.current, nodes, edges));
+  useLayoutEffect(() => gate.commit(root.current, nodes, edges, typography));
   useEffect(() => gate.connect(), [gate]);
   return gate;
 }
 
 function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>) {
+  const fonts = createFontReadiness();
   let root: HTMLElement | null = null;
-  let current = { nodes: [] as FlowNode[], edges: [] as DiagramFlowEdge[] };
+  let current = { nodes: [] as FlowNode[], edges: [] as DiagramFlowEdge[], typography: "" };
   const observed = new Map<Element, string>();
   let observer: ResizeObserver | undefined;
   let mutations: MutationObserver | undefined;
@@ -137,14 +143,14 @@ function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlow
       queue.wake();
     };
     // Failed web fonts have final fallback metrics too; parity still requires loaded fonts.
-    if (root) void readyFonts(root).then(loaded, loaded);
+    if (root) void fonts.ready(root, [current.typography, ...current.nodes.map((n) => n.data)]).then(loaded, loaded);
     return cancel;
   };
   return {
     ...queue,
-    commit(el: HTMLElement | null, nodes: FlowNode[], edges: DiagramFlowEdge[]) {
+    commit(el: HTMLElement | null, nodes: FlowNode[], edges: DiagramFlowEdge[], typography: string) {
       root = el;
-      current = { nodes, edges };
+      current = { nodes, edges, typography };
       queue.wake();
     },
     connect() {
@@ -155,8 +161,12 @@ function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlow
       });
       mutations = new MutationObserver(queue.wake);
       if (isPending && root) mutations.observe(root, { subtree: true, childList: true, attributes: true });
-      document.fonts.addEventListener("loadingdone", queue.wake);
-      document.fonts.addEventListener("loadingerror", queue.wake);
+      const fontsChanged = () => {
+        fonts.invalidate();
+        queue.wake();
+      };
+      document.fonts.addEventListener("loadingdone", fontsChanged);
+      document.fonts.addEventListener("loadingerror", fontsChanged);
       const unsubscribe = store.subscribe(queue.wake);
       queue.wake();
       return () => {
@@ -166,8 +176,8 @@ function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlow
         observed.clear();
         mutations?.disconnect();
         mutations = undefined;
-        document.fonts.removeEventListener("loadingdone", queue.wake);
-        document.fonts.removeEventListener("loadingerror", queue.wake);
+        document.fonts.removeEventListener("loadingdone", fontsChanged);
+        document.fonts.removeEventListener("loadingerror", fontsChanged);
         unsubscribe();
       };
     },

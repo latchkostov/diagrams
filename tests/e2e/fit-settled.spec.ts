@@ -165,6 +165,9 @@ test("Auto-layout fits its committed positions before the next font refinement",
     window.addEventListener("hold-layout-refinement", () => {
       original = position() ?? "";
       armed = true;
+      // A position-only edit reuses font readiness. Explicitly invalidate it for this
+      // held-font ordering probe, while preserving actual font metrics and card sizes.
+      document.fonts.dispatchEvent(new Event("loadingdone"));
     });
     window.addEventListener("release-layout-refinement", release);
   });

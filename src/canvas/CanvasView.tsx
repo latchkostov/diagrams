@@ -518,7 +518,11 @@ function CanvasInner({
 
   // Fit-view keeps content out from under the title card, minimap, controls and live bar.
   const fitView_ = useOverlayFit(wrapper, { style: edgeStyle, direction: meta.direction ?? "LR" });
-  const { request: afterMeasured, whenReady, interrupt: interruptMeasuredFit } = useMeasuredTask(wrapper, nodes, edges);
+  const {
+    request: afterMeasured,
+    whenReady,
+    interrupt: interruptMeasuredFit,
+  } = useMeasuredTask(wrapper, nodes, edges, `${theme}:${nodeVariant}:${locale}`);
   const [openingFitDone, setOpeningFitDone] = useState(false);
   const fitEpoch = useRef(0);
   const earlyFit = useRef<(() => void) | null>(null);
