@@ -63,7 +63,10 @@ const BUDGETS: Record<string, { fixed?: number; perNode?: number; why: string }>
     perNode: 3.3,
     why: "measured 306 to 375 at 100 nodes, 1,283 to 1,557 at 500; another pass over the nodes adds 2 per node",
   },
-  "select/commits": { fixed: 11, why: "measured 9 to 10.2 commits per click" },
+  "select/commits": {
+    fixed: 12,
+    why: "measured 9 to 10.2 commits per click; 11.2 since #126 (its settled fit-view signal commits once more per click: raised on purpose)",
+  },
   "select/DiagramNodeImpl": { fixed: 3.5, why: "the two cards whose selection changed, and the inspector's preview" },
   "select/NodeWrapper": {
     perNode: 5,
