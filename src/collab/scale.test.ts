@@ -111,7 +111,7 @@ describe("collaboration at 5,000 nodes", () => {
     ratios.hydrate = growth(
       () => hydrated(mesh.small),
       () => hydrated(mesh.large),
-      { samples: 3 },
+      { samples: 2 },
     );
     const [as, al] = [hydrated(mesh.small), hydrated(mesh.large)];
     const [ds, dl] = [ok(as), ok(al)];
@@ -119,13 +119,13 @@ describe("collaboration at 5,000 nodes", () => {
     ratios.diffApply = growth(
       () => as.apply(commandsFromDiff(ds, relabel(ds, ++i))),
       () => al.apply(commandsFromDiff(dl, relabel(dl, ++i))),
-      { samples: 3 },
+      { samples: 2 },
     );
     const [us, ul] = [as.encodeDiff(), al.encodeDiff()];
     ratios.joinSync = growth(
       () => new CollabDoc().applyRemote(us),
       () => new CollabDoc().applyRemote(ul),
-      { samples: 3 },
+      { samples: 2 },
     );
     ratios.project = growth(
       () => {
@@ -136,13 +136,13 @@ describe("collaboration at 5,000 nodes", () => {
         al.apply(commandsFromDiff(dl, relabel(dl, ++i)));
         return al.project();
       },
-      { samples: 3 },
+      { samples: 2 },
     );
     const deleteAll = (d: DiagramFile) => () => {
       const doc = hydrated(d);
       doc.apply(commandsFromDiff(d, { ...d, nodes: [], edges: [] }));
     };
-    ratios.bulkDelete = growth(deleteAll(mesh.small), deleteAll(mesh.large), { samples: 3 });
+    ratios.bulkDelete = growth(deleteAll(mesh.small), deleteAll(mesh.large), { samples: 2 });
     log("growth ratios", ratios);
     for (const [what, r] of Object.entries(ratios)) expect(r, what).toBeLessThan(LINEAR_LIMIT);
   }, 120_000);

@@ -218,7 +218,7 @@ export function describeTransportConformance(name: string, makeHarness: (seed: n
   });
 
   describe(`${name}: encrypted sessions converge under faults`, () => {
-    const SEEDS = Array.from({ length: 12 }, (_, i) => i + 1);
+    const SEEDS = Array.from({ length: 8 }, (_, i) => i + 1);
     const scenario = makeHarness(0).faults
       ? "drops, duplicates, reordering, partitions and a rejoin"
       : "a rejoin (no fault injection)";

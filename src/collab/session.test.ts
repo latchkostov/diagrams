@@ -187,28 +187,6 @@ describe("sessions", () => {
     expect(b.diagram?.title).toBe("Next");
   });
 
-  it("a fresh peer joins after concurrent large edits: big messages travel as fragments", async () => {
-    const { net, clock, a, b, c, settle } = await room3();
-    const chunk = (k: number) =>
-      Object.fromEntries(Array.from({ length: 10 }, (_, i) => [`y${k}_${i}`, "\u4e2d".repeat(99_000)]));
-    expect(a.edit((d) => ({ ...d, ...chunk(1) }))).toBe(true);
-    await settle();
-    // Concurrently, about 3 MB each, past any single frame.
-    expect(a.edit((d) => ({ ...d, ...chunk(2) }))).toBe(true);
-    expect(b.edit((d) => ({ ...d, ...chunk(3) }))).toBe(true);
-    await settle();
-    const full = a.session.doc.encodeDiff().length;
-    expect(full).toBeGreaterThan(8 * 1024 * 1024);
-    let largest = 0;
-    net.tap((r) => void (largest = Math.max(largest, r.bytes.length)));
-    const d = await openClient("d", net.connect(), room, clock, 14);
-    await net.settle(async () => void (await Promise.all([a, b, c, d].map((x) => x.session.idle()))));
-    expect(largest).toBeLessThanOrEqual(COLLAB_LIMITS.maxDocFrameBytes);
-    expect(d.projection()).toBe(a.projection());
-    expect(Object.keys(metaOf(d.session.doc.ydoc).toJSON())).toEqual(expect.arrayContaining(["y1_0", "y2_9", "y3_9"]));
-    expect(d.session.stats.rejected).toEqual({});
-  });
-
   it("a newcomer joins after concurrent steps take the room past a reply bucket's worth", async () => {
     const { net, clock, a, b, c, settle } = await room3();
     const chunk = (k: number) =>
@@ -225,6 +203,9 @@ describe("sessions", () => {
     // And now the room refuses to grow further.
     expect(a.edit((d) => ({ ...d, ...chunk(6) }))).toBe(false);
     expect(a.binding.refused).toBe("room-full");
+    // Big messages travel as fragments: no frame on the wire is larger than one.
+    let largest = 0;
+    net.tap((r) => void (largest = Math.max(largest, r.bytes.length)));
     const d = await openClient("d", net.connect(), room, clock, 15);
     const all = () => net.settle(async () => void (await Promise.all([a, b, c, d].map((x) => x.session.idle()))));
     await all();
@@ -233,6 +214,8 @@ describe("sessions", () => {
       await all();
     }
     expect(d.projection()).toBe(a.projection());
+    expect(largest).toBeLessThanOrEqual(COLLAB_LIMITS.maxDocFrameBytes);
+    expect(d.session.stats.rejected).toEqual({});
   }, 60_000);
 
   it("one person's Undo history can't grow the room without bound", async () => {
