@@ -209,6 +209,62 @@ describe("sessions", () => {
     expect(d.session.stats.rejected).toEqual({});
   });
 
+  it("a newcomer joins after concurrent steps take the room past a reply bucket's worth", async () => {
+    const { net, clock, a, b, c, settle } = await room3();
+    const chunk = (k: number) =>
+      Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`z${k}_${i}`, "\u4e2d".repeat(99_000)]));
+    for (const k of [1, 2, 3]) {
+      expect(a.edit((d) => ({ ...d, ...chunk(k) }))).toBe(true);
+      await settle();
+    }
+    // Concurrently, past the soft room bound: each side's own check passed.
+    expect(b.edit((d) => ({ ...d, ...chunk(4) }))).toBe(true);
+    expect(c.edit((d) => ({ ...d, ...chunk(5) }))).toBe(true);
+    await settle();
+    expect(a.session.doc.encodeDiff().length).toBeGreaterThan(16 * 1024 * 1024);
+    // And now the room refuses to grow further.
+    expect(a.edit((d) => ({ ...d, ...chunk(6) }))).toBe(false);
+    expect(a.binding.refused).toBe("room-full");
+    const d = await openClient("d", net.connect(), room, clock, 15);
+    const all = () => net.settle(async () => void (await Promise.all([a, b, c, d].map((x) => x.session.idle()))));
+    await all();
+    for (let i = 0; i < 4 && d.projection() !== a.projection(); i++) {
+      clock.advance(COLLAB_LIMITS.antiEntropyMs * 2);
+      await all();
+    }
+    expect(d.projection()).toBe(a.projection());
+  }, 60_000);
+
+  it("one person's Undo history can't grow the room without bound", async () => {
+    const { net, clock, a, b, settle } = await room3();
+    const value = (k: number) => ({ big: `${k}`.padEnd(3, "-") + "\u4e2d".repeat(99_000) });
+    for (let k = 0; k < 12; k++) {
+      // Each replaces the last 3 MB value: without a bound, Undo would keep every replaced one.
+      expect(
+        a.edit((d) => ({ ...d, ...Object.fromEntries(Array.from({ length: 10 }, (_, i) => [`h${i}`, value(k).big])) })),
+      ).toBe(true);
+      await settle();
+    }
+    expect(a.session.doc.encodeDiff().length).toBeLessThan(COLLAB_LIMITS.maxRoomBytes);
+    // Recent steps can still be undone.
+    expect(a.binding.undo()).toBe(true);
+    await settle();
+    expect(String(metaOf(b.session.doc.ydoc).get("h0")).startsWith("10")).toBe(true);
+    const d = await openClient("d", net.connect(), room, clock, 16);
+    await net.settle(async () => void (await Promise.all([a, b, d].map((x) => x.session.idle()))));
+    expect(d.projection()).toBe(a.projection());
+  }, 60_000);
+
+  it("measures the room once, not once per refused edit", async () => {
+    const { a } = await room3();
+    const chunk = (k: number) =>
+      Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`w${k}_${i}`, "\u4e2d".repeat(99_000)]));
+    for (const k of [1, 2, 3, 4]) a.edit((d) => ({ ...d, ...chunk(k) }));
+    const before = a.session.doc.stats.roomMeasurements;
+    for (let i = 0; i < 5; i++) expect(a.edit((d) => ({ ...d, ...chunk(9) }))).toBe(false);
+    expect(a.session.doc.stats.roomMeasurements - before).toBeLessThanOrEqual(1);
+  }, 60_000);
+
   it("refuses to start a room with a diagram the room couldn't carry", async () => {
     const net = new MemoryNetwork();
     await expect(

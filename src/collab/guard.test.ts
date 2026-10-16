@@ -29,14 +29,14 @@ function encoded(commands: DiagramCommand[]): { bound: number; actual: number } 
 
 describe("checkCommands' size bound", () => {
   it.each([
-    ["950,000 floats", (): DiagramCommand[] => [{ op: "meta", set: { samples: new Array(950_000).fill(0.1) } }]],
+    ["400,000 floats", (): DiagramCommand[] => [{ op: "meta", set: { samples: new Array(400_000).fill(0.1) } }]],
     [
       "large integers and negative numbers",
       (): DiagramCommand[] => [{ op: "meta", set: { n: Array.from({ length: 50_000 }, (_, i) => -(2 ** 40) - i) } }],
     ],
     ["three-byte characters", (): DiagramCommand[] => [{ op: "meta", set: { s: "\u4e2d".repeat(99_000) } }]],
     [
-      "a node with 100,000 props",
+      "a node with 20,000 props",
       (): DiagramCommand[] => [
         {
           op: "put",
@@ -47,10 +47,14 @@ describe("checkCommands' size bound", () => {
             label: "",
             x: 0,
             y: 0,
-            props: Object.fromEntries(Array.from({ length: 100_000 }, (_, i) => [`p${i}`, i])),
+            props: Object.fromEntries(Array.from({ length: 20_000 }, (_, i) => [`p${i}`, i])),
           },
         },
       ],
+    ],
+    [
+      "an array of empty objects",
+      (): DiagramCommand[] => [{ op: "meta", set: { samples: Array.from({ length: 10_000 }, () => ({})) } }],
     ],
     [
       "a long reorder",

@@ -228,6 +228,8 @@ export class CollabSession {
       }),
     );
     this.stops.push(this.clock.every(COLLAB_LIMITS.antiEntropyMs, () => this.requestSync()));
+    this.stops.push(this.clock.every(COLLAB_LIMITS.partialTtlMs, () => this.reassembler.expire()));
+    this.stops.push(() => this.reassembler.clear());
     this.stops.push(
       this.clock.every(COLLAB_LIMITS.presenceHeartbeatMs, () => {
         this.sendPresence();

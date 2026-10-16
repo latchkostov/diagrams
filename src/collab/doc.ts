@@ -2,6 +2,7 @@ import * as Y from "yjs";
 import type { DiagramFile } from "../model/types";
 import { applyCommands, type DiagramCommand } from "./commands";
 import { checkCommands, inspectUpdate, type GuardProblem, type LocalProblem } from "./guard";
+import { COLLAB_LIMITS } from "./limits";
 import {
   assemble,
   hydrate,
@@ -62,6 +63,8 @@ export interface DocStats {
   /** Remote updates applied, and refused by the guard. */
   remoteApplied: number;
   remoteRefused: number;
+  /** Exact measurements of the room's encoded size (each encodes the whole document). */
+  roomMeasurements: number;
 }
 
 export interface CollabDocOptions {
@@ -80,6 +83,7 @@ export class CollabDoc {
     localTransactions: 0,
     remoteApplied: 0,
     remoteRefused: 0,
+    roomMeasurements: 0,
   };
 
   private cache = new Map<RecordKind, Map<string, Record<string, unknown> | undefined>>();
@@ -91,6 +95,53 @@ export class CollabDoc {
   private lastGood: DiagramFile | undefined;
   private lastMerge: string | undefined;
   private listeners = new Set<() => void>();
+  /**
+   * An upper bound on the encoded state: its exact size when last measured (at `measuredAt`, a revision), plus
+   * every change since. Measured again only when the bound nears the limit and the document has changed since.
+   */
+  private roomBytes = 0;
+  private revision = 0;
+  private measuredAt = -1;
+  /** Estimated bytes of each Undo/Redo step (local steps: their checked bound; Undo's own: what it reversed). */
+  private stepSizes = new WeakMap<object, number>();
+  private stepBytes = 0;
+  private poppedBytes = 0;
+
+  private roomHas(bytes: number): boolean {
+    if (this.roomBytes + bytes <= COLLAB_LIMITS.maxRoomBytes) return true;
+    if (this.measuredAt !== this.revision) {
+      this.roomBytes = Y.encodeStateAsUpdate(this.ydoc).length;
+      this.measuredAt = this.revision;
+      this.stats.roomMeasurements++;
+    }
+    return this.roomBytes + bytes <= COLLAB_LIMITS.maxRoomBytes;
+  }
+
+  /** Keeps the Undo history within its byte and step budgets, dropping the oldest steps (and freeing what they kept). */
+  private trimHistory(): void {
+    const um = this.undoManager;
+    const size = (item: object) => this.stepSizes.get(item) ?? 0;
+    let total = [...um.undoStack, ...um.redoStack].reduce((n, item) => n + size(item), 0);
+    while (
+      um.undoStack.length + um.redoStack.length > 1 &&
+      (total > COLLAB_LIMITS.maxHistoryBytes ||
+        um.undoStack.length + um.redoStack.length > COLLAB_LIMITS.maxHistorySteps)
+    ) {
+      const oldest = um.undoStack.length > 1 ? um.undoStack.shift()! : um.redoStack.shift()!;
+      total -= size(oldest);
+      this.release(oldest);
+    }
+  }
+
+  /** Lets Yjs collect what a dropped step was keeping for Undo. */
+  private release(item: StackItemLike): void {
+    this.ydoc.transact((tr) => {
+      Y.iterateDeletedStructs(tr, item.deletions, (struct) => {
+        if (struct instanceof Y.Item) struct.keep = false;
+      });
+    });
+    Y.tryGc(item.deletions, this.ydoc.store, () => true);
+  }
 
   constructor(opts: CollabDocOptions = {}) {
     this.ydoc = new Y.Doc();
@@ -106,6 +157,15 @@ export class CollabDoc {
       captureTimeout: Number.MAX_SAFE_INTEGER,
     });
     this.ydoc.on("afterTransaction", (tr: Y.Transaction) => this.track(tr));
+    const sized = ({ stackItem, type }: { stackItem: object; type: "undo" | "redo" }) => {
+      // A local step adds its bound; a step made by Undo or Redo carries the size of the one it reversed.
+      const add = this.undoManager.undoing || this.undoManager.redoing ? this.poppedBytes : this.stepBytes;
+      this.stepSizes.set(stackItem, (this.stepSizes.get(stackItem) ?? 0) + add);
+      void type;
+      this.trimHistory();
+    };
+    this.undoManager.on("stack-item-added", sized);
+    this.undoManager.on("stack-item-updated", sized);
   }
 
   /** Called after every change to the shared state (local, remote, undo); read `project()` for the result. */
@@ -129,6 +189,7 @@ export class CollabDoc {
     // Checked; now written under this document's own client id (applying the scratch update would make Yjs see
     // its id arrive from elsewhere and pick a new one).
     this.ydoc.transact(() => hydrate(this.ydoc, diagram), HYDRATE);
+    this.roomBytes = update.length;
   }
 
   isEmpty(): boolean {
@@ -146,10 +207,14 @@ export class CollabDoc {
     if (!commands.length) return { ok: true };
     const check = checkCommands(commands);
     if (!check.ok) return check;
+    if (!this.roomHas(check.bytes)) return { ok: false, problem: "room-full" };
     if (opts.merge === undefined || opts.merge !== this.lastMerge) this.undoManager.stopCapturing();
     this.lastMerge = opts.merge;
     this.stats.localTransactions++;
+    this.stepBytes = check.bytes;
     this.ydoc.transact(() => applyCommands(this.ydoc, commands), this.local);
+    this.stepBytes = 0;
+    this.roomBytes += check.bytes;
     return { ok: true };
   }
 
@@ -162,6 +227,7 @@ export class CollabDoc {
     }
     try {
       Y.applyUpdate(this.ydoc, update, REMOTE);
+      this.roomBytes += update.length;
     } catch {
       this.stats.remoteRefused++;
       return { ok: false, problem: "apply-failed" };
@@ -172,6 +238,7 @@ export class CollabDoc {
 
   undo(): boolean {
     this.lastMerge = undefined;
+    this.poppedBytes = this.stepSizes.get(this.undoManager.undoStack.at(-1) ?? {}) ?? 0;
     const item = this.undoManager.undo();
     // The Undo pushed its own step onto the redo stack; values it restores belong to that step.
     if (item) this.restoreRefused(item, this.undoManager.redoStack.at(-1));
@@ -180,6 +247,7 @@ export class CollabDoc {
 
   redo(): boolean {
     this.lastMerge = undefined;
+    this.poppedBytes = this.stepSizes.get(this.undoManager.redoStack.at(-1) ?? {}) ?? 0;
     const item = this.undoManager.redo();
     if (item) this.restoreRefused(item, this.undoManager.undoStack.at(-1));
     return item !== null;
@@ -237,13 +305,25 @@ export class CollabDoc {
     if (whole.length <= max) return [whole];
     const theirs = sv ? Y.decodeStateVector(sv) : new Map<number, number>();
     const ours = Y.decodeStateVector(this.stateVector());
+    const missing = [...ours.keys()].filter((c) => (theirs.get(c) ?? 0) < ours.get(c)!);
+    // Halve the set of clients until each part fits: a few encodings per part, not one per client.
     const parts: Uint8Array[] = [];
-    for (const client of ours.keys()) {
+    const encode = (clients: number[]) => {
       const target = new Map(ours);
-      target.set(client, theirs.get(client) ?? 0);
-      const part = Y.encodeStateAsUpdate(this.ydoc, encodeStateVector(target));
-      if (!(part.length <= 2 && part.every((b) => b === 0))) parts.push(part);
-    }
+      for (const c of clients) target.set(c, theirs.get(c) ?? 0);
+      return Y.encodeStateAsUpdate(this.ydoc, encodeStateVector(target));
+    };
+    const split = (clients: number[], encoded?: Uint8Array) => {
+      const part = encoded ?? encode(clients);
+      if (part.length <= max || clients.length === 1) {
+        if (!(part.length <= 2 && part.every((b) => b === 0))) parts.push(part);
+        return;
+      }
+      const half = Math.ceil(clients.length / 2);
+      split(clients.slice(0, half));
+      split(clients.slice(half));
+    };
+    split(missing, whole);
     return parts.length ? parts : [whole];
   }
 
@@ -312,6 +392,7 @@ export class CollabDoc {
 
   /** Marks what a transaction touched: record ids per list, list orders, meta. */
   private track(tr: Y.Transaction): void {
+    this.revision++;
     let touched = false;
     for (const [type, keys] of tr.changed) {
       const loc = locate(type);

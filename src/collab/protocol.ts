@@ -72,9 +72,31 @@ export class Reassembler {
 
   constructor(private readonly clock: Clock) {}
 
+  /** Bytes reserved for half-delivered messages (each message's whole length, from its first part). */
+  private reserved = 0;
+
+  /** Drops half-delivered messages older than the TTL (the session calls this on the room clock, too). */
+  expire(): void {
+    const now = this.clock.now();
+    for (const [k, p] of this.partial) if (now - p.at > COLLAB_LIMITS.partialTtlMs) this.drop(k);
+  }
+
+  /** Forgets everything (leaving). */
+  clear(): void {
+    this.partial.clear();
+    this.reserved = 0;
+  }
+
+  private drop(key: string): void {
+    const p = this.partial.get(key);
+    if (!p) return;
+    this.partial.delete(key);
+    this.reserved -= p.length;
+  }
+
   add(sender: string, payload: Uint8Array): Reassembled {
     const now = this.clock.now();
-    for (const [k, p] of this.partial) if (now - p.at > COLLAB_LIMITS.partialTtlMs) this.partial.delete(k);
+    this.expire();
     if (payload.length < FRAGMENT_HEADER) return { error: "malformed" };
     const view = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
     const id = view.getUint32(0);
@@ -90,20 +112,33 @@ export class Reassembler {
     const key = `${sender}:${id}`;
     let entry = this.partial.get(key);
     if (!entry) {
+      // The whole message's length is reserved from its first part, against the sender's and the session's budgets,
+      // before any part is kept.
       let open = 0;
-      for (const p of this.partial.values()) if (p.sender === sender) open++;
-      if (open >= COLLAB_LIMITS.maxPartialMessages) return { error: "too-many-partials" };
+      let held = 0;
+      for (const p of this.partial.values())
+        if (p.sender === sender) {
+          open++;
+          held += p.length;
+        }
+      if (
+        open >= COLLAB_LIMITS.maxPartialMessages ||
+        held + length > COLLAB_LIMITS.maxPartialBytesPerSender ||
+        this.reserved + length > COLLAB_LIMITS.maxPartialBytes
+      )
+        return { error: "too-many-partials" };
       entry = { sender, length, count, parts: new Array<Uint8Array | undefined>(count), got: 0, at: now };
       this.partial.set(key, entry);
+      this.reserved += length;
     }
     if (entry.length !== length || entry.count !== count || entry.parts[index]) {
-      this.partial.delete(key);
+      this.drop(key);
       return { error: "malformed" };
     }
     entry.parts[index] = body.slice();
     entry.got++;
     if (entry.got < count) return { pending: true };
-    this.partial.delete(key);
+    this.drop(key);
     const out = new Uint8Array(length);
     let at = 0;
     for (const part of entry.parts) {
@@ -113,8 +148,12 @@ export class Reassembler {
     return { done: out };
   }
 
-  /** Half-delivered messages held now (bounded by senders × maxPartialMessages). */
+  /** Half-delivered messages held now, and the bytes reserved for them. */
   get pending(): number {
     return this.partial.size;
+  }
+
+  get pendingBytes(): number {
+    return this.reserved;
   }
 }

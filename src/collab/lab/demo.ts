@@ -38,6 +38,7 @@ export function refusalMessage(problem: string): string {
     "key-too-long": "a field name in it was longer than a room accepts",
     "too-deep": "a value in it was nested too deeply",
     "bad-id": "an element id in it wasn't usable",
+    "room-full": "the room is as large as a room can grow",
   };
   return `Your last change wasn't shared and was undone: ${what[problem] ?? problem}. Make it smaller, or export a copy.`;
 }

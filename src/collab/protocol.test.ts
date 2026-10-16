@@ -1,12 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { FakeClock } from "./clock";
 import { COLLAB_LIMITS } from "./limits";
-import { DOC, fragment, frame, Reassembler, unframe } from "./protocol";
-import { seededBytes } from "./random";
+import { DOC, fragment, Reassembler, unframe } from "./protocol";
 
 const SIZE = COLLAB_LIMITS.maxFragmentBytes;
-const message = (n: number) => frame(DOC.syncReply, seededBytes(n)(n - 1));
+const message = (n: number) => big(n);
 const payloads = (m: Uint8Array, id = 1) => fragment(m, id).map((f) => unframe(f)!.payload);
+/** Native comparison: deep equality over megabytes is slow. */
+const same = (r: ReturnType<Reassembler["add"]>, m: Uint8Array) =>
+  "done" in r && Buffer.compare(Buffer.from(r.done), Buffer.from(m)) === 0;
+/** A message of `n` bytes, cheap to make. */
+const big = (n: number) => {
+  const m = new Uint8Array(n);
+  m[0] = DOC.syncReply;
+  for (let i = 1; i < n; i += 4096) m[i] = i & 0xff;
+  return m;
+};
 
 describe("fragments", () => {
   it("splits a large message into full-size parts and puts it back together, in any order", () => {
@@ -18,8 +27,7 @@ describe("fragments", () => {
     const [p0, p1, p2] = parts.map((p) => unframe(p)!.payload);
     expect(r.add("s", p2)).toEqual({ pending: true });
     expect(r.add("s", p0)).toEqual({ pending: true });
-    const done = r.add("s", p1);
-    expect("done" in done && done.done).toEqual(m);
+    expect(same(r.add("s", p1), m)).toBe(true);
     expect(r.pending).toBe(0);
   });
 
@@ -29,8 +37,8 @@ describe("fragments", () => {
     const [pa, pb] = [payloads(a), payloads(b)];
     r.add("x", pa[0]);
     r.add("y", pb[0]);
-    expect(r.add("y", pb[1])).toEqual({ done: b });
-    expect(r.add("x", pa[1])).toEqual({ done: a });
+    expect(same(r.add("y", pb[1]), b)).toBe(true);
+    expect(same(r.add("x", pa[1]), a)).toBe(true);
   });
 
   const tamper = (edit: (v: DataView, body: Uint8Array) => unknown) => {
@@ -66,6 +74,31 @@ describe("fragments", () => {
     const other = payloads(message(SIZE * 3 + 1));
     r.add("s", payloads(message(SIZE * 2 + 1))[0]);
     expect(r.add("s", other[1])).toEqual({ error: "malformed" });
+  });
+
+  it("reserves each message's whole length from its first part, within per-sender and total budgets", () => {
+    const r = new Reassembler(new FakeClock());
+    const first = (n: number, id: number) => payloads(big(n), id)[0];
+    const twenty = 20 * 1024 * 1024;
+    expect(r.add("a", first(twenty, 1))).toEqual({ pending: true });
+    // A second 20 MiB message from the same sender would hold 40 MiB: refused before anything is kept.
+    expect(r.add("a", first(twenty, 2))).toEqual({ error: "too-many-partials" });
+    expect(r.add("b", first(twenty, 1))).toEqual({ pending: true });
+    expect(r.add("c", first(twenty, 1))).toEqual({ pending: true });
+    // 60 MiB reserved: a fourth sender's 20 MiB would pass 64 MiB in total.
+    expect(r.add("d", first(twenty, 1))).toEqual({ error: "too-many-partials" });
+    expect(r.pendingBytes).toBe(3 * twenty);
+  });
+
+  it("releases half-delivered messages on the room clock even when no more fragments arrive", () => {
+    const clock = new FakeClock();
+    const r = new Reassembler(clock);
+    r.add("s", payloads(big(SIZE + 3), 1)[0]);
+    expect(r.pendingBytes).toBe(SIZE + 3);
+    clock.advance(COLLAB_LIMITS.partialTtlMs + 1);
+    r.expire();
+    expect(r.pending).toBe(0);
+    expect(r.pendingBytes).toBe(0);
   });
 
   it("bounds half-delivered messages per sender, and expires them on the room clock", () => {

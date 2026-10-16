@@ -100,7 +100,7 @@ function inspect(update: Uint8Array): GuardResult {
   return { ok: true, structs: structs.length };
 }
 
-export type LocalProblem = "key-too-long" | "string-too-long" | "too-deep" | "too-large" | "bad-id";
+export type LocalProblem = "key-too-long" | "string-too-long" | "too-deep" | "too-large" | "bad-id" | "room-full";
 
 const utf8 = new TextEncoder();
 const VAR = 5; // a varuint of up to 2^35
@@ -125,11 +125,13 @@ export function anyBound(value: unknown): number {
       size += VAR;
       for (const item of v) stack.push(item);
     } else if (v instanceof Uint8Array) size += VAR + v.length;
-    else if (v !== null && typeof v === "object")
+    else if (v !== null && typeof v === "object") {
+      size += VAR; // the key count
       for (const [k, child] of Object.entries(v)) {
         size += VAR + VAR + utf8.encode(k).length;
         stack.push(child);
       }
+    }
   }
   return size + VAR;
 }

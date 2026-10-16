@@ -18,8 +18,21 @@ export const COLLAB_LIMITS = {
   /** Messages one sender may have half-delivered at once, and how long a half-delivered one is kept (room clock). */
   maxPartialMessages: 4,
   partialTtlMs: 30_000,
-  /** A local step's encoded size, bounded from above before it's applied (./guard.ts): half a message. */
-  maxStepBytes: 16 * 1024 * 1024,
+  /** A local step's encoded size, bounded from above before it's applied (./guard.ts). */
+  maxStepBytes: 4 * 1024 * 1024,
+  /**
+   * A soft bound on the room's encoded state: a local step that would take it past this is refused (measured
+   * exactly when the estimate gets close). Concurrent steps can overshoot it; half the message bound leaves room for
+   * several at once, and a sync reply larger than a message is split anyway.
+   */
+  maxRoomBytes: 16 * 1024 * 1024,
+  /** Undo history a session keeps (estimated bytes of its steps, and steps): older steps are dropped and what they
+   *  replaced is garbage collected, so one person's history can't grow the room without bound. */
+  maxHistoryBytes: 8 * 1024 * 1024,
+  maxHistorySteps: 500,
+  /** Bytes of half-delivered messages kept: from one sender, and in total. */
+  maxPartialBytesPerSender: 32 * 1024 * 1024,
+  maxPartialBytes: 64 * 1024 * 1024,
   /** A presence frame (alias, colour, status). */
   maxPresenceFrameBytes: 4 * 1024,
   /** Distinct senders (sessions) a room tracks replay state and presence for. A new sender past this is refused. */
@@ -42,8 +55,9 @@ export const COLLAB_LIMITS = {
   /** Bytes a single sender may deliver per window (a token bucket on the room clock), document frames. */
   senderBytesPerWindow: 64 * 1024 * 1024,
   senderWindowMs: 10_000,
-  /** Bytes of sync replies a session sends one requester per window (the same window). */
-  replyBytesPerWindow: 16 * 1024 * 1024,
+  /** Bytes of sync replies a session sends one requester per window (the same window): two whole messages, so
+   *  any reply part fits once the bucket refills. */
+  replyBytesPerWindow: 64 * 1024 * 1024,
   /** Sync requests a session answers per requester per window: anti-entropy needs about two. */
   syncRequestsPerWindow: 12,
   /** Bytes of received frames waiting to be handled, in total and from one transport peer. */

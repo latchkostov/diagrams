@@ -117,7 +117,8 @@ describe("envelopes", () => {
   it("refuses counters older than the replay window", async () => {
     const { sealer, opener } = await pair();
     const first = await sealer.seal("presence", textToBytes("p"));
-    for (let i = 0; i < COLLAB_LIMITS.replayWindow; i++) await sealer.seal("presence", textToBytes("p"));
+    // Skip ahead a window's worth of counters (sealing a thousand frames only to throw them away is slow).
+    (sealer as unknown as { counters: Record<string, number> }).counters.presence += COLLAB_LIMITS.replayWindow;
     expect(reason(await opener.open(await sealer.seal("presence", textToBytes("p"))))).toBe("ok");
     expect(reason(await opener.open(first))).toBe("stale");
   });
