@@ -191,7 +191,7 @@
       "backlog": 735,
       "processed": 220,
       "decision": { "at": 20040, "raw": 6, "desired": 4, "reason": "policy", "metric": 59.86666666666667, "target": 10, "windowMs": 15000, "nextAt": 25000, "active": true, "cooldownUntil": 40000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Limited by scaling policy",
       "metric": "59.9 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -203,7 +203,7 @@
       "backlog": 779,
       "processed": 236,
       "decision": { "at": 20040, "raw": 6, "desired": 4, "reason": "policy", "metric": 59.86666666666667, "target": 10, "windowMs": 15000, "nextAt": 25000, "active": true, "cooldownUntil": 40000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Limited by scaling policy",
       "metric": "59.9 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -215,7 +215,7 @@
       "backlog": 775,
       "processed": 288,
       "decision": { "at": 20040, "raw": 6, "desired": 4, "reason": "policy", "metric": 59.86666666666667, "target": 10, "windowMs": 15000, "nextAt": 25000, "active": true, "cooldownUntil": 40000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Limited by scaling policy",
       "metric": "59.9 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -227,7 +227,7 @@
       "backlog": 771,
       "processed": 352,
       "decision": { "at": 20040, "raw": 6, "desired": 4, "reason": "policy", "metric": 59.86666666666667, "target": 10, "windowMs": 15000, "nextAt": 25000, "active": true, "cooldownUntil": 40000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Limited by scaling policy",
       "metric": "59.9 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -239,7 +239,7 @@
       "backlog": 767,
       "processed": 416,
       "decision": { "at": 20040, "raw": 6, "desired": 4, "reason": "policy", "metric": 59.86666666666667, "target": 10, "windowMs": 15000, "nextAt": 25000, "active": true, "cooldownUntil": 40000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Limited by scaling policy",
       "metric": "59.9 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -251,7 +251,7 @@
       "backlog": 763,
       "processed": 480,
       "decision": { "at": 20040, "raw": 6, "desired": 4, "reason": "policy", "metric": 59.86666666666667, "target": 10, "windowMs": 15000, "nextAt": 25000, "active": true, "cooldownUntil": 40000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Limited by scaling policy",
       "metric": "59.9 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -263,7 +263,7 @@
       "backlog": 759,
       "processed": 544,
       "decision": { "at": 20040, "raw": 6, "desired": 4, "reason": "policy", "metric": 59.86666666666667, "target": 10, "windowMs": 15000, "nextAt": 25000, "active": true, "cooldownUntil": 40000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Limited by scaling policy",
       "metric": "59.9 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -275,7 +275,7 @@
       "backlog": 755,
       "processed": 608,
       "decision": { "at": 20040, "raw": 6, "desired": 4, "reason": "policy", "metric": 59.86666666666667, "target": 10, "windowMs": 15000, "nextAt": 25000, "active": true, "cooldownUntil": 40000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Limited by scaling policy",
       "metric": "59.9 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -287,7 +287,7 @@
       "backlog": 751,
       "processed": 672,
       "decision": { "at": 20040, "raw": 6, "desired": 4, "reason": "policy", "metric": 59.86666666666667, "target": 10, "windowMs": 15000, "nextAt": 25000, "active": true, "cooldownUntil": 40000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Limited by scaling policy",
       "metric": "59.9 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -299,7 +299,7 @@
       "backlog": 747,
       "processed": 736,
       "decision": { "at": 20040, "raw": 6, "desired": 4, "reason": "policy", "metric": 59.86666666666667, "target": 10, "windowMs": 15000, "nextAt": 25000, "active": true, "cooldownUntil": 40000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Limited by scaling policy",
       "metric": "59.9 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -311,7 +311,7 @@
       "backlog": 743,
       "processed": 800,
       "decision": { "at": 20040, "raw": 6, "desired": 4, "reason": "policy", "metric": 59.86666666666667, "target": 10, "windowMs": 15000, "nextAt": 25000, "active": true, "cooldownUntil": 40000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Limited by scaling policy",
       "metric": "59.9 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -323,7 +323,7 @@
       "backlog": 739,
       "processed": 864,
       "decision": { "at": 20040, "raw": 6, "desired": 4, "reason": "policy", "metric": 59.86666666666667, "target": 10, "windowMs": 15000, "nextAt": 25000, "active": true, "cooldownUntil": 40000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Limited by scaling policy",
       "metric": "59.9 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -335,7 +335,7 @@
       "backlog": 735,
       "processed": 928,
       "decision": { "at": 20040, "raw": 6, "desired": 4, "reason": "policy", "metric": 59.86666666666667, "target": 10, "windowMs": 15000, "nextAt": 25000, "active": true, "cooldownUntil": 40000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Limited by scaling policy",
       "metric": "59.9 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -347,7 +347,7 @@
       "backlog": 731,
       "processed": 992,
       "decision": { "at": 20040, "raw": 6, "desired": 4, "reason": "policy", "metric": 59.86666666666667, "target": 10, "windowMs": 15000, "nextAt": 25000, "active": true, "cooldownUntil": 40000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Limited by scaling policy",
       "metric": "59.9 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -359,7 +359,7 @@
       "backlog": 727,
       "processed": 1056,
       "decision": { "at": 20040, "raw": 6, "desired": 4, "reason": "policy", "metric": 59.86666666666667, "target": 10, "windowMs": 15000, "nextAt": 25000, "active": true, "cooldownUntil": 40000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Limited by scaling policy",
       "metric": "59.9 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -551,7 +551,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 50040, "raw": 5, "desired": 6, "reason": "stabilization", "metric": 40.13333333333333, "target": 10, "windowMs": 15000, "nextAt": 55000, "active": true, "cooldownUntil": 70000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "40.1 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -563,7 +563,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 50040, "raw": 5, "desired": 6, "reason": "stabilization", "metric": 40.13333333333333, "target": 10, "windowMs": 15000, "nextAt": 55000, "active": true, "cooldownUntil": 70000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "40.1 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -575,7 +575,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 50040, "raw": 5, "desired": 6, "reason": "stabilization", "metric": 40.13333333333333, "target": 10, "windowMs": 15000, "nextAt": 55000, "active": true, "cooldownUntil": 70000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "40.1 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -587,7 +587,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 50040, "raw": 5, "desired": 6, "reason": "stabilization", "metric": 40.13333333333333, "target": 10, "windowMs": 15000, "nextAt": 55000, "active": true, "cooldownUntil": 70000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "40.1 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -599,7 +599,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 50040, "raw": 5, "desired": 6, "reason": "stabilization", "metric": 40.13333333333333, "target": 10, "windowMs": 15000, "nextAt": 55000, "active": true, "cooldownUntil": 70000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "40.1 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -611,7 +611,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 50040, "raw": 5, "desired": 6, "reason": "stabilization", "metric": 40.13333333333333, "target": 10, "windowMs": 15000, "nextAt": 55000, "active": true, "cooldownUntil": 70000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "40.1 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -623,7 +623,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 50040, "raw": 5, "desired": 6, "reason": "stabilization", "metric": 40.13333333333333, "target": 10, "windowMs": 15000, "nextAt": 55000, "active": true, "cooldownUntil": 70000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "40.1 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -635,7 +635,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 50040, "raw": 5, "desired": 6, "reason": "stabilization", "metric": 40.13333333333333, "target": 10, "windowMs": 15000, "nextAt": 55000, "active": true, "cooldownUntil": 70000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "40.1 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -647,7 +647,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 50040, "raw": 5, "desired": 6, "reason": "stabilization", "metric": 40.13333333333333, "target": 10, "windowMs": 15000, "nextAt": 55000, "active": true, "cooldownUntil": 70000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "40.1 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -659,7 +659,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 50040, "raw": 5, "desired": 6, "reason": "stabilization", "metric": 40.13333333333333, "target": 10, "windowMs": 15000, "nextAt": 55000, "active": true, "cooldownUntil": 70000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "40.1 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -671,7 +671,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 50040, "raw": 5, "desired": 6, "reason": "stabilization", "metric": 40.13333333333333, "target": 10, "windowMs": 15000, "nextAt": 55000, "active": true, "cooldownUntil": 70000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "40.1 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -683,7 +683,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 50040, "raw": 5, "desired": 6, "reason": "stabilization", "metric": 40.13333333333333, "target": 10, "windowMs": 15000, "nextAt": 55000, "active": true, "cooldownUntil": 70000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "40.1 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -695,7 +695,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 50040, "raw": 5, "desired": 6, "reason": "stabilization", "metric": 40.13333333333333, "target": 10, "windowMs": 15000, "nextAt": 55000, "active": true, "cooldownUntil": 70000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "40.1 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -707,7 +707,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 50040, "raw": 5, "desired": 6, "reason": "stabilization", "metric": 40.13333333333333, "target": 10, "windowMs": 15000, "nextAt": 55000, "active": true, "cooldownUntil": 70000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "40.1 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -719,7 +719,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 50040, "raw": 5, "desired": 6, "reason": "stabilization", "metric": 40.13333333333333, "target": 10, "windowMs": 15000, "nextAt": 55000, "active": true, "cooldownUntil": 70000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "40.1 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -731,7 +731,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 65040, "raw": 1, "desired": 6, "reason": "stabilization", "metric": 0, "target": 10, "windowMs": 15000, "nextAt": 70000, "active": false, "cooldownUntil": 80000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -743,7 +743,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 65040, "raw": 1, "desired": 6, "reason": "stabilization", "metric": 0, "target": 10, "windowMs": 15000, "nextAt": 70000, "active": false, "cooldownUntil": 80000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -755,7 +755,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 65040, "raw": 1, "desired": 6, "reason": "stabilization", "metric": 0, "target": 10, "windowMs": 15000, "nextAt": 70000, "active": false, "cooldownUntil": 80000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -767,7 +767,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 65040, "raw": 1, "desired": 6, "reason": "stabilization", "metric": 0, "target": 10, "windowMs": 15000, "nextAt": 70000, "active": false, "cooldownUntil": 80000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -779,7 +779,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 65040, "raw": 1, "desired": 6, "reason": "stabilization", "metric": 0, "target": 10, "windowMs": 15000, "nextAt": 70000, "active": false, "cooldownUntil": 80000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -791,7 +791,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 65040, "raw": 1, "desired": 6, "reason": "stabilization", "metric": 0, "target": 10, "windowMs": 15000, "nextAt": 70000, "active": false, "cooldownUntil": 80000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -803,7 +803,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 65040, "raw": 1, "desired": 6, "reason": "stabilization", "metric": 0, "target": 10, "windowMs": 15000, "nextAt": 70000, "active": false, "cooldownUntil": 80000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -815,7 +815,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 65040, "raw": 1, "desired": 6, "reason": "stabilization", "metric": 0, "target": 10, "windowMs": 15000, "nextAt": 70000, "active": false, "cooldownUntil": 80000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -827,7 +827,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 65040, "raw": 1, "desired": 6, "reason": "stabilization", "metric": 0, "target": 10, "windowMs": 15000, "nextAt": 70000, "active": false, "cooldownUntil": 80000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -839,7 +839,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 65040, "raw": 1, "desired": 6, "reason": "stabilization", "metric": 0, "target": 10, "windowMs": 15000, "nextAt": 70000, "active": false, "cooldownUntil": 80000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -851,7 +851,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 65040, "raw": 1, "desired": 6, "reason": "stabilization", "metric": 0, "target": 10, "windowMs": 15000, "nextAt": 70000, "active": false, "cooldownUntil": 80000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -863,7 +863,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 65040, "raw": 1, "desired": 6, "reason": "stabilization", "metric": 0, "target": 10, "windowMs": 15000, "nextAt": 70000, "active": false, "cooldownUntil": 80000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -875,7 +875,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 65040, "raw": 1, "desired": 6, "reason": "stabilization", "metric": 0, "target": 10, "windowMs": 15000, "nextAt": 70000, "active": false, "cooldownUntil": 80000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0 HTTP requests/s (target 10 per replica)"
     },
     {
@@ -887,7 +887,7 @@
       "backlog": 0,
       "processed": 2400,
       "decision": { "at": 65040, "raw": 1, "desired": 6, "reason": "stabilization", "metric": 0, "target": 10, "windowMs": 15000, "nextAt": 70000, "active": false, "cooldownUntil": 80000, "pollingMs": 5000, "adapter": "aca", "metricKind": "httpRate" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0 HTTP requests/s (target 10 per replica)"
     },
     {

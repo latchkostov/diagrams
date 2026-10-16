@@ -2007,8 +2007,8 @@ const en = {
   "autoscaling.concurrency": "Concurrency (requests per instance)",
   "autoscaling.concurrencyTarget": "Concurrency target (% of maximum)",
   "autoscaling.instanceCpuTarget": "CPU target (% of instance CPU)",
-  "autoscaling.scaleOutAbove": "Scale out above CPU (% of instance)",
-  "autoscaling.scaleInBelow": "Scale in below CPU (% of instance)",
+  "autoscaling.ruleThreshold":
+    "{rule, select, outCpu {Scale out above CPU (% of instance)} outMemory {Scale out above memory (% of instance)} outQueue {Scale out above queued HTTP requests per instance} inCpu {Scale in below CPU (% of instance)} inMemory {Scale in below memory (% of instance)} inQueue {Scale in below queued HTTP requests per instance} other {Rule threshold}}",
   "autoscaling.stepCpuAbove": "Scale out above CPU (% of task CPU)",
   "autoscaling.metricPeriod": "Metric period (ms)",
   "autoscaling.alarmOut": "Alarm periods to scale out (assumption)",

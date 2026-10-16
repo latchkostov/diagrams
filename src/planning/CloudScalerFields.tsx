@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode, type Ref } from "react";
-import type { CloudController } from "../model/autoscaling";
+import type { CloudController, MonitorRule } from "../model/autoscaling";
 import { brokerChoices, loadBalancerChoices } from "../model/kedaBindings";
 import type { DiagramFile } from "../model/types";
 import type { NodeSimProps } from "../sim/types";
@@ -59,6 +59,13 @@ export function CloudScalerFields({
   const tt = c.kind === "ecs" ? c.targetTracking[0] : undefined;
   const rule = c.kind === "appService" ? c.rules.find((r) => r.direction === "increase") : undefined;
   const inRule = c.kind === "appService" ? c.rules.find((r) => r.direction === "decrease") : undefined;
+  /** A Monitor rule's threshold, named by its metric and the side it acts on. */
+  const ruleLabel = (r: MonitorRule) => {
+    const above = r.operator === "GreaterThan" || r.operator === "GreaterThanOrEqual";
+    const metric = r.metric === "cpu" ? "Cpu" : r.metric === "memory" ? "Memory" : "Queue";
+    const side = r.direction === "increase" ? (above ? "out" : "") : above ? "" : "in";
+    return t("autoscaling.ruleThreshold", { rule: side ? side + metric : "other" });
+  };
 
   const target = (() => {
     const n = (
@@ -100,18 +107,22 @@ export function CloudScalerFields({
         : n("target", t("autoscaling.brokerTarget"), trigger?.target, (next, v) => {
             if (next.kind === "aca") next.triggers[0].target = v;
           });
+    // A policy with only scale-in rules has no scale-out threshold to show.
     if (c.kind === "appService")
-      return n(
-        "target",
-        rule?.metric === "cpu" ? t("autoscaling.scaleOutAbove") : t("autoscaling.scaleOutThreshold"),
-        rule?.threshold,
-        (next, v) => {
-          if (next.kind === "appService") {
-            const r = next.rules.find((x) => x.direction === "increase");
-            if (r) r.threshold = v;
-          }
-        },
-        { min: 0 },
+      return (
+        rule &&
+        n(
+          "target",
+          ruleLabel(rule),
+          rule.threshold,
+          (next, v) => {
+            if (next.kind === "appService") {
+              const r = next.rules.find((x) => x.direction === "increase");
+              if (r) r.threshold = v;
+            }
+          },
+          { min: 0 },
+        )
       );
     if (tt)
       return n(
@@ -245,7 +256,7 @@ export function CloudScalerFields({
         ? [
             number(
               "scaleInBelow",
-              t("autoscaling.scaleInBelow"),
+              ruleLabel(inRule),
               inRule.threshold,
               (n, v) => {
                 const r = n.kind === "appService" ? n.rules.find((x) => x.direction === "decrease") : undefined;

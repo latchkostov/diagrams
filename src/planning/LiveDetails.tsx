@@ -102,14 +102,7 @@ export function LiveDetails({
   const resolved = node ? resolveNodeProps(d, node) : undefined;
   const broker = resolved?.broker;
   // A3 adapters size CPU against the task or instance allocation, so one CPU figure uses that denominator.
-  const res = resolved?.resources;
-  const allocation = res?.cpuLimitMilli ?? res?.availableCpuMilli;
-  const cpuAllocated =
-    resolved?.autoscaling?.mode === "on" && resolved.autoscaling.modelRevision === "a3" && res?.cpuRequestMilli
-      ? allocation
-        ? res.cpuRequestMilli / allocation
-        : undefined
-      : undefined;
+  const cpuAllocated = resolved?.autoscaling?.mode === "on" && resolved.autoscaling.modelRevision === "a3";
   return (
     <>
       {s.resources && s.fleet && <ScalingAnnouncement label={node?.label ?? s.id} fleet={s.fleet} />}

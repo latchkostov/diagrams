@@ -398,7 +398,7 @@
       "backlog": 0,
       "processed": 989,
       "decision": { "at": 35000, "raw": 14, "desired": 19, "reason": "stabilization", "metric": 42.10526315789443, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 40000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "42.1% of allocated CPU (target 60%)"
     },
     {
@@ -410,7 +410,7 @@
       "backlog": 0,
       "processed": 1029,
       "decision": { "at": 35000, "raw": 14, "desired": 19, "reason": "stabilization", "metric": 42.10526315789443, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 40000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "42.1% of allocated CPU (target 60%)"
     },
     {
@@ -422,7 +422,7 @@
       "backlog": 0,
       "processed": 1069,
       "decision": { "at": 35000, "raw": 14, "desired": 19, "reason": "stabilization", "metric": 42.10526315789443, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 40000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "42.1% of allocated CPU (target 60%)"
     },
     {
@@ -434,7 +434,7 @@
       "backlog": 0,
       "processed": 1109,
       "decision": { "at": 35000, "raw": 14, "desired": 19, "reason": "stabilization", "metric": 42.10526315789443, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 40000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "42.1% of allocated CPU (target 60%)"
     },
     {
@@ -446,7 +446,7 @@
       "backlog": 0,
       "processed": 1149,
       "decision": { "at": 35000, "raw": 14, "desired": 19, "reason": "stabilization", "metric": 42.10526315789443, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 40000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "42.1% of allocated CPU (target 60%)"
     },
     {
@@ -458,7 +458,7 @@
       "backlog": 0,
       "processed": 1189,
       "decision": { "at": 40000, "raw": 14, "desired": 19, "reason": "stabilization", "metric": 42.10526315789443, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 45000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "42.1% of allocated CPU (target 60%)"
     },
     {
@@ -470,7 +470,7 @@
       "backlog": 0,
       "processed": 1229,
       "decision": { "at": 40000, "raw": 14, "desired": 19, "reason": "stabilization", "metric": 42.10526315789443, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 45000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "42.1% of allocated CPU (target 60%)"
     },
     {
@@ -482,7 +482,7 @@
       "backlog": 0,
       "processed": 1266,
       "decision": { "at": 40000, "raw": 14, "desired": 19, "reason": "stabilization", "metric": 42.10526315789443, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 45000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "42.1% of allocated CPU (target 60%)"
     },
     {
@@ -494,7 +494,7 @@
       "backlog": 0,
       "processed": 1302,
       "decision": { "at": 40000, "raw": 14, "desired": 19, "reason": "stabilization", "metric": 42.10526315789443, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 45000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "42.1% of allocated CPU (target 60%)"
     },
     {
@@ -506,7 +506,7 @@
       "backlog": 0,
       "processed": 1335,
       "decision": { "at": 40000, "raw": 14, "desired": 19, "reason": "stabilization", "metric": 42.10526315789443, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 45000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "42.1% of allocated CPU (target 60%)"
     },
     {
@@ -518,7 +518,7 @@
       "backlog": 0,
       "processed": 1367,
       "decision": { "at": 45000, "raw": 13, "desired": 14, "reason": "stabilization", "metric": 39.47894736842078, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 50000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "39.5% of allocated CPU (target 60%)"
     },
     {
@@ -530,7 +530,7 @@
       "backlog": 0,
       "processed": 1396,
       "decision": { "at": 45000, "raw": 13, "desired": 14, "reason": "stabilization", "metric": 39.47894736842078, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 50000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "39.5% of allocated CPU (target 60%)"
     },
     {
@@ -542,7 +542,7 @@
       "backlog": 0,
       "processed": 1424,
       "decision": { "at": 45000, "raw": 13, "desired": 14, "reason": "stabilization", "metric": 39.47894736842078, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 50000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "39.5% of allocated CPU (target 60%)"
     },
     {
@@ -554,7 +554,7 @@
       "backlog": 0,
       "processed": 1449,
       "decision": { "at": 45000, "raw": 13, "desired": 14, "reason": "stabilization", "metric": 39.47894736842078, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 50000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "39.5% of allocated CPU (target 60%)"
     },
     {
@@ -566,7 +566,7 @@
       "backlog": 0,
       "processed": 1473,
       "decision": { "at": 45000, "raw": 13, "desired": 14, "reason": "stabilization", "metric": 39.47894736842078, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 50000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "39.5% of allocated CPU (target 60%)"
     },
     {
@@ -578,7 +578,7 @@
       "backlog": 0,
       "processed": 1494,
       "decision": { "at": 50000, "raw": 11, "desired": 14, "reason": "stabilization", "metric": 42.86428571428559, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 55000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "42.9% of allocated CPU (target 60%)"
     },
     {
@@ -590,7 +590,7 @@
       "backlog": 0,
       "processed": 1514,
       "decision": { "at": 50000, "raw": 11, "desired": 14, "reason": "stabilization", "metric": 42.86428571428559, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 55000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "42.9% of allocated CPU (target 60%)"
     },
     {
@@ -602,7 +602,7 @@
       "backlog": 0,
       "processed": 1531,
       "decision": { "at": 50000, "raw": 11, "desired": 14, "reason": "stabilization", "metric": 42.86428571428559, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 55000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "42.9% of allocated CPU (target 60%)"
     },
     {
@@ -614,7 +614,7 @@
       "backlog": 0,
       "processed": 1547,
       "decision": { "at": 50000, "raw": 11, "desired": 14, "reason": "stabilization", "metric": 42.86428571428559, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 55000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "42.9% of allocated CPU (target 60%)"
     },
     {
@@ -626,7 +626,7 @@
       "backlog": 0,
       "processed": 1560,
       "decision": { "at": 50000, "raw": 11, "desired": 14, "reason": "stabilization", "metric": 42.86428571428559, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 55000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "42.9% of allocated CPU (target 60%)"
     },
     {
@@ -638,7 +638,7 @@
       "backlog": 0,
       "processed": 1572,
       "decision": { "at": 55000, "raw": 7, "desired": 13, "reason": "stabilization", "metric": 28.57142857142859, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 60000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "28.6% of allocated CPU (target 60%)"
     },
     {
@@ -650,7 +650,7 @@
       "backlog": 0,
       "processed": 1581,
       "decision": { "at": 55000, "raw": 7, "desired": 13, "reason": "stabilization", "metric": 28.57142857142859, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 60000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "28.6% of allocated CPU (target 60%)"
     },
     {
@@ -662,7 +662,7 @@
       "backlog": 0,
       "processed": 1589,
       "decision": { "at": 55000, "raw": 7, "desired": 13, "reason": "stabilization", "metric": 28.57142857142859, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 60000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "28.6% of allocated CPU (target 60%)"
     },
     {
@@ -674,7 +674,7 @@
       "backlog": 0,
       "processed": 1594,
       "decision": { "at": 55000, "raw": 7, "desired": 13, "reason": "stabilization", "metric": 28.57142857142859, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 60000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "28.6% of allocated CPU (target 60%)"
     },
     {
@@ -686,7 +686,7 @@
       "backlog": 0,
       "processed": 1598,
       "decision": { "at": 55000, "raw": 7, "desired": 13, "reason": "stabilization", "metric": 28.57142857142859, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 60000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "28.6% of allocated CPU (target 60%)"
     },
     {
@@ -698,7 +698,7 @@
       "backlog": 0,
       "processed": 1599,
       "decision": { "at": 60000, "raw": 4, "desired": 11, "reason": "stabilization", "metric": 15.384615384615369, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 65000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "15.4% of allocated CPU (target 60%)"
     },
     {
@@ -710,7 +710,7 @@
       "backlog": 0,
       "processed": 1600,
       "decision": { "at": 60000, "raw": 4, "desired": 11, "reason": "stabilization", "metric": 15.384615384615369, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 65000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "15.4% of allocated CPU (target 60%)"
     },
     {
@@ -722,7 +722,7 @@
       "backlog": 0,
       "processed": 1600,
       "decision": { "at": 60000, "raw": 4, "desired": 11, "reason": "stabilization", "metric": 15.384615384615369, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 65000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "15.4% of allocated CPU (target 60%)"
     },
     {
@@ -734,7 +734,7 @@
       "backlog": 0,
       "processed": 1600,
       "decision": { "at": 60000, "raw": 4, "desired": 11, "reason": "stabilization", "metric": 15.384615384615369, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 65000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "15.4% of allocated CPU (target 60%)"
     },
     {
@@ -746,7 +746,7 @@
       "backlog": 0,
       "processed": 1600,
       "decision": { "at": 60000, "raw": 4, "desired": 11, "reason": "stabilization", "metric": 15.384615384615369, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 65000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "15.4% of allocated CPU (target 60%)"
     },
     {
@@ -758,7 +758,7 @@
       "backlog": 0,
       "processed": 1600,
       "decision": { "at": 65000, "raw": 1, "desired": 7, "reason": "stabilization", "metric": 4.727272727272729, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 70000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "4.7% of allocated CPU (target 60%)"
     },
     {
@@ -770,7 +770,7 @@
       "backlog": 0,
       "processed": 1600,
       "decision": { "at": 65000, "raw": 1, "desired": 7, "reason": "stabilization", "metric": 4.727272727272729, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 70000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "4.7% of allocated CPU (target 60%)"
     },
     {
@@ -782,7 +782,7 @@
       "backlog": 0,
       "processed": 1600,
       "decision": { "at": 65000, "raw": 1, "desired": 7, "reason": "stabilization", "metric": 4.727272727272729, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 70000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "4.7% of allocated CPU (target 60%)"
     },
     {
@@ -794,7 +794,7 @@
       "backlog": 0,
       "processed": 1600,
       "decision": { "at": 65000, "raw": 1, "desired": 7, "reason": "stabilization", "metric": 4.727272727272729, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 70000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "4.7% of allocated CPU (target 60%)"
     },
     {
@@ -806,7 +806,7 @@
       "backlog": 0,
       "processed": 1600,
       "decision": { "at": 65000, "raw": 1, "desired": 7, "reason": "stabilization", "metric": 4.727272727272729, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 70000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "4.7% of allocated CPU (target 60%)"
     },
     {
@@ -818,7 +818,7 @@
       "backlog": 0,
       "processed": 1600,
       "decision": { "at": 70000, "raw": 1, "desired": 4, "reason": "stabilization", "metric": 0.2857142857142857, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 75000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0.3% of allocated CPU (target 60%)"
     },
     {
@@ -830,7 +830,7 @@
       "backlog": 0,
       "processed": 1600,
       "decision": { "at": 70000, "raw": 1, "desired": 4, "reason": "stabilization", "metric": 0.2857142857142857, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 75000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0.3% of allocated CPU (target 60%)"
     },
     {
@@ -842,7 +842,7 @@
       "backlog": 0,
       "processed": 1600,
       "decision": { "at": 70000, "raw": 1, "desired": 4, "reason": "stabilization", "metric": 0.2857142857142857, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 75000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0.3% of allocated CPU (target 60%)"
     },
     {
@@ -854,7 +854,7 @@
       "backlog": 0,
       "processed": 1600,
       "decision": { "at": 70000, "raw": 1, "desired": 4, "reason": "stabilization", "metric": 0.2857142857142857, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 75000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0.3% of allocated CPU (target 60%)"
     },
     {
@@ -866,7 +866,7 @@
       "backlog": 0,
       "processed": 1600,
       "decision": { "at": 70000, "raw": 1, "desired": 4, "reason": "stabilization", "metric": 0.2857142857142857, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 75000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0.3% of allocated CPU (target 60%)"
     },
     {
@@ -1118,7 +1118,7 @@
       "backlog": 0,
       "processed": 1600,
       "decision": { "at": 95000, "raw": 0, "desired": 1, "reason": "stabilization", "metric": 0, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 100000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0% of allocated CPU (target 60%)"
     },
     {
@@ -1130,7 +1130,7 @@
       "backlog": 0,
       "processed": 1600,
       "decision": { "at": 95000, "raw": 0, "desired": 1, "reason": "stabilization", "metric": 0, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 100000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0% of allocated CPU (target 60%)"
     },
     {
@@ -1142,7 +1142,7 @@
       "backlog": 0,
       "processed": 1600,
       "decision": { "at": 95000, "raw": 0, "desired": 1, "reason": "stabilization", "metric": 0, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 100000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0% of allocated CPU (target 60%)"
     },
     {
@@ -1154,7 +1154,7 @@
       "backlog": 0,
       "processed": 1600,
       "decision": { "at": 95000, "raw": 0, "desired": 1, "reason": "stabilization", "metric": 0, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 100000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0% of allocated CPU (target 60%)"
     },
     {
@@ -1166,7 +1166,7 @@
       "backlog": 0,
       "processed": 1600,
       "decision": { "at": 95000, "raw": 0, "desired": 1, "reason": "stabilization", "metric": 0, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 100000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0% of allocated CPU (target 60%)"
     },
     {
@@ -1178,7 +1178,7 @@
       "backlog": 0,
       "processed": 1600,
       "decision": { "at": 100000, "raw": 0, "desired": 1, "reason": "stabilization", "metric": 0, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 105000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0% of allocated CPU (target 60%)"
     },
     {
@@ -1190,7 +1190,7 @@
       "backlog": 0,
       "processed": 1600,
       "decision": { "at": 100000, "raw": 0, "desired": 1, "reason": "stabilization", "metric": 0, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 105000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0% of allocated CPU (target 60%)"
     },
     {
@@ -1202,7 +1202,7 @@
       "backlog": 0,
       "processed": 1600,
       "decision": { "at": 100000, "raw": 0, "desired": 1, "reason": "stabilization", "metric": 0, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 105000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0% of allocated CPU (target 60%)"
     },
     {
@@ -1214,7 +1214,7 @@
       "backlog": 0,
       "processed": 1600,
       "decision": { "at": 100000, "raw": 0, "desired": 1, "reason": "stabilization", "metric": 0, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 105000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0% of allocated CPU (target 60%)"
     },
     {
@@ -1226,7 +1226,7 @@
       "backlog": 0,
       "processed": 1600,
       "decision": { "at": 100000, "raw": 0, "desired": 1, "reason": "stabilization", "metric": 0, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 105000, "adapter": "cloudRun", "metricKind": "cpu" },
-      "reason": "Unknown",
+      "reason": "Keeping the rolling recommendation",
       "metric": "0% of allocated CPU (target 60%)"
     },
     {

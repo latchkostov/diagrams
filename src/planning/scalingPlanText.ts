@@ -106,11 +106,26 @@ export function planFixLabel(p: Plan): string | undefined {
 }
 
 const KEDA_REASONS = ["activation", "inactive", "cooldown", "partitions", "fallback"];
+const CLOUD_REASONS = [
+  "alarm",
+  "step",
+  "rule",
+  "flapping",
+  "request",
+  "default",
+  "cooldown",
+  "target",
+  "tolerance",
+  "missing",
+  "max",
+];
 /** Why, in words: KEDA's own phases, the A3 adapters' alarms/rules/requests, or the HPA pipeline's reasons. */
 export function reasonText(decision: ScalingDecision): string {
   if (KEDA_REASONS.includes(decision.reason) && (!decision.adapter || decision.adapter === "aca"))
     return t("autoscaling.kedaReason", { reason: decision.reason });
-  if (decision.adapter)
+  // The adapters’ own reasons; the HPA pipeline Cloud Run and Container Apps share (stabilization, policy,
+  // override) keeps its own words.
+  if (decision.adapter && CLOUD_REASONS.includes(decision.reason))
     return t("autoscaling.cloudReason", {
       reason: decision.reason,
       periods: decision.periods ?? 0,

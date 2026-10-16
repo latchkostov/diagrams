@@ -66,6 +66,9 @@ export interface ResourceReadout {
   /** All resource values already describe real work, irrespective of dot weight. */
   units: "real";
   cpuRequestPct?: number;
+  /** A3 adapters: CPU as a percent of the task or instance allocation (limit, else what the node has), with or
+   *  without a request. */
+  cpuAllocatedPct?: number;
   memoryRequestPct?: number;
   memoryLimitPct?: number;
   memoryMiB: number;
@@ -687,6 +690,7 @@ export function resourceReadout(
       scale,
     );
   const cpu = metric("cpu");
+  const allocation = r.cpuLimitMilli ?? r.availableCpuMilli;
   const memory =
     r.baselineMemoryMiB +
     (scale > 1
@@ -697,6 +701,7 @@ export function resourceReadout(
   return {
     units: "real",
     cpuRequestPct: cpu !== undefined && r.cpuRequestMilli ? (cpu / r.cpuRequestMilli) * 100 : undefined,
+    ...(f.cloud && cpu !== undefined && allocation ? { cpuAllocatedPct: (cpu / allocation) * 100 } : {}),
     memoryMiB: memory,
     memoryRequestPct: r.memoryRequestMiB ? (memory / r.memoryRequestMiB) * 100 : undefined,
     memoryLimitPct: r.memoryLimitMiB ? (memory / r.memoryLimitMiB) * 100 : undefined,
@@ -704,7 +709,13 @@ export function resourceReadout(
     unsafe,
     estimated: scale > 1,
     ...(unmeasured(r)
-      ? { unmeasured: true as const, cpuRequestPct: undefined, memoryRequestPct: undefined, memoryLimitPct: undefined }
+      ? {
+          unmeasured: true as const,
+          cpuRequestPct: undefined,
+          cpuAllocatedPct: undefined,
+          memoryRequestPct: undefined,
+          memoryLimitPct: undefined,
+        }
       : {}),
   };
 }

@@ -50,8 +50,8 @@ export function ResourceDetails({
   readPage?: (page: number) => ReplicaRow[];
   /** Scenario sizing for the simulation playing: shown right after the counts. */
   scenario?: ReactNode;
-  /** A3 adapters measure CPU against the allocated size: request ÷ allocation converts the request percent. */
-  cpuAllocated?: number;
+  /** A3 adapters measure CPU against the task or instance allocation: show that one figure. */
+  cpuAllocated?: boolean;
 }) {
   const [page, setPage] = useState(0);
   const r = s.resources,
@@ -73,12 +73,12 @@ export function ResourceDetails({
       <p data-testid="autoscaling-counts">{t("autoscaling.counts", f)}</p>
       {scenario}
       <p data-testid="autoscaling-cpu">
-        {cpuAllocated !== undefined
+        {cpuAllocated
           ? t("autoscaling.cpuAllocated", {
               value:
-                r.cpuRequestPct === undefined
+                r.cpuAllocatedPct === undefined
                   ? t("admission.unknownShort")
-                  : formatNumber(r.cpuRequestPct * cpuAllocated, { maximumFractionDigits: 1 }),
+                  : formatNumber(r.cpuAllocatedPct, { maximumFractionDigits: 1 }),
             })
           : t("autoscaling.cpu", {
               value:
