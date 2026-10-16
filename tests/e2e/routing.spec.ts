@@ -21,11 +21,16 @@ const slug = "kafka-order-pipeline";
 /** The routing fixture without any routing: a Kong-style gateway in front of three services. */
 function unrouted(): DiagramFile {
   const d = routingFixture();
-  delete d.planning!.requestRoutes;
-  delete d.nodes[0].props!.trafficMix;
-  delete d.nodes[1].props!.routeTable;
+  d.planning = { revision: "p3-a1" };
+  d.nodes = d.nodes.map((n) => {
+    const props = { ...n.props };
+    delete props.trafficMix;
+    delete props.routeTable;
+    return { ...n, props };
+  });
   return d;
 }
+const props = (d: DiagramFile, id: string) => d.nodes.find((n) => n.id === id)?.props ?? {};
 
 async function seed(page: Page, d: DiagramFile, { dark = false } = {}) {
   await page.setViewportSize({ width: 1280, height: 800 });
@@ -40,7 +45,7 @@ async function seed(page: Page, d: DiagramFile, { dark = false } = {}) {
 }
 
 const table = async (page: Page) =>
-  (await savedDiagram(page)).nodes.find((n) => n.id === "kong")!.props?.routeTable as typeof ROUTING_TABLE | undefined;
+  props(await savedDiagram(page), "kong").routeTable as typeof ROUTING_TABLE | undefined;
 
 test("adds a route table that keeps today's connections, edits a rule, reorders by keyboard and undoes", async ({
   page,
@@ -127,7 +132,7 @@ test("a source's traffic mix: new routes, shares that must add up, Normalize", a
   await expect(page.getByTestId("mix-off")).toHaveCount(0);
   await expect
     .poll(async () => {
-      const mix = (await savedDiagram(page)).nodes.find((n) => n.id === "app")!.props!.trafficMix as {
+      const mix = props(await savedDiagram(page), "app").trafficMix as {
         entries: { routeId: string; share: number }[];
       };
       return mix.entries.map((e) => [e.routeId, Math.round(e.share * 1000) / 1000]);
@@ -137,7 +142,7 @@ test("a source's traffic mix: new routes, shares that must add up, Normalize", a
       ["get-search", 0.625],
     ]);
   // Each new route got its own colour and marker.
-  const routes = (await savedDiagram(page)).planning!.requestRoutes!;
+  const routes = (await savedDiagram(page)).planning?.requestRoutes ?? [];
   expect(routes.map((r) => r.appearance)).toEqual([
     { paletteSlot: 0, marker: "circle" },
     { paletteSlot: 1, marker: "circle" },
@@ -160,7 +165,7 @@ test("deleting a service a rule sends to is refused with a repair that removes i
 test("Live: the Routes legend in words, refusals counted, a traced 404 explained", async ({ page }) => {
   // Only GET /search is sent, and only POST /orders has a rule: every request is refused 404.
   const d = routingFixture({ rate: 10, mix: { mode: "shares", entries: [{ routeId: "search-get", share: 1 }] } });
-  d.nodes[1].props!.routeTable = { ...ROUTING_TABLE, rules: ROUTING_TABLE.rules.slice(0, 1) };
+  d.nodes[1].props = { ...d.nodes[1].props, routeTable: { ...ROUTING_TABLE, rules: ROUTING_TABLE.rules.slice(0, 1) } };
   await seed(page, d);
   await page.clock.install();
   await gotoLive(page, `./?view=canvas&example=${slug}&live=1&paused=1`);
