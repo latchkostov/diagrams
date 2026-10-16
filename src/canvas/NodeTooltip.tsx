@@ -1,7 +1,8 @@
 import { stencilLabel, stencilDescription } from "../i18n/stencils";
 import { useLocale } from "../i18n";
 import { getStencil } from "../stencils/registry";
-import { NODE_TIP_ID } from "./useNodeTooltip";
+import { useSyncExternalStore, type RefObject } from "react";
+import { NODE_TIP_ID, useTipDescribes, type TipStore } from "./useNodeTooltip";
 
 /** Screen-space tooltip for a canvas node: the full label (cards truncate) and what the stencil is. */
 export interface NodeTip {
@@ -35,4 +36,26 @@ export function NodeTooltip({ tip }: { tip: NodeTip }) {
       {stencil.description && <span className="node-tip-desc">{stencilDescription(stencil)}</span>}
     </div>
   );
+}
+
+/**
+ * Draws the tip in `tips` (useNodeTooltip) while `enabled`, and names it as the node's description. Its own component,
+ * subscribed to the tip alone: hovering a node renders this, not the canvas.
+ */
+export function NodeTipLayer({
+  tips,
+  enabled,
+  covered,
+  root,
+}: {
+  tips: TipStore;
+  enabled: boolean;
+  /** A menu is open: the tip isn't drawn (the node stays described by it). */
+  covered: boolean;
+  root: RefObject<HTMLElement | null>;
+}) {
+  const shown = useSyncExternalStore(tips.subscribe, tips.get);
+  const tip = enabled ? shown : null;
+  useTipDescribes(root, tip?.nodeId);
+  return tip && !covered ? <NodeTooltip tip={tip} /> : null;
 }

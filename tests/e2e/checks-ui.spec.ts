@@ -386,10 +386,17 @@ performanceTest("typing a label is as responsive while checks run as with them h
   };
 
   /**
-   * Types `text` a key at a time, each as the last one's check run comes due (the edits paused for the debounce, and
-   * the page went idle): so every key but the first meets a run as it starts. Not a pause in ms: a busy page goes
-   * idle later, and a key typed before then put the run off again (nightly #78: 3 runs for 10 keys). The last key's
-   * run coming due is the sample's end; its main-thread work is included, even if it blocks input.
+   * Types `text` a key at a time. A key's sample runs from the key to its own check run coming due (the edits paused
+   * for the debounce, and the page went idle) and two frames on: the run starts inside it, its main-thread work
+   * included even if it blocks input, and the worker checks while those frames draw. Not a pause in ms: a busy page
+   * goes idle later, and a key typed before then put the run off again (nightly #78: 3 runs for 10 keys).
+   *
+   * The next key waits for that run's result to land, so a sample holds one run's start and no other run's result.
+   * Keys typed as the last run came due put the last result's rendering (the inspector's fix buttons coming back, a
+   * frame of a 1,500-node canvas: about 40 ms here, a cost of showing findings, not of checking) in every running
+   * sample and in no held one; once typing itself got cheaper (perf/1-editing: about 0.25 s a key to 0.1), that
+   * frame alone read as half a key. Checks run on this thread still read as five keys a key (the engine forced off
+   * its worker: 4.8 times the held median, against 1.5; 1.1 to 1.2 with the worker).
    */
   async function phase(held: boolean, text: string) {
     await holdChecks(page, held);
@@ -400,6 +407,9 @@ performanceTest("typing a label is as responsive while checks run as with them h
     for (const ch of text) {
       const due = nextDue();
       samples.push(await work.key(ch, () => due));
+      await expect.poll(async () => (await runStats(page)).started - (await runStats(page)).finished).toBe(0);
+      // ...and its findings have drawn.
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
     }
     const after = await runStats(page);
     return { samples, started: after.started - before.started };

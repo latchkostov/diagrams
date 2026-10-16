@@ -10,6 +10,7 @@ import { nudgeRoutes } from "./nudge";
 import { routeOrthogonal, type SoftLine } from "./orthogonal";
 import { roundedPath, sampleCubic } from "./path";
 import { spreadPorts, type PortEnd } from "./ports";
+import { RectIndex } from "./spatial";
 import { centerOf, inflate, intersects, sideNormal, type Point, type Rect } from "./rect";
 
 export type RouteStyle = "smoothstep" | "bezier" | "straight";
@@ -193,6 +194,8 @@ export class Router {
     const curves = new Map<string, string>();
     const okMap = new Map<string, boolean>();
     this.lastRouted = 0;
+    // Built once, on the first edge that needs a search: each search then reads the obstacles near it only.
+    let index: RectIndex | undefined;
     const seen = new Set<string>();
     for (const e of edges) {
       seen.add(e.id);
@@ -230,6 +233,7 @@ export class Router {
         target: t,
         targetDir: sideNormal[sd.targetSide],
         obstacles,
+        index: (index ??= new RectIndex(obstacles)),
         soft,
         pad: ROUTE_PAD,
       });

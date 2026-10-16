@@ -45,6 +45,8 @@ import {
   type EdgeTypes,
   type OnConnectEnd,
   type OnConnectStart,
+  type OnMove,
+  type OnMoveStart,
   type OnNodeDrag,
   type FitViewOptions,
   type IsValidConnection,
@@ -121,7 +123,7 @@ import { safeStorage } from "../lib/storage";
 import { StartCard, type StartOptions } from "./StartCard";
 import { useAiDock } from "../ai/ui/dock";
 import { motionMs } from "../lib/motion";
-import { NodeTooltip } from "./NodeTooltip";
+import { NodeTipLayer } from "./NodeTooltip";
 import { useNodeTipKeyboard, useNodeTooltip } from "./useNodeTooltip";
 import { FirstRunHint } from "./FirstRunHint";
 import { notify, toast } from "../interop/ui/toast";
@@ -163,6 +165,25 @@ const FIT_PRESENT: FitViewOptions = {
 const MULTI_SELECT_KEYS = ["Shift", "Control", "Meta"];
 /** Editing: a plain drag on empty canvas draws the selection box, so only the middle button pans. */
 const PAN_MIDDLE = [1];
+/**
+ * React Flow copies a prop that changes identity into its store, and a node handler that does re-renders every node's
+ * wrapper: everything handed to <ReactFlow> keeps its identity across the canvas's renders.
+ */
+const SNAP_GRID: [number, number] = [10, 10];
+/** The minimap draws every node again when one of these changes identity (see SNAP_GRID). */
+const MINIMAP_STYLE = { width: 168, height: 112 };
+const minimapFill = (n: FlowNode) =>
+  n.type === "boundary"
+    ? "transparent"
+    : n.type === "annotation"
+      ? annotationMinimapFill(n as AnnotationFlowNode)
+      : getStencil((n as DiagramFlowNode).data.stencil).accent;
+const minimapStroke = (n: FlowNode) =>
+  n.type === "boundary"
+    ? resolveGroupTone((n as GroupFlowNode).data.tone)
+    : n.type === "annotation" && (n as AnnotationFlowNode).data.kind !== "note"
+      ? resolveAnnotationColor((n as AnnotationFlowNode).data.color, (n as AnnotationFlowNode).data.kind).hex
+      : "transparent";
 
 /**
  * The view's zoom as a CSS variable on the canvas (`--rf-zoom`), for sizes that must hold on screen at
@@ -410,7 +431,8 @@ function CanvasInner({
     },
     [dismissHint],
   );
-  const { tip: nodeTip, show: showTip, hide: hideTip } = useNodeTooltip(!live && !readOnly && !presenting && !editing);
+  const tipsEnabled = !live && !readOnly && !presenting && !editing;
+  const { tips: nodeTips, show: showTip, hide: hideTip } = useNodeTooltip(tipsEnabled);
   useNodeTipKeyboard(
     wrapper,
     (id) => {
@@ -419,7 +441,6 @@ function CanvasInner({
         ? { nodeId: n.id, label: n.data.label || n.id, sublabel: n.data.sublabel, stencil: n.data.stencil }
         : null;
     },
-    nodeTip,
     showTip,
     hideTip,
   );
@@ -1688,6 +1709,58 @@ function CanvasInner({
     [openMenu, editor],
   );
 
+  // The handlers below keep their identity across renders (see SNAP_GRID): a new node handler re-renders every node.
+  const onMoveStart: OnMoveStart = useCallback(
+    (e) => {
+      // A pan by hand closes menus; the app's own (a new node brought into view) doesn't: quick-add
+      // opened right after naming the last node must stay open while the view settles.
+      if (e) setMenu(null);
+      hideTip();
+      // A pan or zoom by hand (an event), or by a command such as Shift+0 (no event, and not
+      // our own fit starting), means the view is the user's now, not a fit.
+      if (e || (!fitStarting.current && (firstFit.current || fitEpoch.current > 0))) {
+        interruptFit();
+        showingAll.current = false;
+      }
+      fitStarting.current = null;
+    },
+    [hideTip, interruptFit],
+  );
+  const onMove: OnMove = useCallback(
+    (e) => {
+      // Wheel input can interrupt a running transition without another move-start.
+      // Only actual viewport movement counts; scrolling a panel or embed page does not.
+      if (e) {
+        fitStarting.current = null;
+        interruptFit();
+        showingAll.current = false;
+      }
+    },
+    [interruptFit],
+  );
+  /** The inline edit as of the last render, for the hover handler (which keeps its identity). */
+  const editingNow = useRef(editing);
+  useLayoutEffect(() => {
+    editingNow.current = editing;
+  });
+  const onNodeMouseEnter: NodeMouseHandler<FlowNode> = useCallback(
+    (e, node) => {
+      hovered.current = node.type === "boundary" ? undefined : node.id;
+      if (node.type === "diagram" && !editingNow.current)
+        showTip(e.currentTarget as Element, {
+          nodeId: node.id,
+          label: node.data.label || node.id,
+          sublabel: node.data.sublabel,
+          stencil: node.data.stencil,
+        });
+    },
+    [showTip],
+  );
+  const onNodeMouseLeave: NodeMouseHandler<FlowNode> = useCallback(() => {
+    hovered.current = undefined;
+    hideTip();
+  }, [hideTip]);
+
   /** Double-click on empty canvas: stencil search at the cursor. */
   const onPaneDoubleClick = (e: ReactMouseEvent) => {
     if (readOnly) return;
@@ -2441,42 +2514,10 @@ function CanvasInner({
             onEdgeContextMenu={onEdgeContextMenu}
             onSelectionContextMenu={onSelectionContextMenu}
             onDoubleClick={onPaneDoubleClick}
-            onMoveStart={(e) => {
-              // A pan by hand closes menus; the app's own (a new node brought into view) doesn't: quick-add
-              // opened right after naming the last node must stay open while the view settles.
-              if (e) setMenu(null);
-              hideTip();
-              // A pan or zoom by hand (an event), or by a command such as Shift+0 (no event, and not
-              // our own fit starting), means the view is the user's now, not a fit.
-              if (e || (!fitStarting.current && (firstFit.current || fitEpoch.current > 0))) {
-                interruptFit();
-                showingAll.current = false;
-              }
-              fitStarting.current = null;
-            }}
-            onMove={(e) => {
-              // Wheel input can interrupt a running transition without another move-start.
-              // Only actual viewport movement counts; scrolling a panel or embed page does not.
-              if (e) {
-                fitStarting.current = null;
-                interruptFit();
-                showingAll.current = false;
-              }
-            }}
-            onNodeMouseEnter={(e, node) => {
-              hovered.current = node.type === "boundary" ? undefined : node.id;
-              if (node.type === "diagram" && !editing)
-                showTip(e.currentTarget as Element, {
-                  nodeId: node.id,
-                  label: node.data.label || node.id,
-                  sublabel: node.data.sublabel,
-                  stencil: node.data.stencil,
-                });
-            }}
-            onNodeMouseLeave={() => {
-              hovered.current = undefined;
-              hideTip();
-            }}
+            onMoveStart={onMoveStart}
+            onMove={onMove}
+            onNodeMouseEnter={onNodeMouseEnter}
+            onNodeMouseLeave={onNodeMouseLeave}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             colorMode={theme}
@@ -2485,7 +2526,7 @@ function CanvasInner({
             minZoom={0.15}
             maxZoom={2.5}
             snapToGrid={prefs.snap}
-            snapGrid={[10, 10]}
+            snapGrid={SNAP_GRID}
             elevateNodesOnSelect={false}
             // Space held: a drag pans even from a node, so nodes neither drag nor connect meanwhile.
             nodesDraggable={!readOnly && !spaceHeld}
@@ -2565,28 +2606,13 @@ function CanvasInner({
             {!hideChrome && prefs.minimap && contentCount > 0 && (
               <MiniMap
                 position="bottom-right"
-                style={{ width: 168, height: 112 }}
+                style={MINIMAP_STYLE}
                 pannable
                 zoomable
                 nodeBorderRadius={6}
                 nodeStrokeWidth={2}
-                nodeColor={(n) =>
-                  n.type === "boundary"
-                    ? "transparent"
-                    : n.type === "annotation"
-                      ? annotationMinimapFill(n as AnnotationFlowNode)
-                      : getStencil((n as DiagramFlowNode).data.stencil).accent
-                }
-                nodeStrokeColor={(n) =>
-                  n.type === "boundary"
-                    ? resolveGroupTone((n as GroupFlowNode).data.tone)
-                    : n.type === "annotation" && (n as AnnotationFlowNode).data.kind !== "note"
-                      ? resolveAnnotationColor(
-                          (n as AnnotationFlowNode).data.color,
-                          (n as AnnotationFlowNode).data.kind,
-                        ).hex
-                      : "transparent"
-                }
+                nodeColor={minimapFill}
+                nodeStrokeColor={minimapStroke}
               />
             )}
             {/* Nothing to simulate on a blank canvas: the Live toggle appears with the first node. */}
@@ -2765,7 +2791,7 @@ function CanvasInner({
           {announcement.text}
         </div>
       )}
-      {nodeTip && !menu && <NodeTooltip tip={nodeTip} />}
+      <NodeTipLayer tips={nodeTips} enabled={tipsEnabled} covered={!!menu} root={wrapper} />
     </DiagramContext.Provider>
   );
 }
