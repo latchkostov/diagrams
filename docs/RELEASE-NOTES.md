@@ -44,6 +44,23 @@
   `node/skill/validate.txt` validates the four corpus diagrams; `node/i18n/catalogs.json` adds 117
   messages (routing and the gallery tag), changing only the routing/examples areas. Master's static-page
   translations and all existing non-routing diagram goldens are preserved. See [PARITY.md](PARITY.md#request-routing-r1-what-changed-and-why-2026-10-16).
+## Collaboration C0 browser proof (2026-10-16)
+
+- The Lab's `collab-c0` preset demonstrates three encrypted Yjs clients, concurrent edits,
+  partition recovery, presence and per-person Undo. A separate, explicit public-tracker spike
+  explores WebRTC matchmaking; no backend or production collaboration UI is shipped.
+- Production-build tests exclude collaboration, Yjs and tracker endpoints from every app chunk.
+  Browser tests verify local editing sends no uploads, external requests, sockets or peer traffic;
+  session tests refuse Private diagrams and stop sharing when a copy becomes Private.
+- Replace the flaky dense-rule timing comparison with counted record reads at an eighth input
+  size and the same 24x limit. Deliberate repeated scans fail at 62.09x (schema registry) and
+  58.84x (secret identity); restoring the indexed code passes. Importing collaboration into
+  production also fails the new bundle test.
+- Rebased onto static-page translations (#138), retaining all catalog keys and documentation.
+  Regenerated locale stamps and refreshed the skill release at plugin 1.1.31, exactly one patch
+  above master; the viewer already matched. No existing parity golden changes.
+- C1 still needs decisions on Private-diagram consent wording, permitted public trackers/STUN,
+  TURN service/credentials and connectivity fallback. C0 makes no new Private-sharing promise.
 
 ## Static-page translation review fixes (2026-10-16)
 

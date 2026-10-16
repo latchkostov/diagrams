@@ -163,6 +163,15 @@ const canvasChunk = () => {
 };
 
 describe("production bundle split", () => {
+  it("omits collaboration, Yjs and tracker code from every production chunk", () => {
+    const collab = NOT_AT_STARTUP.filter(([what]) => ["collaboration", "Yjs"].includes(what));
+    expect(found(bundled(chunks), collab)).toEqual([]);
+    for (const c of chunks) {
+      expect(c.code).not.toMatch(/tracker\.(?:webtorrent\.dev|openwebtorrent\.com|btorrent\.xyz)/);
+      expect(c.code).not.toContain("stun:stun.cloudflare.com");
+    }
+  });
+
   it("keeps code that isn't needed for the first view out of the startup JavaScript", () => {
     expect(found(bundled(startup()), NOT_AT_STARTUP)).toEqual([]);
   });

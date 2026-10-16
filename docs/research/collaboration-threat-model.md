@@ -4,7 +4,7 @@ Written **16 October 2026** for collaboration phase C0, the browser proof that
 [collaboration.md](collaboration.md) proposes. It describes what the code in `src/collab/` does and what it does not
 do. C0 is **Lab-only**: the dev server and the e2e build have it behind the Lab's `collab-c0` preset, and a
 production build contains none of it (`canCollaborate()` in `src/lib/localOnly.ts` is false there, and
-`src/lib/bundleSplit.build.test.ts` keeps `src/collab/` and Yjs out of the startup JavaScript). Nothing here is a
+`src/lib/bundleSplit.build.test.ts` keeps `src/collab/`, Yjs and tracker endpoints out of every app chunk). Nothing here is a
 user-facing promise yet. An independent cryptographic review is still needed before any Private-diagram guarantee.
 
 ## Scope and trust boundary

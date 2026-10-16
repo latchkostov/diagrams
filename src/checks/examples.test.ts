@@ -489,12 +489,35 @@ describe("batch 4 rules scale linearly", () => {
     expect(reads).toBeLessThanOrEqual(10 * Math.max(d.groups.length, 1));
   });
 
-  it.each(RULES)("%s stays linear on a diagram made mostly of what it reads", (rule) => {
-    const small = dense(rule, 188);
-    const big = dense(rule, 1_500);
-    expect(runChecks(big, { rules: [rule] }).findings).toHaveLength(1);
-    const ratio = fastest(detect(big, [rule])) / fastest(detect(small, [rule]));
-    expect(ratio, rule).toBeLessThan(24);
+  it.each(RULES)("%s reads linear work on a diagram made mostly of what it reads", (rule) => {
+    const work = (n: number) => {
+      const d = dense(rule, n);
+      let reads = 0;
+      // Count record reads, including through copies and context maps. Repeated node/edge scans
+      // must remain visible even if a rule copies an array before scanning it per topic/service.
+      const counted = <T extends object>(items: T[]) =>
+        items.map(
+          (item) =>
+            new Proxy(item, {
+              get(target, key, receiver) {
+                reads++;
+                return Reflect.get(target, key, receiver) as unknown;
+              },
+            }),
+        );
+      d.nodes = counted(d.nodes);
+      d.edges = counted(d.edges);
+      d.groups = counted(d.groups ?? []);
+      const ctx = buildContext(d);
+      // As with the timing guard, measure the rule alone: shared context construction can
+      // hide its complexity. Its maps retain the counted records.
+      reads = 0;
+      const findings = RULE_BY_ID.get(rule)!.detect(ctx);
+      expect(findings).toHaveLength(1);
+      expect(reads).toBeGreaterThan(0);
+      return reads;
+    };
+    expect(work(195 * GROWTH_FACTOR) / work(195), rule).toBeLessThan(LINEAR_LIMIT);
   });
 });
 
