@@ -281,10 +281,20 @@ export function analyzeCapacity(
   const classes = new Map<string, TrafficClass>();
   // Unrouted documents key classes by their type, as before routing; a routed document keys every class by its
   // whole tuple, so no type, route or router name can collide with another class.
+  // Interned by type, route and sync flag: each distinct class is serialized once per analysis, not per traversal.
+  const interned = new Map<string, Map<CompiledRoute | undefined, [string?, string?]>>();
   const classKey = (type: string, route?: CompiledRoute, sync?: boolean): string => {
     if (!routes) return type;
-    const key = JSON.stringify([type, route?.id ?? null, !!sync]);
-    if (!classes.has(key)) classes.set(key, { type, route, sync });
+    let byRoute = interned.get(type);
+    if (!byRoute) interned.set(type, (byRoute = new Map()));
+    let pair = byRoute.get(route);
+    if (!pair) byRoute.set(route, (pair = []));
+    const slot = sync ? 1 : 0;
+    let key = pair[slot];
+    if (key === undefined) {
+      key = pair[slot] = JSON.stringify([type, route?.id ?? null, !!sync]);
+      classes.set(key, { type, route, sync });
+    }
     return key;
   };
   const classOf = (key: string): TrafficClass => classes.get(key) ?? { type: key };
@@ -503,13 +513,18 @@ export function analyzeCapacity(
         // reports what the quotas would reject (429) from the settled ledger, never cutting demand mid-solve.
         if (decision.requirements.length && decision.forwarded > 0) {
           const routedKey = JSON.stringify([id, route?.id ?? "", decision.action]);
-          const entry = routed.get(routedKey);
-          if (entry) entry.demand.rate += rate * decision.forwarded;
+          const known = routed.get(routedKey);
+          if (known) known.demand.rate += rate * decision.forwarded;
           else
             routed.set(routedKey, {
               router: id,
               route: route?.id ?? "",
-              demand: { node: id, requirements: decision.requirements, rate: rate * decision.forwarded },
+              demand: {
+                requirements: decision.requirements,
+                rate: rate * decision.forwarded,
+                // A managed router charges its rule's buckets with its call, per endpoint (its workload rows below).
+                charged: !!entry.props.admission,
+              },
             });
         }
         decision.eligible.forEach((edge, i) => {
@@ -642,16 +657,23 @@ export function analyzeCapacity(
     list.push(edge);
     incoming.set(edge.to, list);
   }
-  // The share of a traffic class a table router forwards past its table to admission (its decision, cached).
-  const forwardedShare = (id: string, entry: Entry, key: string) => {
-    const c = classOf(key);
-    const decision = decide(id, entry.table!, key, c.type, c.route, !!c.sync);
-    return decision === "legacy" ? 1 : decision.eligible.length ? decision.forwarded : 0;
-  };
-  const forwardedRate = (id: string, entry: Entry, byClass: Map<string, number> | undefined) => {
-    let sum = 0;
-    for (const [key, rate] of byClass ?? []) sum += rate * forwardedShare(id, entry, key);
-    return sum;
+  // A managed table router's admission workload, by endpoint and matched action: what its table forwards from each
+  // connection's traffic classes (no 404s, no deny shares), each row's transaction carrying its rule's buckets.
+  const forwardedRows = (id: string, entry: Entry, endpoint: string | undefined, byClass?: Map<string, number>) => {
+    const rows: { id?: string; rate: number; action?: string; rule?: readonly QuotaRequirement[] }[] = [];
+    for (const [key, rate] of byClass ?? []) {
+      const c = classOf(key);
+      const decision = decide(id, entry.table!, key, c.type, c.route, !!c.sync);
+      if (decision === "legacy") rows.push({ id: endpoint, rate });
+      else if (decision.eligible.length && decision.forwarded > 0)
+        rows.push({
+          id: endpoint,
+          rate: rate * decision.forwarded,
+          action: decision.action,
+          rule: decision.requirements,
+        });
+    }
+    return rows;
   };
   const tableRouter = (entry: Entry) => !!entry.table && entry.role === "gateway";
   const managed = [...entries].flatMap(([id, entry]) =>
@@ -671,17 +693,17 @@ export function analyzeCapacity(
             },
             offered: nodes[id].offered,
             latencyMs: entry.props.latencyMs,
-            endpoints: [
-              ...(incoming.get(id) ?? []).map((e) => ({
-                id: e.endpointId,
-                rate: tableRouter(entry)
-                  ? forwardedRate(id, entry, arrivals.get(id)?.get(e.id))
-                  : (connections[e.id] ?? 0),
-              })),
-              {
-                rate: tableRouter(entry) ? forwardedRate(id, entry, external.get(id)) : total(external.get(id)),
-              },
-            ],
+            endpoints: tableRouter(entry)
+              ? [
+                  ...(incoming.get(id) ?? []).flatMap((e) =>
+                    forwardedRows(id, entry, e.endpointId, arrivals.get(id)?.get(e.id)),
+                  ),
+                  ...forwardedRows(id, entry, undefined, external.get(id)),
+                ]
+              : [
+                  ...(incoming.get(id) ?? []).map((e) => ({ id: e.endpointId, rate: connections[e.id] ?? 0 })),
+                  { rate: total(external.get(id)) },
+                ],
           },
         ]
       : [],

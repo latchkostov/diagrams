@@ -5,6 +5,7 @@ import {
   quotaKey,
   quotaSignature,
   slotsKey,
+  transactionRequirements,
   uniqueRequirements,
   type CompiledCall,
   type Requirement,
@@ -300,7 +301,7 @@ export function attemptAdmission(
   if (!call) return { rejected: "unknown endpoint" };
   if (call.rejected) return { rejected: call.rejected };
   // A route rule's quotas join the node's in one transaction; a shared bucket named at both scopes is charged once.
-  const requirements = extra.length ? uniqueRequirements([...call.requirements, ...extra]) : call.requirements;
+  const requirements = transactionRequirements(call.requirements, extra);
   for (const { key, quota, cost } of requirements) {
     const bucket = bucketAt(state, key, quota, now);
     if (bucket.tokens + 1e-9 < weight * cost) return { rejected: `${quota.id}: ${quota.unit}` };

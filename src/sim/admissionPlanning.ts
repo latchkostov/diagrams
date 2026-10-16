@@ -1,5 +1,5 @@
 import { configureAdmission, emptyAdmission, type AdmissionPolicy } from "./admission";
-import { normalizeCall, slotsKey, type Requirement } from "./admissionPolicy";
+import { normalizeCall, slotsKey, transactionRequirements, type Requirement } from "./admissionPolicy";
 import type { PlanningModel } from "../model/types";
 
 type ManagedEntry = {
@@ -7,15 +7,19 @@ type ManagedEntry = {
   policy: AdmissionPolicy;
   offered: number;
   latencyMs: number;
-  endpoints: { id?: string; rate: number }[];
+  /**
+   * Workload rows: requests per second by endpoint (undefined: no endpoint) and, at a managed table router, by the
+   * matched route action, whose quota buckets join the call's in one transaction (`rule`).
+   */
+  endpoints: { id?: string; rate: number; action?: string; rule?: readonly Requirement[] }[];
 };
 
 /** A router's forwarded requests for one route-table action and the quota buckets they charge (request routing). */
 export interface RoutedDemand {
-  /** The router: when it is managed too, one request's rule and node buckets are one admission transaction. */
-  node?: string;
   requirements: readonly Requirement[];
   rate: number;
+  /** Already charged in a managed router's workload rows (with its call, per endpoint): only its admitted share is read. */
+  charged?: boolean;
 }
 
 /** Common workload multiplier: account and endpoint constraints apply to the same offered workload.
@@ -50,7 +54,6 @@ export function admissionPlan(
     budgets.set(key, budget);
   };
   const byId = new Map(entries.map((entry) => [entry.id, entry]));
-  const paidByCalls = new Map<string, Set<string>>();
   const result = new Map(entries.map((entry) => [entry.id, Infinity]));
   for (const entry of entries) {
     if (entry.policy.invalid) {
@@ -59,23 +62,26 @@ export function admissionPlan(
     }
     // Index declarations once and aggregate repeated targets before interpreting their requirements.
     const endpoints = new Map(entry.policy.endpoints.map((endpoint) => [endpoint.id, endpoint]));
-    const rates = new Map<string | undefined, number>();
-    for (const call of entry.endpoints) if (call.rate > 0) rates.set(call.id, (rates.get(call.id) ?? 0) + call.rate);
+    // Rows by endpoint and matched action: each is one kind of admission transaction.
+    const rows = new Map<string, { id?: string; rate: number; rule: readonly Requirement[] }>();
+    for (const call of entry.endpoints) {
+      if (!(call.rate > 0)) continue;
+      const rowKey = JSON.stringify([call.id ?? null, call.action ?? null]);
+      const row = rows.get(rowKey);
+      if (row) row.rate += call.rate;
+      else rows.set(rowKey, { id: call.id, rate: call.rate, rule: call.rule ?? [] });
+    }
     let seconds = 0;
-    // Buckets every one of this node's calls charges: a routed request through it already pays them.
-    let everyCall: Set<string> | undefined;
-    for (const [id, rate] of rates) {
+    for (const { id, rate, rule } of rows.values()) {
       const endpoint = id === undefined ? undefined : endpoints.get(id);
       const call = normalizeCall(sharedState, entry.id, entry.policy, endpoint);
       if ((id !== undefined && !endpoint) || call.rejected) {
         result.set(entry.id, 0);
         continue;
       }
-      const keys = new Set(call.requirements.map((r) => r.key));
-      everyCall = everyCall ? new Set([...everyCall].filter((key) => keys.has(key))) : keys;
       const latency = call.latencyMs ?? entry.latencyMs;
       seconds += (rate * latency) / 1000;
-      for (const { key, quota, cost } of call.requirements) {
+      for (const { key, quota, cost } of transactionRequirements(call.requirements, rule)) {
         if (cost > (quota.burst ?? quota.amount)) result.set(entry.id, 0);
         add(key, (quota.amount * 1000) / quota.windowMs, rate * cost, entry.id);
       }
@@ -85,18 +91,14 @@ export function admissionPlan(
       }
     }
     const slots = Math.min(entry.policy.slots ?? Infinity, entry.policy.api.maxInFlight ?? Infinity);
-    if (slots === 0 && rates.size) result.set(entry.id, 0);
+    if (slots === 0 && rows.size) result.set(entry.id, 0);
     if (slots < Infinity) add(slotsKey(entry.id), slots, seconds, entry.id);
-    if (everyCall) paidByCalls.set(entry.id, everyCall);
   }
-  // Rule quotas: one charge per forwarded request, deduplicated against the router's own admission transaction
-  // (playback charges the union of its call's and its matched rule's buckets once).
-  for (const { node, requirements, rate } of routed) {
-    const paid = node === undefined ? undefined : paidByCalls.get(node);
-    for (const { key, quota, cost } of requirements)
-      if (!paid?.has(key))
+  // Unmanaged routers' rule quotas: one charge per forwarded request.
+  for (const { requirements, rate, charged } of routed)
+    if (!charged)
+      for (const { key, quota, cost } of requirements)
         add(key, cost > (quota.burst ?? quota.amount) ? 0 : (quota.amount * 1000) / quota.windowMs, rate * cost);
-  }
   for (const budget of budgets.values())
     if (budget.demand > 0)
       for (const id of budget.members) {

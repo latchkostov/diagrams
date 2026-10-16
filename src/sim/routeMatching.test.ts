@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createEngine } from "./engine";
 import { createSimulationRun } from "./simulation";
 import { analyzeCapacity } from "./capacity";
@@ -834,6 +834,89 @@ describe("request routing: analysis follows rule quotas (review round 1)", () =>
     const a = analyzeCapacity(d);
     expect(a.routeDemand!.kong["search-get"].rejected).toBeCloseTo(100);
     expect(a.routeDemand!.gw2["search-get"].throttled).toBeCloseTo(0);
+  });
+
+  /**
+   * A managed gateway whose endpoint A (GET /search) names the shared account and endpoint B (POST /orders) has no
+   * quota; the search rule names the same account too when `onRule` (redundant: every search request comes through A).
+   */
+  const overlap = (onRule: boolean) => {
+    const table = structuredClone(ROUTING_TABLE);
+    if (onRule) table.rules[1].quotas = [limit(100, { sharedGroup: "account" })];
+    const d = routingFixture({ table, rate: 80, mix: searchOnly });
+    d.planning = { ...d.planning!, sharedQuotas: [limit(100, { id: "account" })] };
+    Object.assign(d.nodes[1], {
+      stencil: "aws.api-gateway",
+      props: {
+        ...d.nodes[1].props,
+        api: {},
+        endpoints: [
+          { id: "a", method: "GET", path: "/search", behaviour: { quotas: [limit(100, { sharedGroup: "account" })] } },
+          { id: "b", method: "POST", path: "/orders" },
+        ],
+      },
+    });
+    d.edges[0].props = { ...d.edges[0].props, endpointId: "a" };
+    d.nodes.push({
+      id: "app2",
+      stencil: "client.mobile",
+      label: "Orders app",
+      x: 0,
+      y: 300,
+      props: { ratePerSec: 80, trafficMix: { mode: "shares", entries: [{ routeId: "orders-post", share: 1 }] } },
+    });
+    d.edges.push({ id: "app2-kong", from: "app2", to: "kong", kind: "sync", props: { endpointId: "b" } });
+    expect(validateDiagram(d).ok).toBe(true);
+    return d;
+  };
+
+  it("an endpoint-and-rule shared quota is charged once alongside an unshared endpoint (PR review)", () => {
+    const [plain, redundant] = [overlap(false), overlap(true)];
+    const a = analyzeCapacity(redundant);
+    // 80 req/s through A charge the 100 req/s account once; B's 80 never touch it.
+    expect(a.routeDemand!.kong["search-get"].throttled).toBeCloseTo(0);
+    expect(a.nodes.kong.utilization).toBeLessThanOrEqual(1);
+    const b = analyzeCapacity(plain);
+    expect(a.nodes.kong.capacity).toBeCloseTo(b.nodes.kong.capacity);
+    expect(a.routeDemand!.kong).toEqual(b.routeDemand!.kong);
+    // Playback agrees: nothing rejected, and the redundant reference changes nothing.
+    const play = (d: DiagramFile) => {
+      const e = run(d, 10_000, { drain: true });
+      return {
+        rejected: e.snapshot().nodes.kong.rejected ?? 0,
+        search: delivered(e, "kong-search"),
+        orders: delivered(e, "kong-orders"),
+      };
+    };
+    const played = play(redundant);
+    expect(played.rejected).toBe(0);
+    expect(played.search).toBeGreaterThanOrEqual(799);
+    expect(play(plain)).toEqual(played);
+  });
+
+  it("serializes each traffic class once per analysis, however many passes and hops (PR review)", () => {
+    const d = routingFixture({ mix: searchOnly });
+    // A 200-service chain behind Search, and a feedback edge so the solver iterates.
+    for (let i = 0; i < 200; i++) {
+      d.nodes.push({ id: `c${i}`, stencil: "generic.service", label: `C${i}`, x: 800 + i, y: 0 });
+      d.edges.push({ id: `c${i}-in`, from: i ? `c${i - 1}` : "search", to: `c${i}`, kind: "async" });
+    }
+    d.edges.push({ id: "loop", from: "c199", to: "c0", kind: "async", props: { share: 0.5 } });
+    // Class keys are the (type, route, sync) tuples: count their serializations.
+    const stringify = vi.spyOn(JSON, "stringify");
+    const counted = (() => {
+      try {
+        const a = analyzeCapacity(d);
+        const tuples = stringify.mock.calls.filter(
+          ([value]) => Array.isArray(value) && value.length === 3 && typeof value[2] === "boolean",
+        ).length;
+        return { iterations: a.iterations, tuples };
+      } finally {
+        stringify.mockRestore();
+      }
+    })();
+    expect(counted.iterations).toBeGreaterThan(10);
+    expect(counted.tuples).toBeLessThanOrEqual(4);
   });
 
   /**

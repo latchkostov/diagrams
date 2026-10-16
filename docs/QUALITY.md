@@ -334,3 +334,9 @@ positive-weight target its filters accept, that refusals carry the right reason 
 route, that no route finishes more than it sent, and that the drained run holds nothing. Each seed plays twice
 for determinism, and forty replay from a mid-run checkpoint. Replay one with
 `R1_FUZZ_SEED=12 pnpm exec vitest run src/sim/routing.invariants.test.ts`.
+
+The same file checks shared buckets at a managed router (60 seeds, 1,000 nightly): random endpoints and rules
+name a shared account in random overlaps, and naming it again on a rule whose every request already comes through
+an endpoint that charges it must change nothing, in playback (the gateway's and its route's counts) or in the
+analysis (capacity, utilization, downstream demand). A shared bucket is charged exactly once per admitted request,
+per endpoint and matched action.

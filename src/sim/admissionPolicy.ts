@@ -26,6 +26,17 @@ export interface Requirement {
   quota: Quota;
   cost: number;
 }
+
+/**
+ * One admission transaction's buckets: the call's (node and endpoint) and the matched route rule's, a bucket named at
+ * both scopes charged once. Playback (attemptAdmission) and planning (admissionPlan) compose them here alike.
+ */
+export function transactionRequirements<R extends { key: string }>(
+  call: readonly R[],
+  rule: readonly R[],
+): readonly R[] {
+  return rule.length ? uniqueRequirements([...call, ...rule]) : call;
+}
 export interface CompiledCall {
   rejected?: string;
   requirements: Requirement[];

@@ -3,6 +3,7 @@ import type { DiagramFile } from "../model/types";
 import type { HttpMethod, RequestRoute, RouteMatch, RouteTable, TrafficMix } from "../model/requestRouting";
 import type { NodeSimProps, NodeStatus } from "./types";
 import { createEngine } from "./engine";
+import { analyzeCapacity } from "./capacity";
 import { mulberry32 } from "./rng";
 import { validateDiagram } from "../interop/native";
 import { chooseAction, compileRoutes, compileTable, matchesRequest, compileFilter } from "./routeMatching";
@@ -367,4 +368,140 @@ describe("request routing invariants (seeded)", () => {
       expect(JSON.stringify([e.frame().routes, e.snapshot().nodes]), `seed ${seed}`).toBe(end);
     }
   });
+});
+
+/**
+ * Shared buckets at a managed router (seeded): endpoints and route rules name a shared account in random overlaps.
+ * Naming the account on a rule whose every request already comes through an endpoint that charges it must change
+ * nothing, in playback or in analysis: a shared bucket is charged exactly once per admitted request, per endpoint and
+ * matched action.
+ */
+function generateOverlap(seed: number) {
+  const random = mulberry32(seed * 7919 + 13);
+  const pick = <T>(values: readonly T[]) => values[Math.floor(random() * values.length)];
+  const account = {
+    id: "account",
+    unit: "requests" as const,
+    amount: pick([20, 60, 100, 150]),
+    windowMs: 1000,
+    algorithm: "token-bucket" as const,
+  };
+  const shared = { ...account, sharedGroup: "account" };
+  const endpointCount = 2 + Math.floor(random() * 2);
+  const routeCount = endpointCount + Math.floor(random() * 3);
+  const routes: RequestRoute[] = Array.from({ length: routeCount }, (_, i) => ({
+    id: `r${i}`,
+    address: { method: "GET", path: `/p${i}` },
+    appearance: { paletteSlot: i % 7, marker: "circle" },
+  }));
+  // Every endpoint takes at least one route; each route comes through exactly one endpoint.
+  const endpointOf = routes.map((_, i) => (i < endpointCount ? i : Math.floor(random() * endpointCount)));
+  const charges = Array.from({ length: endpointCount }, () => random() < 0.5);
+  const onRule = routes.map(() => random() < 0.3);
+  const rates = Array.from({ length: endpointCount }, () => 10 + Math.floor(random() * 90));
+  const build = (redundant: boolean): DiagramFile => ({
+    format: "diagrams/v2",
+    planning: { revision: "p3-a1", requestRoutes: routes, sharedQuotas: [account] },
+    title: "Shared buckets",
+    nodes: [
+      ...rates.map((ratePerSec, j) => ({
+        id: `app${j}`,
+        stencil: "client.mobile",
+        label: `App ${j}`,
+        x: 0,
+        y: j * 120,
+        props: {
+          ratePerSec,
+          trafficMix: {
+            mode: "shares" as const,
+            entries: routes
+              .filter((_, i) => endpointOf[i] === j)
+              .map((r, _i, list) => ({ routeId: r.id, share: 1 / list.length })),
+          },
+        },
+      })),
+      {
+        id: "gw",
+        stencil: "aws.api-gateway",
+        label: "Gateway",
+        x: 240,
+        y: 120,
+        props: {
+          latencyMs: 5,
+          jitter: 0,
+          api: {},
+          endpoints: charges.map((charged, j) => ({
+            id: `e${j}`,
+            method: "GET" as const,
+            path: `/e${j}`,
+            ...(charged ? { behaviour: { quotas: [shared] } } : {}),
+          })),
+          routeTable: {
+            rules: routes.map((_, i) => ({
+              id: `rule-${i}`,
+              match: { path: { kind: "exact" as const, value: `/p${i}` } },
+              targets: [{ edgeId: "gw-svc", weight: 1 }],
+              ...(onRule[i] || (redundant && charges[endpointOf[i]]) ? { quotas: [shared] } : {}),
+            })),
+          },
+        },
+      },
+      {
+        id: "svc",
+        stencil: "generic.service",
+        label: "Service",
+        x: 480,
+        y: 120,
+        props: { latencyMs: 5, concurrency: 1000, jitter: 0 },
+      },
+    ],
+    edges: [
+      ...rates.map((_, j) => ({
+        id: `app${j}-gw`,
+        from: `app${j}`,
+        to: "gw",
+        kind: "sync" as const,
+        props: { travelMs: 5, endpointId: `e${j}` },
+      })),
+      { id: "gw-svc", from: "gw", to: "svc", kind: "sync" as const, props: { travelMs: 5 } },
+    ],
+  });
+  return build;
+}
+
+const OVERLAP_SEEDS = only ? [Number(only)] : Array.from({ length: nightly ? 1000 : 60 }, (_, i) => i + 1);
+const rounded = (value: unknown) =>
+  JSON.stringify(value, (_, v: unknown) => (typeof v === "number" ? Math.round(v * 1e6) / 1e6 : v));
+
+describe("shared buckets at a managed router (seeded)", () => {
+  it(
+    `are charged once per admitted request, per endpoint and action, across ${OVERLAP_SEEDS.length} runs`,
+    { timeout: nightly ? 3_600_000 : 120_000 },
+    () => {
+      for (const seed of OVERLAP_SEEDS) {
+        const build = generateOverlap(seed);
+        const variant = (redundant: boolean) => {
+          const d = build(redundant);
+          const valid = validateDiagram(d);
+          if (!valid.ok) throw new Error(`seed ${seed}: generated an invalid diagram: ${valid.error}`);
+          const a = analyzeCapacity(d);
+          const e = createEngine({ seed, traceHistory: 0 });
+          e.load(d);
+          e.setTraffic(true);
+          e.step(5_000);
+          const snap = e.snapshot();
+          return {
+            // The ledger: the gateway's capacity and utilization. (A route's `throttled` reads its own rule's buckets,
+            // so naming the bucket on the rule rightly reports its pressure there.)
+            analysis: rounded([a.nodes.gw.capacity, a.nodes.gw.utilization, a.nodes.svc.offered]),
+            playback: JSON.stringify([snap.nodes.gw, snap.edges["gw-svc"], e.frame().routes]),
+          };
+        };
+        const plain = variant(false);
+        const redundant = variant(true);
+        expect(redundant.analysis, `seed ${seed}: analysis`).toBe(plain.analysis);
+        expect(redundant.playback, `seed ${seed}: playback`).toBe(plain.playback);
+      }
+    },
+  );
 });

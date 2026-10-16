@@ -1105,7 +1105,10 @@ mixes, tables or caller addresses play exactly as before, seed for seed. Researc
   by first match and weights, and demand a table refuses (404) is reported per route and goes no further.
   Rule rate limits are admission limits like a managed node's: the analysis carries offered demand on and charges
   each matched action's forwarded share (deny targets excluded, as playback blocks them before admission) to the
-  same steady-state ledger as node and endpoint quotas, so a shared quota is one budget wherever it's named. What
+  same steady-state ledger as node and endpoint quotas, so a shared quota is one budget wherever it's named. At a
+  managed router the workload is kept by incoming endpoint and matched action, and each row's transaction is its
+  call's buckets and its rule's, a bucket named at both charged once (`transactionRequirements`, which playback's
+  admission uses too). What
   the ledger can't admit is reported as `throttled` (429) on the route; a bucket that can't hold one request admits
   nothing. Serial limits each report against the offered demand. Nothing in the solve depends on a quota, so it
   settles in the same passes as without one. `routeDemand` gives offered, refused and throttled requests/s per
