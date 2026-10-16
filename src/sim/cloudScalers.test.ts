@@ -85,9 +85,10 @@ describe("ECS target tracking", () => {
     expect(decisions[1]).toMatchObject({ reason: "alarm", periods: 2, desired: 2 });
     expect(decisions[2]).toMatchObject({ reason: "target", metric: 1200, target: 1000, desired: 3 });
   });
-  it("lets a larger scale-out through its cooldown without compounding, and blocks shrink in scale-in cooldown", () => {
+  it("sizes from the running tasks the metric averages, counts tasks still starting, and blocks shrink in scale-in cooldown", () => {
     const c = ecs((c) => {
       c.metricPeriodMs = 60_000;
+      c.maxReplicas = 20;
       c.alarm = { outPeriods: 1, inPeriods: 1, inMargin: 0.1 };
       c.targetTracking = [
         { ...c.targetTracking[0], metric: "albRequestCountPerTarget", target: 1000, source: { node: "lb" } },
@@ -98,23 +99,27 @@ describe("ECS target tracking", () => {
     resetCloud(f, c, 0, "worker", quietReads(routed));
     let total = 0,
       last = 0;
-    // perTarget requests per running task per minute since the previous evaluation.
-    const minute = (perTarget: number, at: number) => {
-      total += (perTarget * f.ready * (at - last)) / 60_000;
+    // perTarget requests per running task per minute since the previous evaluation, with `running` tasks ready.
+    const minute = (perTarget: number, at: number, running = f.desired) => {
+      f.ready = running;
+      total += (perTarget * running * (at - last)) / 60_000;
       last = at;
       routed.set("lb", total);
-      return run(f, c, at, quietReads(routed));
+      f.nextSync = at;
+      const d = evaluateCloud(f, c, r, at, quietReads(routed), "worker", 1, 1, 4)!;
+      f.desired = d.desired;
+      return d;
     };
     expect(minute(1200, 60_000)).toMatchObject({ desired: 3, reason: "target" });
-    // Still in the 300 s scale-out cooldown at the same pressure: computed from its starting capacity, no growth.
-    expect(minute(1200 * (2 / 3), 120_000)).toMatchObject({ desired: 3 });
-    // A larger scale-out is admitted during the cooldown.
-    expect(minute(2000, 180_000)).toMatchObject({ desired: 4, reason: "target" });
+    // The third task is still starting, at the same pressure on the two running: counted, not added again.
+    expect(minute(1200, 120_000, 2)).toMatchObject({ desired: 3 });
+    // Once it runs, 6,000 requests a minute is 2,000 per task: six tasks, inside the 300 s cooldown.
+    expect(minute(2000, 180_000, 3)).toMatchObject({ desired: 6, reason: "target", metric: 2000 });
     // Load falls away: scale in once, then the scale-in cooldown blocks a second shrink.
-    expect(minute(400, 600_000)).toMatchObject({ desired: 2, reason: "target" });
-    expect(minute(100, 660_000)).toMatchObject({ desired: 2, reason: "cooldown" });
+    expect(minute(400, 600_000)).toMatchObject({ desired: 3, reason: "target" });
+    expect(minute(100, 660_000)).toMatchObject({ desired: 3, reason: "cooldown" });
     // A scale-out during the scale-in cooldown happens immediately.
-    expect(minute(5000, 720_000)).toMatchObject({ desired: 10, reason: "target" });
+    expect(minute(5000, 720_000)).toMatchObject({ desired: 15, reason: "target" });
   });
   it("never scales in on missing data and cannot wake from zero on a per-task metric", () => {
     const c = ecs((c) =>
@@ -312,6 +317,27 @@ describe("ECS bindings and units", () => {
       }),
     ).toThrow(/ALB/);
   });
+  it("counts a load balancer whose id is an Object.prototype key like any other", () => {
+    const desired = (lb: string) => {
+      const d = cloudFixture("ecs-alb");
+      const rename = (id: string) => (id === "lb" ? lb : id);
+      d.nodes = d.nodes.map((n) => ({ ...n, id: rename(n.id) }));
+      d.edges = d.edges.map((e) => ({ ...e, from: rename(e.from), to: rename(e.to) }));
+      const c = (d.nodes.find((n) => n.id === "worker")!.props!.autoscaling as { controller: EcsController })
+        .controller;
+      Object.assign(c, { metricPeriodMs: 1000, alarm: { outPeriods: 1, inPeriods: 1, inMargin: 0.1 } });
+      c.targetTracking[0] = { ...c.targetTracking[0], target: 600, source: { node: lb } };
+      const e = createEngine({ seed: 1 });
+      e.load(d);
+      for (let second = 0; second < 10; second++) {
+        e.inject("source", 60);
+        e.step(1000);
+      }
+      return e.frame().nodes.worker.fleet!.desired;
+    };
+    expect(desired("lb")).toBeGreaterThan(1);
+    expect(desired("__proto__")).toBe(desired("lb"));
+  });
   it("needs the task's CPU size for CPU utilisation", () => {
     expect(autoscalingProblem({ ...r, cpuLimitMilli: undefined }, cloudLesson("ecs-cpu"))).toMatch(/task/);
     expect(autoscalingProblem(r, cloudLesson("ecs-cpu"))).toBeUndefined();
@@ -426,12 +452,14 @@ describe("cloud adapters in the engine", () => {
     e.step(20_000);
     expect(e.frame().nodes.worker).toMatchObject({ processed: 200, fleet: { desired: 0, ready: 0 } });
   });
-  it("Container Apps HTTP wakes on a request, scales 1 → 4 → 8 on its 15 s sync, and keeps the 300 s final-zero cooldown", () => {
+  it("Container Apps HTTP wakes on a request and scales 1 → 4 → 8 → 16 on its 15 s sync", () => {
     const d = cloudFixture("aca-http");
-    d.nodes[0].props!.ratePerSec = 200;
+    d.nodes[0].props!.ratePerSec = 20;
     (d.nodes[1].props!.resources as { startup: { delayMs: number } }).startup.delayMs = 0;
     Object.assign(d.nodes[1].props!, { latencyMs: 10, concurrency: 1000 });
-    (d.nodes[1].props!.autoscaling as { controller: { maxReplicas: number } }).controller.maxReplicas = 30;
+    const a = d.nodes[1].props!.autoscaling as { controller: AcaController };
+    a.controller.maxReplicas = 30;
+    a.controller.http = { concurrentRequests: 1 };
     const e = createEngine();
     e.load(d);
     e.setTraffic(true);
@@ -442,16 +470,27 @@ describe("cloud adapters in the engine", () => {
       e.step(15_000);
       desired.push(e.frame().nodes.worker.fleet!.desired);
     }
-    // 200 req/s over a target of 10 asks for 20: documented steps 1, 4, 8, 16, then the target.
+    // 20 req/s over a target of 1 asks for 20: documented steps 1, 4, 8, 16, then the target.
     expect(desired).toEqual([4, 8, 16, 20]);
     const http = e.frame().nodes.worker.fleet!.decision!;
-    expect(http).toMatchObject({ metricKind: "httpRate", target: 10 });
-    expect(http.metric).toBeCloseTo(200, 0);
-    e.setNodeProps("source", { ratePerSec: 0 });
-    e.step(240_000);
-    expect(e.frame().nodes.worker.fleet!.desired).toBeGreaterThan(0);
-    e.step(120_000);
-    expect(e.frame().nodes.worker.fleet!.desired).toBe(0);
+    expect(http).toMatchObject({ metricKind: "httpRate", target: 1 });
+    expect(http.metric).toBeCloseTo(20, 0);
+  });
+  it("Container Apps keeps its replicas until the 300 s final-zero cooldown expires", () => {
+    const c = structuredClone(cloudLesson("aca-http").controller) as AcaController;
+    expect(c.cooldownMs).toBe(300_000);
+    const f = createFleet(8, 15_000);
+    resetCloud(f, c, 0, "worker", quietReads());
+    // The last request arrived at 1 s; no arrivals since.
+    f.keda!.lastActive = 1000;
+    const poll = (now: number) => {
+      f.nextSync = now;
+      f.keda!.nextPoll = now;
+      evaluateCloud(f, c, r, now, quietReads(), "worker", 1, 1, 4);
+      return f.decision!;
+    };
+    expect(poll(300_990).desired).toBeGreaterThan(0);
+    expect(poll(301_000)).toMatchObject({ desired: 0, reason: "inactive" });
   });
   it("Container Apps event rules wake only on their own poll", () => {
     const d = cloudFixture("aca-event");
@@ -601,24 +640,69 @@ describe("bounded per-tick adapter work", () => {
 
 describe("A3 playback determinism", () => {
   const showcase = () => structuredClone(timetable as DiagramFile);
-  it("replays the same decisions after a checkpoint restore", () => {
+  it("restores alarm progress, cooldowns and decisions from a checkpoint taken mid-activity", () => {
+    // Short periods, so the checkpoint lands after real decisions with alarms counting and cooldowns running.
+    const shorten = (c: CloudController) => {
+      if (c.kind === "ecs") {
+        Object.assign(c, { metricPeriodMs: 1000, alarm: { outPeriods: 2, inPeriods: 3, inMargin: 0.1 } });
+        c.targetTracking = c.targetTracking.map((p) => ({ ...p, scaleOutCooldownMs: 8000, scaleInCooldownMs: 8000 }));
+      } else if (c.kind === "appService") {
+        c.evaluationMs = 1000;
+        // The workload holds four requests per instance: about 64% CPU at saturation.
+        c.rules = c.rules.map((rule) => ({
+          ...rule,
+          windowMs: 2000,
+          cooldownMs: 8000,
+          threshold: rule.direction === "increase" ? 50 : rule.threshold,
+        }));
+      } else if (c.kind === "cloudRun")
+        Object.assign(c, {
+          evaluationMs: 1000,
+          cpuWindowMs: 2000,
+          concurrencyWindowsMs: [2000, 4000],
+          scaleInDelayMs: 4000,
+        });
+      else if (c.kind === "aca") {
+        Object.assign(c, { pollingMs: 1000, cooldownMs: 8000 });
+        c.settings.down = { ...c.settings.down, stabilizationMs: 3000 };
+      }
+    };
     for (const preset of ["ecs-alb", "aca-http", "app-service", "cloud-run"] as const) {
       const d = cloudFixture(preset);
-      d.nodes[0].props = { ratePerSec: 60 };
-      const sim = { id: "s", title: "S", seed: 3, durationMs: 120_000, traffic: [] };
+      d.nodes[0].props = { ratePerSec: 150 };
+      const worker = d.nodes.find((n) => n.id === "worker")!;
+      shorten((worker.props!.autoscaling as { controller: CloudController }).controller);
+      (worker.props!.resources as { startup: { delayMs: number } }).startup.delayMs = 1000;
+      const sim = {
+        id: "s",
+        title: "S",
+        seed: 3,
+        durationMs: 120_000,
+        traffic: [],
+        // Load falls away just before the checkpoint: it lands with scale-in alarms counting.
+        timeline: [{ atMs: 18_500, action: { do: "props" as const, node: "source", props: { ratePerSec: 5 } } }],
+      };
       const run = createSimulationRun(d, sim);
       run.engine.setTraffic(true);
       run.step(20_000);
+      const before = run.engine.fleet("worker")!;
+      expect(before.decision, preset).toBeDefined();
       const cp = run.checkpoint();
       const trace = () => {
         const out: unknown[] = [];
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < 30; i++) {
           run.step(1000);
-          out.push(run.engine.fleet("worker"));
+          const f = run.engine.fleet("worker")!;
+          out.push(structuredClone({ desired: f.desired, ready: f.ready, decision: f.decision }));
         }
         return out;
       };
       const first = trace();
+      const reasons = new Set(first.map((x) => (x as { decision?: { reason: string } }).decision?.reason));
+      // The count moves during the replay: the restored controller had state to carry.
+      const counts = [before.desired, ...first.map((x) => (x as { desired: number }).desired)];
+      expect(Math.min(...counts), preset).toBeLessThan(Math.max(...counts));
+      expect(reasons.size, preset).toBeGreaterThan(1);
       run.restore(cp);
       expect(trace(), preset).toEqual(first);
     }

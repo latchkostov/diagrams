@@ -34,8 +34,8 @@ export interface CloudReads {
 }
 export interface EcsState {
   kind: "ecs";
-  /** Cumulative routed requests per load balancer at the previous period's end. */
-  routed: Record<string, number>;
+  /** Cumulative routed requests per load balancer at the previous period's end (a Map: node ids are untrusted). */
+  routed: Map<string, number>;
   /** When those counts were read: a rate divides by the actual span, never less than one period. */
   routedAt: number;
   /** Consecutive periods over / under each target-tracking policy's alarm thresholds. */
@@ -60,9 +60,9 @@ export function resetCloud(f: Fleet, c: CloudController, now: number, node: stri
     resetKeda(f, acaPipeline(c, node), now);
   } else if (c.kind === "ecs") {
     const policies = c.targetTracking.length + c.stepScaling.length;
-    const routed: Record<string, number> = {};
+    const routed = new Map<string, number>();
     for (const p of [...c.targetTracking, ...c.stepScaling])
-      if (p.source) routed[p.source.node] = reads.routed(p.source.node) ?? 0;
+      if (p.source) routed.set(p.source.node, reads.routed(p.source.node) ?? 0);
     f.cloud = {
       kind: "ecs",
       routed,
@@ -476,8 +476,8 @@ function evaluateEcs(
   for (const p of [...c.targetTracking, ...c.stepScaling])
     if (p.source && !routed.has(p.source.node)) {
       const now = reads.routed(p.source.node);
-      routed.set(p.source.node, now === undefined ? undefined : now - (s.routed[p.source.node] ?? 0));
-      if (now !== undefined) s.routed[p.source.node] = now;
+      routed.set(p.source.node, now === undefined ? undefined : now - (s.routed.get(p.source.node) ?? 0));
+      if (now !== undefined) s.routed.set(p.source.node, now);
     }
   const value = (metric: EcsMetric, source?: { node: string }): number | undefined => {
     if (metric === "albRequestCount" || metric === "albRequestCountPerTarget") {
@@ -523,9 +523,9 @@ function evaluateEcs(
     }
     s.out[i] = v > p.target ? s.out[i] + 1 : 0;
     s.in[i] = v < p.target * (1 - c.alarm.inMargin) ? s.in[i] + 1 : 0;
-    // During a scale-out cooldown, capacity it already added is part of the next desired count, not added again.
-    const base = cooling(i)?.base ?? f.desired;
-    const wanted = Math.ceil((base * v) / p.target);
+    // The metric is averaged over the running tasks, so it asks for running × metric ÷ target. Tasks a scale-out
+    // (or its cooldown) added that are still starting count in the desired count it's compared with, not again.
+    const wanted = Math.ceil((f.ready * v) / p.target);
     if (s.out[i] >= c.alarm.outPeriods && wanted > f.desired)
       outs.push({ k: i, capacity: wanted, metric: v, target: p.target, kind: p.metric, step: false });
     else if (s.out[i] > 0 && s.out[i] < c.alarm.outPeriods)
