@@ -176,6 +176,25 @@ test("an inspector focus request waits for its selected node's field", async ({ 
   expectNoErrors(consoleErrors);
 });
 
+test("live inspector naming preserves edits to the active saved simulation", async ({ page, consoleErrors }) => {
+  // This uses the public saved run; do not load the naming fixture first.
+  await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1&sim=black-friday&paused=1`);
+  await page.getByTestId("live-more").click();
+  await page.getByTestId("live-edit-sims").click();
+  await page.getByTestId("sim-panel-title").fill("Unsaved saved-run edit");
+  await expect(page.getByTestId("sim-panel-dirty")).toBeVisible();
+  await waitForStableViewport(page);
+  await page.getByTestId("node-shopper").dblclick();
+  await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await page.getByTestId("live-more").click();
+  await page.getByTestId("live-edit-sims").click();
+  await expect(page.getByTestId("sim-panel-title")).toHaveValue("Unsaved saved-run edit");
+  await expect(page.getByTestId("sim-panel-dirty")).toBeVisible();
+  await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
+  expectNoErrors(consoleErrors);
+});
+
 test.describe("renaming in the inspector", () => {
   test.beforeEach(async ({ page }) => seed(page));
 
@@ -582,26 +601,6 @@ test.describe("renaming in the inspector", () => {
     await page.getByTestId("live-edit-sims").click();
     await expect(page.getByTestId("sim-panel-title")).toHaveValue("Unsaved run");
     await expect(page.getByTestId("sim-panel-dirty")).toBeVisible();
-    expectNoErrors(consoleErrors);
-  });
-
-  test("live inspector naming preserves edits to the active saved simulation", async ({ page, consoleErrors }) => {
-    // Use the public example's saved run rather than this suite's text-field fixture.
-    await page.evaluate((key) => localStorage.removeItem(key), STORAGE_KEYS.autosavePrefix + SLUG);
-    await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1&sim=black-friday&paused=1`);
-    await page.getByTestId("live-more").click();
-    await page.getByTestId("live-edit-sims").click();
-    await page.getByTestId("sim-panel-title").fill("Unsaved saved-run edit");
-    await expect(page.getByTestId("sim-panel-dirty")).toBeVisible();
-    await waitForStableViewport(page);
-    await page.getByTestId("node-shopper").dblclick();
-    await expect(page.getByTestId("inspector-field-label")).toBeFocused();
-    await page.keyboard.press("Enter");
-    await page.getByTestId("live-more").click();
-    await page.getByTestId("live-edit-sims").click();
-    await expect(page.getByTestId("sim-panel-title")).toHaveValue("Unsaved saved-run edit");
-    await expect(page.getByTestId("sim-panel-dirty")).toBeVisible();
-    await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
     expectNoErrors(consoleErrors);
   });
 

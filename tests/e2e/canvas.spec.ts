@@ -96,8 +96,14 @@ test.describe("canvas", () => {
       const file = info.outputPath(`${phase}.json`);
       await download.saveAs(file);
       expect(JSON.parse(readFileSync(file, "utf8"))).toEqual(normalized(exportFixture));
+      // The download starts before the lazy export notification is ready. Finish that
+      // operation before importing, so its late toast cannot replace the import's.
+      await expect(page.getByTestId("toast")).toContainText("Exported");
       if (phase === "first") {
+        const previous = await page.getByTestId("example-picker").getAttribute("data-diagram-slug");
+        if (!previous) throw new Error("Expected the exported document's slug");
         await page.getByTestId("import-input").setInputFiles(file);
+        await expect(page.getByTestId("example-picker")).not.toHaveAttribute("data-diagram-slug", previous);
         await expect(page.getByTestId("toast")).toContainText("Imported");
       } else if (phase === "imported") {
         await page.reload();

@@ -20,6 +20,16 @@ import {
 
 const KAFKA = "kafka-order-pipeline";
 
+test("Escape still leaves live when an earlier handler commits a host render", async ({ page }) => {
+  await gotoLab(page, "live-keyboard");
+  await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
+  await page.getByTestId("live-keyboard-arm").click();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("live-keyboard-host")).toHaveAttribute("data-revision", "1");
+  await expect(page.getByTestId("live-controls")).toHaveCount(0);
+  await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "false");
+});
+
 for (const presenting of [false, true]) {
   test(`Enter continues a waiting narration with a selected node (${presenting ? "presenting" : "live"})`, async ({
     page,
@@ -187,6 +197,7 @@ test.describe("live view", () => {
   });
 
   test("Start a storm here creates a simulation that persists across reload", async ({ page, consoleErrors }) => {
+    test.slow(); // Two complete live page loads, including cold dev modules after reload.
     await gotoLive(page, "./?view=canvas&example=azure-service-bus-integration&live=1&traffic=0");
     await openNodeMenu(page, "ingest", "sim.storm");
 
@@ -219,7 +230,7 @@ test.describe("live view", () => {
       )
       .toBe(true);
     await page.reload();
-    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
     await expect(page.getByTestId("live-sim-picker")).toContainText("Month-end storm");
     expectNoErrors(consoleErrors);
   });

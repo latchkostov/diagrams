@@ -59,8 +59,8 @@ async function measure(page: Page) {
   });
 }
 
-/** Each audit runs in this many tests (every PARTS-th fixture), so the shards' workers share them. */
-const PARTS = 8;
+/** One full page load per audit: four cold dev navigations exhausted the test before its last measurement. */
+const PARTS = publicExamples.length;
 const part = (i: number) => publicExamples.filter((_, j) => j % PARTS === i);
 const parts = Array.from({ length: PARTS }, (_, i) => i);
 
@@ -88,7 +88,6 @@ for (const theme of ["light", "dark"] as const) {
         for (const { slug } of part(k)) {
           await page.goto(`./?view=canvas&example=${encodeURIComponent(slug)}`);
           await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
-          if ((await page.getByTestId(/^node-(?!editor)/).count()) === 0) continue;
           await settle(page);
           const { nodes, labels, panels } = await measure(page);
           const tag = slug;
