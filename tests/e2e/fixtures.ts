@@ -237,8 +237,28 @@ export function waitForStableViewport(page: Page) {
  * can leave one there.
  */
 export async function fitDiagram(page: Page) {
+  await waitForStableViewport(page);
+  await page.getByTestId("canvas-wrap").focus();
   await page.keyboard.press("Shift+Digit1");
   await waitForStableViewport(page);
+}
+
+/** A real uncovered point on the canvas, even after a side sheet changes its width. */
+export async function emptyCanvasPoint(page: Page, dx = 0) {
+  await waitForStableViewport(page);
+  return page.getByTestId("canvas-wrap").evaluate((wrap, dx) => {
+    const box = wrap.getBoundingClientRect();
+    const flow = wrap.querySelector('[data-testid="rf__wrapper"]');
+    const xs = [box.width / 2 + dx, box.width / 2, box.width - 24, 24, box.width / 4, box.width * 0.75];
+    const ys = [90, 160, 200, box.height * 0.4, box.height * 0.6, box.height - 180];
+    for (const y of ys)
+      for (const x of xs) {
+        if (x < 16 || x > box.width - 16 || y < 16 || y > box.height - 16) continue;
+        const hit = document.elementFromPoint(box.x + x, box.y + y)?.closest("[data-testid]");
+        if (hit === flow || hit === wrap) return { x, y };
+      }
+    throw new Error("Expected an uncovered canvas point");
+  }, dx);
 }
 
 /** The canvas viewport's CSS transform (React Flow's pan and zoom). */

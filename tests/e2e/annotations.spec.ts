@@ -1,7 +1,16 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, gotoLab, expectNoErrors, STORAGE_KEYS, waitForStableBox } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  gotoLab,
+  expectNoErrors,
+  STORAGE_KEYS,
+  waitForStableBox,
+  emptyCanvasPoint,
+} from "./fixtures";
 
 // Annotations: free text, sticky notes, zones and shapes. Documentation only, never simulated.
 // Selectors are data-testid only.
@@ -19,8 +28,7 @@ async function box(locator: Locator) {
 
 /** An empty spot on the pane: top-centre of the canvas (fit view keeps it clear). */
 async function emptySpot(page: Page, dx = 0) {
-  const b = await box(page.getByTestId("canvas-wrap"));
-  return { x: b.width / 2 + dx, y: 90 };
+  return emptyCanvasPoint(page, dx);
 }
 
 /** Waits for the opening fit to finish (a viewport move closes any open menu). */

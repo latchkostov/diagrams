@@ -1,6 +1,6 @@
 import { savedDiagram } from "./fixtures";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, waitForStableViewport, STORAGE_KEYS } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, waitForStableViewport, fitDiagram, STORAGE_KEYS } from "./fixtures";
 import { callTool, installFakeModelContext, must, nodeCount, openAdvanced, toolNames } from "./ai-helpers";
 
 // Undo and the selection (docs/UX-PRINCIPLES.md): Undo selects what the undone step changed, as it was
@@ -108,6 +108,8 @@ const expectSelected = (page: Page, ids: string[]) => expect.poll(() => selected
 
 async function selectNodes(page: Page, ids: string[]) {
   await page.getByTestId(`node-${ids[0]}`).click();
+  await expect(page.getByTestId("inspector-title")).toBeVisible();
+  await fitDiagram(page);
   for (const id of ids.slice(1)) await page.getByTestId(`node-${id}`).click({ modifiers: [MOD] });
   await expect(page.getByTestId("inspector-title")).toHaveText(ids.length > 1 ? `${ids.length} selected` : /.+/);
 }

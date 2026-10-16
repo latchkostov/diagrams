@@ -1,10 +1,51 @@
 import type { Page } from "@playwright/test";
 import { sheetRoutingFixture } from "../../src/lab/routingFixture";
-import { test, expect, gotoCanvas, gotoLive, waitForStableViewport, STORAGE_KEYS, savedDiagram } from "./fixtures";
+import { textFieldsFixture } from "../../src/lab/textFieldsFixture";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  gotoLive,
+  waitForStableViewport,
+  pauseClock,
+  STORAGE_KEYS,
+  savedDiagram,
+} from "./fixtures";
 
 const key = "diagrams.inspector.width.v1";
 const width = (page: Page) => page.getByTestId("inspector").evaluate((el) => el.getBoundingClientRect().width);
 const stored = (page: Page) => page.evaluate((key) => localStorage.getItem(key), key);
+
+test("a pointer release stays unsettled until its deferred reveal, preserving a note's double-click", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
+    key: STORAGE_KEYS.autosavePrefix + "kafka-order-pipeline",
+    diagram: textFieldsFixture,
+  });
+  await gotoCanvas(page, "kafka-order-pipeline");
+  await waitForStableViewport(page);
+  await page.clock.install();
+  await pauseClock(page);
+  const note = page.getByTestId("annotation-n1");
+  await note.click();
+  await expect(note).toHaveClass(/is-selected/);
+  await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
+  await note.dblclick();
+  await expect(page.getByTestId("annotation-editor")).toBeFocused();
+  await page.clock.runFor(32);
+  await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
+  await page.getByTestId("annotation-editor").fill("Updated note");
+  await page.keyboard.press("Escape");
+  await page.getByTestId("canvas-wrap").focus();
+  await page.keyboard.press("Escape");
+  await page.clock.runFor(32); // Escape clears selection after React Flow's handler.
+  await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
+  await page.getByTestId("undo-button").click();
+  // A toolbar command is not a diagram gesture: reveal its selection without advancing the clock.
+  await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
+});
 
 async function open(page: Page, viewport = 1920, live = false, simulation?: string) {
   await page.setViewportSize({ width: viewport, height: 1000 });

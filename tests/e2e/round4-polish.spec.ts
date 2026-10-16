@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, gotoGallery, gotoLab, waitForStableBox } from "./fixtures";
+import { test, expect, gotoCanvas, gotoGallery, gotoLab, waitForStableBox, emptyCanvasPoint } from "./fixtures";
 
 // UX gate 4 follow-ups (docs/DESIGN-REVIEW.md, round 4, "P2 moved to the backlog"). Selectors are
 // data-testid only.
@@ -42,10 +42,9 @@ const contains = (outer: Box, inner: Box) =>
 
 /** Right-clicks the empty top-centre strip of the pane (fit view keeps it clear) until the menu opens. */
 async function openCanvasMenu(page: Page) {
-  const wrap = await box(page.getByTestId("canvas-wrap"));
   // Retried: a fit animation still running when the page opens closes a menu as it appears.
   await expect(async () => {
-    await page.getByTestId("canvas-wrap").click({ button: "right", position: { x: wrap.width / 2, y: 90 } });
+    await page.getByTestId("canvas-wrap").click({ button: "right", position: await emptyCanvasPoint(page) });
     await expect(page.getByTestId("context-menu")).toBeVisible({ timeout: 1000 });
   }).toPass();
 }

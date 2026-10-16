@@ -2038,18 +2038,39 @@ function CanvasInner({
   useEffect(() => {
     const wrap = wrapper.current;
     if (!editGestures || !wrap) return;
+    let generation = 0;
+    let frame = 0;
+    let timer = 0;
+    let release = () => {};
+    const cancel = () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
     const hold = (e: MouseEvent) => {
       if (e.button !== 0) return;
+      // Toolbar commands and text controls are not diagram gestures. Their selection changes
+      // must remain immediate (Undo can select nodes before a subsequent palette command).
+      if (e.target instanceof Element && e.target.closest("button, input, textarea, select, [contenteditable=true]"))
+        return;
+      const press = ++generation;
+      cancel();
+      release();
       pointerHeld.current = true;
       const up = () => {
-        pointerHeld.current = false;
+        release();
         // After the drop has painted: the inspector opening is its own frame, not the pointer-up's.
-        requestAnimationFrame(() =>
-          setTimeout(() => {
-            // A new drag may have begun before the previous drop's frame gets to run.
-            if (!pointerHeld.current) setSettledEmpty(latestEmpty.current);
-          }, 0),
-        );
+        // Keep the interaction unsettled until then: a selection render after pointer-up must not
+        // bypass this boundary and move a double-click's target between its two clicks.
+        frame = requestAnimationFrame(() => {
+          timer = window.setTimeout(() => {
+            if (press !== generation) return;
+            pointerHeld.current = false;
+            setSettledEmpty(latestEmpty.current);
+          }, 0);
+          frame = 0;
+        });
+      };
+      release = () => {
         window.removeEventListener("pointerup", up, true);
         window.removeEventListener("pointercancel", up, true);
       };
@@ -2057,7 +2078,13 @@ function CanvasInner({
       window.addEventListener("pointercancel", up, true);
     };
     wrap.addEventListener("mousedown", hold, true);
-    return () => wrap.removeEventListener("mousedown", hold, true);
+    return () => {
+      generation++;
+      cancel();
+      release();
+      pointerHeld.current = false;
+      wrap.removeEventListener("mousedown", hold, true);
+    };
   }, [editGestures]);
   const inspectorHidden =
     livePanelOpen ||

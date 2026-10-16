@@ -322,6 +322,14 @@
   ownership. Operation-count and Live-camera regressions fail with those review fixes removed.
   The focused handle keeps its arrow keys during slow motion and resets with Enter without also
   continuing a waiting narration; both keyboard regressions fail with the exclusions removed.
+- A pointer release now stays unsettled through the existing deferred sheet reveal. An intervening
+  selection render cannot open the sheet and move a note between its two clicks; a later press
+  cancels the earlier reveal. The fake-clock regression and native note-editing regression both
+  fail when the previous release behavior is restored. Toolbar commands and text controls keep
+  immediate selection updates; the fake-clock regression also checks Undo without advancing time.
+  Existing test flows now fit off-pane targets,
+  hit-test empty canvas points and settle their viewport baselines, retaining all behavioral assertions
+  and the editor's existing no-zoom selection policy.
 - Route Match and Send to columns already divide the available width proportionally. Send to now
   displays the full target list instead of an unconditional `+1`; both columns retain full-value
   titles when space still runs out. The Lab includes a longer-path routing preview. The AI panel

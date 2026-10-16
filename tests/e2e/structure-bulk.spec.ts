@@ -252,6 +252,8 @@ test.describe("bulk edit and Select similar (D11)", () => {
     await seed(page);
     const selectThree = async () => {
       await page.getByTestId("node-api").click();
+      await expect(page.getByTestId("inspector-title")).toHaveText("Node");
+      await fitDiagram(page);
       await page.getByTestId("node-worker").click({ modifiers: [MOD] });
       await page.getByTestId("node-carrier").click({ modifiers: [MOD] });
       await expect(page.getByTestId("inspector-title")).toHaveText("3 selected");
