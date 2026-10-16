@@ -43,9 +43,9 @@
     { "simulation": "quiet-sunday", "title": "A quiet Sunday", "traffic": 1, "horizonMs": 30000, "suggestions": [], "status": "planned", "runs": 1, "ticks": 3000 }
   ],
   "english": [
-    "In “Overnight, then the morning rush”, Cloud Run hits max 6 at 100% CPU (target 60% CPU). Raise max to 11. A same-seed rerun verified it. Up to 198 messages waited while replicas started."
+    "In “Overnight, then the morning rush”, Cloud Run hits its maximum of 6 at 100% CPU (target 60% CPU). Up to 198 messages waited while instances started. Raise the maximum to 11. A rerun with this change confirmed it."
   ],
   "shown": [
-    "In “Overnight, then the morning rush”, Cloud Run hits its maximum of 6 at CPU 100% of its size (target 60%). Raise the maximum to 11. A same-seed rerun verified it. Up to 198 messages waited while replicas started."
+    "In “Overnight, then the morning rush”, Cloud Run hits its maximum of 6 at 100% of allocated CPU (target 60%). Up to 198 messages waited while instances started. Raise the maximum to 11. A rerun with this change confirmed it."
   ]
 }

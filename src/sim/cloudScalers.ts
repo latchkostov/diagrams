@@ -162,8 +162,7 @@ export function onDemand(
     desired,
     reason: wanted > range.max ? "max" : "request",
     adapter: c.kind,
-    metricKind: "concurrency",
-    metric: waiting,
+    // Waiting requests, not a target metric: the reason says so; no percent is implied.
     nextAt: f.nextSync,
   });
 }
@@ -316,6 +315,43 @@ function monitorCapacity(rule: MonitorRule, current: number): number {
     rule.changeType === "ChangeCount" ? rule.value : Math.max(1, Math.ceil((current * rule.value) / 100) || 0);
   return rule.direction === "increase" ? current + change : Math.max(0, current - change);
 }
+/**
+ * The fewest instances in [floor, current) at which no scale-out rule would fire on its projected per-instance
+ * value (`value × current / n`), or undefined when every count flaps. Each rule bounds n on one side, so this is
+ * an interval intersection: constant work in the instance count, at most ten rules.
+ */
+export function leastWithoutFlapping(
+  rules: readonly MonitorRule[],
+  values: readonly (number | undefined)[],
+  current: number,
+  floor: number,
+): number | undefined {
+  let low = Math.max(1, floor),
+    high = current - 1;
+  rules.forEach((rule, i) => {
+    const v = values[i];
+    if (rule.direction !== "increase" || v === undefined) return;
+    const load = v * current;
+    if (rule.operator === "GreaterThan" || rule.operator === "GreaterThanOrEqual") {
+      // Safe when load / n stays at or under (strictly under, for ≥) the threshold.
+      if (rule.threshold <= 0) {
+        if (load > 0 || rule.operator === "GreaterThanOrEqual") high = -1;
+        return;
+      }
+      const bound = load / rule.threshold;
+      low = Math.max(low, rule.operator === "GreaterThan" ? Math.ceil(bound) : Math.floor(bound) + 1);
+    } else {
+      // Safe when load / n stays at or over (strictly over, for ≤) the threshold.
+      if (rule.threshold <= 0) {
+        if (rule.operator === "LessThanOrEqual" && load <= 0) high = -1;
+        return;
+      }
+      const bound = load / rule.threshold;
+      high = Math.min(high, rule.operator === "LessThan" ? Math.floor(bound) : Math.ceil(bound) - 1);
+    }
+  });
+  return low <= high ? low : undefined;
+}
 function evaluateAppService(
   f: Fleet,
   c: AppServiceController,
@@ -390,17 +426,9 @@ function evaluateAppService(
     },
     { capacity: -1, i: ins[0].i },
   );
-  const floor = Math.max(range.min, Math.min(target.capacity, f.desired));
-  for (let n = floor; n < f.desired; n++) {
-    const flaps = c.rules.some(
-      (rule, i) =>
-        rule.direction === "increase" &&
-        values[i] !== undefined &&
-        n > 0 &&
-        compareMonitor(rule.operator, (values[i]! * f.desired) / n, rule.threshold),
-    );
-    if (!flaps) return decide(n, "rule", target.i, target.capacity);
-  }
+  if (target.capacity >= f.desired) return decide(f.desired, "tolerance", watch < 0 ? undefined : watch);
+  const n = leastWithoutFlapping(c.rules, values, f.desired, Math.max(range.min, target.capacity, 1));
+  if (n !== undefined) return decide(n, "rule", target.i, target.capacity);
   return decide(f.desired, "flapping", target.i, target.capacity);
 }
 

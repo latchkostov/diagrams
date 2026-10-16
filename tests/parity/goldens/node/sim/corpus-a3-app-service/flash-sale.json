@@ -1,0 +1,313 @@
+{
+  "run": {
+    "time": 150000,
+    "totalMs": 150000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "sale" },
+      { "atMs": 60000, "kind": "traffic", "label": "sale ends" }
+    ]
+  },
+  "checkpoints": [
+    { "atMs": 0, "inSystem": 0, "nodes": { "source": { "replicas": [1, 1, 0] }, "worker": { "replicas": [1, 1, 0] } } },
+    {
+      "atMs": 10000,
+      "inSystem": 244,
+      "nodes": {
+        "source": { "processed": 400, "throughput": 39.79914400525013, "replicas": [1, 1, 0] },
+        "worker": { "processed": 156, "backlog": 239, "inFlight": 4, "throughput": 15.109055219394019, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 356,
+      "nodes": {
+        "source": { "processed": 800, "throughput": 39.800996511280545, "replicas": [1, 1, 0] },
+        "worker": { "processed": 444, "backlog": 347, "inFlight": 8, "throughput": 33.097031043963675, "replicas": [2, 2, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 388,
+      "nodes": {
+        "source": { "processed": 1200, "throughput": 39.80099659538419, "replicas": [1, 1, 0] },
+        "worker": { "processed": 812, "backlog": 375, "inFlight": 12, "throughput": 50.20037264570934, "replicas": [3, 3, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 308,
+      "nodes": {
+        "source": { "processed": 1600, "throughput": 39.80099659538794, "replicas": [1, 1, 0] },
+        "worker": { "processed": 1292, "backlog": 295, "inFlight": 12, "throughput": 51.096157495514284, "replicas": [3, 3, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 100,
+      "nodes": {
+        "source": { "processed": 2000, "throughput": 39.80099659538794, "replicas": [1, 1, 0] },
+        "worker": { "processed": 1900, "backlog": 83, "inFlight": 16, "throughput": 69.08329320000182, "replicas": [4, 4, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 11,
+      "nodes": {
+        "source": { "processed": 2400, "throughput": 39.80099659538794, "replicas": [1, 1, 0] },
+        "worker": { "processed": 2389, "inFlight": 10, "throughput": 39.856349346934714, "replicas": [5, 5, 0] }
+      }
+    },
+    {
+      "atMs": 70000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 2400, "throughput": 0.0018525901378798567, "replicas": [1, 1, 0] },
+        "worker": { "processed": 2400, "throughput": 0.002381285834775167, "replicas": [5, 5, 0] }
+      }
+    },
+    {
+      "atMs": 80000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 2400, "throughput": 8.410746213842236e-8, "replicas": [1, 1, 0] },
+        "worker": { "processed": 2400, "throughput": 1.0811020964319852e-7, "replicas": [4, 4, 0] }
+      }
+    },
+    {
+      "atMs": 90000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 2400, "throughput": 3.818472873585435e-12, "replicas": [1, 1, 0] },
+        "worker": { "processed": 2400, "throughput": 4.908195924408985e-12, "replicas": [4, 4, 0] }
+      }
+    },
+    {
+      "atMs": 100000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 2400, "throughput": 1.733584002607416e-16, "replicas": [1, 1, 0] },
+        "worker": { "processed": 2400, "throughput": 2.228317502286941e-16, "replicas": [3, 3, 0] }
+      }
+    },
+    {
+      "atMs": 110000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 2400, "throughput": 7.870459195574848e-21, "replicas": [1, 1, 0] },
+        "worker": { "processed": 2400, "throughput": 1.0116545809234792e-20, "replicas": [3, 3, 0] }
+      }
+    },
+    {
+      "atMs": 120000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 2400, "throughput": 3.5731829467762056e-25, "replicas": [1, 1, 0] },
+        "worker": { "processed": 2400, "throughput": 4.592904691782451e-25, "replicas": [2, 2, 0] }
+      }
+    },
+    {
+      "atMs": 130000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 2400, "throughput": 1.6222225481215668e-29, "replicas": [1, 1, 0] },
+        "worker": { "processed": 2400, "throughput": 2.085175504127215e-29, "replicas": [2, 2, 0] }
+      }
+    },
+    {
+      "atMs": 140000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 2400, "throughput": 7.364878974384236e-34, "replicas": [1, 1, 0] },
+        "worker": { "processed": 2400, "throughput": 9.466682142983448e-34, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 150000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 2400, "throughput": 3.34364988146264e-38, "replicas": [1, 1, 0] },
+        "worker": { "processed": 2400, "throughput": 4.2978670437524113e-38, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 150000,
+    "inSystem": 0,
+    "real": {
+      "source": { "processed": 2400, "throughput": 3.34364988146264e-38, "replicas": [1, 1, 0] },
+      "worker": { "processed": 2400, "throughput": 4.2978670437524113e-38, "replicas": [1, 1, 0] }
+    },
+    "edges": { "requests": 2400 }
+  },
+  "events": {
+    "total": 9600,
+    "byKind": { "inject": 2400, "process": 4800, "deliver": 2400 },
+    "byNode": { "source": { "inject": 2400, "process": 2400 }, "worker": { "deliver": 2400, "process": 2400 } },
+    "perSecond": [
+      "04f2e14ef4d3",
+      "35d655664a40",
+      "3da16a32fe16",
+      "f80ff717c91d",
+      "fd438ca89222",
+      "295263c1127a",
+      "9679d2cd0b74",
+      "5588c755b19e",
+      "c6e13c935632",
+      "bd68cb00e31b",
+      "87b275caac08",
+      "38a5810de6cf",
+      "d7cb92628ed0",
+      "08e3a999bcf7",
+      "419d3c4c93af",
+      "a23779bdbbed",
+      "11645bef7243",
+      "bb5a1915d37f",
+      "be00c15e97b9",
+      "08b020847843",
+      "389a0524ac48",
+      "5e48bbef3a6a",
+      "60adaed56485",
+      "c1b2fea008c3",
+      "1bd93249f6b5",
+      "6b4412bb37b3",
+      "c5d2a9f3e769",
+      "6ba01cbab90c",
+      "637ba5a03130",
+      "0a7369fda0c5",
+      "a7d0276bdbbe",
+      "3be96eff97dd",
+      "08918eadae32",
+      "7e87485b0e61",
+      "bd40813a72c7",
+      "6e3453db6f15",
+      "f3a0ba74fdc1",
+      "9c55e26dfde0",
+      "b90014f698ba",
+      "cc867f07bf1c",
+      "aa541b5279a6",
+      "f2a552981fc2",
+      "b4c37574da12",
+      "582a15792647",
+      "17e9a951a857",
+      "537a143b5c0f",
+      "d20002fb2fe0",
+      "fa82dbf8e06f",
+      "cc10334c9d63",
+      "61e4b614c918",
+      "864b001a602a",
+      "c2b52458f829",
+      "b8c9ef4039c5",
+      "6252e64de527",
+      "9671acf632eb",
+      "09b3af944656",
+      "eec758d0c079",
+      "c6cbe801d031",
+      "dd5b5fda898b",
+      "611f9222db19",
+      "5823ce5fb251",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 1120, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 1120, "min": 260, "mean": 3380.4553571428573, "p50": 2520, "p90": 8220, "max": 10250 },
+    "waitMs": {
+      "worker": { "count": 1120, "min": 0, "mean": 3120.4553571428573, "p50": 2260, "p90": 7960, "max": 9990 }
+    },
+    "processMs": { "worker": { "count": 1120, "min": 250, "mean": 250, "p50": 250, "p90": 250, "max": 250 } }
+  }
+}

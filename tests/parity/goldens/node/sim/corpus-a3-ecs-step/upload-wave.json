@@ -1,0 +1,223 @@
+{
+  "run": {
+    "time": 100000,
+    "totalMs": 100000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "wave" },
+      { "atMs": 40000, "kind": "traffic", "label": "wave ends" },
+      { "atMs": 40000, "kind": "traffic", "label": "trickle" },
+      { "atMs": 100000, "kind": "traffic", "label": "trickle ends" }
+    ]
+  },
+  "checkpoints": [
+    { "atMs": 0, "inSystem": 0, "nodes": { "source": { "replicas": [1, 1, 0] }, "worker": { "replicas": [1, 1, 0] } } },
+    {
+      "atMs": 10000,
+      "inSystem": 96,
+      "nodes": {
+        "source": { "processed": 300, "throughput": 29.749580719191012, "replicas": [1, 1, 0] },
+        "worker": { "processed": 204, "backlog": 87, "inFlight": 8, "throughput": 32.55516371796002, "replicas": [2, 2, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 28,
+      "nodes": {
+        "source": { "processed": 600, "throughput": 29.750976975754092, "replicas": [1, 1, 0] },
+        "worker": { "processed": 572, "backlog": 15, "inFlight": 12, "throughput": 50.54915522875311, "replicas": [3, 3, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 8,
+      "nodes": {
+        "source": { "processed": 900, "throughput": 29.75097703914406, "replicas": [1, 1, 0] },
+        "worker": { "processed": 892, "inFlight": 7, "throughput": 30.25394683729815, "replicas": [3, 3, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 8,
+      "nodes": {
+        "source": { "processed": 1200, "throughput": 29.750977039146896, "replicas": [1, 1, 0] },
+        "worker": { "processed": 1192, "inFlight": 7, "throughput": 30.251022990274272, "replicas": [3, 3, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 1220, "throughput": 1.5505076663320525, "replicas": [1, 1, 0] },
+        "worker": { "processed": 1219, "throughput": 1.9908912523455755, "replicas": [3, 3, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 1240, "throughput": 1.549227367003258, "replicas": [1, 1, 0] },
+        "worker": { "processed": 1239, "throughput": 1.9892473154604084, "replicas": [2, 2, 0] }
+      }
+    },
+    {
+      "atMs": 70000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 1260, "throughput": 1.5492273088777577, "replicas": [1, 1, 0] },
+        "worker": { "processed": 1259, "throughput": 1.9892472408257889, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 80000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 1280, "throughput": 1.5492273088751207, "replicas": [1, 1, 0] },
+        "worker": { "processed": 1279, "throughput": 1.989247240822402, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 90000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 1300, "throughput": 1.5492273088751207, "replicas": [1, 1, 0] },
+        "worker": { "processed": 1299, "throughput": 1.989247240822402, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 100000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 1320, "throughput": 1.5492273088751207, "replicas": [1, 1, 0] },
+        "worker": { "processed": 1319, "throughput": 1.989247240822402, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 100000,
+    "inSystem": 1,
+    "real": {
+      "source": { "processed": 1320, "throughput": 1.5492273088751207, "replicas": [1, 1, 0] },
+      "worker": { "processed": 1319, "throughput": 1.989247240822402, "replicas": [1, 1, 0] }
+    },
+    "edges": { "requests": 1319 }
+  },
+  "events": {
+    "total": 5278,
+    "byKind": { "inject": 1320, "process": 2639, "deliver": 1319 },
+    "byNode": { "source": { "inject": 1320, "process": 1320 }, "worker": { "deliver": 1319, "process": 1319 } },
+    "perSecond": [
+      "f58f9685cb10",
+      "e0f2f0e469f7",
+      "2533ec646352",
+      "f482ad9f4125",
+      "bc9a27f35e8c",
+      "d1bf7c0d3a8c",
+      "bc3dc64287f2",
+      "32523f62fa28",
+      "9ae56e98e748",
+      "97863b5e0d27",
+      "f1bfe7451974",
+      "136071ae6182",
+      "f34ab149ab07",
+      "0af3e4a1e865",
+      "904a51423ead",
+      "ab6df71873b9",
+      "d9a571e69f8d",
+      "e601d82bccb5",
+      "51c972b956b9",
+      "a0f50b50e181",
+      "a9e32344d84a",
+      "54874c0b7cda",
+      "3672b1835a7f",
+      "f9b7da270d89",
+      "44723a8c7f5b",
+      "645aba953e0a",
+      "0170fc1fc981",
+      "2b7b16209264",
+      "4d76e3bb3c79",
+      "2407385f3ac3",
+      "e00c6e6608e5",
+      "cf0d9bb455da",
+      "765d36f26bd5",
+      "54de98102308",
+      "81495e0e2723",
+      "9c7c27fc8693",
+      "4c911b227ad5",
+      "10880e64b593",
+      "c6a82804e832",
+      "011f8112b112",
+      "8117bf0d5621",
+      "55184cedae38",
+      "0b612fd1bbf0",
+      "b42a577fdb41",
+      "45f75c3cc0b3",
+      "e254f82629b7",
+      "f234b66de104",
+      "bb27541aef69",
+      "c846412502c2",
+      "dd674e9b4135",
+      "03b03ab84005",
+      "c9644ae55aaa",
+      "6f9e9e2315da",
+      "f04fd9481e60",
+      "369cfb8ce496",
+      "9b745cc88da1",
+      "99ef3f69debb",
+      "80439ab62029",
+      "0d4bcbb00cdd",
+      "7dc4ef031eee",
+      "197f48fd7e8a",
+      "f76d0c852b3e",
+      "c234447795a4",
+      "bad7879efe3d",
+      "4f8cda336653",
+      "12068ee1b7a6",
+      "25f9a16a0d42",
+      "140134c83697",
+      "0f24f2b7dd1b",
+      "ff0378d2860d",
+      "e02876e8e397",
+      "9a8dee4d0758",
+      "92c69f234c19",
+      "c378a3ecc824",
+      "9c40510fd4c9",
+      "b96db48c38d1",
+      "8a5bd7a07af7",
+      "498df3406d9e",
+      "dddcf2e733a0",
+      "2e173874ff9c",
+      "77c526975d9e",
+      "31761c43819c",
+      "666b8fba627f",
+      "421e0e7a6ab8",
+      "661d52be62b9",
+      "eda7c5be1ae4",
+      "14e8f60de5ff",
+      "995765cd3c37",
+      "a8070ec44284",
+      "525af6ee3bf5",
+      "3e31d7573a71",
+      "2ff473996708",
+      "79c892542200",
+      "b32e6dbcd6ae",
+      "43af99e4597c",
+      "8823dde4aef8",
+      "851352626772",
+      "694ea8260315",
+      "16245045fbb8",
+      "e9a0f7148820",
+      "36b6afd75609"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 1319, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 1319, "min": 260, "mean": 1265.9666413949963, "p50": 260, "p90": 3170, "max": 3480 },
+    "waitMs": { "worker": { "count": 1319, "min": 0, "mean": 1005.9666413949963, "p50": 0, "p90": 2910, "max": 3220 } },
+    "processMs": { "worker": { "count": 1319, "min": 250, "mean": 250, "p50": 250, "p90": 250, "max": 250 } }
+  }
+}

@@ -1,0 +1,9 @@
+---
+title: a3-aca-event
+---
+flowchart LR
+  source["Invoice jobs"]
+  worker["Invoice renderer"]
+  source -.-> worker
+  linkStyle 0 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"Invented invoice renderer on Container Apps with a Service Bus queue rule. Events wake it on the rule's own poll. Teaching timings: 5 s polling, 15 s final-zero cooldown.","nodes":{"source":["source","azure.service-bus.queue"],"worker":["worker","azure.container-apps"]},"edges":["requests"],"relations":{}}

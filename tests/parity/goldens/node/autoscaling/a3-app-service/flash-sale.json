@@ -70,7 +70,7 @@
       "processed": 156,
       "decision": { "at": 10000, "raw": 2, "desired": 2, "reason": "rule", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 64.00000000000001, "target": 50, "windowMs": 10000, "cooldownUntil": 25000, "nextAt": 15000 },
       "reason": "Scale rule",
-      "metric": "CPU 64% of its size (target 50%)"
+      "metric": "64% of allocated CPU (target 50%)"
     },
     {
       "atMs": 11000,
@@ -82,7 +82,7 @@
       "processed": 172,
       "decision": { "at": 10000, "raw": 2, "desired": 2, "reason": "rule", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 64.00000000000001, "target": 50, "windowMs": 10000, "cooldownUntil": 25000, "nextAt": 15000 },
       "reason": "Scale rule",
-      "metric": "CPU 64% of its size (target 50%)"
+      "metric": "64% of allocated CPU (target 50%)"
     },
     {
       "atMs": 12000,
@@ -94,7 +94,7 @@
       "processed": 188,
       "decision": { "at": 10000, "raw": 2, "desired": 2, "reason": "rule", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 64.00000000000001, "target": 50, "windowMs": 10000, "cooldownUntil": 25000, "nextAt": 15000 },
       "reason": "Scale rule",
-      "metric": "CPU 64% of its size (target 50%)"
+      "metric": "64% of allocated CPU (target 50%)"
     },
     {
       "atMs": 13000,
@@ -106,7 +106,7 @@
       "processed": 220,
       "decision": { "at": 10000, "raw": 2, "desired": 2, "reason": "rule", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 64.00000000000001, "target": 50, "windowMs": 10000, "cooldownUntil": 25000, "nextAt": 15000 },
       "reason": "Scale rule",
-      "metric": "CPU 64% of its size (target 50%)"
+      "metric": "64% of allocated CPU (target 50%)"
     },
     {
       "atMs": 14000,
@@ -118,7 +118,7 @@
       "processed": 252,
       "decision": { "at": 10000, "raw": 2, "desired": 2, "reason": "rule", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 64.00000000000001, "target": 50, "windowMs": 10000, "cooldownUntil": 25000, "nextAt": 15000 },
       "reason": "Scale rule",
-      "metric": "CPU 64% of its size (target 50%)"
+      "metric": "64% of allocated CPU (target 50%)"
     },
     {
       "atMs": 15000,
@@ -130,7 +130,7 @@
       "processed": 284,
       "decision": { "at": 15000, "raw": 2, "desired": 2, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 41.6, "target": 50, "windowMs": 10000, "cooldownUntil": 25000, "nextAt": 20000 },
       "reason": "Within tolerance",
-      "metric": "CPU 41.6% of its size (target 50%)"
+      "metric": "41.6% of allocated CPU (target 50%)"
     },
     {
       "atMs": 16000,
@@ -142,7 +142,7 @@
       "processed": 316,
       "decision": { "at": 15000, "raw": 2, "desired": 2, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 41.6, "target": 50, "windowMs": 10000, "cooldownUntil": 25000, "nextAt": 20000 },
       "reason": "Within tolerance",
-      "metric": "CPU 41.6% of its size (target 50%)"
+      "metric": "41.6% of allocated CPU (target 50%)"
     },
     {
       "atMs": 17000,
@@ -154,7 +154,7 @@
       "processed": 348,
       "decision": { "at": 15000, "raw": 2, "desired": 2, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 41.6, "target": 50, "windowMs": 10000, "cooldownUntil": 25000, "nextAt": 20000 },
       "reason": "Within tolerance",
-      "metric": "CPU 41.6% of its size (target 50%)"
+      "metric": "41.6% of allocated CPU (target 50%)"
     },
     {
       "atMs": 18000,
@@ -166,7 +166,7 @@
       "processed": 380,
       "decision": { "at": 15000, "raw": 2, "desired": 2, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 41.6, "target": 50, "windowMs": 10000, "cooldownUntil": 25000, "nextAt": 20000 },
       "reason": "Within tolerance",
-      "metric": "CPU 41.6% of its size (target 50%)"
+      "metric": "41.6% of allocated CPU (target 50%)"
     },
     {
       "atMs": 19000,
@@ -178,7 +178,7 @@
       "processed": 412,
       "decision": { "at": 15000, "raw": 2, "desired": 2, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 41.6, "target": 50, "windowMs": 10000, "cooldownUntil": 25000, "nextAt": 20000 },
       "reason": "Within tolerance",
-      "metric": "CPU 41.6% of its size (target 50%)"
+      "metric": "41.6% of allocated CPU (target 50%)"
     },
     {
       "atMs": 20000,
@@ -190,7 +190,7 @@
       "processed": 444,
       "decision": { "at": 20000, "raw": 2, "desired": 2, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 57.599999999999994, "target": 50, "windowMs": 10000, "cooldownUntil": 25000, "nextAt": 25000 },
       "reason": "Within tolerance",
-      "metric": "CPU 57.6% of its size (target 50%)"
+      "metric": "57.6% of allocated CPU (target 50%)"
     },
     {
       "atMs": 21000,
@@ -202,7 +202,7 @@
       "processed": 476,
       "decision": { "at": 20000, "raw": 2, "desired": 2, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 57.599999999999994, "target": 50, "windowMs": 10000, "cooldownUntil": 25000, "nextAt": 25000 },
       "reason": "Within tolerance",
-      "metric": "CPU 57.6% of its size (target 50%)"
+      "metric": "57.6% of allocated CPU (target 50%)"
     },
     {
       "atMs": 22000,
@@ -214,7 +214,7 @@
       "processed": 508,
       "decision": { "at": 20000, "raw": 2, "desired": 2, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 57.599999999999994, "target": 50, "windowMs": 10000, "cooldownUntil": 25000, "nextAt": 25000 },
       "reason": "Within tolerance",
-      "metric": "CPU 57.6% of its size (target 50%)"
+      "metric": "57.6% of allocated CPU (target 50%)"
     },
     {
       "atMs": 23000,
@@ -226,7 +226,7 @@
       "processed": 540,
       "decision": { "at": 20000, "raw": 2, "desired": 2, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 57.599999999999994, "target": 50, "windowMs": 10000, "cooldownUntil": 25000, "nextAt": 25000 },
       "reason": "Within tolerance",
-      "metric": "CPU 57.6% of its size (target 50%)"
+      "metric": "57.6% of allocated CPU (target 50%)"
     },
     {
       "atMs": 24000,
@@ -238,7 +238,7 @@
       "processed": 572,
       "decision": { "at": 20000, "raw": 2, "desired": 2, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 57.599999999999994, "target": 50, "windowMs": 10000, "cooldownUntil": 25000, "nextAt": 25000 },
       "reason": "Within tolerance",
-      "metric": "CPU 57.6% of its size (target 50%)"
+      "metric": "57.6% of allocated CPU (target 50%)"
     },
     {
       "atMs": 25000,
@@ -250,7 +250,7 @@
       "processed": 604,
       "decision": { "at": 25000, "raw": 3, "desired": 3, "reason": "rule", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 64, "target": 50, "windowMs": 10000, "cooldownUntil": 40000, "nextAt": 30000 },
       "reason": "Scale rule",
-      "metric": "CPU 64% of its size (target 50%)"
+      "metric": "64% of allocated CPU (target 50%)"
     },
     {
       "atMs": 26000,
@@ -262,7 +262,7 @@
       "processed": 636,
       "decision": { "at": 25000, "raw": 3, "desired": 3, "reason": "rule", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 64, "target": 50, "windowMs": 10000, "cooldownUntil": 40000, "nextAt": 30000 },
       "reason": "Scale rule",
-      "metric": "CPU 64% of its size (target 50%)"
+      "metric": "64% of allocated CPU (target 50%)"
     },
     {
       "atMs": 27000,
@@ -274,7 +274,7 @@
       "processed": 668,
       "decision": { "at": 25000, "raw": 3, "desired": 3, "reason": "rule", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 64, "target": 50, "windowMs": 10000, "cooldownUntil": 40000, "nextAt": 30000 },
       "reason": "Scale rule",
-      "metric": "CPU 64% of its size (target 50%)"
+      "metric": "64% of allocated CPU (target 50%)"
     },
     {
       "atMs": 28000,
@@ -286,7 +286,7 @@
       "processed": 716,
       "decision": { "at": 25000, "raw": 3, "desired": 3, "reason": "rule", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 64, "target": 50, "windowMs": 10000, "cooldownUntil": 40000, "nextAt": 30000 },
       "reason": "Scale rule",
-      "metric": "CPU 64% of its size (target 50%)"
+      "metric": "64% of allocated CPU (target 50%)"
     },
     {
       "atMs": 29000,
@@ -298,7 +298,7 @@
       "processed": 764,
       "decision": { "at": 25000, "raw": 3, "desired": 3, "reason": "rule", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 64, "target": 50, "windowMs": 10000, "cooldownUntil": 40000, "nextAt": 30000 },
       "reason": "Scale rule",
-      "metric": "CPU 64% of its size (target 50%)"
+      "metric": "64% of allocated CPU (target 50%)"
     },
     {
       "atMs": 30000,
@@ -310,7 +310,7 @@
       "processed": 812,
       "decision": { "at": 30000, "raw": 3, "desired": 3, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 49.066666666666656, "target": 50, "windowMs": 10000, "cooldownUntil": 40000, "nextAt": 35000 },
       "reason": "Within tolerance",
-      "metric": "CPU 49.1% of its size (target 50%)"
+      "metric": "49.1% of allocated CPU (target 50%)"
     },
     {
       "atMs": 31000,
@@ -322,7 +322,7 @@
       "processed": 860,
       "decision": { "at": 30000, "raw": 3, "desired": 3, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 49.066666666666656, "target": 50, "windowMs": 10000, "cooldownUntil": 40000, "nextAt": 35000 },
       "reason": "Within tolerance",
-      "metric": "CPU 49.1% of its size (target 50%)"
+      "metric": "49.1% of allocated CPU (target 50%)"
     },
     {
       "atMs": 32000,
@@ -334,7 +334,7 @@
       "processed": 908,
       "decision": { "at": 30000, "raw": 3, "desired": 3, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 49.066666666666656, "target": 50, "windowMs": 10000, "cooldownUntil": 40000, "nextAt": 35000 },
       "reason": "Within tolerance",
-      "metric": "CPU 49.1% of its size (target 50%)"
+      "metric": "49.1% of allocated CPU (target 50%)"
     },
     {
       "atMs": 33000,
@@ -346,7 +346,7 @@
       "processed": 956,
       "decision": { "at": 30000, "raw": 3, "desired": 3, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 49.066666666666656, "target": 50, "windowMs": 10000, "cooldownUntil": 40000, "nextAt": 35000 },
       "reason": "Within tolerance",
-      "metric": "CPU 49.1% of its size (target 50%)"
+      "metric": "49.1% of allocated CPU (target 50%)"
     },
     {
       "atMs": 34000,
@@ -358,7 +358,7 @@
       "processed": 1004,
       "decision": { "at": 30000, "raw": 3, "desired": 3, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 49.066666666666656, "target": 50, "windowMs": 10000, "cooldownUntil": 40000, "nextAt": 35000 },
       "reason": "Within tolerance",
-      "metric": "CPU 49.1% of its size (target 50%)"
+      "metric": "49.1% of allocated CPU (target 50%)"
     },
     {
       "atMs": 35000,
@@ -370,7 +370,7 @@
       "processed": 1052,
       "decision": { "at": 35000, "raw": 3, "desired": 3, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 59.733333333333285, "target": 50, "windowMs": 10000, "cooldownUntil": 40000, "nextAt": 40000 },
       "reason": "Within tolerance",
-      "metric": "CPU 59.7% of its size (target 50%)"
+      "metric": "59.7% of allocated CPU (target 50%)"
     },
     {
       "atMs": 36000,
@@ -382,7 +382,7 @@
       "processed": 1100,
       "decision": { "at": 35000, "raw": 3, "desired": 3, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 59.733333333333285, "target": 50, "windowMs": 10000, "cooldownUntil": 40000, "nextAt": 40000 },
       "reason": "Within tolerance",
-      "metric": "CPU 59.7% of its size (target 50%)"
+      "metric": "59.7% of allocated CPU (target 50%)"
     },
     {
       "atMs": 37000,
@@ -394,7 +394,7 @@
       "processed": 1148,
       "decision": { "at": 35000, "raw": 3, "desired": 3, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 59.733333333333285, "target": 50, "windowMs": 10000, "cooldownUntil": 40000, "nextAt": 40000 },
       "reason": "Within tolerance",
-      "metric": "CPU 59.7% of its size (target 50%)"
+      "metric": "59.7% of allocated CPU (target 50%)"
     },
     {
       "atMs": 38000,
@@ -406,7 +406,7 @@
       "processed": 1196,
       "decision": { "at": 35000, "raw": 3, "desired": 3, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 59.733333333333285, "target": 50, "windowMs": 10000, "cooldownUntil": 40000, "nextAt": 40000 },
       "reason": "Within tolerance",
-      "metric": "CPU 59.7% of its size (target 50%)"
+      "metric": "59.7% of allocated CPU (target 50%)"
     },
     {
       "atMs": 39000,
@@ -418,7 +418,7 @@
       "processed": 1244,
       "decision": { "at": 35000, "raw": 3, "desired": 3, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 59.733333333333285, "target": 50, "windowMs": 10000, "cooldownUntil": 40000, "nextAt": 40000 },
       "reason": "Within tolerance",
-      "metric": "CPU 59.7% of its size (target 50%)"
+      "metric": "59.7% of allocated CPU (target 50%)"
     },
     {
       "atMs": 40000,
@@ -430,7 +430,7 @@
       "processed": 1292,
       "decision": { "at": 40000, "raw": 4, "desired": 4, "reason": "rule", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 63.99999999999992, "target": 50, "windowMs": 10000, "cooldownUntil": 55000, "nextAt": 45000 },
       "reason": "Scale rule",
-      "metric": "CPU 64% of its size (target 50%)"
+      "metric": "64% of allocated CPU (target 50%)"
     },
     {
       "atMs": 41000,
@@ -442,7 +442,7 @@
       "processed": 1340,
       "decision": { "at": 40000, "raw": 4, "desired": 4, "reason": "rule", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 63.99999999999992, "target": 50, "windowMs": 10000, "cooldownUntil": 55000, "nextAt": 45000 },
       "reason": "Scale rule",
-      "metric": "CPU 64% of its size (target 50%)"
+      "metric": "64% of allocated CPU (target 50%)"
     },
     {
       "atMs": 42000,
@@ -454,7 +454,7 @@
       "processed": 1388,
       "decision": { "at": 40000, "raw": 4, "desired": 4, "reason": "rule", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 63.99999999999992, "target": 50, "windowMs": 10000, "cooldownUntil": 55000, "nextAt": 45000 },
       "reason": "Scale rule",
-      "metric": "CPU 64% of its size (target 50%)"
+      "metric": "64% of allocated CPU (target 50%)"
     },
     {
       "atMs": 43000,
@@ -466,7 +466,7 @@
       "processed": 1452,
       "decision": { "at": 40000, "raw": 4, "desired": 4, "reason": "rule", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 63.99999999999992, "target": 50, "windowMs": 10000, "cooldownUntil": 55000, "nextAt": 45000 },
       "reason": "Scale rule",
-      "metric": "CPU 64% of its size (target 50%)"
+      "metric": "64% of allocated CPU (target 50%)"
     },
     {
       "atMs": 44000,
@@ -478,7 +478,7 @@
       "processed": 1516,
       "decision": { "at": 40000, "raw": 4, "desired": 4, "reason": "rule", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 63.99999999999992, "target": 50, "windowMs": 10000, "cooldownUntil": 55000, "nextAt": 45000 },
       "reason": "Scale rule",
-      "metric": "CPU 64% of its size (target 50%)"
+      "metric": "64% of allocated CPU (target 50%)"
     },
     {
       "atMs": 45000,
@@ -490,7 +490,7 @@
       "processed": 1580,
       "decision": { "at": 45000, "raw": 4, "desired": 4, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 52.799999999999955, "target": 50, "windowMs": 10000, "cooldownUntil": 55000, "nextAt": 50000 },
       "reason": "Within tolerance",
-      "metric": "CPU 52.8% of its size (target 50%)"
+      "metric": "52.8% of allocated CPU (target 50%)"
     },
     {
       "atMs": 46000,
@@ -502,7 +502,7 @@
       "processed": 1644,
       "decision": { "at": 45000, "raw": 4, "desired": 4, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 52.799999999999955, "target": 50, "windowMs": 10000, "cooldownUntil": 55000, "nextAt": 50000 },
       "reason": "Within tolerance",
-      "metric": "CPU 52.8% of its size (target 50%)"
+      "metric": "52.8% of allocated CPU (target 50%)"
     },
     {
       "atMs": 47000,
@@ -514,7 +514,7 @@
       "processed": 1708,
       "decision": { "at": 45000, "raw": 4, "desired": 4, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 52.799999999999955, "target": 50, "windowMs": 10000, "cooldownUntil": 55000, "nextAt": 50000 },
       "reason": "Within tolerance",
-      "metric": "CPU 52.8% of its size (target 50%)"
+      "metric": "52.8% of allocated CPU (target 50%)"
     },
     {
       "atMs": 48000,
@@ -526,7 +526,7 @@
       "processed": 1772,
       "decision": { "at": 45000, "raw": 4, "desired": 4, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 52.799999999999955, "target": 50, "windowMs": 10000, "cooldownUntil": 55000, "nextAt": 50000 },
       "reason": "Within tolerance",
-      "metric": "CPU 52.8% of its size (target 50%)"
+      "metric": "52.8% of allocated CPU (target 50%)"
     },
     {
       "atMs": 49000,
@@ -538,7 +538,7 @@
       "processed": 1836,
       "decision": { "at": 45000, "raw": 4, "desired": 4, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 52.799999999999955, "target": 50, "windowMs": 10000, "cooldownUntil": 55000, "nextAt": 50000 },
       "reason": "Within tolerance",
-      "metric": "CPU 52.8% of its size (target 50%)"
+      "metric": "52.8% of allocated CPU (target 50%)"
     },
     {
       "atMs": 50000,
@@ -550,7 +550,7 @@
       "processed": 1900,
       "decision": { "at": 50000, "raw": 4, "desired": 4, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 60.79999999999999, "target": 50, "windowMs": 10000, "cooldownUntil": 55000, "nextAt": 55000 },
       "reason": "Within tolerance",
-      "metric": "CPU 60.8% of its size (target 50%)"
+      "metric": "60.8% of allocated CPU (target 50%)"
     },
     {
       "atMs": 51000,
@@ -562,7 +562,7 @@
       "processed": 1964,
       "decision": { "at": 50000, "raw": 4, "desired": 4, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 60.79999999999999, "target": 50, "windowMs": 10000, "cooldownUntil": 55000, "nextAt": 55000 },
       "reason": "Within tolerance",
-      "metric": "CPU 60.8% of its size (target 50%)"
+      "metric": "60.8% of allocated CPU (target 50%)"
     },
     {
       "atMs": 52000,
@@ -574,7 +574,7 @@
       "processed": 2028,
       "decision": { "at": 50000, "raw": 4, "desired": 4, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 60.79999999999999, "target": 50, "windowMs": 10000, "cooldownUntil": 55000, "nextAt": 55000 },
       "reason": "Within tolerance",
-      "metric": "CPU 60.8% of its size (target 50%)"
+      "metric": "60.8% of allocated CPU (target 50%)"
     },
     {
       "atMs": 53000,
@@ -586,7 +586,7 @@
       "processed": 2092,
       "decision": { "at": 50000, "raw": 4, "desired": 4, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 60.79999999999999, "target": 50, "windowMs": 10000, "cooldownUntil": 55000, "nextAt": 55000 },
       "reason": "Within tolerance",
-      "metric": "CPU 60.8% of its size (target 50%)"
+      "metric": "60.8% of allocated CPU (target 50%)"
     },
     {
       "atMs": 54000,
@@ -598,7 +598,7 @@
       "processed": 2149,
       "decision": { "at": 50000, "raw": 4, "desired": 4, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 60.79999999999999, "target": 50, "windowMs": 10000, "cooldownUntil": 55000, "nextAt": 55000 },
       "reason": "Within tolerance",
-      "metric": "CPU 60.8% of its size (target 50%)"
+      "metric": "60.8% of allocated CPU (target 50%)"
     },
     {
       "atMs": 55000,
@@ -610,7 +610,7 @@
       "processed": 2189,
       "decision": { "at": 55000, "raw": 5, "desired": 5, "reason": "rule", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 61.35, "target": 50, "windowMs": 10000, "cooldownUntil": 70000, "nextAt": 60000 },
       "reason": "Scale rule",
-      "metric": "CPU 61.4% of its size (target 50%)"
+      "metric": "61.4% of allocated CPU (target 50%)"
     },
     {
       "atMs": 56000,
@@ -622,7 +622,7 @@
       "processed": 2229,
       "decision": { "at": 55000, "raw": 5, "desired": 5, "reason": "rule", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 61.35, "target": 50, "windowMs": 10000, "cooldownUntil": 70000, "nextAt": 60000 },
       "reason": "Scale rule",
-      "metric": "CPU 61.4% of its size (target 50%)"
+      "metric": "61.4% of allocated CPU (target 50%)"
     },
     {
       "atMs": 57000,
@@ -634,7 +634,7 @@
       "processed": 2269,
       "decision": { "at": 55000, "raw": 5, "desired": 5, "reason": "rule", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 61.35, "target": 50, "windowMs": 10000, "cooldownUntil": 70000, "nextAt": 60000 },
       "reason": "Scale rule",
-      "metric": "CPU 61.4% of its size (target 50%)"
+      "metric": "61.4% of allocated CPU (target 50%)"
     },
     {
       "atMs": 58000,
@@ -646,7 +646,7 @@
       "processed": 2309,
       "decision": { "at": 55000, "raw": 5, "desired": 5, "reason": "rule", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 61.35, "target": 50, "windowMs": 10000, "cooldownUntil": 70000, "nextAt": 60000 },
       "reason": "Scale rule",
-      "metric": "CPU 61.4% of its size (target 50%)"
+      "metric": "61.4% of allocated CPU (target 50%)"
     },
     {
       "atMs": 59000,
@@ -658,7 +658,7 @@
       "processed": 2349,
       "decision": { "at": 55000, "raw": 5, "desired": 5, "reason": "rule", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 61.35, "target": 50, "windowMs": 10000, "cooldownUntil": 70000, "nextAt": 60000 },
       "reason": "Scale rule",
-      "metric": "CPU 61.4% of its size (target 50%)"
+      "metric": "61.4% of allocated CPU (target 50%)"
     },
     {
       "atMs": 60000,
@@ -670,7 +670,7 @@
       "processed": 2389,
       "decision": { "at": 60000, "raw": 5, "desired": 5, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 39.47999999999996, "target": 50, "windowMs": 10000, "cooldownUntil": 70000, "nextAt": 65000 },
       "reason": "Within tolerance",
-      "metric": "CPU 39.5% of its size (target 50%)"
+      "metric": "39.5% of allocated CPU (target 50%)"
     },
     {
       "atMs": 61000,
@@ -682,7 +682,7 @@
       "processed": 2400,
       "decision": { "at": 60000, "raw": 5, "desired": 5, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 39.47999999999996, "target": 50, "windowMs": 10000, "cooldownUntil": 70000, "nextAt": 65000 },
       "reason": "Within tolerance",
-      "metric": "CPU 39.5% of its size (target 50%)"
+      "metric": "39.5% of allocated CPU (target 50%)"
     },
     {
       "atMs": 62000,
@@ -694,7 +694,7 @@
       "processed": 2400,
       "decision": { "at": 60000, "raw": 5, "desired": 5, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 39.47999999999996, "target": 50, "windowMs": 10000, "cooldownUntil": 70000, "nextAt": 65000 },
       "reason": "Within tolerance",
-      "metric": "CPU 39.5% of its size (target 50%)"
+      "metric": "39.5% of allocated CPU (target 50%)"
     },
     {
       "atMs": 63000,
@@ -706,7 +706,7 @@
       "processed": 2400,
       "decision": { "at": 60000, "raw": 5, "desired": 5, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 39.47999999999996, "target": 50, "windowMs": 10000, "cooldownUntil": 70000, "nextAt": 65000 },
       "reason": "Within tolerance",
-      "metric": "CPU 39.5% of its size (target 50%)"
+      "metric": "39.5% of allocated CPU (target 50%)"
     },
     {
       "atMs": 64000,
@@ -718,7 +718,7 @@
       "processed": 2400,
       "decision": { "at": 60000, "raw": 5, "desired": 5, "reason": "tolerance", "adapter": "appService", "policy": 0, "metricKind": "cpu", "metric": 39.47999999999996, "target": 50, "windowMs": 10000, "cooldownUntil": 70000, "nextAt": 65000 },
       "reason": "Within tolerance",
-      "metric": "CPU 39.5% of its size (target 50%)"
+      "metric": "39.5% of allocated CPU (target 50%)"
     },
     {
       "atMs": 65000,
@@ -730,7 +730,7 @@
       "processed": 2400,
       "decision": { "at": 65000, "raw": 5, "desired": 5, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 16.199999999999974, "target": 30, "windowMs": 10000, "cooldownUntil": 75000, "nextAt": 70000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 16.2% of its size (target 30%)"
+      "metric": "16.2% of allocated CPU (target 30%)"
     },
     {
       "atMs": 66000,
@@ -742,7 +742,7 @@
       "processed": 2400,
       "decision": { "at": 65000, "raw": 5, "desired": 5, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 16.199999999999974, "target": 30, "windowMs": 10000, "cooldownUntil": 75000, "nextAt": 70000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 16.2% of its size (target 30%)"
+      "metric": "16.2% of allocated CPU (target 30%)"
     },
     {
       "atMs": 67000,
@@ -754,7 +754,7 @@
       "processed": 2400,
       "decision": { "at": 65000, "raw": 5, "desired": 5, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 16.199999999999974, "target": 30, "windowMs": 10000, "cooldownUntil": 75000, "nextAt": 70000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 16.2% of its size (target 30%)"
+      "metric": "16.2% of allocated CPU (target 30%)"
     },
     {
       "atMs": 68000,
@@ -766,7 +766,7 @@
       "processed": 2400,
       "decision": { "at": 65000, "raw": 5, "desired": 5, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 16.199999999999974, "target": 30, "windowMs": 10000, "cooldownUntil": 75000, "nextAt": 70000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 16.2% of its size (target 30%)"
+      "metric": "16.2% of allocated CPU (target 30%)"
     },
     {
       "atMs": 69000,
@@ -778,7 +778,7 @@
       "processed": 2400,
       "decision": { "at": 65000, "raw": 5, "desired": 5, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 16.199999999999974, "target": 30, "windowMs": 10000, "cooldownUntil": 75000, "nextAt": 70000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 16.2% of its size (target 30%)"
+      "metric": "16.2% of allocated CPU (target 30%)"
     },
     {
       "atMs": 70000,
@@ -790,7 +790,7 @@
       "processed": 2400,
       "decision": { "at": 70000, "raw": 5, "desired": 5, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0.2, "target": 30, "windowMs": 10000, "cooldownUntil": 75000, "nextAt": 75000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0.2% of its size (target 30%)"
+      "metric": "0.2% of allocated CPU (target 30%)"
     },
     {
       "atMs": 71000,
@@ -802,7 +802,7 @@
       "processed": 2400,
       "decision": { "at": 70000, "raw": 5, "desired": 5, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0.2, "target": 30, "windowMs": 10000, "cooldownUntil": 75000, "nextAt": 75000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0.2% of its size (target 30%)"
+      "metric": "0.2% of allocated CPU (target 30%)"
     },
     {
       "atMs": 72000,
@@ -814,7 +814,7 @@
       "processed": 2400,
       "decision": { "at": 70000, "raw": 5, "desired": 5, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0.2, "target": 30, "windowMs": 10000, "cooldownUntil": 75000, "nextAt": 75000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0.2% of its size (target 30%)"
+      "metric": "0.2% of allocated CPU (target 30%)"
     },
     {
       "atMs": 73000,
@@ -826,7 +826,7 @@
       "processed": 2400,
       "decision": { "at": 70000, "raw": 5, "desired": 5, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0.2, "target": 30, "windowMs": 10000, "cooldownUntil": 75000, "nextAt": 75000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0.2% of its size (target 30%)"
+      "metric": "0.2% of allocated CPU (target 30%)"
     },
     {
       "atMs": 74000,
@@ -838,7 +838,7 @@
       "processed": 2400,
       "decision": { "at": 70000, "raw": 5, "desired": 5, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0.2, "target": 30, "windowMs": 10000, "cooldownUntil": 75000, "nextAt": 75000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0.2% of its size (target 30%)"
+      "metric": "0.2% of allocated CPU (target 30%)"
     },
     {
       "atMs": 75000,
@@ -850,7 +850,7 @@
       "processed": 2400,
       "decision": { "at": 75000, "raw": 4, "desired": 4, "reason": "rule", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 95000, "nextAt": 80000 },
       "reason": "Scale rule",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 76000,
@@ -862,7 +862,7 @@
       "processed": 2400,
       "decision": { "at": 75000, "raw": 4, "desired": 4, "reason": "rule", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 95000, "nextAt": 80000 },
       "reason": "Scale rule",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 77000,
@@ -874,7 +874,7 @@
       "processed": 2400,
       "decision": { "at": 75000, "raw": 4, "desired": 4, "reason": "rule", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 95000, "nextAt": 80000 },
       "reason": "Scale rule",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 78000,
@@ -886,7 +886,7 @@
       "processed": 2400,
       "decision": { "at": 75000, "raw": 4, "desired": 4, "reason": "rule", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 95000, "nextAt": 80000 },
       "reason": "Scale rule",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 79000,
@@ -898,7 +898,7 @@
       "processed": 2400,
       "decision": { "at": 75000, "raw": 4, "desired": 4, "reason": "rule", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 95000, "nextAt": 80000 },
       "reason": "Scale rule",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 80000,
@@ -910,7 +910,7 @@
       "processed": 2400,
       "decision": { "at": 80000, "raw": 4, "desired": 4, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 95000, "nextAt": 85000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 81000,
@@ -922,7 +922,7 @@
       "processed": 2400,
       "decision": { "at": 80000, "raw": 4, "desired": 4, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 95000, "nextAt": 85000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 82000,
@@ -934,7 +934,7 @@
       "processed": 2400,
       "decision": { "at": 80000, "raw": 4, "desired": 4, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 95000, "nextAt": 85000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 83000,
@@ -946,7 +946,7 @@
       "processed": 2400,
       "decision": { "at": 80000, "raw": 4, "desired": 4, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 95000, "nextAt": 85000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 84000,
@@ -958,7 +958,7 @@
       "processed": 2400,
       "decision": { "at": 80000, "raw": 4, "desired": 4, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 95000, "nextAt": 85000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 85000,
@@ -970,7 +970,7 @@
       "processed": 2400,
       "decision": { "at": 85000, "raw": 4, "desired": 4, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 95000, "nextAt": 90000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 86000,
@@ -982,7 +982,7 @@
       "processed": 2400,
       "decision": { "at": 85000, "raw": 4, "desired": 4, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 95000, "nextAt": 90000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 87000,
@@ -994,7 +994,7 @@
       "processed": 2400,
       "decision": { "at": 85000, "raw": 4, "desired": 4, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 95000, "nextAt": 90000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 88000,
@@ -1006,7 +1006,7 @@
       "processed": 2400,
       "decision": { "at": 85000, "raw": 4, "desired": 4, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 95000, "nextAt": 90000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 89000,
@@ -1018,7 +1018,7 @@
       "processed": 2400,
       "decision": { "at": 85000, "raw": 4, "desired": 4, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 95000, "nextAt": 90000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 90000,
@@ -1030,7 +1030,7 @@
       "processed": 2400,
       "decision": { "at": 90000, "raw": 4, "desired": 4, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 95000, "nextAt": 95000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 91000,
@@ -1042,7 +1042,7 @@
       "processed": 2400,
       "decision": { "at": 90000, "raw": 4, "desired": 4, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 95000, "nextAt": 95000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 92000,
@@ -1054,7 +1054,7 @@
       "processed": 2400,
       "decision": { "at": 90000, "raw": 4, "desired": 4, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 95000, "nextAt": 95000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 93000,
@@ -1066,7 +1066,7 @@
       "processed": 2400,
       "decision": { "at": 90000, "raw": 4, "desired": 4, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 95000, "nextAt": 95000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 94000,
@@ -1078,7 +1078,7 @@
       "processed": 2400,
       "decision": { "at": 90000, "raw": 4, "desired": 4, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 95000, "nextAt": 95000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 95000,
@@ -1090,7 +1090,7 @@
       "processed": 2400,
       "decision": { "at": 95000, "raw": 3, "desired": 3, "reason": "rule", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 115000, "nextAt": 100000 },
       "reason": "Scale rule",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 96000,
@@ -1102,7 +1102,7 @@
       "processed": 2400,
       "decision": { "at": 95000, "raw": 3, "desired": 3, "reason": "rule", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 115000, "nextAt": 100000 },
       "reason": "Scale rule",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 97000,
@@ -1114,7 +1114,7 @@
       "processed": 2400,
       "decision": { "at": 95000, "raw": 3, "desired": 3, "reason": "rule", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 115000, "nextAt": 100000 },
       "reason": "Scale rule",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 98000,
@@ -1126,7 +1126,7 @@
       "processed": 2400,
       "decision": { "at": 95000, "raw": 3, "desired": 3, "reason": "rule", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 115000, "nextAt": 100000 },
       "reason": "Scale rule",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 99000,
@@ -1138,7 +1138,7 @@
       "processed": 2400,
       "decision": { "at": 95000, "raw": 3, "desired": 3, "reason": "rule", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 115000, "nextAt": 100000 },
       "reason": "Scale rule",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 100000,
@@ -1150,7 +1150,7 @@
       "processed": 2400,
       "decision": { "at": 100000, "raw": 3, "desired": 3, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 115000, "nextAt": 105000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 101000,
@@ -1162,7 +1162,7 @@
       "processed": 2400,
       "decision": { "at": 100000, "raw": 3, "desired": 3, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 115000, "nextAt": 105000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 102000,
@@ -1174,7 +1174,7 @@
       "processed": 2400,
       "decision": { "at": 100000, "raw": 3, "desired": 3, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 115000, "nextAt": 105000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 103000,
@@ -1186,7 +1186,7 @@
       "processed": 2400,
       "decision": { "at": 100000, "raw": 3, "desired": 3, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 115000, "nextAt": 105000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 104000,
@@ -1198,7 +1198,7 @@
       "processed": 2400,
       "decision": { "at": 100000, "raw": 3, "desired": 3, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 115000, "nextAt": 105000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 105000,
@@ -1210,7 +1210,7 @@
       "processed": 2400,
       "decision": { "at": 105000, "raw": 3, "desired": 3, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 115000, "nextAt": 110000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 106000,
@@ -1222,7 +1222,7 @@
       "processed": 2400,
       "decision": { "at": 105000, "raw": 3, "desired": 3, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 115000, "nextAt": 110000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 107000,
@@ -1234,7 +1234,7 @@
       "processed": 2400,
       "decision": { "at": 105000, "raw": 3, "desired": 3, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 115000, "nextAt": 110000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 108000,
@@ -1246,7 +1246,7 @@
       "processed": 2400,
       "decision": { "at": 105000, "raw": 3, "desired": 3, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 115000, "nextAt": 110000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 109000,
@@ -1258,7 +1258,7 @@
       "processed": 2400,
       "decision": { "at": 105000, "raw": 3, "desired": 3, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 115000, "nextAt": 110000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 110000,
@@ -1270,7 +1270,7 @@
       "processed": 2400,
       "decision": { "at": 110000, "raw": 3, "desired": 3, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 115000, "nextAt": 115000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 111000,
@@ -1282,7 +1282,7 @@
       "processed": 2400,
       "decision": { "at": 110000, "raw": 3, "desired": 3, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 115000, "nextAt": 115000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 112000,
@@ -1294,7 +1294,7 @@
       "processed": 2400,
       "decision": { "at": 110000, "raw": 3, "desired": 3, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 115000, "nextAt": 115000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 113000,
@@ -1306,7 +1306,7 @@
       "processed": 2400,
       "decision": { "at": 110000, "raw": 3, "desired": 3, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 115000, "nextAt": 115000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 114000,
@@ -1318,7 +1318,7 @@
       "processed": 2400,
       "decision": { "at": 110000, "raw": 3, "desired": 3, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 115000, "nextAt": 115000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 115000,
@@ -1330,7 +1330,7 @@
       "processed": 2400,
       "decision": { "at": 115000, "raw": 2, "desired": 2, "reason": "rule", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 135000, "nextAt": 120000 },
       "reason": "Scale rule",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 116000,
@@ -1342,7 +1342,7 @@
       "processed": 2400,
       "decision": { "at": 115000, "raw": 2, "desired": 2, "reason": "rule", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 135000, "nextAt": 120000 },
       "reason": "Scale rule",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 117000,
@@ -1354,7 +1354,7 @@
       "processed": 2400,
       "decision": { "at": 115000, "raw": 2, "desired": 2, "reason": "rule", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 135000, "nextAt": 120000 },
       "reason": "Scale rule",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 118000,
@@ -1366,7 +1366,7 @@
       "processed": 2400,
       "decision": { "at": 115000, "raw": 2, "desired": 2, "reason": "rule", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 135000, "nextAt": 120000 },
       "reason": "Scale rule",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 119000,
@@ -1378,7 +1378,7 @@
       "processed": 2400,
       "decision": { "at": 115000, "raw": 2, "desired": 2, "reason": "rule", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 135000, "nextAt": 120000 },
       "reason": "Scale rule",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 120000,
@@ -1390,7 +1390,7 @@
       "processed": 2400,
       "decision": { "at": 120000, "raw": 2, "desired": 2, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 135000, "nextAt": 125000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 121000,
@@ -1402,7 +1402,7 @@
       "processed": 2400,
       "decision": { "at": 120000, "raw": 2, "desired": 2, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 135000, "nextAt": 125000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 122000,
@@ -1414,7 +1414,7 @@
       "processed": 2400,
       "decision": { "at": 120000, "raw": 2, "desired": 2, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 135000, "nextAt": 125000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 123000,
@@ -1426,7 +1426,7 @@
       "processed": 2400,
       "decision": { "at": 120000, "raw": 2, "desired": 2, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 135000, "nextAt": 125000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 124000,
@@ -1438,7 +1438,7 @@
       "processed": 2400,
       "decision": { "at": 120000, "raw": 2, "desired": 2, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 135000, "nextAt": 125000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 125000,
@@ -1450,7 +1450,7 @@
       "processed": 2400,
       "decision": { "at": 125000, "raw": 2, "desired": 2, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 135000, "nextAt": 130000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 126000,
@@ -1462,7 +1462,7 @@
       "processed": 2400,
       "decision": { "at": 125000, "raw": 2, "desired": 2, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 135000, "nextAt": 130000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 127000,
@@ -1474,7 +1474,7 @@
       "processed": 2400,
       "decision": { "at": 125000, "raw": 2, "desired": 2, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 135000, "nextAt": 130000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 128000,
@@ -1486,7 +1486,7 @@
       "processed": 2400,
       "decision": { "at": 125000, "raw": 2, "desired": 2, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 135000, "nextAt": 130000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 129000,
@@ -1498,7 +1498,7 @@
       "processed": 2400,
       "decision": { "at": 125000, "raw": 2, "desired": 2, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 135000, "nextAt": 130000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 130000,
@@ -1510,7 +1510,7 @@
       "processed": 2400,
       "decision": { "at": 130000, "raw": 2, "desired": 2, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 135000, "nextAt": 135000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 131000,
@@ -1522,7 +1522,7 @@
       "processed": 2400,
       "decision": { "at": 130000, "raw": 2, "desired": 2, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 135000, "nextAt": 135000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 132000,
@@ -1534,7 +1534,7 @@
       "processed": 2400,
       "decision": { "at": 130000, "raw": 2, "desired": 2, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 135000, "nextAt": 135000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 133000,
@@ -1546,7 +1546,7 @@
       "processed": 2400,
       "decision": { "at": 130000, "raw": 2, "desired": 2, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 135000, "nextAt": 135000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 134000,
@@ -1558,7 +1558,7 @@
       "processed": 2400,
       "decision": { "at": 130000, "raw": 2, "desired": 2, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 135000, "nextAt": 135000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 135000,
@@ -1570,7 +1570,7 @@
       "processed": 2400,
       "decision": { "at": 135000, "raw": 1, "desired": 1, "reason": "rule", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 155000, "nextAt": 140000 },
       "reason": "Scale rule",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 136000,
@@ -1582,7 +1582,7 @@
       "processed": 2400,
       "decision": { "at": 135000, "raw": 1, "desired": 1, "reason": "rule", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 155000, "nextAt": 140000 },
       "reason": "Scale rule",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 137000,
@@ -1594,7 +1594,7 @@
       "processed": 2400,
       "decision": { "at": 135000, "raw": 1, "desired": 1, "reason": "rule", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 155000, "nextAt": 140000 },
       "reason": "Scale rule",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 138000,
@@ -1606,7 +1606,7 @@
       "processed": 2400,
       "decision": { "at": 135000, "raw": 1, "desired": 1, "reason": "rule", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 155000, "nextAt": 140000 },
       "reason": "Scale rule",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 139000,
@@ -1618,7 +1618,7 @@
       "processed": 2400,
       "decision": { "at": 135000, "raw": 1, "desired": 1, "reason": "rule", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 155000, "nextAt": 140000 },
       "reason": "Scale rule",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 140000,
@@ -1630,7 +1630,7 @@
       "processed": 2400,
       "decision": { "at": 140000, "raw": 1, "desired": 1, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 155000, "nextAt": 145000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 141000,
@@ -1642,7 +1642,7 @@
       "processed": 2400,
       "decision": { "at": 140000, "raw": 1, "desired": 1, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 155000, "nextAt": 145000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 142000,
@@ -1654,7 +1654,7 @@
       "processed": 2400,
       "decision": { "at": 140000, "raw": 1, "desired": 1, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 155000, "nextAt": 145000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 143000,
@@ -1666,7 +1666,7 @@
       "processed": 2400,
       "decision": { "at": 140000, "raw": 1, "desired": 1, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 155000, "nextAt": 145000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 144000,
@@ -1678,7 +1678,7 @@
       "processed": 2400,
       "decision": { "at": 140000, "raw": 1, "desired": 1, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 155000, "nextAt": 145000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 145000,
@@ -1690,7 +1690,7 @@
       "processed": 2400,
       "decision": { "at": 145000, "raw": 1, "desired": 1, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 155000, "nextAt": 150000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 146000,
@@ -1702,7 +1702,7 @@
       "processed": 2400,
       "decision": { "at": 145000, "raw": 1, "desired": 1, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 155000, "nextAt": 150000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 147000,
@@ -1714,7 +1714,7 @@
       "processed": 2400,
       "decision": { "at": 145000, "raw": 1, "desired": 1, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 155000, "nextAt": 150000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 148000,
@@ -1726,7 +1726,7 @@
       "processed": 2400,
       "decision": { "at": 145000, "raw": 1, "desired": 1, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 155000, "nextAt": 150000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 149000,
@@ -1738,7 +1738,7 @@
       "processed": 2400,
       "decision": { "at": 145000, "raw": 1, "desired": 1, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 155000, "nextAt": 150000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     },
     {
       "atMs": 150000,
@@ -1750,7 +1750,7 @@
       "processed": 2400,
       "decision": { "at": 150000, "raw": 1, "desired": 1, "reason": "cooldown", "adapter": "appService", "policy": 1, "metricKind": "cpu", "metric": 0, "target": 30, "windowMs": 10000, "cooldownUntil": 155000, "nextAt": 155000 },
       "reason": "Waiting for the cooldown",
-      "metric": "CPU 0% of its size (target 30%)"
+      "metric": "0% of allocated CPU (target 30%)"
     }
   ]
 }

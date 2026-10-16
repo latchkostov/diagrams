@@ -74,9 +74,9 @@
     }
   ],
   "english": [
-    "At 3× traffic in “Black Friday”, HPA hits max 10 at 92% CPU of request (target 70% CPU of request). Raise max to 14. A same-seed rerun verified it. Up to 4,006 messages waited while replicas started."
+    "At 3× traffic in “Black Friday”, HPA hits its maximum of 10 at 92% CPU of request (target 70% CPU of request). Up to 4,006 messages waited while replicas started. Raise the maximum to 14. A rerun with this change confirmed it."
   ],
   "shown": [
-    "At 3× traffic in “Black Friday”, HPA hits its maximum of 10 at CPU 92% of request (target 70%). Raise the maximum to 14. A same-seed rerun verified it. Up to 4,006 messages waited while replicas started."
+    "At 3× traffic in “Black Friday”, HPA hits its maximum of 10 at 92% of the CPU request (target 70%). Up to 4,006 messages waited while replicas started. Raise the maximum to 14. A rerun with this change confirmed it."
   ]
 }

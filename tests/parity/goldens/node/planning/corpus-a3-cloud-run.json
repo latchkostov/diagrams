@@ -1,0 +1,217 @@
+{
+  "autoScale": { "freePlay": 1, "morning-burst": 5 },
+  "brokerAssignments": { "brokers": {}, "consumers": {} },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": null,
+      "suggestion": "Add entry traffic to analyze capacity.",
+      "converged": true,
+      "iterations": 1,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": ["Infinity", 0, 0, 1, 1, 0], "worker": [0, 0, 0, 0, 0, 0] },
+      "connections": {},
+      "offeredTypes": {}
+    },
+    "explanations": {
+      "worker": {
+        "resources": { "perReplica": 25, "initial": 0, "min": 0, "max": 20, "initialCapacity": 0, "maxCapacity": 500, "targetReplicas": 0, "cpuRequestPct": 0, "memoryPeakMiB": 288, "memoryRisk": false, "baselineAboveTarget": false, "partitionLimited": false, "startupMs": 2000, "cpuUnbounded": false },
+        "id": "worker",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 0,
+        "offered": 0,
+        "replicas": 0,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 0,
+        "assignments": [],
+        "slots": 80,
+        "seconds": 0.25,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": { "source": [{ "kind": "calls", "edge": "requests", "peer": "worker" }] },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "source": {
+        "profile": { "family": "client", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "ratePerSec": 0,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Search users",
+        "healthChecks": false
+      },
+      "worker": {
+        "resources": {
+          "preset": "io-service",
+          "presetRevision": "1",
+          "cpuMsPerMessage": 40,
+          "baselineMemoryMiB": 128,
+          "memoryMiBPerMessage": 2,
+          "cpuRequestMilli": 500,
+          "cpuLimitMilli": 1000,
+          "memoryRequestMiB": 256,
+          "memoryLimitMiB": 512,
+          "startup": { "delayMs": 2000, "jitterFraction": 0 },
+          "terminationGraceMs": 30000,
+          "modelRevision": "a2"
+        },
+        "autoscaling": {
+          "mode": "on",
+          "modelRevision": "a3",
+          "preset": "cloud-run",
+          "presetRevision": "1",
+          "controller": { "kind": "cloudRun", "minReplicas": 0, "initialReplicas": 0, "maxReplicas": 20, "targetConcurrencyPct": 60, "targetCpuPct": 60, "evaluationMs": 5000, "cpuWindowMs": 10000, "concurrencyWindowsMs": [10000, 30000], "scaleInDelayMs": 10000 }
+        },
+        "profile": { "family": "service", "revision": "p3-a1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 80,
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Search API",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "morning-burst": {
+      "configured": "(same as edit)",
+      "simulation": "morning-burst",
+      "analysis": {
+        "bottleneck": "worker",
+        "suggestion": "Search API: resume the node or add a ready consumer.",
+        "converged": true,
+        "iterations": 2,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": ["Infinity", 200, 0, 1, 1, 0], "worker": [0, 200, "Infinity", 0, 0, 0] },
+        "connections": { "requests": 200 },
+        "offeredTypes": { "source": ["Search users"], "worker": ["Search users"] }
+      },
+      "explanations": {
+        "worker": {
+          "resources": { "perReplica": 25, "initial": 0, "min": 0, "max": 20, "initialCapacity": 0, "maxCapacity": 500, "targetReplicas": 14, "cpuRequestPct": 1600, "memoryPeakMiB": 288, "memoryRisk": false, "baselineAboveTarget": false, "partitionLimited": false, "startupMs": 2000, "cpuUnbounded": false },
+          "id": "worker",
+          "role": "processor",
+          "status": "up",
+          "reason": "capacity",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 0,
+          "offered": 200,
+          "replicas": 0,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 0,
+          "assignments": [],
+          "slots": 80,
+          "seconds": 0.25,
+          "utilization": "Infinity",
+          "growth": 200,
+          "contributors": [{ "edge": "requests", "node": "source", "label": "Search users", "rate": 200 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": { "worker": { "replicas": 2, "enough": true } },
+      "resolved": "(same as edit)"
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": { "source": ["idle", "", { "modeled": false }], "worker": ["idle", ""] }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": { "source": ["idle", "", { "modeled": false }], "worker": ["idle", ""] }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": { "source": ["idle", "", { "modeled": false }], "worker": ["idle", ""] }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": { "source": ["idle", "", { "modeled": false }], "worker": ["idle", ""] }
+        },
+        "partitionsNotes": {}
+      }
+    },
+    "morning-burst": {
+      "tone": "over",
+      "top": "worker",
+      "headline": "Search API can't keep up at all",
+      "detail": "Its consumers can't take any of its messages.",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "source": ["idle", "200/s · no limit", { "modeled": false }],
+        "worker": ["over", "No capacity · 200/s waiting"]
+      }
+    }
+  }
+}

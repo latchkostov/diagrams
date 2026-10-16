@@ -1,0 +1,3 @@
+exit 0
+VALID <repo>/src/examples/cloud-run-timetable-api.json: 3 nodes, 2 edges, 2 simulations
+  warning: simulations[0] "Overnight, then the morning rush": at "scale": 1, live view would animate too many dots. Use "scale": 5 (one dot stands for 5 messages).

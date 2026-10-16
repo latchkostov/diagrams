@@ -1,0 +1,8 @@
+---
+title: a3-app-service
+---
+flowchart LR
+  source(["Shoppers"])
+  worker["Storefront"]
+  source --> worker
+%% diagrams:{"v":1,"description":"Invented storefront on an App Service plan with Azure Monitor rules: scale out above 70% CPU, in below 30%, per-rule cooldowns and a deferred flapping scale-in. Teaching timings: 5 s evaluation, 10 s windows, 15/20 s cooldowns.","nodes":{"source":["source","client.browser"],"worker":["worker","azure.app-service"]},"edges":["requests"],"relations":{}}

@@ -1,0 +1,40 @@
+{
+  "evidence": {
+    "played": [{ "id": "upload-wave", "title": "Upload wave", "playedMs": 60000, "capped": true }],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [],
+    "dropped": []
+  },
+  "planned": [],
+  "counted": 0,
+  "findings": [
+    {
+      "id": "single-point:worker",
+      "rule": "single-point",
+      "severity": "suggestion",
+      "target": "worker",
+      "elements": ["worker", "source"],
+      "fix": { "ops": [{ "op": "update", "target": "worker", "props": { "replicas": 2 } }], "needsChoice": false }
+    }
+  ],
+  "agentReport": {
+    "findings": [
+      {
+        "id": "single-point:worker",
+        "rule": "single-point",
+        "severity": "suggestion",
+        "title": "Every request goes through one Thumbnail tasks",
+        "message": "It runs 1 replica, and every request from Photo uploads goes through it: if it stops, Photo uploads gets nothing.",
+        "targets": ["worker", "source"],
+        "fix": {
+          "label": "Set replicas to 2",
+          "ops": [{ "op": "update", "target": "worker", "props": { "replicas": 2 } }]
+        }
+      }
+    ],
+    "summary": "0 warnings, 1 suggestion.",
+    "simulations": "Played 1 saved simulation (at most 60 s each; some stopped there).",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
+}

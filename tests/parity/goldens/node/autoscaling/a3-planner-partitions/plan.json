@@ -76,9 +76,9 @@
     }
   ],
   "english": [
-    "At 3× traffic in “Black Friday”, HPA wants 19 replicas but only 10 partitions of Orders can be read; more replicas would sit idle. Raise partitions to 19. A same-seed rerun verified it."
+    "At 3× traffic in “Black Friday”, HPA wants 19 replicas, but only 10 partitions of Orders can be read. Raise the partitions to 19. A rerun with this change confirmed it."
   ],
   "shown": [
-    "At 3× traffic in “Black Friday”, HPA wants 19 replicas but only 10 partitions of Orders can be read. Raise the partitions to 19. A same-seed rerun verified it."
+    "At 3× traffic in “Black Friday”, HPA wants 19 replicas, but only 10 partitions of Orders can be read. Raise the partitions to 19. A rerun with this change confirmed it."
   ]
 }

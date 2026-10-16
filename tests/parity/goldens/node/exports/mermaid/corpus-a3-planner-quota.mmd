@@ -1,0 +1,8 @@
+---
+title: a3-planner-quota
+---
+flowchart LR
+  source(["Traffic"])
+  worker["Orders"]
+  source --> worker
+%% diagrams:{"v":1,"description":"The same burst behind a 100 requests/s admission quota: more replicas can't add allocation, so the planner offers no replica fix.","nodes":{"source":["source","client.browser"],"worker":["worker","service.dotnet"]},"edges":["requests"],"relations":{}}

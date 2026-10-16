@@ -1,0 +1,385 @@
+{
+  "steps": [
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "topic-1",
+            "label": "parity.events",
+            "stencil": { "id": "kafka.topic", "label": "Kafka Topic", "confidence": "high", "alternatives": ["pulsar.topic", "confluent.cloud", "aws.msk"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-1", "from": "source", "to": "topic-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+2 nodes, +2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "dotnet-1",
+            "label": "Parity reader",
+            "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-2", "from": "topic-1", "to": "dotnet-1" },
+          {
+            "i": 2,
+            "op": "add_node",
+            "id": "key-vault-1",
+            "label": "Parity secrets",
+            "stencil": { "id": "azure.key-vault", "label": "Key Vault", "confidence": "high", "alternatives": [] }
+          },
+          { "i": 3, "op": "connect", "id": "e-3", "from": "dotnet-1", "to": "key-vault-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +2 connections, −1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "insert_between",
+            "id": "queue-1",
+            "label": "buffer",
+            "stencil": { "id": "rabbitmq.queue", "label": "RabbitMQ Queue", "confidence": "high", "alternatives": ["aws.mq"] },
+            "from": "source",
+            "to": "worker"
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "update", "id": "worker" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "update",
+            "id": "db",
+            "stencil": { "id": "aws.lambda", "label": "AWS Lambda", "confidence": "high", "alternatives": [] }
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 boundary, 2 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_boundary", "id": "boundary-1", "label": "Parity zone" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 note",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_note", "id": "note-1" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "title or direction changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "set_meta" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "−1 node, −2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "remove", "ids": ["dotnet-1", "e-2", "e-3"] }]
+      }
+    },
+    {
+      "isError": true,
+      "output": {
+        "ok": false,
+        "i": 0,
+        "error": "Unknown reference \"no-such-node\".",
+        "ref": "no-such-node",
+        "candidates": [
+          { "id": "source", "label": "Commuter apps", "stencil": "client.browser" },
+          { "id": "worker", "label": "Renamed by parity", "stencil": "gcp.cloud-run" },
+          { "id": "db", "label": "Timetables", "stencil": "aws.lambda" },
+          { "id": "topic-1", "label": "parity.events", "stencil": "kafka.topic" },
+          { "id": "key-vault-1", "label": "Parity secrets", "stencil": "azure.key-vault" },
+          { "id": "queue-1", "label": "buffer", "stencil": "rabbitmq.queue" },
+          { "id": "note-1", "label": "Pinned by the parity harness" }
+        ],
+        "hint": "Use an id from candidates, or call describe_diagram.",
+        "applied": false
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "dryRun": true,
+        "summary": "+1 node",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "postgres-1",
+            "label": "Dry run only",
+            "stencil": { "id": "postgres", "label": "PostgreSQL", "confidence": "high", "alternatives": ["gcp.cloud-sql", "aws.aurora", "supabase"] }
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "isError": false,
+      "output": { "ok": true, "id": "sim-1", "title": "Parity rush", "summary": "Added simulation \"Parity rush\": 4 traffic, 2 events, 1 expectations.", "undo": "One undo step reverts this call.", "play": "The user plays it in live view (L), or from the command palette." }
+    },
+    {
+      "isError": true,
+      "output": { "ok": false, "error": "constant traffic needs ratePerSec.", "hint": "Check the input against the tool's schema and try again." }
+    }
+  ],
+  "applied": [
+    { "tool": "edit_diagram", "summary": "+1 node, +1 connection", "changed": ["topic-1", "e-1"] },
+    {
+      "tool": "edit_diagram",
+      "summary": "+2 nodes, +2 connections",
+      "changed": ["dotnet-1", "key-vault-1", "e-2", "e-3"],
+      "choices": [
+        {
+          "nodeId": "dotnet-1",
+          "kind": ".NET consumer",
+          "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] },
+          "node": {
+            "id": "dotnet-1",
+            "stencil": "service.dotnet",
+            "label": "Parity reader",
+            "x": 680,
+            "y": 292,
+            "props": { "replicas": 3 }
+          }
+        }
+      ]
+    },
+    { "tool": "edit_diagram", "summary": "+1 node, +2 connections, −1 connection", "changed": ["queue-1", "e-4", "e-5"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["worker"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["db"] },
+    { "tool": "edit_diagram", "summary": "+1 boundary, 2 changed", "changed": ["boundary-1", "source", "worker"] },
+    { "tool": "edit_diagram", "summary": "+1 note", "changed": ["note-1"] },
+    { "tool": "edit_diagram", "summary": "title or direction changed", "changed": [] },
+    { "tool": "edit_diagram", "summary": "−1 node, −2 connections", "changed": [] },
+    { "tool": "set_simulation", "summary": "Added simulation “Parity rush”", "changed": ["source"] }
+  ],
+  "diagram": {
+    "format": "diagrams/v2",
+    "planning": { "revision": "p3-a1" },
+    "title": "Parity edit",
+    "description": "An invented commuter timetable API on Cloud Run. It sleeps overnight, starts instances on demand for the first requests, and hits its maximum in the morning rush; Check diagram suggests a higher one. Timings are shortened for teaching.",
+    "nodes": [
+      {
+        "id": "source",
+        "stencil": "client.browser",
+        "label": "Commuter apps",
+        "x": 80,
+        "y": 180,
+        "props": { "ratePerSec": 0 },
+        "group": "boundary-1"
+      },
+      {
+        "id": "worker",
+        "stencil": "gcp.cloud-run",
+        "label": "Renamed by parity",
+        "sublabel": "80 requests per instance",
+        "x": 440,
+        "y": 180,
+        "props": {
+          "replicas": 1,
+          "concurrency": 80,
+          "latencyMs": 120,
+          "jitter": 0,
+          "resources": {
+            "preset": "io-service",
+            "presetRevision": "1",
+            "cpuMsPerMessage": 40,
+            "baselineMemoryMiB": 128,
+            "memoryMiBPerMessage": 2,
+            "cpuRequestMilli": 500,
+            "cpuLimitMilli": 1000,
+            "memoryRequestMiB": 256,
+            "memoryLimitMiB": 512,
+            "startup": { "delayMs": 2000, "jitterFraction": 0 },
+            "terminationGraceMs": 30000,
+            "modelRevision": "a2"
+          },
+          "autoscaling": {
+            "mode": "on",
+            "modelRevision": "a3",
+            "preset": "cloud-run",
+            "presetRevision": "1",
+            "controller": { "kind": "cloudRun", "minReplicas": 0, "initialReplicas": 0, "maxReplicas": 6, "targetConcurrencyPct": 60, "targetCpuPct": 60, "evaluationMs": 2000, "cpuWindowMs": 6000, "concurrencyWindowsMs": [6000, 12000], "scaleInDelayMs": 4000 }
+          }
+        },
+        "group": "boundary-1"
+      },
+      { "id": "db", "stencil": "aws.lambda", "label": "Timetables", "x": 800, "y": 180, "props": {} },
+      { "id": "topic-1", "stencil": "kafka.topic", "label": "parity.events", "x": 380, "y": 292 },
+      { "id": "key-vault-1", "stencil": "azure.key-vault", "label": "Parity secrets", "x": 40, "y": 64 },
+      { "id": "queue-1", "stencil": "rabbitmq.queue", "label": "buffer", "x": 380, "y": 404 }
+    ],
+    "edges": [
+      { "id": "reads", "from": "worker", "to": "db", "kind": "sync", "props": { "travelMs": 10 } },
+      { "id": "e-1", "from": "source", "to": "topic-1", "kind": "async" },
+      { "id": "e-4", "from": "source", "to": "queue-1", "kind": "sync", "props": { "travelMs": 10 } },
+      { "id": "e-5", "from": "queue-1", "to": "worker", "kind": "sync", "props": { "travelMs": 10 } }
+    ],
+    "simulations": [
+      {
+        "id": "morning-rush",
+        "title": "Overnight, then the morning rush",
+        "seed": 23,
+        "durationMs": 60000,
+        "traffic": [
+          {
+            "id": "rush",
+            "node": "source",
+            "label": "Morning rush",
+            "shape": {
+              "kind": "ramp",
+              "fromMs": 4000,
+              "stages": [
+                { "durationMs": 8000, "targetRate": 150 },
+                { "durationMs": 16000, "targetRate": 150 },
+                { "durationMs": 6000, "targetRate": 0 }
+              ]
+            }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 1000,
+            "action": { "do": "note", "text": "Overnight: no instances, nothing running.", "focus": ["worker"] }
+          },
+          {
+            "atMs": 6000,
+            "action": { "do": "note", "text": "First requests wait while instances start on demand.", "focus": ["worker"] }
+          },
+          {
+            "atMs": 20000,
+            "action": { "do": "note", "text": "The rush hits the maximum of 6 instances. Check diagram suggests a higher maximum.", "focus": ["worker"] }
+          },
+          {
+            "atMs": 44000,
+            "action": { "do": "note", "text": "The rush ends; idle instances shut down, back to zero.", "focus": ["worker"] }
+          }
+        ]
+      },
+      {
+        "id": "quiet-sunday",
+        "title": "A quiet Sunday",
+        "seed": 29,
+        "durationMs": 30000,
+        "traffic": [
+          {
+            "id": "few",
+            "node": "source",
+            "label": "A few commuters",
+            "shape": { "kind": "constant", "ratePerSec": 4, "fromMs": 3000, "durationMs": 8000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 4000,
+            "action": { "do": "note", "text": "One instance starts for a few requests, then sleeps again.", "focus": ["worker"] }
+          }
+        ]
+      },
+      {
+        "id": "sim-1",
+        "title": "Parity rush",
+        "durationMs": 20000,
+        "traffic": [
+          {
+            "id": "traffic-1",
+            "node": "source",
+            "shape": { "kind": "constant", "ratePerSec": 20, "fromMs": 0, "durationMs": 10000 }
+          },
+          {
+            "id": "traffic-2",
+            "node": "source",
+            "shape": { "kind": "burst", "count": 50, "atMs": 5000, "spreadMs": 2000 },
+            "messageType": "ParityBurst"
+          },
+          {
+            "id": "traffic-3",
+            "node": "source",
+            "shape": {
+              "kind": "ramp",
+              "fromMs": 0,
+              "startRate": 1,
+              "stages": [{ "durationMs": 8000, "targetRate": 30 }]
+            }
+          },
+          {
+            "id": "traffic-4",
+            "node": "source",
+            "shape": { "kind": "spike", "baseRate": 5, "peakRate": 40, "atMs": 12000, "peakMs": 1000, "durationMs": 4000 }
+          }
+        ],
+        "timeline": [
+          { "atMs": 6000, "action": { "do": "status", "node": "db", "status": "down" } },
+          { "atMs": 6000, "action": { "do": "note", "text": "It goes down", "focus": ["db"] } }
+        ],
+        "expectations": [
+          {
+            "id": "expectation-1",
+            "label": "Nothing dropped",
+            "metric": { "node": "db", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ],
+        "scale": 2
+      }
+    ],
+    "groups": [
+      { "id": "boundary-1", "label": "Parity zone", "tone": "neutral", "x": 40, "y": 116, "width": 674, "height": 176 }
+    ],
+    "annotations": [
+      { "id": "note-1", "kind": "note", "text": "Pinned by the parity harness", "x": 80, "y": 300, "width": 240, "height": 160 }
+    ],
+    "direction": "TB"
+  }
+}

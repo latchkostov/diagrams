@@ -8,6 +8,7 @@
   "tests/fixtures/imports/k8s/ingress.yaml": "kubernetes",
   "tests/fixtures/imports/k8s/orders-api.yaml": "kubernetes",
   "tests/fixtures/imports/k8s/payments-worker.yaml": "kubernetes",
+  "tests/fixtures/imports/terraform/autoscaling-a3.json": "terraform",
   "tests/fixtures/imports/terraform/aws-plan.json": "terraform",
   "tests/fixtures/imports/terraform/azure-state.json": "terraform",
   "tests/fixtures/imports/hostile/recursive-ref.asyncapi.yaml": "asyncapi",

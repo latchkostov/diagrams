@@ -1,0 +1,473 @@
+{
+  "run": {
+    "time": 240000,
+    "totalMs": 240000,
+    "done": true,
+    "scale": 5,
+    "multipliers": { "traffic": 3, "capacity": 1 },
+    "expectations": [],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "shoppers" },
+      { "atMs": 240000, "kind": "traffic", "label": "shoppers ends" }
+    ]
+  },
+  "checkpoints": [
+    { "atMs": 0, "inSystem": 0, "nodes": { "source": { "replicas": [1, 1, 0] }, "worker": { "replicas": [1, 1, 0] } } },
+    {
+      "atMs": 10000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 360, "throughput": 35.84145944575982, "replicas": [1, 1, 0] },
+        "worker": { "rejected": 359, "rejectionReasons": { "requests: requests": 359 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 720, "throughput": 35.84313227318921, "replicas": [1, 1, 0] },
+        "worker": { "rejected": 719, "rejectionReasons": { "requests: requests": 719 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 1080, "throughput": 35.84313234913546, "replicas": [1, 1, 0] },
+        "worker": { "rejected": 1079, "rejectionReasons": { "requests: requests": 1079 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 1440, "throughput": 35.843132349138806, "replicas": [1, 1, 0] },
+        "worker": { "rejected": 1439, "rejectionReasons": { "requests: requests": 1439 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 1800, "throughput": 35.843132349138806, "replicas": [1, 1, 0] },
+        "worker": { "rejected": 1799, "rejectionReasons": { "requests: requests": 1799 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 2160, "throughput": 35.843132349138806, "replicas": [1, 1, 0] },
+        "worker": { "rejected": 2159, "rejectionReasons": { "requests: requests": 2159 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 70000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 2520, "throughput": 35.843132349138806, "replicas": [1, 1, 0] },
+        "worker": { "rejected": 2519, "rejectionReasons": { "requests: requests": 2519 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 80000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 2880, "throughput": 35.843132349138806, "replicas": [1, 1, 0] },
+        "worker": { "rejected": 2879, "rejectionReasons": { "requests: requests": 2879 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 90000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 3240, "throughput": 35.843132349138806, "replicas": [1, 1, 0] },
+        "worker": { "rejected": 3239, "rejectionReasons": { "requests: requests": 3239 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 100000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 3600, "throughput": 35.843132349138806, "replicas": [1, 1, 0] },
+        "worker": { "rejected": 3599, "rejectionReasons": { "requests: requests": 3599 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 110000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 3960, "throughput": 35.843132349138806, "replicas": [1, 1, 0] },
+        "worker": { "rejected": 3959, "rejectionReasons": { "requests: requests": 3959 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 120000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 4320, "throughput": 35.843132349138806, "replicas": [1, 1, 0] },
+        "worker": { "rejected": 4319, "rejectionReasons": { "requests: requests": 4319 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 130000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 4680, "throughput": 35.843132349138806, "replicas": [1, 1, 0] },
+        "worker": { "rejected": 4679, "rejectionReasons": { "requests: requests": 4679 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 140000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 5040, "throughput": 35.843132349138806, "replicas": [1, 1, 0] },
+        "worker": { "rejected": 5039, "rejectionReasons": { "requests: requests": 5039 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 150000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 5400, "throughput": 35.843132349138806, "replicas": [1, 1, 0] },
+        "worker": { "rejected": 5399, "rejectionReasons": { "requests: requests": 5399 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 160000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 5760, "throughput": 35.843132349138806, "replicas": [1, 1, 0] },
+        "worker": { "rejected": 5759, "rejectionReasons": { "requests: requests": 5759 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 170000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 6120, "throughput": 35.843132349138806, "replicas": [1, 1, 0] },
+        "worker": { "rejected": 6119, "rejectionReasons": { "requests: requests": 6119 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 180000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 6480, "throughput": 35.843132349138806, "replicas": [1, 1, 0] },
+        "worker": { "rejected": 6479, "rejectionReasons": { "requests: requests": 6479 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 190000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 6840, "throughput": 35.843132349138806, "replicas": [1, 1, 0] },
+        "worker": { "rejected": 6839, "rejectionReasons": { "requests: requests": 6839 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 200000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 7200, "throughput": 35.843132349138806, "replicas": [1, 1, 0] },
+        "worker": { "rejected": 7199, "rejectionReasons": { "requests: requests": 7199 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 210000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 7560, "throughput": 35.843132349138806, "replicas": [1, 1, 0] },
+        "worker": { "rejected": 7559, "rejectionReasons": { "requests: requests": 7559 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 220000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 7920, "throughput": 35.843132349138806, "replicas": [1, 1, 0] },
+        "worker": { "rejected": 7919, "rejectionReasons": { "requests: requests": 7919 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 230000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 8280, "throughput": 35.843132349138806, "replicas": [1, 1, 0] },
+        "worker": { "rejected": 8279, "rejectionReasons": { "requests: requests": 8279 }, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 240000,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 8640, "throughput": 35.843132349138806, "replicas": [1, 1, 0] },
+        "worker": { "rejected": 8639, "rejectionReasons": { "requests: requests": 8639 }, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 240000,
+    "inSystem": 1,
+    "real": {
+      "source": { "processed": 43200, "throughput": 179.21566174569404, "replicas": [1, 1, 0] },
+      "worker": { "rejected": 43195, "rejectionReasons": { "requests: requests": 43195 }, "replicas": [1, 1, 0] }
+    },
+    "edges": { "requests": 8639 }
+  },
+  "events": {
+    "total": 34558,
+    "byKind": { "inject": 8640, "process": 8640, "deliver": 8639, "reject": 8639 },
+    "byNode": { "source": { "inject": 8640, "process": 8640 }, "worker": { "deliver": 8639, "reject": 8639 } },
+    "perSecond": [
+      "df5303253d57",
+      "c0192c864e4f",
+      "7f7fe5e1c089",
+      "a0a2c771b0e9",
+      "f574e4b4def8",
+      "1de8ddde1fe1",
+      "98b7eb0895e3",
+      "44904f78a388",
+      "0c5c0f7e93b7",
+      "109d1f065608",
+      "8319e01967f9",
+      "5ea6a2abbfc7",
+      "d6ee0691d277",
+      "6fd31b654376",
+      "5f905c80a5ac",
+      "2de6127f5d00",
+      "8ac28d66cd97",
+      "b89a572f8597",
+      "decdc7aeaf17",
+      "8fc35f43d54f",
+      "aa9274b836b8",
+      "40403f147b57",
+      "627a964c5f1b",
+      "2ae55cad8942",
+      "a343aaa4c7c8",
+      "b0ec427ff8d5",
+      "15a0db729d6b",
+      "91b4b29a96ab",
+      "cd8b46f7e44c",
+      "30ee1f43a455",
+      "66ead6d308e6",
+      "5b85e825b517",
+      "8f34dedb3334",
+      "30e9de2ef41c",
+      "44096bb9c63c",
+      "7f01203455fe",
+      "add7b2adb572",
+      "f560b86f212f",
+      "2d9f7542d36f",
+      "522aa87b2f8d",
+      "f46fb0baff2c",
+      "f8f2e7b0f92a",
+      "51246c089a9a",
+      "deb551a26ceb",
+      "f3a3d5ace5b6",
+      "ed4e39206820",
+      "cb675875a97e",
+      "8d337d172007",
+      "74330e53554c",
+      "282925b13451",
+      "2d55d690c6c9",
+      "b776c8cd5b34",
+      "5e057725e8e7",
+      "1e3337c5b485",
+      "c2031d563f57",
+      "4804b66e01fe",
+      "ccdf97dfebff",
+      "1dc98c29d5b8",
+      "24db95d8fe44",
+      "41a6bf023784",
+      "6b212d8b6239",
+      "c6ffce640dc7",
+      "61c36fea92b5",
+      "c0f1b36fb1f5",
+      "c5857d320f33",
+      "f9448e6156f0",
+      "7104c6f49bf2",
+      "a5437e9e7a31",
+      "80979c5649d9",
+      "ffda06f0dbc2",
+      "a9d020726a1a",
+      "d5590a8edb47",
+      "fed5522c96b0",
+      "09cb77035bf8",
+      "119ae3c17e57",
+      "2c1f5e91c2f8",
+      "7b2d4a8cdfdc",
+      "43ee127b6159",
+      "e006d74c359f",
+      "df2dacf0bc30",
+      "89178f874e52",
+      "4d8900a26716",
+      "58bef2275c72",
+      "dc8cbf10767c",
+      "f6b27211d524",
+      "2f9061693834",
+      "6dbf5fac2969",
+      "d1a0357be12d",
+      "516db9907d06",
+      "5c4f63191d16",
+      "0be9e469ca68",
+      "b1f100dd80d3",
+      "a7848d0b3cce",
+      "9f11f7b57139",
+      "29372ac49991",
+      "4e962455a82a",
+      "a09f5c8f26d9",
+      "0f8079d6a6c0",
+      "d948decd7bfb",
+      "99dbdfc1b4e8",
+      "abca9052a147",
+      "b2e291683550",
+      "fe19bfb7ec4b",
+      "54377c4e78a8",
+      "bc8014ebe930",
+      "778065d081e8",
+      "424a92417f11",
+      "da7146037ac2",
+      "47a76cfb65fe",
+      "eef58121b18b",
+      "db0e88093a39",
+      "1597d291d186",
+      "7bbc86e5fea8",
+      "aad7d534d20f",
+      "5e7bd13159a0",
+      "57bc3640b24e",
+      "cdb10733185b",
+      "1a6be79cc746",
+      "55ff951ce31c",
+      "dc73b59552c4",
+      "38897daf635a",
+      "b0c4b6608fba",
+      "ab871b86f7fa",
+      "bb26faeb35ad",
+      "2a906917bf78",
+      "c40a1ce6410d",
+      "c0b75d34ab4b",
+      "08727c392525",
+      "31e2d2c2cd1d",
+      "da9d456a138d",
+      "4eee50b6cf53",
+      "0e2d0f1a7ccd",
+      "2971f37c6b51",
+      "fc43635f60e3",
+      "6e091869d074",
+      "22b341a6e524",
+      "4baea7c07e81",
+      "14e55747c1ff",
+      "6be0463f7cbe",
+      "878dd81468db",
+      "77bf7d57e7aa",
+      "f554f178e106",
+      "784600460233",
+      "54ddf099b308",
+      "dc8f70ba31e2",
+      "e518d7344278",
+      "d27f76005e12",
+      "837d87a00a8e",
+      "f3edaaa7054d",
+      "0c258000dd2f",
+      "04a76588d705",
+      "7581696fa142",
+      "7b85830fde90",
+      "c943abf00cb3",
+      "46d7599bf644",
+      "33b82e82776c",
+      "2286e9891702",
+      "30345a139ae2",
+      "e7968586f933",
+      "cf0d6865ed82",
+      "24225a60c3da",
+      "3078bdbb8a09",
+      "66d1c9646f9d",
+      "5437d736f1d3",
+      "5dc8097e0de1",
+      "b5be514dc023",
+      "b98111d446eb",
+      "95db674d9dc9",
+      "0bbf845e554d",
+      "5305a9f14e2f",
+      "0a111d50806e",
+      "60ca642596dc",
+      "db9b7491f12e",
+      "577b1ab16b68",
+      "56c24e38f8e2",
+      "6e58e7f3c6d3",
+      "ecd245c08643",
+      "212713737e68",
+      "1160b93cb838",
+      "8de6817fd9f3",
+      "66d4c3f3dbb3",
+      "7f2a6f79618e",
+      "8a4a6563d0a6",
+      "c8bf888fb768",
+      "38d71e62ceaa",
+      "b72716ffcf69",
+      "20a6a0092714",
+      "63d9ba62e27a",
+      "f53b166ed392",
+      "1d3c68e0410d",
+      "91be8510fe5f",
+      "8a94ade6545c",
+      "b264181c7b5e",
+      "ef8bdba0ad2d",
+      "8975be7c0d6c",
+      "81f11596bffe",
+      "0e37e7984eaa",
+      "6cb54cb9f488",
+      "59ba49f29083",
+      "fee77c797169",
+      "f6fd53474a37",
+      "5f398f68d19b",
+      "4d55b5e21c10",
+      "b9c3ce7c4cc2",
+      "e17c16f7ed2c",
+      "7ad96054c9c9",
+      "e05416024d89",
+      "1274e2a2ada0",
+      "b17f9986546b",
+      "51aadaeb860d",
+      "fd272a2356f1",
+      "ccae25a4622d",
+      "e51a977d72e1",
+      "7fd4a599472b",
+      "e54a7b165df7",
+      "9ec5b9d6b372",
+      "31197222ee9f",
+      "eaf81fab6967",
+      "aa0266e844ee",
+      "dca77a9808a4",
+      "461288a2c0b3",
+      "848495246fd1",
+      "782b3c097829",
+      "c963ba679c6f",
+      "853ee35ee2e2",
+      "1bc456437026",
+      "b685466a1d2f",
+      "cd20388098ab",
+      "b3e07a9258fc",
+      "aa242efea87a",
+      "a61e3e1be65d",
+      "2c586f9625b5",
+      "758b10fb8fe8",
+      "65b60ff02ee8",
+      "2c00680b31b1",
+      "3b971c2d164d",
+      "68fa53060ff1",
+      "d923bde4db83",
+      "9aea9900527c",
+      "ef9d3084b807",
+      "88bc4cf0c41f"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 8639, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0, "rejected": 8639 },
+    "endToEndMs": { "count": 8639, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+    "waitMs": {},
+    "processMs": {}
+  }
+}

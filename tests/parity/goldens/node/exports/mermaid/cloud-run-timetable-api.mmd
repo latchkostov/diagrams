@@ -1,0 +1,10 @@
+---
+title: Timetable API sleeps overnight
+---
+flowchart LR
+  source(["Commuter apps"])
+  worker["Timetable API<br/>80 requests per instance"]
+  db[("Timetables")]
+  source --> worker
+  worker --> db
+%% diagrams:{"v":1,"description":"An invented commuter timetable API on Cloud Run. It sleeps overnight, starts instances on demand for the first requests, and hits its maximum in the morning rush; Check diagram suggests a higher one. Timings are shortened for teaching.","nodes":{"source":["source","client.browser"],"worker":["worker","gcp.cloud-run"],"db":["db","gcp.firestore"]},"edges":["requests","reads"],"relations":{}}

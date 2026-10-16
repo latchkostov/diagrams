@@ -1,0 +1,9 @@
+---
+title: a3-planner-partitions
+---
+flowchart LR
+  orders["Orders"]
+  worker["Orders"]
+  orders -.-> worker
+  linkStyle 0 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"The same burst read from a ten-partition log: more replicas would sit idle, so the planner suggests partitions.","nodes":{"orders":["orders","kafka.topic"],"worker":["worker","service.dotnet"]},"edges":["consume"],"relations":{}}

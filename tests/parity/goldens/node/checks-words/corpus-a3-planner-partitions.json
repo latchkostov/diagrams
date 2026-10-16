@@ -1,0 +1,42 @@
+{
+  "summary": "1 warning, 0 suggestions.",
+  "findings": {
+    "capacity:worker": {
+      "title": "Orders: scenario sizing",
+      "message": "At 3× traffic in “Black Friday”, HPA wants 19 replicas, but only 10 partitions of Orders can be read. Raise the partitions to 19. A rerun with this change confirmed it.",
+      "rationale": "Played headless with the same engine and seed as playback; a suggestion is offered as a fix only when a rerun with it bears it out.",
+      "fix": { "label": "Set Orders partitions to 19" },
+      "shownRationale": "Played with the same engine and seed as playback. A suggestion is a fix only when a rerun with it bears it out."
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "capacity:worker",
+        "rule": "capacity",
+        "severity": "warning",
+        "title": "Orders: scenario sizing",
+        "message": "At 3× traffic in “Black Friday”, HPA wants 19 replicas, but only 10 partitions of Orders can be read. Raise the partitions to 19. A rerun with this change confirmed it.",
+        "targets": ["worker", "orders"],
+        "fix": { "label": "Set Orders partitions to 19", "needsChoice": "Its edit ops are too long for this reply: make the change with edit_diagram." }
+      }
+    ],
+    "summary": "1 warning, 0 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      {
+        "id": "capacity:worker",
+        "rule": "capacity",
+        "severity": "warning",
+        "title": "Orders: scenario sizing",
+        "message": "At 3× traffic in “Black Friday”, HPA wants 19 replicas, but only 10 partitions of Orders can be read. Raise the partitions to 19. A rerun with this change confirmed it.",
+        "targets": ["worker", "orders"],
+        "fix": { "label": "Set Orders partitions to 19", "needsChoice": "Its edit ops are too long for this reply: make the change with edit_diagram." }
+      }
+    ],
+    "summary": "1 warning, 0 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
+}

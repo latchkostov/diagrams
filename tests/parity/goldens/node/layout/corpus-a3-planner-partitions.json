@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "orders": [40, 40], "worker": [400, 40] },
+    "TB": { "orders": [40, 40], "worker": [40, 200] }
+  },
+  "tidy": { "orders": [80, 180], "worker": [440, 180] },
+  "arrange": {
+    "alignLeft": { "orders": [80, 180], "worker": [80, 180] },
+    "alignMiddle": { "orders": [80, 180], "worker": [440, 180] },
+    "distributeH": { "orders": [80, 180], "worker": [440, 180] },
+    "distributeV": { "orders": [80, 180], "worker": [440, 180] },
+    "spreadH": { "orders": [80, 180], "worker": [440, 180] },
+    "boundaryAround": { "x": 40, "y": 116, "width": 660, "height": 176 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "orders": [40, 40], "worker": [400, 40] },
+    "groups": {}
+  }
+}

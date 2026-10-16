@@ -57,9 +57,9 @@
     }
   ],
   "english": [
-    "In “Ticket drop”, up to 261 messages waited while ECS started replicas. Keep 4 warm (minimum 1 → 4). A same-seed rerun verified it."
+    "In “Ticket drop”, up to 261 messages waited while ECS started tasks. Set the minimum to 4 (from 1). A rerun with this change confirmed it."
   ],
   "shown": [
-    "In “Ticket drop”, up to 261 messages waited while ECS started replicas. Keep 4 warm (minimum 1 → 4). A same-seed rerun verified it."
+    "In “Ticket drop”, up to 261 messages waited while ECS started tasks. Set the minimum to 4 (from 1). A rerun with this change confirmed it."
   ]
 }

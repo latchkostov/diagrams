@@ -1,0 +1,241 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"a3-planner-partitions\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 1 simulations\ndescription: \"The same burst read from a ten-partition log: more replicas would sit idle, so the planner suggests partitions.\"\nnodes:\n  \"orders\" \"kafka.topic\" (\"Kafka Topic\") \"Orders\" props={\"partitions\":10} capabilities=[] explanation=undefined\n  \"worker\" \"service.dotnet\" (\".NET Service\") \"Orders\" props={\"replicas\":1,\"concurrency\":4,\"latencyMs\":250,\"jitter\":0,\"resources\":{\"preset\":\"io-service\",\"presetRevision\":\"1\",\"cpuMsPerMessage\":40,\"baselineMemoryMiB\":128,\"memoryMiBPerMessage\":2,\"cpuRequestMilli\":500,\"cpuLimitMilli\":1000,\"memoryRequestMiB\":256,\"memoryLimitMiB\":512,\"startup\":{\"delayMs\":5000,\"jitterFraction\":0},\"terminationGraceMs\":30000},\"autoscaling\":{\"mode\":\"on\",\"modelRevision\":\"a1\",\"preset\":\"hpa-service\",\"presetRevision\":\"1\",\"controller\":{\"kind\":\"hpa\",\"minReplicas\":1,\"maxReplicas\":10,\"initialReplicas\":1,\"settings\":{\"syncMs\":15000,\"tolerance\":0.1,\"initialReadinessDelayMs\":30000,\"cpuInitializationPeriodMs\":300000,\"metrics\":[{\"source\":{\"kind\":\"resource\",\"resource\":\"cpu\"},\"target\":{\"kind\":\"utilization\",\"percentOfRequest\":70},\"windowMs\":15000,\"metricDelayMs\":0}],\"up\":{\"stabilizationMs\":0,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Pods\",\"value\":4,\"periodMs\":15000},{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]},\"down\":{\"stabilizationMs\":300000,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]}}}}} capabilities=[{\"kind\":\"consumes\",\"edge\":\"consume\",\"peer\":\"orders\",\"group\":\"fulfil\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"resources\":{\"perReplica\":16,\"initial\":1,\"min\":1,\"max\":10,\"initialCapacity\":16,\"maxCapacity\":160,\"targetReplicas\":1,\"cpuRequestPct\":0,\"memoryPeakMiB\":136,\"memoryRisk\":false,\"baselineAboveTarget\":false,\"partitionLimited\":false,\"startupMs\":5000,\"cpuUnbounded\":false},\"id\":\"worker\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"orders\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":10}],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"consume\" \"orders\" -> \"worker\" async\nsimulation \"black-friday\" \"Black Friday\": {\"kind\":\"constant\",\"ratePerSec\":60,\"durationMs\":240000} from \"orders\"; timeline=[]; expectations=[]\nscenario sizing \"black-friday\" \"worker\": \"At 3× traffic in “Black Friday”, HPA wants 19 replicas, but only 10 partitions of Orders can be read. Raise the partitions to 19. A rerun with this change confirmed it.\" fix=[{\"node\":\"orders\",\"props\":{\"partitions\":19}},{\"node\":\"worker\",\"props\":{\"autoscaling\":{\"mode\":\"on\",\"modelRevision\":\"a1\",\"preset\":\"hpa-service\",\"presetRevision\":\"1\",\"controller\":{\"kind\":\"hpa\",\"minReplicas\":1,\"maxReplicas\":19,\"initialReplicas\":1,\"settings\":{\"syncMs\":15000,\"tolerance\":0.1,\"initialReadinessDelayMs\":30000,\"cpuInitializationPeriodMs\":300000,\"metrics\":[{\"source\":{\"kind\":\"resource\",\"resource\":\"cpu\"},\"target\":{\"kind\":\"utilization\",\"percentOfRequest\":70},\"windowMs\":15000,\"metricDelayMs\":0}],\"up\":{\"stabilizationMs\":0,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Pods\",\"value\":4,\"periodMs\":15000},{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]},\"down\":{\"stabilizationMs\":300000,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]}}}}}}]"
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "a3-planner-partitions",
+      "description": "The same burst read from a ten-partition log: more replicas would sit idle, so the planner suggests partitions.",
+      "direction": "LR",
+      "planning": { "revision": "p3-a1" },
+      "nodes": [
+        {
+          "id": "orders",
+          "stencil": "kafka.topic",
+          "label": "Orders",
+          "x": 80,
+          "y": 180,
+          "props": { "partitions": 10 },
+          "capabilities": []
+        },
+        {
+          "id": "worker",
+          "stencil": "service.dotnet",
+          "label": "Orders",
+          "x": 440,
+          "y": 180,
+          "props": {
+            "replicas": 1,
+            "concurrency": 4,
+            "latencyMs": 250,
+            "jitter": 0,
+            "resources": {
+              "preset": "io-service",
+              "presetRevision": "1",
+              "cpuMsPerMessage": 40,
+              "baselineMemoryMiB": 128,
+              "memoryMiBPerMessage": 2,
+              "cpuRequestMilli": 500,
+              "cpuLimitMilli": 1000,
+              "memoryRequestMiB": 256,
+              "memoryLimitMiB": 512,
+              "startup": { "delayMs": 5000, "jitterFraction": 0 },
+              "terminationGraceMs": 30000
+            },
+            "autoscaling": {
+              "mode": "on",
+              "modelRevision": "a1",
+              "preset": "hpa-service",
+              "presetRevision": "1",
+              "controller": {
+                "kind": "hpa",
+                "minReplicas": 1,
+                "maxReplicas": 10,
+                "initialReplicas": 1,
+                "settings": {
+                  "syncMs": 15000,
+                  "tolerance": 0.1,
+                  "initialReadinessDelayMs": 30000,
+                  "cpuInitializationPeriodMs": 300000,
+                  "metrics": [
+                    {
+                      "source": { "kind": "resource", "resource": "cpu" },
+                      "target": { "kind": "utilization", "percentOfRequest": 70 },
+                      "windowMs": 15000,
+                      "metricDelayMs": 0
+                    }
+                  ],
+                  "up": {
+                    "stabilizationMs": 0,
+                    "selectPolicy": "Max",
+                    "policies": [
+                      { "type": "Pods", "value": 4, "periodMs": 15000 },
+                      { "type": "Percent", "value": 100, "periodMs": 15000 }
+                    ]
+                  },
+                  "down": {
+                    "stabilizationMs": 300000,
+                    "selectPolicy": "Max",
+                    "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+                  }
+                }
+              }
+            }
+          },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "consume",
+              "peer": "orders",
+              "group": "fulfil",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "resources": { "perReplica": 16, "initial": 1, "min": 1, "max": 10, "initialCapacity": 16, "maxCapacity": 160, "targetReplicas": 1, "cpuRequestPct": 0, "memoryPeakMiB": 136, "memoryRisk": false, "baselineAboveTarget": false, "partitionLimited": false, "startupMs": 5000, "cpuUnbounded": false },
+            "id": "worker",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 16,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "orders",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 10
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "consume",
+          "from": "orders",
+          "to": "worker",
+          "kind": "async",
+          "props": { "group": "fulfil", "travelMs": 10 }
+        }
+      ],
+      "groups": [],
+      "annotations": [],
+      "simulations": [
+        {
+          "id": "black-friday",
+          "title": "Black Friday",
+          "seed": 7,
+          "multipliers": { "traffic": 3 },
+          "durationMs": 240000,
+          "traffic": [
+            {
+              "id": "shoppers",
+              "node": "orders",
+              "shape": { "kind": "constant", "ratePerSec": 60, "durationMs": 240000 }
+            }
+          ]
+        }
+      ],
+      "scalingPlans": [
+        {
+          "simulation": "black-friday",
+          "title": "Black Friday",
+          "traffic": 3,
+          "horizonMs": 240000,
+          "suggestions": [
+            {
+              "node": "worker",
+              "adapter": "hpa",
+              "wanted": 19,
+              "metric": 127.99999999999949,
+              "target": 70,
+              "metricKind": "cpuRequest",
+              "backlog": 11754,
+              "startupBacklog": 8188,
+              "endBacklog": 11754,
+              "kind": "partitions",
+              "from": 10,
+              "to": 19,
+              "fix": [
+                { "node": "orders", "props": { "partitions": 19 } },
+                {
+                  "node": "worker",
+                  "props": {
+                    "autoscaling": {
+                      "mode": "on",
+                      "modelRevision": "a1",
+                      "preset": "hpa-service",
+                      "presetRevision": "1",
+                      "controller": {
+                        "kind": "hpa",
+                        "minReplicas": 1,
+                        "maxReplicas": 19,
+                        "initialReplicas": 1,
+                        "settings": {
+                          "syncMs": 15000,
+                          "tolerance": 0.1,
+                          "initialReadinessDelayMs": 30000,
+                          "cpuInitializationPeriodMs": 300000,
+                          "metrics": [
+                            {
+                              "source": { "kind": "resource", "resource": "cpu" },
+                              "target": { "kind": "utilization", "percentOfRequest": 70 },
+                              "windowMs": 15000,
+                              "metricDelayMs": 0
+                            }
+                          ],
+                          "up": {
+                            "stabilizationMs": 0,
+                            "selectPolicy": "Max",
+                            "policies": [
+                              { "type": "Pods", "value": 4, "periodMs": 15000 },
+                              { "type": "Percent", "value": 100, "periodMs": 15000 }
+                            ]
+                          },
+                          "down": {
+                            "stabilizationMs": 300000,
+                            "selectPolicy": "Max",
+                            "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              ],
+              "broker": "orders",
+              "verified": { "backlog": 8310, "startupBacklog": 8310, "endBacklog": 2, "maxed": true, "rejected": 0 },
+              "explanation": "At 3× traffic in “Black Friday”, HPA wants 19 replicas, but only 10 partitions of Orders can be read. Raise the partitions to 19. A rerun with this change confirmed it."
+            }
+          ],
+          "status": "planned",
+          "runs": 3,
+          "ticks": 72000
+        }
+      ],
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"a3-planner-partitions\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 1 simulations\ndescription: \"The same burst read from a ten-partition log: more replicas would sit idle, so the planner suggests partitions.\"\nnodes:\n  \"orders\" \"kafka.topic\" (\"Kafka Topic\") \"Orders\" props={\"partitions\":10} capabilities=[] explanation=undefined\n  \"worker\" \"service.dotnet\" (\".NET Service\") \"Orders\" props={\"replicas\":1,\"concurrency\":4,\"latencyMs\":250,\"jitter\":0,\"resources\":{\"preset\":\"io-service\",\"presetRevision\":\"1\",\"cpuMsPerMessage\":40,\"baselineMemoryMiB\":128,\"memoryMiBPerMessage\":2,\"cpuRequestMilli\":500,\"cpuLimitMilli\":1000,\"memoryRequestMiB\":256,\"memoryLimitMiB\":512,\"startup\":{\"delayMs\":5000,\"jitterFraction\":0},\"terminationGraceMs\":30000},\"autoscaling\":{\"mode\":\"on\",\"modelRevision\":\"a1\",\"preset\":\"hpa-service\",\"presetRevision\":\"1\",\"controller\":{\"kind\":\"hpa\",\"minReplicas\":1,\"maxReplicas\":10,\"initialReplicas\":1,\"settings\":{\"syncMs\":15000,\"tolerance\":0.1,\"initialReadinessDelayMs\":30000,\"cpuInitializationPeriodMs\":300000,\"metrics\":[{\"source\":{\"kind\":\"resource\",\"resource\":\"cpu\"},\"target\":{\"kind\":\"utilization\",\"percentOfRequest\":70},\"windowMs\":15000,\"metricDelayMs\":0}],\"up\":{\"stabilizationMs\":0,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Pods\",\"value\":4,\"periodMs\":15000},{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]},\"down\":{\"stabilizationMs\":300000,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]}}}}} capabilities=[{\"kind\":\"consumes\",\"edge\":\"consume\",\"peer\":\"orders\",\"group\":\"fulfil\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"resources\":{\"perReplica\":16,\"initial\":1,\"min\":1,\"max\":10,\"initialCapacity\":16,\"maxCapacity\":160,\"targetReplicas\":1,\"cpuRequestPct\":0,\"memoryPeakMiB\":136,\"memoryRisk\":false,\"baselineAboveTarget\":false,\"partitionLimited\":false,\"startupMs\":5000,\"cpuUnbounded\":false},\"id\":\"worker\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"orders\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":10}],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"consume\" \"orders\" -> \"worker\" async\nsimulation \"black-friday\" \"Black Friday\": {\"kind\":\"constant\",\"ratePerSec\":60,\"durationMs\":240000} from \"orders\"; timeline=[]; expectations=[]\nscenario sizing \"black-friday\" \"worker\": \"At 3× traffic in “Black Friday”, HPA wants 19 replicas, but only 10 partitions of Orders can be read. Raise the partitions to 19. A rerun with this change confirmed it.\" fix=[{\"node\":\"orders\",\"props\":{\"partitions\":19}},{\"node\":\"worker\",\"props\":{\"autoscaling\":{\"mode\":\"on\",\"modelRevision\":\"a1\",\"preset\":\"hpa-service\",\"presetRevision\":\"1\",\"controller\":{\"kind\":\"hpa\",\"minReplicas\":1,\"maxReplicas\":19,\"initialReplicas\":1,\"settings\":{\"syncMs\":15000,\"tolerance\":0.1,\"initialReadinessDelayMs\":30000,\"cpuInitializationPeriodMs\":300000,\"metrics\":[{\"source\":{\"kind\":\"resource\",\"resource\":\"cpu\"},\"target\":{\"kind\":\"utilization\",\"percentOfRequest\":70},\"windowMs\":15000,\"metricDelayMs\":0}],\"up\":{\"stabilizationMs\":0,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Pods\",\"value\":4,\"periodMs\":15000},{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]},\"down\":{\"stabilizationMs\":300000,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]}}}}}}]"
+  }
+}

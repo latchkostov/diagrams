@@ -1,0 +1,332 @@
+{
+  "format": "diagrams/v2",
+  "planning": { "revision": "p3" },
+  "nodeProps": {
+    "source": { "ratePerSec": 0, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Commuter apps", "healthChecks": false },
+    "worker": {
+      "replicas": 1,
+      "concurrency": 80,
+      "latencyMs": 250,
+      "jitter": 0,
+      "resources": {
+        "preset": "io-service",
+        "presetRevision": "1",
+        "cpuMsPerMessage": 40,
+        "baselineMemoryMiB": 128,
+        "memoryMiBPerMessage": 2,
+        "cpuRequestMilli": 500,
+        "cpuLimitMilli": 1000,
+        "memoryRequestMiB": 256,
+        "memoryLimitMiB": 512,
+        "startup": { "delayMs": 2000, "jitterFraction": 0 },
+        "terminationGraceMs": 30000,
+        "modelRevision": "a2"
+      },
+      "autoscaling": {
+        "mode": "on",
+        "modelRevision": "a3",
+        "preset": "cloud-run",
+        "presetRevision": "1",
+        "controller": { "kind": "cloudRun", "minReplicas": 0, "initialReplicas": 0, "maxReplicas": 6, "targetConcurrencyPct": 60, "targetCpuPct": 60, "evaluationMs": 2000, "cpuWindowMs": 6000, "concurrencyWindowsMs": [6000, 12000], "scaleInDelayMs": 4000 }
+      },
+      "ratePerSec": 2,
+      "retry": "requeue",
+      "retryBackoffMs": 0,
+      "failureRate": 0,
+      "maxDeliveryCount": 3,
+      "partitions": 3,
+      "messageType": "Timetable API",
+      "healthChecks": false,
+      "preset": "processor-lesson",
+      "presetRevision": "1"
+    },
+    "db": { "ratePerSec": 2, "latencyMs": 40, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Timetables", "healthChecks": false }
+  },
+  "legacyExport": { "format": "diagrams/v1", "losses": ["planning.revision", "worker.props.resources", "worker.props.autoscaling", "worker.props.preset", "worker.props.presetRevision"] },
+  "autoScale": { "freePlay": 1, "morning-rush": 5, "quiet-sunday": 1 },
+  "brokerAssignments": { "brokers": {}, "consumers": {} },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": null,
+      "suggestion": "Add entry traffic to analyze capacity.",
+      "converged": true,
+      "iterations": 1,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": ["Infinity", 0, 0, 1, 1, 0], "worker": [320, 0, 0, 1, 1, 0], "db": ["Infinity", 0, 0, 1, 1, 0] },
+      "connections": {},
+      "offeredTypes": {}
+    },
+    "explanations": {
+      "worker": {
+        "id": "worker",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 320,
+        "offered": 0,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 80,
+        "seconds": 0.25,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "source": [{ "kind": "calls", "edge": "requests", "peer": "worker" }],
+      "worker": [{ "kind": "calls", "edge": "reads", "peer": "db" }]
+    },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "source": {
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 0,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Commuter apps",
+        "healthChecks": false
+      },
+      "worker": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 80,
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Timetable API",
+        "healthChecks": false
+      },
+      "db": {
+        "profile": { "family": "nosql", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Timetables",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "morning-rush": {
+      "configured": "(same as edit)",
+      "simulation": "morning-rush",
+      "analysis": {
+        "bottleneck": "worker",
+        "suggestion": "Timetable API: 47% utilized",
+        "converged": true,
+        "iterations": 3,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": ["Infinity", 150, 0, 1, 1, 0], "worker": [320, 150, 0.46875, 1, 1, 0], "db": ["Infinity", 150, 0, 1, 1, 0] },
+        "connections": { "requests": 150, "reads": 150 },
+        "offeredTypes": { "source": ["Commuter apps"], "worker": ["Commuter apps"], "db": ["Commuter apps"] }
+      },
+      "explanations": {
+        "worker": {
+          "id": "worker",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 320,
+          "offered": 150,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 80,
+          "seconds": 0.25,
+          "utilization": 0.46875,
+          "growth": 0,
+          "contributors": [{ "edge": "requests", "node": "source", "label": "Commuter apps", "rate": 150 }],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": "(same as edit)"
+    },
+    "quiet-sunday": {
+      "configured": "(same as edit)",
+      "simulation": "quiet-sunday",
+      "analysis": {
+        "bottleneck": "worker",
+        "suggestion": "Timetable API: 1% utilized",
+        "converged": true,
+        "iterations": 3,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": ["Infinity", 4, 0, 1, 1, 0], "worker": [320, 4, 0.0125, 1, 1, 0], "db": ["Infinity", 4, 0, 1, 1, 0] },
+        "connections": { "requests": 4, "reads": 4 },
+        "offeredTypes": { "source": ["Commuter apps"], "worker": ["Commuter apps"], "db": ["Commuter apps"] }
+      },
+      "explanations": {
+        "worker": {
+          "id": "worker",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 320,
+          "offered": 4,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 80,
+          "seconds": 0.25,
+          "utilization": 0.0125,
+          "growth": 0,
+          "contributors": [{ "edge": "requests", "node": "source", "label": "Commuter apps", "rate": 4 }],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": "(same as edit)"
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "", { "modeled": false }],
+            "worker": ["idle", ""],
+            "db": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "", { "modeled": false }],
+            "worker": ["idle", ""],
+            "db": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "", { "modeled": false }],
+            "worker": ["idle", ""],
+            "db": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "", { "modeled": false }],
+            "worker": ["idle", ""],
+            "db": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    },
+    "morning-rush": {
+      "tone": "ok",
+      "top": "worker",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Timetable API at 47% · 150/s of 320/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "source": ["idle", "150/s · no limit", { "modeled": false }],
+        "worker": ["ok", "47% · 150/s of 320/s"],
+        "db": ["idle", "150/s · no limit", { "modeled": false }]
+      }
+    },
+    "quiet-sunday": {
+      "tone": "ok",
+      "top": "worker",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Timetable API at 1% · 4/s of 320/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "source": ["idle", "4/s · no limit", { "modeled": false }],
+        "worker": ["ok", "1% · 4/s of 320/s"],
+        "db": ["idle", "4/s · no limit", { "modeled": false }]
+      }
+    }
+  }
+}

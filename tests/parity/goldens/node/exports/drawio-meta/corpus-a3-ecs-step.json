@@ -1,0 +1,111 @@
+{
+  "withIcons": {
+    "sha256": "9e30134695c3c80b332546119d1af2ba163ce950561b443196ade77ca4b1b077",
+    "bytes": 4875,
+    "inlined": { "client.browser": "client-browser 0022934839e05a07" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v2",
+        "planning": { "revision": "p3-a1" },
+        "title": "a3-ecs-step",
+        "description": "Invented thumbnail service. ECS step scaling on task CPU with a scale-out and a scale-in alarm. Teaching timings: 5 s metric period, 10/15 s cooldowns.",
+        "nodes": [
+          {
+            "id": "source",
+            "stencil": "client.browser",
+            "label": "Photo uploads",
+            "x": 80,
+            "y": 180,
+            "props": { "ratePerSec": 0 }
+          },
+          {
+            "id": "worker",
+            "stencil": "aws.ecs",
+            "label": "Thumbnail tasks",
+            "x": 780,
+            "y": 180,
+            "props": {
+              "replicas": 1,
+              "concurrency": 4,
+              "latencyMs": 250,
+              "jitter": 0,
+              "resources": {
+                "preset": "io-service",
+                "presetRevision": "1",
+                "cpuMsPerMessage": 40,
+                "baselineMemoryMiB": 128,
+                "memoryMiBPerMessage": 2,
+                "cpuRequestMilli": 500,
+                "cpuLimitMilli": 1000,
+                "memoryRequestMiB": 256,
+                "memoryLimitMiB": 512,
+                "startup": { "delayMs": 2000, "jitterFraction": 0 },
+                "terminationGraceMs": 30000,
+                "modelRevision": "a2"
+              },
+              "autoscaling": {
+                "mode": "on",
+                "modelRevision": "a3",
+                "preset": "ecs-step",
+                "presetRevision": "1",
+                "controller": {
+                  "kind": "ecs",
+                  "minReplicas": 1,
+                  "initialReplicas": 1,
+                  "maxReplicas": 6,
+                  "metricPeriodMs": 5000,
+                  "alarm": { "outPeriods": 3, "inPeriods": 15, "inMargin": 0.1 },
+                  "targetTracking": [],
+                  "stepScaling": [
+                    {
+                      "metric": "cpu",
+                      "operator": "GreaterThanOrEqualToThreshold",
+                      "threshold": 60,
+                      "evaluationPeriods": 1,
+                      "adjustmentType": "ChangeInCapacity",
+                      "steps": [{ "lower": 0, "upper": 20, "adjustment": 1 }, { "lower": 20, "adjustment": 2 }],
+                      "cooldownMs": 10000
+                    },
+                    {
+                      "metric": "cpu",
+                      "operator": "LessThanOrEqualToThreshold",
+                      "threshold": 20,
+                      "evaluationPeriods": 3,
+                      "adjustmentType": "ChangeInCapacity",
+                      "steps": [{ "upper": 0, "adjustment": -1 }],
+                      "cooldownMs": 15000
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ],
+        "edges": [{ "id": "requests", "from": "source", "to": "worker", "kind": "sync", "props": { "travelMs": 10 } }],
+        "simulations": [
+          {
+            "id": "upload-wave",
+            "title": "Upload wave",
+            "seed": 5,
+            "durationMs": 100000,
+            "traffic": [
+              {
+                "id": "wave",
+                "node": "source",
+                "shape": { "kind": "constant", "ratePerSec": 30, "durationMs": 40000 }
+              },
+              {
+                "id": "trickle",
+                "node": "source",
+                "shape": { "kind": "constant", "ratePerSec": 2, "fromMs": 40000, "durationMs": 60000 }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

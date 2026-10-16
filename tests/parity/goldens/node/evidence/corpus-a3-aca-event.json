@@ -1,0 +1,51 @@
+{
+  "evidence": {
+    "played": [{ "id": "month-end", "title": "Month end", "playedMs": 60000, "capped": true }],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [],
+    "dropped": []
+  },
+  "planned": [],
+  "counted": 0,
+  "findings": [
+    {
+      "id": "dead-letter:source",
+      "rule": "dead-letter",
+      "severity": "suggestion",
+      "target": "source",
+      "elements": ["source", "worker"],
+      "fix": {
+        "ops": [
+          { "op": "add_node", "kind": "azure.service-bus.queue", "label": "Invoice jobs DLQ", "sublabel": "$DeadLetterQueue", "key": "new-dlq" },
+          { "op": "connect", "from": "source", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
+          { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
+        ],
+        "needsChoice": false
+      }
+    }
+  ],
+  "agentReport": {
+    "findings": [
+      {
+        "id": "dead-letter:source",
+        "rule": "dead-letter",
+        "severity": "suggestion",
+        "title": "Invoice jobs has no dead-letter queue",
+        "message": "If Invoice renderer can't handle a message, it's dropped after 3 deliveries. A command queue is where losing messages hurts most.",
+        "targets": ["source", "worker"],
+        "fix": {
+          "label": "Add dead-letter queue",
+          "ops": [
+            { "op": "add_node", "kind": "azure.service-bus.queue", "label": "Invoice jobs DLQ", "sublabel": "$DeadLetterQueue", "key": "new-dlq" },
+            { "op": "connect", "from": "source", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
+            { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
+          ]
+        }
+      }
+    ],
+    "summary": "0 warnings, 1 suggestion.",
+    "simulations": "Played 1 saved simulation (at most 60 s each; some stopped there).",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
+}

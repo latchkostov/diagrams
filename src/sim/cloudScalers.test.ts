@@ -6,7 +6,14 @@ import { resolveNodeProps } from "./defaults";
 import timetable from "../examples/cloud-run-timetable-api.json";
 import type { DiagramFile } from "../model/types";
 import { createFleet, type Fleet } from "./autoscaling";
-import { evaluateCloud, percentChange, resetCloud, stepFor, type CloudReads } from "./cloudScalers";
+import {
+  evaluateCloud,
+  leastWithoutFlapping,
+  percentChange,
+  resetCloud,
+  stepFor,
+  type CloudReads,
+} from "./cloudScalers";
 import { createEngine } from "./engine";
 import {
   cloudLesson,
@@ -641,5 +648,45 @@ describe("the P3 boundary", () => {
     const p = resolveNodeProps(d, d.nodes[1]);
     expect(p.autoscaling).toBeUndefined();
     expect(p.autoscalingProblem).toMatch(/managed allocation/);
+  });
+});
+
+describe("App Service flapping bounds", () => {
+  it("matches a brute-force scan for random rules, loads and fleets", () => {
+    let seed = 7;
+    const random = () => (seed = (seed * 1103515245 + 12345) % 2 ** 31) / 2 ** 31;
+    const ops = ["GreaterThan", "GreaterThanOrEqual", "LessThan", "LessThanOrEqual"] as const;
+    for (let trial = 0; trial < 2000; trial++) {
+      const rules = Array.from({ length: 1 + Math.floor(random() * 3) }, () => ({
+        metric: "cpu" as const,
+        operator: ops[Math.floor(random() * 4)],
+        threshold: Math.floor(random() * 100),
+        windowMs: 1000,
+        direction: random() < 0.7 ? ("increase" as const) : ("decrease" as const),
+        changeType: "ChangeCount" as const,
+        value: 1,
+        cooldownMs: 0,
+      }));
+      const values = rules.map(() => (random() < 0.1 ? undefined : Math.floor(random() * 120)));
+      const current = 2 + Math.floor(random() * 30),
+        floor = 1 + Math.floor(random() * (current - 1));
+      const compare = (op: (typeof ops)[number], v: number, t: number) =>
+        op === "GreaterThan" ? v > t : op === "GreaterThanOrEqual" ? v >= t : op === "LessThan" ? v < t : v <= t;
+      let expected: number | undefined;
+      for (let n = floor; n < current && expected === undefined; n++)
+        if (
+          !rules.some(
+            (rule, i) =>
+              rule.direction === "increase" &&
+              values[i] !== undefined &&
+              compare(rule.operator, ((values[i] ?? 0) * current) / n, rule.threshold),
+          )
+        )
+          expected = n;
+      expect(
+        leastWithoutFlapping(rules, values, current, floor),
+        JSON.stringify({ rules, values, current, floor }),
+      ).toBe(expected);
+    }
   });
 });

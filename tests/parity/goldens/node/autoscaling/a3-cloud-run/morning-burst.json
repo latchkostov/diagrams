@@ -10,9 +10,8 @@
       "draining": 0,
       "backlog": 3,
       "processed": 0,
-      "decision": { "at": 1020, "raw": 1, "desired": 1, "reason": "request", "adapter": "cloudRun", "metricKind": "concurrency", "metric": 5, "nextAt": 5000 },
-      "reason": "Requests are waiting: starting instances on demand",
-      "metric": "Concurrency 5% of the maximum (target 0%)"
+      "decision": { "at": 1020, "raw": 1, "desired": 1, "reason": "request", "adapter": "cloudRun", "nextAt": 5000 },
+      "reason": "Requests are waiting: adding capacity on demand"
     },
     {
       "atMs": 3000,
@@ -22,9 +21,8 @@
       "draining": 0,
       "backlog": 8,
       "processed": 0,
-      "decision": { "at": 1020, "raw": 1, "desired": 1, "reason": "request", "adapter": "cloudRun", "metricKind": "concurrency", "metric": 5, "nextAt": 5000 },
-      "reason": "Requests are waiting: starting instances on demand",
-      "metric": "Concurrency 5% of the maximum (target 0%)"
+      "decision": { "at": 1020, "raw": 1, "desired": 1, "reason": "request", "adapter": "cloudRun", "nextAt": 5000 },
+      "reason": "Requests are waiting: adding capacity on demand"
     },
     {
       "atMs": 4000,
@@ -34,9 +32,8 @@
       "draining": 0,
       "backlog": 0,
       "processed": 0,
-      "decision": { "at": 1020, "raw": 1, "desired": 1, "reason": "request", "adapter": "cloudRun", "metricKind": "concurrency", "metric": 5, "nextAt": 5000 },
-      "reason": "Requests are waiting: starting instances on demand",
-      "metric": "Concurrency 5% of the maximum (target 0%)"
+      "decision": { "at": 1020, "raw": 1, "desired": 1, "reason": "request", "adapter": "cloudRun", "nextAt": 5000 },
+      "reason": "Requests are waiting: adding capacity on demand"
     },
     {
       "atMs": 5000,
@@ -48,7 +45,7 @@
       "processed": 0,
       "decision": { "at": 5000, "raw": 2, "desired": 2, "reason": "tolerance", "metric": 84.03124999999999, "target": 60, "windowMs": 30000, "nextAt": 10000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Within tolerance",
-      "metric": "Concurrency 84% of the maximum (target 60%)"
+      "metric": "84% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 6000,
@@ -60,7 +57,7 @@
       "processed": 7,
       "decision": { "at": 5000, "raw": 2, "desired": 2, "reason": "tolerance", "metric": 84.03124999999999, "target": 60, "windowMs": 30000, "nextAt": 10000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Within tolerance",
-      "metric": "Concurrency 84% of the maximum (target 60%)"
+      "metric": "84% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 7000,
@@ -70,9 +67,8 @@
       "draining": 0,
       "backlog": 4,
       "processed": 12,
-      "decision": { "at": 6660, "raw": 3, "desired": 3, "reason": "request", "adapter": "cloudRun", "metricKind": "concurrency", "metric": 5, "nextAt": 10000 },
-      "reason": "Requests are waiting: starting instances on demand",
-      "metric": "Concurrency 5% of the maximum (target 0%)"
+      "decision": { "at": 6660, "raw": 3, "desired": 3, "reason": "request", "adapter": "cloudRun", "nextAt": 10000 },
+      "reason": "Requests are waiting: adding capacity on demand"
     },
     {
       "atMs": 8000,
@@ -82,9 +78,8 @@
       "draining": 0,
       "backlog": 16,
       "processed": 15,
-      "decision": { "at": 7960, "raw": 4, "desired": 4, "reason": "request", "adapter": "cloudRun", "metricKind": "concurrency", "metric": 85, "nextAt": 10000 },
-      "reason": "Requests are waiting: starting instances on demand",
-      "metric": "Concurrency 85% of the maximum (target 0%)"
+      "decision": { "at": 7960, "raw": 4, "desired": 4, "reason": "request", "adapter": "cloudRun", "nextAt": 10000 },
+      "reason": "Requests are waiting: adding capacity on demand"
     },
     {
       "atMs": 9000,
@@ -94,9 +89,8 @@
       "draining": 0,
       "backlog": 16,
       "processed": 16,
-      "decision": { "at": 7960, "raw": 4, "desired": 4, "reason": "request", "adapter": "cloudRun", "metricKind": "concurrency", "metric": 85, "nextAt": 10000 },
-      "reason": "Requests are waiting: starting instances on demand",
-      "metric": "Concurrency 85% of the maximum (target 0%)"
+      "decision": { "at": 7960, "raw": 4, "desired": 4, "reason": "request", "adapter": "cloudRun", "nextAt": 10000 },
+      "reason": "Requests are waiting: adding capacity on demand"
     },
     {
       "atMs": 10000,
@@ -108,7 +102,7 @@
       "processed": 30,
       "decision": { "at": 10000, "raw": 6, "desired": 6, "reason": "target", "metric": 87.2202380952381, "target": 60, "windowMs": 30000, "nextAt": 15000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Target",
-      "metric": "Concurrency 87.2% of the maximum (target 60%)"
+      "metric": "87.2% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 11000,
@@ -120,7 +114,7 @@
       "processed": 33,
       "decision": { "at": 10000, "raw": 6, "desired": 6, "reason": "target", "metric": 87.2202380952381, "target": 60, "windowMs": 30000, "nextAt": 15000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Target",
-      "metric": "Concurrency 87.2% of the maximum (target 60%)"
+      "metric": "87.2% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 12000,
@@ -130,9 +124,8 @@
       "draining": 0,
       "backlog": 13,
       "processed": 34,
-      "decision": { "at": 11470, "raw": 7, "desired": 7, "reason": "request", "adapter": "cloudRun", "metricKind": "concurrency", "metric": 85, "nextAt": 15000 },
-      "reason": "Requests are waiting: starting instances on demand",
-      "metric": "Concurrency 85% of the maximum (target 0%)"
+      "decision": { "at": 11470, "raw": 7, "desired": 7, "reason": "request", "adapter": "cloudRun", "nextAt": 15000 },
+      "reason": "Requests are waiting: adding capacity on demand"
     },
     {
       "atMs": 13000,
@@ -142,9 +135,8 @@
       "draining": 0,
       "backlog": 37,
       "processed": 35,
-      "decision": { "at": 12830, "raw": 9, "desired": 9, "reason": "request", "adapter": "cloudRun", "metricKind": "concurrency", "metric": 165, "nextAt": 15000 },
-      "reason": "Requests are waiting: starting instances on demand",
-      "metric": "Concurrency 165% of the maximum (target 0%)"
+      "decision": { "at": 12830, "raw": 9, "desired": 9, "reason": "request", "adapter": "cloudRun", "nextAt": 15000 },
+      "reason": "Requests are waiting: adding capacity on demand"
     },
     {
       "atMs": 14000,
@@ -154,9 +146,8 @@
       "draining": 0,
       "backlog": 30,
       "processed": 53,
-      "decision": { "at": 12830, "raw": 9, "desired": 9, "reason": "request", "adapter": "cloudRun", "metricKind": "concurrency", "metric": 165, "nextAt": 15000 },
-      "reason": "Requests are waiting: starting instances on demand",
-      "metric": "Concurrency 165% of the maximum (target 0%)"
+      "decision": { "at": 12830, "raw": 9, "desired": 9, "reason": "request", "adapter": "cloudRun", "nextAt": 15000 },
+      "reason": "Requests are waiting: adding capacity on demand"
     },
     {
       "atMs": 15000,
@@ -168,7 +159,7 @@
       "processed": 89,
       "decision": { "at": 15000, "raw": 14, "desired": 14, "reason": "target", "metric": 90.72725694444443, "target": 60, "windowMs": 30000, "nextAt": 20000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Target",
-      "metric": "Concurrency 90.7% of the maximum (target 60%)"
+      "metric": "90.7% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 16000,
@@ -180,7 +171,7 @@
       "processed": 121,
       "decision": { "at": 15000, "raw": 14, "desired": 14, "reason": "target", "metric": 90.72725694444443, "target": 60, "windowMs": 30000, "nextAt": 20000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Target",
-      "metric": "Concurrency 90.7% of the maximum (target 60%)"
+      "metric": "90.7% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 17000,
@@ -192,7 +183,7 @@
       "processed": 124,
       "decision": { "at": 15000, "raw": 14, "desired": 14, "reason": "target", "metric": 90.72725694444443, "target": 60, "windowMs": 30000, "nextAt": 20000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Target",
-      "metric": "Concurrency 90.7% of the maximum (target 60%)"
+      "metric": "90.7% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 18000,
@@ -204,7 +195,7 @@
       "processed": 176,
       "decision": { "at": 15000, "raw": 14, "desired": 14, "reason": "target", "metric": 90.72725694444443, "target": 60, "windowMs": 30000, "nextAt": 20000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Target",
-      "metric": "Concurrency 90.7% of the maximum (target 60%)"
+      "metric": "90.7% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 19000,
@@ -216,7 +207,7 @@
       "processed": 266,
       "decision": { "at": 15000, "raw": 14, "desired": 14, "reason": "target", "metric": 90.72725694444443, "target": 60, "windowMs": 30000, "nextAt": 20000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Target",
-      "metric": "Concurrency 90.7% of the maximum (target 60%)"
+      "metric": "90.7% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 20000,
@@ -228,7 +219,7 @@
       "processed": 389,
       "decision": { "at": 20000, "raw": 19, "desired": 19, "reason": "target", "metric": 81.1013217787115, "target": 60, "windowMs": 30000, "nextAt": 25000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Target",
-      "metric": "Concurrency 81.1% of the maximum (target 60%)"
+      "metric": "81.1% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 21000,
@@ -240,7 +231,7 @@
       "processed": 429,
       "decision": { "at": 20000, "raw": 19, "desired": 19, "reason": "target", "metric": 81.1013217787115, "target": 60, "windowMs": 30000, "nextAt": 25000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Target",
-      "metric": "Concurrency 81.1% of the maximum (target 60%)"
+      "metric": "81.1% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 22000,
@@ -252,7 +243,7 @@
       "processed": 469,
       "decision": { "at": 20000, "raw": 19, "desired": 19, "reason": "target", "metric": 81.1013217787115, "target": 60, "windowMs": 30000, "nextAt": 25000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Target",
-      "metric": "Concurrency 81.1% of the maximum (target 60%)"
+      "metric": "81.1% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 23000,
@@ -264,7 +255,7 @@
       "processed": 509,
       "decision": { "at": 20000, "raw": 19, "desired": 19, "reason": "target", "metric": 81.1013217787115, "target": 60, "windowMs": 30000, "nextAt": 25000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Target",
-      "metric": "Concurrency 81.1% of the maximum (target 60%)"
+      "metric": "81.1% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 24000,
@@ -276,7 +267,7 @@
       "processed": 549,
       "decision": { "at": 20000, "raw": 19, "desired": 19, "reason": "target", "metric": 81.1013217787115, "target": 60, "windowMs": 30000, "nextAt": 25000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Target",
-      "metric": "Concurrency 81.1% of the maximum (target 60%)"
+      "metric": "81.1% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 25000,
@@ -288,7 +279,7 @@
       "processed": 589,
       "decision": { "at": 25000, "raw": 19, "desired": 19, "reason": "tolerance", "metric": 63.43817106687174, "target": 60, "windowMs": 30000, "nextAt": 30000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Within tolerance",
-      "metric": "Concurrency 63.4% of the maximum (target 60%)"
+      "metric": "63.4% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 26000,
@@ -300,7 +291,7 @@
       "processed": 629,
       "decision": { "at": 25000, "raw": 19, "desired": 19, "reason": "tolerance", "metric": 63.43817106687174, "target": 60, "windowMs": 30000, "nextAt": 30000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Within tolerance",
-      "metric": "Concurrency 63.4% of the maximum (target 60%)"
+      "metric": "63.4% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 27000,
@@ -312,7 +303,7 @@
       "processed": 669,
       "decision": { "at": 25000, "raw": 19, "desired": 19, "reason": "tolerance", "metric": 63.43817106687174, "target": 60, "windowMs": 30000, "nextAt": 30000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Within tolerance",
-      "metric": "Concurrency 63.4% of the maximum (target 60%)"
+      "metric": "63.4% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 28000,
@@ -324,7 +315,7 @@
       "processed": 709,
       "decision": { "at": 25000, "raw": 19, "desired": 19, "reason": "tolerance", "metric": 63.43817106687174, "target": 60, "windowMs": 30000, "nextAt": 30000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Within tolerance",
-      "metric": "Concurrency 63.4% of the maximum (target 60%)"
+      "metric": "63.4% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 29000,
@@ -336,7 +327,7 @@
       "processed": 749,
       "decision": { "at": 25000, "raw": 19, "desired": 19, "reason": "tolerance", "metric": 63.43817106687174, "target": 60, "windowMs": 30000, "nextAt": 30000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Within tolerance",
-      "metric": "Concurrency 63.4% of the maximum (target 60%)"
+      "metric": "63.4% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 30000,
@@ -348,7 +339,7 @@
       "processed": 789,
       "decision": { "at": 30000, "raw": 19, "desired": 19, "reason": "missing", "metric": 52.275156931681074, "target": 60, "windowMs": 30000, "nextAt": 35000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "No data: keeping capacity",
-      "metric": "Concurrency 52.3% of the maximum (target 60%)"
+      "metric": "52.3% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 31000,
@@ -360,7 +351,7 @@
       "processed": 829,
       "decision": { "at": 30000, "raw": 19, "desired": 19, "reason": "missing", "metric": 52.275156931681074, "target": 60, "windowMs": 30000, "nextAt": 35000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "No data: keeping capacity",
-      "metric": "Concurrency 52.3% of the maximum (target 60%)"
+      "metric": "52.3% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 32000,
@@ -372,7 +363,7 @@
       "processed": 869,
       "decision": { "at": 30000, "raw": 19, "desired": 19, "reason": "missing", "metric": 52.275156931681074, "target": 60, "windowMs": 30000, "nextAt": 35000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "No data: keeping capacity",
-      "metric": "Concurrency 52.3% of the maximum (target 60%)"
+      "metric": "52.3% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 33000,
@@ -384,7 +375,7 @@
       "processed": 909,
       "decision": { "at": 30000, "raw": 19, "desired": 19, "reason": "missing", "metric": 52.275156931681074, "target": 60, "windowMs": 30000, "nextAt": 35000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "No data: keeping capacity",
-      "metric": "Concurrency 52.3% of the maximum (target 60%)"
+      "metric": "52.3% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 34000,
@@ -396,7 +387,7 @@
       "processed": 949,
       "decision": { "at": 30000, "raw": 19, "desired": 19, "reason": "missing", "metric": 52.275156931681074, "target": 60, "windowMs": 30000, "nextAt": 35000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "No data: keeping capacity",
-      "metric": "Concurrency 52.3% of the maximum (target 60%)"
+      "metric": "52.3% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 35000,
@@ -408,7 +399,7 @@
       "processed": 989,
       "decision": { "at": 35000, "raw": 14, "desired": 19, "reason": "stabilization", "metric": 42.10526315789443, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 40000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 42.1% of its size (target 60%)"
+      "metric": "42.1% of allocated CPU (target 60%)"
     },
     {
       "atMs": 36000,
@@ -420,7 +411,7 @@
       "processed": 1029,
       "decision": { "at": 35000, "raw": 14, "desired": 19, "reason": "stabilization", "metric": 42.10526315789443, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 40000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 42.1% of its size (target 60%)"
+      "metric": "42.1% of allocated CPU (target 60%)"
     },
     {
       "atMs": 37000,
@@ -432,7 +423,7 @@
       "processed": 1069,
       "decision": { "at": 35000, "raw": 14, "desired": 19, "reason": "stabilization", "metric": 42.10526315789443, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 40000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 42.1% of its size (target 60%)"
+      "metric": "42.1% of allocated CPU (target 60%)"
     },
     {
       "atMs": 38000,
@@ -444,7 +435,7 @@
       "processed": 1109,
       "decision": { "at": 35000, "raw": 14, "desired": 19, "reason": "stabilization", "metric": 42.10526315789443, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 40000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 42.1% of its size (target 60%)"
+      "metric": "42.1% of allocated CPU (target 60%)"
     },
     {
       "atMs": 39000,
@@ -456,7 +447,7 @@
       "processed": 1149,
       "decision": { "at": 35000, "raw": 14, "desired": 19, "reason": "stabilization", "metric": 42.10526315789443, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 40000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 42.1% of its size (target 60%)"
+      "metric": "42.1% of allocated CPU (target 60%)"
     },
     {
       "atMs": 40000,
@@ -468,7 +459,7 @@
       "processed": 1189,
       "decision": { "at": 40000, "raw": 14, "desired": 19, "reason": "stabilization", "metric": 42.10526315789443, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 45000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 42.1% of its size (target 60%)"
+      "metric": "42.1% of allocated CPU (target 60%)"
     },
     {
       "atMs": 41000,
@@ -480,7 +471,7 @@
       "processed": 1229,
       "decision": { "at": 40000, "raw": 14, "desired": 19, "reason": "stabilization", "metric": 42.10526315789443, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 45000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 42.1% of its size (target 60%)"
+      "metric": "42.1% of allocated CPU (target 60%)"
     },
     {
       "atMs": 42000,
@@ -492,7 +483,7 @@
       "processed": 1266,
       "decision": { "at": 40000, "raw": 14, "desired": 19, "reason": "stabilization", "metric": 42.10526315789443, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 45000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 42.1% of its size (target 60%)"
+      "metric": "42.1% of allocated CPU (target 60%)"
     },
     {
       "atMs": 43000,
@@ -504,7 +495,7 @@
       "processed": 1302,
       "decision": { "at": 40000, "raw": 14, "desired": 19, "reason": "stabilization", "metric": 42.10526315789443, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 45000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 42.1% of its size (target 60%)"
+      "metric": "42.1% of allocated CPU (target 60%)"
     },
     {
       "atMs": 44000,
@@ -516,7 +507,7 @@
       "processed": 1335,
       "decision": { "at": 40000, "raw": 14, "desired": 19, "reason": "stabilization", "metric": 42.10526315789443, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 45000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 42.1% of its size (target 60%)"
+      "metric": "42.1% of allocated CPU (target 60%)"
     },
     {
       "atMs": 45000,
@@ -528,7 +519,7 @@
       "processed": 1367,
       "decision": { "at": 45000, "raw": 13, "desired": 14, "reason": "stabilization", "metric": 39.47894736842078, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 50000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 39.5% of its size (target 60%)"
+      "metric": "39.5% of allocated CPU (target 60%)"
     },
     {
       "atMs": 46000,
@@ -540,7 +531,7 @@
       "processed": 1396,
       "decision": { "at": 45000, "raw": 13, "desired": 14, "reason": "stabilization", "metric": 39.47894736842078, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 50000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 39.5% of its size (target 60%)"
+      "metric": "39.5% of allocated CPU (target 60%)"
     },
     {
       "atMs": 47000,
@@ -552,7 +543,7 @@
       "processed": 1424,
       "decision": { "at": 45000, "raw": 13, "desired": 14, "reason": "stabilization", "metric": 39.47894736842078, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 50000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 39.5% of its size (target 60%)"
+      "metric": "39.5% of allocated CPU (target 60%)"
     },
     {
       "atMs": 48000,
@@ -564,7 +555,7 @@
       "processed": 1449,
       "decision": { "at": 45000, "raw": 13, "desired": 14, "reason": "stabilization", "metric": 39.47894736842078, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 50000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 39.5% of its size (target 60%)"
+      "metric": "39.5% of allocated CPU (target 60%)"
     },
     {
       "atMs": 49000,
@@ -576,7 +567,7 @@
       "processed": 1473,
       "decision": { "at": 45000, "raw": 13, "desired": 14, "reason": "stabilization", "metric": 39.47894736842078, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 50000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 39.5% of its size (target 60%)"
+      "metric": "39.5% of allocated CPU (target 60%)"
     },
     {
       "atMs": 50000,
@@ -588,7 +579,7 @@
       "processed": 1494,
       "decision": { "at": 50000, "raw": 11, "desired": 14, "reason": "stabilization", "metric": 42.86428571428559, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 55000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 42.9% of its size (target 60%)"
+      "metric": "42.9% of allocated CPU (target 60%)"
     },
     {
       "atMs": 51000,
@@ -600,7 +591,7 @@
       "processed": 1514,
       "decision": { "at": 50000, "raw": 11, "desired": 14, "reason": "stabilization", "metric": 42.86428571428559, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 55000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 42.9% of its size (target 60%)"
+      "metric": "42.9% of allocated CPU (target 60%)"
     },
     {
       "atMs": 52000,
@@ -612,7 +603,7 @@
       "processed": 1531,
       "decision": { "at": 50000, "raw": 11, "desired": 14, "reason": "stabilization", "metric": 42.86428571428559, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 55000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 42.9% of its size (target 60%)"
+      "metric": "42.9% of allocated CPU (target 60%)"
     },
     {
       "atMs": 53000,
@@ -624,7 +615,7 @@
       "processed": 1547,
       "decision": { "at": 50000, "raw": 11, "desired": 14, "reason": "stabilization", "metric": 42.86428571428559, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 55000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 42.9% of its size (target 60%)"
+      "metric": "42.9% of allocated CPU (target 60%)"
     },
     {
       "atMs": 54000,
@@ -636,7 +627,7 @@
       "processed": 1560,
       "decision": { "at": 50000, "raw": 11, "desired": 14, "reason": "stabilization", "metric": 42.86428571428559, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 55000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 42.9% of its size (target 60%)"
+      "metric": "42.9% of allocated CPU (target 60%)"
     },
     {
       "atMs": 55000,
@@ -648,7 +639,7 @@
       "processed": 1572,
       "decision": { "at": 55000, "raw": 7, "desired": 13, "reason": "stabilization", "metric": 28.57142857142859, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 60000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 28.6% of its size (target 60%)"
+      "metric": "28.6% of allocated CPU (target 60%)"
     },
     {
       "atMs": 56000,
@@ -660,7 +651,7 @@
       "processed": 1581,
       "decision": { "at": 55000, "raw": 7, "desired": 13, "reason": "stabilization", "metric": 28.57142857142859, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 60000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 28.6% of its size (target 60%)"
+      "metric": "28.6% of allocated CPU (target 60%)"
     },
     {
       "atMs": 57000,
@@ -672,7 +663,7 @@
       "processed": 1589,
       "decision": { "at": 55000, "raw": 7, "desired": 13, "reason": "stabilization", "metric": 28.57142857142859, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 60000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 28.6% of its size (target 60%)"
+      "metric": "28.6% of allocated CPU (target 60%)"
     },
     {
       "atMs": 58000,
@@ -684,7 +675,7 @@
       "processed": 1594,
       "decision": { "at": 55000, "raw": 7, "desired": 13, "reason": "stabilization", "metric": 28.57142857142859, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 60000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 28.6% of its size (target 60%)"
+      "metric": "28.6% of allocated CPU (target 60%)"
     },
     {
       "atMs": 59000,
@@ -696,7 +687,7 @@
       "processed": 1598,
       "decision": { "at": 55000, "raw": 7, "desired": 13, "reason": "stabilization", "metric": 28.57142857142859, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 60000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 28.6% of its size (target 60%)"
+      "metric": "28.6% of allocated CPU (target 60%)"
     },
     {
       "atMs": 60000,
@@ -708,7 +699,7 @@
       "processed": 1599,
       "decision": { "at": 60000, "raw": 4, "desired": 11, "reason": "stabilization", "metric": 15.384615384615369, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 65000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 15.4% of its size (target 60%)"
+      "metric": "15.4% of allocated CPU (target 60%)"
     },
     {
       "atMs": 61000,
@@ -720,7 +711,7 @@
       "processed": 1600,
       "decision": { "at": 60000, "raw": 4, "desired": 11, "reason": "stabilization", "metric": 15.384615384615369, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 65000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 15.4% of its size (target 60%)"
+      "metric": "15.4% of allocated CPU (target 60%)"
     },
     {
       "atMs": 62000,
@@ -732,7 +723,7 @@
       "processed": 1600,
       "decision": { "at": 60000, "raw": 4, "desired": 11, "reason": "stabilization", "metric": 15.384615384615369, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 65000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 15.4% of its size (target 60%)"
+      "metric": "15.4% of allocated CPU (target 60%)"
     },
     {
       "atMs": 63000,
@@ -744,7 +735,7 @@
       "processed": 1600,
       "decision": { "at": 60000, "raw": 4, "desired": 11, "reason": "stabilization", "metric": 15.384615384615369, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 65000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 15.4% of its size (target 60%)"
+      "metric": "15.4% of allocated CPU (target 60%)"
     },
     {
       "atMs": 64000,
@@ -756,7 +747,7 @@
       "processed": 1600,
       "decision": { "at": 60000, "raw": 4, "desired": 11, "reason": "stabilization", "metric": 15.384615384615369, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 65000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 15.4% of its size (target 60%)"
+      "metric": "15.4% of allocated CPU (target 60%)"
     },
     {
       "atMs": 65000,
@@ -768,7 +759,7 @@
       "processed": 1600,
       "decision": { "at": 65000, "raw": 1, "desired": 7, "reason": "stabilization", "metric": 4.727272727272729, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 70000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 4.7% of its size (target 60%)"
+      "metric": "4.7% of allocated CPU (target 60%)"
     },
     {
       "atMs": 66000,
@@ -780,7 +771,7 @@
       "processed": 1600,
       "decision": { "at": 65000, "raw": 1, "desired": 7, "reason": "stabilization", "metric": 4.727272727272729, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 70000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 4.7% of its size (target 60%)"
+      "metric": "4.7% of allocated CPU (target 60%)"
     },
     {
       "atMs": 67000,
@@ -792,7 +783,7 @@
       "processed": 1600,
       "decision": { "at": 65000, "raw": 1, "desired": 7, "reason": "stabilization", "metric": 4.727272727272729, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 70000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 4.7% of its size (target 60%)"
+      "metric": "4.7% of allocated CPU (target 60%)"
     },
     {
       "atMs": 68000,
@@ -804,7 +795,7 @@
       "processed": 1600,
       "decision": { "at": 65000, "raw": 1, "desired": 7, "reason": "stabilization", "metric": 4.727272727272729, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 70000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 4.7% of its size (target 60%)"
+      "metric": "4.7% of allocated CPU (target 60%)"
     },
     {
       "atMs": 69000,
@@ -816,7 +807,7 @@
       "processed": 1600,
       "decision": { "at": 65000, "raw": 1, "desired": 7, "reason": "stabilization", "metric": 4.727272727272729, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 70000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 4.7% of its size (target 60%)"
+      "metric": "4.7% of allocated CPU (target 60%)"
     },
     {
       "atMs": 70000,
@@ -828,7 +819,7 @@
       "processed": 1600,
       "decision": { "at": 70000, "raw": 1, "desired": 4, "reason": "stabilization", "metric": 0.2857142857142857, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 75000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 0.3% of its size (target 60%)"
+      "metric": "0.3% of allocated CPU (target 60%)"
     },
     {
       "atMs": 71000,
@@ -840,7 +831,7 @@
       "processed": 1600,
       "decision": { "at": 70000, "raw": 1, "desired": 4, "reason": "stabilization", "metric": 0.2857142857142857, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 75000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 0.3% of its size (target 60%)"
+      "metric": "0.3% of allocated CPU (target 60%)"
     },
     {
       "atMs": 72000,
@@ -852,7 +843,7 @@
       "processed": 1600,
       "decision": { "at": 70000, "raw": 1, "desired": 4, "reason": "stabilization", "metric": 0.2857142857142857, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 75000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 0.3% of its size (target 60%)"
+      "metric": "0.3% of allocated CPU (target 60%)"
     },
     {
       "atMs": 73000,
@@ -864,7 +855,7 @@
       "processed": 1600,
       "decision": { "at": 70000, "raw": 1, "desired": 4, "reason": "stabilization", "metric": 0.2857142857142857, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 75000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 0.3% of its size (target 60%)"
+      "metric": "0.3% of allocated CPU (target 60%)"
     },
     {
       "atMs": 74000,
@@ -876,7 +867,7 @@
       "processed": 1600,
       "decision": { "at": 70000, "raw": 1, "desired": 4, "reason": "stabilization", "metric": 0.2857142857142857, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 75000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 0.3% of its size (target 60%)"
+      "metric": "0.3% of allocated CPU (target 60%)"
     },
     {
       "atMs": 75000,
@@ -888,7 +879,7 @@
       "processed": 1600,
       "decision": { "at": 75000, "raw": 1, "desired": 1, "reason": "target", "metric": 0.8280344655344656, "target": 60, "windowMs": 30000, "nextAt": 80000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Target",
-      "metric": "Concurrency 0.8% of the maximum (target 60%)"
+      "metric": "0.8% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 76000,
@@ -900,7 +891,7 @@
       "processed": 1600,
       "decision": { "at": 75000, "raw": 1, "desired": 1, "reason": "target", "metric": 0.8280344655344656, "target": 60, "windowMs": 30000, "nextAt": 80000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Target",
-      "metric": "Concurrency 0.8% of the maximum (target 60%)"
+      "metric": "0.8% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 77000,
@@ -912,7 +903,7 @@
       "processed": 1600,
       "decision": { "at": 75000, "raw": 1, "desired": 1, "reason": "target", "metric": 0.8280344655344656, "target": 60, "windowMs": 30000, "nextAt": 80000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Target",
-      "metric": "Concurrency 0.8% of the maximum (target 60%)"
+      "metric": "0.8% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 78000,
@@ -924,7 +915,7 @@
       "processed": 1600,
       "decision": { "at": 75000, "raw": 1, "desired": 1, "reason": "target", "metric": 0.8280344655344656, "target": 60, "windowMs": 30000, "nextAt": 80000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Target",
-      "metric": "Concurrency 0.8% of the maximum (target 60%)"
+      "metric": "0.8% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 79000,
@@ -936,7 +927,7 @@
       "processed": 1600,
       "decision": { "at": 75000, "raw": 1, "desired": 1, "reason": "target", "metric": 0.8280344655344656, "target": 60, "windowMs": 30000, "nextAt": 80000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Target",
-      "metric": "Concurrency 0.8% of the maximum (target 60%)"
+      "metric": "0.8% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 80000,
@@ -948,7 +939,7 @@
       "processed": 1600,
       "decision": { "at": 80000, "raw": 1, "desired": 1, "reason": "tolerance", "metric": 0.3769927988677988, "target": 60, "windowMs": 30000, "nextAt": 85000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Within tolerance",
-      "metric": "Concurrency 0.4% of the maximum (target 60%)"
+      "metric": "0.4% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 81000,
@@ -960,7 +951,7 @@
       "processed": 1600,
       "decision": { "at": 80000, "raw": 1, "desired": 1, "reason": "tolerance", "metric": 0.3769927988677988, "target": 60, "windowMs": 30000, "nextAt": 85000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Within tolerance",
-      "metric": "Concurrency 0.4% of the maximum (target 60%)"
+      "metric": "0.4% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 82000,
@@ -972,7 +963,7 @@
       "processed": 1600,
       "decision": { "at": 80000, "raw": 1, "desired": 1, "reason": "tolerance", "metric": 0.3769927988677988, "target": 60, "windowMs": 30000, "nextAt": 85000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Within tolerance",
-      "metric": "Concurrency 0.4% of the maximum (target 60%)"
+      "metric": "0.4% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 83000,
@@ -984,7 +975,7 @@
       "processed": 1600,
       "decision": { "at": 80000, "raw": 1, "desired": 1, "reason": "tolerance", "metric": 0.3769927988677988, "target": 60, "windowMs": 30000, "nextAt": 85000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Within tolerance",
-      "metric": "Concurrency 0.4% of the maximum (target 60%)"
+      "metric": "0.4% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 84000,
@@ -996,7 +987,7 @@
       "processed": 1600,
       "decision": { "at": 80000, "raw": 1, "desired": 1, "reason": "tolerance", "metric": 0.3769927988677988, "target": 60, "windowMs": 30000, "nextAt": 85000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Within tolerance",
-      "metric": "Concurrency 0.4% of the maximum (target 60%)"
+      "metric": "0.4% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 85000,
@@ -1008,7 +999,7 @@
       "processed": 1600,
       "decision": { "at": 85000, "raw": 1, "desired": 1, "reason": "tolerance", "metric": 0.10422494172494172, "target": 60, "windowMs": 30000, "nextAt": 90000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Within tolerance",
-      "metric": "Concurrency 0.1% of the maximum (target 60%)"
+      "metric": "0.1% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 86000,
@@ -1020,7 +1011,7 @@
       "processed": 1600,
       "decision": { "at": 85000, "raw": 1, "desired": 1, "reason": "tolerance", "metric": 0.10422494172494172, "target": 60, "windowMs": 30000, "nextAt": 90000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Within tolerance",
-      "metric": "Concurrency 0.1% of the maximum (target 60%)"
+      "metric": "0.1% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 87000,
@@ -1032,7 +1023,7 @@
       "processed": 1600,
       "decision": { "at": 85000, "raw": 1, "desired": 1, "reason": "tolerance", "metric": 0.10422494172494172, "target": 60, "windowMs": 30000, "nextAt": 90000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Within tolerance",
-      "metric": "Concurrency 0.1% of the maximum (target 60%)"
+      "metric": "0.1% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 88000,
@@ -1044,7 +1035,7 @@
       "processed": 1600,
       "decision": { "at": 85000, "raw": 1, "desired": 1, "reason": "tolerance", "metric": 0.10422494172494172, "target": 60, "windowMs": 30000, "nextAt": 90000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Within tolerance",
-      "metric": "Concurrency 0.1% of the maximum (target 60%)"
+      "metric": "0.1% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 89000,
@@ -1056,7 +1047,7 @@
       "processed": 1600,
       "decision": { "at": 85000, "raw": 1, "desired": 1, "reason": "tolerance", "metric": 0.10422494172494172, "target": 60, "windowMs": 30000, "nextAt": 90000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Within tolerance",
-      "metric": "Concurrency 0.1% of the maximum (target 60%)"
+      "metric": "0.1% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 90000,
@@ -1068,7 +1059,7 @@
       "processed": 1600,
       "decision": { "at": 90000, "raw": 1, "desired": 1, "reason": "tolerance", "metric": 0.004545454545454545, "target": 60, "windowMs": 30000, "nextAt": 95000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Within tolerance",
-      "metric": "Concurrency 0% of the maximum (target 60%)"
+      "metric": "0% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 91000,
@@ -1080,7 +1071,7 @@
       "processed": 1600,
       "decision": { "at": 90000, "raw": 1, "desired": 1, "reason": "tolerance", "metric": 0.004545454545454545, "target": 60, "windowMs": 30000, "nextAt": 95000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Within tolerance",
-      "metric": "Concurrency 0% of the maximum (target 60%)"
+      "metric": "0% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 92000,
@@ -1092,7 +1083,7 @@
       "processed": 1600,
       "decision": { "at": 90000, "raw": 1, "desired": 1, "reason": "tolerance", "metric": 0.004545454545454545, "target": 60, "windowMs": 30000, "nextAt": 95000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Within tolerance",
-      "metric": "Concurrency 0% of the maximum (target 60%)"
+      "metric": "0% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 93000,
@@ -1104,7 +1095,7 @@
       "processed": 1600,
       "decision": { "at": 90000, "raw": 1, "desired": 1, "reason": "tolerance", "metric": 0.004545454545454545, "target": 60, "windowMs": 30000, "nextAt": 95000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Within tolerance",
-      "metric": "Concurrency 0% of the maximum (target 60%)"
+      "metric": "0% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 94000,
@@ -1116,7 +1107,7 @@
       "processed": 1600,
       "decision": { "at": 90000, "raw": 1, "desired": 1, "reason": "tolerance", "metric": 0.004545454545454545, "target": 60, "windowMs": 30000, "nextAt": 95000, "adapter": "cloudRun", "metricKind": "concurrency" },
       "reason": "Within tolerance",
-      "metric": "Concurrency 0% of the maximum (target 60%)"
+      "metric": "0% of maximum concurrency (target 60%)"
     },
     {
       "atMs": 95000,
@@ -1128,7 +1119,7 @@
       "processed": 1600,
       "decision": { "at": 95000, "raw": 0, "desired": 1, "reason": "stabilization", "metric": 0, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 100000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 0% of its size (target 60%)"
+      "metric": "0% of allocated CPU (target 60%)"
     },
     {
       "atMs": 96000,
@@ -1140,7 +1131,7 @@
       "processed": 1600,
       "decision": { "at": 95000, "raw": 0, "desired": 1, "reason": "stabilization", "metric": 0, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 100000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 0% of its size (target 60%)"
+      "metric": "0% of allocated CPU (target 60%)"
     },
     {
       "atMs": 97000,
@@ -1152,7 +1143,7 @@
       "processed": 1600,
       "decision": { "at": 95000, "raw": 0, "desired": 1, "reason": "stabilization", "metric": 0, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 100000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 0% of its size (target 60%)"
+      "metric": "0% of allocated CPU (target 60%)"
     },
     {
       "atMs": 98000,
@@ -1164,7 +1155,7 @@
       "processed": 1600,
       "decision": { "at": 95000, "raw": 0, "desired": 1, "reason": "stabilization", "metric": 0, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 100000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 0% of its size (target 60%)"
+      "metric": "0% of allocated CPU (target 60%)"
     },
     {
       "atMs": 99000,
@@ -1176,7 +1167,7 @@
       "processed": 1600,
       "decision": { "at": 95000, "raw": 0, "desired": 1, "reason": "stabilization", "metric": 0, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 100000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 0% of its size (target 60%)"
+      "metric": "0% of allocated CPU (target 60%)"
     },
     {
       "atMs": 100000,
@@ -1188,7 +1179,7 @@
       "processed": 1600,
       "decision": { "at": 100000, "raw": 0, "desired": 1, "reason": "stabilization", "metric": 0, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 105000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 0% of its size (target 60%)"
+      "metric": "0% of allocated CPU (target 60%)"
     },
     {
       "atMs": 101000,
@@ -1200,7 +1191,7 @@
       "processed": 1600,
       "decision": { "at": 100000, "raw": 0, "desired": 1, "reason": "stabilization", "metric": 0, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 105000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 0% of its size (target 60%)"
+      "metric": "0% of allocated CPU (target 60%)"
     },
     {
       "atMs": 102000,
@@ -1212,7 +1203,7 @@
       "processed": 1600,
       "decision": { "at": 100000, "raw": 0, "desired": 1, "reason": "stabilization", "metric": 0, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 105000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 0% of its size (target 60%)"
+      "metric": "0% of allocated CPU (target 60%)"
     },
     {
       "atMs": 103000,
@@ -1224,7 +1215,7 @@
       "processed": 1600,
       "decision": { "at": 100000, "raw": 0, "desired": 1, "reason": "stabilization", "metric": 0, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 105000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 0% of its size (target 60%)"
+      "metric": "0% of allocated CPU (target 60%)"
     },
     {
       "atMs": 104000,
@@ -1236,7 +1227,7 @@
       "processed": 1600,
       "decision": { "at": 100000, "raw": 0, "desired": 1, "reason": "stabilization", "metric": 0, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 105000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Unknown",
-      "metric": "CPU 0% of its size (target 60%)"
+      "metric": "0% of allocated CPU (target 60%)"
     },
     {
       "atMs": 105000,
@@ -1248,7 +1239,7 @@
       "processed": 1600,
       "decision": { "at": 105000, "raw": 0, "desired": 0, "reason": "target", "metric": 0, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 110000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Target",
-      "metric": "CPU 0% of its size (target 60%)"
+      "metric": "0% of allocated CPU (target 60%)"
     },
     {
       "atMs": 106000,
@@ -1260,7 +1251,7 @@
       "processed": 1600,
       "decision": { "at": 105000, "raw": 0, "desired": 0, "reason": "target", "metric": 0, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 110000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Target",
-      "metric": "CPU 0% of its size (target 60%)"
+      "metric": "0% of allocated CPU (target 60%)"
     },
     {
       "atMs": 107000,
@@ -1272,7 +1263,7 @@
       "processed": 1600,
       "decision": { "at": 105000, "raw": 0, "desired": 0, "reason": "target", "metric": 0, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 110000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Target",
-      "metric": "CPU 0% of its size (target 60%)"
+      "metric": "0% of allocated CPU (target 60%)"
     },
     {
       "atMs": 108000,
@@ -1284,7 +1275,7 @@
       "processed": 1600,
       "decision": { "at": 105000, "raw": 0, "desired": 0, "reason": "target", "metric": 0, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 110000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Target",
-      "metric": "CPU 0% of its size (target 60%)"
+      "metric": "0% of allocated CPU (target 60%)"
     },
     {
       "atMs": 109000,
@@ -1296,7 +1287,7 @@
       "processed": 1600,
       "decision": { "at": 105000, "raw": 0, "desired": 0, "reason": "target", "metric": 0, "target": 60, "windowMs": 10000, "metricDelayMs": 0, "nextAt": 110000, "adapter": "cloudRun", "metricKind": "cpu" },
       "reason": "Target",
-      "metric": "CPU 0% of its size (target 60%)"
+      "metric": "0% of allocated CPU (target 60%)"
     },
     {
       "atMs": 110000,

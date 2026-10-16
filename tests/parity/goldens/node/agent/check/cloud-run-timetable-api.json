@@ -1,0 +1,143 @@
+{
+  "all": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "capacity:worker",
+          "rule": "capacity",
+          "severity": "warning",
+          "title": "Timetable API: scenario sizing",
+          "message": "In “Overnight, then the morning rush”, Cloud Run hits its maximum of 6 at 100% CPU (target 60% CPU). Up to 198 messages waited while instances started. Raise the maximum to 11. A rerun with this change confirmed it.",
+          "targets": ["worker"],
+          "fix": {
+            "label": "Raise maximum to 11",
+            "ops": [
+              {
+                "op": "update",
+                "target": "worker",
+                "props": {
+                  "autoscaling": {
+                    "mode": "on",
+                    "modelRevision": "a3",
+                    "preset": "cloud-run",
+                    "presetRevision": "1",
+                    "controller": { "kind": "cloudRun", "minReplicas": 0, "initialReplicas": 0, "maxReplicas": 11, "targetConcurrencyPct": 60, "targetCpuPct": 60, "evaluationMs": 2000, "cpuWindowMs": 6000, "concurrencyWindowsMs": [6000, 12000], "scaleInDelayMs": 4000 }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  },
+  "warnings": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "capacity:worker",
+          "rule": "capacity",
+          "severity": "warning",
+          "title": "Timetable API: scenario sizing",
+          "message": "In “Overnight, then the morning rush”, Cloud Run hits its maximum of 6 at 100% CPU (target 60% CPU). Up to 198 messages waited while instances started. Raise the maximum to 11. A rerun with this change confirmed it.",
+          "targets": ["worker"],
+          "fix": {
+            "label": "Raise maximum to 11",
+            "ops": [
+              {
+                "op": "update",
+                "target": "worker",
+                "props": {
+                  "autoscaling": {
+                    "mode": "on",
+                    "modelRevision": "a3",
+                    "preset": "cloud-run",
+                    "presetRevision": "1",
+                    "controller": { "kind": "cloudRun", "minReplicas": 0, "initialReplicas": 0, "maxReplicas": 11, "targetConcurrencyPct": 60, "targetCpuPct": 60, "evaluationMs": 2000, "cpuWindowMs": 6000, "concurrencyWindowsMs": [6000, 12000], "scaleInDelayMs": 4000 }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  },
+  "oneRule": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "capacity:worker",
+          "rule": "capacity",
+          "severity": "warning",
+          "title": "Timetable API: scenario sizing",
+          "message": "In “Overnight, then the morning rush”, Cloud Run hits its maximum of 6 at 100% CPU (target 60% CPU). Up to 198 messages waited while instances started. Raise the maximum to 11. A rerun with this change confirmed it.",
+          "targets": ["worker"],
+          "fix": {
+            "label": "Raise maximum to 11",
+            "ops": [
+              {
+                "op": "update",
+                "target": "worker",
+                "props": {
+                  "autoscaling": {
+                    "mode": "on",
+                    "modelRevision": "a3",
+                    "preset": "cloud-run",
+                    "presetRevision": "1",
+                    "controller": { "kind": "cloudRun", "minReplicas": 0, "initialReplicas": 0, "maxReplicas": 11, "targetConcurrencyPct": 60, "targetCpuPct": 60, "evaluationMs": 2000, "cpuWindowMs": 6000, "concurrencyWindowsMs": [6000, 12000], "scaleInDelayMs": 4000 }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  },
+  "simulations": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "capacity:worker",
+          "rule": "capacity",
+          "severity": "warning",
+          "title": "Timetable API: scenario sizing",
+          "message": "In “Overnight, then the morning rush”, Cloud Run hits its maximum of 6 at 100% CPU (target 60% CPU). Up to 198 messages waited while instances started. Raise the maximum to 11. A rerun with this change confirmed it.",
+          "targets": ["worker"],
+          "fix": {
+            "label": "Raise maximum to 11",
+            "ops": [
+              {
+                "op": "update",
+                "target": "worker",
+                "props": {
+                  "autoscaling": {
+                    "mode": "on",
+                    "modelRevision": "a3",
+                    "preset": "cloud-run",
+                    "presetRevision": "1",
+                    "controller": { "kind": "cloudRun", "minReplicas": 0, "initialReplicas": 0, "maxReplicas": 11, "targetConcurrencyPct": 60, "targetCpuPct": 60, "evaluationMs": 2000, "cpuWindowMs": 6000, "concurrencyWindowsMs": [6000, 12000], "scaleInDelayMs": 4000 }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "simulations": "Played 2 saved simulations (at most 60 s each).",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  }
+}

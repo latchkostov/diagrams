@@ -1,0 +1,8 @@
+---
+title: a3-aca-http
+---
+flowchart LR
+  source(["Travellers"])
+  worker["Booking API"]
+  source --> worker
+%% diagrams:{"v":1,"description":"Invented booking API on Container Apps. An HTTP request wakes it from zero; HTTP rate scales it 1, 4, 8; it returns to zero after the cooldown. Teaching timings: 20 s final-zero cooldown and 30 s scale-down stabilization instead of 300 s.","nodes":{"source":["source","client.browser"],"worker":["worker","azure.container-apps"]},"edges":["requests"],"relations":{}}

@@ -1,0 +1,13 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "a3-app-service",
+    "direction": "LR",
+    "nodes": [
+      { "id": "source", "stencil": "generic.service", "label": "Shoppers", "x": 40, "y": 40 },
+      { "id": "worker", "stencil": "generic.service", "label": "Storefront", "x": 400, "y": 40 }
+    ],
+    "edges": [{ "id": "e1-source-worker", "from": "source", "to": "worker", "kind": "sync" }]
+  }
+}

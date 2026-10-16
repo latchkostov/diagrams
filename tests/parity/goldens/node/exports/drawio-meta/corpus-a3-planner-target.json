@@ -1,0 +1,88 @@
+{
+  "withIcons": {
+    "sha256": "6b61b4b90048d58b0134f898faffa8f17bf975d9a73e406cf3441e67a93421df",
+    "bytes": 4344,
+    "inlined": { "client.browser": "client-browser 0022934839e05a07" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v2",
+        "planning": { "revision": "p3-a1" },
+        "title": "a3-planner-target",
+        "description": "The storefront with its scale-out rule at 70% CPU: slot-bound at 64% CPU, it never scales while its queue grows. The planner suggests a lower threshold, verified by a same-seed rerun.",
+        "nodes": [
+          {
+            "id": "source",
+            "stencil": "client.browser",
+            "label": "Shoppers",
+            "x": 80,
+            "y": 180,
+            "props": { "ratePerSec": 0 }
+          },
+          {
+            "id": "worker",
+            "stencil": "azure.app-service",
+            "label": "Storefront",
+            "x": 780,
+            "y": 180,
+            "props": {
+              "replicas": 1,
+              "concurrency": 4,
+              "latencyMs": 250,
+              "jitter": 0,
+              "resources": {
+                "preset": "io-service",
+                "presetRevision": "1",
+                "cpuMsPerMessage": 40,
+                "baselineMemoryMiB": 128,
+                "memoryMiBPerMessage": 2,
+                "cpuRequestMilli": 500,
+                "cpuLimitMilli": 1000,
+                "memoryRequestMiB": 256,
+                "memoryLimitMiB": 512,
+                "startup": { "delayMs": 2000, "jitterFraction": 0 },
+                "terminationGraceMs": 30000,
+                "modelRevision": "a2"
+              },
+              "autoscaling": {
+                "mode": "on",
+                "modelRevision": "a3",
+                "preset": "app-service",
+                "presetRevision": "1",
+                "controller": {
+                  "kind": "appService",
+                  "minReplicas": 1,
+                  "initialReplicas": 1,
+                  "maxReplicas": 5,
+                  "evaluationMs": 5000,
+                  "rules": [
+                    { "metric": "cpu", "operator": "GreaterThan", "threshold": 70, "windowMs": 10000, "direction": "increase", "changeType": "ChangeCount", "value": 1, "cooldownMs": 15000 },
+                    { "metric": "cpu", "operator": "LessThan", "threshold": 30, "windowMs": 10000, "direction": "decrease", "changeType": "ChangeCount", "value": 1, "cooldownMs": 20000 }
+                  ]
+                }
+              }
+            }
+          }
+        ],
+        "edges": [{ "id": "requests", "from": "source", "to": "worker", "kind": "sync", "props": { "travelMs": 10 } }],
+        "simulations": [
+          {
+            "id": "flash-sale",
+            "title": "Flash sale",
+            "seed": 17,
+            "durationMs": 150000,
+            "traffic": [
+              {
+                "id": "sale",
+                "node": "source",
+                "shape": { "kind": "constant", "ratePerSec": 40, "durationMs": 60000 }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

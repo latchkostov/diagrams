@@ -52,9 +52,9 @@
     }
   ],
   "english": [
-    "In “Flash sale”, the backlog grew while App Service stayed below its target at 64% CPU (target 70% CPU). Lower the target to 57 so it scales out. A same-seed rerun verified it."
+    "In “Flash sale”, the backlog grew while App Service stayed below its target at 64% CPU (target 70% CPU). Lower the target to 57 so it scales out sooner. A rerun with this change confirmed it."
   ],
   "shown": [
-    "In “Flash sale”, the backlog grew while App Service stayed below its target at CPU 64% of its size (target 70%). Lower the target to 57 so it scales out. A same-seed rerun verified it."
+    "In “Flash sale”, the backlog grew while App Service stayed below its target at 64% of allocated CPU (target 70%). Lower the target to 57 so it scales out sooner. A rerun with this change confirmed it."
   ]
 }

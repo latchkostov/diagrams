@@ -1,0 +1,282 @@
+{
+  "autoScale": { "freePlay": 1, "month-end": 1 },
+  "brokerAssignments": { "brokers": {}, "consumers": { "worker": { "count": 1 } } },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": null,
+      "suggestion": "Add entry traffic to analyze capacity.",
+      "converged": true,
+      "iterations": 1,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": [0, 0, 0, 1, 1, 0], "worker": [0, 0, 0, 0, 0, 0] },
+      "connections": {},
+      "offeredTypes": {}
+    },
+    "explanations": {
+      "worker": {
+        "resources": {
+          "keda": { "pollingMs": 5000, "cooldownMs": 15000, "lagBeforePoll": 0, "offered": 0 },
+          "perReplica": 16,
+          "initial": 0,
+          "min": 0,
+          "max": 6,
+          "initialCapacity": 0,
+          "maxCapacity": 96,
+          "cpuRequestPct": 0,
+          "memoryPeakMiB": 136,
+          "memoryRisk": false,
+          "baselineAboveTarget": false,
+          "partitionLimited": false,
+          "startupMs": 2000,
+          "cpuUnbounded": false
+        },
+        "id": "worker",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 0,
+        "replicas": 0,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 0,
+        "assignments": [],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "worker": [{ "kind": "consumes", "edge": "requests", "peer": "source", "retry": "requeue", "retryBackoffMs": 0 }]
+    },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "source": {
+        "profile": { "family": "queue", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Invoice jobs",
+        "healthChecks": false
+      },
+      "worker": {
+        "resources": {
+          "preset": "io-service",
+          "presetRevision": "1",
+          "cpuMsPerMessage": 40,
+          "baselineMemoryMiB": 128,
+          "memoryMiBPerMessage": 2,
+          "cpuRequestMilli": 500,
+          "cpuLimitMilli": 1000,
+          "memoryRequestMiB": 256,
+          "memoryLimitMiB": 512,
+          "startup": { "delayMs": 2000, "jitterFraction": 0 },
+          "terminationGraceMs": 30000,
+          "modelRevision": "a2"
+        },
+        "autoscaling": {
+          "mode": "on",
+          "modelRevision": "a3",
+          "preset": "aca-event",
+          "presetRevision": "1",
+          "controller": {
+            "kind": "aca",
+            "minReplicas": 0,
+            "initialReplicas": 0,
+            "maxReplicas": 6,
+            "pollingMs": 5000,
+            "cooldownMs": 15000,
+            "triggers": [
+              {
+                "source": { "node": "source" },
+                "target": 5,
+                "activation": 0,
+                "useCachedMetrics": false,
+                "type": "azure-servicebus"
+              }
+            ],
+            "settings": {
+              "syncMs": 15000,
+              "tolerance": 0.1,
+              "initialReadinessDelayMs": 30000,
+              "cpuInitializationPeriodMs": 300000,
+              "metrics": [],
+              "up": {
+                "stabilizationMs": 0,
+                "selectPolicy": "Max",
+                "policies": [
+                  { "type": "Pods", "value": 3, "periodMs": 15000 },
+                  { "type": "Percent", "value": 100, "periodMs": 15000 }
+                ]
+              },
+              "down": {
+                "stabilizationMs": 15000,
+                "selectPolicy": "Max",
+                "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+              }
+            }
+          }
+        },
+        "profile": { "family": "service", "revision": "p3-a1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Invoice renderer",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "month-end": {
+      "configured": "(same as edit)",
+      "simulation": "month-end",
+      "analysis": {
+        "bottleneck": "worker",
+        "suggestion": "Invoice renderer: resume the node or add a ready consumer.",
+        "converged": true,
+        "iterations": 2,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": [0, 60, "Infinity", 1, 1, 0], "worker": [0, 60, "Infinity", 0, 0, 0] },
+        "connections": { "requests": 60 },
+        "offeredTypes": { "source": ["Invoice jobs"], "worker": ["Invoice jobs"] }
+      },
+      "explanations": {
+        "worker": {
+          "resources": {
+            "keda": { "pollingMs": 5000, "cooldownMs": 15000, "lagBeforePoll": 300, "offered": 60 },
+            "perReplica": 16,
+            "initial": 0,
+            "min": 0,
+            "max": 6,
+            "initialCapacity": 0,
+            "maxCapacity": 96,
+            "cpuRequestPct": 480,
+            "memoryPeakMiB": 136,
+            "memoryRisk": false,
+            "baselineAboveTarget": false,
+            "partitionLimited": false,
+            "startupMs": 2000,
+            "cpuUnbounded": false
+          },
+          "id": "worker",
+          "role": "processor",
+          "status": "up",
+          "reason": "capacity",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 0,
+          "offered": 60,
+          "replicas": 0,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 0,
+          "assignments": [],
+          "slots": 4,
+          "seconds": 0.25,
+          "utilization": "Infinity",
+          "growth": 60,
+          "contributors": [{ "edge": "requests", "node": "source", "label": "Invoice jobs", "rate": 60 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": { "source": { "replicas": 2, "enough": true }, "worker": { "replicas": 2, "enough": true } },
+      "resolved": "(same as edit)"
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": { "source": ["idle", ""], "worker": ["idle", ""] }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": { "source": ["idle", ""], "worker": ["idle", ""] }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": { "source": ["idle", ""], "worker": ["idle", ""] }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": { "source": ["idle", ""], "worker": ["idle", ""] }
+        },
+        "partitionsNotes": {}
+      }
+    },
+    "month-end": {
+      "tone": "over",
+      "top": "worker",
+      "headline": "Invoice renderer can't keep up at all",
+      "detail": "Its consumers can't take any of its messages.",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": { "source": ["over", "No capacity · 60/s waiting"], "worker": ["over", "No capacity · 60/s waiting"] }
+    }
+  }
+}
