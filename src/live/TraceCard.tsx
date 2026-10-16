@@ -1,3 +1,6 @@
+import { routeWords, type RouteWords } from "../trace/routeWords";
+import { RouteSwatch } from "../components/RouteSwatch";
+import { routeName } from "../model/requestRouting";
 import { t, useLocale } from "../i18n";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import "../styles/trace.css";
@@ -93,6 +96,7 @@ export function TraceCard({
   useLocale();
   const labels = useMemo(() => new Map(diagram.nodes.map((n) => [n.id, n.label || n.id])), [diagram]);
   const name = (id: string | undefined) => (id ? (labels.get(id) ?? id) : "");
+  const words = useMemo(() => routeWords(diagram), [diagram]);
   const current = trace.current;
   const journey = useMemo(() => (current ? buildJourney(current, diagram, now) : null), [current, diagram, now]);
 
@@ -203,6 +207,9 @@ export function TraceCard({
   }
 
   const status = journeyStatus(journey, diagram);
+  // An addressed journey is named by its route (its swatch and marker, not colour alone).
+  const rootRouteId = journey.rows[0]?.route;
+  const rootRoute = rootRouteId ? diagram.planning?.requestRoutes?.find((r) => r.id === rootRouteId) : undefined;
   return (
     <section
       ref={card}
@@ -218,10 +225,16 @@ export function TraceCard({
       aria-label={`Message trace: ${journey.type} #${journey.rootId}`}
     >
       <header className="tr-head">
-        <span className="tr-swatch" style={{ background: messageColor(journey.type) }} aria-hidden />
+        {rootRoute ? (
+          <RouteSwatch route={rootRoute} size={14} />
+        ) : (
+          <span className="tr-swatch" style={{ background: messageColor(journey.type) }} aria-hidden />
+        )}
         <div className="tr-titles">
-          <strong title={`${journey.type} #${journey.rootId}`}>
-            {journey.type} <span className="tr-id">#{journey.rootId}</span>
+          <strong
+            title={`${rootRoute ? (words.address(rootRoute.id) ?? journey.type) : journey.type} #${journey.rootId}`}
+          >
+            {rootRoute ? routeName(rootRoute) : journey.type} <span className="tr-id">#{journey.rootId}</span>
           </strong>
           <span>from {name(journey.origin)}</span>
         </div>
@@ -290,6 +303,7 @@ export function TraceCard({
             key={row.key}
             row={row}
             name={name}
+            words={words}
             current={slowmo ? slowmo.row === row.key : undefined}
             active={active.has(row.key)}
             onSeek={slowmo?.onSeek}
@@ -369,12 +383,15 @@ function CloseButton({ onClose, slowmo = false }: { onClose(): void; slowmo?: bo
 function Hop({
   row,
   name,
+  words,
   current,
   active,
   onSeek,
 }: {
   row: JourneyRow;
   name: (id: string | undefined) => string;
+  /** Request routing: the address, the router's rule and split, in words. */
+  words?: RouteWords;
   /** Slow motion: this is the hop being told (undefined outside slow motion). */
   current?: boolean;
   active?: boolean;
@@ -410,7 +427,7 @@ function Hop({
       break;
     case "rejected":
       main = name(row.node);
-      sub = t("admission.rejected");
+      sub = words?.refusal(row.reason) ?? t("admission.rejected");
       break;
     case "blocked":
       main = name(row.node);
@@ -430,6 +447,10 @@ function Hop({
         .join(" · ");
     }
   }
+  // An addressed request says its address, and on a router's hop the rule and split that chose it.
+  const routed = words?.hop(row.route, row.from, row.rule, row.weight);
+  if (routed) sub = `${routed} · ${sub}`;
+  const look = words?.look(row.route);
   const breakdown =
     row.latencyMs !== undefined
       ? [
@@ -445,7 +466,8 @@ function Hop({
       <span className="tr-time mono">{formatOffset(row.t)}</span>
       <span
         className={`tr-dot is-${row.kind}`}
-        style={tone === "plain" ? { background: messageColor(row.type) } : undefined}
+        style={tone === "plain" ? { background: look?.color ?? messageColor(row.type) } : undefined}
+        data-marker={look?.marker}
         aria-hidden
       >
         {row.kind === "fail" || row.kind === "drop"

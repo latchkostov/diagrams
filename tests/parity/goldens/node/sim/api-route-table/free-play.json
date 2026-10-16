@@ -1,0 +1,258 @@
+{
+  "run": { "time": 60000, "scale": 2, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "app": { "replicas": [1, 1, 0] },
+        "carriers": { "replicas": [1, 1, 0] },
+        "gateway": { "replicas": [1, 1, 0] },
+        "tracking": { "replicas": [2, 2, 0] },
+        "pricing": { "replicas": [2, 2, 0] },
+        "pricing-canary": { "replicas": [2, 2, 0] },
+        "labels": { "replicas": [2, 2, 0] },
+        "events": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 69,
+      "nodes": {
+        "app": { "processed": 200, "throughput": 22.074665094837783, "replicas": [1, 1, 0] },
+        "carriers": { "processed": 150, "throughput": 15.477971080391363, "replicas": [1, 1, 0] },
+        "gateway": {
+          "processed": 330,
+          "rejected": 9,
+          "throughput": 34.78103371637977,
+          "rejectionReasons": { "route-not-found": 9 },
+          "replicas": [1, 1, 0]
+        },
+        "tracking": { "processed": 103, "inFlight": 1, "throughput": 10.598330632660643, "replicas": [2, 2, 0] },
+        "pricing": { "processed": 41, "throughput": 5.099125659421155, "replicas": [2, 2, 0] },
+        "pricing-canary": { "processed": 6, "throughput": 0.146767981158518, "replicas": [2, 2, 0] },
+        "labels": { "processed": 28, "throughput": 3.140886734313297, "replicas": [2, 2, 0] },
+        "events": { "processed": 94, "backlog": 46, "inFlight": 2, "throughput": 10.264261375400807, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 119,
+      "nodes": {
+        "app": { "processed": 400, "throughput": 22.07566728308263, "replicas": [1, 1, 0] },
+        "carriers": { "processed": 300, "throughput": 15.47867377919129, "replicas": [1, 1, 0] },
+        "gateway": {
+          "processed": 670,
+          "rejected": 19,
+          "throughput": 34.78315215644528,
+          "rejectionReasons": { "route-not-found": 19 },
+          "replicas": [1, 1, 0]
+        },
+        "tracking": { "processed": 213, "inFlight": 1, "throughput": 10.585168269697812, "replicas": [2, 2, 0] },
+        "pricing": { "processed": 86, "throughput": 4.9865371499611, "replicas": [2, 2, 0] },
+        "pricing-canary": { "processed": 11, "throughput": 0.24837379099087434, "replicas": [2, 2, 0] },
+        "labels": { "processed": 58, "throughput": 3.1515660537503645, "replicas": [2, 2, 0] },
+        "events": { "processed": 194, "backlog": 96, "inFlight": 2, "throughput": 10.285535086964002, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 169,
+      "nodes": {
+        "app": { "processed": 600, "throughput": 22.0756673285819, "replicas": [1, 1, 0] },
+        "carriers": { "processed": 450, "throughput": 15.478673811093758, "replicas": [1, 1, 0] },
+        "gateway": {
+          "processed": 1010,
+          "rejected": 29,
+          "throughput": 34.783152252622294,
+          "rejectionReasons": { "route-not-found": 29 },
+          "replicas": [1, 1, 0]
+        },
+        "tracking": { "processed": 323, "inFlight": 1, "throughput": 10.606771402616726, "replicas": [2, 2, 0] },
+        "pricing": { "processed": 131, "throughput": 4.799046884165846, "replicas": [2, 2, 0] },
+        "pricing-canary": { "processed": 16, "throughput": 0.438614450002719, "replicas": [2, 2, 0] },
+        "labels": { "processed": 88, "throughput": 3.1472087864987173, "replicas": [2, 2, 0] },
+        "events": { "processed": 294, "backlog": 146, "inFlight": 2, "throughput": 10.296609640406919, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 219,
+      "nodes": {
+        "app": { "processed": 800, "throughput": 22.075667328583958, "replicas": [1, 1, 0] },
+        "carriers": { "processed": 600, "throughput": 15.478673811095218, "replicas": [1, 1, 0] },
+        "gateway": {
+          "processed": 1350,
+          "rejected": 39,
+          "throughput": 34.783152252626664,
+          "rejectionReasons": { "route-not-found": 39 },
+          "replicas": [1, 1, 0]
+        },
+        "tracking": { "processed": 433, "inFlight": 1, "throughput": 10.619495631759941, "replicas": [2, 2, 0] },
+        "pricing": { "processed": 175, "throughput": 4.069547632709658, "replicas": [2, 2, 0] },
+        "pricing-canary": { "processed": 22, "throughput": 1.1797737948623481, "replicas": [2, 2, 0] },
+        "labels": { "processed": 118, "throughput": 3.1435281335752703, "replicas": [2, 2, 0] },
+        "events": { "processed": 394, "backlog": 196, "inFlight": 2, "throughput": 10.27235883114081, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 269,
+      "nodes": {
+        "app": { "processed": 1000, "throughput": 22.075667328583958, "replicas": [1, 1, 0] },
+        "carriers": { "processed": 750, "throughput": 15.478673811095218, "replicas": [1, 1, 0] },
+        "gateway": {
+          "processed": 1690,
+          "rejected": 49,
+          "throughput": 34.783152252626664,
+          "rejectionReasons": { "route-not-found": 49 },
+          "replicas": [1, 1, 0]
+        },
+        "tracking": { "processed": 543, "inFlight": 1, "throughput": 10.586369301656902, "replicas": [2, 2, 0] },
+        "pricing": { "processed": 221, "throughput": 5.0240471004610505, "replicas": [2, 2, 0] },
+        "pricing-canary": { "processed": 26, "throughput": 0.23129931761916656, "replicas": [2, 2, 0] },
+        "labels": { "processed": 148, "throughput": 3.155932077822381, "replicas": [2, 2, 0] },
+        "events": { "processed": 494, "backlog": 246, "inFlight": 2, "throughput": 10.302292427685527, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 319,
+      "nodes": {
+        "app": { "processed": 1200, "throughput": 22.075667328583958, "replicas": [1, 1, 0] },
+        "carriers": { "processed": 900, "throughput": 15.478673811095218, "replicas": [1, 1, 0] },
+        "gateway": {
+          "processed": 2030,
+          "rejected": 59,
+          "throughput": 34.783152252626664,
+          "rejectionReasons": { "route-not-found": 59 },
+          "replicas": [1, 1, 0]
+        },
+        "tracking": { "processed": 653, "inFlight": 1, "throughput": 10.592527023510405, "replicas": [2, 2, 0] },
+        "pricing": { "processed": 263, "throughput": 3.4191143850598635, "replicas": [2, 2, 0] },
+        "pricing-canary": { "processed": 34, "throughput": 1.84081141257701, "replicas": [2, 2, 0] },
+        "labels": { "processed": 178, "throughput": 3.161143071845197, "replicas": [2, 2, 0] },
+        "events": { "processed": 594, "backlog": 296, "inFlight": 2, "throughput": 10.304548619099451, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 319,
+    "real": {
+      "app": { "processed": 2400, "throughput": 44.151334657167915, "replicas": [1, 1, 0] },
+      "carriers": { "processed": 1800, "throughput": 30.957347622190436, "replicas": [1, 1, 0] },
+      "gateway": {
+        "processed": 4060,
+        "rejected": 118,
+        "throughput": 69.56630450525333,
+        "rejectionReasons": { "route-not-found": 118 },
+        "replicas": [1, 1, 0]
+      },
+      "tracking": { "processed": 1306, "inFlight": 2, "throughput": 21.18505404702081, "replicas": [2, 2, 0] },
+      "pricing": { "processed": 526, "throughput": 6.838228770119727, "replicas": [2, 2, 0] },
+      "pricing-canary": { "processed": 68, "throughput": 3.68162282515402, "replicas": [2, 2, 0] },
+      "labels": { "processed": 356, "throughput": 6.322286143690394, "replicas": [2, 2, 0] },
+      "events": { "processed": 1188, "backlog": 592, "inFlight": 4, "throughput": 20.609097238198903, "replicas": [1, 1, 0] }
+    },
+    "edges": { "app-gateway": 1193, "carriers-gateway": 896, "to-tracking": 654, "to-pricing": 263, "to-pricing-canary": 34, "to-labels": 178, "to-events": 892 }
+  },
+  "events": {
+    "total": 10021,
+    "byKind": { "process": 5852, "deliver": 4110, "reject": 59 },
+    "byNode": {
+      "carriers": { "process": 900 },
+      "app": { "process": 1200 },
+      "gateway": { "deliver": 2089, "process": 2030, "reject": 59 },
+      "events": { "deliver": 892, "process": 594 },
+      "tracking": { "deliver": 654, "process": 653 },
+      "pricing": { "deliver": 263, "process": 263 },
+      "labels": { "deliver": 178, "process": 178 },
+      "pricing-canary": { "deliver": 34, "process": 34 }
+    },
+    "perSecond": [
+      "350082e61820",
+      "6aa1cfbe806a",
+      "4b17f0d53791",
+      "44067fafa1be",
+      "6d870fe1e60f",
+      "9a359ceda76a",
+      "64feb940e517",
+      "a1c8a3aed251",
+      "bf83dec6e91b",
+      "b3962abc6b93",
+      "c23f4e14b0a7",
+      "e17c58bc15a2",
+      "c5b4ae952772",
+      "fa960361b083",
+      "249a9d748359",
+      "575f8533e8ec",
+      "c759d28aff71",
+      "ad9ce74cf075",
+      "36804891b13c",
+      "fee2ea3ac43b",
+      "fe28249c9aec",
+      "277e0513b44b",
+      "fc1df9495d03",
+      "64b60b86f7f6",
+      "b06d97a0e913",
+      "53c6b87fe839",
+      "da9ca0479bef",
+      "2855e1a2c854",
+      "c08e2562b41d",
+      "cbfde2e25615",
+      "cc32b10029f0",
+      "79481c3ed9bc",
+      "b56868090aa6",
+      "7faefd41380c",
+      "7027f2d49f48",
+      "5409786e8d43",
+      "6ea08d05e641",
+      "b7f7dd2fda3e",
+      "e9a0cfb88cb1",
+      "720128ce647f",
+      "2f8a6a14753b",
+      "ed92f063d7ed",
+      "97539efef284",
+      "2be4305661f1",
+      "2fabdaa9815d",
+      "6cecf4249f0a",
+      "377736f72f97",
+      "47e8590ec2d5",
+      "40cf1af1a1e9",
+      "a6e846551967",
+      "f2589e9ca7a2",
+      "95ca0c4db34e",
+      "19eaa94a49b0",
+      "2818d8946ee6",
+      "b2e24b52e840",
+      "e0158c665228",
+      "892e5ca96408",
+      "db2677e9958a",
+      "ad45612669b4",
+      "6cec6056e57d",
+      "063726cf27f8"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 1033, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0, "rejected": 28 },
+    "endToEndMs": { "count": 1033, "min": 250, "mean": 3159.303000968054, "p50": 560, "p90": 12020, "max": 20340 },
+    "waitMs": {
+      "gateway": { "count": 1005, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "tracking": { "count": 365, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "pricing": { "count": 155, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "pricing-canary": { "count": 16, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "labels": { "count": 132, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "events": { "count": 337, "min": 0, "mean": 7845.103857566765, "p50": 6970, "p90": 16500, "max": 19630 }
+    },
+    "processMs": {
+      "gateway": { "count": 1005, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "tracking": { "count": 365, "min": 40, "mean": 45.26027397260274, "p50": 50, "p90": 50, "max": 50 },
+      "pricing": { "count": 155, "min": 40, "mean": 44.903225806451616, "p50": 40, "p90": 50, "max": 50 },
+      "pricing-canary": { "count": 16, "min": 40, "mean": 42.5, "p50": 40, "p90": 50, "max": 50 },
+      "labels": { "count": 132, "min": 40, "mean": 44.92424242424242, "p50": 40, "p90": 50, "max": 50 },
+      "events": { "count": 337, "min": 190, "mean": 208.0712166172107, "p50": 210, "p90": 220, "max": 220 }
+    }
+  }
+}

@@ -1,0 +1,154 @@
+{
+  "trace": { "rootId": 1, "type": "Parcelpoint app", "origin": "app", "startedAt": 30, "done": true, "partial": false, "truncated": false, "steps": 13, "endedAt": 580 },
+  "steps": [
+    { "t": 30, "kind": "emit", "id": 1, "type": "Parcelpoint app", "node": "app", "route": "track-parcel" },
+    { "t": 30, "kind": "done", "id": 1, "type": "Parcelpoint app", "node": "app", "route": "track-parcel" },
+    { "t": 30, "kind": "send", "id": 1, "type": "Parcelpoint app", "node": "app", "edge": "app-gateway", "via": "message", "until": 280, "route": "track-parcel" },
+    { "t": 280, "kind": "arrive", "id": 1, "type": "Parcelpoint app", "node": "gateway", "edge": "app-gateway", "route": "track-parcel" },
+    { "t": 280, "kind": "start", "id": 1, "type": "Parcelpoint app", "node": "gateway", "route": "track-parcel" },
+    { "t": 290, "kind": "send", "id": 1, "type": "Parcelpoint app", "node": "gateway", "edge": "app-gateway", "via": "reply", "until": 540, "route": "track-parcel" },
+    { "t": 290, "kind": "done", "id": 1, "type": "Parcelpoint app", "node": "gateway", "route": "track-parcel" },
+    { "t": 290, "kind": "send", "id": 1, "type": "Parcelpoint app", "node": "gateway", "edge": "to-tracking", "via": "message", "until": 540, "rule": "parcels", "weight": 1, "route": "track-parcel" },
+    { "t": 540, "kind": "arrive", "id": 1, "type": "Parcelpoint app", "node": "tracking", "edge": "to-tracking", "route": "track-parcel" },
+    { "t": 540, "kind": "start", "id": 1, "type": "Parcelpoint app", "node": "tracking", "route": "track-parcel" },
+    { "t": 580, "kind": "send", "id": 1, "type": "Parcelpoint app", "node": "tracking", "edge": "to-tracking", "via": "reply", "until": 830, "route": "track-parcel" },
+    { "t": 580, "kind": "done", "id": 1, "type": "Parcelpoint app", "node": "tracking", "route": "track-parcel" },
+    { "t": 580, "kind": "end", "id": 1, "type": "Parcelpoint app", "node": "tracking", "reason": "consumed", "route": "track-parcel" }
+  ],
+  "journey": {
+    "rootId": 1,
+    "type": "Parcelpoint app",
+    "origin": "app",
+    "startedAt": 30,
+    "totalMs": 550,
+    "done": true,
+    "partial": false,
+    "truncated": false,
+    "rows": [
+      { "key": "0", "kind": "origin", "t": 0, "id": 1, "type": "Parcelpoint app", "node": "app", "copy": false, "route": "track-parcel" },
+      { "key": "3", "kind": "hop", "t": 250, "id": 1, "type": "Parcelpoint app", "node": "gateway", "from": "app", "edge": "app-gateway", "sync": true, "latencyMs": 250, "waitMs": 0, "travelMs": 250, "renamed": false, "copy": false, "route": "track-parcel" },
+      { "key": "8", "kind": "hop", "t": 510, "id": 1, "type": "Parcelpoint app", "node": "tracking", "from": "gateway", "edge": "to-tracking", "sync": true, "latencyMs": 260, "waitMs": 0, "processMs": 10, "travelMs": 250, "renamed": false, "copy": false, "route": "track-parcel", "rule": "parcels", "weight": 1 }
+    ],
+    "visits": [
+      { "id": 1, "node": "app", "at": 0, "done": 0, "left": 0 },
+      { "id": 1, "node": "gateway", "at": 250, "start": 250, "done": 260, "left": 260 },
+      { "id": 1, "node": "tracking", "at": 510, "start": 510, "done": 550 }
+    ],
+    "ids": [1],
+    "copies": 0,
+    "retries": 0,
+    "failures": 0,
+    "deadLettered": 0,
+    "dropped": 0,
+    "blocked": 0,
+    "kept": [],
+    "nodes": ["app", "gateway", "tracking"],
+    "edges": ["app-gateway", "to-tracking"],
+    "rowOf": { "0": "0", "3": "3", "8": "8" }
+  },
+  "sequence": {
+    "title": "Parcelpoint app #1",
+    "summary": "550 ms end to end",
+    "participants": [
+      { "id": "app", "label": "Parcelpoint app" },
+      { "id": "gateway", "label": "API gateway" },
+      { "id": "tracking", "label": "Tracking" }
+    ],
+    "items": [
+      { "kind": "arrow", "t": 0, "until": 250, "from": "app", "to": "gateway", "style": "sync", "label": "Parcelpoint app", "detail": "HTTPS", "id": 1, "type": "Parcelpoint app" },
+      { "kind": "arrow", "t": 260, "until": 510, "from": "gateway", "to": "app", "style": "reply", "label": "reply", "id": 1, "type": "Parcelpoint app" },
+      { "kind": "arrow", "t": 260, "until": 510, "from": "gateway", "to": "tracking", "style": "sync", "label": "Parcelpoint app", "detail": "Track", "id": 1, "type": "Parcelpoint app" },
+      { "kind": "arrow", "t": 550, "until": 800, "from": "tracking", "to": "gateway", "style": "reply", "label": "reply", "id": 1, "type": "Parcelpoint app" }
+    ],
+    "totalMs": 550,
+    "done": true,
+    "partial": false,
+    "truncated": false
+  },
+  "mermaidPlain": "---\ntitle: \"Parcelpoint app #1 · 550 ms end to end\"\n---\nsequenceDiagram\n  participant app as Parcelpoint app\n  participant gateway as API gateway\n  participant tracking as Tracking\n  app->>gateway: Parcelpoint app (+0.00 s)<br/>HTTPS\n  gateway-->>app: reply (+0.26 s)\n  gateway->>tracking: Parcelpoint app (+0.26 s)<br/>Track\n  tracking-->>gateway: reply (+0.55 s)\n",
+  "svg": {
+    "light": { "sha256": "c52e8999a80fb35e9b96d366b24405ec7aaf92273e94c1ffcfe7bcda00b8a380", "bytes": 6338, "width": 544, "height": 382, "headerHeight": 142 },
+    "dark": { "sha256": "8b79508d9f1973f155cd60060a65c4c38658523857bd9a50ea47a6160087255d", "bytes": 6337, "width": 544, "height": 382, "headerHeight": 142 }
+  },
+  "slowMotion": {
+    "rootId": 1,
+    "type": "Parcelpoint app",
+    "origin": "app",
+    "beats": [
+      {
+        "kind": "establish",
+        "msg": 1,
+        "type": "Parcelpoint app",
+        "node": "app",
+        "anchor": { "edge": "app-gateway", "end": 0 },
+        "start": 0,
+        "duration": 800,
+        "realFrom": 0,
+        "realTo": 0,
+        "caption": "Parcelpoint app sends Parcelpoint app",
+        "rowKey": "0",
+        "i": 0,
+        "color": "#E69F00",
+        "tone": "plain"
+      },
+      { "kind": "travel", "msg": 1, "type": "Parcelpoint app", "edge": "app-gateway", "reverse": false, "start": 800, "duration": 1000, "realFrom": 0, "realTo": 250, "caption": "Parcelpoint app", "tone": "plain", "i": 1, "color": "#E69F00", "rowKey": "3" },
+      {
+        "kind": "process",
+        "msg": 1,
+        "type": "Parcelpoint app",
+        "node": "gateway",
+        "anchor": { "edge": "app-gateway", "end": 1 },
+        "start": 1800,
+        "duration": 656.7939019774532,
+        "realFrom": 250,
+        "realTo": 260,
+        "caption": "API gateway · route Track · 10 ms",
+        "i": 2,
+        "color": "#E69F00",
+        "tone": "plain",
+        "short": "route Track · 10 ms"
+      },
+      { "kind": "reply", "msg": 1, "type": "Parcelpoint app", "edge": "app-gateway", "reverse": true, "start": 2456.793901977453, "duration": 600, "realFrom": 260, "realTo": 510, "i": 3, "color": "#E69F00", "tone": "plain" },
+      { "kind": "travel", "msg": 1, "type": "Parcelpoint app", "edge": "to-tracking", "reverse": false, "start": 2456.793901977453, "duration": 1000, "realFrom": 260, "realTo": 510, "caption": "GET /v1/parcels/8421 → rule 1 (Tracking) → Tracking", "tone": "plain", "i": 4, "color": "#E69F00", "rowKey": "8" },
+      {
+        "kind": "process",
+        "msg": 1,
+        "type": "Parcelpoint app",
+        "node": "tracking",
+        "anchor": { "edge": "to-tracking", "end": 1 },
+        "start": 3456.793901977453,
+        "duration": 853.2725571158205,
+        "realFrom": 510,
+        "realTo": 550,
+        "caption": "Tracking · Track · 40 ms",
+        "i": 5,
+        "color": "#E69F00",
+        "tone": "plain",
+        "short": "Track · 40 ms"
+      },
+      { "kind": "reply", "msg": 1, "type": "Parcelpoint app", "edge": "to-tracking", "reverse": true, "start": 4310.066459093274, "duration": 600, "realFrom": 550, "realTo": 800, "i": 6, "color": "#E69F00", "tone": "plain" },
+      { "kind": "end", "msg": 1, "type": "Parcelpoint app", "node": "tracking", "start": 4710.066459093274, "duration": 1200, "realFrom": 550, "realTo": 550, "caption": "Done · 550 ms", "tone": "done", "i": 7, "color": "#E69F00" }
+    ],
+    "duration": 5910.066459093274,
+    "realTotal": 550,
+    "stops": [0, 800, 2457, 4710],
+    "nodes": ["app", "gateway", "tracking"],
+    "edges": ["app-gateway", "to-tracking"],
+    "hiddenCopies": 0,
+    "unfinished": false,
+    "summary": "Done · 550 ms",
+    "reduced": false,
+    "rowStart": { "0": 0, "3": 800, "8": 2456.793901977453 }
+  },
+  "slowMotionReduced": {
+    "duration": 9000,
+    "beats": [
+      ["establish", 0, 1500],
+      ["travel", 1500, 1500],
+      ["process", 3000, 1500],
+      ["travel", 4500, 1500],
+      ["process", 6000, 1500],
+      ["end", 7500, 1500]
+    ]
+  }
+}

@@ -28,8 +28,10 @@ const KIND_INDEX: Record<ParticleKind, number> = { message: 0, reply: 1, retry: 
 export interface DictDelta {
   edges?: string[];
   nodes?: string[];
-  styles?: [type: string, color: string][];
+  /** A style: type and colour, plus a request route's marker, id and a refused reply's code when present. */
+  styles?: Style[];
 }
+export type Style = [type: string, color: string, marker?: string, route?: string, code?: number];
 
 export interface PackedSnapshot {
   buf: ArrayBuffer;
@@ -172,7 +174,9 @@ export class SnapshotPacker {
   /** type → colour → style index (no string building per particle). */
   private styles = new Map<string, Map<string, number>>();
   private styleCount = 0;
-  private freshStyles: [string, string][] = [];
+  private freshStyles: Style[] = [];
+  /** Routed styles by their full key (unrouted ones use the nested map above). */
+  private routed = new Map<string, number>();
   private pool: ArrayBuffer[] = [];
 
   /** Start over (the worker dropped its tables). */
@@ -180,6 +184,7 @@ export class SnapshotPacker {
     this.edges.clear();
     this.nodes.clear();
     this.styles.clear();
+    this.routed.clear();
     this.styleCount = 0;
     this.freshStyles = [];
   }
@@ -189,7 +194,17 @@ export class SnapshotPacker {
     if (this.pool.length < 4) this.pool.push(buf);
   }
 
-  private style(type: string, color: string): number {
+  private style(type: string, color: string, p?: Particle): number {
+    if (p && (p.marker || p.route || p.code)) {
+      const key = `${type}\u0000${color}\u0000${p.marker ?? ""}\u0000${p.route ?? ""}\u0000${p.code ?? ""}`;
+      let i = this.routed.get(key);
+      if (i === undefined) {
+        i = this.styleCount++;
+        this.routed.set(key, i);
+        this.freshStyles.push([type, color, p.marker ?? "", p.route ?? "", p.code ?? 0]);
+      }
+      return i;
+    }
     let byColor = this.styles.get(type);
     if (!byColor) this.styles.set(type, (byColor = new Map()));
     let i = byColor.get(color);
@@ -223,7 +238,7 @@ export class SnapshotPacker {
       ints[o + 1] = p.messageId;
       ints[o + 2] = p.rootId;
       ints[o + 3] = this.edges.index(p.edgeId);
-      ints[o + 4] = KIND_INDEX[p.kind] | (this.style(p.type, p.color) << 2);
+      ints[o + 4] = KIND_INDEX[p.kind] | (this.style(p.type, p.color, p) << 2);
       floats[o + 5] = p.progress;
       o += STRIDE;
     }
@@ -251,7 +266,7 @@ export class SnapshotPacker {
 export class SnapshotUnpacker {
   private edges: string[] = [];
   private nodes: string[] = [];
-  private styles: [string, string][] = [];
+  private styles: Style[] = [];
   private pool: Particle[] = [];
 
   clear(): void {
@@ -288,6 +303,9 @@ export class SnapshotUnpacker {
       p.kind = KINDS[packedKind & 3];
       p.type = style[0];
       p.color = style[1];
+      p.marker = (style[2] || undefined) as Particle["marker"];
+      p.route = style[3] || undefined;
+      p.code = style[4] || undefined;
       p.progress = floats[o + 5];
       o += STRIDE;
     }

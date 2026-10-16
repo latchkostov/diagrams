@@ -1,0 +1,24 @@
+---
+title: R1: caller addresses and bindings
+---
+flowchart LR
+  web(["Web"])
+  bff["BFF"]
+  gw["Envoy"]
+  orders["Orders"]
+  stock["Stock"]
+  events["Order events"]
+  audit["Audit"]
+  billing["Billing"]
+  bff2["Stock checker"]
+  web -.-> bff
+  bff -->|"Place order"| gw
+  gw --> orders
+  gw --> stock
+  orders -.-> events
+  events -.-> audit
+  events -.-> billing
+  web -.-> bff2
+  bff2 --> gw
+  linkStyle 0,4,5,6,7 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"nodes":{"web":["web","client.browser"],"bff":["bff","generic.service"],"gw":["gw","envoy"],"orders":["orders","generic.service"],"stock":["stock","generic.service"],"events":["events","aws.sns"],"audit":["audit","generic.service"],"billing":["billing","generic.service"],"bff2":["bff2","generic.service"]},"edges":["web-bff","bff-gw-orders","gw-orders","gw-stock","orders-events","events-audit","events-billing","web-bff2","bff2-gw"],"relations":{}}

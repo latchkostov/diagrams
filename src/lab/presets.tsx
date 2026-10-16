@@ -5,6 +5,7 @@ import { measuredHierarchyFixture, nestedBoundariesFixture } from "./nestedBound
 import { captionContrastFixture } from "./captionContrastFixture";
 import { GalleryCatalogLab } from "./GalleryCatalogLab";
 import { autoscalingFixture } from "./autoscalingFixture";
+import { routingFixture, routingOverlapFixture } from "./routingFixture";
 import { ColourPickerLab } from "./ColourPickerLab";
 import { customColoursFixture } from "./customColoursFixture";
 import { planningP3Fixture, planningP3BulkFixture } from "./planningP3Fixture";
@@ -441,6 +442,20 @@ const playgroundPresets: Preset[] = [
     title: t("autoscaling.kedaPreset", { broker: "Kafka" }),
     group: "Playground",
     diagram: () => kedaFixture(),
+  },
+  {
+    kind: "diagram",
+    id: "routing-r1",
+    title: "Request routing: mix, table and 404",
+    group: "Playground",
+    diagram: () => routingFixture(),
+  },
+  {
+    kind: "diagram",
+    id: "routing-r1-overlap",
+    title: "Request routing: order, filters and a down canary",
+    group: "Playground",
+    diagram: () => routingOverlapFixture(),
   },
   {
     kind: "diagram",

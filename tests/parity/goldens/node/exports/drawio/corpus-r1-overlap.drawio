@@ -1,0 +1,57 @@
+<mxfile host="Diagrams" agent="Diagrams" version="24.0.0" type="device">
+  <diagram id="dg-1sku0ru" name="Routing: order, filters and a down canary">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <object id="0" dg_format="diagrams/v2" dg_simulations="[{&quot;id&quot;:&quot;overlap&quot;,&quot;title&quot;:&quot;Overlap&quot;,&quot;seed&quot;:7,&quot;durationMs&quot;:12000,&quot;traffic&quot;:[{&quot;id&quot;:&quot;overlap-traffic&quot;,&quot;node&quot;:&quot;app&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:30,&quot;durationMs&quot;:8000}}]}]" dg_planning="{&quot;revision&quot;:&quot;p3-a1&quot;,&quot;requestRoutes&quot;:[{&quot;id&quot;:&quot;orders-post&quot;,&quot;address&quot;:{&quot;method&quot;:&quot;POST&quot;,&quot;path&quot;:&quot;/orders&quot;},&quot;appearance&quot;:{&quot;paletteSlot&quot;:0,&quot;marker&quot;:&quot;circle&quot;}},{&quot;id&quot;:&quot;search-get&quot;,&quot;address&quot;:{&quot;method&quot;:&quot;GET&quot;,&quot;path&quot;:&quot;/search&quot;},&quot;appearance&quot;:{&quot;paletteSlot&quot;:1,&quot;marker&quot;:&quot;circle&quot;}},{&quot;id&quot;:&quot;orders-delete&quot;,&quot;address&quot;:{&quot;method&quot;:&quot;DELETE&quot;,&quot;path&quot;:&quot;/orders/42&quot;},&quot;appearance&quot;:{&quot;paletteSlot&quot;:5,&quot;marker&quot;:&quot;triangle&quot;}}]}">
+          <mxCell />
+        </object>
+        <mxCell id="1" parent="0" />
+        <object id="dg-n-app" label="Mobile app" dg_id="app" dg_stencil="client.mobile" dg_props="{&quot;ratePerSec&quot;:30,&quot;trafficMix&quot;:{&quot;mode&quot;:&quot;shares&quot;,&quot;entries&quot;:[{&quot;routeId&quot;:&quot;orders-post&quot;,&quot;share&quot;:0.5},{&quot;routeId&quot;:&quot;search-get&quot;,&quot;share&quot;:0.3},{&quot;routeId&quot;:&quot;orders-delete&quot;,&quot;share&quot;:0.2}]}}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#10B9811A;strokeColor=#10B981;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="20" y="126" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-kong" label="Gateway" dg_id="kong" dg_stencil="kong" dg_props="{&quot;latencyMs&quot;:5,&quot;jitter&quot;:0,&quot;routeTable&quot;:{&quot;rules&quot;:[{&quot;id&quot;:&quot;broad&quot;,&quot;label&quot;:&quot;Everything under /search&quot;,&quot;match&quot;:{&quot;path&quot;:{&quot;kind&quot;:&quot;prefix&quot;,&quot;value&quot;:&quot;/search&quot;}},&quot;targets&quot;:[{&quot;edgeId&quot;:&quot;kong-search&quot;,&quot;weight&quot;:1}]},{&quot;id&quot;:&quot;orders&quot;,&quot;match&quot;:{&quot;methods&quot;:[&quot;POST&quot;],&quot;path&quot;:{&quot;kind&quot;:&quot;exact&quot;,&quot;value&quot;:&quot;/orders&quot;}},&quot;targets&quot;:[{&quot;edgeId&quot;:&quot;kong-orders&quot;,&quot;weight&quot;:9},{&quot;edgeId&quot;:&quot;kong-canary&quot;,&quot;weight&quot;:1}]},{&quot;id&quot;:&quot;filtered&quot;,&quot;match&quot;:{&quot;methods&quot;:[&quot;DELETE&quot;]},&quot;targets&quot;:[{&quot;edgeId&quot;:&quot;kong-orders&quot;,&quot;weight&quot;:1}]}],&quot;default&quot;:{&quot;targets&quot;:[{&quot;edgeId&quot;:&quot;kong-search&quot;,&quot;weight&quot;:1}]}}}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#14B59A1A;strokeColor=#14B59A;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="260" y="126" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-orders" label="Orders" dg_id="orders" dg_stencil="generic.service" dg_props="{&quot;latencyMs&quot;:20,&quot;concurrency&quot;:64,&quot;jitter&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#6366F11A;strokeColor=#6366F1;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="540" y="6" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-canary" label="Orders canary" dg_id="canary" dg_stencil="generic.service" dg_props="{&quot;latencyMs&quot;:20,&quot;concurrency&quot;:64,&quot;jitter&quot;:0,&quot;status&quot;:&quot;down&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#6366F11A;strokeColor=#6366F1;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="540" y="126" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-search" label="Search" dg_id="search" dg_stencil="generic.service" dg_props="{&quot;latencyMs&quot;:20,&quot;concurrency&quot;:64,&quot;jitter&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#6366F11A;strokeColor=#6366F1;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="540" y="246" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-app-kong" label="" dg_id="app-kong" dg_kind="sync" dg_props="{&quot;travelMs&quot;:10}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-app" target="dg-n-kong">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-kong-orders" label="" dg_id="kong-orders" dg_kind="sync" dg_props="{&quot;travelMs&quot;:10,&quot;requestFilter&quot;:{&quot;methods&quot;:[&quot;POST&quot;]}}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-kong" target="dg-n-orders">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-kong-canary" label="" dg_id="kong-canary" dg_kind="sync" dg_props="{&quot;travelMs&quot;:10}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-kong" target="dg-n-canary">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-kong-search" label="" dg_id="kong-search" dg_kind="sync" dg_props="{&quot;travelMs&quot;:10}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-kong" target="dg-n-search">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,14 @@
+---
+title: R1: rates, quotas and sampling
+---
+flowchart LR
+  app(["Mobile app"])
+  kong["Gateway"]
+  orders["Orders"]
+  canary["Orders canary"]
+  search["Search"]
+  app --> kong
+  kong --> orders
+  kong --> canary
+  kong --> search
+%% diagrams:{"v":1,"nodes":{"app":["app","client.mobile"],"kong":["kong","nginx"],"orders":["orders","generic.service"],"canary":["canary","generic.service"],"search":["search","generic.service"]},"edges":["app-kong","kong-orders","kong-canary","kong-search"],"relations":{}}

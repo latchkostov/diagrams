@@ -1,0 +1,185 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "app": { "replicas": [1, 1, 0] },
+        "kong": { "replicas": [1, 1, 0] },
+        "orders": { "replicas": [1, 1, 0] },
+        "canary": { "replicas": [1, 1, 0] },
+        "search": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 2,
+      "nodes": {
+        "app": { "processed": 200, "throughput": 20.978836728446883, "replicas": [1, 1, 0] },
+        "kong": { "processed": 198, "throughput": 19.179644125965652, "replicas": [1, 1, 0] },
+        "orders": { "processed": 33, "throughput": 2.4748238809011904, "replicas": [1, 1, 0] },
+        "canary": { "processed": 6, "throughput": 1.17120070594561, "replicas": [1, 1, 0] },
+        "search": { "processed": 159, "throughput": 16.117726662369435, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 2,
+      "nodes": {
+        "app": { "processed": 400, "throughput": 20.979789166160845, "replicas": [1, 1, 0] },
+        "kong": { "processed": 398, "throughput": 19.180606135837778, "replicas": [1, 1, 0] },
+        "orders": { "processed": 71, "throughput": 3.561010658004316, "replicas": [1, 1, 0] },
+        "canary": { "processed": 8, "throughput": 0.08522647536058747, "replicas": [1, 1, 0] },
+        "search": { "processed": 319, "throughput": 16.118505423285782, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 2,
+      "nodes": {
+        "app": { "processed": 600, "throughput": 20.979789209401456, "replicas": [1, 1, 0] },
+        "kong": { "processed": 598, "throughput": 19.180606179512964, "replicas": [1, 1, 0] },
+        "orders": { "processed": 108, "throughput": 3.4458041560796335, "replicas": [1, 1, 0] },
+        "canary": { "processed": 11, "throughput": 0.20043298693486558, "replicas": [1, 1, 0] },
+        "search": { "processed": 479, "throughput": 16.118505458641472, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 2,
+      "nodes": {
+        "app": { "processed": 800, "throughput": 20.979789209403425, "replicas": [1, 1, 0] },
+        "kong": { "processed": 798, "throughput": 19.180606179514953, "replicas": [1, 1, 0] },
+        "orders": { "processed": 147, "throughput": 3.6460639370162635, "replicas": [1, 1, 0] },
+        "canary": { "processed": 12, "throughput": 0.0001732059986757974, "replicas": [1, 1, 0] },
+        "search": { "processed": 639, "throughput": 16.11850545864308, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 2,
+      "nodes": {
+        "app": { "processed": 1000, "throughput": 20.979789209403425, "replicas": [1, 1, 0] },
+        "kong": { "processed": 998, "throughput": 19.180606179514953, "replicas": [1, 1, 0] },
+        "orders": { "processed": 180, "throughput": 2.759046318149921, "replicas": [1, 1, 0] },
+        "canary": { "processed": 19, "throughput": 0.8871908248650158, "replicas": [1, 1, 0] },
+        "search": { "processed": 799, "throughput": 16.11850545864308, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 2,
+      "nodes": {
+        "app": { "processed": 1200, "throughput": 20.979789209403425, "replicas": [1, 1, 0] },
+        "kong": { "processed": 1198, "throughput": 19.180606179514953, "replicas": [1, 1, 0] },
+        "orders": { "processed": 217, "throughput": 3.239265982012536, "replicas": [1, 1, 0] },
+        "canary": { "processed": 22, "throughput": 0.40697116100240116, "replicas": [1, 1, 0] },
+        "search": { "processed": 959, "throughput": 16.11850545864308, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 2,
+    "real": {
+      "app": { "processed": 1200, "throughput": 20.979789209403425, "replicas": [1, 1, 0] },
+      "kong": { "processed": 1198, "throughput": 19.180606179514953, "replicas": [1, 1, 0] },
+      "orders": { "processed": 217, "throughput": 3.239265982012536, "replicas": [1, 1, 0] },
+      "canary": { "processed": 22, "throughput": 0.40697116100240116, "replicas": [1, 1, 0] },
+      "search": { "processed": 959, "throughput": 16.11850545864308, "replicas": [1, 1, 0] }
+    },
+    "edges": { "app-kong": 1198, "kong-orders": 217, "kong-canary": 22, "kong-search": 959 }
+  },
+  "events": {
+    "total": 5992,
+    "byKind": { "process": 3596, "deliver": 2396 },
+    "byNode": {
+      "app": { "process": 1200 },
+      "kong": { "deliver": 1198, "process": 1198 },
+      "search": { "deliver": 959, "process": 959 },
+      "orders": { "deliver": 217, "process": 217 },
+      "canary": { "deliver": 22, "process": 22 }
+    },
+    "perSecond": [
+      "287af0930721",
+      "aea8547e053f",
+      "d2712451bba4",
+      "763e85a84556",
+      "8a50917e4600",
+      "fafb4ac8cf84",
+      "abc212cf9d21",
+      "11921b563000",
+      "cad6cb482903",
+      "6d54e0d54d58",
+      "417cec0470c7",
+      "34cce92178fc",
+      "c412e9811b6f",
+      "683da85300f6",
+      "375310401cb9",
+      "8c68f7c2f79c",
+      "1bec58e9d8bb",
+      "7d7ced76eebc",
+      "2db520632fa4",
+      "5bf99e099cb5",
+      "d4bc27e38aab",
+      "6b3e7dea1dbd",
+      "1fe95e1061f9",
+      "602d2206920c",
+      "a50a5e54ecb0",
+      "e077ed87c380",
+      "71b8da431aca",
+      "e75c9424aadd",
+      "52ebdc1f93b5",
+      "043ce79e78b6",
+      "2da8780f0481",
+      "916c0233e15f",
+      "c04ba505375b",
+      "8d329dcbb866",
+      "fe6696573301",
+      "ce10e945c808",
+      "6e19e41e4978",
+      "afdf99d3ecb2",
+      "707f73b20eea",
+      "67c7a6b5503b",
+      "42f98edab6aa",
+      "bff6f9904fbd",
+      "3d3af10dd5e6",
+      "0c18cb1f5409",
+      "4c4abf225f1c",
+      "0240cda1569b",
+      "e63e48083ba7",
+      "5da80c74bb6b",
+      "d04723e1a85d",
+      "1d7d47c733e0",
+      "a84dc7128796",
+      "a3d7b95a9d81",
+      "480e63c0bd65",
+      "b3693fe73582",
+      "2447e7415add",
+      "7d55ab367980",
+      "4f600c111f7b",
+      "80827696d498",
+      "c071f614e060",
+      "bfc31cebb4ad",
+      "1889f89b8f2d"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 1198, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 1198, "min": 40, "mean": 40, "p50": 40, "p90": 40, "max": 40 },
+    "waitMs": {
+      "kong": { "count": 1198, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "orders": { "count": 217, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "canary": { "count": 22, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "search": { "count": 959, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "kong": { "count": 1198, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "orders": { "count": 217, "min": 20, "mean": 20, "p50": 20, "p90": 20, "max": 20 },
+      "canary": { "count": 22, "min": 20, "mean": 20, "p50": 20, "p90": 20, "max": 20 },
+      "search": { "count": 959, "min": 20, "mean": 20, "p50": 20, "p90": 20, "max": 20 }
+    }
+  }
+}

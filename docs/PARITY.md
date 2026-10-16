@@ -911,3 +911,56 @@ startup tests pin its presence, keep controllers lazy and preserve the entry siz
 - Production e2e on explicit ports 6205–6209 (`VITE_E2E=1` build): 79 passed across fit-settled, layout,
   round13-polish and CSP; no retries. Both servers stopped after the run. `pnpm i18n check` reports no errors;
   existing catalog gaps and translation warnings remain unchanged.
+
+## Request routing R1: what changed and why (2026-10-16)
+
+Routing is opt-in (`planning.requestRoutes` on a P3 model), so no existing diagram's output changed:
+`pnpm parity:update` reported 2,196 goldens, 104 added, 6 changed, 0 missing, 0 removed. Every changed golden
+is a contract or catalogue fingerprint, none is a diagram's drawing, simulation or export:
+
+- `node/agent/tools.json`: the agent tool schemas gain `trafficMix` and `routeTable` (node props) and
+  `requestRouteId` and `requestFilter` (edge props), and `set_meta` accepts `planning.requestRoutes`.
+- `node/skill/public-schemas.json`: v2 diagram and ops schemas gain routing contracts; v1 and legacy
+  v2 props forbid them, so older formats refuse a routed file rather than drop its routes. The v2
+  definition list adds `LegacyEdgeProps`; the stencil schema is unchanged.
+- `node/skill/files.json`: `reference/format.md` documents request routes, mixes, route tables and the
+  caller/edge fields.
+- `node/skill/current-stencils.json`: the "Most used in the examples" ranking re-sorts because the new
+  showcase adds `client.mobile`, `service.java` and `service.python` nodes. The stencil list itself is unchanged.
+- `node/skill/validate.txt`: four new `VALID` lines for the frozen R1 corpus files below.
+- `node/i18n/catalogs.json`: 117 messages (`routing.*` and the "Routing" gallery theme) in all 37 locales
+  and the pseudo-locale, changing only the routing/examples area hashes. The rebase preserves master's
+  static-page areas, all unrelated area hashes and fallback counts.
+
+Added goldens freeze routing's behaviour in four new corpus diagrams and the showcase:
+
+- `r1-mix-table`: a mobile app's 20/80 shares mix through a Kong table: POST /orders split 9:1 between
+  orders and a canary, /search by prefix, no Default.
+- `r1-overlap`: three rules where order decides (a /search prefix first), a Default, a down canary in the
+  weighted split, and a DELETE rule whose only target's `requestFilter` takes POST, so it is rejected 404
+  without falling through to Default.
+- `r1-quotas`: a rates mix (including a dormant 0 req/s route) at 10× scale against two rules' rate limits, one
+  of them a shared quota both rules name; the shared bucket is debited once per request and over-limit traffic is
+  rejected 429.
+- `r1-callers`: two services calling an Envoy gateway with `requestRouteId` (an exact POST and a /stock/{sku}
+  template), an asynchronous browser hop that stays unaddressed, and an SNS subscription filtered by
+  `requestFilter`.
+- `api-route-table` (the showcase): every node and browser tier the other examples have (sim, checks, evidence,
+  describe/check/edit, native/draw.io/Mermaid/HTML exports, canvas, layout and tidy).
+
+A fresh `pnpm parity` afterwards: 2,196 goldens, 0 changed, 0 added, 0 missing, 0 stale (1,274 node tests and 76 browser tests passed).
+
+Review round 2 changed two of the new goldens, `node/planning/corpus-r1-quotas.json` and
+`node/agent/describe/corpus-r1-quotas.json`: rule quotas are now charged on the steady-state admission ledger
+instead of cutting demand mid-solve, so the quota corpus no longer reports a false "Cycle demand did not converge"
+and its downstream demand is the offered demand. No other golden changed.
+
+The PR #140 quota correction leaves all diagram goldens unchanged. After rebasing onto static-page
+translations, regeneration changes only `node/i18n/catalogs.json` relative to the pre-rebase routing
+goldens: the combined catalog retains both features. No golden was hand-merged. Relative to master,
+only the six routing-related shared fingerprints above change; every existing diagram golden matches.
+
+The rejected-transaction follow-up rebases onto #139 and regenerates from master's skill/plugin files.
+It changes no golden: every existing non-routing output and every routing corpus/showcase record stays
+unchanged. Refused normalization paths are covered by failing-without-the-fix regressions and 5,000
+generated rejection shapes rather than by re-recording an existing output.

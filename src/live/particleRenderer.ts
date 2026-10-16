@@ -7,6 +7,10 @@
 // drawImage of a pre-rendered glow sprite. Trails are batched into one stroke per colour.
 
 import type { Particle, ParticleKind } from "../sim/types";
+import type { RouteMarker } from "../model/requestRouting";
+
+/** A request route's silhouette, or the refused reply's cross: identity never rests on colour alone. */
+export type ParticleMarker = RouteMarker | "cross";
 import { pointOnSamples, sampleIndex, type PathSamples } from "./pathSampler";
 import { CalmSampler } from "./slowmo/sampler";
 import { nearestOnBox, placeTraceLabels, traceLabelInk, type Box, type PlacedLabel } from "./traceLabels";
@@ -141,7 +145,7 @@ export interface OverlayView {
   tokens: ParticleTokens;
   reduced: boolean;
   samples(edgeId: string): PathSamples | null;
-  sprite(color: string, kind: ParticleKind, r: number): Surface;
+  sprite(color: string, kind: ParticleKind, r: number, marker?: ParticleMarker): Surface;
   nodeRect(nodeId: string): Rect | null;
   obstacles(): Obstacles | undefined;
 }
@@ -157,6 +161,8 @@ export interface RenderOverlay {
 interface Batch {
   color: string;
   kind: ParticleKind;
+  /** Request routing: the route's marker (absent for unaddressed traffic, drawn as today). */
+  marker?: ParticleMarker;
   /** Head positions in device px (x, y pairs). */
   heads: number[];
   /** Trails: [n, x0, y0, ..., xn-1, yn-1, n, ...] in device px. */
@@ -287,6 +293,7 @@ export class ParticleRenderer {
     kind: ParticleKind;
     type: string;
     trail: number[];
+    marker?: ParticleMarker;
   }[] = [];
   /** The traced message's labels in the last frame, in pane CSS px (tests read them off the canvas). */
   labels: readonly PlacedLabel[] = [];
@@ -468,19 +475,27 @@ export class ParticleRenderer {
       const y = this.pt.y * k + oy;
       if (x < -margin || y < -margin || x > W || y > H) continue;
       if (p.kind !== "reply") this.hits.push(x / dpr, y / dpr, p.messageId);
-      const color = p.kind === "retry" ? this.opts.tokens.retry : p.kind === "dlq" ? this.opts.tokens.dlq : p.color;
+      // A refused reply (404, 429) takes the failure tint and a cross; a route keeps its marker otherwise.
+      const color = p.code
+        ? this.opts.tokens.fail
+        : p.kind === "retry"
+          ? this.opts.tokens.retry
+          : p.kind === "dlq"
+            ? this.opts.tokens.dlq
+            : p.color;
+      const marker: ParticleMarker | undefined = p.code ? "cross" : p.marker;
       if (focused) {
         const trail: number[] = [];
         if (!reduced && p.kind !== "reply")
           this.pushTrail(trail, s, t, reverse, (TRAIL[p.kind] * 2) / s.length, k, ox, oy);
-        this.focusHeads.push({ id: p.messageId, x, y, color, kind: p.kind, type: p.type, trail });
+        this.focusHeads.push({ id: p.messageId, x, y, color, kind: p.kind, type: p.type, trail, marker });
         drawn++;
         continue;
       }
-      const bk = `${p.kind}|${color}`;
+      const bk = marker ? `${p.kind}|${color}|${marker}` : `${p.kind}|${color}`;
       let b = this.batches.get(bk);
       if (!b) {
-        b = { color, kind: p.kind, heads: [], trails: [], dim: [] };
+        b = { color, kind: p.kind, heads: [], trails: [], dim: [], ...(marker ? { marker } : {}) };
         this.batches.set(bk, b);
       }
       // Behind a label pill: the pill hides the trail; the dot shows through, dimmed, on the overlay.
@@ -516,7 +531,7 @@ export class ParticleRenderer {
     for (const b of this.batches.values()) {
       if (!b.heads.length) continue;
       const r = b.kind === "reply" ? size * 0.55 : b.kind === "dlq" ? size * 1.15 : size;
-      const sprite = this.sprite(b.color, b.kind, r);
+      const sprite = this.sprite(b.color, b.kind, r, b.marker);
       const half = sprite.width / 2;
       ctx.globalAlpha =
         (b.kind === "reply" ? 0.55 : 1) * (slow ? slow.backgroundAlpha : focus !== undefined ? 0.28 : 1);
@@ -549,7 +564,7 @@ export class ParticleRenderer {
         tokens: this.opts.tokens,
         reduced,
         samples: (id) => this.env.samples(id),
-        sprite: (color, kind, r) => this.sprite(color, kind, r),
+        sprite: (color, kind, r, marker) => this.sprite(color, kind, r, marker),
         nodeRect: (id) => this.env.nodeRect(id),
         obstacles: () => this.env.obstacles?.(),
       });
@@ -571,8 +586,11 @@ export class ParticleRenderer {
       ctx.globalAlpha = DIM_UNDER_LABEL * (b.kind === "reply" ? 0.55 : 1) * (focused ? 0.28 : 1);
       ctx.beginPath();
       for (let i = 0; i < b.dim.length; i += 2) {
-        ctx.moveTo(b.dim[i] + r, b.dim[i + 1]);
-        ctx.arc(b.dim[i], b.dim[i + 1], r, 0, Math.PI * 2);
+        if (b.marker) markerPath(ctx, b.dim[i], b.dim[i + 1], r, b.marker);
+        else {
+          ctx.moveTo(b.dim[i] + r, b.dim[i + 1]);
+          ctx.arc(b.dim[i], b.dim[i + 1], r, 0, Math.PI * 2);
+        }
       }
       ctx.fill();
     }
@@ -602,7 +620,7 @@ export class ParticleRenderer {
     ctx.globalCompositeOperation = dark ? "screen" : "source-over";
     for (const f of this.focusHeads) {
       const r = f.kind === "reply" ? size * 0.9 : size * 1.55;
-      const sprite = this.sprite(f.color, f.kind === "reply" ? "message" : f.kind, r);
+      const sprite = this.sprite(f.color, f.kind === "reply" ? "message" : f.kind, r, f.marker);
       ctx.drawImage(sprite, f.x - sprite.width / 2, f.y - sprite.height / 2);
     }
     ctx.globalCompositeOperation = "source-over";
@@ -833,9 +851,9 @@ export class ParticleRenderer {
   }
 
   /** Pre-rendered glow + core for a colour / kind / radius. */
-  private sprite(color: string, kind: ParticleKind, r: number): Surface {
+  private sprite(color: string, kind: ParticleKind, r: number, marker?: ParticleMarker): Surface {
     const rr = Math.round(r * 4) / 4;
-    const key = `${color}|${kind}|${rr}`;
+    const key = marker ? `${color}|${kind}|${rr}|${marker}` : `${color}|${kind}|${rr}`;
     let c = this.sprites.get(key);
     if (c) return c;
     const reduced = this.opts.reducedMotion;
@@ -843,7 +861,7 @@ export class ParticleRenderer {
     // --particle-glow-blur sets how far the halo reaches beyond the head.
     const reach = 1.6 + glowBlur * 0.22;
     const glow = kind === "reply" || reduced ? 1.2 : kind === "dlq" ? reach + 0.5 : reach;
-    const side = Math.ceil(rr * glow * 2 + 2);
+    const side = Math.ceil(rr * (marker ? Math.max(glow, 1.6) : glow) * 2 + 2);
     c = createSurface(side, side);
     const g = context2d(c);
     const m = side / 2;
@@ -855,6 +873,32 @@ export class ParticleRenderer {
       grad.addColorStop(1, withAlpha(color, 0));
       g.fillStyle = grad;
       g.fillRect(0, 0, side, side);
+    }
+    if (marker) {
+      // A route's silhouette with an outline that contrasts with the canvas, so light colours (yellow) read on a
+      // light canvas and dark ones (blue) on a dark one.
+      g.beginPath();
+      markerPath(g, m, m, rr, marker);
+      g.fillStyle = color;
+      g.fill();
+      g.lineWidth = Math.max(1, rr * 0.3);
+      g.globalAlpha = 0.9;
+      g.strokeStyle = dark ? "#ffffff" : "#1f2328";
+      g.stroke();
+      if (marker === "cross") {
+        g.beginPath();
+        const d = rr * 0.5;
+        g.moveTo(m - d, m - d);
+        g.lineTo(m + d, m + d);
+        g.moveTo(m + d, m - d);
+        g.lineTo(m - d, m + d);
+        g.lineWidth = Math.max(1, rr * 0.35);
+        g.strokeStyle = "#ffffff";
+        g.globalAlpha = 1;
+        g.stroke();
+      }
+      this.sprites.set(key, c);
+      return c;
     }
     g.beginPath();
     g.arc(m, m, rr, 0, Math.PI * 2);
@@ -879,6 +923,40 @@ export class ParticleRenderer {
     }
     this.sprites.set(key, c);
     return c;
+  }
+}
+
+/** Adds a marker's outline at (x, y) with radius r to the current path (circle, square, diamond, triangle, cross). */
+export function markerPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  r: number,
+  marker: ParticleMarker,
+): void {
+  if (marker === "square") {
+    const h = r * 0.9;
+    ctx.moveTo(x - h, y - h);
+    ctx.lineTo(x + h, y - h);
+    ctx.lineTo(x + h, y + h);
+    ctx.lineTo(x - h, y + h);
+    ctx.closePath();
+  } else if (marker === "diamond") {
+    const h = r * 1.25;
+    ctx.moveTo(x, y - h);
+    ctx.lineTo(x + h, y);
+    ctx.lineTo(x, y + h);
+    ctx.lineTo(x - h, y);
+    ctx.closePath();
+  } else if (marker === "triangle") {
+    const h = r * 1.25;
+    ctx.moveTo(x, y - h);
+    ctx.lineTo(x + h, y + h * 0.75);
+    ctx.lineTo(x - h, y + h * 0.75);
+    ctx.closePath();
+  } else {
+    ctx.moveTo(x + r, y);
+    ctx.arc(x, y, r, 0, Math.PI * 2);
   }
 }
 

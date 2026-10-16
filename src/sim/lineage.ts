@@ -20,6 +20,8 @@ export interface Family {
   alive: number;
   /** Copies kept by a broker with no consumers (a dead-letter queue): their journey is over. */
   parked: number;
+  /** Request routing: the routes this journey has finished once already (fan-out copies don't count twice). */
+  routesDone?: string[];
   trace?: MessageTrace;
 }
 
@@ -37,6 +39,8 @@ export interface LiveMessage {
   id: number;
   type: string;
   family: Family;
+  /** Request routing: the address it carries (its route id goes on every step). */
+  request?: { id: string };
 }
 
 export interface LineageHost {
@@ -52,7 +56,7 @@ export interface Lineage extends MessageTracer {
   /** Forget every recording and request (load, reset). Keeps the history size. */
   reset(): void;
   /** A root message was created at `node`. Records its "emit" step when it's being recorded. */
-  born(family: Family, type: string, node: string): void;
+  born(family: Family, type: string, node: string, route?: string): void;
   /** A message reached `node` along `edge`; may start following it. Records the "arrive" step. */
   arrived(message: LiveMessage, node: string, edge: string): void;
   /** A broker dead-lettered a message after `attempt` deliveries; may start following it. */
@@ -178,7 +182,7 @@ export function createLineage(host: LineageHost): Lineage {
     reset() {
       state = { store: new Map() };
     },
-    born(family, type, node) {
+    born(family, type, node, route) {
       const request = state.request;
       if (
         state.wanted === family.root ||
@@ -187,14 +191,23 @@ export function createLineage(host: LineageHost): Lineage {
         open(family, type, node, false);
         follow(family, type, node);
       } else if (history > 0 && room()) open(family, type, node, false);
-      if (family.trace) record(family, { t: host.time(), kind: "emit", id: family.root, type, node });
+      if (family.trace)
+        record(family, { t: host.time(), kind: "emit", id: family.root, type, node, ...(route ? { route } : {}) });
     },
     arrived(message, node, edge) {
       const request = state.request;
       if (request?.next === "message" && request.node === node && state.following !== message.family)
         follow(message.family, message.type, node);
       if (message.family.trace)
-        record(message.family, { t: host.time(), kind: "arrive", id: message.id, type: message.type, node, edge });
+        record(message.family, {
+          t: host.time(),
+          kind: "arrive",
+          id: message.id,
+          type: message.type,
+          node,
+          edge,
+          ...(message.request ? { route: message.request.id } : {}),
+        });
     },
     deadLettered(message, node, attempt) {
       if (state.request?.next === "deadletter" && state.following !== message.family)
@@ -207,6 +220,7 @@ export function createLineage(host: LineageHost): Lineage {
           type: message.type,
           node,
           attempt,
+          ...(message.request ? { route: message.request.id } : {}),
         });
     },
     record,

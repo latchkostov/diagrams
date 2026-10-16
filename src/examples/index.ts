@@ -120,6 +120,11 @@ const publicExamples: PublicExample[] = (
       summary: "Fast acks, a buffer, retries, a DLQ and replay",
     },
     {
+      slug: "api-route-table",
+      theme: "integration",
+      summary: "A gateway route table, a canary split and a 404",
+    },
+    {
       slug: "notification-fanout",
       theme: "integration",
       summary: "Email, SMS and push by preference, rate limited",

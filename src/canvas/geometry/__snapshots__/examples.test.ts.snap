@@ -179,6 +179,158 @@ exports[`public examples route cleanly (estimated card sizes) > aks-app-config-k
 ]
 `;
 
+exports[`public examples route cleanly (estimated card sizes) > api-route-table.json 1`] = `
+[
+  {
+    "id": "app-gateway",
+    "points": [
+      {
+        "x": 260,
+        "y": 156,
+      },
+      {
+        "x": 320,
+        "y": 156,
+      },
+      {
+        "x": 320,
+        "y": 299,
+      },
+      {
+        "x": 380,
+        "y": 299,
+      },
+    ],
+  },
+  {
+    "id": "carriers-gateway",
+    "points": [
+      {
+        "x": 260,
+        "y": 456,
+      },
+      {
+        "x": 320,
+        "y": 456,
+      },
+      {
+        "x": 320,
+        "y": 313,
+      },
+      {
+        "x": 380,
+        "y": 313,
+      },
+    ],
+  },
+  {
+    "id": "to-tracking",
+    "points": [
+      {
+        "x": 600,
+        "y": 280,
+      },
+      {
+        "x": 674.5,
+        "y": 280,
+      },
+      {
+        "x": 674.5,
+        "y": 36,
+      },
+      {
+        "x": 760,
+        "y": 36,
+      },
+    ],
+  },
+  {
+    "id": "to-pricing",
+    "points": [
+      {
+        "x": 600,
+        "y": 293,
+      },
+      {
+        "x": 685.5,
+        "y": 293,
+      },
+      {
+        "x": 685.5,
+        "y": 186,
+      },
+      {
+        "x": 760,
+        "y": 186,
+      },
+    ],
+  },
+  {
+    "id": "to-pricing-canary",
+    "points": [
+      {
+        "x": 600,
+        "y": 306,
+      },
+      {
+        "x": 691,
+        "y": 306,
+      },
+      {
+        "x": 691,
+        "y": 336,
+      },
+      {
+        "x": 760,
+        "y": 336,
+      },
+    ],
+  },
+  {
+    "id": "to-labels",
+    "points": [
+      {
+        "x": 600,
+        "y": 319,
+      },
+      {
+        "x": 680,
+        "y": 319,
+      },
+      {
+        "x": 680,
+        "y": 486,
+      },
+      {
+        "x": 760,
+        "y": 486,
+      },
+    ],
+  },
+  {
+    "id": "to-events",
+    "points": [
+      {
+        "x": 600,
+        "y": 332,
+      },
+      {
+        "x": 669,
+        "y": 332,
+      },
+      {
+        "x": 669,
+        "y": 636,
+      },
+      {
+        "x": 760,
+        "y": 636,
+      },
+    ],
+  },
+]
+`;
+
 exports[`public examples route cleanly (estimated card sizes) > autoscaling-image-workers.json 1`] = `
 [
   {

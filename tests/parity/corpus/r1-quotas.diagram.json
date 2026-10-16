@@ -1,0 +1,247 @@
+{
+  "format": "diagrams/v2",
+  "planning": {
+    "revision": "p3-a1",
+    "requestRoutes": [
+      {
+        "id": "orders-post",
+        "address": {
+          "method": "POST",
+          "path": "/orders"
+        },
+        "appearance": {
+          "paletteSlot": 0,
+          "marker": "circle"
+        }
+      },
+      {
+        "id": "search-get",
+        "address": {
+          "method": "GET",
+          "path": "/search"
+        },
+        "appearance": {
+          "paletteSlot": 1,
+          "marker": "circle"
+        }
+      },
+      {
+        "id": "unused-get",
+        "address": {
+          "method": "GET",
+          "path": "/unused"
+        }
+      }
+    ],
+    "sharedQuotas": [
+      {
+        "id": "account",
+        "unit": "requests",
+        "amount": 25,
+        "windowMs": 1000,
+        "algorithm": "token-bucket"
+      }
+    ]
+  },
+  "title": "R1: rates, quotas and sampling",
+  "nodes": [
+    {
+      "id": "app",
+      "stencil": "client.mobile",
+      "label": "Mobile app",
+      "x": 0,
+      "y": 120,
+      "props": {
+        "ratePerSec": 100,
+        "trafficMix": {
+          "mode": "rates",
+          "entries": [
+            {
+              "routeId": "orders-post",
+              "ratePerSec": 10
+            },
+            {
+              "routeId": "search-get",
+              "ratePerSec": 30
+            },
+            {
+              "routeId": "unused-get",
+              "ratePerSec": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "kong",
+      "stencil": "nginx",
+      "label": "Gateway",
+      "x": 240,
+      "y": 120,
+      "props": {
+        "latencyMs": 5,
+        "jitter": 0,
+        "routeTable": {
+          "rules": [
+            {
+              "id": "orders",
+              "match": {
+                "methods": ["POST"],
+                "path": {
+                  "kind": "exact",
+                  "value": "/orders"
+                }
+              },
+              "targets": [
+                {
+                  "edgeId": "kong-orders",
+                  "weight": 90
+                },
+                {
+                  "edgeId": "kong-canary",
+                  "weight": 10
+                }
+              ],
+              "quotas": [
+                {
+                  "id": "account",
+                  "unit": "requests",
+                  "amount": 25,
+                  "windowMs": 1000,
+                  "algorithm": "token-bucket",
+                  "sharedGroup": "account"
+                }
+              ]
+            },
+            {
+              "id": "search",
+              "match": {
+                "path": {
+                  "kind": "prefix",
+                  "value": "/search"
+                }
+              },
+              "targets": [
+                {
+                  "edgeId": "kong-search",
+                  "weight": 1
+                }
+              ],
+              "quotas": [
+                {
+                  "id": "account",
+                  "unit": "requests",
+                  "amount": 25,
+                  "windowMs": 1000,
+                  "algorithm": "token-bucket",
+                  "sharedGroup": "account"
+                },
+                {
+                  "id": "search-limit",
+                  "unit": "requests",
+                  "amount": 15,
+                  "windowMs": 1000,
+                  "algorithm": "token-bucket"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "orders",
+      "stencil": "generic.service",
+      "label": "Orders",
+      "x": 520,
+      "y": 0,
+      "props": {
+        "latencyMs": 20,
+        "concurrency": 64,
+        "jitter": 0
+      }
+    },
+    {
+      "id": "canary",
+      "stencil": "generic.service",
+      "label": "Orders canary",
+      "x": 520,
+      "y": 120,
+      "props": {
+        "latencyMs": 20,
+        "concurrency": 64,
+        "jitter": 0
+      }
+    },
+    {
+      "id": "search",
+      "stencil": "generic.service",
+      "label": "Search",
+      "x": 520,
+      "y": 240,
+      "props": {
+        "latencyMs": 20,
+        "concurrency": 64,
+        "jitter": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "app-kong",
+      "from": "app",
+      "to": "kong",
+      "kind": "sync",
+      "props": {
+        "travelMs": 10
+      }
+    },
+    {
+      "id": "kong-orders",
+      "from": "kong",
+      "to": "orders",
+      "kind": "sync",
+      "props": {
+        "travelMs": 10
+      }
+    },
+    {
+      "id": "kong-canary",
+      "from": "kong",
+      "to": "canary",
+      "kind": "sync",
+      "props": {
+        "travelMs": 10
+      }
+    },
+    {
+      "id": "kong-search",
+      "from": "kong",
+      "to": "search",
+      "kind": "sync",
+      "props": {
+        "travelMs": 10
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "limited",
+      "title": "Limited",
+      "seed": 7,
+      "durationMs": 12000,
+      "traffic": [
+        {
+          "id": "limited-traffic",
+          "node": "app",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 400,
+            "durationMs": 8000
+          }
+        }
+      ],
+      "scale": 10
+    }
+  ]
+}

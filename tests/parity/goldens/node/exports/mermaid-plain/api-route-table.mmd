@@ -1,0 +1,19 @@
+---
+title: Parcel API behind a route table
+---
+flowchart LR
+  app(["Parcelpoint app<br/>40 req/s · 4 routes"])
+  carriers(["Carrier webhooks<br/>30 events/s"])
+  gateway["API gateway<br/>Route table · 4 rules"]
+  tracking["Tracking<br/>GET /v1/parcels/{id}"]
+  pricing["Pricing<br/>POST /v1/quotes · 90%"]
+  pricing_canary["Pricing canary<br/>10% of quotes"]
+  labels["Labels<br/>POST /v1/labels"]
+  events["Carrier events<br/>1 × 4 slots · 200 ms"]
+  app -->|"HTTPS"| gateway
+  carriers -->|"Webhook"| gateway
+  gateway -->|"Track"| tracking
+  gateway -->|"Quote"| pricing
+  gateway -->|"Quote canary"| pricing_canary
+  gateway -->|"Label"| labels
+  gateway -->|"Carrier event"| events

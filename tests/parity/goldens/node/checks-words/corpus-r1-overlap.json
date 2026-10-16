@@ -1,0 +1,18 @@
+{
+  "summary": "1 warning, 0 suggestions.",
+  "findings": {
+    "capacity:canary": { "title": "Orders canary is down", "message": "It's saved down, so it handles nothing: messages sent to it fail until it's back.", "rationale": "A service saved down or paused starts that way in live view. Behind a topic or queue its messages wait; pushed to it, they fail." }
+  },
+  "agentReport": {
+    "findings": [
+      { "id": "capacity:canary", "rule": "capacity", "severity": "warning", "title": "Orders canary is down", "message": "It's saved down, so it handles nothing: messages sent to it fail until it's back.", "targets": ["canary"] }
+    ],
+    "summary": "1 warning, 0 suggestions."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      { "id": "capacity:canary", "rule": "capacity", "severity": "warning", "title": "Orders canary is down", "message": "It's saved down, so it handles nothing: messages sent to it fail until it's back.", "targets": ["canary"] }
+    ],
+    "summary": "1 warning, 0 suggestions."
+  }
+}

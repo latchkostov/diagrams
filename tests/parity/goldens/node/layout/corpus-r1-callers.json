@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "web": [40, 100], "bff": [400, 40], "bff2": [400, 160], "gw": [760, 100], "orders": [1120, 40], "stock": [1120, 160], "events": [1480, 100], "audit": [1840, 40], "billing": [1840, 160] },
+    "TB": { "web": [180, 40], "bff": [40, 200], "bff2": [320, 200], "gw": [180, 360], "orders": [40, 520], "stock": [320, 520], "events": [180, 680], "audit": [40, 840], "billing": [320, 840] }
+  },
+  "tidy": { "web": [0, 60], "bff": [300, 0], "gw": [660, 60], "orders": [960, 0], "stock": [960, 120], "events": [1260, 60], "audit": [1560, 0], "billing": [1560, 120], "bff2": [300, 120] },
+  "arrange": {
+    "alignLeft": { "web": [0, 100], "bff": [0, 100], "gw": [0, 100], "orders": [0, 0], "stock": [0, 200], "events": [0, 0], "audit": [0, 0], "billing": [0, 150], "bff2": [0, 250] },
+    "alignMiddle": { "web": [0, 125], "bff": [250, 125], "gw": [500, 125], "orders": [750, 125], "stock": [750, 125], "events": [1000, 125], "audit": [1250, 125], "billing": [1250, 125], "bff2": [250, 125] },
+    "distributeH": { "web": [0, 100], "bff": [156, 100], "gw": [469, 100], "orders": [625, 0], "stock": [781, 200], "events": [938, 0], "audit": [1094, 0], "billing": [1250, 150], "bff2": [313, 250] },
+    "distributeV": { "web": [0, 94], "bff": [250, 125], "gw": [500, 156], "orders": [750, 0], "stock": [750, 219], "events": [1000, 31], "audit": [1250, 63], "billing": [1250, 188], "bff2": [250, 250] },
+    "spreadH": { "web": [0, 0], "bff": [250, 0], "gw": [770, 0], "orders": [1030, 0], "stock": [1290, 0], "events": [1550, 0], "audit": [1810, 0], "billing": [2070, 0], "bff2": [510, 0] },
+    "boundaryAround": { "x": -40, "y": -64, "width": 1550, "height": 426 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "web": [40, 100], "bff": [400, 40], "gw": [760, 100], "orders": [1120, 40], "stock": [1120, 160], "events": [1480, 100], "audit": [1840, 40], "billing": [1840, 160], "bff2": [400, 160] },
+    "groups": {}
+  }
+}

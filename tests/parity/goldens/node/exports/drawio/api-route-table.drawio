@@ -1,0 +1,87 @@
+<mxfile host="Diagrams" agent="Diagrams" version="24.0.0" type="device">
+  <diagram id="dg-uj53o6" name="Parcel API behind a route table">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <object id="0" dg_format="diagrams/v2" dg_description="An invented parcel API: a gateway's route table sends each app request to its service by method and path, and 10% of quotes to a canary. An old app version's requests match no rule and are rejected 404. In Live, each route has its own colour and shape." dg_direction="LR" dg_simulations="[{&quot;id&quot;:&quot;busy-afternoon&quot;,&quot;title&quot;:&quot;A busy afternoon&quot;,&quot;description&quot;:&quot;Forty app requests and thirty carrier events a second for half a minute. Watch each route's colour reach its own service, the old app's requests refused 404 at the gateway, and carrier events queue up.&quot;,&quot;seed&quot;:41,&quot;durationMs&quot;:40000,&quot;traffic&quot;:[{&quot;id&quot;:&quot;app-traffic&quot;,&quot;node&quot;:&quot;app&quot;,&quot;label&quot;:&quot;App requests&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:40,&quot;fromMs&quot;:0,&quot;durationMs&quot;:30000}},{&quot;id&quot;:&quot;carrier-traffic&quot;,&quot;node&quot;:&quot;carriers&quot;,&quot;label&quot;:&quot;Carrier events&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:30,&quot;fromMs&quot;:0,&quot;durationMs&quot;:30000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:1000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Each route has its own colour and shape; the gateway's table sends it to its service.&quot;,&quot;focus&quot;:[&quot;gateway&quot;]}},{&quot;atMs&quot;:8000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Requests from the old app match no rule: the gateway rejects them 404.&quot;,&quot;focus&quot;:[&quot;gateway&quot;]}},{&quot;atMs&quot;:16000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Carrier events arrive at 30/s; their service takes 20/s, so its backlog grows.&quot;,&quot;focus&quot;:[&quot;events&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;refused&quot;,&quot;label&quot;:&quot;Old app requests are refused&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;gateway&quot;,&quot;field&quot;:&quot;rejected&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;backlog&quot;,&quot;label&quot;:&quot;Carrier events back up&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;events&quot;,&quot;field&quot;:&quot;backlog&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:100,&quot;when&quot;:&quot;eventually&quot;}]},{&quot;id&quot;:&quot;canary-down&quot;,&quot;title&quot;:&quot;The pricing canary goes down&quot;,&quot;description&quot;:&quot;Five seconds in, the pricing canary stops. The table keeps its 90/10 split, so about one quote in ten still goes to the canary and is lost there: the outage stays visible instead of quietly moving to Pricing.&quot;,&quot;seed&quot;:43,&quot;durationMs&quot;:25000,&quot;traffic&quot;:[{&quot;id&quot;:&quot;app-traffic&quot;,&quot;node&quot;:&quot;app&quot;,&quot;label&quot;:&quot;App requests&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:40,&quot;fromMs&quot;:0,&quot;durationMs&quot;:20000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:5000,&quot;action&quot;:{&quot;do&quot;:&quot;status&quot;,&quot;node&quot;:&quot;pricing-canary&quot;,&quot;status&quot;:&quot;down&quot;}},{&quot;atMs&quot;:5000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The canary is down. Its 10% of quotes still go to it: weights don't move by themselves.&quot;,&quot;focus&quot;:[&quot;pricing-canary&quot;,&quot;gateway&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;lost&quot;,&quot;label&quot;:&quot;Quotes sent to the down canary are lost&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;pricing-canary&quot;,&quot;field&quot;:&quot;dropped&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;no-404&quot;,&quot;label&quot;:&quot;Only the old app is refused&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;gateway&quot;,&quot;field&quot;:&quot;rejected&quot;},&quot;op&quot;:&quot;&lt;=&quot;,&quot;value&quot;:45,&quot;when&quot;:&quot;end&quot;}]}]" dg_planning="{&quot;revision&quot;:&quot;p3-a1&quot;,&quot;requestRoutes&quot;:[{&quot;id&quot;:&quot;track-parcel&quot;,&quot;label&quot;:&quot;Track a parcel&quot;,&quot;address&quot;:{&quot;method&quot;:&quot;GET&quot;,&quot;path&quot;:&quot;/v1/parcels/8421&quot;},&quot;appearance&quot;:{&quot;paletteSlot&quot;:0,&quot;marker&quot;:&quot;circle&quot;}},{&quot;id&quot;:&quot;get-quote&quot;,&quot;label&quot;:&quot;Get a quote&quot;,&quot;address&quot;:{&quot;method&quot;:&quot;POST&quot;,&quot;path&quot;:&quot;/v1/quotes&quot;},&quot;appearance&quot;:{&quot;paletteSlot&quot;:1,&quot;marker&quot;:&quot;square&quot;}},{&quot;id&quot;:&quot;buy-label&quot;,&quot;label&quot;:&quot;Buy a label&quot;,&quot;address&quot;:{&quot;method&quot;:&quot;POST&quot;,&quot;path&quot;:&quot;/v1/labels&quot;},&quot;appearance&quot;:{&quot;paletteSlot&quot;:2,&quot;marker&quot;:&quot;diamond&quot;}},{&quot;id&quot;:&quot;old-tracking&quot;,&quot;label&quot;:&quot;Old app version&quot;,&quot;address&quot;:{&quot;method&quot;:&quot;GET&quot;,&quot;path&quot;:&quot;/v0/track&quot;},&quot;appearance&quot;:{&quot;paletteSlot&quot;:5,&quot;marker&quot;:&quot;triangle&quot;}},{&quot;id&quot;:&quot;carrier-event&quot;,&quot;label&quot;:&quot;Carrier event&quot;,&quot;address&quot;:{&quot;method&quot;:&quot;POST&quot;,&quot;path&quot;:&quot;/hooks/carrier-events&quot;},&quot;appearance&quot;:{&quot;paletteSlot&quot;:6,&quot;marker&quot;:&quot;square&quot;}}]}">
+          <mxCell />
+        </object>
+        <mxCell id="1" parent="0" />
+        <object id="dg-n-app" label="Parcelpoint app&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;40 req/s · 4 routes&lt;/span&gt;" dg_id="app" dg_stencil="client.mobile" dg_props="{&quot;ratePerSec&quot;:40,&quot;trafficMix&quot;:{&quot;mode&quot;:&quot;shares&quot;,&quot;entries&quot;:[{&quot;routeId&quot;:&quot;track-parcel&quot;,&quot;share&quot;:0.55},{&quot;routeId&quot;:&quot;get-quote&quot;,&quot;share&quot;:0.25},{&quot;routeId&quot;:&quot;buy-label&quot;,&quot;share&quot;:0.15},{&quot;routeId&quot;:&quot;old-tracking&quot;,&quot;share&quot;:0.05}]}}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#10B9811A;strokeColor=#10B981;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="60" y="126" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-carriers" label="Carrier webhooks&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;30 events/s&lt;/span&gt;" dg_id="carriers" dg_stencil="generic.webhook" dg_props="{&quot;trafficMix&quot;:{&quot;mode&quot;:&quot;rates&quot;,&quot;entries&quot;:[{&quot;routeId&quot;:&quot;carrier-event&quot;,&quot;ratePerSec&quot;:30}]}}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#EC48991A;strokeColor=#EC4899;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="60" y="426" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-gateway" label="API gateway&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Route table · 4 rules&lt;/span&gt;" dg_id="gateway" dg_stencil="kong" dg_props="{&quot;latencyMs&quot;:20,&quot;jitter&quot;:0,&quot;routeTable&quot;:{&quot;rules&quot;:[{&quot;id&quot;:&quot;parcels&quot;,&quot;label&quot;:&quot;Tracking&quot;,&quot;match&quot;:{&quot;methods&quot;:[&quot;GET&quot;],&quot;path&quot;:{&quot;kind&quot;:&quot;template&quot;,&quot;value&quot;:&quot;/v1/parcels/{id}&quot;}},&quot;targets&quot;:[{&quot;edgeId&quot;:&quot;to-tracking&quot;,&quot;weight&quot;:1}]},{&quot;id&quot;:&quot;quotes&quot;,&quot;label&quot;:&quot;Pricing with canary&quot;,&quot;match&quot;:{&quot;methods&quot;:[&quot;POST&quot;],&quot;path&quot;:{&quot;kind&quot;:&quot;exact&quot;,&quot;value&quot;:&quot;/v1/quotes&quot;}},&quot;targets&quot;:[{&quot;edgeId&quot;:&quot;to-pricing&quot;,&quot;weight&quot;:90},{&quot;edgeId&quot;:&quot;to-pricing-canary&quot;,&quot;weight&quot;:10}]},{&quot;id&quot;:&quot;labels&quot;,&quot;label&quot;:&quot;Labels&quot;,&quot;match&quot;:{&quot;methods&quot;:[&quot;POST&quot;],&quot;path&quot;:{&quot;kind&quot;:&quot;exact&quot;,&quot;value&quot;:&quot;/v1/labels&quot;}},&quot;targets&quot;:[{&quot;edgeId&quot;:&quot;to-labels&quot;,&quot;weight&quot;:1}]},{&quot;id&quot;:&quot;hooks&quot;,&quot;label&quot;:&quot;Carrier hooks&quot;,&quot;match&quot;:{&quot;path&quot;:{&quot;kind&quot;:&quot;prefix&quot;,&quot;value&quot;:&quot;/hooks/&quot;}},&quot;targets&quot;:[{&quot;edgeId&quot;:&quot;to-events&quot;,&quot;weight&quot;:1}]}]}}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#14B59A1A;strokeColor=#14B59A;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="400" y="276" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-tracking" label="Tracking&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;GET /v1/parcels/{id}&lt;/span&gt;" dg_id="tracking" dg_stencil="service.go" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:2,&quot;concurrency&quot;:8,&quot;latencyMs&quot;:40,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#00ADD81A;strokeColor=#00ADD8;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="780" y="6" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-pricing" label="Pricing&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;POST /v1/quotes · 90%&lt;/span&gt;" dg_id="pricing" dg_stencil="service.java" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:2,&quot;concurrency&quot;:8,&quot;latencyMs&quot;:40,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E76F001A;strokeColor=#E76F00;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="780" y="156" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-pricing-canary" label="Pricing canary&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;10% of quotes&lt;/span&gt;" dg_id="pricing-canary" dg_stencil="service.java" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:2,&quot;concurrency&quot;:8,&quot;latencyMs&quot;:40,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E76F001A;strokeColor=#E76F00;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="780" y="306" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-labels" label="Labels&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;POST /v1/labels&lt;/span&gt;" dg_id="labels" dg_stencil="service.python" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:2,&quot;concurrency&quot;:8,&quot;latencyMs&quot;:40,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3776AB1A;strokeColor=#3776AB;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="780" y="456" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-events" label="Carrier events&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;1 × 4 slots · 200 ms&lt;/span&gt;" dg_id="events" dg_stencil="service.node" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:1,&quot;concurrency&quot;:4,&quot;latencyMs&quot;:200,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#5FA04E1A;strokeColor=#5FA04E;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="780" y="606" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-app-gateway" label="HTTPS" dg_id="app-gateway" dg_kind="sync" dg_props="{&quot;travelMs&quot;:250}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-app" target="dg-n-gateway">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-carriers-gateway" label="Webhook" dg_id="carriers-gateway" dg_kind="sync" dg_props="{&quot;travelMs&quot;:250}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-carriers" target="dg-n-gateway">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-to-tracking" label="Track" dg_id="to-tracking" dg_kind="sync" dg_props="{&quot;travelMs&quot;:250}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-gateway" target="dg-n-tracking">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-to-pricing" label="Quote" dg_id="to-pricing" dg_kind="sync" dg_props="{&quot;travelMs&quot;:250}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-gateway" target="dg-n-pricing">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-to-pricing-canary" label="Quote canary" dg_id="to-pricing-canary" dg_kind="sync" dg_props="{&quot;travelMs&quot;:250}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-gateway" target="dg-n-pricing-canary">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-to-labels" label="Label" dg_id="to-labels" dg_kind="sync" dg_props="{&quot;travelMs&quot;:250}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-gateway" target="dg-n-labels">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-to-events" label="Carrier event" dg_id="to-events" dg_kind="sync" dg_props="{&quot;travelMs&quot;:250}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-gateway" target="dg-n-events">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,125 @@
+{
+  "run": {
+    "time": 12000,
+    "totalMs": 12000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "calls-traffic" },
+      { "atMs": 8000, "kind": "traffic", "label": "calls-traffic ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "web": { "replicas": [1, 1, 0] },
+        "bff": { "replicas": [1, 1, 0] },
+        "gw": { "replicas": [1, 1, 0] },
+        "orders": { "replicas": [1, 1, 0] },
+        "stock": { "replicas": [1, 1, 0] },
+        "events": { "lag": { "audit": 0, "billing": 0 }, "replicas": [1, 1, 0] },
+        "audit": { "replicas": [1, 1, 0] },
+        "billing": { "replicas": [1, 1, 0] },
+        "bff2": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 0,
+      "nodes": {
+        "web": { "processed": 80, "throughput": 1.4288031114427404, "replicas": [1, 1, 0] },
+        "bff": { "processed": 80, "throughput": 1.5171553615476236, "replicas": [1, 1, 0] },
+        "gw": { "processed": 160, "throughput": 3.2219420193570096, "replicas": [1, 1, 0] },
+        "orders": { "processed": 80, "throughput": 1.7451440611839943, "replicas": [1, 1, 0] },
+        "stock": { "processed": 80, "throughput": 1.7451440611839943, "replicas": [1, 1, 0] },
+        "events": {
+          "processed": 80,
+          "throughput": 1.8346195105350045,
+          "lag": { "audit": 0, "billing": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "audit": { "processed": 80, "throughput": 1.9480660452912266, "replicas": [1, 1, 0] },
+        "billing": { "processed": 80, "throughput": 1.9480660452912266, "replicas": [1, 1, 0] },
+        "bff2": { "processed": 80, "throughput": 1.5171553615476236, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 12000,
+    "inSystem": 0,
+    "real": {
+      "web": { "processed": 80, "throughput": 0.19336747377645888, "replicas": [1, 1, 0] },
+      "bff": { "processed": 80, "throughput": 0.20532465056899543, "replicas": [1, 1, 0] },
+      "gw": { "processed": 160, "throughput": 0.4360424357616295, "replicas": [1, 1, 0] },
+      "orders": { "processed": 80, "throughput": 0.23617956580903096, "replicas": [1, 1, 0] },
+      "stock": { "processed": 80, "throughput": 0.23617956580903096, "replicas": [1, 1, 0] },
+      "events": {
+        "processed": 80,
+        "throughput": 0.2482887510896732,
+        "lag": { "audit": 0, "billing": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "audit": { "processed": 80, "throughput": 0.26364207000311884, "replicas": [1, 1, 0] },
+      "billing": { "processed": 80, "throughput": 0.26364207000311884, "replicas": [1, 1, 0] },
+      "bff2": { "processed": 80, "throughput": 0.20532465056899543, "replicas": [1, 1, 0] }
+    },
+    "edges": { "web-bff": 80, "bff-gw-orders": 80, "gw-orders": 80, "gw-stock": 80, "orders-events": 80, "events-audit": 80, "events-billing": 80, "web-bff2": 80, "bff2-gw": 80 }
+  },
+  "events": {
+    "total": 1600,
+    "byKind": { "inject": 80, "process": 800, "deliver": 720 },
+    "byNode": {
+      "web": { "inject": 80, "process": 80 },
+      "bff": { "deliver": 80, "process": 80 },
+      "bff2": { "deliver": 80, "process": 80 },
+      "gw": { "deliver": 160, "process": 160 },
+      "orders": { "deliver": 80, "process": 80 },
+      "stock": { "deliver": 80, "process": 80 },
+      "events": { "deliver": 80, "process": 80 },
+      "audit": { "deliver": 80, "process": 80 },
+      "billing": { "deliver": 80, "process": 80 }
+    },
+    "perSecond": [
+      "492195e152d4",
+      "a99cac73dfc4",
+      "970b1dce5a0e",
+      "38a4c045bfb2",
+      "61c09680e173",
+      "4ac7b91bba90",
+      "8196d49ffb84",
+      "7b13afa133a2",
+      "e76d57b20a34",
+      "-",
+      "-",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 80, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 80, "min": 320, "mean": 320, "p50": 320, "p90": 320, "max": 320 },
+    "waitMs": {
+      "bff": { "count": 80, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "gw": { "count": 160, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "orders": { "count": 80, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "stock": { "count": 80, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "audit": { "count": 80, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "billing": { "count": 80, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "bff2": { "count": 80, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "bff": { "count": 80, "min": 20, "mean": 20, "p50": 20, "p90": 20, "max": 20 },
+      "gw": { "count": 160, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "orders": { "count": 80, "min": 30, "mean": 30, "p50": 30, "p90": 30, "max": 30 },
+      "stock": { "count": 80, "min": 30, "mean": 30, "p50": 30, "p90": 30, "max": 30 },
+      "audit": { "count": 80, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "billing": { "count": 80, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "bff2": { "count": 80, "min": 20, "mean": 20, "p50": 20, "p90": 20, "max": 20 }
+    }
+  }
+}

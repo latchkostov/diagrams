@@ -1,5 +1,20 @@
 # Design review
 
+## Routing R1 rejected transactions (2026-10-16)
+
+Scoped source UX review: rejected managed calls now keep capacity analysis and its existing readouts
+available. The fix adds no controls, wording, chrome or focus targets. Endpoint-specific refusal
+readouts preserve the successfully normalized sibling's pressure. No simplification was needed;
+this source review does not claim a fresh visual or assistive-technology walkthrough.
+
+## Routing R1 quota follow-up (2026-10-16)
+
+The designer agent's scoped source review found no actionable issue. The quota-composition and
+traffic-class interning changes add no controls, copy, chrome, focus targets or visual structure.
+Corrected capacity and throttling values fit the existing rate units and conditional readouts.
+Round 44's routing disclosure, legend and keyboard review remains applicable. No simplification
+was needed. This follow-up did not include a fresh browser or assistive-technology walkthrough.
+
 ## Static-page review follow-up (2026-10-16)
 
 The designer agent approved the scoped source review with no actionable UX issue. Named blocks and
@@ -120,6 +135,52 @@ headers remain the target inside collapsible sections.
 
 This was a source and regression-test review, not an independent whole-app visual walkthrough or
 screen-reader session. Production browser checks cover the changed interactions and accessibility.
+
+## Round 44 — Routing R1: request routes, traffic mixes and route tables (2026-10-16)
+
+The designer agent reviewed R1 against `UX-PRINCIPLES.md` using source, the production E2E spec and captures;
+verdict **pass with fixes**, no blocking issue. Routing stays off by default and adds no top-bar control, mode,
+stencil or panel: a source gets a Traffic mix section, a gateway (Kong, Envoy, NGINX, API gateways, load
+balancers) a Route table section, and both start from the right-click actions "Add traffic mix…" and "Add
+routes…". A new table keeps today's connections as its Default, so adding one changes nothing until a rule is added.
+Route definitions live with the mix that uses them; in Live, the inspector shows a Routes legend in words.
+
+Fixed from the review:
+
+- Older planning models showed a note explaining routing needs P3; it now shows nothing (no nag).
+- The Live legend's rows were buttons that did nothing while playing; they are static rows in a labelled group,
+  with "sent · completed · rejected" in words and req/s units on every rate.
+- Rule rows: fixed column widths with ellipsis, a "Pricing +1" summary for split targets, a row label that reads
+  the whole rule (order, match, targets and split), and Alt+↑/↓ to reorder,
+  announced through `aria-keyshortcuts` and listed in the keyboard shortcuts sheet.
+- Folds renamed to "Host, headers and query" and "Rate limit"; "Normalize" became "Scale to 100%".
+- "Add route" is the mix's primary button, offering existing routes before "New route".
+- Right-click "Add traffic mix…" opens the New route form with Path focused; "Add routes…" creates the table
+  and focuses Default.
+- Deleting a rule shows a toast with Undo and moves focus to the next rule.
+- The trace card's header shows the route's colour and marker swatch and its name; a router's hop reads
+  "rule 3 (Labels)", so a rule's name never reads as the service it sends to.
+- Copy: "rejected" and "completed" everywhere (not "refused"/"done"), and the showcase description shortened to
+  four plain sentences.
+- Icons for the two actions (route, traffic).
+
+Deferred, with reasons: a secondary canvas edge label ("POST /orders", "3 routes") needs the edge-label layout
+another agent is changing; clicking a legend row to highlight its route's particles is a separate Live feature;
+endpoints, OpenAPI import and vendor configuration import are R2/R3.
+
+![Route table in the gateway's inspector, a rule open](screenshots/routing-r1/r1-route-table-light.png)
+![The same in the dark theme](screenshots/routing-r1/r1-route-table-dark.png)
+![A source's traffic mix by share](screenshots/routing-r1/r1-traffic-mix-light.png)
+![Live: each route its own colour and marker, the Routes legend, a 404 caption](screenshots/routing-r1/r1-live-legend-dark.png)
+![Live in the light theme](screenshots/routing-r1/r1-live-legend-light.png)
+![A traced request: route swatch, address and the rule that sent it](screenshots/routing-r1/r1-trace-card.png)
+
+Colour is never the only cue: each route pairs an Okabe–Ito colour with a marker shape (28 distinct pairs), the
+legend and trace card name the route in words, and refused replies draw a cross. Production Chromium tests cover
+adding and editing a table by keyboard with Undo, rule reordering, the mix's shares and Scale to 100%, rates to
+shares, the delete repair, the Live legend and a traced 404, and axe WCAG 2.0/2.1 A/AA on the table and legend in
+both themes. Captures are 1280×800 after Fit. The designer's review was read-only: no independent browser or
+screen-reader session.
 
 ## Round 43 — Autoscaling A3: cloud adapters and scenario sizing (2026-10-16)
 

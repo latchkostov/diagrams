@@ -322,3 +322,27 @@ requests without scanning the queue). A clamp of a resumed override to the range
 the policy's. Replay one with `A3_FUZZ_SEED=61 pnpm exec vitest run src/sim/autoscaling.invariants.test.ts -t A3`.
 Minimal reproductions the nightly run finds are kept in `tests/fixtures/autoscaling/a3-nightly-repros.json` and
 replay on every run.
+
+## R1 routing invariants
+
+`src/sim/routing.invariants.test.ts` is request routing's seeded fuzzer: 200 seeds (5,000 with `A1_FUZZ_NIGHTLY=1`)
+generate random request routes, shares or rates mixes, ordered tables with overlapping exact, prefix and template
+rules, hosts, headers and query, Defaults or none, type and request filters, deny rules, rule quotas, outages,
+pauses and edits mid-run (tables, mixes and rates replaced). After every action it checks that the routes' sent
+counts add up to what the source sent, that every router decision is the first matching rule (or Default) and a
+positive-weight target its filters accept, that refusals carry the right reason and add up by reason and by
+route, that no route finishes more than it sent, and that the drained run holds nothing. Each seed plays twice
+for determinism, and forty replay from a mid-run checkpoint. Replay one with
+`R1_FUZZ_SEED=12 pnpm exec vitest run src/sim/routing.invariants.test.ts`.
+
+The same file checks shared buckets at a managed router (60 seeds, 1,000 nightly): random endpoints and rules
+name a shared account in random overlaps, and naming it again on a rule whose every request already comes through
+an endpoint that charges it must change nothing, in playback (the gateway's and its route's counts) or in the
+analysis (capacity, utilization, downstream demand). A shared bucket is charged exactly once per admitted request,
+per endpoint and matched action.
+
+It also generates normalization refusals (200 seeds, 5,000 nightly): unknown token/bytes costs at API or
+endpoint scope, unresolved shared concurrency and undeclared runtime endpoints, with multiple routes,
+endpoints, quota-bearing matched rules and Defaults. Every diagram must validate, analyze without throwing,
+report zero usable gateway capacity and expose its refused route demand. A focused mixed-endpoint case
+keeps rejected calls out of the rule ledger while preserving the accepted sibling's budget/readout.

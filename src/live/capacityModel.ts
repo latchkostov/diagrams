@@ -14,7 +14,8 @@ import { stencilRole } from "../stencils/roles";
 import { analyzeCapacity, type NodeCapacity } from "../sim/capacity";
 import { brokerFeeds, compileTopology } from "../sim/topology";
 import type { NodeStatus } from "../sim/types";
-import { resolveNodeProps } from "../sim/defaults";
+import { mixTotal, resolveNodeProps } from "../sim/defaults";
+import { scaleMix, type TrafficMix } from "../model/requestRouting";
 import { autoScale, peakRate } from "../sim/scale";
 import { trafficWindow } from "../sim/simulation";
 import { planningSimulation, sizingFix, sourceTraffic, withSizing, type SizingChange } from "../sim/capacityPlanning";
@@ -179,7 +180,12 @@ export function freePlayProps(d: DiagramFile, inputs: LiveInputs): Record<string
   const traffic = inputs.traffic ?? 1;
   for (const id of sourceIds(d)) {
     if (traffic === 1 && inputs.rates[id] === undefined) continue;
-    out[id] = { ...out[id], ratePerSec: freeRate(d, id, inputs) * traffic };
+    const target = freeRate(d, id, inputs) * traffic;
+    // A rates-mode mix owns its total: scale its rows once (its stored ratePerSec stays dormant).
+    const mix = (out[id]?.trafficMix ?? d.nodes.find((n) => n.id === id)?.props?.trafficMix) as TrafficMix | undefined;
+    const total = mixTotal(d.planning, mix);
+    if (total !== undefined) out[id] = { ...out[id], trafficMix: scaleMix(mix!, total > 0 ? target / total : 0) };
+    else out[id] = { ...out[id], ratePerSec: target };
   }
   return out;
 }

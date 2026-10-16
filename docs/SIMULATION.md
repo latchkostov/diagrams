@@ -1052,3 +1052,85 @@ Sources: [ECS target tracking](https://docs.aws.amazon.com/autoscaling/applicati
 [Cloud Run autoscaling](https://docs.cloud.google.com/run/docs/about-instance-autoscaling),
 [concurrency](https://docs.cloud.google.com/run/docs/about-concurrency),
 [maximum instances](https://docs.cloud.google.com/run/docs/configuring/max-instances).
+
+## Request routing R1 (`planning.requestRoutes`)
+
+Request routing is optional and off until someone adds it. A p3-a1 document opts in with `planning.requestRoutes`
+(the diagram's request routes; an empty list counts). Older readers refuse that key, so they never play routed
+traffic with the wrong model. Without it every routing setting is refused on read; with it, diagrams without
+mixes, tables or caller addresses play exactly as before, seed for seed. Research and design:
+[routing.md](research/routing.md); model and grammar: `src/model/requestRouting.ts`; compiled matching:
+`src/sim/routeMatching.ts`.
+
+- **Request routes** are addressed traffic classes: an id, an optional name, and a concrete address (method,
+  path, optional host, headers and query). The id joins mixes, colours, counters and traces; routers match the
+  address, never the id. Each route has a saved colour and marker (`appearance`): the Okabe–Ito palette (orange,
+  sky blue, green, yellow, blue, vermilion, purple) times four markers (circle, square, diamond, triangle), 28
+  pairs allocated in creation order, then reused in order.
+- **Traffic mix** (`props.trafficMix`, sources only): `shares` (0..1 adding up to 1, ±10⁻⁹; the source's
+  `ratePerSec` is the total) or `rates` (requests/s per route; the rows are the total and a stored `ratePerSec`
+  stays dormant). Continuous traffic gives each route its own fractional credit in simulation time, so rare
+  routes emit on schedule and each route's count stays within one dot of its rate; equal-time emissions follow
+  mix order. Saved profiles, bursts and manual injections at a mixed source split their count by a weighted
+  deficit (each row within one message of its proportion at every prefix). Each dot carries one route. Traffic ×
+  and Inputs scale a rates mix's rows once. A saved profile at an all-zero rates mix is refused.
+- **Route table** (`props.routeTable`, HTTP routers only: Kong, API Management, API Gateway, NGINX, Envoy,
+  Traefik, HAProxy, Istio, ELB, Application Gateway, Load Balancer, Front Door, Cloudflare, CDN, ADCs and Cloud
+  Load Balancing). On arrival the router checks its rules in order; the first match wins, Default applies only
+  when none matches, and without a Default the request is **rejected 404** (`route-not-found`). A matched rule is
+  final: when no positive-weight target passes the connections' type and request filters, the request is
+  rejected 404 (`route-no-eligible-target`), never handed to a later rule or Default. One seeded draw from the
+  action's own stream (run seed + router + rule) picks a target by weight; a target that is down keeps its share
+  and loses what it gets, as today. A deny rule blocks at the router. A Request without an address can use only
+  Default; an async message without one keeps today's round-robin.
+- **Matching grammar:** methods and hosts OR within their list, every field ANDs; paths are case-sensitive
+  exact, literal prefix (`/api` matches `/apian`) or template (`{param}` takes one nonempty segment, no
+  backtracking); hosts compare case-insensitively without scheme or port; header names case-insensitively,
+  values exactly; missing fields fail. Query stays out of the path. No regular expressions or scripts.
+- **Quotas:** a rule's or Default's `quotas` are requests token buckets charged with the router's own P3
+  admission in one transaction (a shared quota must match `planning.sharedQuotas` and is charged once per
+  request). Refusals are rejected 429 with the quota's reason; a 404 debits nothing.
+- **Rejections** count once in the router's `rejected`, by reason and by route (`routeRejections`), never as
+  dropped, failed or blocked; the work and lineage are released and a refused reply (404/429, a cross in the
+  failure tint) returns on a Request edge.
+- **Caller addresses and filters:** `requestRouteId` on a Request out of a source or service sets that branch's
+  address before its filters (on a router's connections it is dormant); `requestFilter` lets only matching
+  addressed requests travel a connection, including a broker binding (a filtered-out subscription gets no lag).
+  Retries, dead letters and fan-out copies keep their address.
+- **Bounds:** 500 routes, 64 mix rows, 256 rules, 16 targets, 8 quotas per action, 16 header or query entries
+  (names ≤ 64, values ≤ 200 characters), weights 0–10,000; 4,096 rules and mix rows per document. One table
+  compilation per configuration change (load or a setup/timeline patch of that node, which replaces the table
+  whole); at most one predicate per rule for each request; idle ticks and frames compile nothing.
+- **Analysis and explanations** propagate the same classes (type and route): mixes split demand, tables send it
+  by first match and weights, and demand a table refuses (404) is reported per route and goes no further.
+  Rule rate limits are admission limits like a managed node's: the analysis carries offered demand on and charges
+  each matched action's forwarded share (deny targets excluded, as playback blocks them before admission) to the
+  same steady-state ledger as node and endpoint quotas, so a shared quota is one budget wherever it's named. At a
+  managed router the workload is kept by incoming endpoint and matched action, and each row's transaction is its
+  call's buckets and its rule's, a bucket named at both charged once (`transactionRequirements`, which playback's
+  admission uses too). What
+  the ledger can't admit is reported as `throttled` (429) on the route; a bucket that can't hold one request admits
+  nothing. Serial limits each report against the offered demand. Nothing in the solve depends on a quota, so it
+  settles in the same passes as without one. `routeDemand` gives offered, refused and throttled requests/s per
+  route at each node; explanations and `describe_diagram` say them.
+- **Live:** addressed particles take their route's colour and marker with a contrasting outline (dark on the
+  light canvas, light on the dark one), in the main and worker renderers and slow motion. The inspector's Routes
+  legend lists each route's swatch, marker, address and its sent, completed and rejected counts in real units (seven at
+  a time, with a search for the rest). Traces record the route on every step and the router's rule and share on
+  its send; the trace card and slow motion say "POST /orders → rule 1 → 10% split" or "GET
+  /unknown → no route: rejected 404".
+- **Editing:** a router's Route table and a source's Traffic mix appear in the inspector once added (Add
+  routes… / Add traffic mix… in Simulation and the node's right-click). The first table keeps today's
+  connections in its Default. Rules reorder with Move up/down or Alt+↑/↓, announced. Shares that don't add up
+  to 100% stay unsaved with Normalize. A connection or service a table sends to can't be deleted or reconnected
+  away silently: the edit is refused with **Remove from route table**, which removes those targets (a rule left
+  with nothing goes, an empty Default becomes Reject 404) in the same step. Copies keep their tables only when
+  every target connection was copied too; request routes are merged by id and address.
+- **Not in R1:** endpoints and per-route capacity (R2), Fastly and OpenAPI import (R3), path rewrites, regex,
+  sticky sessions, failover policies, caller waits and retries.
+
+The seeded invariant fuzzer (`src/sim/routing.invariants.test.ts`, 200 seeds; 5,000 nightly) builds random
+routes, mixes, ordered tables with overlapping matches, filters, quotas, outages and edits mid-run, and checks
+after every action that routes add up to what sources sent, that every router decision is the first match (or
+Default) and an eligible target, that refusals add up by reason and by route, that runs are deterministic and
+replay from a checkpoint, and that everything drains.

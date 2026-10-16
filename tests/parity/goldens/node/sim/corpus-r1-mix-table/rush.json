@@ -1,0 +1,93 @@
+{
+  "run": {
+    "time": 12000,
+    "totalMs": 12000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "rush-traffic" },
+      { "atMs": 8000, "kind": "traffic", "label": "rush-traffic ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "app": { "replicas": [1, 1, 0] },
+        "kong": { "replicas": [1, 1, 0] },
+        "orders": { "replicas": [1, 1, 0] },
+        "canary": { "replicas": [1, 1, 0] },
+        "search": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 0,
+      "nodes": {
+        "app": { "processed": 320, "throughput": 5.520640778089587, "replicas": [1, 1, 0] },
+        "kong": { "processed": 320, "throughput": 5.520640778089587, "replicas": [1, 1, 0] },
+        "orders": { "processed": 57, "throughput": 1.1121956142616265, "replicas": [1, 1, 0] },
+        "canary": { "processed": 7, "throughput": 0.02470556657317924, "replicas": [1, 1, 0] },
+        "search": { "processed": 256, "throughput": 4.551868139276275, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 12000,
+    "inSystem": 0,
+    "real": {
+      "app": { "processed": 320, "throughput": 0.7471374833503566, "replicas": [1, 1, 0] },
+      "kong": { "processed": 320, "throughput": 0.7471374833503566, "replicas": [1, 1, 0] },
+      "orders": { "processed": 57, "throughput": 0.15051930847061726, "replicas": [1, 1, 0] },
+      "canary": { "processed": 7, "throughput": 0.003343534849702243, "replicas": [1, 1, 0] },
+      "search": { "processed": 256, "throughput": 0.6160283638846736, "replicas": [1, 1, 0] }
+    },
+    "edges": { "app-kong": 320, "kong-orders": 57, "kong-canary": 7, "kong-search": 256 }
+  },
+  "events": {
+    "total": 1920,
+    "byKind": { "inject": 320, "process": 960, "deliver": 640 },
+    "byNode": {
+      "app": { "inject": 320, "process": 320 },
+      "kong": { "deliver": 320, "process": 320 },
+      "search": { "deliver": 256, "process": 256 },
+      "orders": { "deliver": 57, "process": 57 },
+      "canary": { "deliver": 7, "process": 7 }
+    },
+    "perSecond": [
+      "b9ae89a53a8c",
+      "d31a781a4431",
+      "f9faab66e58c",
+      "783539605cc9",
+      "b5ac95a9a9be",
+      "79b6216e465d",
+      "cadefdabb616",
+      "b7adbbdd34c7",
+      "b1eb040179c8",
+      "-",
+      "-",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 320, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 320, "min": 40, "mean": 40, "p50": 40, "p90": 40, "max": 40 },
+    "waitMs": {
+      "kong": { "count": 320, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "orders": { "count": 57, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "canary": { "count": 7, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "search": { "count": 256, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "kong": { "count": 320, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "orders": { "count": 57, "min": 20, "mean": 20, "p50": 20, "p90": 20, "max": 20 },
+      "canary": { "count": 7, "min": 20, "mean": 20, "p50": 20, "p90": 20, "max": 20 },
+      "search": { "count": 256, "min": 20, "mean": 20, "p50": 20, "p90": 20, "max": 20 }
+    }
+  }
+}

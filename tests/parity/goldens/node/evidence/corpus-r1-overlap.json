@@ -1,0 +1,30 @@
+{
+  "evidence": {
+    "played": [{ "id": "overlap", "title": "Overlap", "playedMs": 12000, "capped": false }],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [
+      {
+        "simulation": "Overlap",
+        "node": "canary",
+        "broker": false,
+        "what": "dropped",
+        "count": 11,
+        "onPurpose": { "count": 11, "why": "down" }
+      }
+    ],
+    "dropped": []
+  },
+  "planned": [{ "node": "canary", "simulation": "Overlap", "what": "dropped", "count": 11, "why": "down" }],
+  "counted": 0,
+  "findings": [
+    { "id": "capacity:canary", "rule": "capacity", "severity": "warning", "target": "canary", "elements": ["canary"] }
+  ],
+  "agentReport": {
+    "findings": [
+      { "id": "capacity:canary", "rule": "capacity", "severity": "warning", "title": "Orders canary is down", "message": "It's saved down, so it handles nothing: messages sent to it fail until it's back.", "targets": ["canary"] }
+    ],
+    "summary": "1 warning, 0 suggestions.",
+    "simulations": "Played 1 saved simulation (at most 60 s each). On purpose, not findings: 11 dropped at canary in “Overlap”."
+  }
+}

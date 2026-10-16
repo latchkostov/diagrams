@@ -1,0 +1,245 @@
+{
+  "format": "diagrams/v2",
+  "planning": {
+    "revision": "p3-a1",
+    "requestRoutes": [
+      {
+        "id": "orders-post",
+        "address": {
+          "method": "POST",
+          "path": "/orders"
+        },
+        "appearance": {
+          "paletteSlot": 0,
+          "marker": "circle"
+        }
+      },
+      {
+        "id": "search-get",
+        "address": {
+          "method": "GET",
+          "path": "/search"
+        },
+        "appearance": {
+          "paletteSlot": 1,
+          "marker": "circle"
+        }
+      },
+      {
+        "id": "orders-delete",
+        "address": {
+          "method": "DELETE",
+          "path": "/orders/42"
+        },
+        "appearance": {
+          "paletteSlot": 5,
+          "marker": "triangle"
+        }
+      }
+    ]
+  },
+  "title": "Routing: order, filters and a down canary",
+  "nodes": [
+    {
+      "id": "app",
+      "stencil": "client.mobile",
+      "label": "Mobile app",
+      "x": 0,
+      "y": 120,
+      "props": {
+        "ratePerSec": 30,
+        "trafficMix": {
+          "mode": "shares",
+          "entries": [
+            {
+              "routeId": "orders-post",
+              "share": 0.5
+            },
+            {
+              "routeId": "search-get",
+              "share": 0.3
+            },
+            {
+              "routeId": "orders-delete",
+              "share": 0.2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "kong",
+      "stencil": "kong",
+      "label": "Gateway",
+      "x": 240,
+      "y": 120,
+      "props": {
+        "latencyMs": 5,
+        "jitter": 0,
+        "routeTable": {
+          "rules": [
+            {
+              "id": "broad",
+              "label": "Everything under /search",
+              "match": {
+                "path": {
+                  "kind": "prefix",
+                  "value": "/search"
+                }
+              },
+              "targets": [
+                {
+                  "edgeId": "kong-search",
+                  "weight": 1
+                }
+              ]
+            },
+            {
+              "id": "orders",
+              "match": {
+                "methods": [
+                  "POST"
+                ],
+                "path": {
+                  "kind": "exact",
+                  "value": "/orders"
+                }
+              },
+              "targets": [
+                {
+                  "edgeId": "kong-orders",
+                  "weight": 9
+                },
+                {
+                  "edgeId": "kong-canary",
+                  "weight": 1
+                }
+              ]
+            },
+            {
+              "id": "filtered",
+              "match": {
+                "methods": [
+                  "DELETE"
+                ]
+              },
+              "targets": [
+                {
+                  "edgeId": "kong-orders",
+                  "weight": 1
+                }
+              ]
+            }
+          ],
+          "default": {
+            "targets": [
+              {
+                "edgeId": "kong-search",
+                "weight": 1
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "orders",
+      "stencil": "generic.service",
+      "label": "Orders",
+      "x": 520,
+      "y": 0,
+      "props": {
+        "latencyMs": 20,
+        "concurrency": 64,
+        "jitter": 0
+      }
+    },
+    {
+      "id": "canary",
+      "stencil": "generic.service",
+      "label": "Orders canary",
+      "x": 520,
+      "y": 120,
+      "props": {
+        "latencyMs": 20,
+        "concurrency": 64,
+        "jitter": 0,
+        "status": "down"
+      }
+    },
+    {
+      "id": "search",
+      "stencil": "generic.service",
+      "label": "Search",
+      "x": 520,
+      "y": 240,
+      "props": {
+        "latencyMs": 20,
+        "concurrency": 64,
+        "jitter": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "app-kong",
+      "from": "app",
+      "to": "kong",
+      "kind": "sync",
+      "props": {
+        "travelMs": 10
+      }
+    },
+    {
+      "id": "kong-orders",
+      "from": "kong",
+      "to": "orders",
+      "kind": "sync",
+      "props": {
+        "travelMs": 10,
+        "requestFilter": {
+          "methods": [
+            "POST"
+          ]
+        }
+      }
+    },
+    {
+      "id": "kong-canary",
+      "from": "kong",
+      "to": "canary",
+      "kind": "sync",
+      "props": {
+        "travelMs": 10
+      }
+    },
+    {
+      "id": "kong-search",
+      "from": "kong",
+      "to": "search",
+      "kind": "sync",
+      "props": {
+        "travelMs": 10
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "overlap",
+      "title": "Overlap",
+      "seed": 7,
+      "durationMs": 12000,
+      "traffic": [
+        {
+          "id": "overlap-traffic",
+          "node": "app",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 30,
+            "durationMs": 8000
+          }
+        }
+      ]
+    }
+  ]
+}

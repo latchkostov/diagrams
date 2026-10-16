@@ -2,7 +2,7 @@ import type { AdmissionPolicy, AdmissionState } from "./admission";
 import type { ApiEndpoint, Quota } from "../model/admission";
 
 /** Tagged identities shared by steady-state planning and simulation. IDs are opaque user content. */
-export type AdmissionScope = readonly ["node"] | readonly ["endpoint", string];
+export type AdmissionScope = readonly ["node"] | readonly ["endpoint", string] | readonly ["rule", string];
 export const quotaKey = (node: string, scope: AdmissionScope, quota: Quota) =>
   JSON.stringify(
     quota.sharedGroup ? ["shared", "quota", quota.sharedGroup] : ["local", node, "quota", ...scope, quota.id],
@@ -14,10 +14,28 @@ export const slotsKey = (node: string) => JSON.stringify(["local", node, "slots"
 export const quotaSignature = (q: Quota) =>
   JSON.stringify([q.unit, q.amount, q.windowMs, q.burst ?? q.amount, q.algorithm]);
 
-interface Requirement {
+/** Requirements by bucket key, first declaration kept: a bucket named twice (two aliases of one shared quota) is
+ * checked and charged once per attempt, whichever admission path charges it. */
+export function uniqueRequirements<R extends { key: string }>(requirements: readonly R[]): R[] {
+  const seen = new Set<string>();
+  return requirements.filter((r) => !seen.has(r.key) && !!seen.add(r.key));
+}
+
+export interface Requirement {
   key: string;
   quota: Quota;
   cost: number;
+}
+
+/**
+ * One admission transaction's buckets: the call's (node and endpoint) and the matched route rule's, a bucket named at
+ * both scopes charged once. Playback (attemptAdmission) and planning (admissionPlan) compose them here alike.
+ */
+export function transactionRequirements<R extends { key: string }>(
+  call: readonly R[],
+  rule: readonly R[],
+): readonly R[] {
+  return rule.length ? uniqueRequirements([...call, ...rule]) : call;
 }
 export interface CompiledCall {
   rejected?: string;

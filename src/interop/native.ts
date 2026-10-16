@@ -1,4 +1,5 @@
 import { createResourceValidator } from "../model/resourceValidation";
+import { validateRouting } from "../model/routingValidation";
 import { DIAGRAM_FORMAT, type Simulation, type DiagramFile } from "../model/types";
 import {
   propsProblem,
@@ -449,6 +450,8 @@ export function validateDiagram(data: unknown): NativeResult {
   const authored = d as unknown as DiagramFile;
   const resourceError = createResourceValidator()(authored);
   if (resourceError) return { ok: false, error: resourceError };
+  const routingError = validateRouting(authored);
+  if (routingError) return { ok: false, error: routingError };
   return { ok: true, diagram: authored, warnings };
 }
 

@@ -1,3 +1,6 @@
+import { routeTableCapable, trafficMixCapable } from "../model/requestRouting";
+import { withRouteTable } from "../model/routingEdits";
+import { routingIntent } from "./routingIntent";
 import { stencilLabel, vendorLabel } from "../i18n/stencils";
 import { t } from "../i18n";
 import { categoryLabel, toneLabel, kindLabel, shapeLabel, colorLabel } from "../i18n/chrome";
@@ -655,6 +658,61 @@ export function builtinActions(): Action[] {
       icon: "sliders",
       order: 200,
       run: (ctx) => ctx.editor.openInspector(),
+    },
+    {
+      // Request routing: a router's first table (its Default keeps today's connections) and a source's mix. Offered
+      // only where they apply, and only until there is one; the inspector edits them after that.
+      id: "node.add-routes",
+      section: "edit",
+      targets: ["node"],
+      get label() {
+        return t("routing.addRoutes");
+      },
+      icon: "route",
+      order: 210,
+      when: (ctx) => {
+        const node = ctx.nodeId ? ctx.editor.getNode(ctx.nodeId) : undefined;
+        const d = node && ctx.editor.getDiagram();
+        return (
+          !!node &&
+          d?.planning?.revision === "p3-a1" &&
+          node.props?.routeTable === undefined &&
+          routeTableCapable(node.stencil, getStencil(node.stencil).simRole)
+        );
+      },
+      run: (ctx) => {
+        // The same first table as the inspector's button; the inspector opens on its Default row.
+        routingIntent.set(ctx.nodeId!, "default");
+        ctx.editor.applyDiagram(withRouteTable(ctx.editor.getDiagram(), ctx.nodeId!));
+        ctx.editor.select({ nodeIds: [ctx.nodeId!] });
+        ctx.editor.openInspector();
+      },
+    },
+    {
+      id: "node.add-mix",
+      section: "edit",
+      targets: ["node"],
+      get label() {
+        return t("routing.addMix");
+      },
+      icon: "traffic",
+      order: 210,
+      when: (ctx) => {
+        const node = ctx.nodeId ? ctx.editor.getNode(ctx.nodeId) : undefined;
+        const d = node && ctx.editor.getDiagram();
+        return (
+          !!node &&
+          d?.planning?.revision === "p3-a1" &&
+          node.props?.trafficMix === undefined &&
+          trafficMixCapable(getStencil(node.stencil).simRole)
+        );
+      },
+      run: (ctx) => {
+        // As the inspector's button: the new route's form, its Path focused; nothing changes until Add.
+        routingIntent.set(ctx.nodeId!, "new-route");
+        ctx.editor.select({ nodeIds: [ctx.nodeId!] });
+        ctx.editor.openInspector();
+      },
     },
     {
       // "Select all like this": every node of this stencil, every edge of this relationship (D11).

@@ -1,0 +1,21 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Routing: order, filters and a down canary",
+    "direction": "LR",
+    "nodes": [
+      { "id": "app", "stencil": "client.mobile", "label": "Mobile app", "x": 40, "y": 160 },
+      { "id": "kong", "stencil": "generic.service", "label": "Gateway", "x": 400, "y": 160 },
+      { "id": "orders", "stencil": "generic.service", "label": "Orders", "x": 760, "y": 40 },
+      { "id": "canary", "stencil": "generic.service", "label": "Orders canary", "x": 760, "y": 160 },
+      { "id": "search", "stencil": "generic.service", "label": "Search", "x": 760, "y": 280 }
+    ],
+    "edges": [
+      { "id": "e1-app-kong", "from": "app", "to": "kong", "kind": "sync" },
+      { "id": "e2-kong-orders", "from": "kong", "to": "orders", "kind": "sync" },
+      { "id": "e3-kong-canary", "from": "kong", "to": "canary", "kind": "sync" },
+      { "id": "e4-kong-search", "from": "kong", "to": "search", "kind": "sync" }
+    ]
+  }
+}

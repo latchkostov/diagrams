@@ -41,6 +41,11 @@ export interface PlanningModel {
   revision: "p1" | "p2" | "p3" | "p3-a1";
   sharedQuotas?: import("./admission").Quota[];
   sharedAllocations?: import("./admission").SharedAllocation[];
+  /**
+   * Request routing R1 (src/model/requestRouting.ts): the diagram-scoped request routes. Present (even empty) opts a
+   * p3-a1 document into routing: traffic mixes, route tables and caller addresses. Older readers refuse the key.
+   */
+  requestRoutes?: import("./requestRouting").RequestRoute[];
 }
 
 /** The saved / imported file format. Plain JSON. */

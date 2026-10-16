@@ -1,0 +1,13 @@
+{
+  "evidence": {
+    "played": [{ "id": "limited", "title": "Limited", "playedMs": 12000, "capped": false }],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [],
+    "dropped": []
+  },
+  "planned": [],
+  "counted": 0,
+  "findings": [],
+  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 1 saved simulation (at most 60 s each)." }
+}

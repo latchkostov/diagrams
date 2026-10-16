@@ -40,6 +40,8 @@ export interface Explanation {
   fixId?: string;
   addConsumer?: string;
   converged: boolean;
+  /** Request routing: configured demand by route here (most first, at most eight) and what the table refuses. */
+  routes?: { route: string; address: string; offered: number; rejected: number; throttled: number }[];
   observed?: { throughput: number; waiting: number; processed: number; inFlight: number };
 }
 
@@ -154,6 +156,7 @@ export function explainNode(
     changes,
     ...(noReader ? { addConsumer: id, fixId: `no-reader:${id}` } : changes ? { fixId: `capacity:${id}` } : {}),
     converged: analysis.converged,
+    ...routeLines(d, analysis, id),
     ...(options.observed
       ? {
           observed: {
@@ -201,4 +204,20 @@ function buildExplanationIndex(d: DiagramFile, topology: CompiledTopology) {
     });
   }
   return { nodes, incoming, upstream };
+}
+
+/** A node's configured demand by request route ("" for requests without an address), for its explanation. */
+function routeLines(d: DiagramFile, analysis: CapacityAnalysis, id: string): Pick<Explanation, "routes"> {
+  const byRoute = analysis.routeDemand?.[id];
+  if (!byRoute) return {};
+  const routes = new Map((d.planning?.requestRoutes ?? []).map((r) => [r.id, r]));
+  const lines = Object.entries(byRoute)
+    .filter(([, demand]) => demand.offered > 0)
+    .map(([route, demand]) => {
+      const r = routes.get(route);
+      return { route, address: r ? `${r.address.method} ${r.address.path}` : "", ...demand };
+    })
+    .sort((a, b) => b.offered - a.offered || a.route.localeCompare(b.route))
+    .slice(0, 8);
+  return lines.length ? { routes: lines } : {};
 }

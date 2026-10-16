@@ -142,6 +142,8 @@ Every setting is optional, and live view works without any. Node `props`:
 - `ha` ("standalone" | "active-standby" | "active-active"): network devices: "standalone" (default), "active-standby" (one unit carries traffic) or "active-active" (units add up); replicas = units
 - `failoverMs` (number 0..600000): network devices: how long an active-standby pair stalls when a unit fails (default 1000)
 - `healthChecks` (boolean): gateways: skip targets that are down (default true for ADCs, false otherwise)
+- `trafficMix` (object): request routing R1, sources only: {mode: "shares", entries: [{routeId, share}]} (shares 0..1 add up to 1; ratePerSec is the total) or {mode: "rates", entries: [{routeId, ratePerSec}]} (the rows add up to the total; a stored ratePerSec stays dormant). Each message carries one route; saved traffic profiles and injections split by the same proportions. routeIds name planning.requestRoutes. Atomic replacement.
+- `routeTable` (object): request routing R1, HTTP routers only (kong, azure.api-management, aws.api-gateway, nginx, envoy, traefik, haproxy, istio, aws.elb, azure.app-gateway, load-balancer, azure.front-door, cloudflare, generic.cdn, generic.adc, f5.bigip, netscaler.adc, gcp.cloud-load-balancing): {rules: [{id, label?, match: {methods?, path?: {kind: "exact"|"prefix"|"template", value}, hosts?, headers?, query?}, targets: [{edgeId, weight}], quotas?}], default?: {targets, quotas?}}. First match wins in order; Default only when no rule matches; no Default refuses 404 (route-not-found). A matched rule never falls through: no eligible target (filters, zero weights) refuses 404 (route-no-eligible-target). Weights (integers 0-10000) pick one connection per request with a seeded draw; a down target keeps its share. Targets are ordinary outgoing flows (connection ids, or batch keys in edit_diagram). quotas are requests-unit token buckets (429 when exhausted); a sharedGroup must match planning.sharedQuotas. Unaddressed Requests use Default only; unaddressed async messages keep round-robin. Bounds: 256 rules, 16 targets, 16 header/query entries. Atomic replacement.
 
 <!-- END GENERATED node-props -->
 
@@ -149,6 +151,8 @@ Edge `props`:
 
 <!-- BEGIN GENERATED edge-props -->
 
+- `requestRouteId` (string): request routing R1: on a Request (sync) out of a source or service, the request route this call sends (planning.requestRoutes id); dormant on a router's connections
+- `requestFilter` (object): request routing R1: only addressed requests matching {methods?, path?, hosts?, headers?, query?} travel this connection (a broker binding's routing key or header match); unaddressed messages don't match
 - `endpointId` (string): Request target endpoint id inside the target API node; dangling references reject rather than fall back
 - `caller` (object): reserved deadlineMs, retry policy and poolConnections contract; no caller waits, retries, deadlines or cascades execute in P3
 - `group` (string): consumer group (logs), subscription (pub/sub), or binding (exchange); each name gets a copy and readers sharing a name compete; queues always compete
