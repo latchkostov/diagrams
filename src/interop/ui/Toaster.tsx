@@ -60,6 +60,19 @@ export function Toaster() {
         <Glyph name={ICON[t.kind]} size={16} />
       </span>
       <span className="ix-toast-text">{t.text}</span>
+      {t.progress !== undefined && (
+        <span
+          className="ix-toast-progress"
+          role="progressbar"
+          aria-label={t.text}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(t.progress * 100)}
+          data-testid="toast-progress"
+        >
+          <span style={{ width: `${Math.round(t.progress * 100)}%` }} />
+        </span>
+      )}
       {t.action && (
         <button
           className="ix-toast-action"

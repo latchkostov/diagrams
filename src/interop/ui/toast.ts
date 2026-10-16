@@ -22,6 +22,8 @@ export interface ToastState {
   action?: ToastAction;
   /** ms; 0 = sticky until replaced or dismissed. */
   duration: number;
+  /** A busy task's share done (0 to 1), once it reports one. */
+  progress?: number;
 }
 
 let current: ToastState | null = null;
@@ -40,7 +42,14 @@ export const toast = {
   info: (text: string, opts?: { action?: ToastAction; duration?: number }) => show("info", text, opts),
   success: (text: string, opts?: { action?: ToastAction; duration?: number }) => show("success", text, opts),
   error: (text: string, opts?: { action?: ToastAction; duration?: number }) => show("error", text, opts),
-  busy: (text: string) => show("busy", text),
+  /** Sticky until dismissed; a long task may offer its cancel as the action and report `progress`. */
+  busy: (text: string, opts?: { action?: ToastAction }) => show("busy", text, opts),
+  /** How far busy toast `id` has got (0 to 1); nothing if another toast has replaced it. */
+  progress(id: number, done: number) {
+    if (!current || current.id !== id || current.progress === done) return;
+    current = { ...current, progress: done };
+    emit();
+  },
   /** Dismisses the current toast, or only toast `id` if given (so a finished task doesn't clear a newer message). */
   dismiss(id?: number) {
     if (!current || (id !== undefined && current.id !== id)) return;

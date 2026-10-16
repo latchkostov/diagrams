@@ -60,7 +60,7 @@ import {
   encryptedPayloadFromInput,
   parseEncrypted,
 } from "./passwordLink";
-import { downloadDataUrl, downloadText, fsAccessSupported, openWithPicker, slugify, type FileHandle } from "./files";
+import { downloadBlob, downloadText, fsAccessSupported, openWithPicker, slugify, type FileHandle } from "./files";
 import { deviceProvider } from "./storage/device";
 import { CLOUD_PROVIDERS, providerInfo, type ProviderInfo } from "./storage/registry";
 import { StorageError, type OpenContext, type StorageEntry, type StorageProvider } from "./storage/types";
@@ -350,7 +350,11 @@ export function useInterop({
   const exportImage = (kind: "png" | "svg", opts: ImageExportOptions = {}) =>
     attempt({ action: "image", name: kind.toUpperCase() }, async () => {
       const d = current();
-      const busy = toast.busy(t("fileToast.renderingValue0", { value0: kind.toUpperCase() }));
+      // A big diagram takes seconds: the toast shows how far it has got and offers Cancel (Escape too).
+      const cancel = new AbortController();
+      const busy = toast.busy(t("fileToast.renderingValue0", { value0: kind.toUpperCase() }), {
+        action: { label: t("common.cancel"), run: () => cancel.abort(), testId: "image-export-cancel" },
+      });
       const { renderDiagramImage } = await import("./image");
       // The picture carries its title, as presentation does (an untitled diagram has none to show).
       const title = d.title.trim();
@@ -358,9 +362,26 @@ export function useInterop({
         opts.title !== false && title && title !== UNTITLED
           ? { title, description: d.description?.trim() || undefined }
           : undefined;
-      const url = await renderDiagramImage(kind, { scale: opts.scale, transparent: opts.transparent, header });
+      let image: Blob;
+      try {
+        image = await renderDiagramImage(kind, {
+          scale: opts.scale,
+          transparent: opts.transparent,
+          header,
+          signal: cancel.signal,
+          onProgress: (done) => toast.progress(busy, done),
+          onEscape: () => cancel.abort(),
+        });
+      } catch (err) {
+        // Cancelled: nothing to report, nothing downloaded.
+        if (cancel.signal.aborted) {
+          toast.dismiss(busy);
+          return;
+        }
+        throw err;
+      }
       const suffix = kind === "png" ? `${opts.scale === 1 ? "" : "@2x"}${opts.transparent ? "-transparent" : ""}` : "";
-      await downloadDataUrl(url, `${baseName(d)}${suffix}.${kind}`);
+      downloadBlob(image, `${baseName(d)}${suffix}.${kind}`);
       toast.dismiss(busy);
       toast.success(t("fileToast.exportedValue0", { value0: kind.toUpperCase() }));
     });
