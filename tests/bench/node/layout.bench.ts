@@ -148,8 +148,8 @@ s.gating("a drag frame routes a bounded number of edges", () => {
 
 // What a drag frame reads of each node's box, the worst of ten frames: the passes over every edge (sides, ports,
 // nudging, labels) read each node a few times, but searching for a moved edge's route, and nudging a segment, read
-// only the nodes near it. Before they had a spatial index, each of those read every node in the diagram: 1,814 reads
-// per node at 250 pipeline nodes, 11,453 at 2,000, 42,234 for the mesh at 500 (now 225, 152 and 874).
+// only the nodes near it. Before they had a spatial index, each of those read every node in the diagram: 11,453 reads
+// per node for the pipeline at 2,000 nodes and 42,234 for the mesh at 500 (now 152 and 874).
 s.gating("a drag frame reads each node a bounded number of times", () => {
   for (const [name, input, limit] of [
     ["pipeline", routeInput(eventPipeline(ROUTE_LARGE)), 400],
