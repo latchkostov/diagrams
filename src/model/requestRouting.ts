@@ -596,3 +596,13 @@ export function matchText(match: RouteMatch): string {
   const extra = Object.keys(match.headers ?? {}).length + Object.keys(match.query ?? {}).length;
   return `${methods} ${path}${host}${extra ? ` +${extra}` : ""}`;
 }
+
+/** A rates-mode mix with every row × factor (the Inputs panel's entry rate, Traffic ×): one scaling, all rows. */
+export function scaleMix(mix: TrafficMix, factor: number): TrafficMix {
+  if (mix.mode !== "rates") return mix;
+  const f = Number.isFinite(factor) ? Math.max(0, factor) : 1;
+  return {
+    mode: "rates",
+    entries: mix.entries.map((e) => ({ ...e, ratePerSec: Math.min(SIM_LIMITS.ratePerSec, e.ratePerSec * f) })),
+  };
+}

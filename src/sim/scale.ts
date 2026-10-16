@@ -1,6 +1,7 @@
 import type { DiagramFile, Simulation, TrafficShape } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { resolveMultiplier } from "./units";
+import { mixTotal } from "./defaults";
 
 const positive = (n: number | undefined) => (n !== undefined && Number.isFinite(n) ? Math.max(0, n) : 0);
 /** Sustained peak for capacity planning; instantaneous batches use a one-second window. */
@@ -28,7 +29,11 @@ export function autoScale(simulation: Simulation, diagram: DiagramFile): number 
         (sum, node) =>
           sum +
           (stencilRole(node.stencil) === "source"
-            ? positive((simulation.setup?.props?.[node.id]?.ratePerSec ?? node.props?.ratePerSec ?? 2) as number)
+            ? positive(
+                // A rates-mode traffic mix supplies its own total; otherwise the stored rate, as before.
+                mixTotal(diagram.planning, simulation.setup?.props?.[node.id]?.trafficMix ?? node.props?.trafficMix) ??
+                  ((simulation.setup?.props?.[node.id]?.ratePerSec ?? node.props?.ratePerSec ?? 2) as number),
+              )
             : 0),
         0,
       );

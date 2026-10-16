@@ -1233,7 +1233,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       // A deny rule blocks at the sender, as today: blocked on purpose, no admission bucket debited.
       acknowledge(work);
       reply(work);
-      block(message, edge, { rule, weight: work.route.weight });
+      block(message, edge, { rule, weight: work.route.weight, edge: edge.id });
       return false;
     }
     // A router without a P3 policy charges its rule's quotas now; a managed one charges them with its own (atomic).

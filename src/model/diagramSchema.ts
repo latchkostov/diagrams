@@ -148,6 +148,8 @@ function diagramSchema(a1 = false) {
               ...(nodeSimPropsSchema.properties as Record<string, JsonSchema>),
               resources: { enum: [] },
               autoscaling: { enum: [] },
+              trafficMix: { enum: [] },
+              routeTable: { enum: [] },
             },
           },
       Edge: {
@@ -191,6 +193,8 @@ function diagramSchema(a1 = false) {
         ...edgeSimPropsSchema,
         properties: {
           ...(edgeSimPropsSchema.properties as Record<string, JsonSchema>),
+          // Request routing belongs to the current planning model (p3-a1 with planning.requestRoutes).
+          ...(a1 ? {} : { requestRouteId: { enum: [] }, requestFilter: { enum: [] } }),
           settings: {
             type: "array",
             maxItems: MAX_SETTINGS,
@@ -431,6 +435,7 @@ export const diagramV2Schema = {
   $defs: {
     ...a1Schema.$defs,
     LegacyNodeProps: readerSchema.$defs.NodeProps,
+    LegacyEdgeProps: readerSchema.$defs.EdgeProps,
     LegacySimulation: JSON.parse(
       JSON.stringify(readerSchema.$defs.Simulation).replaceAll("#/$defs/NodeProps", "#/$defs/LegacyNodeProps"),
     ) as JsonSchema,
@@ -448,6 +453,9 @@ export const diagramV2Schema = {
             planning: { additionalProperties: true, properties: { revision: { enum: ["p1", "p2", "p3"] } } },
             nodes: {
               items: { additionalProperties: true, properties: { props: { $ref: "#/$defs/LegacyNodeProps" } } },
+            },
+            edges: {
+              items: { additionalProperties: true, properties: { props: { $ref: "#/$defs/LegacyEdgeProps" } } },
             },
             simulations: { items: { $ref: "#/$defs/LegacySimulation" } },
           },
