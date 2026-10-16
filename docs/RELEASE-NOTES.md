@@ -82,6 +82,17 @@
 - The production bundle regression passes: collaboration, Yjs and tracker code are absent from every
   production chunk, with image export loading only when used. The scoped UX review finds no new
   controls, wording or chrome; export progress and cancellation retain their existing tests.
+## Resizable Inspector rebase onto Review follow-ups 3 (#144, 2026-10-16)
+
+- Rebased onto #144, preserving both documentation histories and all translation keys. Kept
+  master's complete IPv4/IPv6 port-fixture checks; the earlier branch implementation is superseded.
+- Regenerated skill files from master's release and refreshed the viewer at plugin 1.1.35,
+  exactly one patch above master's 1.1.34. No additional controls, copy or UX changes.
+- Regenerated goldens with `pnpm parity:update`, retaining #144's 80px boundary-subtree corrections
+  in all eight skill-layout records. Relative to master, only the 19 Inspector goldens documented
+  below change: `node/i18n/catalogs.json` for the three Inspector messages, and the horizontal
+  `tidy.viewport` translation in the 18 listed `browser/layout/*.json` records. All other fields
+  and goldens remain identical to master; no golden was hand-merged.
 
 ## Collaboration C1a: review round 3 and rebase (2026-10-16)
 
