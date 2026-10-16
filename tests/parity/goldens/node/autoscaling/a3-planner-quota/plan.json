@@ -1,0 +1,36 @@
+{
+  "plans": [
+    {
+      "simulation": "black-friday",
+      "title": "Black Friday",
+      "traffic": 3,
+      "horizonMs": 240000,
+      "suggestions": [
+        {
+          "node": "worker",
+          "adapter": "hpa",
+          "wanted": 12,
+          "metric": 80.00000000000016,
+          "target": 70,
+          "metricKind": "cpuRequest",
+          "backlog": 0,
+          "startupBacklog": 0,
+          "endBacklog": 0,
+          "kind": "quota",
+          "from": 10,
+          "to": 12,
+          "verified": { "backlog": 0, "startupBacklog": 0, "endBacklog": 0, "maxed": false, "rejected": 22437 }
+        }
+      ],
+      "status": "planned",
+      "runs": 2,
+      "ticks": 48000
+    }
+  ],
+  "english": [
+    "At 3× traffic in “Black Friday”, HPA hits max 10 at 80% CPU of request (target 70% CPU of request), but an admission quota still refuses 22,437 requests with more replicas. More replicas can't add allocation."
+  ],
+  "shown": [
+    "At 3× traffic in “Black Friday”, HPA hits its maximum of 10, but an admission quota still refuses 22,437 requests with more replicas. More replicas can't add allocation."
+  ]
+}

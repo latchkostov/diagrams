@@ -1,0 +1,65 @@
+{
+  "plans": [
+    {
+      "simulation": "ticket-drop",
+      "title": "Ticket drop",
+      "traffic": 1,
+      "horizonMs": 90000,
+      "suggestions": [
+        {
+          "node": "worker",
+          "adapter": "ecs",
+          "wanted": 0,
+          "backlog": 273,
+          "startupBacklog": 261,
+          "endBacklog": 0,
+          "kind": "min",
+          "from": 1,
+          "to": 4,
+          "fix": [
+            {
+              "node": "worker",
+              "props": {
+                "autoscaling": {
+                  "mode": "on",
+                  "modelRevision": "a3",
+                  "preset": "ecs-alb",
+                  "presetRevision": "1",
+                  "controller": {
+                    "kind": "ecs",
+                    "minReplicas": 4,
+                    "initialReplicas": 4,
+                    "maxReplicas": 8,
+                    "metricPeriodMs": 5000,
+                    "alarm": { "outPeriods": 2, "inPeriods": 3, "inMargin": 0.1 },
+                    "targetTracking": [
+                      {
+                        "metric": "albRequestCountPerTarget",
+                        "target": 600,
+                        "source": { "node": "lb" },
+                        "scaleOutCooldownMs": 10000,
+                        "scaleInCooldownMs": 20000,
+                        "disableScaleIn": false
+                      }
+                    ],
+                    "stepScaling": []
+                  }
+                }
+              }
+            }
+          ],
+          "verified": { "backlog": 0, "startupBacklog": 0, "endBacklog": 0, "maxed": false, "rejected": 0 }
+        }
+      ],
+      "status": "planned",
+      "runs": 2,
+      "ticks": 18000
+    }
+  ],
+  "english": [
+    "In “Ticket drop”, up to 261 messages waited while ECS started replicas. Keep 4 warm (minimum 1 → 4). A same-seed rerun verified it."
+  ],
+  "shown": [
+    "In “Ticket drop”, up to 261 messages waited while ECS started replicas. Keep 4 warm (minimum 1 → 4). A same-seed rerun verified it."
+  ]
+}
