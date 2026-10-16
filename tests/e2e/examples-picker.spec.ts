@@ -84,6 +84,7 @@ test("ordinary autosaves serialize the diagram once and reuse that result", asyn
 const BY_THEME: Record<string, string[]> = {
   streaming: [
     "kafka-order-pipeline",
+    "keda-render-workers",
     "autoscaling-image-workers",
     "cqrs-event-sourcing",
     "cdc-analytics",
@@ -166,11 +167,12 @@ test("start card opens the gallery; feature filter and Run it start a saved simu
   expectNoErrors(consoleErrors);
 });
 
-test("Autoscaling filter finds the resource showcase and runs its saved burst", async ({ page }) => {
+test("Autoscaling filter finds both autoscaling showcases and runs the HPA one's saved burst", async ({ page }) => {
   await page.goto("./");
   await page.getByTestId("start-all-examples").click();
   await page.getByTestId("examples-feature").selectOption("autoscaling");
-  await expect(publicExampleCards(page)).toHaveCount(1);
+  await expect(publicExampleCards(page)).toHaveCount(2);
+  await expect(page.getByTestId("example-card-keda-render-workers")).toBeVisible();
   await expect(page.getByTestId("example-card-autoscaling-image-workers")).toBeVisible();
   await page.getByTestId("example-run-autoscaling-image-workers").click();
   await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
