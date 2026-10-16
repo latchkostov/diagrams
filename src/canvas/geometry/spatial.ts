@@ -9,6 +9,8 @@ const MAX_QUERY_CELLS = 4096;
 const MAX_CELL_ENTRIES = 262_144;
 const valid = (r: Rect) =>
   [r.x, r.y, r.width, r.height, r.x + r.width, r.y + r.height].every(Number.isFinite) && r.width >= 0 && r.height >= 0;
+/** Whether `insert` keeps a rect (finite, no negative size): a caller must scan the others itself. */
+export const indexable = valid;
 const touches = (a: Rect, b: Rect) =>
   a.x <= b.x + b.width && b.x <= a.x + a.width && a.y <= b.y + b.height && b.y <= a.y + a.height;
 

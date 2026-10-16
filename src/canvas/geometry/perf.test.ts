@@ -8,6 +8,7 @@ import { groupHeaderRect, Router, type RouteInput } from "./router";
 import { routeOrthogonal } from "./orthogonal";
 import { nudgeRoutes } from "./nudge";
 import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
+import type { Point, Rect } from "./rect";
 
 /**
  * Reads of the padded obstacles the router makes (every `inflate`d box), while `rectReads.on`; past `limit` the
@@ -87,6 +88,57 @@ it("nudges separated pinned routes without an all-pairs pass", () => {
       { samples: 3 },
     ),
   ).toBeLessThan(LINEAR_LIMIT);
+});
+
+/** Rects whose coordinate reads are counted (any property read), to count the obstacles a pass looks at. */
+function countedRects(rects: Rect[]) {
+  const reads = { count: 0 };
+  const proxied = rects.map(
+    (r) =>
+      new Proxy(r, {
+        get(target, key, receiver) {
+          reads.count++;
+          return Reflect.get(target, key, receiver) as unknown;
+        },
+      }),
+  );
+  return { rects: proxied, reads };
+}
+
+/** `bundles` pairs of routes, each pair sharing a vertical track (so nudging moves a segment), in a row along y. */
+function bundledRoutes(bundles: number) {
+  const routes = new Map<string, Point[]>();
+  for (let i = 0; i < bundles; i++) {
+    const y = i * 400;
+    for (const [k, dy] of [0, 20].entries())
+      routes.set(`b${i}-${k}`, [
+        { x: 0, y: y + dy },
+        { x: 300, y: y + dy },
+        { x: 300, y: y + 200 + dy * 3 },
+        { x: 600, y: y + 200 + dy * 3 },
+      ]);
+  }
+  return routes;
+}
+
+it("nudges a segment reading only the obstacles near it, not every node of the diagram", () => {
+  // Counted, not timed. 200 bundles each move a segment; 2,000 nodes sit beside them (none near a track). Testing every
+  // node for every moved segment and every bundle's room reads each node hundreds of times; with the index, a node is
+  // read when it's indexed and when it's near something that moves.
+  const bundles = 200;
+  const nodes: Rect[] = Array.from({ length: 2_000 }, (_, i) => ({
+    x: 2_000 + (i % 40) * 260,
+    y: Math.floor(i / 40) * 120,
+    width: 220,
+    height: 72,
+  }));
+  const { rects, reads } = countedRects(nodes);
+  const out = nudgeRoutes(bundledRoutes(bundles), rects);
+  // Each bundle was spread: its two middle segments sit apart.
+  for (let i = 0; i < bundles; i++) expect(out.get(`b${i}-0`)![1].x).not.toBe(out.get(`b${i}-1`)![1].x);
+  expect(reads.count / nodes.length).toBeLessThan(40);
+  // The same routes and nodes, unproxied, nudge the same way.
+  expect(nudgeRoutes(bundledRoutes(bundles), nodes)).toEqual(out);
 });
 
 const files = import.meta.glob<DiagramFile>("../../examples/*.json", { eager: true, import: "default" });
