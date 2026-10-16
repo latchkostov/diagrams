@@ -6,13 +6,17 @@ const key = "diagrams.inspector.width.v1";
 const width = (page: Page) => page.getByTestId("inspector").evaluate((el) => el.getBoundingClientRect().width);
 const stored = (page: Page) => page.evaluate((key) => localStorage.getItem(key), key);
 
-async function open(page: Page, viewport = 1920, live = false) {
+async function open(page: Page, viewport = 1920, live = false, simulation?: string) {
   await page.setViewportSize({ width: viewport, height: 1000 });
   await page.addInitScript(({ storage, diagram }) => localStorage.setItem(storage, JSON.stringify(diagram)), {
     storage: STORAGE_KEYS.autosavePrefix + "kafka-order-pipeline",
     diagram: sheetRoutingFixture(),
   });
-  if (live) await gotoLive(page, "./?view=canvas&example=kafka-order-pipeline&live=1&paused=1");
+  if (live)
+    await gotoLive(
+      page,
+      `./?view=canvas&example=kafka-order-pipeline&live=1&${simulation ? `sim=${simulation}` : "paused=1"}`,
+    );
   else await gotoCanvas(page, "kafka-order-pipeline");
   await waitForStableViewport(page);
   await page.getByTestId("node-kong").dblclick();
@@ -149,6 +153,31 @@ test("manual width stops at 60vw on an ultrawide viewport", async ({ page }) => 
   await open(page, 3440);
   await page.getByTestId("inspector-resize").press("End");
   await expect.poll(() => width(page)).toBe(2064);
+});
+
+test("Enter resets the focused handle without continuing a waiting narration", async ({ page }) => {
+  await open(page, 1920, true, "inspector-note");
+  const note = page.getByTestId("live-note-continue");
+  await expect(note).toBeVisible();
+  const handle = page.getByTestId("inspector-resize");
+  await handle.press("ArrowLeft");
+  await expect.poll(() => width(page)).toBe(525);
+  await handle.press("Enter");
+  await expect.poll(() => width(page)).toBe(509);
+  await expect(note).toBeVisible();
+});
+
+test("slow motion leaves the focused resize handle's arrow keys alone", async ({ page }) => {
+  await open(page, 1920, true);
+  await page.getByTestId("node-app").click({ button: "right" });
+  await page.getByTestId("context-menu-item-sim.slowmo-from").click();
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "slowmo");
+  await page.getByTestId("live-play").click();
+  const handle = page.getByTestId("inspector-resize");
+  await handle.press("ArrowLeft");
+  await expect.poll(() => width(page)).toBe(525);
+  await handle.press("Shift+ArrowRight");
+  await expect.poll(() => width(page)).toBe(461);
 });
 
 test("drag frames finish geometry reads before writing the sheet width", async ({ page }) => {

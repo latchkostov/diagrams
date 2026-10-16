@@ -41,6 +41,15 @@ export function sheetRoutingFixture(): DiagramFile {
   const path = "/v1/orders/reserve";
   d.groups = [{ id: "api", label: "API region", x: 200, y: -60, width: 600, height: 480 }];
   for (const node of d.nodes) if (node.id !== "app") node.group = "api";
+  d.simulations = [
+    {
+      id: "inspector-note",
+      title: "Resize during narration",
+      traffic: [],
+      durationMs: 2000,
+      timeline: [{ atMs: 0, action: { do: "note", text: "Read the route table before continuing.", pause: true } }],
+    },
+  ];
   d.planning!.requestRoutes![0].address.path = path;
   (d.nodes.find((node) => node.id === "kong")!.props!.routeTable as RouteTable).rules[0].match.path!.value = path;
   return d;

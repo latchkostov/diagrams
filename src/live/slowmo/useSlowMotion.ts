@@ -223,8 +223,11 @@ export function useSlowMotion(opts: {
         return;
       }
       if (status !== "on") return;
-      const inControl = t instanceof Element && !!t.closest("select, input, a");
-      if ((e.key === " " || e.code === "Space") && !(t instanceof Element && t.closest("button, select, a"))) {
+      const inControl = t instanceof Element && !!t.closest('select, input, a, [role="separator"]');
+      if (
+        (e.key === " " || e.code === "Space") &&
+        !(t instanceof Element && t.closest('button, select, a, [role="separator"]'))
+      ) {
         e.preventDefault();
         e.stopImmediatePropagation();
         if (!e.repeat) session.toggle();

@@ -320,6 +320,8 @@
   Geometry is read before the width write, avoiding forced layout in a drag frame. Live receives
   completed resizes through its existing camera policy, including narration focus and slow-motion
   ownership. Operation-count and Live-camera regressions fail with those review fixes removed.
+  The focused handle keeps its arrow keys during slow motion and resets with Enter without also
+  continuing a waiting narration; both keyboard regressions fail with the exclusions removed.
 - Route Match and Send to columns already divide the available width proportionally. Send to now
   displays the full target list instead of an unconditional `+1`; both columns retain full-value
   titles when space still runs out. The Lab includes a longer-path routing preview. The AI panel

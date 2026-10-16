@@ -1187,7 +1187,10 @@ export function LiveSession({
         else if (!alwaysOn) onExit();
         return;
       }
-      if (isEditableTarget(t) || (t instanceof Element && t.closest("button, select, a, [data-editor-overlay]")))
+      if (
+        isEditableTarget(t) ||
+        (t instanceof Element && t.closest('button, select, a, [data-editor-overlay], [role="separator"]'))
+      )
         return;
       const waiting = controller.getState().run?.waiting;
       if (e.key === " " || e.code === "Space") {
