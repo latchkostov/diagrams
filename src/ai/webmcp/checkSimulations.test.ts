@@ -13,6 +13,7 @@ import { registerScenarioPlanner } from "../../lib/scenarioPlanner";
 
 const play = vi.hoisted(() => ({
   runs: [] as { resolve: (e: Evidence) => void; cancel: ReturnType<typeof vi.fn> }[],
+  started: undefined as (() => void) | undefined,
 }));
 vi.mock("../../checks/evidenceClient", async (actual) => {
   const real = await actual<typeof import("../../checks/evidenceClient")>();
@@ -27,6 +28,7 @@ vi.mock("../../checks/evidenceClient", async (actual) => {
       });
       const cancel = vi.fn(() => reject(new real.EvidenceStopped()));
       play.runs.push({ resolve, cancel });
+      play.started?.();
       return { done, cancel };
     },
   };
@@ -76,8 +78,15 @@ type Reply = ReturnType<ReturnType<typeof setup>["tool"]["execute"]>;
 
 /** Starts the call and waits until playback has begun (the reply is wrapped: awaiting it here would wait for it). */
 async function started(tool: ReturnType<typeof setup>["tool"], signal?: AbortSignal): Promise<{ reply: Reply }> {
+  const began = new Promise<void>((resolve) => (play.started = resolve));
   const reply = tool.execute({ simulations: true }, signal ? { signal } : undefined);
-  await vi.waitFor(() => expect(play.runs).toHaveLength(1));
+  await Promise.race([
+    began,
+    reply.then(() => {
+      throw new Error("The tool replied before playback began.");
+    }),
+  ]);
+  expect(play.runs).toHaveLength(1);
   return { reply };
 }
 
@@ -156,6 +165,35 @@ describe("waiting for scenario sizing from the checks worker", () => {
     const all = buildTools(host);
     return (name: string) => toModelContextTool(all.find((t) => t.name === name)!);
   };
+
+  it("waits for playback readiness while sizing is held, without a polling deadline", async () => {
+    const polling = vi.spyOn(vi, "waitFor");
+    try {
+      let sizingBegan!: () => void;
+      let answer!: () => void;
+      const sizing = new Promise<void>((resolve) => (sizingBegan = resolve));
+      registerScenarioPlanner(() => {
+        sizingBegan();
+        return new Promise<never[]>((resolve) => (answer = () => resolve([])));
+      });
+      // Capture rejection immediately so a broken polling helper cannot leak into the next test.
+      const call = started(tools()("check_diagram")).then(
+        (value) => ({ ok: true as const, value }),
+        (error: unknown) => ({ ok: false as const, error }),
+      );
+      await sizing;
+      expect(play.runs).toHaveLength(0);
+      expect(polling).not.toHaveBeenCalled();
+      answer();
+      const result = await call;
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw result.error;
+      play.runs[0].resolve(EVIDENCE);
+      expect(JSON.parse(await text(result.value)).findings[0].id).toBe("dead-letter:q");
+    } finally {
+      polling.mockRestore();
+    }
+  });
 
   it("a call cancelled while sizing is pending returns nothing about the diagram and plays nothing", async () => {
     for (const [name, input] of [

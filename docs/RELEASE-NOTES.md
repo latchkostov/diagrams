@@ -13,6 +13,10 @@
   plugin 1.1.33, exactly one patch above master's 1.1.32.
 - Full parity regeneration leaves every golden identical to master: no changed, added or missing
   golden. Production bundle tests continue to exclude collaboration, Yjs and tracker code from all chunks.
+- The first full gate found a WebMCP test readiness race: a short polling deadline could expire during
+  lazy loading and leave playback pending in the next test. The helper now awaits the mock's playback-start
+  signal. A held-sizing regression counts polling calls rather than elapsed time and fails with the old helper.
+  This changes test synchronization only; the diagram privacy and evidence assertions stay intact.
 - Source UX review: no new controls, copy or chrome; the collaboration proof remains in the Lab.
 
 ## Routing R1 rejected admission transactions (2026-10-16)
