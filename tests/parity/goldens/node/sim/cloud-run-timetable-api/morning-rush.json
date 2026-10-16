@@ -1,0 +1,183 @@
+{
+  "run": {
+    "time": 60000,
+    "totalMs": 60000,
+    "done": true,
+    "scale": 5,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [],
+    "markers": [
+      { "atMs": 1000, "kind": "note", "label": "Overnight: no instances, nothing running." },
+      { "atMs": 4000, "kind": "traffic", "label": "Morning rush" },
+      { "atMs": 6000, "kind": "note", "label": "First requests wait while instances start on demand." },
+      { "atMs": 20000, "kind": "note", "label": "The rush hits the maximum of 6 instances. Check diagram suggests a higher maximum." },
+      { "atMs": 34000, "kind": "traffic", "label": "Morning rush ends" },
+      { "atMs": 44000, "kind": "note", "label": "The rush ends; idle instances shut down, back to zero." }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "replicas": [1, 1, 0] },
+        "worker": { "replicas": [0, 0, 0] },
+        "db": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 66,
+      "nodes": {
+        "source": { "processed": 67, "throughput": 18.942924949271244, "replicas": [1, 1, 0] },
+        "worker": { "processed": 1, "backlog": 34, "inFlight": 32, "throughput": 0.7011763647682354, "replicas": [2, 2, 0] },
+        "db": { "processed": 1, "throughput": 0.7445346896847322, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 152,
+      "nodes": {
+        "source": { "processed": 360, "throughput": 29.749719678388853, "replicas": [1, 1, 0] },
+        "worker": { "processed": 208, "backlog": 55, "inFlight": 96, "throughput": 29.95359045023728, "replicas": [6, 6, 0] },
+        "db": { "processed": 208, "throughput": 31.967546409501676, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 154,
+      "nodes": {
+        "source": { "processed": 650, "throughput": 24.07890661480312, "replicas": [1, 1, 0] },
+        "worker": { "processed": 496, "backlog": 57, "inFlight": 96, "throughput": 20.10952735700689, "replicas": [6, 6, 0] },
+        "db": { "processed": 496, "throughput": 21.4604266655764, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 690, "throughput": 0.0140180655063106, "replicas": [1, 1, 0] },
+        "worker": { "processed": 690, "throughput": 0.4069247933724218, "replicas": [6, 6, 0] },
+        "db": { "processed": 690, "throughput": 0.4342740461124541, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 690, "throughput": 6.364191893924476e-7, "replicas": [1, 1, 0] },
+        "worker": { "processed": 690, "throughput": 0.000018474357037722588, "replicas": [1, 1, 0] },
+        "db": { "processed": 690, "throughput": 0.000019716011191176592, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 690, "throughput": 2.8893386497916225e-11, "replicas": [1, 1, 0] },
+        "worker": { "processed": 690, "throughput": 8.387345119197189e-10, "replicas": [0, 0, 0] },
+        "db": { "processed": 690, "throughput": 8.951055232758306e-10, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 0,
+    "real": {
+      "source": { "processed": 3450, "throughput": 1.4446693248958112e-10, "replicas": [1, 1, 0] },
+      "worker": { "processed": 3450, "throughput": 4.193672559598595e-9, "replicas": [0, 0, 0] },
+      "db": { "processed": 3450, "throughput": 4.475527616379153e-9, "replicas": [1, 1, 0] }
+    },
+    "edges": { "requests": 690, "reads": 690 }
+  },
+  "events": {
+    "total": 4140,
+    "byKind": { "inject": 690, "process": 2070, "deliver": 1380 },
+    "byNode": {
+      "source": { "inject": 690, "process": 690 },
+      "worker": { "deliver": 690, "process": 690 },
+      "db": { "deliver": 690, "process": 690 }
+    },
+    "perSecond": [
+      "-",
+      "-",
+      "-",
+      "-",
+      "c0e4e22c36d4",
+      "a223919d2766",
+      "0fab86e1b492",
+      "1e1680048616",
+      "dfd51cab5e13",
+      "93932ed76c9f",
+      "5cd5dba3722d",
+      "868a43169712",
+      "6012fbab2e02",
+      "376883ae567c",
+      "18b527f946a7",
+      "dc14bdd51274",
+      "e3456ee416e0",
+      "204a3f1ff014",
+      "d308531e7ab3",
+      "904461d2fa6e",
+      "38f36c74d0e6",
+      "6707dfd5345f",
+      "1fa8fc3b8655",
+      "13ac87c9687f",
+      "3bebe65bd011",
+      "28786493d548",
+      "5799fbf7e0db",
+      "00af89229500",
+      "25d3a78d8a31",
+      "6b09f1e5e3f2",
+      "f99a31d10eac",
+      "39a135a00b95",
+      "128c30c20e87",
+      "1adb32436fb5",
+      "85f105ca75b9",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 1000, "text": "Overnight: no instances, nothing running.", "focus": ["worker"] },
+    { "atMs": 6000, "text": "First requests wait while instances start on demand.", "focus": ["worker"] },
+    { "atMs": 20000, "text": "The rush hits the maximum of 6 instances. Check diagram suggests a higher maximum.", "focus": ["worker"] },
+    { "atMs": 44000, "text": "The rush ends; idle instances shut down, back to zero.", "focus": ["worker"] }
+  ],
+  "latency": {
+    "journeys": { "done": 590, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 590, "min": 830, "mean": 5397.050847457627, "p50": 5470, "p90": 6120, "max": 7680 },
+    "waitMs": {
+      "worker": { "count": 590, "min": 0, "mean": 1966.3728813559321, "p50": 2060, "p90": 2750, "max": 3020 },
+      "db": { "count": 590, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    },
+    "processMs": {
+      "worker": { "count": 590, "min": 750, "mean": 3355.8474576271187, "p50": 3200, "p90": 4240, "max": 5760 },
+      "db": { "count": 590, "min": 40, "mean": 44.83050847457627, "p50": 40, "p90": 50, "max": 50 }
+    }
+  }
+}

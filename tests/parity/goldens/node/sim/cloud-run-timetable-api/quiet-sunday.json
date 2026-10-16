@@ -1,0 +1,120 @@
+{
+  "run": {
+    "time": 30000,
+    "totalMs": 30000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [],
+    "markers": [
+      { "atMs": 3000, "kind": "traffic", "label": "A few commuters" },
+      { "atMs": 4000, "kind": "note", "label": "One instance starts for a few requests, then sleeps again." },
+      { "atMs": 11000, "kind": "traffic", "label": "A few commuters ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "replicas": [1, 1, 0] },
+        "worker": { "replicas": [0, 0, 0] },
+        "db": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 2,
+      "nodes": {
+        "source": { "processed": 28, "throughput": 3.5343314219585906, "replicas": [1, 1, 0] },
+        "worker": { "processed": 26, "inFlight": 1, "throughput": 3.603583358889289, "replicas": [1, 1, 0] },
+        "db": { "processed": 26, "throughput": 3.8337376003446733, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 32, "throughput": 0.000560523268325111, "replicas": [1, 1, 0] },
+        "worker": { "processed": 32, "throughput": 0.000722923580776884, "replicas": [1, 1, 0] },
+        "db": { "processed": 32, "throughput": 0.0007722718922833269, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 32, "throughput": 2.544771701219977e-8, "replicas": [1, 1, 0] },
+        "worker": { "processed": 32, "throughput": 3.2820679790916366e-8, "replicas": [0, 0, 0] },
+        "db": { "processed": 32, "throughput": 3.506108966720619e-8, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 30000,
+    "inSystem": 0,
+    "real": {
+      "source": { "processed": 32, "throughput": 2.544771701219977e-8, "replicas": [1, 1, 0] },
+      "worker": { "processed": 32, "throughput": 3.2820679790916366e-8, "replicas": [0, 0, 0] },
+      "db": { "processed": 32, "throughput": 3.506108966720619e-8, "replicas": [1, 1, 0] }
+    },
+    "edges": { "requests": 32, "reads": 32 }
+  },
+  "events": {
+    "total": 192,
+    "byKind": { "inject": 32, "process": 96, "deliver": 64 },
+    "byNode": {
+      "source": { "inject": 32, "process": 32 },
+      "worker": { "deliver": 32, "process": 32 },
+      "db": { "deliver": 32, "process": 32 }
+    },
+    "perSecond": [
+      "-",
+      "-",
+      "-",
+      "7d210d6670f0",
+      "fbb931561ae3",
+      "0d46160c0736",
+      "83bb22cca0b6",
+      "a72dcc5f32bd",
+      "5c268260c305",
+      "ffa40e32ac73",
+      "20f6a2fd8fd7",
+      "86b1b0f75899",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 4000, "text": "One instance starts for a few requests, then sleeps again.", "focus": ["worker"] }
+  ],
+  "latency": {
+    "journeys": { "done": 32, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 32, "min": 320, "mean": 645, "p50": 330, "p90": 1720, "max": 2460 },
+    "waitMs": {
+      "worker": { "count": 32, "min": 0, "mean": 284.0625, "p50": 0, "p90": 1260, "max": 2010 },
+      "db": { "count": 32, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    },
+    "processMs": {
+      "worker": { "count": 32, "min": 250, "mean": 286.5625, "p50": 250, "p90": 380, "max": 380 },
+      "db": { "count": 32, "min": 40, "mean": 44.375, "p50": 40, "p90": 50, "max": 50 }
+    }
+  }
+}

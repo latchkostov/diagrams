@@ -56,6 +56,7 @@ const EXPECTED: Record<string, string[]> = {
   "measured-order-capacity": ["suggestion dead-letter:queue"],
   "contoso-dmz": [],
   "shared-worker-pool": ["warning capacity:worker"],
+  "cloud-run-timetable-api": ["warning capacity:worker"],
 };
 
 describe("checks on the public examples", () => {

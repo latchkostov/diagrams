@@ -1,0 +1,8 @@
+---
+title: a3-cloud-run
+---
+flowchart LR
+  source(["Search users"])
+  worker["Search API"]
+  source --> worker
+%% diagrams:{"v":1,"description":"Invented search API on Cloud Run at 80 concurrent requests per instance. Waiting requests start instances on demand; it returns to zero after idle retention. Teaching timings: 5 s evaluation, 10/30 s concurrency windows, 10 s idle retention (assumptions).","nodes":{"source":["source","client.browser"],"worker":["worker","gcp.cloud-run"]},"edges":["requests"],"relations":{}}

@@ -1,14 +1,67 @@
 import { createResourceValidator } from "../model/resourceValidation";
-import { brokerChoices } from "../model/kedaBindings";
+import { brokerChoices, loadBalancerChoices } from "../model/kedaBindings";
+import { CloudScalerFields } from "./CloudScalerFields";
+import { PLATFORM } from "./scalingPlanText";
 import { scalingReasonCode } from "../model/scalingReason";
 import { resourceWorkload } from "../model/autoscaling";
 import type { DiagramFile } from "../model/types";
-import { formatNumber } from "../i18n/format";
 import { profileOf } from "../stencils/profiles";
 import { checkAutoscaling } from "../model/autoscalingSchema";
-import { useId, useState, useMemo, useRef, type Ref, type ReactNode } from "react";
+import { useState, useMemo, useRef, type ReactNode } from "react";
+import { NumberField } from "./NumberField";
 import { flushSync } from "react-dom";
-import { hpaLesson, kedaLesson, resourceLesson, type ComputeResources, type KedaTrigger } from "../model/autoscaling";
+import {
+  cloudLesson,
+  hpaLesson,
+  kedaLesson,
+  resourceLesson,
+  unmeasured,
+  type CloudController,
+  type CloudPreset,
+  type ComputeResources,
+  type KedaTrigger,
+} from "../model/autoscaling";
+
+/** One preset per platform, in a fixed order; each label names its product (never translated). */
+const CLOUD_PRESETS: { preset: CloudPreset; kind: CloudController["kind"]; variant: string }[] = [
+  { preset: "ecs-cpu", kind: "ecs", variant: "cpu" },
+  { preset: "ecs-alb", kind: "ecs", variant: "alb" },
+  { preset: "ecs-step", kind: "ecs", variant: "step" },
+  { preset: "aca-http", kind: "aca", variant: "http" },
+  { preset: "aca-event", kind: "aca", variant: "event" },
+  { preset: "app-service", kind: "appService", variant: "rules" },
+  { preset: "cloud-run", kind: "cloudRun", variant: "concurrency" },
+];
+/** Each platform's own stencil offers only that platform's presets; other services see every platform. */
+const STENCIL_PLATFORM: Record<string, CloudController["kind"]> = {
+  "aws.ecs": "ecs",
+  "azure.container-apps": "aca",
+  "azure.app-service": "appService",
+  "gcp.cloud-run": "cloudRun",
+};
+const PROVIDER: Record<CloudController["kind"], string> = {
+  ecs: "AWS",
+  aca: "Azure",
+  appService: "Azure",
+  cloudRun: "Google Cloud",
+};
+/** Cloud presets grouped by provider. A Kubernetes Deployment has none; the current preset always stays listed. */
+function cloudGroups(stencil: string, current: CloudPreset | null): [string, typeof CLOUD_PRESETS][] {
+  if (stencil === "k8s.deployment") return [];
+  const own = STENCIL_PLATFORM[stencil];
+  const groups = new Map<string, typeof CLOUD_PRESETS>();
+  for (const entry of CLOUD_PRESETS)
+    if (!own || entry.kind === own || entry.preset === current)
+      groups.set(PROVIDER[entry.kind], [...(groups.get(PROVIDER[entry.kind]) ?? []), entry]);
+  return [...groups];
+}
+/** The preset a saved controller corresponds to, from its shape rather than its stored name. */
+function cloudPresetOf(c: CloudController): CloudPreset {
+  if (c.kind === "ecs")
+    return c.targetTracking.some((p) => p.source) ? "ecs-alb" : c.targetTracking.length ? "ecs-cpu" : "ecs-step";
+  if (c.kind === "aca") return c.http ? "aca-http" : "aca-event";
+  return c.kind === "appService" ? "app-service" : "cloud-run";
+}
 import type { NodeSimProps } from "../sim/types";
 import { t, useLocale } from "../i18n";
 
@@ -30,6 +83,8 @@ export function AutoscalingFields({
 }) {
   useLocale();
   const [pending, setPending] = useState<KedaTrigger["type"] | null>(null);
+  /** A cloud preset waiting for its binding: a load balancer (ECS ALB) or a broker (Container Apps events). */
+  const [cloudPending, setCloudPending] = useState<"ecs-alb" | "aca-event" | null>(null);
   const [policyDraft, setPolicyDraft] = useState<string | null>(null);
   const [policyInvalid, setPolicyInvalid] = useState(false);
   const [validateResources] = useState(() => createResourceValidator());
@@ -40,12 +95,19 @@ export function AutoscalingFields({
   const a = props.autoscaling as NodeSimProps["autoscaling"];
   const r = props.resources as ComputeResources | undefined;
   const sourceType =
-    pending ?? (a?.mode === "on" && a.controller?.kind === "keda" ? a.controller.triggers?.[0]?.type : undefined);
+    pending ??
+    (cloudPending === "aca-event" ? "azure-servicebus" : undefined) ??
+    (a?.mode === "on" && a.controller?.kind === "keda" ? a.controller.triggers?.[0]?.type : undefined);
   const sourceDiagram = useMemo(() => (sourceType ? readDiagram?.() : undefined), [sourceType, readDiagram]);
   const choices = useMemo(
     () => (sourceType ? brokerChoices(sourceDiagram, nodeId, sourceType) : []),
     [sourceType, sourceDiagram, nodeId],
   );
+  const lbDiagram = useMemo(
+    () => (cloudPending === "ecs-alb" ? readDiagram?.() : undefined),
+    [cloudPending, readDiagram],
+  );
+  const balancers = useMemo(() => loadBalancerChoices(lbDiagram, nodeId), [lbDiagram, nodeId]);
   if (!resourceWorkload(stencil, family, r?.modelRevision ?? (a?.mode === "on" ? a.modelRevision : "a2")))
     return children;
   const lessonResources = () => ({ ...resourceLesson(), modelRevision: "a2" as const });
@@ -55,7 +117,10 @@ export function AutoscalingFields({
   } catch {
     valid = false;
   }
-  const c = valid && a?.mode === "on" ? a.controller : undefined;
+  const c =
+    valid && a?.mode === "on" && (a.controller.kind === "hpa" || a.controller.kind === "keda")
+      ? a.controller
+      : undefined;
   const commit = (candidate: Partial<NodeSimProps>, key?: string): boolean => {
     try {
       const next = { ...props, ...candidate };
@@ -82,6 +147,18 @@ export function AutoscalingFields({
   const patch = (edit: (next: NonNullable<typeof c>) => void, key: string) => {
     if (a?.mode !== "on") return false;
     const next = structuredClone(a);
+    edit(next.controller as NonNullable<typeof c>);
+    if (next.controller.minReplicas > next.controller.maxReplicas) return false;
+    next.controller.initialReplicas = Math.max(
+      next.controller.minReplicas,
+      Math.min(next.controller.maxReplicas, next.controller.initialReplicas),
+    );
+    return commit({ autoscaling: next }, key);
+  };
+  const cloud = valid && a?.mode === "on" && a.modelRevision === "a3" ? a.controller : undefined;
+  const patchCloud = (edit: (next: CloudController) => void, key: string) => {
+    if (a?.mode !== "on" || a.modelRevision !== "a3") return false;
+    const next = structuredClone(a);
     edit(next.controller);
     if (next.controller.minReplicas > next.controller.maxReplicas) return false;
     next.controller.initialReplicas = Math.max(
@@ -90,16 +167,30 @@ export function AutoscalingFields({
     );
     return commit({ autoscaling: next }, key);
   };
+  /** A preset pins the workload lesson, the policy and (Cloud Run) its concurrency in one undo step. */
+  const chooseCloud = (preset: CloudPreset, binding?: { source?: string; binding?: KedaTrigger["source"] }) => {
+    const autoscaling = cloudLesson(preset, binding);
+    return commit({
+      resources: lessonResources(),
+      autoscaling,
+      ...(preset === "cloud-run" ? { concurrency: 80 } : {}),
+    });
+  };
   const metric = c?.settings.metrics[0];
   const trigger = c?.kind === "keda" ? c.triggers[0] : undefined;
   const selectSource = (key: string) => {
     const choice = choices.find((v) => v.key === key);
     if (!choice) return;
-    if (pending) {
+    if (pending || cloudPending === "aca-event") {
       let accepted = false;
       flushSync(() => {
-        accepted = commit({ resources: lessonResources(), autoscaling: kedaLesson(pending, choice.source) });
-        if (accepted) setPending(null);
+        accepted = pending
+          ? commit({ resources: lessonResources(), autoscaling: kedaLesson(pending, choice.source) })
+          : chooseCloud("aca-event", { binding: choice.source });
+        if (accepted) {
+          setPending(null);
+          setCloudPending(null);
+        }
       });
       if (accepted) targetRef.current?.focus();
     } else
@@ -114,7 +205,7 @@ export function AutoscalingFields({
         className="insp-input"
         data-testid="autoscaling-source-select"
         disabled={choices.length === 0}
-        value={pending ? "" : JSON.stringify([trigger?.source.node, trigger?.source.group])}
+        value={pending || cloudPending ? "" : JSON.stringify([trigger?.source.node, trigger?.source.group])}
         onChange={(e) => selectSource(e.currentTarget.value)}
       >
         <option value="">{t("autoscaling.source")}</option>
@@ -140,7 +231,7 @@ export function AutoscalingFields({
   const resourceFields =
     valid && r ? (
       <>
-        {r.preset === "kubernetes-unmeasured" && (
+        {unmeasured(r) && (
           <>
             <p>{t("autoscaling.unmeasured")}</p>
             <button
@@ -192,6 +283,49 @@ export function AutoscalingFields({
         />
       </>
     ) : null;
+  const policyController = cloud ?? c;
+  const policyField = policyController ? (
+    <>
+      <label className="insp-field">
+        <span className="insp-label">{cloud ? t("autoscaling.cloudPolicy") : t("autoscaling.policy")}</span>
+        <textarea
+          className="insp-input mono"
+          data-testid="autoscaling-policy"
+          dir="ltr"
+          rows={5}
+          aria-invalid={policyInvalid}
+          value={
+            policyDraft ??
+            JSON.stringify(policyController.kind === "hpa" ? policyController.settings : policyController, null, 2)
+          }
+          onBlur={() => {
+            if (!policyInvalid) setPolicyDraft(null);
+          }}
+          onChange={(e) => {
+            const raw = e.currentTarget.value;
+            setPolicyDraft(raw);
+            try {
+              const value: unknown = JSON.parse(raw);
+              if (!value || typeof value !== "object") throw new Error("Invalid policy");
+              const next = structuredClone(a);
+              if (next?.mode !== "on") return;
+              if (next.controller.kind === "hpa") next.controller.settings = value as typeof next.controller.settings;
+              else next.controller = value as typeof next.controller;
+              if (!commit({ autoscaling: next }, "behaviour")) throw new Error("Invalid policy");
+              setPolicyInvalid(false);
+            } catch {
+              setPolicyInvalid(true);
+            }
+          }}
+        />
+      </label>
+      {policyInvalid && (
+        <p role="status" data-testid="autoscaling-policy-invalid">
+          {t("autoscaling.invalidPolicy")}
+        </p>
+      )}
+    </>
+  ) : null;
   return (
     <div className="autoscaling-controls" data-testid="autoscaling-controls">
       <label className="insp-field">
@@ -202,18 +336,37 @@ export function AutoscalingFields({
           value={
             pending
               ? `keda-${pending}`
-              : c?.kind === "keda"
-                ? `keda-${trigger?.type ?? "kafka"}`
-                : c
-                  ? "hpa-service"
-                  : a?.mode === "unsupported"
-                    ? "unsupported"
-                    : "fixed"
+              : cloudPending
+                ? `cloud-${cloudPending}`
+                : cloud
+                  ? `cloud-${cloudPresetOf(cloud)}`
+                  : c?.kind === "keda"
+                    ? `keda-${trigger?.type ?? "kafka"}`
+                    : c
+                      ? "hpa-service"
+                      : a?.mode === "unsupported"
+                        ? "unsupported"
+                        : "fixed"
           }
           onChange={(e) => {
             setPolicyDraft(null);
             setPolicyInvalid(false);
             const value = e.currentTarget.value;
+            setCloudPending(null);
+            if (value.startsWith("cloud-")) {
+              const preset = value.slice(6) as CloudPreset;
+              setPending(null);
+              if (preset === "ecs-alb") {
+                const lbs = loadBalancerChoices(readDiagram?.(), nodeId);
+                if (lbs.length === 1) chooseCloud(preset, { source: lbs[0].source.node });
+                else setCloudPending(preset);
+              } else if (preset === "aca-event") {
+                const sources = brokerChoices(readDiagram?.(), nodeId, "azure-servicebus");
+                if (sources.length === 1) chooseCloud(preset, { binding: sources[0].source });
+                else setCloudPending(preset);
+              } else chooseCloud(preset);
+              return;
+            }
             if (value.startsWith("keda-")) {
               const type = value.slice(5) as KedaTrigger["type"];
               const sources = brokerChoices(readDiagram?.(), nodeId, type);
@@ -235,18 +388,30 @@ export function AutoscalingFields({
           }}
         >
           <option value="fixed">{t("admission.fixed")}</option>
-          <option value="hpa-service">{t("autoscaling.lesson")}</option>
-          {(
-            [
-              ["kafka", "Kafka"],
-              ["azure-servicebus", "Service Bus"],
-              ["aws-sqs-queue", "SQS"],
-              ["rabbitmq", "RabbitMQ"],
-            ] as const
-          ).map(([type, broker]) => (
-            <option key={type} value={`keda-${type}`}>
-              {t("autoscaling.kedaPreset", { broker })}
-            </option>
+          {/* eslint-disable-next-line local/no-literal-ui-text -- a product name */}
+          <optgroup label="Kubernetes">
+            <option value="hpa-service">{t("autoscaling.lesson")}</option>
+            {(
+              [
+                ["kafka", "Kafka"],
+                ["azure-servicebus", "Service Bus"],
+                ["aws-sqs-queue", "SQS"],
+                ["rabbitmq", "RabbitMQ"],
+              ] as const
+            ).map(([type, broker]) => (
+              <option key={type} value={`keda-${type}`}>
+                {t("autoscaling.kedaPreset", { broker })}
+              </option>
+            ))}
+          </optgroup>
+          {cloudGroups(stencil, cloud ? cloudPresetOf(cloud) : cloudPending).map(([provider, presets]) => (
+            <optgroup key={provider} label={provider}>
+              {presets.map(({ preset, kind, variant }) => (
+                <option key={preset} value={`cloud-${preset}`}>
+                  {t("autoscaling.cloudPreset", { platform: PLATFORM[kind], variant })}
+                </option>
+              ))}
+            </optgroup>
           ))}
           {a?.mode === "unsupported" && <option value="unsupported">{t("autoscaling.unsupported")}</option>}
         </select>
@@ -267,7 +432,57 @@ export function AutoscalingFields({
           {sourceField}
         </details>
       )}
-      {c && r && (metric || trigger) && !pending ? (
+      {cloudPending && (
+        <details open data-testid="autoscaling-binding">
+          <summary data-testid="autoscaling-binding-toggle">{t("ai.advanced")}</summary>
+          <p role="status">{cloudPending === "ecs-alb" ? t("autoscaling.lbRequired") : t("autoscaling.busRequired")}</p>
+          {cloudPending === "ecs-alb" ? (
+            <label className="insp-field">
+              <span className="insp-label">{t("autoscaling.loadBalancer")}</span>
+              <select
+                className="insp-input"
+                data-testid="autoscaling-source-select"
+                disabled={balancers.length === 0}
+                value=""
+                onChange={(e) => {
+                  const node = e.currentTarget.value;
+                  if (!node) return;
+                  let accepted = false;
+                  flushSync(() => {
+                    accepted = chooseCloud("ecs-alb", { source: node });
+                    if (accepted) setCloudPending(null);
+                  });
+                  if (accepted) targetRef.current?.focus();
+                }}
+              >
+                <option value="">{t("autoscaling.loadBalancer")}</option>
+                {balancers.map((b) => (
+                  <option key={b.key} value={b.key}>
+                    {b.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            sourceField
+          )}
+        </details>
+      )}
+      {cloud && r && !cloudPending ? (
+        <CloudScalerFields
+          controller={cloud}
+          props={props}
+          readDiagram={readDiagram}
+          nodeId={nodeId}
+          commit={commit}
+          patch={patchCloud}
+          targetRef={targetRef}
+          resourceFields={resourceFields}
+          policyField={policyField}
+        >
+          {children}
+        </CloudScalerFields>
+      ) : c && r && (metric || trigger) && !pending && !cloudPending ? (
         <>
           <NumberField
             name="target"
@@ -482,41 +697,7 @@ export function AutoscalingFields({
                 }, "down")
               }
             />
-            <label className="insp-field">
-              <span className="insp-label">{t("autoscaling.policy")}</span>
-              <textarea
-                className="insp-input mono"
-                data-testid="autoscaling-policy"
-                dir="ltr"
-                rows={5}
-                aria-invalid={policyInvalid}
-                value={policyDraft ?? JSON.stringify(c.kind === "keda" ? c : c.settings, null, 2)}
-                onBlur={() => {
-                  if (!policyInvalid) setPolicyDraft(null);
-                }}
-                onChange={(e) => {
-                  const raw = e.currentTarget.value;
-                  setPolicyDraft(raw);
-                  try {
-                    const value: unknown = JSON.parse(raw);
-                    if (!value || typeof value !== "object") throw new Error("Invalid policy");
-                    const next = structuredClone(a);
-                    if (next?.mode !== "on") return;
-                    if (next.controller.kind === "keda") next.controller = value as typeof next.controller;
-                    else next.controller.settings = value as typeof next.controller.settings;
-                    if (!commit({ autoscaling: next }, "behaviour")) throw new Error("Invalid policy");
-                    setPolicyInvalid(false);
-                  } catch {
-                    setPolicyInvalid(true);
-                  }
-                }}
-              />
-            </label>
-            {policyInvalid && (
-              <p role="status" data-testid="autoscaling-policy-invalid">
-                {t("autoscaling.invalidPolicy")}
-              </p>
-            )}
+            {policyField}
             <p className="insp-note">{t("autoscaling.exclusions")}</p>
             <a
               data-testid="autoscaling-source"
@@ -544,91 +725,5 @@ export function AutoscalingFields({
         </>
       )}
     </div>
-  );
-}
-function NumberField({
-  inputRef,
-  name,
-  label,
-  value,
-  change,
-  min = 0,
-  max = 600_000,
-  integer = false,
-  optional = false,
-}: {
-  inputRef?: Ref<HTMLInputElement>;
-  name: string;
-  label: string;
-  value: number | undefined;
-  change: (value: number | undefined) => boolean | undefined;
-  min?: number;
-  max?: number;
-  integer?: boolean;
-  optional?: boolean;
-}) {
-  const [draft, setDraft] = useState<string | null>(null);
-  const [invalid, setInvalid] = useState(false);
-  const [badInput, setBadInput] = useState(false);
-  const feedback = useId();
-  const commitInput = (input: HTMLInputElement) => {
-    if (input.validity.badInput || badInput) {
-      setInvalid(true);
-    } else if (optional && input.value === "") {
-      if (value !== undefined && change(undefined) === false) {
-        setInvalid(true);
-        return;
-      }
-      setDraft(null);
-      setInvalid(false);
-    } else if (input.validity.valid && input.value !== "" && Number.isFinite(input.valueAsNumber)) {
-      if (!Object.is(value, input.valueAsNumber) && change(input.valueAsNumber) === false) {
-        setInvalid(true);
-        return;
-      }
-      setDraft(null);
-      setInvalid(false);
-    } else setInvalid(true);
-  };
-  return (
-    <label className="insp-field">
-      <span className="insp-label">{label}</span>
-      <input
-        ref={inputRef}
-        className="insp-input mono"
-        data-testid={`autoscaling-${name}`}
-        type="number"
-        min={min}
-        max={max}
-        step={integer ? 1 : "any"}
-        value={draft ?? value ?? ""}
-        aria-invalid={invalid}
-        aria-describedby={invalid ? feedback : undefined}
-        onFocus={() => {
-          if (draft === null) setDraft(value === undefined ? "" : String(value));
-        }}
-        onBlur={(e) => commitInput(e.currentTarget)}
-        onKeyDown={(e) => {
-          // The window Save shortcut snapshots the document later in this same event.
-          if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") flushSync(() => commitInput(e.currentTarget));
-        }}
-        placeholder={t("admission.unknownShort")}
-        onChange={(e) => {
-          setDraft(e.currentTarget.value);
-          setBadInput(e.currentTarget.validity.badInput);
-          setInvalid(false);
-        }}
-      />
-      {invalid && (
-        <small id={feedback} role="status" data-testid={`autoscaling-limit-${name}`} className="insp-note">
-          {t("admission.invalidNumber", {
-            min: formatNumber(min),
-            max: formatNumber(max),
-            step: "",
-            value: value === undefined ? t("admission.unknownShort") : formatNumber(value),
-          })}
-        </small>
-      )}
-    </label>
   );
 }

@@ -1,0 +1,106 @@
+{
+  "evidence": {
+    "played": [{ "id": "black-friday", "title": "Black Friday", "playedMs": 60000, "capped": true }],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [],
+    "dropped": []
+  },
+  "planned": [],
+  "counted": 0,
+  "findings": [
+    {
+      "id": "capacity:worker",
+      "rule": "capacity",
+      "severity": "warning",
+      "target": "worker",
+      "elements": ["worker"],
+      "fix": {
+        "ops": [
+          {
+            "op": "update",
+            "target": "worker",
+            "props": {
+              "autoscaling": {
+                "mode": "on",
+                "modelRevision": "a1",
+                "preset": "hpa-service",
+                "presetRevision": "1",
+                "controller": {
+                  "kind": "hpa",
+                  "minReplicas": 1,
+                  "maxReplicas": 14,
+                  "initialReplicas": 1,
+                  "settings": {
+                    "syncMs": 15000,
+                    "tolerance": 0.1,
+                    "initialReadinessDelayMs": 30000,
+                    "cpuInitializationPeriodMs": 300000,
+                    "metrics": [
+                      {
+                        "source": { "kind": "resource", "resource": "cpu" },
+                        "target": { "kind": "utilization", "percentOfRequest": 70 },
+                        "windowMs": 15000,
+                        "metricDelayMs": 0
+                      }
+                    ],
+                    "up": {
+                      "stabilizationMs": 0,
+                      "selectPolicy": "Max",
+                      "policies": [
+                        { "type": "Pods", "value": 4, "periodMs": 15000 },
+                        { "type": "Percent", "value": 100, "periodMs": 15000 }
+                      ]
+                    },
+                    "down": {
+                      "stabilizationMs": 300000,
+                      "selectPolicy": "Max",
+                      "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "needsChoice": false
+      }
+    },
+    {
+      "id": "single-point:worker",
+      "rule": "single-point",
+      "severity": "suggestion",
+      "target": "worker",
+      "elements": ["worker", "source"],
+      "fix": { "ops": [{ "op": "update", "target": "worker", "props": { "replicas": 2 } }], "needsChoice": false }
+    }
+  ],
+  "agentReport": {
+    "findings": [
+      {
+        "id": "capacity:worker",
+        "rule": "capacity",
+        "severity": "warning",
+        "title": "Orders: scenario sizing",
+        "message": "At 3× traffic in “Black Friday”, HPA hits its maximum of 10 at 92% CPU of request (target 70% CPU of request). Up to 4,006 messages waited while replicas started. Raise the maximum to 14. A rerun with this change confirmed it.",
+        "targets": ["worker"],
+        "fix": { "label": "Raise maximum to 14", "needsChoice": "Its edit ops are too long for this reply: make the change with edit_diagram." }
+      },
+      {
+        "id": "single-point:worker",
+        "rule": "single-point",
+        "severity": "suggestion",
+        "title": "Every request goes through one Orders",
+        "message": "It runs 1 replica, and every request from Traffic goes through it: if it stops, Traffic gets nothing.",
+        "targets": ["worker", "source"],
+        "fix": {
+          "label": "Set replicas to 2",
+          "ops": [{ "op": "update", "target": "worker", "props": { "replicas": 2 } }]
+        }
+      }
+    ],
+    "summary": "1 warning, 1 suggestion.",
+    "simulations": "Played 1 saved simulation (at most 60 s each; some stopped there).",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
+}

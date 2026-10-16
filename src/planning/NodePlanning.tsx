@@ -98,6 +98,7 @@ export function NodePlanning({
             metrics={observed}
             diagram={d}
             readPage={live ? (page) => live.controller.replicaPage(id, page) : undefined}
+            simulation={state?.simulation?.id}
           />
         )}
       </>
@@ -172,6 +173,7 @@ export function NodePlanning({
           metrics={observed}
           diagram={d}
           readPage={live ? (page) => live.controller.replicaPage(id, page) : undefined}
+          simulation={state?.simulation?.id}
         />
       )}
     </>

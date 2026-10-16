@@ -7,6 +7,8 @@ import { brokerFeeds } from "../../sim/topology";
 import { formatRate, isBroker, type CheckContext } from "../context";
 import { SIZE_LABEL } from "../../stencils/netDevices";
 import { bindingValidator } from "../../model/kedaBindings";
+import { scalingFindings } from "../scalingFindings";
+import { PLATFORM } from "../../planning/scalingPlanText";
 
 import type { Finding, CheckFix, CheckRule } from "../types";
 
@@ -59,12 +61,14 @@ export const capacity: CheckRule = {
   detect(ctx) {
     const analysis = ctx.capacity();
     const bindings = bindingValidator(ctx.diagram.nodes, ctx.diagram.edges);
+    // Scenario sizing from saved simulations outranks configured steady-state arithmetic for the same node.
+    const planned = scalingFindings(ctx);
     const resourceFindings: Finding[] = ctx.diagram.nodes.flatMap((node) => {
       const p = analysis.resolved[node.id],
         plan = analysis.nodes[node.id].resourcePlan;
       const kind = p.autoscalingProblem
         ? "invalid"
-        : !bindings(p.autoscaling)
+        : !bindings(p.autoscaling, node.id)
           ? "binding"
           : plan?.memoryRisk
             ? "memory"
@@ -75,7 +79,14 @@ export const capacity: CheckRule = {
                 : plan?.keda && plan.initial === 0 && plan.keda.offered > 0
                   ? "keda"
                   : undefined;
+      const scenario = planned.get(node.id);
+      if (scenario && kind !== "invalid" && kind !== "binding" && kind !== "memory") return [scenario];
       if (!kind) return [];
+      const cloud =
+        p.autoscaling?.mode === "on" && p.autoscaling.modelRevision === "a3"
+          ? p.autoscaling.controller.kind
+          : undefined;
+      const platform = cloud ? PLATFORM[cloud] : "HPA";
       const name = ctx.name(node.id),
         needed = plan?.targetReplicas ?? 0,
         max = plan?.max ?? 0;
@@ -98,7 +109,7 @@ export const capacity: CheckRule = {
               ? "Configured peak memory exceeds its limit; OOM/restart is not simulated."
               : kind === "baseline"
                 ? "Baseline memory exceeds the target; more replicas cannot reduce it."
-                : `HPA needs ${needed} replicas at target; maximum ${max}. Verify startup and partition limits before raising max.`;
+                : `${platform} needs ${needed} replicas at target; maximum ${max}. Verify startup and partition limits before raising max.`;
       return [
         {
           id: `capacity:${node.id}`,
@@ -109,10 +120,19 @@ export const capacity: CheckRule = {
           title: `${name}: resource planning`,
           message,
           rationale: "Configured resource assumptions; steady state is not a burst guarantee.",
-          resourceFinding: { name, kind, needed, max, ...(keda ? { keda } : {}) },
+          resourceFinding: {
+            name,
+            kind,
+            needed,
+            max,
+            ...(keda ? { keda } : {}),
+            ...(cloud ? { platform: PLATFORM[cloud] } : {}),
+          },
         },
       ];
     });
+    for (const [id, finding] of planned)
+      if (!resourceFindings.some((f) => f.target === id)) resourceFindings.push(finding);
     const resourceTargets = new Set(resourceFindings.map((finding) => finding.target));
     const order = new Map(ctx.diagram.nodes.map((n, i) => [n.id, i]));
     const candidates = Object.values(analysis.nodes)

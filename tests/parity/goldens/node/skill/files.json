@@ -1,8 +1,8 @@
 {
   "SKILL.md": { "sha256": "7e33029749fc895d16ebb6f70243a668ad959cf8cbbfbe8a8ff00bf98efaef9e", "bytes": 6478 },
-  "reference/format.md": { "sha256": "fbc4579c12af6bce0ae80ce8e86c859ae1685bf1e4fdfdd9e29d35bf894c8459", "bytes": 17209 },
+  "reference/format.md": { "sha256": "77f5b5f8f8ad4e9e239884a99e72aa169f260575375092e2626c443ff7450856", "bytes": 17814 },
   "reference/outputs.md": { "sha256": "9c5074ad1fa9e60005000e6a245060d5605c8b9cf5da8a67d44d2918e7100916", "bytes": 7463 },
   "reference/simulation.md": { "sha256": "a149263dcccb0b8f2878508d90cab9655c40b3624df6df31841e2d4f990b1f7b", "bytes": 5519 },
   "reference/stencils.md": { "sha256": "4f766bb584365067ac3ac79a965b3f4d74d30355aa21900b11e078ac44359389", "bytes": 17473 },
-  "scripts/lib/spec.json": { "sha256": "2a8cb4aae31f6d5a56f25d216c95c92dffee5631301e46ade98dcccd7cd7589b", "bytes": 109226 }
+  "scripts/lib/spec.json": { "sha256": "ceee100ab139a264f1f949ddc7e40d08254ff2e1a15181b2c0dd0ac76e938b1d", "bytes": 148136 }
 }

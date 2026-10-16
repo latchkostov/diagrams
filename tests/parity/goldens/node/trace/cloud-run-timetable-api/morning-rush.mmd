@@ -1,0 +1,12 @@
+---
+title: "Commuter apps #1 · 5.14 s end to end"
+---
+sequenceDiagram
+  participant source as Commuter apps
+  participant worker as Timetable API
+  participant db as Timetables
+  source->>worker: Commuter apps (+0.00 s)
+  Note over source,db: ⏱ 5.06 s at Timetable API: processing
+  worker-->>source: reply (+5.07 s)
+  worker->>db: Commuter apps (+5.07 s)
+  db-->>worker: reply (+5.14 s)

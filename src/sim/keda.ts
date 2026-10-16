@@ -8,6 +8,20 @@ export interface BrokerMetric {
   outstanding: number;
   partitions?: number;
 }
+/** Container Apps' HTTP rule as a KEDA-style trigger: its metric is requests per second over the last 15 s. */
+export interface HttpTrigger {
+  type: "http";
+  source: { node: string; group?: undefined };
+  target: number;
+  activation: number;
+  useCachedMetrics: false;
+}
+export type ScalerTrigger = KedaTrigger | HttpTrigger;
+/** The pipeline's input: a KEDA ScaledObject, or Container Apps rules mapped onto it. */
+export type KedaLike<T extends ScalerTrigger = ScalerTrigger> = Omit<KedaController, "triggers" | "kind"> & {
+  kind: "keda" | "aca";
+  triggers: readonly T[];
+};
 export interface KedaState {
   createdAt: number;
   nextPoll: number;
@@ -16,7 +30,7 @@ export interface KedaState {
   failures: number[];
   cached: (BrokerMetric | undefined)[];
 }
-export function resetKeda(f: Fleet, c: KedaController, now: number): void {
+export function resetKeda(f: Fleet, c: { pollingMs: number; triggers: readonly unknown[] }, now: number): void {
   f.keda = {
     createdAt: now,
     nextPoll: now + c.pollingMs,
@@ -25,7 +39,7 @@ export function resetKeda(f: Fleet, c: KedaController, now: number): void {
     cached: [],
   };
 }
-export function triggerValue(t: KedaTrigger, metric: BrokerMetric): number {
+export function triggerValue(t: ScalerTrigger, metric: BrokerMetric): number {
   const includeOutstanding =
     t.type === "kafka" ||
     (t.type === "aws-sqs-queue" && t.scaleOnInFlight) ||
@@ -33,12 +47,12 @@ export function triggerValue(t: KedaTrigger, metric: BrokerMetric): number {
   return metric.pending + (includeOutstanding ? metric.outstanding : 0);
 }
 /** One KEDA activation branch followed by, at most, one generated-HPA evaluation. */
-export function evaluateKeda(
+export function evaluateKeda<T extends ScalerTrigger>(
   f: Fleet,
-  c: KedaController,
+  c: KedaLike<T>,
   r: ComputeResources,
   now: number,
-  read: (t: KedaTrigger) => BrokerMetric | undefined,
+  read: (t: T) => BrokerMetric | undefined,
   multiplier = 1,
   scale = 1,
 ): ScalingDecision | undefined {
@@ -54,7 +68,7 @@ export function evaluateKeda(
     selectedFallback = false;
   let raw = 0,
     uncapped = 0,
-    selected: KedaTrigger | undefined,
+    selected: T | undefined,
     value: number | undefined;
   for (let i = 0; i < c.triggers.length; i++) {
     const t = c.triggers[i];

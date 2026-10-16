@@ -3,9 +3,21 @@ import { t } from "../i18n/core";
 import { formatNumber } from "../i18n/number";
 import { assignmentLabel } from "../stencils/brokerVocabulary";
 import type { Finding } from "./types";
+import { planFixLabel, planSentence } from "../planning/scalingPlanText";
 
 /** Localize broker descriptors at render time, keeping cached and worker findings deterministic. */
 export function presentFinding(finding: Finding): Finding {
+  const plan = finding.scalingPlan;
+  if (plan) {
+    const label = planFixLabel(plan);
+    return {
+      ...finding,
+      title: t("autoscaling.planTitle", { name: plan.name }),
+      message: planSentence(plan),
+      rationale: t("autoscaling.planWhy"),
+      ...(finding.fix && label ? { fix: { ...finding.fix, label } } : {}),
+    };
+  }
   const resource = finding.resourceFinding;
   if (resource)
     return {
@@ -27,7 +39,13 @@ export function presentFinding(finding: Finding): Finding {
                 ? t("autoscaling.checkMemory")
                 : resource.kind === "baseline"
                   ? t("autoscaling.baselineRisk")
-                  : t("autoscaling.checkMax", { needed: resource.needed, max: resource.max }),
+                  : resource.platform
+                    ? t("autoscaling.checkMaxPlatform", {
+                        platform: resource.platform,
+                        needed: resource.needed,
+                        max: resource.max,
+                      })
+                    : t("autoscaling.checkMax", { needed: resource.needed, max: resource.max }),
       rationale: t("autoscaling.checkWhy"),
     };
   const note = finding.brokerAssignment;

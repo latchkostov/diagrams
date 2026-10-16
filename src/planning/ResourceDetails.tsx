@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { RealNodeMetrics } from "../sim/types";
 import type { ReplicaRow } from "../sim/autoscaling";
 import type { ResourcePlan } from "../sim/resourcePlanning";
 import { t } from "../i18n";
 import { formatNumber } from "../i18n/format";
+import { metricPhrase, reasonText } from "./scalingPlanText";
 
 export function ResourceEstimate({ plan: p }: { plan: ResourcePlan }) {
   return (
@@ -42,9 +43,15 @@ export function ResourceEstimate({ plan: p }: { plan: ResourcePlan }) {
 export function ResourceDetails({
   metrics: s,
   readPage,
+  scenario,
+  cpuAllocated,
 }: {
   metrics: RealNodeMetrics;
   readPage?: (page: number) => ReplicaRow[];
+  /** Scenario sizing for the simulation playing: shown right after the counts. */
+  scenario?: ReactNode;
+  /** A3 adapters measure CPU against the task or instance allocation: show that one figure. */
+  cpuAllocated?: boolean;
 }) {
   const [page, setPage] = useState(0);
   const r = s.resources,
@@ -64,13 +71,21 @@ export function ResourceDetails({
     <div data-testid="autoscaling-live-details">
       {r.unmeasured && <p>{t("autoscaling.unmeasured")}</p>}
       <p data-testid="autoscaling-counts">{t("autoscaling.counts", f)}</p>
+      {scenario}
       <p data-testid="autoscaling-cpu">
-        {t("autoscaling.cpu", {
-          value:
-            r.cpuRequestPct === undefined
-              ? t("admission.unknownShort")
-              : formatNumber(r.cpuRequestPct, { maximumFractionDigits: 1 }),
-        })}
+        {cpuAllocated
+          ? t("autoscaling.cpuAllocated", {
+              value:
+                r.cpuAllocatedPct === undefined
+                  ? t("admission.unknownShort")
+                  : formatNumber(r.cpuAllocatedPct, { maximumFractionDigits: 1 }),
+            })
+          : t("autoscaling.cpu", {
+              value:
+                r.cpuRequestPct === undefined
+                  ? t("admission.unknownShort")
+                  : formatNumber(r.cpuRequestPct, { maximumFractionDigits: 1 }),
+            })}
       </p>
       <p data-testid="autoscaling-memory">
         {t("autoscaling.memoryValue", {
@@ -91,11 +106,12 @@ export function ResourceDetails({
               next: formatNumber(decision.nextAt / 1000),
             })}
           </p>
-          <p>
-            {["activation", "inactive", "cooldown", "partitions", "fallback"].includes(decision.reason)
-              ? t("autoscaling.kedaReason", { reason: decision.reason })
-              : t("autoscaling.reason", { reason: decision.reason })}
-          </p>
+          <p data-testid="autoscaling-reason">{reasonText(decision)}</p>
+          {decision.periodsNeeded !== undefined && (
+            <p data-testid="autoscaling-alarm">
+              {t("autoscaling.alarmPeriods", { periods: decision.periods ?? 0, needed: decision.periodsNeeded })}
+            </p>
+          )}
           {decision.broker !== undefined && (
             <p data-testid="autoscaling-broker-metric">
               {t("autoscaling.kedaObserved", {
@@ -105,7 +121,12 @@ export function ResourceDetails({
               })}
             </p>
           )}
-          {decision.metric !== undefined && (
+          {decision.metric !== undefined && decision.adapter && decision.metricKind && (
+            <p data-testid="autoscaling-metric">
+              {metricPhrase(decision.metricKind, decision.metric, decision.target)}
+            </p>
+          )}
+          {decision.metric !== undefined && !(decision.adapter && decision.metricKind) && (
             <p data-testid="autoscaling-metric">
               {t("autoscaling.metric")}: {formatNumber(decision.metric, { maximumFractionDigits: 1 })} ·{" "}
               {decision.broker

@@ -165,6 +165,11 @@ const publicExamples: PublicExample[] = (
       summary: "Reserved concurrency rejects; a queue buffers",
     },
     {
+      slug: "cloud-run-timetable-api",
+      theme: "cloud",
+      summary: "Cloud Run sleeps overnight; sizing suggests a max",
+    },
+    {
       slug: "measured-order-capacity",
       theme: "reliability",
       summary: "Pinned defaults versus measured payment capacity",

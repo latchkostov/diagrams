@@ -1,0 +1,211 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"Timetable API sleeps overnight\" · direction LR · 3 nodes, 2 connections, 0 boundaries, 2 simulations\ndescription: \"An invented commuter timetable API on Cloud Run. It sleeps overnight, starts instances on demand for the first requests, and hits its maximum in the morning rush; Check diagram suggests a higher one. Timings are shortened for teaching.\"\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Commuter apps\" props={\"ratePerSec\":0} capabilities=[{\"kind\":\"calls\",\"edge\":\"requests\",\"peer\":\"worker\"}] explanation=undefined\n  \"worker\" \"gcp.cloud-run\" (\"Cloud Run\") \"Timetable API\" / \"80 requests per instance\" props={\"replicas\":1,\"concurrency\":80,\"latencyMs\":250,\"jitter\":0,\"resources\":{\"preset\":\"io-service\",\"presetRevision\":\"1\",\"cpuMsPerMessage\":40,\"baselineMemoryMiB\":128,\"memoryMiBPerMessage\":2,\"cpuRequestMilli\":500,\"cpuLimitMilli\":1000,\"memoryRequestMiB\":256,\"memoryLimitMiB\":512,\"startup\":{\"delayMs\":2000,\"jitterFraction\":0},\"terminationGraceMs\":30000,\"modelRevision\":\"a2\"},\"autoscaling\":{\"mode\":\"on\",\"modelRevision\":\"a3\",\"preset\":\"cloud-run\",\"presetRevision\":\"1\",\"controller\":{\"kind\":\"cloudRun\",\"minReplicas\":0,\"initialReplicas\":0,\"maxReplicas\":6,\"targetConcurrencyPct\":60,\"targetCpuPct\":60,\"evaluationMs\":2000,\"cpuWindowMs\":6000,\"concurrencyWindowsMs\":[6000,12000],\"scaleInDelayMs\":4000}}} capabilities=[{\"kind\":\"calls\",\"edge\":\"reads\",\"peer\":\"db\"}] explanation={\"resources\":{\"perReplica\":25,\"initial\":0,\"min\":0,\"max\":6,\"initialCapacity\":0,\"maxCapacity\":150,\"targetReplicas\":0,\"cpuRequestPct\":0,\"memoryPeakMiB\":288,\"memoryRisk\":false,\"baselineAboveTarget\":false,\"partitionLimited\":false,\"startupMs\":2000,\"cpuUnbounded\":false},\"id\":\"worker\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":0,\"offered\":0,\"replicas\":0,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":0,\"assignments\":[],\"slots\":80,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"db\" \"gcp.firestore\" (\"Firestore\") \"Timetables\" props={} capabilities=[] explanation=undefined\nconnections:\n  \"requests\" \"source\" -> \"worker\" sync\n  \"reads\" \"worker\" -> \"db\" sync\nsimulation \"morning-rush\" \"Overnight, then the morning rush\": {\"kind\":\"ramp\",\"fromMs\":4000,\"stages\":[{\"durationMs\":8000,\"targetRate\":150},{\"durationMs\":16000,\"targetRate\":150},{\"durationMs\":6000,\"targetRate\":0}]} from \"source\"; timeline=[{\"atMs\":1000,\"action\":{\"do\":\"note\",\"text\":\"Overnight: no instances, nothing running.\",\"focus\":[\"worker\"]}},{\"atMs\":6000,\"action\":{\"do\":\"note\",\"text\":\"First requests wait while instances start on demand.\",\"focus\":[\"worker\"]}},{\"atMs\":20000,\"action\":{\"do\":\"note\",\"text\":\"The rush hits the maximum of 6 instances. Check diagram suggests a higher maximum.\",\"focus\":[\"worker\"]}},{\"atMs\":44000,\"action\":{\"do\":\"note\",\"text\":\"The rush ends; idle instances shut down, back to zero.\",\"focus\":[\"worker\"]}}]; expectations=[]\nsimulation \"quiet-sunday\" \"A quiet Sunday\": {\"kind\":\"constant\",\"ratePerSec\":4,\"fromMs\":3000,\"durationMs\":8000} from \"source\"; timeline=[{\"atMs\":4000,\"action\":{\"do\":\"note\",\"text\":\"One instance starts for a few requests, then sleeps again.\",\"focus\":[\"worker\"]}}]; expectations=[]\nscenario sizing \"morning-rush\" \"worker\": \"In “Overnight, then the morning rush”, Cloud Run hits its maximum of 6 at 100% CPU (target 60% CPU). Up to 198 messages waited while instances started. Raise the maximum to 11. A rerun with this change confirmed it.\" fix=[{\"node\":\"worker\",\"props\":{\"autoscaling\":{\"mode\":\"on\",\"modelRevision\":\"a3\",\"preset\":\"cloud-run\",\"presetRevision\":\"1\",\"controller\":{\"kind\":\"cloudRun\",\"minReplicas\":0,\"initialReplicas\":0,\"maxReplicas\":11,\"targetConcurrencyPct\":60,\"targetCpuPct\":60,\"evaluationMs\":2000,\"cpuWindowMs\":6000,\"concurrencyWindowsMs\":[6000,12000],\"scaleInDelayMs\":4000}}}}]"
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "Timetable API sleeps overnight",
+      "description": "An invented commuter timetable API on Cloud Run. It sleeps overnight, starts instances on demand for the first requests, and hits its maximum in the morning rush; Check diagram suggests a higher one. Timings are shortened for teaching.",
+      "direction": "LR",
+      "planning": { "revision": "p3-a1" },
+      "nodes": [
+        {
+          "id": "source",
+          "stencil": "client.browser",
+          "label": "Commuter apps",
+          "x": 80,
+          "y": 180,
+          "props": { "ratePerSec": 0 },
+          "capabilities": [{ "kind": "calls", "edge": "requests", "peer": "worker" }]
+        },
+        {
+          "id": "worker",
+          "stencil": "gcp.cloud-run",
+          "label": "Timetable API",
+          "sublabel": "80 requests per instance",
+          "x": 440,
+          "y": 180,
+          "props": {
+            "replicas": 1,
+            "concurrency": 80,
+            "latencyMs": 250,
+            "jitter": 0,
+            "resources": {
+              "preset": "io-service",
+              "presetRevision": "1",
+              "cpuMsPerMessage": 40,
+              "baselineMemoryMiB": 128,
+              "memoryMiBPerMessage": 2,
+              "cpuRequestMilli": 500,
+              "cpuLimitMilli": 1000,
+              "memoryRequestMiB": 256,
+              "memoryLimitMiB": 512,
+              "startup": { "delayMs": 2000, "jitterFraction": 0 },
+              "terminationGraceMs": 30000,
+              "modelRevision": "a2"
+            },
+            "autoscaling": {
+              "mode": "on",
+              "modelRevision": "a3",
+              "preset": "cloud-run",
+              "presetRevision": "1",
+              "controller": { "kind": "cloudRun", "minReplicas": 0, "initialReplicas": 0, "maxReplicas": 6, "targetConcurrencyPct": 60, "targetCpuPct": 60, "evaluationMs": 2000, "cpuWindowMs": 6000, "concurrencyWindowsMs": [6000, 12000], "scaleInDelayMs": 4000 }
+            }
+          },
+          "capabilities": [{ "kind": "calls", "edge": "reads", "peer": "db" }],
+          "explanation": {
+            "resources": { "perReplica": 25, "initial": 0, "min": 0, "max": 6, "initialCapacity": 0, "maxCapacity": 150, "targetReplicas": 0, "cpuRequestPct": 0, "memoryPeakMiB": 288, "memoryRisk": false, "baselineAboveTarget": false, "partitionLimited": false, "startupMs": 2000, "cpuUnbounded": false },
+            "id": "worker",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 0,
+            "offered": 0,
+            "replicas": 0,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 0,
+            "assignments": [],
+            "slots": 80,
+            "seconds": 0.25,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "db",
+          "stencil": "gcp.firestore",
+          "label": "Timetables",
+          "x": 800,
+          "y": 180,
+          "props": {},
+          "capabilities": []
+        }
+      ],
+      "edges": [
+        { "id": "requests", "from": "source", "to": "worker", "kind": "sync", "props": { "travelMs": 10 } },
+        { "id": "reads", "from": "worker", "to": "db", "kind": "sync", "props": { "travelMs": 10 } }
+      ],
+      "groups": [],
+      "annotations": [],
+      "simulations": [
+        {
+          "id": "morning-rush",
+          "title": "Overnight, then the morning rush",
+          "seed": 23,
+          "durationMs": 60000,
+          "traffic": [
+            {
+              "id": "rush",
+              "node": "source",
+              "label": "Morning rush",
+              "shape": {
+                "kind": "ramp",
+                "fromMs": 4000,
+                "stages": [
+                  { "durationMs": 8000, "targetRate": 150 },
+                  { "durationMs": 16000, "targetRate": 150 },
+                  { "durationMs": 6000, "targetRate": 0 }
+                ]
+              }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 1000,
+              "action": { "do": "note", "text": "Overnight: no instances, nothing running.", "focus": ["worker"] }
+            },
+            {
+              "atMs": 6000,
+              "action": { "do": "note", "text": "First requests wait while instances start on demand.", "focus": ["worker"] }
+            },
+            {
+              "atMs": 20000,
+              "action": { "do": "note", "text": "The rush hits the maximum of 6 instances. Check diagram suggests a higher maximum.", "focus": ["worker"] }
+            },
+            {
+              "atMs": 44000,
+              "action": { "do": "note", "text": "The rush ends; idle instances shut down, back to zero.", "focus": ["worker"] }
+            }
+          ]
+        },
+        {
+          "id": "quiet-sunday",
+          "title": "A quiet Sunday",
+          "seed": 29,
+          "durationMs": 30000,
+          "traffic": [
+            {
+              "id": "few",
+              "node": "source",
+              "label": "A few commuters",
+              "shape": { "kind": "constant", "ratePerSec": 4, "fromMs": 3000, "durationMs": 8000 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 4000,
+              "action": { "do": "note", "text": "One instance starts for a few requests, then sleeps again.", "focus": ["worker"] }
+            }
+          ]
+        }
+      ],
+      "scalingPlans": [
+        {
+          "simulation": "morning-rush",
+          "title": "Overnight, then the morning rush",
+          "traffic": 1,
+          "horizonMs": 60000,
+          "suggestions": [
+            {
+              "node": "worker",
+              "adapter": "cloudRun",
+              "wanted": 11,
+              "metric": 100.00000000000003,
+              "target": 60,
+              "metricKind": "cpu",
+              "backlog": 198,
+              "startupBacklog": 198,
+              "endBacklog": 0,
+              "kind": "max",
+              "from": 6,
+              "to": 11,
+              "fix": [
+                {
+                  "node": "worker",
+                  "props": {
+                    "autoscaling": {
+                      "mode": "on",
+                      "modelRevision": "a3",
+                      "preset": "cloud-run",
+                      "presetRevision": "1",
+                      "controller": { "kind": "cloudRun", "minReplicas": 0, "initialReplicas": 0, "maxReplicas": 11, "targetConcurrencyPct": 60, "targetCpuPct": 60, "evaluationMs": 2000, "cpuWindowMs": 6000, "concurrencyWindowsMs": [6000, 12000], "scaleInDelayMs": 4000 }
+                    }
+                  }
+                }
+              ],
+              "verified": { "backlog": 198, "startupBacklog": 198, "endBacklog": 0, "maxed": false, "rejected": 0 },
+              "explanation": "In “Overnight, then the morning rush”, Cloud Run hits its maximum of 6 at 100% CPU (target 60% CPU). Up to 198 messages waited while instances started. Raise the maximum to 11. A rerun with this change confirmed it."
+            }
+          ],
+          "status": "planned",
+          "runs": 2,
+          "ticks": 12000
+        }
+      ],
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"Timetable API sleeps overnight\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 2 simulations\ndescription: \"An invented commuter timetable API on Cloud Run. It sleeps overnight, starts instances on demand for the first requests, and hits its maximum in the morning rush; Check diagram suggests a higher one. Timings are shortened for teaching.\"\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Commuter apps\" props={\"ratePerSec\":0} capabilities=[{\"kind\":\"calls\",\"edge\":\"requests\",\"peer\":\"worker\"}] explanation=undefined\n  \"worker\" \"gcp.cloud-run\" (\"Cloud Run\") \"Timetable API\" / \"80 requests per instance\" props={\"replicas\":1,\"concurrency\":80,\"latencyMs\":250,\"jitter\":0,\"resources\":{\"preset\":\"io-service\",\"presetRevision\":\"1\",\"cpuMsPerMessage\":40,\"baselineMemoryMiB\":128,\"memoryMiBPerMessage\":2,\"cpuRequestMilli\":500,\"cpuLimitMilli\":1000,\"memoryRequestMiB\":256,\"memoryLimitMiB\":512,\"startup\":{\"delayMs\":2000,\"jitterFraction\":0},\"terminationGraceMs\":30000,\"modelRevision\":\"a2\"},\"autoscaling\":{\"mode\":\"on\",\"modelRevision\":\"a3\",\"preset\":\"cloud-run\",\"presetRevision\":\"1\",\"controller\":{\"kind\":\"cloudRun\",\"minReplicas\":0,\"initialReplicas\":0,\"maxReplicas\":6,\"targetConcurrencyPct\":60,\"targetCpuPct\":60,\"evaluationMs\":2000,\"cpuWindowMs\":6000,\"concurrencyWindowsMs\":[6000,12000],\"scaleInDelayMs\":4000}}} capabilities=[{\"kind\":\"calls\",\"edge\":\"reads\",\"peer\":\"db\"}] explanation={\"resources\":{\"perReplica\":25,\"initial\":0,\"min\":0,\"max\":6,\"initialCapacity\":0,\"maxCapacity\":150,\"targetReplicas\":0,\"cpuRequestPct\":0,\"memoryPeakMiB\":288,\"memoryRisk\":false,\"baselineAboveTarget\":false,\"partitionLimited\":false,\"startupMs\":2000,\"cpuUnbounded\":false},\"id\":\"worker\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":0,\"offered\":0,\"replicas\":0,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":0,\"assignments\":[],\"slots\":80,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"requests\" \"source\" -> \"worker\" sync\nsimulation \"morning-rush\" \"Overnight, then the morning rush\": {\"kind\":\"ramp\",\"fromMs\":4000,\"stages\":[{\"durationMs\":8000,\"targetRate\":150},{\"durationMs\":16000,\"targetRate\":150},{\"durationMs\":6000,\"targetRate\":0}]} from \"source\"; timeline=[{\"atMs\":1000,\"action\":{\"do\":\"note\",\"text\":\"Overnight: no instances, nothing running.\",\"focus\":[\"worker\"]}},{\"atMs\":6000,\"action\":{\"do\":\"note\",\"text\":\"First requests wait while instances start on demand.\",\"focus\":[\"worker\"]}},{\"atMs\":20000,\"action\":{\"do\":\"note\",\"text\":\"The rush hits the maximum of 6 instances. Check diagram suggests a higher maximum.\",\"focus\":[\"worker\"]}},{\"atMs\":44000,\"action\":{\"do\":\"note\",\"text\":\"The rush ends; idle instances shut down, back to zero.\",\"focus\":[\"worker\"]}}]; expectations=[]\nsimulation \"quiet-sunday\" \"A quiet Sunday\": {\"kind\":\"constant\",\"ratePerSec\":4,\"fromMs\":3000,\"durationMs\":8000} from \"source\"; timeline=[{\"atMs\":4000,\"action\":{\"do\":\"note\",\"text\":\"One instance starts for a few requests, then sleeps again.\",\"focus\":[\"worker\"]}}]; expectations=[]\nscenario sizing \"morning-rush\" \"worker\": \"In “Overnight, then the morning rush”, Cloud Run hits its maximum of 6 at 100% CPU (target 60% CPU). Up to 198 messages waited while instances started. Raise the maximum to 11. A rerun with this change confirmed it.\" fix=[{\"node\":\"worker\",\"props\":{\"autoscaling\":{\"mode\":\"on\",\"modelRevision\":\"a3\",\"preset\":\"cloud-run\",\"presetRevision\":\"1\",\"controller\":{\"kind\":\"cloudRun\",\"minReplicas\":0,\"initialReplicas\":0,\"maxReplicas\":11,\"targetConcurrencyPct\":60,\"targetCpuPct\":60,\"evaluationMs\":2000,\"cpuWindowMs\":6000,\"concurrencyWindowsMs\":[6000,12000],\"scaleInDelayMs\":4000}}}}]"
+  }
+}

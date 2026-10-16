@@ -1,0 +1,51 @@
+{
+  "plans": [
+    {
+      "simulation": "morning-rush",
+      "title": "Overnight, then the morning rush",
+      "traffic": 1,
+      "horizonMs": 60000,
+      "suggestions": [
+        {
+          "node": "worker",
+          "adapter": "cloudRun",
+          "wanted": 11,
+          "metric": 100.00000000000003,
+          "target": 60,
+          "metricKind": "cpu",
+          "backlog": 198,
+          "startupBacklog": 198,
+          "endBacklog": 0,
+          "kind": "max",
+          "from": 6,
+          "to": 11,
+          "fix": [
+            {
+              "node": "worker",
+              "props": {
+                "autoscaling": {
+                  "mode": "on",
+                  "modelRevision": "a3",
+                  "preset": "cloud-run",
+                  "presetRevision": "1",
+                  "controller": { "kind": "cloudRun", "minReplicas": 0, "initialReplicas": 0, "maxReplicas": 11, "targetConcurrencyPct": 60, "targetCpuPct": 60, "evaluationMs": 2000, "cpuWindowMs": 6000, "concurrencyWindowsMs": [6000, 12000], "scaleInDelayMs": 4000 }
+                }
+              }
+            }
+          ],
+          "verified": { "backlog": 198, "startupBacklog": 198, "endBacklog": 0, "maxed": false, "rejected": 0 }
+        }
+      ],
+      "status": "planned",
+      "runs": 2,
+      "ticks": 12000
+    },
+    { "simulation": "quiet-sunday", "title": "A quiet Sunday", "traffic": 1, "horizonMs": 30000, "suggestions": [], "status": "planned", "runs": 1, "ticks": 3000 }
+  ],
+  "english": [
+    "In “Overnight, then the morning rush”, Cloud Run hits its maximum of 6 at 100% CPU (target 60% CPU). Up to 198 messages waited while instances started. Raise the maximum to 11. A rerun with this change confirmed it."
+  ],
+  "shown": [
+    "In “Overnight, then the morning rush”, Cloud Run hits its maximum of 6 at 100% of allocated CPU (target 60%). Up to 198 messages waited while instances started. Raise the maximum to 11. A rerun with this change confirmed it."
+  ]
+}

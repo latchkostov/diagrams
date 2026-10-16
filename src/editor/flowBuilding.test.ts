@@ -9,6 +9,8 @@ import type { AutoscalingConfig } from "../model/autoscaling";
 import { hpaLesson, resourceLesson } from "../model/autoscaling";
 import { kedaLesson } from "../model/autoscaling";
 import { kedaFixture } from "../lab/kedaFixture";
+import { cloudFixture } from "../lab/cloudFixture";
+import { cloudLesson } from "../model/autoscaling";
 import * as validation from "../model/resourceValidation";
 import * as planningDefaults from "../model/planning";
 import * as resourceSchemas from "../model/autoscalingSchema";
@@ -866,5 +868,108 @@ describe("A1 editor precommit invariants", () => {
     t.api.setNodeProps("worker-0", { autoscaling: a });
     t.commit();
     expect(t.api.getDiagram()).toEqual(d);
+  });
+});
+
+describe("A3 cloud bindings share the one editor validation path", () => {
+  const binding = (d: DiagramFile, id: string) =>
+    (d.nodes.find((n) => n.id === id)!.props!.autoscaling as Extract<AutoscalingConfig, { mode: "on" }>).controller;
+  it.each(["add", "named", "rail", "connected", "insert"])(
+    "refuses a dangling load balancer or event source at %s creation",
+    (action) => {
+      for (const preset of ["ecs-alb", "aca-event"] as const) {
+        const d = cloudFixture(preset),
+          t = setup([], d);
+        const a = cloudLesson(preset, { source: "missing", binding: { node: "missing" } });
+        const defaults = vi
+          .spyOn(planningDefaults, "newPlanningProps")
+          .mockReturnValue({ resources: resourceLesson(), autoscaling: a });
+        try {
+          if (action === "add") t.api.addNode("aws.ecs");
+          if (action === "named") t.api.addNamed("aws.ecs", { x: 0, y: 1000 });
+          if (action === "rail") t.api.addStencil("aws.ecs");
+          if (action === "connected") t.api.createConnected({ from: "worker", stencil: "aws.ecs" });
+          if (action === "insert") t.api.insertNode(d.edges.at(-1)!.id, "aws.ecs");
+          t.commit();
+          expect(t.api.getDiagram()).toEqual(d);
+        } finally {
+          defaults.mockRestore();
+        }
+      }
+    },
+  );
+  it.each(["paste", "duplicate"])("remaps a copied load balancer and event source through %s", (action) => {
+    for (const [preset, source] of [
+      ["ecs-alb", "lb"],
+      ["aca-event", "queue"],
+    ] as const) {
+      const d = cloudFixture(preset),
+        t = setup([], d);
+      if (action === "paste") t.api.pastePayload(makePayload(d, [source, "worker"])!);
+      else t.api.duplicate({ nodeIds: [source, "worker"] });
+      t.commit();
+      const result = t.api.getDiagram();
+      expect(validateDiagram(result).ok).toBe(true);
+      const copy = result.nodes.find((n) => n.id !== "worker" && n.stencil === d.nodes.at(-1)!.stencil)!;
+      const copiedSource = result.nodes.find(
+        (n) => n.id !== source && n.stencil === d.nodes.find((x) => x.id === source)!.stencil,
+      )!;
+      const c = binding(result, copy.id);
+      expect(
+        c.kind === "ecs" ? c.targetTracking[0].source : c.kind === "aca" ? c.triggers[0].source.node : undefined,
+      ).toEqual(c.kind === "ecs" ? { node: copiedSource.id } : copiedSource.id);
+      expect(binding(result, "worker")).toEqual(binding(d, "worker"));
+    }
+  });
+  it.each(["balancer", "edge", "async", "stencil", "relation", "reverse", "reconnect", "saved"])(
+    "keeps an ECS load balancer binding readable through %s edits",
+    (action) => {
+      const d = cloudFixture("ecs-alb");
+      d.nodes.push({ id: "other", stencil: "aws.ecs", label: "Other", x: 10, y: 800 });
+      if (action === "saved") {
+        const a = d.nodes.find((n) => n.id === "worker")!.props!.autoscaling;
+        d.nodes.find((n) => n.id === "worker")!.props!.autoscaling = { mode: "off" };
+        d.simulations = [
+          {
+            id: "burst",
+            title: "Burst",
+            durationMs: 1000,
+            traffic: [],
+            setup: { props: { worker: { autoscaling: a } } },
+          },
+        ];
+      }
+      const t = setup([], d);
+      if (action === "balancer") t.api.deleteElements({ nodeIds: ["lb"] });
+      if (action === "edge" || action === "saved") t.api.deleteElements({ edgeIds: ["requests"] });
+      if (action === "async") t.api.updateEdge("requests", { kind: "async" });
+      if (action === "stencil") t.api.updateNode("lb", { stencil: "nginx" });
+      if (action === "relation") t.api.updateEdge("requests", { relation: "depends" });
+      if (action === "reverse") t.api.reverseEdge("requests");
+      if (action === "reconnect") t.api.reconnectEdge("requests", "source", "other");
+      t.commit();
+      expect(validateDiagram(t.api.getDiagram()).ok).toBe(true);
+      expect(t.api.getDiagram()).toEqual(d);
+    },
+  );
+  it.each(["ecs-alb", "aca-event"] as const)("never drops a label edit on a bound %s connection", (preset) => {
+    const d = cloudFixture(preset),
+      t = setup([], d);
+    const edge = d.edges.at(-1)!.id;
+    t.api.updateEdge(edge, { label: "HTTPS" });
+    t.api.updateEdges([edge], { label: "Orders" });
+    t.commit();
+    expect(t.api.getEdge(edge)).toMatchObject({ label: "Orders" });
+    expect(validateDiagram(t.api.getDiagram()).ok).toBe(true);
+    expect(binding(t.api.getDiagram(), "worker")).toEqual(binding(d, "worker"));
+  });
+  it("keeps a Cloud Run policy and its pinned concurrency through property edits", () => {
+    const d = cloudFixture("cloud-run"),
+      t = setup([], d);
+    t.api.setNodeProps("worker", { latencyMs: 120 });
+    t.commit();
+    const worker = t.api.getDiagram().nodes.find((n) => n.id === "worker")!;
+    expect(worker.props).toMatchObject({ latencyMs: 120, concurrency: 80 });
+    expect(binding(t.api.getDiagram(), "worker").kind).toBe("cloudRun");
   });
 });

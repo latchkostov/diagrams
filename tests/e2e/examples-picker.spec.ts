@@ -99,7 +99,13 @@ const BY_THEME: Record<string, string[]> = {
     "rag-assistant",
     "shared-api-quotas",
   ],
-  cloud: ["aws-serverless-orders", "aws-fanout", "aks-app-config-key-vault", "serverless-burst-buffer"],
+  cloud: [
+    "aws-serverless-orders",
+    "aws-fanout",
+    "aks-app-config-key-vault",
+    "serverless-burst-buffer",
+    "cloud-run-timetable-api",
+  ],
   integration: ["webhook-ingestion", "notification-fanout", "azure-service-bus-integration"],
   reliability: [
     "outbox-saga-checkout",
@@ -167,13 +173,16 @@ test("start card opens the gallery; feature filter and Run it start a saved simu
   expectNoErrors(consoleErrors);
 });
 
-test("Autoscaling filter finds both autoscaling showcases and runs the HPA one's saved burst", async ({ page }) => {
+test("Autoscaling filter finds the three autoscaling showcases and runs the HPA one's saved burst", async ({
+  page,
+}) => {
   await page.goto("./");
   await page.getByTestId("start-all-examples").click();
   await page.getByTestId("examples-feature").selectOption("autoscaling");
-  await expect(publicExampleCards(page)).toHaveCount(2);
+  await expect(publicExampleCards(page)).toHaveCount(3);
   await expect(page.getByTestId("example-card-keda-render-workers")).toBeVisible();
   await expect(page.getByTestId("example-card-autoscaling-image-workers")).toBeVisible();
+  await expect(page.getByTestId("example-card-cloud-run-timetable-api")).toBeVisible();
   await page.getByTestId("example-run-autoscaling-image-workers").click();
   await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
   await expect(page.getByTestId("live-sim-picker")).toHaveValue("upload-burst");

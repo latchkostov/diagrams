@@ -1,0 +1,13 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "a3-planner-quota",
+    "direction": "LR",
+    "nodes": [
+      { "id": "source", "stencil": "generic.service", "label": "Traffic", "x": 40, "y": 40 },
+      { "id": "worker", "stencil": "generic.service", "label": "Orders", "x": 400, "y": 40 }
+    ],
+    "edges": [{ "id": "e1-source-worker", "from": "source", "to": "worker", "kind": "sync" }]
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "withIcons": {
+    "sha256": "a797f8d6d5b063738bf6ed991f2fd6e4a1550c223be894e56f9b84de4b7b4155",
+    "bytes": 5646,
+    "inlined": { "client.browser": "client-browser 0022934839e05a07" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v2",
+        "planning": { "revision": "p3-a1" },
+        "title": "a3-ecs-alb",
+        "description": "Invented ticket sale. ECS target tracking on ALB requests per target per minute. Teaching timings: 5 s metric period, 2/3 alarm periods (an assumption), 10/20 s cooldowns instead of the 300 s default.",
+        "nodes": [
+          {
+            "id": "source",
+            "stencil": "client.browser",
+            "label": "Ticket buyers",
+            "x": 80,
+            "y": 180,
+            "props": { "ratePerSec": 0 }
+          },
+          { "id": "lb", "stencil": "aws.elb", "label": "Public ALB", "x": 420, "y": 180, "props": {} },
+          {
+            "id": "worker",
+            "stencil": "aws.ecs",
+            "label": "Checkout tasks",
+            "x": 780,
+            "y": 180,
+            "props": {
+              "replicas": 1,
+              "concurrency": 4,
+              "latencyMs": 250,
+              "jitter": 0,
+              "resources": {
+                "preset": "io-service",
+                "presetRevision": "1",
+                "cpuMsPerMessage": 40,
+                "baselineMemoryMiB": 128,
+                "memoryMiBPerMessage": 2,
+                "cpuRequestMilli": 500,
+                "cpuLimitMilli": 1000,
+                "memoryRequestMiB": 256,
+                "memoryLimitMiB": 512,
+                "startup": { "delayMs": 2000, "jitterFraction": 0 },
+                "terminationGraceMs": 30000,
+                "modelRevision": "a2"
+              },
+              "autoscaling": {
+                "mode": "on",
+                "modelRevision": "a3",
+                "preset": "ecs-alb",
+                "presetRevision": "1",
+                "controller": {
+                  "kind": "ecs",
+                  "minReplicas": 1,
+                  "initialReplicas": 1,
+                  "maxReplicas": 8,
+                  "metricPeriodMs": 5000,
+                  "alarm": { "outPeriods": 2, "inPeriods": 3, "inMargin": 0.1 },
+                  "targetTracking": [
+                    {
+                      "metric": "albRequestCountPerTarget",
+                      "target": 600,
+                      "source": { "node": "lb" },
+                      "scaleOutCooldownMs": 10000,
+                      "scaleInCooldownMs": 20000,
+                      "disableScaleIn": false
+                    }
+                  ],
+                  "stepScaling": []
+                }
+              }
+            }
+          }
+        ],
+        "edges": [
+          { "id": "to-lb", "from": "source", "to": "lb", "kind": "sync", "props": { "travelMs": 10 } },
+          { "id": "requests", "from": "lb", "to": "worker", "kind": "sync", "props": { "travelMs": 10 } }
+        ],
+        "simulations": [
+          {
+            "id": "ticket-drop",
+            "title": "Ticket drop",
+            "expectations": [
+              {
+                "id": "queue",
+                "label": "Buyers never queue more than 50 requests",
+                "metric": { "node": "worker", "field": "backlog" },
+                "op": "<",
+                "value": 50,
+                "when": "always"
+              }
+            ],
+            "seed": 3,
+            "durationMs": 90000,
+            "traffic": [
+              {
+                "id": "buyers",
+                "node": "source",
+                "shape": { "kind": "spike", "baseRate": 5, "peakRate": 40, "atMs": 10000, "peakMs": 30000, "durationMs": 90000 }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

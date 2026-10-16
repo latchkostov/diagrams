@@ -1,0 +1,8 @@
+---
+title: a3-ecs-step
+---
+flowchart LR
+  source(["Photo uploads"])
+  worker["Thumbnail tasks"]
+  source --> worker
+%% diagrams:{"v":1,"description":"Invented thumbnail service. ECS step scaling on task CPU with a scale-out and a scale-in alarm. Teaching timings: 5 s metric period, 10/15 s cooldowns.","nodes":{"source":["source","client.browser"],"worker":["worker","aws.ecs"]},"edges":["requests"],"relations":{}}

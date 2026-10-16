@@ -1,0 +1,13 @@
+{
+  "evidence": {
+    "played": [{ "id": "morning-bookings", "title": "Morning bookings", "playedMs": 60000, "capped": true }],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [],
+    "dropped": []
+  },
+  "planned": [],
+  "counted": 0,
+  "findings": [],
+  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 1 saved simulation (at most 60 s each; some stopped there)." }
+}

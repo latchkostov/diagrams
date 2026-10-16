@@ -1,0 +1,118 @@
+{
+  "withIcons": {
+    "sha256": "a07ea3ced584e991bfa9b914d1d0a38161c545e8bf2b2746f3ce0e56505f8a09",
+    "bytes": 10103,
+    "inlined": { "kafka.topic": "kafka 81e432d1da74c5fe", "service.dotnet": "dotnet 625b7d68f63c47d9" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v2",
+        "planning": { "revision": "p3-a1" },
+        "title": "a3-planner-partitions",
+        "description": "The same burst read from a ten-partition log: more replicas would sit idle, so the planner suggests partitions.",
+        "nodes": [
+          {
+            "id": "orders",
+            "stencil": "kafka.topic",
+            "label": "Orders",
+            "x": 80,
+            "y": 180,
+            "props": { "partitions": 10 }
+          },
+          {
+            "id": "worker",
+            "stencil": "service.dotnet",
+            "label": "Orders",
+            "x": 440,
+            "y": 180,
+            "props": {
+              "replicas": 1,
+              "concurrency": 4,
+              "latencyMs": 250,
+              "jitter": 0,
+              "resources": {
+                "preset": "io-service",
+                "presetRevision": "1",
+                "cpuMsPerMessage": 40,
+                "baselineMemoryMiB": 128,
+                "memoryMiBPerMessage": 2,
+                "cpuRequestMilli": 500,
+                "cpuLimitMilli": 1000,
+                "memoryRequestMiB": 256,
+                "memoryLimitMiB": 512,
+                "startup": { "delayMs": 5000, "jitterFraction": 0 },
+                "terminationGraceMs": 30000
+              },
+              "autoscaling": {
+                "mode": "on",
+                "modelRevision": "a1",
+                "preset": "hpa-service",
+                "presetRevision": "1",
+                "controller": {
+                  "kind": "hpa",
+                  "minReplicas": 1,
+                  "maxReplicas": 10,
+                  "initialReplicas": 1,
+                  "settings": {
+                    "syncMs": 15000,
+                    "tolerance": 0.1,
+                    "initialReadinessDelayMs": 30000,
+                    "cpuInitializationPeriodMs": 300000,
+                    "metrics": [
+                      {
+                        "source": { "kind": "resource", "resource": "cpu" },
+                        "target": { "kind": "utilization", "percentOfRequest": 70 },
+                        "windowMs": 15000,
+                        "metricDelayMs": 0
+                      }
+                    ],
+                    "up": {
+                      "stabilizationMs": 0,
+                      "selectPolicy": "Max",
+                      "policies": [
+                        { "type": "Pods", "value": 4, "periodMs": 15000 },
+                        { "type": "Percent", "value": 100, "periodMs": 15000 }
+                      ]
+                    },
+                    "down": {
+                      "stabilizationMs": 300000,
+                      "selectPolicy": "Max",
+                      "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "consume",
+            "from": "orders",
+            "to": "worker",
+            "kind": "async",
+            "props": { "group": "fulfil", "travelMs": 10 }
+          }
+        ],
+        "simulations": [
+          {
+            "id": "black-friday",
+            "title": "Black Friday",
+            "seed": 7,
+            "multipliers": { "traffic": 3 },
+            "durationMs": 240000,
+            "traffic": [
+              {
+                "id": "shoppers",
+                "node": "orders",
+                "shape": { "kind": "constant", "ratePerSec": 60, "durationMs": 240000 }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

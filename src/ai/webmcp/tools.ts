@@ -23,6 +23,7 @@ import type { ToolDef } from "./adapter";
 import { EDIT_TOOLS } from "./toolList";
 import { choicesFrom, type StencilChoice } from "../ui/apply";
 import { turnId } from "../ui/thread";
+import { scenarioPlanner } from "../../lib/scenarioPlanner";
 
 export type ToolName = keyof typeof toolSchemas;
 
@@ -98,6 +99,38 @@ function sameDocument(host: WebMcpHost): () => void {
   };
 }
 
+/**
+ * Scenario sizing plays simulations, so in the editor it runs in the checks worker (memoized there): wait for its
+ * result for `diagram`, then describe or check on this thread without running one. Only when the reply can use it
+ * (`wanted`); a failed plan leaves sizing out; cancelling the call stops the wait.
+ */
+async function sizingReady(
+  host: WebMcpHost,
+  diagram: DiagramFile,
+  wanted: boolean,
+  signal: AbortSignal | undefined,
+): Promise<void> {
+  const plan = wanted && diagram.simulations?.length ? scenarioPlanner()?.(diagram) : undefined;
+  if (!plan) return;
+  const still = sameDocument(host);
+  await new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) return reject(new Error(CANCELLED));
+    const abort = () => reject(new Error(CANCELLED));
+    signal?.addEventListener("abort", abort, { once: true });
+    void plan
+      .catch(() => undefined)
+      .then(() => {
+        signal?.removeEventListener("abort", abort);
+        resolve();
+      });
+  });
+  if (signal?.aborted) throw new Error(CANCELLED);
+  still();
+}
+/** Whether a check reply includes the capacity rule, the one that reads scenario sizing. */
+const capacityRuns = (diagram: DiagramFile, rules: readonly CheckRuleId[] | undefined) =>
+  (!rules || rules.includes("capacity")) && !diagram.checks?.off?.includes("capacity");
+
 function compact<T extends { results?: unknown[] }>(result: T): T {
   if (JSON.stringify(result).length <= OUTPUT_BUDGET || !result.results) return result;
   const results = [...result.results];
@@ -111,8 +144,11 @@ function compact<T extends { results?: unknown[] }>(result: T): T {
 
 export function buildTools(host: WebMcpHost, names: readonly ToolName[] = EDIT_TOOLS): ToolDef[] {
   const run: Record<ToolName, ToolDef["run"]> = {
-    describe_diagram(input) {
+    async describe_diagram(input, signal) {
       checkSchema(input, toolSchemas.describe_diagram);
+      const diagram = needEditor(host).getDiagram();
+      // The description reads sizing only where it analyses the graph (up to 200 nodes and 500 connections).
+      await sizingReady(host, diagram, diagram.nodes.length <= 200 && diagram.edges.length <= 500, signal);
       return describeDiagram(needEditor(host).getDiagram(), input as DescribeOptions);
     },
 
@@ -128,12 +164,15 @@ export function buildTools(host: WebMcpHost, names: readonly ToolName[] = EDIT_T
       const { runChecks, agentReport } = await import("../../checks");
       // Read the diagram after the load: it may have become private (or another one opened) meanwhile.
       const diagram = needEditor(host).getDiagram();
-      if (!simulations || !diagram.simulations?.length)
-        return agentReport(runChecks(diagram, rules ? { rules } : {}), include);
+      const playing = simulations && !!diagram.simulations?.length;
+      // With simulations every check runs (their counts are classified against all of them).
+      await sizingReady(host, diagram, capacityRuns(diagram, playing ? undefined : rules), signal);
+      if (!playing) return agentReport(runChecks(diagram, rules ? { rules } : {}), include);
       // Run simulations, as the Checks card does: in a worker, bounded (a minute of each, about 15 s in all). It takes
       // seconds, so everything checked at the start is checked again before anything about the diagram goes back.
       const still = sameDocument(host);
       const { playSimulations, withEvidence } = await import("../../checks/evidenceClient");
+      if (signal?.aborted) throw new Error(CANCELLED);
       still();
       const run = playSimulations(diagram, () => {});
       const cancel = () => run.cancel();

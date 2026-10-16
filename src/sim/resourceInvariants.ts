@@ -6,6 +6,8 @@ import type { ResourceWork } from "./resourceWork";
 
 interface Work extends ResourceWork {
   slotted?: boolean;
+  delivery?: unknown;
+  held?: boolean;
 }
 export interface ResourceState {
   time: number;
@@ -25,6 +27,8 @@ export interface ResourceState {
     };
     working: readonly Work[];
     pending: Iterable<Work>;
+    /** The node's own queue, without staged deliveries. */
+    queue?: Iterable<Work>;
     groups?: readonly { active: number; pending: { length: number } }[];
   }>;
 }
@@ -37,6 +41,8 @@ const memoryClocks = new WeakMap<
   { published: number; occupancy: number; retained: Set<Work>; up: boolean; capacity: number }
 >();
 const previousDesired = new WeakMap<Fleet, number>();
+/** A3: cooldown clocks as they stood before this step, to judge the step's own decision. */
+const previousCloud = new WeakMap<Fleet, { inCooldownUntil?: number[]; lastScaleAt?: number }>();
 const reservationAttempts = new WeakMap<Fleet, Map<Work, number>>();
 /** Opt-in diagnostic: independent ownership/counting oracle, never run in ordinary playback. */
 export function assertResourceInvariants(state: ResourceState) {
@@ -115,11 +121,58 @@ export function assertResourceInvariants(state: ResourceState) {
     fail(ready === f.ready && starting === f.starting && draining === f.draining, "replica state totals disagree");
     fail(ready + starting === f.desired, "desired differs from ready + starting");
     const a = node.props.autoscaling;
+    // Pushed requests and broker deliveries share the queue: every queued delivery holds its group slot, which is
+    // what lets request-rate scalers count waiting requests without scanning the queue.
+    fail(
+      [...(node.queue ?? [])].every((w) => !w.delivery || w.held === true),
+      "queued delivery holds no group slot",
+    );
+    const before = previousCloud.get(f);
+    const cloudState = f.cloud;
+    previousCloud.set(f, {
+      inCooldownUntil: cloudState?.kind === "ecs" ? [...cloudState.inCooldownUntil] : undefined,
+      lastScaleAt: cloudState?.kind === "appService" ? cloudState.lastScaleAt : undefined,
+    });
+    const decided = f.decision?.at === state.time ? f.decision : undefined;
+    if (a?.mode === "on" && !f.override && decided && previousCount !== undefined && f.desired !== previousCount) {
+      const c = a.controller;
+      // A count outside the range (an override just resumed, or a lowered maximum) is clamped to the bound
+      // without a metric or rule: that move is the range's, not the policy's.
+      const bounds = replicaRange(c, state.capacityMultiplier);
+      const clamped =
+        (previousCount > bounds.max && f.desired === bounds.max) ||
+        (previousCount < bounds.min && f.desired === bounds.min);
+      if (c.kind === "ecs" && decided.adapter === "ecs" && f.desired < previousCount && !clamped) {
+        fail(decided.metric !== undefined && Number.isFinite(decided.metric), "ECS scaled in on missing data");
+        fail(
+          decided.policy === undefined || (before?.inCooldownUntil?.[decided.policy] ?? -1) <= state.time,
+          "ECS scaled in during its scale-in cooldown",
+        );
+      }
+      if (c.kind === "appService" && decided.adapter === "appService" && decided.policy !== undefined && !clamped) {
+        const rule = c.rules[decided.policy];
+        fail(
+          before?.lastScaleAt === undefined || before.lastScaleAt + rule.cooldownMs <= state.time,
+          "Monitor rule acted inside its cooldown",
+        );
+        fail(
+          f.desired > previousCount === (rule.direction === "increase"),
+          "Monitor rule scaled against its direction",
+        );
+      }
+      if (decided.reason === "request")
+        fail(
+          f.desired > previousCount && (c.kind === "cloudRun" || c.kind === "aca"),
+          "request wake on a non-request scaler",
+        );
+    }
     if (a?.mode === "on" && !f.override) {
       const range = replicaRange(a.controller, state.capacityMultiplier);
       const idle =
-        a.controller.kind === "keda" && f.desired === 0 && (range.min === 0 || a.controller.idleReplicas === 0);
-      fail((f.desired >= range.min || idle) && f.desired <= range.max, "desired outside HPA bounds");
+        f.desired === 0 && (range.min === 0 || (a.controller.kind === "keda" && a.controller.idleReplicas === 0));
+      // A resumed controller owns the count from its first evaluation; until then the override stands.
+      const resumed = !f.decision || f.decision.reason === "override";
+      fail(resumed || ((f.desired >= range.min || idle) && f.desired <= range.max), "desired outside HPA bounds");
       if (idle && f.decision?.reason === "inactive" && f.decision.at === state.time && f.keda) {
         fail(!f.keda.active, "zero while activation is true");
         // An initially sleeping fleet may remain asleep before it has ever activated.
@@ -128,7 +181,7 @@ export function assertResourceInvariants(state: ResourceState) {
             f.decision.at >=
               (f.keda.lastActive === undefined
                 ? f.keda.createdAt + (a.controller.kind === "keda" ? a.controller.initialCooldownMs : 0)
-                : f.keda.lastActive + (a.controller.kind === "keda" ? a.controller.cooldownMs : 0)),
+                : f.keda.lastActive + ("cooldownMs" in a.controller ? a.controller.cooldownMs : 0)),
             "zero before cooldown elapsed",
           );
       }

@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EditorApi } from "../../editor/types";
 import type { DiagramFile } from "../../model/types";
 import type { Evidence } from "../../checks/evidence";
 import { toModelContextTool } from "./adapter";
 import { buildTools, type WebMcpHost } from "./tools";
+import { registerScenarioPlanner } from "../../lib/scenarioPlanner";
 
 // check_diagram({ simulations: true }) waits seconds for the simulations to play. Before anything about the diagram
 // goes back to the agent, everything checked at the start is checked again: the same diagram in the same editor,
@@ -129,5 +130,56 @@ describe("check_diagram with simulations: true, while they play", () => {
     const t = await text(call);
     expect(JSON.parse(t)).toMatchObject({ ok: false, error: "The call was cancelled." });
     expect(t).not.toContain(SECRET);
+  });
+});
+
+describe("waiting for scenario sizing from the checks worker", () => {
+  beforeEach(() => void (play.runs.length = 0));
+  /** A worker planner the test answers (or never answers). */
+  function pendingPlanner() {
+    let answer!: () => void;
+    const planner = vi.fn(() => new Promise<never[]>((resolve) => (answer = () => resolve([]))));
+    registerScenarioPlanner(planner);
+    return { planner, answer: () => answer() };
+  }
+  afterEach(() => registerScenarioPlanner(undefined));
+  const tools = () => {
+    const editor = { getDiagram: diagram } as unknown as EditorApi;
+    const host: WebMcpHost = {
+      getEditor: () => editor,
+      canUseAi: () => true,
+      documentId: () => "doc-1",
+      onApplied: vi.fn(),
+      newDiagram: vi.fn(async () => editor),
+      shareLink: vi.fn(async () => ({ url: "", length: 0 })),
+    };
+    const all = buildTools(host);
+    return (name: string) => toModelContextTool(all.find((t) => t.name === name)!);
+  };
+
+  it("a call cancelled while sizing is pending returns nothing about the diagram and plays nothing", async () => {
+    for (const [name, input] of [
+      ["describe_diagram", {}],
+      ["check_diagram", {}],
+      ["check_diagram", { simulations: true }],
+    ] as const) {
+      const { planner, answer } = pendingPlanner();
+      const controller = new AbortController();
+      const reply = tools()(name).execute(input, { signal: controller.signal });
+      await vi.waitFor(() => expect(planner).toHaveBeenCalledOnce());
+      controller.abort();
+      answer();
+      const t = (await reply).content[0].text;
+      expect(JSON.parse(t), name).toMatchObject({ ok: false, error: "The call was cancelled." });
+      expect(t, name).not.toContain(SECRET);
+      expect(play.runs, name).toHaveLength(0);
+    }
+  });
+
+  it("doesn't wait when the reply can't use sizing: checks without capacity", async () => {
+    const { planner } = pendingPlanner();
+    const out = JSON.parse((await tools()("check_diagram").execute({ rules: ["dead-letter"] })).content[0].text);
+    expect(out.findings[0]).toMatchObject({ id: "dead-letter:q" });
+    expect(planner).not.toHaveBeenCalled();
   });
 });

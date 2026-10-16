@@ -14,6 +14,11 @@ import { App } from "./App";
 import { startStorageLifecycle } from "./lib/storage";
 import { startI18n } from "./i18n/start";
 import { preloadCanvasView } from "./canvas/loadCanvasView";
+import { registerScenarioPlanner } from "./lib/scenarioPlanner";
+
+// Scenario sizing plays simulations, so in the editor it runs in the checks worker; agent tools, Copy prompt and a
+// fix’s re-check read the worker’s results (src/lib/scenarioPlanner.ts). Registered before anything can check.
+registerScenarioPlanner((d) => import("./canvas/checks/runner").then((m) => m.planOffThread(d)));
 
 // This page takes part in Clear everything on this device (the exported HTML viewer, its own entry, doesn't).
 startStorageLifecycle();

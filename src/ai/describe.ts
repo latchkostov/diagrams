@@ -8,6 +8,8 @@ import { resolveCapabilities } from "../planning/capabilities";
 import { explainNode } from "../planning/explanation";
 import { analyzeCapacity } from "../sim/capacity";
 import { compileTopology } from "../sim/topology";
+import { scenarioPlans } from "../sim/scalingPlanner";
+import { planMessage } from "../checks/scalingFindings";
 
 const quote = (s: string) => JSON.stringify(s);
 /** Data only: authored strings are JSON quoted so they cannot introduce output lines. */
@@ -35,6 +37,14 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
   const connections = resolveCapabilities(d, topology);
   const analysis = d.nodes.length <= 200 && d.edges.length <= 500 ? analyzeCapacity(d) : undefined;
   const resolved = (id: string) => (analysis ? explainNode(d, id, { analysis, topology, fixes: false }) : undefined);
+  // Scenario sizing: the same bounded planner result Checks and live playback show. In the editor, only what the
+  // checks worker already worked out (the agent tool waits for it); never a simulation on the UI thread.
+  const plans = analysis
+    ? (scenarioPlans(d) ?? []).filter((p) =>
+        p.status === "unavailable" ? p.reason !== "policy" : p.suggestions.length,
+      )
+    : [];
+  const name = (id: string) => d.nodes.find((n) => n.id === id)?.label ?? id;
   if (options.format === "json") {
     let remaining = limit;
     const take = <T>(items: T[]) => {
@@ -56,6 +66,14 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
       groups: take(groups),
       annotations: take(notes),
       simulations: take(sims),
+      ...(plans.length
+        ? {
+            scalingPlans: plans.map((p) => ({
+              ...p,
+              suggestions: p.suggestions.map((s) => ({ ...s, explanation: planMessage(p, s, name) })),
+            })),
+          }
+        : {}),
       truncated: nodes.length + edges.length + groups.length + notes.length + sims.length > limit,
     });
   }
@@ -87,6 +105,14 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
     lines.push(
       `simulation ${quote(s.id)} ${quote(s.title)}: ${s.traffic.map((t) => `${JSON.stringify(t.shape)} from ${quote(t.node)}`).join("; ")}; timeline=${JSON.stringify(s.timeline ?? [])}; expectations=${JSON.stringify(s.expectations ?? [])}`,
     );
+  for (const p of plans)
+    if (p.status === "unavailable")
+      lines.push(`scenario sizing ${quote(p.simulation)}: unavailable (${p.reason ?? "budget"})`);
+    else
+      for (const s of p.suggestions)
+        lines.push(
+          `scenario sizing ${quote(p.simulation)} ${quote(s.node)}: ${JSON.stringify(planMessage(p, s, name))}${s.fix ? ` fix=${JSON.stringify(s.fix)}` : ""}`,
+        );
   const totalLines = lines.length + nodes.length - shownNodes.length;
   return totalLines > limit
     ? [...lines.slice(0, limit - 1), `… ${totalLines - limit + 1} lines omitted`].join("\n")

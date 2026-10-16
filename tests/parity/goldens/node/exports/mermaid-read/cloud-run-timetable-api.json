@@ -1,0 +1,17 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Timetable API sleeps overnight",
+    "direction": "LR",
+    "nodes": [
+      { "id": "source", "stencil": "generic.service", "label": "Commuter apps", "x": 40, "y": 40 },
+      { "id": "worker", "stencil": "generic.service", "label": "Timetable API", "sublabel": "80 requests per instance", "x": 400, "y": 40 },
+      { "id": "db", "stencil": "generic.database", "label": "Timetables", "x": 774, "y": 40 }
+    ],
+    "edges": [
+      { "id": "e1-source-worker", "from": "source", "to": "worker", "kind": "sync" },
+      { "id": "e2-worker-db", "from": "worker", "to": "db", "kind": "sync" }
+    ]
+  }
+}

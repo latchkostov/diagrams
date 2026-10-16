@@ -7,7 +7,10 @@ import { analyzeCapacity } from "../sim/capacity";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
 import { AutoscalingFields } from "./AutoscalingFields";
-import { hpaLesson, resourceLesson } from "../model/autoscaling";
+import { cloudLesson, hpaLesson, resourceLesson, type AppServiceController } from "../model/autoscaling";
+import { CloudScalerFields } from "./CloudScalerFields";
+import { cloudFixture } from "../lab/cloudFixture";
+import { reasonText } from "./scalingPlanText";
 vi.mock("../i18n", async (original) => ({ ...(await original<typeof import("../i18n")>()), useLocale: () => "en" }));
 it.each([
   { resources: {}, autoscaling: hpaLesson() },
@@ -103,3 +106,55 @@ it.each([undefined, { mode: "off" }, { mode: "unsupported", provider: "Kubernete
     expect(html).not.toContain('data-testid="autoscaling-policy"');
   },
 );
+
+it("shows Cloud Run's CPU against its allocation when the service has a CPU limit but no request", () => {
+  const d = cloudFixture("cloud-run");
+  const r = d.nodes[1].props!.resources as Record<string, unknown>;
+  delete r.cpuRequestMilli;
+  (r.startup as { delayMs: number }).delayMs = 0;
+  const e = createEngine({ seed: 1 });
+  e.load(d);
+  for (let second = 0; second < 20; second++) {
+    e.inject("source", 40);
+    e.step(1000);
+  }
+  const s = realNodeMetrics(e.frame().nodes.worker);
+  expect(s.resources!.cpuAllocatedPct).toBeGreaterThan(0);
+  const html = renderToStaticMarkup(<ResourceDetails metrics={s} cpuAllocated />);
+  expect(html).toMatch(/CPU: [\d.]+% of allocated/);
+});
+
+it("explains the HPA pipeline's reasons for the adapters that share it", () => {
+  for (const reason of ["stabilization", "policy"] as const)
+    for (const adapter of ["cloudRun", "aca"] as const) {
+      const text = reasonText({ at: 0, nextAt: 0, raw: 2, desired: 2, reason, adapter });
+      expect(text).toBe(reasonText({ at: 0, nextAt: 0, raw: 2, desired: 2, reason }));
+      expect(text).not.toBe("Unknown");
+    }
+});
+
+it("names each App Service rule's own metric and shows no scale-out target a policy doesn't have", () => {
+  const c = structuredClone(cloudLesson("app-service").controller) as AppServiceController;
+  c.rules = c.rules.map((rule) => (rule.direction === "decrease" ? { ...rule, metric: "memory" } : rule));
+  const render = (controller: AppServiceController) =>
+    renderToStaticMarkup(
+      <CloudScalerFields
+        controller={controller}
+        props={{}}
+        nodeId="worker"
+        commit={() => true}
+        patch={() => true}
+        targetRef={null}
+        resourceFields={null}
+        policyField={null}
+      >
+        <span />
+      </CloudScalerFields>,
+    );
+  const both = render(c);
+  expect(both).toContain("Scale out above CPU (% of instance)");
+  expect(both).toContain("Scale in below memory (% of instance)");
+  const inOnly = render({ ...c, rules: c.rules.filter((rule) => rule.direction === "decrease") });
+  expect(inOnly).not.toContain('data-testid="autoscaling-target"');
+  expect(inOnly).toContain("Scale in below memory (% of instance)");
+});

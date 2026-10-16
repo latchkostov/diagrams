@@ -44,6 +44,30 @@ export interface Finding {
     needed: number;
     max: number;
     keda?: { rate: number; lag: number; poll: number; startup: number };
+    /** A3: the cloud platform whose target asks for more (product name, never translated). */
+    platform?: string;
+  };
+  /** A3 scenario sizing (src/checks/scalingFindings.ts): neutral fields the UI translates. */
+  scalingPlan?: {
+    kind: "max" | "min" | "partitions" | "quota" | "target" | "unavailable";
+    /** The scaled node's name, as the title shows it. */
+    name: string;
+    simulation: string;
+    traffic: number;
+    platform?: string;
+    /** What this platform calls its replicas. */
+    unit?: "tasks" | "instances" | "replicas";
+    from?: number;
+    to?: number;
+    wanted?: number;
+    metric?: number;
+    target?: number;
+    metricKind?: string;
+    broker?: string;
+    startupBacklog?: number;
+    rejected?: number;
+    verified?: boolean;
+    reason?: string;
   };
   admissionRejection?: { text: string; rate: number };
   /** Neutral rationale descriptor; rationale stays English for workers and agents. */

@@ -1,0 +1,7 @@
+{
+  "plans": [
+    { "simulation": "upload-wave", "title": "Upload wave", "traffic": 1, "horizonMs": 100000, "suggestions": [], "status": "planned", "runs": 1, "ticks": 10000 }
+  ],
+  "english": [],
+  "shown": []
+}

@@ -333,6 +333,8 @@ export interface SimEngine {
   /** Message lineage: follow one message and its copies hop by hop. Its state is part of checkpoints. */
   readonly tracer: MessageTracer;
   replicaPage(nodeId: string, page?: number): import("./autoscaling").ReplicaRow[];
+  /** A resource-enabled node's fleet counts and latest decision, without copying other state. */
+  fleet(nodeId: string): import("./autoscaling").FleetReadout | undefined;
   checkpoint(): EngineCheckpoint;
   restore(checkpoint: EngineCheckpoint): void;
   /** Detached raw properties currently used by the engine, including runtime overrides. */
@@ -385,6 +387,9 @@ export interface EngineOptions {
   scale?: number;
   /** Message trace: keep the lineage of this many recent messages (MessageTracer.setHistory). Default 0. */
   traceHistory?: number;
+  /** Headless planning: messages (sent and copied) this engine may still create, shared across runs. Creating one
+   *  past zero throws WorkBudgetError before anything is allocated. Default: unbounded (playback). */
+  messageBudget?: { remaining: number };
 }
 
 // ---------- Simulation runner (src/sim/simulation.ts) ----------

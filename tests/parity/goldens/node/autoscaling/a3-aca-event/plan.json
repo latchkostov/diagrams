@@ -1,0 +1,7 @@
+{
+  "plans": [
+    { "simulation": "month-end", "title": "Month end", "traffic": 1, "horizonMs": 90000, "suggestions": [], "status": "planned", "runs": 1, "ticks": 9000 }
+  ],
+  "english": [],
+  "shown": []
+}

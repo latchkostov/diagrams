@@ -1,0 +1,7 @@
+{
+  "plans": [
+    { "simulation": "flash-sale", "title": "Flash sale", "traffic": 1, "horizonMs": 150000, "suggestions": [], "status": "planned", "runs": 2, "ticks": 30000 }
+  ],
+  "english": [],
+  "shown": []
+}

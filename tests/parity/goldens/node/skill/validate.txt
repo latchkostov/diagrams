@@ -27,6 +27,19 @@ VALID <repo>/tests/parity/corpus/a1-startup-backlog.diagram.json: 3 nodes, 2 edg
 VALID <repo>/tests/parity/corpus/a2-activation.diagram.json: 3 nodes, 2 edges, 1 simulation
 VALID <repo>/tests/parity/corpus/a2-cooldown.diagram.json: 3 nodes, 2 edges, 1 simulation
 VALID <repo>/tests/parity/corpus/a2-idle.diagram.json: 3 nodes, 2 edges, 1 simulation
+VALID <repo>/tests/parity/corpus/a3-aca-event.diagram.json: 2 nodes, 1 edge, 1 simulation
+VALID <repo>/tests/parity/corpus/a3-aca-http.diagram.json: 2 nodes, 1 edge, 1 simulation
+VALID <repo>/tests/parity/corpus/a3-app-service.diagram.json: 2 nodes, 1 edge, 1 simulation
+VALID <repo>/tests/parity/corpus/a3-cloud-run.diagram.json: 2 nodes, 1 edge, 1 simulation
+  warning: simulations[0] "Morning burst": at "scale": 1, live view would animate too many dots. Use "scale": 5 (one dot stands for 5 messages).
+VALID <repo>/tests/parity/corpus/a3-ecs-alb.diagram.json: 3 nodes, 2 edges, 1 simulation
+VALID <repo>/tests/parity/corpus/a3-ecs-step.diagram.json: 2 nodes, 1 edge, 1 simulation
+VALID <repo>/tests/parity/corpus/a3-planner-max.diagram.json: 2 nodes, 1 edge, 1 simulation
+VALID <repo>/tests/parity/corpus/a3-planner-partitions.diagram.json: 2 nodes, 1 edge, 1 simulation
+  warning: simulations[0] "Black Friday": at "scale": 1 with a traffic multiplier of 3, live view would animate too many dots. Use "scale": 5 (one dot stands for 5 messages).
+VALID <repo>/tests/parity/corpus/a3-planner-quota.diagram.json: 2 nodes, 1 edge, 1 simulation
+  warning: simulations[0] "Black Friday": at "scale": 1 with a traffic multiplier of 3, live view would animate too many dots. Use "scale": 5 (one dot stands for 5 messages).
+VALID <repo>/tests/parity/corpus/a3-planner-target.diagram.json: 2 nodes, 1 edge, 1 simulation
 VALID <repo>/tests/parity/corpus/annotation-course.diagram.json: 6 nodes, 4 edges
 VALID <repo>/tests/parity/corpus/back-edges.diagram.json: 6 nodes, 8 edges
   warning: edges[7] "self": it connects "retry" to itself.

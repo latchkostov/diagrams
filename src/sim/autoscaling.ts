@@ -1,7 +1,8 @@
 import { createCpuPartBudget, type CpuPartBudget } from "./resourceWork";
 import type { SampledWork } from "./sampledResources";
 import type { ComputeResources, HpaController, ScalingMetric } from "../model/autoscaling";
-import { replicaRange } from "../model/autoscaling";
+import type { CloudState } from "./cloudScalers";
+import { replicaRange, unmeasured } from "../model/autoscaling";
 import { mulberry32 } from "./rng";
 
 export interface ScalingDecision {
@@ -20,8 +21,23 @@ export interface ScalingDecision {
     | "inactive"
     | "cooldown"
     | "partitions"
-    | "fallback";
+    | "fallback"
+    // A3 cloud adapters
+    | "alarm"
+    | "step"
+    | "rule"
+    | "flapping"
+    | "request"
+    | "default";
   nextAt: number;
+  /** A3: which cloud adapter decided, its metric and the policy/rule index that acted. */
+  adapter?: "ecs" | "aca" | "appService" | "cloudRun";
+  metricKind?:
+    "cpu" | "memory" | "albRequestCountPerTarget" | "albRequestCount" | "httpQueue" | "concurrency" | "httpRate";
+  policy?: number;
+  /** Consecutive breaching periods counted so far and the periods the alarm needs. */
+  periods?: number;
+  periodsNeeded?: number;
   metric?: number;
   target?: number;
   resource?: "cpu" | "memory";
@@ -50,6 +66,9 @@ export interface ResourceReadout {
   /** All resource values already describe real work, irrespective of dot weight. */
   units: "real";
   cpuRequestPct?: number;
+  /** A3 adapters: CPU as a percent of the task or instance allocation (limit, else what the node has), with or
+   *  without a request. */
+  cpuAllocatedPct?: number;
   memoryRequestPct?: number;
   memoryLimitPct?: number;
   memoryMiB: number;
@@ -71,6 +90,10 @@ interface Sample {
   cpu: number;
   occupancy: number;
   ready: number;
+  /** A3 request metrics (real units): average in-flight work, average waiting pushed requests, pushed arrivals. */
+  inFlight?: number;
+  waiting?: number;
+  arrivals?: number;
 }
 interface BusyReplica {
   count: number;
@@ -81,6 +104,12 @@ interface BusyReplica {
 /** No idle-pod objects: ranges describe identical ready/starting replicas. Only admitted identities expand. */
 export interface Fleet {
   keda?: import("./keda").KedaState;
+  cloud?: CloudState;
+  /** Time integrals and a cumulative arrival counter for the A3 request metrics (real units). */
+  inFlight: number;
+  waiting: number;
+  arrivals: number;
+  publishedArrivals: number;
   partBudget: CpuPartBudget;
   desired: number;
   ready: number;
@@ -124,6 +153,10 @@ export function createFleet(count: number, syncMs = 15_000, partBudget = createC
   count = Number.isFinite(count) ? Math.max(0, Math.min(10_000, Math.round(count))) : 0;
   return {
     partBudget,
+    inFlight: 0,
+    waiting: 0,
+    arrivals: 0,
+    publishedArrivals: 0,
     desired: count,
     ready: count,
     starting: 0,
@@ -415,16 +448,49 @@ export function chargeCpu(f: Fleet, id: number | undefined, amount: number, read
   }
   if (ready && replica?.drainAt === undefined) f.cpu += amount;
 }
-export function integrateResources(f: Fleet, occupancy: number, now: number, step: number) {
+export function integrateResources(
+  f: Fleet,
+  occupancy: number,
+  now: number,
+  step: number,
+  requests: { inFlight: number; waiting: number } = { inFlight: 0, waiting: 0 },
+) {
   f.occupancy += occupancy * step;
+  f.inFlight += requests.inFlight * step;
+  f.waiting += requests.waiting * step;
   if (now - f.lastPublish < 1000) return;
-  f.samples.push({ at: now, cpu: f.cpu, occupancy: f.occupancy / (now - f.lastPublish), ready: f.ready });
+  const span = now - f.lastPublish;
+  f.samples.push({
+    at: now,
+    cpu: f.cpu,
+    occupancy: f.occupancy / span,
+    ready: f.ready,
+    inFlight: f.inFlight / span,
+    waiting: f.waiting / span,
+    arrivals: f.arrivals - f.publishedArrivals,
+  });
   if (f.samples.length > 600) f.samples.shift();
   f.cpu = 0;
   f.occupancy = 0;
+  f.inFlight = 0;
+  f.waiting = 0;
+  f.publishedArrivals = f.arrivals;
   f.lastPublish = now;
   f.history.push({ time: now, desired: f.desired, ready: f.ready, starting: f.starting, draining: drainingCount(f) });
   if (f.history.length > 600) f.history.shift();
+}
+interface WindowSums {
+  count: number;
+  cpu: number;
+  occupancy: number;
+  lastOccupancy: number;
+  /** Sums of per-replica in-flight and waiting averages (samples with ready replicas), and of arrivals. */
+  inFlightPerReady: number;
+  waitingPerReady: number;
+  readySamples: number;
+  arrivals: number;
+  from: number;
+  until: number;
 }
 // Window membership changes only at a published-second boundary. Keep live occupancy/CPU outside.
 const metricCache = new WeakMap<
@@ -433,13 +499,10 @@ const metricCache = new WeakMap<
     first?: Sample;
     last?: Sample;
     length: number;
-    windows: Map<
-      string,
-      { count: number; cpu: number; occupancy: number; lastOccupancy: number; from: number; until: number }
-    >;
+    windows: Map<string, WindowSums>;
   }
 >();
-function metricWindow(f: Fleet, end: number, windowMs: number) {
+export function metricWindow(f: Fleet, end: number, windowMs: number): WindowSums {
   let cache = metricCache.get(f);
   if (!cache || cache.first !== f.samples[0] || cache.last !== f.samples.at(-1) || cache.length !== f.samples.length) {
     cache = { first: f.samples[0], last: f.samples.at(-1), length: f.samples.length, windows: new Map() };
@@ -448,7 +511,18 @@ function metricWindow(f: Fleet, end: number, windowMs: number) {
   const key = String(windowMs);
   let value = cache.windows.get(key);
   if (!value || end < value.from || end >= value.until) {
-    value = { count: 0, cpu: 0, occupancy: 0, lastOccupancy: 0, from: end, until: Infinity };
+    value = {
+      count: 0,
+      cpu: 0,
+      occupancy: 0,
+      lastOccupancy: 0,
+      inFlightPerReady: 0,
+      waitingPerReady: 0,
+      readySamples: 0,
+      arrivals: 0,
+      from: end,
+      until: Infinity,
+    };
     for (const sample of f.samples) {
       if (sample.at > end) value.until = Math.min(value.until, sample.at);
       if (sample.at + windowMs > end) value.until = Math.min(value.until, sample.at + windowMs);
@@ -457,6 +531,12 @@ function metricWindow(f: Fleet, end: number, windowMs: number) {
         value.cpu += sample.cpu;
         value.occupancy += sample.occupancy;
         value.lastOccupancy = sample.occupancy;
+        value.arrivals += sample.arrivals ?? 0;
+        if (sample.ready > 0) {
+          value.readySamples++;
+          value.inFlightPerReady += (sample.inFlight ?? 0) / sample.ready;
+          value.waitingPerReady += (sample.waiting ?? 0) / sample.ready;
+        }
       }
     }
     if (cache.windows.size >= 32) cache.windows.clear();
@@ -464,7 +544,13 @@ function metricWindow(f: Fleet, end: number, windowMs: number) {
   }
   return value;
 }
-function metricValue(f: Fleet, r: ComputeResources, m: ScalingMetric, now: number, scale: number): number | undefined {
+export function metricValue(
+  f: Fleet,
+  r: ComputeResources,
+  m: ScalingMetric,
+  now: number,
+  scale: number,
+): number | undefined {
   const end = now - m.metricDelayMs;
   if (end < m.windowMs || !f.ready) return undefined;
   const window = metricWindow(f, end, m.windowMs);
@@ -488,8 +574,10 @@ export function evaluateHpa(
   multiplier = 1,
   scale = 1,
   external: { raw: number; missing: boolean; metric?: number; target?: number } | undefined = undefined,
+  /** Cloud Run's pipeline may idle at zero; HPA and KEDA's generated HPA keep at least one. */
+  rangeOverride?: { min: number; max: number },
 ): ScalingDecision {
-  const range = replicaRange(c, multiplier);
+  const range = rangeOverride ?? replicaRange(c, multiplier);
   let raw = external?.raw ?? 0,
     missing = external?.missing ?? false,
     metric: number | undefined = external?.metric,
@@ -602,6 +690,7 @@ export function resourceReadout(
       scale,
     );
   const cpu = metric("cpu");
+  const allocation = r.cpuLimitMilli ?? r.availableCpuMilli;
   const memory =
     r.baselineMemoryMiB +
     (scale > 1
@@ -612,14 +701,21 @@ export function resourceReadout(
   return {
     units: "real",
     cpuRequestPct: cpu !== undefined && r.cpuRequestMilli ? (cpu / r.cpuRequestMilli) * 100 : undefined,
+    ...(f.cloud && cpu !== undefined && allocation ? { cpuAllocatedPct: (cpu / allocation) * 100 } : {}),
     memoryMiB: memory,
     memoryRequestPct: r.memoryRequestMiB ? (memory / r.memoryRequestMiB) * 100 : undefined,
     memoryLimitPct: r.memoryLimitMiB ? (memory / r.memoryLimitMiB) * 100 : undefined,
     executedCpuMs: f.totalCpu,
     unsafe,
     estimated: scale > 1,
-    ...(r.preset === "kubernetes-unmeasured"
-      ? { unmeasured: true as const, cpuRequestPct: undefined, memoryRequestPct: undefined, memoryLimitPct: undefined }
+    ...(unmeasured(r)
+      ? {
+          unmeasured: true as const,
+          cpuRequestPct: undefined,
+          cpuAllocatedPct: undefined,
+          memoryRequestPct: undefined,
+          memoryLimitPct: undefined,
+        }
       : {}),
   };
 }
@@ -679,7 +775,7 @@ export function replicaPage(f: Fleet, r: ComputeResources, now: number, scale: n
       memoryRequestPct: r.memoryRequestMiB ? (memory / r.memoryRequestMiB) * 100 : undefined,
       memoryLimitPct: r.memoryLimitMiB ? (memory / r.memoryLimitMiB) * 100 : undefined,
       unsafe: r.memoryLimitMiB !== undefined && memory > r.memoryLimitMiB,
-      ...(r.preset === "kubernetes-unmeasured"
+      ...(unmeasured(r)
         ? {
             unmeasured: true as const,
             cpuRequestPct: undefined,

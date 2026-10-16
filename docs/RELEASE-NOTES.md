@@ -1,5 +1,29 @@
 # Release notes
 
+## Autoscaling A3: cloud adapters and scenario sizing (2026-10-16)
+
+- **Four cloud scalers on the shared A1/A2 lifecycle.** A compute node's Simulation inspector offers one preset
+  per platform: ECS target tracking (CPU or ALB requests per target), ECS step scaling, Container Apps HTTP or
+  event rule, App Service autoscale rules and Cloud Run. Each keeps the A1/A2 pattern: the preset plus three
+  main fields (the platform's target, minimum, maximum); cooldowns, alarm periods, windows, bindings, workload
+  resources and the complete policy JSON are under Advanced. Documented defaults are cited; cadence, alarm
+  windows and idle retention that vendors don't publish are labelled assumptions. See
+  [SIMULATION.md](SIMULATION.md#a3-cloud-scaler-adapters-and-scenario-sizing).
+- **Scenario sizing.** Check diagram plays each saved simulation headless with the same engine and seed, and
+  suggests a higher maximum, more partitions, a lower target, or (when the simulation's own backlog goal fails)
+  a warm minimum, or explains that an admission quota binds. A same-seed rerun verifies every suggestion before
+  it's offered as one undoable fix. The research example reproduces: at 3× traffic an HPA at max 10 and 92% CPU
+  with a 70% target needs max 14. The same words appear in the Checks card, in agents' `describe_diagram` and
+  `check_diagram`, and in Live details while that simulation plays. It runs in the checks worker, never on the
+  editing thread, and only while the capacity check is on; over its work or message budget it says unavailable.
+- **Showcase.** “Timetable API sleeps overnight” (Cloud) is an invented Cloud Run API that has no instances
+  overnight, wakes on demand, hits its maximum in the morning rush with the planner's suggestion, and returns
+  to zero. It's tagged Autoscaling in the gallery.
+- **Validation everywhere.** Load balancer and event-source bindings go through the shared resource validator at
+  every creation and edit path, native reads, imports and agent operations; edits that would break them are
+  refused atomically, and connection label edits are kept.
+- **Unchanged:** legacy, A1 and A2 diagrams play exactly as before; their parity outputs are unchanged.
+
 ## Nightly keyboard and test readiness (#129, 2026-10-16)
 
 - Escape reliably leaves Live after closing the simulation panel, including when a host render

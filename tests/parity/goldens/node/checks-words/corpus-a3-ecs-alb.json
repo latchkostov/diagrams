@@ -1,0 +1,81 @@
+{
+  "summary": "0 warnings, 2 suggestions.",
+  "findings": {
+    "capacity:worker": {
+      "title": "Checkout tasks: scenario sizing",
+      "message": "In “Ticket drop”, up to 261 messages waited while ECS started tasks. Set the minimum to 4 (from 1). A rerun with this change confirmed it.",
+      "rationale": "Played headless with the same engine and seed as playback; a suggestion is offered as a fix only when a rerun with it bears it out.",
+      "fix": { "label": "Set minimum to 4" },
+      "shownRationale": "Played with the same engine and seed as playback. A suggestion is a fix only when a rerun with it bears it out."
+    },
+    "single-point:worker": {
+      "title": "Every request goes through one Checkout tasks",
+      "message": "It runs 1 replica, and every request from Ticket buyers goes through it: if it stops, Ticket buyers gets nothing.",
+      "rationale": "Redundancy is what turns one instance's availability into a service's: with two replicas, one can stop (a deploy, a crash, a node drained) while the other answers.",
+      "fix": { "label": "Set replicas to 2" }
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "capacity:worker",
+        "rule": "capacity",
+        "severity": "suggestion",
+        "title": "Checkout tasks: scenario sizing",
+        "message": "In “Ticket drop”, up to 261 messages waited while ECS started tasks. Set the minimum to 4 (from 1). A rerun with this change confirmed it.",
+        "targets": ["worker"],
+        "fix": {
+          "label": "Set minimum to 4",
+          "ops": [
+            {
+              "op": "update",
+              "target": "worker",
+              "props": {
+                "autoscaling": {
+                  "mode": "on",
+                  "modelRevision": "a3",
+                  "preset": "ecs-alb",
+                  "presetRevision": "1",
+                  "controller": {
+                    "kind": "ecs",
+                    "minReplicas": 4,
+                    "initialReplicas": 4,
+                    "maxReplicas": 8,
+                    "metricPeriodMs": 5000,
+                    "alarm": { "outPeriods": 2, "inPeriods": 3, "inMargin": 0.1 },
+                    "targetTracking": [
+                      {
+                        "metric": "albRequestCountPerTarget",
+                        "target": 600,
+                        "source": { "node": "lb" },
+                        "scaleOutCooldownMs": 10000,
+                        "scaleInCooldownMs": 20000,
+                        "disableScaleIn": false
+                      }
+                    ],
+                    "stepScaling": []
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "single-point:worker",
+        "rule": "single-point",
+        "severity": "suggestion",
+        "title": "Every request goes through one Checkout tasks",
+        "message": "It runs 1 replica, and every request from Ticket buyers goes through it: if it stops, Ticket buyers gets nothing.",
+        "targets": ["worker", "source"],
+        "fix": {
+          "label": "Set replicas to 2",
+          "ops": [{ "op": "update", "target": "worker", "props": { "replicas": 2 } }]
+        }
+      }
+    ],
+    "summary": "0 warnings, 2 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  },
+  "agentReportWarnings": { "findings": [], "summary": "0 warnings, 2 suggestions." }
+}

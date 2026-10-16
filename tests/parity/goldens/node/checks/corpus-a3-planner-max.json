@@ -1,0 +1,105 @@
+{
+  "ran": [
+    "dead-letter",
+    "no-reader",
+    "sync-cycle",
+    "sync-chain",
+    "shared-database",
+    "entry-gateway",
+    "capacity",
+    "single-point",
+    "secret-identity",
+    "schema-registry"
+  ],
+  "off": [],
+  "findings": [
+    {
+      "id": "capacity:worker",
+      "rule": "capacity",
+      "severity": "warning",
+      "target": "worker",
+      "elements": ["worker"],
+      "fix": {
+        "ops": [
+          {
+            "op": "update",
+            "target": "worker",
+            "props": {
+              "autoscaling": {
+                "mode": "on",
+                "modelRevision": "a1",
+                "preset": "hpa-service",
+                "presetRevision": "1",
+                "controller": {
+                  "kind": "hpa",
+                  "minReplicas": 1,
+                  "maxReplicas": 14,
+                  "initialReplicas": 1,
+                  "settings": {
+                    "syncMs": 15000,
+                    "tolerance": 0.1,
+                    "initialReadinessDelayMs": 30000,
+                    "cpuInitializationPeriodMs": 300000,
+                    "metrics": [
+                      {
+                        "source": { "kind": "resource", "resource": "cpu" },
+                        "target": { "kind": "utilization", "percentOfRequest": 70 },
+                        "windowMs": 15000,
+                        "metricDelayMs": 0
+                      }
+                    ],
+                    "up": {
+                      "stabilizationMs": 0,
+                      "selectPolicy": "Max",
+                      "policies": [
+                        { "type": "Pods", "value": 4, "periodMs": 15000 },
+                        { "type": "Percent", "value": 100, "periodMs": 15000 }
+                      ]
+                    },
+                    "down": {
+                      "stabilizationMs": 300000,
+                      "selectPolicy": "Max",
+                      "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "needsChoice": false
+      }
+    },
+    {
+      "id": "single-point:worker",
+      "rule": "single-point",
+      "severity": "suggestion",
+      "target": "worker",
+      "elements": ["worker", "source"],
+      "fix": { "ops": [{ "op": "update", "target": "worker", "props": { "replicas": 2 } }], "needsChoice": false }
+    }
+  ],
+  "ignored": [],
+  "fixes": {
+    "capacity:worker (default)": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "summary": "1 changed",
+      "results": [{ "i": 0, "op": "update", "id": "worker" }],
+      "nodes": 2,
+      "edges": 1,
+      "findingsAfter": ["single-point:worker"]
+    },
+    "single-point:worker (default)": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "summary": "1 changed",
+      "results": [{ "i": 0, "op": "update", "id": "worker" }],
+      "nodes": 2,
+      "edges": 1,
+      "findingsAfter": ["capacity:worker"]
+    }
+  }
+}

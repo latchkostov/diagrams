@@ -1,0 +1,272 @@
+{
+  "autoScale": { "freePlay": 1, "ticket-drop": 1 },
+  "brokerAssignments": { "brokers": {}, "consumers": {} },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": null,
+      "suggestion": "Add entry traffic to analyze capacity.",
+      "converged": true,
+      "iterations": 1,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": ["Infinity", 0, 0, 1, 1, 0], "lb": ["Infinity", 0, 0, 1, 1, 0], "worker": [16, 0, 0, 1, 1, 0] },
+      "connections": {},
+      "offeredTypes": {}
+    },
+    "explanations": {
+      "worker": {
+        "resources": { "perReplica": 16, "initial": 1, "min": 1, "max": 8, "initialCapacity": 16, "maxCapacity": 128, "targetReplicas": 1, "cpuRequestPct": 0, "memoryPeakMiB": 136, "memoryRisk": false, "baselineAboveTarget": false, "partitionLimited": false, "startupMs": 2000, "cpuUnbounded": false },
+        "id": "worker",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 16,
+        "offered": 0,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "source": [{ "kind": "calls", "edge": "to-lb", "peer": "lb" }],
+      "lb": [{ "kind": "calls", "edge": "requests", "peer": "worker" }]
+    },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "source": {
+        "profile": { "family": "client", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "ratePerSec": 0,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Ticket buyers",
+        "healthChecks": false
+      },
+      "lb": {
+        "profile": { "family": "proxy", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Public ALB",
+        "healthChecks": false
+      },
+      "worker": {
+        "resources": {
+          "preset": "io-service",
+          "presetRevision": "1",
+          "cpuMsPerMessage": 40,
+          "baselineMemoryMiB": 128,
+          "memoryMiBPerMessage": 2,
+          "cpuRequestMilli": 500,
+          "cpuLimitMilli": 1000,
+          "memoryRequestMiB": 256,
+          "memoryLimitMiB": 512,
+          "startup": { "delayMs": 2000, "jitterFraction": 0 },
+          "terminationGraceMs": 30000,
+          "modelRevision": "a2"
+        },
+        "autoscaling": {
+          "mode": "on",
+          "modelRevision": "a3",
+          "preset": "ecs-alb",
+          "presetRevision": "1",
+          "controller": {
+            "kind": "ecs",
+            "minReplicas": 1,
+            "initialReplicas": 1,
+            "maxReplicas": 8,
+            "metricPeriodMs": 5000,
+            "alarm": { "outPeriods": 2, "inPeriods": 3, "inMargin": 0.1 },
+            "targetTracking": [
+              {
+                "metric": "albRequestCountPerTarget",
+                "target": 600,
+                "source": { "node": "lb" },
+                "scaleOutCooldownMs": 10000,
+                "scaleInCooldownMs": 20000,
+                "disableScaleIn": false
+              }
+            ],
+            "stepScaling": []
+          }
+        },
+        "profile": { "family": "service", "revision": "p3-a1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Checkout tasks",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "ticket-drop": {
+      "configured": "(same as edit)",
+      "simulation": "ticket-drop",
+      "analysis": {
+        "bottleneck": "worker",
+        "suggestion": "Checkout tasks: raise replicas from 1 to 3.",
+        "converged": true,
+        "iterations": 3,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": ["Infinity", 40, 0, 1, 1, 0], "lb": ["Infinity", 40, 0, 1, 1, 0], "worker": [16, 40, 2.5, 1, 1, 0] },
+        "connections": { "to-lb": 40, "requests": 40 },
+        "offeredTypes": { "source": ["Ticket buyers"], "lb": ["Ticket buyers"], "worker": ["Ticket buyers"] }
+      },
+      "explanations": {
+        "worker": {
+          "resources": { "perReplica": 16, "initial": 1, "min": 1, "max": 8, "initialCapacity": 16, "maxCapacity": 128, "targetReplicas": 4, "cpuRequestPct": 320, "memoryPeakMiB": 136, "memoryRisk": false, "baselineAboveTarget": false, "partitionLimited": false, "startupMs": 2000, "cpuUnbounded": false },
+          "id": "worker",
+          "role": "processor",
+          "status": "up",
+          "reason": "capacity",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 16,
+          "offered": 40,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 4,
+          "seconds": 0.25,
+          "utilization": 2.5,
+          "growth": 24,
+          "contributors": [
+            { "edge": "requests", "node": "lb", "label": "Ticket buyers", "rate": 40, "via": "Public ALB" }
+          ],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": { "worker": { "replicas": 2, "enough": false } },
+      "resolved": "(same as edit)"
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "", { "modeled": false }],
+            "lb": ["idle", "", { "modeled": false }],
+            "worker": ["idle", ""]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "", { "modeled": false }],
+            "lb": ["idle", "", { "modeled": false }],
+            "worker": ["idle", ""]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "", { "modeled": false }],
+            "lb": ["idle", "", { "modeled": false }],
+            "worker": ["idle", ""]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "", { "modeled": false }],
+            "lb": ["idle", "", { "modeled": false }],
+            "worker": ["idle", ""]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    },
+    "ticket-drop": {
+      "tone": "over",
+      "top": "worker",
+      "headline": "Checkout tasks is over capacity",
+      "detail": "250% · 40/s of 16/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "source": ["idle", "40/s · no limit", { "modeled": false }],
+        "lb": ["idle", "40/s · no limit", { "modeled": false }],
+        "worker": ["over", "250% · 40/s of 16/s"]
+      }
+    }
+  }
+}

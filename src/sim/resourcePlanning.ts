@@ -1,5 +1,56 @@
-import { resourceCapacity, replicaRange } from "../model/autoscaling";
+import {
+  resourceCapacity,
+  replicaRange,
+  unmeasured,
+  type ComputeResources,
+  type ExecutableController,
+} from "../model/autoscaling";
 import type { ResolvedProps } from "./defaults";
+
+/** Steady-state replicas each A3 policy's own target asks for at `offered` real messages/s. */
+function cloudNeeded(
+  c: ExecutableController,
+  r: ComputeResources,
+  offered: number,
+  concurrency: number,
+  residenceSeconds: number,
+): number[] {
+  const cpuAt = (size: number | undefined, pct: number) =>
+    size && r.cpuMsPerMessage && pct > 0 ? [Math.ceil((offered * r.cpuMsPerMessage) / ((size * pct) / 100))] : [];
+  const memoryAt = (size: number | undefined, pct: number) => {
+    const target = ((size ?? 0) * pct) / 100;
+    return target > r.baselineMemoryMiB
+      ? [Math.ceil((offered * residenceSeconds * r.memoryMiBPerMessage) / (target - r.baselineMemoryMiB))]
+      : [];
+  };
+  if (c.kind === "cloudRun")
+    return [
+      ...(concurrency > 0
+        ? [Math.ceil((offered * residenceSeconds) / ((concurrency * c.targetConcurrencyPct) / 100))]
+        : []),
+      ...cpuAt(r.cpuLimitMilli, c.targetCpuPct),
+    ];
+  if (c.kind === "aca") return c.http ? [Math.ceil(offered / c.http.concurrentRequests)] : [];
+  if (c.kind === "ecs")
+    return c.targetTracking.flatMap((p) =>
+      p.metric === "cpu"
+        ? cpuAt(r.cpuLimitMilli, p.target)
+        : p.metric === "memory"
+          ? memoryAt(r.memoryLimitMiB, p.target)
+          : [Math.ceil((offered * 60) / p.target)],
+    );
+  if (c.kind === "appService")
+    return c.rules.flatMap((rule) =>
+      rule.direction !== "increase"
+        ? []
+        : rule.metric === "cpu"
+          ? cpuAt(r.cpuLimitMilli ?? r.availableCpuMilli, rule.threshold)
+          : rule.metric === "memory"
+            ? memoryAt(r.memoryLimitMiB, rule.threshold)
+            : [],
+    );
+  return [];
+}
 
 /** Configured arithmetic, not a promise about a burst or the current ready fleet. */
 export function resourcePlan(p: ResolvedProps, offered: number, assigned: number, multiplier = 1) {
@@ -9,7 +60,7 @@ export function resourcePlan(p: ResolvedProps, offered: number, assigned: number
   const range = c ? replicaRange(c, multiplier) : undefined;
   const fixed = Math.max(1, Math.min(10_000, Math.round(p.replicas * multiplier)));
   const perReplica = resourceCapacity(r, p.concurrency, p.latencyMs);
-  const metrics = c?.settings.metrics ?? [];
+  const metrics = c && "settings" in c ? c.settings.metrics : [];
   const targetValue = (m: (typeof metrics)[number]) =>
     m.target.kind === "averageValue"
       ? m.target.value
@@ -18,23 +69,27 @@ export function resourcePlan(p: ResolvedProps, offered: number, assigned: number
         100;
   const cpuMilli = r.cpuLimitMilli ?? r.availableCpuMilli ?? Infinity;
   const residenceSeconds = Math.max(p.latencyMs / 1000, (r.cpuMsPerMessage * p.concurrency) / cpuMilli);
-  const needed = metrics.flatMap((m) => {
-    const target = targetValue(m);
-    if (m.source.resource === "cpu")
-      return target && r.cpuMsPerMessage ? [Math.ceil((offered * r.cpuMsPerMessage) / target)] : [];
-    return target > r.baselineMemoryMiB
-      ? [Math.ceil((offered * residenceSeconds * r.memoryMiBPerMessage) / (target - r.baselineMemoryMiB))]
-      : [];
-  });
+  const needed = [
+    ...metrics.flatMap((m) => {
+      const target = targetValue(m);
+      if (m.source.resource === "cpu")
+        return target && r.cpuMsPerMessage ? [Math.ceil((offered * r.cpuMsPerMessage) / target)] : [];
+      return target > r.baselineMemoryMiB
+        ? [Math.ceil((offered * residenceSeconds * r.memoryMiBPerMessage) / (target - r.baselineMemoryMiB))]
+        : [];
+    }),
+    ...(c ? cloudNeeded(c, r, offered, p.concurrency, residenceSeconds) : []),
+  ];
   const targetReplicas = needed.length ? Math.max(range?.min ?? 1, ...needed) : undefined;
+  const polled = c?.kind === "keda" || (c?.kind === "aca" && c.triggers.length > 0) ? c : undefined;
   return {
-    ...(r.preset === "kubernetes-unmeasured" ? { unmeasured: true } : {}),
-    ...(c?.kind === "keda"
+    ...(unmeasured(r) ? { unmeasured: true } : {}),
+    ...(polled
       ? {
           keda: {
-            pollingMs: c.pollingMs,
-            cooldownMs: c.cooldownMs,
-            lagBeforePoll: range?.initial === 0 ? Math.ceil((offered * c.pollingMs) / 1000) : 0,
+            pollingMs: polled.pollingMs,
+            cooldownMs: polled.cooldownMs,
+            lagBeforePoll: range?.initial === 0 ? Math.ceil((offered * polled.pollingMs) / 1000) : 0,
             offered,
           },
         }

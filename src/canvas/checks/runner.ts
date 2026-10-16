@@ -1,12 +1,14 @@
 import type { DiagramFile } from "../../model/types";
 import type { CheckResult } from "../../checks/types";
 import type { CheckRequest, CheckResponse } from "../../checks/worker";
+import type { ScalingPlan } from "../../sim/scalingPlanner";
+import { rememberPlans } from "../../lib/scenarioPlanner";
 
 // Runs the checks for the canvas: in a worker (src/checks/worker.ts) so the main thread only copies the
 // diagram, or, where workers aren't available, by loading the engine (a lazy chunk) and running it here.
 // Either way the engine never ships in the startup JavaScript or the canvas's own chunk.
 
-type Pending = { resolve: (r: CheckResult) => void; reject: (e: Error) => void };
+type Pending = { resolve: (r: CheckResponse) => void; reject: (e: Error) => void };
 
 let worker: Worker | null | undefined;
 let seq = 0;
@@ -25,8 +27,8 @@ function getWorker(): Worker | null {
       const p = pending.get(e.data.id);
       if (!p) return;
       pending.delete(e.data.id);
-      if ("result" in e.data) p.resolve(e.data.result);
-      else p.reject(new Error(e.data.error));
+      if ("error" in e.data) p.reject(new Error(e.data.error));
+      else p.resolve(e.data);
     };
     worker.onerror = (e) => {
       e.preventDefault();
@@ -50,14 +52,42 @@ export async function runChecksOffThread(diagram: DiagramFile): Promise<CheckRes
     const id = ++seq;
     const request: CheckRequest = { id, diagram };
     try {
-      return await new Promise<CheckResult>((resolve, reject) => {
+      const response = await new Promise<CheckResponse>((resolve, reject) => {
         pending.set(id, { resolve, reject });
         w.postMessage(request);
       });
+      if ("result" in response) {
+        if (response.plans) rememberPlans(diagram, response.plans);
+        return response.result;
+      }
     } catch {
       // Fall through: the worker failed; the main thread runs this one.
     }
   }
-  const { runChecks } = await loadEngine();
+  // No worker (an old browser, a blocked script): this thread does all the checking, scenario sizing included.
+  const [{ runChecks }, { planScaling }] = await Promise.all([loadEngine(), import("../../sim/scalingPlanner")]);
+  if (!diagram.checks?.off?.includes("capacity")) rememberPlans(diagram, planScaling(diagram));
   return runChecks(diagram);
+}
+
+/** Scenario sizing for live playback: the checks worker's planner (memoized with the capacity check's). */
+export async function planOffThread(diagram: DiagramFile): Promise<ScalingPlan[]> {
+  const w = typeof Worker === "function" ? getWorker() : null;
+  if (w) {
+    const id = ++seq;
+    const request: CheckRequest = { id, diagram, plan: true };
+    try {
+      const response = await new Promise<CheckResponse>((resolve, reject) => {
+        pending.set(id, { resolve, reject });
+        w.postMessage(request);
+      });
+      if ("plans" in response && response.plans) return response.plans;
+    } catch {
+      // Fall through to the main thread.
+    }
+  }
+  const { planScaling } = await import("../../sim/scalingPlanner");
+  const plans = planScaling(diagram);
+  rememberPlans(diagram, plans);
+  return plans;
 }

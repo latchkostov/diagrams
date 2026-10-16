@@ -1,0 +1,60 @@
+{
+  "plans": [
+    {
+      "simulation": "flash-sale",
+      "title": "Flash sale",
+      "traffic": 1,
+      "horizonMs": 150000,
+      "suggestions": [
+        {
+          "node": "worker",
+          "adapter": "appService",
+          "wanted": 0,
+          "metric": 64.00000000000001,
+          "target": 70,
+          "metricKind": "cpu",
+          "backlog": 1439,
+          "startupBacklog": 0,
+          "endBacklog": 0,
+          "kind": "target",
+          "from": 70,
+          "to": 57,
+          "fix": [
+            {
+              "node": "worker",
+              "props": {
+                "autoscaling": {
+                  "mode": "on",
+                  "modelRevision": "a3",
+                  "preset": "app-service",
+                  "presetRevision": "1",
+                  "controller": {
+                    "kind": "appService",
+                    "minReplicas": 1,
+                    "initialReplicas": 1,
+                    "maxReplicas": 5,
+                    "evaluationMs": 5000,
+                    "rules": [
+                      { "metric": "cpu", "operator": "GreaterThan", "threshold": 57, "windowMs": 10000, "direction": "increase", "changeType": "ChangeCount", "value": 1, "cooldownMs": 15000 },
+                      { "metric": "cpu", "operator": "LessThan", "threshold": 30, "windowMs": 10000, "direction": "decrease", "changeType": "ChangeCount", "value": 1, "cooldownMs": 20000 }
+                    ]
+                  }
+                }
+              }
+            }
+          ],
+          "verified": { "backlog": 399, "startupBacklog": 395, "endBacklog": 0, "maxed": false, "rejected": 0 }
+        }
+      ],
+      "status": "planned",
+      "runs": 2,
+      "ticks": 30000
+    }
+  ],
+  "english": [
+    "In “Flash sale”, the backlog grew while App Service stayed below its target at 64% CPU (target 70% CPU). Lower the target to 57 so it scales out sooner. A rerun with this change confirmed it."
+  ],
+  "shown": [
+    "In “Flash sale”, the backlog grew while App Service stayed below its target at 64% of allocated CPU (target 70%). Lower the target to 57 so it scales out sooner. A rerun with this change confirmed it."
+  ]
+}

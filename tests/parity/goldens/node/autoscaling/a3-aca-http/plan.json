@@ -1,0 +1,7 @@
+{
+  "plans": [
+    { "simulation": "morning-bookings", "title": "Morning bookings", "traffic": 1, "horizonMs": 120000, "suggestions": [], "status": "planned", "runs": 1, "ticks": 12000 }
+  ],
+  "english": [],
+  "shown": []
+}

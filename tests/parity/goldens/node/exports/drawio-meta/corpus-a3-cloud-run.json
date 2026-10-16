@@ -1,0 +1,85 @@
+{
+  "withIcons": {
+    "sha256": "2ac7c81d24ed1599f68ba794957c13bc02aa65742e3e7183e4bd398a5787039d",
+    "bytes": 4532,
+    "inlined": { "client.browser": "client-browser 0022934839e05a07", "gcp.cloud-run": "gcp-cloud-run 666a84135b1afa45" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v2",
+        "planning": { "revision": "p3-a1" },
+        "title": "a3-cloud-run",
+        "description": "Invented search API on Cloud Run at 80 concurrent requests per instance. Waiting requests start instances on demand; it returns to zero after idle retention. Teaching timings: 5 s evaluation, 10/30 s concurrency windows, 10 s idle retention (assumptions).",
+        "nodes": [
+          {
+            "id": "source",
+            "stencil": "client.browser",
+            "label": "Search users",
+            "x": 80,
+            "y": 180,
+            "props": { "ratePerSec": 0 }
+          },
+          {
+            "id": "worker",
+            "stencil": "gcp.cloud-run",
+            "label": "Search API",
+            "x": 780,
+            "y": 180,
+            "props": {
+              "replicas": 1,
+              "concurrency": 80,
+              "latencyMs": 250,
+              "jitter": 0,
+              "resources": {
+                "preset": "io-service",
+                "presetRevision": "1",
+                "cpuMsPerMessage": 40,
+                "baselineMemoryMiB": 128,
+                "memoryMiBPerMessage": 2,
+                "cpuRequestMilli": 500,
+                "cpuLimitMilli": 1000,
+                "memoryRequestMiB": 256,
+                "memoryLimitMiB": 512,
+                "startup": { "delayMs": 2000, "jitterFraction": 0 },
+                "terminationGraceMs": 30000,
+                "modelRevision": "a2"
+              },
+              "autoscaling": {
+                "mode": "on",
+                "modelRevision": "a3",
+                "preset": "cloud-run",
+                "presetRevision": "1",
+                "controller": { "kind": "cloudRun", "minReplicas": 0, "initialReplicas": 0, "maxReplicas": 20, "targetConcurrencyPct": 60, "targetCpuPct": 60, "evaluationMs": 5000, "cpuWindowMs": 10000, "concurrencyWindowsMs": [10000, 30000], "scaleInDelayMs": 10000 }
+              }
+            }
+          }
+        ],
+        "edges": [{ "id": "requests", "from": "source", "to": "worker", "kind": "sync", "props": { "travelMs": 10 } }],
+        "simulations": [
+          {
+            "id": "morning-burst",
+            "title": "Morning burst",
+            "seed": 19,
+            "durationMs": 120000,
+            "traffic": [
+              {
+                "id": "searches",
+                "node": "source",
+                "shape": {
+                  "kind": "ramp",
+                  "stages": [
+                    { "durationMs": 20000, "targetRate": 200 },
+                    { "durationMs": 20000, "targetRate": 200 },
+                    { "durationMs": 20000, "targetRate": 0 }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

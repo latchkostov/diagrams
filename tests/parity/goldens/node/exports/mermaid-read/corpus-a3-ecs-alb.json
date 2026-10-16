@@ -1,0 +1,17 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "a3-ecs-alb",
+    "direction": "LR",
+    "nodes": [
+      { "id": "source", "stencil": "generic.service", "label": "Ticket buyers", "x": 40, "y": 40 },
+      { "id": "lb", "stencil": "aws.elb", "label": "Public ALB", "x": 400, "y": 40 },
+      { "id": "worker", "stencil": "generic.service", "label": "Checkout tasks", "x": 760, "y": 40 }
+    ],
+    "edges": [
+      { "id": "e1-source-lb", "from": "source", "to": "lb", "kind": "sync" },
+      { "id": "e2-lb-worker", "from": "lb", "to": "worker", "kind": "sync" }
+    ]
+  }
+}

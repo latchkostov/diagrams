@@ -45,11 +45,12 @@ describe("example gallery", () => {
     expect(tags("nightly-batch-elt")).toEqual([]);
     expect(tags("keda-render-workers")).toEqual(["partitions", "autoscaling"]);
     expect(tags("autoscaling-image-workers")).toEqual(["partitions", "autoscaling"]);
+    expect(tags("cloud-run-timetable-api")).toEqual(["autoscaling"]);
     expect(
       filterExamples(publicItems, "", "autoscaling")
         .flatMap((s) => s.items)
         .map((e) => e.slug),
-    ).toEqual(["keda-render-workers", "autoscaling-image-workers"]);
+    ).toEqual(["keda-render-workers", "autoscaling-image-workers", "cloud-run-timetable-api"]);
   });
   it("tags each showcase only with features its configuration demonstrates", () => {
     const expected: Record<string, string[]> = {

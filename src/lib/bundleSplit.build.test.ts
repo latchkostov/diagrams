@@ -68,15 +68,15 @@ const STARTUP_CHUNKS = [
   "i18n",
   "index",
   "jsx-runtime",
-  // Native broker-binding validation shares this chunk with the resource schema; execution remains lazy.
+  // Native broker and load-balancer binding validation shares this chunk with the resource schema and the
+  // shared native/engine lifecycle-budget preflight (A3 folded the former resourceBudget chunk into it); no
+  // controller execution at startup.
   "kedaBindings",
   "native",
   "preload-helper",
   "react",
   "react-dom",
   "registry",
-  // Shared native/engine preflight only; no controller execution at startup.
-  "resourceBudget",
   "size",
   "storage",
   "toast",

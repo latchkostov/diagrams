@@ -914,3 +914,141 @@ with an accessible explanation, while an accepted binding focuses the surviving 
 Sources: [ScaledObject specification](https://keda.sh/docs/2.18/reference/scaledobject-spec/),
 [Kafka scaler](https://keda.sh/docs/2.18/scalers/apache-kafka/),
 [pinned fallback implementation](https://github.com/kedacore/keda/blob/v2.18.0/pkg/fallback/fallback.go).
+
+## A3: cloud scaler adapters and scenario sizing
+
+A3 adds four executable cloud policies under `autoscaling.modelRevision: "a3"`, still inside the explicit
+`p3-a1` document revision: `controller.kind` is `ecs`, `aca`, `appService` or `cloudRun`. Older readers refuse
+the new union, as they refuse A2. Each adapter is a thin policy over the shared A1/A2 fleet: startup, readiness,
+drain, pause/resume, fixed override and resume, Capacity ×, checkpoints and the one reconciliation path are
+unchanged, and every adapter writes the same decision record (with `adapter`, `metricKind`, `policy` and alarm
+`periods`). Legacy, A1 and A2 diagrams play exactly as before. Official values below were checked on 2026-10-15;
+values marked **assumption** are explicit lesson choices, never vendor guarantees. Presets use the shared I/O
+workload lesson (40 CPU-ms per message, 500m/1,000m CPU, 256/512 MiB) as before: measure your service.
+
+| Adapter                        | Reads (real units)                                                                                                                                                                    | Executes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Preset defaults                                                                                                                                                                          |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AWS ECS target tracking        | Task CPU/memory as a percent of the task size (`resources.cpuLimitMilli` / `memoryLimitMiB`), or ALB requests per running task per minute                                             | One evaluation per CloudWatch metric period. Proportional: out to `ceil(running × metric / target)` (the metric averages the running tasks), in to `ceil(desired × metric / target)`. Scale out when any policy asks (largest), in only when every scale-in-enabled policy agrees. Tasks still starting count in the desired count a scale-out must exceed, so a cooldown never adds them twice and a larger scale-out passes; the scale-in cooldown blocks shrink until a scale-out interrupts it. Missing data never scales in; a per-task metric can't wake zero. | Target 70% CPU or 1,000 requests/target/min (assumption), cooldowns 300 s (documented ECS default), period 60 s; alarm windows 3 periods out, 15 in below 90% of target (**assumption**) |
+| AWS ECS step scaling           | The same metrics, or the load balancer's total requests per minute                                                                                                                    | A CloudWatch alarm (operator, threshold, consecutive evaluation periods) invokes its policy every period while in ALARM. Step bounds relative to the threshold: lower inclusive and upper exclusive above it, the reverse below. ChangeInCapacity, ExactCapacity and PercentChangeInCapacity with AWS's rounding and `minAdjustmentMagnitude`. Total requests can wake zero.                                                                                                                                                                                         | Out at ≥ 70% CPU for 3 periods (+1, +3 from 85%), in at ≤ 30% for 15 periods (−1) (**assumption**); cooldown 300 s (documented default)                                                  |
+| Azure Container Apps           | HTTP: requests that arrived in the past 15 s ÷ 15 (documented); event rules: A2 KEDA broker triggers                                                                                  | The A2 KEDA/HPA pipeline with ACA's documented behaviour: HTTP read on every 15 s sync, an HTTP request wakes a sleeping app on demand, event rules activate on their own poll, final-zero cooldown, scale-up `max(4, 2 × current)` (+3 or +100% per 15 s reproduces 1→4→8→16), scale-down stabilization 300 s removing 100%.                                                                                                                                                                                                                                        | Min 0, max 10, HTTP 10, polling 30 s, cooldown 300 s (all documented)                                                                                                                    |
+| Azure App Service (Monitor)    | CpuPercentage / MemoryPercentage of the instance size, HttpQueueLength per instance, averaged over each rule's window                                                                 | Each evaluation: any triggered scale-out rule (highest capacity); otherwise scale in only if every scale-in rule triggers (fewest removed), deferring or reducing a scale-in that would trigger a scale-out (flapping). Each rule's cooldown counts from the most recent scale action. An unreadable metric restores the default capacity and never scales in.                                                                                                                                                                                                       | Evaluation 60 s (documented "30 to 60 s", so an **assumption**), > 70% / < 30% CPU over 5 min, ±1 (**assumption**), cooldown 5 min                                                       |
+| Google Cloud Run (approximate) | Per-instance concurrency as a percent of the node's own Concurrency (the container's maximum), the higher of a short and a long average; CPU as a percent of the instance's CPU limit | The HPA pipeline with Cloud Run's documented 60% targets and 10% relative tolerance, no scale-out rate limit, and on-demand scaling: waiting requests start `ceil(demand / concurrency)` instances when none can take them. Scale-in after idle retention.                                                                                                                                                                                                                                                                                                           | Min 0, revision max 100, concurrency 80, targets 60%, CPU 1-min and concurrency 1/10-min windows (documented); 10 s cadence and 60 s idle retention are **assumptions (UNVERIFIED)**     |
+
+Simplifications, also stated in the inspector: ALB request counts are the simulated load balancer's routed
+requests (a request flow from an Elastic Load Balancing node), never a service's message input. Cloud Run's
+pending-request timeout (429 after 10 s or 3.5× the cold start), adaptive concurrency, idle-instance
+deprioritisation and maximum-instance overshoot are not simulated. ACA revisions, TCP rules and traffic splits,
+App Service shared plans, scheduled profiles and automatic (traffic-based) scaling, ECS predictive and
+custom-metric scaling, metric math and CloudWatch missing-data treatments other than "insufficient data" are
+unsupported. Cloud Run's pinned concurrency is the node's Concurrency, edited as its main target field.
+
+Metric windows reuse the fleet's 1 s buckets: two more time integrals (in-flight work, waiting pushed requests)
+and an O(1) counter of pushed arrivals. Waiting pushed requests are the node's queue minus the deliveries holding
+a group slot there (every queued delivery holds one; the invariant oracle checks it), so no queue is scanned. An
+ECS period reads one cumulative routed count per load balancer. Per-tick work stays bounded by groups and work in
+service, never by replicas or queued messages.
+
+### Scenario sizing (planner)
+
+`src/sim/scalingPlanner.ts` plays each saved simulation headless with the same engine, seed and controllers as
+playback, samples every scaler once per simulated second, and suggests one change per scaled node:
+
+- **max**: at steady state at the maximum (the whole fleet ready for the decision's metric window, no backlog
+  draining) the scaler wanted more: its unclamped recommendation or, for rule and step controllers, the
+  proportional count `ceil(ready × metric / target)`. The research example reproduces exactly: at 3× traffic,
+  HPA max 10 at 92% of request with a 70% target suggests max 14.
+- **partitions**: raising the maximum doesn't drain the backlog because an input's partitions bound the useful
+  readers (or KEDA reported its partition cap): raise the partitions, and the maximum to read them.
+- **quota**: an admission quota still refuses as much with more replicas: no replica fix is offered.
+- **target**: the backlog grew while the scaler held its count below the maximum with its metric under target
+  (a slot-bound service whose CPU never reaches its rule): lower the target.
+- **min**: only when one of the simulation's own backlog, lag or in-flight goals (expectations) fails while
+  replicas start: keep what the scaler wanted then warm.
+
+Every suggestion is verified by one rerun with all suggestions applied, same seed: a fix is offered only when the
+rerun bears it out (the end backlog falls, the scaler leaves its maximum, the goal passes). Target and minimum
+suggestions that aren't borne out are dropped. Startup backlog stays visible in the words even when steady-state
+capacity suffices. A simulation that sets its own policy for a node is skipped for that node.
+
+Bounds: at most 4 runs per simulation (the scenario plus up to three verify/refine reruns, shared by all its
+scalers), 8 simulations, 600 s simulated per run, a work estimate (runs × ticks × diagram elements ≤ 60,000,000)
+checked before any engine exists, and a start-work bound: the sampled messages each simulation sends, each times
+what one arrival can become downstream (every copy, compounded through every stage), at most 10,000,000. While
+runs play, one shared budget of 1,000,000 sampled messages (sent and copied, all runs of a diagram together)
+catches what the estimate can't see, such as a copying cycle: the engine refuses the message before creating it.
+A verification rerun whose fixes would take the diagram past its lifecycle budget isn't played. Over any budget
+the plan is **unavailable** with its reason, never partial, and the other checks still run. Results are memoized
+on what a simulation sees (`src/sim/simulationContent.ts`: node ids, stencils, labels, subtitles and props;
+connection ends, kinds, relationships and props; the simulations), so moving things or renaming a connection
+reuses them and renaming a node doesn't. Scalers and their distinct input groups are found from one index of the
+connections. Operation counts prove that eight times as many scalers cost no more runs or ticks, and eight times
+as many scalers and connections no more than linear work to find them.
+
+In the editor, planning runs only in the checks worker: no simulation plays on the UI thread. The background
+check returns its plans with its result, and the editor remembers the worker's results by simulation content
+(`src/lib/scenarioPlanner.ts`). `describe_diagram` and `check_diagram` wait for the worker's plan, a fix is
+re-checked against the plans its finding came from, and Copy prompt includes sizing once the worker has worked it
+out. Headless tools and tests plan where they're called.
+
+The same result appears in three places: Checks (the capacity rule's scenario sizing finding, with one undoable
+fix replacing the complete policy, or partitions and maximum together), agent analysis (`describe_diagram`
+lists `scalingPlans` with English explanations; `check_diagram` returns the finding) and live playback (the
+selected node's Live details show the planner's sentence for the saved simulation playing, computed by the same
+memoized function in the checks worker). Live Why also shows the adapter's own reason, metric and alarm periods.
+
+### Validation, editing and bounds
+
+Bindings (ECS load balancers, ACA event sources) go through the one shared resource validator at every node
+creation path (add, named, rail, connected, insert, paste, duplicate), every edit path (graph, stencil, relation,
+reversal, reconnection, saved simulations), native reads, imports, agent operations and templates. An edit that
+would break a binding is refused atomically; connection label edits are never dropped. Policies are bounded:
+at most 8 target-tracking and 8 step policies, each with at most 8 steps (no overlap or gap, one open end per side,
+covering the breached side), 10 Monitor rules and 16 ACA rules, the A1 time and count bounds, and Cloud Run
+percent targets of 1–100. The seeded invariant oracle adds per-adapter cases (scale to zero for ACA and Cloud Run,
+ECS step edges, App Service cooldowns, pause/resume, refusals, disabling mid-run, fixed override and resume). It
+checks that ECS never scales in on missing data or inside its scale-in cooldown, a Monitor rule never acts inside
+its cooldown or against its direction, request wakes come only from request scalers, and every queued delivery
+holds its group slot. A resumed controller owns the count from its first evaluation; an override above the
+maximum stands until then.
+
+### Terraform import
+
+Only Terraform (`terraform show -json` plans and state) already reads these services, so only Terraform maps
+their scaling (`src/interop/infra/tfScaling.ts`). Each policy attaches to exactly one drawn node; values are
+validated before use and the result passes the shared schema, or the policy is imported as `unsupported` with a
+reason category, keeping the drawn topology. Unknown non-empty fields in a mapped block are reported, never
+dropped. No secret, authentication value, URL or connection-string name is read into the diagram.
+
+| Terraform input                                                                                       | Imported as                                                                                                                                                          |
+| ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `aws_appautoscaling_target` (ECS desired count), joined by reference or `service/<cluster>/<service>` | ECS range: `min_capacity`/`max_capacity`; initial is the service's `desired_count` clamped to the range                                                              |
+| `aws_appautoscaling_policy` target tracking: ECS CPU, memory, `ALBRequestCountPerTarget`              | Target-tracking policies; ALB metrics bind the drawn load balancer that routes to the service; cooldowns in ms (unset: 300 s); `disable_scale_in`                    |
+| Step scaling with the `aws_cloudwatch_metric_alarm`s that invoke it                                   | Step policies: AWS/ECS CPU and memory (Average) or ALB `RequestCount` / `RequestCountPerTarget` (Sum over 60 s); threshold, operator, periods, steps, type, cooldown |
+| `aws_ecs_task_definition` `cpu` / `memory`                                                            | Task size as CPU and memory limits (1,024 units = 1 vCPU), with unmeasured workload costs until a lesson is chosen                                                   |
+| `azurerm_container_app` `template`                                                                    | Container Apps range, cooldown and polling, one HTTP rule, Service Bus queue or topic-subscription rules bound to drawn entities; first container's size             |
+| `azurerm_monitor_autoscale_setting` on a plan hosting exactly one drawn web app                       | App Service capacity (default/min/max) and CpuPercentage, MemoryPercentage, HttpQueueLength rules with windows, actions and cooldowns                                |
+| `google_cloud_run_v2_service` `template.scaling`; `google_cloud_run_service` Knative annotations      | Cloud Run range (unset maximum: 100), per-instance concurrency as the node's Concurrency (≤ 1,000), CPU and memory limits                                            |
+
+Gaps, each reported with its reason: ECS customized metrics, predictive and scheduled scaling, step policies
+whose alarm isn't in the files, metric math, M-of-N alarms and other missing-data treatments, policies with
+different periods; Container Apps TCP, Azure Storage queue and other custom rule types, more than one HTTP rule,
+multi-container apps; App Service shared plans (capacity ownership is ambiguous), recurrence or fixed-date
+profiles, `divide_by_instance_count`, statistics other than Average and Functions plans; Cloud Run service-level
+or manual scaling, other Knative annotations and sidecars; any sensitive scaling attribute. Not read at all:
+Bicep/ARM, CloudFormation/SAM, CDK, Pulumi, Terraform HCL source, VM scale sets and auto scaling groups, and Lambda
+or Functions concurrency (P3 owns those). Hostile inputs are bounded by fixed caps; tests prove that 100,000-item
+collections and deep nesting are never walked and that 8× more services cost linear work.
+
+`cloud-run-timetable-api` is the public Autoscaling showcase: an invented commuter timetable API sleeps overnight,
+wakes on demand, hits its maximum of 6 in the morning rush (Check diagram suggests 11, verified) and returns to
+zero. Its shortened timings are labelled teaching assumptions. Ten frozen `a3-*` corpus diagrams pin each adapter
+and the planner's max, target, partitions and quota cases.
+
+Sources: [ECS target tracking](https://docs.aws.amazon.com/autoscaling/application/userguide/target-tracking-scaling-policy-overview.html),
+[ECS step scaling](https://docs.aws.amazon.com/autoscaling/application/userguide/step-scaling-policy-overview.html),
+[Container Apps scaling](https://learn.microsoft.com/azure/container-apps/scale-app),
+[Azure Monitor autoscale settings](https://learn.microsoft.com/azure/azure-monitor/autoscale/autoscale-understanding-settings),
+[flapping](https://learn.microsoft.com/azure/azure-monitor/autoscale/autoscale-flapping),
+[Cloud Run autoscaling](https://docs.cloud.google.com/run/docs/about-instance-autoscaling),
+[concurrency](https://docs.cloud.google.com/run/docs/about-concurrency),
+[maximum instances](https://docs.cloud.google.com/run/docs/configuring/max-instances).

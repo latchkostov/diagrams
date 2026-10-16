@@ -6,6 +6,10 @@ import { createEditor, type EditorDeps } from "../../editor/useEditor";
 import type { DiagramFile } from "../../model/types";
 import { runChecks } from "../run";
 import { applyFix, ignoreFinding, turnOff, turnOn, unignore } from "./actions";
+import * as simulation from "../../sim/simulation";
+import { planScaling } from "../../sim/scalingPlanner";
+import { registerScenarioPlanner, rememberPlans } from "../../lib/scenarioPlanner";
+import { plannerFixture } from "../../lab/plannerFixture";
 
 // A fix from a cached finding is checked again on the diagram as it is now: never applied twice, never sized
 // from numbers the diagram has since changed. Each check setting is its own undo step.
@@ -145,5 +149,27 @@ describe("check settings", () => {
     expect(new Set(tags).size).toBe(5);
     expect(tags.every((t) => typeof t === "string" && t.startsWith("check:settings:"))).toBe(true);
     expect(api.getDiagram().checks).toEqual({ off: ["no-reader"] });
+  });
+});
+
+describe("scenario sizing fixes in the editor", () => {
+  it("re-checks and applies from the worker's plans: no simulation runs on this thread", () => {
+    const { api } = editorFor(plannerFixture());
+    const current = api.getDiagram();
+    const plans = planScaling(current); // what the checks worker worked out
+    registerScenarioPlanner(() => Promise.resolve(plans));
+    const played = vi.spyOn(simulation, "createSimulationRun");
+    try {
+      rememberPlans(current, plans);
+      const finding = runChecks(current).findings.find((f) => f.id === "capacity:worker")!;
+      expect(finding.scalingPlan).toMatchObject({ kind: "max", to: 14 });
+      expect(applyFix(api, finding)).toBe(true);
+      // The fixed diagram hasn't been planned off-thread yet: its checks show no sizing until the worker answers.
+      expect(runChecks(api.getDiagram()).findings.find((f) => f.id === "capacity:worker")?.scalingPlan).toBeUndefined();
+      expect(played).not.toHaveBeenCalled();
+    } finally {
+      played.mockRestore();
+      registerScenarioPlanner(undefined);
+    }
   });
 });

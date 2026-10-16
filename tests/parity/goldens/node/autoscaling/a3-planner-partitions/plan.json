@@ -1,0 +1,84 @@
+{
+  "plans": [
+    {
+      "simulation": "black-friday",
+      "title": "Black Friday",
+      "traffic": 3,
+      "horizonMs": 240000,
+      "suggestions": [
+        {
+          "node": "worker",
+          "adapter": "hpa",
+          "wanted": 19,
+          "metric": 127.99999999999949,
+          "target": 70,
+          "metricKind": "cpuRequest",
+          "backlog": 11754,
+          "startupBacklog": 8188,
+          "endBacklog": 11754,
+          "kind": "partitions",
+          "from": 10,
+          "to": 19,
+          "fix": [
+            { "node": "orders", "props": { "partitions": 19 } },
+            {
+              "node": "worker",
+              "props": {
+                "autoscaling": {
+                  "mode": "on",
+                  "modelRevision": "a1",
+                  "preset": "hpa-service",
+                  "presetRevision": "1",
+                  "controller": {
+                    "kind": "hpa",
+                    "minReplicas": 1,
+                    "maxReplicas": 19,
+                    "initialReplicas": 1,
+                    "settings": {
+                      "syncMs": 15000,
+                      "tolerance": 0.1,
+                      "initialReadinessDelayMs": 30000,
+                      "cpuInitializationPeriodMs": 300000,
+                      "metrics": [
+                        {
+                          "source": { "kind": "resource", "resource": "cpu" },
+                          "target": { "kind": "utilization", "percentOfRequest": 70 },
+                          "windowMs": 15000,
+                          "metricDelayMs": 0
+                        }
+                      ],
+                      "up": {
+                        "stabilizationMs": 0,
+                        "selectPolicy": "Max",
+                        "policies": [
+                          { "type": "Pods", "value": 4, "periodMs": 15000 },
+                          { "type": "Percent", "value": 100, "periodMs": 15000 }
+                        ]
+                      },
+                      "down": {
+                        "stabilizationMs": 300000,
+                        "selectPolicy": "Max",
+                        "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "broker": "orders",
+          "verified": { "backlog": 8310, "startupBacklog": 8310, "endBacklog": 2, "maxed": true, "rejected": 0 }
+        }
+      ],
+      "status": "planned",
+      "runs": 3,
+      "ticks": 72000
+    }
+  ],
+  "english": [
+    "At 3× traffic in “Black Friday”, HPA wants 19 replicas, but only 10 partitions of Orders can be read. Raise the partitions to 19. A rerun with this change confirmed it."
+  ],
+  "shown": [
+    "At 3× traffic in “Black Friday”, HPA wants 19 replicas, but only 10 partitions of Orders can be read. Raise the partitions to 19. A rerun with this change confirmed it."
+  ]
+}

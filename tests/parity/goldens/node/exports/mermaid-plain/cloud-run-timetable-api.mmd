@@ -1,0 +1,9 @@
+---
+title: Timetable API sleeps overnight
+---
+flowchart LR
+  source(["Commuter apps"])
+  worker["Timetable API<br/>80 requests per instance"]
+  db[("Timetables")]
+  source --> worker
+  worker --> db

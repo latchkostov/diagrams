@@ -1,0 +1,130 @@
+{
+  "withIcons": {
+    "sha256": "0bc4a51839b850aa23493dee37b01ef970e7a491424939a51e105706cf116336",
+    "bytes": 7382,
+    "inlined": { "client.browser": "client-browser 0022934839e05a07", "gcp.cloud-run": "gcp-cloud-run 666a84135b1afa45", "gcp.firestore": "gcp-firestore 48925396eb8ad48c" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v2",
+        "planning": { "revision": "p3-a1" },
+        "title": "Timetable API sleeps overnight",
+        "description": "An invented commuter timetable API on Cloud Run. It sleeps overnight, starts instances on demand for the first requests, and hits its maximum in the morning rush; Check diagram suggests a higher one. Timings are shortened for teaching.",
+        "nodes": [
+          {
+            "id": "source",
+            "stencil": "client.browser",
+            "label": "Commuter apps",
+            "x": 80,
+            "y": 180,
+            "props": { "ratePerSec": 0 }
+          },
+          {
+            "id": "worker",
+            "stencil": "gcp.cloud-run",
+            "label": "Timetable API",
+            "sublabel": "80 requests per instance",
+            "x": 440,
+            "y": 180,
+            "props": {
+              "replicas": 1,
+              "concurrency": 80,
+              "latencyMs": 250,
+              "jitter": 0,
+              "resources": {
+                "preset": "io-service",
+                "presetRevision": "1",
+                "cpuMsPerMessage": 40,
+                "baselineMemoryMiB": 128,
+                "memoryMiBPerMessage": 2,
+                "cpuRequestMilli": 500,
+                "cpuLimitMilli": 1000,
+                "memoryRequestMiB": 256,
+                "memoryLimitMiB": 512,
+                "startup": { "delayMs": 2000, "jitterFraction": 0 },
+                "terminationGraceMs": 30000,
+                "modelRevision": "a2"
+              },
+              "autoscaling": {
+                "mode": "on",
+                "modelRevision": "a3",
+                "preset": "cloud-run",
+                "presetRevision": "1",
+                "controller": { "kind": "cloudRun", "minReplicas": 0, "initialReplicas": 0, "maxReplicas": 6, "targetConcurrencyPct": 60, "targetCpuPct": 60, "evaluationMs": 2000, "cpuWindowMs": 6000, "concurrencyWindowsMs": [6000, 12000], "scaleInDelayMs": 4000 }
+              }
+            }
+          },
+          { "id": "db", "stencil": "gcp.firestore", "label": "Timetables", "x": 800, "y": 180, "props": {} }
+        ],
+        "edges": [
+          { "id": "requests", "from": "source", "to": "worker", "kind": "sync", "props": { "travelMs": 10 } },
+          { "id": "reads", "from": "worker", "to": "db", "kind": "sync", "props": { "travelMs": 10 } }
+        ],
+        "simulations": [
+          {
+            "id": "morning-rush",
+            "title": "Overnight, then the morning rush",
+            "seed": 23,
+            "durationMs": 60000,
+            "traffic": [
+              {
+                "id": "rush",
+                "node": "source",
+                "label": "Morning rush",
+                "shape": {
+                  "kind": "ramp",
+                  "fromMs": 4000,
+                  "stages": [
+                    { "durationMs": 8000, "targetRate": 150 },
+                    { "durationMs": 16000, "targetRate": 150 },
+                    { "durationMs": 6000, "targetRate": 0 }
+                  ]
+                }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 1000,
+                "action": { "do": "note", "text": "Overnight: no instances, nothing running.", "focus": ["worker"] }
+              },
+              {
+                "atMs": 6000,
+                "action": { "do": "note", "text": "First requests wait while instances start on demand.", "focus": ["worker"] }
+              },
+              {
+                "atMs": 20000,
+                "action": { "do": "note", "text": "The rush hits the maximum of 6 instances. Check diagram suggests a higher maximum.", "focus": ["worker"] }
+              },
+              {
+                "atMs": 44000,
+                "action": { "do": "note", "text": "The rush ends; idle instances shut down, back to zero.", "focus": ["worker"] }
+              }
+            ]
+          },
+          {
+            "id": "quiet-sunday",
+            "title": "A quiet Sunday",
+            "seed": 29,
+            "durationMs": 30000,
+            "traffic": [
+              {
+                "id": "few",
+                "node": "source",
+                "label": "A few commuters",
+                "shape": { "kind": "constant", "ratePerSec": 4, "fromMs": 3000, "durationMs": 8000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 4000,
+                "action": { "do": "note", "text": "One instance starts for a few requests, then sleeps again.", "focus": ["worker"] }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

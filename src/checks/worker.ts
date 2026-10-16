@@ -5,12 +5,18 @@
 import type { DiagramFile } from "../model/types";
 import { runChecks } from "./run";
 import type { CheckResult } from "./types";
+import { planScaling, type ScalingPlan } from "../sim/scalingPlanner";
 
 export interface CheckRequest {
   id: number;
   diagram: DiagramFile;
+  /** Scenario sizing only (live playback): the same memoized planner the capacity check uses. */
+  plan?: true;
 }
-export type CheckResponse = { id: number; result: CheckResult } | { id: number; error: string };
+export type CheckResponse =
+  | { id: number; result: CheckResult; plans?: ScalingPlan[] }
+  | { id: number; plans: ScalingPlan[] }
+  | { id: number; error: string };
 
 interface WorkerScope {
   onmessage: ((e: MessageEvent<CheckRequest>) => void) | null;
@@ -19,9 +25,15 @@ interface WorkerScope {
 const scope = self as unknown as WorkerScope;
 
 scope.onmessage = (e) => {
-  const { id, diagram } = e.data;
+  const { id, diagram, plan } = e.data;
   try {
-    scope.postMessage({ id, result: runChecks(diagram) });
+    if (plan) scope.postMessage({ id, plans: planScaling(diagram) });
+    else {
+      // The capacity check's plans go back with its result (memoized: no second run), for main-thread readers.
+      // A diagram with capacity turned off plans nothing.
+      const result = runChecks(diagram);
+      scope.postMessage({ id, result, plans: result.ran.includes("capacity") ? planScaling(diagram) : undefined });
+    }
   } catch (err) {
     scope.postMessage({ id, error: err instanceof Error ? err.message : String(err) });
   }

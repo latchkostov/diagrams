@@ -1,0 +1,9 @@
+---
+title: a3-ecs-alb
+---
+flowchart LR
+  source(["Ticket buyers"])
+  lb["Public ALB"]
+  worker["Checkout tasks"]
+  source --> lb
+  lb --> worker

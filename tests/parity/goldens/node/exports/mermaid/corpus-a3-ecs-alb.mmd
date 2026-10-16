@@ -1,0 +1,10 @@
+---
+title: a3-ecs-alb
+---
+flowchart LR
+  source(["Ticket buyers"])
+  lb["Public ALB"]
+  worker["Checkout tasks"]
+  source --> lb
+  lb --> worker
+%% diagrams:{"v":1,"description":"Invented ticket sale. ECS target tracking on ALB requests per target per minute. Teaching timings: 5 s metric period, 2/3 alarm periods (an assumption), 10/20 s cooldowns instead of the 300 s default.","nodes":{"source":["source","client.browser"],"lb":["lb","aws.elb"],"worker":["worker","aws.ecs"]},"edges":["to-lb","requests"],"relations":{}}

@@ -1,0 +1,8 @@
+---
+title: a3-planner-target
+---
+flowchart LR
+  source(["Shoppers"])
+  worker["Storefront"]
+  source --> worker
+%% diagrams:{"v":1,"description":"The storefront with its scale-out rule at 70% CPU: slot-bound at 64% CPU, it never scales while its queue grows. The planner suggests a lower threshold, verified by a same-seed rerun.","nodes":{"source":["source","client.browser"],"worker":["worker","azure.app-service"]},"edges":["requests"],"relations":{}}
