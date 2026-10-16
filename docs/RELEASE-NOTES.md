@@ -1,5 +1,20 @@
 # Release notes
 
+## Routing R1 rejected admission transactions (2026-10-16)
+
+- The capacity planner owns admission transaction results by router, endpoint and matched action.
+  Unknown token or bytes costs, undeclared runtime endpoints and unresolved shared concurrency now
+  report zero usable gateway capacity without throwing. Rejected calls charge no rule budget, and
+  their route readouts remain distinct from successfully normalized sibling endpoints.
+- All four validation-passing rejection regressions and the sibling readout regression fail with
+  the fix removed. The routing fuzzer now generates all four rejection shapes at API/endpoint scope,
+  with matched rules and Defaults: 5,000 routing seeds, 5,000 rejection seeds and 1,000 overlap seeds pass.
+- Rebased onto #139, keeping both documentation histories and the union of translation keys. Skill
+  generation starts from master's files; the refreshed viewer ships at plugin 1.1.32, one patch above
+  master's 1.1.31. Source UX review adds no controls, copy or chrome; existing readouts show the refusal.
+- This correction changes no parity golden. The branch's 104 routing additions and six routing
+  contract/catalog fingerprints remain as described below; every non-routing golden is unchanged.
+
 ## Review follow-ups rebase (#139, 2026-10-16)
 
 - Rebased the existing fixes onto static-page translations (#138), preserving both documentation

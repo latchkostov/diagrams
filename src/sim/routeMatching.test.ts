@@ -836,6 +836,56 @@ describe("request routing: analysis follows rule quotas (review round 1)", () =>
     expect(a.routeDemand!.gw2["search-get"].throttled).toBeCloseTo(0);
   });
 
+  it.each(["tokens", "bytes", "endpoint", "concurrency"] as const)(
+    "a rejected managed transaction (%s) with a rule quota has zero usable capacity",
+    (rejection) => {
+      const d = routingFixture({
+        mix: searchOnly,
+        table: {
+          rules: [],
+          default: { targets: [{ edgeId: "kong-search", weight: 1 }], quotas: [limit(100)] },
+        },
+      });
+      Object.assign(d.nodes[1], {
+        stencil: "aws.api-gateway",
+        props: {
+          ...d.nodes[1].props,
+          api:
+            rejection === "tokens" || rejection === "bytes"
+              ? { quotas: [limit(100, { unit: rejection })] }
+              : rejection === "concurrency"
+                ? { sharedConcurrency: "unallocated" }
+                : {},
+        },
+      });
+      // The runtime API can reference an endpoint not declared by the managed API. Native validation permits it.
+      if (rejection === "endpoint") d.edges[0].props!.endpointId = "undeclared";
+      expect(validateDiagram(d).ok).toBe(true);
+      expect(() => analyzeCapacity(d)).not.toThrow();
+      const a = analyzeCapacity(d);
+      expect(a.nodes.kong.capacity).toBe(0);
+      expect(a.routeDemand!.kong["search-get"].throttled).toBe(100);
+    },
+  );
+
+  it("a rejected endpoint does not charge a shared rule or hide a successfully normalized sibling", () => {
+    const d = overlap(true, 50, 30);
+    d.nodes[1].props!.endpoints = [
+      { id: "a", method: "GET", path: "/search", behaviour: { quotas: [limit(100, { unit: "tokens" })] } },
+      { id: "b", method: "POST", path: "/orders" },
+    ];
+    d.nodes[1].props!.routeTable = {
+      rules: [],
+      default: { targets: [{ edgeId: "kong-search", weight: 1 }], quotas: [limit(30)] },
+    };
+    expect(validateDiagram(d).ok).toBe(true);
+    expect(() => analyzeCapacity(d)).not.toThrow();
+    const a = analyzeCapacity(d);
+    expect(a.nodes.kong.capacity).toBe(0);
+    expect(a.routeDemand!.kong["search-get"].throttled).toBe(50);
+    expect(a.routeDemand!.kong["orders-post"].throttled).toBe(20);
+  });
+
   /**
    * A managed gateway whose endpoint A (GET /search) names the shared account and endpoint B (POST /orders) has no
    * quota; the search rule names the same account too when `onRule` (redundant: every search request comes through A).

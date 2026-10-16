@@ -1,5 +1,12 @@
 # Design review
 
+## Routing R1 rejected transactions (2026-10-16)
+
+Scoped source UX review: rejected managed calls now keep capacity analysis and its existing readouts
+available. The fix adds no controls, wording, chrome or focus targets. Endpoint-specific refusal
+readouts preserve the successfully normalized sibling's pressure. No simplification was needed;
+this source review does not claim a fresh visual or assistive-technology walkthrough.
+
 ## Routing R1 quota follow-up (2026-10-16)
 
 The designer agent's scoped source review found no actionable issue. The quota-composition and

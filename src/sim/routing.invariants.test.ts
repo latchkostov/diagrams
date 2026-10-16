@@ -473,6 +473,48 @@ const OVERLAP_SEEDS = only ? [Number(only)] : Array.from({ length: nightly ? 100
 const rounded = (value: unknown) =>
   JSON.stringify(value, (_, v: unknown) => (typeof v === "number" ? Math.round(v * 1e6) / 1e6 : v));
 
+/** Normalization refusals must be transactions too: no rule charge and no usable managed capacity. */
+function generateRejected(seed: number) {
+  const random = mulberry32(seed * 3571);
+  const d = generateOverlap(seed)(random() < 0.5);
+  const gateway = d.nodes.find((n) => n.id === "gw")!;
+  const props = gateway.props as Partial<NodeSimProps>;
+  const shape = seed % 4;
+  const quota = {
+    id: "refusal",
+    unit: shape === 0 ? ("tokens" as const) : ("bytes" as const),
+    amount: 1 + Math.floor(random() * 100),
+    windowMs: 1000,
+    algorithm: "token-bucket" as const,
+  };
+  const behaviour = shape < 2 ? { quotas: [quota] } : shape === 2 ? { sharedConcurrency: "unallocated" } : {};
+  // Vary node/endpoint scope; every arriving endpoint is refused, including an undeclared runtime reference.
+  if (random() < 0.5) props.api = behaviour;
+  else props.endpoints = props.endpoints!.map((e) => ({ ...e, behaviour }));
+  if (shape === 3) for (const edge of d.edges) if (edge.to === "gw") edge.props!.endpointId = "undeclared";
+  const ruleQuota = { ...quota, unit: "requests" as const };
+  const table = props.routeTable!;
+  for (const rule of table.rules) rule.quotas = [ruleQuota];
+  // Include Default and matched-rule readouts, with multiple routes and endpoint/action overlaps in both.
+  if (random() < 0.5)
+    props.routeTable = { rules: [], default: { targets: table.rules[0].targets, quotas: [ruleQuota] } };
+  return d;
+}
+
+describe("rejected managed routing transactions (seeded)", () => {
+  it(`have zero usable capacity across ${SEEDS.length} generated runs`, { timeout: nightly ? 120_000 : 30_000 }, () => {
+    for (const seed of SEEDS) {
+      const d = generateRejected(seed);
+      expect(validateDiagram(d).ok, `seed ${seed}: ${JSON.stringify(d)}`).toBe(true);
+      expect(() => analyzeCapacity(d), `seed ${seed}`).not.toThrow();
+      const a = analyzeCapacity(d);
+      expect(a.nodes.gw.capacity, `seed ${seed}`).toBe(0);
+      for (const route of Object.values(a.routeDemand!.gw))
+        expect(route.throttled, `seed ${seed}`).toBeCloseTo(route.offered);
+    }
+  });
+});
+
 describe("shared buckets at a managed router (seeded)", () => {
   it(
     `are charged once per admitted request, per endpoint and action, across ${OVERLAP_SEEDS.length} runs`,

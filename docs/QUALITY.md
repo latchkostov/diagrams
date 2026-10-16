@@ -340,3 +340,9 @@ name a shared account in random overlaps, and naming it again on a rule whose ev
 an endpoint that charges it must change nothing, in playback (the gateway's and its route's counts) or in the
 analysis (capacity, utilization, downstream demand). A shared bucket is charged exactly once per admitted request,
 per endpoint and matched action.
+
+It also generates normalization refusals (200 seeds, 5,000 nightly): unknown token/bytes costs at API or
+endpoint scope, unresolved shared concurrency and undeclared runtime endpoints, with multiple routes,
+endpoints, quota-bearing matched rules and Defaults. Every diagram must validate, analyze without throwing,
+report zero usable gateway capacity and expose its refused route demand. A focused mixed-endpoint case
+keeps rejected calls out of the rule ledger while preserving the accepted sibling's budget/readout.

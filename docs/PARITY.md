@@ -959,3 +959,8 @@ The PR #140 quota correction leaves all diagram goldens unchanged. After rebasin
 translations, regeneration changes only `node/i18n/catalogs.json` relative to the pre-rebase routing
 goldens: the combined catalog retains both features. No golden was hand-merged. Relative to master,
 only the six routing-related shared fingerprints above change; every existing diagram golden matches.
+
+The rejected-transaction follow-up rebases onto #139 and regenerates from master's skill/plugin files.
+It changes no golden: every existing non-routing output and every routing corpus/showcase record stays
+unchanged. Refused normalization paths are covered by failing-without-the-fix regressions and 5,000
+generated rejection shapes rather than by re-recording an existing output.

@@ -511,7 +511,7 @@ export function analyzeCapacity(
         }
         // Rule quotas are admission limits like any other: the analysis carries offered demand downstream and
         // reports what the quotas would reject (429) from the settled ledger, never cutting demand mid-solve.
-        if (decision.requirements.length && decision.forwarded > 0) {
+        if (decision.forwarded > 0) {
           const routedKey = JSON.stringify([id, route?.id ?? "", decision.action]);
           const known = routed.get(routedKey);
           if (known) known.demand.rate += rate * decision.forwarded;
@@ -520,10 +520,11 @@ export function analyzeCapacity(
               router: id,
               route: route?.id ?? "",
               demand: {
+                router: id,
+                action: decision.action,
+                route: route?.id ?? "",
                 requirements: decision.requirements,
                 rate: rate * decision.forwarded,
-                // A managed router charges its rule's buckets with its call, per endpoint (its workload rows below).
-                charged: !!entry.props.admission,
               },
             });
         }
@@ -660,7 +661,8 @@ export function analyzeCapacity(
   // A managed table router's admission workload, by endpoint and matched action: what its table forwards from each
   // connection's traffic classes (no 404s, no deny shares), each row's transaction carrying its rule's buckets.
   const forwardedRows = (id: string, entry: Entry, endpoint: string | undefined, byClass?: Map<string, number>) => {
-    const rows: { id?: string; rate: number; action?: string; rule?: readonly QuotaRequirement[] }[] = [];
+    const rows: { id?: string; rate: number; action?: string; route?: string; rule?: readonly QuotaRequirement[] }[] =
+      [];
     for (const [key, rate] of byClass ?? []) {
       const c = classOf(key);
       const decision = decide(id, entry.table!, key, c.type, c.route, !!c.sync);
@@ -670,6 +672,7 @@ export function analyzeCapacity(
           id: endpoint,
           rate: rate * decision.forwarded,
           action: decision.action,
+          route: c.route?.id ?? "",
           rule: decision.requirements,
         });
     }
