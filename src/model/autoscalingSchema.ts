@@ -345,9 +345,6 @@ function checkCloud(c: ExecutableController): void {
         throw new Error("autoscaling: ALB request metrics, and only they, bind a load balancer");
     }
     for (const p of c.stepScaling) checkSteps(p);
-    const periods = Math.max(c.alarm.outPeriods, c.alarm.inPeriods, ...c.stepScaling.map((p) => p.evaluationPeriods));
-    if (periods * c.metricPeriodMs > 600_000)
-      throw new Error("autoscaling: alarm periods must fit the 600000 ms history budget");
   }
   if (c.kind === "aca") {
     if (!c.http && !c.triggers.length) throw new Error("autoscaling: Container Apps needs an HTTP or event rule");

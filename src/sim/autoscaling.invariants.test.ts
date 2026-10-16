@@ -4,7 +4,14 @@ import { createSimulationRun } from "./simulation";
 import { describe, expect, it, vi } from "vitest";
 import type { DiagramFile } from "../model/types";
 import type { NodeSimProps, NodeStatus } from "./types";
-import { hpaLesson, kedaLesson, resourceLesson } from "../model/autoscaling";
+import {
+  cloudLesson,
+  hpaLesson,
+  kedaLesson,
+  resourceLesson,
+  type CloudConfig,
+  type CloudPreset,
+} from "../model/autoscaling";
 import { autoscalingFixture } from "../lab/autoscalingFixture";
 import { createEngine } from "./engine";
 import { mulberry32 } from "./rng";
@@ -261,6 +268,189 @@ describe("A1 seeded ownership invariants", () => {
     if (failure)
       throw new Error(
         `Seed ${seed}, scale ${scale}: ${failure}\nMinimal reproduction: ${JSON.stringify(minimize(d, seed, scale, actions, failure))}`,
+      );
+    expect(failure).toBeUndefined();
+  });
+});
+
+const CLOUD_PRESETS: CloudPreset[] = [
+  "ecs-cpu",
+  "ecs-alb",
+  "ecs-step",
+  "aca-http",
+  "aca-event",
+  "app-service",
+  "cloud-run",
+];
+/** A3: every cloud adapter on the same lifecycle, with shortened clocks so cooldowns, alarms and zero all happen. */
+function generateCloud(seed: number) {
+  const random = mulberry32(seed ^ 0x5a3c10d),
+    pick = <T>(values: T[]) => values[Math.floor(random() * values.length)];
+  const preset = CLOUD_PRESETS[seed % CLOUD_PRESETS.length];
+  const d = autoscalingFixture();
+  const worker = d.nodes[1];
+  worker.stencil =
+    preset === "cloud-run"
+      ? "gcp.cloud-run"
+      : preset === "app-service"
+        ? "azure.app-service"
+        : preset.startsWith("aca")
+          ? "azure.container-apps"
+          : "aws.ecs";
+  if (preset === "aca-event") {
+    Object.assign(d.nodes[0], { stencil: "azure.service-bus.queue", props: { maxDeliveryCount: 4 } });
+    d.edges[0].kind = "async";
+  }
+  if (preset === "ecs-alb") {
+    d.nodes.splice(1, 0, { id: "lb", stencil: "aws.elb", label: "ALB", x: 260, y: 180, props: {} });
+    d.edges = [
+      { id: "to-lb", from: "source", to: "lb", kind: "sync", props: { travelMs: 10 } },
+      { id: "requests", from: "lb", to: "worker", kind: "sync", props: { travelMs: 10 } },
+    ];
+  }
+  const resources = {
+    ...resourceLesson(),
+    modelRevision: "a2" as const,
+    cpuMsPerMessage: pick([0, 10, 100, 1000]),
+    cpuLimitMilli: pick([50, 1000]),
+    baselineMemoryMiB: pick([0, 100]),
+    memoryMiBPerMessage: pick([1, 10, 100]),
+    startup: { delayMs: pick([0, 30, 200]), jitterFraction: pick([0, 0.5]) },
+    terminationGraceMs: pick([0, 50, 300]),
+  };
+  const zero = pick([0, 1]);
+  const scaler = (): CloudConfig => {
+    const a = cloudLesson(preset, { source: "lb", binding: { node: "source" } });
+    const c = a.controller;
+    Object.assign(c, { minReplicas: c.kind === "appService" ? 1 : zero, maxReplicas: pick([3, 5]) });
+    c.initialReplicas = c.minReplicas + pick([0, 1]);
+    const cooldown = () => pick([0, 1000, 3000]);
+    if (c.kind === "ecs") {
+      c.metricPeriodMs = pick([1000, 2000]);
+      c.alarm = { outPeriods: pick([1, 2]), inPeriods: pick([1, 3]), inMargin: 0.1 };
+      for (const p of c.targetTracking)
+        Object.assign(p, {
+          scaleOutCooldownMs: cooldown(),
+          scaleInCooldownMs: cooldown(),
+          disableScaleIn: pick([false, false, true]),
+        });
+      for (const p of c.stepScaling) Object.assign(p, { cooldownMs: cooldown(), evaluationPeriods: pick([1, 2]) });
+      if (preset === "ecs-step" && pick([true, false]))
+        c.stepScaling[0].adjustmentType = pick(["PercentChangeInCapacity", "ChangeInCapacity"] as const);
+    } else if (c.kind === "aca") {
+      Object.assign(c, { pollingMs: 1000, cooldownMs: cooldown() });
+      c.settings.syncMs = 1000;
+      c.settings.down.stabilizationMs = pick([0, 1000]);
+      if (c.http) c.http.concurrentRequests = pick([1, 5]);
+    } else if (c.kind === "appService") {
+      c.evaluationMs = 1000;
+      for (const rule of c.rules) Object.assign(rule, { windowMs: pick([1000, 2000]), cooldownMs: cooldown() });
+      c.rules[0].changeType = pick(["ChangeCount", "PercentChangeCount"] as const);
+      c.rules[0].value = pick([1, 50]);
+    } else if (c.kind === "cloudRun") {
+      Object.assign(c, {
+        evaluationMs: 1000,
+        cpuWindowMs: 1000,
+        concurrencyWindowsMs: [1000, pick([1000, 3000])],
+        scaleInDelayMs: pick([0, 1000, 3000]),
+      });
+    }
+    return a;
+  };
+  const admission = () => ({
+    quotas: [
+      {
+        id: "requests",
+        unit: "requests" as const,
+        amount: pick([1, 5, 20]),
+        windowMs: 1000,
+        burst: 1,
+        algorithm: "token-bucket" as const,
+      },
+    ],
+  });
+  worker.props = {
+    replicas: pick([1, 2]),
+    concurrency: pick([1, 2, 4]),
+    latencyMs: pick([10, 100, 500]),
+    jitter: 0,
+    resources,
+    autoscaling: scaler(),
+    failureRate: pick([0, 0.5, 1]),
+    retry: "inplace",
+    retryBackoffMs: pick([0, 100, 300]),
+    ...(pick([true, false, false]) ? { api: admission() } : {}),
+  };
+  for (let i = 0, n = pick([0, 1]); i < n; i++) {
+    const node = { ...structuredClone(worker), id: `extra-${i}` };
+    d.nodes.push(node);
+    d.edges.push({ ...d.edges.find((e) => e.to === "worker")!, id: `extra-edge-${i}`, to: node.id });
+  }
+  const actions: Action[] = [{ do: "burst", count: 20, ms: 30 }];
+  for (let i = 0; i < 70; i++) {
+    const ms = pick([10, 100, 1000, 3000]);
+    switch (pick([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])) {
+      case 9:
+        actions.push({ do: "refuse", ms });
+        break;
+      case 0:
+      case 1:
+      case 2:
+        actions.push({ do: "burst", count: pick([1, 3, 8, 20, 60]), ms });
+        break;
+      case 3:
+        actions.push({ do: "status", status: pick(["up", "paused", "down"]), ms });
+        break;
+      case 4:
+        actions.push({ do: "props", props: { autoscaling: scaler() }, ms });
+        break;
+      case 5:
+        // Disabling mid-run, then a later action may re-enable it.
+        actions.push({ do: "props", props: { autoscaling: { mode: "off" }, replicas: pick([1, 2, 3]) }, ms });
+        break;
+      case 6:
+        actions.push({
+          do: "props",
+          props: pick([
+            { replicas: pick([1, 2, 4]) },
+            { resumeAutoscaling: true },
+            { resources: pick([resources, undefined]) },
+          ]),
+          ms,
+        });
+        break;
+      case 7:
+        actions.push({ do: "props", props: { concurrency: pick([1, 2, 4]) }, ms });
+        break;
+      default:
+        actions.push({ do: "props", props: { api: pick([admission(), undefined]), failureRate: pick([0, 1]) }, ms });
+    }
+  }
+  return {
+    d,
+    scale: pick([1, 1, 2, 10]),
+    actions: actions.map((action) =>
+      action.do !== "props"
+        ? action
+        : {
+            ...action,
+            unset: Object.keys(action.props).filter((key) => action.props[key as keyof NodeSimProps] === undefined),
+            props: Object.fromEntries(Object.entries(action.props).filter(([, value]) => value !== undefined)),
+          },
+    ),
+  };
+}
+describe("A3 cloud adapter seeded invariants", () => {
+  const cases = process.env.A1_FUZZ_NIGHTLY ? 5000 : 140;
+  const seeds = process.env.A3_FUZZ_SEED
+    ? [Number(process.env.A3_FUZZ_SEED)]
+    : Array.from({ length: cases }, (_, i) => i + 1);
+  it.each(seeds)("seed %i", (seed) => {
+    const { d, scale, actions } = generateCloud(seed);
+    const failure = replay(d, seed, scale, actions);
+    if (failure)
+      throw new Error(
+        `A3 seed ${seed} (${CLOUD_PRESETS[seed % CLOUD_PRESETS.length]}), scale ${scale}: ${failure}\nMinimal reproduction: ${JSON.stringify(minimize(d, seed, scale, actions, failure))}`,
       );
     expect(failure).toBeUndefined();
   });

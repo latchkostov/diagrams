@@ -1545,7 +1545,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.completedThisStep = 0;
     }
     opts.verifyResources?.({
-      nodes: [...nodes.values()].map((node) => ({ ...node, pending: queuedWork(node) })),
+      nodes: [...nodes.values()].map((node) => ({ ...node, pending: queuedWork(node), queue: node.pending })),
       time,
       scale,
       capacityMultiplier,
