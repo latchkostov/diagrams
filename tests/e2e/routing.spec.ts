@@ -117,6 +117,64 @@ test("adds a route table that keeps today's connections, edits a rule, reorders 
   expectNoErrors(consoleErrors);
 });
 
+test("rule deletion: the toast's Undo restores the rule, and the toast leaves once history moves", async ({ page }) => {
+  await seed(page, routingFixture());
+  await gotoCanvas(page, slug);
+  await waitForStableViewport(page);
+  await page.getByTestId("node-kong").click();
+  await page.getByTestId("routes-rule-orders").click();
+  await page.getByTestId("routes-rule-orders-delete").click();
+  await expect.poll(async () => (await table(page))?.rules.map((r) => r.id)).toEqual(["search"]);
+  await page.getByTestId("toast-rule-undo").click();
+  await expect.poll(async () => (await table(page))?.rules.map((r) => r.id)).toEqual(["orders", "search"]);
+
+  await page.getByTestId("routes-rule-orders").click();
+  await page.getByTestId("routes-rule-orders-delete").click();
+  await expect(page.getByTestId("toast-rule-undo")).toBeVisible();
+  // The canvas's Undo moves history: the toast's Undo would now reverse something else, so it goes at once (checked
+  // in the same frame, long before the toast could expire on its own).
+  await expect(page.getByTestId("undo-button")).toBeEnabled();
+  await expect(page.getByTestId("toast-rule-undo")).toBeVisible();
+  const stale = await page.evaluate(async () => {
+    document.querySelector<HTMLButtonElement>('[data-testid="undo-button"]')?.click();
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    return document.querySelector('[data-testid="toast-rule-undo"]') !== null;
+  });
+  expect(stale).toBe(false);
+  await expect.poll(async () => (await table(page))?.rules.map((r) => r.id)).toEqual(["orders", "search"]);
+});
+
+test("Add route keeps the keyboard's place, and a pending mix form survives other edits", async ({ page }) => {
+  const d = routingFixture({ mix: { mode: "shares", entries: [{ routeId: "orders-post", share: 1 }] } });
+  await seed(page, d);
+  await gotoCanvas(page, slug);
+  await waitForStableViewport(page);
+  await page.getByTestId("node-app").click();
+  // An existing route by keyboard: focus lands on its new row's value.
+  await page.getByTestId("mix-add-route").focus();
+  await page.keyboard.press("Enter");
+  await page.getByTestId("mix-add-route-search-get").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("mix-row-search-get-value")).toBeFocused();
+  // Every route is in the mix now: Add route opens the new route's form, Path focused.
+  await page.getByTestId("mix-add-route-new").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("mix-new-route-path")).toBeFocused();
+});
+
+test("a right-click traffic mix keeps its unfinished route while the node's name changes", async ({ page }) => {
+  await seed(page, unrouted());
+  await gotoCanvas(page, slug);
+  await waitForStableViewport(page);
+  await page.getByTestId("node-app").click({ button: "right" });
+  await page.getByTestId("context-menu-item-node.add-mix").click();
+  await expect(page.getByTestId("mix-new-route-path")).toBeFocused();
+  await page.getByTestId("mix-new-route-path").fill("/parcels");
+  await page.getByTestId("inspector-field-label").fill("Phone app");
+  await expect.poll(async () => (await savedDiagram(page)).nodes.find((n) => n.id === "app")?.label).toBe("Phone app");
+  await expect(page.getByTestId("mix-new-route-path")).toHaveValue("/parcels");
+});
+
 test("a source's traffic mix: new routes, shares that must add up, Normalize", async ({ page }) => {
   await seed(page, unrouted());
   await gotoCanvas(page, slug);

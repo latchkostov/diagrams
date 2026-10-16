@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"R1: rates, quotas and sampling\" · direction LR · 5 nodes, 4 connections, 0 boundaries, 1 simulations\nnodes:\n  \"app\" \"client.mobile\" (\"Mobile App\") \"Mobile app\" props={\"ratePerSec\":100,\"trafficMix\":{\"mode\":\"rates\",\"entries\":[{\"routeId\":\"orders-post\",\"ratePerSec\":10},{\"routeId\":\"search-get\",\"ratePerSec\":30},{\"routeId\":\"unused-get\",\"ratePerSec\":0}]}} capabilities=[{\"kind\":\"calls\",\"edge\":\"app-kong\",\"peer\":\"kong\"}] explanation=undefined\n  \"kong\" \"nginx\" (\"NGINX\") \"Gateway\" props={\"latencyMs\":5,\"jitter\":0,\"routeTable\":{\"rules\":[{\"id\":\"orders\",\"match\":{\"methods\":[\"POST\"],\"path\":{\"kind\":\"exact\",\"value\":\"/orders\"}},\"targets\":[{\"edgeId\":\"kong-orders\",\"weight\":90},{\"edgeId\":\"kong-canary\",\"weight\":10}],\"quotas\":[{\"id\":\"account\",\"unit\":\"requests\",\"amount\":25,\"windowMs\":1000,\"algorithm\":\"token-bucket\",\"sharedGroup\":\"account\"}]},{\"id\":\"search\",\"match\":{\"path\":{\"kind\":\"prefix\",\"value\":\"/search\"}},\"targets\":[{\"edgeId\":\"kong-search\",\"weight\":1}],\"quotas\":[{\"id\":\"account\",\"unit\":\"requests\",\"amount\":25,\"windowMs\":1000,\"algorithm\":\"token-bucket\",\"sharedGroup\":\"account\"},{\"id\":\"search-limit\",\"unit\":\"requests\",\"amount\":15,\"windowMs\":1000,\"algorithm\":\"token-bucket\"}]}]}} capabilities=[{\"kind\":\"calls\",\"edge\":\"kong-orders\",\"peer\":\"orders\"},{\"kind\":\"calls\",\"edge\":\"kong-canary\",\"peer\":\"canary\"},{\"kind\":\"calls\",\"edge\":\"kong-search\",\"peer\":\"search\"}] explanation=undefined\n  \"orders\" \"generic.service\" (\"Service\") \"Orders\" props={\"latencyMs\":20,\"concurrency\":64,\"jitter\":0} capabilities=[] explanation={\"id\":\"orders\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":3200,\"offered\":5.625,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":64,\"seconds\":0.02,\"utilization\":0.0017578125,\"growth\":0,\"contributors\":[{\"edge\":\"kong-orders\",\"node\":\"kong\",\"label\":\"Mobile app\",\"rate\":5.625,\"via\":\"Gateway\"}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":false,\"routes\":[{\"route\":\"orders-post\",\"address\":\"POST /orders\",\"offered\":9,\"rejected\":0,\"throttled\":0}]}\n  \"canary\" \"generic.service\" (\"Service\") \"Orders canary\" props={\"latencyMs\":20,\"concurrency\":64,\"jitter\":0} capabilities=[] explanation={\"id\":\"canary\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":3200,\"offered\":0.625,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":64,\"seconds\":0.02,\"utilization\":0.0001953125,\"growth\":0,\"contributors\":[{\"edge\":\"kong-canary\",\"node\":\"kong\",\"label\":\"Mobile app\",\"rate\":0.625,\"via\":\"Gateway\"}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":false,\"routes\":[{\"route\":\"orders-post\",\"address\":\"POST /orders\",\"offered\":1,\"rejected\":0,\"throttled\":0}]}\n  \"search\" \"generic.service\" (\"Service\") \"Search\" props={\"latencyMs\":20,\"concurrency\":64,\"jitter\":0} capabilities=[] explanation={\"id\":\"search\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":3200,\"offered\":15,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":64,\"seconds\":0.02,\"utilization\":0.0046875,\"growth\":0,\"contributors\":[{\"edge\":\"kong-search\",\"node\":\"kong\",\"label\":\"Mobile app\",\"rate\":15,\"via\":\"Gateway\"}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":false,\"routes\":[{\"route\":\"search-get\",\"address\":\"GET /search\",\"offered\":30,\"rejected\":0,\"throttled\":0}]}\nconnections:\n  \"app-kong\" \"app\" -> \"kong\" sync\n  \"kong-orders\" \"kong\" -> \"orders\" sync\n  \"kong-canary\" \"kong\" -> \"canary\" sync\n  \"kong-search\" \"kong\" -> \"search\" sync\nrequest routes (3):\n  \"orders-post\" POST \"/orders\"\n  \"search-get\" GET \"/search\"\n  \"unused-get\" GET \"/unused\"\nroute demand \"kong\" \"orders-post\": offered 10 req/s, refused 404 0 req/s, rate-limited 429 3.75 req/s\nroute demand \"kong\" \"search-get\": offered 30 req/s, refused 404 0 req/s, rate-limited 429 15 req/s\nsimulation \"limited\" \"Limited\": {\"kind\":\"constant\",\"ratePerSec\":400,\"durationMs\":8000} from \"app\"; timeline=[]; expectations=[]"
+    "output": "Diagram \"R1: rates, quotas and sampling\" · direction LR · 5 nodes, 4 connections, 0 boundaries, 1 simulations\nnodes:\n  \"app\" \"client.mobile\" (\"Mobile App\") \"Mobile app\" props={\"ratePerSec\":100,\"trafficMix\":{\"mode\":\"rates\",\"entries\":[{\"routeId\":\"orders-post\",\"ratePerSec\":10},{\"routeId\":\"search-get\",\"ratePerSec\":30},{\"routeId\":\"unused-get\",\"ratePerSec\":0}]}} capabilities=[{\"kind\":\"calls\",\"edge\":\"app-kong\",\"peer\":\"kong\"}] explanation=undefined\n  \"kong\" \"nginx\" (\"NGINX\") \"Gateway\" props={\"latencyMs\":5,\"jitter\":0,\"routeTable\":{\"rules\":[{\"id\":\"orders\",\"match\":{\"methods\":[\"POST\"],\"path\":{\"kind\":\"exact\",\"value\":\"/orders\"}},\"targets\":[{\"edgeId\":\"kong-orders\",\"weight\":90},{\"edgeId\":\"kong-canary\",\"weight\":10}],\"quotas\":[{\"id\":\"account\",\"unit\":\"requests\",\"amount\":25,\"windowMs\":1000,\"algorithm\":\"token-bucket\",\"sharedGroup\":\"account\"}]},{\"id\":\"search\",\"match\":{\"path\":{\"kind\":\"prefix\",\"value\":\"/search\"}},\"targets\":[{\"edgeId\":\"kong-search\",\"weight\":1}],\"quotas\":[{\"id\":\"account\",\"unit\":\"requests\",\"amount\":25,\"windowMs\":1000,\"algorithm\":\"token-bucket\",\"sharedGroup\":\"account\"},{\"id\":\"search-limit\",\"unit\":\"requests\",\"amount\":15,\"windowMs\":1000,\"algorithm\":\"token-bucket\"}]}]}} capabilities=[{\"kind\":\"calls\",\"edge\":\"kong-orders\",\"peer\":\"orders\"},{\"kind\":\"calls\",\"edge\":\"kong-canary\",\"peer\":\"canary\"},{\"kind\":\"calls\",\"edge\":\"kong-search\",\"peer\":\"search\"}] explanation=undefined\n  \"orders\" \"generic.service\" (\"Service\") \"Orders\" props={\"latencyMs\":20,\"concurrency\":64,\"jitter\":0} capabilities=[] explanation={\"id\":\"orders\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":3200,\"offered\":9,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":64,\"seconds\":0.02,\"utilization\":0.0028125,\"growth\":0,\"contributors\":[{\"edge\":\"kong-orders\",\"node\":\"kong\",\"label\":\"Mobile app\",\"rate\":9,\"via\":\"Gateway\"}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"orders-post\",\"address\":\"POST /orders\",\"offered\":9,\"rejected\":0,\"throttled\":0}]}\n  \"canary\" \"generic.service\" (\"Service\") \"Orders canary\" props={\"latencyMs\":20,\"concurrency\":64,\"jitter\":0} capabilities=[] explanation={\"id\":\"canary\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":3200,\"offered\":1,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":64,\"seconds\":0.02,\"utilization\":0.0003125,\"growth\":0,\"contributors\":[{\"edge\":\"kong-canary\",\"node\":\"kong\",\"label\":\"Mobile app\",\"rate\":1,\"via\":\"Gateway\"}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"orders-post\",\"address\":\"POST /orders\",\"offered\":1,\"rejected\":0,\"throttled\":0}]}\n  \"search\" \"generic.service\" (\"Service\") \"Search\" props={\"latencyMs\":20,\"concurrency\":64,\"jitter\":0} capabilities=[] explanation={\"id\":\"search\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":3200,\"offered\":30,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":64,\"seconds\":0.02,\"utilization\":0.009375,\"growth\":0,\"contributors\":[{\"edge\":\"kong-search\",\"node\":\"kong\",\"label\":\"Mobile app\",\"rate\":30,\"via\":\"Gateway\"}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"search-get\",\"address\":\"GET /search\",\"offered\":30,\"rejected\":0,\"throttled\":0}]}\nconnections:\n  \"app-kong\" \"app\" -> \"kong\" sync\n  \"kong-orders\" \"kong\" -> \"orders\" sync\n  \"kong-canary\" \"kong\" -> \"canary\" sync\n  \"kong-search\" \"kong\" -> \"search\" sync\nrequest routes (3):\n  \"orders-post\" POST \"/orders\"\n  \"search-get\" GET \"/search\"\n  \"unused-get\" GET \"/unused\"\nroute demand \"kong\" \"orders-post\": offered 10 req/s, refused 404 0 req/s, rate-limited 429 3.75 req/s\nroute demand \"kong\" \"search-get\": offered 30 req/s, refused 404 0 req/s, rate-limited 429 15 req/s\nsimulation \"limited\" \"Limited\": {\"kind\":\"constant\",\"ratePerSec\":400,\"durationMs\":8000} from \"app\"; timeline=[]; expectations=[]"
   },
   "json": {
     "isError": false,
@@ -100,7 +100,7 @@
             "evidence": "configured",
             "unit": "req/s",
             "capacity": 3200,
-            "offered": 5.625,
+            "offered": 9,
             "replicas": 1,
             "baseReplicas": 1,
             "omittedContributors": 0,
@@ -108,16 +108,16 @@
             "assignments": [],
             "slots": 64,
             "seconds": 0.02,
-            "utilization": 0.0017578125,
+            "utilization": 0.0028125,
             "growth": 0,
             "contributors": [
-              { "edge": "kong-orders", "node": "kong", "label": "Mobile app", "rate": 5.625, "via": "Gateway" }
+              { "edge": "kong-orders", "node": "kong", "label": "Mobile app", "rate": 9, "via": "Gateway" }
             ],
             "target": 0.5,
             "minimumReplicas": 1,
             "targetReplicas": 1,
             "changes": null,
-            "converged": false,
+            "converged": true,
             "routes": [
               { "route": "orders-post", "address": "POST /orders", "offered": 9, "rejected": 0, "throttled": 0 }
             ]
@@ -139,7 +139,7 @@
             "evidence": "configured",
             "unit": "req/s",
             "capacity": 3200,
-            "offered": 0.625,
+            "offered": 1,
             "replicas": 1,
             "baseReplicas": 1,
             "omittedContributors": 0,
@@ -147,16 +147,16 @@
             "assignments": [],
             "slots": 64,
             "seconds": 0.02,
-            "utilization": 0.0001953125,
+            "utilization": 0.0003125,
             "growth": 0,
             "contributors": [
-              { "edge": "kong-canary", "node": "kong", "label": "Mobile app", "rate": 0.625, "via": "Gateway" }
+              { "edge": "kong-canary", "node": "kong", "label": "Mobile app", "rate": 1, "via": "Gateway" }
             ],
             "target": 0.5,
             "minimumReplicas": 1,
             "targetReplicas": 1,
             "changes": null,
-            "converged": false,
+            "converged": true,
             "routes": [
               { "route": "orders-post", "address": "POST /orders", "offered": 1, "rejected": 0, "throttled": 0 }
             ]
@@ -178,7 +178,7 @@
             "evidence": "configured",
             "unit": "req/s",
             "capacity": 3200,
-            "offered": 15,
+            "offered": 30,
             "replicas": 1,
             "baseReplicas": 1,
             "omittedContributors": 0,
@@ -186,16 +186,16 @@
             "assignments": [],
             "slots": 64,
             "seconds": 0.02,
-            "utilization": 0.0046875,
+            "utilization": 0.009375,
             "growth": 0,
             "contributors": [
-              { "edge": "kong-search", "node": "kong", "label": "Mobile app", "rate": 15, "via": "Gateway" }
+              { "edge": "kong-search", "node": "kong", "label": "Mobile app", "rate": 30, "via": "Gateway" }
             ],
             "target": 0.5,
             "minimumReplicas": 1,
             "targetReplicas": 1,
             "changes": null,
-            "converged": false,
+            "converged": true,
             "routes": [
               { "route": "search-get", "address": "GET /search", "offered": 30, "rejected": 0, "throttled": 0 }
             ]

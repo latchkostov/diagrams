@@ -484,6 +484,7 @@ function NodePanel({
   };
   const merge = (f: string) => ({ merge: `inspector:node:${node.id}:${f}` });
   const [picker, setPicker] = useState<{ x: number; y: number } | null>(null);
+  const [routingPinned, setRoutingPinned] = useState(false);
   const broker = brokerSpec(node.data.stencil, role, meta.planning);
   const simFields = nodeSimFields(role, node.data.stencil, meta.planning, props);
   const managed =
@@ -500,10 +501,15 @@ function NodePanel({
   ) : mixer ? (
     <TrafficMixFields editor={editor} nodeId={node.id} props={props} planning={meta.planning} />
   ) : null;
+  // A right-click "Add …" opens the section on its own; it stays there while this node is selected, so an
+  // unfinished form never moves (and loses its fields) once the form has consumed the intent.
+  const intended = (router || mixer) && routingIntent.peek(node.id) !== undefined;
+  if (intended && !routingPinned) setRoutingPinned(true);
   const routed =
     (router && props.routeTable !== undefined) ||
     (mixer && props.trafficMix !== undefined) ||
-    ((router || mixer) && routingIntent.peek(node.id) !== undefined);
+    intended ||
+    ((router || mixer) && routingPinned);
 
   return (
     <>

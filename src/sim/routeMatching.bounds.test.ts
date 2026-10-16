@@ -132,4 +132,22 @@ describe("routing validation: tables in saved simulations", () => {
     expect(fixed.rules).toBe(1);
     expect(validateRouting({ ...cut, simulations: fixed.simulations })).toBeUndefined();
   });
+
+  it("scans saved simulations once per simulations change, not on every edit", async () => {
+    const { simulationRouterScans } = await import("../model/routingValidation");
+    const d = routingFixture();
+    const props = Object.fromEntries(Array.from({ length: 2_000 }, (_, i) => [`n${i}`, { latencyMs: i }]));
+    d.simulations = [{ id: "s", title: "S", traffic: [], setup: { props } }];
+    const validate = createRoutingValidator();
+    validate(d);
+    const before = simulationRouterScans.count;
+    for (let i = 0; i < 50; i++) {
+      d.nodes = d.nodes.map((n) => (n.id === "orders" ? { ...n, label: `Orders ${i}` } : n));
+      validate(d);
+    }
+    expect(simulationRouterScans.count - before).toBe(0);
+    d.simulations = [...d.simulations];
+    validate(d);
+    expect(simulationRouterScans.count - before).toBe(1);
+  });
 });

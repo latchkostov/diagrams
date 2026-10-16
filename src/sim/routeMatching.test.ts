@@ -5,6 +5,7 @@ import { analyzeCapacity } from "./capacity";
 import { validateDiagram } from "../interop/native";
 import type { DiagramFile } from "../model/types";
 import type { RouteTable, TrafficMix } from "../model/requestRouting";
+import type { Quota } from "../model/admission";
 import { ROUTING_TABLE, routingFixture } from "../lab/routingFixture";
 import {
   chooseAction,
@@ -643,41 +644,166 @@ describe("request routing: review round 1 regressions", () => {
 });
 
 describe("request routing: analysis follows rule quotas (review round 1)", () => {
-  it("admits a rule's quota rate, rejects the rest 429, and forwards only what's admitted", () => {
+  const limit = (amount: number, extra: Partial<Quota> = {}): Quota => ({
+    id: "limit",
+    unit: "requests",
+    amount,
+    windowMs: 1000,
+    algorithm: "token-bucket",
+    ...extra,
+  });
+  const searchOnly: TrafficMix = { mode: "shares", entries: [{ routeId: "search-get", share: 1 }] };
+
+  it("reports a rule quota's 429 demand from the settled ledger: converged, no cycle warning, demand offered on", () => {
     const table = structuredClone(ROUTING_TABLE);
-    table.rules[1].quotas = [{ id: "limit", unit: "requests", amount: 10, windowMs: 1000, algorithm: "token-bucket" }];
-    const d = routingFixture({
-      table,
-      rate: 100,
-      mix: { mode: "shares", entries: [{ routeId: "search-get", share: 1 }] },
-    });
+    table.rules[1].quotas = [limit(10)];
+    const d = routingFixture({ table, rate: 100, mix: searchOnly });
     const a = analyzeCapacity(d);
-    expect(a.routeDemand!.kong["search-get"].offered).toBeCloseTo(100);
-    expect(a.routeDemand!.kong["search-get"].throttled).toBeCloseTo(90);
-    expect(a.connections["kong-search"]).toBeCloseTo(10);
-    expect(a.nodes.search.offered).toBeCloseTo(10);
-    // Playback agrees within the burst.
+    expect(a.converged).toBe(true);
+    expect(a.suggestion).not.toContain("did not converge");
+    expect(a.routeDemand!.kong["search-get"]).toEqual({ offered: 100, rejected: 0, throttled: 90 });
+    // Like every admission limit in the analysis, the quota reports what it would reject; downstream demand is the
+    // offered demand, and agrees between the node and its route.
+    expect(a.nodes.search.offered).toBeCloseTo(100);
+    expect(a.routeDemand!.search["search-get"].offered).toBeCloseTo(100);
+    // Playback admits the quota's rate (within its burst).
     const e = run(d, 10_000, { drain: true });
     expect(Math.abs(delivered(e, "kong-search") - 100)).toBeLessThanOrEqual(11);
   });
 
-  it("a shared bucket named by two rules is one budget in analysis too", () => {
-    const shared = {
-      id: "account",
-      unit: "requests" as const,
-      amount: 30,
-      windowMs: 1000,
-      algorithm: "token-bucket" as const,
-    };
+  it("serial rule quotas converge in a DAG and each reports against its own offered demand", () => {
     const table = structuredClone(ROUTING_TABLE);
-    table.rules[0].quotas = [{ ...shared, sharedGroup: "account" }];
-    table.rules[1].quotas = [{ ...shared, sharedGroup: "account" }];
-    const d = routingFixture({ table, rate: 100 });
-    d.planning!.sharedQuotas = [shared];
+    table.rules[1].quotas = [limit(10)];
+    const d = routingFixture({ table, rate: 100, mix: searchOnly });
+    // A second router behind the first, with a 5 req/s limit on the same route.
+    d.nodes.push({
+      id: "inner",
+      stencil: "envoy",
+      label: "Inner",
+      x: 800,
+      y: 240,
+      props: {
+        routeTable: {
+          rules: [
+            {
+              id: "s",
+              match: { path: { kind: "prefix", value: "/search" } },
+              targets: [{ edgeId: "inner-x", weight: 1 }],
+              quotas: [limit(5)],
+            },
+          ],
+        },
+      },
+    });
+    d.nodes.push({ id: "x", stencil: "generic.service", label: "X", x: 1000, y: 240 });
+    d.edges.push({ id: "search-inner", from: "search", to: "inner", kind: "sync" });
+    d.edges.push({ id: "inner-x", from: "inner", to: "x", kind: "sync" });
     const a = analyzeCapacity(d);
-    const admitted =
-      (a.connections["kong-orders"] ?? 0) + (a.connections["kong-canary"] ?? 0) + (a.connections["kong-search"] ?? 0);
-    expect(admitted).toBeCloseTo(30);
+    expect(a.converged).toBe(true);
+    expect(a.routeDemand!.kong["search-get"].throttled).toBeCloseTo(90);
+    expect(a.routeDemand!.inner["search-get"].throttled).toBeCloseTo(95);
+    expect(a.nodes.x.offered).toBeCloseTo(100);
+  });
+
+  it("a shared bucket named by two rules is one budget in analysis too", () => {
+    const table = structuredClone(ROUTING_TABLE);
+    table.rules[0].quotas = [limit(30, { sharedGroup: "account" })];
+    table.rules[1].quotas = [limit(30, { sharedGroup: "account" })];
+    const d = routingFixture({ table, rate: 100 });
+    d.planning!.sharedQuotas = [limit(30, { id: "account" })];
+    const routes = analyzeCapacity(d).routeDemand!.kong;
+    expect(routes["orders-post"].throttled + routes["search-get"].throttled).toBeCloseTo(70);
+  });
+
+  it("a shared quota named by a rule and a managed API is one ledger, as in playback", () => {
+    const table = structuredClone(ROUTING_TABLE);
+    table.rules[1].quotas = [limit(30, { sharedGroup: "account" })];
+    const d = routingFixture({ table, rate: 100, mix: searchOnly });
+    d.planning = { ...d.planning!, revision: "p3-a1", sharedQuotas: [limit(30, { id: "account" })] };
+    Object.assign(d.nodes[4], {
+      stencil: "generic.external-api",
+      props: { latencyMs: 20, jitter: 0, api: { quotas: [limit(30, { sharedGroup: "account" })] } },
+    });
+    expect(validateDiagram(d).ok).toBe(true);
+    const a = analyzeCapacity(d);
+    // 100 req/s charge the 30 req/s bucket at the router, then again at the API: one 30 req/s budget between them
+    // (the steady-state estimate splits it in proportion to their demand).
+    const routerAdmits = 100 - a.routeDemand!.kong["search-get"].throttled;
+    expect(routerAdmits).toBeCloseTo(15);
+    expect(a.nodes.search.capacity).toBeCloseTo(15);
+    // Playback spends the same one budget, however it falls between the two.
+    const e = run(d, 20_000);
+    const spent = (delivered(e, "kong-search") + e.snapshot().nodes.search.processed) / 20;
+    expect(spent).toBeGreaterThan(27);
+    expect(spent).toBeLessThan(33);
+  });
+
+  it("denied targets' share charges no quota, as playback blocks it before admission", () => {
+    const table = structuredClone(ROUTING_TABLE);
+    table.rules[1] = {
+      ...table.rules[1],
+      targets: [
+        { edgeId: "kong-orders", weight: 9 },
+        { edgeId: "kong-search", weight: 1 },
+      ],
+      quotas: [limit(20)],
+    };
+    const d = routingFixture({ table, rate: 100, mix: searchOnly });
+    d.edges.find((e) => e.id === "kong-orders")!.props = { travelMs: 10, deny: true };
+    const a = analyzeCapacity(d);
+    expect(a.routeDemand!.kong["search-get"].throttled).toBe(0);
+    expect(a.connections["kong-search"]).toBeCloseTo(10);
+    expect(a.connections["kong-orders"] ?? 0).toBe(0);
+  });
+
+  it.each([0, 0.5])("a rule bucket that can't hold one request admits nothing (burst %s)", (burst) => {
+    const table = structuredClone(ROUTING_TABLE);
+    table.rules[1].quotas = [limit(10, { burst })];
+    const a = analyzeCapacity(routingFixture({ table, rate: 100, mix: searchOnly }));
+    expect(a.routeDemand!.kong["search-get"].throttled).toBeCloseTo(100);
+  });
+
+  it("routers and traffic classes whose names contain separators never share a decision", () => {
+    const d = routingFixture({ rate: 10, mix: searchOnly });
+    const table: RouteTable = { rules: [], default: { targets: [{ edgeId: "a-out", weight: 1 }] } };
+    d.nodes = [
+      {
+        id: "s1",
+        stencil: "client.mobile",
+        label: "S1",
+        x: 0,
+        y: 0,
+        props: { ratePerSec: 10, messageType: "b\u0000T", trafficMix: searchOnly },
+      },
+      {
+        id: "s2",
+        stencil: "client.mobile",
+        label: "S2",
+        x: 0,
+        y: 200,
+        props: { ratePerSec: 20, messageType: "T", trafficMix: searchOnly },
+      },
+      { id: "a", stencil: "kong", label: "A", x: 200, y: 0, props: { routeTable: table } },
+      {
+        id: "a\u0000b",
+        stencil: "kong",
+        label: "AB",
+        x: 200,
+        y: 200,
+        props: { routeTable: { rules: [], default: { targets: [{ edgeId: "ab-out", weight: 1 }] } } },
+      },
+      { id: "x", stencil: "generic.service", label: "X", x: 400, y: 0 },
+      { id: "y", stencil: "generic.service", label: "Y", x: 400, y: 200 },
+    ];
+    d.edges = [
+      { id: "s1-a", from: "s1", to: "a", kind: "sync" },
+      { id: "s2-ab", from: "s2", to: "a\u0000b", kind: "sync" },
+      { id: "a-out", from: "a", to: "x", kind: "sync" },
+      { id: "ab-out", from: "a\u0000b", to: "y", kind: "sync" },
+    ];
+    const a = analyzeCapacity(d);
+    expect(a.connections["a-out"]).toBeCloseTo(10);
+    expect(a.connections["ab-out"]).toBeCloseTo(20);
   });
 
   it("decides each router's traffic class once per analysis, whatever the iterations", () => {

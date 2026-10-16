@@ -894,7 +894,12 @@ export function RouteTableFields({
                       requestAnimationFrame(() => (next ? rowRefs.current.get(next) : defaultRow.current)?.focus());
                       setAnnounce(t("routing.ruleRemoved", { rule: i + 1 }));
                       notify(t("routing.ruleDeleted", { rule: i + 1 }), {
-                        action: { label: t("routing.undo"), run: () => editor.undo(), testId: "toast-rule-undo" },
+                        action: {
+                          label: t("routing.undo"),
+                          run: () => editor.undo(),
+                          testId: "toast-rule-undo",
+                          undoes: true,
+                        },
                       });
                     }}
                   >
@@ -1050,6 +1055,16 @@ export function TrafficMixFields({
   const [intended] = useState(adding);
   useEffect(() => routingIntent.clear(nodeId), [nodeId]);
   const [choosing, setChoosing] = useState(false);
+  // Keyboard position after choosing from Add route: the new form's Path, or the added row's value.
+  const [focusNew, setFocusNew] = useState(false);
+  const [focusRow, setFocusRow] = useState<string | null>(null);
+  const valueRefs = useRef(new Map<string, HTMLInputElement>());
+  useEffect(() => {
+    const input = focusRow ? valueRefs.current.get(focusRow) : undefined;
+    if (!input) return;
+    input.focus();
+    setFocusRow(null);
+  }, [focusRow, props.trafficMix]);
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, number> | null>(null);
   const merge = (field: string) => ({ merge: `routing:mix:${nodeId}:${field}` });
@@ -1069,7 +1084,15 @@ export function TrafficMixFields({
   };
   const unused = routes.filter((r) => !mix?.entries.some((e) => e.routeId === r.id));
   const adder = adding ? (
-    <NewRoute testId="mix-new-route" onAdd={addNew} onCancel={() => setAdding(false)} focus={intended} />
+    <NewRoute
+      testId="mix-new-route"
+      onAdd={addNew}
+      onCancel={() => {
+        setAdding(false);
+        setFocusNew(false);
+      }}
+      focus={intended || focusNew}
+    />
   ) : (
     <div className="route-actions route-adder">
       <button
@@ -1077,7 +1100,13 @@ export function TrafficMixFields({
         className="btn btn-primary"
         aria-expanded={unused.length ? choosing : undefined}
         data-testid={unused.length ? "mix-add-route" : "mix-add-route-new"}
-        onClick={() => (unused.length ? setChoosing(!choosing) : setAdding(true))}
+        onClick={() => {
+          if (unused.length) setChoosing(!choosing);
+          else {
+            setAdding(true);
+            setFocusNew(true);
+          }
+        }}
       >
         {mix ? t("routing.addRoute") : t("routing.addMix")}
       </button>
@@ -1092,6 +1121,7 @@ export function TrafficMixFields({
                 onClick={() => {
                   setChoosing(false);
                   setDraft(null);
+                  setFocusRow(r.id);
                   if (mix) save(addMixRow(mix, r.id), `add:${r.id}`);
                   else applyRouted(editor, (d) => setProps(d, nodeId, { trafficMix: addMixRow(undefined, r.id) }));
                 }}
@@ -1108,6 +1138,7 @@ export function TrafficMixFields({
               onClick={() => {
                 setChoosing(false);
                 setAdding(true);
+                setFocusNew(true);
               }}
             >
               {t("routing.newRouteMenu")}
@@ -1229,6 +1260,10 @@ export function TrafficMixFields({
                         : t("routing.rateOf", { route: route ? routeName(route) : entry.routeId })
                     }
                     data-testid={`mix-row-${entry.routeId}-value`}
+                    ref={(el) => {
+                      if (el) valueRefs.current.set(entry.routeId, el);
+                      else valueRefs.current.delete(entry.routeId);
+                    }}
                     onChange={(e) => {
                       const v = e.currentTarget.valueAsNumber;
                       if (!Number.isFinite(v) || v < 0) return;

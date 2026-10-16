@@ -30,3 +30,36 @@ and failed there.
 ## Alternatives declined
 
 None of round 1's findings were rejected.
+
+## Round 2
+
+Review: `.reviews/20261016-054122/REPORT.md` (range `948af545...8b12746a`), 6 P1 and 9 P2 findings, all accepted.
+Five of the six P1s and three P2s are one cluster: round 1's rule quotas in capacity analysis cut demand
+mid-solve from the previous iteration's bucket loads, which added hidden iteration dependencies, kept a second
+ledger beside the managed-admission one, charged deny shares and ignored burst. Rather than patch the lagged
+solver, the quota handling was simplified to match every other admission limit in the analysis:
+
+- The solve carries offered demand only and never depends on a quota, so it settles in the same passes as before
+  (the iteration bound and convergence check are unchanged and correct again).
+- Each matched action's forwarded share (deny targets excluded) is collected with the buckets playback charges
+  (`quotaRequirements`, the same identities), then charged once on the steady-state admission ledger
+  (`admissionPlan` in `admissionPlanning.ts`) together with managed nodes' and endpoints' quotas. A shared quota
+  is one budget wherever it's named; a bucket that can't hold one request admits nothing; what the ledger can't
+  admit is the route's `throttled` demand.
+- Like managed-node quotas, rule quotas no longer reduce what's offered downstream. Serial limits each report
+  against offered demand; `docs/SIMULATION.md` says so.
+
+| Finding                                                                              | Disposition and regression                                                                                                                                                                                                                                                                                   |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| P1 architecture, P1 correctness, P1 security: quota state outran the iteration bound | Simplification above. "reports a rule quota's 429 demand from the settled ledger: converged, no cycle warning, demand offered on"; "serial rule quotas converge in a DAG and each reports against its own offered demand".                                                                                   |
+| P1 architecture: one ledger for rule and API quotas                                  | `admissionPlan` takes routed demand beside managed entries. "a shared quota named by a rule and a managed API is one ledger, as in playback" (analysis splits 30 req/s between the two; playback spends the same 30).                                                                                        |
+| P1 architecture + P2 correctness: deny shares charged to quotas                      | Only the forwarded share is charged. "denied targets' share charges no quota, as playback blocks it before admission".                                                                                                                                                                                       |
+| P1 tests: convergence and downstream demand in the quota regression                  | The rewritten regression asserts `converged`, no cycle warning and consistent node/route demand. The `corpus-r1-quotas` planning and describe goldens lose their false "did not converge" warning (the only two golden changes).                                                                             |
+| P2 correctness: burst below one request                                              | "a rule bucket that can't hold one request admits nothing" (burst 0 and 0.5).                                                                                                                                                                                                                                |
+| P2 security: separator collisions in decision keys                                   | Decisions are cached in nested maps (router, then class), and a routed document keys traffic classes by `JSON.stringify([type, route, sync])`. "routers and traffic classes whose names contain separators never share a decision". Unrouted documents keep their type keys, so their outputs are unchanged. |
+| P2 performance: saved-simulation scan on every edit                                  | Routers with tables in saved simulations are cached by the simulations array. "scans saved simulations once per simulations change, not on every edit" (operation count).                                                                                                                                    |
+| P2 accessibility: focus after choosing from Add route                                | Choosing a route focuses its new row's value; New route (from the menu or the button) focuses Path. E2E "Add route keeps the keyboard's place …".                                                                                                                                                            |
+| P2 accessibility + P2 types: pending right-click form moved and lost its fields      | The inspector pins the routing section for the selected node once a right-click intent opened it. E2E "a right-click traffic mix keeps its unfinished route while the node's name changes".                                                                                                                  |
+| P2 tests + P2 types: rule-deletion toast survived Undo                               | The toast action is marked `undoes`. E2E "rule deletion: the toast's Undo restores the rule, and the toast leaves once history moves" checks in the same frame as the canvas Undo, so expiry can't hide a stale toast.                                                                                       |
+
+All round 2 regressions failed on the round 1 code and pass now.

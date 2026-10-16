@@ -946,3 +946,8 @@ Added goldens freeze routing's behaviour in four new corpus diagrams and the sho
   describe/check/edit, native/draw.io/Mermaid/HTML exports, canvas, layout and tidy).
 
 A fresh `pnpm parity` afterwards: 2,196 goldens, 0 changed, 0 added, 0 missing, 0 stale (1,274 node tests and 76 browser tests passed).
+
+Review round 2 changed two of the new goldens, `node/planning/corpus-r1-quotas.json` and
+`node/agent/describe/corpus-r1-quotas.json`: rule quotas are now charged on the steady-state admission ledger
+instead of cutting demand mid-solve, so the quota corpus no longer reports a false "Cycle demand did not converge"
+and its downstream demand is the offered demand. No other golden changed.

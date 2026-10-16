@@ -35,19 +35,19 @@
   **Route table** in the inspector (or Add routes… on the right-click): ordered rules matching method, path
   (exact, starts with, or a template like /orders/{id}), host, headers and query, each sending to one or more
   connections by weight, then a Default. The first table keeps today's connections in its Default; removing it
-  refuses everything else with 404. A matched rule never falls through; a down canary keeps its share. Optional
-  per-rule rate limits refuse with 429, a shared account quota is charged once.
+  rejects everything else with 404. A matched rule never falls through; a down canary keeps its share. Optional
+  per-rule rate limits reject with 429, a shared account quota is charged once.
 - **Colours you can tell apart.** In Live each route's requests take its own colour and marker (an
   Okabe–Ito colour-universal palette, four shapes) with an outline that reads on both themes. The inspector's
   **Routes** legend names each route with its counts; traces and slow motion say which rule sent a request where
-  ("POST /orders → rule 1 → Orders canary (10% split)") or why it was refused.
+  ("POST /orders → rule 1 → 10% split") or why it was rejected.
 - **Safe edits.** Deleting or reconnecting a connection a table sends to is refused with **Remove from route
   table**, never silently rerouted; copies, agents (`set_meta` requestRoutes, node and connection props) and the
   file format share one validation path. Capacity analysis, explanations and `describe_diagram` follow the same
   routing.
 - **Showcase.** "Parcel API behind a route table" (Integration) is an invented parcel platform behind a Kong-style
   gateway: a mobile app and carrier webhooks hit five routes at different rates, a 10% pricing canary, an old app
-  version refused 404, and carrier events saturating their service. It's tagged Routing in the gallery.
+  version rejected 404, and carrier events saturating their service. It's tagged Routing in the gallery.
 - **Unchanged:** every existing diagram's simulation, checks, exports and rendering; their parity outputs are
   unchanged. See [SIMULATION.md](SIMULATION.md#request-routing-r1-planningrequestroutes).
 

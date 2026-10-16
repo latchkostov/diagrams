@@ -1102,13 +1102,19 @@ mixes, tables or caller addresses play exactly as before, seed for seed. Researc
   compilation per configuration change (load or a setup/timeline patch of that node, which replaces the table
   whole); at most one predicate per rule for each request; idle ticks and frames compile nothing.
 - **Analysis and explanations** propagate the same classes (type and route): mixes split demand, tables send it
-  by first match and weights, refused demand is reported per route and goes no further. `routeDemand` gives
-  offered and refused requests/s per route at each node; explanations and `describe_diagram` say them.
+  by first match and weights, and demand a table refuses (404) is reported per route and goes no further.
+  Rule rate limits are admission limits like a managed node's: the analysis carries offered demand on and charges
+  each matched action's forwarded share (deny targets excluded, as playback blocks them before admission) to the
+  same steady-state ledger as node and endpoint quotas, so a shared quota is one budget wherever it's named. What
+  the ledger can't admit is reported as `throttled` (429) on the route; a bucket that can't hold one request admits
+  nothing. Serial limits each report against the offered demand. Nothing in the solve depends on a quota, so it
+  settles in the same passes as without one. `routeDemand` gives offered, refused and throttled requests/s per
+  route at each node; explanations and `describe_diagram` say them.
 - **Live:** addressed particles take their route's colour and marker with a contrasting outline (dark on the
   light canvas, light on the dark one), in the main and worker renderers and slow motion. The inspector's Routes
-  legend lists each route's swatch, marker, address and its sent, done and refused counts in real units (seven at
+  legend lists each route's swatch, marker, address and its sent, completed and rejected counts in real units (seven at
   a time, with a search for the rest). Traces record the route on every step and the router's rule and share on
-  its send; the trace card and slow motion say "POST /orders → rule 1 → Orders canary (10% split)" or "GET
+  its send; the trace card and slow motion say "POST /orders → rule 1 → 10% split" or "GET
   /unknown → no route: rejected 404".
 - **Editing:** a router's Route table and a source's Traffic mix appear in the inspector once added (Add
   routes… / Add traffic mix… in Simulation and the node's right-click). The first table keeps today's

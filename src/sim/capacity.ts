@@ -17,7 +17,8 @@ import {
 import type { NodeStatus } from "./types";
 import { resolveMultiplier } from "./units";
 import { iterationBound } from "./iterationBound";
-import { admissionCapacities } from "./admissionPlanning";
+import { admissionPlan, type RoutedDemand } from "./admissionPlanning";
+import { quotaRequirements, type QuotaRequirement } from "./admission";
 import {
   chooseAction,
   compileFilter,
@@ -31,7 +32,6 @@ import {
   type CompiledTable,
 } from "./routeMatching";
 import { routeTableCapable } from "../model/requestRouting";
-import { quotaKey } from "./admissionPolicy";
 
 /** Configured demand for one request route at one node, real requests/s ("" is requests without an address). */
 export interface RouteDemand {
@@ -277,9 +277,11 @@ export function analyzeCapacity(
     sync?: boolean;
   }
   const classes = new Map<string, TrafficClass>();
+  // Unrouted documents key classes by their type, as before routing; a routed document keys every class by its
+  // whole tuple, so no type, route or router name can collide with another class.
   const classKey = (type: string, route?: CompiledRoute, sync?: boolean): string => {
-    if (!route && !sync) return type;
-    const key = `${type}\u0000${route?.id ?? ""}\u0000${sync ? "s" : ""}`;
+    if (!routes) return type;
+    const key = JSON.stringify([type, route?.id ?? null, !!sync]);
     if (!classes.has(key)) classes.set(key, { type, route, sync });
     return key;
   };
@@ -292,15 +294,17 @@ export function analyzeCapacity(
     classKey(type, route, !route && edge.sync && !!entries.get(edge.to)?.table);
   const demand = new Map<string, Map<string, RouteDemand>>();
   // A router's decision for a traffic class never changes with rates: decided once per analysis (not per iteration),
-  // with its eligible targets and its action's quota buckets.
+  // with its eligible targets, the share they forward (deny targets block theirs before admission, as in playback)
+  // and its action's quota buckets.
   interface Decision {
     eligible: CompiledEdge[];
     weights: number[];
     sum: number;
-    buckets: { key: string; rate: number }[];
+    forwarded: number;
+    action: string;
+    requirements: QuotaRequirement[];
   }
-  const decisions = new Map<string, Decision | "legacy">();
-  const sharedQuotas = new Map((diagram.planning?.sharedQuotas ?? []).map((q) => [q.id, q]));
+  const decisions = new Map<string, Map<string, Decision | "legacy">>();
   function decide(
     id: string,
     table: CompiledTable,
@@ -309,8 +313,9 @@ export function analyzeCapacity(
     route: CompiledRoute | undefined,
     sync: boolean,
   ): Decision | "legacy" {
-    const cacheKey = `${id}\u0000${key}`;
-    const known = decisions.get(cacheKey);
+    let byClass = decisions.get(id);
+    if (!byClass) decisions.set(id, (byClass = new Map()));
+    const known = byClass.get(key);
     if (known) return known;
     const choice = chooseAction(table, route, sync);
     let decision: Decision | "legacy" = "legacy";
@@ -326,25 +331,26 @@ export function analyzeCapacity(
             weights.push(target.weight);
           }
         }
-      const buckets = new Map<string, number>();
-      if ("action" in choice)
-        for (const declared of choice.action.quotas) {
-          const quota = (declared.sharedGroup ? sharedQuotas.get(declared.sharedGroup) : undefined) ?? declared;
-          buckets.set(quotaKey(id, ["rule", choice.action.key], declared), (quota.amount * 1000) / quota.windowMs);
-        }
+      const sum = weights.reduce((a, b) => a + b, 0);
       decision = {
         eligible,
         weights,
-        sum: weights.reduce((a, b) => a + b, 0),
-        buckets: [...buckets].map(([bucket, rate]) => ({ key: bucket, rate })),
+        sum,
+        forwarded: sum ? eligible.reduce((total, edge, i) => total + (edge.deny ? 0 : weights[i]), 0) / sum : 0,
+        action: "action" in choice ? choice.action.key : "",
+        // The same buckets, by the same identities, playback charges (shared quotas are one bucket everywhere).
+        requirements:
+          "action" in choice && choice.action.quotas.length
+            ? quotaRequirements(id, choice.action.key, choice.action.quotas, diagram.planning)
+            : [],
       };
     }
-    decisions.set(cacheKey, decision);
+    byClass.set(key, decision);
     return decision;
   }
-  // Each quota bucket's offered rate, from the previous iteration (the fixed point settles them together).
-  let previousBuckets = new Map<string, number>();
-  let bucketOffered = new Map<string, number>();
+  // What each router's rule quotas are offered, by router, route and action: settled with the rest of the demand,
+  // then charged once on the admission ledger (below).
+  const routed = new Map<string, { router: string; route: string; demand: RoutedDemand }>();
   const routeDemandAt = (id: string, route: CompiledRoute | undefined): RouteDemand => {
     let byRoute = demand.get(id);
     if (!byRoute) demand.set(id, (byRoute = new Map()));
@@ -404,7 +410,7 @@ export function analyzeCapacity(
   /** A source's traffic: split by its mix's proportions (addressed classes), or one unaddressed class. */
   function enter(id: string, entry: Entry, type: string, rate: number): void {
     if (!entry.mix) {
-      add(external, id, type, rate);
+      add(external, id, classKey(type), rate);
       return;
     }
     entry.mix.routes.forEach((route, i) => add(external, id, classKey(type, route), rate * entry.mix!.proportions[i]));
@@ -467,15 +473,19 @@ export function analyzeCapacity(
           routeDemandAt(id, route).rejected += rate;
           return;
         }
-        // The action's quotas admit at most their rate (shared buckets across every action that names them); the
-        // rest is rejected 429 here and goes no further, as in playback.
-        let admitted = rate;
-        for (const bucket of decision.buckets) {
-          bucketOffered.set(bucket.key, (bucketOffered.get(bucket.key) ?? 0) + rate);
-          const offered = previousBuckets.get(bucket.key) ?? 0;
-          if (offered > bucket.rate) admitted = Math.min(admitted, (rate * bucket.rate) / offered);
+        // Rule quotas are admission limits like any other: the analysis carries offered demand downstream and
+        // reports what the quotas would reject (429) from the settled ledger, never cutting demand mid-solve.
+        if (decision.requirements.length && decision.forwarded > 0) {
+          const routedKey = JSON.stringify([id, route?.id ?? "", decision.action]);
+          const entry = routed.get(routedKey);
+          if (entry) entry.demand.rate += rate * decision.forwarded;
+          else
+            routed.set(routedKey, {
+              router: id,
+              route: route?.id ?? "",
+              demand: { requirements: decision.requirements, rate: rate * decision.forwarded },
+            });
         }
-        if (admitted < rate) routeDemandAt(id, route).throttled += rate - admitted;
         decision.eligible.forEach((edge, i) => {
           // A deny rule's share is blocked at this router and goes no further.
           if (!edge.deny)
@@ -483,7 +493,7 @@ export function analyzeCapacity(
               next,
               edge.to,
               along(edge, emittedType(edge.emits, type), route),
-              (admitted * decision.weights[i]) / decision.sum,
+              (rate * decision.weights[i]) / decision.sum,
               edge,
             );
         });
@@ -535,8 +545,7 @@ export function analyzeCapacity(
   for (; iterations < iterationCap; iterations++) {
     connections = Object.create(null);
     demand.clear();
-    previousBuckets = bucketOffered;
-    bucketOffered = new Map();
+    routed.clear();
     const next: Rates = new Map([...external].map(([id, types]) => [id, new Map(types)]));
     for (const [id, types] of rates) {
       const entry = entries.get(id)!;
@@ -631,7 +640,17 @@ export function analyzeCapacity(
         ]
       : [],
   );
-  for (const [id, capacity] of admissionCapacities(managed, diagram.planning)) {
+  const routedDemand = [...routed.values()];
+  const plan = admissionPlan(
+    managed,
+    diagram.planning,
+    routedDemand.map((r) => r.demand),
+  );
+  routedDemand.forEach(({ router, route, demand: d }, i) => {
+    const throttled = d.rate * (1 - plan.admitted[i]);
+    if (throttled > 0) demand.get(router)!.get(route)!.throttled += throttled;
+  });
+  for (const [id, capacity] of plan.capacities) {
     nodes[id].capacity = Math.min(nodes[id].capacity, capacity);
     const entry = entries.get(id)!;
     if (entry.props.resources && entry.up) {
