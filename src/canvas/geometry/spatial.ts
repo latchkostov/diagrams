@@ -8,7 +8,14 @@ interface Entry<T> {
 const MAX_QUERY_CELLS = 4096;
 const MAX_CELL_ENTRIES = 262_144;
 const valid = (r: Rect) =>
-  [r.x, r.y, r.width, r.height, r.x + r.width, r.y + r.height].every(Number.isFinite) && r.width >= 0 && r.height >= 0;
+  Number.isFinite(r.x) &&
+  Number.isFinite(r.y) &&
+  Number.isFinite(r.width) &&
+  Number.isFinite(r.height) &&
+  Number.isFinite(r.x + r.width) &&
+  Number.isFinite(r.y + r.height) &&
+  r.width >= 0 &&
+  r.height >= 0;
 /** Whether `insert` keeps a rect (finite, no negative size): a caller must scan the others itself. */
 export const indexable = valid;
 const touches = (a: Rect, b: Rect) =>
@@ -19,17 +26,14 @@ const touches = (a: Rect, b: Rect) =>
  * cells. Invalid rectangles are ignored; valid rectangles are never silently lost.
  */
 export class SpatialGrid<T> {
-  private cells = new Map<string, Entry<T>[]>();
+  /** Column, then row: numbers, not "x,y" strings (a query reads many cells; building a key per cell showed). */
+  private cells = new Map<number, Map<number, Entry<T>[]>>();
   private entries: Entry<T>[] = [];
   private overflow: Entry<T>[] = [];
   private cellEntries = 0;
   private cell: number;
   constructor(cell = 160) {
     this.cell = Number.isFinite(cell) && cell > 0 ? cell : 160;
-  }
-
-  private key(cx: number, cy: number) {
-    return `${cx},${cy}`;
   }
 
   private range(r: Rect) {
@@ -57,13 +61,15 @@ export class SpatialGrid<T> {
     }
     this.cellEntries += count;
     const [x1, y1, x2, y2] = range;
-    for (let cx = x1; cx <= x2; cx++)
+    for (let cx = x1; cx <= x2; cx++) {
+      let column = this.cells.get(cx);
+      if (!column) this.cells.set(cx, (column = new Map()));
       for (let cy = y1; cy <= y2; cy++) {
-        const k = this.key(cx, cy);
-        const list = this.cells.get(k);
+        const list = column.get(cy);
         if (list) list.push(entry);
-        else this.cells.set(k, [entry]);
+        else column.set(cy, [entry]);
       }
+    }
   }
 
   /** Items whose rect's cells overlap `rect`'s cells (a superset of true hits; callers test exactly). */
@@ -81,20 +87,36 @@ export class SpatialGrid<T> {
       return hits;
     }
     const [x1, y1, x2, y2] = range;
+    if (x1 === x2 && y1 === y2) {
+      // One cell: its list holds an entry once, and never one from the overflow, so nothing needs de-duplicating.
+      const hits: Entry<T>[] = [];
+      for (const e of this.overflow) {
+        if (budget && --budget.remaining < 0) return null;
+        if (touches(e.rect, rect)) hits.push(e);
+      }
+      for (const e of this.cells.get(x1)?.get(y1) ?? []) {
+        if (budget && --budget.remaining < 0) return null;
+        hits.push(e);
+      }
+      return hits;
+    }
     const seen = new Set<Entry<T>>();
     for (const e of this.overflow) {
       if (budget && --budget.remaining < 0) return null;
       if (touches(e.rect, rect)) seen.add(e);
     }
-    for (let cx = x1; cx <= x2; cx++)
-      for (let cy = y1; cy <= y2; cy++) {
-        const list = this.cells.get(this.key(cx, cy));
-        if (list)
-          for (const e of list) {
-            if (budget && --budget.remaining < 0) return null;
-            seen.add(e);
-          }
-      }
+    for (let cx = x1; cx <= x2; cx++) {
+      const column = this.cells.get(cx);
+      if (column)
+        for (let cy = y1; cy <= y2; cy++) {
+          const list = column.get(cy);
+          if (list)
+            for (const e of list) {
+              if (budget && --budget.remaining < 0) return null;
+              seen.add(e);
+            }
+        }
+    }
     return [...seen];
   }
 }
