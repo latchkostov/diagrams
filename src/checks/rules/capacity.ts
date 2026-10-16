@@ -64,7 +64,7 @@ export const capacity: CheckRule = {
         plan = analysis.nodes[node.id].resourcePlan;
       const kind = p.autoscalingProblem
         ? "invalid"
-        : !bindings(p.autoscaling)
+        : !bindings(p.autoscaling, node.id)
           ? "binding"
           : plan?.memoryRisk
             ? "memory"

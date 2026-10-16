@@ -55,7 +55,10 @@ export function AutoscalingFields({
   } catch {
     valid = false;
   }
-  const c = valid && a?.mode === "on" ? a.controller : undefined;
+  const c =
+    valid && a?.mode === "on" && (a.controller.kind === "hpa" || a.controller.kind === "keda")
+      ? a.controller
+      : undefined;
   const commit = (candidate: Partial<NodeSimProps>, key?: string): boolean => {
     try {
       const next = { ...props, ...candidate };
@@ -82,7 +85,7 @@ export function AutoscalingFields({
   const patch = (edit: (next: NonNullable<typeof c>) => void, key: string) => {
     if (a?.mode !== "on") return false;
     const next = structuredClone(a);
-    edit(next.controller);
+    edit(next.controller as NonNullable<typeof c>);
     if (next.controller.minReplicas > next.controller.maxReplicas) return false;
     next.controller.initialReplicas = Math.max(
       next.controller.minReplicas,
@@ -502,8 +505,9 @@ export function AutoscalingFields({
                     if (!value || typeof value !== "object") throw new Error("Invalid policy");
                     const next = structuredClone(a);
                     if (next?.mode !== "on") return;
-                    if (next.controller.kind === "keda") next.controller = value as typeof next.controller;
-                    else next.controller.settings = value as typeof next.controller.settings;
+                    if (next.controller.kind === "hpa")
+                      next.controller.settings = value as typeof next.controller.settings;
+                    else next.controller = value as typeof next.controller;
                     if (!commit({ autoscaling: next }, "behaviour")) throw new Error("Invalid policy");
                     setPolicyInvalid(false);
                   } catch {

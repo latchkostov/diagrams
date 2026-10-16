@@ -155,11 +155,14 @@ export function graphToDiagram(g: ImportGraph, total?: number): { diagram: Diagr
   const omitted: ReportLine[] = [];
   for (const n of nodes) {
     const a = n.props?.autoscaling as AutoscalingConfig | undefined;
-    if (binding(a)) continue;
+    if (binding(a, n.id)) continue;
     n.props!.autoscaling = {
       mode: "unsupported",
       provider: g.format,
-      reason: "KEDA source binding omitted from import; include its broker and consumer group route",
+      reason:
+        a?.mode === "on" && a.controller.kind === "ecs"
+          ? "ECS load balancer binding omitted from import; include its load balancer and request route"
+          : "KEDA source binding omitted from import; include its broker and consumer group route",
     };
     omitted.push({ name: n.label, reason: diagnostic("importDetail.scalingSourceOmitted") });
   }
