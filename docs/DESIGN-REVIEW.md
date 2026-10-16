@@ -31,6 +31,15 @@ scripts makes the direct-language and OAuth-state regressions fail. Production s
 were visually inspected in Arabic at both widths; headings, prose, links and wrapped commands
 remain readable without horizontal overflow.
 
+The first complete production gate passed 1,306 E2E tests and failed two existing autoscaling
+checks. On clean `origin/master` (`840ad022`) in this same worktree, the startup check failed
+identically (23 passed, one failed). Its 30-second timeout expired while the fake clock drew
+the initial 30 seconds of paused playback. The test now fast-forwards that idle period, retaining
+the same page age and every active-playback assertion. The pagination trace showed the lazy
+planning module arriving after the click timeout; it now waits for page readiness before acting.
+No product code, assertion or timeout changed. The corrected autoscaling and static-page specs
+pass all 74 tests without retries; restoring the original test reproduces the startup failure.
+
 ## Deferred layout and interrupted-fit review (2026-10-15)
 
 The designer agent's scoped source/regression review found no added chrome, wording or focus targets.
