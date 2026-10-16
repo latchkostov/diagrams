@@ -49,8 +49,6 @@ Rule since 2026-10-14: every user-visible feature ships with a showcase example 
 8. **Languages.** Translate the inspector, live view, capacity, planning and checks screens once the branches above have merged; then the static pages.
 9. **Known gaps from reviews:**
    - Add a consumer restarts the run.
-   - A node keeps its old name after its stencil changes.
-   - Agent `connect` into Key Vault without a relation.
    - Infrastructure imports don't mark inferred relations.
    - Dependency outages aren't simulated.
    - Follow-up review P2s from #123 (contrast budget caching, spatial-query budgets, raw autoscaling prop guards, AI-panel opening while Inputs is open).

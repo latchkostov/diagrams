@@ -1,7 +1,7 @@
 import { currentDiagram } from "./fixtures";
 import { openExample } from "./fixtures";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, publicExamples, expectNoErrors, STORAGE_KEYS } from "./fixtures";
+import { test, expect, gotoCanvas, publicExamples, expectNoErrors, pauseClock, STORAGE_KEYS } from "./fixtures";
 
 // Your diagrams (the local library) and data safety: edits are never lost to navigation, every
 // diagram you open or start gets its own entry, and the old single slot is upgraded in place.
@@ -69,12 +69,14 @@ test.describe("data safety", () => {
   });
 
   test("hiding the page saves pending edits (reload, close, tab switch)", async ({ page }) => {
-    const ex = publicExamples[0];
-    const node = ex.nodeIds[0];
     await page.clock.install();
-    await gotoCanvas(page, ex.slug);
+    await gotoCanvas(page, publicExamples[0].slug);
+    // An example's first edit can save immediately when it becomes an owned copy. Start with an owned
+    // document so this edit must stay pending until pagehide/visibilitychange flushes it.
+    await importDiagram(page, "Page lifecycle");
+    const node = "n0";
     await page.getByTestId(`node-${node}`).click();
-    await page.clock.pauseAt(new Date(Date.now() + 1000));
+    await pauseClock(page);
     await page.getByTestId("inspector-field-label").fill("Before pagehide");
     const saved = async () =>
       page.evaluate(

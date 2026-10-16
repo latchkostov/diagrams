@@ -5,6 +5,7 @@ import type { DiagramOp } from "./index";
 import { LIMITS, validateDiagram } from "../interop/native";
 import { overlaps } from "../canvas/placement";
 import { estimateCardSize } from "../canvas/nodes/size";
+import { STENCIL_RELATIONS } from "../stencils/relations";
 
 const empty = (): DiagramFile => ({ format: "diagrams/v1", title: "Test", nodes: [], edges: [] });
 const graph = () =>
@@ -35,20 +36,81 @@ describe("applyOps", () => {
     expect(result.results).toEqual([]);
     expect(result.errors[0]).toMatchObject({ i: 1, hint: expect.any(String), candidates: expect.any(Array) });
   });
-  it("connects with a dependency when asked: dotted, no traffic; a flow otherwise; nothing else is a relation", () => {
+  it("infers a secret dependency and lets an explicit relationship win", () => {
     const result = run(graph(), [
       { op: "add_node", kind: "azure.key-vault", label: "Vault", key: "kv" },
-      { op: "connect", from: "API", to: "kv", relation: "secret", key: "reads" },
+      { op: "connect", from: "API", to: "kv", relation: "config", key: "reads" },
       { op: "connect", from: "API", to: "kv" },
     ]);
-    const [secret, plain] = result.diagram.edges.slice(-2);
-    expect(secret).toMatchObject({ from: result.results[1].from, relation: "secret" });
-    expect(plain.relation).toBeUndefined();
-    for (const relation of ["flow", "secrets"])
+    const [explicit, inferred] = result.diagram.edges.slice(-2);
+    expect(explicit).toMatchObject({ from: result.results[1].from, relation: "config" });
+    expect(explicit.relationOrigin).toBeUndefined();
+    expect(inferred).toMatchObject({ relation: "secret", relationOrigin: "inferred" });
+    const back = run(result.diagram, [{ op: "update", target: "Vault", kind: "generic.service" }]);
+    expect(back.diagram.edges.at(-2)?.relation).toBe("config");
+    expect(back.diagram.edges.at(-1)?.relation).toBeUndefined();
+    for (const relation of ["secrets", "unknown"])
       expect(
         applyOps(graph(), [{ op: "connect", from: "API", to: "DB", relation } as unknown as DiagramOp]).ok,
         relation,
       ).toBe(false);
+  });
+  it.each(Object.entries(STENCIL_RELATIONS))("connect shares editor inference for %s", (stencil, relation) => {
+    const d: DiagramFile = {
+      ...empty(),
+      nodes: [
+        { id: "api", stencil: "service.dotnet", label: "API", x: 0, y: 0 },
+        { id: "typed", stencil, label: "Dependency", x: 400, y: 0 },
+      ],
+    };
+    const from = relation.out ? "typed" : "api";
+    const to = relation.out ? "api" : "typed";
+    expect(run(d, [{ op: "connect", from, to }]).diagram.edges[0]).toMatchObject({
+      relation: relation.out ?? relation.in,
+      relationOrigin: "inferred",
+    });
+  });
+
+  it("an explicit flow into a typed dependency stays authored across stencil changes", () => {
+    const result = run(graph(), [
+      { op: "add_node", kind: "azure.key-vault", label: "Vault", key: "kv" },
+      { op: "connect", from: "API", to: "kv", relation: "flow", kind: "sync" },
+      { op: "update", target: "kv", kind: "azure.app-config" },
+    ]);
+    const edge = result.diagram.edges.at(-1)!;
+    expect(edge).toMatchObject({ kind: "sync", relationOrigin: "explicit" });
+    expect(edge.relation).toBeUndefined();
+  });
+
+  it("keeps ordinary connections as flows with their inferred kind", () => {
+    const d = graph();
+    const edge = run(d, [{ op: "connect", from: "API", to: "DB" }]).diagram.edges.at(-1)!;
+    expect(edge.kind).toBe("sync");
+    expect(edge.relation).toBeUndefined();
+    expect(edge.relationOrigin).toBeUndefined();
+  });
+
+  it("agent stencil updates follow default names and preserve custom or explicit names", () => {
+    const d: DiagramFile = {
+      ...empty(),
+      nodes: [
+        { id: "default", stencil: "generic.service", label: "Service", x: 0, y: 0 },
+        { id: "custom", stencil: "generic.service", label: "Credentials", x: 400, y: 0 },
+        { id: "explicit", stencil: "generic.service", label: "Service", x: 800, y: 0 },
+      ],
+    };
+    const result = run(d, [
+      { op: "update", target: "default", kind: "azure.key-vault" },
+      { op: "update", target: "custom", kind: "azure.key-vault" },
+      { op: "update", target: "explicit", kind: "azure.key-vault", label: "Service" },
+      { op: "update", target: "Key Vault", kind: "postgres" },
+    ]);
+    expect(result.diagram.nodes.map((n) => [n.stencil, n.label])).toEqual([
+      ["postgres", "PostgreSQL"],
+      ["azure.key-vault", "Credentials"],
+      ["azure.key-vault", "Service"],
+    ]);
+    expect(d.nodes[0]).toMatchObject({ stencil: "generic.service", label: "Service" });
   });
   it("dry-runs the same proposed result without mutating input", () => {
     const d = empty(),

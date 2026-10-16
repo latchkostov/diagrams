@@ -1,5 +1,26 @@
 # Release notes
 
+## Stencil names and agent connection defaults (2026-10-15)
+
+- Changing a stencil updates a node's name when it still matches the previous stencil's default.
+  Custom names and explicitly supplied names stay intact. Inspector, palette, bulk and agent edits
+  share the model rule; Undo restores the stencil, name and inferred relationships together.
+- Agent/WebMCP `connect` now uses the editor's existing relationship inference when no relation is
+  supplied: Secret, Config, Identity, Telemetry, Deploys and Depends on. Explicit relationships win,
+  including explicit `flow`, which stays authored across later stencil changes. Ordinary connections
+  keep their flow and request/message defaults. The public operation schema describes the inference.
+- Parity: `node/agent/edit/nightly-batch-elt.json` changes two label fields from Salesforce to
+  AWS Lambda: the renamed node and its later reference-error candidate. New
+  `node/agent/stencil-defaults.json` pins default/custom names, inferred secrets, explicit Config and
+  explicit flow. `node/agent/tools.json` adds flow to the relation enum and corrects its description;
+  `node/skill/public-schemas.json` updates only the operation schema's byte count and hash.
+  All other existing goldens stay unchanged. Details: `docs/PARITY.md`.
+- UX review adds no chrome or controls. Refreshed the stale skill viewer; plugin 1.1.27 is exactly
+  one patch above origin/master.
+- The full gate exposed a page-hide test whose first example edit could already be saved when it
+  became an owned copy. The test now starts with an owned document and pauses the clock where it
+  stands, preserving both pending-edit and lifecycle-flush assertions. No save behavior changes.
+
 ## Autoscaling A2 edit preservation (#125, 2026-10-15)
 
 - Finishing a name with Enter, Esc or a click away immediately saves its complete transaction,

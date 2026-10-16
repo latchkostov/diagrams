@@ -1,4 +1,5 @@
 import { connectionProps, connectionDefaults } from "../model/connectionDefaults";
+import { changeNodeStencil } from "../model/changeNodeStencil";
 import { t } from "../i18n";
 import { kindLabel, relationNoun } from "../i18n/chrome";
 import { annotationGeometryMessage, relationChangeMessage } from "./editMessages";
@@ -870,8 +871,7 @@ export function createEditor(
       const set = new Set(ids);
       const nodes = currentNodes().map((n) => {
         if (!set.has(n.id) || !isDiagram(n)) return n;
-        const data = { ...n.data };
-        if (patch.stencil) data.stencil = patch.stencil;
+        const data = patch.stencil ? changeNodeStencil(n.data, patch.stencil) : { ...n.data };
         if ("group" in patch) data.group = patch.group || undefined;
         return data.stencil === n.data.stencil && data.group === n.data.group ? n : { ...n, data };
       });
@@ -910,8 +910,7 @@ export function createEditor(
     updateNode: (id, patch, opts) => {
       const nodes = currentNodes().map((n) => {
         if (n.id !== id || !isDiagram(n)) return n;
-        const data = { ...n.data };
-        if ("stencil" in patch && patch.stencil) data.stencil = patch.stencil;
+        const data = patch.stencil ? changeNodeStencil(n.data, patch.stencil) : { ...n.data };
         if ("label" in patch) data.label = patch.label ?? "";
         if ("sublabel" in patch) data.sublabel = patch.sublabel || undefined;
         if ("group" in patch) data.group = patch.group || undefined;

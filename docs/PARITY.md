@@ -16,6 +16,40 @@ pnpm parity sim checks # only parity files whose path contains "sim" or "checks"
 A filtered run skips the stale-golden check. The browser tier needs Docker running (see "Browser tier").
 Without it, `pnpm parity:node` still checks everything that doesn't need a browser.
 
+## Stencil names and agent connection defaults (2026-10-15)
+
+Only these agent outputs intentionally change:
+
+- `node/agent/edit/nightly-batch-elt.json`: `diagram.nodes[id=crm].label` and
+  `steps[9].output.candidates[id=crm].label` change from `Salesforce` to `AWS Lambda`.
+  The script changes that node's stencil while its name is still the previous default;
+  the node and the later failed-reference candidate now show the new default name.
+- New `node/agent/stencil-defaults.json` records an invented agent edit: a default Service
+  becomes Key Vault, Credentials keeps its custom name, omitted relations infer Secret
+  with inferred provenance, explicit Config stays authored, and explicit flow carries traffic
+  with explicit provenance. The follow-up call resolves the node by its updated default name.
+- `node/agent/tools.json` adds `flow` to the connect relation enum and replaces the obsolete
+  "Leave out for a flow" description with stencil inference and explicit-override semantics.
+- `node/skill/public-schemas.json` changes only `ops.v1.json`'s byte count and SHA-256 fingerprint
+  for that enum and description; all other public schema fingerprints remain unchanged.
+
+All other existing outputs must remain unchanged. No simulation, layout, export, import or
+browser golden is re-recorded to accommodate these fixes. The skill viewer refresh is required
+by its freshness check and does not change its output fingerprints.
+
+The code review caught the missing explicit-flow override and a browser assertion that could
+match a stencil subtitle rather than the actual name. Both are corrected: the shared connection
+helper marks explicit flows authored, and the browser regression checks exact persisted stencil
+and label values after the agent edit, Undo and inspector edit. Deliberately removing name
+following fails the browser regression; removing explicit-flow provenance fails its unit test.
+
+The first full gate passed shard 1 (217 tests), then found an invalid "not saved yet" setup
+assumption in the page-hide test in shard 2 (191 passed, one failed). Clean master did not reproduce
+it in ten isolated repeats or five complete library runs (45 tests). The test now edits an owned
+document under `pauseClock()`, keeping its pending-edit and lifecycle-flush assertions. Ten repeats
+pass; suppressing the actual page-hide listener registration makes its flush assertion fail.
+This test-only correction changes no output golden or production persistence code.
+
 ## Immediate fits and cancellable refinements (2026-10-15)
 
 The measurement gate refines an already fitted canvas. Opening restores React Flow's initial

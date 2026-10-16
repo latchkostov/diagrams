@@ -117,6 +117,28 @@ const QUERIES: Record<string, unknown>[] = [
   { query: "k8s deployment" },
 ];
 
+it("stencil names and inferred connections", async () => {
+  const { call, get } = session({ format: "diagrams/v1", title: "Agent defaults", nodes: [], edges: [] });
+  const added = await call("edit_diagram", {
+    ops: [
+      { op: "add_node", kind: "service.dotnet", label: "API" },
+      { op: "add_node", kind: "generic.service", label: "Service" },
+      { op: "add_node", kind: "generic.service", label: "Credentials" },
+    ],
+  });
+  const changed = await call("edit_diagram", {
+    ops: [
+      { op: "update", target: "Service", kind: "azure.key-vault" },
+      { op: "update", target: "Credentials", kind: "azure.key-vault" },
+      { op: "connect", from: "API", to: "Key Vault" },
+      { op: "connect", from: "API", to: "Key Vault", relation: "config" },
+      { op: "connect", from: "API", to: "Key Vault", relation: "flow", kind: "sync" },
+      { op: "connect", from: "API", to: "Credentials" },
+    ],
+  });
+  expectGolden("agent/stencil-defaults.json", { added, changed, diagram: get() });
+});
+
 it("find_stencils", async () => {
   const { call } = session(examples[0].diagram);
   const out: Record<string, unknown> = {};

@@ -1,6 +1,5 @@
 // Pure TypeScript contract shared by the editor, tool adapters and Node consumers.
-import type { DiagramFile, DiagramGroup, MetricField } from "../model/types";
-import type { DependencyRelation } from "../model/relations";
+import type { DiagramFile, DiagramGroup, EdgeRelation, MetricField } from "../model/types";
 import type { RelationChange } from "../stencils/relations";
 
 export type Ref = string;
@@ -14,8 +13,8 @@ export type DiagramOp =
       to: Ref;
       label?: string;
       kind?: "async" | "sync";
-      /** Absent: a flow. Otherwise a dependency: drawn dotted, carries no traffic. */
-      relation?: DependencyRelation;
+      /** Absent: infer from the stencils, as in the editor. An explicit flow carries traffic. */
+      relation?: EdgeRelation;
       key?: string;
     }
   | {

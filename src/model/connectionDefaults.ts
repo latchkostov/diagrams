@@ -27,7 +27,7 @@ export function connectionDefaults(
   };
   return {
     kind,
-    ...(authored.relation && authored.relation !== "flow" ? { relation } : {}),
+    ...(authored.relation === "flow" ? { relationOrigin: "explicit" } : {}),
     ...(Object.keys(props).length ? { props } : {}),
   };
 }
