@@ -79,3 +79,15 @@ charges on the ledger when they name the same shared bucket, while playback char
 | P2 tests: focus when the first route creates the mix                                                                 | The first choice records a focus intent that the moved section's fields take over. E2E "the first route chosen into a mix keeps the keyboard on its value as the mix gets its own section".                                                                                                                                                                                     |
 
 All round 3 regressions failed on the round 2 code and pass now; `pnpm parity:update` reported no golden changes.
+
+## Round 4
+
+Review: `.reviews/20261016-062219/REPORT.md` (range `e8689578...0460513e`), 4 P1 and no P2 findings, all accepted;
+accessibility, performance and security found nothing. All four are round 3's router-wide forwarded ratio.
+
+| Finding                                                                 | Disposition and regression                                                                                                                                                                                                                                                                                                                                                                             |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| P1 architecture, P1 correctness, P1 tests: one ratio for every endpoint | The solve records what arrives at each managed table router by incoming connection and traffic class; each endpoint's admission rate is what the table forwards from that connection (and from direct injections), by the cached decision. "partial table rejection keeps each endpoint's shared-quota demand" (50 throttled at the competing router, unchanged when 404s at the other endpoint grow). |
+| P1 types: capacity and utilization on different bases                   | The managed entry's offered is the node's offered again; only endpoint rates are filtered. "a managed table router's capacity and utilization share one traffic basis".                                                                                                                                                                                                                                |
+
+Both regressions failed on the round 3 code. This was the fourth and last review round.

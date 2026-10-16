@@ -836,6 +836,100 @@ describe("request routing: analysis follows rule quotas (review round 1)", () =>
     expect(a.routeDemand!.gw2["search-get"].throttled).toBeCloseTo(0);
   });
 
+  /**
+   * A managed gateway with two endpoints: A (its own quota in the shared account) takes the app's GET /search, which
+   * its table forwards; B takes a second app's GET /other, which no rule matches (404). A second, unmanaged router
+   * spends the same account on its search rule.
+   */
+  const partialRejection = (forwarded: number, rejected: number, competing: number) => {
+    const d = routingFixture({ rate: forwarded, mix: searchOnly });
+    d.planning = {
+      ...d.planning!,
+      requestRoutes: [
+        ...d.planning!.requestRoutes!,
+        {
+          id: "other-get",
+          address: { method: "GET", path: "/other" },
+          appearance: { paletteSlot: 2, marker: "circle" },
+        },
+      ],
+      sharedQuotas: [limit(100, { id: "account" })],
+    };
+    Object.assign(d.nodes[1], {
+      stencil: "aws.api-gateway",
+      props: {
+        ...d.nodes[1].props,
+        api: {},
+        endpoints: [
+          { id: "a", method: "GET", path: "/search", behaviour: { quotas: [limit(100, { sharedGroup: "account" })] } },
+          { id: "b", method: "GET", path: "/other" },
+        ],
+      },
+    });
+    d.edges[0].props = { ...d.edges[0].props, endpointId: "a" };
+    d.nodes.push(
+      {
+        id: "app2",
+        stencil: "client.mobile",
+        label: "Old app",
+        x: 0,
+        y: 300,
+        props: { ratePerSec: rejected, trafficMix: { mode: "shares", entries: [{ routeId: "other-get", share: 1 }] } },
+      },
+      {
+        id: "app3",
+        stencil: "client.mobile",
+        label: "Partner",
+        x: 0,
+        y: 500,
+        props: { ratePerSec: competing, trafficMix: searchOnly },
+      },
+      {
+        id: "gw2",
+        stencil: "kong",
+        label: "Partner gateway",
+        x: 240,
+        y: 500,
+        props: {
+          routeTable: {
+            rules: [
+              {
+                id: "search",
+                match: { path: { kind: "prefix", value: "/search" } },
+                targets: [{ edgeId: "gw2-search", weight: 1 }],
+                quotas: [limit(100, { sharedGroup: "account" })],
+              },
+            ],
+          },
+        },
+      },
+    );
+    d.edges.push(
+      { id: "app2-kong", from: "app2", to: "kong", kind: "sync", props: { endpointId: "b" } },
+      { id: "app3-gw2", from: "app3", to: "gw2", kind: "sync" },
+      { id: "gw2-search", from: "gw2", to: "search", kind: "sync" },
+    );
+    expect(validateDiagram(d).ok).toBe(true);
+    return analyzeCapacity(d);
+  };
+
+  it("partial table rejection keeps each endpoint's shared-quota demand (review round 4)", () => {
+    // 100 forwarded through endpoint A plus the partner's 100 on one 100 req/s account: half is throttled.
+    const a = partialRejection(100, 100, 100);
+    expect(a.routeDemand!.kong["other-get"].rejected).toBeCloseTo(100);
+    expect(a.routeDemand!.gw2["search-get"].throttled).toBeCloseTo(50);
+    // More 404s at endpoint B change nothing for the account.
+    expect(partialRejection(100, 400, 100).routeDemand!.gw2["search-get"].throttled).toBeCloseTo(50);
+  });
+
+  it("a managed table router's capacity and utilization share one traffic basis (review round 4)", () => {
+    // 50 forwarded and 50 refused at the gateway, 50 at the partner: the account's 100 req/s is exactly enough.
+    const a = partialRejection(50, 50, 50);
+    expect(a.nodes.kong.offered).toBeCloseTo(100);
+    expect(a.nodes.kong.utilization).toBeLessThanOrEqual(1 + 1e-9);
+    expect(a.routeDemand!.gw2["search-get"].throttled).toBeCloseTo(0);
+  });
+
   it("builds an action's quota buckets once, however many traffic classes reach it (review round 3)", () => {
     const table: RouteTable = {
       rules: [

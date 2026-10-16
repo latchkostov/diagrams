@@ -361,8 +361,9 @@ export function analyzeCapacity(
     }
     return known;
   }
-  // What reaches each table router's admission: its table's 404s and deny shares never do, as in playback.
-  const reachesAdmission = new Map<string, number>();
+  // What arrives at each managed table router, by incoming connection and traffic class: its admission workload is
+  // what its table forwards from each (no 404s, no deny shares, as in playback), connection by connection.
+  const arrivals = new Map<string, Map<string, Map<string, number>>>();
   // What each router's rule quotas are offered, by router, route and action: settled with the rest of the demand,
   // then charged once on the admission ledger (below).
   const routed = new Map<string, { router: string; route: string; demand: RoutedDemand }>();
@@ -421,6 +422,16 @@ export function analyzeCapacity(
     types.set(type, Math.min(RATE_CAP, sum));
     rates.set(id, types);
     if (edge) connections[edge.id] = (connections[edge.id] ?? 0) + value;
+    if (edge && rates !== external) {
+      const target = entries.get(id)!;
+      if (target.table && target.role === "gateway" && target.props.admission) {
+        let byEdge = arrivals.get(id);
+        if (!byEdge) arrivals.set(id, (byEdge = new Map()));
+        let byClass = byEdge.get(edge.id);
+        if (!byClass) byEdge.set(edge.id, (byClass = new Map()));
+        byClass.set(type, (byClass.get(type) ?? 0) + value);
+      }
+    }
   }
   /** A source's traffic: split by its mix's proportions (addressed classes), or one unaddressed class. */
   function enter(id: string, entry: Entry, type: string, rate: number): void {
@@ -483,10 +494,6 @@ export function analyzeCapacity(
     const self = { type, route };
     if (entry.table && entry.role === "gateway") {
       const decision = decide(id, entry.table, key, type, route, !!c.sync);
-      reachesAdmission.set(
-        id,
-        (reachesAdmission.get(id) ?? 0) + (decision === "legacy" ? rate : rate * decision.forwarded),
-      );
       if (decision !== "legacy") {
         if (!decision.eligible.length) {
           routeDemandAt(id, route).rejected += rate;
@@ -565,7 +572,7 @@ export function analyzeCapacity(
     connections = Object.create(null);
     demand.clear();
     routed.clear();
-    reachesAdmission.clear();
+    arrivals.clear();
     const next: Rates = new Map([...external].map(([id, types]) => [id, new Map(types)]));
     for (const [id, types] of rates) {
       const entry = entries.get(id)!;
@@ -635,11 +642,18 @@ export function analyzeCapacity(
     list.push(edge);
     incoming.set(edge.to, list);
   }
-  // A table router admits only what its table forwards (no 404s, no deny shares): its calls scale to that.
-  const admissionShare = (id: string) => {
-    const reached = reachesAdmission.get(id);
-    return reached === undefined || !nodes[id].offered ? 1 : Math.min(1, reached / nodes[id].offered);
+  // The share of a traffic class a table router forwards past its table to admission (its decision, cached).
+  const forwardedShare = (id: string, entry: Entry, key: string) => {
+    const c = classOf(key);
+    const decision = decide(id, entry.table!, key, c.type, c.route, !!c.sync);
+    return decision === "legacy" ? 1 : decision.eligible.length ? decision.forwarded : 0;
   };
+  const forwardedRate = (id: string, entry: Entry, byClass: Map<string, number> | undefined) => {
+    let sum = 0;
+    for (const [key, rate] of byClass ?? []) sum += rate * forwardedShare(id, entry, key);
+    return sum;
+  };
+  const tableRouter = (entry: Entry) => !!entry.table && entry.role === "gateway";
   const managed = [...entries].flatMap(([id, entry]) =>
     entry.props.admission
       ? [
@@ -655,14 +669,18 @@ export function analyzeCapacity(
                       entry.active * entry.props.admission.fixedSlotsPerReplica,
                     ),
             },
-            offered: nodes[id].offered * admissionShare(id),
+            offered: nodes[id].offered,
             latencyMs: entry.props.latencyMs,
             endpoints: [
               ...(incoming.get(id) ?? []).map((e) => ({
                 id: e.endpointId,
-                rate: (connections[e.id] ?? 0) * admissionShare(id),
+                rate: tableRouter(entry)
+                  ? forwardedRate(id, entry, arrivals.get(id)?.get(e.id))
+                  : (connections[e.id] ?? 0),
               })),
-              { rate: total(external.get(id)) * admissionShare(id) },
+              {
+                rate: tableRouter(entry) ? forwardedRate(id, entry, external.get(id)) : total(external.get(id)),
+              },
             ],
           },
         ]
