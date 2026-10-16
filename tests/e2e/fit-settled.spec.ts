@@ -5,6 +5,7 @@ import layout from "../parity/goldens/browser/layout/aws-fanout.json" with { typ
 import example from "../../src/examples/aws-fanout.json" with { type: "json" };
 import { measuredHierarchyFixture } from "../../src/lab/nestedBoundariesFixture";
 import { boundaryAround } from "../../src/editor/arrange";
+import { callTool, installFakeModelContext, toolNames } from "./ai-helpers";
 import { holdResizeObservers } from "../parity/browser/holdReadiness";
 import { readyFonts } from "../../src/canvas/fonts";
 
@@ -21,6 +22,107 @@ function holdFitFonts() {
   };
   window.addEventListener("release-fit-fonts", release);
 }
+
+test("a viewport chosen before initial measurements cancels the bootstrap fit", async ({ page }) => {
+  await page.addInitScript(holdResizeObservers, true);
+  await page.goto("./?view=canvas&example=aws-fanout");
+  await expect(page.getByTestId("diagram-title")).toBeVisible();
+  await page.clock.install();
+  await pauseClock(page);
+  await page.keyboard.press("Shift+Digit0");
+  await page.clock.runFor(400);
+  const chosen = (await readCanvas(page)).viewport;
+  expect(chosen).toContain("scale(1)");
+  await page.evaluate(() => window.dispatchEvent(new Event("release-resize-observers")));
+  await page.clock.runFor(1000);
+  await page.clock.resume();
+  expect((await settledCanvas(page)).viewport).toBe(chosen);
+});
+
+test("an empty diagram never leaves a bootstrap fit queued for its first node", async ({ page }) => {
+  await installFakeModelContext(page);
+  await page.addInitScript(holdResizeObservers, false);
+  await gotoLab(page, "empty");
+  await page.getByTestId("lab-open-editor").click();
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-fit-pending", "false");
+  await expect.poll(() => toolNames(page)).toContain("edit_diagram");
+  // An agent adds without pointer/key input, so cancellation cannot mask an incorrectly
+  // queued bootstrap on the initially empty canvas. Agent edits never request a view fit.
+  await page.evaluate(() => window.dispatchEvent(new Event("hold-resize-observers")));
+  expect(
+    (
+      await callTool(page, "edit_diagram", {
+        ops: [{ op: "add_node", kind: "Redis", label: "First node", key: "first" }],
+        layout: "none",
+      })
+    ).isError,
+  ).toBe(false);
+  await expect(page.getByTestId(/^rf__node-/)).toHaveCount(1);
+  const chosen = (await readCanvas(page)).viewport;
+  expect(chosen).toContain("scale(1)");
+  await page.evaluate(() => window.dispatchEvent(new Event("release-resize-observers")));
+  expect((await settledCanvas(page)).viewport).toBe(chosen);
+});
+
+test("pressing a node stops an active fit transition", async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.addInitScript(() => {
+    const load = document.fonts.load.bind(document.fonts);
+    let held = false;
+    document.fonts.load = async (...args) => {
+      const result = await load(...args);
+      if (held)
+        await new Promise<void>((resolve) =>
+          window.addEventListener("release-press-fonts", () => resolve(), { once: true }),
+        );
+      return result;
+    };
+    window.addEventListener("hold-press-fonts", () => {
+      held = true;
+      document.fonts.dispatchEvent(new Event("loadingdone"));
+    });
+  });
+  await page.clock.install();
+  await page.goto("./?view=canvas&example=aws-fanout");
+  await settledCanvas(page);
+  await page.mouse.move(800, 500);
+  await page.mouse.wheel(300, 200);
+  await settledCanvas(page);
+  await pauseClock(page);
+  await page.evaluate(() => window.dispatchEvent(new Event("hold-press-fonts")));
+  const initial = (await readCanvas(page)).viewport;
+  await page.getByTestId("fit-view-button").click();
+  await expect
+    .poll(async () => {
+      await page.clock.runFor(16);
+      return (await readCanvas(page)).viewport;
+    })
+    .not.toBe(initial);
+  const moving = (await readCanvas(page)).viewport;
+  await page.clock.runFor(16);
+  expect((await readCanvas(page)).viewport).not.toBe(moving);
+  const node = page.getByTestId("node-client");
+  const before = (await readCanvas(page)).viewport;
+  const pressedBox = await node.boundingBox();
+  // Deliver the press to its target without a pointermove/hover taking ownership first.
+  await node.dispatchEvent("pointerdown", {
+    pointerId: 1,
+    pointerType: "mouse",
+    button: 0,
+    buttons: 1,
+    isPrimary: true,
+  });
+  await node.dispatchEvent("mousedown", { button: 0, buttons: 1 });
+  await page.clock.runFor(1000);
+  expect((await readCanvas(page)).viewport).toBe(before);
+  expect(await node.boundingBox()).toEqual(pressedBox);
+  await node.dispatchEvent("pointerup", { pointerId: 1, pointerType: "mouse", button: 0, buttons: 0, isPrimary: true });
+  await node.dispatchEvent("mouseup", { button: 0, buttons: 0 });
+  await node.dispatchEvent("click", { button: 0 });
+  await expect(page.getByTestId("rf__node-client")).toHaveClass(/\bselected\b/);
+  await page.evaluate(() => window.dispatchEvent(new Event("release-press-fonts")));
+  await page.clock.resume();
+});
 
 test("the first visible frame is fitted while font readiness is pending", async ({ page }) => {
   await page.addInitScript(holdFitFonts);
@@ -47,6 +149,9 @@ test("the first visible frame is fitted while font readiness is pending", async 
   });
   await page.goto("./?view=canvas&example=kafka-order-pipeline");
   await expect(page.getByTestId("node-shopper")).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => !!(window as unknown as { firstVisibleFit?: unknown }).firstVisibleFit))
+    .toBe(true);
   const first = await page.evaluate(
     () => (window as unknown as { firstVisibleFit: { transform: string; clear: boolean } }).firstVisibleFit,
   );

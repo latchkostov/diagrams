@@ -351,6 +351,7 @@ function CanvasInner({
   useCaptionContrast(wrapper, nodes, theme, meta.color);
   const [edges, setEdges, onEdgesChange] = useEdgesState<DiagramFlowEdge>(flow.edges);
   const [modified, setModified] = useState(loadedJson !== originalJson);
+  const [bootstrapFit] = useState(() => flow.nodes.some((n) => !n.hidden));
   const [paletteCollapsed, setPaletteCollapsed] = useState(() => {
     const saved = safeStorage.getItem(PALETTE_KEY);
     // Narrow windows always start with the canvas, not the stencil list.
@@ -532,6 +533,13 @@ function CanvasInner({
     fitEpoch.current++;
     earlyFit.current = null;
     interruptMeasuredFit();
+    // React Flow's bootstrap waits for initial measurements too. It shares viewport
+    // ownership with our immediate/refinement fits, including before the first delivery.
+    const queued = store.getState();
+    if (queued.fitViewQueued) {
+      store.setState({ fitViewQueued: false, fitViewOptions: undefined, fitViewResolver: null });
+      queued.fitViewResolver?.resolve(false);
+    }
     if (fitTransition.current) {
       fitTransition.current = null;
       // Stop an already-started refinement too, before the press reaches its target.
@@ -542,7 +550,7 @@ function CanvasInner({
       });
     }
     setOpeningFitDone(true);
-  }, [getViewport, interruptMeasuredFit, setViewport]);
+  }, [getViewport, interruptMeasuredFit, setViewport, store]);
   useEffect(() => {
     // Capture input before React Flow, a portal menu or a keyboard command handles it.
     // Cancelling a refinement does not turn a fitted view into a manually panned one.
@@ -2491,7 +2499,7 @@ function CanvasInner({
           {!hideChrome && copyNotice && <CopyNotice text={copyNotice} />}
           <ReactFlow<FlowNode, DiagramFlowEdge>
             nodes={ariaNodes}
-            fitView
+            fitView={bootstrapFit}
             fitViewOptions={presenting ? FIT_PRESENT : FIT}
             // Focus brings a node into view clear of the chrome (revealFocused above).
             autoPanOnNodeFocus={false}
