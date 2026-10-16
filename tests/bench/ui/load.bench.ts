@@ -37,9 +37,14 @@ for (const family of FAMILIES)
           if (checksExpected)
             await page.addInitScript(() => {
               const win = window as unknown as { __checksAt?: number };
-              void window.__bench
-                .until(() => ((window as AppHooks).__checks?.finished ?? 0) > 0)
-                .then((t) => (win.__checksAt = t));
+              // Init scripts run in no promised order: wait for the instrumentation's.
+              const arm = () => {
+                if (!window.__bench) return void setTimeout(arm, 0);
+                void window.__bench
+                  .until(() => ((window as AppHooks).__checks?.finished ?? 0) > 0)
+                  .then((t) => (win.__checksAt = t));
+              };
+              arm();
             });
           // A load that shows nothing in five minutes is a result too (the mesh at 5,000 nodes, today).
           const LIMIT = 300_000;

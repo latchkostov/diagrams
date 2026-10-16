@@ -1,11 +1,12 @@
 {
  "schema": "livediagrams-bench/v1",
  "meta": {
-  "date": "2026-10-16T01:26:39.526Z",
+  "date": "2026-10-16T01:36:45.084Z",
   "mode": "full",
   "label": "baseline master",
   "cpuThrottle": 2,
   "steps": [
+   "node",
    "bundle"
   ],
   "failedSteps": [],
@@ -17,7 +18,7 @@
    "node": "v24.22.0",
    "ci": false,
    "runner": null,
-   "commit": "b99900a753dbfc86281b02763571eb585de61fba",
+   "commit": "f5d248ec82a8b0065e2f715f29b6a07967588048",
    "branch": "test/benchmarks",
    "dirty": true,
    "playwright": "1.64.1",
@@ -26,7 +27,7 @@
   },
   "browser": "156.0.8078.4",
   "calibrationMs": {
-   "node": 14.23949999998598,
+   "node": 10.618550000000255,
    "browser": 22.799999982118607
   },
   "gates": {
@@ -3241,8 +3242,8 @@
    "exposeGc": true
   },
   "node-imports": {
-   "calibrationStartMs": 14.879099999999994,
-   "calibrationEndMs": 13.599899999971967,
+   "calibrationStartMs": 10.344299999999976,
+   "calibrationEndMs": 9.251699999993434,
    "mode": "full",
    "exposeGc": true
   },
@@ -3295,8 +3296,8 @@
    "examples@500": "b46a540d",
    "examples@1500": "0f731445",
    "examples@5000": "16311dcc",
-   "calibrationStartMs": 8.903500000000008,
-   "calibrationEndMs": 9.010099999999966,
+   "calibrationStartMs": 10.06230000000005,
+   "calibrationEndMs": 11.122100000000046,
    "mode": "full",
    "exposeGc": true
   }
@@ -4638,18 +4639,27 @@
    "env": "build"
   },
   {
+   "id": "bundle/liveSession/chunks",
+   "suite": "bundle",
+   "scenario": "liveSession",
+   "kind": "bytes",
+   "unit": "bytes",
+   "value": 5,
+   "env": "build"
+  },
+  {
    "id": "bundle/liveSession/gzip",
    "suite": "bundle",
    "scenario": "liveSession",
    "kind": "bytes",
    "unit": "bytes",
-   "value": 79662,
+   "value": 117197,
    "env": "build",
    "gate": {
     "op": "<=",
-    "limit": 92000,
+    "limit": 135000,
     "pass": true,
-    "why": "LiveSession"
+    "why": "LiveSession and its own static imports, beyond the canvas"
    }
   },
   {
@@ -12400,7 +12410,7 @@
    "scenario": "import-asyncapi",
    "kind": "ratio",
    "unit": "x",
-   "value": 8.26,
+   "value": 6.95,
    "gate": {
     "op": "<=",
     "limit": 24,
@@ -12414,7 +12424,7 @@
    "scenario": "import-compose",
    "kind": "ratio",
    "unit": "x",
-   "value": 7.951,
+   "value": 7.984,
    "gate": {
     "op": "<=",
     "limit": 24,
@@ -12608,12 +12618,12 @@
    "scenario": "import-drawnNodes",
    "kind": "count",
    "unit": "count",
-   "value": 102,
+   "value": 73,
    "workload": {
     "family": "terraform",
     "n": 100,
-    "nodes": 102,
-    "edges": 101
+    "nodes": 96,
+    "edges": 118
    },
    "suite": "imports",
    "env": "node"
@@ -12623,12 +12633,12 @@
    "scenario": "import-drawnNodes",
    "kind": "count",
    "unit": "count",
-   "value": 1501,
+   "value": 1146,
    "workload": {
     "family": "terraform",
     "n": 1500,
-    "nodes": 1501,
-    "edges": 1500
+    "nodes": 1502,
+    "edges": 1857
    },
    "suite": "imports",
    "env": "node"
@@ -12638,12 +12648,12 @@
    "scenario": "import-drawnNodes",
    "kind": "count",
    "unit": "count",
-   "value": 501,
+   "value": 377,
    "workload": {
     "family": "terraform",
     "n": 500,
-    "nodes": 501,
-    "edges": 500
+    "nodes": 494,
+    "edges": 610
    },
    "suite": "imports",
    "env": "node"
@@ -12653,12 +12663,12 @@
    "scenario": "import-drawnNodes",
    "kind": "count",
    "unit": "count",
-   "value": 4996,
+   "value": 3814,
    "workload": {
     "family": "terraform",
     "n": 5000,
-    "nodes": 4996,
-    "edges": 4995
+    "nodes": 4998,
+    "edges": 6181
    },
    "suite": "imports",
    "env": "node"
@@ -12668,7 +12678,7 @@
    "scenario": "import-kubernetes",
    "kind": "ratio",
    "unit": "x",
-   "value": 8.148,
+   "value": 8.373,
    "gate": {
     "op": "<=",
     "limit": 24,
@@ -12862,12 +12872,12 @@
    "scenario": "import-sourceChars",
    "kind": "count",
    "unit": "chars",
-   "value": 125299,
+   "value": 89655,
    "workload": {
     "family": "terraform",
     "n": 100,
-    "nodes": 102,
-    "edges": 101
+    "nodes": 96,
+    "edges": 118
    },
    "suite": "imports",
    "env": "node"
@@ -12877,12 +12887,12 @@
    "scenario": "import-sourceChars",
    "kind": "count",
    "unit": "chars",
-   "value": 1852325,
+   "value": 1412675,
    "workload": {
     "family": "terraform",
     "n": 1500,
-    "nodes": 1501,
-    "edges": 1500
+    "nodes": 1502,
+    "edges": 1857
    },
    "suite": "imports",
    "env": "node"
@@ -12892,12 +12902,12 @@
    "scenario": "import-sourceChars",
    "kind": "count",
    "unit": "chars",
-   "value": 615869,
+   "value": 462987,
    "workload": {
     "family": "terraform",
     "n": 500,
-    "nodes": 501,
-    "edges": 500
+    "nodes": 494,
+    "edges": 610
    },
    "suite": "imports",
    "env": "node"
@@ -12907,12 +12917,12 @@
    "scenario": "import-sourceChars",
    "kind": "count",
    "unit": "chars",
-   "value": 6182585,
+   "value": 4718051,
    "workload": {
     "family": "terraform",
     "n": 5000,
-    "nodes": 4996,
-    "edges": 4995
+    "nodes": 4998,
+    "edges": 6181
    },
    "suite": "imports",
    "env": "node"
@@ -12922,7 +12932,7 @@
    "scenario": "import-terraform",
    "kind": "ratio",
    "unit": "x",
-   "value": 8.58,
+   "value": 10.797,
    "gate": {
     "op": "<=",
     "limit": 24,
@@ -12936,15 +12946,15 @@
    "scenario": "import",
    "kind": "time",
    "unit": "ms",
-   "value": 94.506,
+   "value": 64.182,
    "stats": {
     "n": 9,
-    "median": 94.506,
-    "p90": 108.998,
-    "min": 80.669,
-    "max": 108.998,
-    "mean": 94.995,
-    "cov": 0.0894
+    "median": 64.182,
+    "p90": 71.483,
+    "min": 60.265,
+    "max": 71.483,
+    "mean": 64.741,
+    "cov": 0.0575
    },
    "workload": {
     "family": "asyncapi",
@@ -12954,22 +12964,22 @@
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 6.6369
+   "normalized": 6.5505
   },
   {
    "id": "imports/import/asyncapi@1500",
    "scenario": "import",
    "kind": "time",
    "unit": "ms",
-   "value": 163.05,
+   "value": 115.816,
    "stats": {
     "n": 5,
-    "median": 163.05,
-    "p90": 184.173,
-    "min": 160.541,
-    "max": 184.173,
-    "mean": 167.551,
-    "cov": 0.0572
+    "median": 115.816,
+    "p90": 122.299,
+    "min": 111.109,
+    "max": 122.299,
+    "mean": 116.195,
+    "cov": 0.0344
    },
    "workload": {
     "family": "asyncapi",
@@ -12979,22 +12989,22 @@
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 11.4505
+   "normalized": 11.8204
   },
   {
    "id": "imports/import/asyncapi@500",
    "scenario": "import",
    "kind": "time",
    "unit": "ms",
-   "value": 189.687,
+   "value": 117.676,
    "stats": {
     "n": 9,
-    "median": 189.687,
-    "p90": 208.886,
-    "min": 163.664,
-    "max": 208.886,
-    "mean": 188.02,
-    "cov": 0.0695
+    "median": 117.676,
+    "p90": 125.695,
+    "min": 109.568,
+    "max": 125.695,
+    "mean": 117.104,
+    "cov": 0.0431
    },
    "workload": {
     "family": "asyncapi",
@@ -13004,22 +13014,22 @@
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 13.3212
+   "normalized": 12.0102
   },
   {
    "id": "imports/import/asyncapi@5000",
    "scenario": "import",
    "kind": "time",
    "unit": "ms",
-   "value": 181.717,
+   "value": 114.787,
    "stats": {
     "n": 5,
-    "median": 181.717,
-    "p90": 199.392,
-    "min": 173.564,
-    "max": 199.392,
-    "mean": 183.86,
-    "cov": 0.06
+    "median": 114.787,
+    "p90": 124.168,
+    "min": 108.207,
+    "max": 124.168,
+    "mean": 115.349,
+    "cov": 0.0498
    },
    "workload": {
     "family": "asyncapi",
@@ -13029,22 +13039,22 @@
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 12.7615
+   "normalized": 11.7154
   },
   {
    "id": "imports/import/compose@100",
    "scenario": "import",
    "kind": "time",
    "unit": "ms",
-   "value": 62.632,
+   "value": 46.254,
    "stats": {
     "n": 9,
-    "median": 62.632,
-    "p90": 78.76,
-    "min": 46.244,
-    "max": 78.76,
-    "mean": 63.195,
-    "cov": 0.1523
+    "median": 46.254,
+    "p90": 52.015,
+    "min": 42.041,
+    "max": 52.015,
+    "mean": 45.955,
+    "cov": 0.0771
    },
    "workload": {
     "family": "compose",
@@ -13054,22 +13064,22 @@
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 4.3985
+   "normalized": 4.7208
   },
   {
    "id": "imports/import/compose@1500",
    "scenario": "import",
    "kind": "time",
    "unit": "ms",
-   "value": 1001.213,
+   "value": 632.401,
    "stats": {
     "n": 5,
-    "median": 1001.213,
-    "p90": 1200.899,
-    "min": 984.64,
-    "max": 1200.899,
-    "mean": 1063.454,
-    "cov": 0.0921
+    "median": 632.401,
+    "p90": 659.247,
+    "min": 616.474,
+    "max": 659.247,
+    "mean": 633.781,
+    "cov": 0.0254
    },
    "workload": {
     "family": "compose",
@@ -13079,22 +13089,22 @@
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 70.3124
+   "normalized": 64.5439
   },
   {
    "id": "imports/import/compose@500",
    "scenario": "import",
    "kind": "time",
    "unit": "ms",
-   "value": 335.358,
+   "value": 237.866,
    "stats": {
     "n": 9,
-    "median": 335.358,
-    "p90": 359.263,
-    "min": 306.202,
-    "max": 359.263,
-    "mean": 335.275,
-    "cov": 0.0462
+    "median": 237.866,
+    "p90": 267.128,
+    "min": 218.679,
+    "max": 267.128,
+    "mean": 240.038,
+    "cov": 0.0655
    },
    "workload": {
     "family": "compose",
@@ -13104,22 +13114,22 @@
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 23.5512
+   "normalized": 24.277
   },
   {
    "id": "imports/import/compose@5000",
    "scenario": "import",
    "kind": "time",
    "unit": "ms",
-   "value": 3231.231,
+   "value": 2292.192,
    "stats": {
     "n": 5,
-    "median": 3231.231,
-    "p90": 4352.975,
-    "min": 3122.102,
-    "max": 4352.975,
-    "mean": 3434.284,
-    "cov": 0.1512
+    "median": 2292.192,
+    "p90": 2443.88,
+    "min": 2243.387,
+    "max": 2443.88,
+    "mean": 2310.476,
+    "cov": 0.0336
    },
    "workload": {
     "family": "compose",
@@ -13129,22 +13139,22 @@
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 226.9203
+   "normalized": 233.9449
   },
   {
    "id": "imports/import/kubernetes@100",
    "scenario": "import",
    "kind": "time",
    "unit": "ms",
-   "value": 145.84,
+   "value": 57.247,
    "stats": {
     "n": 9,
-    "median": 145.84,
-    "p90": 202.146,
-    "min": 85.005,
-    "max": 202.146,
-    "mean": 143.666,
-    "cov": 0.266
+    "median": 57.247,
+    "p90": 64.937,
+    "min": 49.113,
+    "max": 64.937,
+    "mean": 56.996,
+    "cov": 0.0855
    },
    "workload": {
     "family": "kubernetes",
@@ -13154,22 +13164,22 @@
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 10.2419
+   "normalized": 5.8427
   },
   {
    "id": "imports/import/kubernetes@1500",
    "scenario": "import",
    "kind": "time",
    "unit": "ms",
-   "value": 946.057,
+   "value": 590.437,
    "stats": {
     "n": 5,
-    "median": 946.057,
-    "p90": 982.808,
-    "min": 885.462,
-    "max": 982.808,
-    "mean": 947.791,
-    "cov": 0.0417
+    "median": 590.437,
+    "p90": 674.069,
+    "min": 546.783,
+    "max": 674.069,
+    "mean": 601.177,
+    "cov": 0.0777
    },
    "workload": {
     "family": "kubernetes",
@@ -13179,22 +13189,22 @@
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 66.4389
+   "normalized": 60.261
   },
   {
    "id": "imports/import/kubernetes@500",
    "scenario": "import",
    "kind": "time",
    "unit": "ms",
-   "value": 526.176,
+   "value": 229.539,
    "stats": {
     "n": 9,
-    "median": 526.176,
-    "p90": 890.956,
-    "min": 417.363,
-    "max": 890.956,
-    "mean": 562.536,
-    "cov": 0.2493
+    "median": 229.539,
+    "p90": 241.83,
+    "min": 203.023,
+    "max": 241.83,
+    "mean": 226.586,
+    "cov": 0.0605
    },
    "workload": {
     "family": "kubernetes",
@@ -13204,22 +13214,22 @@
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 36.9519
+   "normalized": 23.4271
   },
   {
    "id": "imports/import/kubernetes@5000",
    "scenario": "import",
    "kind": "time",
    "unit": "ms",
-   "value": 4561.182,
+   "value": 1780.599,
    "stats": {
-    "n": 3,
-    "median": 4561.182,
-    "p90": 5032.467,
-    "min": 4447.488,
-    "max": 5032.467,
-    "mean": 4680.379,
-    "cov": 0.0663
+    "n": 5,
+    "median": 1780.599,
+    "p90": 1881.368,
+    "min": 1753.591,
+    "max": 1881.368,
+    "mean": 1796.69,
+    "cov": 0.0294
    },
    "workload": {
     "family": "kubernetes",
@@ -13229,122 +13239,122 @@
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 320.319
+   "normalized": 181.7309
   },
   {
    "id": "imports/import/terraform@100",
    "scenario": "import",
    "kind": "time",
    "unit": "ms",
-   "value": 4.455,
+   "value": 2.909,
    "stats": {
     "n": 9,
-    "median": 4.455,
-    "p90": 5.302,
-    "min": 3.154,
-    "max": 5.302,
-    "mean": 4.369,
-    "cov": 0.1561
+    "median": 2.909,
+    "p90": 3.143,
+    "min": 2.402,
+    "max": 3.143,
+    "mean": 2.841,
+    "cov": 0.082
    },
    "workload": {
     "family": "terraform",
     "n": 100,
-    "nodes": 102,
-    "edges": 101
+    "nodes": 96,
+    "edges": 118
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 0.3129
+   "normalized": 0.2969
   },
   {
    "id": "imports/import/terraform@1500",
    "scenario": "import",
    "kind": "time",
    "unit": "ms",
-   "value": 85.953,
+   "value": 33.788,
    "stats": {
     "n": 5,
-    "median": 85.953,
-    "p90": 107.438,
-    "min": 59.725,
-    "max": 107.438,
-    "mean": 86.481,
-    "cov": 0.2354
+    "median": 33.788,
+    "p90": 36.414,
+    "min": 28.855,
+    "max": 36.414,
+    "mean": 33.419,
+    "cov": 0.0841
    },
    "workload": {
     "family": "terraform",
     "n": 1500,
-    "nodes": 1501,
-    "edges": 1500
+    "nodes": 1502,
+    "edges": 1857
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 6.0362
+   "normalized": 3.4485
   },
   {
    "id": "imports/import/terraform@500",
    "scenario": "import",
    "kind": "time",
    "unit": "ms",
-   "value": 21.505,
+   "value": 10.677,
    "stats": {
     "n": 9,
-    "median": 21.505,
-    "p90": 23.337,
-    "min": 20.527,
-    "max": 23.337,
-    "mean": 21.574,
-    "cov": 0.0401
+    "median": 10.677,
+    "p90": 12.008,
+    "min": 10.359,
+    "max": 12.008,
+    "mean": 10.767,
+    "cov": 0.0462
    },
    "workload": {
     "family": "terraform",
     "n": 500,
-    "nodes": 501,
-    "edges": 500
+    "nodes": 494,
+    "edges": 610
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 1.5102
+   "normalized": 1.0897
   },
   {
    "id": "imports/import/terraform@5000",
    "scenario": "import",
    "kind": "time",
    "unit": "ms",
-   "value": 264.038,
+   "value": 116.617,
    "stats": {
     "n": 5,
-    "median": 264.038,
-    "p90": 441.525,
-    "min": 205.733,
-    "max": 441.525,
-    "mean": 289.473,
-    "cov": 0.3084
+    "median": 116.617,
+    "p90": 123.032,
+    "min": 109.242,
+    "max": 123.032,
+    "mean": 116.175,
+    "cov": 0.0428
    },
    "workload": {
     "family": "terraform",
     "n": 5000,
-    "nodes": 4996,
-    "edges": 4995
+    "nodes": 4998,
+    "edges": 6181
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 18.5426
+   "normalized": 11.9021
   },
   {
    "id": "imports/importEverything/asyncapi@100",
    "scenario": "importEverything",
    "kind": "time",
    "unit": "ms",
-   "value": 90.306,
+   "value": 65.43,
    "stats": {
     "n": 9,
-    "median": 90.306,
-    "p90": 97.595,
-    "min": 83.792,
-    "max": 97.595,
-    "mean": 90.851,
-    "cov": 0.0503
+    "median": 65.43,
+    "p90": 76.692,
+    "min": 57.688,
+    "max": 76.692,
+    "mean": 65.952,
+    "cov": 0.0958
    },
    "workload": {
     "family": "asyncapi",
@@ -13354,22 +13364,22 @@
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 6.3419
+   "normalized": 6.6779
   },
   {
    "id": "imports/importEverything/asyncapi@1500",
    "scenario": "importEverything",
    "kind": "time",
    "unit": "ms",
-   "value": 179.308,
+   "value": 117.125,
    "stats": {
     "n": 5,
-    "median": 179.308,
-    "p90": 189.505,
-    "min": 175.313,
-    "max": 189.505,
-    "mean": 180.846,
-    "cov": 0.0293
+    "median": 117.125,
+    "p90": 120.001,
+    "min": 112.872,
+    "max": 120.001,
+    "mean": 116.316,
+    "cov": 0.024
    },
    "workload": {
     "family": "asyncapi",
@@ -13379,22 +13389,22 @@
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 12.5923
+   "normalized": 11.954
   },
   {
    "id": "imports/importEverything/asyncapi@500",
    "scenario": "importEverything",
    "kind": "time",
    "unit": "ms",
-   "value": 179.316,
+   "value": 115.176,
    "stats": {
     "n": 9,
-    "median": 179.316,
-    "p90": 208.305,
-    "min": 162.576,
-    "max": 208.305,
-    "mean": 180.956,
-    "cov": 0.0853
+    "median": 115.176,
+    "p90": 125.037,
+    "min": 110.966,
+    "max": 125.037,
+    "mean": 117.13,
+    "cov": 0.045
    },
    "workload": {
     "family": "asyncapi",
@@ -13404,22 +13414,22 @@
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 12.5929
+   "normalized": 11.7551
   },
   {
    "id": "imports/importEverything/asyncapi@5000",
    "scenario": "importEverything",
    "kind": "time",
    "unit": "ms",
-   "value": 173.882,
+   "value": 118.921,
    "stats": {
     "n": 5,
-    "median": 173.882,
-    "p90": 190.503,
-    "min": 164.436,
-    "max": 190.503,
-    "mean": 176.235,
-    "cov": 0.0569
+    "median": 118.921,
+    "p90": 130.431,
+    "min": 116.774,
+    "max": 130.431,
+    "mean": 122.009,
+    "cov": 0.0475
    },
    "workload": {
     "family": "asyncapi",
@@ -13429,22 +13439,22 @@
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 12.2112
+   "normalized": 12.1373
   },
   {
    "id": "imports/importEverything/compose@100",
    "scenario": "importEverything",
    "kind": "time",
    "unit": "ms",
-   "value": 65.255,
+   "value": 47.356,
    "stats": {
     "n": 9,
-    "median": 65.255,
-    "p90": 79.045,
-    "min": 51.008,
-    "max": 79.045,
-    "mean": 63.666,
-    "cov": 0.1347
+    "median": 47.356,
+    "p90": 51.356,
+    "min": 41.848,
+    "max": 51.356,
+    "mean": 46.724,
+    "cov": 0.0808
    },
    "workload": {
     "family": "compose",
@@ -13454,22 +13464,22 @@
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 4.5827
+   "normalized": 4.8332
   },
   {
    "id": "imports/importEverything/compose@1500",
    "scenario": "importEverything",
    "kind": "time",
    "unit": "ms",
-   "value": 1103.285,
+   "value": 683.011,
    "stats": {
     "n": 5,
-    "median": 1103.285,
-    "p90": 1134.367,
-    "min": 1066.955,
-    "max": 1134.367,
-    "mean": 1102.294,
-    "cov": 0.0221
+    "median": 683.011,
+    "p90": 741.862,
+    "min": 629.215,
+    "max": 741.862,
+    "mean": 684.674,
+    "cov": 0.0583
    },
    "workload": {
     "family": "compose",
@@ -13479,22 +13489,22 @@
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 77.4806
+   "normalized": 69.7092
   },
   {
    "id": "imports/importEverything/compose@500",
    "scenario": "importEverything",
    "kind": "time",
    "unit": "ms",
-   "value": 220.89,
+   "value": 237.584,
    "stats": {
     "n": 9,
-    "median": 220.89,
-    "p90": 315.155,
-    "min": 210.115,
-    "max": 315.155,
-    "mean": 239.747,
-    "cov": 0.1598
+    "median": 237.584,
+    "p90": 271.932,
+    "min": 207.215,
+    "max": 271.932,
+    "mean": 239.019,
+    "cov": 0.0893
    },
    "workload": {
     "family": "compose",
@@ -13504,22 +13514,22 @@
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 15.5125
+   "normalized": 24.2482
   },
   {
    "id": "imports/importEverything/compose@5000",
    "scenario": "importEverything",
    "kind": "time",
    "unit": "ms",
-   "value": 7391.5,
+   "value": 2070.897,
    "stats": {
-    "n": 3,
-    "median": 7391.5,
-    "p90": 9336.095,
-    "min": 5037.14,
-    "max": 9336.095,
-    "mean": 7254.912,
-    "cov": 0.2967
+    "n": 5,
+    "median": 2070.897,
+    "p90": 2146.55,
+    "min": 1963.998,
+    "max": 2146.55,
+    "mean": 2060.4,
+    "cov": 0.0319
    },
    "workload": {
     "family": "compose",
@@ -13529,22 +13539,22 @@
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 519.0842
+   "normalized": 211.3592
   },
   {
    "id": "imports/importEverything/kubernetes@100",
    "scenario": "importEverything",
    "kind": "time",
    "unit": "ms",
-   "value": 121.408,
+   "value": 59.539,
    "stats": {
     "n": 9,
-    "median": 121.408,
-    "p90": 188.56,
-    "min": 98.88,
-    "max": 188.56,
-    "mean": 134.632,
-    "cov": 0.2764
+    "median": 59.539,
+    "p90": 76.566,
+    "min": 50.03,
+    "max": 76.566,
+    "mean": 58.752,
+    "cov": 0.1403
    },
    "workload": {
     "family": "kubernetes",
@@ -13554,22 +13564,22 @@
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 8.5261
+   "normalized": 6.0766
   },
   {
    "id": "imports/importEverything/kubernetes@1500",
    "scenario": "importEverything",
    "kind": "time",
    "unit": "ms",
-   "value": 1029.753,
+   "value": 603.445,
    "stats": {
     "n": 5,
-    "median": 1029.753,
-    "p90": 1126.589,
-    "min": 950.044,
-    "max": 1126.589,
-    "mean": 1019.122,
-    "cov": 0.0701
+    "median": 603.445,
+    "p90": 641.944,
+    "min": 577.992,
+    "max": 641.944,
+    "mean": 605.896,
+    "cov": 0.0447
    },
    "workload": {
     "family": "kubernetes",
@@ -13579,22 +13589,22 @@
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 72.3167
+   "normalized": 61.5886
   },
   {
    "id": "imports/importEverything/kubernetes@500",
    "scenario": "importEverything",
    "kind": "time",
    "unit": "ms",
-   "value": 514.911,
+   "value": 231.399,
    "stats": {
     "n": 9,
-    "median": 514.911,
-    "p90": 638.516,
-    "min": 472.893,
-    "max": 638.516,
-    "mean": 531.429,
-    "cov": 0.1035
+    "median": 231.399,
+    "p90": 280.336,
+    "min": 217.148,
+    "max": 280.336,
+    "mean": 238.516,
+    "cov": 0.085
    },
    "workload": {
     "family": "kubernetes",
@@ -13604,22 +13614,22 @@
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 36.1608
+   "normalized": 23.617
   },
   {
    "id": "imports/importEverything/kubernetes@5000",
    "scenario": "importEverything",
    "kind": "time",
    "unit": "ms",
-   "value": 4702.722,
+   "value": 1890.733,
    "stats": {
-    "n": 3,
-    "median": 4702.722,
-    "p90": 5394.21,
-    "min": 4702.371,
-    "max": 5394.21,
-    "mean": 4933.101,
-    "cov": 0.0809
+    "n": 5,
+    "median": 1890.733,
+    "p90": 2157.675,
+    "min": 1850.941,
+    "max": 2157.675,
+    "mean": 1938.262,
+    "cov": 0.0648
    },
    "workload": {
     "family": "kubernetes",
@@ -13629,122 +13639,122 @@
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 330.2589
+   "normalized": 192.9713
   },
   {
    "id": "imports/importEverything/terraform@100",
    "scenario": "importEverything",
    "kind": "time",
    "unit": "ms",
-   "value": 4.375,
+   "value": 3.367,
    "stats": {
     "n": 9,
-    "median": 4.375,
-    "p90": 4.887,
-    "min": 3.393,
-    "max": 4.887,
-    "mean": 4.248,
-    "cov": 0.1046
+    "median": 3.367,
+    "p90": 3.509,
+    "min": 2.803,
+    "max": 3.509,
+    "mean": 3.216,
+    "cov": 0.0842
    },
    "workload": {
     "family": "terraform",
     "n": 100,
-    "nodes": 102,
-    "edges": 101
+    "nodes": 96,
+    "edges": 118
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 0.3072
+   "normalized": 0.3436
   },
   {
    "id": "imports/importEverything/terraform@1500",
    "scenario": "importEverything",
    "kind": "time",
    "unit": "ms",
-   "value": 68.076,
+   "value": 44.813,
    "stats": {
     "n": 5,
-    "median": 68.076,
-    "p90": 70.666,
-    "min": 62.147,
-    "max": 70.666,
-    "mean": 67.571,
-    "cov": 0.0514
+    "median": 44.813,
+    "p90": 49.879,
+    "min": 39.878,
+    "max": 49.879,
+    "mean": 44.813,
+    "cov": 0.079
    },
    "workload": {
     "family": "terraform",
     "n": 1500,
-    "nodes": 1501,
-    "edges": 1500
+    "nodes": 1502,
+    "edges": 1857
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 4.7808
+   "normalized": 4.5737
   },
   {
    "id": "imports/importEverything/terraform@500",
    "scenario": "importEverything",
    "kind": "time",
    "unit": "ms",
-   "value": 20.097,
+   "value": 12.313,
    "stats": {
     "n": 9,
-    "median": 20.097,
-    "p90": 22.966,
-    "min": 17.744,
-    "max": 22.966,
-    "mean": 20.052,
-    "cov": 0.0921
+    "median": 12.313,
+    "p90": 13.31,
+    "min": 11.535,
+    "max": 13.31,
+    "mean": 12.495,
+    "cov": 0.0539
    },
    "workload": {
     "family": "terraform",
     "n": 500,
-    "nodes": 501,
-    "edges": 500
+    "nodes": 494,
+    "edges": 610
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 1.4114
+   "normalized": 1.2567
   },
   {
    "id": "imports/importEverything/terraform@5000",
    "scenario": "importEverything",
    "kind": "time",
    "unit": "ms",
-   "value": 295.225,
+   "value": 193.255,
    "stats": {
     "n": 5,
-    "median": 295.225,
-    "p90": 435.78,
-    "min": 211.698,
-    "max": 435.78,
-    "mean": 321.884,
-    "cov": 0.3148
+    "median": 193.255,
+    "p90": 252.774,
+    "min": 141.687,
+    "max": 252.774,
+    "mean": 193.761,
+    "cov": 0.2659
    },
    "workload": {
     "family": "terraform",
     "n": 5000,
-    "nodes": 4996,
-    "edges": 4995
+    "nodes": 4998,
+    "edges": 6181
    },
    "suite": "imports",
    "env": "node",
-   "normalized": 20.7328
+   "normalized": 19.7239
   },
   {
    "id": "imports/read/asyncapi@100",
    "scenario": "read",
    "kind": "time",
    "unit": "ms",
-   "value": 62.826,
+   "value": 39.202,
    "stats": {
     "n": 9,
-    "median": 62.826,
-    "p90": 74.818,
-    "min": 57.242,
-    "max": 74.818,
-    "mean": 63.924,
-    "cov": 0.0933
+    "median": 39.202,
+    "p90": 48.902,
+    "min": 36.875,
+    "max": 48.902,
+    "mean": 40.935,
+    "cov": 0.0896
    },
    "workload": {
     "family": "asyncapi",
@@ -13755,22 +13765,22 @@
    "note": "reader only (parse included)",
    "suite": "imports",
    "env": "node",
-   "normalized": 4.4121
+   "normalized": 4.001
   },
   {
    "id": "imports/read/asyncapi@1500",
    "scenario": "read",
    "kind": "time",
    "unit": "ms",
-   "value": 111.28,
+   "value": 76.945,
    "stats": {
     "n": 5,
-    "median": 111.28,
-    "p90": 122.481,
-    "min": 104.371,
-    "max": 122.481,
-    "mean": 112.572,
-    "cov": 0.058
+    "median": 76.945,
+    "p90": 80.67,
+    "min": 75.514,
+    "max": 80.67,
+    "mean": 77.859,
+    "cov": 0.0301
    },
    "workload": {
     "family": "asyncapi",
@@ -13781,22 +13791,22 @@
    "note": "reader only (parse included)",
    "suite": "imports",
    "env": "node",
-   "normalized": 7.8149
+   "normalized": 7.8531
   },
   {
    "id": "imports/read/asyncapi@500",
    "scenario": "read",
    "kind": "time",
    "unit": "ms",
-   "value": 124.816,
+   "value": 76.184,
    "stats": {
     "n": 9,
-    "median": 124.816,
-    "p90": 140.055,
-    "min": 98.507,
-    "max": 140.055,
-    "mean": 122.657,
-    "cov": 0.1282
+    "median": 76.184,
+    "p90": 99.437,
+    "min": 72.343,
+    "max": 99.437,
+    "mean": 78.949,
+    "cov": 0.108
    },
    "workload": {
     "family": "asyncapi",
@@ -13807,22 +13817,22 @@
    "note": "reader only (parse included)",
    "suite": "imports",
    "env": "node",
-   "normalized": 8.7655
+   "normalized": 7.7755
   },
   {
    "id": "imports/read/asyncapi@5000",
    "scenario": "read",
    "kind": "time",
    "unit": "ms",
-   "value": 104.704,
+   "value": 76.081,
    "stats": {
     "n": 5,
-    "median": 104.704,
-    "p90": 120.847,
-    "min": 102.156,
-    "max": 120.847,
-    "mean": 108.941,
-    "cov": 0.0738
+    "median": 76.081,
+    "p90": 85.77,
+    "min": 74.743,
+    "max": 85.77,
+    "mean": 77.726,
+    "cov": 0.0592
    },
    "workload": {
     "family": "asyncapi",
@@ -13833,22 +13843,22 @@
    "note": "reader only (parse included)",
    "suite": "imports",
    "env": "node",
-   "normalized": 7.3531
+   "normalized": 7.765
   },
   {
    "id": "imports/read/compose@100",
    "scenario": "read",
    "kind": "time",
    "unit": "ms",
-   "value": 68.334,
+   "value": 43.332,
    "stats": {
     "n": 9,
-    "median": 68.334,
-    "p90": 71.963,
-    "min": 55.897,
-    "max": 71.963,
-    "mean": 65.342,
-    "cov": 0.1025
+    "median": 43.332,
+    "p90": 49.139,
+    "min": 42.289,
+    "max": 49.139,
+    "mean": 44.812,
+    "cov": 0.0601
    },
    "workload": {
     "family": "compose",
@@ -13859,22 +13869,22 @@
    "note": "reader only (parse included)",
    "suite": "imports",
    "env": "node",
-   "normalized": 4.7989
+   "normalized": 4.4225
   },
   {
    "id": "imports/read/compose@1500",
    "scenario": "read",
    "kind": "time",
    "unit": "ms",
-   "value": 1000.831,
+   "value": 608.966,
    "stats": {
     "n": 5,
-    "median": 1000.831,
-    "p90": 1061.614,
-    "min": 915.287,
-    "max": 1061.614,
-    "mean": 987.12,
-    "cov": 0.0565
+    "median": 608.966,
+    "p90": 736.373,
+    "min": 579.594,
+    "max": 736.373,
+    "mean": 649.003,
+    "cov": 0.1093
    },
    "workload": {
     "family": "compose",
@@ -13885,22 +13895,22 @@
    "note": "reader only (parse included)",
    "suite": "imports",
    "env": "node",
-   "normalized": 70.2855
+   "normalized": 62.1521
   },
   {
    "id": "imports/read/compose@500",
    "scenario": "read",
    "kind": "time",
    "unit": "ms",
-   "value": 206.117,
+   "value": 245.277,
    "stats": {
     "n": 9,
-    "median": 206.117,
-    "p90": 241.654,
-    "min": 195.533,
-    "max": 241.654,
-    "mean": 210.595,
-    "cov": 0.0644
+    "median": 245.277,
+    "p90": 284.778,
+    "min": 208.18,
+    "max": 284.778,
+    "mean": 238.892,
+    "cov": 0.1047
    },
    "workload": {
     "family": "compose",
@@ -13911,22 +13921,22 @@
    "note": "reader only (parse included)",
    "suite": "imports",
    "env": "node",
-   "normalized": 14.475
+   "normalized": 25.0334
   },
   {
    "id": "imports/read/compose@5000",
    "scenario": "read",
    "kind": "time",
    "unit": "ms",
-   "value": 7337.748,
+   "value": 2075.814,
    "stats": {
-    "n": 3,
-    "median": 7337.748,
-    "p90": 7766.846,
-    "min": 7167.435,
-    "max": 7766.846,
-    "mean": 7424.01,
-    "cov": 0.0416
+    "n": 5,
+    "median": 2075.814,
+    "p90": 2198.576,
+    "min": 1921.191,
+    "max": 2198.576,
+    "mean": 2044.05,
+    "cov": 0.0586
    },
    "workload": {
     "family": "compose",
@@ -13937,22 +13947,22 @@
    "note": "reader only (parse included)",
    "suite": "imports",
    "env": "node",
-   "normalized": 515.3094
+   "normalized": 211.861
   },
   {
    "id": "imports/read/kubernetes@100",
    "scenario": "read",
    "kind": "time",
    "unit": "ms",
-   "value": 154.809,
+   "value": 55.875,
    "stats": {
     "n": 9,
-    "median": 154.809,
-    "p90": 219.012,
-    "min": 100.77,
-    "max": 219.012,
-    "mean": 156.738,
-    "cov": 0.2512
+    "median": 55.875,
+    "p90": 61.691,
+    "min": 50.278,
+    "max": 61.691,
+    "mean": 55.119,
+    "cov": 0.0664
    },
    "workload": {
     "family": "kubernetes",
@@ -13963,22 +13973,22 @@
    "note": "reader only (parse included)",
    "suite": "imports",
    "env": "node",
-   "normalized": 10.8718
+   "normalized": 5.7027
   },
   {
    "id": "imports/read/kubernetes@1500",
    "scenario": "read",
    "kind": "time",
    "unit": "ms",
-   "value": 1329.903,
+   "value": 561.112,
    "stats": {
     "n": 5,
-    "median": 1329.903,
-    "p90": 1585.385,
-    "min": 1126.679,
-    "max": 1585.385,
-    "mean": 1349.22,
-    "cov": 0.1221
+    "median": 561.112,
+    "p90": 589.776,
+    "min": 537.645,
+    "max": 589.776,
+    "mean": 564.021,
+    "cov": 0.0344
    },
    "workload": {
     "family": "kubernetes",
@@ -13989,22 +13999,22 @@
    "note": "reader only (parse included)",
    "suite": "imports",
    "env": "node",
-   "normalized": 93.3953
+   "normalized": 57.268
   },
   {
    "id": "imports/read/kubernetes@500",
    "scenario": "read",
    "kind": "time",
    "unit": "ms",
-   "value": 484.076,
+   "value": 216.766,
    "stats": {
     "n": 9,
-    "median": 484.076,
-    "p90": 558.469,
-    "min": 412.962,
-    "max": 558.469,
-    "mean": 483.082,
-    "cov": 0.1029
+    "median": 216.766,
+    "p90": 238.768,
+    "min": 195.491,
+    "max": 238.768,
+    "mean": 216.442,
+    "cov": 0.0599
    },
    "workload": {
     "family": "kubernetes",
@@ -14015,22 +14025,22 @@
    "note": "reader only (parse included)",
    "suite": "imports",
    "env": "node",
-   "normalized": 33.9953
+   "normalized": 22.1235
   },
   {
    "id": "imports/read/kubernetes@5000",
    "scenario": "read",
    "kind": "time",
    "unit": "ms",
-   "value": 3138.762,
+   "value": 1781.437,
    "stats": {
     "n": 5,
-    "median": 3138.762,
-    "p90": 4459.141,
-    "min": 2690.684,
-    "max": 4459.141,
-    "mean": 3385.836,
-    "cov": 0.2072
+    "median": 1781.437,
+    "p90": 1950.235,
+    "min": 1740.799,
+    "max": 1950.235,
+    "mean": 1808.449,
+    "cov": 0.047
    },
    "workload": {
     "family": "kubernetes",
@@ -14041,111 +14051,111 @@
    "note": "reader only (parse included)",
    "suite": "imports",
    "env": "node",
-   "normalized": 220.4264
+   "normalized": 181.8164
   },
   {
    "id": "imports/read/terraform@100",
    "scenario": "read",
    "kind": "time",
    "unit": "ms",
-   "value": 2.395,
+   "value": 1.076,
    "stats": {
     "n": 9,
-    "median": 2.395,
-    "p90": 2.982,
-    "min": 2.26,
-    "max": 2.982,
-    "mean": 2.468,
-    "cov": 0.0872
+    "median": 1.076,
+    "p90": 1.251,
+    "min": 1.028,
+    "max": 1.251,
+    "mean": 1.103,
+    "cov": 0.0609
    },
    "workload": {
     "family": "terraform",
     "n": 100,
-    "nodes": 102,
-    "edges": 101
+    "nodes": 96,
+    "edges": 118
    },
    "note": "reader only (parse included)",
    "suite": "imports",
    "env": "node",
-   "normalized": 0.1682
+   "normalized": 0.1098
   },
   {
    "id": "imports/read/terraform@1500",
    "scenario": "read",
    "kind": "time",
    "unit": "ms",
-   "value": 38.011,
+   "value": 16.626,
    "stats": {
     "n": 5,
-    "median": 38.011,
-    "p90": 45.291,
-    "min": 33.852,
-    "max": 45.291,
-    "mean": 39.093,
-    "cov": 0.1142
+    "median": 16.626,
+    "p90": 20.86,
+    "min": 14.781,
+    "max": 20.86,
+    "mean": 17.06,
+    "cov": 0.1378
    },
    "workload": {
     "family": "terraform",
     "n": 1500,
-    "nodes": 1501,
-    "edges": 1500
+    "nodes": 1502,
+    "edges": 1857
    },
    "note": "reader only (parse included)",
    "suite": "imports",
    "env": "node",
-   "normalized": 2.6694
+   "normalized": 1.6969
   },
   {
    "id": "imports/read/terraform@500",
    "scenario": "read",
    "kind": "time",
    "unit": "ms",
-   "value": 10.36,
+   "value": 5.498,
    "stats": {
     "n": 9,
-    "median": 10.36,
-    "p90": 12.249,
-    "min": 8.291,
-    "max": 12.249,
-    "mean": 10.698,
-    "cov": 0.1357
+    "median": 5.498,
+    "p90": 6.492,
+    "min": 5.267,
+    "max": 6.492,
+    "mean": 5.587,
+    "cov": 0.0662
    },
    "workload": {
     "family": "terraform",
     "n": 500,
-    "nodes": 501,
-    "edges": 500
+    "nodes": 494,
+    "edges": 610
    },
    "note": "reader only (parse included)",
    "suite": "imports",
    "env": "node",
-   "normalized": 0.7276
+   "normalized": 0.5611
   },
   {
    "id": "imports/read/terraform@5000",
    "scenario": "read",
    "kind": "time",
    "unit": "ms",
-   "value": 128.914,
+   "value": 64.319,
    "stats": {
     "n": 5,
-    "median": 128.914,
-    "p90": 142.667,
-    "min": 120.192,
-    "max": 142.667,
-    "mean": 128.698,
-    "cov": 0.0687
+    "median": 64.319,
+    "p90": 75.746,
+    "min": 63.165,
+    "max": 75.746,
+    "mean": 66.749,
+    "cov": 0.0771
    },
    "workload": {
     "family": "terraform",
     "n": 5000,
-    "nodes": 4996,
-    "edges": 4995
+    "nodes": 4998,
+    "edges": 6181
    },
    "note": "reader only (parse included)",
    "suite": "imports",
    "env": "node",
-   "normalized": 9.0533
+   "normalized": 6.5645
   },
   {
    "id": "interact/drag-frameP90/annotated@1500",

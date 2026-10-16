@@ -39,6 +39,8 @@ interface Format {
   sources: (units: number) => SourceFile[];
   run: (files: SourceFile[]) => ImportOutcome;
   read: (files: SourceFile[]) => ImportGraph;
+  /** Draw everything's reader, where it differs from the default one. */
+  readEverything?: (files: SourceFile[]) => ImportGraph;
   /** Units for the growth gate's small input (the large is GROWTH_FACTOR times it). */
   gateUnits: number;
 }
@@ -63,6 +65,8 @@ const FORMATS: Format[] = [
     sources: (u) => [terraformPlan(u)],
     run: (f) => importTerraform(f),
     read: (f) => readTerraform(f),
+    // Draw everything: every resource as a node, as the report's button replays it.
+    readEverything: (f) => readTerraform(f, { everything: true }),
     gateUnits: 40,
   },
   {
@@ -75,7 +79,8 @@ const FORMATS: Format[] = [
 ];
 
 const nodesOf = (o: ImportOutcome) => (o.ok === true ? o.diagram.nodes.length : 0);
-const everything = (format: Format, files: SourceFile[]) => replayOutcome(format.read(files), format.id);
+const everything = (format: Format, files: SourceFile[]) =>
+  replayOutcome((format.readEverything ?? format.read)(files), format.id);
 
 /** Units that draw about `n` nodes with everything drawn (a probe, then a correction). */
 function unitsFor(format: Format, n: number): number {
@@ -126,6 +131,12 @@ s.gating("every importer grows linearly with its input", () => {
   for (const format of FORMATS) {
     const small = format.sources(format.gateUnits);
     const large = format.sources(format.gateUnits * GROWTH_FACTOR);
+    // Both import, or the ratio would time a failure.
+    for (const files of [small, large]) {
+      const r = everything(format, files);
+      if (r.ok !== true)
+        throw new Error(`${format.id}: the gate's input didn't import: ${"error" in r ? r.error : "?"}`);
+    }
     s.growth(
       `import-${format.id}`,
       () => everything(format, small),

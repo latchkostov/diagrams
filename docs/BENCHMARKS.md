@@ -120,7 +120,7 @@ with p90 beside them.
 ### Bundle
 
 The shipped build (`pnpm build`'s, no test hooks), chunk by chunk: the entry, the startup JavaScript (the entry and
-what `index.html` preloads), the canvas's first view (startup plus `CanvasView` and `canvas-shared`), the live session,
+what `index.html` preloads), the canvas's first view (startup plus `CanvasView` and `canvas-shared`), live view's download (`LiveSession` and the chunks of its own it imports, beyond the canvas's),
 every chunk's raw, gzip (level 9) and brotli size, and each chunk's biggest modules, so a comparison says what grew.
 
 ### How the browser numbers are taken
@@ -209,7 +209,7 @@ A gate fails `pnpm bench:gates` (and the nightly run). Everything else is a tren
 | Same seed, same run                                                                                                                                                      | count                                                                                     | `sim`              | Counts                                                                                                               |
 | Commits, inspector, card and node-wrapper renders per keystroke, per click and per pan frame (pipeline, 100 and 500 nodes)                                               | count                                                                                     | `renders`          | Counts; budgets in `tests/bench/ui/renders.bench.ts` with room for a stray commit, never for an extra render per key |
 | DOM nodes and listeners kept per open and close (second window)                                                                                                          | count                                                                                     | `memory`           | Counts after GC                                                                                                      |
-| Entry, startup, canvas first view and live session gzip sizes                                                                                                            | bytes                                                                                     | `bundle`           | Bytes                                                                                                                |
+| Entry, startup, canvas first view and live view gzip sizes                                                                                                               | bytes                                                                                     | `bundle`           | Bytes                                                                                                                |
 
 Not gated, and why:
 
@@ -293,7 +293,7 @@ The headline numbers (medians, ms unless marked; browser numbers at 2× CPU thro
 | Kubernetes import (Node)                                   | 146            | 526               | 946                  | 4,561            |
 
 Bundle (the shipped build, gzip): entry 105.5 kB (budget 123.5), startup JavaScript 154.2 kB in 20 files, the canvas's
-first view 333.1 kB, the live session 79.7 kB, all JavaScript 2.48 MB in 146 chunks.
+first view 333.1 kB, live view's download 117.2 kB in 5 chunks, all JavaScript 2.48 MB in 146 chunks.
 
 Render counts per unit (pipeline at 500 nodes): a keystroke in a name commits 4 times and renders 1,557 components (725
 of them React Flow node wrappers); a click on another node commits 10 times and renders 4,375 (2,050 node wrappers); a
@@ -399,6 +399,30 @@ on the baseline's commit:
 
 The suite's own checks: three back-to-back `pnpm bench:gates` runs passed every gate every time (see
 [Measured variance](#measured-variance)), and the render hook was checked against React's development profiler.
+
+## Review
+
+Two rounds of the repository's Codex review (`scripts/review/run.sh --since origin/master`, seven angles).
+
+- **Round 1: 2 P1, 15 P2, all fixed.** The P1s (raised by five of the seven reviewers): the pan scenarios dragged with the
+  left button, which draws a selection box in edit mode, and the zoom scenario used a plain wheel, which pans. Pan is now
+  a middle-button drag, zoom is Control and the wheel, and both check that the viewport moved or scaled; the interaction
+  and render baselines were measured again (a pan now renders 4 components and no node; zoom turned out to cost five
+  times a pan frame). The P2s fixed: routing benchmarks use the canvas's own route input (notes and shapes as obstacles,
+  shapes as edge ends); the workload cache key covers all of `src/` and the lockfile; `compare` takes its 2 ms floor in
+  normalised units, counts renders per second as work (not throughput) and keeps heap bytes out of the bundle report;
+  utilisation is a percentage, never normalised; cold loads skip the checks wait where checks don't run by themselves;
+  `run.mjs` spawns Node without a shell and quotes pnpm's arguments on Windows.
+- **Round 2: no P0 or P1; 9 P2.** Fixed: a suite rerun with `--keep` replaces its earlier parts; the import growth gate
+  checks both imports succeeded; Terraform's Draw everything reads every resource; the render gates require the
+  components they budget to have rendered; the cold-load checks observer no longer depends on init-script order; the
+  live view budget covers its whole download. Not changed, with reasons:
+  - _Extract the planning computation into `src/planning/compute.ts` and benchmark that._ It changes app code, which this
+    branch doesn't; `planningCompute` mirrors `compute()` in `src/planning/cache.ts` call for call. Worth doing in the
+    refactor, then point the benchmark at it.
+  - _Record `firstNode` after a visible node paints._ React Flow mounts nodes hidden until measured, so `firstNode` can
+    lead the first visible frame by the measuring pass. Fixing it changes what the committed baseline measured; it's
+    noted here and is the first change for the next baseline (`settled` and `mainThread` already include the frame).
 
 ## Extending
 

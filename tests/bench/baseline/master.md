@@ -1,13 +1,13 @@
 # Benchmark results
 
-2026-10-16T01:26:39.526Z · commit `b99900a753` (uncommitted changes) on `test/benchmarks` · mode **full**
+2026-10-16T01:36:45.084Z · commit `f5d248ec82` (uncommitted changes) on `test/benchmarks` · mode **full**
 
 | Environment |  |
 | --- | ---: |
 | Machine | AMD Ryzen 9 7950X 16-Core Processor, 32 threads, 68 GB, Windows_NT 10.0.26300 (x64) |
 | Runtime | Node v24.22.0, Chromium 156.0.8078.4, Playwright 1.64.1, Vite 8.3.4, React 19.3.1 |
 | Browser settings | CPU throttle 2× (main thread), 1440 × 900 at device scale factor 1, light, en-US, UTC |
-| Calibration | Node 14 ms, browser 23 ms (same-run baseline; "cu" = ms ÷ calibration) |
+| Calibration | Node 11 ms, browser 23 ms (same-run baseline; "cu" = ms ÷ calibration) |
 | CI | no |
 
 ## Gates: 72 of 72 pass
@@ -18,7 +18,7 @@
 | --- | ---: | ---: | ---: |
 | `bundle/canvasFirstView/gzip` | 333.1 kB | <= 383.0 kB | pass |
 | `bundle/entry/gzip` | 105.5 kB | <= 123.5 kB | pass |
-| `bundle/liveSession/gzip` | 79.7 kB | <= 92.0 kB | pass |
+| `bundle/liveSession/gzip` | 117.2 kB | <= 135.0 kB | pass |
 | `bundle/startup/gzip` | 154.2 kB | <= 177.0 kB | pass |
 | `checks/analyzeCapacity-per-run` | 1 | <= 3 | pass |
 | `checks/compileTopology-per-run` | 2 | <= 2 | pass |
@@ -29,10 +29,10 @@
 | `exports/drawio/growth` | 7.9× | <= 24.0× | pass |
 | `exports/interactiveHtml/growth` | 4.9× | <= 24.0× | pass |
 | `exports/mermaid/growth` | 16.2× | <= 24.0× | pass |
-| `imports/import-asyncapi/growth` | 8.3× | <= 24.0× | pass |
+| `imports/import-asyncapi/growth` | 7.0× | <= 24.0× | pass |
 | `imports/import-compose/growth` | 8.0× | <= 24.0× | pass |
-| `imports/import-kubernetes/growth` | 8.1× | <= 24.0× | pass |
-| `imports/import-terraform/growth` | 8.6× | <= 24.0× | pass |
+| `imports/import-kubernetes/growth` | 8.4× | <= 24.0× | pass |
+| `imports/import-terraform/growth` | 10.8× | <= 24.0× | pass |
 | `layout/autoLayout-mesh/growth` | 9.5× | <= 24.0× | pass |
 | `layout/autoLayout-pipeline/growth` | 9.6× | <= 24.0× | pass |
 | `layout/routeAll-pipeline/growth` | 21.8× | <= 192.0× | pass |
@@ -240,6 +240,7 @@
 | `chunk/zh-TW.js/gzip` | 46.2 kB |  |
 | `entry/brotli` | 91.1 kB |  |
 | `entry/raw` | 331.9 kB |  |
+| `liveSession/chunks` | 0.0 kB |  |
 | `startup/chunks` | 0.0 kB |  |
 | `startup/raw` | 468.5 kB |  |
 
@@ -352,23 +353,23 @@
 | `import-drawnNodes` | asyncapi | 99 | 201 | 201 | 201 |
 | `import-drawnNodes` | compose | 100 | 498 | 1,500 | 4,999 |
 | `import-drawnNodes` | kubernetes | 99 | 275 | 286 | 498 |
-| `import-drawnNodes` | terraform | 102 | 501 | 1,501 | 4,996 |
+| `import-drawnNodes` | terraform | 73 | 377 | 1,146 | 3,814 |
 | `import-sourceChars` | asyncapi | 41,988 | 85,814 | 85,814 | 85,814 |
 | `import-sourceChars` | compose | 16,104 | 88,310 | 270,977 | 921,311 |
 | `import-sourceChars` | kubernetes | 55,344 | 281,502 | 851,715 | 2,855,028 |
-| `import-sourceChars` | terraform | 125,299 | 615,869 | 1,852,325 | 6,182,585 |
-| `import` | asyncapi | 95 ms <sub>p90 109 ms</sub> | 190 ms <sub>p90 209 ms</sub> | 163 ms <sub>p90 184 ms</sub> | 182 ms <sub>p90 199 ms</sub> |
-| `import` | compose | 63 ms <sub>p90 79 ms</sub> | 335 ms <sub>p90 359 ms</sub> | 1.00 s <sub>p90 1.20 s</sub> | 3.23 s <sub>p90 4.35 s</sub> |
-| `import` | kubernetes | 146 ms <sub>p90 202 ms</sub> | 526 ms <sub>p90 891 ms</sub> | 946 ms <sub>p90 983 ms</sub> | 4.56 s <sub>p90 5.03 s</sub> |
-| `import` | terraform | 4.46 ms <sub>p90 5.30 ms</sub> | 22 ms <sub>p90 23 ms</sub> | 86 ms <sub>p90 107 ms</sub> | 264 ms <sub>p90 442 ms</sub> |
-| `importEverything` | asyncapi | 90 ms <sub>p90 98 ms</sub> | 179 ms <sub>p90 208 ms</sub> | 179 ms <sub>p90 190 ms</sub> | 174 ms <sub>p90 191 ms</sub> |
-| `importEverything` | compose | 65 ms <sub>p90 79 ms</sub> | 221 ms <sub>p90 315 ms</sub> | 1.10 s <sub>p90 1.13 s</sub> | 7.39 s <sub>p90 9.34 s</sub> |
-| `importEverything` | kubernetes | 121 ms <sub>p90 189 ms</sub> | 515 ms <sub>p90 639 ms</sub> | 1.03 s <sub>p90 1.13 s</sub> | 4.70 s <sub>p90 5.39 s</sub> |
-| `importEverything` | terraform | 4.38 ms <sub>p90 4.89 ms</sub> | 20 ms <sub>p90 23 ms</sub> | 68 ms <sub>p90 71 ms</sub> | 295 ms <sub>p90 436 ms</sub> |
-| `read` | asyncapi | 63 ms <sub>p90 75 ms</sub> | 125 ms <sub>p90 140 ms</sub> | 111 ms <sub>p90 122 ms</sub> | 105 ms <sub>p90 121 ms</sub> |
-| `read` | compose | 68 ms <sub>p90 72 ms</sub> | 206 ms <sub>p90 242 ms</sub> | 1.00 s <sub>p90 1.06 s</sub> | 7.34 s <sub>p90 7.77 s</sub> |
-| `read` | kubernetes | 155 ms <sub>p90 219 ms</sub> | 484 ms <sub>p90 558 ms</sub> | 1.33 s <sub>p90 1.59 s</sub> | 3.14 s <sub>p90 4.46 s</sub> |
-| `read` | terraform | 2.40 ms <sub>p90 2.98 ms</sub> | 10 ms <sub>p90 12 ms</sub> | 38 ms <sub>p90 45 ms</sub> | 129 ms <sub>p90 143 ms</sub> |
+| `import-sourceChars` | terraform | 89,655 | 462,987 | 1,412,675 | 4,718,051 |
+| `import` | asyncapi | 64 ms <sub>p90 71 ms</sub> | 118 ms <sub>p90 126 ms</sub> | 116 ms <sub>p90 122 ms</sub> | 115 ms <sub>p90 124 ms</sub> |
+| `import` | compose | 46 ms <sub>p90 52 ms</sub> | 238 ms <sub>p90 267 ms</sub> | 632 ms <sub>p90 659 ms</sub> | 2.29 s <sub>p90 2.44 s</sub> |
+| `import` | kubernetes | 57 ms <sub>p90 65 ms</sub> | 230 ms <sub>p90 242 ms</sub> | 590 ms <sub>p90 674 ms</sub> | 1.78 s <sub>p90 1.88 s</sub> |
+| `import` | terraform | 2.91 ms <sub>p90 3.14 ms</sub> | 11 ms <sub>p90 12 ms</sub> | 34 ms <sub>p90 36 ms</sub> | 117 ms <sub>p90 123 ms</sub> |
+| `importEverything` | asyncapi | 65 ms <sub>p90 77 ms</sub> | 115 ms <sub>p90 125 ms</sub> | 117 ms <sub>p90 120 ms</sub> | 119 ms <sub>p90 130 ms</sub> |
+| `importEverything` | compose | 47 ms <sub>p90 51 ms</sub> | 238 ms <sub>p90 272 ms</sub> | 683 ms <sub>p90 742 ms</sub> | 2.07 s <sub>p90 2.15 s</sub> |
+| `importEverything` | kubernetes | 60 ms <sub>p90 77 ms</sub> | 231 ms <sub>p90 280 ms</sub> | 603 ms <sub>p90 642 ms</sub> | 1.89 s <sub>p90 2.16 s</sub> |
+| `importEverything` | terraform | 3.37 ms <sub>p90 3.51 ms</sub> | 12 ms <sub>p90 13 ms</sub> | 45 ms <sub>p90 50 ms</sub> | 193 ms <sub>p90 253 ms</sub> |
+| `read` | asyncapi | 39 ms <sub>p90 49 ms</sub> | 76 ms <sub>p90 99 ms</sub> | 77 ms <sub>p90 81 ms</sub> | 76 ms <sub>p90 86 ms</sub> |
+| `read` | compose | 43 ms <sub>p90 49 ms</sub> | 245 ms <sub>p90 285 ms</sub> | 609 ms <sub>p90 736 ms</sub> | 2.08 s <sub>p90 2.20 s</sub> |
+| `read` | kubernetes | 56 ms <sub>p90 62 ms</sub> | 217 ms <sub>p90 239 ms</sub> | 561 ms <sub>p90 590 ms</sub> | 1.78 s <sub>p90 1.95 s</sub> |
+| `read` | terraform | 1.08 ms <sub>p90 1.25 ms</sub> | 5.50 ms <sub>p90 6.49 ms</sub> | 17 ms <sub>p90 21 ms</sub> | 64 ms <sub>p90 76 ms</sub> |
 
 ## interact
 

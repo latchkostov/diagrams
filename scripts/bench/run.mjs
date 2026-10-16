@@ -69,21 +69,44 @@ if (!args.keep) {
 }
 fs.mkdirSync(out, { recursive: true });
 
+/**
+ * With --keep, a suite run again replaces its earlier part files (named by process id, so directory order says nothing
+ * about which is newer): before each step, drop the parts of the suites it's about to write.
+ */
+function dropParts(prefixes) {
+  const dir = path.join(out, "parts");
+  if (!fs.existsSync(dir)) return;
+  for (const f of fs.readdirSync(dir)) if (prefixes.some((p) => f.startsWith(p))) fs.rmSync(path.join(dir, f));
+}
+const nodeFiles = (list) =>
+  list.length
+    ? list
+    : fs
+        .readdirSync("tests/bench/node")
+        .filter((f) => f.endsWith(".bench.ts") && f !== "workloads.bench.ts")
+        .map((f) => f.slice(0, -".bench.ts".length));
+const uiFiles = (list) =>
+  list.length
+    ? list
+    : fs
+        .readdirSync("tests/bench/ui")
+        .filter((f) => f.endsWith(".bench.ts"))
+        .map((f) => f.slice(0, -".bench.ts".length));
+
 const needsBuild = only.has("ui") || (only.has("node") && (!nodeSuites.length || nodeSuites.includes("exports")));
 if (needsBuild && !args["no-build"]) step("build", "node", ["scripts/bench/build.mjs", out]);
 
 const vitest = (files) => ["exec", "vitest", "run", "--config", "tests/bench/vitest.config.ts", ...files];
-if (only.has("node") || only.has("ui") || only.has("workloads"))
+if (only.has("node") || only.has("ui") || only.has("workloads")) {
+  dropParts(["node-workloads-"]);
   step("workloads", "pnpm", vitest(["tests/bench/node/workloads.bench.ts"]));
-if (only.has("node")) {
-  const files = nodeSuites.length
-    ? nodeSuites.map((s) => `tests/bench/node/${s}.bench.ts`)
-    : fs
-        .readdirSync("tests/bench/node")
-        .filter((f) => f.endsWith(".bench.ts") && f !== "workloads.bench.ts")
-        .map((f) => `tests/bench/node/${f}`);
-  step("node suites", "pnpm", vitest(files));
 }
+if (only.has("node")) {
+  const suites = nodeFiles(nodeSuites);
+  dropParts(suites.map((s) => `node-${s}-`));
+  step("node suites", "pnpm", vitest(suites.map((s) => `tests/bench/node/${s}.bench.ts`)));
+}
+if (only.has("ui")) dropParts(uiFiles(uiSpecs).map((s) => `browser-${s}-`));
 if (only.has("ui"))
   step("browser suites", "pnpm", [
     "exec",

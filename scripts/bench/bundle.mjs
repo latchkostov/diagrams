@@ -28,8 +28,8 @@ const BUDGETS = {
   startup: 177_000,
   // 333,098 B measured: startup plus CanvasView and canvas-shared.
   canvasFirstView: 383_000,
-  // 79,662 B measured.
-  liveSession: 92_000,
+  // 117,197 B measured: LiveSession and the 4 chunks of its own it imports (the engine, admission, the trace card).
+  liveSession: 135_000,
 };
 
 const entryBudget = (() => {
@@ -114,8 +114,18 @@ add(
   canvasGzip,
   within(canvasGzip, BUDGETS.canvasFirstView, "startup plus the canvas's two chunks"),
 );
-if (live)
-  add("liveSession/gzip", "liveSession", live.sizes.gzip, within(live.sizes.gzip, BUDGETS.liveSession, "LiveSession"));
+// Live view's download: LiveSession and every chunk it imports statically that the canvas didn't already bring.
+const liveExtra = live ? [...closure([live])].filter((c) => !canvas.has(c)) : [];
+const liveGzip = liveExtra.reduce((n, c) => n + c.sizes.gzip, 0);
+if (live) {
+  add(
+    "liveSession/gzip",
+    "liveSession",
+    liveGzip,
+    within(liveGzip, BUDGETS.liveSession, "LiveSession and its own static imports, beyond the canvas"),
+  );
+  add("liveSession/chunks", "liveSession", liveExtra.length);
+}
 add(
   "allJs/gzip",
   "allJs",

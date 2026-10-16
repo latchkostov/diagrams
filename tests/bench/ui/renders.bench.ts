@@ -142,6 +142,9 @@ for (const [family, sizes] of CASES)
 
       // The hook still sees renders: a React upgrade that changed its internals would read as zero everywhere.
       expect(results["type-name"].total, "the render hook counted nothing: check RENDER_HOOK").toBeGreaterThan(0);
+      // The components the typing budgets name rendered: a rename or a wrapper would read as zero and pass its budget.
+      for (const name of ["Inspector", "NodeWrapper", "DiagramNodeImpl"])
+        expect(results["type-name"].byName[name] ?? 0, `no ${name} renders counted: renamed?`).toBeGreaterThan(0);
 
       const gated = GATED(family, n);
       for (const [interaction, r] of Object.entries(results)) {
