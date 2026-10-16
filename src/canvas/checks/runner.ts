@@ -57,7 +57,7 @@ export async function runChecksOffThread(diagram: DiagramFile): Promise<CheckRes
         w.postMessage(request);
       });
       if ("result" in response) {
-        rememberPlans(diagram, response.plans);
+        if (response.plans) rememberPlans(diagram, response.plans);
         return response.result;
       }
     } catch {
@@ -66,7 +66,7 @@ export async function runChecksOffThread(diagram: DiagramFile): Promise<CheckRes
   }
   // No worker (an old browser, a blocked script): this thread does all the checking, scenario sizing included.
   const [{ runChecks }, { planScaling }] = await Promise.all([loadEngine(), import("../../sim/scalingPlanner")]);
-  rememberPlans(diagram, planScaling(diagram));
+  if (!diagram.checks?.off?.includes("capacity")) rememberPlans(diagram, planScaling(diagram));
   return runChecks(diagram);
 }
 
@@ -81,7 +81,7 @@ export async function planOffThread(diagram: DiagramFile): Promise<ScalingPlan[]
         pending.set(id, { resolve, reject });
         w.postMessage(request);
       });
-      if ("plans" in response) return response.plans;
+      if ("plans" in response && response.plans) return response.plans;
     } catch {
       // Fall through to the main thread.
     }

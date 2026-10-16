@@ -40,6 +40,8 @@ export interface RunOptions {
 /**
  * Runs the checks on a diagram. Pure and deterministic: the same diagram gives the same findings in the
  * same order. Honours the file's `checks`: turned-off rules don't run, ignored findings are set apart.
+ * Scenario sizing is the exception in the editor: there it comes only from the checks worker
+ * (src/lib/scenarioPlanner.ts), so a diagram the worker hasn't planned yet has no sizing finding until it has.
  */
 export function runChecks(diagram: DiagramFile, opts: RunOptions = {}): CheckResult {
   const off = (diagram.checks?.off ?? []).filter(isCheckRule);

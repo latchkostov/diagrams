@@ -14,7 +14,8 @@
   a warm minimum, or explains that an admission quota binds. A same-seed rerun verifies every suggestion before
   it's offered as one undoable fix. The research example reproduces: at 3× traffic an HPA at max 10 and 92% CPU
   with a 70% target needs max 14. The same words appear in the Checks card, in agents' `describe_diagram` and
-  `check_diagram`, and in Live details while that simulation plays. Over its work budget it says unavailable.
+  `check_diagram`, and in Live details while that simulation plays. It runs in the checks worker, never on the
+  editing thread, and only while the capacity check is on; over its work or message budget it says unavailable.
 - **Showcase.** “Timetable API sleeps overnight” (Cloud) is an invented Cloud Run API that has no instances
   overnight, wakes on demand, hits its maximum in the morning rush with the planner's suggestion, and returns
   to zero. It's tagged Autoscaling in the gallery.
