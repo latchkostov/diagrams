@@ -120,8 +120,8 @@ export class SpatialGrid<T> {
 }
 
 /**
- * Rects by position, for a pass that tests each against a box. `near` returns, in ascending order, the indices into
- * `rects` of a superset of those touching the box, never fewer: a rect the grid can't hold (non-finite, or a negative
+ * Rects by position, for a pass that tests each against a box. `near` returns, in no particular order, the indices
+ * into `rects` of a superset of those touching the box, never fewer: a rect the grid can't hold (non-finite, or a negative
  * size) is always among them, and a box the grid can't answer for returns every index. Callers keep their exact tests;
  * the index only spares them the rects far away.
  */
@@ -139,6 +139,6 @@ export class RectIndex {
     if (!valid(box)) return this.rects.map((_, i) => i);
     const out = this.grid.query(box).map((e) => e.item);
     out.push(...this.loose);
-    return out.sort((a, b) => a - b);
+    return out;
   }
 }

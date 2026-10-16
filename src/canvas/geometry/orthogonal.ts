@@ -37,6 +37,8 @@ export interface OrthoRequest {
    * obstacles near it, not every one in the diagram. Same route either way.
    */
   index?: RectIndex;
+  /** Scratch arrays shared by a router's searches (one pass): spares each search allocating and filling its own. */
+  buffers?: SearchBuffers;
 }
 
 export interface OrthoOptions {
@@ -51,20 +53,31 @@ const DIRS: readonly Point[] = [
   { x: -1, y: 0 },
   { x: 0, y: -1 },
 ];
+/** DIRS as two arrays, for the search's inner loop. */
+const DX = DIRS.map((d) => d.x);
+const DY = DIRS.map((d) => d.y);
 const dirIndex = (d: Point) => (d.x > 0 ? 0 : d.y > 0 ? 1 : d.x < 0 ? 2 : 3);
 
+/** A binary min-heap of (key, value) pairs in typed arrays, reused across searches: `clear` empties it. */
 class MinHeap {
-  private k: number[] = [];
-  private v: number[] = [];
-  get size() {
-    return this.k.length;
+  private k = new Float64Array(1024);
+  private v = new Int32Array(1024);
+  size = 0;
+  clear() {
+    this.size = 0;
   }
   push(key: number, val: number) {
+    if (this.size === this.k.length) {
+      const k = new Float64Array(this.k.length * 2);
+      const v = new Int32Array(this.v.length * 2);
+      k.set(this.k);
+      v.set(this.v);
+      this.k = k;
+      this.v = v;
+    }
     const k = this.k,
       v = this.v;
-    let i = k.length;
-    k.push(key);
-    v.push(val);
+    let i = this.size++;
     while (i > 0) {
       const p = (i - 1) >> 1;
       if (k[p] <= key) break;
@@ -79,11 +92,11 @@ class MinHeap {
     const k = this.k,
       v = this.v;
     const top = v[0];
-    const lk = k.pop()!;
-    const lv = v.pop()!;
-    if (k.length) {
+    const n = --this.size;
+    const lk = k[n],
+      lv = v[n];
+    if (n) {
       let i = 0;
-      const n = k.length;
       for (;;) {
         let c = 2 * i + 1;
         if (c >= n) break;
@@ -100,11 +113,99 @@ class MinHeap {
   }
 }
 
+/**
+ * Scratch arrays for many searches in a row (a router's pass): sized for the largest search so far and invalidated by
+ * an epoch per search instead of a fresh allocation and fill. A value counts only when its stamp is this search's
+ * epoch; otherwise it reads as the fresh array's would (no cost known, distance Infinity, not closed, no parent).
+ */
+export class SearchBuffers {
+  private epoch = 0;
+  g = new Float64Array(0);
+  parent = new Int32Array(0);
+  /** Stamps for g and parent (set together), closed states, link costs, and occupancy. */
+  gAt = new Uint32Array(0);
+  closedAt = new Uint32Array(0);
+  link = new Float64Array(0);
+  linkAt = new Uint32Array(0);
+  occupied = new Uint8Array(0);
+  occupiedAt = new Uint32Array(0);
+  readonly heap = new MinHeap();
+
+  /** Starts a search over `states` (cell, direction) pairs and `points` occupancy points; returns its epoch. */
+  /**
+   * Arrays allocated by every SearchBuffers so far (for tests and benchmarks): a pass's searches share one set, grown a
+   * few times to the largest, rather than allocating per search.
+   */
+  static allocations = 0;
+
+  begin(states: number, points: number): number {
+    if (this.g.length < states) {
+      const size = Math.max(states, Math.ceil(this.g.length * 1.5));
+      SearchBuffers.allocations++;
+      this.g = new Float64Array(size);
+      this.parent = new Int32Array(size);
+      this.gAt = new Uint32Array(size);
+      this.closedAt = new Uint32Array(size);
+      this.link = new Float64Array(size);
+      this.linkAt = new Uint32Array(size);
+    }
+    if (this.occupied.length < points) {
+      const size = Math.max(points, Math.ceil(this.occupied.length * 1.5));
+      SearchBuffers.allocations++;
+      this.occupied = new Uint8Array(size);
+      this.occupiedAt = new Uint32Array(size);
+    }
+    if (++this.epoch === 0xffffffff) {
+      for (const a of [this.gAt, this.closedAt, this.linkAt, this.occupiedAt]) a.fill(0);
+      this.epoch = 1;
+    }
+    return this.epoch;
+  }
+}
+
 function uniqSorted(vals: number[]): number[] {
   vals.sort((a, b) => a - b);
   const out: number[] = [];
   for (const v of vals) if (!out.length || v - out[out.length - 1] > 0.5) out.push(v);
   return out;
+}
+
+/** Spans [a, b) on a ruler, sorted by start, with the furthest end so far: overlap tests in O(log n). */
+interface Spans {
+  start: number[];
+  maxEnd: number[];
+}
+
+/** Spans from [a, b] pairs. One with a NaN end can never overlap anything (every comparison is false): left out. */
+function spansOf(pairs: [number, number][]): Spans {
+  const sorted = pairs.filter(([a, b]) => !Number.isNaN(a) && !Number.isNaN(b)).sort((p, q) => p[0] - q[0]);
+  const start: number[] = [];
+  const maxEnd: number[] = [];
+  let far = -Infinity;
+  for (const [a, b] of sorted) {
+    far = Math.max(far, b);
+    start.push(a);
+    maxEnd.push(far);
+  }
+  return { start, maxEnd };
+}
+
+/** Whether some span has `hi > a && lo < b`: among the spans starting before `hi`, one ends after `lo`. */
+function overlapsSpan(s: Spans, lo: number, hi: number): boolean {
+  const k = lowerBound(s.start, hi);
+  return k > 0 && s.maxEnd[k - 1] > lo;
+}
+
+/** The first index whose value is at least `v` (sorted values). */
+function lowerBound(sorted: readonly number[], v: number): number {
+  let lo = 0,
+    hi = sorted.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (sorted[mid] < v) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
 }
 
 /** Adds the midline of every gap between consecutive rulers, so routes can take the middle of a channel. */
@@ -128,6 +229,7 @@ function search(
   region: Rect,
   soft: readonly SoftLine[],
   o: Required<OrthoOptions>,
+  buffers: SearchBuffers,
 ): Point[] | null {
   const xs = withMidlines([region.x, right(region), s1.x, t1.x, ...obs.flatMap((r) => [r.x, right(r)])]);
   const ys = withMidlines([region.y, bottom(region), s1.y, t1.y, ...obs.flatMap((r) => [r.y, bottom(r)])]);
@@ -139,11 +241,16 @@ function search(
   const gridY = 2 * ny - 1;
   // Include link midpoints; cached occupancy queries preserve identical border semantics.
   const occupancy = obstacleGrid(interleave(xs), interleave(ys), obs);
-  const occupancyCache = new Uint8Array((2 * nx - 1) * gridY);
+  const n = nx * ny * 4;
+  const epoch = buffers.begin(n, (2 * nx - 1) * gridY);
+  const { g, parent, gAt, closedAt, link, linkAt, occupied, occupiedAt } = buffers;
   const inside = (i: number, j: number) => {
     const k = i * gridY + j;
-    if (!occupancyCache[k]) occupancyCache[k] = occupancy.has(i, j) ? 2 : 1;
-    return occupancyCache[k] === 2;
+    if (occupiedAt[k] !== epoch) {
+      occupied[k] = occupancy.has(i, j) ? 1 : 0;
+      occupiedAt[k] = epoch;
+    }
+    return occupied[k] === 1;
   };
   const find = (arr: number[], v: number) => {
     let lo = 0,
@@ -178,12 +285,29 @@ function search(
     }
   }
 
+  // Each ruler's hugged borders as sorted spans: "does a link along it run beside one?" is a binary search, not a
+  // scan of every obstacle on the ruler (a column of aligned nodes shares one).
+  const hugSpansX = new Map<number, Spans>();
+  const hugSpansY = new Map<number, Spans>();
+  for (const [i, list] of hugX) hugSpansX.set(i, spansOf(list.map((r) => [r.y, bottom(r)])));
+  for (const [j, list] of hugY) hugSpansY.set(j, spansOf(list.map((r) => [r.x, right(r)])));
+
+  // Soft lines (group borders) by the ruler they run along: a link tests only the lines within 12 px of its own
+  // ruler, not every group border in the diagram. Each list keeps the lines' order.
+  const softX = new Map<number, SoftLine[]>();
+  const softY = new Map<number, SoftLine[]>();
+  for (const l of soft) {
+    const [rulers, other, byRuler] = l.axis === "x" ? [xs, ys, softX] : [ys, xs, softY];
+    // A link spans two neighbouring rulers of the other axis: it can only overlap a line that reaches the grid.
+    if (!(l.to > other[0] && l.from < other[other.length - 1])) continue;
+    for (let k = lowerBound(rulers, l.at - 13); k < rulers.length && rulers[k] < l.at + 13; k++)
+      if (Math.abs(rulers[k] - l.at) < 12) (byRuler.get(k) ?? byRuler.set(k, []).get(k)!).push(l);
+  }
+
   // Link (cell, dir) -> extra cost, or -1 when blocked. Computed lazily.
-  const linkCache = new Float64Array(nx * ny * 4).fill(NaN);
   const linkCost = (i: number, j: number, d: number): number => {
     const idx = (i * ny + j) * 4 + d;
-    const cached = linkCache[idx];
-    if (!Number.isNaN(cached)) return cached;
+    if (linkAt[idx] === epoch) return link[idx];
     const i2 = i + DIRS[d].x,
       j2 = j + DIRS[d].y;
     let cost = -1;
@@ -198,16 +322,9 @@ function search(
         const vertical = d === 1 || d === 3;
         const lo = vertical ? Math.min(y1, y2) : Math.min(x1, x2);
         const hi = vertical ? Math.max(y1, y2) : Math.max(x1, x2);
-        for (const r of (vertical ? hugX.get(i) : hugY.get(j)) ?? []) {
-          const a = vertical ? r.y : r.x;
-          const b = vertical ? bottom(r) : right(r);
-          if (hi > a && lo < b) {
-            extra += len * o.hug;
-            break;
-          }
-        }
-        for (const l of soft) {
-          if ((l.axis === "x") !== vertical) continue;
+        const hug = vertical ? hugSpansX.get(i) : hugSpansY.get(j);
+        if (hug && overlapsSpan(hug, lo, hi)) extra += len * o.hug;
+        for (const l of (vertical ? softX.get(i) : softY.get(j)) ?? []) {
           const c = vertical ? x1 : y1;
           if (Math.abs(c - l.at) < 12 && hi > l.from && lo < l.to) {
             extra += len * o.softPenalty;
@@ -217,25 +334,28 @@ function search(
         cost = len + extra;
       }
     }
-    linkCache[idx] = cost;
+    link[idx] = cost;
+    linkAt[idx] = epoch;
     return cost;
   };
 
-  const n = nx * ny * 4;
-  const g = new Float64Array(n).fill(Infinity);
-  const parent = new Int32Array(n).fill(-1);
-  const closed = new Uint8Array(n);
-  const heap = new MinHeap();
-  const h = (i: number, j: number) => Math.abs(xs[i] - xs[ti]) + Math.abs(ys[j] - ys[tj]);
+  const heap = buffers.heap;
+  heap.clear();
+  const xt = xs[ti],
+    yt = ys[tj];
+  const h = (i: number, j: number) => Math.abs(xs[i] - xt) + Math.abs(ys[j] - yt);
+  const bend = o.bend;
   const start = (si * ny + sj) * 4 + sDir;
   g[start] = 0;
+  parent[start] = -1;
+  gAt[start] = epoch;
   heap.push(h(si, sj), start);
   const arriveDir = (tDir + 2) % 4; // moving into the target = against its outward normal
   let goal = -1;
   while (heap.size) {
     const s = heap.pop();
-    if (closed[s]) continue;
-    closed[s] = 1;
+    if (closedAt[s] === epoch) continue;
+    closedAt[s] = epoch;
     const cell = s >> 2,
       d = s & 3;
     const i = Math.floor(cell / ny),
@@ -244,28 +364,32 @@ function search(
       goal = s;
       break;
     }
+    // The hot loop: the link cache and the distances read inline (a popped state's distance is always this search's).
+    const gs = g[s];
+    const links = s - d;
     for (let d2 = 0; d2 < 4; d2++) {
-      if (d2 === (d + 2) % 4) continue; // no U-turns in place
-      const c = linkCost(i, j, d2);
+      if (d2 === (d ^ 2)) continue; // no U-turns in place
+      const c = linkAt[links + d2] === epoch ? link[links + d2] : linkCost(i, j, d2);
       if (c < 0) continue;
-      const i2 = i + DIRS[d2].x,
-        j2 = j + DIRS[d2].y;
-      let cost = g[s] + c + (d2 !== d ? o.bend : 0);
+      const i2 = i + DX[d2],
+        j2 = j + DY[d2];
+      let cost = gs + c + (d2 !== d ? bend : 0);
       if (i2 === ti && j2 === tj) {
         if (d2 === tDir) continue; // would arrive from inside the target
-        if (d2 !== arriveDir) cost += o.bend; // the final turn into the target
+        if (d2 !== arriveDir) cost += bend; // the final turn into the target
       }
       const s2 = (i2 * ny + j2) * 4 + d2;
-      if (cost < g[s2] - 1e-9) {
+      if (cost < (gAt[s2] === epoch ? g[s2] : Infinity) - 1e-9) {
         g[s2] = cost;
         parent[s2] = s;
+        gAt[s2] = epoch;
         heap.push(cost + h(i2, j2), s2);
       }
     }
   }
   if (goal < 0) return null;
   const pts: Point[] = [];
-  for (let s = goal; s >= 0; s = parent[s]) {
+  for (let s = goal; s >= 0; s = gAt[s] === epoch ? parent[s] : -1) {
     const cell = s >> 2;
     pts.push({ x: xs[Math.floor(cell / ny)], y: ys[cell % ny] });
   }
@@ -307,8 +431,9 @@ export function routeOrthogonal(
   let all: Rect[] | undefined;
   const padded = () => (all ??= req.obstacles.map(padOf));
   // A padded box lies within its obstacle grown by `pad` (by nothing when pad is negative), so the obstacles whose
-  // padded box can reach the region are among those near the region grown by as much: the index's candidates, in
-  // their original order, filtered exactly as every padded box would be.
+  // padded box can reach the region are among those near the region grown by as much: the index's candidates,
+  // filtered exactly as every padded box would be. Their order doesn't matter: the search sorts the rulers, counts
+  // the occupancy, sorts the hugged spans, and the region is a union.
   const index = req.index;
   const paddedOf = new Map<number, Rect>();
   const near = (area: Rect): readonly Rect[] => {
@@ -332,10 +457,11 @@ export function routeOrthogonal(
     region = grown;
   }
   const soft = req.soft ?? [];
-  let path = search(s1, dirIndex(req.sourceDir), t1, dirIndex(req.targetDir), obs, region, soft, o);
+  const buffers = req.buffers ?? new SearchBuffers();
+  let path = search(s1, dirIndex(req.sourceDir), t1, dirIndex(req.targetDir), obs, region, soft, o, buffers);
   if (!path) {
     region = padded().reduce((acc, r) => unionRect(acc, inflate(r, margin)), region);
-    path = search(s1, dirIndex(req.sourceDir), t1, dirIndex(req.targetDir), padded(), region, soft, o);
+    path = search(s1, dirIndex(req.sourceDir), t1, dirIndex(req.targetDir), padded(), region, soft, o, buffers);
   }
   if (!path) return { points: simplify(elbow(req.source, s1, t1, req.target, req.sourceDir)), ok: false, region };
   return { points: simplify([req.source, ...path, req.target]), ok: true, region };

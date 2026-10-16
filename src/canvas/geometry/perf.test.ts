@@ -5,7 +5,7 @@ import { stressDiagram } from "../../lab/generators";
 import { obstacleCourseDiagram } from "../../lab/routingDiagrams";
 import { estimateCardSize } from "../nodes/size";
 import { groupHeaderRect, Router, type RouteInput } from "./router";
-import { routeOrthogonal } from "./orthogonal";
+import { routeOrthogonal, SearchBuffers, type SoftLine } from "./orthogonal";
 import { nudgeRoutes } from "./nudge";
 import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
 import type { Point, Rect } from "./rect";
@@ -170,6 +170,90 @@ it("routes an edge reading the obstacles near it, not every node of the diagram"
   expect((reads.count - indexing) / nodes.length).toBeLessThan(10);
   // The same routes without the index.
   expect(requests.map((r) => routeOrthogonal({ ...r, obstacles: nodes }))).toEqual(routed);
+});
+
+it("a link beside a column of aligned nodes doesn't test every node in the column", () => {
+  // Counted, not timed. A link running along a ruler that padded borders lie on pays a "hugging" penalty if one of
+  // them is beside it: each link tested every obstacle on its ruler, and a column of aligned nodes puts hundreds on
+  // one. The ruler's borders are sorted spans now, tested by a binary search.
+  const column = Array.from({ length: 300 }, (_, i) => ({ x: 0, y: i * 100, width: 200, height: 60 }));
+  const request = {
+    source: { x: 216, y: 30_100 },
+    sourceDir: { x: 0, y: 1 },
+    target: { x: 216, y: -100 },
+    targetDir: { x: 0, y: -1 },
+    obstacles: column,
+  };
+  rectReads.on = true;
+  rectReads.count = 0;
+  rectReads.limit = Infinity;
+  let routed;
+  try {
+    routed = routeOrthogonal(request);
+  } finally {
+    rectReads.on = false;
+  }
+  expect(routed.ok).toBe(true);
+  expect(rectReads.count / column.length).toBeLessThan(200);
+});
+
+it("a search reads the group borders near its grid, not every one in the diagram", () => {
+  // Counted, not timed. A link's cost tested every group border (4 per boundary) for running along it: a diagram's
+  // worth for every link the search looked at. 400 borders far from the edge, read at most a few times each.
+  const reads = { count: 0 };
+  const far: SoftLine[] = Array.from(
+    { length: 400 },
+    (_, i) =>
+      new Proxy(
+        { axis: i % 2 ? ("x" as const) : ("y" as const), at: 5_000 + i * 40, from: 5_000, to: 9_000 },
+        {
+          get(target, key, receiver) {
+            reads.count++;
+            return Reflect.get(target, key, receiver) as unknown;
+          },
+        },
+      ),
+  );
+  // One border along the edge's way, so the penalty still applies where it should.
+  const near: SoftLine = { axis: "y", at: 36, from: 0, to: 2_000 };
+  const request = {
+    source: { x: 220, y: 36 },
+    sourceDir: { x: 1, y: 0 },
+    target: { x: 1_200, y: 36 },
+    targetDir: { x: -1, y: 0 },
+    obstacles: [
+      { x: 0, y: 0, width: 220, height: 72 },
+      { x: 600, y: 0, width: 220, height: 72 },
+      { x: 1_200, y: 0, width: 220, height: 72 },
+    ],
+  };
+  const routed = routeOrthogonal({ ...request, soft: [...far, near] });
+  expect(routed.ok).toBe(true);
+  expect(reads.count / far.length).toBeLessThan(10);
+  // The same route as with no far borders at all.
+  expect(routeOrthogonal({ ...request, soft: [near] })).toEqual(routed);
+});
+
+it("a routing pass's searches share their scratch arrays", () => {
+  // Each search allocated and filled arrays for its whole grid (four per cell and direction); the pass's searches
+  // now share one set, grown a few times to the largest. Same routes as searches with arrays of their own.
+  const input = inputFor(stressDiagram({ nodes: 150, seed: 1, density: 0.25, groups: true, direction: "LR" }));
+  const router = new Router();
+  SearchBuffers.allocations = 0;
+  const routes = router.route(input);
+  expect(router.lastRouted).toBeGreaterThan(100);
+  expect(SearchBuffers.allocations).toBeLessThan(20);
+  const shared = new SearchBuffers();
+  const requests = [...routes.values()].slice(0, 40).map((r) => ({
+    source: r.points[0],
+    sourceDir: { x: 1, y: 0 },
+    target: r.points[r.points.length - 1],
+    targetDir: { x: -1, y: 0 },
+    obstacles: input.nodes.map((n) => n.rect),
+  }));
+  expect(requests.map((q) => routeOrthogonal({ ...q, buffers: shared }))).toEqual(
+    requests.map((q) => routeOrthogonal(q)),
+  );
 });
 
 const files = import.meta.glob<DiagramFile>("../../examples/*.json", { eager: true, import: "default" });

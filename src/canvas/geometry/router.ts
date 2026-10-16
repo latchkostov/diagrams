@@ -7,7 +7,7 @@ import type { Side } from "../../model/types";
 import { pickSides } from "../edges/routing";
 import { placeLabels, type LabelPlacement } from "./labels";
 import { nudgeRoutes } from "./nudge";
-import { routeOrthogonal, type SoftLine } from "./orthogonal";
+import { routeOrthogonal, SearchBuffers, type SoftLine } from "./orthogonal";
 import { roundedPath, sampleCubic } from "./path";
 import { spreadPorts, type PortEnd } from "./ports";
 import { RectIndex } from "./spatial";
@@ -194,8 +194,10 @@ export class Router {
     const curves = new Map<string, string>();
     const okMap = new Map<string, boolean>();
     this.lastRouted = 0;
-    // Built once, on the first edge that needs a search: each search then reads the obstacles near it only.
+    // Built once, on the first edge that needs a search: each search then reads the obstacles near it only, and
+    // reuses the pass's scratch arrays. Both are dropped with the pass, so nothing stays allocated between them.
     let index: RectIndex | undefined;
+    let buffers: SearchBuffers | undefined;
     const seen = new Set<string>();
     for (const e of edges) {
       seen.add(e.id);
@@ -234,6 +236,7 @@ export class Router {
         targetDir: sideNormal[sd.targetSide],
         obstacles,
         index: (index ??= new RectIndex(obstacles)),
+        buffers: (buffers ??= new SearchBuffers()),
         soft,
         pad: ROUTE_PAD,
       });
