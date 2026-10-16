@@ -4,6 +4,7 @@ import {
   planBoundaryDrop,
   descendantGroupIds,
   ancestorGroupIds,
+  indexGroupAncestry,
   wouldCreateCycle,
   eligibleParentGroupIds,
   planBoundaryAdoption,
@@ -12,6 +13,50 @@ import {
 } from "./groupHierarchy";
 
 describe("groupHierarchy planner", () => {
+  it("indexes cyclic ancestry once instead of walking the cycle for each query", () => {
+    let reads = 0;
+    const count = 1_000;
+    const groups = Array.from({ length: count }, (_, i) => ({
+      id: `g${i}`,
+      get group() {
+        reads++;
+        return `g${(i + 1) % count}`;
+      },
+    }));
+    const includes = indexGroupAncestry(groups);
+    for (let i = 0; i < count; i++) expect(includes("g0", `g${i}`)).toBe(true);
+    expect(reads).toBeLessThan(count * 6);
+  });
+  it("indexes deep ancestry with linear parent reads, including shuffled and malformed hierarchies", () => {
+    let reads = 0;
+    const count = 1_000;
+    const groups = Array.from({ length: count }, (_, i) => ({
+      id: `g${i}`,
+      get group() {
+        reads++;
+        return i ? `g${i - 1}` : undefined;
+      },
+    })).reverse();
+    const includes = indexGroupAncestry(groups);
+    for (let i = 0; i < count; i++) {
+      expect(includes(`g${count - 1}`, `g${i}`)).toBe(true);
+      expect(includes("g0", `g${i}`)).toBe(i === 0);
+    }
+    expect(reads).toBeLessThan(count * 6);
+    const malformed = [
+      { id: "a", group: "b" },
+      { id: "b", group: "a" },
+      { id: "c", group: "a" },
+      { id: "root", group: "missing" },
+      { id: "leaf", group: "root" },
+    ];
+    const cycleIncludes = indexGroupAncestry(malformed);
+    for (const child of malformed)
+      for (const ancestor of malformed)
+        expect(cycleIncludes(child.id, ancestor.id)).toBe(
+          child.id === ancestor.id || ancestorGroupIds(child.id, malformed).has(ancestor.id),
+        );
+  });
   it("converting a centred enclosing zone preserves an acyclic hierarchy", () => {
     // Inner boundary centred at (250, 250)
     const innerBoundary: GroupBox = {

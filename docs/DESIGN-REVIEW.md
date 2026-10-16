@@ -1,5 +1,23 @@
 # Design review
 
+## Review follow-ups 3, round 1 (2026-10-16)
+
+The designer agent's focused source review found no blocking UX issue. Skill annotations keep their
+visual association with moved boundaries and preserve authored metadata. Sibling separation keeps
+intentional nested containment; large-box placement retains deterministic clear-space fallback.
+No controls, chrome, UI text, shortcuts or focus paths are added. This supports Beautiful by default,
+Nothing overlaps by default and No surprises. No fresh browser or assistive-technology walkthrough
+was performed for this source review; the production browser suite remains a separate gate.
+
+## Review follow-ups 3 (2026-10-16)
+
+Scoped source and regression review: final AI placement keeps cards outside unrelated boundaries,
+including when later refits grow ancestors. The repair preserves membership and moves a settled
+subtree together, without adding controls. Metadata and capacity caching change no readouts or copy.
+Production phone regressions cover both explicit AI entry points, preserving unsaved simulation
+fields and dirty state while using the existing single-panel slot. No chrome, wording or focus target
+is added. This was not an independent whole-app designer or assistive-technology walkthrough.
+
 ## Routing R1 rejected transactions (2026-10-16)
 
 Scoped source UX review: rejected managed calls now keep capacity analysis and its existing readouts

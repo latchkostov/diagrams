@@ -4085,17 +4085,68 @@ function idClaimer(taken = /* @__PURE__ */ new Set(), avoid) {
 }
 //#endregion
 //#region src/model/groupHierarchy.ts
-/** Recursively computes all ancestor group IDs of `groupId`. */
-function ancestorGroupIds(groupId, groups, byId = new Map(groups.map((g) => [g.id, g]))) {
-	const result = /* @__PURE__ */ new Set();
-	let cur = byId.get(groupId)?.group;
-	const visited = /* @__PURE__ */ new Set([groupId]);
-	while (cur && !visited.has(cur)) {
-		result.add(cur);
-		visited.add(cur);
-		cur = byId.get(cur)?.group;
+/** Constant-space-per-boundary ancestry for placement. Tree intervals avoid materializing
+* every transitive ancestor set in a deep hierarchy. Collapse cycles once so malformed
+* input also gets constant-time queries, with all cycle members sharing ancestry. */
+function indexGroupAncestry(groups) {
+	const parents = new Map(groups.map((g) => [g.id, g.group]));
+	const component = /* @__PURE__ */ new Map();
+	for (const id of parents.keys()) {
+		if (component.has(id)) continue;
+		const path = [];
+		const positions = /* @__PURE__ */ new Map();
+		let cur = id;
+		while (cur && parents.has(cur) && !component.has(cur) && !positions.has(cur)) {
+			positions.set(cur, path.length);
+			path.push(cur);
+			cur = parents.get(cur);
+		}
+		const cycle = cur === void 0 ? void 0 : positions.get(cur);
+		if (cycle !== void 0) for (let i = cycle; i < path.length; i++) component.set(path[i], path[cycle]);
+		for (const member of path) if (!component.has(member)) component.set(member, member);
 	}
-	return result;
+	const children = /* @__PURE__ */ new Map();
+	const roots = new Set(component.values());
+	for (const [id, parent] of parents) {
+		const child = component.get(id);
+		const ancestor = parent === void 0 ? void 0 : component.get(parent);
+		if (ancestor === void 0 || ancestor === child) continue;
+		const list = children.get(ancestor) ?? [];
+		list.push(child);
+		children.set(ancestor, list);
+		roots.delete(child);
+	}
+	const intervals = /* @__PURE__ */ new Map();
+	const pending = [...roots].map((id) => ({
+		id,
+		exit: false
+	}));
+	let cursor = 0;
+	while (pending.length) {
+		const { id, exit } = pending.pop();
+		if (exit) intervals.get(id).end = cursor;
+		else {
+			if (intervals.has(id)) continue;
+			intervals.set(id, {
+				start: cursor++,
+				end: 0
+			});
+			pending.push({
+				id,
+				exit: true
+			});
+			for (const child of children.get(id) ?? []) pending.push({
+				id: child,
+				exit: false
+			});
+		}
+	}
+	return (child, ancestor) => {
+		if (child === ancestor) return true;
+		const a = intervals.get(component.get(ancestor) ?? ancestor);
+		const c = intervals.get(component.get(child) ?? child);
+		return !!a && !!c && a.start <= c.start && c.start < a.end;
+	};
 }
 /** Input parents are untrusted. Keep only existing references and break cycles before rendering. */
 function sanitizeGroupParents(groups, externalIds) {
@@ -5160,22 +5211,39 @@ var ObstacleIndex = class {
 	key(cx, cy) {
 		return cx * 1000003 + cy;
 	}
-	hitsOne(i, x1, y1, x2, y2) {
+	hitsOne(i, x1, y1, x2, y2, limit) {
+		if (this.tests >= limit) return void 0;
 		this.tests++;
 		return x1 < this.x2[i] && this.x1[i] < x2 && y1 < this.y2[i] && this.y1[i] < y2;
 	}
-	/** True when the box from (x1, y1) to (x2, y2) overlaps any obstacle. */
-	hits(x1, y1, x2, y2) {
-		for (const i of this.wide) if (this.hitsOne(i, x1, y1, x2, y2)) return true;
+	/** True on overlap, false when clear, undefined when the obstacle-test budget runs out. */
+	hits(x1, y1, x2, y2, limit) {
+		for (const i of this.wide) {
+			const hit = this.hitsOne(i, x1, y1, x2, y2, limit);
+			if (hit !== false) return hit;
+		}
 		const c = this.cell;
 		const cx1 = Math.floor(x1 / c);
 		const cy1 = Math.floor(y1 / c);
 		const cx2 = Math.floor(x2 / c);
 		const cy2 = Math.floor(y2 / c);
+		if (![
+			cx1,
+			cy1,
+			cx2,
+			cy2
+		].every(Number.isSafeInteger) || (cx2 - cx1 + 1) * (cy2 - cy1 + 1) > 64) {
+			for (let i = 0; i < this.x1.length; i++) {
+				const hit = this.hitsOne(i, x1, y1, x2, y2, limit);
+				if (hit !== false) return hit;
+			}
+			return false;
+		}
 		for (let cx = cx1; cx <= cx2; cx++) for (let cy = cy1; cy <= cy2; cy++) {
 			const list = this.cells.get(this.key(cx, cy));
-			if (list) {
-				for (const i of list) if (this.hitsOne(i, x1, y1, x2, y2)) return true;
+			if (list) for (const i of list) {
+				const hit = this.hitsOne(i, x1, y1, x2, y2, limit);
+				if (hit !== false) return hit;
 			}
 		}
 		return false;
@@ -5191,7 +5259,8 @@ var SEARCH_BUDGET = {
 * on a `step` grid in rings out to `maxRings` (nearest first; ties above before below, left before right), that
 * puts every one of `boxes`, grown by `margin`, clear of `others`, and that `accept` (if given) agrees to.
 * Obstacles are indexed once; only those within reach of the search count, and the work is bounded
-* (`SEARCH_BUDGET`). Returns null when the search runs out: callers keep things where they were, or use their
+* (`SEARCH_BUDGET`), with at most 64 cell visits per box per candidate and (2 * maxRings + 1)^2 candidates.
+* Returns null when the search runs out: callers keep things where they were, or use their
 * own guaranteed fallback (`pastAll`), never an overlapping spot.
 */
 function findClearTranslation(boxes, others, { margin = 16, step = 20, maxRings = 40, accept, budget = SEARCH_BUDGET } = {}) {
@@ -5216,8 +5285,9 @@ function findClearTranslation(boxes, others, { margin = 16, step = 20, maxRings 
 	/** Clear and accepted; undefined when the budget ran out. */
 	const fits = (dx, dy) => {
 		for (let i = 0; i < n; i++) {
-			if (index.hits(bx1[i] + dx, by1[i] + dy, bx2[i] + dx, by2[i] + dy)) return false;
-			if (index.tests > budget.tests) return void 0;
+			const hit = index.hits(bx1[i] + dx, by1[i] + dy, bx2[i] + dx, by2[i] + dy, budget.tests);
+			if (hit === void 0) return void 0;
+			if (hit) return false;
 		}
 		if (!accept) return true;
 		if (++accepts > budget.accepts) return void 0;
@@ -5308,6 +5378,7 @@ function fitGroups(diagram, requested) {
 function placeNew(diagram, newIds, mode = "auto", touchedGroups = [], keepOutside = []) {
 	const fresh = new Set(newIds);
 	const full = mode === "full" || mode === "auto" && fresh.size > 0 && fresh.size >= diagram.nodes.length / 2;
+	if (!full && !fresh.size && !touchedGroups.length) return diagram;
 	let nodes = diagram.nodes.map((n) => ({ ...n }));
 	const nodeById = new Map(nodes.map((n) => [n.id, n]));
 	const neighbors = /* @__PURE__ */ new Map();
@@ -5326,17 +5397,19 @@ function placeNew(diagram, newIds, mode = "auto", touchedGroups = [], keepOutsid
 			if (group) n.group = group;
 		}
 	}
-	const ancestry = /* @__PURE__ */ new Map();
 	const groups = diagram.groups ?? [];
 	const groupById = new Map(groups.map((g) => [g.id, g]));
-	for (const n of nodes) {
-		if (!n.group || ancestry.has(n.group)) continue;
-		ancestry.set(n.group, /* @__PURE__ */ new Set([n.group, ...ancestorGroupIds(n.group, groups, groupById)]));
-	}
-	const foreignGroups = (n, candidates = groups) => candidates.filter((g) => !n.group || !ancestry.get(n.group)?.has(g.id));
+	let ancestry;
+	const foreignGroups = (n, candidates = groups) => candidates.filter((g) => !n.group || !(ancestry ??= indexGroupAncestry(groups))(n.group, g.id));
 	const includeAncestors = (ids) => {
-		const result = new Set(ids);
-		for (const id of ids) for (const ancestor of ancestry.get(id) ?? ancestorGroupIds(id, groups, groupById)) result.add(ancestor);
+		const result = /* @__PURE__ */ new Set();
+		for (const id of ids) {
+			let cur = id;
+			while (cur && !result.has(cur)) {
+				result.add(cur);
+				cur = groupById.get(cur)?.group;
+			}
+		}
 		return result;
 	};
 	if (full) {
@@ -5437,7 +5510,104 @@ function placeNew(diagram, newIds, mode = "auto", touchedGroups = [], keepOutsid
 		});
 		if (n.group) refit(includeAncestors([n.group]));
 	}
+	if (next.nodes.some((n) => (full || fresh.has(n.id)) && foreignGroups(n, next.groups).some((g) => overlaps(sizedById.get(n.id), g))) || full && next.groups?.some((g, i, all) => all.some((other, j) => {
+		if (j <= i || !overlaps(g, other)) return false;
+		const related = ancestry ??= indexGroupAncestry(groups);
+		return !related(g.id, other.id) && !related(other.id, g.id);
+	}))) settleBoundaryCollisions(next, fresh, full, includeAncestors(touched));
 	return next;
+}
+/** Repair only a layout whose final refits left a foreign-boundary collision. Each
+* boundary is settled once, then moves with its contents at its parent's level. */
+function settleBoundaryCollisions(diagram, fresh, full, requested) {
+	const groups = diagram.groups ?? [];
+	const byId = new Map(groups.map((g) => [g.id, g]));
+	const nodeById = new Map(diagram.nodes.map((n) => [n.id, n]));
+	const parents = sanitizeGroupParents(groups, /* @__PURE__ */ new Set());
+	const children = /* @__PURE__ */ new Map();
+	const members = /* @__PURE__ */ new Map();
+	const annotations = /* @__PURE__ */ new Map();
+	for (const g of parents) {
+		const list = children.get(g.group) ?? [];
+		list.push(g.id);
+		children.set(g.group, list);
+	}
+	for (const n of diagram.nodes) {
+		const parent = n.group && byId.has(n.group) ? n.group : void 0;
+		const list = members.get(parent) ?? [];
+		list.push(n);
+		members.set(parent, list);
+	}
+	diagram.annotations = diagram.annotations?.map((a) => ({ ...a }));
+	for (const a of diagram.annotations ?? []) {
+		const parent = a.group && byId.has(a.group) ? a.group : void 0;
+		const list = annotations.get(parent) ?? [];
+		list.push(a);
+		annotations.set(parent, list);
+	}
+	const moveBoundary = (root, dx, dy) => {
+		const pending = [root];
+		while (pending.length) {
+			const id = pending.pop();
+			const g = byId.get(id);
+			g.x += dx;
+			g.y += dy;
+			for (const item of [...members.get(id) ?? [], ...annotations.get(id) ?? []]) {
+				item.x += dx;
+				item.y += dy;
+			}
+			pending.push(...children.get(id) ?? []);
+		}
+	};
+	const order = [void 0];
+	for (let i = 0; i < order.length; i++) order.push(...children.get(order[i]) ?? []);
+	for (const parent of order.reverse()) {
+		const units = [...(children.get(parent) ?? []).map((id) => ({
+			box: byId.get(id),
+			movable: full,
+			boundary: true
+		})), ...(members.get(parent) ?? []).map((n) => ({
+			box: {
+				...n,
+				...estimateCardSize(n.label, n.sublabel)
+			},
+			movable: full || fresh.has(n.id),
+			boundary: false
+		}))];
+		const occupied = [...annotations.get(parent) ?? [], ...units.filter((u) => !u.movable).map((u) => u.box)];
+		for (const { box, movable, boundary } of units) {
+			if (!movable) continue;
+			if (occupied.some((other) => overlaps(box, other))) {
+				let center = placeFree({
+					x: box.x + box.width / 2,
+					y: box.y + box.height / 2
+				}, box, occupied);
+				const candidate = () => ({
+					...box,
+					x: center.x - box.width / 2,
+					y: center.y - box.height / 2
+				});
+				if (occupied.some((other) => overlaps(candidate(), other))) center = {
+					x: Math.max(0, ...occupied.map((o) => o.x + o.width)) + 80 + box.width / 2,
+					y: center.y
+				};
+				const x = Math.round(center.x - box.width / 2);
+				const y = Math.round(center.y - box.height / 2);
+				if (boundary) moveBoundary(box.id, x - box.x, y - box.y);
+				else {
+					const n = nodeById.get(box.id);
+					n.x = x;
+					n.y = y;
+					Object.assign(box, {
+						x,
+						y
+					});
+				}
+			}
+			occupied.push(box);
+		}
+		if (parent !== void 0 && (full || requested.has(parent)) && occupied.length) Object.assign(byId.get(parent), boundaryAround(occupied));
+	}
 }
 //#endregion
 //#region src/ai/skill/layout.ts
@@ -5520,6 +5690,15 @@ function layoutDiagram(input, opts = {}) {
 	});
 	const placedNotes = [];
 	if (Array.isArray(input.annotations)) {
+		const annotationAt = new Map((d.annotations ?? []).map((a) => [a.id, a]));
+		const annotations = input.annotations.map((raw) => {
+			const placed = isObj(raw) && hasBox(raw) && annotationAt.get(raw.id);
+			return placed ? {
+				...raw,
+				x: placed.x,
+				y: placed.y
+			} : raw;
+		});
 		const occupied = [
 			...d.nodes.map((n) => ({
 				x: n.x,
@@ -5527,11 +5706,11 @@ function layoutDiagram(input, opts = {}) {
 				...estimateCardSize(n.label, n.sublabel)
 			})),
 			...d.groups ?? [],
-			...input.annotations.filter((a) => isObj(a) && hasBox(a)).map((a) => a)
+			...annotations.filter((a) => isObj(a) && hasBox(a)).map((a) => a)
 		];
 		let x = occupied.length ? Math.min(...occupied.map((b) => b.x)) : 40;
 		const y = occupied.length ? Math.max(...occupied.map((b) => b.y + b.height)) + 60 : 40;
-		out.annotations = input.annotations.map((raw) => {
+		out.annotations = annotations.map((raw) => {
 			if (!isObj(raw) || hasBox(raw) || raw.kind !== "note" && raw.kind !== "text") return raw;
 			const a = { ...raw };
 			if (!isNum(a.width) || a.width < 1) a.width = 240;

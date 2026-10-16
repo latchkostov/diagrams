@@ -18,8 +18,8 @@ const hasBox = (o: Obj) => BOX.every((k) => isNum(o[k]));
 export type LayoutResult =
   | {
       ok: true;
-      /** The input with positions and boxes filled in; nothing else changes. */
-      diagram: Obj;
+      /** The input with node/annotation positions and boundary boxes updated; authored fields survive. */
+      diagram: Obj & { nodes: unknown[]; groups?: unknown[]; annotations?: unknown[] };
       /** Every node was placed by the layered layout. */
       laidOut: boolean;
       /** Boundaries whose boxes were fitted around their members. */
@@ -74,7 +74,7 @@ export function layoutDiagram(input: unknown, opts: { force?: boolean } = {}): L
   // Write the positions back onto the input.
   const nodeAt = new Map(d.nodes.map((n) => [n.id, n]));
   const groupAt = new Map((d.groups ?? []).map((g) => [g.id, g]));
-  const out: Obj = {
+  const out: Extract<LayoutResult, { ok: true }>["diagram"] = {
     ...input,
     nodes: nodesIn.map((n) => {
       const placed = isObj(n) && nodeAt.get(n.id as string);
@@ -91,16 +91,21 @@ export function layoutDiagram(input: unknown, opts: { force?: boolean } = {}): L
   // annotations that already have a place, so nothing is covered.
   const placedNotes: string[] = [];
   if (Array.isArray(input.annotations)) {
+    const annotationAt = new Map((d.annotations ?? []).map((a) => [a.id, a]));
+    const annotations = (input.annotations as unknown[]).map((raw) => {
+      const placed = isObj(raw) && hasBox(raw) && annotationAt.get(raw.id as string);
+      return placed ? { ...raw, x: placed.x, y: placed.y } : raw;
+    });
     const occupied = [
       ...d.nodes.map((n) => ({ x: n.x, y: n.y, ...estimateCardSize(n.label, n.sublabel) })),
       ...(d.groups ?? []),
-      ...(input.annotations as unknown[])
+      ...annotations
         .filter((a): a is Obj => isObj(a) && hasBox(a))
         .map((a) => a as { x: number; y: number; width: number; height: number }),
     ];
     let x = occupied.length ? Math.min(...occupied.map((b) => b.x)) : 40;
     const y = occupied.length ? Math.max(...occupied.map((b) => b.y + b.height)) + 60 : 40;
-    out.annotations = (input.annotations as unknown[]).map((raw) => {
+    out.annotations = annotations.map((raw) => {
       if (!isObj(raw) || hasBox(raw) || (raw.kind !== "note" && raw.kind !== "text")) return raw;
       const a = { ...raw };
       if (!isNum(a.width) || a.width < 1) a.width = 240;

@@ -24,6 +24,38 @@ const ADD_DLQ = JSON.stringify([
 ]);
 
 for (const action of ["rail", "keyboard"]) {
+  test(`opening AI from ${action} on a phone preserves an unsaved simulation draft`, async ({
+    page,
+    consoleErrors,
+  }) => {
+    await page.setViewportSize({ width: 640, height: 900 });
+    await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1&paused=1`);
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("live-edit-sims").click();
+    await expect(page.getByTestId("sim-panel-list")).toBeVisible();
+    const savedCount = await page.getByTestId(/^sim-panel-item-/).count();
+    await page.getByTestId("sim-panel-new").click();
+    await page.getByTestId("sim-panel-title").fill("Unsaved phone run");
+    await page.getByTestId("sim-panel-add-traffic").click();
+    await page.getByTestId("sim-panel-traffic-0-label").fill("Unsaved traffic");
+    await expect(page.getByTestId("sim-panel-dirty")).toBeVisible();
+    if (action === "rail") await page.getByTestId("ai-rail-open").click();
+    else await page.keyboard.press(`${MOD}+i`);
+    await expect(page.getByTestId("ai-panel")).toBeVisible();
+    await expect(page.getByTestId("sim-panel")).toHaveCount(0);
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("live-edit-sims").click();
+    await expect(page.getByTestId("sim-panel-title")).toHaveValue("Unsaved phone run");
+    await expect(page.getByTestId("sim-panel-traffic-0-label")).toHaveValue("Unsaved traffic");
+    await expect(page.getByTestId("sim-panel-dirty")).toBeVisible();
+    await expect(page.getByTestId("ai-panel")).toHaveCount(0);
+    await page.getByTestId("sim-panel-back").click();
+    await expect(page.getByTestId(/^sim-panel-item-/)).toHaveCount(savedCount);
+    await expect(page.getByTestId("sim-panel-list")).not.toContainText("Unsaved phone run");
+    expect(await currentDiagram(page)).toBe(SLUG);
+    expectNoErrors(consoleErrors);
+  });
+
   test(`explicit AI opening from ${action} switches away from Inputs on a phone`, async ({ page }) => {
     await page.setViewportSize({ width: 640, height: 900 });
     await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1&paused=1`);

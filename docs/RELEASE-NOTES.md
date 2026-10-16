@@ -1,5 +1,67 @@
 # Release notes
 
+## Review follow-ups 3, round 1 (2026-10-16)
+
+- Skill layout now copies translated annotation positions from the app's placement result while
+  preserving authored metadata. Forced layout and missing-coordinate layout both keep member notes
+  inside moved boundaries, and new notes use the translated occupied area.
+- Large placement candidates query at most 64 grid cells each, scanning the finite obstacle list
+  instead for larger areas. Both paths enforce the obstacle-test budget, and exhausted searches keep
+  the deterministic clear-space fallback. AI boundary placement has at most 2,401 candidates, hence
+  at most 153,664 cell visits per box regardless of its area, plus the capped obstacle comparisons.
+  Counted regressions cover 300,000- and 1,000,000-pixel boxes, exhausted rings and the clear fallback.
+- Full layout repairs overlapping sibling boundary padding even when all cards are already clear.
+  Tests assert separation of unrelated boundaries while allowing intentional nested containment.
+- Temporarily restoring the three original implementation files fails all four new regressions;
+  restoring the fixes passes them. Refreshed the released skill viewer, retaining plugin 1.1.34
+  (exactly one patch above master). The focused designer source review found no UX issue or new chrome.
+- Eight skill-layout goldens intentionally change: for each example below, both
+  `node/layout/<example>.json` (only `skillLayout`) and `node/skill/scripts/<example>.json`
+  (only `layout`) record the same 80-pixel downward subtree move to clear sibling padding:
+
+  | Example                      | Boundary and members moved                                                                                      |
+  | ---------------------------- | --------------------------------------------------------------------------------------------------------------- |
+  | `aks-app-config-key-vault`   | `aks`, `api`                                                                                                    |
+  | `branch-to-datacentre`       | `dc`, `edge-router`, `firewall`, `spine-1`, `spine-2`, `leaf`, `adc`, `web-1`, `web-2`, `orders-db`, `payments` |
+  | `contoso-dmz`                | `trusted`, `switch`, `app`, `database`                                                                          |
+  | `event-driven-data-platform` | `snowflake`, `raw`, `marts`                                                                                     |
+
+  Every other golden stays unchanged, including browser output. Restoring only the old sibling-repair
+  trigger makes all 239 layout/skill goldens match, isolating these intentional changes from the
+  output-preserving search optimization and annotation projection.
+
+## Review follow-ups 3 (2026-10-16)
+
+- AI placement rechecks the final boundary fits, so an ancestor growing around a direct member cannot
+  swallow an earlier unrelated card. A collision repair settles child boundaries before their parents
+  and moves a settled subtree together; this also avoids endless retries between interleaved siblings.
+- Metadata-only edits skip placement work. Placement indexes ancestry with linear-size tree intervals,
+  and collects only the ancestors needed for a refit. At 1,000 nested boundaries, counted parent reads
+  fall from 512,491 to zero for metadata edits and to 12,991 for a deepest-boundary refit. A local probe
+  (median of 11 runs after three warmups) measured 72.1 ms to 0.0005 ms and 71.6 ms to 2.89 ms respectively.
+  Cyclic input is collapsed into shared ancestry components once, keeping queries constant-time too;
+  a 1,000-boundary cycle regression rejects the repeated-parent-walk fallback.
+- Capacity analysis normalizes each endpoint once per managed entry, then composes each matched action
+  with that cached call. The 500-endpoint, 64-action regression (plus an unaddressed call and a second
+  entry) falls from 32,065 normalizations to 502. Cached decisions also retain routed-demand keys:
+  a 100-gateway, 64-route chain falls from 329,600 serializations to 6,400, with identical analysis output;
+  its local median falls from 266.9 ms to 207.1 ms.
+- Phone regressions now preserve an unsaved simulation's title, traffic label and dirty state when AI
+  opens from either its rail or Ctrl+I, without saving a simulation. A shared-route regression sends
+  50 requests/s through each of a rejected and accepted endpoint: offered demand is 100 and throttled
+  demand is 70 under a common 30 requests/s rule, in both incoming-edge orders.
+- Temporarily reverting the layout and performance fixes fails their new regressions. Overwriting
+  endpoint contributions fails the reversed-edge readout test; removing AI's draft suspension fails
+  both phone tests. The collaboration reply-byte fixture is already fixed on master (40fe1225); its
+  existing accepted-edit, positive-throttling and encrypted-traffic assertions pass unchanged.
+- Refreshed the skill viewer at plugin 1.1.34, one patch above master. No parity golden changes;
+  the performance changes preserve outputs. Scoped UX review adds no controls, copy or chrome.
+- The first full gate exposed three occupied-port fixture failures: a usable ephemeral port does
+  not guarantee its neighbours are outside Windows' reserved ranges. Fixtures now check the complete
+  five-port range on IPv4 and IPv6 before keeping their intended occupied member. A forced blocked
+  neighbour regression fails with the old setup; the real preflight and its exact-port assertions
+  remain intact. All 1,403 E2E tests passed in that run; the complete gate is repeated after this fix.
+
 ## Collaboration reply-byte regression coverage (2026-10-16)
 
 - The reply-throttling test now builds its large room through steps checked against the active byte

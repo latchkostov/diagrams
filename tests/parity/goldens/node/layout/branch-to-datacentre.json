@@ -16,7 +16,7 @@
     "laidOut": true,
     "fitted": ["branch", "dc"],
     "placedNotes": [],
-    "nodes": { "customers": [-120, 40], "staff": [330, 40], "branch-router": [190, 200], "edge-router": [190, 360], "firewall": [190, 520], "spine-1": [40, 680], "spine-2": [330, 680], "leaf": [190, 840], "adc": [190, 1000], "web-1": [40, 1160], "web-2": [330, 1160], "orders-db": [330, 1320], "payments": [40, 1320] },
-    "groups": { "branch": [150, -24, 440, 336], "dc": [0, 296, 590, 1136] }
+    "nodes": { "customers": [-120, 40], "staff": [330, 40], "branch-router": [190, 200], "edge-router": [190, 440], "firewall": [190, 600], "spine-1": [40, 760], "spine-2": [330, 760], "leaf": [190, 920], "adc": [190, 1080], "web-1": [40, 1240], "web-2": [330, 1240], "orders-db": [330, 1400], "payments": [40, 1400] },
+    "groups": { "branch": [150, -24, 440, 336], "dc": [0, 376, 590, 1136] }
   }
 }

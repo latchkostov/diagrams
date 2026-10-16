@@ -4,7 +4,8 @@ import { createBoundaryRefitter, planBoundaryRefits } from "../editor/boundaryFi
 import { estimateCardSize } from "../canvas/nodes/size";
 import { placeNextTo, placeFree, overlaps, type Box } from "../canvas/placement";
 import type { LayoutMode } from "./index";
-import { ancestorGroupIds } from "../model/groupHierarchy";
+import { indexGroupAncestry, sanitizeGroupParents } from "../model/groupHierarchy";
+import { boundaryAround } from "../editor/arrange";
 
 export function fitGroupToContents(diagram: DiagramFile, groupId: string): DiagramFile {
   return fitGroups(diagram, new Set([groupId]));
@@ -49,6 +50,7 @@ export function placeNew(
 ): DiagramFile {
   const fresh = new Set(newIds);
   const full = mode === "full" || (mode === "auto" && fresh.size > 0 && fresh.size >= diagram.nodes.length / 2);
+  if (!full && !fresh.size && !touchedGroups.length) return diagram;
   let nodes = diagram.nodes.map((n) => ({ ...n }));
   const nodeById = new Map(nodes.map((n) => [n.id, n]));
   const neighbors = new Map<string, Set<string>>();
@@ -72,19 +74,20 @@ export function placeNew(
       if (group) n.group = group;
     }
   }
-  const ancestry = new Map<string, Set<string>>();
   const groups = diagram.groups ?? [];
   const groupById = new Map(groups.map((g) => [g.id, g]));
-  for (const n of nodes) {
-    if (!n.group || ancestry.has(n.group)) continue;
-    ancestry.set(n.group, new Set([n.group, ...ancestorGroupIds(n.group, groups, groupById)]));
-  }
+  let ancestry: ReturnType<typeof indexGroupAncestry> | undefined;
   const foreignGroups = (n: (typeof nodes)[number], candidates = groups) =>
-    candidates.filter((g) => !n.group || !ancestry.get(n.group)?.has(g.id));
+    candidates.filter((g) => !n.group || !(ancestry ??= indexGroupAncestry(groups))(n.group, g.id));
   const includeAncestors = (ids: Iterable<string>) => {
-    const result = new Set(ids);
-    for (const id of ids)
-      for (const ancestor of ancestry.get(id) ?? ancestorGroupIds(id, groups, groupById)) result.add(ancestor);
+    const result = new Set<string>();
+    for (const id of ids) {
+      let cur: string | undefined = id;
+      while (cur && !result.has(cur)) {
+        result.add(cur);
+        cur = groupById.get(cur)?.group;
+      }
+    }
     return result;
   };
   if (full) {
@@ -152,5 +155,109 @@ export function placeNew(
     Object.assign(sizedById.get(n.id)!, { x: n.x, y: n.y });
     if (n.group) refit(includeAncestors([n.group]));
   }
+  // Later refits may have grown over earlier cards. Settle the hierarchy bottom-up,
+  // treating fitted child boundaries as units: retrying individual cards can make
+  // interleaved sibling boundaries expand over one another forever.
+  if (
+    next.nodes.some(
+      (n) => (full || fresh.has(n.id)) && foreignGroups(n, next.groups).some((g) => overlaps(sizedById.get(n.id)!, g)),
+    ) ||
+    (full &&
+      next.groups?.some((g, i, all) =>
+        all.some((other, j) => {
+          if (j <= i || !overlaps(g, other)) return false;
+          const related = (ancestry ??= indexGroupAncestry(groups));
+          return !related(g.id, other.id) && !related(other.id, g.id);
+        }),
+      ))
+  )
+    settleBoundaryCollisions(next, fresh, full, includeAncestors(touched));
   return next;
+}
+
+/** Repair only a layout whose final refits left a foreign-boundary collision. Each
+ * boundary is settled once, then moves with its contents at its parent's level. */
+function settleBoundaryCollisions(
+  diagram: DiagramFile,
+  fresh: ReadonlySet<string>,
+  full: boolean,
+  requested: ReadonlySet<string>,
+) {
+  const groups = diagram.groups ?? [];
+  const byId = new Map(groups.map((g) => [g.id, g]));
+  const nodeById = new Map(diagram.nodes.map((n) => [n.id, n]));
+  const parents = sanitizeGroupParents(groups, new Set<string>());
+  const children = new Map<string | undefined, string[]>();
+  const members = new Map<string | undefined, typeof diagram.nodes>();
+  const annotations = new Map<string | undefined, NonNullable<DiagramFile["annotations"]>>();
+  for (const g of parents) {
+    const list = children.get(g.group) ?? [];
+    list.push(g.id);
+    children.set(g.group, list);
+  }
+  for (const n of diagram.nodes) {
+    const parent = n.group && byId.has(n.group) ? n.group : undefined;
+    const list = members.get(parent) ?? [];
+    list.push(n);
+    members.set(parent, list);
+  }
+  // Translations must not mutate annotations shared with the input document.
+  diagram.annotations = diagram.annotations?.map((a) => ({ ...a }));
+  for (const a of diagram.annotations ?? []) {
+    const parent = a.group && byId.has(a.group) ? a.group : undefined;
+    const list = annotations.get(parent) ?? [];
+    list.push(a);
+    annotations.set(parent, list);
+  }
+  const moveBoundary = (root: string, dx: number, dy: number) => {
+    const pending = [root];
+    while (pending.length) {
+      const id = pending.pop()!;
+      const g = byId.get(id)!;
+      g.x += dx;
+      g.y += dy;
+      for (const item of [...(members.get(id) ?? []), ...(annotations.get(id) ?? [])]) {
+        item.x += dx;
+        item.y += dy;
+      }
+      pending.push(...(children.get(id) ?? []));
+    }
+  };
+  const order: (string | undefined)[] = [undefined];
+  for (let i = 0; i < order.length; i++) order.push(...(children.get(order[i]) ?? []));
+  for (const parent of order.reverse()) {
+    const units = [
+      ...(children.get(parent) ?? []).map((id) => ({ box: byId.get(id)!, movable: full, boundary: true })),
+      ...(members.get(parent) ?? []).map((n) => ({
+        box: { ...n, ...estimateCardSize(n.label, n.sublabel) },
+        movable: full || fresh.has(n.id),
+        boundary: false,
+      })),
+    ];
+    const occupied: (Box & { id: string })[] = [
+      ...(annotations.get(parent) ?? []),
+      ...units.filter((u) => !u.movable).map((u) => u.box),
+    ];
+    for (const { box, movable, boundary } of units) {
+      if (!movable) continue;
+      if (occupied.some((other) => overlaps(box, other))) {
+        let center = placeFree({ x: box.x + box.width / 2, y: box.y + box.height / 2 }, box, occupied);
+        const candidate = () => ({ ...box, x: center.x - box.width / 2, y: center.y - box.height / 2 });
+        if (occupied.some((other) => overlaps(candidate(), other)))
+          center = { x: Math.max(0, ...occupied.map((o) => o.x + o.width)) + 80 + box.width / 2, y: center.y };
+        const x = Math.round(center.x - box.width / 2);
+        const y = Math.round(center.y - box.height / 2);
+        if (boundary) moveBoundary(box.id, x - box.x, y - box.y);
+        else {
+          const n = nodeById.get(box.id)!;
+          n.x = x;
+          n.y = y;
+          Object.assign(box, { x, y });
+        }
+      }
+      occupied.push(box);
+    }
+    if (parent !== undefined && (full || requested.has(parent)) && occupied.length)
+      Object.assign(byId.get(parent)!, boundaryAround(occupied));
+  }
 }

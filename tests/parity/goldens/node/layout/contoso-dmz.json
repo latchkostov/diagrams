@@ -16,7 +16,7 @@
     "laidOut": true,
     "fitted": ["dmz", "trusted"],
     "placedNotes": [],
-    "nodes": { "visitors": [40, 40], "probes": [360, 40], "router": [200, 200], "firewall": [200, 360], "adc": [40, 520], "switch": [200, 680], "app": [200, 840], "database": [200, 1000], "admin": [520, 480] },
-    "groups": { "dmz": [0, 296, 462, 336], "trusted": [160, 616, 340, 496] }
+    "nodes": { "visitors": [40, 40], "probes": [360, 40], "router": [200, 200], "firewall": [200, 360], "adc": [40, 520], "switch": [200, 760], "app": [200, 920], "database": [200, 1080], "admin": [520, 480] },
+    "groups": { "dmz": [0, 296, 462, 336], "trusted": [160, 696, 340, 496] }
   }
 }
