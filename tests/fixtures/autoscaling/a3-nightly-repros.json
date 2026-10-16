@@ -1,501 +1,499 @@
 [
- {
-  "name": "ECS clamps an override above its maximum without a metric",
-  "seed": 358,
-  "scale": 1,
-  "diagram": {
-   "format": "diagrams/v2",
-   "planning": {
-    "revision": "p3-a1"
-   },
-   "title": "HPA service",
-   "nodes": [
-    {
-     "id": "source",
-     "stencil": "client.browser",
-     "label": "Traffic",
-     "x": 80,
-     "y": 180,
-     "props": {
-      "ratePerSec": 80
-     }
-    },
-    {
-     "id": "worker",
-     "stencil": "aws.ecs",
-     "label": "Orders",
-     "x": 440,
-     "y": 180,
-     "props": {
-      "replicas": 1,
-      "concurrency": 1,
-      "latencyMs": 500,
-      "jitter": 0,
-      "resources": {
-       "preset": "io-service",
-       "presetRevision": "1",
-       "cpuMsPerMessage": 100,
-       "baselineMemoryMiB": 0,
-       "memoryMiBPerMessage": 100,
-       "cpuRequestMilli": 500,
-       "cpuLimitMilli": 1000,
-       "memoryRequestMiB": 256,
-       "memoryLimitMiB": 512,
-       "startup": {
-        "delayMs": 200,
-        "jitterFraction": 0
-       },
-       "terminationGraceMs": 300,
-       "modelRevision": "a2"
+  {
+    "name": "ECS clamps an override above its maximum without a metric",
+    "seed": 358,
+    "scale": 1,
+    "diagram": {
+      "format": "diagrams/v2",
+      "planning": {
+        "revision": "p3-a1"
       },
-      "autoscaling": {
-       "mode": "on",
-       "modelRevision": "a3",
-       "preset": "ecs-alb",
-       "presetRevision": "1",
-       "controller": {
-        "kind": "ecs",
-        "minReplicas": 0,
-        "initialReplicas": 0,
-        "maxReplicas": 3,
-        "metricPeriodMs": 2000,
-        "alarm": {
-         "outPeriods": 2,
-         "inPeriods": 3,
-         "inMargin": 0.1
-        },
-        "targetTracking": [
-         {
-          "metric": "albRequestCountPerTarget",
-          "target": 1000,
-          "source": {
-           "node": "lb"
-          },
-          "scaleOutCooldownMs": 3000,
-          "scaleInCooldownMs": 1000,
-          "disableScaleIn": false
-         }
-        ],
-        "stepScaling": []
-       }
-      },
-      "failureRate": 0,
-      "retry": "inplace",
-      "retryBackoffMs": 100
-     }
-    }
-   ],
-   "edges": []
-  },
-  "events": [
-   {
-    "do": "props",
-    "props": {
-     "replicas": 4
-    },
-    "ms": 10,
-    "unset": []
-   },
-   {
-    "do": "props",
-    "props": {
-     "resumeAutoscaling": true
-    },
-    "ms": 3000,
-    "unset": []
-   }
-  ]
- },
- {
-  "name": "App Service clamps an override above its maximum against a scale-out rule",
-  "seed": 1685,
-  "scale": 1,
-  "diagram": {
-   "format": "diagrams/v2",
-   "planning": {
-    "revision": "p3-a1"
-   },
-   "title": "HPA service",
-   "nodes": [
-    {
-     "id": "source",
-     "stencil": "client.browser",
-     "label": "Traffic",
-     "x": 80,
-     "y": 180,
-     "props": {
-      "ratePerSec": 80
-     }
-    },
-    {
-     "id": "worker",
-     "stencil": "azure.app-service",
-     "label": "Orders",
-     "x": 440,
-     "y": 180,
-     "props": {
-      "replicas": 2,
-      "concurrency": 2,
-      "latencyMs": 500,
-      "jitter": 0,
-      "resources": {
-       "preset": "io-service",
-       "presetRevision": "1",
-       "cpuMsPerMessage": 1000,
-       "baselineMemoryMiB": 0,
-       "memoryMiBPerMessage": 100,
-       "cpuRequestMilli": 500,
-       "cpuLimitMilli": 50,
-       "memoryRequestMiB": 256,
-       "memoryLimitMiB": 512,
-       "startup": {
-        "delayMs": 30,
-        "jitterFraction": 0
-       },
-       "terminationGraceMs": 300,
-       "modelRevision": "a2"
-      },
-      "autoscaling": {
-       "mode": "on",
-       "modelRevision": "a3",
-       "preset": "app-service",
-       "presetRevision": "1",
-       "controller": {
-        "kind": "appService",
-        "minReplicas": 1,
-        "initialReplicas": 1,
-        "maxReplicas": 3,
-        "evaluationMs": 1000,
-        "rules": [
-         {
-          "metric": "cpu",
-          "operator": "GreaterThan",
-          "threshold": 70,
-          "windowMs": 2000,
-          "direction": "increase",
-          "changeType": "PercentChangeCount",
-          "value": 1,
-          "cooldownMs": 3000
-         },
-         {
-          "metric": "cpu",
-          "operator": "LessThan",
-          "threshold": 30,
-          "windowMs": 2000,
-          "direction": "decrease",
-          "changeType": "ChangeCount",
-          "value": 1,
-          "cooldownMs": 0
-         }
-        ]
-       }
-      },
-      "failureRate": 0,
-      "retry": "inplace",
-      "retryBackoffMs": 0,
-      "api": {
-       "quotas": [
+      "title": "HPA service",
+      "nodes": [
         {
-         "id": "requests",
-         "unit": "requests",
-         "amount": 20,
-         "windowMs": 1000,
-         "burst": 1,
-         "algorithm": "token-bucket"
+          "id": "source",
+          "stencil": "client.browser",
+          "label": "Traffic",
+          "x": 80,
+          "y": 180,
+          "props": {
+            "ratePerSec": 80
+          }
+        },
+        {
+          "id": "worker",
+          "stencil": "aws.ecs",
+          "label": "Orders",
+          "x": 440,
+          "y": 180,
+          "props": {
+            "replicas": 1,
+            "concurrency": 1,
+            "latencyMs": 500,
+            "jitter": 0,
+            "resources": {
+              "preset": "io-service",
+              "presetRevision": "1",
+              "cpuMsPerMessage": 100,
+              "baselineMemoryMiB": 0,
+              "memoryMiBPerMessage": 100,
+              "cpuRequestMilli": 500,
+              "cpuLimitMilli": 1000,
+              "memoryRequestMiB": 256,
+              "memoryLimitMiB": 512,
+              "startup": {
+                "delayMs": 200,
+                "jitterFraction": 0
+              },
+              "terminationGraceMs": 300,
+              "modelRevision": "a2"
+            },
+            "autoscaling": {
+              "mode": "on",
+              "modelRevision": "a3",
+              "preset": "ecs-alb",
+              "presetRevision": "1",
+              "controller": {
+                "kind": "ecs",
+                "minReplicas": 0,
+                "initialReplicas": 0,
+                "maxReplicas": 3,
+                "metricPeriodMs": 2000,
+                "alarm": {
+                  "outPeriods": 2,
+                  "inPeriods": 3,
+                  "inMargin": 0.1
+                },
+                "targetTracking": [
+                  {
+                    "metric": "albRequestCountPerTarget",
+                    "target": 1000,
+                    "source": {
+                      "node": "lb"
+                    },
+                    "scaleOutCooldownMs": 3000,
+                    "scaleInCooldownMs": 1000,
+                    "disableScaleIn": false
+                  }
+                ],
+                "stepScaling": []
+              }
+            },
+            "failureRate": 0,
+            "retry": "inplace",
+            "retryBackoffMs": 100
+          }
         }
-       ]
+      ],
+      "edges": []
+    },
+    "events": [
+      {
+        "do": "props",
+        "props": {
+          "replicas": 4
+        },
+        "ms": 10,
+        "unset": []
+      },
+      {
+        "do": "props",
+        "props": {
+          "resumeAutoscaling": true
+        },
+        "ms": 3000,
+        "unset": []
       }
-     }
-    }
-   ],
-   "edges": [
-    {
-     "id": "requests",
-     "from": "source",
-     "to": "worker",
-     "kind": "sync",
-     "props": {
-      "travelMs": 10
-     }
-    }
-   ]
-  },
-  "events": [
-   {
-    "do": "burst",
-    "count": 8,
-    "ms": 1000
-   },
-   {
-    "do": "props",
-    "props": {
-     "replicas": 4
-    },
-    "ms": 1000,
-    "unset": []
-   },
-   {
-    "do": "burst",
-    "count": 60,
-    "ms": 3000
-   },
-   {
-    "do": "props",
-    "props": {
-     "resumeAutoscaling": true
-    },
-    "ms": 10,
-    "unset": []
-   },
-   {
-    "do": "burst",
-    "count": 8,
-    "ms": 100
-   },
-   {
-    "do": "props",
-    "props": {
-     "concurrency": 2
-    },
-    "ms": 1000,
-    "unset": []
-   }
-  ]
- },
- {
-  "name": "a retained retry beyond a lowered concurrency keeps its sampled memory",
-  "seed": 3189,
-  "scale": 2,
-  "diagram": {
-   "format": "diagrams/v2",
-   "planning": {
-    "revision": "p3-a1"
-   },
-   "title": "HPA service",
-   "nodes": [
-    {
-     "id": "source",
-     "stencil": "azure.service-bus.queue",
-     "label": "Traffic",
-     "x": 80,
-     "y": 180,
-     "props": {
-      "maxDeliveryCount": 4
-     }
-    },
-    {
-     "id": "worker",
-     "stencil": "azure.container-apps",
-     "label": "Orders",
-     "x": 440,
-     "y": 180,
-     "props": {
-      "replicas": 1,
-      "concurrency": 2,
-      "latencyMs": 500,
-      "jitter": 0,
-      "resources": {
-       "preset": "io-service",
-       "presetRevision": "1",
-       "cpuMsPerMessage": 0,
-       "baselineMemoryMiB": 100,
-       "memoryMiBPerMessage": 10,
-       "cpuRequestMilli": 500,
-       "cpuLimitMilli": 1000,
-       "memoryRequestMiB": 256,
-       "memoryLimitMiB": 512,
-       "startup": {
-        "delayMs": 0,
-        "jitterFraction": 0
-       },
-       "terminationGraceMs": 50,
-       "modelRevision": "a2"
-      },
-      "autoscaling": {
-       "mode": "on",
-       "modelRevision": "a3",
-       "preset": "aca-event",
-       "presetRevision": "1",
-       "controller": {
-        "kind": "aca",
-        "minReplicas": 0,
-        "initialReplicas": 1,
-        "maxReplicas": 5,
-        "pollingMs": 1000,
-        "cooldownMs": 3000,
-        "triggers": [
-         {
-          "source": {
-           "node": "source"
-          },
-          "target": 5,
-          "activation": 0,
-          "useCachedMetrics": false,
-          "type": "azure-servicebus"
-         }
-        ],
-        "settings": {
-         "syncMs": 1000,
-         "tolerance": 0.1,
-         "initialReadinessDelayMs": 30000,
-         "cpuInitializationPeriodMs": 300000,
-         "metrics": [],
-         "up": {
-          "stabilizationMs": 0,
-          "selectPolicy": "Max",
-          "policies": [
-           {
-            "type": "Pods",
-            "value": 3,
-            "periodMs": 15000
-           },
-           {
-            "type": "Percent",
-            "value": 100,
-            "periodMs": 15000
-           }
-          ]
-         },
-         "down": {
-          "stabilizationMs": 0,
-          "selectPolicy": "Max",
-          "policies": [
-           {
-            "type": "Percent",
-            "value": 100,
-            "periodMs": 15000
-           }
-          ]
-         }
-        }
-       }
-      },
-      "failureRate": 0.5,
-      "retry": "inplace",
-      "retryBackoffMs": 300
-     }
-    }
-   ],
-   "edges": [
-    {
-     "id": "requests",
-     "from": "source",
-     "to": "worker",
-     "kind": "async",
-     "props": {
-      "travelMs": 10
-     }
-    }
-   ]
-  },
-  "events": [
-   {
-    "do": "status",
-    "status": "down",
-    "ms": 100
-   },
-   {
-    "do": "props",
-    "props": {
-     "failureRate": 1
-    },
-    "ms": 10,
-    "unset": [
-     "api"
     ]
-   },
-   {
-    "do": "burst",
-    "count": 60,
-    "ms": 1000
-   },
-   {
-    "do": "props",
-    "props": {
-     "autoscaling": {
-      "mode": "on",
-      "modelRevision": "a3",
-      "preset": "aca-event",
-      "presetRevision": "1",
-      "controller": {
-       "kind": "aca",
-       "minReplicas": 0,
-       "initialReplicas": 0,
-       "maxReplicas": 3,
-       "pollingMs": 1000,
-       "cooldownMs": 3000,
-       "triggers": [
+  },
+  {
+    "name": "App Service clamps an override above its maximum against a scale-out rule",
+    "seed": 1685,
+    "scale": 1,
+    "diagram": {
+      "format": "diagrams/v2",
+      "planning": {
+        "revision": "p3-a1"
+      },
+      "title": "HPA service",
+      "nodes": [
         {
-         "source": {
-          "node": "source"
-         },
-         "target": 5,
-         "activation": 0,
-         "useCachedMetrics": false,
-         "type": "azure-servicebus"
-        }
-       ],
-       "settings": {
-        "syncMs": 1000,
-        "tolerance": 0.1,
-        "initialReadinessDelayMs": 30000,
-        "cpuInitializationPeriodMs": 300000,
-        "metrics": [],
-        "up": {
-         "stabilizationMs": 0,
-         "selectPolicy": "Max",
-         "policies": [
-          {
-           "type": "Pods",
-           "value": 3,
-           "periodMs": 15000
-          },
-          {
-           "type": "Percent",
-           "value": 100,
-           "periodMs": 15000
+          "id": "source",
+          "stencil": "client.browser",
+          "label": "Traffic",
+          "x": 80,
+          "y": 180,
+          "props": {
+            "ratePerSec": 80
           }
-         ]
         },
-        "down": {
-         "stabilizationMs": 1000,
-         "selectPolicy": "Max",
-         "policies": [
-          {
-           "type": "Percent",
-           "value": 100,
-           "periodMs": 15000
+        {
+          "id": "worker",
+          "stencil": "azure.app-service",
+          "label": "Orders",
+          "x": 440,
+          "y": 180,
+          "props": {
+            "replicas": 2,
+            "concurrency": 2,
+            "latencyMs": 500,
+            "jitter": 0,
+            "resources": {
+              "preset": "io-service",
+              "presetRevision": "1",
+              "cpuMsPerMessage": 1000,
+              "baselineMemoryMiB": 0,
+              "memoryMiBPerMessage": 100,
+              "cpuRequestMilli": 500,
+              "cpuLimitMilli": 50,
+              "memoryRequestMiB": 256,
+              "memoryLimitMiB": 512,
+              "startup": {
+                "delayMs": 30,
+                "jitterFraction": 0
+              },
+              "terminationGraceMs": 300,
+              "modelRevision": "a2"
+            },
+            "autoscaling": {
+              "mode": "on",
+              "modelRevision": "a3",
+              "preset": "app-service",
+              "presetRevision": "1",
+              "controller": {
+                "kind": "appService",
+                "minReplicas": 1,
+                "initialReplicas": 1,
+                "maxReplicas": 3,
+                "evaluationMs": 1000,
+                "rules": [
+                  {
+                    "metric": "cpu",
+                    "operator": "GreaterThan",
+                    "threshold": 70,
+                    "windowMs": 2000,
+                    "direction": "increase",
+                    "changeType": "PercentChangeCount",
+                    "value": 1,
+                    "cooldownMs": 3000
+                  },
+                  {
+                    "metric": "cpu",
+                    "operator": "LessThan",
+                    "threshold": 30,
+                    "windowMs": 2000,
+                    "direction": "decrease",
+                    "changeType": "ChangeCount",
+                    "value": 1,
+                    "cooldownMs": 0
+                  }
+                ]
+              }
+            },
+            "failureRate": 0,
+            "retry": "inplace",
+            "retryBackoffMs": 0,
+            "api": {
+              "quotas": [
+                {
+                  "id": "requests",
+                  "unit": "requests",
+                  "amount": 20,
+                  "windowMs": 1000,
+                  "burst": 1,
+                  "algorithm": "token-bucket"
+                }
+              ]
+            }
           }
-         ]
         }
-       }
+      ],
+      "edges": [
+        {
+          "id": "requests",
+          "from": "source",
+          "to": "worker",
+          "kind": "sync",
+          "props": {
+            "travelMs": 10
+          }
+        }
+      ]
+    },
+    "events": [
+      {
+        "do": "burst",
+        "count": 8,
+        "ms": 1000
+      },
+      {
+        "do": "props",
+        "props": {
+          "replicas": 4
+        },
+        "ms": 1000,
+        "unset": []
+      },
+      {
+        "do": "burst",
+        "count": 60,
+        "ms": 3000
+      },
+      {
+        "do": "props",
+        "props": {
+          "resumeAutoscaling": true
+        },
+        "ms": 10,
+        "unset": []
+      },
+      {
+        "do": "burst",
+        "count": 8,
+        "ms": 100
+      },
+      {
+        "do": "props",
+        "props": {
+          "concurrency": 2
+        },
+        "ms": 1000,
+        "unset": []
       }
-     }
+    ]
+  },
+  {
+    "name": "a retained retry beyond a lowered concurrency keeps its sampled memory",
+    "seed": 3189,
+    "scale": 2,
+    "diagram": {
+      "format": "diagrams/v2",
+      "planning": {
+        "revision": "p3-a1"
+      },
+      "title": "HPA service",
+      "nodes": [
+        {
+          "id": "source",
+          "stencil": "azure.service-bus.queue",
+          "label": "Traffic",
+          "x": 80,
+          "y": 180,
+          "props": {
+            "maxDeliveryCount": 4
+          }
+        },
+        {
+          "id": "worker",
+          "stencil": "azure.container-apps",
+          "label": "Orders",
+          "x": 440,
+          "y": 180,
+          "props": {
+            "replicas": 1,
+            "concurrency": 2,
+            "latencyMs": 500,
+            "jitter": 0,
+            "resources": {
+              "preset": "io-service",
+              "presetRevision": "1",
+              "cpuMsPerMessage": 0,
+              "baselineMemoryMiB": 100,
+              "memoryMiBPerMessage": 10,
+              "cpuRequestMilli": 500,
+              "cpuLimitMilli": 1000,
+              "memoryRequestMiB": 256,
+              "memoryLimitMiB": 512,
+              "startup": {
+                "delayMs": 0,
+                "jitterFraction": 0
+              },
+              "terminationGraceMs": 50,
+              "modelRevision": "a2"
+            },
+            "autoscaling": {
+              "mode": "on",
+              "modelRevision": "a3",
+              "preset": "aca-event",
+              "presetRevision": "1",
+              "controller": {
+                "kind": "aca",
+                "minReplicas": 0,
+                "initialReplicas": 1,
+                "maxReplicas": 5,
+                "pollingMs": 1000,
+                "cooldownMs": 3000,
+                "triggers": [
+                  {
+                    "source": {
+                      "node": "source"
+                    },
+                    "target": 5,
+                    "activation": 0,
+                    "useCachedMetrics": false,
+                    "type": "azure-servicebus"
+                  }
+                ],
+                "settings": {
+                  "syncMs": 1000,
+                  "tolerance": 0.1,
+                  "initialReadinessDelayMs": 30000,
+                  "cpuInitializationPeriodMs": 300000,
+                  "metrics": [],
+                  "up": {
+                    "stabilizationMs": 0,
+                    "selectPolicy": "Max",
+                    "policies": [
+                      {
+                        "type": "Pods",
+                        "value": 3,
+                        "periodMs": 15000
+                      },
+                      {
+                        "type": "Percent",
+                        "value": 100,
+                        "periodMs": 15000
+                      }
+                    ]
+                  },
+                  "down": {
+                    "stabilizationMs": 0,
+                    "selectPolicy": "Max",
+                    "policies": [
+                      {
+                        "type": "Percent",
+                        "value": 100,
+                        "periodMs": 15000
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "failureRate": 0.5,
+            "retry": "inplace",
+            "retryBackoffMs": 300
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "requests",
+          "from": "source",
+          "to": "worker",
+          "kind": "async",
+          "props": {
+            "travelMs": 10
+          }
+        }
+      ]
     },
-    "ms": 1000,
-    "unset": []
-   },
-   {
-    "do": "props",
-    "props": {
-     "concurrency": 4
-    },
-    "ms": 1000,
-    "unset": []
-   },
-   {
-    "do": "status",
-    "status": "up",
-    "ms": 3000
-   },
-   {
-    "do": "props",
-    "props": {
-     "concurrency": 1
-    },
-    "ms": 1000,
-    "unset": []
-   }
-  ]
- }
+    "events": [
+      {
+        "do": "status",
+        "status": "down",
+        "ms": 100
+      },
+      {
+        "do": "props",
+        "props": {
+          "failureRate": 1
+        },
+        "ms": 10,
+        "unset": ["api"]
+      },
+      {
+        "do": "burst",
+        "count": 60,
+        "ms": 1000
+      },
+      {
+        "do": "props",
+        "props": {
+          "autoscaling": {
+            "mode": "on",
+            "modelRevision": "a3",
+            "preset": "aca-event",
+            "presetRevision": "1",
+            "controller": {
+              "kind": "aca",
+              "minReplicas": 0,
+              "initialReplicas": 0,
+              "maxReplicas": 3,
+              "pollingMs": 1000,
+              "cooldownMs": 3000,
+              "triggers": [
+                {
+                  "source": {
+                    "node": "source"
+                  },
+                  "target": 5,
+                  "activation": 0,
+                  "useCachedMetrics": false,
+                  "type": "azure-servicebus"
+                }
+              ],
+              "settings": {
+                "syncMs": 1000,
+                "tolerance": 0.1,
+                "initialReadinessDelayMs": 30000,
+                "cpuInitializationPeriodMs": 300000,
+                "metrics": [],
+                "up": {
+                  "stabilizationMs": 0,
+                  "selectPolicy": "Max",
+                  "policies": [
+                    {
+                      "type": "Pods",
+                      "value": 3,
+                      "periodMs": 15000
+                    },
+                    {
+                      "type": "Percent",
+                      "value": 100,
+                      "periodMs": 15000
+                    }
+                  ]
+                },
+                "down": {
+                  "stabilizationMs": 1000,
+                  "selectPolicy": "Max",
+                  "policies": [
+                    {
+                      "type": "Percent",
+                      "value": 100,
+                      "periodMs": 15000
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "ms": 1000,
+        "unset": []
+      },
+      {
+        "do": "props",
+        "props": {
+          "concurrency": 4
+        },
+        "ms": 1000,
+        "unset": []
+      },
+      {
+        "do": "status",
+        "status": "up",
+        "ms": 3000
+      },
+      {
+        "do": "props",
+        "props": {
+          "concurrency": 1
+        },
+        "ms": 1000,
+        "unset": []
+      }
+    ]
+  }
 ]
