@@ -108,8 +108,11 @@ function applyRouted(editor: EditorApi, edit: (d: DiagramFile) => void, merge?: 
   const next = structuredClone(editor.getDiagram());
   next.planning = withRouting(next.planning);
   edit(next);
+  // Replacing the document clears the canvas selection: keep what the inspector is showing.
+  const selection = editor.getSelection();
   try {
     editor.applyDiagram(next, merge ? { merge } : undefined);
+    editor.select(selection);
     return true;
   } catch (error) {
     notify(error instanceof Error ? error.message : String(error), { kind: "error" });
@@ -747,32 +750,30 @@ export function RouteTableFields({
   const fallback = table.default;
   return (
     <div className="route-table-section" data-testid="routes">
-      <div className="route-table" role="table" aria-label={t("routing.tableLabel")} data-testid="routes-table">
-        <div className="route-row route-head" role="row">
-          <span role="columnheader">{t("routing.order")}</span>
-          <span role="columnheader">{t("routing.match")}</span>
-          <span role="columnheader">{t("routing.sendTo")}</span>
-          <span role="columnheader">{t("routing.split")}</span>
+      <div className="route-table" role="group" aria-label={t("routing.tableLabel")} data-testid="routes-table">
+        <div className="route-row route-head" aria-hidden="true">
+          <span>{t("routing.order")}</span>
+          <span>{t("routing.match")}</span>
+          <span>{t("routing.sendTo")}</span>
+          <span>{t("routing.split")}</span>
         </div>
         {table.rules.map((rule, i) => (
-          <div key={rule.id} role="rowgroup" className={open === rule.id ? "route-open" : undefined}>
+          <div key={rule.id} className={open === rule.id ? "route-open" : undefined}>
             <button
               type="button"
-              role="row"
+
               className="route-row"
               aria-expanded={open === rule.id}
               data-testid={`routes-rule-${rule.id}`}
               onClick={() => setOpen(open === rule.id ? null : rule.id)}
               onKeyDown={rowKeys(rule)}
             >
-              <span role="cell">{i + 1}</span>
-              <span role="cell" className="mono" title={rule.label}>
+              <span>{i + 1}</span>
+              <span className="mono" title={rule.label}>
                 {matchText(rule.match)}
               </span>
-              <span role="cell">{rule.targets.map((x) => labelOf(x.edgeId)).join("; ")}</span>
-              <span role="cell" className="mono">
-                {splitText(rule)}
-              </span>
+              <span>{rule.targets.map((x) => labelOf(x.edgeId)).join("; ")}</span>
+              <span className="mono">{splitText(rule)}</span>
             </button>
             {shadowed.has(i) && (
               <p className="insp-note route-warning" data-testid={`routes-shadowed-${rule.id}`}>
@@ -851,23 +852,19 @@ export function RouteTableFields({
             )}
           </div>
         ))}
-        <div role="rowgroup" className={open === "default" ? "route-open" : undefined}>
+        <div className={open === "default" ? "route-open" : undefined}>
           <button
             type="button"
-            role="row"
+
             className="route-row route-default"
             aria-expanded={open === "default"}
             data-testid="routes-default"
             onClick={() => setOpen(open === "default" ? null : "default")}
           >
-            <span role="cell">{t("routing.last")}</span>
-            <span role="cell">{t("routing.default")}</span>
-            <span role="cell">
-              {fallback ? fallback.targets.map((x) => labelOf(x.edgeId)).join("; ") : t("routing.reject404")}
-            </span>
-            <span role="cell" className="mono">
-              {fallback ? splitText(fallback) : "—"}
-            </span>
+            <span>{t("routing.last")}</span>
+            <span>{t("routing.default")}</span>
+            <span>{fallback ? fallback.targets.map((x) => labelOf(x.edgeId)).join("; ") : t("routing.reject404")}</span>
+            <span className="mono">{fallback ? splitText(fallback) : "—"}</span>
           </button>
           {open === "default" && (
             <div className="route-details" data-testid="routes-default-details">
@@ -1095,20 +1092,20 @@ export function TrafficMixFields({
           ? t("routing.totalShares", { rate: formatRate(total) })
           : t("routing.totalRates", { rate: formatRate(total) })}
       </p>
-      <div className="route-table route-mix-table" role="table" aria-label={t("routing.mixLabel")}>
-        <div className="route-row route-head" role="row">
-          <span role="columnheader">{t("routing.route")}</span>
-          <span role="columnheader">{shares ? t("routing.share") : t("routing.rate")}</span>
-          <span role="columnheader">
+      <div className="route-table route-mix-table" role="group" aria-label={t("routing.mixLabel")}>
+        <div className="route-row route-head" aria-hidden="true">
+          <span>{t("routing.route")}</span>
+          <span>{shares ? t("routing.share") : t("routing.rate")}</span>
+          <span>
             <span className="sr-only">{t("routing.actions")}</span>
           </span>
         </div>
         {mix.entries.map((entry, i) => {
           const route = routes.find((r) => r.id === entry.routeId);
           return (
-            <div key={entry.routeId} role="rowgroup">
-              <div role="row" className="route-row" data-testid={`mix-row-${entry.routeId}`}>
-                <span role="cell" className="route-name">
+            <div key={entry.routeId}>
+              <div className="route-row" data-testid={`mix-row-${entry.routeId}`}>
+                <span className="route-name">
                   {route && <RouteSwatch route={route} />}
                   <button
                     type="button"
@@ -1121,7 +1118,7 @@ export function TrafficMixFields({
                     {route ? routeName(route) : entry.routeId}
                   </button>
                 </span>
-                <span role="cell">
+                <span>
                   <input
                     className="insp-input mono route-weight"
                     type="number"
@@ -1152,7 +1149,7 @@ export function TrafficMixFields({
                     }}
                   />
                 </span>
-                <span role="cell">
+                <span>
                   <button
                     type="button"
                     className="icon-btn insp-mini"

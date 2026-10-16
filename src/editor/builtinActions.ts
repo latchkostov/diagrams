@@ -681,6 +681,7 @@ export function builtinActions(): Action[] {
       },
       run: (ctx) => {
         ctx.editor.applyDiagram(withRouteTable(ctx.editor.getDiagram(), ctx.nodeId!));
+        ctx.editor.select({ nodeIds: [ctx.nodeId!] });
         ctx.editor.openInspector();
       },
     },
@@ -705,6 +706,7 @@ export function builtinActions(): Action[] {
       },
       run: (ctx) => {
         ctx.editor.applyDiagram(withTrafficMix(ctx.editor.getDiagram(), ctx.nodeId!));
+        ctx.editor.select({ nodeIds: [ctx.nodeId!] });
         ctx.editor.openInspector();
       },
     },

@@ -77,3 +77,55 @@ export function routingFixture(options: { rate?: number; mix?: TrafficMix; table
     ],
   };
 }
+
+/**
+ * The acceptance fixture for matching order and edge policy: a broad prefix before an exact rule (first match
+ * wins), a rule whose only target's filter refuses it (no fall-through), a down canary keeping its share, and a
+ * Default for the rest.
+ */
+export function routingOverlapFixture(): DiagramFile {
+  const d = routingFixture({
+    rate: 30,
+    table: {
+      rules: [
+        {
+          id: "broad",
+          label: "Everything under /search",
+          match: { path: { kind: "prefix", value: "/search" } },
+          targets: [{ edgeId: "kong-search", weight: 1 }],
+        },
+        {
+          id: "orders",
+          match: { methods: ["POST"], path: { kind: "exact", value: "/orders" } },
+          targets: [
+            { edgeId: "kong-orders", weight: 9 },
+            { edgeId: "kong-canary", weight: 1 },
+          ],
+        },
+        {
+          id: "filtered",
+          match: { methods: ["DELETE"] },
+          targets: [{ edgeId: "kong-orders", weight: 1 }],
+        },
+      ],
+      default: { targets: [{ edgeId: "kong-search", weight: 1 }] },
+    },
+    mix: {
+      mode: "shares",
+      entries: [
+        { routeId: "orders-post", share: 0.5 },
+        { routeId: "search-get", share: 0.3 },
+        { routeId: "orders-delete", share: 0.2 },
+      ],
+    },
+  });
+  d.title = "Routing: order, filters and a down canary";
+  d.planning!.requestRoutes!.push({
+    id: "orders-delete",
+    address: { method: "DELETE", path: "/orders/42" },
+    appearance: { paletteSlot: 5, marker: "triangle" },
+  });
+  d.edges.find((e) => e.id === "kong-orders")!.props!.requestFilter = { methods: ["POST"] };
+  d.nodes.find((n) => n.id === "canary")!.props!.status = "down";
+  return d;
+}

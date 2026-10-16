@@ -506,3 +506,17 @@ describe("request routing: configured analysis", () => {
     expect(r.engine.frame().routes!["search-get"].sent).toBe(160);
   });
 });
+
+describe("request routing: the Lab's overlap fixture", () => {
+  it("is valid and plays first match, no fall-through and a kept canary share", async () => {
+    const { routingOverlapFixture } = await import("../lab/routingFixture");
+    const d = routingOverlapFixture();
+    expect(validateDiagram(d).ok).toBe(true);
+    const e = run(d, 10_000, { drain: true });
+    const kong = e.snapshot().nodes.kong;
+    // DELETE matches its rule, whose only target takes POST only: refused, never sent to Default.
+    expect(kong.rejectionReasons).toEqual({ "route-no-eligible-target": e.frame().routes!["orders-delete"].sent });
+    expect(kong.routeRejections).toEqual({ "orders-delete": e.frame().routes!["orders-delete"].sent });
+    expect(e.snapshot().nodes.canary.dropped).toBeGreaterThan(0);
+  });
+});
