@@ -122,10 +122,14 @@
 - C1b share/join consent, IP disclosure, aliases/participants; C1c public transport/CSP/connectivity UX;
   and C1d End session/rotation/stale-generation handling remain deferred. Collaboration stays out of
   production bundles, with no new Private-diagram permission or outside endpoint.
-- Regression validation temporarily removes the fixes: 18 unit-level mutations and two browser-level
+- Regression validation temporarily removes the fixes: 28 unit-level mutations and five browser-level
   mutations fail their targeted tests, including real scoped Undo, encrypted-key separation, gestures,
   corruption/quota recovery, eviction, deletion-aware sync, rendered commits and focus restoration.
   All mutations are restored before the full gate.
+- Review fixes preserve Undo selection/target tags, bound repeated-duplicate ids and authenticated
+  proof work, retain resource-limited checkpoints, and index eviction metadata without reading other
+  rooms' ciphertext. The existing device-wipe flow's IndexedDB integration is ticketed for C1b and
+  blocks production enablement; browser site-data clearing removes the Lab recovery database.
 - The sole intentional parity change is `node/i18n/catalogs.json`: 17 new `collab.*` English messages add
   a collaboration area hash and 17 English fallbacks in each non-English catalog; the pseudo-locale adds
   the rendered area. Existing message-area hashes and every diagram, simulation, import/export and browser

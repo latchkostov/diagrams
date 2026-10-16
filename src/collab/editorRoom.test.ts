@@ -8,6 +8,7 @@ import { createEditor, type EditorDeps } from "../editor/useEditor";
 import type { CanvasSnapshot } from "../editor/useHistory";
 import { makePayload } from "../editor/clipboard";
 import { present } from "../editor/history";
+import { withSelection } from "../editor/historySelection";
 import { FakeClock } from "./clock";
 import { CollaborativeEditorRoom } from "./editorRoom";
 import { demoDiagram } from "./lab/demo";
@@ -95,8 +96,8 @@ function editor(session: CollabSession) {
   const disconnect = room.connect({
     getSnapshot: () => state,
     flushPending: flush,
-    receive: (next) => {
-      state = retainRemoteSelection(state, next);
+    receive: (next, step) => {
+      state = step ? withSelection(next, step.selection) : retainRemoteSelection(state, next);
       history.receive(state);
       render();
     },
@@ -248,6 +249,56 @@ it("isolates real document replacements and retains their Undo target tags", asy
   A.api.undo();
   await settle();
   expect(B.diagram().title).toBe("Orders pipeline");
+});
+
+it("restores room Undo target tags after Undo and Redo", async () => {
+  const { A, settle } = await setup();
+  A.api.applyDiagram({ ...A.api.getDiagram(), title: "First" }, { merge: "ai:first" });
+  A.api.applyDiagram({ ...A.api.getDiagram(), title: "Second" }, { merge: "ai:second" });
+  expect(A.api.undoTarget()).toBe("ai:second");
+  A.api.undo();
+  await settle();
+  expect(A.api.undoTarget()).toBe("ai:first");
+  A.api.redo();
+  await settle();
+  expect(A.api.undoTarget()).toBe("ai:second");
+});
+
+it("scoped Undo restores deleted selections and selects what a rename changed", async () => {
+  const { A, B, settle } = await setup();
+  A.api.select({ nodeIds: ["api"] });
+  A.render();
+  A.api.deleteElements({ nodeIds: ["api"] });
+  A.flush();
+  A.api.undo();
+  await settle();
+  expect(A.api.getSelection().nodeIds).toContain("api");
+  A.api.updateNode("api", { label: "Own rename" });
+  A.flush();
+  B.api.updateNode("db", { label: "Peer rename" });
+  B.flush();
+  await settle();
+  A.api.select({ nodeIds: ["db"] });
+  A.render();
+  A.api.undo();
+  await settle();
+  expect(A.api.getSelection().nodeIds).toEqual(["api"]);
+  expect(A.api.getNode("db")?.label).toBe("Peer rename");
+  A.api.redo();
+  await settle();
+  expect(A.api.getSelection().nodeIds).toEqual(["api"]);
+});
+
+it("bounds repeated duplicate and long imported ID allocation", async () => {
+  const { A } = await setup();
+  let id = "x".repeat(255);
+  const ids = new Set<string>();
+  for (let i = 0; i < 20; i++) {
+    id = A.room.newId(id);
+    expect(id.length).toBeLessThan(256);
+    ids.add(id);
+  }
+  expect(ids.size).toBe(20);
 });
 
 it("keeps creation, connection and names in one scoped step across a remote update", async () => {

@@ -77,26 +77,27 @@ export function EditorDemo() {
         recovery: new IndexedDbRecoveryStore(),
       });
       if (disposed) {
-        await session.leave();
-        session.doc.destroy();
-        localWire?.close();
         return;
       }
       setRoom(new CollaborativeEditorRoom(session, () => ({})));
     };
-    void start().catch(() => {
+    let disposal: Promise<void> | undefined;
+    const dispose = () =>
+      (disposal ??= (async () => {
+        await session?.leave();
+        session?.doc.destroy();
+        transport?.close();
+        localWire?.close();
+      })());
+    const opening = start().catch(async () => {
+      await dispose();
       if (!disposed) setFailed(true);
     });
     return () => {
       disposed = true;
       window.removeEventListener("pagehide", goodbye);
       window.removeEventListener("pageshow", restore);
-      if (session)
-        void session.leave().then(() => {
-          session?.doc.destroy();
-          localWire?.close();
-        });
-      else localWire?.close();
+      void opening.then(dispose);
     };
   }, [entry]);
   if (!room)
@@ -121,7 +122,7 @@ function RoomEditor({ room, roomKey }: { room: CollaborativeEditorRoom; roomKey:
   useSyncExternalStore(
     (fn) => session.onChange(fn),
     () =>
-      `${session.roomStatus}:${session.hasDocument}:${session.recovery?.problem ?? ""}:${session.doc.project().status}`,
+      `${session.roomStatus}:${session.hasDocument}:${session.recovery?.saved}:${session.recovery?.problem ?? ""}:${session.doc.project().status}`,
   );
   const projection = session.doc.project();
   const ready = projection.diagram !== undefined;
@@ -156,7 +157,12 @@ function RoomEditor({ room, roomKey }: { room: CollaborativeEditorRoom; roomKey:
           />
         </label>
       )}
-      <div role="status" data-testid="collab-room-status" data-status={session.roomStatus}>
+      <div
+        role="status"
+        data-testid="collab-room-status"
+        data-status={session.roomStatus}
+        data-saved={session.recovery?.saved ? "true" : "false"}
+      >
         {
           {
             "saved-device": t("collab.savedDevice"),

@@ -47,6 +47,12 @@ export const COLLAB_LIMITS = {
   maxKeyChars: 256,
   /** Distinct Yjs clients in one update, and the largest clock a client may claim. */
   maxClientsPerUpdate: 100_000,
+  /** Accumulated local checkpoints span many accepted updates; still bounded before Yjs application. */
+  maxCheckpointStructs: 4_000_000,
+  maxCheckpointClients: 1_000_000,
+  maxCheckpointDeletions: 4_000_000,
+  /** Small proof frames must not buy unbounded whole-document hashing work. */
+  syncProofsPerWindow: 128,
   maxClock: 2 ** 30,
   /** Delete-set ranges in one update. */
   maxDeleteRanges: 1_000_000,

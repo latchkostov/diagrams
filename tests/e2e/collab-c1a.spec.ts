@@ -2,7 +2,13 @@ import type { BrowserContext, Page } from "@playwright/test";
 import type { LabPacket } from "../../src/collab/lab/bridge";
 import { test, expect, expectNoErrors, gotoLab, pauseClock, waitForStableViewport } from "./fixtures";
 
-type TestWindow = Window & { __c1Deliver(packet: LabPacket): void; __c1Post(packet: LabPacket): Promise<void> };
+type TestWindow = Window & {
+  __c1Deliver(packet: LabPacket): void;
+  __c1Post(packet: LabPacket): Promise<void>;
+  __c1CipherReads?: number;
+  __releaseRecoveryOpen?: () => void;
+  __recoveryChannelsClosed?: number;
+};
 
 /** Only encrypted transport packets cross isolated browser contexts. No socket or external service. */
 async function relay(contexts: BrowserContext[], seed: number) {
@@ -146,6 +152,24 @@ test("isolated editors preserve a pending inspector edit, scope Undo/Redo, and h
     await page.clock.runFor(32);
     await expect(page.getByTestId("canvas-wrap")).toBeFocused();
     await expect(page.getByTestId("canvas-announce")).toContainText("removed by a peer");
+    await page.keyboard.press("Tab");
+    await page.clock.runFor(32);
+    await expect
+      .poll(() => page.getByTestId("node-web").evaluate((el) => document.activeElement?.contains(el)))
+      .toBe(true);
+    await b.getByTestId("fit-view-button").click();
+    await waitForStableViewport(b);
+    await b.getByTestId("node-web").click();
+    await b.keyboard.press("Delete");
+    await expect(page.getByTestId("node-web")).toHaveCount(0);
+    await page.clock.runFor(32);
+    await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+    await b.getByTestId("canvas-wrap").focus();
+    await b.keyboard.press("Control+z");
+    await expect(b.getByTestId("node-web")).toBeVisible();
+    await expect
+      .poll(() => b.getByTestId("node-web").evaluate((el) => document.activeElement?.contains(el)))
+      .toBe(true);
     expect(requests).toEqual([]);
     expectNoErrors(consoleErrors);
     expectNoErrors(errors);
@@ -180,6 +204,7 @@ test("all peers leave, reload recovers locally, offline work merges on rejoin, a
     await open(b, true);
     await name(page, "api", "Before everybody left");
     await expect(b.getByTestId("node-api")).toContainText("Before everybody left");
+    await expect(b.getByTestId("collab-room-status")).toHaveAttribute("data-saved", "true");
     await wire.disconnect(b);
     await b.goto("about:blank");
     await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-status", "saved-device");
@@ -223,7 +248,7 @@ test("corrupt IndexedDB checkpoint recovers safely and quota failure preserves d
   await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-status", "saved-device");
   await page.evaluate(async () => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const r = indexedDB.open("livediagrams-collab-recovery-v1", 1);
+      const r = indexedDB.open("livediagrams-collab-recovery-v1");
       r.onsuccess = () => resolve(r.result);
       r.onerror = () => reject(r.error);
     });
@@ -270,6 +295,15 @@ test("the normal Lab recovery link reopens encrypted work without an injected ke
 }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await open(page);
+  await page.evaluate(() => {
+    (window as TestWindow).__c1CipherReads = 0;
+    const getAll = IDBObjectStore.prototype.getAll;
+    IDBObjectStore.prototype.getAll = function () {
+      if (this.name === "rooms")
+        (window as TestWindow).__c1CipherReads = ((window as TestWindow).__c1CipherReads ?? 0) + 1;
+      return getAll.call(this);
+    };
+  });
   await page.getByTestId("collab-copy-recovery-link").click();
   await expect(page.getByTestId("collab-copy-recovery-link")).toHaveText("Recovery link copied");
   const link = await page.evaluate(() => navigator.clipboard.readText());
@@ -278,8 +312,40 @@ test("the normal Lab recovery link reopens encrypted work without an injected ke
   await pauseClock(page);
   await page.getByTestId("inspector-field-label").fill("Saved without debounce");
   await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-status", "saved-device");
+  expect(await page.evaluate(() => (window as TestWindow).__c1CipherReads)).toBe(0);
   await page.clock.resume();
-  await page.goto("about:blank");
+  // Exercise the metadata-only eviction schema's migration from the first Lab database.
+  await gotoLab(page, "nodes-states");
+  await page.evaluate(async () => {
+    const open = (version?: number) =>
+      new Promise<IDBDatabase>((resolve, reject) => {
+        const r = indexedDB.open("livediagrams-collab-recovery-v1", version);
+        r.onupgradeneeded = () => r.result.createObjectStore("rooms", { keyPath: "id" });
+        r.onsuccess = () => resolve(r.result);
+        r.onerror = () => reject(r.error);
+      });
+    const current = await open();
+    const records = await new Promise<unknown[]>((resolve, reject) => {
+      const tx = current.transaction("rooms", "readonly");
+      const r = tx.objectStore("rooms").getAll();
+      r.onsuccess = () => resolve(r.result);
+      r.onerror = () => reject(r.error);
+    });
+    current.close();
+    await new Promise<void>((resolve, reject) => {
+      const r = indexedDB.deleteDatabase("livediagrams-collab-recovery-v1");
+      r.onsuccess = () => resolve();
+      r.onerror = () => reject(r.error);
+    });
+    const legacy = await open(1);
+    await new Promise<void>((resolve, reject) => {
+      const tx = legacy.transaction("rooms", "readwrite");
+      for (const record of records) tx.objectStore("rooms").put(record);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+    legacy.close();
+  });
   await page.goto(link);
   await expect(page.getByTestId("node-api")).toContainText("Saved without debounce");
   await expect.poll(() => new URL(page.url()).hash).toBe("");
@@ -298,5 +364,45 @@ test("the normal Lab recovery link reopens encrypted work without an injected ke
   } finally {
     if (!peer.isClosed()) await peer.close();
   }
+  expectNoErrors(consoleErrors);
+});
+
+test("leaving the Lab while recovery opens disposes the transport before its channel", async ({
+  page,
+  consoleErrors,
+}) => {
+  await page.addInitScript(() => {
+    const open = IDBFactory.prototype.open;
+    IDBFactory.prototype.open = function (name, version) {
+      const request = open.call(this, name, version);
+      if (name === "livediagrams-collab-recovery-v1")
+        Object.defineProperty(request, "onsuccess", {
+          set(callback: () => void) {
+            request.addEventListener(
+              "success",
+              () => {
+                (window as TestWindow).__releaseRecoveryOpen = callback;
+              },
+              { once: true },
+            );
+          },
+        });
+      return request;
+    };
+    const close = BroadcastChannel.prototype.close;
+    BroadcastChannel.prototype.close = function () {
+      if (this.name.startsWith("livediagrams-lab/"))
+        (window as TestWindow).__recoveryChannelsClosed = ((window as TestWindow).__recoveryChannelsClosed ?? 0) + 1;
+      close.call(this);
+    };
+  });
+  await gotoLab(page, "collab-c1a");
+  await expect.poll(() => page.evaluate(() => typeof (window as TestWindow).__releaseRecoveryOpen)).toBe("function");
+  await pauseClock(page);
+  await page.getByTestId("lab-preset-link-nodes-states").click();
+  await expect(page.getByTestId("lab-stage")).toHaveAttribute("data-preset", "nodes-states");
+  await page.evaluate(() => (window as TestWindow).__releaseRecoveryOpen?.());
+  await expect.poll(() => page.evaluate(() => (window as TestWindow).__recoveryChannelsClosed ?? 0)).toBeGreaterThan(0);
+  await page.clock.runFor(40_000);
   expectNoErrors(consoleErrors);
 });

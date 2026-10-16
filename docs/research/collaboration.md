@@ -796,6 +796,21 @@ and stale-generation handling. These are still acceptance gates before enabling 
 the Lab. Private diagrams remain excluded pending independent review; no TURN, backend or telemetry
 is introduced by this slice.
 
+C1a review triage: the seven-angle review found four P1s, all fixed: accumulated checkpoint guards,
+proof-flood work, generated skill freshness and growing duplicate ids. Duplicate P2 reports are
+covered by the same fixes. Other P2 fixes cover scoped Undo selection/focus/target tags, focused remote
+deletion (including SVG), linear selected-target checks, metadata-only eviction and v1 migration,
+durability-aware navigation tests, status notifications and opening-session disposal. Regression
+proofs remove each fix temporarily. The shared asynchronous device-wipe lifecycle is ticketed in
+[BACKLOG](../BACKLOG.md#collaboration-c1b-prerequisite-device-wipe-c1a-review-2026-10-16), with the
+current Lab limitation disclosed in the threat model. It must land before production rooms are enabled.
+
+UX source/test review found no remaining actionable issue: recovery copying has a labeled selectable
+fallback, room Undo preserves the editor's selection/focus/announcement policy, remote deletion returns
+focus gracefully, and failure copy distinguishes live edits from completed saves. This adds only Lab
+status/recovery controls, leaving the production chrome budget unchanged. No new assistive-technology
+walkthrough was performed in this slice.
+
 All costs and effort below are **planning estimates**, not bids. A phase is incomplete until privacy,
 accessibility, docs, failure recovery and the specified tests pass. Engineering time includes tests
 and docs but excludes waiting for independent cryptographic review. Each future fix gets a regression

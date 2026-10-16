@@ -2,9 +2,12 @@ import { bytesToBase64Url, textToBytes } from "../interop/codec";
 import { CollabDoc } from "./doc";
 import type { RoomKeys } from "./keys";
 import { secureRandom } from "./random";
+import { inspectCheckpoint } from "./guard";
 import { RECOVERY_LIMITS, type RecoveryRecord, type RecoveryStore } from "./recoveryStore";
 
 export type RecoveryProblem = "unavailable" | "corrupt";
+class RecoveryResourceError extends Error {}
+const resourceProblems = new Set(["too-large", "too-many-structs", "too-many-clients", "too-many-deletions"]);
 
 /** Persists CRDT identity, including tombstones; never rebuild a checkpoint from native JSON. */
 export class RoomRecovery {
@@ -58,13 +61,18 @@ export class RoomRecovery {
       const update = await this.decode(record);
       const scratch = new CollabDoc();
       try {
-        if (!scratch.applyRemote(update).ok) throw new Error("corrupt-recovery");
+        const result = scratch.applyCheckpoint(update);
+        if (!result.ok) {
+          if (resourceProblems.has(result.problem)) throw new RecoveryResourceError();
+          throw new Error("corrupt-recovery");
+        }
       } finally {
         scratch.destroy();
       }
       this.knownToken = record.token;
       return { record, update };
-    } catch {
+    } catch (error) {
+      if (error instanceof RecoveryResourceError) throw error;
       this.problem = "corrupt";
       await this.store.remove(this.id, record.token);
       return {};
@@ -75,7 +83,7 @@ export class RoomRecovery {
     try {
       const { update } = await this.read();
       if (update) {
-        doc.applyRemote(update);
+        doc.applyCheckpoint(update);
         this.saved = true;
       }
     } catch {
@@ -111,10 +119,11 @@ export class RoomRecovery {
       // Another tab may have saved since we loaded. Merge its CRDT before compare-and-swap;
       // retry contention without losing either writer's updates.
       const { record, update } = await this.read();
-      if (update) doc.applyRemote(update);
+      if (update && !doc.applyCheckpoint(update).ok) throw new RecoveryResourceError();
       const revision = this.revision;
       const iv = secureRandom(12);
       const encoded = doc.encodeDiff();
+      if (!inspectCheckpoint(encoded).ok) throw new RecoveryResourceError();
       const ciphertext = new Uint8Array(
         await crypto.subtle.encrypt(
           { name: "AES-GCM", iv: iv as BufferSource, additionalData: this.aad as BufferSource },

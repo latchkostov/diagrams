@@ -1,7 +1,14 @@
 import * as Y from "yjs";
 import type { DiagramFile } from "../model/types";
 import { applyCommands, type DiagramCommand } from "./commands";
-import { checkCommands, inspectUpdate, type GuardProblem, type LocalProblem } from "./guard";
+import {
+  checkCommands,
+  inspectUpdate,
+  inspectCheckpoint,
+  type GuardResult,
+  type GuardProblem,
+  type LocalProblem,
+} from "./guard";
 import { COLLAB_LIMITS } from "./limits";
 import {
   assemble,
@@ -102,6 +109,7 @@ export class CollabDoc {
   private roomBytes = 0;
   private revision = 0;
   private measuredAt = -1;
+  private proofCache?: { revision: number; value: Promise<Uint8Array> };
   /** Estimated bytes of each Undo/Redo step (local steps: their checked bound; Undo's own: what it reversed). */
   private stepSizes = new WeakMap<object, number>();
   private stepBytes = 0;
@@ -220,7 +228,17 @@ export class CollabDoc {
 
   /** Applies a peer's update after the guard's state-independent checks. */
   applyRemote(update: Uint8Array): { ok: true } | { ok: false; problem: GuardProblem | "apply-failed" } {
-    const check = inspectUpdate(update);
+    return this.applyChecked(update, inspectUpdate(update));
+  }
+
+  applyCheckpoint(update: Uint8Array): { ok: true } | { ok: false; problem: GuardProblem | "apply-failed" } {
+    return this.applyChecked(update, inspectCheckpoint(update));
+  }
+
+  private applyChecked(
+    update: Uint8Array,
+    check: GuardResult,
+  ): { ok: true } | { ok: false; problem: GuardProblem | "apply-failed" } {
     if (!check.ok) {
       this.stats.remoteRefused++;
       return { ok: false, problem: check.problem };
@@ -293,12 +311,15 @@ export class CollabDoc {
 
   /** A sync proof includes deletions: state vectors alone cannot acknowledge a delete. */
   async syncProof(): Promise<Uint8Array> {
+    if (this.proofCache?.revision === this.revision) return this.proofCache.value;
     const clocks = [...Y.decodeStateVector(this.stateVector())].sort(([a], [b]) => a - b);
     const deletes = [...Y.createDeleteSetFromStructStore(this.ydoc.store).clients]
       .sort(([a], [b]) => a - b)
       .map(([id, ranges]) => [id, ranges.map((r) => [r.clock, r.len])]);
     const bytes = new TextEncoder().encode(JSON.stringify([clocks, deletes]));
-    return new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+    const value = crypto.subtle.digest("SHA-256", bytes).then((hash) => new Uint8Array(hash));
+    this.proofCache = { revision: this.revision, value };
+    return value;
   }
 
   /** What a peer with state vector `sv` lacks (everything, without one). */

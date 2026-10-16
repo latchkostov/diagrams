@@ -81,9 +81,10 @@ export class HistoryController {
         (at - last.at <= MERGE_WINDOW_MS || mergeKey === this.transaction);
       this.roomStep = { mergeKey, at, tag: merge ? last.tag : `room-step:${++this.sequence}` };
       this.roomCoalescingBroken = false;
+      const start = this.settled;
       // A room keeps only a baseline here; Undo belongs to the scoped driver, never to snapshots.
       this.receive(state, at);
-      this.room.commit(state, this.roomStep.tag);
+      this.room.commit(state, this.roomStep.tag, { mergeKey, start });
       return true;
     }
     this.history = commit(prev, { key, value: state, mergeKey, at, start: this.settled }, undefined, this.transaction);
@@ -127,7 +128,7 @@ export class HistoryController {
   }
 
   top(): string | undefined {
-    return this.room ? (this.room.canUndo ? this.roomStep?.mergeKey : undefined) : present(this.history).mergeKey;
+    return this.room ? this.room.top() : present(this.history).mergeKey;
   }
 
   /** A system-assigned copy name is not an edit: keep step tags, selections and redo intact. */

@@ -152,6 +152,7 @@ import { t as tr, useLocale } from "../i18n";
 import { CopyNotice } from "./CopyNotice";
 import { useMeasuredTask } from "./useMeasuredTask";
 import type { EditorRoom } from "../editor/room";
+import { remoteTargetRemoved } from "../editor/remoteSnapshot";
 
 const nodeTypes: NodeTypes = canvasNodeTypes;
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
@@ -459,12 +460,15 @@ function CanvasInner({
     snapshot,
     (s, remote) => {
       const active = document.activeElement;
+      const root = wrapper.current?.closest('[data-testid="canvas-view"]');
       const removed =
         remote &&
-        active instanceof HTMLElement &&
-        active.closest('[data-testid="inspector"]') &&
-        (nodes.some((n) => n.selected && !s.nodes.some((next) => next.id === n.id)) ||
-          edges.some((e) => e.selected && !s.edges.some((next) => next.id === e.id)));
+        active &&
+        root?.contains(active) &&
+        remoteTargetRemoved(snapshot, s, {
+          inspector: !!active.closest('[data-testid="inspector"]'),
+          id: active.closest("[data-id]")?.getAttribute("data-id") ?? undefined,
+        });
       if (removed)
         requestAnimationFrame(() => {
           if (active.isConnected) return;

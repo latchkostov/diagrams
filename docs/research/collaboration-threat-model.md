@@ -151,12 +151,17 @@ part of the existing capability-link risk; ciphertext at rest does not protect a
 
 Concurrent tabs read/decrypt/guard-check and merge a changed checkpoint before an atomic IndexedDB
 compare-and-swap. A losing writer retries; a known authenticated checkpoint token avoids decoding our own
-previous write. Checkpoints preserve Yjs identities and tombstones. Encryption failure, blocked storage or
+previous write. Eviction reads a separate, atomically maintained metadata store rather than other rooms'
+ciphertext; the schema upgrade preserves existing checkpoints. Checkpoints preserve Yjs identities and tombstones. Encryption failure, blocked storage or
 quota exhaustion keeps edits in memory and exposes a file-copy action; a successful save is acknowledged
 only after the IDB transaction completes. Asynchronous encryption/IDB cannot promise to survive closing a tab
 before that acknowledgement. A damaged/authentication-failing/guard-invalid record is removed conditionally
 by token, so a concurrent replacement is not deleted. A guard-valid CRDT whose native projection is invalid
 is retained, with the last valid canvas and a raw recovery export; it is not classified as corrupt.
+Accumulated checkpoints have their own cardinality limits (4 million structs, 1 million clients and
+4 million delete ranges) within the same 32 MiB encoded/schema bounds. Each checkpoint is checked before
+acknowledging a save. A resource-limit refusal retains the authenticated record and reports unavailable
+recovery; it is not deleted as corruption. Wire-update limits remain unchanged.
 
 Retention is bounded to 16 room generations and 64 MiB of ciphertext, with a 32 MiB per-record limit plus
 the GCM tag. Writes atomically evict the oldest-write records (stable id breaks ties); records older than
@@ -170,6 +175,13 @@ delete set**; reachable ids and their count are bounded. This is a current conve
 remote durability acknowledgement, attribution or Byzantine guarantee. Any document change invalidates it.
 The Lab uses only same-origin BroadcastChannel (or the injected ciphertext test wire), with page lifecycle
 goodbyes, suspension/resume and bounded heartbeat expiry; no public trackers, ICE or endpoints were added.
+Proofs are cached by document revision; authenticated proof/ack input has a separate 128-message/10 s
+count bucket before hashing, alongside the existing byte limits. A new peer always notifies status subscribers.
+
+**Known Lab limitation, blocking production enablement:** the existing “Clear everything on this device”
+flow clears localStorage/sessionStorage but does not yet coordinate IndexedDB deletion and pending room
+writers. Browser site-data clearing removes the Lab database. The asynchronous, generation-safe integration
+is explicitly tracked in [the C1b backlog](../BACKLOG.md#collaboration-c1b-prerequisite-device-wipe-c1a-review-2026-10-16).
 
 Evidence: `editorRoom.test.ts`, `recovery.test.ts`, `lab/bridge.test.ts`, `collab-c1a.spec.ts`; existing
 production bundle/CSP guards remain required. This slice remains Lab-only and adds no Private-diagram permission.

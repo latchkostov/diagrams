@@ -49,13 +49,25 @@ const tooLongString = (v: unknown): boolean => {
 /** Never throws: anything unexpected while inspecting is a refusal, not an exception in the receive loop. */
 export function inspectUpdate(update: Uint8Array): GuardResult {
   try {
-    return inspect(update);
+    return inspect(update, false);
   } catch {
     return { ok: false, problem: "undecodable" };
   }
 }
 
-function inspect(update: Uint8Array): GuardResult {
+/** Checkpoints accumulate accepted updates; wire-update cardinality caps are not room cardinality caps. */
+export function inspectCheckpoint(update: Uint8Array): GuardResult {
+  try {
+    return inspect(update, true);
+  } catch {
+    return { ok: false, problem: "undecodable" };
+  }
+}
+
+function inspect(update: Uint8Array, checkpoint: boolean): GuardResult {
+  const maxStructs = checkpoint ? COLLAB_LIMITS.maxCheckpointStructs : COLLAB_LIMITS.maxStructsPerUpdate;
+  const maxClients = checkpoint ? COLLAB_LIMITS.maxCheckpointClients : COLLAB_LIMITS.maxClientsPerUpdate;
+  const maxDeletions = checkpoint ? COLLAB_LIMITS.maxCheckpointDeletions : COLLAB_LIMITS.maxDeleteRanges;
   if (update.length > COLLAB_LIMITS.maxMessageBytes) return { ok: false, problem: "too-large" };
   let decoded: ReturnType<typeof Y.decodeUpdate>;
   try {
@@ -64,11 +76,11 @@ function inspect(update: Uint8Array): GuardResult {
     return { ok: false, problem: "undecodable" };
   }
   const { structs, ds } = decoded;
-  if (structs.length > COLLAB_LIMITS.maxStructsPerUpdate) return { ok: false, problem: "too-many-structs" };
+  if (structs.length > maxStructs) return { ok: false, problem: "too-many-structs" };
   const clients = new Set<number>();
   for (const s of structs) {
     clients.add(s.id.client);
-    if (clients.size > COLLAB_LIMITS.maxClientsPerUpdate) return { ok: false, problem: "too-many-clients" };
+    if (clients.size > maxClients) return { ok: false, problem: "too-many-clients" };
     if (s.id.clock + s.length > COLLAB_LIMITS.maxClock || s.length < 0)
       return { ok: false, problem: "clock-out-of-range" };
     if (!(s instanceof Y.Item)) continue; // GC and Skip carry no content
@@ -90,9 +102,9 @@ function inspect(update: Uint8Array): GuardResult {
   let ranges = 0;
   for (const [client, items] of ds.clients) {
     clients.add(client);
-    if (clients.size > COLLAB_LIMITS.maxClientsPerUpdate) return { ok: false, problem: "too-many-clients" };
+    if (clients.size > maxClients) return { ok: false, problem: "too-many-clients" };
     ranges += items.length;
-    if (ranges > COLLAB_LIMITS.maxDeleteRanges) return { ok: false, problem: "too-many-deletions" };
+    if (ranges > maxDeletions) return { ok: false, problem: "too-many-deletions" };
     for (const item of items)
       if (item.clock < 0 || item.len < 0 || item.clock + item.len > COLLAB_LIMITS.maxClock)
         return { ok: false, problem: "clock-out-of-range" };

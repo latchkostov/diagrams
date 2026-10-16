@@ -50,6 +50,7 @@ export type RejectReason =
   | "rate-limited"
   | "reply-throttled"
   | "request-throttled"
+  | "proof-throttled"
   | "queue-full"
   | "too-many-partials"
   | "internal"
@@ -120,6 +121,7 @@ export class CollabSession {
   private readonly replies: RateLimit;
   /** Sync requests answered per requester: each costs an encode of what it lacks, before any reply is sent. */
   private readonly requests: RateLimit;
+  private readonly proofs: RateLimit;
   /** Bytes of frames waiting in the inbox: in total and per transport peer. */
   private queuedBytes = 0;
   private readonly queuedFrom = new Map<PeerId, number>();
@@ -151,6 +153,7 @@ export class CollabSession {
     this.rate = new RateLimit(clock, COLLAB_LIMITS.senderBytesPerWindow);
     this.replies = new RateLimit(clock, COLLAB_LIMITS.replyBytesPerWindow);
     this.requests = new RateLimit(clock, COLLAB_LIMITS.syncRequestsPerWindow);
+    this.proofs = new RateLimit(clock, COLLAB_LIMITS.syncProofsPerWindow);
     this.reassembler = new Reassembler(clock);
     this.presence = new PresenceTable(clock);
   }
@@ -180,7 +183,9 @@ export class CollabSession {
 
   /** Allocation survives editor remounts within this session; a rejoin draws a new sender id. */
   newId(base: string): string {
-    return `${base}-${this.senderId}-${++this.elementIds}`;
+    const suffix = `-${this.senderId}-${++this.elementIds}`;
+    const stem = base.replace(/-[a-f0-9]{32}-\d+$/, "") || "element";
+    return `${stem.slice(0, COLLAB_LIMITS.maxKeyChars - 1 - suffix.length)}${suffix}`;
   }
 
   get roomStatus(): RoomStatus {
@@ -263,6 +268,7 @@ export class CollabSession {
           this.requestSync(peer);
           this.sendPresence(peer);
           this.updateStatus();
+          this.emit();
         },
         leave: (peer) => {
           this.synced.delete(peer);
@@ -400,6 +406,7 @@ export class CollabSession {
       case DOC.syncProof:
       case DOC.syncAck: {
         if (msg.payload.length !== 32 || !this.hasDocument || !this.transport.peers().includes(from)) return;
+        if (!this.proofs.take(opened.sender, 1)) return this.reject("proof-throttled");
         const revision = this.revision;
         const proof = await this.doc.syncProof();
         if (revision !== this.revision || !proof.every((b, i) => b === msg.payload[i])) return;

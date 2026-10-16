@@ -1,9 +1,11 @@
-import { expect, it, vi } from "vitest";
+import { expect, it, vi, onTestFinished } from "vitest";
+import * as Y from "yjs";
+import { COLLAB_LIMITS } from "./limits";
 import { CollabDoc } from "./doc";
 import { deriveRoomKeys } from "./keys";
 import { demoDiagram } from "./lab/demo";
 import { RoomRecovery } from "./recovery";
-import { evictions, RECOVERY_LIMITS, type RecoveryRecord, type RecoveryStore } from "./recoveryStore";
+import { evictions, recoverySummary, RECOVERY_LIMITS, type RecoveryRecord, type RecoveryStore } from "./recoveryStore";
 import { roomFor } from "./transport/conformance";
 import { CollabSession } from "./session";
 import { FakeClock } from "./clock";
@@ -25,7 +27,8 @@ class Store implements RecoveryStore {
     }
     if (this.records.get(record.id)?.token !== expected) return Promise.resolve(false);
     this.records.set(record.id, structuredClone(record));
-    for (const id of evictions([...this.records.values()], record.id, record.touched)) this.records.delete(id);
+    for (const id of evictions([...this.records.values()].map(recoverySummary), record.id, record.touched))
+      this.records.delete(id);
     return Promise.resolve(true);
   }
   remove(id: string, expected: string) {
@@ -93,6 +96,87 @@ it("sync proofs distinguish deletion-only changes even when the state vectors ma
   expect(await a.syncProof()).toEqual(await b.syncProof());
   a.destroy();
   b.destroy();
+});
+
+it("restores accumulated checkpoints beyond a single wire update limit and never deletes a resource-limited checkpoint", async () => {
+  const limits = COLLAB_LIMITS as unknown as Record<string, number>;
+  const prior = { maxClientsPerUpdate: limits.maxClientsPerUpdate, maxCheckpointClients: limits.maxCheckpointClients };
+  onTestFinished(() => {
+    Object.assign(limits, prior);
+  });
+  limits.maxClientsPerUpdate = 2;
+  limits.maxCheckpointClients = 16;
+  const doc = new CollabDoc({ clientId: 100 });
+  doc.hydrate(demoDiagram());
+  for (let client = 1; client < 8; client++) {
+    const part = new Y.Doc();
+    part.clientID = client;
+    part.getMap("meta").set(`@client${client}`, client);
+    expect(doc.applyRemote(Y.encodeStateAsUpdate(part)).ok).toBe(true);
+    part.destroy();
+  }
+  const store = new Store(),
+    keys = await deriveRoomKeys(roomFor(111)),
+    recovery = new RoomRecovery(store, keys);
+  recovery.watch(doc);
+  await recovery.flush(doc);
+  expect(recovery.saved).toBe(true);
+  const copy = new CollabDoc(),
+    resumed = new RoomRecovery(store, keys);
+  await resumed.restore(copy);
+  expect(copy.stateVector()).toEqual(doc.stateVector());
+  expect(resumed.problem).toBeUndefined();
+  limits.maxCheckpointClients = 2;
+  const refused = new RoomRecovery(store, keys),
+    empty = new CollabDoc();
+  await refused.restore(empty);
+  expect(refused.problem).toBe("unavailable");
+  expect(store.records.has(recovery.id)).toBe(true);
+  limits.maxCheckpointClients = 16;
+  await recovery.close(doc);
+  doc.destroy();
+  copy.destroy();
+  empty.destroy();
+});
+
+it("caches sync hashing until the document changes", async () => {
+  const doc = new CollabDoc();
+  doc.hydrate(demoDiagram());
+  const digest = vi.spyOn(crypto.subtle, "digest");
+  onTestFinished(() => digest.mockRestore());
+  for (let n = 0; n < 16; n++) await doc.syncProof();
+  expect(digest).toHaveBeenCalledTimes(1);
+  doc.apply([{ op: "meta", set: { title: "New revision" } }]);
+  await doc.syncProof();
+  expect(digest).toHaveBeenCalledTimes(2);
+  doc.destroy();
+});
+
+it("notifies a synced room when a silent new peer invalidates whole-room sync", async () => {
+  const net = new MemoryNetwork(),
+    clock = new FakeClock();
+  const a = await CollabSession.open({
+    room: roomFor(112),
+    transport: net.connect(),
+    privacy: {},
+    clock,
+    initial: demoDiagram(),
+  });
+  const b = await CollabSession.open({ room: roomFor(112), transport: net.connect(), privacy: {}, clock });
+  await net.settle(async () => {
+    await a.idle();
+    await b.idle();
+  });
+  expect(a.roomStatus).toBe("synced");
+  const changed = vi.fn();
+  a.onChange(changed);
+  const silent = net.connect();
+  expect(a.roomStatus).not.toBe("synced");
+  expect(changed).toHaveBeenCalled();
+  silent.close();
+  await Promise.all([a.leave(), b.leave()]);
+  a.doc.destroy();
+  b.doc.destroy();
 });
 
 it.each(["ciphertext", "iv", "schema", "expired"])(
@@ -177,14 +261,48 @@ it("keeps quota-exceeded edits in memory, reports unsaved, and retries on the ne
   doc.destroy();
 });
 
-it("evicts the oldest checkpoints by count, bytes and age while keeping the new record", () => {
-  const record = (id: string, touched: number, size = 1): RecoveryRecord => ({
-    id,
-    touched,
-    token: id,
-    iv: new Uint8Array(12),
-    ciphertext: new Uint8Array(size),
+it("recovery waits for local durability before navigation", async () => {
+  const store = new Store(),
+    keys = await deriveRoomKeys(roomFor(113)),
+    doc = new CollabDoc();
+  doc.hydrate(demoDiagram());
+  let entered: () => void = () => {},
+    release: () => void = () => {};
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
   });
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const write = store.write.bind(store);
+  vi.spyOn(store, "write").mockImplementation(async (record, expected) => {
+    entered();
+    await held;
+    return write(record, expected);
+  });
+  const recovery = new RoomRecovery(store, keys);
+  recovery.watch(doc);
+  await started;
+  expect(doc.project().diagram?.title).toBe("Orders pipeline");
+  expect(recovery.saved).toBe(false);
+  expect(store.records.size).toBe(0);
+  release();
+  await recovery.flush(doc);
+  expect(recovery.saved).toBe(true);
+  expect(store.records.size).toBe(1);
+  await recovery.close(doc);
+  doc.destroy();
+});
+
+it("evicts the oldest checkpoints by count, bytes and age while keeping the new record", () => {
+  const record = (id: string, touched: number, size = 1) =>
+    recoverySummary({
+      id,
+      touched,
+      token: id,
+      iv: new Uint8Array(12),
+      ciphertext: new Uint8Array(size),
+    });
   expect(
     evictions(
       Array.from({ length: 18 }, (_, i) => record(String(i), i)),
@@ -296,7 +414,7 @@ it("skips decoding its own checkpoint but merges a new external writer token", a
   const recovery = new RoomRecovery(store, keys);
   recovery.watch(doc);
   await recovery.flush(doc);
-  const apply = vi.spyOn(CollabDoc.prototype, "applyRemote");
+  const apply = vi.spyOn(CollabDoc.prototype, "applyCheckpoint");
   for (let n = 0; n < 8; n++) {
     doc.apply([{ op: "meta", set: { title: `Edit ${n}` } }]);
     await recovery.flush(doc);

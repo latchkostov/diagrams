@@ -3,7 +3,7 @@ import type { DiagramMeta } from "../canvas/convert";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 import { canRedo, canUndo, present } from "./history";
 import { HistoryController } from "./historyController";
-import { selectionOf, snapshotKey as keyOf, type FlowSelection } from "./historySelection";
+import { selectionOf, withSelection, snapshotKey as keyOf, type FlowSelection } from "./historySelection";
 import type { EditorRoom } from "./room";
 import { retainRemoteSelection } from "./remoteSnapshot";
 
@@ -93,12 +93,13 @@ export function useHistory(
       room?.connect({
         getSnapshot: () => latest.current,
         flushPending: flush,
-        receive: (next) => {
-          const retained = retainRemoteSelection(latest.current, next);
+        receive: (next, step) => {
+          const retained = step ? withSelection(next, step.selection) : retainRemoteSelection(latest.current, next);
           ctl.receive(retained);
           latest.current = retained;
           setHistory(ctl.history);
-          applyRef.current(retained, true);
+          applyRef.current(retained, !step);
+          if (step) onStepRef.current?.(step.direction, selectionOf(retained));
         },
       }),
     [room, ctl, flush],
