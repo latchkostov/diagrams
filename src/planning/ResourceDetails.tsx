@@ -4,22 +4,7 @@ import type { ReplicaRow } from "../sim/autoscaling";
 import type { ResourcePlan } from "../sim/resourcePlanning";
 import { t } from "../i18n";
 import { formatNumber } from "../i18n/format";
-import type { ScalingDecision } from "../sim/autoscaling";
-import { metricPhrase } from "./scalingPlanText";
-
-const KEDA_REASONS = ["activation", "inactive", "cooldown", "partitions", "fallback"];
-/** Why, in words: KEDA's own phases, the A3 adapters' alarms/rules/requests, or the HPA pipeline's reasons. */
-export function reasonText(decision: ScalingDecision): string {
-  if (KEDA_REASONS.includes(decision.reason) && (!decision.adapter || decision.adapter === "aca"))
-    return t("autoscaling.kedaReason", { reason: decision.reason });
-  if (decision.adapter)
-    return t("autoscaling.cloudReason", {
-      reason: decision.reason,
-      periods: decision.periods ?? 0,
-      needed: decision.periodsNeeded ?? 0,
-    });
-  return t("autoscaling.reason", { reason: decision.reason });
-}
+import { metricPhrase, reasonText } from "./scalingPlanText";
 
 export function ResourceEstimate({ plan: p }: { plan: ResourcePlan }) {
   return (

@@ -38,7 +38,8 @@ async function seed(page: Page, d: DiagramFile, { dark = false, locale = "en" } 
 /** The platform's service, its policy removed: Fixed, ready for a preset. */
 function fixed(preset: CloudPreset): DiagramFile {
   const d = cloudFixture(preset);
-  const props = d.nodes.find((n) => n.id === "worker")!.props!;
+  const props = d.nodes.find((n) => n.id === "worker")?.props;
+  if (!props) throw new Error("fixture has no worker");
   delete props.autoscaling;
   delete props.resources;
   return d;

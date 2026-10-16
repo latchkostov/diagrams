@@ -1,11 +1,11 @@
-import { ResourceDetails, reasonText } from "./ResourceDetails";
+import { ResourceDetails } from "./ResourceDetails";
 import type { ReplicaRow } from "../sim/autoscaling";
 import { resolveNodeProps } from "../sim/defaults";
 import { groupLabel } from "../stencils/brokerVocabulary";
 import { compileTopology } from "../sim/topology";
 import { memo, useEffect, useMemo, useState } from "react";
 import type { ScalingPlan } from "../sim/scalingPlanner";
-import { planDescriptor, planSentence } from "./scalingPlanText";
+import { planDescriptor, planSentence, reasonText } from "./scalingPlanText";
 import { scenarioPlanner } from "../lib/scenarioPlanner";
 import type { RealNodeMetrics } from "../sim/types";
 import type { DiagramFile } from "../model/types";

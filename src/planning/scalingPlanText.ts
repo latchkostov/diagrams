@@ -2,6 +2,7 @@ import { t } from "../i18n/core";
 import { formatNumber } from "../i18n/number";
 import type { Finding } from "../checks/types";
 import type { PlanSuggestion, ScalingPlan } from "../sim/scalingPlanner";
+import type { ScalingDecision } from "../sim/autoscaling";
 
 export const round = (n: number) => (Math.abs(n) >= 10 ? Math.round(n) : Math.round(n * 10) / 10);
 /** Product names stay as they are in every language. */
@@ -102,4 +103,18 @@ export function planFixLabel(p: Plan): string | undefined {
         : p.kind === "max"
           ? t("autoscaling.planFixMax", { to: p.to })
           : undefined;
+}
+
+const KEDA_REASONS = ["activation", "inactive", "cooldown", "partitions", "fallback"];
+/** Why, in words: KEDA's own phases, the A3 adapters' alarms/rules/requests, or the HPA pipeline's reasons. */
+export function reasonText(decision: ScalingDecision): string {
+  if (KEDA_REASONS.includes(decision.reason) && (!decision.adapter || decision.adapter === "aca"))
+    return t("autoscaling.kedaReason", { reason: decision.reason });
+  if (decision.adapter)
+    return t("autoscaling.cloudReason", {
+      reason: decision.reason,
+      periods: decision.periods ?? 0,
+      needed: decision.periodsNeeded ?? 0,
+    });
+  return t("autoscaling.reason", { reason: decision.reason });
 }

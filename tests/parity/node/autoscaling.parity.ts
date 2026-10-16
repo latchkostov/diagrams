@@ -8,8 +8,7 @@ import { corpus, examples } from "../lib/corpus";
 import { expectGolden } from "../lib/golden";
 import { planScaling } from "../../../src/sim/scalingPlanner";
 import { planMessage } from "../../../src/checks/scalingFindings";
-import { metricPhrase, planDescriptor, planSentence } from "../../../src/planning/scalingPlanText";
-import { reasonText } from "../../../src/planning/ResourceDetails";
+import { metricPhrase, planDescriptor, planSentence, reasonText } from "../../../src/planning/scalingPlanText";
 
 for (const { slug, diagram } of [
   ...corpus.filter(({ slug }) => slug.startsWith("a1-") || slug.startsWith("a2-")),
