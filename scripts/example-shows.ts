@@ -18,5 +18,9 @@ export function exampleShows(d: DiagramFile): string[] {
     d.nodes.some((n) => n.props?.resources && (n.props.autoscaling as AutoscalingConfig | undefined)?.mode === "on")
       ? ["autoscaling"]
       : []),
+    ...(Array.isArray(d.planning?.requestRoutes) &&
+    d.nodes.some((n) => n.props?.routeTable !== undefined || n.props?.trafficMix !== undefined)
+      ? ["routing"]
+      : []),
   ];
 }

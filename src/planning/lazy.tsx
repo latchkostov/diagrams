@@ -25,3 +25,8 @@ export const AdmissionFields = lazyComponent(() => loadPlanning().then((m) => m.
 export const BulkAdmissionFields = lazyComponent(() => loadPlanning().then((m) => m.BulkAdmissionFields));
 
 export const AutoscalingFields = lazyComponent(() => loadPlanning().then((m) => m.AutoscalingFields));
+
+export const RouteTableFields = lazyComponent(() => loadPlanning().then((m) => m.RouteTableFields));
+export const TrafficMixFields = lazyComponent(() => loadPlanning().then((m) => m.TrafficMixFields));
+export const EdgeRouteFields = lazyComponent(() => loadPlanning().then((m) => m.EdgeRouteFields));
+export const RequestRoutesSection = lazyComponent(() => loadPlanning().then((m) => m.RequestRoutesSection));

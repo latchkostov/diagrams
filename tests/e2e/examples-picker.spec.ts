@@ -163,7 +163,7 @@ const BY_THEME: Record<string, string[]> = {
     "serverless-burst-buffer",
     "cloud-run-timetable-api",
   ],
-  integration: ["webhook-ingestion", "notification-fanout", "azure-service-bus-integration"],
+  integration: ["webhook-ingestion", "api-route-table", "notification-fanout", "azure-service-bus-integration"],
   reliability: [
     "outbox-saga-checkout",
     "multi-region-active-active",
@@ -243,6 +243,17 @@ test("Autoscaling filter finds the three autoscaling showcases and runs the HPA 
   await page.getByTestId("example-run-autoscaling-image-workers").click();
   await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
   await expect(page.getByTestId("live-sim-picker")).toHaveValue("upload-burst");
+});
+
+test("Routing filter finds the route table showcase and runs its saved afternoon", async ({ page }) => {
+  await page.goto("./");
+  await page.getByTestId("start-all-examples").click();
+  await page.getByTestId("examples-feature").selectOption("routing");
+  await expect(publicExampleCards(page)).toHaveCount(1);
+  await expect(page.getByTestId("example-card-api-route-table")).toBeVisible();
+  await page.getByTestId("example-run-api-route-table").click();
+  await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("live-sim-picker")).toHaveValue("busy-afternoon");
 });
 
 test("Run it starts and restarts the currently open example", async ({ page }) => {

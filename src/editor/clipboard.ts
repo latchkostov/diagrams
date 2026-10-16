@@ -19,6 +19,17 @@ import { propsProblem, unsupportedPreset, invalidPlanningDelay } from "../model/
 import { clipboardNodes } from "../model/planning";
 import { remapConnection } from "../model/connectionDefaults";
 import { remapScaler, scalerGroupRemap } from "../model/kedaBindings";
+import {
+  checkAddress,
+  hasEdgeRouting,
+  hasNodeRouting,
+  requestRoutesSchema,
+  routingEnabled,
+  type RequestRoute,
+  type RouteTable,
+  type TrafficMix,
+} from "../model/requestRouting";
+import { checkJsonSchema } from "../model/jsonSchema";
 
 // Copy / paste on the saved-file level, so it is pure and the system clipboard carries plain
 // JSON that also pastes into another tab (or a text editor).
@@ -39,6 +50,10 @@ export interface ClipboardPayload {
   annotations?: DiagramAnnotation[];
   /** Copied from a private diagram: pasting it makes the target diagram private too. */
   private?: boolean;
+  /** Request routing: the definitions the copied mixes and caller addresses use (merged into the target's). */
+  requestRoutes?: RequestRoute[];
+  /** Set by remapPayload, never serialized: copied routers whose table lost a connection (so it wasn't kept). */
+  droppedTables?: string[];
 }
 
 export interface TakenIds {
@@ -66,6 +81,15 @@ export function makePayload(
   const annotations = (d.annotations ?? []).filter((a) => ns.has(a.id));
   if (!nodes.length && !groups.length && !annotations.length) return null;
   const edges = d.edges.filter((e) => ns.has(e.from) && ns.has(e.to));
+  const routeIds = new Set<string>();
+  if (routingEnabled(d.planning)) {
+    for (const n of nodes)
+      for (const e of ((n.props as Record<string, unknown> | undefined)?.trafficMix as TrafficMix | undefined)
+        ?.entries ?? [])
+        routeIds.add(e.routeId);
+    for (const e of edges) if (typeof e.props?.requestRouteId === "string") routeIds.add(e.props.requestRouteId);
+  }
+  const requestRoutes = (d.planning?.requestRoutes ?? []).filter((r) => routeIds.has(r.id));
   return structuredClone({
     format: d.planning?.revision === "p3-a1" ? CLIP_FORMAT_A1 : CLIP_FORMAT,
     ...(d.planning?.revision === "p3-a1" ? { planning: { revision: "p3-a1" as const } } : {}),
@@ -75,6 +99,7 @@ export function makePayload(
     ...(annotations.length ? { annotations } : {}),
     ...(d.layerOrder ? { layerOrder: filterLayerOrder(d.layerOrder, { nodes, annotations }) } : {}),
     ...(isPrivate ? { private: true } : {}),
+    ...(requestRoutes.length ? { requestRoutes } : {}),
   });
 }
 
@@ -155,7 +180,25 @@ export function parsePayload(text: string): ClipboardPayload | null {
       (g.height as number) >= 0,
   );
   if (!nodes.length && !groups.length && !annotations.length) return null;
+  // Routing travels only with the current planning model, and only with valid route definitions.
+  const a1 = isObj(data.planning) && data.planning.revision === "p3-a1";
+  const routes =
+    isObj(data.planning) && Array.isArray(data.planning.requestRoutes)
+      ? data.planning.requestRoutes
+      : data.requestRoutes;
+  let requestRoutes: RequestRoute[] | undefined;
+  if (routes !== undefined) {
+    try {
+      checkJsonSchema(routes, requestRoutesSchema, "requestRoutes");
+      (routes as RequestRoute[]).forEach((r, i) => checkAddress(r.address, `requestRoutes[${i}].address`));
+      requestRoutes = routes as RequestRoute[];
+    } catch {
+      return null;
+    }
+  }
+  if (!a1 && (nodes.some((n) => hasNodeRouting(n.props)) || edges.some((e) => hasEdgeRouting(e.props)))) return null;
   return {
+    ...(requestRoutes?.length ? { requestRoutes } : {}),
     format: isObj(data.planning) && data.planning.revision === "p3-a1" ? CLIP_FORMAT_A1 : CLIP_FORMAT,
     ...(isObj(data.planning) && data.planning.revision === "p3-a1" ? { planning: { revision: "p3-a1" as const } } : {}),
     groups: groups.map((g) => ({ ...g, tone: isPresetGroupTone(g.tone) || isHexColor(g.tone) ? g.tone : "neutral" })),
@@ -168,6 +211,46 @@ export function parsePayload(text: string): ClipboardPayload | null {
     // Fails closed, like a file's "private": anything but absent or false keeps the paste private.
     ...(data.private !== undefined && data.private !== false ? { private: true } : {}),
   };
+}
+
+/**
+ * The payload's request routes merged into the target's: the same id and address is the same route (reused);
+ * a missing one is added; the same id with another address is a different route, added under a new id. Returns the
+ * merged list and the payload's nodes and edges with their references remapped.
+ */
+export function mergeRoutes(
+  target: readonly RequestRoute[],
+  p: Pick<ClipboardPayload, "requestRoutes" | "nodes" | "edges">,
+): { routes: RequestRoute[]; nodes: DiagramNode[]; edges: DiagramEdge[] } {
+  const routes = [...target];
+  const ids = new Map<string, string>();
+  const used = new Set(routes.map((r) => r.id));
+  for (const route of p.requestRoutes ?? []) {
+    const same = routes.find((r) => r.id === route.id);
+    if (same && JSON.stringify(same.address) === JSON.stringify(route.address)) continue;
+    const id = same ? uniqueId(route.id, used) : route.id;
+    used.add(id);
+    ids.set(route.id, id);
+    routes.push({ ...structuredClone(route), id });
+  }
+  if (!ids.size) return { routes, nodes: p.nodes, edges: p.edges };
+  const nodes = p.nodes.map((n) => {
+    const mix = n.props?.trafficMix as TrafficMix | undefined;
+    if (!mix?.entries) return n;
+    return {
+      ...n,
+      props: {
+        ...n.props,
+        trafficMix: { ...mix, entries: mix.entries.map((e) => ({ ...e, routeId: ids.get(e.routeId) ?? e.routeId })) },
+      },
+    };
+  });
+  const edges = p.edges.map((e) =>
+    typeof e.props?.requestRouteId === "string" && ids.has(e.props.requestRouteId)
+      ? { ...e, props: { ...e.props, requestRouteId: ids.get(e.props.requestRouteId) } }
+      : e,
+  );
+  return { routes, nodes, edges };
 }
 
 /** Top-left of everything in the payload. */
@@ -230,7 +313,36 @@ export function remapPayload(p: ClipboardPayload, taken: TakenIds, offset: { x: 
   });
   const scalerGroups = scalerGroupRemap(p.edges, nmap, emap);
   for (const n of nodes) remapScaler(n.props, nmap, scalerGroups);
+  // A copied router's table follows its copied connections; one that lost a connection isn't kept (it could only
+  // send that rule's requests somewhere else), and the editor says so.
+  const droppedTables: string[] = [];
+  for (const n of nodes) {
+    const table = n.props?.routeTable as RouteTable | undefined;
+    if (!table || !Array.isArray(table.rules)) continue;
+    const actions = [...table.rules, ...(table.default ? [table.default] : [])];
+    if (actions.every((a) => a.targets.every((t) => emap.has(t.edgeId)))) {
+      const remap = <A extends { targets: { edgeId: string; weight: number }[] }>(a: A): A => ({
+        ...a,
+        targets: a.targets.map((t) => ({ ...t, edgeId: emap.get(t.edgeId)! })),
+      });
+      n.props = {
+        ...n.props,
+        routeTable: {
+          ...table,
+          rules: table.rules.map(remap),
+          ...(table.default ? { default: remap(table.default) } : {}),
+        },
+      };
+    } else {
+      const props = { ...n.props };
+      delete props.routeTable;
+      n.props = props;
+      droppedTables.push(n.label || n.id);
+    }
+  }
   return {
+    ...(p.requestRoutes ? { requestRoutes: p.requestRoutes } : {}),
+    ...(droppedTables.length ? { droppedTables } : {}),
     format: p.format,
     ...(p.planning ? { planning: p.planning } : {}),
     groups,

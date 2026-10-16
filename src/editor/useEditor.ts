@@ -5,7 +5,8 @@ import { kindLabel, relationNoun } from "../i18n/chrome";
 import { annotationGeometryMessage, relationChangeMessage } from "./editMessages";
 import { useLayoutEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { createResourceValidator } from "../model/resourceValidation";
-import { createRoutingValidator } from "../model/routingValidation";
+import { createRoutingValidator, ROUTING_CONTEXT } from "../model/routingValidation";
+import { strippedTables } from "../model/routingEdits";
 import { newPlanningProps } from "../model/planning";
 import { useReactFlow, type ReactFlowInstance } from "@xyflow/react";
 import { flushSync } from "react-dom";
@@ -69,7 +70,8 @@ import type { EdgeMark } from "../canvas/edgeMarks";
 import { getStencil } from "../stencils/registry";
 import { motionMs } from "../lib/motion";
 import { align, boundaryAround, distribute, spreadOverlaps, type Box, type Positions } from "./arrange";
-import { makePayload, parsePayload, remapPayload, type ClipboardPayload } from "./clipboard";
+import { makePayload, mergeRoutes, parsePayload, remapPayload, type ClipboardPayload } from "./clipboard";
+import { hasEdgeRouting, hasNodeRouting } from "../model/requestRouting";
 import { stencilIdBase, uniqueId } from "./ids";
 import { layeredLayout } from "./layout";
 import { planBoundaryRefits } from "./boundaryFit";
@@ -307,7 +309,45 @@ export function createEditor(
         },
       },
     });
-  const acceptNodes = (nodes: FlowNode[], edges = currentEdges(), meta = deps().meta): boolean => {
+  /**
+   * A route table's target taken away by an edit (a deleted or reconnected connection or service) is refused, never
+   * silently widened: the toast says so and offers to remove those targets in the same step (a rule left with nothing
+   * goes, an empty Default becomes Reject 404). `retry` re-runs the edit with the repaired tables.
+   */
+  const explainRouting = (
+    candidate: Parameters<typeof validateRouting>[0],
+    error: string,
+    retry?: (tables: Map<string, unknown>) => void,
+  ) => {
+    const stripped = retry ? strippedTables(candidate, ROUTING_CONTEXT) : undefined;
+    if (!stripped) {
+      notify(error, { kind: "error" });
+      return;
+    }
+    const routers = [...stripped.tables.keys()].map((id) => candidate.nodes.find((n) => n.id === id)?.label || id);
+    notify(t("routing.targetsGone", { routers: routers.join(", "), rules: stripped.rules }), {
+      kind: "error",
+      action: {
+        get label() {
+          return t("routing.removeTargets");
+        },
+        run: () => retry!(stripped.tables),
+        testId: "toast-routing-repair",
+      },
+    });
+  };
+  const withTables = (nodes: FlowNode[], tables: Map<string, unknown>): FlowNode[] =>
+    nodes.map((n) =>
+      isDiagram(n) && tables.has(n.id)
+        ? { ...n, data: { ...n.data, props: { ...n.data.props, routeTable: tables.get(n.id) } } }
+        : n,
+    );
+  const acceptNodes = (
+    nodes: FlowNode[],
+    edges = currentEdges(),
+    meta = deps().meta,
+    retry?: (tables: Map<string, unknown>) => void,
+  ): boolean => {
     const candidate = {
       ...meta,
       nodes: nodes.filter(isDiagram).map((n) => ({
@@ -321,7 +361,13 @@ export function createEditor(
       })),
       edges: edges.map((e) => ({ id: e.id, from: e.source, to: e.target, ...e.data })),
     };
-    const error = validateResources(candidate) ?? validateRouting(candidate);
+    const resourceError = validateResources(candidate);
+    const routingError = resourceError ? undefined : validateRouting(candidate);
+    if (routingError) {
+      explainRouting(candidate, routingError, retry);
+      return false;
+    }
+    const error = resourceError;
     if (!error) return true;
     if (error === t("autoscaling.modelRequired")) explainModelRequired();
     else notify(error);
@@ -332,11 +378,16 @@ export function createEditor(
     update: (nodes: FlowNode[]) => FlowNode[],
     updateEdges: (edges: DiagramFlowEdge[]) => DiagramFlowEdge[],
     opts?: { merge?: string },
+    meta?: DiagramMeta,
   ): boolean => {
     const current = currentNodes(),
       candidate = update(current);
     const edges = updateEdges(currentEdges());
-    if (!acceptNodes(candidate, edges)) return false;
+    const retry = (tables: Map<string, unknown>) =>
+      commitNodes((nodes) => withTables(update(nodes), tables), updateEdges, opts, meta);
+    if (!acceptNodes(candidate, edges, meta, retry)) return false;
+    // Metadata the insertion needs (request routes it brought) lands in the same step.
+    if (meta && meta !== deps().meta) deps().setMeta(meta);
     const existing = new Set([...current.map((n) => n.id), ...currentEdges().map((e) => e.id)]);
     const reserved = [...candidate, ...edges].map((item) => item.id).filter((id) => !existing.has(id));
     for (const id of reserved) pendingIds.add(id);
@@ -351,7 +402,13 @@ export function createEditor(
   };
   const commitEdges = (update: (edges: DiagramFlowEdge[]) => DiagramFlowEdge[], merge?: string) => {
     const candidate = update(currentEdges());
-    if (!acceptNodes(currentNodes(), candidate)) return false;
+    const retry = (tables: Map<string, unknown>) =>
+      commitNodes(
+        (nodes) => withTables(nodes, tables),
+        () => candidate,
+        merge === undefined ? undefined : { merge },
+      );
+    if (!acceptNodes(currentNodes(), candidate, undefined, retry)) return false;
     deps().history.hint(merge);
     setEdges(candidate);
     return true;
@@ -414,7 +471,24 @@ export function createEditor(
       groups: new Set(ns.filter(isGroup).map((n) => n.data.groupId)),
       edges: new Set(rf.getEdges().map((e) => e.id)),
     };
-    const r = remapPayload(p, taken, { x: snap10(offset.x), y: snap10(offset.y) });
+    const remapped = remapPayload(p, taken, { x: snap10(offset.x), y: snap10(offset.y) });
+    // Request routes travel with what uses them: merged into this diagram's (same id and address: the same route).
+    let meta: DiagramMeta | undefined;
+    let r = remapped;
+    const routed =
+      !!remapped.requestRoutes?.length ||
+      remapped.nodes.some((n) => hasNodeRouting(n.props)) ||
+      remapped.edges.some((e) => hasEdgeRouting(e.props));
+    if (routed) {
+      const planning = deps().meta.planning;
+      if (planning?.revision !== "p3-a1") {
+        explainModelRequired();
+        return null;
+      }
+      const merged = mergeRoutes(planning.requestRoutes ?? [], remapped);
+      r = { ...remapped, nodes: merged.nodes, edges: merged.edges };
+      meta = { ...deps().meta, planning: { ...planning, requestRoutes: merged.routes } };
+    }
     const newGroups = new Set(r.groups.map((g) => g.id));
     const groupNodes = r.groups.map((g) => ({ ...groupToFlow(g), selected: true }));
     const all = [...ns, ...groupNodes];
@@ -443,9 +517,13 @@ export function createEditor(
             joining,
           ).nodes,
         (cur) => [...cur.map((e) => (e.selected ? { ...e, selected: false } : e)), ...r.edges.map(edgeToFlow)],
+        undefined,
+        meta,
       )
     )
       return null;
+    if (r.droppedTables?.length)
+      notify(t("routing.tableNotCopied", { routers: r.droppedTables.join(", ") }), { kind: "info" });
     const ids = new Map<string, string>();
     p.nodes.forEach((n, i) => ids.set(n.id, r.nodes[i].id));
     (p.annotations ?? []).forEach((a, i) => ids.set(a.id, r.annotations![i].id));
@@ -1069,6 +1147,12 @@ export function createEditor(
         const b = box(src);
         size = { width: b.width, height: b.height };
         data = { ...src.data, props: src.data.props && structuredClone(src.data.props) };
+        // The copy has only its new connection: a route table naming the original's connections can't come along.
+        if (data.props?.routeTable !== undefined) {
+          const props = { ...data.props };
+          delete props.routeTable;
+          data = { ...data, props };
+        }
       } else {
         const s = getStencil(req.stencil ?? "");
         data = {

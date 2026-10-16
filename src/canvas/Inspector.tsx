@@ -104,6 +104,8 @@ import { formatCount } from "../live/format";
 import { DEFAULT_TRAVEL_MS } from "../sim/topology";
 import { managedKind } from "../model/admissionPresets";
 import { AdmissionFields, BulkAdmissionFields, AutoscalingFields } from "../planning/lazy";
+import { RouteTableFields, TrafficMixFields, EdgeRouteFields, RequestRoutesSection } from "../planning/lazy";
+import { routeTableCapable, trafficMixCapable } from "../model/requestRouting";
 import { nodeSimFields, edgeSimFields, inertNodeProps } from "./simFieldRules";
 import { SIM_LIMITS } from "../interop/native";
 import { t, useLocale } from "../i18n";
@@ -488,6 +490,16 @@ function NodePanel({
   const device = role === "gateway" ? deviceSpec(node.data.stencil) : undefined;
   // What Custom properties leaves out: only the settings a control here shows.
   const hidden = !device ? SIM_KEYS : device.kind === "adc" ? ADC_KEYS : DEVICE_KEYS;
+  // Request routing: a router's table and a source's mix get their own section once added (simple by default:
+  // until then only an Add button inside Simulation).
+  const router = routeTableCapable(node.data.stencil, role);
+  const mixer = trafficMixCapable(role);
+  const routing = router ? (
+    <RouteTableFields editor={editor} nodeId={node.id} props={props} planning={meta.planning} />
+  ) : mixer ? (
+    <TrafficMixFields editor={editor} nodeId={node.id} props={props} planning={meta.planning} />
+  ) : null;
+  const routed = (router && props.routeTable !== undefined) || (mixer && props.trafficMix !== undefined);
 
   return (
     <>
@@ -566,6 +578,12 @@ function NodePanel({
         </Field>
         <CopyId id={node.id} />
       </Section>
+
+      {routed && (
+        <Section title={router ? t("routing.tableHeading") : t("routing.mixHeading")}>
+          <div data-testid="inspector-routing">{routing}</div>
+        </Section>
+      )}
 
       <NodePlanning
         id={node.id}
@@ -663,6 +681,21 @@ function NodePanel({
           </p>
         ) : (
           <p className="insp-note">This stencil is decorative and doesn't take part in the simulation.</p>
+        )}
+        {!routed && routing}
+        {!router && props.routeTable !== undefined && (
+          <InertNote
+            name="routeTable"
+            text={t("routing.dormantTable")}
+            onRemove={() => editor.setNodeProps(node.id, { routeTable: undefined })}
+          />
+        )}
+        {!mixer && props.trafficMix !== undefined && (
+          <InertNote
+            name="trafficMix"
+            text={t("routing.dormantMix")}
+            onRemove={() => editor.setNodeProps(node.id, { trafficMix: undefined })}
+          />
         )}
         {(managed ? [] : inertNodeProps(role, props)).map(({ key, why }) => (
           <InertNote
@@ -763,6 +796,16 @@ function EdgePanel({ edge, editor, nodeLabel, meta }: InspectorProps & { edge: D
           />
         </Field>
         <RelationHint edge={edge} editor={editor} />
+        {flow && (
+          <EdgeRouteFields
+            editor={editor}
+            edgeId={edge.id}
+            planning={meta.planning}
+            caller={
+              data.kind === "sync" && (sourceRole === "source" || sourceRole === "processor" || sourceRole === "none")
+            }
+          />
+        )}
         {rule && (
           <Field
             label="Firewall rule"
@@ -2073,6 +2116,7 @@ function DiagramPanel({ editor, meta, counts, focus, takeFocus }: InspectorProps
           />
         </Field>
       </Section>
+      <RequestRoutesSection editor={editor} planning={meta.planning} />
       <Section>
         <p className="insp-note">{countText(counts.nodes, counts.edges, counts.groups)}</p>
         <p className="insp-note">Select a node, edge or boundary to edit it. Right-click anything for its actions.</p>

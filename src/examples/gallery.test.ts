@@ -51,6 +51,11 @@ describe("example gallery", () => {
         .flatMap((s) => s.items)
         .map((e) => e.slug),
     ).toEqual(["keda-render-workers", "autoscaling-image-workers", "cloud-run-timetable-api"]);
+    expect(
+      filterExamples(publicItems, "", "routing")
+        .flatMap((s) => s.items)
+        .map((e) => e.slug),
+    ).toEqual(["api-route-table"]);
   });
   it("tags each showcase only with features its configuration demonstrates", () => {
     const expected: Record<string, string[]> = {
@@ -60,6 +65,7 @@ describe("example gallery", () => {
       "serverless-burst-buffer": [],
       "measured-order-capacity": [],
       "contoso-dmz": ["networkDevices"],
+      "api-route-table": ["routing"],
     };
     for (const [slug, tags] of Object.entries(expected)) {
       expect(publicItems.find((e) => e.slug === slug)?.shows, slug).toEqual(tags);
