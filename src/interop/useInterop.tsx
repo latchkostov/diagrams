@@ -1,4 +1,5 @@
 import { t } from "../i18n";
+import { holdInput } from "../lib/inputHold";
 import {
   useCallback,
   useEffect,
@@ -352,19 +353,25 @@ export function useInterop({
       const d = current();
       // A big diagram takes seconds: the toast shows how far it has got and offers Cancel (Escape too).
       const cancel = new AbortController();
+      const release = holdInput(() => cancel.abort());
       const busy = toast.busy(t("fileToast.renderingValue0", { value0: kind.toUpperCase() }), {
+        blocking: true,
         action: { label: t("common.cancel"), run: () => cancel.abort(), testId: "image-export-cancel", focus: true },
       });
-      const { renderDiagramImage } = await import("./image");
-      // The picture carries its title, as presentation does (an untitled diagram has none to show).
-      const title = d.title.trim();
-      const header =
-        opts.title !== false && title && title !== UNTITLED
-          ? { title, description: d.description?.trim() || undefined }
-          : undefined;
-      let image: Blob;
+      let abort!: () => void;
+      const aborted = new Promise<never>((_, reject) => {
+        abort = () => reject(cancel.signal.reason);
+        cancel.signal.addEventListener("abort", abort, { once: true });
+      });
       try {
-        image = await renderDiagramImage(kind, {
+        const { renderDiagramImage } = await Promise.race([import("./image"), aborted]);
+        // The picture carries its title, as presentation does (an untitled diagram has none to show).
+        const title = d.title.trim();
+        const header =
+          opts.title !== false && title && title !== UNTITLED
+            ? { title, description: d.description?.trim() || undefined }
+            : undefined;
+        const image = await renderDiagramImage(kind, {
           scale: opts.scale,
           transparent: opts.transparent,
           header,
@@ -372,23 +379,25 @@ export function useInterop({
           onProgress: (done) => toast.progress(busy, done),
           onEscape: () => cancel.abort(),
         });
-      } catch (err) {
-        // Cancelled: nothing to report, nothing downloaded.
+        // Cancelled as it finished: still nothing downloaded.
         if (cancel.signal.aborted) {
           toast.dismiss(busy);
           return;
         }
-        throw err;
-      }
-      // Cancelled as it finished: still nothing downloaded.
-      if (cancel.signal.aborted) {
+        const suffix =
+          kind === "png" ? `${opts.scale === 1 ? "" : "@2x"}${opts.transparent ? "-transparent" : ""}` : "";
+        // A download clicks its temporary anchor; it must no longer be captured by our input hold.
+        release();
+        downloadBlob(image, `${baseName(d)}${suffix}.${kind}`);
         toast.dismiss(busy);
-        return;
+        toast.success(t("fileToast.exportedValue0", { value0: kind.toUpperCase() }));
+      } catch (err) {
+        if (!cancel.signal.aborted) throw err;
+      } finally {
+        cancel.signal.removeEventListener("abort", abort);
+        release();
+        toast.dismiss(busy);
       }
-      const suffix = kind === "png" ? `${opts.scale === 1 ? "" : "@2x"}${opts.transparent ? "-transparent" : ""}` : "";
-      downloadBlob(image, `${baseName(d)}${suffix}.${kind}`);
-      toast.dismiss(busy);
-      toast.success(t("fileToast.exportedValue0", { value0: kind.toUpperCase() }));
     });
 
   const exportDrawio = () =>

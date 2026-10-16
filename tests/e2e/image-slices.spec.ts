@@ -343,12 +343,12 @@ test("an export started from the Image dialog hands the keyboard to its Cancel",
 });
 
 for (const [stalled, pattern, kind] of [
+  ["the initial export module", /\/image-[^/]+\.js(?:\?|$)/, undefined],
   ["its code", /imageClone/, undefined],
   ["its fonts", /\.woff2?(\?|$)/, "fetch"],
 ] as const)
   test(`a cancel while ${stalled} won't download releases the page`, async ({ page }) => {
     test.slow();
-    await openLanes(page);
     // The request hangs: the export waits on it, and only a cancel ends the wait.
     let stalls = 0;
     await page.route(pattern, async (route) => {
@@ -356,13 +356,16 @@ for (const [stalled, pattern, kind] of [
       stalls++;
       await new Promise(() => {});
     });
+    await openLanes(page);
     let downloads = 0;
     page.on("download", () => downloads++);
     await page.getByTestId("file-button").click();
     await page.getByTestId("export-png").click();
     await expect(page.getByTestId("image-export-cancel")).toBeFocused();
     await expect.poll(() => stalls).toBeGreaterThan(0);
-    await page.getByTestId("image-export-cancel").click();
+    await expect(page.getByTestId("toast-dismiss")).toHaveCount(0);
+    if (stalled === "the initial export module") await page.keyboard.press("Escape");
+    else await page.getByTestId("image-export-cancel").click();
     await expect(page.getByTestId("toast")).toHaveCount(0);
     // The page is the user's again, and nothing the export added stays.
     await page.getByTestId("node-p2n0").click();

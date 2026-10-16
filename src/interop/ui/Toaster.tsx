@@ -94,21 +94,23 @@ export function Toaster() {
           className="ix-toast-action"
           onClick={() => {
             t.action!.run();
-            toast.dismiss(t.id);
+            if (!t.blocking) toast.dismiss(t.id);
           }}
           data-testid={t.action.testId ?? "toast-action"}
         >
           {t.action.label}
         </button>
       )}
-      <button
-        className="ix-toast-close"
-        onClick={() => toast.dismiss(t.id)}
-        aria-label="Dismiss"
-        data-testid="toast-dismiss"
-      >
-        <Glyph name="close" size={14} />
-      </button>
+      {!t.blocking && (
+        <button
+          className="ix-toast-close"
+          onClick={() => toast.dismiss(t.id)}
+          aria-label="Dismiss"
+          data-testid="toast-dismiss"
+        >
+          <Glyph name="close" size={14} />
+        </button>
+      )}
     </div>,
     document.body,
   );

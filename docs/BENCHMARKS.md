@@ -489,9 +489,9 @@ records before starting the gate. The real server, console-error assertions, thr
 and zero retries remain in use; no Windows network setting is changed.
 
 After the combined #139/#140 rebase, `BENCH_PORT=6218
-BENCH_OUT=tests/.output/bench-gates-export-notice pnpm bench:gates` passes all 85 gates (522
-metrics), with upstream legal notices retained in the production JavaScript. Entry is 106.8 kB
-gzip, startup 166.3 kB (20 chunks) and canvas first view 355.2 kB;
+BENCH_OUT=tests/.output/bench-gates-export-cancel pnpm bench:gates` passes all 85 gates (523
+metrics), with upstream legal notices retained and Cancel owned until export cleanup. Entry is 106.9 kB
+gzip, startup 166.6 kB (20 chunks) and canvas first view 355.5 kB;
 all existing budgets pass. The seven Node suites and six browser tests pass, with the same
 201 Node and six browser report-only cases skipped by gates mode.
 

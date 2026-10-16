@@ -161,6 +161,9 @@
 - Image decode failures now reach the error toast instead of leaving export waiting. Production regressions
   cover decode/encode failures and successful retry, cancellation during code/font loading, and PNG/SVG export
   without Worker, OffscreenCanvas or both. The decode regression fails with its fix temporarily reverted.
+- Cancel stays visible until export cleanup completes: dismiss and unrelated notifications cannot hide it.
+  Escape also cancels a stalled initial export-module download, before the renderer loads. Ownership and
+  early-Escape regressions fail with their fixes removed; notifications resume after the task finishes.
 - The port retains html-to-image 1.11.13's upstream MIT notice in source and the minified export chunk.
   A production-build regression checks the shipped copyright, permission and warranty text; disabling
   legal-comment retention fails it. Existing startup and lazy-loading assertions remain unchanged.
