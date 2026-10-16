@@ -185,8 +185,8 @@
     },
     "private": {
       "use": "частна",
-      "match": ["частн"],
-      "note": "Agrees with диаграма. Never секретна or поверителна; the Privacy menu is „Поверителност“."
+      "match": ["частн", "частен"],
+      "note": "Agrees with диаграма; masculine частен agrees with файл. Never секретна or поверителна; the Privacy menu is „Поверителност“."
     },
     "this device": {
       "use": "това устройство",

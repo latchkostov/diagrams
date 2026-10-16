@@ -363,9 +363,9 @@ describe("toOps: direction", () => {
 });
 
 describe("toOps: cost", () => {
-  it("one reference index per reply: a big diagram stays linear", () => {
-    // An index of the diagram's names per reference, not per reply, would be quadratic: eight times the diagram
-    // would take sixty-four times as long. A ratio against an eighth of the diagram, not a budget in ms.
+  it("one reference index per reply: diagram traversal stays linear", () => {
+    // Count diagram traversal, rather than timing allocating replies of different sizes: JIT/GC can skew that
+    // ratio. The same-run eighth-sized baseline and the per-element bounds catch repeated index construction.
     const sized = (n: number): DiagramFile => ({
       ...EMPTY,
       nodes: Array.from({ length: n }, (_, i) => ({
@@ -384,13 +384,21 @@ describe("toOps: cost", () => {
     }));
     const convert = (diagram: DiagramFile) => () =>
       toOps(reply(ops), { diagram, request: "Node 0 consumes Node 1 and the rest" });
-    expect(growth(convert(sized(625)), convert(sized(625 * GROWTH_FACTOR)))).toBeLessThan(LINEAR_LIMIT);
-    // And one index, counted: building it reads each node once. An index per reference (twelve here) would read
-    // every node twelve times, a cost the ratio can't see (it's linear in the diagram too).
-    const big = sized(5_000);
-    const nodes = countingReads(big.nodes);
-    expect(convert({ ...big, nodes: nodes.items })().ok).toBe(true);
-    expect(nodes.reads()).toBeLessThanOrEqual(3 * big.nodes.length);
+    const work = (size: number) => {
+      const diagram = sized(size);
+      const nodes = countingReads(diagram.nodes);
+      const edges = countingReads(diagram.edges);
+      expect(convert({ ...diagram, nodes: nodes.items, edges: edges.items })().ok).toBe(true);
+      return { nodes: nodes.reads(), edges: edges.reads() };
+    };
+    const smallSize = 625;
+    const bigSize = smallSize * GROWTH_FACTOR;
+    const small = work(smallSize);
+    const big = work(bigSize);
+    expect(big.nodes + big.edges).toBeLessThan((small.nodes + small.edges) * LINEAR_LIMIT);
+    // An index per reference (twelve here) is still linear in diagram size, so also bound the actual reads.
+    expect(big.nodes).toBeLessThanOrEqual(3 * bigSize);
+    expect(big.edges).toBeLessThanOrEqual(3 * bigSize * 4);
   });
 });
 

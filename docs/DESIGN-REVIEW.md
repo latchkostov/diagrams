@@ -1,5 +1,13 @@
 # Design review
 
+## Static-page review follow-up (2026-10-16)
+
+The designer agent approved the scoped source review with no actionable UX issue. Named blocks and
+inline slots preserve the English content, command bytes, links, controls and styling; language
+direction and LTR command rows retain their behavior. The page adds no chrome. The reviewer did not
+run browsers or tests; production browser regressions independently cover reordered content, command
+preservation, mobile/desktop overflow and delivery transports.
+
 ## Stencil names and agent defaults gate (2026-10-15)
 
 The designer agent's scoped source/test review found no blocking issue. Default names follow
@@ -14,6 +22,43 @@ The follow-up review also approved the explicit agent flow override and its corr
 It preserves the editor's existing user choice across stencil changes without adding controls.
 The browser regression now checks exact persisted names, avoiding a false match on stencil
 subtitles. This follow-up was also a read-only source review, without a browser walkthrough.
+
+## Static-page languages (2026-10-15)
+
+The designer agent’s scoped source review confirmed unchanged English HTML and existing copy and
+navigation controls. Static pages share the app’s saved-preference and browser fallback, and
+bundle their catalog subset for direct and offline use. Commands remain LTR. The review flagged
+the Back arrow: Arabic and Hebrew now explicitly point right. Production regressions cover
+translated content, copy feedback and overflow at 390×844 and 1280×800, including Arabic and the
+pseudo-locale. No chrome was added. The source review did not include a whole-app or
+assistive-technology inspection.
+
+Seven source reviewers covered correctness, architecture, performance, tests, security,
+accessibility and types. The tests reviewer caught clocks that still advanced with real time;
+copy and OAuth regressions now pause them before navigation. Restoring the original English
+scripts makes the direct-language and OAuth-state regressions fail. Production screenshots
+were visually inspected in Arabic at both widths; headings, prose, links and wrapped commands
+remain readable without horizontal overflow.
+
+The first complete production gate passed 1,306 E2E tests and failed two existing autoscaling
+checks. On clean `origin/master` (`840ad022`) in this same worktree, the startup check failed
+identically (23 passed, one failed). Its 30-second timeout expired while the fake clock drew
+the initial 30 seconds of paused playback. The test now fast-forwards that idle period, retaining
+the same page age and every active-playback assertion. The pagination trace showed the lazy
+planning module arriving after the click timeout; it now waits for page readiness before acting.
+No product code, assertion or timeout changed. The corrected autoscaling and static-page specs
+pass all 74 tests without retries; restoring the original test reproduces the startup failure.
+
+A later Linux gate hit the existing compact-reply cost guard at 24.26× against its 24× limit.
+Twelve clean-master unit suites and 200 focused repetitions did not reproduce it, so it is not
+claimed as an upstream failure. That guard now counts node and edge reads at the same eightfold
+input sizes, retaining the 24× limit and the existing three-reads-per-node bound, with an equivalent
+edge bound. This follows the quality guide's preference for counting observable work instead of
+depending on allocation/JIT/GC timing. Rebuilding the index per endpoint fails at 70,000 node reads
+against 15,000 allowed; a quadratic node scan fails the 24× read-growth guard. Both temporary
+runtime mutations were restored, and all 142 conversion checks (including type tests) pass.
+The tests and performance reviewers approved the traversal guard's explicit scope: it counts
+input reads, not all work on copied maps or strings. No product code changed.
 
 ## Deferred layout and interrupted-fit review (2026-10-15)
 

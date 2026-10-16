@@ -96,28 +96,28 @@
   <body>
     <main>
       <h1 data-testid="skill-title">Use Live Diagrams with your AI agent</h1>
-      <p>
-        The <strong>livediagrams</strong> Agent Skill lets your coding agent draw diagrams for you. Ask "diagram our
-        order pipeline" and it writes a <code>.diagram.json</code> file, checks it, and asks what you want back.
+      <p data-testid="skill-intro">
+        The <strong data-slot="skill">livediagrams</strong> Agent Skill lets your coding agent draw diagrams for you. Ask "diagram our
+        order pipeline" and it writes a <code data-slot="file">.diagram.json</code> file, checks it, and asks what you want back.
         Nothing is uploaded. It needs Node.js 20 or later, and no account or API key.
       </p>
       <ul data-testid="skill-outputs">
-        <li>
-          <strong>Interactive HTML file</strong>, recommended for work and company diagrams: one file that plays the
+        <li data-testid="skill-output-html">
+          <strong data-testid="skill-label-html" data-slot="label">Interactive HTML file</strong>, recommended for work and company diagrams: one file that plays the
           simulations, works offline and makes no network requests. Only people who have the file can open it, and
           with a password only people who also have the password. You type the password in your own terminal, never
           in the chat.
         </li>
-        <li><strong>Diagram file</strong> (<code>.diagram.json</code>), to keep editing at livediagrams.dev.</li>
-        <li><strong>Image</strong>: it tells you how to export one from the app.</li>
-        <li>
-          <strong>Share link</strong>: anyone who has the link can open the diagram, so private diagrams never get
+        <li data-testid="skill-output-diagram"><strong data-testid="skill-label-diagram" data-slot="label">Diagram file</strong> (<code data-slot="file">.diagram.json</code>), to keep editing at livediagrams.dev.</li>
+        <li data-testid="skill-output-image"><strong data-testid="skill-label-image" data-slot="label">Image</strong>: it tells you how to export one from the app.</li>
+        <li data-testid="skill-output-link">
+          <strong data-testid="skill-label-link" data-slot="label">Share link</strong>: anyone who has the link can open the diagram, so private diagrams never get
           one.
         </li>
       </ul>
 
       <h2 id="claude-code">Claude Code</h2>
-      <p>Run these two commands in Claude Code:</p>
+      <p data-testid="skill-claude-commands">Run these two commands in Claude Code:</p>
       <div class="cmd">
         <code data-testid="skill-cmd-marketplace">/plugin marketplace add latchkostov/diagrams</code>
         <button type="button" data-copy data-testid="skill-copy-marketplace">Copy</button>
@@ -127,14 +127,14 @@
         <button type="button" data-copy data-testid="skill-copy-install">Copy</button>
       </div>
 
-      <h2 id="claude-apps">Claude apps (claude.ai, desktop)</h2>
-      <p>
-        Download <a href="../livediagrams-skill.zip" data-testid="skill-zip">livediagrams-skill.zip</a>, then upload
-        it in <strong>Settings &gt; Capabilities &gt; Skills</strong>.
+      <h2 id="claude-apps" data-testid="skill-claude-apps">Claude apps (claude.ai, desktop)</h2>
+      <p data-testid="skill-upload">
+        Download <a href="../livediagrams-skill.zip" data-testid="skill-zip" data-slot="zip">livediagrams-skill.zip</a>, then upload
+        it in <strong data-testid="skill-settings" data-slot="settings">Settings &gt; Capabilities &gt; Skills</strong>.
       </p>
 
       <h2 id="codex">Codex</h2>
-      <p>Unzip the skill into <code>~/.agents/skills/</code> (for you) or <code>.agents/skills/</code> (for one repository).</p>
+      <p data-testid="skill-unzip">Unzip the skill into <code data-slot="personal">~/.agents/skills/</code> (for you) or <code data-slot="repo">.agents/skills/</code> (for one repository).</p>
       <p class="label">macOS, Linux</p>
       <div class="cmd">
         <code data-testid="skill-cmd-codex"
@@ -152,21 +152,21 @@
         <button type="button" data-copy data-testid="skill-copy-codex-windows">Copy</button>
       </div>
 
-      <h2 id="other-agents">Other agents</h2>
-      <p>
-        Agents that read the Agent Skills format: copy the <code>livediagrams/</code> folder from the zip into the
-        agent's skills folder. The skill itself is <a href="SKILL.md" data-testid="skill-md">SKILL.md</a>.
+      <h2 id="other-agents" data-testid="skill-other-agents">Other agents</h2>
+      <p data-testid="skill-other">
+        Agents that read the Agent Skills format: copy the <code data-slot="folder">livediagrams/</code> folder from the zip into the
+        agent's skills folder. The skill itself is <a href="SKILL.md" data-testid="skill-md" data-slot="skill">SKILL.md</a>.
       </p>
 
-      <h2 id="try-it">Then ask</h2>
-      <p>
+      <h2 id="try-it" data-testid="skill-then-ask">Then ask</h2>
+      <p data-testid="skill-request">
         "Diagram a Kafka order pipeline: an order service publishes orders.created, billing and inventory consume it,
         and failed messages go to a dead-letter queue." For a work diagram, ask for the HTML file and a
         "Confidential" banner.
       </p>
 
-      <h2 id="in-the-browser">In the browser</h2>
-      <p>
+      <h2 id="in-the-browser" data-testid="skill-browser-title">In the browser</h2>
+      <p data-testid="skill-browser">
         If your browser's AI assistant supports WebMCP, it can change the diagram open at livediagrams.dev directly.
         Type your request in the assistant, not in the page; each change appears in the page's AI panel with Undo.
       </p>

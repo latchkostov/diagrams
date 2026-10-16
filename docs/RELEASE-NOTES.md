@@ -1,5 +1,22 @@
 # Release notes
 
+## Static-page translation review fixes (2026-10-16)
+
+- Skill-page translations bind to named blocks and preserved inline slots, so adding paragraphs or
+  reordering outputs cannot shift translations. English copy, install commands and controls are unchanged.
+- The app excludes the 31 standalone-only messages from its runtime locale chunks; the sign-in and
+  skill scripts retain their page subsets and offline behavior.
+- Browser regressions check real OAuth channel delivery without an opener, opener delivery when
+  BroadcastChannel fails, the exact target origin and query removal before dispatch. All four install
+  commands and clipboard values are checked against fixed independent expectations in German, Arabic
+  and the pseudo-locale. All four review findings were accepted. Deliberate reversions/mutations
+  fail all three app-catalog checks and all six new browser cases.
+- The refreshed agent-skill viewer ships at plugin 1.1.30, one patch above master.
+- Rebased catalog unions preserve master's autoscaling messages and existing translations. Only
+  `tests/parity/goldens/node/i18n/catalogs.json` changes: each of the 37 language catalogs and the
+  pseudo-locale gain the `staticAuth` and `staticSkill` hashes for 31 messages. Existing area hashes,
+  fallback counts and every other golden stay unchanged relative to master.
+
 ## Verification gate review fixes (2026-10-16)
 
 - The full local gate owns its app server: gate mode disables reuse for every
@@ -133,6 +150,17 @@
 - The full gate exposed a page-hide test whose first example edit could already be saved when it
   became an owned copy. The test now starts with an owned document and pauses the clock where it
   stands, preserving both pending-edit and lifecycle-flush assertions. No save behavior changes.
+
+## Static-page languages (2026-10-15)
+
+- Sign-in and `/skill/` now follow the app’s saved language, browser language, and English fallback
+  in all 37 translated locales. Direct links and offline copies include their translations.
+- English HTML remains byte-identical. Privacy and Terms remain intentionally English-only.
+  Commands, paths, download links and OAuth delivery retain their behavior; RTL prose reads in
+  its own direction while commands remain LTR. No controls were added.
+- Only `tests/parity/goldens/node/i18n/catalogs.json` changes: each language gains `staticAuth` and
+  `staticSkill` hashes for 31 new messages; catalog totals rise by 31, and existing area hashes
+  and English fallback counts remain unchanged. No diagram, simulation or export golden changes.
 
 ## Autoscaling A2 edit preservation (#125, 2026-10-15)
 

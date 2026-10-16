@@ -1,3 +1,4 @@
+import { staticPages } from "./scripts/static-pages";
 import { publicExamplesOnly } from "./scripts/public-examples-only";
 import { defineConfig, type Plugin } from "vitest/config";
 import react from "@vitejs/plugin-react";
@@ -135,6 +136,7 @@ export default defineConfig({
     ...(process.env.VITEST ? [publicExamplesOnly()] : []),
     // Messages inlined where they're used, each language a lazy catalog (src/i18n, docs/I18N.md).
     i18n(),
+    staticPages(),
     exampleMetadataPlugin(),
     react(),
     noPrivateExamples(),
