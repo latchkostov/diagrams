@@ -13,6 +13,7 @@ import {
   type ReactNode,
 } from "react";
 import { getStencil } from "../stencils/registry";
+import { registerScenarioPlanner } from "../lib/scenarioPlanner";
 import { simRoleMeta } from "../lib/simRoles";
 import type { NodeSimProps } from "../sim/types";
 import type { DiagramFile, Side, SimRole } from "../model/types";
@@ -111,6 +112,9 @@ import { colorLabel } from "../i18n/chrome";
 import { brokerSpec, isClusterWrapper } from "../model/brokers";
 import { assignmentLabel, groupLabel } from "../stencils/brokerVocabulary";
 import { NodePlanning, PlanningUpgrade } from "../planning/lazy";
+
+// Live details show scenario sizing from the checks worker; only the editor has one.
+registerScenarioPlanner((d) => import("./checks/runner").then((m) => m.planOffThread(d)));
 
 // Right-hand properties panel. Every edit goes through EditorApi (so it is undoable); typing
 // is coalesced per field via the `merge` option.

@@ -6,6 +6,7 @@ import { compileTopology } from "../sim/topology";
 import { memo, useEffect, useMemo, useState } from "react";
 import type { ScalingPlan } from "../sim/scalingPlanner";
 import { planDescriptor, planSentence } from "./scalingPlanText";
+import { scenarioPlanner } from "../lib/scenarioPlanner";
 import type { RealNodeMetrics } from "../sim/types";
 import type { DiagramFile } from "../model/types";
 import { t, useLocale } from "../i18n";
@@ -45,8 +46,7 @@ function ScenarioSizing({ diagram, simulation, node }: { diagram: DiagramFile; s
   const [plans, setPlans] = useState<{ diagram: DiagramFile; plans: ScalingPlan[] } | null>(null);
   useEffect(() => {
     let current = true;
-    import("../canvas/checks/runner")
-      .then((m) => m.planOffThread(diagram))
+    scenarioPlanner()?.(diagram)
       .then((result) => current && setPlans({ diagram, plans: result }))
       .catch(() => {});
     return () => {

@@ -48,6 +48,11 @@ var positive$1 = {
 	minimum: 1e-6,
 	maximum: 1e9
 };
+var signed = {
+	type: "number",
+	minimum: -1e9,
+	maximum: 1e9
+};
 var time$3 = {
 	type: "integer",
 	minimum: 0,
@@ -170,6 +175,17 @@ var hpaSettingsSchema = object({
 	up: direction,
 	down: direction
 });
+/** KEDA's generated HPA may have no resource metrics: its triggers supply the recommendation. */
+var triggerSettings = {
+	...hpaSettingsSchema,
+	properties: {
+		...hpaSettingsSchema.properties,
+		metrics: {
+			...hpaSettingsSchema.properties.metrics,
+			minItems: 0
+		}
+	}
+};
 var binding = object({
 	node: {
 		type: "string",
@@ -189,6 +205,270 @@ var trigger = (properties) => object({
 	useCachedMetrics: { type: "boolean" },
 	...properties
 });
+var kedaTrigger = { anyOf: [
+	trigger({
+		type: { enum: ["kafka"] },
+		allowIdleConsumers: { type: "boolean" }
+	}),
+	trigger({ type: { enum: ["azure-servicebus"] } }),
+	trigger({
+		type: { enum: ["aws-sqs-queue"] },
+		scaleOnInFlight: { type: "boolean" },
+		scaleOnDelayed: { enum: [false] }
+	}),
+	trigger({
+		type: { enum: ["rabbitmq"] },
+		protocol: { enum: ["http", "amqp"] },
+		excludeUnacknowledged: { type: "boolean" }
+	})
+] };
+var kedaController = object({
+	kind: { enum: ["keda"] },
+	minReplicas: {
+		...count$1,
+		minimum: 0
+	},
+	maxReplicas: count$1,
+	initialReplicas: {
+		...count$1,
+		minimum: 0
+	},
+	pollingMs: interval,
+	cooldownMs: time$3,
+	initialCooldownMs: time$3,
+	idleReplicas: { enum: [0] },
+	settings: triggerSettings,
+	triggers: {
+		type: "array",
+		minItems: 1,
+		maxItems: 16,
+		items: kedaTrigger
+	},
+	fallback: object({
+		failureThreshold: {
+			...count$1,
+			minimum: 0,
+			maximum: 600
+		},
+		replicas: count$1,
+		behavior: { enum: [
+			"static",
+			"currentReplicas",
+			"currentReplicasIfHigher",
+			"currentReplicasIfLower"
+		] }
+	})
+}, [
+	"kind",
+	"minReplicas",
+	"maxReplicas",
+	"initialReplicas",
+	"pollingMs",
+	"cooldownMs",
+	"initialCooldownMs",
+	"settings",
+	"triggers"
+]);
+var zeroRange = {
+	minReplicas: {
+		...count$1,
+		minimum: 0
+	},
+	maxReplicas: count$1,
+	initialReplicas: {
+		...count$1,
+		minimum: 0
+	}
+};
+var loadBalancer = object({ node: {
+	type: "string",
+	minLength: 1,
+	maxLength: 1e3
+} });
+var ecsTargetTracking = object({
+	metric: { enum: [
+		"cpu",
+		"memory",
+		"albRequestCountPerTarget"
+	] },
+	target: positive$1,
+	source: loadBalancer,
+	scaleOutCooldownMs: time$3,
+	scaleInCooldownMs: time$3,
+	disableScaleIn: { type: "boolean" }
+}, [
+	"metric",
+	"target",
+	"scaleOutCooldownMs",
+	"scaleInCooldownMs",
+	"disableScaleIn"
+]);
+var ecsStepScaling = object({
+	metric: { enum: [
+		"cpu",
+		"memory",
+		"albRequestCountPerTarget",
+		"albRequestCount"
+	] },
+	source: loadBalancer,
+	operator: { enum: [
+		"GreaterThanOrEqualToThreshold",
+		"GreaterThanThreshold",
+		"LessThanThreshold",
+		"LessThanOrEqualToThreshold"
+	] },
+	threshold: quantity$2,
+	evaluationPeriods: {
+		type: "integer",
+		minimum: 1,
+		maximum: 60
+	},
+	adjustmentType: { enum: [
+		"ChangeInCapacity",
+		"PercentChangeInCapacity",
+		"ExactCapacity"
+	] },
+	steps: {
+		type: "array",
+		minItems: 1,
+		maxItems: 8,
+		items: object({
+			lower: signed,
+			upper: signed,
+			adjustment: {
+				type: "integer",
+				minimum: -1e4,
+				maximum: 1e4
+			}
+		}, ["adjustment"])
+	},
+	minAdjustmentMagnitude: count$1,
+	cooldownMs: time$3
+}, [
+	"metric",
+	"operator",
+	"threshold",
+	"evaluationPeriods",
+	"adjustmentType",
+	"steps",
+	"cooldownMs"
+]);
+var ecsController = object({
+	kind: { enum: ["ecs"] },
+	...zeroRange,
+	metricPeriodMs: interval,
+	alarm: object({
+		outPeriods: {
+			type: "integer",
+			minimum: 1,
+			maximum: 60
+		},
+		inPeriods: {
+			type: "integer",
+			minimum: 1,
+			maximum: 60
+		},
+		inMargin: {
+			type: "number",
+			minimum: 0,
+			maximum: .9
+		}
+	}),
+	targetTracking: {
+		type: "array",
+		minItems: 0,
+		maxItems: 8,
+		items: ecsTargetTracking
+	},
+	stepScaling: {
+		type: "array",
+		minItems: 0,
+		maxItems: 8,
+		items: ecsStepScaling
+	}
+});
+var acaController = object({
+	kind: { enum: ["aca"] },
+	...zeroRange,
+	pollingMs: interval,
+	cooldownMs: time$3,
+	http: object({ concurrentRequests: positive$1 }),
+	triggers: {
+		type: "array",
+		minItems: 0,
+		maxItems: 16,
+		items: kedaTrigger
+	},
+	settings: triggerSettings
+}, [
+	"kind",
+	"minReplicas",
+	"maxReplicas",
+	"initialReplicas",
+	"pollingMs",
+	"cooldownMs",
+	"triggers",
+	"settings"
+]);
+var appServiceController = object({
+	kind: { enum: ["appService"] },
+	minReplicas: count$1,
+	maxReplicas: count$1,
+	initialReplicas: count$1,
+	evaluationMs: interval,
+	rules: {
+		type: "array",
+		minItems: 1,
+		maxItems: 10,
+		items: object({
+			metric: { enum: [
+				"cpu",
+				"memory",
+				"httpQueue"
+			] },
+			operator: { enum: [
+				"GreaterThan",
+				"GreaterThanOrEqual",
+				"LessThan",
+				"LessThanOrEqual"
+			] },
+			threshold: quantity$2,
+			windowMs: interval,
+			direction: { enum: ["increase", "decrease"] },
+			changeType: { enum: [
+				"ChangeCount",
+				"PercentChangeCount",
+				"ExactCount"
+			] },
+			value: {
+				type: "integer",
+				minimum: 0,
+				maximum: 1e4
+			},
+			cooldownMs: time$3
+		})
+	}
+});
+var percent = {
+	type: "number",
+	minimum: 1,
+	maximum: 100
+};
+var cloudRunController = object({
+	kind: { enum: ["cloudRun"] },
+	...zeroRange,
+	targetConcurrencyPct: percent,
+	targetCpuPct: percent,
+	evaluationMs: interval,
+	cpuWindowMs: interval,
+	concurrencyWindowsMs: {
+		type: "array",
+		minItems: 2,
+		maxItems: 2,
+		items: interval
+	},
+	scaleInDelayMs: time$3
+});
 var autoscalingSchema = { anyOf: [
 	object({
 		mode: { enum: ["on"] },
@@ -198,78 +478,7 @@ var autoscalingSchema = { anyOf: [
 			maxLength: 100
 		},
 		presetRevision: { enum: ["1"] },
-		controller: object({
-			kind: { enum: ["keda"] },
-			minReplicas: {
-				...count$1,
-				minimum: 0
-			},
-			maxReplicas: count$1,
-			initialReplicas: {
-				...count$1,
-				minimum: 0
-			},
-			pollingMs: interval,
-			cooldownMs: time$3,
-			initialCooldownMs: time$3,
-			idleReplicas: { enum: [0] },
-			settings: {
-				...hpaSettingsSchema,
-				properties: {
-					...hpaSettingsSchema.properties,
-					metrics: {
-						...hpaSettingsSchema.properties.metrics,
-						minItems: 0
-					}
-				}
-			},
-			triggers: {
-				type: "array",
-				minItems: 1,
-				maxItems: 16,
-				items: { anyOf: [
-					trigger({
-						type: { enum: ["kafka"] },
-						allowIdleConsumers: { type: "boolean" }
-					}),
-					trigger({ type: { enum: ["azure-servicebus"] } }),
-					trigger({
-						type: { enum: ["aws-sqs-queue"] },
-						scaleOnInFlight: { type: "boolean" },
-						scaleOnDelayed: { enum: [false] }
-					}),
-					trigger({
-						type: { enum: ["rabbitmq"] },
-						protocol: { enum: ["http", "amqp"] },
-						excludeUnacknowledged: { type: "boolean" }
-					})
-				] }
-			},
-			fallback: object({
-				failureThreshold: {
-					...count$1,
-					minimum: 0,
-					maximum: 600
-				},
-				replicas: count$1,
-				behavior: { enum: [
-					"static",
-					"currentReplicas",
-					"currentReplicasIfHigher",
-					"currentReplicasIfLower"
-				] }
-			})
-		}, [
-			"kind",
-			"minReplicas",
-			"maxReplicas",
-			"initialReplicas",
-			"pollingMs",
-			"cooldownMs",
-			"initialCooldownMs",
-			"settings",
-			"triggers"
-		])
+		controller: kedaController
 	}),
 	object({ mode: { enum: ["off"] } }),
 	object({
@@ -328,8 +537,54 @@ var autoscalingSchema = { anyOf: [
 			initialReplicas: count$1,
 			settings: hpaSettingsSchema
 		})
+	}),
+	object({
+		mode: { enum: ["on"] },
+		modelRevision: { enum: ["a3"] },
+		preset: {
+			type: "string",
+			maxLength: 100
+		},
+		presetRevision: { enum: ["1"] },
+		controller: { anyOf: [
+			ecsController,
+			acaController,
+			appServiceController,
+			cloudRunController
+		] }
 	})
 ] };
+/** CloudWatch step bounds: no overlap, no gap, one open end per side, never both open (AWS step scaling docs). */
+function checkSteps(p) {
+	const steps = [...p.steps].sort((a, b) => (a.lower ?? -Infinity) - (b.lower ?? -Infinity));
+	for (const s of steps) {
+		if (s.lower === void 0 && s.upper === void 0) throw new Error("autoscaling: a step adjustment needs a lower or an upper bound");
+		if (s.lower !== void 0 && s.upper !== void 0 && s.lower >= s.upper) throw new Error("autoscaling: step lower bound must be below its upper bound");
+	}
+	for (let i = 1; i < steps.length; i++) if (steps[i - 1].upper === void 0 || steps[i - 1].upper !== steps[i].lower) throw new Error("autoscaling: step adjustments overlap or leave a gap");
+	const low = steps[0].lower, high = steps.at(-1).upper;
+	if (low !== void 0 && low < 0) throw new Error("autoscaling: a negative lower bound needs an open lower step");
+	if (high !== void 0 && high > 0) throw new Error("autoscaling: a positive upper bound needs an open upper step");
+	if (p.operator.startsWith("Greater") ? high !== void 0 || (low ?? 0) > 0 : low !== void 0 || (high ?? 0) < 0) throw new Error("autoscaling: step adjustments must cover the alarm's breached side");
+	if (p.adjustmentType === "ExactCapacity" && p.steps.some((s) => s.adjustment < 0)) throw new Error("autoscaling: ExactCapacity adjustments must be zero or more");
+	if (p.minAdjustmentMagnitude !== void 0 && p.adjustmentType !== "PercentChangeInCapacity") throw new Error("autoscaling: minAdjustmentMagnitude applies only to PercentChangeInCapacity");
+}
+function checkCloud(c) {
+	if (c.kind === "ecs") {
+		if (!c.targetTracking.length && !c.stepScaling.length) throw new Error("autoscaling: ECS needs a target tracking or step scaling policy");
+		if (new Set(c.targetTracking.map((p) => p.metric)).size !== c.targetTracking.length) throw new Error("autoscaling: ECS target tracking policies each need a different metric");
+		for (const p of [...c.targetTracking, ...c.stepScaling]) if (p.metric.startsWith("alb") !== (p.source !== void 0)) throw new Error("autoscaling: ALB request metrics, and only they, bind a load balancer");
+		for (const p of c.stepScaling) checkSteps(p);
+	}
+	if (c.kind === "aca") {
+		if (!c.http && !c.triggers.length) throw new Error("autoscaling: Container Apps needs an HTTP or event rule");
+		if (c.triggers.length + c.settings.metrics.length + (c.http ? 1 : 0) > 16) throw new Error("autoscaling: at most 16 metrics and triggers");
+	}
+	if (c.kind === "appService") for (const r of c.rules) {
+		if (r.changeType !== "ExactCount" && r.value < 1) throw new Error("autoscaling: a Monitor scale action changes at least one instance");
+		if (r.changeType === "PercentChangeCount" && r.value > 1e3) throw new Error("autoscaling: a percent change is at most 1000");
+	}
+}
 function checkAutoscaling(resources, autoscaling) {
 	if (resources !== void 0) checkJsonSchema(resources, resourcesSchema, "resources");
 	if (autoscaling === void 0) return;
@@ -337,15 +592,16 @@ function checkAutoscaling(resources, autoscaling) {
 	const a = autoscaling;
 	if (a.mode !== "on") return;
 	const c = a.controller;
-	if (c.kind === "keda") {
-		if (c.triggers.length + c.settings.metrics.length > 16) throw new Error("autoscaling: at most 16 metrics and triggers");
-		if (c.idleReplicas !== void 0 && c.minReplicas === 0) throw new Error("autoscaling: idle replicas must be below the minimum");
+	checkCloud(c);
+	if (c.kind === "keda" || c.kind === "aca") {
+		if (c.kind === "keda" && c.triggers.length + c.settings.metrics.length > 16) throw new Error("autoscaling: at most 16 metrics and triggers");
+		if (c.kind === "keda" && c.idleReplicas !== void 0 && c.minReplicas === 0) throw new Error("autoscaling: idle replicas must be below the minimum");
 		for (const t of c.triggers) {
 			if (t.type === "kafka" && !t.source.group) throw new Error("autoscaling: Kafka needs a named consumer group and known topic history");
 			if (t.type === "rabbitmq" && t.protocol === "amqp" && !t.excludeUnacknowledged) throw new Error("autoscaling: RabbitMQ AMQP observes ready messages only");
 		}
 	}
-	if (c.settings.metrics.some((m) => m.windowMs + m.metricDelayMs > 6e5)) throw new Error("autoscaling: metric window plus delay must fit the 600000 ms history budget");
+	if ("settings" in c && c.settings.metrics.some((m) => m.windowMs + m.metricDelayMs > 6e5)) throw new Error("autoscaling: metric window plus delay must fit the 600000 ms history budget");
 	if (c.minReplicas > c.maxReplicas || c.initialReplicas < c.minReplicas || c.initialReplicas > c.maxReplicas) throw new Error("autoscaling: initial and minimum replicas must fit the maximum");
 }
 //#endregion
@@ -2570,8 +2826,20 @@ var roles = new Map(catalog.map((stencil) => [stencil.id, stencil.simRole]));
 function stencilRole(id) {
 	return roles.get(id) ?? "processor";
 }
-//#endregion
-//#region src/model/kedaBindings.ts
+/** KEDA triggers of an executable policy: a KEDA ScaledObject's or a Container Apps app's custom event rules. */
+function scalerTriggers(a) {
+	if (a?.mode !== "on") return [];
+	const c = a.controller;
+	return c.kind === "keda" || c.kind === "aca" ? c.triggers : [];
+}
+/** Load balancer nodes that ECS ALB request metrics read. */
+function loadBalancerSources(a) {
+	if (a?.mode !== "on" || a.controller.kind !== "ecs") return [];
+	return [...a.controller.targetTracking, ...a.controller.stepScaling].flatMap((p) => p.source ? [p.source] : []);
+}
+function requestRoute(e, stencil) {
+	return stencil === "aws.elb" && e.kind === "sync" && (!e.relation || e.relation === "flow") && !e.props?.deny;
+}
 function triggerFits(t, stencil) {
 	return t === "kafka" ? [
 		"kafka.topic",
@@ -2583,18 +2851,27 @@ function triggerFits(t, stencil) {
 function bindingValidator(nodes, edges) {
 	const byId = new Map(nodes.map((n) => [n.id, n]));
 	const groups = /* @__PURE__ */ new Map();
+	/** `${loadBalancer}\u0000${target}` for every request route a load balancer has. */
+	const routes = /* @__PURE__ */ new Set();
+	const balancers = /* @__PURE__ */ new Set();
 	for (const e of edges) {
 		const source = byId.get(e.from), target = byId.get(e.to);
-		if (!source || !target || e.relation && e.relation !== "flow" || e.props?.deny || isDlqEdge(e, stencilRole(source.stencil), target, stencilRole(target.stencil))) continue;
+		if (!source || !target) continue;
+		if (requestRoute(e, source.stencil)) {
+			routes.add(`${e.from}\u0000${e.to}`);
+			balancers.add(e.from);
+		}
+		if (e.relation && e.relation !== "flow" || e.props?.deny || isDlqEdge(e, stencilRole(source.stencil), target, stencilRole(target.stencil))) continue;
 		const names = groups.get(e.from) ?? /* @__PURE__ */ new Set();
 		names.add(typeof e.props?.group === "string" ? e.props.group : e.id);
 		groups.set(e.from, names);
 	}
-	return (a) => a?.mode !== "on" || a.controller.kind !== "keda" || a.controller.triggers.every((t) => {
+	/** `node` is the scaled node: ECS load balancers must route requests to it. Absent, any route suffices. */
+	return (a, node) => scalerTriggers(a).every((t) => {
 		const source = byId.get(t.source.node);
 		if (!source || !triggerFits(t.type, source.stencil)) return false;
 		return t.type === "kafka" || source.stencil === "azure.service-bus.topic" ? !!t.source.group && !!groups.get(source.id)?.has(t.source.group) : t.source.group === void 0 || t.source.group === "queue";
-	});
+	}) && loadBalancerSources(a).every((s) => node === void 0 ? balancers.has(s.node) : routes.has(`${s.node}\u0000${node}`));
 }
 //#endregion
 //#region src/model/resourceValidation.ts
@@ -2607,24 +2884,24 @@ function createResourceValidator({ fragment = false } = {}) {
 	let savedBindings = [];
 	return (candidate) => {
 		let bindings;
-		const checkBindings = (a) => {
+		const checkBindings = (a, node) => {
 			const config = a;
-			if (fragment || config?.mode !== "on" || config.controller.kind !== "keda") return true;
+			if (fragment || !scalerTriggers(config).length && !loadBalancerSources(config).length) return true;
 			bindings ??= bindingValidator(candidate.nodes.map((n) => ({
 				id: n.id,
 				stencil: n.stencil ?? "",
 				label: n.label ?? "",
 				sublabel: n.sublabel
 			})), candidate.edges ?? []);
-			return bindings(config);
+			return bindings(config, node);
 		};
 		const next = /* @__PURE__ */ new Map();
 		let budgetChanged = !initialized || simulations !== candidate.simulations || revision !== candidate.planning?.revision;
-		const check = (props) => {
+		const check = (props, node) => {
 			if (candidate.planning?.revision !== "p3-a1" && (props?.resources !== void 0 || props?.autoscaling !== void 0)) return t`Resources and HPA require the p3-a1 model. Preview the model upgrade first.`;
 			try {
 				checkAutoscaling(props?.resources, props?.autoscaling);
-				if (!checkBindings(props?.autoscaling)) return t`This edit would break a scaling source. Change or disable the affected node or saved-simulation policy first.`;
+				if (!checkBindings(props?.autoscaling, node)) return t`This edit would break a scaling source. Change or disable the affected node or saved-simulation policy first.`;
 			} catch {
 				return t`HPA needs valid resource requests and a compatible workload. Review Advanced settings.`;
 			}
@@ -2637,27 +2914,30 @@ function createResourceValidator({ fragment = false } = {}) {
 			};
 			const old = previous.get(node.id);
 			if (!initialized || revision !== candidate.planning?.revision || !old || old.resources !== entry.resources || old.autoscaling !== entry.autoscaling) {
-				const error = check(node.props);
+				const error = check(node.props, node.id);
 				if (error) return error;
 				budgetChanged = true;
-			} else if (!checkBindings(node.props?.autoscaling)) return t`This edit would break a scaling source. Change or disable the affected node or saved-simulation policy first.`;
+			} else if (!checkBindings(node.props?.autoscaling, node.id)) return t`This edit would break a scaling source. Change or disable the affected node or saved-simulation policy first.`;
 			if (old?.replicas !== entry.replicas) budgetChanged = true;
 			next.set(node.id, entry);
 		}
 		const changedPatches = !initialized || simulations !== candidate.simulations || revision !== candidate.planning?.revision;
 		const nextBindings = [];
 		if (changedPatches) for (const sim of candidate.simulations ?? []) {
-			const patches = [...Object.values(sim.setup?.props ?? {}), ...(sim.timeline ?? []).flatMap((step) => step.action.do === "props" ? [step.action.props] : [])];
-			for (const patch of patches) {
-				const error = check(patch);
+			const patches = [...Object.entries(sim.setup?.props ?? {}), ...(sim.timeline ?? []).flatMap((step) => step.action.do === "props" ? [[step.action.node, step.action.props]] : [])];
+			for (const [node, patch] of patches) {
+				const error = check(patch, node);
 				if (error) return error;
 				const a = patch.autoscaling;
-				if (a?.mode === "on" && a.controller.kind === "keda") nextBindings.push(a);
+				if (scalerTriggers(a).length || loadBalancerSources(a).length) nextBindings.push({
+					node,
+					config: a
+				});
 			}
 		}
-		else for (const a of savedBindings) if (!checkBindings(a)) return t`This edit would break a scaling source. Change or disable the affected node or saved-simulation policy first.`;
+		else for (const saved of savedBindings) if (!checkBindings(saved.config, saved.node)) return t`This edit would break a scaling source. Change or disable the affected node or saved-simulation policy first.`;
 		budgetChanged ||= next.size !== previous.size;
-		if (budgetChanged && resourceBudgetExceeded(candidate)) return t(197, (v) => "Resource lifecycle budget exceeded: " + v.limit.toLocaleString("en") + ". Reduce configured fleets or Capacity ×.", { limit: MAX_LIFECYCLE_REPLICAS });
+		if (budgetChanged && resourceBudgetExceeded(candidate)) return t(202, (v) => "Resource lifecycle budget exceeded: " + v.limit.toLocaleString("en") + ". Reduce configured fleets or Capacity ×.", { limit: MAX_LIFECYCLE_REPLICAS });
 		if (changedPatches) savedBindings = nextBindings;
 		previous = next;
 		simulations = candidate.simulations;
@@ -3538,13 +3818,13 @@ function validateDiagram(data) {
 			const props = isObj$1(sim.setup) && isObj$1(sim.setup.props) ? sim.setup.props : {};
 			for (const [id, value] of Object.entries(props)) if (unsupportedPreset(value)) return {
 				ok: false,
-				error: t(1195, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
+				error: t(1241, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
 			};
 			if (Array.isArray(sim.timeline)) for (const step of sim.timeline) {
 				const action = isObj$1(step) && isObj$1(step.action) ? step.action : void 0;
 				if (action?.do === "props" && unsupportedPreset(action.props)) return {
 					ok: false,
-					error: t(1195, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
+					error: t(1241, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
 				};
 			}
 		}
@@ -3647,7 +3927,7 @@ function validateDiagram(data) {
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
 		if (unsupportedPreset(out.props)) return {
 			ok: false,
-			error: t(1195, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
+			error: t(1241, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
 		};
 		const problem = out.props === void 0 ? void 0 : propsProblem(out.props);
 		if (problem) return {
@@ -3747,7 +4027,7 @@ function validateDiagram(data) {
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
 		if (invalidPlanningDelay(out.props)) return {
 			ok: false,
-			error: t(1140, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
+			error: t(1186, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
 				id: e.id,
 				limit: SIM_LIMITS.timeMs
 			})
