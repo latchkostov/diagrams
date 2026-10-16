@@ -5,6 +5,7 @@ import { createEngine } from "./engine";
 import {
   cloudLesson,
   resourceLesson,
+  type AcaController,
   type AppServiceController,
   type CloudController,
   type CloudRunController,
@@ -450,5 +451,46 @@ describe("cloud adapters in the engine", () => {
       desired: 1,
       decision: { reason: "activation", adapter: "aca" },
     });
+  });
+});
+
+describe("request metrics count only pushed requests, over their documented windows", () => {
+  it("Container Apps HTTP averages the past 15 s of arrivals per second", () => {
+    const c = structuredClone(cloudLesson("aca-http").controller) as AcaController;
+    Object.assign(c, { minReplicas: 1, initialReplicas: 1, maxReplicas: 50 });
+    c.settings.syncMs = 15_000;
+    const f = createFleet(1, 15_000);
+    resetCloud(f, c, 0, "worker", quietReads());
+    // 300 requests in one second, then nothing: 20 requests/s over the documented 15 s window.
+    for (let at = 1000; at <= 15_000; at += 1000)
+      f.samples.push({ at, cpu: 0, occupancy: 0, ready: 1, inFlight: 0, waiting: 0, arrivals: at === 2000 ? 300 : 0 });
+    f.nextSync = 15_000;
+    const d = evaluateCloud(f, c, r, 15_000, quietReads(), "worker", 1, 1, 4)!;
+    expect(d).toMatchObject({ metricKind: "httpRate", metric: 20, target: 10, windowMs: 15_000 });
+  });
+  it("an App Service HTTP queue rule ignores broker deliveries waiting at the instance", () => {
+    const d = cloudFixture("app-service");
+    Object.assign(d.nodes[0], { id: "queue", stencil: "azure.service-bus.queue", label: "Jobs", props: {} });
+    d.edges = [{ id: "consume", from: "queue", to: "worker", kind: "async", props: { travelMs: 10 } }];
+    const a = d.nodes[1].props!.autoscaling as { controller: AppServiceController };
+    Object.assign(a.controller, { evaluationMs: 1000, maxReplicas: 5 });
+    a.controller.rules = [
+      { ...a.controller.rules[0], metric: "httpQueue", threshold: 0.5, windowMs: 1000, cooldownMs: 0 },
+      {
+        ...a.controller.rules[1],
+        metric: "httpQueue",
+        threshold: 0,
+        operator: "LessThan",
+        windowMs: 1000,
+        cooldownMs: 0,
+      },
+    ];
+    const e = createEngine();
+    e.load(d);
+    e.inject("queue", 400);
+    e.step(10_000);
+    // Prefetched deliveries queue at the instance, but none of them is an HTTP request.
+    expect(e.frame().nodes.worker.backlog).toBeGreaterThan(0);
+    expect(e.frame().nodes.worker.fleet).toMatchObject({ desired: 1 });
   });
 });
