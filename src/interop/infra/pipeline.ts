@@ -30,16 +30,26 @@ export function outcomeOf(
   full: ImportGraph,
   { chosen, budget = PICK_OVER }: { chosen?: readonly string[]; budget?: number } = {},
 ): ImportOutcome {
-  const selection = chosen ? { keys: chosen, unresolved: undefined } : defaultSelection(full, budget);
-  const { keys } = selection;
+  const selection = chosen ? { keys: chosen } : defaultSelection(full, budget);
+  const keys = selection?.keys;
   if (keys && !keys.length) throw new ImportError(tr("importDetail.noBoundaryInItFitsIn", { value0: MAX_DRAWN }));
-  const graph = !keys
+  const graph = !selection
     ? full
     : chosen
-      ? { ...pickGraph(full, keys), title: pickedTitle(full, keys) }
-      : pickGraph(full, keys, selection.unresolved);
+      ? { ...pickGraph(full, selection), title: pickedTitle(full, selection.keys) }
+      : pickGraph(full, selection);
   const { diagram, report } = graphToDiagram(graph, keys && full.components.length);
-  if (keys) report.pick = { format, total: full.components.length, groups: pickGroups(full, keys), graph: full };
+  if (selection) {
+    const kept = new Set(graph.components.map((c) => c.key));
+    const unresolved = selection.unresolved && new Set([...selection.unresolved].filter((key) => kept.has(key)));
+    report.pick = {
+      format,
+      total: full.components.length,
+      groups: pickGroups(full, selection.keys),
+      graph: full,
+      selection: { keys: selection.keys, ...(unresolved?.size ? { unresolved } : {}) },
+    };
+  }
   const r = validateDiagram(diagram);
   return r.ok ? { ok: true, format, diagram: r.diagram, warnings: r.warnings, report } : { ok: false, error: r.error };
 }

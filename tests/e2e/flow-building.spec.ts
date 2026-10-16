@@ -365,6 +365,37 @@ test.describe("the + chip and Alt+arrow (D3)", () => {
     await expect(page.getByTestId("live-controls")).toHaveCount(0);
   });
 
+  for (const finish of ["Escape", "click-away", "inspector removal"]) {
+    test(`finishing connection naming persists before autosave: ${finish}`, async ({ page }) => {
+      await select(page, "hub");
+      await page.keyboard.press("Alt+ArrowRight");
+      await page.keyboard.type("redis cache");
+      await page.keyboard.press("Enter");
+      await page.getByTestId("inspector-field-label").fill("Named cache");
+      await page.clock.install();
+      await pauseClock(page);
+      await page.clock.runFor(300);
+      await savedWhen(page, (s) => s.nodes.some((n) => n.label === "Named cache"));
+      await page.keyboard.press("Tab");
+      await page.keyboard.press("Tab");
+      await expect(page.getByTestId("inspector-field-connection")).toBeFocused();
+      await page.keyboard.type("SET NX");
+      expect((await saved(page)).edges.some((e) => e.label === "SET NX")).toBe(false);
+      if (finish === "Escape") await page.keyboard.press("Escape");
+      else if (finish === "click-away") await page.getByTestId("canvas-wrap").click({ position: { x: 30, y: 300 } });
+      else await page.getByTestId("inspector-toggle").click();
+      // Click-away finishes through a frame, inspector teardown through a microtask.
+      // The ordinary 300 ms autosave cannot run during this single frame.
+      await page.clock.runFor(16);
+      const d = await saved(page);
+      const made = must(
+        d.nodes.find((n) => n.label === "Named cache"),
+        "named cache",
+      );
+      expect(d.edges.find((e) => e.to === made.id)).toMatchObject({ from: "hub", label: "SET NX" });
+    });
+  }
+
   test("a name typed after the add was recorded still joins its undo step", async ({ page }) => {
     await select(page, "hub");
     await page.keyboard.press("Alt+ArrowRight");

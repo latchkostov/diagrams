@@ -8,7 +8,6 @@ import type { ImportOutcome } from "../formats";
 import type { ImportGraph, ImportReport } from "./graph";
 import { importKubernetes, outcomeOf, replayOutcome } from "./pipeline";
 import {
-  defaultPick,
   defaultSelection,
   MAX_DEPENDENCY_WORK,
   MAX_DRAWN,
@@ -98,7 +97,7 @@ describe("big imports: the boundaries with the most flows, and a picker", () => 
     const { report } = big();
     const pick = report.pick!;
     const keys = pick.groups.filter((g) => ["team-05", "team-39"].includes(g.label)).map((g) => g.key);
-    expect(pickedNodes(pick.graph, keys)).toBe(22);
+    expect(pickedNodes(pick.graph, { keys })).toBe(22);
     const again = ok(replayOutcome(pick.graph, pick.format, keys));
     expect(again.diagram.groups?.map((g) => g.label).sort()).toEqual(["team-05", "team-39"]);
     expect(again.diagram.nodes).toHaveLength(22);
@@ -141,7 +140,7 @@ describe("big imports: the boundaries with the most flows, and a picker", () => 
       unread: [],
       notes: [],
     };
-    const a = pickGraph(g, ["A"]);
+    const a = pickGraph(g, { keys: ["A"] });
     expect(a.components.map((c) => c.key)).toEqual(["users", "a"]);
     expect(a.links).toHaveLength(1);
     expect(a.groups.map((x) => x.key)).toEqual(["A"]);
@@ -151,7 +150,7 @@ describe("big imports: the boundaries with the most flows, and a picker", () => 
       { key: "B", label: "B", nodes: 1, flows: 1, drawn: false },
     ]);
     // Picking what's in no boundary brings all of it.
-    expect(pickGraph(g, [UNGROUPED]).components.map((c) => c.key)).toEqual(["users", "ext"]);
+    expect(pickGraph(g, { keys: [UNGROUPED] }).components.map((c) => c.key)).toEqual(["users", "ext"]);
   });
 
   /** `sizes` boundaries (members, flows inside each), plus `loose` components in none. */
@@ -195,12 +194,7 @@ describe("big imports: the boundaries with the most flows, and a picker", () => 
       ["module.m1", 1, false],
     ]);
     // Everything ticked draws everything.
-    expect(
-      pickedNodes(
-        g,
-        report.pick!.groups.map((x) => x.key),
-      ),
-    ).toBe(303);
+    expect(pickedNodes(g, { keys: report.pick!.groups.map((x) => x.key) })).toBe(303);
   });
 
   it("opens an import too big to draw at all with a pick, rather than refusing it", () => {
@@ -208,7 +202,7 @@ describe("big imports: the boundaries with the most flows, and a picker", () => 
     const g = graphOf(Array.from({ length: 60 }, (_, b) => [100, b % 7] as [number, number]));
     expect(g.components.length).toBeGreaterThan(MAX_DRAWN);
     // Three boundaries of 100 fit in 300; the ones with 6 flows come first.
-    expect(defaultPick(g)).toEqual(["g6", "g13", "g20"]);
+    expect(defaultSelection(g)?.keys).toEqual(["g6", "g13", "g20"]);
     const { diagram, report } = ok(outcomeOf("terraform", g));
     expect(diagram.nodes).toHaveLength(300);
     expect(report.pick?.total).toBe(6_000);
@@ -348,7 +342,7 @@ it.each(["automatic", "selected"])("keeps cross-namespace KEDA sources and group
   const { diagram, report } = ok(outcomeOf("kubernetes", graph, mode === "selected" ? { chosen: ["workers"] } : {}));
   expect(validateDiagram(diagram).ok).toBe(true);
   expect(diagram.nodes).toHaveLength(302);
-  expect(pickedNodes(graph, ["workers"])).toBe(302);
+  expect(pickedNodes(graph, { keys: ["workers"] })).toBe(302);
   expect(report.pick).toBeDefined();
   expect(report.pick!.groups.filter((g) => g.drawn).map((g) => g.key)).toEqual(["workers"]);
   expect(report.notes.map(formatImportMessage).join(" ")).toContain("included automatically");
@@ -385,10 +379,10 @@ it.each([-1, 0, 1])("deduplicates shared KEDA dependencies at picker budgets (of
         })),
       );
     }
-    expect(pickedNodes(graph, ["workers"])).toBe(budget + offset);
-    const keys = defaultPick(graph, budget === MAX_DRAWN ? 1 : budget + 1)!;
+    expect(pickedNodes(graph, { keys: ["workers"] })).toBe(budget + offset);
+    const keys = defaultSelection(graph, budget === MAX_DRAWN ? 1 : budget + 1)!.keys;
     expect(keys.includes("workers")).toBe(offset <= 0);
-    expect(pickedNodes(graph, keys)).toBeLessThanOrEqual(budget === MAX_DRAWN ? MAX_DRAWN : budget + 1);
+    expect(pickedNodes(graph, { keys })).toBeLessThanOrEqual(budget === MAX_DRAWN ? MAX_DRAWN : budget + 1);
   }
 });
 
@@ -453,8 +447,8 @@ it.each(
         graph.components.push({ key, label: "Extra", hint: { name: "extra" }, group: key });
       }
     const visits = setVisits(() => {
-      const keys = automatic ? defaultPick(graph, size + 2)! : workers.map((worker) => worker.key);
-      nodes = pickedNodes(graph, keys);
+      const keys = automatic ? defaultSelection(graph, size + 2)!.keys : workers.map((worker) => worker.key);
+      nodes = pickedNodes(graph, { keys });
     });
     expect(nodes).toBeLessThanOrEqual(MAX_DRAWN);
     expect(nodes).toBeGreaterThan(0);
@@ -480,16 +474,16 @@ it("reuses an oversized shared closure without expanding it per boundary", () =>
       evidence: { source: "spec" },
     });
   }
-  let keys: string[] = [];
+  let keys: readonly string[] = [];
   const visits = setVisits(() => {
-    keys = defaultPick(graph, 1)!;
+    keys = defaultSelection(graph, 1)!.keys;
   });
   // The broker cannot be selected on its own before an oversized closure is attempted.
   expect(keys).toEqual(["readers"]);
   expect(visits).toBeGreaterThan(MAX_DRAWN);
   expect(visits).toBeLessThan(MAX_DEPENDENCY_WORK);
   expect(keys.some((key) => key.startsWith("worker-"))).toBe(false);
-  expect(pickedNodes(graph, keys)).toBeLessThanOrEqual(MAX_DRAWN);
+  expect(pickedNodes(graph, { keys })).toBeLessThanOrEqual(MAX_DRAWN);
 });
 
 it("does not mark an already-expanded shared closure again for accepted boundaries", () => {
@@ -523,7 +517,7 @@ it("does not mark an already-expanded shared closure again for accepted boundari
       })),
     );
     return setVisits(() => {
-      expect(defaultPick(graph, MAX_DRAWN)).toHaveLength(size + 2);
+      expect(defaultSelection(graph, MAX_DRAWN)?.keys).toHaveLength(size + 2);
     });
   };
   const small = count(200),
@@ -537,7 +531,7 @@ it.each([5, 6])("keeps a drawable selection at dependency work budget %s", (work
   for (let i = 0; i < 2; i++)
     graph.links.push({ from: "worker-0", to: "worker-0", relation: "flow", evidence: { source: "spec" } });
   const selection = defaultSelection(graph, 1, workBudget);
-  const picked = pickGraph(graph, selection.keys!, selection.unresolved);
+  const picked = pickGraph(graph, selection!);
   const { diagram, report } = ok(outcomeOf("kubernetes", picked));
   expect(validateDiagram(diagram).ok).toBe(true);
   if (workBudget === 5) {
@@ -551,7 +545,7 @@ it.each([5, 6])("keeps a drawable selection at dependency work budget %s", (work
       "Import a smaller selection",
     );
   } else {
-    expect(selection.unresolved).toBeUndefined();
+    expect(selection?.unresolved).toBeUndefined();
     expect(diagram.nodes).toHaveLength(3);
     expect(diagram.nodes[0].props?.autoscaling).toMatchObject({ mode: "on" });
     expect(report.notDrawn).toEqual([]);
@@ -601,9 +595,98 @@ it("opens a small boundary when rejected closures exhaust the work cap", () => {
     /dependencies were not resolved.*Import a smaller selection/,
   );
   expect(graph).toEqual(before);
+  const kept = new Set(diagram.nodes.map((n) => n.label));
+  const recovery = report.notDrawn.filter(
+    (row) => typeof row.reason !== "string" && row.reason.code === "importDetail.scalingWorkExhausted",
+  );
+  expect(recovery.length).toBeGreaterThan(0);
+  expect(recovery.every((row) => kept.has(formatImportMessage(row.name)))).toBe(true);
+  expect(pickedNodes(report.pick!.graph, report.pick!.selection)).toBe(diagram.nodes.length);
   const recovered = ok(replayOutcome(graph, "kubernetes", ["small"]));
   expect(recovered.diagram.nodes).toHaveLength(1);
   expect(recovered.report.notDrawn).toEqual([]);
+});
+
+it("restores exhausted KEDA scaling by retrying the same fitting boundary", () => {
+  const graph = scalingGraph(24);
+  graph.components = graph.components.slice(0, 24);
+  graph.groups = [{ key: "readers", label: "Readers" }];
+  graph.links = [];
+  for (let i = 0; i <= MAX_DRAWN; i++)
+    graph.components.push({ key: `reader-${i}`, label: `Reader ${i}`, hint: { name: "reader" }, group: "readers" });
+  for (const [i, worker] of graph.components.slice(0, 24).entries()) {
+    const source = `source-${i}`;
+    worker.group = worker.key;
+    worker.props!.autoscaling = {
+      ...kedaLesson("kafka", { node: source, group: "readers" }),
+      controller: { ...kedaLesson("kafka", { node: source, group: "readers" }).controller, maxReplicas: 2 },
+    };
+    graph.groups.push({ key: worker.key, label: worker.key });
+    graph.components.push({
+      key: source,
+      label: `Topic ${i}`,
+      hint: { name: "topic" },
+      stencil: "kafka.topic",
+      group: worker.key,
+    });
+    for (let reader = 0; reader < (i === 23 ? 2000 : MAX_DRAWN + 1); reader++)
+      graph.links.push({
+        from: source,
+        to: `reader-${reader}`,
+        relation: "flow",
+        props: { group: "readers" },
+        evidence: { source: "spec" },
+      });
+  }
+  const { diagram, report } = ok(outcomeOf("kubernetes", graph, { budget: 2 }));
+  expect(diagram.nodes).toHaveLength(2);
+  expect(report.pick!.selection.keys).toEqual(["worker-23"]);
+  expect([...report.pick!.selection.unresolved!]).toEqual(["worker-23"]);
+  expect(pickedNodes(graph, report.pick!.selection)).toBe(2);
+  expect(pickedNodes(graph, { keys: report.pick!.selection.keys })).toBe(2002);
+  const recovered = ok(replayOutcome(graph, "kubernetes", report.pick!.selection.keys));
+  expect(recovered.diagram.nodes).toHaveLength(2002);
+  expect(recovered.diagram.nodes.find((n) => n.label === "Worker 23")?.props?.autoscaling).toMatchObject({
+    mode: "on",
+    controller: { triggers: [{ source: { node: expect.any(String), group: "readers" } }] },
+  });
+  expect(recovered.diagram.edges.some((e) => e.props?.group === "readers")).toBe(true);
+  expect(recovered.report.notDrawn).toEqual([]);
+  expect(validateDiagram(recovered.diagram).ok).toBe(true);
+});
+
+it("retains resolved scaling when a later route exhausts dependency work", () => {
+  const graph = scalingGraph(2);
+  graph.components = graph.components.slice(0, 2);
+  graph.groups = [{ key: "readers", label: "Readers" }];
+  graph.links = [];
+  for (const [i, worker] of graph.components.slice().entries()) {
+    const source = `source-${i}`;
+    worker.group = worker.key;
+    worker.props!.autoscaling = kedaLesson("kafka", { node: source, group: "readers" });
+    graph.groups.push({ key: worker.key, label: worker.key });
+    graph.components.push(
+      { key: source, label: `Topic ${i}`, hint: { name: "topic" }, stencil: "kafka.topic", group: worker.key },
+      { key: `reader-${i}`, label: `Reader ${i}`, hint: { name: "reader" }, group: "readers" },
+    );
+    graph.links.push({
+      from: source,
+      to: `reader-${i}`,
+      relation: "flow",
+      props: { group: "readers" },
+      evidence: { source: "spec" },
+    });
+    for (let loop = 0; loop < 3 - i; loop++)
+      graph.links.push({ from: worker.key, to: worker.key, relation: "flow", evidence: { source: "spec" } });
+  }
+  const plan = defaultSelection(graph, 5, 7)!;
+  const selected = pickGraph(graph, plan);
+  expect(selected.components.find((n) => n.key === "worker-0")?.props?.autoscaling).toMatchObject({ mode: "on" });
+  expect(selected.components.find((n) => n.key === "worker-1")?.props?.autoscaling).toMatchObject({
+    mode: "unsupported",
+  });
+  expect(selected.links.some((l) => l.from === "source-0" && l.to === "reader-0")).toBe(true);
+  expect(selected.notDrawn.map((n) => n.name)).toEqual(["Worker 1"]);
 });
 
 it("bounds total closure expansion even across distinct overlapping routes", () => {
@@ -643,13 +726,13 @@ it("bounds total closure expansion even across distinct overlapping routes", () 
   const indexing = setVisits(() => {
     pickGroups(graph, []);
   });
-  let keys: string[] = [];
+  let keys: readonly string[] = [];
   const visits = setVisits(() => {
-    keys = defaultPick(graph, MAX_DRAWN - 1)!;
+    keys = defaultSelection(graph, MAX_DRAWN - 1)!.keys;
   });
   expect(keys).toBeDefined();
   expect(visits - indexing).toBeLessThan(MAX_DEPENDENCY_WORK + graph.components.length * 4);
-  expect(pickedNodes(graph, keys)).toBeLessThanOrEqual(MAX_DRAWN);
+  expect(pickedNodes(graph, { keys })).toBeLessThanOrEqual(MAX_DRAWN);
 });
 it.each(["source", "route"])(
   "reports an omitted KEDA %s without refusing the import or retaining an orphan policy",
@@ -690,7 +773,7 @@ it("randomized namespace selections never orphan a scaler source (200 seeds)", (
     for (const component of graph.components) component.group = groups[Math.floor(random() * groups.length)];
     const keys = groups.filter(() => random() < 0.5);
     if (!keys.length) keys.push(groups[0]);
-    const selected = pickGraph(graph, keys);
+    const selected = pickGraph(graph, { keys });
     const ids = new Set(selected.components.map((c) => c.key));
     for (const component of selected.components) {
       const a = component.props?.autoscaling as AutoscalingConfig | undefined;

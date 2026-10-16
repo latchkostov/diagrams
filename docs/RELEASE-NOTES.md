@@ -106,13 +106,28 @@
   every creation and edit path, native reads, imports and agent operations; edits that would break them are
   refused atomically, and connection label edits are kept.
 - **Unchanged:** legacy, A1 and A2 diagrams play exactly as before; their parity outputs are unchanged.
+
 ## Review follow-ups: fitting and persistence (2026-10-16)
 
 - Opening, fitting, panning and zooming a diagram do not save it or turn an example into
   your own copy. A real edit still saves and promotes the example, including edits retained
   from an earlier session. Fits no longer serialize the document to update persistence.
 - UX review: viewing an example leaves it an example; editing keeps the existing copy and
-  Undo behavior. No controls added. No output goldens are expected to change.
+  Undo behavior. No controls added.
+- Opening fits share cancellation with measured refinements, and empty canvases do not
+  leave a bootstrap fit waiting for their first node. Nested boundary fitting shares one
+  pure planner across the editor and agent placement. Position-only fits reuse font readiness;
+  Lab readiness stops reading nodes once reported.
+- On phones, opening AI switches away from Inputs; reopening Inputs folds AI. Caption contrast
+  retries work that previously exhausted its budget, bounds spatial queries including empty
+  cells, and skips unrelated annotation text. Malformed raw scaling properties remain editable.
+- Import recovery keeps the exact degraded selection, offers a same-boundary retry when it
+  can restore KEDA dependencies, distinguishes the drawn and retry counts, and reports omitted
+  policies only for retained workloads. Escape, click-away and inspector removal now have
+  frozen-clock naming-persistence coverage; the existing immediate save behavior is unchanged.
+- Output parity: no goldens changed. Readiness tests render their own comparison baseline,
+  removing their dependency on the order in which render tests update goldens. The skill viewer
+  is refreshed at plugin 1.1.30, one patch above origin/master.
 
 ## Nightly keyboard and test readiness (#129, 2026-10-16)
 

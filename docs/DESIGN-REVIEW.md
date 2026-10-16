@@ -7,6 +7,21 @@ inline slots preserve the English content, command bytes, links, controls and st
 direction and LTR command rows retain their behavior. The page adds no chrome. The reviewer did not
 run browsers or tests; production browser regressions independently cover reordered content, command
 preservation, mobile/desktop overflow and delivery transports.
+## Review follow-ups batch 2 (2026-10-16)
+
+Scoped source and regression review: viewing/fitting an example leaves its storage and ownership
+alone, while edits keep the existing copy and Undo behavior. Queued opening fits and active fits
+yield to input; an empty canvas keeps its first node's placement. No controls or chrome added.
+
+Phone panel switching is reciprocal: explicit AI opening closes Inputs, and Inputs or crossing
+the phone breakpoint folds AI. The import report distinguishes the proposed retry from what is
+already drawn using existing translated wording; its unchanged selection remains actionable
+when dependencies were omitted. Infrastructure names retain their existing path wrapping.
+
+The new cases exercise production browser behavior and static rendering of the import picker;
+this was not an independent designer or whole-app assistive-technology walkthrough. Rejected
+implementation: a persistent font-cache MutationObserver added idle/live callbacks, so the
+cache instead compares native text and controlled typography inputs. Routing and cloud-autoscaling implementation remain outside this batch.
 
 ## Stencil names and agent defaults gate (2026-10-15)
 
