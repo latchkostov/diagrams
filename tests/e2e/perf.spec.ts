@@ -286,7 +286,9 @@ test.describe("perf: interactions", { tag: "@dev" }, () => {
     await label.press("Enter");
     await page.keyboard.press("Escape");
 
-    const box = await page.getByTestId("node-notifications").boundingBox();
+    const dragged = page.getByTestId("node-notifications");
+    await waitForStableBox(dragged);
+    const box = await dragged.boundingBox();
     if (!box) throw new Error("no node");
     const { counts: drag } = await measure(page, async () => {
       await page.mouse.move(box.x + box.width * 0.3, box.y + box.height / 2);
@@ -295,6 +297,10 @@ test.describe("perf: interactions", { tag: "@dev" }, () => {
         await page.mouse.move(box.x + box.width * 0.3 + i * 8, box.y + box.height / 2 + i * 4);
       await page.mouse.up();
     });
+    // The gesture moved the node (48 px right and 24 down, snapped to the grid), so the counts are a drag's.
+    const moved = await dragged.boundingBox();
+    expect(moved && moved.x - box.x, "the node moved right").toBeGreaterThan(20);
+    expect(moved && moved.y - box.y, "the node moved down").toBeGreaterThan(5);
     expect(drag.CanvasInner ?? 0, JSON.stringify(drag)).toBeGreaterThan(0);
     expect(drag.NodeWrapper ?? 0, JSON.stringify(drag)).toBeLessThan(every);
     expectNoErrors(consoleErrors);

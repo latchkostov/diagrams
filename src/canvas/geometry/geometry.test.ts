@@ -142,6 +142,56 @@ describe("nudgeRoutes", () => {
     expect(bEnd).toBeLessThan(aStart);
   });
 
+  // Two routes sharing a track at 300 (the first test's), with a node beside it or across it, in both orientations: the
+  // horizontal case is the same diagram with x and y swapped.
+  const flip = {
+    p: (q: Point): Point => ({ x: q.y, y: q.x }),
+    r: (r: Rect): Rect => ({ x: r.y, y: r.x, width: r.height, height: r.width }),
+  };
+  const same = { p: (q: Point) => q, r: (r: Rect) => r };
+  const sharedTrack = (t: typeof same) =>
+    new Map<string, Point[]>([
+      [
+        "a",
+        [
+          { x: 220, y: 30 },
+          { x: 300, y: 30 },
+          { x: 300, y: 300 },
+          { x: 400, y: 300 },
+        ].map(t.p),
+      ],
+      [
+        "b",
+        [
+          { x: 220, y: 50 },
+          { x: 300, y: 50 },
+          { x: 300, y: 400 },
+          { x: 400, y: 400 },
+        ].map(t.p),
+      ],
+    ]);
+  const ends = [card(0, 0), card(400, 264), card(400, 364)];
+  for (const [name, t, key] of [
+    ["vertical", same, "x"],
+    ["horizontal", flip, "y"],
+  ] as const) {
+    it(`narrows a ${name} bundle beside a node, so neither line reaches it`, () => {
+      // 4 px of room on the right of the track: the lines step 4 apart (298 and 302), not 11.
+      const wall = { x: 304, y: 120, width: 60, height: 60 };
+      const out = nudgeRoutes(sharedTrack(t), [...ends, wall].map(t.r));
+      expect([out.get("a")![1][key], out.get("b")![1][key]]).toEqual([302, 298]);
+      for (const pts of out.values())
+        for (let i = 1; i < pts.length; i++) expect(segmentHitsRect(pts[i - 1], pts[i], t.r(wall))).toBe(false);
+    });
+    it(`never moves a ${name} line further into a node it crosses`, () => {
+      // A node across the track (the route's fallback elbow can cross one): both spread slots are inside it, so
+      // neither line moves.
+      const across = { x: 295, y: 150, width: 25, height: 10 };
+      const out = nudgeRoutes(sharedTrack(t), [...ends, across].map(t.r));
+      expect([out.get("a")![1][key], out.get("b")![1][key]]).toEqual([300, 300]);
+    });
+  }
+
   it("leaves lone segments alone", () => {
     const pts = [
       { x: 0, y: 0 },
