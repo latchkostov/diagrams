@@ -1,32 +1,33 @@
 # Roadmap
 
-The plan for the coming week, in execution order. Each item ships as reviewed PRs: an independent code review, every fix covered by a test that fails without it, and CI on the production build. The research behind each item is linked. Last updated 2026-10-15 (evening).
+The plan for the coming week, in execution order. Each item ships as reviewed PRs: an independent code review, every fix covered by a test that fails without it, and CI on the production build. The research behind each item is linked. Last updated 2026-10-16.
 
 ## In flight
 
-| Item                          | What it is                                                                                                                                                                       | Research                               |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| Autoscaling A2                | KEDA on broker lag and queue length, scale to and from zero, and Kubernetes HPA/KEDA import                                                                                      | [autoscaling](research/autoscaling.md) |
-| Benchmarks                    | Workloads of 100–5,000 nodes; load, render, typing, live tick, checks, planning, memory, render counts and bundle size. Robust CI gates, a committed baseline and a hotspot list | to be written: `docs/BENCHMARKS.md`    |
-| Parity browser-tier stability | Make the parity harness's browser renders deterministic under load, then record the 8 deferred showcase cases                                                                    | [PARITY](PARITY.md)                    |
+| Item                     | What it is                                                                                                                                                                                   | Research                                   |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| Performance round        | PR 1 (editing) shipped. Now: full routing speed, export off the main thread, viewport virtualisation, then live view (hotspots 6, 9, 10) after R1                                            | [BENCHMARKS](BENCHMARKS.md)                |
+| Routing R1               | Optional request routes: traffic mixes, gateway route tables (Kong and Fastly style) and per-route particle colours; off by default                                                          | [routing](research/routing.md)             |
+| Collaboration C0         | Browser-only proof and foundations: threat model, Yjs mapping with per-user undo, E2E encryption with the key in the link's fragment, presence, and a transport interface. Behind a lab flag | [collaboration](research/collaboration.md) |
+| Local gate reliability   | The full local gate (all six e2e shards) passes on clean master, and the gate never reuses an existing server                                                                                | [QUALITY](QUALITY.md)                      |
+| Review follow-ups 2      | A view fit never saves or promotes an example; one shared boundary-refit planner; P2s from recent reviews                                                                                    | —                                          |
+| Static-page translations | The sign-in and /skill/ pages. Privacy and Terms stay English pending the owner                                                                                                              | [I18N](I18N.md)                            |
 
 Shipped since the last update:
 
-- Autoscaling A1: resources, replica lifecycle and the Kubernetes HPA, with seeded invariant fuzzing (#117).
-- A diagram picker for your own work, plus an Examples gallery with feature tags and Run it (#118).
-- Six showcase examples for recently shipped features (#120).
-- Nested boundaries and zones (#115) and the relationship dropdown with icons (#122), both by a collaborator.
-- The toolchain on Node 24, pnpm 12, TypeScript 7 and Ubuntu 26.04 (#119), and CI runner pins (#113).
-- Deterministic flaky tests (#116), the nightly readiness fixes (#121) and review follow-ups (#123).
+- Autoscaling is complete: A2, KEDA on broker metrics with scale to zero and Kubernetes import (#125); A3, ECS, Container Apps, App Service and Cloud Run, plus scenario sizing (#135).
+- The benchmark suite, with machine-independent CI gates and a hotspot list (#127).
+- Performance PR 1: editing (#130). Node renders per key dropped from 725 to 1.5 at 500 nodes, and drag frames are up to 5× faster, with identical routes.
+- View fits wait on settled signals, not timers, which makes the parity browser tier stable (#126).
+- Known gaps: default names follow stencil changes, and agent `connect` infers relations (#131).
+- Nightly fixes (#133), including the live view Esc keyboard listener.
+- Research: vendor API profiles for P5 (#128), and real-time collaboration, serverless first and end-to-end encrypted (#132).
 
-Rule since 2026-10-14: every user-visible feature ships with a showcase example in the gallery.
+Rules: every user-visible feature ships with a showcase example. Every push passes the full local gate first.
 
 ## Next, in order
 
-1. **Autoscaling** ([autoscaling](research/autoscaling.md))
-   - A1: shipped (#117).
-   - A2: KEDA (lag and queue length, scale to zero) and Kubernetes import mapping.
-   - A3: ECS, Container Apps, App Service, Cloud Run, plus planner suggestions for min and max replicas.
+1. **Autoscaling**: shipped (A1 #117, A2 #125, A3 #135).
 2. **P6: endpoints and routing** ([routing](research/routing.md))
    - R1: optional routes, source traffic mixes, gateway route tables and per-route particle colours.
    - R2: endpoints and per-route capacity.
@@ -38,21 +39,23 @@ Rule since 2026-10-14: every user-visible feature ships with a showcase example 
    - Add one derived-state layer that separates configuration changes from live metrics.
    - Fix the benchmark hotspots, moving work to workers where it helps.
    - Audit test health and code health; consolidate the docs.
-6. **C4 multi-level views**, built on the refactored canvas: the model and migration, drill-down, editing across levels, simulation roll-up, Structurizr and Mermaid C4 export, and view switching in the viewer.
-7. **The rest of the planning plan** ([planning-model](research/planning-model.md))
+6. **Real-time collaboration** ([collaboration](research/collaboration.md)), serverless first: C0 (browser proof, in flight) → C1 (anonymous, end-to-end encrypted co-editing over WebRTC with public matchmaking, plus presence) → the owner decides on an optional self-hostable relay, using C1 beta connectivity data → C2 (cursors, presenter mode, comments) → C3 (optional accounts and invites) → C4 (history). No server is built without the owner's approval.
+7. **C4 multi-level views**, built on the refactored canvas: the model and migration, drill-down, editing across levels, simulation roll-up, Structurizr and Mermaid C4 export, and view switching in the viewer.
+8. **The rest of the planning plan** ([planning-model](research/planning-model.md))
    - P5: vendor API profiles.
    - P7: OpenAPI import.
    - P8–P9: education for each stencil.
    - P10: capacity, headroom, what-if comparisons and growth.
    - P11: latency budgets (p50/p95, which needs item 10).
    - P12: cost hints.
-8. **Languages.** Translate the inspector, live view, capacity, planning and checks screens once the branches above have merged; then the static pages.
-9. **Known gaps from reviews:**
-   - Add a consumer restarts the run.
-   - Infrastructure imports don't mark inferred relations.
-   - Dependency outages aren't simulated.
-   - Follow-up review P2s from #123 (contrast budget caching, spatial-query budgets, raw autoscaling prop guards, AI-panel opening while Inputs is open).
-   - The zoom a diagram opens at depends on timing and drifts slightly under load. The parity harness found it, and it doesn't pin it yet.
+9. **Languages.** Translate the inspector, live view, capacity, planning and checks screens once the branches above have merged; then the static pages.
+10. **Known gaps from reviews:**
+
+- Add a consumer restarts the run.
+- Infrastructure imports don't mark inferred relations.
+- Dependency outages aren't simulated.
+- Follow-up review P2s from #123 (contrast budget caching, spatial-query budgets, raw autoscaling prop guards, AI-panel opening while Inputs is open).
+- The zoom a diagram opens at depends on timing and drifts slightly under load. The parity harness found it, and it doesn't pin it yet.
 
 ## Waiting for the owner's decision
 
