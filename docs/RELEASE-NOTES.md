@@ -106,6 +106,26 @@
   five-port range on IPv4 and IPv6 before keeping their intended occupied member. A forced blocked
   neighbour regression fails with the old setup; the real preflight and its exact-port assertions
   remain intact. All 1,403 E2E tests passed in that run; the complete gate is repeated after this fix.
+## Collaboration C1a: review round 2 (2026-10-16)
+
+- Recovery now checkpoints the entire document when attaching, including earlier offline edits, before
+  appending deltas. Pending plaintext is capped at 256 KiB; stalled or failed storage switches to a fresh
+  checkpoint retry and keeps the unsaved draft editable. Crash/reload regressions verify every durable
+  write, and browser tests verify rollback after interrupted IndexedDB writes.
+- Journal and checkpoint reads share authentication/schema validation. Corrupt external tails no longer
+  block future saves: the last valid checkpoint and live edits survive, while conditional removal protects
+  a concurrent replacement. Resource-limited records remain available for recovery. The threat model now
+  documents the complete base, transaction, cursor, corruption, memory and acknowledgement invariants.
+- Privacy shutdown, including Private paste, restores local Undo/Redo from the last shared canvas.
+  Later edits stay undoable and privacy stays sticky. Repeated refusals announce again without moving
+  focus; privacy polling stays quiet. Privacy and binding reads reuse history's cached diagram conversion.
+  Boundary fixtures use one deterministic initialization script, and the membership-cache regression now
+  compares surviving nodes against a fresh equivalent diagram.
+- Only `node/i18n/catalogs.json` intentionally changes: one English `collab.damagedRecovery` addition
+  updates message counts, English fallbacks and collaboration-area fingerprints. It explains possible
+  missing changes after damaged recovery. All other areas and all diagram/browser goldens stay unchanged.
+  The generated skill helper and stale committed viewer are refreshed; plugin 1.1.35 remains one patch above master.
+
 ## Collaboration C1a: review round 1 (2026-10-16)
 
 - Concurrent edge inserts keep both peers' connections, and a drop or resize with its boundary

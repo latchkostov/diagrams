@@ -23,7 +23,7 @@ export type CanvasHistory = History<CanvasSnapshot, FlowSelection>;
 
 /** The saved file a snapshot stands for, worked out once per snapshot (history entries are immutable). */
 const files = new WeakMap<CanvasSnapshot, DiagramFile>();
-const fileOf = (s: CanvasSnapshot) => {
+export const snapshotDiagram = (s: CanvasSnapshot) => {
   let d = files.get(s);
   if (!d) files.set(s, (d = fromFlow(s.meta, s.nodes, s.edges)));
   return d;
@@ -35,7 +35,7 @@ const fileOf = (s: CanvasSnapshot) => {
  * layers, boundaries, zones and edges), except the diagram's own fields (title, description, direction,
  * simulations), which have no element to select.
  */
-export const snapshotKey = (s: CanvasSnapshot) => JSON.stringify(fileOf(s));
+export const snapshotKey = (s: CanvasSnapshot) => JSON.stringify(snapshotDiagram(s));
 
 const roomRecordKeys = new WeakMap<object, { group?: string; text: string }>();
 
@@ -43,7 +43,7 @@ const roomRecordKeys = new WeakMap<object, { group?: string; text: string }>();
  * projection; measurements and selection alone still never count as edits. The final ordered key
  * is linear in bytes, but revisiting/sorting every nested settings object is unnecessary. */
 export function roomSnapshotKey(s: CanvasSnapshot): string {
-  const { nodes, edges, groups, annotations, ...meta } = fileOf(s);
+  const { nodes, edges, groups, annotations, ...meta } = snapshotDiagram(s);
   const sources = new Map(s.nodes.map((n) => [n.id, n]));
   const edgeSources = new Map(s.edges.map((e) => [e.id, e]));
   const record = (value: { id: string; group?: string }, source: object | undefined) => {
@@ -227,7 +227,7 @@ export function changesBetween(before: CanvasSnapshot, after: CanvasSnapshot): R
   let row = changes.get(before);
   if (!row) changes.set(before, (row = new WeakMap()));
   let c = row.get(after);
-  if (!c) row.set(after, (c = stepChanges(fileOf(before), fileOf(after))));
+  if (!c) row.set(after, (c = stepChanges(snapshotDiagram(before), snapshotDiagram(after))));
   return c;
 }
 

@@ -1,5 +1,6 @@
 import { expect, it, onTestFinished, vi } from "vitest";
 import type { ReactFlowInstance } from "@xyflow/react";
+import * as conversion from "../canvas/convert";
 import { fromFlow, toFlow } from "../canvas/convert";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 import { HistoryController } from "../editor/historyController";
@@ -8,7 +9,7 @@ import { createEditor, type EditorDeps } from "../editor/useEditor";
 import type { CanvasSnapshot } from "../editor/useHistory";
 import { makePayload } from "../editor/clipboard";
 import { present } from "../editor/history";
-import { withSelection } from "../editor/historySelection";
+import { snapshotDiagram, withSelection } from "../editor/historySelection";
 import { FakeClock } from "./clock";
 import { CollaborativeEditorRoom } from "./editorRoom";
 import { demoDiagram } from "./lab/demo";
@@ -82,11 +83,19 @@ function editor(session: CollabSession, privacy: (next: CanvasSnapshot) => Canva
       open: () => history.openTransaction,
       undo: () => {
         flush();
-        history.step("undo", { nodes: [], edges: [] });
+        const next = history.step("undo", { nodes: [], edges: [] });
+        if (next) {
+          state = next;
+          render();
+        }
       },
       redo: () => {
         flush();
-        history.step("redo", { nodes: [], edges: [] });
+        const next = history.step("redo", { nodes: [], edges: [] });
+        if (next) {
+          state = next;
+          render();
+        }
       },
       replace: (next, key, before) => {
         history.replace(before ?? state, merge, next, key, { nodes: [], edges: [] }, ++time);
@@ -101,6 +110,7 @@ function editor(session: CollabSession, privacy: (next: CanvasSnapshot) => Canva
   const ctl = createEditor(rf, deps);
   const disconnect = room.connect({
     getPrivacy: privacy,
+    detached: () => history.detachRoom(),
     getSnapshot: () => state,
     flushPending: flush,
     receive: (next, step) => {
@@ -360,8 +370,9 @@ it("gives concurrent creates, boundaries, annotations and pasted references sess
   expect(new Set(ids).size).toBe(ids.length);
 });
 
-it("converges real command paths under seeded concurrent property edits, moves, creates and scoped undo", async () => {
-  for (let seed = 1; seed <= 12; seed++) {
+it.each(Array.from({ length: 12 }, (_, i) => i + 1))(
+  "converges real command paths under concurrent property edits, moves, creates and scoped undo (seed %i)",
+  async (seed) => {
     const { A, B, settle, a, b } = await setup(seed);
     const random = seededRandom(seed);
     for (let step = 0; step < 16; step++) {
@@ -379,8 +390,8 @@ it("converges real command paths under seeded concurrent property edits, moves, 
       expect(A.history.history.entries).toHaveLength(1);
     }
     await Promise.all([a.leave(), b.leave()]);
-  }
-});
+  },
+);
 
 it.each(["new", "existing"])("concurrent %s-node splits on different edges retain both connections", async (mode) => {
   const { A, B, settle } = await setup();
@@ -498,7 +509,16 @@ it("exposes typed refusals, rolls back the edit, and notifies the editor accessi
       n.id === "api" ? { ...n, data: { ...n.data, props: { ["k".repeat(256)]: "value" } } } : n,
     ),
   } as CanvasSnapshot;
+  const notify = vi.fn();
+  const stop = A.room.onChange(notify);
+  onTestFinished(() => {
+    stop();
+  });
   expect(A.room.commit(next)).toEqual({ status: "refused", reason: "key-too-long" });
+  const occurrence = A.room.refusalOccurrence;
+  expect(A.room.commit(next)).toEqual({ status: "refused", reason: "key-too-long" });
+  expect(A.room.refusalOccurrence).toBe(occurrence + 1);
+  expect(notify).toHaveBeenCalledTimes(2);
   expect(refused).toHaveBeenCalledWith("key-too-long");
   expect(fromFlow(state.meta, state.nodes, state.edges)).toEqual(fromFlow(before.meta, before.nodes, before.edges));
   expect(A.room.commit(state)).toEqual({ status: "unchanged" });
@@ -536,4 +556,132 @@ it("checks the candidate diagram's effective privacy before publishing or checkp
   expect(mounted.api.getNode("api")?.label).toBe("Restricted test draft");
   expect(B.api.getNode("api")?.label).toBe("API");
   expect(a.doc.project().diagram?.nodes.find((n) => n.id === "api")?.label).toBe("API");
+});
+
+it.each(["private", "localOnly"] as const)(
+  "transfers %s shutdown to local Undo, preserving the triggering edit and subsequent edits",
+  async (flag) => {
+    const { A, a, B, settle } = await setup();
+    A.disconnect();
+    let restricted = false;
+    const mounted = editor(a, () => ({ [flag]: restricted }));
+    B.api.updateNode("db", { label: "Last shared baseline" });
+    B.flush();
+    await settle();
+    restricted = true;
+    mounted.api.updateNode("api", { label: "Private draft" });
+    mounted.flush();
+    expect(mounted.history.collaborative).toBe(false);
+    expect(mounted.room.refusal).toBe("private");
+    const occurrence = mounted.room.refusalOccurrence;
+    mounted.room.checkPrivacy();
+    mounted.room.checkPrivacy();
+    expect(mounted.room.refusalOccurrence).toBe(occurrence); // privacy polling is not a rejected edit
+    mounted.api.deleteElements({ nodeIds: ["orders"] });
+    mounted.flush();
+    mounted.api.undo();
+    expect(mounted.api.getNode("orders")).toBeDefined();
+    expect(mounted.api.getNode("api")?.label).toBe("Private draft");
+    mounted.api.undo();
+    expect(mounted.api.getNode("api")?.label).toBe("API");
+    expect(mounted.api.getNode("db")?.label).toBe("Last shared baseline");
+    expect(restricted).toBe(true);
+    mounted.api.redo();
+    expect(mounted.api.getNode("api")?.label).toBe("Private draft");
+    await a.leave();
+    await settle();
+    expect(B.api.getNode("api")?.label).toBe("API");
+    expect(B.api.getNode("orders")).toBeDefined();
+  },
+);
+
+it("privacy observation before commit keeps the pre-paste baseline for local Undo", async () => {
+  const { A, a, B, settle } = await setup();
+  A.disconnect();
+  let restricted = false;
+  const mounted = editor(a, () => ({ private: restricted }));
+  const payload = makePayload(demoDiagram(), ["api"])!;
+  mounted.api.pastePayload(payload);
+  restricted = true;
+  // Matches useHistory's layout observation, before its debounced flush or explicit Undo.
+  expect(mounted.room.checkPrivacy()).toBe(false);
+  mounted.flush();
+  expect(mounted.diagram().nodes).toHaveLength(demoDiagram().nodes.length + 1);
+  mounted.api.undo();
+  expect(mounted.diagram().nodes).toHaveLength(demoDiagram().nodes.length);
+  expect(restricted).toBe(true);
+  mounted.api.redo();
+  expect(mounted.diagram().nodes).toHaveLength(demoDiagram().nodes.length + 1);
+  await a.leave();
+  await settle();
+  expect(B.diagram().nodes).toHaveLength(demoDiagram().nodes.length);
+});
+
+it("reuses one snapshot conversion for history, repeated privacy checks and binding reads, while checking flags immediately", async () => {
+  const { A, a } = await setup();
+  A.disconnect();
+  let restricted = false;
+  const mounted = editor(a, (next) => ({ private: restricted, diagram: snapshotDiagram(next) }));
+  const convert = vi.spyOn(conversion, "fromFlow");
+  onTestFinished(() => convert.mockRestore());
+  mounted.api.updateNode("api", { label: "One conversion" });
+  convert.mockClear();
+  mounted.history.key(mounted.state());
+  mounted.room.checkPrivacy();
+  mounted.room.checkPrivacy();
+  mounted.flush();
+  mounted.room.flushRemote();
+  expect(convert).toHaveBeenCalledTimes(1);
+  convert.mockClear();
+  for (let i = 0; i < 10; i++) mounted.room.checkPrivacy();
+  expect(convert).not.toHaveBeenCalled();
+  restricted = true;
+  expect(mounted.room.checkPrivacy()).toBe(false);
+  expect(mounted.history.collaborative).toBe(false);
+  expect(convert).not.toHaveBeenCalled();
+});
+
+it("keeps a deferred remote projection as the history baseline after a local gesture commits", async () => {
+  const { A, B, settle } = await setup();
+  A.gesture("api", 500, true);
+  B.api.updateNode("db", { label: "Deferred peer edit" });
+  B.flush();
+  await settle();
+  A.gesture("api", 500, false);
+  A.flush();
+  expect(A.api.getNode("db")?.label).toBe("Deferred peer edit");
+  expect(present(A.history.history).key).toBe(A.history.key(A.state()));
+});
+
+it("a canvas remounted after privacy shutdown starts with local history", async () => {
+  const { A, a } = await setup();
+  A.disconnect();
+  const mounted = editor(a, () => ({ private: true }));
+  mounted.room.checkPrivacy();
+  mounted.disconnect();
+  const history = new HistoryController(mounted.state(), 0, mounted.room);
+  const disconnect = mounted.room.connect({
+    getSnapshot: mounted.state,
+    flushPending: () => true,
+    receive: () => {
+      throw new Error("A closed room must not replace a private draft");
+    },
+    detached: () => history.detachRoom(),
+  });
+  onTestFinished(disconnect);
+  expect(history.collaborative).toBe(false);
+});
+
+it("keeps history keys stable across privacy-only detachment and later local replacements", async () => {
+  const { A } = await setup();
+  const snapshot = A.state(),
+    key = A.history.key(snapshot);
+  A.history.detachRoom();
+  expect(A.history.key(snapshot)).toBe(key);
+  expect(present(A.history.history).key).toBe(key);
+  const next = { ...snapshot, meta: { ...snapshot.meta, title: "Local replacement" } };
+  A.history.replace(snapshot, undefined, next, "local:replacement", { nodes: [], edges: [] }, 1);
+  expect(present(A.history.history).key).toBe(A.history.key(next));
+  expect(A.history.step("undo", { nodes: [], edges: [] })?.meta.title).toBe(snapshot.meta.title);
+  expect(present(A.history.history).key).toBe(key);
 });

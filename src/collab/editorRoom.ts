@@ -1,6 +1,6 @@
 import { fromFlow, toFlow } from "../canvas/convert";
 import type { EditorRoom, RoomStepMeta, RoomCommitResult, RoomRefusal } from "../editor/room";
-import { selectionAfterRedo, selectionAfterUndo, selectionOf } from "../editor/historySelection";
+import { selectionAfterRedo, selectionAfterUndo, selectionOf, snapshotDiagram } from "../editor/historySelection";
 import type { CanvasSnapshot } from "../editor/useHistory";
 import type { CanvasPrivacyState } from "../lib/localOnly";
 import { EditorBinding } from "./binding";
@@ -19,15 +19,18 @@ export class CollaborativeEditorRoom implements EditorRoom {
   private stepping = false;
   private stepped?: CanvasSnapshot;
   refusal?: RoomRefusal;
+  refusalOccurrence = 0;
+  private detached = false;
   private listeners = new Set<() => void>();
 
   onChange(fn: () => void) {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
   }
-  private report(reason: RoomRefusal | undefined) {
+  private report(reason: RoomRefusal | undefined, occurrence = false) {
     this.port?.refused?.(reason);
-    if (reason === this.refusal) return;
+    if (reason === this.refusal && !occurrence) return;
+    this.refusalOccurrence++;
     this.refusal = reason;
     for (const fn of this.listeners) fn();
   }
@@ -39,12 +42,18 @@ export class CollaborativeEditorRoom implements EditorRoom {
 
   connect(port: Parameters<EditorRoom["connect"]>[0]): () => void {
     this.port = port;
+    if (this.detached) {
+      port.detached?.();
+      return () => {
+        if (this.port === port) this.port = undefined;
+      };
+    }
     const binding = new EditorBinding(
       this.session,
       {
         getDiagram: () => {
           const s = this.committed ?? port.getSnapshot();
-          return fromFlow(s.meta, s.nodes, s.edges);
+          return snapshotDiagram(s);
         },
         applyDiagram: (next) => {
           const snapshot = toFlow(next);
@@ -77,7 +86,8 @@ export class CollaborativeEditorRoom implements EditorRoom {
       const applied = this.binding?.localChanged({ merge });
       const reason = this.binding?.refused;
       if (reason) {
-        this.report(reason);
+        this.report(reason, reason !== "private");
+        if (reason === "private") this.detachHistory();
         return { status: "refused", reason };
       }
       if (applied) this.report(undefined);
@@ -136,10 +146,18 @@ export class CollaborativeEditorRoom implements EditorRoom {
     if (!this.checkPrivacy()) return;
     this.binding?.flushRemote();
   }
+  private detachHistory() {
+    if (this.detached) return;
+    this.detached = true;
+    this.port?.detached?.();
+  }
   checkPrivacy() {
     if (!this.binding) return true;
     const allowed = this.binding.checkPrivacy();
-    if (!allowed && this.binding.refused) this.report(this.binding.refused);
+    if (!allowed && this.binding.refused) {
+      this.report(this.binding.refused);
+      if (this.binding.refused === "private") this.detachHistory();
+    }
     return allowed;
   }
   get canUndo() {

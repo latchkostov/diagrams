@@ -72,3 +72,52 @@ The only intentional golden change is `node/i18n/catalogs.json`: nine English `c
 cover refusal reasons, vanished controls and honest Private-draft status. Catalog counts, English
 fallback counts and the collaboration-area fingerprints change; every other area and every diagram,
 simulation, layout, import/export and browser golden must stay unchanged.
+
+## Review round 2 (20261016-170532)
+
+All 15 findings (6 P1 and 9 P2, including overlapping reports) are addressed; none is dismissed.
+The complete recovery invariants are in the collaboration threat model rather than only per-finding patches.
+
+| Concern                              | Resolution and regression                                                                                                                                                                                                                                                                                                                               |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Missing initial/offline base         | First attachment requires a full checkpoint, even over existing storage. Crash snapshots after every durable write compare complete CRDT proofs through initialization, offline reattachment, ordered appends and compaction.                                                                                                                           |
+| Unbounded failed-storage backlog     | At most 256 KiB/128 pending deltas. Overflow/failure discards redundant deltas and requires a full checkpoint retry. Stalled-write and 1,000-edit regressions assert the byte bound and exact recovery after retry. Edits during checkpoint encryption/write cannot be prematurely acknowledged.                                                        |
+| Closed-room Undo                     | Explicit detachment changes the controller to local snapshot history at the last shared baseline. Unit and production-browser tests undo the private paste/triggering edit and a subsequent edit, retain peer changes and sticky privacy, and cover a privacy-only transition and remount. Deferred remote projections retain their resulting baseline. |
+| Consecutive identical refusals       | Actual refusals advance a subscription/alert occurrence. Unit tests observe both attempts; the browser asserts a new alert DOM node, the same explanation and retained focus. Repeated privacy checks are deduplicated.                                                                                                                                 |
+| Corruption in external/full journals | Shared authentication/schema validation; conditionally remove only corrupt tokens, recover the valid checkpoint plus live edits, and replace storage. Ciphertext, IV and schema faults cover external tails; tests retain resource-limited records and protect a racing valid replacement. Full-restore fallback has its own proof regression.          |
+| Repeated diagram conversions         | History, privacy and binding reuse `snapshotDiagram`. The operation-count test requires one conversion per changed snapshot across all checks, zero for repeated checks, and immediate flag-only privacy closure.                                                                                                                                       |
+| Init-script ordering                 | `relay` takes the initial diagram and installs it alongside the room and wire in its single context script. Both boundary gesture regressions retain their behavior assertions.                                                                                                                                                                         |
+| Cached membership after removal      | Warm the member cache, remove only its boundary, retain the member object and compare the result with a fresh diagram whose node has no membership.                                                                                                                                                                                                     |
+
+Rejected approaches: merging historical updates indefinitely (unbounded bytes and synchronous work),
+appending an empty diff after attachment (missing CRDT structs/clocks), leaving Undo on the closed driver
+(dead editing controls), treating resource limits as corruption (destroys recoverable work), and replacing
+output goldens to hide a failure. Only the intentional i18n catalog addition changes output parity.
+
+Deliberate reversion evidence: fourteen unit mutations fail their targeted behavior assertions: attachment
+base, pending-byte bound, external-tail corruption handling, checkpoint fallback, local-history event,
+repeat-refusal occurrence, conversion reuse, membership invalidation, in-flight checkpoint coverage,
+post-shutdown remount, pre-edit history baseline, resource-limit retention, malformed external-tail byte
+checks, and stable history keys across detachment. Browser mutations cover repeated alert replacement and
+the single-script boundary fixture and damaged-copy guidance. All mutations are restored before normal checks and the full gate. Browser transaction-abort tests additionally verify
+both staged append writes roll back to the last durable state.
+
+The first full gate caught one stale generated headless skill helper after the i18n catalog shifted its
+compiled message IDs (8,587 other unit tests passed; four skipped). `pnpm schemas` refreshes the four ID
+references in `scripts/lib/app.mjs`; all 175 skill checks then pass. Temporarily restoring the old helper
+fails its existing generated-file regression again. Build, entry size and all 2,196 parity goldens passed
+in that stopped run; the final committed tree receives a fresh complete gate before pushing.
+
+A second full unit run hit the default hang backstop in the crash fixture under worker-pool load. The
+fixture now uses a four-update journal and checks every durable write through compaction, avoiding
+thousands of redundant decryptions; the separate sustained-editing test still covers the production
+128-entry limit. Its six-write cycle and compaction assertions fail deterministically if the bounded
+fixture is reverted to the production journal depth. No timeout or timing assertion is raised.
+
+The shared decoder allows a checkpoint plus its 128 deltas; external tails separately enforce the
+128-delta cap. A 129-entry authenticated external tail must remain stored as a resource-limit refusal,
+then save successfully after repair. Removing that exact tail-count guard fails the retention regression.
+
+A subsequent full run exposed the same hang-backstop risk in the existing twelve-seed convergence
+sweep. It is now twelve independent cases, retaining all twelve seeds, all sixteen steps per seed and
+every convergence/history assertion, with cleanup per seed rather than after the whole sweep.

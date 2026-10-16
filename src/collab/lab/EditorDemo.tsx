@@ -120,10 +120,11 @@ function RoomEditor({ room, roomKey }: { room: CollaborativeEditorRoom; roomKey:
   const recoveryUrl = new URL(formatRoomLink(base.href, roomKey));
   recoveryUrl.search = new URLSearchParams({ view: "lab", preset: "collab-c1a" }).toString();
   const session = room.session;
-  const refusal = useSyncExternalStore(
+  const refusalOccurrence = useSyncExternalStore(
     (fn) => room.onChange(fn),
-    () => room.refusal,
+    () => room.refusalOccurrence,
   );
+  const refusal = room.refusal;
   const privateDraft = refusal === "private";
   useSyncExternalStore(
     (fn) => session.onChange(fn),
@@ -180,7 +181,7 @@ function RoomEditor({ room, roomKey }: { room: CollaborativeEditorRoom; roomKey:
         {session.recovery?.problem && (
           <span data-testid="collab-recovery-problem">
             {" "}
-            {session.recovery.problem === "corrupt" ? t("collab.corrupt") : t("collab.storageUnavailable")}
+            {session.recovery.problem === "corrupt" ? t("collab.damagedRecovery") : t("collab.storageUnavailable")}
           </span>
         )}
         {(session.recovery?.problem || refusal) && ready && (
@@ -196,7 +197,7 @@ function RoomEditor({ room, roomKey }: { room: CollaborativeEditorRoom; roomKey:
           </button>
         )}
       </div>
-      {refusal && <RoomRefusalNotice reason={refusal} />}
+      {refusal && <RoomRefusalNotice key={refusalOccurrence} reason={refusal} />}
       {projection.status === "invalid" && (
         <div role="alert" data-testid="collab-invalid-document">
           <p>{t("collab.invalidDocument")}</p>

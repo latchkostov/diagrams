@@ -29,14 +29,36 @@ export class HistoryController {
   private transaction: string | undefined;
   private roomStep: { mergeKey?: string; at: number; tag: string } | undefined;
   private roomCoalescingBroken = false;
+  private readonly keyOf: (state: CanvasSnapshot) => string;
+  private roomBaseline?: { snapshot: CanvasSnapshot; at: number; selection: FlowSelection };
 
   constructor(
     state: CanvasSnapshot,
     at: number,
-    private readonly room?: EditorRoom,
+    private room?: EditorRoom,
   ) {
+    this.keyOf = room ? roomSnapshotKey : snapshotKey;
     this.history = createHistory(this.key(state), state, at);
     this.settled = selectionOf(state);
+  }
+
+  get collaborative(): boolean {
+    return this.room !== undefined;
+  }
+
+  /** Sharing has ended: start local Undo at the last agreed canvas, before the restricted edit. */
+  detachRoom() {
+    if (!this.room) return;
+    const baseline = this.roomBaseline ?? {
+      snapshot: present(this.history).value,
+      at: present(this.history).at,
+      selection: this.settled,
+    };
+    this.room = undefined;
+    this.transaction = undefined;
+    this.roomStep = undefined;
+    this.history = createHistory(this.key(baseline.snapshot), baseline.snapshot, baseline.at);
+    this.settled = baseline.selection;
   }
 
   /** Opens a creation transaction under `tag` (the next commits tagged so are the node's own step). */
@@ -56,7 +78,7 @@ export class HistoryController {
 
   /** The canvas rendered `state` (its `key`): while it matches the present step, its selection is settled. */
   key(state: CanvasSnapshot): string {
-    return this.room ? roomSnapshotKey(state) : snapshotKey(state);
+    return this.keyOf(state);
   }
 
   observe(state: CanvasSnapshot, key = this.key(state)) {
@@ -87,9 +109,17 @@ export class HistoryController {
       this.roomCoalescingBroken = false;
       const start = this.settled;
       // A room keeps only a baseline here; Undo belongs to the scoped driver, never to snapshots.
+      this.roomBaseline = { snapshot: present(prev).value, at: present(prev).at, selection: start };
       this.receive(state, at);
-      this.room.commit(state, this.roomStep.tag, { mergeKey, start });
-      return true;
+      try {
+        this.room.commit(state, this.roomStep.tag, { mergeKey, start });
+        // A deferred remote projection may have replaced the baseline during commit. Keep it.
+        // Privacy detaches synchronously and restores the baseline from before this candidate.
+        if (!this.room) return this.commit(state, mergeKey, at);
+        return true;
+      } finally {
+        this.roomBaseline = undefined;
+      }
     }
     this.history = commit(prev, { key, value: state, mergeKey, at, start: this.settled }, undefined, this.transaction);
     this.settled = selectionOf(state);
@@ -119,8 +149,8 @@ export class HistoryController {
     }
     this.history = commitReplacement(
       this.history,
-      { key: snapshotKey(current), value: current, mergeKey: pendingMergeKey, at, start: this.settled },
-      { key: snapshotKey(next), value: next, mergeKey, at, start: selection },
+      { key: this.key(current), value: current, mergeKey: pendingMergeKey, at, start: this.settled },
+      { key: this.key(next), value: next, mergeKey, at, start: selection },
     );
     this.settled = selectionOf(next);
   }

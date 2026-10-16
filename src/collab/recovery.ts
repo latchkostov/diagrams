@@ -29,6 +29,12 @@ export class RoomRecovery {
   private knownToken?: string;
   private cursor?: { checkpoint: string; updates: number };
   private pending: { revision: number; update: Uint8Array }[] = [];
+  private queuedBytes = 0;
+  private checkpointRequired = true;
+  /** Diagnostic bound on retained plaintext deltas (the live CRDT is owned by the session). */
+  get pendingBytes(): number {
+    return this.queuedBytes;
+  }
   readonly id: string;
   private readonly aad: Uint8Array;
 
@@ -48,25 +54,30 @@ export class RoomRecovery {
       !(record.iv instanceof Uint8Array) ||
       record.iv.length !== 12 ||
       !(record.ciphertext instanceof Uint8Array) ||
-      record.ciphertext.byteLength > RECOVERY_LIMITS.recordBytes ||
       !Number.isFinite(record.touched) ||
       Math.max(0, this.now() - record.touched) > RECOVERY_LIMITS.ageMs
     )
       throw new Error("corrupt-recovery");
-    const chunks = [record, ...(record.updates ?? [])];
     if (
-      chunks.length > RECOVERY_LIMITS.journalUpdates + 1 ||
+      (record.updates?.length ?? 0) > RECOVERY_LIMITS.journalUpdates ||
       recoverySummary(record).bytes > RECOVERY_LIMITS.recordBytes
     )
       throw new RecoveryResourceError();
-    return this.decodeChunks(chunks);
+    return this.decodeChunks([record, ...(record.updates ?? [])]);
   }
 
-  private async decodeChunks(chunks: RecoveryChunk[]): Promise<Uint8Array> {
+  private async decodeChunks(
+    chunks: RecoveryChunk[],
+    maxBytes: number = RECOVERY_LIMITS.recordBytes,
+  ): Promise<Uint8Array> {
+    if (chunks.length > RECOVERY_LIMITS.journalUpdates + 1) throw new RecoveryResourceError();
+    let bytes = 0;
     const decoded: Uint8Array[] = [];
     for (const chunk of chunks) {
       if (!(chunk.iv instanceof Uint8Array) || chunk.iv.length !== 12 || !(chunk.ciphertext instanceof Uint8Array))
         throw new Error("corrupt-recovery");
+      bytes += chunk.ciphertext.byteLength;
+      if (bytes > maxBytes) throw new RecoveryResourceError();
       decoded.push(
         new Uint8Array(
           await crypto.subtle.decrypt(
@@ -77,7 +88,19 @@ export class RoomRecovery {
         ),
       );
     }
-    return decoded.length === 1 ? decoded[0] : Y.mergeUpdates(decoded);
+    const update = decoded.length === 1 ? decoded[0] : Y.mergeUpdates(decoded);
+    const result = inspectCheckpoint(update);
+    if (!result.ok) {
+      if (resourceProblems.has(result.problem)) throw new RecoveryResourceError();
+      throw new Error("corrupt-recovery");
+    }
+    const scratch = new CollabDoc();
+    try {
+      if (!scratch.applyCheckpoint(update).ok) throw new Error("corrupt-recovery");
+    } finally {
+      scratch.destroy();
+    }
+    return update;
   }
 
   private async read(): Promise<{ record?: RecoverySummary; update?: Uint8Array }> {
@@ -88,33 +111,27 @@ export class RoomRecovery {
     if (head && this.cursor && head.checkpoint === this.cursor.checkpoint) {
       const tail = await this.store.tail(this.id, this.cursor.checkpoint, this.cursor.updates);
       if (tail) {
-        if (
-          tail.updates.length !== (tail.head.updates ?? 0) - this.cursor.updates ||
-          tail.updates.length > RECOVERY_LIMITS.journalUpdates ||
-          tail.updates.reduce((n, u) => n + u.ciphertext.byteLength, 0) > RECOVERY_LIMITS.journalBytes
-        )
-          throw new RecoveryResourceError();
-        const update = await this.decodeChunks(tail.updates);
-        if (!inspectCheckpoint(update).ok) throw new RecoveryResourceError();
-        this.knownToken = tail.head.token;
-        this.cursor = { checkpoint: tail.head.checkpoint!, updates: tail.head.updates ?? 0 };
-        return { record: tail.head, update };
+        try {
+          if (tail.updates.length > RECOVERY_LIMITS.journalUpdates) throw new RecoveryResourceError();
+          if (tail.updates.length !== (tail.head.updates ?? 0) - this.cursor.updates)
+            throw new Error("corrupt-recovery");
+          const update = await this.decodeChunks(tail.updates, RECOVERY_LIMITS.journalBytes);
+          this.knownToken = tail.head.token;
+          this.cursor = { checkpoint: tail.head.checkpoint!, updates: tail.head.updates ?? 0 };
+          return { record: tail.head, update };
+        } catch (error) {
+          if (error instanceof RecoveryResourceError) throw error;
+          // Use the full reader's corruption policy and retain its last valid base checkpoint.
+          // Read again atomically: another tab may already have replaced the damaged tail.
+        }
       }
     }
     const record = await this.store.read(this.id);
     if (!record) return {};
+    let base: Uint8Array | undefined;
     try {
-      const update = await this.decode(record);
-      const scratch = new CollabDoc();
-      try {
-        const result = scratch.applyCheckpoint(update);
-        if (!result.ok) {
-          if (resourceProblems.has(result.problem)) throw new RecoveryResourceError();
-          throw new Error("corrupt-recovery");
-        }
-      } finally {
-        scratch.destroy();
-      }
+      base = await this.decode({ ...record, updates: undefined });
+      const update = record.updates?.length ? await this.decode(record) : base;
       this.knownToken = record.token;
       this.cursor = { checkpoint: record.checkpoint ?? record.token, updates: record.updates?.length ?? 0 };
       return { record: recoverySummary(record), update };
@@ -122,16 +139,25 @@ export class RoomRecovery {
       if (error instanceof RecoveryResourceError) throw error;
       this.problem = "corrupt";
       await this.store.remove(this.id, record.token);
-      return {};
+      this.knownToken = undefined;
+      this.cursor = undefined;
+      this.requireCheckpoint();
+      return { update: base };
     }
+  }
+
+  private requireCheckpoint(): void {
+    this.checkpointRequired = true;
+    this.pending = [];
+    this.queuedBytes = 0;
   }
 
   async restore(doc: CollabDoc): Promise<void> {
     try {
-      const { update } = await this.read();
+      const { record, update } = await this.read();
       if (update) {
         doc.applyCheckpoint(update);
-        this.saved = true;
+        this.saved = !!record;
       }
     } catch {
       this.problem = "unavailable";
@@ -141,17 +167,27 @@ export class RoomRecovery {
   watch(doc: CollabDoc): void {
     const changed = (update: Uint8Array) => {
       this.revision++;
-      this.pending.push({ revision: this.revision, update });
-      // Storage failure must not leave an unbounded array of keystrokes in memory. Redundant
-      // already-in-flight structs may remain in a merged batch; CRDT updates are idempotent.
-      if (this.pending.length >= RECOVERY_LIMITS.journalUpdates)
-        this.pending = [{ revision: this.revision, update: Y.mergeUpdates(this.pending.map((p) => p.update)) }];
+      if (!this.checkpointRequired) {
+        if (
+          this.queuedBytes + update.byteLength > RECOVERY_LIMITS.journalBytes ||
+          this.pending.length >= RECOVERY_LIMITS.journalUpdates
+        )
+          this.requireCheckpoint();
+        else {
+          this.pending.push({ revision: this.revision, update });
+          this.queuedBytes += update.byteLength;
+        }
+      }
       this.saved = false;
       this.changed();
       void this.flush(doc);
     };
     doc.ydoc.on("update", changed);
     this.stop = () => doc.ydoc.off("update", changed);
+    // Attaching may follow offline edits that predate this listener. Never append until their
+    // complete CRDT base has been acknowledged by storage.
+    this.requireCheckpoint();
+    this.saved = false;
     if (!doc.isEmpty()) void this.flush(doc);
   }
 
@@ -159,6 +195,7 @@ export class RoomRecovery {
     if (this.closed || doc.isEmpty()) return Promise.resolve();
     return (this.job ??= this.save(doc)
       .catch(() => {
+        this.requireCheckpoint();
         this.saved = false;
         this.problem = "unavailable";
       })
@@ -169,7 +206,7 @@ export class RoomRecovery {
   }
 
   private async save(doc: CollabDoc): Promise<void> {
-    while (this.written !== this.revision) {
+    while (this.written !== this.revision || this.checkpointRequired) {
       // Another tab may have saved since we loaded. Merge its CRDT before compare-and-swap;
       // retry contention without losing either writer's updates.
       const { record, update } = await this.read();
@@ -178,6 +215,7 @@ export class RoomRecovery {
       const updates = this.pending.map((p) => p.update);
       const bytes = updates.reduce((n, p) => n + p.byteLength, 0);
       const compact =
+        this.checkpointRequired ||
         !record ||
         (record.updates ?? 0) >= RECOVERY_LIMITS.journalUpdates ||
         (record.journalBytes ?? 0) + bytes + 16 >= RECOVERY_LIMITS.journalBytes ||
@@ -199,6 +237,8 @@ export class RoomRecovery {
         updates: compact ? 0 : (record.updates ?? 0) + 1,
       };
       this.pending = this.pending.filter((p) => p.revision > revision);
+      this.queuedBytes = this.pending.reduce((n, p) => n + p.update.byteLength, 0);
+      if (compact && this.revision === revision) this.checkpointRequired = false;
       this.written = revision;
     }
     this.saved = true;

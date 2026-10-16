@@ -2245,6 +2245,8 @@ const en = {
   "collab.offline": "Offline · changes are in memory",
   "collab.loadFailed": "Could not open the Lab room. Reload to try again.",
   "collab.corrupt": "A damaged local copy was removed. Rejoin a peer to recover it.",
+  "collab.damagedRecovery":
+    "A damaged local copy was found. Some changes may be missing. Rejoin a peer or save a file copy.",
   "collab.storageUnavailable": "Could not save on this device. Keep this page open and save a file copy.",
   "collab.labOnly":
     "Lab only: an invented room over a local test transport. Keep the recovery link to reopen your local copy or connect another tab. Local copies expire after 30 days; the oldest are evicted past 16 rooms or 64 MiB. Room keys are never stored by the app.",

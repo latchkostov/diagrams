@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { fromFlow, type DiagramMeta } from "../canvas/convert";
+import { type DiagramMeta } from "../canvas/convert";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 import { canRedo, canUndo, present } from "./history";
 import { HistoryController } from "./historyController";
-import { selectionOf, withSelection, type FlowSelection } from "./historySelection";
+import { selectionOf, snapshotDiagram, withSelection, type FlowSelection } from "./historySelection";
 import type { EditorRoom } from "./room";
 import { retainRemoteSelection } from "./remoteSnapshot";
 import type { CanvasPrivacyState } from "../lib/localOnly";
@@ -42,10 +42,13 @@ export interface HistoryApi {
 /** Quiet time after the last change before it becomes an undo step. */
 const DEBOUNCE_MS = 350;
 
-const clean = (s: CanvasSnapshot): CanvasSnapshot => ({
-  ...s,
-  nodes: s.nodes.map((n) => (n.dragging || n.resizing ? { ...n, dragging: false, resizing: false } : n)),
-});
+const clean = (s: CanvasSnapshot): CanvasSnapshot =>
+  s.nodes.some((n) => n.dragging || n.resizing)
+    ? {
+        ...s,
+        nodes: s.nodes.map((n) => (n.dragging || n.resizing ? { ...n, dragging: false, resizing: false } : n)),
+      }
+    : s;
 
 /**
  * Observes canvas state and records undo steps. Every mutation path (menus, inspector, React
@@ -104,7 +107,11 @@ export function useHistory(
       room?.connect({
         getSnapshot: () => latest.current,
         flushPending: flush,
-        getPrivacy: (next) => ({ ...privacyRef.current, diagram: fromFlow(next.meta, next.nodes, next.edges) }),
+        getPrivacy: (next) => ({ ...privacyRef.current, diagram: snapshotDiagram(next) }),
+        detached: () => {
+          ctl.detachRoom();
+          setHistory(ctl.history);
+        },
         receive: (next, step) => {
           const retained = step ? withSelection(next, step.selection) : retainRemoteSelection(latest.current, next);
           ctl.receive(retained);
@@ -118,14 +125,14 @@ export function useHistory(
   );
 
   useLayoutEffect(() => {
-    if (room && !room.checkPrivacy()) return;
+    room?.checkPrivacy();
     ctl.observe(state, stateKey);
     // Room commands commit with the rendered edit. Encryption and IDB can finish while the field
     // still holds focus, and navigation cannot cancel an unsent debounce timer.
-    if (room && !state.nodes.some((n) => n.dragging || n.resizing)) {
+    if (ctl.collaborative && !state.nodes.some((n) => n.dragging || n.resizing)) {
       ctl.commit(clean(state), gesture.current ?? mergeKey.current, Date.now());
       mergeKey.current = undefined;
-      room.flushRemote();
+      room?.flushRemote();
     }
   }, [ctl, state, stateKey, history, room, privacy]);
 
@@ -187,7 +194,7 @@ export function useHistory(
   );
   const open = useCallback(() => ctl.openTransaction, [ctl]);
   const beginGesture = useCallback(() => {
-    if (!room) return;
+    if (!ctl.collaborative) return;
     if (gesture.current && gestureTimer.current === undefined) return;
     flush();
     if (gesture.current) ctl.end(gesture.current);
@@ -248,10 +255,10 @@ export function useHistory(
 
   const top = useCallback(() => {
     const h = ctl.history;
-    if (!room && h.index === 0) return undefined;
+    if (!ctl.collaborative && h.index === 0) return undefined;
     const cur = present(h);
     return ctl.key(latest.current) === cur.key ? ctl.top() : undefined;
-  }, [ctl, room]);
+  }, [ctl]);
 
   return {
     stateKey,
@@ -266,7 +273,7 @@ export function useHistory(
     open,
     replace,
     top,
-    canUndo: (room ? room.canUndo : canUndo(history)) || pending,
-    canRedo: (room ? room.canRedo : canRedo(history)) && !pending,
+    canUndo: (ctl.collaborative && room ? room.canUndo : canUndo(history)) || pending,
+    canRedo: (ctl.collaborative && room ? room.canRedo : canRedo(history)) && !pending,
   };
 }

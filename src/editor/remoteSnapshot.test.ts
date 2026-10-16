@@ -84,7 +84,14 @@ it("room keys ignore selection and measurements but see disappearing boundary re
       nodes: current.nodes.map((n) => ({ ...n, selected: true, measured: { width: 120, height: 100 } })),
     }),
   ).toBe(key);
-  expect(roomSnapshotKey({ ...current, nodes: current.nodes.filter((n) => n.type !== "boundary") })).not.toBe(key);
+  const removed = { ...current, nodes: current.nodes.filter((n) => n.type !== "boundary") };
+  const fresh = toFlow({
+    format: "diagrams/v1",
+    title: "Room",
+    nodes: [{ id: "n", stencil: "service.go", label: "N", x: 20, y: 40 }],
+    edges: [],
+  });
+  expect(roomSnapshotKey(removed)).toBe(roomSnapshotKey(fresh));
   expect(
     roomSnapshotKey({
       ...current,

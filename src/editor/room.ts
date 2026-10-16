@@ -22,6 +22,7 @@ export interface EditorRoom {
     flushPending(): boolean;
     receive(next: CanvasSnapshot, step?: RoomHistoryResult): void;
     getPrivacy?(next: CanvasSnapshot): CanvasPrivacyState;
+    detached?(): void;
     refused?(reason: RoomRefusal | undefined): void;
   }): () => void;
   commit(next: CanvasSnapshot, merge?: string, meta?: RoomStepMeta): RoomCommitResult;

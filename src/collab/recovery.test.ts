@@ -453,7 +453,7 @@ it("skips decoding its own checkpoint but merges a new external writer token", a
   apply.mockClear();
   doc.apply([{ op: "meta", set: { title: "Local writer" } }]);
   await recovery.flush(doc);
-  expect(apply).toHaveBeenCalledTimes(1); // the external journal tail merges directly into the live room
+  expect(apply).toHaveBeenCalledTimes(2); // validate the small tail in isolation, then merge into the live room
   expect(doc.project().diagram?.nodes.find((n) => n.id === "db")?.label).toBe("External writer");
   apply.mockRestore();
   await Promise.all([recovery.close(doc), other.close(external)]);
@@ -506,6 +506,7 @@ it("restores after every peer leaves and distinguishes local durability from aut
     recovery: storeA,
   });
   expect(reopened.hasDocument).toBe(true);
+  await reopened.recovery!.flush(reopened.doc);
   expect(reopened.roomStatus).toBe("saved-device");
   expect(reopened.doc.project().diagram?.nodes.find((n) => n.id === "db")).toBeUndefined();
   await reopened.leave();
@@ -676,6 +677,9 @@ it("merges another tab's encrypted journal without decoding or reading the 5,000
   await second.restore(b);
   second.watch(b);
   await second.flush(b);
+  // The newly attached writer first establishes its full base; then both cursors follow that base.
+  a.apply([{ op: "meta", set: { title: "Both attached" } }]);
+  await first.flush(a);
   const read = vi.spyOn(store, "read"),
     tail = vi.spyOn(store, "tail"),
     encodeA = vi.spyOn(a, "encodeDiff"),
@@ -703,4 +707,279 @@ it("merges another tab's encrypted journal without decoding or reading the 5,000
   await Promise.all([first.close(a), second.close(b)]);
   a.destroy();
   b.destroy();
+});
+
+it.each(["fresh", "reattach", "empty"])(
+  "crash after every durable write reloads the complete %s base and ordered deltas",
+  async (mode) => {
+    // Exercise every state transition with bounded work; the production 128-entry cap is tested above.
+    const journalLimit = 4;
+    const limits = RECOVERY_LIMITS as unknown as { journalUpdates: number };
+    const previousJournalLimit = limits.journalUpdates;
+    limits.journalUpdates = journalLimit;
+    onTestFinished(() => {
+      limits.journalUpdates = previousJournalLimit;
+    });
+    const store = new Store(),
+      keys = await deriveRoomKeys(roomFor(124)),
+      doc = new CollabDoc();
+    if (mode !== "empty") doc.hydrate(demoDiagram());
+    if (mode === "reattach") {
+      const prior = new RoomRecovery(store, keys);
+      prior.watch(doc);
+      await prior.close(doc);
+      // Includes new structs, deletions and a later dependent edit from the same Yjs client.
+      doc.apply([
+        { op: "patch", kind: "nodes", id: "api", set: { label: "Before attachment" } },
+        { op: "remove", kind: "nodes", id: "db" },
+      ]);
+    }
+    const snapshots: { disk: Map<string, RecoveryRecord>; proof: Uint8Array }[] = [];
+    const write = store.write.bind(store);
+    vi.spyOn(store, "write").mockImplementation(async (record, expected) => {
+      const saved = await write(record, expected);
+      if (saved) snapshots.push({ disk: structuredClone(store.records), proof: await doc.syncProof() });
+      return saved;
+    });
+    const recovery = new RoomRecovery(store, keys);
+    recovery.watch(doc);
+    if (mode === "empty") doc.hydrate(demoDiagram());
+    await recovery.flush(doc);
+    for (let i = 0; i <= journalLimit; i++) {
+      doc.apply([{ op: "patch", kind: "nodes", id: "api", set: { label: `Durable ${i}` } }]);
+      await recovery.flush(doc);
+      expect(recovery.saved).toBe(true);
+    }
+    expect(snapshots).toHaveLength(journalLimit + 2);
+    expect(snapshots.some(({ disk }) => [...disk.values()][0].updates?.length === journalLimit)).toBe(true);
+    // Simulated process death: reload only frozen disk, without close()/a final flush or the live doc.
+    for (const { disk, proof } of snapshots) {
+      const crashedStore = new Store();
+      crashedStore.records = disk;
+      const restored = new CollabDoc(),
+        reload = new RoomRecovery(crashedStore, keys);
+      await reload.restore(restored);
+      expect(reload.problem).toBeUndefined();
+      expect(await restored.syncProof()).toEqual(proof);
+      restored.destroy();
+    }
+    expect([...snapshots.at(-1)!.disk.values()][0].updates).toBeUndefined();
+    await recovery.close(doc);
+    doc.destroy();
+  },
+);
+
+it("bounds pending plaintext while a write stalls or fails, then checkpoints all later edits", async () => {
+  const store = new Store(),
+    keys = await deriveRoomKeys(roomFor(125)),
+    doc = new CollabDoc();
+  doc.hydrate(demoDiagram());
+  const recovery = new RoomRecovery(store, keys);
+  recovery.watch(doc);
+  await recovery.flush(doc);
+  let release!: () => void, entered!: () => void;
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const blocked = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const append = vi.spyOn(store, "append").mockImplementationOnce(async () => {
+    entered();
+    await blocked;
+    throw new Error("storage-unavailable");
+  });
+  doc.apply([{ op: "meta", set: { title: "First pending" } }]);
+  await started;
+  for (let i = 0; i < 1000; i++) {
+    doc.apply([{ op: "meta", set: { title: `${i}:` + "x".repeat(8000) } }]);
+    expect(recovery.pendingBytes).toBeLessThanOrEqual(RECOVERY_LIMITS.journalBytes);
+  }
+  release();
+  await recovery.flush(doc);
+  expect(recovery.pendingBytes).toBe(0);
+  expect(recovery.saved).toBe(false);
+  expect(recovery.problem).toBe("unavailable");
+  store.fail = true;
+  for (let i = 0; i < 3; i++) {
+    doc.apply([{ op: "meta", set: { title: `Failed retry ${i}` } }]);
+    await recovery.flush(doc);
+    expect(recovery.pendingBytes).toBe(0);
+  }
+  store.fail = false;
+  const write = vi.spyOn(store, "write");
+  await recovery.flush(doc);
+  expect(write).toHaveBeenCalledTimes(1);
+  expect(recovery.saved).toBe(true);
+  const restored = new CollabDoc();
+  await new RoomRecovery(store, keys).restore(restored);
+  expect(await restored.syncProof()).toEqual(await doc.syncProof());
+  append.mockRestore();
+  write.mockRestore();
+  await recovery.close(doc);
+  doc.destroy();
+  restored.destroy();
+});
+
+it("does not acknowledge edits arriving while a required checkpoint is in flight", async () => {
+  const store = new Store(),
+    keys = await deriveRoomKeys(roomFor(126)),
+    doc = new CollabDoc();
+  doc.hydrate(demoDiagram());
+  let release!: () => void, entered!: () => void;
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const write = store.write.bind(store);
+  vi.spyOn(store, "write").mockImplementationOnce(async (record, expected) => {
+    entered();
+    await held;
+    return write(record, expected);
+  });
+  const recovery = new RoomRecovery(store, keys);
+  recovery.watch(doc);
+  await started;
+  doc.apply([{ op: "meta", set: { title: "After checkpoint encode" } }]);
+  release();
+  await recovery.flush(doc);
+  const restored = new CollabDoc();
+  await new RoomRecovery(store, keys).restore(restored);
+  expect(recovery.saved).toBe(true);
+  expect(await restored.syncProof()).toEqual(await doc.syncProof());
+  await recovery.close(doc);
+  doc.destroy();
+  restored.destroy();
+});
+
+it.each(["ciphertext", "iv", "schema", "resource", "replacement", "shape", "entries"])(
+  "handles a %s external journal tail without poisoning future saves",
+  async (fault) => {
+    const store = new Store(),
+      keys = await deriveRoomKeys(roomFor(127)),
+      a = new CollabDoc(),
+      b = new CollabDoc();
+    a.hydrate(demoDiagram());
+    const first = new RoomRecovery(store, keys),
+      second = new RoomRecovery(store, keys);
+    first.watch(a);
+    await first.flush(a);
+    await second.restore(b);
+    second.watch(b);
+    await second.flush(b);
+    a.apply([{ op: "meta", set: { title: "Establish shared cursor" } }]);
+    await first.flush(a);
+    b.apply([{ op: "patch", kind: "nodes", id: "db", set: { label: "External edit" } }]);
+    await second.flush(b);
+    const record = store.records.get(first.id)!,
+      chunk = record.updates!.at(-1)!;
+    const originalUpdates = structuredClone(record.updates!);
+    const headBeforeDamage = recoverySummary(record);
+    const replacement = structuredClone(record);
+    replacement.token = "concurrent-valid-replacement";
+    if (fault === "ciphertext" || fault === "replacement") chunk.ciphertext[0] ^= 1;
+    if (fault === "iv") chunk.iv = new Uint8Array(3);
+    if (fault === "entries")
+      record.updates = [
+        ...originalUpdates.slice(0, -1),
+        ...Array.from({ length: RECOVERY_LIMITS.journalUpdates + 1 }, () => structuredClone(chunk)),
+      ];
+    if (fault === "shape") {
+      (chunk as { ciphertext: unknown }).ciphertext = undefined;
+      // IndexedDB stores the head independently of the damaged chunk. Model that metadata here.
+      const readHead = store.head.bind(store);
+      const head = vi
+        .spyOn(store, "head")
+        .mockImplementation((id) =>
+          store.records.get(id) === record ? Promise.resolve(headBeforeDamage) : readHead(id),
+        );
+      onTestFinished(() => head.mockRestore());
+    }
+    const limits = COLLAB_LIMITS as unknown as Record<string, number>;
+    const previous = limits.maxCheckpointStructs;
+    onTestFinished(() => {
+      limits.maxCheckpointStructs = previous;
+    });
+    if (fault === "resource") limits.maxCheckpointStructs = 0;
+    if (fault === "schema") {
+      const bad = new Y.Doc();
+      bad.getMap("unknown-root").set("x", 1);
+      chunk.ciphertext = new Uint8Array(
+        await crypto.subtle.encrypt(
+          {
+            name: "AES-GCM",
+            iv: chunk.iv as BufferSource,
+            additionalData: new TextEncoder().encode(`livediagrams/collab/storage/v1/${first.id}`),
+          },
+          keys.storage,
+          Y.encodeStateAsUpdate(bad) as BufferSource,
+        ),
+      );
+      bad.destroy();
+    }
+    const removeRecord = store.remove.bind(store);
+    const remove = vi.spyOn(store, "remove").mockImplementation(async (id, token) => {
+        if (fault === "replacement") store.records.set(id, replacement);
+        await removeRecord(id, token);
+      }),
+      tail = vi.spyOn(store, "tail");
+    if (fault === "shape")
+      tail.mockImplementationOnce((_id, _checkpoint, after) =>
+        Promise.resolve({ head: headBeforeDamage, updates: structuredClone(record.updates!.slice(after)) }),
+      );
+    a.apply([{ op: "patch", kind: "nodes", id: "api", set: { label: "Keep in-memory edit" } }]);
+    await first.flush(a);
+    expect(tail).toHaveBeenCalled();
+    if (fault === "resource" || fault === "entries") {
+      expect(remove).not.toHaveBeenCalled();
+      expect(store.records.get(first.id)?.token).toBe(record.token);
+      expect(first.problem).toBe("unavailable");
+      expect(first.saved).toBe(false);
+      limits.maxCheckpointStructs = previous;
+      if (fault === "entries") record.updates = originalUpdates;
+      await first.flush(a);
+    } else {
+      expect(remove).toHaveBeenCalledWith(first.id, record.token);
+      expect(first.problem).toBe("corrupt");
+    }
+    expect(first.saved).toBe(true);
+    if (fault === "replacement")
+      expect(a.project().diagram?.nodes.find((n) => n.id === "db")?.label).toBe("External edit");
+    const restored = new CollabDoc();
+    await new RoomRecovery(store, keys).restore(restored);
+    expect(restored.project().diagram?.nodes.find((n) => n.id === "api")?.label).toBe("Keep in-memory edit");
+    expect(await restored.syncProof()).toEqual(await a.syncProof());
+    await Promise.all([first.close(a), second.close(b)]);
+    a.destroy();
+    b.destroy();
+    restored.destroy();
+  },
+);
+
+it("falls back to the last valid checkpoint on a corrupt journal during restore", async () => {
+  const store = new Store(),
+    keys = await deriveRoomKeys(roomFor(128)),
+    doc = new CollabDoc();
+  doc.hydrate(demoDiagram());
+  const recovery = new RoomRecovery(store, keys);
+  recovery.watch(doc);
+  await recovery.flush(doc);
+  const proof = await doc.syncProof();
+  doc.apply([{ op: "meta", set: { title: "Lost damaged journal" } }]);
+  await recovery.close(doc);
+  store.records.get(recovery.id)!.updates![0].ciphertext[0] ^= 1;
+  const restored = new CollabDoc(),
+    reload = new RoomRecovery(store, keys);
+  await reload.restore(restored);
+  expect(reload.problem).toBe("corrupt");
+  expect(reload.saved).toBe(false);
+  expect(await restored.syncProof()).toEqual(proof);
+  reload.watch(restored);
+  await reload.flush(restored);
+  expect(reload.saved).toBe(true);
+  await reload.close(restored);
+  doc.destroy();
+  restored.destroy();
 });

@@ -26,6 +26,23 @@ subtree together, without adding controls. Metadata and capacity caching change 
 Production phone regressions cover both explicit AI entry points, preserving unsaved simulation
 fields and dirty state while using the existing single-panel slot. No chrome, wording or focus target
 is added. This was not an independent whole-app designer or assistive-technology walkthrough.
+## Collaboration C1a review round 2 (2026-10-16)
+
+The designer-agent source review flagged history-key stability during privacy-only transitions and
+inaccurate damaged-copy wording that implied recovery always required a peer after valid checkpoint
+fallback. History keys now keep the same representation across detachment, avoiding a mutable-mode memo
+dependency. New translated-source wording explains that some changes may be missing and offers peer/file
+recovery.
+The final source re-review passed with no remaining actionable UX/a11y finding.
+
+Local Undo begins at the last shared canvas and retains the triggering restricted edit as its own step;
+privacy stays sticky. Repeated refusals replace the alert paragraph to announce again without moving
+focus; repeated privacy checks do not repeat announcements. Existing contextual file-copy recovery stays
+available, unsaved status is honest, and no toolbar/menu controls were added. Production-browser
+regressions cover private-paste Undo/Redo, later edits, a privacy-only shutdown, repeat alert replacement,
+focus and interrupted storage. This was a scoped source review with supplied browser evidence, not an
+independent visual or assistive-technology walkthrough.
+
 ## Collaboration C1a review round 1 (2026-10-16)
 
 The required designer-agent source review found and resolved two recovery dead ends: a refusal or

@@ -163,6 +163,49 @@ Accumulated checkpoints have their own cardinality limits (4 million structs, 1 
 acknowledging a save. A resource-limit refusal retains the authenticated record and reports unavailable
 recovery; it is not deleted as corruption. Wire-update limits remain unchanged.
 
+### Recovery invariants
+
+- **A complete base, then ordered deltas.** Every attachment first saves the entire supplied CRDT,
+  including edits made before recovery was attached. Only its durable acknowledgement permits journal
+  appends. Checkpoints retain Yjs client identities, clocks and tombstones; native JSON is never their base.
+- **Atomic storage and acknowledgement.** The checkpoint, metadata/head, journal and evictions share
+  one IndexedDB transaction. An append advances the head in the same transaction as its ordered chunk;
+  compaction replaces the base and removes the covered journal atomically. Compare-and-swap retries merge
+  other writers first. Only `oncomplete` acknowledges durability, never an individual request's success.
+- **Authenticated reads, including external tails.** Cursors name a checkpoint and journal position.
+  A changed checkpoint requires a full read. Both paths authenticate/decode and apply the same schema and
+  resource checks before applying bytes to the live document. Verified corruption conditionally removes
+  only the returned token; a racing replacement survives and is merged on retry. A damaged journal falls
+  back to its last valid base checkpoint, preserving live edits, then requires a replacement checkpoint.
+  Newer damaged journal edits may be missing; the UI offers peer recovery or a file copy. A damaged base
+  cannot be recovered from dependent deltas alone. Resource-limit failures retain records and report
+  unavailable storage, rather than deleting otherwise authenticated work.
+- **Bounded pending memory.** Pending plaintext deltas occupy at most 256 KiB and 128 entries. Overflow
+  discards redundant deltas and marks a full checkpoint required; it never merges a growing backlog in
+  the synchronous update listener. Storage failure also clears that backlog and requires a checkpoint on
+  retry. The live CRDT remains the source of truth. At most one bounded encode/encrypt/write job is in
+  flight, in addition to the bounded queue; document, checkpoint and ciphertext limits still apply.
+- **Exact durable revisions.** Edits arriving during an in-flight checkpoint require another save before
+  `saved` can become true. A failed save says it is not saved on this device and leaves the editable
+  document and file-copy action available. Closing/crashing before acknowledgement can lose unsaved work;
+  no peer-sync status promises remote durability.
+
+`recovery.test.ts` snapshots storage after every write from initialization through journal compaction,
+then simulates process death without a final flush and compares reloaded CRDT proofs with each durable
+revision. It includes empty-document hydration and reattachment with offline structs/deletions. A
+four-update journal fixture exercises that complete cycle with bounded work; the production 128-update
+limit is covered separately by the sustained-editing/compaction regression. Stalled
+writes, failure retries, in-flight edits, corrupted external tails, racing replacements and retained
+resource-limited records are covered separately. Production-browser tests abort IndexedDB after each
+staged append write, then reload to verify transaction rollback and the previous durable document.
+
+Privacy shutdown explicitly detaches the history driver. The retained draft starts local snapshot Undo
+at the last shared canvas, including peers' preceding changes; the triggering paste/edit and later edits
+are undoable locally. Privacy provenance remains outside snapshots and cannot be cleared by Undo. A
+remount stays detached. Privacy flags are checked immediately, while history, binding and content-based
+privacy checks reuse the same cached native diagram per immutable snapshot. Consecutive actual refusals
+advance an announcement occurrence; repeated privacy polling does not.
+
 Retention is bounded to 16 room generations and 64 MiB of ciphertext, with a 32 MiB per-record limit plus
 the GCM tag. Writes atomically evict the oldest-write records (stable id breaks ties); records older than
 30 days expire on read/write. The Lab explains these bounds. Browser storage eviction/clearing can still

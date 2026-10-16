@@ -1,4 +1,5 @@
 import type { BrowserContext, Page, Locator } from "@playwright/test";
+import type { DiagramFile } from "../../src/model/types";
 import type { LabPacket } from "../../src/collab/lab/bridge";
 import { test, expect, expectNoErrors, gotoLab, pauseClock, waitForStableViewport } from "./fixtures";
 
@@ -17,7 +18,7 @@ type TestWindow = Window & {
 };
 
 /** Only encrypted transport packets cross isolated browser contexts. No socket or external service. */
-async function relay(contexts: BrowserContext[], seed: number) {
+async function relay(contexts: BrowserContext[], seed: number, initial?: DiagramFile) {
   const pages = new Set<Page>(),
     ids = new Map<Page, string>();
   let paused = false;
@@ -41,12 +42,13 @@ async function relay(contexts: BrowserContext[], seed: number) {
     context.on("page", (p) => pages.add(p));
     await context.exposeBinding("__c1Post", ({ page }, packet: LabPacket) => deliver(page, packet));
     await context.addInitScript(
-      ({ seed }) => {
+      ({ seed, initial }) => {
         const handlers = new Set<(packet: LabPacket) => void>();
         (window as TestWindow).__c1Deliver = (p) => {
           for (const fn of handlers) fn(p);
         };
         window.__collabC1 = {
+          initial,
           room: { epoch: 0, secret: Uint8Array.from({ length: 32 }, (_, i) => (seed + i) % 256) },
           wire: {
             post: (p) => {
@@ -61,7 +63,7 @@ async function relay(contexts: BrowserContext[], seed: number) {
           },
         };
       },
-      { seed },
+      { seed, initial },
     );
   }
   return {
@@ -288,6 +290,7 @@ test("corrupt IndexedDB checkpoint recovers safely and quota failure preserves d
   });
   await page.reload();
   await expect(page.getByTestId("collab-recovery-problem")).toContainText("damaged");
+  await expect(page.getByTestId("collab-recovery-problem")).toContainText("Some changes may be missing.");
   await expect(page.getByTestId("node-api")).not.toContainText("Local checkpoint");
   await page.evaluate(() => {
     IDBObjectStore.prototype.put = () => {
@@ -522,6 +525,13 @@ test("a room rejection is an accessible, actionable alert and a later valid edit
   await expect(alert).toContainText("Your last change was undone");
   await expect(alert).toContainText("Shorten it and try again");
   await expect(page.getByTestId(`inspector-prop-remove-${"k".repeat(256)}`)).toHaveCount(0);
+  await alert.evaluate((el) => {
+    el.setAttribute("data-previous-alert", "true");
+  });
+  await page.getByTestId("inspector-prop-new").fill("j".repeat(256));
+  await page.getByTestId("inspector-prop-add").click();
+  await expect(alert).toContainText("Your last change was undone");
+  await expect(alert).not.toHaveAttribute("data-previous-alert", "true");
   await page.getByTestId("inspector-prop-new").fill("region");
   await page.getByTestId("inspector-prop-add").click();
   await expect(page.getByTestId("inspector-prop-remove-region")).toBeVisible();
@@ -560,6 +570,16 @@ test("pasting Private content stops sharing before the paste reaches peers or ro
     const made = page.getByTestId(/^node-private-input-/);
     await expect(made).toContainText("Device-only draft");
     await expect(b.getByTestId(/^node-private-input-/)).toHaveCount(0);
+    await name(page, "api", "Private follow-up edit");
+    await page.getByTestId("undo-button").click();
+    await expect(page.getByTestId("node-api")).toContainText("API");
+    await expect(made).toBeVisible();
+    await page.getByTestId("undo-button").click();
+    await expect(made).toHaveCount(0);
+    await expect(page.getByTestId("private-badge")).toBeVisible();
+    await page.getByTestId("redo-button").click();
+    await expect(made).toContainText("Device-only draft");
+    await expect(b.getByTestId("node-api")).toContainText("API");
     await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-status", "offline");
     await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-saved", "false");
     const downloading = page.waitForEvent("download");
@@ -595,11 +615,7 @@ test("a room drop restores position, membership and boundary growth with one Und
   page,
   consoleErrors,
 }) => {
-  await relay([context], 133);
-  await page.addInitScript((initial) => {
-    if (!window.__collabC1) throw new Error("Missing Lab fixture");
-    window.__collabC1.initial = initial;
-  }, boundaryDiagram);
+  await relay([context], 133, boundaryDiagram);
   await open(page);
   const node = page.getByTestId("node-api"),
     group = page.getByTestId("group-cluster");
@@ -645,11 +661,7 @@ test("a room drop restores position, membership and boundary growth with one Und
 });
 
 test("a room resize and deferred membership adoption are one Undo step", async ({ context, page, consoleErrors }) => {
-  await relay([context], 134);
-  await page.addInitScript((initial) => {
-    if (!window.__collabC1) throw new Error("Missing Lab fixture");
-    window.__collabC1.initial = initial;
-  }, boundaryDiagram);
+  await relay([context], 134, boundaryDiagram);
   await open(page);
   await page.getByTestId("group-label-cluster").click();
   await waitForStableViewport(page);
@@ -676,3 +688,73 @@ test("a room resize and deferred membership adoption are one Undo step", async (
   await expect(page.getByTestId("inspector-field-group")).toHaveValue("");
   expectNoErrors(consoleErrors);
 });
+
+test("privacy-only shutdown leaves Undo disabled until a local edit", async ({ context, page, consoleErrors }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await open(page);
+  await expect(page.getByTestId("undo-button")).toBeDisabled();
+  // This newer-model paste changes privacy first, then refuses insertion into this legacy diagram.
+  // The document/snapshot stays identical throughout the privacy-only transition.
+  await page.evaluate(() =>
+    navigator.clipboard.writeText(
+      JSON.stringify({
+        format: "diagrams/clip-v2",
+        planning: { revision: "p3-a1" },
+        private: true,
+        groups: [],
+        edges: [],
+        nodes: [{ id: "new-model", stencil: "service.go", label: "Not inserted", x: 0, y: 0 }],
+      }),
+    ),
+  );
+  await page.getByTestId("canvas-wrap").focus();
+  await pauseClock(page);
+  await page.keyboard.press("Control+v");
+  await expect(page.getByTestId("collab-edit-refused")).toContainText("Sharing stopped");
+  await expect(page.getByTestId(/^node-new-model-/)).toHaveCount(0);
+  await expect(page.getByTestId("undo-button")).toBeDisabled();
+  await expect(page.getByTestId("redo-button")).toBeDisabled();
+  await page.clock.resume();
+  await name(page, "api", "Local edit after shutdown");
+  await expect(page.getByTestId("undo-button")).toBeEnabled();
+  await page.getByTestId("undo-button").click();
+  await expect(page.getByTestId("node-api")).toContainText("API");
+  await expect(page.getByTestId("undo-button")).toBeDisabled();
+  await expect(page.getByTestId("private-badge")).toBeVisible();
+  expectNoErrors(consoleErrors);
+});
+
+for (const abortAfter of [1, 2]) {
+  test(`recovery transaction aborted after staged write ${abortAfter} reloads the last durable state`, async ({
+    context,
+    page,
+    consoleErrors,
+  }) => {
+    await relay([context], 140 + abortAfter);
+    await open(page);
+    await name(page, "api", "Durable before interrupted append");
+    await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-saved", "true");
+    await page.evaluate((after) => {
+      const put = IDBObjectStore.prototype.put;
+      let staged = 0;
+      IDBObjectStore.prototype.put = function (...args: Parameters<IDBObjectStore["put"]>) {
+        const result = put.apply(this, args);
+        if (this.transaction.db.name === "livediagrams-collab-recovery-v1" && ++staged === after) {
+          const tx = this.transaction;
+          result.addEventListener("success", () => tx.abort(), { once: true });
+          IDBObjectStore.prototype.put = put;
+        }
+        return result;
+      };
+    }, abortAfter);
+    await name(page, "api", "Interrupted undurable append");
+    await expect(page.getByTestId("collab-recovery-problem")).toContainText("Could not save");
+    await expect(page.getByTestId("node-api")).toContainText("Interrupted undurable append");
+    await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-saved", "false");
+    // Do not close the session or flush before reload: lose everything outside IndexedDB.
+    await page.reload();
+    await expect(page.getByTestId("node-api")).toContainText("Durable before interrupted append");
+    await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-saved", "true");
+    expectNoErrors(consoleErrors);
+  });
+}
