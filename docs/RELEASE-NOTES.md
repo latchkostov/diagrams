@@ -1,5 +1,20 @@
 # Release notes
 
+## Collaboration C0 rebase onto routing (#140, 2026-10-16)
+
+- Rebased onto #139 and #140, retaining both documentation histories and all translation keys and
+  values. Regenerated locale metadata; catalog validation reports zero errors and zero stale messages,
+  with the existing translation gaps and warnings.
+- Routing metadata, traffic mixes, route tables, admission quotas, caller addresses and saved simulation
+  edits already use C0's shared document adapter. New encrypted-session compatibility tests cover those
+  fields and the shared planner's nested boundary refits, including per-person Undo and Redo. Deliberately
+  dropping planning or boundary edits makes both tests fail. No production behavior changes were needed.
+- Generated skill files start from master's release; the viewer still matches a fresh build. Released
+  plugin 1.1.33, exactly one patch above master's 1.1.32.
+- Full parity regeneration leaves every golden identical to master: no changed, added or missing
+  golden. Production bundle tests continue to exclude collaboration, Yjs and tracker code from all chunks.
+- Source UX review: no new controls, copy or chrome; the collaboration proof remains in the Lab.
+
 ## Routing R1 rejected admission transactions (2026-10-16)
 
 - The capacity planner owns admission transaction results by router, endpoint and matched action.
@@ -44,6 +59,7 @@
   `node/skill/validate.txt` validates the four corpus diagrams; `node/i18n/catalogs.json` adds 117
   messages (routing and the gallery tag), changing only the routing/examples areas. Master's static-page
   translations and all existing non-routing diagram goldens are preserved. See [PARITY.md](PARITY.md#request-routing-r1-what-changed-and-why-2026-10-16).
+
 ## Collaboration C0 browser proof (2026-10-16)
 
 - The Lab's `collab-c0` preset demonstrates three encrypted Yjs clients, concurrent edits,
