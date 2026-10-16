@@ -252,6 +252,40 @@ gate need no hierarchy-specific fallback or new timing budget.
   them. Its added annotation-membership check compares by id because normalization draws zones
   before notes; the initial order-sensitive assertion failed, and the corrected targeted run passes.
 
+## Autoscaling A3: what changed and why (2026-10-16)
+
+A3 adds ten frozen `a3-*` corpus diagrams (one per adapter: ECS ALB target tracking, ECS step scaling,
+Container Apps HTTP and event, App Service, Cloud Run; and the planner's max, target, partitions and quota
+cases), the public `cloud-run-timetable-api` showcase and a Terraform scaling fixture. Every legacy, A1 and A2
+**diagram-output** golden is unchanged: no simulation, replica history, checks, describe, export, layout or
+renderer output of an existing diagram moved. New goldens cover the new inputs everywhere the harness reads
+diagrams (simulation, checks and their words, evidence, agent describe/check/edit, native, draw.io and Mermaid
+exports, Interactive HTML, layout and render).
+
+`node/autoscaling.parity.ts` gains an A3 block: for each A3 diagram and simulation, every controller second
+(desired, ready, starting, draining, backlog, processed, rejections, the full decision with adapter, metric kind,
+policy and alarm periods, and the translated reason and metric words), plus `plan.json`, the scenario planner's
+complete result with the English sentence agents receive and the translated sentence Checks and Live details
+show. A plan golden freezes the research example: at 3× traffic, HPA max 10 at 92% of request with a 70%
+target suggests max 14, verified by a same-seed rerun.
+
+The update adds **229 goldens** and changes **six** shared goldens (2,091 in all: 2,003 node, 88 browser); every
+other existing golden is unchanged. Changed shared goldens, each for one reason:
+
+| Golden                           | Reason                                                                                                                      |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `node/agent/tools.json`          | Agent input schemas accept the A3 controller union (`modelRevision: "a3"`: ECS, Container Apps, App Service, Cloud Run).    |
+| `node/skill/public-schemas.json` | Hashes and sizes of the regenerated v2 diagram and v1 ops schemas, for the same contracts.                                  |
+| `node/skill/files.json`          | The generated format reference describes the cloud controllers and scenario sizing.                                         |
+| `node/skill/validate.txt`        | The validation transcript lists the ten new frozen corpus inputs.                                                           |
+| `node/imports/detect.json`       | Format detection covers the new Terraform scaling fixture (`terraform`).                                                    |
+| `node/i18n/catalogs.json`        | The A3 messages add catalog entries and change the autoscaling area hash in every catalog; all 37 languages translate them. |
+
+The browser tier adds the showcase's layout and render goldens; every existing browser golden matched. One
+working note: two parity runs in one checkout share `tests/.output/parity`, so an update with a filter can remove
+the other run's goldens as stale. That happened once during this work and was restored from the previous commit
+before a solitary run; run parity tiers one at a time.
+
 ## Autoscaling A2 round 2 review (2026-10-15)
 
 The rebase retained master and A2 code and documentation; no golden was hand-merged. The full
