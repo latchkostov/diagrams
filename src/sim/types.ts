@@ -333,6 +333,8 @@ export interface SimEngine {
   /** Message lineage: follow one message and its copies hop by hop. Its state is part of checkpoints. */
   readonly tracer: MessageTracer;
   replicaPage(nodeId: string, page?: number): import("./autoscaling").ReplicaRow[];
+  /** A resource-enabled node's fleet counts and latest decision, without copying other state. */
+  fleet(nodeId: string): import("./autoscaling").FleetReadout | undefined;
   checkpoint(): EngineCheckpoint;
   restore(checkpoint: EngineCheckpoint): void;
   /** Detached raw properties currently used by the engine, including runtime overrides. */

@@ -1740,6 +1740,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     configuration: () =>
       (configuration ??= Object.fromEntries([...nodes].map(([id, node]) => [id, structuredClone(node.rawProps)]))),
     metrics: () => ({ time, inSystem, pendingInjections: injections.length }),
+    fleet(nodeId) {
+      const n = nodes.get(nodeId);
+      return n?.fleet && n.props.resources ? fleetReadout(n.fleet) : undefined;
+    },
     replicaPage(nodeId, page) {
       const n = nodes.get(nodeId);
       return n?.fleet && n.props.resources ? replicaPage(n.fleet, n.props.resources, time, scale, page) : [];
