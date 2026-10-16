@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import * as allocations from "../sim/allocation";
 import { LifecycleBudgetError } from "../model/resourceBudget";
 import { createSimulationRun } from "./simulation";
@@ -453,5 +454,19 @@ describe("A3 cloud adapter seeded invariants", () => {
         `A3 seed ${seed} (${CLOUD_PRESETS[seed % CLOUD_PRESETS.length]}), scale ${scale}: ${failure}\nMinimal reproduction: ${JSON.stringify(minimize(d, seed, scale, actions, failure))}`,
       );
     expect(failure).toBeUndefined();
+  });
+});
+
+/** Minimal reproductions found by the nightly 5,000-seed run, replayed on every run. */
+describe("A3 nightly reproductions", () => {
+  const repros = JSON.parse(readFileSync("tests/fixtures/autoscaling/a3-nightly-repros.json", "utf8")) as {
+    name: string;
+    seed: number;
+    scale: number;
+    diagram: DiagramFile;
+    events: Action[];
+  }[];
+  it.each(repros.map((r) => [r.name, r] as const))("%s", (_, r) => {
+    expect(replay(r.diagram, r.seed, r.scale, r.events)).toBeUndefined();
   });
 });

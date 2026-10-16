@@ -1364,10 +1364,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         if (f && r) {
           const milli = r.cpuLimitMilli ?? r.availableCpuMilli ?? Infinity;
           for (const work of node.working) {
-            if (work.memorySlots !== undefined) {
-              priorSlots = Math.max(priorSlots, work.memorySlots);
-              priorOccupancy += scale;
-            }
+            // Work admitted under an older, larger concurrency keeps that residence; every attempt alongside it
+            // (a sampled dot may round past the new capacity) still owns its memory.
+            if (work.memorySlots !== undefined) priorSlots = Math.max(priorSlots, work.memorySlots);
+            priorOccupancy += scale;
             if (work.cpuParts && (work.cpuBackoffUntil !== undefined || work.memorySlots !== undefined))
               retained += scale;
             if (work.cpuRemaining === undefined || (work.cpuBackoffUntil ?? 0) > time) continue;

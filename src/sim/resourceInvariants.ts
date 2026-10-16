@@ -136,14 +136,20 @@ export function assertResourceInvariants(state: ResourceState) {
     const decided = f.decision?.at === state.time ? f.decision : undefined;
     if (a?.mode === "on" && !f.override && decided && previousCount !== undefined && f.desired !== previousCount) {
       const c = a.controller;
-      if (c.kind === "ecs" && decided.adapter === "ecs" && f.desired < previousCount) {
+      // A count outside the range (an override just resumed, or a lowered maximum) is clamped to the bound
+      // without a metric or rule: that move is the range's, not the policy's.
+      const bounds = replicaRange(c, state.capacityMultiplier);
+      const clamped =
+        (previousCount > bounds.max && f.desired === bounds.max) ||
+        (previousCount < bounds.min && f.desired === bounds.min);
+      if (c.kind === "ecs" && decided.adapter === "ecs" && f.desired < previousCount && !clamped) {
         fail(decided.metric !== undefined && Number.isFinite(decided.metric), "ECS scaled in on missing data");
         fail(
           decided.policy === undefined || (before?.inCooldownUntil?.[decided.policy] ?? -1) <= state.time,
           "ECS scaled in during its scale-in cooldown",
         );
       }
-      if (c.kind === "appService" && decided.adapter === "appService" && decided.policy !== undefined) {
+      if (c.kind === "appService" && decided.adapter === "appService" && decided.policy !== undefined && !clamped) {
         const rule = c.rules[decided.policy];
         fail(
           before?.lastScaleAt === undefined || before.lastScaleAt + rule.cooldownMs <= state.time,
