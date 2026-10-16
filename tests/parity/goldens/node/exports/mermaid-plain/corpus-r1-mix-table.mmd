@@ -1,0 +1,13 @@
+---
+title: R1: mix, table and canary
+---
+flowchart LR
+  app(["Mobile app"])
+  kong["Gateway"]
+  orders["Orders"]
+  canary["Orders canary"]
+  search["Search"]
+  app --> kong
+  kong --> orders
+  kong --> canary
+  kong --> search

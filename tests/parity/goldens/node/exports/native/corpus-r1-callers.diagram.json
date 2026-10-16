@@ -1,0 +1,270 @@
+{
+  "format": "diagrams/v2",
+  "planning": {
+    "revision": "p3-a1",
+    "requestRoutes": [
+      {
+        "id": "orders-post",
+        "address": {
+          "method": "POST",
+          "path": "/orders"
+        }
+      },
+      {
+        "id": "stock-get",
+        "address": {
+          "method": "GET",
+          "path": "/stock/7"
+        },
+        "appearance": {
+          "paletteSlot": 2,
+          "marker": "square"
+        }
+      }
+    ]
+  },
+  "title": "R1: caller addresses and bindings",
+  "nodes": [
+    {
+      "id": "web",
+      "stencil": "client.browser",
+      "label": "Web",
+      "x": 0,
+      "y": 100,
+      "props": {
+        "ratePerSec": 5
+      }
+    },
+    {
+      "id": "bff",
+      "stencil": "generic.service",
+      "label": "BFF",
+      "x": 250,
+      "y": 100,
+      "props": {
+        "latencyMs": 20,
+        "jitter": 0
+      }
+    },
+    {
+      "id": "gw",
+      "stencil": "envoy",
+      "label": "Envoy",
+      "x": 500,
+      "y": 100,
+      "props": {
+        "latencyMs": 5,
+        "jitter": 0,
+        "routeTable": {
+          "rules": [
+            {
+              "id": "orders",
+              "match": {
+                "methods": [
+                  "POST"
+                ],
+                "path": {
+                  "kind": "exact",
+                  "value": "/orders"
+                }
+              },
+              "targets": [
+                {
+                  "edgeId": "gw-orders",
+                  "weight": 1
+                }
+              ]
+            },
+            {
+              "id": "stock",
+              "match": {
+                "path": {
+                  "kind": "template",
+                  "value": "/stock/{sku}"
+                }
+              },
+              "targets": [
+                {
+                  "edgeId": "gw-stock",
+                  "weight": 1
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "orders",
+      "stencil": "generic.service",
+      "label": "Orders",
+      "x": 750,
+      "y": 0,
+      "props": {
+        "latencyMs": 30,
+        "jitter": 0
+      }
+    },
+    {
+      "id": "stock",
+      "stencil": "generic.service",
+      "label": "Stock",
+      "x": 750,
+      "y": 200,
+      "props": {
+        "latencyMs": 30,
+        "jitter": 0
+      }
+    },
+    {
+      "id": "events",
+      "stencil": "aws.sns",
+      "label": "Order events",
+      "x": 1000,
+      "y": 0
+    },
+    {
+      "id": "audit",
+      "stencil": "generic.service",
+      "label": "Audit",
+      "x": 1250,
+      "y": 0,
+      "props": {
+        "latencyMs": 10,
+        "jitter": 0
+      }
+    },
+    {
+      "id": "billing",
+      "stencil": "generic.service",
+      "label": "Billing",
+      "x": 1250,
+      "y": 150,
+      "props": {
+        "latencyMs": 10,
+        "jitter": 0
+      }
+    },
+    {
+      "id": "bff2",
+      "stencil": "generic.service",
+      "label": "Stock checker",
+      "x": 250,
+      "y": 250,
+      "props": {
+        "latencyMs": 20,
+        "jitter": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "web-bff",
+      "from": "web",
+      "to": "bff",
+      "kind": "async",
+      "props": {
+        "travelMs": 50
+      }
+    },
+    {
+      "id": "bff-gw-orders",
+      "from": "bff",
+      "to": "gw",
+      "kind": "sync",
+      "label": "Place order",
+      "props": {
+        "travelMs": 50,
+        "requestRouteId": "orders-post"
+      }
+    },
+    {
+      "id": "gw-orders",
+      "from": "gw",
+      "to": "orders",
+      "kind": "sync",
+      "props": {
+        "travelMs": 50
+      }
+    },
+    {
+      "id": "gw-stock",
+      "from": "gw",
+      "to": "stock",
+      "kind": "sync",
+      "props": {
+        "travelMs": 50
+      }
+    },
+    {
+      "id": "orders-events",
+      "from": "orders",
+      "to": "events",
+      "kind": "async",
+      "props": {
+        "travelMs": 50
+      }
+    },
+    {
+      "id": "events-audit",
+      "from": "events",
+      "to": "audit",
+      "props": {
+        "group": "audit",
+        "travelMs": 50
+      }
+    },
+    {
+      "id": "events-billing",
+      "from": "events",
+      "to": "billing",
+      "props": {
+        "group": "billing",
+        "travelMs": 50,
+        "requestFilter": {
+          "methods": [
+            "POST"
+          ]
+        }
+      }
+    },
+    {
+      "id": "web-bff2",
+      "from": "web",
+      "to": "bff2",
+      "kind": "async",
+      "props": {
+        "travelMs": 50
+      }
+    },
+    {
+      "id": "bff2-gw",
+      "from": "bff2",
+      "to": "gw",
+      "kind": "sync",
+      "props": {
+        "travelMs": 50,
+        "requestRouteId": "stock-get"
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "calls",
+      "title": "Calls",
+      "seed": 7,
+      "durationMs": 12000,
+      "traffic": [
+        {
+          "id": "calls-traffic",
+          "node": "web",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 10,
+            "durationMs": 8000
+          }
+        }
+      ]
+    }
+  ]
+}

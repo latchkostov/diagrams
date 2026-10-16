@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "app": [40, 160], "kong": [400, 160], "orders": [760, 40], "canary": [760, 160], "search": [760, 280] },
+    "TB": { "app": [320, 40], "kong": [320, 200], "orders": [40, 360], "canary": [320, 360], "search": [600, 360] }
+  },
+  "tidy": { "app": [0, 120], "kong": [300, 120], "orders": [600, 0], "canary": [600, 120], "search": [600, 240] },
+  "arrange": {
+    "alignLeft": { "app": [0, 120], "kong": [0, 120], "orders": [0, 0], "canary": [0, 120], "search": [0, 240] },
+    "alignMiddle": { "app": [0, 120], "kong": [240, 120], "orders": [520, 120], "canary": [520, 120], "search": [520, 120] },
+    "distributeH": { "app": [0, 120], "kong": [130, 120], "orders": [260, 0], "canary": [390, 120], "search": [520, 240] },
+    "distributeV": { "app": [0, 60], "kong": [240, 120], "orders": [520, 0], "canary": [520, 180], "search": [520, 240] },
+    "spreadH": { "app": [0, 0], "kong": [240, 0], "orders": [520, 0], "canary": [780, 0], "search": [1040, 0] },
+    "boundaryAround": { "x": -40, "y": -64, "width": 820, "height": 416 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "app": [40, 160], "kong": [400, 160], "orders": [760, 40], "canary": [760, 160], "search": [760, 280] },
+    "groups": {}
+  }
+}

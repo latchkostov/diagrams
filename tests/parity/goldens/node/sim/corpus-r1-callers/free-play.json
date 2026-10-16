@@ -1,0 +1,262 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "web": { "replicas": [1, 1, 0] },
+        "bff": { "replicas": [1, 1, 0] },
+        "gw": { "replicas": [1, 1, 0] },
+        "orders": { "replicas": [1, 1, 0] },
+        "stock": { "replicas": [1, 1, 0] },
+        "events": { "lag": { "audit": 0, "billing": 0 }, "replicas": [1, 1, 0] },
+        "audit": { "replicas": [1, 1, 0] },
+        "billing": { "replicas": [1, 1, 0] },
+        "bff2": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 4,
+      "nodes": {
+        "web": { "processed": 50, "throughput": 5.488914795493901, "replicas": [1, 1, 0] },
+        "bff": { "processed": 49, "throughput": 4.819742553488842, "replicas": [1, 1, 0] },
+        "gw": { "processed": 98, "throughput": 10.235557576468606, "replicas": [1, 1, 0] },
+        "orders": { "processed": 48, "inFlight": 1, "throughput": 4.539006868098639, "replicas": [1, 1, 0] },
+        "stock": { "processed": 48, "inFlight": 1, "throughput": 4.539006868098639, "replicas": [1, 1, 0] },
+        "events": {
+          "processed": 48,
+          "throughput": 4.771726726684359,
+          "lag": { "audit": 0, "billing": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "audit": { "processed": 48, "throughput": 5.066793828520712, "replicas": [1, 1, 0] },
+        "billing": { "processed": 48, "throughput": 5.066793828520712, "replicas": [1, 1, 0] },
+        "bff2": { "processed": 49, "throughput": 4.819742553488842, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 4,
+      "nodes": {
+        "web": { "processed": 100, "throughput": 5.489163991840091, "replicas": [1, 1, 0] },
+        "bff": { "processed": 99, "throughput": 4.8200098186088685, "replicas": [1, 1, 0] },
+        "gw": { "processed": 198, "throughput": 10.236125160212726, "replicas": [1, 1, 0] },
+        "orders": { "processed": 98, "inFlight": 1, "throughput": 4.539314296163552, "replicas": [1, 1, 0] },
+        "stock": { "processed": 98, "inFlight": 1, "throughput": 4.539314296163552, "replicas": [1, 1, 0] },
+        "events": {
+          "processed": 98,
+          "throughput": 4.7720499169232165,
+          "lag": { "audit": 0, "billing": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "audit": { "processed": 98, "throughput": 5.067137003727816, "replicas": [1, 1, 0] },
+        "billing": { "processed": 98, "throughput": 5.067137003727816, "replicas": [1, 1, 0] },
+        "bff2": { "processed": 99, "throughput": 4.8200098186088685, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 4,
+      "nodes": {
+        "web": { "processed": 150, "throughput": 5.489164003153583, "replicas": [1, 1, 0] },
+        "bff": { "processed": 149, "throughput": 4.8200098307426815, "replicas": [1, 1, 0] },
+        "gw": { "processed": 298, "throughput": 10.236125185980981, "replicas": [1, 1, 0] },
+        "orders": { "processed": 148, "inFlight": 1, "throughput": 4.539314310120762, "replicas": [1, 1, 0] },
+        "stock": { "processed": 148, "inFlight": 1, "throughput": 4.539314310120762, "replicas": [1, 1, 0] },
+        "events": {
+          "processed": 148,
+          "throughput": 4.772049931596028,
+          "lag": { "audit": 0, "billing": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "audit": { "processed": 148, "throughput": 5.067137019307945, "replicas": [1, 1, 0] },
+        "billing": { "processed": 148, "throughput": 5.067137019307945, "replicas": [1, 1, 0] },
+        "bff2": { "processed": 149, "throughput": 4.8200098307426815, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 4,
+      "nodes": {
+        "web": { "processed": 200, "throughput": 5.489164003154097, "replicas": [1, 1, 0] },
+        "bff": { "processed": 199, "throughput": 4.820009830743234, "replicas": [1, 1, 0] },
+        "gw": { "processed": 398, "throughput": 10.236125185982154, "replicas": [1, 1, 0] },
+        "orders": { "processed": 198, "inFlight": 1, "throughput": 4.539314310121396, "replicas": [1, 1, 0] },
+        "stock": { "processed": 198, "inFlight": 1, "throughput": 4.539314310121396, "replicas": [1, 1, 0] },
+        "events": {
+          "processed": 198,
+          "throughput": 4.772049931596695,
+          "lag": { "audit": 0, "billing": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "audit": { "processed": 198, "throughput": 5.067137019308652, "replicas": [1, 1, 0] },
+        "billing": { "processed": 198, "throughput": 5.067137019308652, "replicas": [1, 1, 0] },
+        "bff2": { "processed": 199, "throughput": 4.820009830743234, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 4,
+      "nodes": {
+        "web": { "processed": 250, "throughput": 5.489164003154097, "replicas": [1, 1, 0] },
+        "bff": { "processed": 249, "throughput": 4.820009830743234, "replicas": [1, 1, 0] },
+        "gw": { "processed": 498, "throughput": 10.236125185982154, "replicas": [1, 1, 0] },
+        "orders": { "processed": 248, "inFlight": 1, "throughput": 4.539314310121396, "replicas": [1, 1, 0] },
+        "stock": { "processed": 248, "inFlight": 1, "throughput": 4.539314310121396, "replicas": [1, 1, 0] },
+        "events": {
+          "processed": 248,
+          "throughput": 4.772049931596695,
+          "lag": { "audit": 0, "billing": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "audit": { "processed": 248, "throughput": 5.067137019308652, "replicas": [1, 1, 0] },
+        "billing": { "processed": 248, "throughput": 5.067137019308652, "replicas": [1, 1, 0] },
+        "bff2": { "processed": 249, "throughput": 4.820009830743234, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 4,
+      "nodes": {
+        "web": { "processed": 300, "throughput": 5.489164003154097, "replicas": [1, 1, 0] },
+        "bff": { "processed": 299, "throughput": 4.820009830743234, "replicas": [1, 1, 0] },
+        "gw": { "processed": 598, "throughput": 10.236125185982154, "replicas": [1, 1, 0] },
+        "orders": { "processed": 298, "inFlight": 1, "throughput": 4.539314310121396, "replicas": [1, 1, 0] },
+        "stock": { "processed": 298, "inFlight": 1, "throughput": 4.539314310121396, "replicas": [1, 1, 0] },
+        "events": {
+          "processed": 298,
+          "throughput": 4.772049931596695,
+          "lag": { "audit": 0, "billing": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "audit": { "processed": 298, "throughput": 5.067137019308652, "replicas": [1, 1, 0] },
+        "billing": { "processed": 298, "throughput": 5.067137019308652, "replicas": [1, 1, 0] },
+        "bff2": { "processed": 299, "throughput": 4.820009830743234, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 4,
+    "real": {
+      "web": { "processed": 300, "throughput": 5.489164003154097, "replicas": [1, 1, 0] },
+      "bff": { "processed": 299, "throughput": 4.820009830743234, "replicas": [1, 1, 0] },
+      "gw": { "processed": 598, "throughput": 10.236125185982154, "replicas": [1, 1, 0] },
+      "orders": { "processed": 298, "inFlight": 1, "throughput": 4.539314310121396, "replicas": [1, 1, 0] },
+      "stock": { "processed": 298, "inFlight": 1, "throughput": 4.539314310121396, "replicas": [1, 1, 0] },
+      "events": {
+        "processed": 298,
+        "throughput": 4.772049931596695,
+        "lag": { "audit": 0, "billing": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "audit": { "processed": 298, "throughput": 5.067137019308652, "replicas": [1, 1, 0] },
+      "billing": { "processed": 298, "throughput": 5.067137019308652, "replicas": [1, 1, 0] },
+      "bff2": { "processed": 299, "throughput": 4.820009830743234, "replicas": [1, 1, 0] }
+    },
+    "edges": { "web-bff": 299, "bff-gw-orders": 299, "gw-orders": 299, "gw-stock": 299, "orders-events": 298, "events-audit": 298, "events-billing": 298, "web-bff2": 299, "bff2-gw": 299 }
+  },
+  "events": {
+    "total": 5674,
+    "byKind": { "process": 2986, "deliver": 2688 },
+    "byNode": {
+      "web": { "process": 300 },
+      "bff": { "deliver": 299, "process": 299 },
+      "bff2": { "deliver": 299, "process": 299 },
+      "gw": { "deliver": 598, "process": 598 },
+      "orders": { "deliver": 299, "process": 298 },
+      "stock": { "deliver": 299, "process": 298 },
+      "events": { "deliver": 298, "process": 298 },
+      "audit": { "deliver": 298, "process": 298 },
+      "billing": { "deliver": 298, "process": 298 }
+    },
+    "perSecond": [
+      "bdd924eee034",
+      "10b41f205aa7",
+      "2538c5f72518",
+      "474c93072376",
+      "19df58464f47",
+      "84749959a80f",
+      "63885ed603bf",
+      "9ec896f45fd1",
+      "64f15efb7162",
+      "9bf27a4802fd",
+      "9615fa679f09",
+      "e1288ad12fc0",
+      "d668358f6ae4",
+      "e7db57faa685",
+      "9cd5c3acea04",
+      "a4de4b7f772b",
+      "b6760c113dfe",
+      "bdfa55aedc0b",
+      "d5b067aaa9ce",
+      "f9415de7099d",
+      "a5b9ff683c13",
+      "d8017717743b",
+      "d355f14977a5",
+      "ce273b4b2582",
+      "9c504b7e0ace",
+      "2e5ce3aed586",
+      "79dfcc1f14b8",
+      "f02a087d0aed",
+      "784af813880d",
+      "161c58851882",
+      "bb7df3cb30d9",
+      "a1e6f3a19ba3",
+      "ba2978b53558",
+      "93380259b6b7",
+      "956d1a21b4f4",
+      "0f14bcec3d51",
+      "e08a96da7800",
+      "a6240d07806a",
+      "b9bd1aa70996",
+      "f0c05dfb4478",
+      "01b592661529",
+      "a912b27cbd7e",
+      "b9df48fe1a5e",
+      "12d084555137",
+      "47e583666528",
+      "ea7c58add0b7",
+      "f8be99daf887",
+      "014fe384005c",
+      "0b016480d90e",
+      "86340b8057de",
+      "3582c4b8d374",
+      "d1aa57d7a6fc",
+      "bd0632cff32a",
+      "f57215abd60f",
+      "1680754cbd61",
+      "0af84a34258f",
+      "1a293f6ab088",
+      "a37415f1890e",
+      "6ba96f0cd881",
+      "6c93662ac6da",
+      "c2864dc3d2b1"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 298, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 298, "min": 320, "mean": 320, "p50": 320, "p90": 320, "max": 320 },
+    "waitMs": {
+      "bff": { "count": 298, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "gw": { "count": 596, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "orders": { "count": 298, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "stock": { "count": 298, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "audit": { "count": 298, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "billing": { "count": 298, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "bff2": { "count": 298, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "bff": { "count": 298, "min": 20, "mean": 20, "p50": 20, "p90": 20, "max": 20 },
+      "gw": { "count": 596, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "orders": { "count": 298, "min": 30, "mean": 30, "p50": 30, "p90": 30, "max": 30 },
+      "stock": { "count": 298, "min": 30, "mean": 30, "p50": 30, "p90": 30, "max": 30 },
+      "audit": { "count": 298, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "billing": { "count": 298, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "bff2": { "count": 298, "min": 20, "mean": 20, "p50": 20, "p90": 20, "max": 20 }
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "viewport": "translate(4.69978px, 40px) scale(0.994048)",
+  "nodes": {
+    "app": { "kind": "node", "box": "translate(40px, 120px) 220×72", "text": "Parcelpoint app 40 req/s · 4 routes" },
+    "carriers": { "kind": "node", "box": "translate(40px, 420px) 220×72", "text": "Carrier webhooks 30 events/s" },
+    "gateway": { "kind": "node", "box": "translate(380px, 270px) 220×72", "text": "API gateway Route table · 4 rules" },
+    "tracking": { "kind": "node", "box": "translate(760px, 0px) 220×72", "text": "Tracking GET /v1/parcels/{id}" },
+    "pricing": { "kind": "node", "box": "translate(760px, 150px) 220×72", "text": "Pricing POST /v1/quotes · 90%" },
+    "pricing-canary": { "kind": "node", "box": "translate(760px, 300px) 220×72", "text": "Pricing canary 10% of quotes" },
+    "labels": { "kind": "node", "box": "translate(760px, 450px) 220×72", "text": "Labels POST /v1/labels" },
+    "events": { "kind": "node", "box": "translate(760px, 600px) 220×72", "text": "Carrier events 1 × 4 slots · 200 ms" }
+  },
+  "edges": {
+    "app-gateway": "M260,156 L310,156 Q320,156 320,166 L320,289 Q320,299 330,299 L380,299",
+    "carriers-gateway": "M260,456 L310,456 Q320,456 320,446 L320,323 Q320,313 330,313 L380,313",
+    "to-tracking": "M600,280 L664.5,280 Q674.5,280 674.5,270 L674.5,46 Q674.5,36 684.5,36 L760,36",
+    "to-pricing": "M600,293 L675.5,293 Q685.5,293 685.5,283 L685.5,196 Q685.5,186 695.5,186 L760,186",
+    "to-pricing-canary": "M600,306 L681,306 Q691,306 691,316 L691,326 Q691,336 701,336 L760,336",
+    "to-labels": "M600,319 L670,319 Q680,319 680,329 L680,476 Q680,486 690,486 L760,486",
+    "to-events": "M600,332 L659,332 Q669,332 669,342 L669,626 Q669,636 679,636 L760,636"
+  },
+  "labels": {
+    "app-gateway": { "style": "transform: translate(-50%, -50%) translate(320px, 227.5px); --fe-w: 47px; --fe-h: 19px;", "text": "HTTPS" },
+    "carriers-gateway": { "style": "transform: translate(-50%, -50%) translate(320px, 384.5px); --fe-w: 59px; --fe-h: 19px;", "text": "Webhook" },
+    "to-tracking": { "style": "transform: translate(-50%, -50%) translate(674.5px, 158px); --fe-w: 47px; --fe-h: 19px;", "text": "Track" },
+    "to-pricing": { "style": "transform: translate(-50%, -50%) translate(715.75px, 186px); --fe-w: 47px; --fe-h: 19px;", "text": "Quote" },
+    "to-pricing-canary": { "style": "transform: translate(-50%, -50%) translate(656.5px, 306px); --fe-w: 89px; --fe-h: 19px;", "text": "Quote canary" },
+    "to-labels": { "style": "transform: translate(-50%, -50%) translate(713px, 486px); --fe-w: 47px; --fe-h: 19px;", "text": "Label" },
+    "to-events": { "style": "transform: translate(-50%, -50%) translate(669px, 514px); --fe-w: 95px; --fe-h: 19px;", "text": "Carrier event" }
+  }
+}

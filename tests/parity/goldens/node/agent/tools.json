@@ -1102,7 +1102,157 @@
               "messageKB": { "type": "number", "minimum": 0.01, "maximum": 1000000 },
               "ha": { "type": "string", "enum": ["standalone", "active-standby", "active-active"] },
               "failoverMs": { "type": "number", "minimum": 0, "maximum": 600000 },
-              "healthChecks": { "type": "boolean" }
+              "healthChecks": { "type": "boolean" },
+              "trafficMix": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["mode", "entries"],
+                "properties": {
+                  "mode": { "type": "string", "enum": ["shares", "rates"] },
+                  "entries": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 64,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["routeId"],
+                      "properties": {
+                        "routeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "share": { "type": "number", "minimum": 0, "maximum": 1, "description": "Shares mode: this route's fraction, 0..1." },
+                        "ratePerSec": { "type": "number", "minimum": 0, "maximum": 10000000, "description": "Rates mode: this route's real requests per second." }
+                      }
+                    }
+                  }
+                }
+              },
+              "routeTable": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["rules"],
+                "properties": {
+                  "rules": {
+                    "type": "array",
+                    "maxItems": 256,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["id", "match", "targets"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "label": { "type": "string", "maxLength": 200 },
+                        "match": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "methods": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 8,
+                              "uniqueItems": true,
+                              "items": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"] }
+                            },
+                            "path": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": ["kind", "value"],
+                              "properties": {
+                                "kind": { "enum": ["exact", "prefix", "template"] },
+                                "value": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^/" }
+                              }
+                            },
+                            "hosts": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 16,
+                              "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            },
+                            "headers": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            },
+                            "query": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            }
+                          }
+                        },
+                        "targets": {
+                          "type": "array",
+                          "minItems": 1,
+                          "maxItems": 16,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["edgeId", "weight"],
+                            "properties": {
+                              "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                            }
+                          }
+                        },
+                        "quotas": {
+                          "type": "array",
+                          "maxItems": 8,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                            "properties": {
+                              "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                              "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                              "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                              "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                              "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                              "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "default": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["targets"],
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 16,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["edgeId", "weight"],
+                          "properties": {
+                            "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                          }
+                        }
+                      },
+                      "quotas": {
+                        "type": "array",
+                        "maxItems": 8,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                          "properties": {
+                            "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                            "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                            "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                            "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                            "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                            "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
           },
           "Tone": { "type": "string", "enum": ["azure", "aws", "gcp", "k8s", "onprem", "neutral"] },
@@ -1110,6 +1260,37 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "requestRouteId": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
+              "requestFilter": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "properties": {
+                  "methods": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 8,
+                    "uniqueItems": true,
+                    "items": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"] }
+                  },
+                  "path": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["kind", "value"],
+                    "properties": {
+                      "kind": { "enum": ["exact", "prefix", "template"] },
+                      "value": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^/" }
+                    }
+                  },
+                  "hosts": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 16,
+                    "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+                  },
+                  "headers": { "type": "object", "additionalProperties": { "type": "string", "maxLength": 200 } },
+                  "query": { "type": "object", "additionalProperties": { "type": "string", "maxLength": 200 } }
+                }
+              },
               "endpointId": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
               "caller": {
                 "type": ["object", "null"],
@@ -2219,7 +2400,157 @@
               "messageKB": { "type": ["number", "null"], "minimum": 0.01, "maximum": 1000000 },
               "ha": { "type": ["string", "null"], "enum": ["standalone", "active-standby", "active-active", null] },
               "failoverMs": { "type": ["number", "null"], "minimum": 0, "maximum": 600000 },
-              "healthChecks": { "type": ["boolean", "null"] }
+              "healthChecks": { "type": ["boolean", "null"] },
+              "trafficMix": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "required": ["mode", "entries"],
+                "properties": {
+                  "mode": { "type": "string", "enum": ["shares", "rates"] },
+                  "entries": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 64,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["routeId"],
+                      "properties": {
+                        "routeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "share": { "type": "number", "minimum": 0, "maximum": 1, "description": "Shares mode: this route's fraction, 0..1." },
+                        "ratePerSec": { "type": "number", "minimum": 0, "maximum": 10000000, "description": "Rates mode: this route's real requests per second." }
+                      }
+                    }
+                  }
+                }
+              },
+              "routeTable": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "required": ["rules"],
+                "properties": {
+                  "rules": {
+                    "type": "array",
+                    "maxItems": 256,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["id", "match", "targets"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "label": { "type": "string", "maxLength": 200 },
+                        "match": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "methods": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 8,
+                              "uniqueItems": true,
+                              "items": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"] }
+                            },
+                            "path": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": ["kind", "value"],
+                              "properties": {
+                                "kind": { "enum": ["exact", "prefix", "template"] },
+                                "value": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^/" }
+                              }
+                            },
+                            "hosts": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 16,
+                              "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            },
+                            "headers": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            },
+                            "query": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            }
+                          }
+                        },
+                        "targets": {
+                          "type": "array",
+                          "minItems": 1,
+                          "maxItems": 16,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["edgeId", "weight"],
+                            "properties": {
+                              "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                            }
+                          }
+                        },
+                        "quotas": {
+                          "type": "array",
+                          "maxItems": 8,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                            "properties": {
+                              "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                              "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                              "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                              "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                              "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                              "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "default": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["targets"],
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 16,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["edgeId", "weight"],
+                          "properties": {
+                            "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                          }
+                        }
+                      },
+                      "quotas": {
+                        "type": "array",
+                        "maxItems": 8,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                          "properties": {
+                            "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                            "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                            "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                            "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                            "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                            "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -3318,7 +3649,157 @@
               "messageKB": { "type": "number", "minimum": 0.01, "maximum": 1000000 },
               "ha": { "type": "string", "enum": ["standalone", "active-standby", "active-active"] },
               "failoverMs": { "type": "number", "minimum": 0, "maximum": 600000 },
-              "healthChecks": { "type": "boolean" }
+              "healthChecks": { "type": "boolean" },
+              "trafficMix": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["mode", "entries"],
+                "properties": {
+                  "mode": { "type": "string", "enum": ["shares", "rates"] },
+                  "entries": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 64,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["routeId"],
+                      "properties": {
+                        "routeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "share": { "type": "number", "minimum": 0, "maximum": 1, "description": "Shares mode: this route's fraction, 0..1." },
+                        "ratePerSec": { "type": "number", "minimum": 0, "maximum": 10000000, "description": "Rates mode: this route's real requests per second." }
+                      }
+                    }
+                  }
+                }
+              },
+              "routeTable": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["rules"],
+                "properties": {
+                  "rules": {
+                    "type": "array",
+                    "maxItems": 256,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["id", "match", "targets"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "label": { "type": "string", "maxLength": 200 },
+                        "match": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "methods": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 8,
+                              "uniqueItems": true,
+                              "items": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"] }
+                            },
+                            "path": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": ["kind", "value"],
+                              "properties": {
+                                "kind": { "enum": ["exact", "prefix", "template"] },
+                                "value": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^/" }
+                              }
+                            },
+                            "hosts": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 16,
+                              "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            },
+                            "headers": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            },
+                            "query": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            }
+                          }
+                        },
+                        "targets": {
+                          "type": "array",
+                          "minItems": 1,
+                          "maxItems": 16,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["edgeId", "weight"],
+                            "properties": {
+                              "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                            }
+                          }
+                        },
+                        "quotas": {
+                          "type": "array",
+                          "maxItems": 8,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                            "properties": {
+                              "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                              "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                              "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                              "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                              "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                              "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "default": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["targets"],
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 16,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["edgeId", "weight"],
+                          "properties": {
+                            "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                          }
+                        }
+                      },
+                      "quotas": {
+                        "type": "array",
+                        "maxItems": 8,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                          "properties": {
+                            "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                            "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                            "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                            "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                            "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                            "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
           },
           "Tone": { "type": "string", "enum": ["azure", "aws", "gcp", "k8s", "onprem", "neutral"] },
@@ -3326,6 +3807,37 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "requestRouteId": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
+              "requestFilter": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "properties": {
+                  "methods": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 8,
+                    "uniqueItems": true,
+                    "items": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"] }
+                  },
+                  "path": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["kind", "value"],
+                    "properties": {
+                      "kind": { "enum": ["exact", "prefix", "template"] },
+                      "value": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^/" }
+                    }
+                  },
+                  "hosts": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 16,
+                    "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+                  },
+                  "headers": { "type": "object", "additionalProperties": { "type": "string", "maxLength": 200 } },
+                  "query": { "type": "object", "additionalProperties": { "type": "string", "maxLength": 200 } }
+                }
+              },
               "endpointId": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
               "caller": {
                 "type": ["object", "null"],
@@ -4435,7 +4947,157 @@
               "messageKB": { "type": ["number", "null"], "minimum": 0.01, "maximum": 1000000 },
               "ha": { "type": ["string", "null"], "enum": ["standalone", "active-standby", "active-active", null] },
               "failoverMs": { "type": ["number", "null"], "minimum": 0, "maximum": 600000 },
-              "healthChecks": { "type": ["boolean", "null"] }
+              "healthChecks": { "type": ["boolean", "null"] },
+              "trafficMix": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "required": ["mode", "entries"],
+                "properties": {
+                  "mode": { "type": "string", "enum": ["shares", "rates"] },
+                  "entries": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 64,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["routeId"],
+                      "properties": {
+                        "routeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "share": { "type": "number", "minimum": 0, "maximum": 1, "description": "Shares mode: this route's fraction, 0..1." },
+                        "ratePerSec": { "type": "number", "minimum": 0, "maximum": 10000000, "description": "Rates mode: this route's real requests per second." }
+                      }
+                    }
+                  }
+                }
+              },
+              "routeTable": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "required": ["rules"],
+                "properties": {
+                  "rules": {
+                    "type": "array",
+                    "maxItems": 256,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["id", "match", "targets"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "label": { "type": "string", "maxLength": 200 },
+                        "match": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "methods": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 8,
+                              "uniqueItems": true,
+                              "items": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"] }
+                            },
+                            "path": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": ["kind", "value"],
+                              "properties": {
+                                "kind": { "enum": ["exact", "prefix", "template"] },
+                                "value": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^/" }
+                              }
+                            },
+                            "hosts": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 16,
+                              "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            },
+                            "headers": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            },
+                            "query": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            }
+                          }
+                        },
+                        "targets": {
+                          "type": "array",
+                          "minItems": 1,
+                          "maxItems": 16,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["edgeId", "weight"],
+                            "properties": {
+                              "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                            }
+                          }
+                        },
+                        "quotas": {
+                          "type": "array",
+                          "maxItems": 8,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                            "properties": {
+                              "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                              "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                              "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                              "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                              "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                              "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "default": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["targets"],
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 16,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["edgeId", "weight"],
+                          "properties": {
+                            "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                          }
+                        }
+                      },
+                      "quotas": {
+                        "type": "array",
+                        "maxItems": 8,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                          "properties": {
+                            "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                            "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                            "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                            "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                            "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                            "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -5530,7 +6192,157 @@
               "messageKB": { "type": "number", "minimum": 0.01, "maximum": 1000000 },
               "ha": { "type": "string", "enum": ["standalone", "active-standby", "active-active"] },
               "failoverMs": { "type": "number", "minimum": 0, "maximum": 600000 },
-              "healthChecks": { "type": "boolean" }
+              "healthChecks": { "type": "boolean" },
+              "trafficMix": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["mode", "entries"],
+                "properties": {
+                  "mode": { "type": "string", "enum": ["shares", "rates"] },
+                  "entries": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 64,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["routeId"],
+                      "properties": {
+                        "routeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "share": { "type": "number", "minimum": 0, "maximum": 1, "description": "Shares mode: this route's fraction, 0..1." },
+                        "ratePerSec": { "type": "number", "minimum": 0, "maximum": 10000000, "description": "Rates mode: this route's real requests per second." }
+                      }
+                    }
+                  }
+                }
+              },
+              "routeTable": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["rules"],
+                "properties": {
+                  "rules": {
+                    "type": "array",
+                    "maxItems": 256,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["id", "match", "targets"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "label": { "type": "string", "maxLength": 200 },
+                        "match": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "methods": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 8,
+                              "uniqueItems": true,
+                              "items": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"] }
+                            },
+                            "path": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": ["kind", "value"],
+                              "properties": {
+                                "kind": { "enum": ["exact", "prefix", "template"] },
+                                "value": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^/" }
+                              }
+                            },
+                            "hosts": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 16,
+                              "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            },
+                            "headers": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            },
+                            "query": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            }
+                          }
+                        },
+                        "targets": {
+                          "type": "array",
+                          "minItems": 1,
+                          "maxItems": 16,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["edgeId", "weight"],
+                            "properties": {
+                              "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                            }
+                          }
+                        },
+                        "quotas": {
+                          "type": "array",
+                          "maxItems": 8,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                            "properties": {
+                              "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                              "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                              "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                              "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                              "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                              "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "default": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["targets"],
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 16,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["edgeId", "weight"],
+                          "properties": {
+                            "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                          }
+                        }
+                      },
+                      "quotas": {
+                        "type": "array",
+                        "maxItems": 8,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                          "properties": {
+                            "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                            "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                            "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                            "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                            "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                            "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
           },
           "Tone": { "type": "string", "enum": ["azure", "aws", "gcp", "k8s", "onprem", "neutral"] },
@@ -5538,6 +6350,37 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "requestRouteId": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
+              "requestFilter": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "properties": {
+                  "methods": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 8,
+                    "uniqueItems": true,
+                    "items": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"] }
+                  },
+                  "path": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["kind", "value"],
+                    "properties": {
+                      "kind": { "enum": ["exact", "prefix", "template"] },
+                      "value": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^/" }
+                    }
+                  },
+                  "hosts": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 16,
+                    "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+                  },
+                  "headers": { "type": "object", "additionalProperties": { "type": "string", "maxLength": 200 } },
+                  "query": { "type": "object", "additionalProperties": { "type": "string", "maxLength": 200 } }
+                }
+              },
               "endpointId": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
               "caller": {
                 "type": ["object", "null"],
@@ -6647,7 +7490,157 @@
               "messageKB": { "type": ["number", "null"], "minimum": 0.01, "maximum": 1000000 },
               "ha": { "type": ["string", "null"], "enum": ["standalone", "active-standby", "active-active", null] },
               "failoverMs": { "type": ["number", "null"], "minimum": 0, "maximum": 600000 },
-              "healthChecks": { "type": ["boolean", "null"] }
+              "healthChecks": { "type": ["boolean", "null"] },
+              "trafficMix": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "required": ["mode", "entries"],
+                "properties": {
+                  "mode": { "type": "string", "enum": ["shares", "rates"] },
+                  "entries": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 64,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["routeId"],
+                      "properties": {
+                        "routeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "share": { "type": "number", "minimum": 0, "maximum": 1, "description": "Shares mode: this route's fraction, 0..1." },
+                        "ratePerSec": { "type": "number", "minimum": 0, "maximum": 10000000, "description": "Rates mode: this route's real requests per second." }
+                      }
+                    }
+                  }
+                }
+              },
+              "routeTable": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "required": ["rules"],
+                "properties": {
+                  "rules": {
+                    "type": "array",
+                    "maxItems": 256,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["id", "match", "targets"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "label": { "type": "string", "maxLength": 200 },
+                        "match": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "methods": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 8,
+                              "uniqueItems": true,
+                              "items": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"] }
+                            },
+                            "path": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": ["kind", "value"],
+                              "properties": {
+                                "kind": { "enum": ["exact", "prefix", "template"] },
+                                "value": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^/" }
+                              }
+                            },
+                            "hosts": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 16,
+                              "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            },
+                            "headers": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            },
+                            "query": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            }
+                          }
+                        },
+                        "targets": {
+                          "type": "array",
+                          "minItems": 1,
+                          "maxItems": 16,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["edgeId", "weight"],
+                            "properties": {
+                              "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                            }
+                          }
+                        },
+                        "quotas": {
+                          "type": "array",
+                          "maxItems": 8,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                            "properties": {
+                              "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                              "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                              "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                              "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                              "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                              "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "default": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["targets"],
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 16,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["edgeId", "weight"],
+                          "properties": {
+                            "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                          }
+                        }
+                      },
+                      "quotas": {
+                        "type": "array",
+                        "maxItems": 8,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                          "properties": {
+                            "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                            "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                            "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                            "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                            "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                            "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -6776,7 +7769,48 @@
                     "op": { "const": "set_meta" },
                     "title": { "type": "string", "maxLength": 200 },
                     "description": { "type": "string", "maxLength": 2000 },
-                    "direction": { "type": "string", "enum": ["LR", "TB"] }
+                    "direction": { "type": "string", "enum": ["LR", "TB"] },
+                    "requestRoutes": {
+                      "type": "array",
+                      "maxItems": 500,
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["id", "address"],
+                        "properties": {
+                          "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                          "label": { "type": "string", "maxLength": 200 },
+                          "address": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["method", "path"],
+                            "properties": {
+                              "method": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"] },
+                              "path": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^/" },
+                              "host": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "headers": {
+                                "type": "object",
+                                "additionalProperties": { "type": "string", "maxLength": 200 }
+                              },
+                              "query": {
+                                "type": "object",
+                                "additionalProperties": { "type": "string", "maxLength": 200 }
+                              }
+                            }
+                          },
+                          "appearance": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["paletteSlot", "marker"],
+                            "properties": {
+                              "paletteSlot": { "type": "integer", "minimum": 0, "maximum": 6 },
+                              "marker": { "enum": ["circle", "square", "diamond", "triangle"] }
+                            }
+                          }
+                        }
+                      },
+                      "description": "Request routing (current planning model): the diagram's complete list of request routes, each an id and a method/path address. Replaces the list; mixes (props.trafficMix), caller addresses (connection props.requestRouteId) and route tables (props.routeTable on an HTTP router) refer to these ids."
+                    }
                   }
                 }
               ]
@@ -7861,7 +8895,157 @@
               "messageKB": { "type": "number", "minimum": 0.01, "maximum": 1000000 },
               "ha": { "type": "string", "enum": ["standalone", "active-standby", "active-active"] },
               "failoverMs": { "type": "number", "minimum": 0, "maximum": 600000 },
-              "healthChecks": { "type": "boolean" }
+              "healthChecks": { "type": "boolean" },
+              "trafficMix": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["mode", "entries"],
+                "properties": {
+                  "mode": { "type": "string", "enum": ["shares", "rates"] },
+                  "entries": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 64,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["routeId"],
+                      "properties": {
+                        "routeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "share": { "type": "number", "minimum": 0, "maximum": 1, "description": "Shares mode: this route's fraction, 0..1." },
+                        "ratePerSec": { "type": "number", "minimum": 0, "maximum": 10000000, "description": "Rates mode: this route's real requests per second." }
+                      }
+                    }
+                  }
+                }
+              },
+              "routeTable": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["rules"],
+                "properties": {
+                  "rules": {
+                    "type": "array",
+                    "maxItems": 256,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["id", "match", "targets"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "label": { "type": "string", "maxLength": 200 },
+                        "match": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "methods": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 8,
+                              "uniqueItems": true,
+                              "items": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"] }
+                            },
+                            "path": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": ["kind", "value"],
+                              "properties": {
+                                "kind": { "enum": ["exact", "prefix", "template"] },
+                                "value": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^/" }
+                              }
+                            },
+                            "hosts": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 16,
+                              "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            },
+                            "headers": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            },
+                            "query": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            }
+                          }
+                        },
+                        "targets": {
+                          "type": "array",
+                          "minItems": 1,
+                          "maxItems": 16,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["edgeId", "weight"],
+                            "properties": {
+                              "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                            }
+                          }
+                        },
+                        "quotas": {
+                          "type": "array",
+                          "maxItems": 8,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                            "properties": {
+                              "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                              "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                              "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                              "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                              "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                              "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "default": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["targets"],
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 16,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["edgeId", "weight"],
+                          "properties": {
+                            "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                          }
+                        }
+                      },
+                      "quotas": {
+                        "type": "array",
+                        "maxItems": 8,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                          "properties": {
+                            "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                            "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                            "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                            "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                            "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                            "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
           },
           "Tone": { "type": "string", "enum": ["azure", "aws", "gcp", "k8s", "onprem", "neutral"] },
@@ -7869,6 +9053,37 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "requestRouteId": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
+              "requestFilter": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "properties": {
+                  "methods": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 8,
+                    "uniqueItems": true,
+                    "items": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"] }
+                  },
+                  "path": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["kind", "value"],
+                    "properties": {
+                      "kind": { "enum": ["exact", "prefix", "template"] },
+                      "value": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^/" }
+                    }
+                  },
+                  "hosts": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 16,
+                    "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+                  },
+                  "headers": { "type": "object", "additionalProperties": { "type": "string", "maxLength": 200 } },
+                  "query": { "type": "object", "additionalProperties": { "type": "string", "maxLength": 200 } }
+                }
+              },
               "endpointId": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
               "caller": {
                 "type": ["object", "null"],
@@ -8978,7 +10193,157 @@
               "messageKB": { "type": ["number", "null"], "minimum": 0.01, "maximum": 1000000 },
               "ha": { "type": ["string", "null"], "enum": ["standalone", "active-standby", "active-active", null] },
               "failoverMs": { "type": ["number", "null"], "minimum": 0, "maximum": 600000 },
-              "healthChecks": { "type": ["boolean", "null"] }
+              "healthChecks": { "type": ["boolean", "null"] },
+              "trafficMix": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "required": ["mode", "entries"],
+                "properties": {
+                  "mode": { "type": "string", "enum": ["shares", "rates"] },
+                  "entries": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 64,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["routeId"],
+                      "properties": {
+                        "routeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "share": { "type": "number", "minimum": 0, "maximum": 1, "description": "Shares mode: this route's fraction, 0..1." },
+                        "ratePerSec": { "type": "number", "minimum": 0, "maximum": 10000000, "description": "Rates mode: this route's real requests per second." }
+                      }
+                    }
+                  }
+                }
+              },
+              "routeTable": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "required": ["rules"],
+                "properties": {
+                  "rules": {
+                    "type": "array",
+                    "maxItems": 256,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["id", "match", "targets"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "label": { "type": "string", "maxLength": 200 },
+                        "match": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "methods": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 8,
+                              "uniqueItems": true,
+                              "items": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"] }
+                            },
+                            "path": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": ["kind", "value"],
+                              "properties": {
+                                "kind": { "enum": ["exact", "prefix", "template"] },
+                                "value": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^/" }
+                              }
+                            },
+                            "hosts": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 16,
+                              "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            },
+                            "headers": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            },
+                            "query": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            }
+                          }
+                        },
+                        "targets": {
+                          "type": "array",
+                          "minItems": 1,
+                          "maxItems": 16,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["edgeId", "weight"],
+                            "properties": {
+                              "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                            }
+                          }
+                        },
+                        "quotas": {
+                          "type": "array",
+                          "maxItems": 8,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                            "properties": {
+                              "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                              "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                              "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                              "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                              "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                              "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "default": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["targets"],
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 16,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["edgeId", "weight"],
+                          "properties": {
+                            "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                          }
+                        }
+                      },
+                      "quotas": {
+                        "type": "array",
+                        "maxItems": 8,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                          "properties": {
+                            "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                            "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                            "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                            "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                            "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                            "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -10130,7 +11495,157 @@
               "messageKB": { "type": "number", "minimum": 0.01, "maximum": 1000000 },
               "ha": { "type": "string", "enum": ["standalone", "active-standby", "active-active"] },
               "failoverMs": { "type": "number", "minimum": 0, "maximum": 600000 },
-              "healthChecks": { "type": "boolean" }
+              "healthChecks": { "type": "boolean" },
+              "trafficMix": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["mode", "entries"],
+                "properties": {
+                  "mode": { "type": "string", "enum": ["shares", "rates"] },
+                  "entries": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 64,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["routeId"],
+                      "properties": {
+                        "routeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "share": { "type": "number", "minimum": 0, "maximum": 1, "description": "Shares mode: this route's fraction, 0..1." },
+                        "ratePerSec": { "type": "number", "minimum": 0, "maximum": 10000000, "description": "Rates mode: this route's real requests per second." }
+                      }
+                    }
+                  }
+                }
+              },
+              "routeTable": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["rules"],
+                "properties": {
+                  "rules": {
+                    "type": "array",
+                    "maxItems": 256,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["id", "match", "targets"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "label": { "type": "string", "maxLength": 200 },
+                        "match": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "methods": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 8,
+                              "uniqueItems": true,
+                              "items": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"] }
+                            },
+                            "path": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": ["kind", "value"],
+                              "properties": {
+                                "kind": { "enum": ["exact", "prefix", "template"] },
+                                "value": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^/" }
+                              }
+                            },
+                            "hosts": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 16,
+                              "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            },
+                            "headers": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            },
+                            "query": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            }
+                          }
+                        },
+                        "targets": {
+                          "type": "array",
+                          "minItems": 1,
+                          "maxItems": 16,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["edgeId", "weight"],
+                            "properties": {
+                              "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                            }
+                          }
+                        },
+                        "quotas": {
+                          "type": "array",
+                          "maxItems": 8,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                            "properties": {
+                              "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                              "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                              "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                              "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                              "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                              "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "default": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["targets"],
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 16,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["edgeId", "weight"],
+                          "properties": {
+                            "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                          }
+                        }
+                      },
+                      "quotas": {
+                        "type": "array",
+                        "maxItems": 8,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                          "properties": {
+                            "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                            "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                            "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                            "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                            "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                            "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
           },
           "Tone": { "type": "string", "enum": ["azure", "aws", "gcp", "k8s", "onprem", "neutral"] },
@@ -10138,6 +11653,37 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "requestRouteId": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
+              "requestFilter": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "properties": {
+                  "methods": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 8,
+                    "uniqueItems": true,
+                    "items": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"] }
+                  },
+                  "path": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["kind", "value"],
+                    "properties": {
+                      "kind": { "enum": ["exact", "prefix", "template"] },
+                      "value": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^/" }
+                    }
+                  },
+                  "hosts": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 16,
+                    "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+                  },
+                  "headers": { "type": "object", "additionalProperties": { "type": "string", "maxLength": 200 } },
+                  "query": { "type": "object", "additionalProperties": { "type": "string", "maxLength": 200 } }
+                }
+              },
               "endpointId": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
               "caller": {
                 "type": ["object", "null"],
@@ -11247,7 +12793,157 @@
               "messageKB": { "type": ["number", "null"], "minimum": 0.01, "maximum": 1000000 },
               "ha": { "type": ["string", "null"], "enum": ["standalone", "active-standby", "active-active", null] },
               "failoverMs": { "type": ["number", "null"], "minimum": 0, "maximum": 600000 },
-              "healthChecks": { "type": ["boolean", "null"] }
+              "healthChecks": { "type": ["boolean", "null"] },
+              "trafficMix": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "required": ["mode", "entries"],
+                "properties": {
+                  "mode": { "type": "string", "enum": ["shares", "rates"] },
+                  "entries": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 64,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["routeId"],
+                      "properties": {
+                        "routeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "share": { "type": "number", "minimum": 0, "maximum": 1, "description": "Shares mode: this route's fraction, 0..1." },
+                        "ratePerSec": { "type": "number", "minimum": 0, "maximum": 10000000, "description": "Rates mode: this route's real requests per second." }
+                      }
+                    }
+                  }
+                }
+              },
+              "routeTable": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "required": ["rules"],
+                "properties": {
+                  "rules": {
+                    "type": "array",
+                    "maxItems": 256,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["id", "match", "targets"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "label": { "type": "string", "maxLength": 200 },
+                        "match": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "methods": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 8,
+                              "uniqueItems": true,
+                              "items": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"] }
+                            },
+                            "path": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": ["kind", "value"],
+                              "properties": {
+                                "kind": { "enum": ["exact", "prefix", "template"] },
+                                "value": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^/" }
+                              }
+                            },
+                            "hosts": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 16,
+                              "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            },
+                            "headers": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            },
+                            "query": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            }
+                          }
+                        },
+                        "targets": {
+                          "type": "array",
+                          "minItems": 1,
+                          "maxItems": 16,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["edgeId", "weight"],
+                            "properties": {
+                              "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                            }
+                          }
+                        },
+                        "quotas": {
+                          "type": "array",
+                          "maxItems": 8,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                            "properties": {
+                              "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                              "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                              "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                              "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                              "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                              "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "default": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["targets"],
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 16,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["edgeId", "weight"],
+                          "properties": {
+                            "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                          }
+                        }
+                      },
+                      "quotas": {
+                        "type": "array",
+                        "maxItems": 8,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                          "properties": {
+                            "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                            "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                            "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                            "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                            "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                            "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -12341,7 +14037,157 @@
               "messageKB": { "type": "number", "minimum": 0.01, "maximum": 1000000 },
               "ha": { "type": "string", "enum": ["standalone", "active-standby", "active-active"] },
               "failoverMs": { "type": "number", "minimum": 0, "maximum": 600000 },
-              "healthChecks": { "type": "boolean" }
+              "healthChecks": { "type": "boolean" },
+              "trafficMix": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["mode", "entries"],
+                "properties": {
+                  "mode": { "type": "string", "enum": ["shares", "rates"] },
+                  "entries": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 64,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["routeId"],
+                      "properties": {
+                        "routeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "share": { "type": "number", "minimum": 0, "maximum": 1, "description": "Shares mode: this route's fraction, 0..1." },
+                        "ratePerSec": { "type": "number", "minimum": 0, "maximum": 10000000, "description": "Rates mode: this route's real requests per second." }
+                      }
+                    }
+                  }
+                }
+              },
+              "routeTable": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["rules"],
+                "properties": {
+                  "rules": {
+                    "type": "array",
+                    "maxItems": 256,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["id", "match", "targets"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "label": { "type": "string", "maxLength": 200 },
+                        "match": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "methods": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 8,
+                              "uniqueItems": true,
+                              "items": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"] }
+                            },
+                            "path": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": ["kind", "value"],
+                              "properties": {
+                                "kind": { "enum": ["exact", "prefix", "template"] },
+                                "value": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^/" }
+                              }
+                            },
+                            "hosts": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 16,
+                              "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            },
+                            "headers": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            },
+                            "query": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            }
+                          }
+                        },
+                        "targets": {
+                          "type": "array",
+                          "minItems": 1,
+                          "maxItems": 16,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["edgeId", "weight"],
+                            "properties": {
+                              "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                            }
+                          }
+                        },
+                        "quotas": {
+                          "type": "array",
+                          "maxItems": 8,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                            "properties": {
+                              "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                              "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                              "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                              "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                              "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                              "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "default": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["targets"],
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 16,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["edgeId", "weight"],
+                          "properties": {
+                            "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                          }
+                        }
+                      },
+                      "quotas": {
+                        "type": "array",
+                        "maxItems": 8,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                          "properties": {
+                            "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                            "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                            "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                            "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                            "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                            "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
           },
           "Tone": { "type": "string", "enum": ["azure", "aws", "gcp", "k8s", "onprem", "neutral"] },
@@ -12349,6 +14195,37 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "requestRouteId": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
+              "requestFilter": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "properties": {
+                  "methods": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 8,
+                    "uniqueItems": true,
+                    "items": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"] }
+                  },
+                  "path": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["kind", "value"],
+                    "properties": {
+                      "kind": { "enum": ["exact", "prefix", "template"] },
+                      "value": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^/" }
+                    }
+                  },
+                  "hosts": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 16,
+                    "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+                  },
+                  "headers": { "type": "object", "additionalProperties": { "type": "string", "maxLength": 200 } },
+                  "query": { "type": "object", "additionalProperties": { "type": "string", "maxLength": 200 } }
+                }
+              },
               "endpointId": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
               "caller": {
                 "type": ["object", "null"],
@@ -13458,7 +15335,157 @@
               "messageKB": { "type": ["number", "null"], "minimum": 0.01, "maximum": 1000000 },
               "ha": { "type": ["string", "null"], "enum": ["standalone", "active-standby", "active-active", null] },
               "failoverMs": { "type": ["number", "null"], "minimum": 0, "maximum": 600000 },
-              "healthChecks": { "type": ["boolean", "null"] }
+              "healthChecks": { "type": ["boolean", "null"] },
+              "trafficMix": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "required": ["mode", "entries"],
+                "properties": {
+                  "mode": { "type": "string", "enum": ["shares", "rates"] },
+                  "entries": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 64,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["routeId"],
+                      "properties": {
+                        "routeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "share": { "type": "number", "minimum": 0, "maximum": 1, "description": "Shares mode: this route's fraction, 0..1." },
+                        "ratePerSec": { "type": "number", "minimum": 0, "maximum": 10000000, "description": "Rates mode: this route's real requests per second." }
+                      }
+                    }
+                  }
+                }
+              },
+              "routeTable": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "required": ["rules"],
+                "properties": {
+                  "rules": {
+                    "type": "array",
+                    "maxItems": 256,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["id", "match", "targets"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "label": { "type": "string", "maxLength": 200 },
+                        "match": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "methods": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 8,
+                              "uniqueItems": true,
+                              "items": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"] }
+                            },
+                            "path": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": ["kind", "value"],
+                              "properties": {
+                                "kind": { "enum": ["exact", "prefix", "template"] },
+                                "value": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^/" }
+                              }
+                            },
+                            "hosts": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 16,
+                              "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            },
+                            "headers": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            },
+                            "query": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            }
+                          }
+                        },
+                        "targets": {
+                          "type": "array",
+                          "minItems": 1,
+                          "maxItems": 16,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["edgeId", "weight"],
+                            "properties": {
+                              "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                            }
+                          }
+                        },
+                        "quotas": {
+                          "type": "array",
+                          "maxItems": 8,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                            "properties": {
+                              "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                              "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                              "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                              "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                              "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                              "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "default": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["targets"],
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 16,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["edgeId", "weight"],
+                          "properties": {
+                            "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                          }
+                        }
+                      },
+                      "quotas": {
+                        "type": "array",
+                        "maxItems": 8,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                          "properties": {
+                            "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                            "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                            "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                            "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                            "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                            "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -14548,7 +16575,157 @@
               "messageKB": { "type": "number", "minimum": 0.01, "maximum": 1000000 },
               "ha": { "type": "string", "enum": ["standalone", "active-standby", "active-active"] },
               "failoverMs": { "type": "number", "minimum": 0, "maximum": 600000 },
-              "healthChecks": { "type": "boolean" }
+              "healthChecks": { "type": "boolean" },
+              "trafficMix": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["mode", "entries"],
+                "properties": {
+                  "mode": { "type": "string", "enum": ["shares", "rates"] },
+                  "entries": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 64,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["routeId"],
+                      "properties": {
+                        "routeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "share": { "type": "number", "minimum": 0, "maximum": 1, "description": "Shares mode: this route's fraction, 0..1." },
+                        "ratePerSec": { "type": "number", "minimum": 0, "maximum": 10000000, "description": "Rates mode: this route's real requests per second." }
+                      }
+                    }
+                  }
+                }
+              },
+              "routeTable": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["rules"],
+                "properties": {
+                  "rules": {
+                    "type": "array",
+                    "maxItems": 256,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["id", "match", "targets"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "label": { "type": "string", "maxLength": 200 },
+                        "match": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "methods": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 8,
+                              "uniqueItems": true,
+                              "items": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"] }
+                            },
+                            "path": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": ["kind", "value"],
+                              "properties": {
+                                "kind": { "enum": ["exact", "prefix", "template"] },
+                                "value": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^/" }
+                              }
+                            },
+                            "hosts": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 16,
+                              "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            },
+                            "headers": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            },
+                            "query": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            }
+                          }
+                        },
+                        "targets": {
+                          "type": "array",
+                          "minItems": 1,
+                          "maxItems": 16,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["edgeId", "weight"],
+                            "properties": {
+                              "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                            }
+                          }
+                        },
+                        "quotas": {
+                          "type": "array",
+                          "maxItems": 8,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                            "properties": {
+                              "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                              "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                              "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                              "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                              "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                              "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "default": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["targets"],
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 16,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["edgeId", "weight"],
+                          "properties": {
+                            "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                          }
+                        }
+                      },
+                      "quotas": {
+                        "type": "array",
+                        "maxItems": 8,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                          "properties": {
+                            "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                            "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                            "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                            "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                            "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                            "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
           },
           "Tone": { "type": "string", "enum": ["azure", "aws", "gcp", "k8s", "onprem", "neutral"] },
@@ -14556,6 +16733,37 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "requestRouteId": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
+              "requestFilter": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "properties": {
+                  "methods": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 8,
+                    "uniqueItems": true,
+                    "items": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"] }
+                  },
+                  "path": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["kind", "value"],
+                    "properties": {
+                      "kind": { "enum": ["exact", "prefix", "template"] },
+                      "value": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^/" }
+                    }
+                  },
+                  "hosts": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 16,
+                    "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+                  },
+                  "headers": { "type": "object", "additionalProperties": { "type": "string", "maxLength": 200 } },
+                  "query": { "type": "object", "additionalProperties": { "type": "string", "maxLength": 200 } }
+                }
+              },
               "endpointId": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
               "caller": {
                 "type": ["object", "null"],
@@ -15665,7 +17873,157 @@
               "messageKB": { "type": ["number", "null"], "minimum": 0.01, "maximum": 1000000 },
               "ha": { "type": ["string", "null"], "enum": ["standalone", "active-standby", "active-active", null] },
               "failoverMs": { "type": ["number", "null"], "minimum": 0, "maximum": 600000 },
-              "healthChecks": { "type": ["boolean", "null"] }
+              "healthChecks": { "type": ["boolean", "null"] },
+              "trafficMix": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "required": ["mode", "entries"],
+                "properties": {
+                  "mode": { "type": "string", "enum": ["shares", "rates"] },
+                  "entries": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 64,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["routeId"],
+                      "properties": {
+                        "routeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "share": { "type": "number", "minimum": 0, "maximum": 1, "description": "Shares mode: this route's fraction, 0..1." },
+                        "ratePerSec": { "type": "number", "minimum": 0, "maximum": 10000000, "description": "Rates mode: this route's real requests per second." }
+                      }
+                    }
+                  }
+                }
+              },
+              "routeTable": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "required": ["rules"],
+                "properties": {
+                  "rules": {
+                    "type": "array",
+                    "maxItems": 256,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["id", "match", "targets"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "label": { "type": "string", "maxLength": 200 },
+                        "match": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "methods": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 8,
+                              "uniqueItems": true,
+                              "items": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"] }
+                            },
+                            "path": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": ["kind", "value"],
+                              "properties": {
+                                "kind": { "enum": ["exact", "prefix", "template"] },
+                                "value": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^/" }
+                              }
+                            },
+                            "hosts": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 16,
+                              "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            },
+                            "headers": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            },
+                            "query": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string", "maxLength": 200 }
+                            }
+                          }
+                        },
+                        "targets": {
+                          "type": "array",
+                          "minItems": 1,
+                          "maxItems": 16,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["edgeId", "weight"],
+                            "properties": {
+                              "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                            }
+                          }
+                        },
+                        "quotas": {
+                          "type": "array",
+                          "maxItems": 8,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                            "properties": {
+                              "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                              "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                              "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                              "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                              "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                              "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                              "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "default": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["targets"],
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 16,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["edgeId", "weight"],
+                          "properties": {
+                            "edgeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "weight": { "type": "integer", "minimum": 0, "maximum": 10000 }
+                          }
+                        }
+                      },
+                      "quotas": {
+                        "type": "array",
+                        "maxItems": 8,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["id", "unit", "amount", "windowMs", "algorithm"],
+                          "properties": {
+                            "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                            "unit": { "enum": ["requests", "tokens", "inputTokens", "outputTokens", "costPoints", "bytes"] },
+                            "amount": { "type": "number", "minimum": 0.000001, "maximum": 1000000000000 },
+                            "windowMs": { "type": "number", "minimum": 1, "maximum": 86400000 },
+                            "algorithm": { "type": "string", "enum": ["token-bucket"] },
+                            "burst": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+                            "sharedGroup": { "type": "string", "minLength": 1, "maxLength": 200 }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
         }

@@ -114,6 +114,10 @@ VALID <repo>/tests/parity/corpus/planning-p2-kafka.diagram.json: 5 nodes, 3 edge
 VALID <repo>/tests/parity/corpus/planning-p2-kinesis.diagram.json: 5 nodes, 3 edges
 VALID <repo>/tests/parity/corpus/planning-p2-queue.diagram.json: 5 nodes, 3 edges
 VALID <repo>/tests/parity/corpus/planning-p2-sns.diagram.json: 5 nodes, 3 edges
+VALID <repo>/tests/parity/corpus/r1-callers.diagram.json: 9 nodes, 9 edges, 1 simulation
+VALID <repo>/tests/parity/corpus/r1-mix-table.diagram.json: 5 nodes, 4 edges, 1 simulation
+VALID <repo>/tests/parity/corpus/r1-overlap.diagram.json: 5 nodes, 4 edges, 1 simulation
+VALID <repo>/tests/parity/corpus/r1-quotas.diagram.json: 5 nodes, 4 edges, 1 simulation
 VALID <repo>/tests/parity/corpus/relationships.diagram.json: 3 nodes, 2 edges
 VALID <repo>/tests/parity/corpus/scenario-sim-competing-consumers.diagram.json: 5 nodes, 4 edges
 VALID <repo>/tests/parity/corpus/scenario-sim-dlq.diagram.json: 4 nodes, 3 edges

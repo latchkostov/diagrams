@@ -1,0 +1,159 @@
+{
+  "run": {
+    "time": 25000,
+    "totalMs": 25000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "lost", "label": "Quotes sent to the down canary are lost", "status": "pass", "value": 15 },
+      { "id": "no-404", "label": "Only the old app is refused", "status": "pass", "value": 40 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "App requests" },
+      { "atMs": 5000, "kind": "status", "label": "status: pricing-canary" },
+      { "atMs": 5000, "kind": "note", "label": "The canary is down. Its 10% of quotes still go to it: weights don't move by themselves." },
+      { "atMs": 20000, "kind": "traffic", "label": "App requests ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "app": { "replicas": [1, 1, 0] },
+        "carriers": { "replicas": [1, 1, 0] },
+        "gateway": { "replicas": [1, 1, 0] },
+        "tracking": { "replicas": [2, 2, 0] },
+        "pricing": { "replicas": [2, 2, 0] },
+        "pricing-canary": { "replicas": [2, 2, 0] },
+        "labels": { "replicas": [2, 2, 0] },
+        "events": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 21,
+      "nodes": {
+        "app": { "processed": 400, "throughput": 39.79914400525013, "replicas": [1, 1, 0] },
+        "carriers": { "replicas": [1, 1, 0] },
+        "gateway": {
+          "processed": 369,
+          "rejected": 20,
+          "inFlight": 1,
+          "throughput": 37.29506489180066,
+          "rejectionReasons": { "route-not-found": 20 },
+          "replicas": [1, 1, 0]
+        },
+        "tracking": { "processed": 208, "throughput": 22.406593709473867, "replicas": [2, 2, 0] },
+        "pricing": { "processed": 80, "inFlight": 1, "throughput": 8.129752710808608, "replicas": [2, 2, 0] },
+        "pricing-canary": { "status": "down", "processed": 7, "failed": 7, "dropped": 7, "outageDropped": 7, "throughput": 0.010754087834250605, "replicas": [2, 2, 0] },
+        "labels": { "processed": 57, "throughput": 6.472046687711608, "replicas": [2, 2, 0] },
+        "events": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 22,
+      "nodes": {
+        "app": { "processed": 800, "throughput": 39.800996511280545, "replicas": [1, 1, 0] },
+        "carriers": { "replicas": [1, 1, 0] },
+        "gateway": {
+          "processed": 749,
+          "rejected": 40,
+          "inFlight": 1,
+          "throughput": 37.29732989550105,
+          "rejectionReasons": { "route-not-found": 40 },
+          "replicas": [1, 1, 0]
+        },
+        "tracking": { "processed": 427, "inFlight": 1, "throughput": 21.391591781482678, "replicas": [2, 2, 0] },
+        "pricing": { "processed": 172, "inFlight": 1, "throughput": 8.867622140288827, "replicas": [2, 2, 0] },
+        "pricing-canary": { "status": "down", "processed": 7, "failed": 15, "dropped": 15, "outageDropped": 15, "throughput": 4.882348323345962e-7, "replicas": [2, 2, 0] },
+        "labels": { "processed": 117, "throughput": 6.4551763821279575, "replicas": [2, 2, 0] },
+        "events": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 25000,
+    "inSystem": 0,
+    "real": {
+      "app": { "processed": 800, "throughput": 0.27494875431830856, "replicas": [1, 1, 0] },
+      "carriers": { "replicas": [1, 1, 0] },
+      "gateway": {
+        "processed": 760,
+        "rejected": 40,
+        "throughput": 0.3361716160318002,
+        "rejectionReasons": { "route-not-found": 40 },
+        "replicas": [1, 1, 0]
+      },
+      "tracking": { "processed": 440, "throughput": 0.26040445002803525, "replicas": [2, 2, 0] },
+      "pricing": { "processed": 178, "throughput": 0.11334793256168471, "replicas": [2, 2, 0] },
+      "pricing-canary": { "status": "down", "processed": 7, "failed": 15, "dropped": 15, "outageDropped": 15, "throughput": 3.289700423377976e-9, "replicas": [2, 2, 0] },
+      "labels": { "processed": 120, "throughput": 0.07180661584985765, "replicas": [2, 2, 0] },
+      "events": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "app-gateway": 800, "carriers-gateway": 0, "to-tracking": 440, "to-pricing": 178, "to-pricing-canary": 22, "to-labels": 120, "to-events": 0 }
+  },
+  "events": {
+    "total": 4736,
+    "byKind": { "inject": 800, "process": 2305, "deliver": 1560, "reject": 40, "status": 1, "fail": 15, "drop": 15 },
+    "byNode": {
+      "app": { "inject": 800, "process": 800 },
+      "gateway": { "deliver": 800, "process": 760, "reject": 40 },
+      "tracking": { "deliver": 440, "process": 440 },
+      "pricing": { "deliver": 178, "process": 178 },
+      "labels": { "deliver": 120, "process": 120 },
+      "pricing-canary": { "deliver": 22, "process": 7, "status": 1, "fail": 15, "drop": 15 }
+    },
+    "perSecond": [
+      "e94670e005a5",
+      "cebbe637857c",
+      "35d9c1ab5a0c",
+      "2eb9780116eb",
+      "31c943ebe7f6",
+      "922e7d492217",
+      "e1590d01fcff",
+      "ad4bc843c789",
+      "9f800fc4e60e",
+      "9a0937e98ad6",
+      "4840fd460e0a",
+      "f79bdec487a5",
+      "da5ffe17de17",
+      "0ff48e0cf320",
+      "5e86b8c36367",
+      "05928dcceb0d",
+      "d6634002b221",
+      "d347e96fed46",
+      "d2b069f9559c",
+      "1bf0c5326bfe",
+      "569ca929ff2e",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 5000, "text": "The canary is down. Its 10% of quotes still go to it: weights don't move by themselves.", "focus": ["pricing-canary", "gateway"] }
+  ],
+  "latency": {
+    "journeys": { "done": 800, "retried": 0, "deadLettered": 0, "dropped": 15, "blocked": 0, "partial": 0, "truncated": 0, "rejected": 40 },
+    "endToEndMs": { "count": 800, "min": 250, "mean": 538.8375, "p50": 550, "p90": 560, "max": 560 },
+    "waitMs": {
+      "gateway": { "count": 760, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "tracking": { "count": 440, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "pricing": { "count": 178, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "pricing-canary": { "count": 7, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "labels": { "count": 120, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "gateway": { "count": 760, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "tracking": { "count": 440, "min": 40, "mean": 44.88636363636363, "p50": 40, "p90": 50, "max": 50 },
+      "pricing": { "count": 178, "min": 40, "mean": 44.60674157303371, "p50": 40, "p90": 50, "max": 50 },
+      "pricing-canary": { "count": 7, "min": 40, "mean": 45.714285714285715, "p50": 50, "p90": 50, "max": 50 },
+      "labels": { "count": 120, "min": 40, "mean": 45.5, "p50": 50, "p90": 50, "max": 50 }
+    }
+  }
+}

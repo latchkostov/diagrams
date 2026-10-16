@@ -1,0 +1,372 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"R1: caller addresses and bindings\" · direction LR · 9 nodes, 9 connections, 0 boundaries, 1 simulations\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Web\" props={\"ratePerSec\":5} capabilities=[] explanation=undefined\n  \"bff\" \"generic.service\" (\"Service\") \"BFF\" props={\"latencyMs\":20,\"jitter\":0} capabilities=[{\"kind\":\"calls\",\"edge\":\"bff-gw-orders\",\"peer\":\"gw\"}] explanation={\"id\":\"bff\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":200,\"offered\":5,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.02,\"utilization\":0.025,\"growth\":0,\"contributors\":[{\"edge\":\"web-bff\",\"node\":\"web\",\"label\":\"Web\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"\",\"address\":\"\",\"offered\":5,\"rejected\":0,\"throttled\":0}]}\n  \"gw\" \"envoy\" (\"Envoy Proxy\") \"Envoy\" props={\"latencyMs\":5,\"jitter\":0,\"routeTable\":{\"rules\":[{\"id\":\"orders\",\"match\":{\"methods\":[\"POST\"],\"path\":{\"kind\":\"exact\",\"value\":\"/orders\"}},\"targets\":[{\"edgeId\":\"gw-orders\",\"weight\":1}]},{\"id\":\"stock\",\"match\":{\"path\":{\"kind\":\"template\",\"value\":\"/stock/{sku}\"}},\"targets\":[{\"edgeId\":\"gw-stock\",\"weight\":1}]}]}} capabilities=[{\"kind\":\"calls\",\"edge\":\"gw-orders\",\"peer\":\"orders\"},{\"kind\":\"calls\",\"edge\":\"gw-stock\",\"peer\":\"stock\"}] explanation=undefined\n  \"orders\" \"generic.service\" (\"Service\") \"Orders\" props={\"latencyMs\":30,\"jitter\":0} capabilities=[{\"kind\":\"publishes\",\"edge\":\"orders-events\",\"peer\":\"events\"}] explanation={\"id\":\"orders\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":133.33333333333334,\"offered\":5,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.03,\"utilization\":0.0375,\"growth\":0,\"contributors\":[{\"edge\":\"gw-orders\",\"node\":\"gw\",\"label\":\"BFF, Stock checker\",\"rate\":5,\"via\":\"Envoy\"}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"orders-post\",\"address\":\"POST /orders\",\"offered\":5,\"rejected\":0,\"throttled\":0}]}\n  \"stock\" \"generic.service\" (\"Service\") \"Stock\" props={\"latencyMs\":30,\"jitter\":0} capabilities=[] explanation={\"id\":\"stock\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":133.33333333333334,\"offered\":5,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.03,\"utilization\":0.0375,\"growth\":0,\"contributors\":[{\"edge\":\"gw-stock\",\"node\":\"gw\",\"label\":\"BFF, Stock checker\",\"rate\":5,\"via\":\"Envoy\"}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"stock-get\",\"address\":\"GET /stock/7\",\"offered\":5,\"rejected\":0,\"throttled\":0}]}\n  \"events\" \"aws.sns\" (\"Amazon SNS\") \"Order events\" capabilities=[] explanation=undefined\n  \"audit\" \"generic.service\" (\"Service\") \"Audit\" props={\"latencyMs\":10,\"jitter\":0} capabilities=[{\"kind\":\"consumes\",\"edge\":\"events-audit\",\"peer\":\"events\",\"group\":\"audit\",\"broker\":{\"partitioned\":false,\"assignment\":\"subscriptions\",\"group\":\"subscription\",\"ingestUnit\":\"messages/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"audit\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":400,\"offered\":5,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.01,\"utilization\":0.0125,\"growth\":0,\"contributors\":[{\"edge\":\"events-audit\",\"node\":\"events\",\"label\":\"Order events\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"orders-post\",\"address\":\"POST /orders\",\"offered\":5,\"rejected\":0,\"throttled\":0}]}\n  \"billing\" \"generic.service\" (\"Service\") \"Billing\" props={\"latencyMs\":10,\"jitter\":0} capabilities=[{\"kind\":\"consumes\",\"edge\":\"events-billing\",\"peer\":\"events\",\"group\":\"billing\",\"broker\":{\"partitioned\":false,\"assignment\":\"subscriptions\",\"group\":\"subscription\",\"ingestUnit\":\"messages/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"billing\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":400,\"offered\":5,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.01,\"utilization\":0.0125,\"growth\":0,\"contributors\":[{\"edge\":\"events-billing\",\"node\":\"events\",\"label\":\"Order events\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"orders-post\",\"address\":\"POST /orders\",\"offered\":5,\"rejected\":0,\"throttled\":0}]}\n  \"bff2\" \"generic.service\" (\"Service\") \"Stock checker\" props={\"latencyMs\":20,\"jitter\":0} capabilities=[{\"kind\":\"calls\",\"edge\":\"bff2-gw\",\"peer\":\"gw\"}] explanation={\"id\":\"bff2\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":200,\"offered\":5,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.02,\"utilization\":0.025,\"growth\":0,\"contributors\":[{\"edge\":\"web-bff2\",\"node\":\"web\",\"label\":\"Web\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"\",\"address\":\"\",\"offered\":5,\"rejected\":0,\"throttled\":0}]}\nconnections:\n  \"web-bff\" \"web\" -> \"bff\" async\n  \"bff-gw-orders\" \"bff\" -> \"gw\" sync \"Place order\" requestRoute=\"orders-post\"\n  \"gw-orders\" \"gw\" -> \"orders\" sync\n  \"gw-stock\" \"gw\" -> \"stock\" sync\n  \"orders-events\" \"orders\" -> \"events\" async\n  \"events-audit\" \"events\" -> \"audit\" async\n  \"events-billing\" \"events\" -> \"billing\" async requestFilter={\"methods\":[\"POST\"]}\n  \"web-bff2\" \"web\" -> \"bff2\" async\n  \"bff2-gw\" \"bff2\" -> \"gw\" sync requestRoute=\"stock-get\"\nrequest routes (2):\n  \"orders-post\" POST \"/orders\"\n  \"stock-get\" GET \"/stock/7\"\nroute demand \"gw\" \"orders-post\": offered 5 req/s, refused 404 0 req/s, rate-limited 429 0 req/s\nroute demand \"gw\" \"stock-get\": offered 5 req/s, refused 404 0 req/s, rate-limited 429 0 req/s\nsimulation \"calls\" \"Calls\": {\"kind\":\"constant\",\"ratePerSec\":10,\"durationMs\":8000} from \"web\"; timeline=[]; expectations=[]"
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "R1: caller addresses and bindings",
+      "direction": "LR",
+      "planning": {
+        "revision": "p3-a1",
+        "requestRoutes": [
+          { "id": "orders-post", "address": { "method": "POST", "path": "/orders" } },
+          {
+            "id": "stock-get",
+            "address": { "method": "GET", "path": "/stock/7" },
+            "appearance": { "paletteSlot": 2, "marker": "square" }
+          }
+        ]
+      },
+      "nodes": [
+        {
+          "id": "web",
+          "stencil": "client.browser",
+          "label": "Web",
+          "x": 0,
+          "y": 100,
+          "props": { "ratePerSec": 5 },
+          "capabilities": []
+        },
+        {
+          "id": "bff",
+          "stencil": "generic.service",
+          "label": "BFF",
+          "x": 250,
+          "y": 100,
+          "props": { "latencyMs": 20, "jitter": 0 },
+          "capabilities": [{ "kind": "calls", "edge": "bff-gw-orders", "peer": "gw" }],
+          "explanation": {
+            "id": "bff",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 200,
+            "offered": 5,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 4,
+            "seconds": 0.02,
+            "utilization": 0.025,
+            "growth": 0,
+            "contributors": [{ "edge": "web-bff", "node": "web", "label": "Web", "rate": 5 }],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true,
+            "routes": [{ "route": "", "address": "", "offered": 5, "rejected": 0, "throttled": 0 }]
+          }
+        },
+        {
+          "id": "gw",
+          "stencil": "envoy",
+          "label": "Envoy",
+          "x": 500,
+          "y": 100,
+          "props": {
+            "latencyMs": 5,
+            "jitter": 0,
+            "routeTable": {
+              "rules": [
+                {
+                  "id": "orders",
+                  "match": { "methods": ["POST"], "path": { "kind": "exact", "value": "/orders" } },
+                  "targets": [{ "edgeId": "gw-orders", "weight": 1 }]
+                },
+                {
+                  "id": "stock",
+                  "match": { "path": { "kind": "template", "value": "/stock/{sku}" } },
+                  "targets": [{ "edgeId": "gw-stock", "weight": 1 }]
+                }
+              ]
+            }
+          },
+          "capabilities": [
+            { "kind": "calls", "edge": "gw-orders", "peer": "orders" },
+            { "kind": "calls", "edge": "gw-stock", "peer": "stock" }
+          ]
+        },
+        {
+          "id": "orders",
+          "stencil": "generic.service",
+          "label": "Orders",
+          "x": 750,
+          "y": 0,
+          "props": { "latencyMs": 30, "jitter": 0 },
+          "capabilities": [{ "kind": "publishes", "edge": "orders-events", "peer": "events" }],
+          "explanation": {
+            "id": "orders",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 133.33333333333334,
+            "offered": 5,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 4,
+            "seconds": 0.03,
+            "utilization": 0.0375,
+            "growth": 0,
+            "contributors": [
+              { "edge": "gw-orders", "node": "gw", "label": "BFF, Stock checker", "rate": 5, "via": "Envoy" }
+            ],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "orders-post", "address": "POST /orders", "offered": 5, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "stock",
+          "stencil": "generic.service",
+          "label": "Stock",
+          "x": 750,
+          "y": 200,
+          "props": { "latencyMs": 30, "jitter": 0 },
+          "capabilities": [],
+          "explanation": {
+            "id": "stock",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 133.33333333333334,
+            "offered": 5,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 4,
+            "seconds": 0.03,
+            "utilization": 0.0375,
+            "growth": 0,
+            "contributors": [
+              { "edge": "gw-stock", "node": "gw", "label": "BFF, Stock checker", "rate": 5, "via": "Envoy" }
+            ],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "stock-get", "address": "GET /stock/7", "offered": 5, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        { "id": "events", "stencil": "aws.sns", "label": "Order events", "x": 1000, "y": 0, "capabilities": [] },
+        {
+          "id": "audit",
+          "stencil": "generic.service",
+          "label": "Audit",
+          "x": 1250,
+          "y": 0,
+          "props": { "latencyMs": 10, "jitter": 0 },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "events-audit",
+              "peer": "events",
+              "group": "audit",
+              "broker": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "audit",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 400,
+            "offered": 5,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 4,
+            "seconds": 0.01,
+            "utilization": 0.0125,
+            "growth": 0,
+            "contributors": [{ "edge": "events-audit", "node": "events", "label": "Order events", "rate": 5 }],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "orders-post", "address": "POST /orders", "offered": 5, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "billing",
+          "stencil": "generic.service",
+          "label": "Billing",
+          "x": 1250,
+          "y": 150,
+          "props": { "latencyMs": 10, "jitter": 0 },
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "events-billing",
+              "peer": "events",
+              "group": "billing",
+              "broker": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "billing",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 400,
+            "offered": 5,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 4,
+            "seconds": 0.01,
+            "utilization": 0.0125,
+            "growth": 0,
+            "contributors": [{ "edge": "events-billing", "node": "events", "label": "Order events", "rate": 5 }],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "orders-post", "address": "POST /orders", "offered": 5, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "bff2",
+          "stencil": "generic.service",
+          "label": "Stock checker",
+          "x": 250,
+          "y": 250,
+          "props": { "latencyMs": 20, "jitter": 0 },
+          "capabilities": [{ "kind": "calls", "edge": "bff2-gw", "peer": "gw" }],
+          "explanation": {
+            "id": "bff2",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 200,
+            "offered": 5,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 4,
+            "seconds": 0.02,
+            "utilization": 0.025,
+            "growth": 0,
+            "contributors": [{ "edge": "web-bff2", "node": "web", "label": "Web", "rate": 5 }],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true,
+            "routes": [{ "route": "", "address": "", "offered": 5, "rejected": 0, "throttled": 0 }]
+          }
+        }
+      ],
+      "edges": [
+        { "id": "web-bff", "from": "web", "to": "bff", "kind": "async", "props": { "travelMs": 50 } },
+        {
+          "id": "bff-gw-orders",
+          "from": "bff",
+          "to": "gw",
+          "kind": "sync",
+          "label": "Place order",
+          "props": { "travelMs": 50, "requestRouteId": "orders-post" }
+        },
+        { "id": "gw-orders", "from": "gw", "to": "orders", "kind": "sync", "props": { "travelMs": 50 } },
+        { "id": "gw-stock", "from": "gw", "to": "stock", "kind": "sync", "props": { "travelMs": 50 } },
+        { "id": "orders-events", "from": "orders", "to": "events", "kind": "async", "props": { "travelMs": 50 } },
+        { "id": "events-audit", "from": "events", "to": "audit", "props": { "group": "audit", "travelMs": 50 } },
+        {
+          "id": "events-billing",
+          "from": "events",
+          "to": "billing",
+          "props": { "group": "billing", "travelMs": 50, "requestFilter": { "methods": ["POST"] } }
+        },
+        { "id": "web-bff2", "from": "web", "to": "bff2", "kind": "async", "props": { "travelMs": 50 } },
+        {
+          "id": "bff2-gw",
+          "from": "bff2",
+          "to": "gw",
+          "kind": "sync",
+          "props": { "travelMs": 50, "requestRouteId": "stock-get" }
+        }
+      ],
+      "groups": [],
+      "annotations": [],
+      "simulations": [
+        {
+          "id": "calls",
+          "title": "Calls",
+          "seed": 7,
+          "durationMs": 12000,
+          "traffic": [
+            {
+              "id": "calls-traffic",
+              "node": "web",
+              "shape": { "kind": "constant", "ratePerSec": 10, "durationMs": 8000 }
+            }
+          ]
+        }
+      ],
+      "routeDemand": {
+        "web": { "": { "offered": 5, "rejected": 0, "throttled": 0 } },
+        "bff": { "": { "offered": 5, "rejected": 0, "throttled": 0 } },
+        "bff2": { "": { "offered": 5, "rejected": 0, "throttled": 0 } },
+        "gw": {
+          "orders-post": { "offered": 5, "rejected": 0, "throttled": 0 },
+          "stock-get": { "offered": 5, "rejected": 0, "throttled": 0 }
+        },
+        "orders": { "orders-post": { "offered": 5, "rejected": 0, "throttled": 0 } },
+        "stock": { "stock-get": { "offered": 5, "rejected": 0, "throttled": 0 } },
+        "events": { "orders-post": { "offered": 5, "rejected": 0, "throttled": 0 } },
+        "audit": { "orders-post": { "offered": 5, "rejected": 0, "throttled": 0 } },
+        "billing": { "orders-post": { "offered": 5, "rejected": 0, "throttled": 0 } }
+      },
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"R1: caller addresses and bindings\" · direction LR · 3 nodes, 2 connections, 0 boundaries, 1 simulations\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Web\" props={\"ratePerSec\":5} capabilities=[] explanation=undefined\n  \"bff\" \"generic.service\" (\"Service\") \"BFF\" props={\"latencyMs\":20,\"jitter\":0} capabilities=[{\"kind\":\"calls\",\"edge\":\"bff-gw-orders\",\"peer\":\"gw\"}] explanation={\"id\":\"bff\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":200,\"offered\":5,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.02,\"utilization\":0.025,\"growth\":0,\"contributors\":[{\"edge\":\"web-bff\",\"node\":\"web\",\"label\":\"Web\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"\",\"address\":\"\",\"offered\":5,\"rejected\":0,\"throttled\":0}]}\n  \"bff2\" \"generic.service\" (\"Service\") \"Stock checker\" props={\"latencyMs\":20,\"jitter\":0} capabilities=[{\"kind\":\"calls\",\"edge\":\"bff2-gw\",\"peer\":\"gw\"}] explanation={\"id\":\"bff2\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":200,\"offered\":5,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.02,\"utilization\":0.025,\"growth\":0,\"contributors\":[{\"edge\":\"web-bff2\",\"node\":\"web\",\"label\":\"Web\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"\",\"address\":\"\",\"offered\":5,\"rejected\":0,\"throttled\":0}]}\nconnections:\n  \"web-bff\" \"web\" -> \"bff\" async\n  \"web-bff2\" \"web\" -> \"bff2\" async\nrequest routes (2):\n… 3 lines omitted"
+  }
+}

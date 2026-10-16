@@ -1,0 +1,39 @@
+{
+  "all": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "capacity:canary", "rule": "capacity", "severity": "warning", "title": "Orders canary is down", "message": "It's saved down, so it handles nothing: messages sent to it fail until it's back.", "targets": ["canary"] }
+      ],
+      "summary": "1 warning, 0 suggestions."
+    }
+  },
+  "warnings": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "capacity:canary", "rule": "capacity", "severity": "warning", "title": "Orders canary is down", "message": "It's saved down, so it handles nothing: messages sent to it fail until it's back.", "targets": ["canary"] }
+      ],
+      "summary": "1 warning, 0 suggestions."
+    }
+  },
+  "oneRule": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "capacity:canary", "rule": "capacity", "severity": "warning", "title": "Orders canary is down", "message": "It's saved down, so it handles nothing: messages sent to it fail until it's back.", "targets": ["canary"] }
+      ],
+      "summary": "1 warning, 0 suggestions."
+    }
+  },
+  "simulations": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "capacity:canary", "rule": "capacity", "severity": "warning", "title": "Orders canary is down", "message": "It's saved down, so it handles nothing: messages sent to it fail until it's back.", "targets": ["canary"] }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "simulations": "Played 1 saved simulation (at most 60 s each). On purpose, not findings: 11 dropped at canary in “Overlap”."
+    }
+  }
+}

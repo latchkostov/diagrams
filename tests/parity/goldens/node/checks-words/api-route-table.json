@@ -1,0 +1,47 @@
+{
+  "summary": "1 warning, 0 suggestions.",
+  "findings": {
+    "capacity:events": {
+      "title": "Carrier events can't keep up",
+      "message": "At the diagram's own rates (sources without a rate send 2/s), it gets 30/s and handles 20/s (150%): its backlog only grows.",
+      "rationale": "Demand above what a service can handle never drains: latency and backlog grow until something times out. Live view's Show capacity has the same numbers.",
+      "fix": { "label": "Set replicas to 3" }
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "capacity:events",
+        "rule": "capacity",
+        "severity": "warning",
+        "title": "Carrier events can't keep up",
+        "message": "At the diagram's own rates (sources without a rate send 2/s), it gets 30/s and handles 20/s (150%): its backlog only grows.",
+        "targets": ["events"],
+        "fix": {
+          "label": "Set replicas to 3",
+          "ops": [{ "op": "update", "target": "events", "props": { "replicas": 3 } }]
+        }
+      }
+    ],
+    "summary": "1 warning, 0 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      {
+        "id": "capacity:events",
+        "rule": "capacity",
+        "severity": "warning",
+        "title": "Carrier events can't keep up",
+        "message": "At the diagram's own rates (sources without a rate send 2/s), it gets 30/s and handles 20/s (150%): its backlog only grows.",
+        "targets": ["events"],
+        "fix": {
+          "label": "Set replicas to 3",
+          "ops": [{ "op": "update", "target": "events", "props": { "replicas": 3 } }]
+        }
+      }
+    ],
+    "summary": "1 warning, 0 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
+}

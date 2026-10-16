@@ -1,0 +1,201 @@
+{
+  "format": "diagrams/v2",
+  "planning": {
+    "revision": "p3-a1",
+    "requestRoutes": [
+      {
+        "id": "orders-post",
+        "address": {
+          "method": "POST",
+          "path": "/orders"
+        },
+        "appearance": {
+          "paletteSlot": 0,
+          "marker": "circle"
+        }
+      },
+      {
+        "id": "search-get",
+        "address": {
+          "method": "GET",
+          "path": "/search"
+        },
+        "appearance": {
+          "paletteSlot": 1,
+          "marker": "circle"
+        }
+      }
+    ]
+  },
+  "title": "R1: mix, table and canary",
+  "nodes": [
+    {
+      "id": "app",
+      "stencil": "client.mobile",
+      "label": "Mobile app",
+      "x": 0,
+      "y": 120,
+      "props": {
+        "ratePerSec": 20,
+        "trafficMix": {
+          "mode": "shares",
+          "entries": [
+            {
+              "routeId": "orders-post",
+              "share": 0.2
+            },
+            {
+              "routeId": "search-get",
+              "share": 0.8
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "kong",
+      "stencil": "kong",
+      "label": "Gateway",
+      "x": 240,
+      "y": 120,
+      "props": {
+        "latencyMs": 5,
+        "jitter": 0,
+        "routeTable": {
+          "rules": [
+            {
+              "id": "orders",
+              "match": {
+                "methods": [
+                  "POST"
+                ],
+                "path": {
+                  "kind": "exact",
+                  "value": "/orders"
+                }
+              },
+              "targets": [
+                {
+                  "edgeId": "kong-orders",
+                  "weight": 90
+                },
+                {
+                  "edgeId": "kong-canary",
+                  "weight": 10
+                }
+              ]
+            },
+            {
+              "id": "search",
+              "match": {
+                "path": {
+                  "kind": "prefix",
+                  "value": "/search"
+                }
+              },
+              "targets": [
+                {
+                  "edgeId": "kong-search",
+                  "weight": 1
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "orders",
+      "stencil": "generic.service",
+      "label": "Orders",
+      "x": 520,
+      "y": 0,
+      "props": {
+        "latencyMs": 20,
+        "concurrency": 64,
+        "jitter": 0
+      }
+    },
+    {
+      "id": "canary",
+      "stencil": "generic.service",
+      "label": "Orders canary",
+      "x": 520,
+      "y": 120,
+      "props": {
+        "latencyMs": 20,
+        "concurrency": 64,
+        "jitter": 0
+      }
+    },
+    {
+      "id": "search",
+      "stencil": "generic.service",
+      "label": "Search",
+      "x": 520,
+      "y": 240,
+      "props": {
+        "latencyMs": 20,
+        "concurrency": 64,
+        "jitter": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "app-kong",
+      "from": "app",
+      "to": "kong",
+      "kind": "sync",
+      "props": {
+        "travelMs": 10
+      }
+    },
+    {
+      "id": "kong-orders",
+      "from": "kong",
+      "to": "orders",
+      "kind": "sync",
+      "props": {
+        "travelMs": 10
+      }
+    },
+    {
+      "id": "kong-canary",
+      "from": "kong",
+      "to": "canary",
+      "kind": "sync",
+      "props": {
+        "travelMs": 10
+      }
+    },
+    {
+      "id": "kong-search",
+      "from": "kong",
+      "to": "search",
+      "kind": "sync",
+      "props": {
+        "travelMs": 10
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "rush",
+      "title": "Rush",
+      "seed": 7,
+      "durationMs": 12000,
+      "traffic": [
+        {
+          "id": "rush-traffic",
+          "node": "app",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 40,
+            "durationMs": 8000
+          }
+        }
+      ]
+    }
+  ]
+}

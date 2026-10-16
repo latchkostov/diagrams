@@ -1,0 +1,87 @@
+{
+  "all": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "capacity:events",
+          "rule": "capacity",
+          "severity": "warning",
+          "title": "Carrier events can't keep up",
+          "message": "At the diagram's own rates (sources without a rate send 2/s), it gets 30/s and handles 20/s (150%): its backlog only grows.",
+          "targets": ["events"],
+          "fix": {
+            "label": "Set replicas to 3",
+            "ops": [{ "op": "update", "target": "events", "props": { "replicas": 3 } }]
+          }
+        }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  },
+  "warnings": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "capacity:events",
+          "rule": "capacity",
+          "severity": "warning",
+          "title": "Carrier events can't keep up",
+          "message": "At the diagram's own rates (sources without a rate send 2/s), it gets 30/s and handles 20/s (150%): its backlog only grows.",
+          "targets": ["events"],
+          "fix": {
+            "label": "Set replicas to 3",
+            "ops": [{ "op": "update", "target": "events", "props": { "replicas": 3 } }]
+          }
+        }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  },
+  "oneRule": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "capacity:events",
+          "rule": "capacity",
+          "severity": "warning",
+          "title": "Carrier events can't keep up",
+          "message": "At the diagram's own rates (sources without a rate send 2/s), it gets 30/s and handles 20/s (150%): its backlog only grows.",
+          "targets": ["events"],
+          "fix": {
+            "label": "Set replicas to 3",
+            "ops": [{ "op": "update", "target": "events", "props": { "replicas": 3 } }]
+          }
+        }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  },
+  "simulations": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "capacity:events",
+          "rule": "capacity",
+          "severity": "warning",
+          "title": "Carrier events can't keep up",
+          "message": "At the diagram's own rates (sources without a rate send 2/s), it gets 30/s and handles 20/s (150%): its backlog only grows.",
+          "targets": ["events"],
+          "fix": {
+            "label": "Set replicas to 3",
+            "ops": [{ "op": "update", "target": "events", "props": { "replicas": 3 } }]
+          }
+        }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "simulations": "Played 2 saved simulations (at most 60 s each). On purpose, not findings: 15 dropped at pricing-canary in “The pricing canary goes down”.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  }
+}

@@ -1,0 +1,528 @@
+{
+  "format": "diagrams/v2",
+  "planning": {
+    "revision": "p3-a1",
+    "requestRoutes": [
+      {
+        "id": "track-parcel",
+        "label": "Track a parcel",
+        "address": {
+          "method": "GET",
+          "path": "/v1/parcels/8421"
+        },
+        "appearance": {
+          "paletteSlot": 0,
+          "marker": "circle"
+        }
+      },
+      {
+        "id": "get-quote",
+        "label": "Get a quote",
+        "address": {
+          "method": "POST",
+          "path": "/v1/quotes"
+        },
+        "appearance": {
+          "paletteSlot": 1,
+          "marker": "square"
+        }
+      },
+      {
+        "id": "buy-label",
+        "label": "Buy a label",
+        "address": {
+          "method": "POST",
+          "path": "/v1/labels"
+        },
+        "appearance": {
+          "paletteSlot": 2,
+          "marker": "diamond"
+        }
+      },
+      {
+        "id": "old-tracking",
+        "label": "Old app version",
+        "address": {
+          "method": "GET",
+          "path": "/v0/track"
+        },
+        "appearance": {
+          "paletteSlot": 5,
+          "marker": "triangle"
+        }
+      },
+      {
+        "id": "carrier-event",
+        "label": "Carrier event",
+        "address": {
+          "method": "POST",
+          "path": "/hooks/carrier-events"
+        },
+        "appearance": {
+          "paletteSlot": 6,
+          "marker": "square"
+        }
+      }
+    ]
+  },
+  "title": "Parcel API behind a route table",
+  "description": "An invented parcel API: a gateway's route table sends each app request to its service by method and path, and 10% of quotes to a canary. An old app version's requests match no rule and are rejected 404. In Live, each route has its own colour and shape.",
+  "direction": "LR",
+  "nodes": [
+    {
+      "id": "app",
+      "stencil": "client.mobile",
+      "label": "Parcelpoint app",
+      "sublabel": "40 req/s · 4 routes",
+      "props": {
+        "ratePerSec": 40,
+        "trafficMix": {
+          "mode": "shares",
+          "entries": [
+            {
+              "routeId": "track-parcel",
+              "share": 0.55
+            },
+            {
+              "routeId": "get-quote",
+              "share": 0.25
+            },
+            {
+              "routeId": "buy-label",
+              "share": 0.15
+            },
+            {
+              "routeId": "old-tracking",
+              "share": 0.05
+            }
+          ]
+        }
+      },
+      "x": 40,
+      "y": 120
+    },
+    {
+      "id": "carriers",
+      "stencil": "generic.webhook",
+      "label": "Carrier webhooks",
+      "sublabel": "30 events/s",
+      "props": {
+        "trafficMix": {
+          "mode": "rates",
+          "entries": [
+            {
+              "routeId": "carrier-event",
+              "ratePerSec": 30
+            }
+          ]
+        }
+      },
+      "x": 40,
+      "y": 420
+    },
+    {
+      "id": "gateway",
+      "stencil": "kong",
+      "label": "API gateway",
+      "sublabel": "Route table · 4 rules",
+      "props": {
+        "latencyMs": 20,
+        "jitter": 0,
+        "routeTable": {
+          "rules": [
+            {
+              "id": "parcels",
+              "label": "Tracking",
+              "match": {
+                "methods": [
+                  "GET"
+                ],
+                "path": {
+                  "kind": "template",
+                  "value": "/v1/parcels/{id}"
+                }
+              },
+              "targets": [
+                {
+                  "edgeId": "to-tracking",
+                  "weight": 1
+                }
+              ]
+            },
+            {
+              "id": "quotes",
+              "label": "Pricing with canary",
+              "match": {
+                "methods": [
+                  "POST"
+                ],
+                "path": {
+                  "kind": "exact",
+                  "value": "/v1/quotes"
+                }
+              },
+              "targets": [
+                {
+                  "edgeId": "to-pricing",
+                  "weight": 90
+                },
+                {
+                  "edgeId": "to-pricing-canary",
+                  "weight": 10
+                }
+              ]
+            },
+            {
+              "id": "labels",
+              "label": "Labels",
+              "match": {
+                "methods": [
+                  "POST"
+                ],
+                "path": {
+                  "kind": "exact",
+                  "value": "/v1/labels"
+                }
+              },
+              "targets": [
+                {
+                  "edgeId": "to-labels",
+                  "weight": 1
+                }
+              ]
+            },
+            {
+              "id": "hooks",
+              "label": "Carrier hooks",
+              "match": {
+                "path": {
+                  "kind": "prefix",
+                  "value": "/hooks/"
+                }
+              },
+              "targets": [
+                {
+                  "edgeId": "to-events",
+                  "weight": 1
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "x": 380,
+      "y": 270
+    },
+    {
+      "id": "tracking",
+      "stencil": "service.go",
+      "label": "Tracking",
+      "sublabel": "GET /v1/parcels/{id}",
+      "props": {
+        "preset": "processor-lesson",
+        "presetRevision": "1",
+        "replicas": 2,
+        "concurrency": 8,
+        "latencyMs": 40,
+        "jitter": 0.1,
+        "failureRate": 0
+      },
+      "x": 760,
+      "y": 0
+    },
+    {
+      "id": "pricing",
+      "stencil": "service.java",
+      "label": "Pricing",
+      "sublabel": "POST /v1/quotes · 90%",
+      "props": {
+        "preset": "processor-lesson",
+        "presetRevision": "1",
+        "replicas": 2,
+        "concurrency": 8,
+        "latencyMs": 40,
+        "jitter": 0.1,
+        "failureRate": 0
+      },
+      "x": 760,
+      "y": 150
+    },
+    {
+      "id": "pricing-canary",
+      "stencil": "service.java",
+      "label": "Pricing canary",
+      "sublabel": "10% of quotes",
+      "props": {
+        "preset": "processor-lesson",
+        "presetRevision": "1",
+        "replicas": 2,
+        "concurrency": 8,
+        "latencyMs": 40,
+        "jitter": 0.1,
+        "failureRate": 0
+      },
+      "x": 760,
+      "y": 300
+    },
+    {
+      "id": "labels",
+      "stencil": "service.python",
+      "label": "Labels",
+      "sublabel": "POST /v1/labels",
+      "props": {
+        "preset": "processor-lesson",
+        "presetRevision": "1",
+        "replicas": 2,
+        "concurrency": 8,
+        "latencyMs": 40,
+        "jitter": 0.1,
+        "failureRate": 0
+      },
+      "x": 760,
+      "y": 450
+    },
+    {
+      "id": "events",
+      "stencil": "service.node",
+      "label": "Carrier events",
+      "sublabel": "1 × 4 slots · 200 ms",
+      "props": {
+        "preset": "processor-lesson",
+        "presetRevision": "1",
+        "replicas": 1,
+        "concurrency": 4,
+        "latencyMs": 200,
+        "jitter": 0.1,
+        "failureRate": 0
+      },
+      "x": 760,
+      "y": 600
+    }
+  ],
+  "edges": [
+    {
+      "id": "app-gateway",
+      "from": "app",
+      "to": "gateway",
+      "label": "HTTPS",
+      "kind": "sync",
+      "props": {
+        "travelMs": 250
+      }
+    },
+    {
+      "id": "carriers-gateway",
+      "from": "carriers",
+      "to": "gateway",
+      "label": "Webhook",
+      "kind": "sync",
+      "props": {
+        "travelMs": 250
+      }
+    },
+    {
+      "id": "to-tracking",
+      "from": "gateway",
+      "to": "tracking",
+      "label": "Track",
+      "kind": "sync",
+      "props": {
+        "travelMs": 250
+      }
+    },
+    {
+      "id": "to-pricing",
+      "from": "gateway",
+      "to": "pricing",
+      "label": "Quote",
+      "kind": "sync",
+      "props": {
+        "travelMs": 250
+      }
+    },
+    {
+      "id": "to-pricing-canary",
+      "from": "gateway",
+      "to": "pricing-canary",
+      "label": "Quote canary",
+      "kind": "sync",
+      "props": {
+        "travelMs": 250
+      }
+    },
+    {
+      "id": "to-labels",
+      "from": "gateway",
+      "to": "labels",
+      "label": "Label",
+      "kind": "sync",
+      "props": {
+        "travelMs": 250
+      }
+    },
+    {
+      "id": "to-events",
+      "from": "gateway",
+      "to": "events",
+      "label": "Carrier event",
+      "kind": "sync",
+      "props": {
+        "travelMs": 250
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "busy-afternoon",
+      "title": "A busy afternoon",
+      "description": "Forty app requests and thirty carrier events a second for half a minute. Watch each route's colour reach its own service, the old app's requests refused 404 at the gateway, and carrier events queue up.",
+      "seed": 41,
+      "durationMs": 40000,
+      "traffic": [
+        {
+          "id": "app-traffic",
+          "node": "app",
+          "label": "App requests",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 40,
+            "fromMs": 0,
+            "durationMs": 30000
+          }
+        },
+        {
+          "id": "carrier-traffic",
+          "node": "carriers",
+          "label": "Carrier events",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 30,
+            "fromMs": 0,
+            "durationMs": 30000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 1000,
+          "action": {
+            "do": "note",
+            "text": "Each route has its own colour and shape; the gateway's table sends it to its service.",
+            "focus": [
+              "gateway"
+            ]
+          }
+        },
+        {
+          "atMs": 8000,
+          "action": {
+            "do": "note",
+            "text": "Requests from the old app match no rule: the gateway rejects them 404.",
+            "focus": [
+              "gateway"
+            ]
+          }
+        },
+        {
+          "atMs": 16000,
+          "action": {
+            "do": "note",
+            "text": "Carrier events arrive at 30/s; their service takes 20/s, so its backlog grows.",
+            "focus": [
+              "events"
+            ]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "refused",
+          "label": "Old app requests are refused",
+          "metric": {
+            "node": "gateway",
+            "field": "rejected"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "end"
+        },
+        {
+          "id": "backlog",
+          "label": "Carrier events back up",
+          "metric": {
+            "node": "events",
+            "field": "backlog"
+          },
+          "op": ">",
+          "value": 100,
+          "when": "eventually"
+        }
+      ]
+    },
+    {
+      "id": "canary-down",
+      "title": "The pricing canary goes down",
+      "description": "Five seconds in, the pricing canary stops. The table keeps its 90/10 split, so about one quote in ten still goes to the canary and is lost there: the outage stays visible instead of quietly moving to Pricing.",
+      "seed": 43,
+      "durationMs": 25000,
+      "traffic": [
+        {
+          "id": "app-traffic",
+          "node": "app",
+          "label": "App requests",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 40,
+            "fromMs": 0,
+            "durationMs": 20000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 5000,
+          "action": {
+            "do": "status",
+            "node": "pricing-canary",
+            "status": "down"
+          }
+        },
+        {
+          "atMs": 5000,
+          "action": {
+            "do": "note",
+            "text": "The canary is down. Its 10% of quotes still go to it: weights don't move by themselves.",
+            "focus": [
+              "pricing-canary",
+              "gateway"
+            ]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "lost",
+          "label": "Quotes sent to the down canary are lost",
+          "metric": {
+            "node": "pricing-canary",
+            "field": "dropped"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "end"
+        },
+        {
+          "id": "no-404",
+          "label": "Only the old app is refused",
+          "metric": {
+            "node": "gateway",
+            "field": "rejected"
+          },
+          "op": "<=",
+          "value": 45,
+          "when": "end"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+---
+title: "Parcelpoint app #1 · 560 ms end to end"
+---
+sequenceDiagram
+  participant app as Parcelpoint app
+  participant gateway as API gateway
+  participant tracking as Tracking
+  app->>gateway: Parcelpoint app (+0.00 s)<br/>HTTPS
+  gateway-->>app: reply (+0.26 s)
+  gateway->>tracking: Parcelpoint app (+0.26 s)<br/>Track
+  tracking-->>gateway: reply (+0.56 s)

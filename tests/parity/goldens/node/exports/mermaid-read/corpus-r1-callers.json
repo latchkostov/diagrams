@@ -1,0 +1,30 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "R1: caller addresses and bindings",
+    "direction": "LR",
+    "nodes": [
+      { "id": "web", "stencil": "generic.service", "label": "Web", "x": 40, "y": 100 },
+      { "id": "bff", "stencil": "generic.service", "label": "BFF", "x": 400, "y": 40 },
+      { "id": "gw", "stencil": "generic.service", "label": "Envoy", "x": 760, "y": 100 },
+      { "id": "orders", "stencil": "generic.service", "label": "Orders", "x": 1120, "y": 40 },
+      { "id": "stock", "stencil": "generic.service", "label": "Stock", "x": 1120, "y": 160 },
+      { "id": "events", "stencil": "generic.topic", "label": "Order events", "x": 1480, "y": 100 },
+      { "id": "audit", "stencil": "generic.service", "label": "Audit", "x": 1840, "y": 40 },
+      { "id": "billing", "stencil": "generic.service", "label": "Billing", "x": 1840, "y": 160 },
+      { "id": "bff2", "stencil": "generic.service", "label": "Stock checker", "x": 400, "y": 160 }
+    ],
+    "edges": [
+      { "id": "e1-web-bff", "from": "web", "to": "bff", "kind": "async" },
+      { "id": "e2-bff-gw", "from": "bff", "to": "gw", "label": "Place order", "kind": "sync" },
+      { "id": "e3-gw-orders", "from": "gw", "to": "orders", "kind": "sync" },
+      { "id": "e4-gw-stock", "from": "gw", "to": "stock", "kind": "sync" },
+      { "id": "e5-orders-events", "from": "orders", "to": "events", "kind": "async" },
+      { "id": "e6-events-audit", "from": "events", "to": "audit", "kind": "async" },
+      { "id": "e7-events-billing", "from": "events", "to": "billing", "kind": "async" },
+      { "id": "e8-web-bff2", "from": "web", "to": "bff2", "kind": "async" },
+      { "id": "e9-bff2-gw", "from": "bff2", "to": "gw", "kind": "sync" }
+    ]
+  }
+}

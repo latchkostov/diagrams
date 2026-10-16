@@ -1,0 +1,227 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "app": { "replicas": [1, 1, 0] },
+        "kong": { "replicas": [1, 1, 0] },
+        "orders": { "replicas": [1, 1, 0] },
+        "canary": { "replicas": [1, 1, 0] },
+        "search": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 2,
+      "nodes": {
+        "app": { "processed": 400, "throughput": 40.90407435709369, "replicas": [1, 1, 0] },
+        "kong": {
+          "processed": 262,
+          "rejected": 136,
+          "throughput": 24.282874757441196,
+          "rejectionReasons": { "search-limit: requests": 136 },
+          "replicas": [1, 1, 0]
+        },
+        "orders": { "processed": 91, "throughput": 9.883613515518686, "replicas": [1, 1, 0] },
+        "canary": { "processed": 8, "throughput": 0.06190900314231185, "replicas": [1, 1, 0] },
+        "search": { "processed": 163, "throughput": 15.0768758725697, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 2,
+      "nodes": {
+        "app": { "processed": 800, "throughput": 40.905931399196525, "replicas": [1, 1, 0] },
+        "kong": {
+          "processed": 512,
+          "rejected": 286,
+          "throughput": 24.28298810453607,
+          "rejectionReasons": { "search-limit: requests": 286 },
+          "replicas": [1, 1, 0]
+        },
+        "orders": { "processed": 180, "throughput": 8.04999361390481, "replicas": [1, 1, 0] },
+        "canary": { "processed": 19, "throughput": 1.896027920569232, "replicas": [1, 1, 0] },
+        "search": { "processed": 313, "throughput": 15.076493655784457, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 2,
+      "nodes": {
+        "app": { "processed": 1200, "throughput": 40.90593148350609, "replicas": [1, 1, 0] },
+        "kong": {
+          "processed": 762,
+          "rejected": 436,
+          "throughput": 24.282988109682012,
+          "rejectionReasons": { "search-limit: requests": 436 },
+          "replicas": [1, 1, 0]
+        },
+        "orders": { "processed": 271, "throughput": 7.0893940921063185, "replicas": [1, 1, 0] },
+        "canary": { "processed": 28, "throughput": 2.856627465023006, "replicas": [1, 1, 0] },
+        "search": { "processed": 463, "throughput": 15.076493638431847, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 2,
+      "nodes": {
+        "app": { "processed": 1600, "throughput": 40.905931483509896, "replicas": [1, 1, 0] },
+        "kong": {
+          "processed": 1012,
+          "rejected": 586,
+          "throughput": 24.282988109682204,
+          "rejectionReasons": { "search-limit: requests": 586 },
+          "replicas": [1, 1, 0]
+        },
+        "orders": { "processed": 360, "throughput": 9.724951950525227, "replicas": [1, 1, 0] },
+        "canary": { "processed": 39, "throughput": 0.22106960660512834, "replicas": [1, 1, 0] },
+        "search": { "processed": 613, "throughput": 15.076493638431067, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 2,
+      "nodes": {
+        "app": { "processed": 2000, "throughput": 40.905931483509896, "replicas": [1, 1, 0] },
+        "kong": {
+          "processed": 1262,
+          "rejected": 736,
+          "throughput": 24.282988109682204,
+          "rejectionReasons": { "search-limit: requests": 736 },
+          "replicas": [1, 1, 0]
+        },
+        "orders": { "processed": 453, "throughput": 9.311997676772618, "replicas": [1, 1, 0] },
+        "canary": { "processed": 46, "throughput": 0.6340238803577298, "replicas": [1, 1, 0] },
+        "search": { "processed": 763, "throughput": 15.076493638431067, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 2,
+      "nodes": {
+        "app": { "processed": 2400, "throughput": 40.905931483509896, "replicas": [1, 1, 0] },
+        "kong": {
+          "processed": 1512,
+          "rejected": 886,
+          "throughput": 24.282988109682204,
+          "rejectionReasons": { "search-limit: requests": 886 },
+          "replicas": [1, 1, 0]
+        },
+        "orders": { "processed": 543, "throughput": 8.7301702522256, "replicas": [1, 1, 0] },
+        "canary": { "processed": 56, "throughput": 1.2158513049047528, "replicas": [1, 1, 0] },
+        "search": { "processed": 913, "throughput": 15.076493638431067, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 2,
+    "real": {
+      "app": { "processed": 2400, "throughput": 40.905931483509896, "replicas": [1, 1, 0] },
+      "kong": {
+        "processed": 1512,
+        "rejected": 886,
+        "throughput": 24.282988109682204,
+        "rejectionReasons": { "search-limit: requests": 886 },
+        "replicas": [1, 1, 0]
+      },
+      "orders": { "processed": 543, "throughput": 8.7301702522256, "replicas": [1, 1, 0] },
+      "canary": { "processed": 56, "throughput": 1.2158513049047528, "replicas": [1, 1, 0] },
+      "search": { "processed": 913, "throughput": 15.076493638431067, "replicas": [1, 1, 0] }
+    },
+    "edges": { "app-kong": 2398, "kong-orders": 543, "kong-canary": 56, "kong-search": 913 }
+  },
+  "events": {
+    "total": 10220,
+    "byKind": { "process": 5424, "deliver": 3910, "reject": 886 },
+    "byNode": {
+      "app": { "process": 2400 },
+      "kong": { "deliver": 2398, "process": 1512, "reject": 886 },
+      "search": { "deliver": 913, "process": 913 },
+      "orders": { "deliver": 543, "process": 543 },
+      "canary": { "deliver": 56, "process": 56 }
+    },
+    "perSecond": [
+      "5392b31fff31",
+      "5a6189417d78",
+      "fcf0aaed9567",
+      "f8a17f32f20c",
+      "5874e3d15df2",
+      "3f30740ef218",
+      "0f48c0d725be",
+      "05ffe0944d88",
+      "64dcea6023d2",
+      "2fad6c833d5e",
+      "c9f689441de9",
+      "24742b66fe3a",
+      "5758269c690e",
+      "b988d6c848ed",
+      "1c68277260e2",
+      "f4a6bb181531",
+      "c7b82f73aa1b",
+      "2d84e1d74636",
+      "1729a253d33e",
+      "7cc1068cfc62",
+      "6633ea15ac81",
+      "ef5be16f6d7f",
+      "4e3ad742f1a3",
+      "ed704cb68ff5",
+      "72bd5c38a52c",
+      "10377ad5e592",
+      "660e1253166e",
+      "57101ee1cafb",
+      "91972227f049",
+      "13f7fa45ef2a",
+      "25c2c38b1b82",
+      "4c7f55b3fada",
+      "38e29fa36f28",
+      "3eed8d67d02c",
+      "e659b5d18f0b",
+      "9fbf3b2bad7f",
+      "c217787498fb",
+      "9beeabc09172",
+      "e7e6751a3329",
+      "5e01327cc274",
+      "582cb9bb5cc7",
+      "fdc52dbb9855",
+      "e9b98546e716",
+      "6f09cab0ce28",
+      "214ac7f7ccdf",
+      "59e0575d3c46",
+      "0b24ce89c96f",
+      "a2b056c31a98",
+      "e11486e04e9a",
+      "32629d49a299",
+      "5f3aff6b773d",
+      "026f5b386c71",
+      "cbb11d136250",
+      "ba24efbe19f9",
+      "b827b9afa022",
+      "f73421f8a7f0",
+      "f7705876b71e",
+      "b4e1b4af51d5",
+      "70f1291c4217",
+      "8d0f65cb0378",
+      "9b5934dabc9b"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 2398, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0, "rejected": 886 },
+    "endToEndMs": { "count": 2398, "min": 10, "mean": 35.221017514595495, "p50": 50, "p90": 50, "max": 50 },
+    "waitMs": {
+      "kong": { "count": 1512, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "orders": { "count": 543, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "canary": { "count": 56, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "search": { "count": 913, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "kong": { "count": 1512, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "orders": { "count": 543, "min": 20, "mean": 20, "p50": 20, "p90": 20, "max": 20 },
+      "canary": { "count": 56, "min": 20, "mean": 20, "p50": 20, "p90": 20, "max": 20 },
+      "search": { "count": 913, "min": 20, "mean": 20, "p50": 20, "p90": 20, "max": 20 }
+    }
+  }
+}

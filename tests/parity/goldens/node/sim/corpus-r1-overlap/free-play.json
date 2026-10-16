@@ -1,0 +1,225 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "app": { "replicas": [1, 1, 0] },
+        "kong": { "replicas": [1, 1, 0] },
+        "orders": { "replicas": [1, 1, 0] },
+        "canary": { "status": "down", "replicas": [1, 1, 0] },
+        "search": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 3,
+      "nodes": {
+        "app": { "processed": 300, "throughput": 31.475397011466047, "replicas": [1, 1, 0] },
+        "kong": {
+          "processed": 238,
+          "rejected": 59,
+          "throughput": 23.214860903914154,
+          "rejectionReasons": { "route-no-eligible-target": 59 },
+          "replicas": [1, 1, 0]
+        },
+        "orders": { "processed": 137, "throughput": 14.698810705176957, "replicas": [1, 1, 0] },
+        "canary": { "status": "down", "failed": 12, "dropped": 12, "outageDropped": 12, "replicas": [1, 1, 0] },
+        "search": { "processed": 89, "throughput": 8.847843634316176, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 3,
+      "nodes": {
+        "app": { "processed": 600, "throughput": 31.476825992279615, "replicas": [1, 1, 0] },
+        "kong": {
+          "processed": 478,
+          "rejected": 119,
+          "throughput": 23.216006112344584,
+          "rejectionReasons": { "route-no-eligible-target": 119 },
+          "replicas": [1, 1, 0]
+        },
+        "orders": { "processed": 271, "throughput": 11.62178015416762, "replicas": [1, 1, 0] },
+        "canary": { "status": "down", "failed": 28, "dropped": 28, "outageDropped": 28, "replicas": [1, 1, 0] },
+        "search": { "processed": 179, "throughput": 8.848292343053666, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 3,
+      "nodes": {
+        "app": { "processed": 900, "throughput": 31.47682605715525, "replicas": [1, 1, 0] },
+        "kong": {
+          "processed": 718,
+          "rejected": 179,
+          "throughput": 23.216006164336957,
+          "rejectionReasons": { "route-no-eligible-target": 179 },
+          "replicas": [1, 1, 0]
+        },
+        "orders": { "processed": 406, "throughput": 14.667566887617348, "replicas": [1, 1, 0] },
+        "canary": { "status": "down", "failed": 43, "dropped": 43, "outageDropped": 43, "replicas": [1, 1, 0] },
+        "search": { "processed": 269, "throughput": 8.848292363425013, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 3,
+      "nodes": {
+        "app": { "processed": 1200, "throughput": 31.47682605715821, "replicas": [1, 1, 0] },
+        "kong": {
+          "processed": 958,
+          "rejected": 239,
+          "throughput": 23.216006164339305,
+          "rejectionReasons": { "route-no-eligible-target": 239 },
+          "replicas": [1, 1, 0]
+        },
+        "orders": { "processed": 543, "throughput": 13.379201793300304, "replicas": [1, 1, 0] },
+        "canary": { "status": "down", "failed": 56, "dropped": 56, "outageDropped": 56, "replicas": [1, 1, 0] },
+        "search": { "processed": 359, "throughput": 8.84829236342593, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 3,
+      "nodes": {
+        "app": { "processed": 1500, "throughput": 31.47682605715821, "replicas": [1, 1, 0] },
+        "kong": {
+          "processed": 1198,
+          "rejected": 299,
+          "throughput": 23.216006164339305,
+          "rejectionReasons": { "route-no-eligible-target": 299 },
+          "replicas": [1, 1, 0]
+        },
+        "orders": { "processed": 673, "throughput": 13.340498577482855, "replicas": [1, 1, 0] },
+        "canary": { "status": "down", "failed": 76, "dropped": 76, "outageDropped": 76, "replicas": [1, 1, 0] },
+        "search": { "processed": 449, "throughput": 8.84829236342593, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 3,
+      "nodes": {
+        "app": { "processed": 1800, "throughput": 31.47682605715821, "replicas": [1, 1, 0] },
+        "kong": {
+          "processed": 1438,
+          "rejected": 359,
+          "throughput": 23.216006164339305,
+          "rejectionReasons": { "route-no-eligible-target": 359 },
+          "replicas": [1, 1, 0]
+        },
+        "orders": { "processed": 809, "throughput": 13.768408034402585, "replicas": [1, 1, 0] },
+        "canary": { "status": "down", "failed": 90, "dropped": 90, "outageDropped": 90, "replicas": [1, 1, 0] },
+        "search": { "processed": 539, "throughput": 8.84829236342593, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 3,
+    "real": {
+      "app": { "processed": 1800, "throughput": 31.47682605715821, "replicas": [1, 1, 0] },
+      "kong": {
+        "processed": 1438,
+        "rejected": 359,
+        "throughput": 23.216006164339305,
+        "rejectionReasons": { "route-no-eligible-target": 359 },
+        "replicas": [1, 1, 0]
+      },
+      "orders": { "processed": 809, "throughput": 13.768408034402585, "replicas": [1, 1, 0] },
+      "canary": { "status": "down", "failed": 90, "dropped": 90, "outageDropped": 90, "replicas": [1, 1, 0] },
+      "search": { "processed": 539, "throughput": 8.84829236342593, "replicas": [1, 1, 0] }
+    },
+    "edges": { "app-kong": 1797, "kong-orders": 809, "kong-canary": 90, "kong-search": 539 }
+  },
+  "events": {
+    "total": 8360,
+    "byKind": { "process": 4586, "deliver": 3235, "reject": 359, "fail": 90, "drop": 90 },
+    "byNode": {
+      "app": { "process": 1800 },
+      "kong": { "deliver": 1797, "process": 1438, "reject": 359 },
+      "orders": { "deliver": 809, "process": 809 },
+      "search": { "deliver": 539, "process": 539 },
+      "canary": { "deliver": 90, "fail": 90, "drop": 90 }
+    },
+    "perSecond": [
+      "e3b178381116",
+      "7801e81a2386",
+      "1fd3738b0126",
+      "dc270fdd631e",
+      "8c275cec6d3c",
+      "7b0fcc27116d",
+      "59775cc97d8e",
+      "f2d311935822",
+      "c56a5afd3b14",
+      "74d2a279b17a",
+      "fcb3a26fc8a0",
+      "60d2cedd4095",
+      "10dd626fe7c7",
+      "9c47d1073cf5",
+      "092b006a8a0a",
+      "8e31952ff4ac",
+      "a6e1664f25f6",
+      "bef22adcaf30",
+      "abfa62291c14",
+      "29b4e3ee2e29",
+      "82405b62f37d",
+      "769a4371b17f",
+      "866ebe61719a",
+      "330a8f909588",
+      "af6a9b72d887",
+      "6bb819d8df27",
+      "2f1f65223094",
+      "49d33996f120",
+      "cbb6f74ce99e",
+      "2ad2496075a8",
+      "3375ce1aab08",
+      "2a701345af36",
+      "e95c30db6651",
+      "2f0d069806c4",
+      "114f3401dc2d",
+      "70f99d5087a6",
+      "c1734ecbf2f6",
+      "09c933124bfd",
+      "508845bcffcb",
+      "a8d1f0125356",
+      "fed4211e2eaf",
+      "2c8e6078457c",
+      "d0babcdf79f2",
+      "bb0e6e91c3cb",
+      "2e1cb429300b",
+      "55e977dcc42d",
+      "43bc3e49a6e0",
+      "e265136aa512",
+      "4ac93fb55e87",
+      "6e95d8743f00",
+      "5516f8305cac",
+      "44e4368f389c",
+      "3e2d080096e0",
+      "f392cf93170e",
+      "bad0e95ebb82",
+      "f780b2cd313a",
+      "dc897bc53ade",
+      "caa258d7827b",
+      "82cf722ccc8d",
+      "69eac1ea7802",
+      "f880968f0a35"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 1797, "retried": 0, "deadLettered": 0, "dropped": 90, "blocked": 0, "partial": 0, "truncated": 0, "rejected": 359 },
+    "endToEndMs": { "count": 1797, "min": 10, "mean": 33.00500834724541, "p50": 40, "p90": 40, "max": 40 },
+    "waitMs": {
+      "kong": { "count": 1438, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "orders": { "count": 809, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "search": { "count": 539, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "kong": { "count": 1438, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "orders": { "count": 809, "min": 20, "mean": 20, "p50": 20, "p90": 20, "max": 20 },
+      "search": { "count": 539, "min": 20, "mean": 20, "p50": 20, "p90": 20, "max": 20 }
+    }
+  }
+}

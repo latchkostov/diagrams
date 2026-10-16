@@ -1,0 +1,454 @@
+{
+  "autoScale": { "freePlay": 1, "rush": 1 },
+  "brokerAssignments": { "brokers": {}, "consumers": {} },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "search",
+      "suggestion": "Search: 1% utilized",
+      "converged": true,
+      "iterations": 3,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "app": ["Infinity", 20, 0, 1, 1, 0], "kong": ["Infinity", 20, 0, 1, 1, 0], "orders": [3200, 3.6, 0.0011250000000000001, 1, 1, 0], "canary": [3200, 0.4, 0.000125, 1, 1, 0], "search": [3200, 16, 0.005, 1, 1, 0] },
+      "connections": { "app-kong": 20, "kong-orders": 3.6, "kong-canary": 0.4, "kong-search": 16 },
+      "offeredTypes": { "app": ["Mobile app"], "kong": ["Mobile app"], "orders": ["Mobile app"], "canary": ["Mobile app"], "search": ["Mobile app"] }
+    },
+    "explanations": {
+      "kong": {
+        "managed": "api",
+        "id": "kong",
+        "role": "gateway",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": "Infinity",
+        "offered": 20,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0.005,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [{ "edge": "app-kong", "node": "app", "label": "Mobile app", "rate": 20 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true,
+        "routes": [
+          { "route": "search-get", "address": "GET /search", "offered": 16, "rejected": 0, "throttled": 0 },
+          { "route": "orders-post", "address": "POST /orders", "offered": 4, "rejected": 0, "throttled": 0 }
+        ]
+      },
+      "orders": {
+        "id": "orders",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 3200,
+        "offered": 3.6,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 64,
+        "seconds": 0.02,
+        "utilization": 0.0011250000000000001,
+        "growth": 0,
+        "contributors": [
+          { "edge": "kong-orders", "node": "kong", "label": "Mobile app", "rate": 3.6, "via": "Gateway" }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true,
+        "routes": [
+          { "route": "orders-post", "address": "POST /orders", "offered": 3.6, "rejected": 0, "throttled": 0 }
+        ]
+      },
+      "canary": {
+        "id": "canary",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 3200,
+        "offered": 0.4,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 64,
+        "seconds": 0.02,
+        "utilization": 0.000125,
+        "growth": 0,
+        "contributors": [
+          { "edge": "kong-canary", "node": "kong", "label": "Mobile app", "rate": 0.4, "via": "Gateway" }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true,
+        "routes": [
+          { "route": "orders-post", "address": "POST /orders", "offered": 0.4, "rejected": 0, "throttled": 0 }
+        ]
+      },
+      "search": {
+        "id": "search",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 3200,
+        "offered": 16,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 64,
+        "seconds": 0.02,
+        "utilization": 0.005,
+        "growth": 0,
+        "contributors": [
+          { "edge": "kong-search", "node": "kong", "label": "Mobile app", "rate": 16, "via": "Gateway" }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true,
+        "routes": [{ "route": "search-get", "address": "GET /search", "offered": 16, "rejected": 0, "throttled": 0 }]
+      }
+    },
+    "capabilities": {
+      "app": [{ "kind": "calls", "edge": "app-kong", "peer": "kong" }],
+      "kong": [
+        { "kind": "calls", "edge": "kong-orders", "peer": "orders" },
+        { "kind": "calls", "edge": "kong-canary", "peer": "canary" },
+        { "kind": "calls", "edge": "kong-search", "peer": "search" }
+      ]
+    },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "app": {
+        "profile": { "family": "client", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "ratePerSec": 20,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Mobile app",
+        "healthChecks": false
+      },
+      "kong": {
+        "admission": { "api": {}, "endpoints": [] },
+        "profile": { "family": "api-gateway", "revision": "p3-a1", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 5,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Gateway",
+        "healthChecks": false
+      },
+      "orders": {
+        "profile": { "family": "service", "revision": "p3-a1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 20,
+        "concurrency": 64,
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Orders",
+        "healthChecks": false
+      },
+      "canary": {
+        "profile": { "family": "service", "revision": "p3-a1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 20,
+        "concurrency": 64,
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Orders canary",
+        "healthChecks": false
+      },
+      "search": {
+        "profile": { "family": "service", "revision": "p3-a1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 20,
+        "concurrency": 64,
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Search",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "rush": {
+      "configured": "(same as edit)",
+      "simulation": "rush",
+      "analysis": {
+        "bottleneck": "search",
+        "suggestion": "Search: 1% utilized",
+        "converged": true,
+        "iterations": 3,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "app": ["Infinity", 40, 0, 1, 1, 0], "kong": ["Infinity", 40, 0, 1, 1, 0], "orders": [3200, 7.2, 0.0022500000000000003, 1, 1, 0], "canary": [3200, 0.8, 0.00025, 1, 1, 0], "search": [3200, 32, 0.01, 1, 1, 0] },
+        "connections": { "app-kong": 40, "kong-orders": 7.2, "kong-canary": 0.8, "kong-search": 32 },
+        "offeredTypes": { "app": ["Mobile app"], "kong": ["Mobile app"], "orders": ["Mobile app"], "canary": ["Mobile app"], "search": ["Mobile app"] }
+      },
+      "explanations": {
+        "kong": {
+          "managed": "api",
+          "id": "kong",
+          "role": "gateway",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 40,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.005,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [{ "edge": "app-kong", "node": "app", "label": "Mobile app", "rate": 40 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true,
+          "routes": [
+            { "route": "search-get", "address": "GET /search", "offered": 32, "rejected": 0, "throttled": 0 },
+            { "route": "orders-post", "address": "POST /orders", "offered": 8, "rejected": 0, "throttled": 0 }
+          ]
+        },
+        "orders": {
+          "id": "orders",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 3200,
+          "offered": 7.2,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 64,
+          "seconds": 0.02,
+          "utilization": 0.0022500000000000003,
+          "growth": 0,
+          "contributors": [
+            { "edge": "kong-orders", "node": "kong", "label": "Mobile app", "rate": 7.2, "via": "Gateway" }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true,
+          "routes": [
+            { "route": "orders-post", "address": "POST /orders", "offered": 7.2, "rejected": 0, "throttled": 0 }
+          ]
+        },
+        "canary": {
+          "id": "canary",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 3200,
+          "offered": 0.8,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 64,
+          "seconds": 0.02,
+          "utilization": 0.00025,
+          "growth": 0,
+          "contributors": [
+            { "edge": "kong-canary", "node": "kong", "label": "Mobile app", "rate": 0.8, "via": "Gateway" }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true,
+          "routes": [
+            { "route": "orders-post", "address": "POST /orders", "offered": 0.8, "rejected": 0, "throttled": 0 }
+          ]
+        },
+        "search": {
+          "id": "search",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 3200,
+          "offered": 32,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 64,
+          "seconds": 0.02,
+          "utilization": 0.01,
+          "growth": 0,
+          "contributors": [
+            { "edge": "kong-search", "node": "kong", "label": "Mobile app", "rate": 32, "via": "Gateway" }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true,
+          "routes": [{ "route": "search-get", "address": "GET /search", "offered": 32, "rejected": 0, "throttled": 0 }]
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": "(same as edit)"
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "ok",
+          "top": "search",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Search at 1% · 16/s of 3.2k/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "app": ["idle", "20/s · no limit", { "modeled": false }],
+            "kong": ["idle", "Limits unknown; enter measured or contracted values."],
+            "orders": ["ok", "0% · 3.6/s of 3.2k/s"],
+            "canary": ["ok", "0% · 0.4/s of 3.2k/s"],
+            "search": ["ok", "1% · 16/s of 3.2k/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "ok",
+          "top": "search",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Search at 3% · 80/s of 3.2k/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "app": ["idle", "100/s · no limit", { "modeled": false }],
+            "kong": ["idle", "Limits unknown; enter measured or contracted values."],
+            "orders": ["ok", "1% · 18/s of 3.2k/s"],
+            "canary": ["ok", "0% · 2/s of 3.2k/s"],
+            "search": ["ok", "3% · 80/s of 3.2k/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "ok",
+          "top": "search",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Search at 1% · 16/s of 3.2k/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "app": ["idle", "20/s · no limit", { "modeled": false }],
+            "kong": ["idle", "Limits unknown; enter measured or contracted values."],
+            "orders": ["ok", "0% · 3.6/s of 3.2k/s"],
+            "canary": ["ok", "0% · 0.4/s of 3.2k/s"],
+            "search": ["ok", "1% · 16/s of 3.2k/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "ok",
+          "top": "search",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Search at 1% · 16/s of 3.2k/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "app": ["idle", "20/s · no limit", { "modeled": false }],
+            "kong": ["idle", "Limits unknown; enter measured or contracted values."],
+            "orders": ["ok", "0% · 3.6/s of 3.2k/s"],
+            "canary": ["ok", "0% · 0.4/s of 3.2k/s"],
+            "search": ["ok", "1% · 16/s of 3.2k/s"]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    },
+    "rush": {
+      "tone": "ok",
+      "top": "search",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Search at 1% · 32/s of 3.2k/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "app": ["idle", "40/s · no limit", { "modeled": false }],
+        "kong": ["idle", "Limits unknown; enter measured or contracted values."],
+        "orders": ["ok", "0% · 7.2/s of 3.2k/s"],
+        "canary": ["ok", "0% · 0.8/s of 3.2k/s"],
+        "search": ["ok", "1% · 32/s of 3.2k/s"]
+      }
+    }
+  }
+}

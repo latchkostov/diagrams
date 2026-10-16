@@ -1,0 +1,769 @@
+{
+  "format": "diagrams/v2",
+  "planning": {
+    "revision": "p3",
+    "requestRoutes": [
+      {
+        "id": "track-parcel",
+        "label": "Track a parcel",
+        "address": { "method": "GET", "path": "/v1/parcels/8421" },
+        "appearance": { "paletteSlot": 0, "marker": "circle" }
+      },
+      {
+        "id": "get-quote",
+        "label": "Get a quote",
+        "address": { "method": "POST", "path": "/v1/quotes" },
+        "appearance": { "paletteSlot": 1, "marker": "square" }
+      },
+      {
+        "id": "buy-label",
+        "label": "Buy a label",
+        "address": { "method": "POST", "path": "/v1/labels" },
+        "appearance": { "paletteSlot": 2, "marker": "diamond" }
+      },
+      {
+        "id": "old-tracking",
+        "label": "Old app version",
+        "address": { "method": "GET", "path": "/v0/track" },
+        "appearance": { "paletteSlot": 5, "marker": "triangle" }
+      },
+      {
+        "id": "carrier-event",
+        "label": "Carrier event",
+        "address": { "method": "POST", "path": "/hooks/carrier-events" },
+        "appearance": { "paletteSlot": 6, "marker": "square" }
+      }
+    ]
+  },
+  "nodeProps": {
+    "app": {
+      "ratePerSec": 40,
+      "trafficMix": {
+        "mode": "shares",
+        "entries": [
+          { "routeId": "track-parcel", "share": 0.55 },
+          { "routeId": "get-quote", "share": 0.25 },
+          { "routeId": "buy-label", "share": 0.15 },
+          { "routeId": "old-tracking", "share": 0.05 }
+        ]
+      },
+      "latencyMs": 0,
+      "replicas": 1,
+      "jitter": 0.2,
+      "retry": "requeue",
+      "retryBackoffMs": 0,
+      "failureRate": 0,
+      "maxDeliveryCount": 3,
+      "partitions": 3,
+      "messageType": "Parcelpoint app",
+      "healthChecks": false
+    },
+    "carriers": {
+      "trafficMix": { "mode": "rates", "entries": [{ "routeId": "carrier-event", "ratePerSec": 30 }] },
+      "ratePerSec": 30,
+      "latencyMs": 0,
+      "replicas": 1,
+      "jitter": 0.2,
+      "retry": "requeue",
+      "retryBackoffMs": 0,
+      "failureRate": 0,
+      "maxDeliveryCount": 3,
+      "partitions": 3,
+      "messageType": "Carrier webhooks",
+      "healthChecks": false
+    },
+    "gateway": {
+      "latencyMs": 20,
+      "jitter": 0,
+      "routeTable": {
+        "rules": [
+          {
+            "id": "parcels",
+            "label": "Tracking",
+            "match": { "methods": ["GET"], "path": { "kind": "template", "value": "/v1/parcels/{id}" } },
+            "targets": [{ "edgeId": "to-tracking", "weight": 1 }]
+          },
+          {
+            "id": "quotes",
+            "label": "Pricing with canary",
+            "match": { "methods": ["POST"], "path": { "kind": "exact", "value": "/v1/quotes" } },
+            "targets": [{ "edgeId": "to-pricing", "weight": 90 }, { "edgeId": "to-pricing-canary", "weight": 10 }]
+          },
+          {
+            "id": "labels",
+            "label": "Labels",
+            "match": { "methods": ["POST"], "path": { "kind": "exact", "value": "/v1/labels" } },
+            "targets": [{ "edgeId": "to-labels", "weight": 1 }]
+          },
+          {
+            "id": "hooks",
+            "label": "Carrier hooks",
+            "match": { "path": { "kind": "prefix", "value": "/hooks/" } },
+            "targets": [{ "edgeId": "to-events", "weight": 1 }]
+          }
+        ]
+      },
+      "ratePerSec": 2,
+      "replicas": 1,
+      "retry": "requeue",
+      "retryBackoffMs": 0,
+      "failureRate": 0,
+      "maxDeliveryCount": 3,
+      "partitions": 3,
+      "messageType": "API gateway",
+      "healthChecks": false,
+      "preset": "managed-measured",
+      "presetRevision": "2026-10-14"
+    },
+    "tracking": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 8, "latencyMs": 40, "jitter": 0.1, "failureRate": 0, "ratePerSec": 2, "retry": "requeue", "retryBackoffMs": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Tracking", "healthChecks": false },
+    "pricing": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 8, "latencyMs": 40, "jitter": 0.1, "failureRate": 0, "ratePerSec": 2, "retry": "requeue", "retryBackoffMs": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Pricing", "healthChecks": false },
+    "pricing-canary": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 8, "latencyMs": 40, "jitter": 0.1, "failureRate": 0, "ratePerSec": 2, "retry": "requeue", "retryBackoffMs": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Pricing canary", "healthChecks": false },
+    "labels": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 8, "latencyMs": 40, "jitter": 0.1, "failureRate": 0, "ratePerSec": 2, "retry": "requeue", "retryBackoffMs": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Labels", "healthChecks": false },
+    "events": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 1, "concurrency": 4, "latencyMs": 200, "jitter": 0.1, "failureRate": 0, "ratePerSec": 2, "retry": "requeue", "retryBackoffMs": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Carrier events", "healthChecks": false }
+  },
+  "legacyExport": {
+    "format": "diagrams/v1",
+    "losses": [
+      "planning.revision",
+      "planning.requestRoutes",
+      "app.props.trafficMix",
+      "carriers.props.trafficMix",
+      "gateway.props.preset",
+      "gateway.props.presetRevision",
+      "gateway.props.routeTable",
+      "tracking.props.preset",
+      "tracking.props.presetRevision",
+      "pricing.props.preset",
+      "pricing.props.presetRevision",
+      "pricing-canary.props.preset",
+      "pricing-canary.props.presetRevision",
+      "labels.props.preset",
+      "labels.props.presetRevision",
+      "events.props.preset",
+      "events.props.presetRevision"
+    ]
+  },
+  "autoScale": { "freePlay": 2, "busy-afternoon": 2, "canary-down": 1 },
+  "brokerAssignments": { "brokers": {}, "consumers": {} },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "events",
+      "suggestion": "Carrier events: 70% utilized",
+      "converged": true,
+      "iterations": 3,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "app": ["Infinity", 40, 0, 1, 1, 0], "carriers": ["Infinity", 30, 0, 1, 1, 0], "gateway": ["Infinity", 70, 0, 1, 1, 0], "tracking": [400, 14, 0.035, 2, 2, 0], "pricing": [400, 14, 0.035, 2, 2, 0], "pricing-canary": [400, 14, 0.035, 2, 2, 0], "labels": [400, 14, 0.035, 2, 2, 0], "events": [20, 14, 0.7, 1, 1, 0] },
+      "connections": { "app-gateway": 40, "carriers-gateway": 30, "to-tracking": 14, "to-pricing": 14, "to-pricing-canary": 14, "to-labels": 14, "to-events": 14 },
+      "offeredTypes": { "app": ["Parcelpoint app"], "carriers": ["Carrier webhooks"], "gateway": ["Parcelpoint app", "Carrier webhooks"], "tracking": ["Parcelpoint app", "Carrier webhooks"], "pricing": ["Parcelpoint app", "Carrier webhooks"], "pricing-canary": ["Parcelpoint app", "Carrier webhooks"], "labels": ["Parcelpoint app", "Carrier webhooks"], "events": ["Parcelpoint app", "Carrier webhooks"] }
+    },
+    "explanations": {
+      "gateway": {
+        "managed": "api",
+        "id": "gateway",
+        "role": "gateway",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": "Infinity",
+        "offered": 70,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0.02,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [
+          { "edge": "app-gateway", "node": "app", "label": "Parcelpoint app", "rate": 40 },
+          { "edge": "carriers-gateway", "node": "carriers", "label": "Carrier webhooks", "rate": 30 }
+        ],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "tracking": {
+        "id": "tracking",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 400,
+        "offered": 14,
+        "replicas": 2,
+        "baseReplicas": 2,
+        "omittedContributors": 0,
+        "activeReplicas": 2,
+        "assignments": [],
+        "slots": 8,
+        "seconds": 0.04,
+        "utilization": 0.035,
+        "growth": 0,
+        "contributors": [
+          { "edge": "to-tracking", "node": "gateway", "label": "Parcelpoint app, Carrier webhooks", "rate": 14, "via": "API gateway" }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 2,
+        "changes": null,
+        "converged": true
+      },
+      "pricing": {
+        "id": "pricing",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 400,
+        "offered": 14,
+        "replicas": 2,
+        "baseReplicas": 2,
+        "omittedContributors": 0,
+        "activeReplicas": 2,
+        "assignments": [],
+        "slots": 8,
+        "seconds": 0.04,
+        "utilization": 0.035,
+        "growth": 0,
+        "contributors": [
+          { "edge": "to-pricing", "node": "gateway", "label": "Parcelpoint app, Carrier webhooks", "rate": 14, "via": "API gateway" }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 2,
+        "changes": null,
+        "converged": true
+      },
+      "pricing-canary": {
+        "id": "pricing-canary",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 400,
+        "offered": 14,
+        "replicas": 2,
+        "baseReplicas": 2,
+        "omittedContributors": 0,
+        "activeReplicas": 2,
+        "assignments": [],
+        "slots": 8,
+        "seconds": 0.04,
+        "utilization": 0.035,
+        "growth": 0,
+        "contributors": [
+          { "edge": "to-pricing-canary", "node": "gateway", "label": "Parcelpoint app, Carrier webhooks", "rate": 14, "via": "API gateway" }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 2,
+        "changes": null,
+        "converged": true
+      },
+      "labels": {
+        "id": "labels",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 400,
+        "offered": 14,
+        "replicas": 2,
+        "baseReplicas": 2,
+        "omittedContributors": 0,
+        "activeReplicas": 2,
+        "assignments": [],
+        "slots": 8,
+        "seconds": 0.04,
+        "utilization": 0.035,
+        "growth": 0,
+        "contributors": [
+          { "edge": "to-labels", "node": "gateway", "label": "Parcelpoint app, Carrier webhooks", "rate": 14, "via": "API gateway" }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 2,
+        "changes": null,
+        "converged": true
+      },
+      "events": {
+        "id": "events",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 20,
+        "offered": 14,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 4,
+        "seconds": 0.2,
+        "utilization": 0.7,
+        "growth": 0,
+        "contributors": [
+          { "edge": "to-events", "node": "gateway", "label": "Parcelpoint app, Carrier webhooks", "rate": 14, "via": "API gateway" }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "app": [{ "kind": "calls", "edge": "app-gateway", "peer": "gateway" }],
+      "carriers": [{ "kind": "calls", "edge": "carriers-gateway", "peer": "gateway" }],
+      "gateway": [
+        { "kind": "calls", "edge": "to-tracking", "peer": "tracking" },
+        { "kind": "calls", "edge": "to-pricing", "peer": "pricing" },
+        { "kind": "calls", "edge": "to-pricing-canary", "peer": "pricing-canary" },
+        { "kind": "calls", "edge": "to-labels", "peer": "labels" },
+        { "kind": "calls", "edge": "to-events", "peer": "events" }
+      ]
+    },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "app": {
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 40,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Parcelpoint app",
+        "healthChecks": false
+      },
+      "carriers": {
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 30,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Carrier webhooks",
+        "healthChecks": false
+      },
+      "gateway": {
+        "admission": { "api": {}, "endpoints": [] },
+        "profile": { "family": "api-gateway", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 20,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "API gateway",
+        "healthChecks": false
+      },
+      "tracking": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 40,
+        "concurrency": 8,
+        "replicas": 2,
+        "jitter": 0.1,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Tracking",
+        "healthChecks": false
+      },
+      "pricing": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 40,
+        "concurrency": 8,
+        "replicas": 2,
+        "jitter": 0.1,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Pricing",
+        "healthChecks": false
+      },
+      "pricing-canary": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 40,
+        "concurrency": 8,
+        "replicas": 2,
+        "jitter": 0.1,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Pricing canary",
+        "healthChecks": false
+      },
+      "labels": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 40,
+        "concurrency": 8,
+        "replicas": 2,
+        "jitter": 0.1,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Labels",
+        "healthChecks": false
+      },
+      "events": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 200,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.1,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Carrier events",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "busy-afternoon": { "configured": "(same as edit)", "simulation": "busy-afternoon", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" },
+    "canary-down": {
+      "configured": "(same as edit)",
+      "simulation": "canary-down",
+      "analysis": {
+        "bottleneck": "events",
+        "suggestion": "Carrier events: 40% utilized",
+        "converged": true,
+        "iterations": 3,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "app": ["Infinity", 40, 0, 1, 1, 0], "carriers": ["Infinity", 0, 0, 1, 1, 0], "gateway": ["Infinity", 40, 0, 1, 1, 0], "tracking": [400, 8, 0.02, 2, 2, 0], "pricing": [400, 8, 0.02, 2, 2, 0], "pricing-canary": [400, 8, 0.02, 2, 2, 0], "labels": [400, 8, 0.02, 2, 2, 0], "events": [20, 8, 0.4, 1, 1, 0] },
+        "connections": { "app-gateway": 40, "to-tracking": 8, "to-pricing": 8, "to-pricing-canary": 8, "to-labels": 8, "to-events": 8 },
+        "offeredTypes": { "app": ["Parcelpoint app"], "gateway": ["Parcelpoint app"], "tracking": ["Parcelpoint app"], "pricing": ["Parcelpoint app"], "pricing-canary": ["Parcelpoint app"], "labels": ["Parcelpoint app"], "events": ["Parcelpoint app"] }
+      },
+      "explanations": {
+        "gateway": {
+          "managed": "api",
+          "id": "gateway",
+          "role": "gateway",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 40,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.02,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [{ "edge": "app-gateway", "node": "app", "label": "Parcelpoint app", "rate": 40 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        },
+        "tracking": {
+          "id": "tracking",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 400,
+          "offered": 8,
+          "replicas": 2,
+          "baseReplicas": 2,
+          "omittedContributors": 0,
+          "activeReplicas": 2,
+          "assignments": [],
+          "slots": 8,
+          "seconds": 0.04,
+          "utilization": 0.02,
+          "growth": 0,
+          "contributors": [
+            { "edge": "to-tracking", "node": "gateway", "label": "Parcelpoint app, Carrier webhooks", "rate": 8, "via": "API gateway" }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 2,
+          "changes": null,
+          "converged": true
+        },
+        "pricing": {
+          "id": "pricing",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 400,
+          "offered": 8,
+          "replicas": 2,
+          "baseReplicas": 2,
+          "omittedContributors": 0,
+          "activeReplicas": 2,
+          "assignments": [],
+          "slots": 8,
+          "seconds": 0.04,
+          "utilization": 0.02,
+          "growth": 0,
+          "contributors": [
+            { "edge": "to-pricing", "node": "gateway", "label": "Parcelpoint app, Carrier webhooks", "rate": 8, "via": "API gateway" }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 2,
+          "changes": null,
+          "converged": true
+        },
+        "pricing-canary": {
+          "id": "pricing-canary",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 400,
+          "offered": 8,
+          "replicas": 2,
+          "baseReplicas": 2,
+          "omittedContributors": 0,
+          "activeReplicas": 2,
+          "assignments": [],
+          "slots": 8,
+          "seconds": 0.04,
+          "utilization": 0.02,
+          "growth": 0,
+          "contributors": [
+            { "edge": "to-pricing-canary", "node": "gateway", "label": "Parcelpoint app, Carrier webhooks", "rate": 8, "via": "API gateway" }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 2,
+          "changes": null,
+          "converged": true
+        },
+        "labels": {
+          "id": "labels",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 400,
+          "offered": 8,
+          "replicas": 2,
+          "baseReplicas": 2,
+          "omittedContributors": 0,
+          "activeReplicas": 2,
+          "assignments": [],
+          "slots": 8,
+          "seconds": 0.04,
+          "utilization": 0.02,
+          "growth": 0,
+          "contributors": [
+            { "edge": "to-labels", "node": "gateway", "label": "Parcelpoint app, Carrier webhooks", "rate": 8, "via": "API gateway" }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 2,
+          "changes": null,
+          "converged": true
+        },
+        "events": {
+          "id": "events",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 20,
+          "offered": 8,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 4,
+          "seconds": 0.2,
+          "utilization": 0.4,
+          "growth": 0,
+          "contributors": [
+            { "edge": "to-events", "node": "gateway", "label": "Parcelpoint app, Carrier webhooks", "rate": 8, "via": "API gateway" }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": "(same as edit)"
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "warn",
+          "top": "events",
+          "headline": "Carrier events is busy",
+          "detail": "70% · 14/s of 20/s. Still some headroom.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "app": ["idle", "40/s · no limit", { "modeled": false }],
+            "carriers": ["idle", "30/s · no limit", { "modeled": false }],
+            "gateway": ["idle", "Limits unknown; enter measured or contracted values."],
+            "tracking": ["ok", "4% · 14/s of 400/s"],
+            "pricing": ["ok", "4% · 14/s of 400/s"],
+            "pricing-canary": ["ok", "4% · 14/s of 400/s"],
+            "labels": ["ok", "4% · 14/s of 400/s"],
+            "events": ["warn", "70% · 14/s of 20/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "over",
+          "top": "events",
+          "headline": "Carrier events is over capacity",
+          "detail": "350% · 70/s of 20/s",
+          "fix": {
+            "changes": [{ "nodeId": "events", "key": "replicas", "from": 1, "to": 7, "label": "Carrier events" }],
+            "label": "Carrier events 1 → 7 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "app": ["idle", "200/s · no limit", { "modeled": false }],
+            "carriers": ["idle", "150/s · no limit", { "modeled": false }],
+            "gateway": ["idle", "Limits unknown; enter measured or contracted values."],
+            "tracking": ["ok", "18% · 70/s of 400/s"],
+            "pricing": ["ok", "18% · 70/s of 400/s"],
+            "pricing-canary": ["ok", "18% · 70/s of 400/s"],
+            "labels": ["ok", "18% · 70/s of 400/s"],
+            "events": ["over", "350% · 70/s of 20/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "warn",
+          "top": "events",
+          "headline": "Carrier events is busy",
+          "detail": "70% · 14/s of 20/s. Still some headroom.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "app": ["idle", "40/s · no limit", { "modeled": false }],
+            "carriers": ["idle", "30/s · no limit", { "modeled": false }],
+            "gateway": ["idle", "Limits unknown; enter measured or contracted values."],
+            "tracking": ["ok", "7% · 14/s of 200/s"],
+            "pricing": ["ok", "7% · 14/s of 200/s"],
+            "pricing-canary": ["ok", "7% · 14/s of 200/s"],
+            "labels": ["ok", "7% · 14/s of 200/s"],
+            "events": ["warn", "70% · 14/s of 20/s"]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "warn",
+          "top": "events",
+          "headline": "Carrier events is busy",
+          "detail": "70% · 14/s of 20/s. Still some headroom.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "app": ["idle", "40/s · no limit", { "modeled": false }],
+            "carriers": ["idle", "30/s · no limit", { "modeled": false }],
+            "gateway": ["idle", "Limits unknown; enter measured or contracted values."],
+            "tracking": ["ok", "4% · 14/s of 400/s"],
+            "pricing": ["ok", "4% · 14/s of 400/s"],
+            "pricing-canary": ["ok", "4% · 14/s of 400/s"],
+            "labels": ["ok", "4% · 14/s of 400/s"],
+            "events": ["warn", "70% · 14/s of 20/s"]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    },
+    "busy-afternoon": {
+      "tone": "warn",
+      "top": "events",
+      "headline": "Carrier events is busy",
+      "detail": "70% · 14/s of 20/s. Still some headroom.",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "app": ["idle", "40/s · no limit", { "modeled": false }],
+        "carriers": ["idle", "30/s · no limit", { "modeled": false }],
+        "gateway": ["idle", "Limits unknown; enter measured or contracted values."],
+        "tracking": ["ok", "4% · 14/s of 400/s"],
+        "pricing": ["ok", "4% · 14/s of 400/s"],
+        "pricing-canary": ["ok", "4% · 14/s of 400/s"],
+        "labels": ["ok", "4% · 14/s of 400/s"],
+        "events": ["warn", "70% · 14/s of 20/s"]
+      }
+    },
+    "canary-down": {
+      "tone": "ok",
+      "top": "events",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Carrier events at 40% · 8/s of 20/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "app": ["idle", "40/s · no limit", { "modeled": false }],
+        "carriers": ["idle", "", { "modeled": false }],
+        "gateway": ["idle", "Limits unknown; enter measured or contracted values."],
+        "tracking": ["ok", "2% · 8/s of 400/s"],
+        "pricing": ["ok", "2% · 8/s of 400/s"],
+        "pricing-canary": ["ok", "2% · 8/s of 400/s"],
+        "labels": ["ok", "2% · 8/s of 400/s"],
+        "events": ["ok", "40% · 8/s of 20/s"]
+      }
+    }
+  }
+}
