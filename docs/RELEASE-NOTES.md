@@ -161,6 +161,9 @@
 - Image decode failures now reach the error toast instead of leaving export waiting. Production regressions
   cover decode/encode failures and successful retry, cancellation during code/font loading, and PNG/SVG export
   without Worker, OffscreenCanvas or both. The decode regression fails with its fix temporarily reverted.
+- The port retains html-to-image 1.11.13's upstream MIT notice in source and the minified export chunk.
+  A production-build regression checks the shipped copyright, permission and warranty text; disabling
+  legal-comment retention fails it. Existing startup and lazy-loading assertions remain unchanged.
 - Rendering remains on the main thread: workers cannot render this HTML picture, and a model renderer would
   change the pinned output. PNG decoding/drawing still contains an unsliced browser task. Timing results and
   the remaining Live-view work for perf PR 4 are recorded in `docs/BENCHMARKS.md`.
@@ -172,7 +175,8 @@
   Regenerating static-page metadata leaves it unchanged; i18n has zero errors and zero stale entries.
   The refreshed skill viewer ships at plugin 1.1.33, one patch above base `78269886`'s 1.1.32.
 - `pnpm parity:update` checks all 2,196 goldens with zero changes, additions, missing or removed records.
-  Every exported image remains byte-identical to master; no golden is re-recorded to accommodate a failure.
+  PNG bytes and canonical SVG text match master; only the library's random pseudo-element class names
+  are normalized. No golden is re-recorded to accommodate a failure.
 
 ## Static-page translation review fixes (2026-10-16)
 

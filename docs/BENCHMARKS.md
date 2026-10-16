@@ -385,7 +385,8 @@ target: what to change, where, and the evidence (metric ids are in `master.json`
    one), and a worker can't draw HTML. The clone runs in time slices instead (`src/interop/imageClone.ts`, a port of
    html-to-image's clone, image embedding and serialising that makes the same calls in the same order): the tab paints
    between slices, the toast shows a progress bar and a Cancel (Escape too), and input is held meanwhile so nothing
-   changes the canvas mid-picture. The port's SVG and PNG equal the library's byte for byte (`tests/e2e/image-slices`).
+   changes the canvas mid-picture. PNG bytes and SVG text equal the library's (`tests/e2e/image-slices`), apart from
+   its random pseudo-element class names, which the SVG comparison canonicalizes.
    Longest frame, interleaved with master's build: SVG 11.3 s → 0.28 s at 500 nodes and 32.6 s → 0.52 s at 1,500; PNG
    14.2 s → 4.2 s and 33.2 s → 12.3 s; the whole export 16.1 → 12.3 s (SVG) and 21.6 → 16.1 s (PNG) at 500, 43.9 →
    33.8 s and 55.7 → 45.4 s at 1,500 (the clone's per-property loop no longer walks each node's prototype chain 350
@@ -488,8 +489,9 @@ records before starting the gate. The real server, console-error assertions, thr
 and zero retries remain in use; no Windows network setting is changed.
 
 After the combined #139/#140 rebase, `BENCH_PORT=6218
-BENCH_OUT=tests/.output/bench-gates-export-final pnpm bench:gates` passes all 85 gates (522
-metrics). Entry is 106.6 kB gzip, startup 165.7 kB (20 chunks) and canvas first view 354.4 kB;
+BENCH_OUT=tests/.output/bench-gates-export-notice pnpm bench:gates` passes all 85 gates (522
+metrics), with upstream legal notices retained in the production JavaScript. Entry is 106.8 kB
+gzip, startup 166.3 kB (20 chunks) and canvas first view 355.2 kB;
 all existing budgets pass. The seven Node suites and six browser tests pass, with the same
 201 Node and six browser report-only cases skipped by gates mode.
 

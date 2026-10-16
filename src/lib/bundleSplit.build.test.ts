@@ -172,6 +172,18 @@ describe("production bundle split", () => {
     }
   });
 
+  it("ships the upstream MIT notice with the ported image exporter", () => {
+    const image = chunks.find((c) =>
+      Object.keys(c.modules).some((id) => /[/\\]src[/\\]interop[/\\]imageClone\.ts$/.test(id)),
+    );
+    if (!image) throw new Error("No image clone chunk");
+    expect(image.code.includes("Copyright (c) 2017-2025 W.Y."), "upstream copyright notice").toBe(true);
+    expect(image.code.includes("Permission is hereby granted, free of charge"), "upstream permission notice").toBe(
+      true,
+    );
+    expect(image.code.includes('THE SOFTWARE IS PROVIDED "AS IS"'), "upstream warranty disclaimer").toBe(true);
+  });
+
   it("keeps code that isn't needed for the first view out of the startup JavaScript", () => {
     expect(found(bundled(startup()), NOT_AT_STARTUP)).toEqual([]);
   });
