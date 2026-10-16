@@ -353,7 +353,7 @@ export function useInterop({
       // A big diagram takes seconds: the toast shows how far it has got and offers Cancel (Escape too).
       const cancel = new AbortController();
       const busy = toast.busy(t("fileToast.renderingValue0", { value0: kind.toUpperCase() }), {
-        action: { label: t("common.cancel"), run: () => cancel.abort(), testId: "image-export-cancel" },
+        action: { label: t("common.cancel"), run: () => cancel.abort(), testId: "image-export-cancel", focus: true },
       });
       const { renderDiagramImage } = await import("./image");
       // The picture carries its title, as presentation does (an untitled diagram has none to show).
@@ -379,6 +379,11 @@ export function useInterop({
           return;
         }
         throw err;
+      }
+      // Cancelled as it finished: still nothing downloaded.
+      if (cancel.signal.aborted) {
+        toast.dismiss(busy);
+        return;
       }
       const suffix = kind === "png" ? `${opts.scale === 1 ? "" : "@2x"}${opts.transparent ? "-transparent" : ""}` : "";
       downloadBlob(image, `${baseName(d)}${suffix}.${kind}`);

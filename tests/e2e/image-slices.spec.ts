@@ -41,6 +41,77 @@ function canonicalText(svg: string) {
 }
 
 test.describe("image export in slices", { tag: "@dev" }, () => {
+  test("a node added or taken away mid-export stops it, rather than drawing two diagrams", async ({ page }) => {
+    test.slow();
+    await openLanes(page);
+    const outcome = await page.evaluate(async () => {
+      const image = (await import("/src/interop/image.ts" as string)) as typeof import("../../src/interop/image");
+      const nodes = document.querySelector('[data-testid="canvas-wrap"] .react-flow__nodes');
+      const node = nodes?.lastElementChild;
+      if (!nodes || !node) throw new Error("no nodes");
+      let moved = false;
+      return image
+        .renderDiagramImage("svg", {
+          // As soon as the export reports progress, a node leaves and comes back (an agent's edit would be one).
+          onProgress: () => {
+            if (moved) return;
+            moved = true;
+            nodes.append(node);
+          },
+        })
+        .then(
+          () => "exported",
+          (err: unknown) => (err instanceof Error ? err.message : String(err)),
+        );
+    });
+    expect(outcome).toBe("The diagram changed while it was being exported. Export it again.");
+  });
+
+  test("a cancel while the picture decodes stops the PNG: nothing drawn, nothing returned", async ({ page }) => {
+    await gotoCanvas(page, publicExamples[0].slug);
+    await expect(page.locator('[data-testid^="rf__node-"]').first()).toBeVisible({ timeout: pageLoadTimeout() });
+    const outcome = await page.evaluate(async () => {
+      const port = (await import(
+        "/src/interop/imageClone.ts" as string
+      )) as typeof import("../../src/interop/imageClone");
+      const viewport = document.querySelector<HTMLElement>('[data-testid="canvas-wrap"] .react-flow__viewport');
+      if (!viewport) throw new Error("no canvas");
+      // Decoding waits for the test: the export is cancelled while it does.
+      let started!: () => void;
+      const decoding = new Promise<void>((resolve) => (started = resolve));
+      let release = () => {};
+      const decode = HTMLImageElement.prototype.decode;
+      HTMLImageElement.prototype.decode = function (this: HTMLImageElement) {
+        started();
+        return new Promise<void>((resolve) => (release = () => resolve(decode.call(this))));
+      };
+      const drawImage = CanvasRenderingContext2D.prototype.drawImage;
+      let draws = 0;
+      CanvasRenderingContext2D.prototype.drawImage = function (...args: Parameters<typeof drawImage>) {
+        draws++;
+        return drawImage.apply(this, args);
+      };
+      const cancel = new AbortController();
+      const options = { width: 800, height: 600, pixelRatio: 1, cacheBust: false };
+      const png = port.toPng(viewport, options, new port.Slicer(1, { signal: cancel.signal }));
+      try {
+        await decoding;
+        cancel.abort();
+        const result = await png.then(
+          () => "returned a picture",
+          (err: unknown) => (err instanceof DOMException ? err.name : String(err)),
+        );
+        release();
+        await new Promise((r) => setTimeout(r, 50));
+        return { result, draws };
+      } finally {
+        HTMLImageElement.prototype.decode = decode;
+        CanvasRenderingContext2D.prototype.drawImage = drawImage;
+      }
+    });
+    expect(outcome).toEqual({ result: "AbortError", draws: 0 });
+  });
+
   for (const example of publicExamples.slice(0, 3))
     test(`draws what html-to-image draws, byte for byte: ${example.slug}`, async ({ page, consoleErrors }) => {
       test.slow();
@@ -128,10 +199,22 @@ test("a long image export keeps the page painting, shows its progress and can be
   await expect(page.getByTestId("toast-progress")).toBeVisible();
   const atProgress = await frames();
   await expect.poll(frames).toBeGreaterThan(atProgress + 2);
+  // The keyboard reaches Cancel at once, and stays there: Tab doesn't wander back into the canvas.
+  await expect(page.getByTestId("image-export-cancel")).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.getByTestId("image-export-cancel")).toBeFocused();
+  // The canvas's own shortcuts wait too, the window's first listeners included: T would add text, Ctrl+A select all.
+  // (From the page itself, not the toast: the editor ignores keys from overlays.)
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.mouse.move(400, 400);
+  await page.keyboard.press("t");
+  await page.keyboard.press("Control+a");
   // Cancel: the toast goes, nothing downloads, and the canvas is as it was.
   await page.getByTestId("image-export-cancel").click();
   await expect(page.getByTestId("toast")).toHaveCount(0);
   await expect(page.getByTestId("rf__node-p0n0")).toHaveClass(/selected/);
+  await expect(page.locator('[data-testid^="annotation-"]')).toHaveCount(0);
+  await expect(page.getByTestId("rf__node-p1n0")).not.toHaveClass(/selected/);
   // Input is the page's again: a click selects.
   await page.getByTestId("node-p1n0").click();
   await expect(page.getByTestId("rf__node-p1n0")).toHaveClass(/selected/);

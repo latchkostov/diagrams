@@ -29,7 +29,10 @@ import {
 /** Where a sliced export is: called after each slice with the share of the tree cloned so far (0 to 1). */
 export type Progress = (done: number) => void;
 
-/** Time slicing for one export: how long a slice may run, what to tell, and the cancel. */
+/**
+ * Time slicing for one export: how long a slice may run, what to tell, the cancel, and a `check` that stops the
+ * export at any slice (it throws).
+ */
 export class Slicer {
   /** Slices handed back so far (for tests). */
   yields = 0;
@@ -37,8 +40,33 @@ export class Slicer {
   private done = 0;
   constructor(
     private readonly total: number,
-    private readonly opts: { signal?: AbortSignal; onProgress?: Progress; sliceMs?: number } = {},
+    private readonly opts: { signal?: AbortSignal; onProgress?: Progress; sliceMs?: number; check?: () => void } = {},
   ) {}
+
+  /** Throws if the export was cancelled, or if its `check` says it can't go on. */
+  stopIfAsked() {
+    this.opts.signal?.throwIfAborted();
+    this.opts.check?.();
+  }
+
+  /** `promise`, unless the export is cancelled first: a stalled download (a font, an image) never holds the page. */
+  async wait<T>(promise: Promise<T>): Promise<T> {
+    const signal = this.opts.signal;
+    if (!signal) return promise;
+    signal.throwIfAborted();
+    let onAbort = () => {};
+    try {
+      return await Promise.race([
+        promise,
+        new Promise<never>((_, reject) => {
+          onAbort = () => reject(signal.reason as Error);
+          signal.addEventListener("abort", onAbort, { once: true });
+        }),
+      ]);
+    } finally {
+      signal.removeEventListener("abort", onAbort);
+    }
+  }
 
   /** One node cloned: past the slice's time, lets the page paint and take input before going on. */
   async step(): Promise<void> {
@@ -51,7 +79,7 @@ export class Slicer {
    * once (the image embedding visits every node together) wait for the same next task, not one each.
    */
   async breathe(): Promise<void> {
-    this.opts.signal?.throwIfAborted();
+    this.stopIfAsked();
     if (!this.gate) {
       if (performance.now() - this.sliceStart < (this.opts.sliceMs ?? 40)) return;
       this.opts.onProgress?.(this.total ? Math.min(1, this.done / this.total) : 1);
@@ -62,16 +90,16 @@ export class Slicer {
       });
     }
     await this.gate;
-    this.opts.signal?.throwIfAborted();
+    this.stopIfAsked();
   }
   private gate: Promise<void> | undefined;
 
   /** Between phases (fonts, images, drawing): the page paints once more, and a cancel stops here. */
   async pause(): Promise<void> {
-    this.opts.signal?.throwIfAborted();
+    this.stopIfAsked();
     await nextTask();
     this.yields++;
-    this.opts.signal?.throwIfAborted();
+    this.stopIfAsked();
     this.sliceStart = performance.now();
   }
 }
@@ -80,7 +108,12 @@ export class Slicer {
 function nextTask(): Promise<void> {
   return new Promise((resolve) => {
     const channel = new MessageChannel();
-    channel.port1.onmessage = () => resolve();
+    channel.port1.onmessage = () => {
+      channel.port1.onmessage = null;
+      channel.port1.close();
+      channel.port2.close();
+      resolve();
+    };
     channel.port2.postMessage(null);
   });
 }
@@ -227,8 +260,8 @@ async function ensureSVGSymbols(clone: HTMLElement, options: Options, slicer: Sl
   return clone;
 }
 
-// The library's embedImages (embed-images.js), each node checking the slice before its own work. Every node writes
-// only its own style or source, so when each one runs doesn't change what it writes.
+// The library's embedImages (embed-images.js), a node at a time with a slice check between them. Every node writes
+// only its own style or source, so the order they run in doesn't change what they write.
 
 async function embedProp(propName: string, node: HTMLElement, options: Options) {
   const propValue = node.style?.getPropertyValue(propName);
@@ -279,10 +312,13 @@ async function embedImageNode(clonedNode: HTMLElement | SVGImageElement, options
 
 async function embedImages(clonedNode: Node, options: Options, slicer: Slicer): Promise<void> {
   if (isInstanceOfElement(clonedNode as Element, Element)) {
-    await slicer.breathe();
     await embedBackground(clonedNode as HTMLElement, options);
     await embedImageNode(clonedNode as HTMLElement, options);
-    await Promise.all(toArray<Node>(clonedNode.childNodes).map((child) => embedImages(child, options, slicer)));
+    // One child after another (the library started them all at once): each checks the slice before its own work.
+    for (const child of toArray<Node>(clonedNode.childNodes)) {
+      await slicer.breathe();
+      await embedImages(child, options, slicer);
+    }
   }
 }
 
@@ -430,8 +466,8 @@ export async function toSvgText(node: HTMLElement, options: Options, slicer: Sli
 async function prepare(node: HTMLElement, options: Options, slicer: Slicer): Promise<HTMLElement> {
   const clonedNode = (await cloneNode(node, options, slicer, true))!;
   await slicer.pause();
-  await embedWebFonts(clonedNode, options);
-  await embedImages(clonedNode, options, slicer);
+  await slicer.wait(embedWebFonts(clonedNode, options));
+  await slicer.wait(embedImages(clonedNode, options, slicer));
   await slicer.pause();
   applyStyle(clonedNode, options);
   return clonedNode;
@@ -442,7 +478,8 @@ export async function toPng(node: HTMLElement, options: Options, slicer: Slicer)
   const { width, height } = getImageSize(node, options);
   const svg = await toSvg(node, options, slicer);
   await slicer.pause();
-  const img = await createImage(svg);
+  const img = await slicer.wait(createImage(svg));
+  slicer.stopIfAsked();
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d")!;
   const ratio = options.pixelRatio || getPixelRatio();
@@ -458,5 +495,7 @@ export async function toPng(node: HTMLElement, options: Options, slicer: Slicer)
     context.fillRect(0, 0, canvas.width, canvas.height);
   }
   context.drawImage(img, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL();
+  const png = canvas.toDataURL();
+  slicer.stopIfAsked();
+  return png;
 }

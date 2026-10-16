@@ -5,6 +5,7 @@
 // page is held (but for the toast's Cancel), so nothing changes the canvas between two slices of the same picture.
 
 import { dataUrlToBlob } from "./files";
+import { holdInput } from "../lib/inputHold";
 
 export interface ImageOptions {
   /** Pixel ratio for PNG (1 or 2). */
@@ -115,18 +116,28 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
       ? css.backgroundColor
       : getComputedStyle(document.body).backgroundColor;
 
+  let changed = false;
+  const watch = new MutationObserver(() => (changed = true));
+  for (const layer of viewport.querySelectorAll(":scope > .react-flow__nodes, :scope > .react-flow__edges"))
+    watch.observe(layer, { childList: true });
   let defsClone: SVGElement | undefined;
   let unselect = () => {};
   const paint = new SvgPaint();
   const releaseInput = holdInput(opts.onEscape);
   try {
-    const [{ toPng, toSvgText, Slicer }, { getWebFontCSS }] = await Promise.all([
-      import("./imageClone"),
-      import("html-to-image/es/embed-webfonts"),
-    ]);
+    const [{ toPng, toSvgText, Slicer }, { getWebFontCSS }] = await unlessCancelled(
+      Promise.all([import("./imageClone"), import("html-to-image/es/embed-webfonts")]),
+      opts.signal,
+    );
     const slicer = new Slicer(viewport.getElementsByTagName("*").length, {
       signal: opts.signal,
       onProgress: opts.onProgress,
+      // A node or an edge added or taken away meanwhile (an agent's edit, another diagram opened): the picture would
+      // mix two diagrams, so the export stops. Changes inside a node (live view's numbers) don't count.
+      check: () => {
+        if (changed || watch.takeRecords().length)
+          throw new Error("The diagram changed while it was being exported. Export it again.");
+      },
     });
     // Edge arrowheads are defined in an <svg><defs> outside the viewport; clone them inside for the shot.
     defsClone = document.querySelector("svg.df-defs")?.cloneNode(true) as SVGElement | undefined;
@@ -142,8 +153,9 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
     await paint.apply(viewport, slicer);
     // Embedding web fonts is the slow part (fetch + inline every @font-face): do it once per session.
     fontCss ??= getWebFontCSS(viewport, {}).catch(() => "");
+    const fontEmbedCSS = await slicer.wait(fontCss);
     const options = {
-      fontEmbedCSS: await fontCss,
+      fontEmbedCSS,
       width,
       height,
       pixelRatio: scale,
@@ -163,6 +175,7 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
     if (kind === "png") return dataUrlToBlob(await toPng(viewport, options, slicer));
     return new Blob([await toSvgText(viewport, options, slicer)], { type: "image/svg+xml;charset=utf-8" });
   } finally {
+    watch.disconnect();
     releaseInput();
     paint.restore();
     unselect();
@@ -171,34 +184,16 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
   }
 }
 
-/** Input the page holds while an export runs; the toasts (the export's Cancel) still take it. */
-const HELD = [
-  "pointerdown",
-  "pointerup",
-  "pointermove",
-  "click",
-  "dblclick",
-  "contextmenu",
-  "wheel",
-  "keydown",
-  "keyup",
-];
-
-/**
- * Holds input to the page until the returned release: a click, a key or the wheel would change the canvas between two
- * slices of the same picture. Escape is told to `onEscape` (the export's owner cancels it).
- */
-function holdInput(onEscape?: () => void): () => void {
-  const hold = (e: Event) => {
-    if (e.target instanceof Element && e.target.closest("[data-toast]")) return;
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    if (e instanceof KeyboardEvent && e.type === "keydown" && e.key === "Escape") onEscape?.();
-  };
-  for (const type of HELD) window.addEventListener(type, hold, { capture: true, passive: false });
-  return () => {
-    for (const type of HELD) window.removeEventListener(type, hold, { capture: true });
-  };
+/** `promise`, or the cancel's reason if the export is cancelled first (a stalled download never holds the page). */
+function unlessCancelled<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise;
+  signal.throwIfAborted();
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      signal.addEventListener("abort", () => reject(signal.reason as Error), { once: true }),
+    ),
+  ]);
 }
 
 const EDITING_ONLY = [

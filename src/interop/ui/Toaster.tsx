@@ -18,6 +18,20 @@ export function Toaster() {
     const id = setTimeout(() => toast.dismiss(t.id), t.duration);
     return () => clearTimeout(id);
   }, [t]);
+  // An action that asks for the focus (a long task's Cancel) takes it from wherever it was, and gives it back.
+  const action = useRef<HTMLButtonElement>(null);
+  const focusAction = !!t?.action?.focus;
+  const toastId = t?.id;
+  useLayoutEffect(() => {
+    if (!focusAction) return;
+    const before = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const button = action.current;
+    button?.focus();
+    return () => {
+      const now = document.activeElement;
+      if (before?.isConnected && (!now || now === document.body || now === button)) before.focus();
+    };
+  }, [focusAction, toastId]);
   // One bottom-centre stack: the toast sits above the hint or the live bar instead of over them (they
   // can appear, move or resize while it shows, so it follows them).
   const el = useRef<HTMLDivElement>(null);
@@ -75,6 +89,7 @@ export function Toaster() {
       )}
       {t.action && (
         <button
+          ref={action}
           className="ix-toast-action"
           onClick={() => {
             t.action!.run();

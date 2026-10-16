@@ -8,6 +8,8 @@ export interface ToastAction {
   label: string;
   run: () => void;
   testId?: string;
+  /** Takes the keyboard focus when it shows (a long task's Cancel), and gives it back when the toast goes. */
+  focus?: boolean;
   /**
    * The action is the editor's Undo for the change the toast reports. Such a toast goes as soon as anything else
    * undoes or redoes (Ctrl+Z, the canvas's Undo): its button would then reverse a different change.
