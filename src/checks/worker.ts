@@ -5,12 +5,16 @@
 import type { DiagramFile } from "../model/types";
 import { runChecks } from "./run";
 import type { CheckResult } from "./types";
+import { planScaling, type ScalingPlan } from "../sim/scalingPlanner";
 
 export interface CheckRequest {
   id: number;
   diagram: DiagramFile;
+  /** Scenario sizing only (live playback): the same memoized planner the capacity check uses. */
+  plan?: true;
 }
-export type CheckResponse = { id: number; result: CheckResult } | { id: number; error: string };
+export type CheckResponse =
+  { id: number; result: CheckResult } | { id: number; plans: ScalingPlan[] } | { id: number; error: string };
 
 interface WorkerScope {
   onmessage: ((e: MessageEvent<CheckRequest>) => void) | null;
@@ -19,9 +23,9 @@ interface WorkerScope {
 const scope = self as unknown as WorkerScope;
 
 scope.onmessage = (e) => {
-  const { id, diagram } = e.data;
+  const { id, diagram, plan } = e.data;
   try {
-    scope.postMessage({ id, result: runChecks(diagram) });
+    scope.postMessage(plan ? { id, plans: planScaling(diagram) } : { id, result: runChecks(diagram) });
   } catch (err) {
     scope.postMessage({ id, error: err instanceof Error ? err.message : String(err) });
   }

@@ -45,6 +45,26 @@ export interface Finding {
     max: number;
     keda?: { rate: number; lag: number; poll: number; startup: number };
   };
+  /** A3 scenario sizing (src/checks/scalingFindings.ts): neutral fields the UI translates. */
+  scalingPlan?: {
+    kind: "max" | "min" | "partitions" | "quota" | "unavailable";
+    /** The scaled node's name, as the title shows it. */
+    name: string;
+    simulation: string;
+    traffic: number;
+    platform?: string;
+    from?: number;
+    to?: number;
+    wanted?: number;
+    metric?: number;
+    target?: number;
+    metricKind?: string;
+    broker?: string;
+    startupBacklog?: number;
+    rejected?: number;
+    verified?: boolean;
+    reason?: string;
+  };
   admissionRejection?: { text: string; rate: number };
   /** Neutral rationale descriptor; rationale stays English for workers and agents. */
   brokerRationale?: "no-reader";

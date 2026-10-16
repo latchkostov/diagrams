@@ -1,12 +1,13 @@
 import type { DiagramFile } from "../../model/types";
 import type { CheckResult } from "../../checks/types";
 import type { CheckRequest, CheckResponse } from "../../checks/worker";
+import type { ScalingPlan } from "../../sim/scalingPlanner";
 
 // Runs the checks for the canvas: in a worker (src/checks/worker.ts) so the main thread only copies the
 // diagram, or, where workers aren't available, by loading the engine (a lazy chunk) and running it here.
 // Either way the engine never ships in the startup JavaScript or the canvas's own chunk.
 
-type Pending = { resolve: (r: CheckResult) => void; reject: (e: Error) => void };
+type Pending = { resolve: (r: CheckResult | ScalingPlan[]) => void; reject: (e: Error) => void };
 
 let worker: Worker | null | undefined;
 let seq = 0;
@@ -26,6 +27,7 @@ function getWorker(): Worker | null {
       if (!p) return;
       pending.delete(e.data.id);
       if ("result" in e.data) p.resolve(e.data.result);
+      else if ("plans" in e.data) p.resolve(e.data.plans);
       else p.reject(new Error(e.data.error));
     };
     worker.onerror = (e) => {
@@ -51,7 +53,7 @@ export async function runChecksOffThread(diagram: DiagramFile): Promise<CheckRes
     const request: CheckRequest = { id, diagram };
     try {
       return await new Promise<CheckResult>((resolve, reject) => {
-        pending.set(id, { resolve, reject });
+        pending.set(id, { resolve: (r) => resolve(r as CheckResult), reject });
         w.postMessage(request);
       });
     } catch {
@@ -60,4 +62,23 @@ export async function runChecksOffThread(diagram: DiagramFile): Promise<CheckRes
   }
   const { runChecks } = await loadEngine();
   return runChecks(diagram);
+}
+
+/** Scenario sizing for live playback: the checks worker's planner (memoized with the capacity check's). */
+export async function planOffThread(diagram: DiagramFile): Promise<ScalingPlan[]> {
+  const w = typeof Worker === "function" ? getWorker() : null;
+  if (w) {
+    const id = ++seq;
+    const request: CheckRequest = { id, diagram, plan: true };
+    try {
+      return await new Promise<ScalingPlan[]>((resolve, reject) => {
+        pending.set(id, { resolve: (r) => resolve(r as ScalingPlan[]), reject });
+        w.postMessage(request);
+      });
+    } catch {
+      // Fall through to the main thread.
+    }
+  }
+  const { planScaling } = await import("../../sim/scalingPlanner");
+  return planScaling(diagram);
 }

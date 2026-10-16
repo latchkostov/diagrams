@@ -212,7 +212,13 @@ function observe(d: DiagramFile, sim: Simulation, watched: Watched[], counter: {
             wanted,
             metric: decision.metric,
             target: decision.target,
-            metricKind: decision.metricKind ?? decision.resource ?? (decision.broker ? "backlog" : undefined),
+            metricKind:
+              decision.metricKind ??
+              (decision.resource
+                ? `${decision.resource}${decision.targetKind === "averageValue" ? (decision.resource === "cpu" ? "Milli" : "MiB") : "Request"}`
+                : decision.broker
+                  ? "backlog"
+                  : undefined),
           });
       }
       if (decision?.reason === "partitions" && decision.broker) o.partitions = decision.broker;

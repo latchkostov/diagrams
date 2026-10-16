@@ -1,9 +1,11 @@
-import { ResourceDetails } from "./ResourceDetails";
+import { ResourceDetails, reasonText } from "./ResourceDetails";
 import type { ReplicaRow } from "../sim/autoscaling";
 import { resolveNodeProps } from "../sim/defaults";
 import { groupLabel } from "../stencils/brokerVocabulary";
 import { compileTopology } from "../sim/topology";
-import { memo, useMemo } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
+import type { ScalingPlan } from "../sim/scalingPlanner";
+import { planDescriptor, planSentence } from "./scalingPlanText";
 import type { RealNodeMetrics } from "../sim/types";
 import type { DiagramFile } from "../model/types";
 import { t, useLocale } from "../i18n";
@@ -23,7 +25,7 @@ const ScalingAnnouncement = memo(
         data-testid="autoscaling-announcement"
       >
         {label} · {t("autoscaling.badge", fleet)}
-        {fleet.decision && <> · {t("autoscaling.reason", { reason: fleet.decision.reason })}</>}
+        {fleet.decision && <> · {reasonText(fleet.decision)}</>}
       </div>
     );
   },
@@ -34,15 +36,52 @@ const ScalingAnnouncement = memo(
     (a.fleet.starting === 0) === (b.fleet.starting === 0),
 );
 
+/**
+ * Scenario sizing for the saved simulation playing now: the checks worker's planner result (the same memoized
+ * run the capacity check reports), so playback, Checks and agents say the same thing.
+ */
+function ScenarioSizing({ diagram, simulation, node }: { diagram: DiagramFile; simulation: string; node: string }) {
+  useLocale();
+  const [plans, setPlans] = useState<{ diagram: DiagramFile; plans: ScalingPlan[] } | null>(null);
+  useEffect(() => {
+    let current = true;
+    import("../canvas/checks/runner")
+      .then((m) => m.planOffThread(diagram))
+      .then((result) => current && setPlans({ diagram, plans: result }))
+      .catch(() => {});
+    return () => {
+      current = false;
+    };
+  }, [diagram]);
+  if (plans?.diagram !== diagram) return null;
+  const plan = plans.plans.find((p) => p.simulation === simulation);
+  const suggestion = plan?.suggestions.find((s) => s.node === node);
+  if (!plan || (!suggestion && plan.status !== "unavailable")) return null;
+  const names = (id: string) => diagram.nodes.find((n) => n.id === id)?.label ?? id;
+  return (
+    <p data-testid="autoscaling-plan">
+      <strong>{t("autoscaling.planLive")}</strong>{" "}
+      {planSentence(
+        suggestion
+          ? planDescriptor(plan, suggestion, names)
+          : { kind: "unavailable", name: names(node), simulation: plan.title, traffic: plan.traffic },
+      )}
+    </p>
+  );
+}
+
 /** Full observed metrics remain reachable in Properties, even when the hover is compact. */
 export function LiveDetails({
   metrics: s,
   diagram: d,
   readPage,
+  simulation,
 }: {
   metrics: RealNodeMetrics;
   diagram: DiagramFile;
   readPage?: (page: number) => ReplicaRow[];
+  /** The saved simulation playing, if any: its scenario sizing shows here. */
+  simulation?: string;
 }) {
   useLocale();
   const groups = useMemo(() => {
@@ -77,6 +116,7 @@ export function LiveDetails({
           })}
         </p>
         <ResourceDetails metrics={s} readPage={readPage} />
+        {s.fleet && simulation && <ScenarioSizing diagram={d} simulation={simulation} node={s.id} />}
         {s.rejected !== undefined && (
           <p data-testid="planning-live-rejected">
             {t("admission.rejected")} · {formatNumber(s.rejected)}

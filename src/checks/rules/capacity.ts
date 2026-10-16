@@ -7,6 +7,7 @@ import { brokerFeeds } from "../../sim/topology";
 import { formatRate, isBroker, type CheckContext } from "../context";
 import { SIZE_LABEL } from "../../stencils/netDevices";
 import { bindingValidator } from "../../model/kedaBindings";
+import { scalingFindings } from "../scalingFindings";
 
 import type { Finding, CheckFix, CheckRule } from "../types";
 
@@ -59,6 +60,8 @@ export const capacity: CheckRule = {
   detect(ctx) {
     const analysis = ctx.capacity();
     const bindings = bindingValidator(ctx.diagram.nodes, ctx.diagram.edges);
+    // Scenario sizing from saved simulations outranks configured steady-state arithmetic for the same node.
+    const planned = scalingFindings(ctx);
     const resourceFindings: Finding[] = ctx.diagram.nodes.flatMap((node) => {
       const p = analysis.resolved[node.id],
         plan = analysis.nodes[node.id].resourcePlan;
@@ -75,6 +78,8 @@ export const capacity: CheckRule = {
                 : plan?.keda && plan.initial === 0 && plan.keda.offered > 0
                   ? "keda"
                   : undefined;
+      const scenario = planned.get(node.id);
+      if (scenario && kind !== "invalid" && kind !== "binding" && kind !== "memory") return [scenario];
       if (!kind) return [];
       const name = ctx.name(node.id),
         needed = plan?.targetReplicas ?? 0,
@@ -113,6 +118,8 @@ export const capacity: CheckRule = {
         },
       ];
     });
+    for (const [id, finding] of planned)
+      if (!resourceFindings.some((f) => f.target === id)) resourceFindings.push(finding);
     const resourceTargets = new Set(resourceFindings.map((finding) => finding.target));
     const order = new Map(ctx.diagram.nodes.map((n, i) => [n.id, i]));
     const candidates = Object.values(analysis.nodes)

@@ -4,6 +4,22 @@ import type { ReplicaRow } from "../sim/autoscaling";
 import type { ResourcePlan } from "../sim/resourcePlanning";
 import { t } from "../i18n";
 import { formatNumber } from "../i18n/format";
+import type { ScalingDecision } from "../sim/autoscaling";
+import { metricPhrase } from "./scalingPlanText";
+
+const KEDA_REASONS = ["activation", "inactive", "cooldown", "partitions", "fallback"];
+/** Why, in words: KEDA's own phases, the A3 adapters' alarms/rules/requests, or the HPA pipeline's reasons. */
+export function reasonText(decision: ScalingDecision): string {
+  if (KEDA_REASONS.includes(decision.reason) && (!decision.adapter || decision.adapter === "aca"))
+    return t("autoscaling.kedaReason", { reason: decision.reason });
+  if (decision.adapter)
+    return t("autoscaling.cloudReason", {
+      reason: decision.reason,
+      periods: decision.periods ?? 0,
+      needed: decision.periodsNeeded ?? 0,
+    });
+  return t("autoscaling.reason", { reason: decision.reason });
+}
 
 export function ResourceEstimate({ plan: p }: { plan: ResourcePlan }) {
   return (
@@ -91,11 +107,12 @@ export function ResourceDetails({
               next: formatNumber(decision.nextAt / 1000),
             })}
           </p>
-          <p>
-            {["activation", "inactive", "cooldown", "partitions", "fallback"].includes(decision.reason)
-              ? t("autoscaling.kedaReason", { reason: decision.reason })
-              : t("autoscaling.reason", { reason: decision.reason })}
-          </p>
+          <p data-testid="autoscaling-reason">{reasonText(decision)}</p>
+          {decision.periodsNeeded !== undefined && (
+            <p data-testid="autoscaling-alarm">
+              {t("autoscaling.alarmPeriods", { periods: decision.periods ?? 0, needed: decision.periodsNeeded })}
+            </p>
+          )}
           {decision.broker !== undefined && (
             <p data-testid="autoscaling-broker-metric">
               {t("autoscaling.kedaObserved", {
@@ -105,7 +122,12 @@ export function ResourceDetails({
               })}
             </p>
           )}
-          {decision.metric !== undefined && (
+          {decision.metric !== undefined && decision.adapter && decision.metricKind && (
+            <p data-testid="autoscaling-metric">
+              {metricPhrase(decision.metricKind, decision.metric, decision.target)}
+            </p>
+          )}
+          {decision.metric !== undefined && !(decision.adapter && decision.metricKind) && (
             <p data-testid="autoscaling-metric">
               {t("autoscaling.metric")}: {formatNumber(decision.metric, { maximumFractionDigits: 1 })} ·{" "}
               {decision.broker
