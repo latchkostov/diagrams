@@ -618,6 +618,7 @@ test.describe("review follow-ups", () => {
     await page.getByTestId("group-label-ship").click();
     await page.getByTestId("node-cache").click({ modifiers: [MOD] });
     // Cache (700, 560) into Payments, Shipping along with it.
+    await fitDiagram(page); // Bring Payments back into the pane before measuring the drop point.
     const v = await view(page);
     const at = centre(await box(page.getByTestId("node-cache")));
     await dragTo(page, "cache", { x: at.x - 400 * v.k, y: at.y - 360 * v.k });

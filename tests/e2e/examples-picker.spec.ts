@@ -65,6 +65,7 @@ test("opening and fitting an edited example never saves or promotes; a real edit
   );
 
   await page.getByTestId("node-retained").click();
+  await page.clock.runFor(32); // Deliver the deferred pointer-up Inspector reveal.
   await page.getByTestId("inspector-field-label").fill("A real edit");
   await page.clock.runFor(350);
   await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
@@ -403,6 +404,7 @@ test("promotion preserves another tab after its storage refresh", async ({ page,
   const other = await context.newPage();
   await other.goto(`./?example=${SLUG}`);
   await other.getByTestId("node-shopper").click();
+  await expect(other.getByTestId("inspector-field-label")).toBeVisible();
   await other.clock.install();
   await pauseClock(other);
   await other.getByTestId("inspector-field-label").fill("Pending in other tab");
@@ -419,6 +421,7 @@ test("promotion preserves another tab after its storage refresh", async ({ page,
     });
   });
   await page.getByTestId("node-shopper").click();
+  await page.keyboard.press("F2"); // Explicit rename opens the field without advancing the other tab's clock.
   await page.getByTestId("inspector-field-label").fill("Owned in first tab");
   // Playwright's clock is context-wide: flush this tab without advancing the other's pending timer.
   await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pagehide")));
