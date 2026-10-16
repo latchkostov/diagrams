@@ -1,8 +1,10 @@
 # Real-time collaboration for Live Diagrams
 
-Research checked **15 October 2026**. Docs-only proposal; nothing here is shipped. Repository baseline:
-`origin/master` at `16060ab9c4c0d3a5b350c1367cb1a527470c44ab`. All linked external sources were checked on
-that date; dated articles retain their publication dates below. Prices are USD unless marked otherwise,
+Research checked **15 October 2026**, with the serverless transport revision checked **16 October 2026**.
+Docs-only proposal; nothing here is shipped. Repository baseline:
+`origin/master` at `16060ab9c4c0d3a5b350c1367cb1a527470c44ab`; prior research commit `0e3af378`.
+Source access dates are distinguished in the evidence notes; dated articles retain their publication dates below.
+Prices are USD unless marked otherwise,
 before tax, and are a snapshot rather than a commitment. **U = unverified**, including undocumented
 implementation details; U does not mean a feature is absent. **Estimate/proposal** denotes our judgement,
 not a vendor claim or a measured result. No competitor accounts, library benchmarks or load tests were
@@ -10,36 +12,37 @@ run for this research. Sources are first-party documentation, maintainer code an
 
 ## Executive summary — two minutes
 
-**Move collaboration forward, starting with optional, anonymous, end-to-end encrypted rooms. Use Yjs
-in the browser and a small TypeScript/Node WebSocket relay that never receives diagram keys or
-plaintext. Keep the existing editor, files and browser library usable without an account or network
-service.** This is an architecture recommendation, conditional on a short model/crypto prototype.
+**Start serverless: optional, anonymous, end-to-end encrypted Yjs rooms over WebRTC, matched through
+existing public infrastructure using a Trystero-style transport. Nothing for us to host; an open-source
+static deployment, including a self-hosted copy, can create rooms.** Keep the existing editor, files
+and browser library usable without an account or network service. This recommendation is conditional
+on a short model/crypto/connectivity prototype, not approval to implement a server.
 Yjs supplies mergeable document updates and selective undo; it does not supply our privacy policy,
 permissions or encrypted transport. [Updates][y-updates], [undo][y-undo].
 
-**Reliable internet collaboration needs a backend; basic drawing still does not.** WebRTC can avoid
-an application data server on favourable networks, but practical discovery needs signalling and
-restrictive networks need TURN. A relay is therefore the smallest predictable service, not the start
-of a compulsory SaaS product. Add encrypted persistence when people need to return while everyone else
-is offline; add accounts only for named invitations and saved workspaces. [WebRTC][webrtc],
-[y-webrtc][y-webrtc], [encrypted asynchronous sync][secsync].
+**Serverless means no service we operate, not no infrastructure.** Public trackers/Nostr relays/MQTT
+brokers can exchange encrypted signalling; STUN helps direct connectivity and TURN can carry encrypted
+data when direct paths fail. Public availability and corporate connectivity are uncertain. C1 must
+fail gracefully with file/static-link sharing and measure actual connectivity before a server decision.
+[Trystero][trystero], [WebRTC][webrtc], [TURN measurements, 2017-08-31][turn-measured].
 
 **Privacy is the release gate.** Today Private means no links or cloud saves, including password
 links. Retain that default. Propose a separate, explicit permission to collaborate encrypted, scoped
-to one diagram and relay; retain `private: true`, AI restrictions and export provenance. All rooms,
+to one diagram and disclosed transport/services; retain `private: true`, AI restrictions and export provenance. All rooms,
 including non-Private ones, should use E2E encryption. A link grants access to its holder; encryption
 does not identify the holder or retract copies already received. [Current gates][ld-gates],
 [Share chooser][ld-share], [current privacy policy][ld-policy], [fragment behaviour][fragment].
 
-**Start with Node, one Docker image, one service and no document database.** This matches the existing
-Docker/Helm distribution and avoids making self-hosters adopt a cloud runtime. Budget an estimated
-**$6–12/month pilot**, plus operations; medium usage needs load-test evidence before sizing. Workers
-with Durable Objects is a credible later hosted adapter, with hibernation and metered costs. Do not
-choose PartyKit's hosted platform: its October 8 notice schedules shutdown on October 23, 2026.
-[Self-host kit][ld-host], [VM prices][vm], [Durable Objects][do-price], [PartyKit notice][party-migrate].
+**Hybrid order: (a) serverless by default; (b) optional self-hostable thin ciphertext relay, only with
+the owner's explicit approval; (c) accounts later.** Retain the Node/Docker design as a configurable
+fallback for restrictive networks, larger rooms and optional encrypted persistence. If approved, ship
+it disabled by default in the self-host kit. All client groundwork uses the same transport interface;
+there is no required hosted account, paid provider or Live Diagrams endpoint. The relay's estimated
+$6–12/month pilot cost is conditional, not C1's baseline. [Self-host kit][ld-host], [VM prices][vm].
 
-Sequence: **C0 proof and threat model → C1 encrypted co-editing with basic presence → C2 cursors,
-follow/presenter mode and portable comments, then opt-in ciphertext storage → C3 optional identity,
+Sequence: **C0 browser proof and threat model → C1 serverless encrypted co-editing with basic presence
+→ owner reviews C1 beta connectivity evidence and decides on (b) → C2 cursors,
+follow/presenter mode and portable comments, with opt-in ciphertext storage only if (b) is approved → C3 optional identity,
 workspaces and invites → C4 named versions/history.** Keep simulation execution local: a presenter
 distributes a pinned diagram/scenario/seed and ordered controls, not particle positions or shared
 counters. Preserve existing output goldens; benchmark 5,000-node editing and reconnect before launch.
@@ -67,7 +70,9 @@ on relay or persistence servers. Existing file exports and host-supplied embeds 
 behaviour. Never accept user API keys. Service credentials
 belong to the operator's secret store. Self-hosting remains supported. The roadmap currently treats
 collaboration as a decision to make, while the competitive report ranks shared review/co-editing as
-a major gap and portable review as an opportunity. This document recommends advancing C0/C1 without
+a major gap and portable review as an opportunity. The owner's **2026-10-15 direction** is to explore
+browser-only collaboration first and not implement servers without permission; a thin self-hostable
+server is acceptable only after that decision. This document recommends advancing serverless C0/C1 without
 silently rewriting the rest of the roadmap. [Roadmap][ld-roadmap], [landscape][ld-landscape].
 
 ## How other collaborative canvases work
@@ -156,18 +161,18 @@ Estimates below exclude engineering, security review, on-call, taxes, domain reg
 backups and redundancy unless stated. Price formulas reference the checked 2026-10-15 pages.
 “Scale to zero” distinguishes idle compute from stored bytes and minimum subscriptions.
 
-| Option                                      | Role, E2E fit and operations                                                                                                                                                                                                                                                             | Small / medium monthly cost under these assumptions                                                                                                                                                                                                                                                                                                                             | Idle, self-hosting, lock-in and residency                                                                                                                                                                                                                                                                                |
-| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **y-websocket**                             | Yjs sync/awareness server with optional persistence; a normal deployment processes readable Yjs updates. Encrypting entire messages requires replacing/adapting the provider protocol, not a configuration switch. Good reference, not our opaque relay unchanged. [Docs][y-ws].         | Software $0; estimate $6–12 / $12–48 VM infrastructure before HA. VM price points documented, throughput unmeasured. [VM][vm].                                                                                                                                                                                                                                                  | MIT; own Node container possible. No inherent idle scale-to-zero; own host/storage region. Low vendor lock-in; maintain runtime, TLS and scaling. [Repository][y-ws-repo].                                                                                                                                               |
-| **Hocuspocus**                              | TypeScript Yjs server with auth hooks and storage/Redis extensions; v4 docs include Node/Bun/Deno/Workers. Normal server merges document state, so not E2E by merely wrapping its socket. [Overview][hocus], [persistence][hocus-store].                                                 | OSS $0; own infra estimate same $6–12 / $12–48 before persistence/HA. Managed Tiptap Platform is a separate paid product; no quote assumed. [OSS/platform][hocus-price], [VM][vm].                                                                                                                                                                                              | MIT core, own Node Docker image possible; residency operator-controlled, more extension/Redis ops when scaling. Scale-to-zero depends on deployment; storage still billed. [Overview][hocus], [platform][hocus-price].                                                                                                   |
-| **Y-Sweet**                                 | Rust Yjs store with tokens, S3/filesystem persistence. Excellent readable-Yjs backend; document-aware service is not our opaque E2E relay. [Repository][ys].                                                                                                                             | Self-host software $0 plus estimated $6–12 / $12–48 and storage. Current managed price **U**: Jamsocket pricing redirects to Modal acquisition notice (2025-07-10). Do not reuse historical free tiers. [Notice][ys-host], [VM][vm].                                                                                                                                            | MIT, Linux/container deployment possible; own storage region, relatively low data lock-in. Scale-to-zero needs session orchestration; not inherent to one always-on server. Managed continuity/residency must be reconfirmed. [Repository][ys].                                                                          |
-| **PartyKit**                                | Room abstraction over Durable Objects; successor is **PartyServer deployed directly with Wrangler**. Its Yjs integration keeps a Y.Doc; custom opaque broadcast is a different use. [Architecture][party], [Y integration][party-y], [migration][party-migrate].                         | **Do not procure hosted PartyKit.** Notice: no new projects from Oct 9; deploy/export deadline Oct 16; shutdown/deletion Oct 23, 2026. PartyServer costs become direct Cloudflare charges below. [Notice, 2026-10-08][party-migrate].                                                                                                                                           | Hosted platform is winding down. PartyServer avoids that intermediary but remains tied to Workers/DO APIs; not a production Docker backend for our kit. Standard WebSocket protocol helps a separate Node adapter. [Migration][party-migrate].                                                                           |
-| **Cloudflare Workers + Durable Objects**    | One object routes a room; hibernating sockets are a good opaque-envelope fit. Low infrastructure ops; protocol, throttles, expiry and key security remain ours. [WebSockets][do-ws].                                                                                                     | Free: 100k requests/day, 13k GB-s/day; paid DO: 1M requests/month then $0.15/M, 400k GB-s then $12.50/M; incoming socket messages count 20:1, outbound messages uncharged. Workers paid starts $5/month. Illustrative small ≈$5, medium ≈$5.15 for request/active duration assumptions below, **not a quote**. [DO pricing][do-price], [Workers][workers-price].                | Hibernation reduces idle duration, not storage or all account charges. Not portable as a production DO cluster in Docker. High runtime lock-in. Jurisdictions constrain DO execution/storage; location hints alone do not; metadata can be logged elsewhere. [Location][do-location], [WebSockets][do-ws].               |
-| **Liveblocks**                              | Managed sync/presence/comments/auth integrations; normal service documents TLS and encrypted-at-rest databases, not content E2E. Would need a supported opaque-data design; do not assume stock Yjs/comments meet Private requirements. [Security][lb-security].                         | Free 3,000 collaboration minutes, 3M stored updates, 1 GB, 200 comments. Pro $30/month including $30 credits; collaboration $0.002/participant-minute. Assumed small 60k minutes = **$120**, medium 600k = **$1,200**, before storage/update/comment charges. [Plans][lb-price], [minute counting][lb-faq].                                                                     | Low ops, idle usage falls but paid base remains. Self-hosting is listed as an Enterprise paid add-on, not an OSS Docker option. High feature/API lock-in; multi-region hosting listed Enterprise, verify exact residency contract. [Plans][lb-price], [security][lb-security].                                           |
-| **Supabase Realtime**                       | Broadcast/presence plus Postgres/Auth; encrypted application payloads possible, but reliable CRDT catch-up/snapshots remain ours. RLS/channel authorization is access control, not E2E. [Authorization][supa-authz].                                                                     | Free 200 peak sockets/2M messages; Pro from $25, 500 sockets/5M messages, then $2.50/M. Broadcast accounting includes sent/received deliveries: approximate **18M → $57.50** small, **180M → $462.50** medium on Pro, before egress/storage/compute increases. [Plans][supa-price], [metering][supa-messages].                                                                  | Paid Postgres is not scale-to-zero; free pauses after inactivity, not instant economical socket hosting. Docker self-hosting supported but much heavier than a relay. Region choice/own deployment; moderate SDK coupling, portable Postgres data. [Hosting][supa-docker], [regions][supa-regions], [plans][supa-price]. |
-| **Firebase**                                | Realtime Database/Firestore offer listeners and persistence, not a drop-in Yjs room. Could store ciphertext updates, but ordering/replay/compaction/roles remain app work. Firestore's offline cache is distinct from CRDT merging. [RTDB][fb-billing], [Firestore offline][fb-offline]. | RTDB Spark: 100 connections, 1 GB stored/10 GB downloaded. Blaze: $5/GB stored, $1/GB downloaded beyond allowance. Approximate small **$4.75 transfer** (or ~$5 with daily allowance) and medium **$182.46 including 9 paid storage GB**, before overhead. Firestore is a different operation-priced model; no substitution assumed. [Prices][fb-price], [billing][fb-billing]. | Managed/serverless, usage billing beyond free. No supported equivalent production Docker service in these docs; emulator is not that promise. High rules/SDK lock-in. Select database region and inspect each ancillary service's location. [Locations][fb-location], [emulator purpose][fb-emulator].                   |
-| **y-webrtc + signalling + TURN**            | Direct peer updates, Yjs awareness; signalling password encrypts signalling. WebRTC data transport and signalling authentication are different layers; use a high-entropy secret. Networking/support and group topology become ours. [Provider][y-webrtc], [TURN][webrtc].               | Software $0; signalling host estimate $6–12. TURN example $0.05/outbound GB: if all modelled data relayed, about **$0.74 / $7.37** additional; actual mesh duplication/ICE traffic differs. No universal free TURN allowance assumed. [TURN price][turn-price], [VM][vm].                                                                                                       | Peer links can go idle without app compute but signalling remains; coturn can be self-hosted. Low vendor lock-in, more network ops. Peer IP exposure and TURN region matter. More peers can partition/overload mesh; provider explicitly warns about large collaboration groups. [Provider][y-webrtc], [coturn][coturn]. |
-| **Minimal opaque Node relay (recommended)** | Only admits capabilities, routes encrypted envelopes, enforces quotas/expiry; no Y.Doc, keys, semantic merge or plaintext. Custom provider is real engineering work. Protocol design below.                                                                                              | Estimate **$6–12 / $12–48** single-node infrastructure, grounded in VM tiers, not measured capacity. Add backup/HA/persistence separately. [VM][vm].                                                                                                                                                                                                                            | One optional Docker service, no volume in C1; own region, low vendor lock-in. No inherent scale-to-zero. Later shard by room or add a DO adapter behind the same conformance tests. [Existing deployment contract][ld-host].                                                                                             |
+| Option                                                               | Role, E2E fit and operations                                                                                                                                                                                                                                                             | Small / medium monthly cost under these assumptions                                                                                                                                                                                                                                                                                                                             | Idle, self-hosting, lock-in and residency                                                                                                                                                                                                                                                                                |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **y-websocket**                                                      | Yjs sync/awareness server with optional persistence; a normal deployment processes readable Yjs updates. Encrypting entire messages requires replacing/adapting the provider protocol, not a configuration switch. Good reference, not our opaque relay unchanged. [Docs][y-ws].         | Software $0; estimate $6–12 / $12–48 VM infrastructure before HA. VM price points documented, throughput unmeasured. [VM][vm].                                                                                                                                                                                                                                                  | MIT; own Node container possible. No inherent idle scale-to-zero; own host/storage region. Low vendor lock-in; maintain runtime, TLS and scaling. [Repository][y-ws-repo].                                                                                                                                               |
+| **Hocuspocus**                                                       | TypeScript Yjs server with auth hooks and storage/Redis extensions; v4 docs include Node/Bun/Deno/Workers. Normal server merges document state, so not E2E by merely wrapping its socket. [Overview][hocus], [persistence][hocus-store].                                                 | OSS $0; own infra estimate same $6–12 / $12–48 before persistence/HA. Managed Tiptap Platform is a separate paid product; no quote assumed. [OSS/platform][hocus-price], [VM][vm].                                                                                                                                                                                              | MIT core, own Node Docker image possible; residency operator-controlled, more extension/Redis ops when scaling. Scale-to-zero depends on deployment; storage still billed. [Overview][hocus], [platform][hocus-price].                                                                                                   |
+| **Y-Sweet**                                                          | Rust Yjs store with tokens, S3/filesystem persistence. Excellent readable-Yjs backend; document-aware service is not our opaque E2E relay. [Repository][ys].                                                                                                                             | Self-host software $0 plus estimated $6–12 / $12–48 and storage. Current managed price **U**: Jamsocket pricing redirects to Modal acquisition notice (2025-07-10). Do not reuse historical free tiers. [Notice][ys-host], [VM][vm].                                                                                                                                            | MIT, Linux/container deployment possible; own storage region, relatively low data lock-in. Scale-to-zero needs session orchestration; not inherent to one always-on server. Managed continuity/residency must be reconfirmed. [Repository][ys].                                                                          |
+| **PartyKit**                                                         | Room abstraction over Durable Objects; successor is **PartyServer deployed directly with Wrangler**. Its Yjs integration keeps a Y.Doc; custom opaque broadcast is a different use. [Architecture][party], [Y integration][party-y], [migration][party-migrate].                         | **Do not procure hosted PartyKit.** Notice: no new projects from Oct 9; deploy/export deadline Oct 16; shutdown/deletion Oct 23, 2026. PartyServer costs become direct Cloudflare charges below. [Notice, 2026-10-08][party-migrate].                                                                                                                                           | Hosted platform is winding down. PartyServer avoids that intermediary but remains tied to Workers/DO APIs; not a production Docker backend for our kit. Standard WebSocket protocol helps a separate Node adapter. [Migration][party-migrate].                                                                           |
+| **Cloudflare Workers + Durable Objects**                             | One object routes a room; hibernating sockets are a good opaque-envelope fit. Low infrastructure ops; protocol, throttles, expiry and key security remain ours. [WebSockets][do-ws].                                                                                                     | Free: 100k requests/day, 13k GB-s/day; paid DO: 1M requests/month then $0.15/M, 400k GB-s then $12.50/M; incoming socket messages count 20:1, outbound messages uncharged. Workers paid starts $5/month. Illustrative small ≈$5, medium ≈$5.15 for request/active duration assumptions below, **not a quote**. [DO pricing][do-price], [Workers][workers-price].                | Hibernation reduces idle duration, not storage or all account charges. Not portable as a production DO cluster in Docker. High runtime lock-in. Jurisdictions constrain DO execution/storage; location hints alone do not; metadata can be logged elsewhere. [Location][do-location], [WebSockets][do-ws].               |
+| **Liveblocks**                                                       | Managed sync/presence/comments/auth integrations; normal service documents TLS and encrypted-at-rest databases, not content E2E. Would need a supported opaque-data design; do not assume stock Yjs/comments meet Private requirements. [Security][lb-security].                         | Free 3,000 collaboration minutes, 3M stored updates, 1 GB, 200 comments. Pro $30/month including $30 credits; collaboration $0.002/participant-minute. Assumed small 60k minutes = **$120**, medium 600k = **$1,200**, before storage/update/comment charges. [Plans][lb-price], [minute counting][lb-faq].                                                                     | Low ops, idle usage falls but paid base remains. Self-hosting is listed as an Enterprise paid add-on, not an OSS Docker option. High feature/API lock-in; multi-region hosting listed Enterprise, verify exact residency contract. [Plans][lb-price], [security][lb-security].                                           |
+| **Supabase Realtime**                                                | Broadcast/presence plus Postgres/Auth; encrypted application payloads possible, but reliable CRDT catch-up/snapshots remain ours. RLS/channel authorization is access control, not E2E. [Authorization][supa-authz].                                                                     | Free 200 peak sockets/2M messages; Pro from $25, 500 sockets/5M messages, then $2.50/M. Broadcast accounting includes sent/received deliveries: approximate **18M → $57.50** small, **180M → $462.50** medium on Pro, before egress/storage/compute increases. [Plans][supa-price], [metering][supa-messages].                                                                  | Paid Postgres is not scale-to-zero; free pauses after inactivity, not instant economical socket hosting. Docker self-hosting supported but much heavier than a relay. Region choice/own deployment; moderate SDK coupling, portable Postgres data. [Hosting][supa-docker], [regions][supa-regions], [plans][supa-price]. |
+| **Firebase**                                                         | Realtime Database/Firestore offer listeners and persistence, not a drop-in Yjs room. Could store ciphertext updates, but ordering/replay/compaction/roles remain app work. Firestore's offline cache is distinct from CRDT merging. [RTDB][fb-billing], [Firestore offline][fb-offline]. | RTDB Spark: 100 connections, 1 GB stored/10 GB downloaded. Blaze: $5/GB stored, $1/GB downloaded beyond allowance. Approximate small **$4.75 transfer** (or ~$5 with daily allowance) and medium **$182.46 including 9 paid storage GB**, before overhead. Firestore is a different operation-priced model; no substitution assumed. [Prices][fb-price], [billing][fb-billing]. | Managed/serverless, usage billing beyond free. No supported equivalent production Docker service in these docs; emulator is not that promise. High rules/SDK lock-in. Select database region and inspect each ancillary service's location. [Locations][fb-location], [emulator purpose][fb-emulator].                   |
+| **y-webrtc / Trystero + public signalling + optional TURN**          | WebRTC peer updates without our own signalling host; public matchmaking is evaluated below. Our E2E/provider/authentication work remains. [Provider][y-webrtc], [Trystero][trystero].                                                                                                    | Software and public matchmaking can be $0. No signalling VM required. TURN has provider-specific free allowances/credentials; actual traffic depends on mesh and selected paths. See the dated TURN table below.                                                                                                                                                                | Static client, public service dependencies and no server-side document persistence. Small rooms first; configurable ICE/endpoints and honest failures. More peers need measured topology/capacity evidence.                                                                                                              |
+| **Minimal opaque Node relay (optional fallback, approval required)** | Only admits capabilities, routes encrypted envelopes and enforces quotas/expiry; no Y.Doc, keys, semantic merge or plaintext. Custom provider work remains.                                                                                                                              | Estimate **$6–12 / $12–48** single-node infrastructure if approved, grounded in VM tiers, not measured capacity. Backup/HA/persistence extra. [VM][vm].                                                                                                                                                                                                                         | Configurable, disabled-by-default Docker/Helm service in the kit if approved. Own region, low vendor lock-in, no inherent scale-to-zero. Later scale by room or add a separately approved DO adapter. [Kit][ld-host].                                                                                                    |
 
 **Workers estimate detail (proposal arithmetic):** at 0.125 GB/object, 200 small or 2,000 medium
 room-hours/month produce at most 90k/900k GB-s if rooms stay active throughout (five people/room).
@@ -180,17 +185,203 @@ actual protocol, including heartbeat behaviour. [DO pricing][do-price], [hiberna
 **Cost conclusion (judgement):** availability and egress are cheap at bounded pilot scale; competent
 operations, E2E protocol review and abuse handling are the real commitments. Presence-heavy billing
 can dwarf storage. Self-hosters should pay only their own infrastructure costs; keep a free bounded
-public relay if the owner accepts its budget. Do not promise unlimited free rooms or pay for a managed
-suite to obtain basic sockets.
+relay only if the owner later approves operating one. C1's default has no application-server bill;
+TURN charges/quotas are separate and mesh traffic does not fit the relay model unchanged. Do not
+promise unlimited free rooms or pay for a managed suite to obtain basic sockets.
 
-## Do we need a backend? Four separable tiers
+## Serverless rooms over public infrastructure
 
-| Tier                                 | What works                                                                           | What infrastructure exists                                                                                                                                                                                                                   | Limit / recommendation                                                                                                                                                                                                      |
-| ------------------------------------ | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **A. No Live Diagrams backend**      | Existing file/review-bundle exchange; experimental small WebRTC sessions.            | Files need none of ours. WebRTC needs signalling/ICE; a manual out-of-band SDP exchange can remove our signalling server, but is not a practical general invitation flow. TURN may still relay data. [WebRTC][webrtc], [provider][y-webrtc]. | Files are asynchronous. “Zero backend” WebRTC usually means somebody else's infrastructure. No durable join without a peer, predictable corporate connectivity or central immediate revocation. Do not make it the default. |
-| **B. Thin E2E relay**                | Accountless simultaneous editing and online peer catch-up.                           | Public/self-hosted WSS service; random room IDs, scoped capabilities, volatile room metadata, rate limits. Proposal: no persisted document bytes.                                                                                            | **C1 recommendation.** If every peer leaves or the relay restarts, no server document can rescue the room. Local recovery remains; room expiry is explicit.                                                                 |
-| **C. Relay + encrypted persistence** | Return to a diagram while peers are offline; durable comments and reconnect backlog. | Ciphertext append log, client-created snapshots, capability/epoch metadata, retention/deletion and backups.                                                                                                                                  | Add explicitly in C2b; no accounts technically necessary. Lost key means unreadable content. More durable abuse, storage and deletion obligations. [Design precedent][secsync].                                             |
-| **D. Optional accounts/workspaces**  | Named invitations, per-member revocation, cross-device document list and roles.      | Identity sessions, membership/invite DB, encrypted key envelopes, email delivery and audit metadata.                                                                                                                                         | C3, not a prerequisite for B/C. Login authenticates a person; it does not decrypt their diagrams. Key provisioning/recovery is a separate design.                                                                           |
+**Evidence checked 2026-10-16; recommendation, not an implemented transport.** The missing alternative
+is automatic matchmaking on infrastructure already operated by others. A static browser client can
+use it without deploying a signalling service. This is materially different from requiring our own
+y-webrtc server. It still depends on outside services and cannot promise universal connectivity.
+
+### Trystero and related providers
+
+Trystero exchanges WebRTC offers/answers through a selected strategy, then sends application data on
+peer data channels, directly or via TURN. Its current default is Nostr; strategy packages share a
+room/action API. [Maintainer README][trystero].
+
+| Strategy             | Matchmaking medium and setup                                                                                                                                               | What the public party sees                                                                                                                                                                                   |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| BitTorrent           | WebSocket trackers match announcements under an `info_hash`; offers/answers travel through the tracker. No torrent file distribution is required.                          | Tracker sees the room-derived hash, peer/offer IDs, signalling envelopes and connecting IPs. [Strategy source][trystero-torrent].                                                                            |
+| Nostr                | Relay subscriptions and signed events carry discovery/signalling. No social account required by Trystero.                                                                  | Relay sees topic tags, event public keys/times, encrypted signal bodies and connecting IPs. [Strategy source][trystero-nostr].                                                                               |
+| MQTT                 | Public WSS brokers carry topic subscriptions and signalling publications.                                                                                                  | Broker sees room-derived topics, signalling ciphertext and connecting IPs. [Strategy source][trystero-mqtt].                                                                                                 |
+| IPFS (package label) | Current source actually uses a Waku light node, Light Push/Filter and bootstrap discovery. Audit the pinned implementation rather than assuming an IPFS DHT/content store. | Infrastructure sees content topics, routing/peer metadata and signal ciphertext; exact IP visibility is path-dependent (**U** until capture). Not a persistence guarantee. [Strategy source][trystero-ipfs]. |
+| Firebase / Supabase  | Matchmaking through an operator-provisioned Realtime Database / Realtime project. Requires project configuration, access rules and provider quotas.                        | Provider sees room namespace, signalling envelopes, network metadata and project activity. Managed options, **not** the no-setup default. [Setup instructions][trystero].                                    |
+
+**Maintenance/licence:** MIT, non-archived; the maintainer announced the scoped-package rewrite on
+**2026-03-23**. GitHub's latest commit at this check is **2026-10-05**, `acef9ddc`; this is evidence of
+recent activity, not an SLA or security audit. Pin/audit the chosen version before C0; older
+`trystero/<strategy>` examples predate the scoped packages. [Announcement][trystero-release],
+[repository metadata][trystero-meta], [commit metadata][trystero-commit].
+
+Other real options, checked on the same date:
+
+- **y-webrtc with public signalling:** upstream explicitly offers public instances and password-based
+  signal encryption; hosting our own is optional. Documented endpoint lists are not uptime evidence
+  (some examples are historical). Check endpoint permission/liveness before shipping. MIT; useful C0
+  comparator. [Upstream README][y-webrtc].
+- **PeerJS public PeerServer:** free hosted signalling is available; a peer ID still needs an invitation/
+  discovery convention. Session metadata/candidates pass through PeerServer; do not assume E2E SDP
+  protection from its data-channel encryption. Yjs sync, room authentication and our E2E envelope remain
+  app work. MIT client; no hosted SLA established here (**U**). [Getting started][peerjs], [cloud][peerjs-cloud].
+- **libp2p:** browser WebRTC plus discovery, GossipSub and Circuit Relay v2 is possible. The official
+  guide uses a reachable bootstrap/relay peer, with time/bandwidth-bounded reservations, and warns
+  that its discovery example is not production-scalable. It does not establish an unlimited public
+  relay entitlement or eliminate service dependencies. More machinery than C1 needs; defer pending
+  a concrete advantage. [Official browser guide][libp2p-browser], [protocol][libp2p-webrtc].
+- **Yjs on Trystero/Nostr exists:** `WinstonFassett/y-webrtc-trystero` is an MIT y-webrtc fork using
+  Trystero; latest commit **2025-06-16** at this check. Compatibility with the 2026 Trystero rewrite and
+  security maintenance are **U**, so use as prior art, not an approved dependency. `YousefED/nostr-crdt`
+  supplies a Yjs `NostrProvider` under MPL-2.0; latest commit **2023-03-27**, README calls it a proof of
+  concept with access control/storage still future work. It sends document updates as Nostr events,
+  unlike using Nostr only for WebRTC matchmaking; do not adopt it for confidential rooms unchanged.
+  These are verified alternatives to an unverified package name such as “y-nostr”. [Fork][y-trystero],
+  [fork activity][y-trystero-commit], [Nostr provider][nostr-crdt], [licence/activity][nostr-crdt-meta],
+  [latest commit][nostr-crdt-commit].
+
+### Connectivity in practice and TURN
+
+**No universal TURN percentage is established for Live Diagrams.** In an actual appear.in production
+analysis published **2017-08-31**, Philipp Hancke used rtcstats and a query capped at ten million
+successful Chrome P2P records: **17.7% used TURN**. The same report gives **4% for SFU calls**. These
+are old, topology/browser/population-specific observations, not a 2026 browser data-channel forecast;
+selected TURN use is not a controlled proof that no direct route could ever have worked. Corporate
+and mobile cohorts must be measured separately. [First-person method and results][turn-measured].
+
+Endpoint-dependent (“symmetric”) NAT combinations can defeat hole punching; enterprise UDP blocks,
+VPNs, proxies or WebRTC policy can also prevent it. STUN discovers an address; it does not relay
+packets or open a firewall. TURN over TCP/TLS, often on 443, helps some restricted networks but cannot
+override an administrator's policy. [WebRTC ICE guidance][webrtc-peers], [TURN guidance][webrtc].
+
+**Public STUN:** Cloudflare documents `stun:stun.cloudflare.com:3478` as free/unlimited. Configure a
+reviewed endpoint list, detect outages and recheck terms; availability to these users remains untested.
+STUN alone is not a connectivity guarantee. [Cloudflare FAQ, updated 2026-07-14][turn-faq],
+[endpoint][turn-price].
+
+| TURN option                         | Published allowance/pricing at 2026-10-16                                                                                                          | Operational consequence                                                                                                                                                                                                                    |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Cloudflare Calls, now Realtime TURN | **1,000 GB/month free**, then **$0.05/GB egress to the TURN client**, including TURN overhead. Free allowance is shared with Realtime SFU billing. | Account/key provisioning; mint expiring client credentials. Never embed the API bearer secret in a static build. [Pricing][cf-turn-product], [billing definition][turn-faq], [credential API][turn-credentials].                           |
+| Metered commercial TURN             | Pricing page calls the free trial **500 MB/month**, counted ingress + egress.                                                                      | Not directly comparable to Cloudflare's egress meter. Region docs say free is standard-region-only while pricing advertises global: entitlement is **U** until confirmed. [Pricing][metered-turn], [region restriction][metered-regions].  |
+| Open Relay by Metered               | Its separate project page advertises **20 GB/month free** and ports 80/443 including TLS.                                                          | Do not conflate with the commercial trial or assume unlimited shared credentials/SLA. Current instructions involve dashboard/API credentials; validate access, quota behaviour and terms before selection. [Official project][open-relay]. |
+| Self-hosted coturn                  | Open-source **BSD-3-Clause** software; no software fee.                                                                                            | Pay for host/bandwidth and operate TLS, authentication, expiring credentials, quotas, upgrades and abuse defence. This is a server to operate, so requires the owner's approval too. [Project/configuration][coturn].                      |
+
+**Static-host constraint:** Cloudflare's TURN credential-minting bearer token and Metered management
+API keys are server secrets, not publishable browser configuration. A free allowance does not solve
+safe credential issuance. C0 must validate a provider-approved public client mechanism or explicitly
+configured short-lived credentials without exposing management secrets. If none fits, C1 ships
+direct/STUN plus honest failure and file/link fallback; an automatic credential issuer is an owner
+decision on operating a service, not a hidden exception to serverless. Self-hosted copies may configure
+their own ICE services without contacting ours. [Cloudflare API][turn-credentials], [Open Relay setup][open-relay].
+
+When TURN is missing, exhausted or blocked, preserve local edits, stop bounded connection retries and
+show “Could not connect to this room” with Retry and **Save/send a file** or the existing static-link
+workflow (only where existing sharing policy allows it). A room invitation cannot substitute for a
+snapshot when nobody can connect. Never label an isolated peer “synced”; connected subsets can diverge
+until a route returns. Offer a configured ciphertext relay only after approval and explicit transport
+consent. Test denied ICE, relay authentication/quota failure and blocked signalling independently.
+
+### Reliability, privacy and responsible use
+
+Public does not mean guaranteed or permitted for arbitrary workloads. Tracker/relay/broker operators
+can disappear, change terms, require payment/authentication, reject event kinds, throttle or block
+nonstandard traffic. Nostr NIP-11 explicitly describes size/subscription limits, restricted writes,
+proof-of-work and payment requirements; its examples are not entitlements. No endpoint uptime was
+measured for this research. Existing peer channels may survive a signalling outage, while new joins
+and reconnects fail. [NIP-11][nostr-limits], [WebRTC signalling role][webrtc-peers].
+
+**Proposed operating policy:** shortlist services that welcome this use, read their actual terms and
+contact operators where unclear before a public beta. Keep signalling small/ephemeral, respect tracker
+announce intervals and broker/relay quotas, use bounded redundancy/backoff and do not publish diagrams
+or continuous Yjs traffic on these matchmaking channels. Do not evade a block by cycling public relays.
+Credit/support operators; public BitTorrent and Nostr infrastructure is someone else's resource, not
+our free backend entitlement. Binary protocol compatibility alone is insufficient permission. Exact
+selected endpoints, permission and rate allowances remain **U** until C0 selection.
+
+**Who sees what:** public services see source IPs and timing even when SDP is encrypted. Trystero's
+current source has a SHA-256 room namespace but still derives discovery topics through a legacy
+SHA-1 helper; do not confuse those with our proposed discovery derivation. Its
+README warns that default SDP encryption derived only from app/room IDs is not a sufficient secret
+against an operator. Supply an independent high-entropy signalling secret; audit every offer/answer/
+candidate path in C0. Peers must receive connection information and can see each other's public IPs
+on direct paths. STUN sees the caller address; TURN sees endpoint IPs, timing and byte counts but not
+our E2E content. [Namespace/key code][trystero-crypto], [discovery derivation][trystero-strategy], [encryption caveat][trystero],
+[WebRTC IP privacy requirements, RFC 8828, January 2021][webrtc-privacy].
+
+**Proposed unlinkability:** derive a discovery token by domain-separated hashing of a fresh random
+room key (never a human title/password); keep the E2E key exclusively in the invitation fragment/local
+key store. Derive a separate signalling key, never send either secret as a topic, tracker hash or
+Nostr tag. Public tokens may correlate participants **within** a room and across repeated visits;
+hashing does not hide IP/timing or prevent dictionary attacks on weak room names. Fresh rooms/epochs
+need fresh tokens and ephemeral identities. Independent rooms must not reuse identifiers. This is our
+design requirement, not a claim that stock provider defaults deliver anonymity.
+
+Before joining, disclose public matchmaking services and that peers may learn the user's IP. Offer
+an advanced **TURN-only** mode using `iceTransportPolicy: 'relay'`, with no direct fallback when that
+privacy choice is set. It needs working TURN and increases traffic/provider visibility; it hides
+direct IPs from other participants, not from TURN, signalling services or the user's network. Validate
+candidate/SDP redaction as well as actual packet paths. If TURN is unavailable, fail closed in that
+mode. [W3C ICE transport policy][webrtc-standard], [RFC 8828][webrtc-privacy].
+
+**Abuse boundaries:** unlisted high-entropy links reduce random discovery, not forwarded-link abuse
+or denial of service. Authenticate encrypted envelopes and signed grants before applying updates;
+bound pending offers, peers, receive bytes, message size, retries and presence. A malicious peer or
+relay can flood/disconnect/partition; no central operator can reliably ban all copies of an anonymous
+link on public infrastructure. End-session is a signed request to reachable conforming peers, not
+global revocation; use a new room/key for remaining collaborators. TURN quotas and restricted
+destinations protect against bandwidth theft; client checks cannot enforce a global service quota.
+Never claim E2E allows content moderation or deletion of others' copies. [Security model][secsync],
+[coturn controls][coturn].
+
+### Scale and persistence
+
+**Start with 2–8 peers as a proposed C1 scope, not a measured capacity claim.** A full mesh has
+`n(n−1)/2` connections and each origin sends an update to `n−1` peers: 8 peers means 28 links and
+7 outgoing copies; 20 means 190 links and 19 copies (arithmetic, not benchmarks). If all peers edit,
+fan-out grows quadratically in room size. Coalesce drag/presence, deduplicate updates and apply
+backpressure. Yjs's duplicate/order tolerance does not remove bytes, encryption or browser work;
+rebroadcasting received updates indiscriminately creates loops. Larger sparse meshes need explicit
+routing/resync and partition tests. y-webrtc warns about large groups and defaults to 20–34 peer
+connections; that limit and its conference anecdote are not Live Diagrams performance guarantees.
+PeerJS's current FAQ suggests roughly 5–10 simultaneous connections before degradation, without a
+comparable diagram workload: useful caution, not a measured limit for our data-only rooms.
+[Provider limits][y-webrtc], [practical guidance][peerjs-cloud], [update semantics][y-updates].
+
+A **host-peer star** is a transport experiment if mesh load is the first constraint: guests connect
+only to one elected browser that forwards authenticated ciphertext, reducing total links to `n−1`.
+The host remains an ordinary participant; no server is deployed. It bears bandwidth/CPU load and is
+a connectivity/battery/sleep bottleneck. Host loss pauses the room until election/reconnect/state-vector
+sync; host-only routing does not cure blocked WebRTC or supply offline storage. Test this before using
+it to justify larger rooms; a configured thin relay is a later alternative, not an automatic dependency.
+
+**No server-side document persistence in default C1.** Matchmaking services carry signals only;
+retained signal metadata is still possible and is not diagram backup. Peers keep their own CRDT/local
+copies and late joiners sync from whoever is online. The room link contains access material, not
+the document. If everyone closes, a new browser waits for a peer; someone with a local copy can
+reopen and resume under the valid room generation, or explicitly start a new room. Clearing site
+storage, device loss or browser eviction can destroy the last copy. Explain “Saved on this device”,
+“Waiting for a peer” and “Connected and synced” separately; keep file export available and never
+promise a durable saved-room list or unattended asynchronous review. Reconnecting old copies needs
+generation/end-session checks and explicit recovery when status cannot be established. Optional
+approved ciphertext storage changes this UX later. [Local Yjs persistence][y-idb], [state-vector sync][y-updates].
+
+## Do we need a backend? Hybrid transport plan
+
+| Order                                                              | Recommendation                                                                                                                                                                                                                                              | Infrastructure and limit                                                                                                                                                                                            |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **(a) Serverless by default — C1**                                 | Yjs plus our E2E layer over WebRTC; Trystero-style public matchmaking. Open-source friendly, no accounts and nothing for us to host. Works from any HTTPS static host/self-hosted copy that permits the configured network connections.                     | Third-party signalling/STUN, optional usable TURN. Small online rooms; no server document persistence or universal corporate reachability. File/static-link fallback remains available under existing policy.       |
+| **(b) Optional thin ciphertext relay — owner decision after beta** | Retain the TypeScript/Node design below for corporate networks, larger rooms and opt-in persistence. Configurable endpoint, self-hostable container in the self-host kit, disabled by default. **Owner approval required before building or operating it.** | WSS can avoid WebRTC-specific blocks, not all firewalls. Volatile forwarding first if useful; C2b adds ciphertext logs/snapshots only with explicit storage/retention approval. No mandatory Live Diagrams service. |
+| **(c) Accounts later — C3**                                        | Named invitations, workspaces and membership after transport/recovery evidence. Anonymous/local routes remain free and independent.                                                                                                                         | Optional identity/membership/key-envelope services; login is neither an E2E key nor an availability solution.                                                                                                       |
+
+Document mapping, E2E envelopes, link/key grammar, local recovery, presence and simulation semantics
+must remain **transport-agnostic**. Define one bounded interface for join/leave, peer membership,
+targeted/broadcast ciphertext, sync state/errors and capabilities (including whether durable storage
+exists). WebRTC and WSS adapters carry the same authenticated envelopes; no tracker IDs, sockets,
+cloud SDK objects or server acknowledgement assumptions enter the graph model. Expose local-send,
+peer-applied and remotely-durable states separately. C0 tests both with an in-memory transport;
+a production server adapter is not C1 groundwork. Transport changes require explicit policy/consent,
+compatible room configuration and state-vector resync; never silently strand half a room on each path.
 
 ## Recommended architecture
 
@@ -212,8 +403,13 @@ flowchart LR
     YB <--> CB[Room crypto and local recovery]
     YB --> SB[Local simulation runner]
   end
-  CA <-->|WSS ciphertext and capabilities| R[TypeScript Node relay]
-  CB <-->|WSS ciphertext and capabilities| R
+  CA <-->|Default WebRTC E2E envelopes| CB
+  CA -. encrypted signalling .-> D[Public matchmaking]
+  CB -. encrypted signalling .-> D
+  CA <-->|Optional TURN path for WebRTC| T[Configured TURN]
+  CB <-->|Optional TURN path for WebRTC| T
+  CA <-. Owner-approved WSS fallback .-> R[Optional TypeScript Node relay]
+  CB <-. Owner-approved WSS fallback .-> R
   R --> M[Room admission, roles, quotas, expiry]
   R -. C2b ciphertext only .-> P[Append log and encrypted snapshots]
   M -. C3 optional .-> I[Identity, memberships, invites]
@@ -221,7 +417,7 @@ flowchart LR
   I -. encrypted room key envelopes .-> CB
 ```
 
-The relay and later storage are untrusted for content confidentiality. The static app publisher and
+Public matchmaking, TURN, the optional relay and later storage are untrusted for content confidentiality. The static app publisher and
 each admitted editor's browser are trusted: malicious delivered JavaScript or a browser extension can
 read decrypted content. E2E protects against relay/storage disclosure, not a compromised endpoint or
 server denial/withholding. Signatures and checkpoint proofs can detect some tampering/rollback, but
@@ -230,7 +426,8 @@ do not make a Byzantine service available or prevent all forks. [Threat-model pr
 
 ### Language, runtime and deployment choice
 
-Use **TypeScript + the repository's Node 24 toolchain + a small WebSocket server**, with separate
+**C1 runs in the browser. Only if the owner approves (b),** use **TypeScript + the repository's Node 24
+toolchain + a small WebSocket server**, with separate
 server dependencies. The client already speaks TypeScript; Yjs exposes binary provider interfaces;
 sharing protocol types/testing tools lowers integration work. The relay itself need not import Yjs:
 it should have no reason to understand diagram content. Node delivers a conventional OCI container
@@ -241,19 +438,20 @@ that Node is inherently faster or more secure. [Toolchain][ld-quality], [updates
 **Workers/DO is the second deployment choice**, especially if unattended idle rooms make a VM's
 operations unattractive. One object per room simplifies routing and hibernating sockets. Keep a
 runtime-neutral admission/envelope state machine and a WebSocket wire contract; implement a Workers
-adapter only when needed. Do not build two production backends in C1 or assume DO storage semantics
+adapter only when needed and separately approved. Do not build any production backend in serverless C1 or assume DO storage semantics
 exist in generic Docker. Go/Rust are reasonable relay languages but add a second toolchain without
 evidence that this bounded service needs it; Y-Sweet is a valid Rust solution to a different,
 document-aware server problem. [DO sockets][do-ws], [Y-Sweet][ys].
 
 ### Room creation, joining and recovery
 
-1. An explicit Share action creates a room from a validated, detached copy. No automatic relay
+1. An explicit Share action creates a room from a validated, detached copy. No automatic matchmaking/ICE/relay
    connection on ordinary startup, local edit, export, example open or sign-in. C1 initially permits
    a proposed maximum 8 participants; larger rooms wait for load evidence. The owner chooses whether
    the session should later save ciphertext; C1 clearly says it does not.
 2. Browser generates independent high-entropy room encryption material, owner signing/control keys
-   and admission capabilities. Room ID is random and carries no title. Invitation could look like
+   and admission capabilities. Derive the public discovery ID from the random room key as specified
+   above; it carries no title or secret. Invitation could look like
    `https://www.livediagrams.dev/#room=<opaque-id>&key=<secret>&invite=<capability>`; actual grammar is
    versioned in C0 and must coexist unambiguously with existing `#d=`/`#e=` links. The **owner/admin
    capability is never included in the participant link**. Fragments are not sent in the initial
@@ -262,11 +460,14 @@ document-aware server problem. [DO sockets][do-ws], [Y-Sweet][ys].
    holds secrets in memory. Explicit “remember this room on this device” may store a recovery secret
    locally with an honest device-access warning. A copied link, browser history already recorded,
    extension or chat preview client remains a leakage route; clearing is mitigation, not erasure.
-4. Exchange the invitation capability over TLS in an initial authentication frame or short-lived
-   same-origin ticket; never send the decryption key, full page URL or capability in query/log fields.
-   Relay stores capability hashes and room expiry; C1 metadata is volatile. Bind each connection to
-   an admitted session signing key and signed role grant. Announce the real server expiry/limits.
-   Admission alone is not content authorship: the relay knows admission tokens. An owner-signed
+4. In serverless C1, match using the public token, exchange encrypted SDP with the separate signalling
+   secret, and mutually verify owner-signed grants/session keys before applying room messages. Public
+   infrastructure is not the admission authority. Keep the decryption key/full URL out of signals/logs.
+   For approved (b), exchange only admission credentials over TLS in an authentication frame or
+   short-lived same-origin ticket; never put capabilities in query/log fields. The relay stores
+   capability hashes/expiry and binds admitted sessions to signed grants. Announce real limits;
+   serverless expiry is cooperative client policy, not enforced public-infrastructure revocation.
+   Admission alone is not content authorship: a relay may know admission tokens. An owner-signed
    role-link credential can carry a separate delegation signing secret only in the fragment;
    holders endorse their session public keys, recipients verify that chain against the owner key
    pinned in the invitation. The relay receives verifiers/signatures, never that delegation secret.
@@ -274,9 +475,11 @@ document-aware server problem. [DO sockets][do-ws], [Y-Sweet][ys].
    securely removed without ending/rotating that link. C3 replaces this with named member grants.
 5. Existing peers provide encrypted state-vector/delta responses and a full encoded CRDT state for
    new peers. A late join has no document if no peer survives in C1: offer the local copy/new room,
-   not an empty room masquerading as saved work. Relay restart expires C1 rooms; it must not silently
-   recreate them from a stale invite. Local edits and an explicit new invitation recover work.
-6. C2b instead loads an encrypted checkpoint plus committed tail; client verifies/decrypts/applies
+   not an empty room masquerading as saved work. With a valid local room copy, serverless peers can
+   return without a server restart dependency; ended/uncertain generations require explicit recovery.
+   In volatile (b), relay restart expires admissions; do not silently recreate from a stale invite.
+   Local edits and an explicit new invitation recover work.
+6. Owner-approved C2b instead loads an encrypted checkpoint plus committed tail; client verifies/decrypts/applies
    them. Store CRDT binary state and provenance, **not JSON reconstructed into a new Y.Doc on every
    join**. Reconstructing loses CRDT identity/history and can duplicate edits. [Persistence warning][hocus-store].
 
@@ -299,9 +502,11 @@ editor. Owner grants must pin verification keys so an opaque server cannot inven
 by asserting a role. For C1 all invited participants edit; reserve enforced viewer/comment channels
 for C2 once their protocol tests pass. [Signing precedent][secsync-spec].
 
-Removal requires **two different acts**: revoke network admission immediately and rotate encryption
-keys for future content. C1's simple operation should be **End room for everyone** and create a new
-room/key/link for the remaining people. “Leave” disconnects only oneself. C3 can have membership
+Removal requires stopping admission and rotating encryption keys for future content. A configured
+relay can close admitted sockets immediately; public-infrastructure C1 cannot centrally stop old
+link holders or reach disconnected peers. C1's **End session** sends a signed end notice to reachable
+conforming peers; creating a new room/key/link protects the remaining people's future work. Explain
+that the old room can still exist on other devices. “Leave” disconnects only oneself. C3 can have membership
 epochs, per-recipient encrypted key envelopes and an atomic membership-change/key-rotation barrier.
 Never broadcast the new room key under the old shared key. The removed party can still decrypt
 anything retained under an old key and retain screenshots/exports. Do not claim retroactive erasure
@@ -321,7 +526,8 @@ trades automatic cross-epoch merge for confidentiality; C0 must prove the transi
 
 | Observer                                   | Visible in the proposal                                                                                                                                   | Must not be visible                                                                                                          |
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Relay/operator                             | IP/network metadata, opaque room ID, connection times, message lengths/counts, admission/role/epoch metadata; C3 account/workspace/invite email metadata. | Diagram labels/structure, simulation inputs/results, comment/name/cursor contents, keys/passwords or complete invite URLs.   |
+| Public matchmaking / STUN / TURN           | Source IPs/timing; matchmaking room hash and encrypted SDP metadata; TURN endpoint/byte metadata as detailed above.                                       | E2E keys, plaintext document/presence; SDP plaintext at matchmaking when independently secret-encrypted.                     |
+| Optional relay/operator                    | IP/network metadata, opaque room ID, connection times, message lengths/counts, admission/role/epoch metadata; C3 account/workspace/invite email metadata. | Diagram labels/structure, simulation inputs/results, comment/name/cursor contents, keys/passwords or complete invite URLs.   |
 | Ciphertext storage/backup operator         | Ciphertext snapshots/tail, opaque IDs, byte sizes, creation/expiry metadata.                                                                              | Plaintext title, thumbnails, search index, document keys. Encrypt workspace display names/thumbnails too if stored remotely. |
 | Admitted reader                            | Decrypted diagram and authorised versions; can copy them.                                                                                                 | No guarantee against copying. Reader should lack editor signing authority and admin capability.                              |
 | Static app publisher / compromised browser | Can execute code with access to decrypted state and fragment material.                                                                                    | E2E cannot remove this trust boundary; pinned self-hosted builds reduce exposure to a changing public origin.                |
@@ -338,20 +544,21 @@ metadata/content distinction follows the [Secsync threat model][secsync] and [fr
   prefer a reviewed PAKE design rather than a reusable plaintext password exchange. Do not make
   unreviewed password protocol invention a C1 dependency. Existing static links already define a
   password KDF, but reusable stream/key wrapping needs its own version and review. [Current format][ld-links].
-- **View/comment/edit:** independent random admission capabilities and owner-signed grants, server
-  checking rights for every frame, not just join. Separate diagram and comments CRDT documents,
+- **View/comment/edit:** independent random admission capabilities and owner-signed grants, recipients
+  checking rights for every frame, not just join; optional relay checks them too. Separate diagram and comments CRDT documents,
   with distinct channel signing authority; a commenter cannot label a diagram update “comment” and
   have it applied to the diagram. A viewer may send bounded presence, never durable updates. A
   read-only UI alone is not authorization. Role downgrades close existing sockets and rotate grants;
   content-key rotation is needed to remove read access. [Message-level authorization][ws-security].
-- **Free relay:** bounded room creation per network/session, per-room participants/bytes, frame size,
+- **Optional free relay, only if approved:** bounded room creation per network/session, per-room participants/bytes, frame size,
   outbound buffers and total aggregate egress; token buckets, backoff and idle/absolute expiry.
   Suggested initial limits are product policy to tune in load tests, not library guarantees. Drop
   stale cursor frames first; never silently drop durable edits. Disconnect/resync slow clients with
   local recovery intact. Reject cross-origin upgrades except explicit configured app origins;
   validate Origin even with cookie authentication. [WebSocket guidance][ws-security].
 - **Content abuse:** E2E prevents server-side inspection. Keep anonymous rooms unlisted and
-  short-lived, offer closure/reporting by opaque room ID, and document operator deletion/takedown.
+  short-lived by cooperative policy. For (b), offer closure/reporting by opaque room ID and document
+  operator deletion/takedown. For (a), explain the absence of central enforcement described above.
   Do not solicit plaintext reports or add a moderation “backdoor”. Durable ciphertext has a bigger
   abuse/cost footprint, which is why retention/quotas precede open-ended storage. [E2E visibility][secsync].
 - **Logs/diagnostics:** redacted counters/error codes only; no payloads, tokens, URL fragments,
@@ -362,8 +569,9 @@ metadata/content distinction follows the [Secsync threat model][secsync] and [fr
 ### Fit with Private and Share
 
 Proposal: add **Collaborate encrypted…** to the existing Share chooser, among controlled options,
-without adding a permanent toolbar control. First invocation names the relay and explains who can
-open the link, that encrypted content leaves the device, persistence/expiry and what “End room” does.
+without adding a permanent toolbar control. First invocation names the transport/public services and
+explains who can open the link, peer IP exposure, encrypted content leaving the device, persistence/
+expiry and the limits of End session. Advanced transport/ICE configuration stays out of default chrome.
 The first action remains the existing safe export. After joining, a compact session indicator can
 replace/reuse existing status space; participant actions live there and in context. This is a UX
 review proposal against the [chrome budget and Share vocabulary][ld-ux].
@@ -373,7 +581,10 @@ decision: deny by default; allow only a scoped, explicit user grant and an allow
 E2E mandatory. The existing no-network provenance category remains an unconditional denial; it must
 not inherit this exception. A deployment with sharing disabled stays disabled unless the operator
 explicitly enables collaboration separately. Internal/offline builds must never fall back to the
-public relay. No relay-origin configuration or key is accepted from an untrusted invitation URL.
+public infrastructure or relay. Use operator-controlled allowed matchmaking/STUN/TURN/relay endpoints
+and generate the corresponding CSP; never widen to arbitrary external hosts. No endpoint configuration
+or key is accepted from an untrusted invitation URL. Serverless defaults must work for ordinary static
+copies without domain registration with us; restricted/disconnected deployments can disable them.
 [Current centralized gates][ld-gates], [deployment switches][ld-host].
 
 The exception is a **product-contract change**, not something to infer from an encrypted socket.
@@ -381,8 +592,9 @@ Before implementation, update Private's dialog/help, Share descriptions, privacy
 descriptions, agent instructions and self-host documentation together. Make exported/local copies
 retain `private: true`, but strip room keys, invite/admin capabilities and the collaboration grant.
 Importing/copying a Private diagram never reconnects. Disabling the grant stops local transmission;
-it cannot recall others' copies. Explain **Stop sharing with everyone**, **Leave**, and **Keep on this
-device** separately. [Current exported privacy field][ld-model], [policy][ld-policy], [gates][ld-gates].
+it cannot recall others' copies. Explain **End session**, **Leave**, and **Keep on this device**
+separately, including End session's cooperative limit on serverless rooms.
+[Current exported privacy field][ld-model], [policy][ld-policy], [gates][ld-gates].
 
 ## Identity without compulsory accounts
 
@@ -393,12 +605,12 @@ those presence fields, expire them on disconnect, and label them unverified. Do 
 cross-room anonymous identifier or interpret a display name as an authenticated employee. Yjs
 Awareness provides an ephemeral substrate; our provider must encrypt it. [Awareness][y-awareness].
 
-| Invitation mode            | Practical flow                                                                                                                                                       | Revocation/expiry and limits                                                                                                                                                                                                                 |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Anonymous link (C1)**    | Owner copies a participant link; recipient joins without registration. Owner control secret stays separate.                                                          | Server expiry ends admission; End room closes all sockets. Anyone receiving the full link can forward it; no trustworthy per-person removal. New room/key/link excludes old holders from future edits.                                       |
-| **Role link (C2)**         | Distinct view/comment/edit capabilities. UI states the role before copying.                                                                                          | Revoke that link's capability, invalidate bound sessions, rotate encryption material if read access is removed. Rotating a token alone does not revoke knowledge of a room key.                                                              |
-| **Named link invite (C3)** | Single-use, expiring token binds a proposed membership to a logged-in verified identity after acceptance; membership rights granted server-side.                     | Revoke unaccepted invite or accepted membership separately. Recheck rights on reconnect and existing sockets. No automatic upgrade from an old anonymous link.                                                                               |
-| **Email invite (C3)**      | Backend sends a one-use acceptance URL with expiry and minimum workspace metadata. After verified login, an authorised client provisions the encrypted key envelope. | Email is an identity/delivery channel, not an E2E key vault. Never send room keys/full secret links through backend-generated mail. If no authorised key holder is online, show “waiting for key access” rather than handing keys to server. |
+| Invitation mode            | Practical flow                                                                                                                                                       | Revocation/expiry and limits                                                                                                                                                                                                                                       |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Anonymous link (C1)**    | Owner copies a participant link; recipient joins without registration. Owner control secret stays separate.                                                          | Serverless expiry/End session are cooperative; no global ban or guaranteed closure of old copies. With approved (b), server expiry/closure ends its socket admission. Anyone can forward the full link; a new room/key/link protects future work from old holders. |
+| **Role link (C2)**         | Distinct view/comment/edit capabilities. UI states the role before copying.                                                                                          | Peers verify signed channel grants. Serverless hard removal requires a new room/generation; approved relay can also invalidate admissions. Rotate encryption material if read access is removed; token rotation does not revoke knowledge of a room key.           |
+| **Named link invite (C3)** | Single-use, expiring token binds a proposed membership to a logged-in verified identity after acceptance; membership rights granted server-side.                     | Revoke unaccepted invite or accepted membership separately. Recheck rights on reconnect and existing sockets. No automatic upgrade from an old anonymous link.                                                                                                     |
+| **Email invite (C3)**      | Backend sends a one-use acceptance URL with expiry and minimum workspace metadata. After verified login, an authorised client provisions the encrypted key envelope. | Email is an identity/delivery channel, not an E2E key vault. Never send room keys/full secret links through backend-generated mail. If no authorised key holder is online, show “waiting for key access” rather than handing keys to server.                       |
 
 This is proposed behaviour. Current Miro and Lucid document why link visitors and registered guests
 are different, and why expiring a link may not revoke an already-created membership.
@@ -437,19 +649,19 @@ The table below is a **proposed CRDT projection**, grounded in the current [nati
 [editor/history APIs][ld-editor], [undo capture][ld-history] and [Y.Map][y-map]. The native file remains
 the portable source of product semantics; CRDT metadata is an additional session/storage format.
 
-| Current data                                                                        | Proposed shared representation                                                                                                                                             | Local state / conflict policy                                                                                                                                                                                                          |
-| ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Title, description, background `color`, `direction`                                 | Document metadata map; text types where concurrent text editing is useful.                                                                                                 | Local selection/focus not stored here. Concurrent direction/layout commands are explicit user actions.                                                                                                                                 |
-| `nodes`                                                                             | ID-keyed maps of fields; `label`/`sublabel` collaborative text if C0 proves binding/undo. Map individual `props` keys rather than replacing the whole props object.        | Shared drag result uses atomic `{x,y}` at minimum, not independently merged x/y. Local drag preview/pointer samples remain ephemeral; coalesce committed updates.                                                                      |
-| `edges`                                                                             | ID-keyed fields; atomic endpoint pair where reconnect must preserve intent; labels/relationship/origin/props preserved.                                                    | Deleting a node and concurrently reconnecting an edge must yield the same projection everywhere. Hide/quarantine dangling edges without losing their recoverable source records; don't independently auto-delete them on every client. |
-| `groups` (UI: boundaries), `group` membership                                       | ID-keyed boundary maps with geometry; explicit parent link/coordinate policy.                                                                                              | Deterministic cycle handling and ancestry ordering; never CRDT-merge a relative position from one parent with membership from another. Boundary move/grow/member updates are one local command.                                        |
-| `annotations`                                                                       | ID-keyed text/shape/geometry fields; text CRDT for note bodies.                                                                                                            | Annotations stay outside simulation. A shape may remain an edge endpoint; text/note/zone may not.                                                                                                                                      |
-| `layerOrder` and file-array ordering                                                | Explicit shared ordering of stable IDs with deterministic de-duplication/tie-breaks.                                                                                       | Preserve existing serialization and simulation iteration order; ID-sorting every import would change behaviour. Concurrent insert/move policy needs C0 tests; Y.Array delete/insert is not a native movable-list CRDT.                 |
-| Saved `simulations`, traffic/timeline/expectations                                  | Maps keyed by their stable IDs, plus ordered lists/record IDs where the native format lacks them. Retain seeds, scale, multipliers, setup, duration and planning revision. | Added collaboration IDs are session metadata if not in native schema; don't leak them into exports accidentally. Timeline ordering for equal timestamps must be deterministic and tested.                                              |
-| `planning`, shared quotas/allocations; `checks` ignores                             | Shared typed metadata/submaps, validated at command boundaries.                                                                                                            | Derived capacity/check results/caches remain local. No per-frame CRDT writes for metrics.                                                                                                                                              |
-| `private` and permissions                                                           | Sticky local/export privacy provenance; encrypted document policy may only raise restrictions automatically. Relay grants/epochs are a separate signed control model.      | A remote edit/undo may never clear local Private policy or activate a network/AI permission. Consent is per device/diagram/relay, never replicated as permission to another browser.                                                   |
-| Viewport, selection, inspector, panels, focus, theme/language, hover, fit readiness | **Not document CRDT fields.** Optional encrypted awareness publishes a bounded subset for follow mode.                                                                     | Inspector/view preferences remain each user's own. Presence has no undo/history/export. Follow is opt-in and local input releases it.                                                                                                  |
-| AI conversation, save targets, file handles, provider tokens                        | **Never shared.**                                                                                                                                                          | Existing conversation stays browser-local; remote edits may invalidate a local AI action's undo eligibility. Cloud save destinations remain bound to a local document identity.                                                        |
+| Current data                                                                        | Proposed shared representation                                                                                                                                                    | Local state / conflict policy                                                                                                                                                                                                          |
+| ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Title, description, background `color`, `direction`                                 | Document metadata map; text types where concurrent text editing is useful.                                                                                                        | Local selection/focus not stored here. Concurrent direction/layout commands are explicit user actions.                                                                                                                                 |
+| `nodes`                                                                             | ID-keyed maps of fields; `label`/`sublabel` collaborative text if C0 proves binding/undo. Map individual `props` keys rather than replacing the whole props object.               | Shared drag result uses atomic `{x,y}` at minimum, not independently merged x/y. Local drag preview/pointer samples remain ephemeral; coalesce committed updates.                                                                      |
+| `edges`                                                                             | ID-keyed fields; atomic endpoint pair where reconnect must preserve intent; labels/relationship/origin/props preserved.                                                           | Deleting a node and concurrently reconnecting an edge must yield the same projection everywhere. Hide/quarantine dangling edges without losing their recoverable source records; don't independently auto-delete them on every client. |
+| `groups` (UI: boundaries), `group` membership                                       | ID-keyed boundary maps with geometry; explicit parent link/coordinate policy.                                                                                                     | Deterministic cycle handling and ancestry ordering; never CRDT-merge a relative position from one parent with membership from another. Boundary move/grow/member updates are one local command.                                        |
+| `annotations`                                                                       | ID-keyed text/shape/geometry fields; text CRDT for note bodies.                                                                                                                   | Annotations stay outside simulation. A shape may remain an edge endpoint; text/note/zone may not.                                                                                                                                      |
+| `layerOrder` and file-array ordering                                                | Explicit shared ordering of stable IDs with deterministic de-duplication/tie-breaks.                                                                                              | Preserve existing serialization and simulation iteration order; ID-sorting every import would change behaviour. Concurrent insert/move policy needs C0 tests; Y.Array delete/insert is not a native movable-list CRDT.                 |
+| Saved `simulations`, traffic/timeline/expectations                                  | Maps keyed by their stable IDs, plus ordered lists/record IDs where the native format lacks them. Retain seeds, scale, multipliers, setup, duration and planning revision.        | Added collaboration IDs are session metadata if not in native schema; don't leak them into exports accidentally. Timeline ordering for equal timestamps must be deterministic and tested.                                              |
+| `planning`, shared quotas/allocations; `checks` ignores                             | Shared typed metadata/submaps, validated at command boundaries.                                                                                                                   | Derived capacity/check results/caches remain local. No per-frame CRDT writes for metrics.                                                                                                                                              |
+| `private` and permissions                                                           | Sticky local/export privacy provenance; encrypted document policy may only raise restrictions automatically. Transport-neutral grants/epochs are a separate signed control model. | A remote edit/undo may never clear local Private policy or activate a network/AI permission. Consent is per device/diagram/transport and disclosed services, never replicated as permission to another browser.                        |
+| Viewport, selection, inspector, panels, focus, theme/language, hover, fit readiness | **Not document CRDT fields.** Optional encrypted awareness publishes a bounded subset for follow mode.                                                                            | Inspector/view preferences remain each user's own. Presence has no undo/history/export. Follow is opt-in and local input releases it.                                                                                                  |
+| AI conversation, save targets, file handles, provider tokens                        | **Never shared.**                                                                                                                                                                 | Existing conversation stays browser-local; remote edits may invalidate a local AI action's undo eligibility. Cloud save destinations remain bound to a local document identity.                                                        |
 
 ### Command adapter, ordering and undo
 
@@ -506,7 +718,7 @@ pinned snapshot locally; controls/injections apply at numbered simulation ticks 
 join replays from the beginning or a future versioned portable snapshot; never serialise today's
 opaque checkpoint. Verify input and periodic deterministic simulation hashes; mismatch pauses follow
 with a recovery action. Local pan/selection doesn't change the presenter. Presenter handoff uses
-relay admission ordering and a lease/epoch; disconnect pauses followers rather than electing two
+owner-signed leadership epochs and explicit handoff; disconnect/partition pauses followers rather than electing two
 independent drivers. Free-play inputs need the same ordered log. Do not CRDT-merge counters or stream
 thousands of particles. [Determinism and checkpoints][ld-sim].
 
@@ -532,7 +744,7 @@ pretends the room was durably saved. New encryption generation or revoked member
 old queued writes. New devices cannot recover E2E content with identity alone. [Current autosave
 identity checks][ld-storage], [offline persistence substrate][y-idb].
 
-**C2b persistence proposal:** append ciphertext updates before acknowledging durability; idempotent
+**C2b persistence proposal, only after approval of (b) and storage:** append ciphertext updates before acknowledging durability; idempotent
 message IDs and a monotonic transport log cursor, distinct from CRDT causal state. Store client-made
 encrypted CRDT checkpoints. Checkpoint publication uses compare-and-swap on generation/log cursor
 and an authenticated acknowledgement vector, so a stale client cannot overwrite accepted updates.
@@ -580,23 +792,41 @@ and docs but excludes waiting for independent cryptographic review. Each future 
 proved by temporarily removing the fix. Production E2E uses `data-testid`, explicit ports and all
 required projects; no fixed sleeps or absolute millisecond assertions. [Quality][ld-quality].
 
-| Phase                                               | Scope and backend                                                                                                                                                                                                                                                                                                                  | Rough cost / effort                                                                                                                                                          | Acceptance tests                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Principal risks and exit decision                                                                                                                                                                     |
-| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **C0 — design/proof first**                         | Isolated public synthetic Lab/model harness; Yjs adapter, encrypted provider spike, key/role threat model and 5,000-node/churn comparisons. No public service required. Agree Private exception and protocol/version/error semantics.                                                                                              | $0 local infra; disposable VM ≤$12/month if needed. Estimate 1–2 engineer-weeks plus independent review, confidence low until prototype.                                     | Seeded three-client schedules converge through partitions, duplicate/out-of-order delivery and reconnect. Concurrent rename/move/delete/reconnect/reparent/layout; different-property edits survive; own Undo preserves peer changes. Bounds/overflow deterministic. Crypto negative vectors, key/role separation. Measure lazy bytes and same-run ratios. Existing parity unchanged.                                                                                      | Do not begin public C1 until malicious-input strategy, protocol trust model, per-user undo and recovery generation are reviewable. If Yjs mapping fails, compare Loro/Automerge on the same workload. |
-| **C1 — anonymous E2E live rooms**                   | Share-only opt-in; edit links, alias/colour, participant list, connected/offline/expired status, scoped Private permission; separate Leave/End room. Local preview simulation. Node relay, admission/expiry/quotas, no persisted document bytes. Pull **basic presence** forward from C2: invisible peers are unsafe confusing UX. | Estimate $6–12/month pilot, $12–48 medium before HA; capacity unproven. 3–5 engineer-weeks after C0, plus independent security review/retest.                                | Separate browser contexts/no accounts co-edit; owner end closes all; participant link cannot administer. Wrong key/capability, tamper/replay/cross-room frames denied. Inspect network/logs for synthetic plaintext/key canaries. Plain local/Private use makes no relay requests; permission changes during async work cancel upload. Disconnect/restart/all peers leave preserve local work and show honest recovery. Docker root/subpath/CSP/disabled deployment smoke. | Availability, key leakage, abuse and rewritten Private promises. Gate a small, bounded beta before allowing larger rooms; no claim of durable storage.                                                |
-| **C2a — visible collaboration and portable review** | Encrypted cursors/selections, local opt-in follow, presenter protocol; comments/review bundle, view/comment/edit links with signed channel grants. Same relay plus role checks; file-only review works without it.                                                                                                                 | Relay baseline plus traffic. Estimate 2–4 engineer-weeks; staged scope if presenter is larger.                                                                               | Presence expiry with fake clock; differing viewports/cursors; follow releases on local input; tab cleanup. Malicious viewer/commenter crafts raw updates and cannot edit diagram. Deleted-anchor review roundtrip/import dedup. Presenter late join/handoff/version mismatch and tick/hash parity; local free-play remains independent.                                                                                                                                    | Permission spoofing, cursor clutter, bad anchors, engine drift. UX review at desktop/mobile widths, keyboard and reduced motion. Do not add a global collaboration toolbar.                           |
-| **C2b — explicitly saved encrypted rooms**          | Optional ciphertext append log/snapshots and retention; durable capability metadata. No account required. Storage quotas/deletion, backups, client compaction and recovery status.                                                                                                                                                 | Estimate $12–48/month small self-managed deployment; medium $24–96 before HA/backups, strongly workload-dependent. 2–4 engineer-weeks plus recovery review.                  | Crash after append/before acknowledgement; retry dedup; last peer closes and fresh browser with key rejoins; missing key cannot recover. Concurrent snapshot CAS/stale compactor, tail coverage, quota-full and partial-write recovery. Fake-clock expiry plus delete/backup-retention drills. No plaintext storage or server compaction.                                                                                                                                  | Data loss, unbounded log growth, forgotten keys, durable abuse. Retention/deletion and restore drills are release gates, not follow-ups.                                                              |
-| **C3 — optional identity/workspaces**               | OAuth/email first, production passkeys later; own DB of users/memberships/invites, encrypted key envelopes, optional mail and OIDC perimeter. Free anonymous/local routes stay accessible.                                                                                                                                         | Estimate $25–100/month small, $50–250 medium for DB/backup/mail plus relay; provider fees from table extra. 4–8 engineer-weeks; key recovery may dominate.                   | Two verified users invite/accept; expiry/replay/wrong identity denied, permissions enforced on active sockets and reconnect. Revocation + new key epoch prevents removed/offline member's future reads/writes; device enrolment/recovery/lost key paths. Email/log/identity service never sees content keys. Signing out does not delete local work or force sign-in to draw.                                                                                              | Recovery escrow versus true E2E, phishing/invite leaks, cross-tenant access, account lifecycle. Choose managed provider only after self-host parity and residency requirements agreed.                |
-| **C4 — history and versions**                       | Named encrypted milestones, optional automatic history, review anchors to versions, fork/restore UI, version retention and old-key authorisation. Extend ciphertext storage/index.                                                                                                                                                 | Estimate additional $5–25 small / $10–100 medium storage/backups on assumed modest history; 2–4 engineer-weeks. Actual versions × snapshot size × retention determines cost. | Native/version/review export roundtrips; restoring doesn't erase peers' later work; older clients cannot mutate incompatible versions. Known-checkpoint rollback detection, historical membership boundary, removal/new-member access tests; backup restore and deletion retention.                                                                                                                                                                                        | History confidentiality, migrations, storage costs, misleading audit claims for anonymous authors. Do not call a client-signed alias a verified human audit trail.                                    |
+| Phase                                                   | Scope and backend                                                                                                                                                                                                                                                                                        | Rough cost / effort                                                                                                                                                                                  | Acceptance tests                                                                                                                                                                                                                                                                                                                                                                                                                  | Principal risks and exit decision                                                                                                                                                      |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **C0 — browser design/proof first**                     | Synthetic Lab/model harness; transport-neutral Yjs mapping, E2E, link/key format, presence and local recovery. Public matchmaking/ICE strategy spike; in-memory transport conformance harness. No server implementation.                                                                                 | $0 app-server infrastructure; provider quotas/any TURN spend tracked separately. Estimate 1–2 engineer-weeks plus independent review, low confidence until prototype.                                | Seeded three-client convergence under partitions/duplicates/reordering; concurrent edits, scoped Undo, malicious-input bounds, crypto/grant/epoch negatives and 5,000-node/churn ratios. Capture synthetic signalling to verify no E2E key or plaintext SDP leaks. Measure lazy bytes; existing parity unchanged. Static root/subpath/CSP checks.                                                                                 | Pin maintained dependencies, permitted endpoints and safe TURN credential approach; settle Private wording and cooperative end-session semantics. No backend work is authorised.       |
+| **C1 — serverless anonymous E2E live rooms**            | Share-only opt-in; Trystero-style public matchmaking, WebRTC plus optional usable TURN; E2E edit links, alias/colour, basic participants/status, local simulation preview, scoped Private permission, Leave/End session and file/link fallback. No service we host; no server-side document persistence. | $0 app-server baseline; optional TURN usage/quotas reported separately. Estimate 3–5 engineer-weeks after C0 plus security review/retest; connectivity unknown.                                      | Isolated browser contexts co-edit without accounts from public/static self-hosted copies. Test denied signalling, direct/relay ICE, TURN unavailable/quota/expiry, partitions/reconnect, all peers leave/local recovery, signed end notice and stale-generation handling. Wrong grants/keys/tamper/replay denied; synthetic canaries absent from signals. Local use sends no network requests; consent cancellation and CSP work. | Bounded 2–8-person beta; no durability/global-revocation promise. Measure connectivity and failure UX before owner decision on (b); C1 can release without it.                         |
+| **C2a — visible collaboration and portable review**     | Encrypted cursors/selections, opt-in follow, presenter protocol, portable comments/review bundle and signed channel grants. Same transport abstraction; no relay prerequisite.                                                                                                                           | Existing transport costs plus traffic. Estimate 2–4 engineer-weeks; stage presenter scope if larger.                                                                                                 | Fake-clock presence expiry, differing viewports, follow release on local input, tab cleanup; malicious view/comment clients cannot edit. Deleted-anchor roundtrip/import dedup. Presenter handoff/late join/version mismatch and simulation parity.                                                                                                                                                                               | Permission spoofing, clutter, bad anchors and drift. Desktop/mobile/keyboard/reduced-motion UX review; no global collaboration toolbar.                                                |
+| **C2b — explicitly saved encrypted rooms, conditional** | Only after owner approval of (b) and storage: thin relay plus optional ciphertext log/snapshots, capability metadata, retention/quotas/deletion, backups and client compaction. No account required.                                                                                                     | Estimate $12–48/month small self-managed, $24–96 medium before HA/backups; workload-dependent. 2–4 engineer-weeks plus recovery review, separate from optional volatile-relay implementation effort. | Crash/append/ack/retry dedup; all peers close then key-holding new browser joins. Snapshot CAS/stale compactor/tail coverage, quota-full/partial-write recovery and fake-clock expiry/delete/restore drills. No plaintext storage/server compaction.                                                                                                                                                                              | Conditional phase, not a C1 dependency. Storage/recovery and abuse costs need separate approval and release evidence.                                                                  |
+| **C3 — optional identity/workspaces**                   | OAuth/email first, production passkeys later; own DB of users/memberships/invites, encrypted key envelopes, optional mail and OIDC perimeter. Free anonymous/local routes stay accessible.                                                                                                               | Estimate $25–100/month small, $50–250 medium for DB/backup/mail plus relay; provider fees from table extra. 4–8 engineer-weeks; key recovery may dominate.                                           | Two verified users invite/accept; expiry/replay/wrong identity denied, permissions enforced on active sockets and reconnect. Revocation + new key epoch prevents removed/offline member's future reads/writes; device enrolment/recovery/lost key paths. Email/log/identity service never sees content keys. Signing out does not delete local work or force sign-in to draw.                                                     | Recovery escrow versus true E2E, phishing/invite leaks, cross-tenant access, account lifecycle. Choose managed provider only after self-host parity and residency requirements agreed. |
+| **C4 — history and versions**                           | Named encrypted milestones, optional automatic history, review anchors to versions, fork/restore UI, version retention and old-key authorisation. Extend ciphertext storage/index.                                                                                                                       | Estimate additional $5–25 small / $10–100 medium storage/backups on assumed modest history; 2–4 engineer-weeks. Actual versions × snapshot size × retention determines cost.                         | Native/version/review export roundtrips; restoring doesn't erase peers' later work; older clients cannot mutate incompatible versions. Known-checkpoint rollback detection, historical membership boundary, removal/new-member access tests; backup restore and deletion retention.                                                                                                                                               | History confidentiality, migrations, storage costs, misleading audit claims for anonymous authors. Do not call a client-signed alias a verified human audit trail.                     |
 
-The order deliberately pulls minimal presence into C1 and inserts C2b before accounts: **durable
-collaboration and identity are independent decisions**. Portable file review can ship ahead of C1
-if the relay/security work needs more time. Keep roadmap labels “collaboration C1–C4” distinct from
+**Decision point after the C1 beta, before any (b) implementation:** present the owner with measured
+results and choose **continue serverless-only**, **improve public matchmaking/ICE or host-peer routing**,
+or **approve the configurable thin relay** (and separately its optional persistence). Only explicit
+approval authorises (b); neither C1 launch nor C2a requires a server. If approved, estimate the relay's
+incremental effort against the completed client groundwork before committing budget.
+
+The beta evidence must include attempt counts/denominators, sample dates, browser/device mix and
+consented coarse home/mobile/corporate/VPN cohorts; pairwise **and whole-room** sync success; selected
+direct versus TURN candidates, attempts without usable TURN, signalling/ICE/auth/quota failures,
+join/reconnect latency distributions, partition recovery, room size, host sleep/churn, bytes and
+observed TURN charges. Measure a consented same-cohort STUN-only versus configured-TURN comparison;
+selected TURN share alone does not measure how many connections require it. Distinguish fallback
+completion from live success and report small samples/selection bias honestly. Use synthetic or
+explicit opt-in diagnostics, not raw SDP/IPs, keys, room tokens or diagram content in telemetry.
+Before recruiting, the owner sets acceptable whole-room success/failure UX and cost criteria; this
+research invents neither a universal percentage nor a beta result. Publish the evidence and decision.
+
+The order pulls minimal presence into C1 while **transport, durability and identity remain independent
+decisions**. Portable file review can ship ahead of C1 if security work needs more time.
+Keep roadmap labels “collaboration C1–C4” distinct from
 the existing architectural C4-view roadmap item. [Current roadmap terminology][ld-roadmap].
 
-## Minimal backend/service layout and self-hosting
+## Optional backend/service layout and self-hosting — only after owner approval
 
-**Proposal: keep it in this repository**, independently packaged/deployed, rather than a second repo
+**Conditional (b) design, not C1 work or permission to build:** keep it in this repository,
+independently packaged/deployed, rather than a second repo
 whose protocol drifts from the browser. No root dependency or deployment change is made by this
 research. A future implementation can add explicit workspace packages:
 
@@ -611,7 +841,7 @@ deploy/self-host/helm/       # relay.enabled=false; separate deployment/service/
 docs/COLLABORATION.md        # future user/operator instructions, threat model, recovery and retention
 ```
 
-**C1 service:** health/readiness HTTP endpoints, create/end room API and authenticated WSS upgrade;
+**Optional volatile relay service:** health/readiness HTTP endpoints, create/end room API and authenticated WSS upgrade;
 one process owns each room, bounded in-memory admission state and queues. No plaintext/document
 database. Own package lock/workspace integration pins server libraries; no server dependencies in
 the static startup bundle. C2b adds a ciphertext storage adapter (single-node SQLite/WAL first if
@@ -622,15 +852,15 @@ C3 adds auth/membership/invite routes and migrations. These are proposals, not c
 same container on one VM behind HTTPS/WSS. Compose/Helm keeps relay off by default; enable it with an
 explicit allowed app origin, room quotas and retention. Use non-root/read-only containers, probes,
 resource limits and no public metrics labels containing content/room secrets. Configure the static
-build and generated CSP `connect-src` for only the selected relay; no arbitrary invite-supplied
+build and generated CSP `connect-src` for only the explicitly selected services/relay; no arbitrary invite-supplied
 endpoint or silent external fallback. For a subpath such as `/tools/diagrams/`, preserve the proxy
 prefix and WebSocket upgrade exactly; internal SSO protects both editor and handshake.
 [Current build switches, generated headers and deployment semantics][ld-host].
 
-**Scaling/rollout:** one replica in C1. Merely increasing Helm replicas would split rooms. Add
+**Scaling/rollout if approved:** start with one replica. Merely increasing Helm replicas would split rooms. Add
 consistent room routing or a bounded broker/pubsub and shared admission state only after measuring;
 pubsub is transport, not durability. Drain sockets on deploy with reconnect notices/local queues,
-support a bounded previous protocol version, and document C1 room invalidation. Test rolling restart
+support a bounded previous protocol version, and document volatile-relay room invalidation. Test rolling restart
 and reconnect storms before HA. DO can provide per-room routing later, with the same protocol suite.
 [WebSocket scaling patterns][y-ws], [DO sockets][do-ws].
 
@@ -642,7 +872,8 @@ the DO, not necessarily every edge/log path; enforce/document each component sep
 
 ### How it is tested, including load
 
-Proposed future CI and release evidence:
+Proposed future CI and release evidence. Model/crypto/browser tests apply to (a); relay/storage/
+container and load tests apply only if (b) is approved, and never block a serverless-only C1 release:
 
 1. **Model/convergence:** pure Vitest adapters with public synthetic seeded graphs; all clients
    receive equivalent authorised operations in reordered/duplicated batches and converge to the
@@ -652,7 +883,9 @@ Proposed future CI and release evidence:
 2. **Crypto/protocol:** fixed test vectors, wrong keys/tags/AAD/signatures, sequence replay, missing
    snapshot tail, role/channel substitution, epoch downgrade, unrelated room IDs, oversized payloads,
    nonce/session uniqueness across tabs/reload. Capture relay DB/log/network output using **synthetic**
-   canary labels/keys; assert none appear. Test malicious endpoint and C1 no-server-copy boundaries.
+   canary labels/keys; assert none appear. For (a), capture synthetic public signalling/ICE and assert
+   the independent secret protects SDP and E2E keys never appear. Test malicious endpoints and C1
+   no-server-copy boundaries; exercise transport interface conformance without building a server.
 3. **Browser:** production build, two/three isolated browser profiles; use test-ID controls for all
    actions. Fake clocks for TTL/presence, explicit sync/ack/idle events for readiness; `gotoLive()` and
    `pauseClock()` for simulation. Keyboard/screen-reader names, colour-independent cursors, reduced
@@ -686,37 +919,46 @@ implemented by this research; future presenter examples follow the showcase rule
 ### Decide now
 
 - Advance **C0 then a bounded C1**, with no compulsory accounts, E2E for every room and unchanged
-  offline/local editor. Default to Yjs pending evidence; Node/Docker is the first deployable relay.
+  offline/local editor. Default to Yjs plus E2E/WebRTC with Trystero-style public matchmaking, pending
+  evidence. C1 can ship from static hosts/self-hosted copies with nothing for us to host.
 - Approve the **meaning and wording of the Private exception**, including an always-off network
   deployment mode. If Private must continue to mean absolutely no transmission even with consent,
   limit collaboration to a separately created encrypted-session copy; do not silently change it.
-- Choose an explicit pilot operator/region, expiry policy, free budget and maximum room size.
-  Suggested starting policy: 8 participants and session-only storage; exact idle/absolute TTL and
-  cumulative bandwidth quotas require owner input and load evidence.
+- Choose permitted public services, disclose IP/metadata exposure and cooperative End session limits,
+  and agree C1 beta connectivity/cost criteria and fallback wording. Proposed scope: 2–8 participants,
+  local copies only, no durable server storage. TURN credential feasibility is a C0 gate, not permission
+  to embed API secrets or create a credential server.
+- Keep all client groundwork transport-agnostic. **Do not implement or operate any server without the
+  owner's explicit approval.** Schedule the documented post-beta decision on (b), retaining a
+  configurable, self-hostable Node ciphertext relay design for networks/scale/persistence that need it.
 - Require crypto/protocol review, recovery/convergence tests and 5,000-node/churn measurements before
   enabling work-diagram collaboration. Publish metadata/retention and honest recovery limitations.
 
 ### Decide later
 
-- Whether C2b stores ciphertext by default, retention/quotas, object store and HA topology.
+- Whether measured C1 connectivity, scale or persistence needs justify (b); approval, operator/region,
+  budget and kit deployment before building it. If approved, include the configurable relay in the
+  self-host kit, disabled by default; separately decide C2b retention/quotas, storage and HA.
 - Auth provider, sign-in methods, workspace billing, organisational SSO and verified identity display.
 - Key recovery: recovery file/passphrase, another authorised device/member, or optional enterprise
   escrow. Server escrow that can decrypt **would change the E2E promise** and is not the default here.
 - Historical access for newly invited users, passkey-based key wrapping, enterprise audit requirements,
   and whether membership churn justifies MLS rather than simple generation changes.
-- Workers adapter versus more Node capacity; WebRTC as an optional transport only after a measured
-  connectivity advantage. Avoid a speculative multi-region/peer-to-peer platform build.
+- Workers adapter versus Node capacity only if a relay is approved and measured demand warrants it.
+  Start with WebRTC; evaluate a host-peer star before larger-room promises. Avoid a speculative
+  multi-region platform build.
 
 ### Open questions
 
 1. Is **Private + explicit encrypted-session permission** acceptable, or must Private always remain
    strictly on-device and collaboration require a separate copy? Which wording makes that clear?
-2. Is C1's room loss after all peers leave/restart acceptable for a beta, or must C2b persistence be
-   included before public release? What idle/absolute expiry should the chooser promise?
+2. Is “local copies; wait for an online peer” acceptable for serverless C1? What cooperative expiry/
+   End session wording is clear? If unattended rejoin becomes necessary, decide on (b)/C2b explicitly.
 3. Is the first target a meeting (2–8 people, presenter) or asynchronous team design review? The latter
    raises portable comments, persistence and identity priority more than cursors.
-4. What monthly public-relay budget and operator/on-call commitment are acceptable? Which processing,
-   backup and logging regions are required? Are there customers needing a fully disconnected kit?
+4. What public-infrastructure/IP exposure is acceptable and what beta whole-room success/cost evidence
+   would justify approving (b)? Only then choose relay budget/on-call and processing/backup/log regions.
+   Which self-hosters need public services disabled or a fully disconnected kit?
 5. Is losing all device/room keys allowed to make a saved workspace irrecoverable? If not, who is trusted
    for recovery, and how is that authority explained without undermining Private?
 6. Must viewers/commenters be adversarially restricted in the first release, or is an all-edit anonymous
@@ -728,8 +970,12 @@ implemented by this research; future presenter examples follow the showcase rule
 
 - **Require login or a paid plan to draw/co-edit:** conflicts with the owner's core constraint; bounded
   anonymous rooms can precede identity. Managed services may still fund optional organisational features.
-- **“No backend” as a claim for general WebRTC collaboration:** hides signalling/TURN and unreliable
-  corporate connectivity; keep a real zero-service file workflow instead. [WebRTC][webrtc].
+- **Reject serverless as impractical before measuring it:** public matchmaking removes our signalling
+  host and warrants a C1 beta. Also reject claiming “no infrastructure” or guaranteed corporate
+  connectivity: signalling/ICE/TURN dependencies remain. Keep honest file/link failure recovery.
+  [Trystero][trystero], [WebRTC][webrtc].
+- **Build the Node relay or coturn now:** contrary to the owner's browser-first direction. Retain
+  designs and costs for an explicit post-beta owner decision; do not hide a credential server in C0.
 - **Stock y-websocket/Hocuspocus/Y-Sweet with TLS called E2E:** these process document state; cannot
   meet the proposed Private rule unchanged. Their designs remain useful references. [Provider][y-ws],
   [Hocuspocus][hocus-store], [Y-Sweet][ys].
@@ -751,8 +997,11 @@ implemented by this research; future presenter examples follow the showcase rule
 
 ## Evidence and refresh notes
 
-Every external reference below has access date **2026-10-15**, including undated living docs and
-maintainer source. Local references were reviewed at baseline `16060ab9`. Dates in prose identify
+Original external references have access date **2026-10-15**. The new serverless/public-infrastructure
+references grouped below, plus refreshed y-webrtc, coturn and Cloudflare TURN evidence, were checked
+**2026-10-16**, including undated living docs, source and GitHub API commit/licence metadata. Local
+references were reviewed at baseline `16060ab9`; this revision extends research commit `0e3af378`.
+Dates in prose identify
 publication/update dates when established; no search crawl timestamp is treated as a feature release.
 Where pages were inaccessible, the corresponding claim is U or supported by another first-party
 source: Excalidraw's older encryption blog/Plus comparison were inaccessible, so maintainer answers,
@@ -764,6 +1013,45 @@ launch. In particular, recheck PartyKit shutdown, Jamsocket/Modal managed availa
 Auth maintenance, production passkey support, current CRDT bundle bytes and exact residency/deletion
 contracts. A prototype/security review must settle the marked design gaps; source availability alone
 does not establish operational support or cryptographic review.
+
+The serverless review did **not** probe public trackers/relays, run connectivity tests or verify
+individual endpoint permission/SLA. Trystero's “IPFS” package label differs from its current Waku
+implementation; pin source rather than relying on old descriptions. Metered's separate trial/Open
+Relay allowances and conflicting region wording are retained, not resolved by guessing. The 2017 TURN
+measurements are explicitly historical; the C1 beta must supply current Live Diagrams evidence.
+
+### Serverless/public infrastructure — checked 2026-10-16
+
+[trystero]: https://github.com/dmotz/trystero
+[trystero-release]: https://github.com/dmotz/trystero/discussions/157
+[trystero-meta]: https://api.github.com/repos/dmotz/trystero
+[trystero-commit]: https://api.github.com/repos/dmotz/trystero/commits/acef9ddc15528f3d5476b64023c4c8d21ff8d5c9
+[trystero-crypto]: https://github.com/dmotz/trystero/blob/acef9ddc15528f3d5476b64023c4c8d21ff8d5c9/packages/core/src/crypto.ts
+[trystero-strategy]: https://github.com/dmotz/trystero/blob/acef9ddc15528f3d5476b64023c4c8d21ff8d5c9/packages/core/src/strategy.ts
+[trystero-torrent]: https://github.com/dmotz/trystero/blob/acef9ddc15528f3d5476b64023c4c8d21ff8d5c9/packages/torrent/src/index.ts
+[trystero-nostr]: https://github.com/dmotz/trystero/blob/acef9ddc15528f3d5476b64023c4c8d21ff8d5c9/packages/nostr/src/index.ts
+[trystero-mqtt]: https://github.com/dmotz/trystero/blob/acef9ddc15528f3d5476b64023c4c8d21ff8d5c9/packages/mqtt/src/index.ts
+[trystero-ipfs]: https://github.com/dmotz/trystero/blob/acef9ddc15528f3d5476b64023c4c8d21ff8d5c9/packages/ipfs/src/index.ts
+[y-trystero]: https://github.com/WinstonFassett/y-webrtc-trystero
+[y-trystero-commit]: https://api.github.com/repos/WinstonFassett/y-webrtc-trystero/commits/a6dea7d633d1f861c50876741b7398f2432a4cfa
+[nostr-crdt]: https://github.com/YousefED/nostr-crdt/blob/1ada3f5b553e428771f9e0d8e6bb9b00247a5ff1/README.md
+[nostr-crdt-meta]: https://api.github.com/repos/YousefED/nostr-crdt
+[nostr-crdt-commit]: https://api.github.com/repos/YousefED/nostr-crdt/commits/1ada3f5b553e428771f9e0d8e6bb9b00247a5ff1
+[peerjs]: https://peerjs.com/client/getting-started
+[peerjs-cloud]: https://peerjs.com/client/faq
+[libp2p-browser]: https://docs.libp2p.io/guides/webrtc-browser-connectivity/
+[libp2p-webrtc]: https://github.com/libp2p/specs/blob/master/webrtc/webrtc.md
+[nostr-limits]: https://github.com/nostr-protocol/nips/blob/master/11.md
+[turn-measured]: https://medium.com/@fippo/what-kind-of-turn-server-is-being-used-d67dbfc2ff5d
+[webrtc-peers]: https://webrtc.org/getting-started/peer-connections
+[webrtc-standard]: https://www.w3.org/TR/webrtc/#dom-rtcicetransportpolicy
+[webrtc-privacy]: https://www.rfc-editor.org/rfc/rfc8828.html
+[turn-faq]: https://developers.cloudflare.com/realtime/turn/faq/
+[cf-turn-product]: https://www.cloudflare.com/products/turn-sfu/
+[turn-credentials]: https://developers.cloudflare.com/realtime/turn/generate-credentials/
+[metered-turn]: https://www.metered.ca/stun-turn
+[metered-regions]: https://www.metered.ca/docs/turnserver-guides/turnserver-regions/
+[open-relay]: https://www.metered.ca/tools/openrelay/
 
 ### Product and local contracts
 
