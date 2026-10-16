@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import * as Y from "yjs";
 import { textToBytes } from "../interop/codec";
 import { FakeClock } from "./clock";
@@ -39,6 +39,34 @@ async function rogue(net: MemoryNetwork, link = room) {
     },
   };
 }
+
+/**
+ * The size tests run with every byte limit divided by 16 (restored after each): the behaviour at the bounds is the
+ * same, and the test moves megabytes instead of tens of them, so it doesn't crowd the rest of the suite.
+ */
+const SCALE = 16;
+const BYTE_LIMITS = [
+  "maxFragmentBytes",
+  "maxDocFrameBytes",
+  "maxMessageBytes",
+  "maxStepBytes",
+  "maxRoomBytes",
+  "maxHistoryBytes",
+  "maxPartialBytesPerSender",
+  "maxPartialBytes",
+  "senderBytesPerWindow",
+  "replyBytesPerWindow",
+  "maxQueuedBytes",
+  "maxQueuedBytesPerPeer",
+] as const;
+function scaledLimits() {
+  const limits = COLLAB_LIMITS as unknown as Record<string, number>;
+  const saved = Object.fromEntries(BYTE_LIMITS.map((k) => [k, limits[k]]));
+  for (const k of BYTE_LIMITS) limits[k] = Math.floor(limits[k] / SCALE);
+  onTestFinished(() => void Object.assign(limits, saved));
+}
+/** Characters (three UTF-8 bytes each) in one large value, at that scale. */
+const CJK = Math.floor(99_000 / SCALE);
 
 const labels = (c: TestClient) => c.diagram?.nodes.map((n) => n.label);
 
@@ -172,11 +200,12 @@ describe("sessions", () => {
   });
 
   it("refuses a step whose UTF-8 encoding is past the step bound, however short it is in characters", async () => {
+    scaledLimits();
     const { net, a, b, settle } = await room3();
     let wire = 0;
     net.tap(() => wire++);
     // 60 values of 99,000 three-byte characters: 6 million characters, 18 MB encoded.
-    const big = Object.fromEntries(Array.from({ length: 60 }, (_, i) => [`x${i}`, "\u4e2d".repeat(99_000)]));
+    const big = Object.fromEntries(Array.from({ length: 60 }, (_, i) => [`x${i}`, "\u4e2d".repeat(CJK)]));
     expect(a.edit((d) => ({ ...d, ...big }))).toBe(false);
     expect(a.binding.refused).toBe("too-large");
     expect(Object.keys(a.diagram!)).not.toContain("x0");
@@ -188,9 +217,10 @@ describe("sessions", () => {
   });
 
   it("a newcomer joins after concurrent steps take the room past a reply bucket's worth", async () => {
+    scaledLimits();
     const { net, clock, a, b, c, settle } = await room3();
     const chunk = (k: number) =>
-      Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`z${k}_${i}`, "\u4e2d".repeat(99_000)]));
+      Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`z${k}_${i}`, "\u4e2d".repeat(CJK)]));
     for (const k of [1, 2, 3]) {
       expect(a.edit((d) => ({ ...d, ...chunk(k) }))).toBe(true);
       await settle();
@@ -199,7 +229,7 @@ describe("sessions", () => {
     expect(b.edit((d) => ({ ...d, ...chunk(4) }))).toBe(true);
     expect(c.edit((d) => ({ ...d, ...chunk(5) }))).toBe(true);
     await settle();
-    expect(a.session.doc.encodeDiff().length).toBeGreaterThan(16 * 1024 * 1024);
+    expect(a.session.doc.encodeDiff().length).toBeGreaterThan(COLLAB_LIMITS.maxRoomBytes);
     // And now the room refuses to grow further.
     expect(a.edit((d) => ({ ...d, ...chunk(6) }))).toBe(false);
     expect(a.binding.refused).toBe("room-full");
@@ -219,8 +249,9 @@ describe("sessions", () => {
   }, 60_000);
 
   it("one person's Undo history can't grow the room without bound", async () => {
+    scaledLimits();
     const { net, clock, a, b, settle } = await room3();
-    const value = (k: number) => ({ big: `${k}`.padEnd(3, "-") + "\u4e2d".repeat(99_000) });
+    const value = (k: number) => ({ big: `${k}`.padEnd(3, "-") + "\u4e2d".repeat(CJK) });
     for (let k = 0; k < 12; k++) {
       // Each replaces the last 3 MB value: without a bound, Undo would keep every replaced one.
       expect(
@@ -239,9 +270,10 @@ describe("sessions", () => {
   }, 60_000);
 
   it("measures the room once, not once per refused edit", async () => {
+    scaledLimits();
     const { a } = await room3();
     const chunk = (k: number) =>
-      Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`w${k}_${i}`, "\u4e2d".repeat(99_000)]));
+      Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`w${k}_${i}`, "\u4e2d".repeat(CJK)]));
     for (const k of [1, 2, 3, 4]) a.edit((d) => ({ ...d, ...chunk(k) }));
     const before = a.session.doc.stats.roomMeasurements;
     for (let i = 0; i < 5; i++) expect(a.edit((d) => ({ ...d, ...chunk(9) }))).toBe(false);
@@ -331,6 +363,7 @@ describe("sessions refuse hostile input", () => {
   });
 
   it("rate-limits a sender flooding document frames", async () => {
+    scaledLimits();
     const { net, a, settle } = await room3();
     const evil = await rogue(net);
     const big = frame(DOC.syncRequest, new Uint8Array(COLLAB_LIMITS.maxDocFrameBytes - 1024));
@@ -342,6 +375,7 @@ describe("sessions refuse hostile input", () => {
   });
 
   it("throttles what it sends back to a member who keeps asking for the whole room", async () => {
+    scaledLimits();
     const { net, a, settle } = await room3();
     a.edit((d) => ({
       ...d,
@@ -394,6 +428,7 @@ describe("sessions refuse hostile input", () => {
   });
 
   it("drops frames past the inbox bound before decrypting them", async () => {
+    scaledLimits();
     const { a } = await room3();
     const s = a.session as unknown as { enqueue(from: string, bytes: Uint8Array): Promise<void> };
     const big = new Uint8Array(COLLAB_LIMITS.maxDocFrameBytes);
