@@ -89,8 +89,11 @@ export function planBoundaryDrop(
 }
 
 /** Recursively computes all ancestor group IDs of `groupId`. */
-export function ancestorGroupIds(groupId: string, groups: readonly { id: string; group?: string }[]): Set<string> {
-  const byId = new Map(groups.map((g) => [g.id, g]));
+export function ancestorGroupIds(
+  groupId: string,
+  groups: readonly { id: string; group?: string }[],
+  byId: ReadonlyMap<string, { group?: string }> = new Map(groups.map((g) => [g.id, g])),
+): Set<string> {
   const result = new Set<string>();
   let cur = byId.get(groupId)?.group;
   const visited = new Set<string>([groupId]);

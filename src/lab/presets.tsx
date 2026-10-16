@@ -1,4 +1,5 @@
 import { kedaFixture } from "./kedaFixture";
+import { ImportRetryLab } from "./ImportRetryLab";
 import { LiveKeyboardLab } from "./LiveKeyboardLab";
 import { measuredHierarchyFixture, nestedBoundariesFixture } from "./nestedBoundariesFixture";
 import { captionContrastFixture } from "./captionContrastFixture";
@@ -987,6 +988,15 @@ const tracePresets: Preset[] = [
 ];
 
 export const presets: readonly Preset[] = [
+  {
+    kind: "render",
+    id: "import-retry",
+    title: "Retry a degraded import",
+    group: "Playground",
+    description: "Recover omitted scaling dependencies from an unchanged boundary selection.",
+    controls: [],
+    render: () => <ImportRetryLab />,
+  },
   {
     kind: "render",
     id: "gallery-local-catalog",

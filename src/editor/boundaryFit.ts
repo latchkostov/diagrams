@@ -9,6 +9,12 @@ export function planBoundaryRefits(
   elements: readonly BoundaryBox[],
   requested?: ReadonlySet<string>,
 ): Map<string, ReturnType<typeof boundaryAround>> {
+  return createBoundaryRefitter(groups, elements)(requested);
+}
+
+/** Index geometry and bottom-up order once. Later fits can reuse it after an element's box moves;
+ * child boxes retain their latest fit, so collision placement sees every preceding adjustment. */
+export function createBoundaryRefitter(groups: readonly BoundaryBox[], elements: readonly BoundaryBox[]) {
   const byId = new Map(groups.map((g) => [g.id, g]));
   const members = new Map<string, { box: BoundaryBox; child?: string }[]>();
   const boxes = new Map<string, Box>(groups.map((g) => [g.id, g]));
@@ -23,21 +29,29 @@ export function planBoundaryRefits(
   groups.forEach((g) => add(g, true));
   elements.forEach((n) => add(n, false));
   const ready = groups.filter((g) => !remaining.get(g.id)).map((g) => g.id);
-  const refits = new Map<string, ReturnType<typeof boundaryAround>>();
+  const order = new Map<string, number>();
   while (ready.length) {
     const id = ready.pop()!;
     const group = byId.get(id)!;
-    const contents = members.get(id) ?? [];
-    if (contents.length && (!requested || requested.has(id))) {
-      const bounds = boundaryAround(contents.map((n) => (n.child ? boxes.get(n.child)! : n.box)));
-      boxes.set(id, { id, ...bounds });
-      refits.set(id, bounds);
-    }
+    order.set(id, order.size);
     if (group.group && remaining.has(group.group)) {
       const left = remaining.get(group.group)! - 1;
       remaining.set(group.group, left);
       if (!left) ready.push(group.group);
     }
   }
-  return refits;
+  return (requested?: ReadonlySet<string>) => {
+    const ids = requested
+      ? [...requested].filter((id) => order.has(id)).sort((a, b) => order.get(a)! - order.get(b)!)
+      : [...order.keys()];
+    const refits = new Map<string, ReturnType<typeof boundaryAround>>();
+    for (const id of ids) {
+      const contents = members.get(id) ?? [];
+      if (!contents.length) continue;
+      const bounds = boundaryAround(contents.map((n) => (n.child ? boxes.get(n.child)! : n.box)));
+      boxes.set(id, { id, ...bounds });
+      refits.set(id, bounds);
+    }
+    return refits;
+  };
 }

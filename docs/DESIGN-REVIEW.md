@@ -7,6 +7,16 @@ inline slots preserve the English content, command bytes, links, controls and st
 direction and LTR command rows retain their behavior. The page adds no chrome. The reviewer did not
 run browsers or tests; production browser regressions independently cover reordered content, command
 preservation, mobile/desktop overflow and delivery transports.
+
+## Boundary refit review, round 2 (2026-10-16)
+
+Scoped source and regression review: agent placement treats a member's complete boundary ancestry
+as containment, with bottom-up refits after collision moves. Existing collision order and flat-diagram
+output are preserved by reusing the prepared geometry. No controls, focus destinations or product
+wording change. The production browser test exercises the unchanged degraded selection's existing
+Draw these action through the real report and replay pipeline, preserving the original diagram.
+The small invented fixture lives in the Lab. This was not an independent whole-app designer walkthrough.
+
 ## Review follow-ups batch 2 (2026-10-16)
 
 Scoped source and regression review: viewing/fitting an example leaves its storage and ownership

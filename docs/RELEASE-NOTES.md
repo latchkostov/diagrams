@@ -17,6 +17,29 @@
   pseudo-locale gain the `staticAuth` and `staticSkill` hashes for 31 messages. Existing area hashes,
   fallback counts and every other golden stay unchanged relative to master.
 
+## Boundary refit review, round 2 (#139, 2026-10-16)
+
+- Agent and pasted layouts exclude every ancestor boundary from placement obstacles, both
+  before and after fitting. Collision moves refit the member's boundary and its ancestors
+  bottom-up, preserving containment and membership.
+- Unboxed boundaries fit in one batch in both paste and skill layout. Geometry and hierarchy
+  are prepared once; collision adjustments reuse those indexes while keeping the existing
+  placement order. An operation-count regression compares 16 and 128 boundaries: restoring
+  either old loop produces 64× work and fails the 24× limit.
+- A production browser regression clicks Draw these on an unchanged degraded selection,
+  restores its KEDA policy, source and reader connection, and checks the original diagram
+  remains unchanged. Caption contrast tests count underlying cell and entry visits, including
+  duplicate entries, nonmatching overflow scans and aborted queries, on fresh and cached passes.
+- All seven review findings are valid: the ancestry P1 and three P2s describe one defect;
+  the batching P1 and both test gaps are addressed separately. Temporarily removing each fix
+  fails its regression. No findings are rejected. Deferring all collision fits until the end
+  was rejected because it changed existing flat-diagram placements; indexed immediate refits
+  preserve them. No output golden changes or re-recording are needed.
+- UX review: nested members stay inside their boundaries, recovery uses the existing report
+  action, and no product controls or wording are added. The Lab supplies the small retry fixture.
+  Generated skill layout and the released viewer are refreshed; plugin 1.1.30 remains exactly
+  one patch above origin/master. This fixes existing behavior and adds no showcase feature.
+
 ## Verification gate review fixes (2026-10-16)
 
 - The full local gate owns its app server: gate mode disables reuse for every

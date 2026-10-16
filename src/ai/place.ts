@@ -1,15 +1,17 @@
 import type { DiagramFile } from "../model/types";
 import { layeredLayout } from "../editor/layout";
-import { planBoundaryRefits } from "../editor/boundaryFit";
+import { createBoundaryRefitter, planBoundaryRefits } from "../editor/boundaryFit";
 import { estimateCardSize } from "../canvas/nodes/size";
 import { placeNextTo, placeFree, overlaps, type Box } from "../canvas/placement";
 import type { LayoutMode } from "./index";
+import { ancestorGroupIds } from "../model/groupHierarchy";
 
 export function fitGroupToContents(diagram: DiagramFile, groupId: string): DiagramFile {
   return fitGroups(diagram, new Set([groupId]));
 }
 
-function fitGroups(diagram: DiagramFile, requested?: ReadonlySet<string>): DiagramFile {
+export function fitGroups(diagram: DiagramFile, requested?: ReadonlySet<string>): DiagramFile {
+  if (!diagram.groups?.length || requested?.size === 0) return diagram;
   const refits = planBoundaryRefits(
     diagram.groups ?? [],
     [...diagram.nodes.map((n) => ({ ...n, ...estimateCardSize(n.label, n.sublabel) })), ...(diagram.annotations ?? [])],
@@ -70,6 +72,21 @@ export function placeNew(
       if (group) n.group = group;
     }
   }
+  const ancestry = new Map<string, Set<string>>();
+  const groups = diagram.groups ?? [];
+  const groupById = new Map(groups.map((g) => [g.id, g]));
+  for (const n of nodes) {
+    if (!n.group || ancestry.has(n.group)) continue;
+    ancestry.set(n.group, new Set([n.group, ...ancestorGroupIds(n.group, groups, groupById)]));
+  }
+  const foreignGroups = (n: (typeof nodes)[number], candidates = groups) =>
+    candidates.filter((g) => !n.group || !ancestry.get(n.group)?.has(g.id));
+  const includeAncestors = (ids: Iterable<string>) => {
+    const result = new Set(ids);
+    for (const id of ids)
+      for (const ancestor of ancestry.get(id) ?? ancestorGroupIds(id, groups, groupById)) result.add(ancestor);
+    return result;
+  };
   if (full) {
     const positions = layeredLayout({ nodes, edges: diagram.edges, direction: diagram.direction });
     nodes = nodes.map((n) => ({ ...n, ...positions.get(n.id) }));
@@ -80,7 +97,7 @@ export function placeNew(
     ];
     for (const n of nodes.filter((n) => fresh.has(n.id))) {
       const size = estimateCardSize(n.label, n.sublabel);
-      const occupied = [...boxes, ...(diagram.groups ?? []).filter((g) => g.id !== n.group)];
+      const occupied = [...boxes, ...foreignGroups(n)];
       const edge =
         mode === "none"
           ? undefined
@@ -105,14 +122,21 @@ export function placeNew(
       boxes.push({ ...n, ...size });
     }
   }
-  let next = { ...diagram, nodes };
+  const next = { ...diagram, nodes, groups: diagram.groups?.map((g) => ({ ...g })) };
+  const nextGroups = new Map(next.groups?.map((g) => [g.id, g]));
+  const sized = nodes.map((n) => ({ ...n, ...estimateCardSize(n.label, n.sublabel) }));
+  const sizedById = new Map(sized.map((n) => [n.id, n]));
+  const planRefits = createBoundaryRefitter(groups, [...sized, ...(diagram.annotations ?? [])]);
+  const refit = (requested?: ReadonlySet<string>) => {
+    for (const [id, bounds] of planRefits(requested)) Object.assign(nextGroups.get(id)!, bounds);
+  };
   const touched = new Set([...touchedGroups, ...nodes.filter((n) => fresh.has(n.id) && n.group).map((n) => n.group!)]);
-  next = fitGroups(next, full ? undefined : touched);
+  refit(full ? undefined : includeAncestors(touched));
   // Fitting a boundary can enclose an unrelated addition, especially after a full layout.
   // Place those cards clear of every foreign boundary as well as the other cards.
   for (const n of next.nodes) {
     if (!full && !fresh.has(n.id)) continue;
-    const foreign = (next.groups ?? []).filter((g) => g.id !== n.group);
+    const foreign = foreignGroups(n, next.groups);
     const size = estimateCardSize(n.label, n.sublabel);
     if (!foreign.some((g) => overlaps({ ...n, ...size }, g))) continue;
     const occupied = [
@@ -125,7 +149,8 @@ export function placeNew(
       center = { x: Math.max(0, ...occupied.map((o) => o.x + o.width)) + 80 + size.width / 2, y: center.y };
     n.x = Math.round(center.x - size.width / 2);
     n.y = Math.round(center.y - size.height / 2);
-    if (n.group) next = fitGroupToContents(next, n.group);
+    Object.assign(sizedById.get(n.id)!, { x: n.x, y: n.y });
+    if (n.group) refit(includeAncestors([n.group]));
   }
   return next;
 }

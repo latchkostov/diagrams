@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { toFlow } from "./convert";
+import { countingReads } from "../test/complexity";
 import { captionContrastKey, createCaptionContrastKey, CAPTION_WORK_LIMIT } from "./useCaptionContrast";
 let SpatialGrid: typeof import("./geometry/spatial").SpatialGrid;
 let measureCaptionContrast: typeof import("./useCaptionContrast").measureCaptionContrast;
@@ -190,7 +191,12 @@ it("caches unaffected captions and bounds dense overlap calculations", () => {
   );
   const s = surface([
     ...Array.from({ length: 2000 }, (_, i) => ({ id: `annotation-c${i}`, x: 0, width: 200 })),
-    ...Array.from({ length: 1000 }, (_, i) => ({ id: `group-g${i}`, x: 0, width: 200, fill: "white-five-percent" })),
+    ...Array.from({ length: 1000 }, (_, i) => ({
+      id: `group-g${i}`,
+      x: i < 10 ? 10000 : 0,
+      width: i < 10 ? 1000000 : 200,
+      fill: "white-five-percent",
+    })),
   ]);
   const accessible = vi.spyOn(colors, "accessibleColor");
   try {
@@ -228,7 +234,12 @@ it("retries incomplete contrast when removing earlier captions frees the budget"
   );
   const s = surface([
     ...Array.from({ length: 11 }, (_, i) => ({ id: `annotation-c${i}`, x: 0, width: 200 })),
-    ...Array.from({ length: 1000 }, (_, i) => ({ id: `group-g${i}`, x: 0, width: 200, fill: "white-five-percent" })),
+    ...Array.from({ length: 1000 }, (_, i) => ({
+      id: `group-g${i}`,
+      x: i < 10 ? 10000 : 0,
+      width: i < 10 ? 1000000 : 200,
+      fill: "white-five-percent",
+    })),
   ]);
   measureCaptionContrast(s.canvas, nodes, background);
   expect(s.writes.get("annotation-c10")).toBe("var(--text)");
@@ -341,7 +352,7 @@ it("does not serialize unrelated text or unchanged caption projections during se
   }
 });
 
-it("bounds spatial entry visits across all captions, including cached passes", () => {
+it("bounds actual spatial visits across cached and exhausted passes", () => {
   const nodes = fixture(2000);
   nodes.push(
     ...toFlow({
@@ -361,25 +372,77 @@ it("bounds spatial entry visits across all captions, including cached passes", (
   );
   const s = surface([
     ...Array.from({ length: 2000 }, (_, i) => ({ id: `annotation-c${i}`, x: 0, width: 200 })),
-    ...Array.from({ length: 1000 }, (_, i) => ({ id: `group-g${i}`, x: 0, width: 200, fill: "white-five-percent" })),
+    ...Array.from({ length: 1000 }, (_, i) => ({
+      id: `group-g${i}`,
+      x: i < 10 ? 10000 : 0,
+      width: i < 10 ? 1000000 : 200,
+      fill: "white-five-percent",
+    })),
   ]);
   const query = SpatialGrid.prototype.query;
-  let visits = 0;
+  let cells = 0;
+  let abortedVisits = 0;
+  let aborted = 0;
+  let returned = 0;
+  const counters: (() => number)[] = [];
+  const instrumented = new WeakSet<object>();
+  const reads = () => counters.reduce((total, count) => total + count(), 0);
   const spy = vi.spyOn(SpatialGrid.prototype, "query").mockImplementation(function (
     this: import("./geometry/spatial").SpatialGrid<unknown>,
     box,
     budget,
   ) {
+    // Observe the underlying data, independently of query's budget and deduplicated output.
+    // Every yielded array entry counts, including repeats and entries from an aborted scan.
+    const grid = this as unknown as {
+      cells: Map<number, Map<number, unknown[]>>;
+      entries: unknown[];
+      overflow: unknown[];
+    };
+    if (!instrumented.has(grid)) {
+      instrumented.add(grid);
+      const wrap = (items: unknown[]) => {
+        const counted = countingReads(items);
+        counters.push(counted.reads);
+        return counted.items;
+      };
+      grid.entries = wrap(grid.entries);
+      grid.overflow = wrap(grid.overflow);
+      for (const column of grid.cells.values()) {
+        for (const [key, entries] of column) column.set(key, wrap(entries));
+        const get = column.get.bind(column);
+        column.get = (key) => {
+          cells++;
+          return get(key);
+        };
+      }
+      const get = grid.cells.get.bind(grid.cells);
+      grid.cells.get = (key) => {
+        cells++;
+        return get(key);
+      };
+    }
+    const before = reads() + cells;
     const hits = query.call(this, box, budget!);
-    visits += hits?.length ?? 0;
+    if (hits === null) {
+      aborted++;
+      abortedVisits += reads() + cells - before;
+    }
+    returned += hits?.length ?? 0;
     return hits;
   });
   try {
     for (let pass = 0; pass < 2; pass++) {
-      visits = 0;
+      const before = reads() + cells;
+      abortedVisits = aborted = returned = 0;
       measureCaptionContrast(s.canvas, nodes, background);
-      expect(visits).toBeGreaterThan(0);
-      expect(visits).toBeLessThanOrEqual(CAPTION_WORK_LIMIT);
+      const visits = reads() + cells - before;
+      expect(cells).toBeGreaterThan(0);
+      expect(visits).toBeGreaterThan(returned);
+      // A scan can yield one entry just before discovering the exhausted budget.
+      expect(visits).toBeLessThanOrEqual(CAPTION_WORK_LIMIT + 1);
+      expect(aborted).toBeGreaterThan(0);
+      expect(abortedVisits).toBeGreaterThan(0);
     }
   } finally {
     spy.mockRestore();
