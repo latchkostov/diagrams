@@ -4,6 +4,7 @@ import { presentFinding } from "./presentation";
 import { applyOps } from "../ai/ops";
 import { plannerFixture } from "../lab/plannerFixture";
 import { planScaling } from "../sim/scalingPlanner";
+import { cloudFixture } from "../lab/cloudFixture";
 
 describe("scenario sizing in Checks", () => {
   it("raises the planner's verified suggestion as one undoable capacity fix with the complete policy", () => {
@@ -38,5 +39,17 @@ describe("scenario sizing in Checks", () => {
     const finding = runChecks(plannerFixture("quota", 60)).findings.find((f) => f.id === "capacity:worker")!;
     expect(finding.scalingPlan?.kind).toBe("quota");
     expect(finding.fix).toBeUndefined();
+  });
+});
+
+describe("configured A3 capacity findings", () => {
+  it("name the platform whose target asks for more, never HPA", () => {
+    const d = cloudFixture("cloud-run");
+    d.nodes[0].props = { ratePerSec: 400 };
+    (d.nodes[1].props!.autoscaling as { controller: { maxReplicas: number } }).controller.maxReplicas = 2;
+    const finding = runChecks(d).findings.find((f) => f.id === "capacity:worker")!;
+    expect(finding.resourceFinding).toMatchObject({ kind: "max", platform: "Cloud Run" });
+    expect(finding.message).toMatch(/^Cloud Run needs \d+ replicas at target; maximum 2/);
+    expect(presentFinding(finding).message).toMatch(/^Cloud Run needs \d+ at its target; maximum 2/);
   });
 });

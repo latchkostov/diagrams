@@ -39,7 +39,13 @@ export function presentFinding(finding: Finding): Finding {
                 ? t("autoscaling.checkMemory")
                 : resource.kind === "baseline"
                   ? t("autoscaling.baselineRisk")
-                  : t("autoscaling.checkMax", { needed: resource.needed, max: resource.max }),
+                  : resource.platform
+                    ? t("autoscaling.checkMaxPlatform", {
+                        platform: resource.platform,
+                        needed: resource.needed,
+                        max: resource.max,
+                      })
+                    : t("autoscaling.checkMax", { needed: resource.needed, max: resource.max }),
       rationale: t("autoscaling.checkWhy"),
     };
   const note = finding.brokerAssignment;

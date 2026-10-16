@@ -44,6 +44,8 @@ export interface Finding {
     needed: number;
     max: number;
     keda?: { rate: number; lag: number; poll: number; startup: number };
+    /** A3: the cloud platform whose target asks for more (product name, never translated). */
+    platform?: string;
   };
   /** A3 scenario sizing (src/checks/scalingFindings.ts): neutral fields the UI translates. */
   scalingPlan?: {

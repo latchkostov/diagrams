@@ -2054,5 +2054,7 @@ const en = {
   "autoscaling.busRequired":
     "Connect a Service Bus queue to this app, then choose it below. This preset isn't saved until you do.",
   "autoscaling.docs": "{platform} scaling documentation",
+  "autoscaling.checkMaxPlatform":
+    "{platform} needs {needed, number} at its target; maximum {max, number}. Startup and partition limits still apply.",
 } as const;
 export default en;
