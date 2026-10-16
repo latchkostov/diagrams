@@ -1,5 +1,23 @@
 # Release notes
 
+## Image export CI synchronization (#142, 2026-10-16)
+
+- Fixed export regressions that assumed the 300-node PNG would download within the action timeout
+  or reach decoding within the ordinary assertion timeout. All four CI failures reproduce with
+  three Chromium workers at 4× CPU throttling. The tests now observe export progress and the success
+  toast within the existing whole-test hang backstop, then verify the actual download completes.
+  Retried exports after cancelled module/code/font loading all finish under that same throttle;
+  no stuck retry or product cancellation bug was found, and no app timeout was increased.
+- Added a production-browser regression for cancellation during FileReader icon conversion. It
+  verifies abort, cleared handlers, input/selection recovery, no download after late completion,
+  and a retry that refetches the uncached resource and embeds its exact bytes in the SVG. Removing
+  the reader's abort call makes this regression fail.
+- The live-path assertion now waits for rendered opacity as well as the dim attribute. Its test,
+  decorator and CSS transition were already identical on `origin/master`; a delayed transition
+  reproduces the CI failure before this assertion fix and passes afterwards. No live behavior changed.
+- Scoped designer source review found no new UX issues or chrome. Full parity passes all 2,196
+  goldens unchanged: zero changed, added, missing or stale records. No goldens were re-recorded.
+
 ## Responsive image export rebase onto Review follow-ups 3 (#144, 2026-10-16)
 
 - Rebased the export branch onto master's boundary-refit, ancestry and capacity-cache changes,

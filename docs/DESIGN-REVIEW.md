@@ -1,5 +1,14 @@
 # Design review
 
+## Image export CI synchronization (#142, 2026-10-16)
+
+The designer agent's scoped source review found no new UX issues. These changes affect tests only:
+export progress, Cancel, keyboard/focus recovery, wording and chrome keep their existing behavior.
+Slow-export coverage observes completion and the actual saved file; FileReader coverage checks that
+cancellation releases input and that a retry includes its icons. The live-path assertion observes the
+rendered transition rather than only its preceding DOM attributes. No controls or focus targets were
+added. This was a source review, not a whole-app or assistive-technology walkthrough.
+
 ## Review follow-ups 3, round 1 (2026-10-16)
 
 The designer agent's focused source review found no blocking UX issue. Skill annotations keep their

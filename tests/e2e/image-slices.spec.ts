@@ -1,7 +1,30 @@
-import type { Page } from "@playwright/test";
+import type { Download, Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { test, expect, expectNoErrors, gotoCanvas, pageLoadTimeout, publicExamples } from "./fixtures";
 import { callTool, installFakeModelContext, toolNames } from "./ai-helpers";
+
+/** Keep the slow-rendering CI case exercised even on a fast workstation. */
+async function slowExports(page: Page) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+}
+
+/** Observe downloads before starting; wait on the app's completion signal, within the test's hang backstop. */
+function imageDownloads(page: Page) {
+  const downloads: Download[] = [];
+  page.on("download", (download) => downloads.push(download));
+  return {
+    count: () => downloads.length,
+    finished: async (kind: "png" | "svg" = "png") => {
+      await expect(page.getByTestId("toast")).toHaveAttribute("data-kind", "success", { timeout: test.info().timeout });
+      await expect.poll(() => downloads.length).toBe(1);
+      const download = downloads[0];
+      expect(download.suggestedFilename()).toMatch(kind === "png" ? /\.png$/ : /\.svg$/);
+      expect(await download.failure()).toBeNull();
+      return download;
+    },
+  };
+}
 
 // Image export clones the canvas in time slices (src/interop/imageClone.ts, a port of html-to-image's clone): the
 // tab keeps painting, the toast shows how far it has got, and Cancel stops it. The port must draw what the library
@@ -220,8 +243,7 @@ test("a long image export keeps the page painting, shows its progress and can be
   // Something selected: the export takes its marks off for the picture and must put them back.
   await page.getByTestId("node-p0n0").click();
   await expect(page.getByTestId("rf__node-p0n0")).toHaveClass(/selected/);
-  let downloads = 0;
-  page.on("download", () => downloads++);
+  const downloads = imageDownloads(page);
 
   // The export reports progress while the clone runs; the page paints between its slices.
   const frames = await countFrames(page);
@@ -249,7 +271,7 @@ test("a long image export keeps the page painting, shows its progress and can be
   // Input is the page's again: a click selects.
   await page.getByTestId("node-p1n0").click();
   await expect(page.getByTestId("rf__node-p1n0")).toHaveClass(/selected/);
-  expect(downloads).toBe(0);
+  expect(downloads.count()).toBe(0);
 
   // Escape cancels too.
   await page.getByTestId("file-button").click();
@@ -257,15 +279,12 @@ test("a long image export keeps the page painting, shows its progress and can be
   await expect(page.getByTestId("toast-progress")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("toast")).toHaveCount(0);
-  expect(downloads).toBe(0);
+  expect(downloads.count()).toBe(0);
 
   // Let one finish: it downloads, after the same progress.
   await page.getByTestId("file-button").click();
-  const [download] = await Promise.all([
-    page.waitForEvent("download", { timeout: 120_000 }),
-    page.getByTestId("export-png").click(),
-  ]);
-  expect(download.suggestedFilename()).toMatch(/\.png$/);
+  await page.getByTestId("export-png").click();
+  await downloads.finished();
   await expect(page.getByTestId("rf__node-p1n0")).toHaveClass(/selected/);
   expectNoErrors(consoleErrors);
 });
@@ -330,22 +349,21 @@ for (const phase of ["decode", "encode"] as const)
         };
       }
     }, phase);
-    let downloads = 0;
-    page.on("download", () => downloads++);
+    const downloads = imageDownloads(page);
     await page.getByTestId("file-button").click();
     await page.getByTestId("export-png").click();
     await expect(page.getByTestId("toast")).toHaveAttribute("data-kind", "error");
     await expect(page.getByTestId("toast")).toContainText(`Image ${phase} failed`);
     await expect(node).toHaveClass(/selected/);
     await expect(page.getByTestId("export-header")).toHaveCount(0);
-    expect(downloads).toBe(0);
+    expect(downloads.count()).toBe(0);
     // The input hold and temporary paint must both be restored, including after the final drawing fails.
     await node.focus();
     await page.keyboard.press("Escape");
     await expect(node).not.toHaveClass(/selected/);
     await page.getByTestId("file-button").click();
-    const [download] = await Promise.all([page.waitForEvent("download"), page.getByTestId("export-png").click()]);
-    expect(download.suggestedFilename()).toMatch(/\.png$/);
+    await page.getByTestId("export-png").click();
+    await downloads.finished();
     expectNoErrors(consoleErrors);
   });
 
@@ -393,8 +411,8 @@ for (const [stalled, pattern, kind] of [
       finished++;
     });
     await openLanes(page);
-    let downloads = 0;
-    page.on("download", () => downloads++);
+    await slowExports(page);
+    const downloads = imageDownloads(page);
     await page.getByTestId("file-button").click();
     await page.getByTestId("export-png").click();
     await expect(page.getByTestId("image-export-cancel")).toBeFocused();
@@ -407,7 +425,7 @@ for (const [stalled, pattern, kind] of [
     await page.getByTestId("node-p2n0").click();
     await expect(page.getByTestId("rf__node-p2n0")).toHaveClass(/selected/);
     await expect(page.getByTestId("export-header")).toHaveCount(0);
-    expect(downloads).toBe(0);
+    expect(downloads.count()).toBe(0);
     resumed = true;
     release.resolve(undefined);
     await expect.poll(() => finished).toBe(stalls);
@@ -415,16 +433,108 @@ for (const [stalled, pattern, kind] of [
       await Promise.all(urls.map((url) => import(/* @vite-ignore */ url)));
     }, modules);
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-    expect(downloads).toBe(0);
+    expect(downloads.count()).toBe(0);
     await expect(page.getByTestId("toast")).toHaveCount(0);
     // Module evaluation / the cached font promise can now finish. A subsequent export waits on that same work.
     await page.getByTestId("file-button").click();
-    const [download] = await Promise.all([page.waitForEvent("download"), page.getByTestId("export-png").click()]);
-    expect(download.suggestedFilename()).toMatch(/\.png$/);
-    await expect(page.getByTestId("toast")).toHaveAttribute("data-kind", "success");
-    expect(downloads).toBe(1);
+    await page.getByTestId("export-png").click();
+    await expect(page.getByTestId("toast-progress")).toBeVisible();
+    await downloads.finished();
+    expect(downloads.count()).toBe(1);
     expectNoErrors(consoleErrors);
   });
+
+test("cancelling FileReader conversion releases the page and retries the uncached icon", async ({
+  page,
+  consoleErrors,
+}) => {
+  await gotoCanvas(page, publicExamples[0].slug);
+  const id = publicExamples[0].nodeIds[0];
+  await expect(page.getByTestId(`node-${id}`)).toBeVisible({ timeout: pageLoadTimeout() });
+  await page.evaluate(() => {
+    const NativeReader = window.FileReader;
+    const held: { reader: FileReader; blob: Blob; aborted: boolean }[] = [];
+    const w = window as unknown as {
+      __readers: typeof held;
+      __resumeReaders: () => Promise<string[]>;
+    };
+    w.__readers = held;
+    // Hold the browser conversion boundary, after fetch/blob have already completed. Font readers run normally.
+    window.FileReader = class extends NativeReader {
+      override readAsDataURL(blob: Blob) {
+        if (blob.type.includes("image/svg+xml")) held.push({ reader: this, blob, aborted: false });
+        else super.readAsDataURL(blob);
+      }
+      override abort() {
+        const entry = held.find((entry) => entry.reader === this);
+        if (entry) entry.aborted = true;
+        super.abort();
+      }
+    };
+    w.__resumeReaders = async () => {
+      window.FileReader = NativeReader;
+      return Promise.all(
+        held.map(async ({ reader, blob }) => {
+          // Even completion after cancellation must neither download nor populate the resource cache.
+          await new Promise<void>((resolve, reject) => {
+            reader.addEventListener("loadend", () => resolve(), { once: true });
+            reader.addEventListener("error", reject, { once: true });
+            NativeReader.prototype.readAsDataURL.call(reader, blob);
+          });
+          return blob.text();
+        }),
+      );
+    };
+  });
+  const downloads = imageDownloads(page);
+  const iconRequests: string[] = [];
+  page.on("request", (request) => {
+    if (request.resourceType() === "fetch" && /\.svg(?:\?|$)/.test(request.url())) iconRequests.push(request.url());
+  });
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("export-png").click();
+  await page.waitForFunction(() => (window as unknown as { __readers: unknown[] }).__readers.length > 0, undefined, {
+    timeout: 0,
+  });
+  await page.getByTestId("image-export-cancel").click();
+  await expect(page.getByTestId("toast")).toHaveCount(0);
+  await expect(page.getByTestId("export-header")).toHaveCount(0);
+  await page.getByTestId(`node-${id}`).click();
+  await expect(page.getByTestId(`rf__node-${id}`)).toHaveClass(/selected/);
+  const abandoned = await page.evaluate(() =>
+    (
+      window as unknown as {
+        __readers: { reader: FileReader; aborted: boolean }[];
+      }
+    ).__readers.map(({ reader, aborted }) => ({
+      aborted,
+      loadend: reader.onloadend !== null,
+      error: reader.onerror !== null,
+    })),
+  );
+  expect(abandoned.length).toBeGreaterThan(0);
+  expect(abandoned.every((reader) => reader.aborted && !reader.loadend && !reader.error)).toBe(true);
+  const firstRequests = [...iconRequests];
+  expect(firstRequests.length).toBeGreaterThan(0);
+  const icons = await page.evaluate(() =>
+    (window as unknown as { __resumeReaders: () => Promise<string[]> }).__resumeReaders(),
+  );
+  expect(downloads.count()).toBe(0);
+  await expect(page.getByTestId("toast")).toHaveCount(0);
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-more-formats").click();
+  await page.getByTestId("export-image").click();
+  await page.getByTestId("image-options-toggle").click();
+  await page.getByTestId("image-format-svg").click();
+  await page.getByTestId("image-export").click();
+  const download = await downloads.finished("svg");
+  const path = await download.path();
+  if (!path) throw new Error("SVG download failed");
+  const svg = await readFile(path, "utf8");
+  for (const icon of icons) expect(svg).toContain(Buffer.from(icon).toString("base64"));
+  for (const url of firstRequests) expect(iconRequests.filter((next) => next === url).length).toBeGreaterThan(1);
+  expectNoErrors(consoleErrors);
+});
 
 test("a WebMCP rename during export reports a localized retry and downloads no mixed revision", async ({
   page,
@@ -485,6 +595,7 @@ test("PNG progress stays unfinished through decoding and finishes with the downl
 }) => {
   test.slow();
   await openLanes(page);
+  await slowExports(page);
   await page.evaluate(() => {
     const decode = HTMLImageElement.prototype.decode;
     const w = window as unknown as { __decoding: boolean; __resumeDecode: () => void };
@@ -499,13 +610,19 @@ test("PNG progress stays unfinished through decoding and finishes with the downl
     };
   });
   await page.getByTestId("file-button").click();
+  const downloads = imageDownloads(page);
   await page.getByTestId("export-png").click();
-  await expect.poll(() => page.evaluate(() => (window as unknown as { __decoding: boolean }).__decoding)).toBe(true);
+  // Reaching decode includes the entire clone, embedding and serialization of this large diagram.
+  await expect(page.getByTestId("toast-progress")).toHaveAttribute("aria-valuenow", "90", {
+    timeout: test.info().timeout,
+  });
+  await page.waitForFunction(() => (window as unknown as { __decoding: boolean }).__decoding, undefined, {
+    timeout: 0,
+  });
   const value = await page.getByTestId("toast-progress").getAttribute("aria-valuenow");
   expect(Number(value)).toBeLessThan(100);
-  const download = page.waitForEvent("download");
+  expect(downloads.count()).toBe(0);
   await page.evaluate(() => (window as unknown as { __resumeDecode: () => void }).__resumeDecode());
-  await download;
-  await expect(page.getByTestId("toast")).toHaveAttribute("data-kind", "success");
+  await downloads.finished();
   expectNoErrors(consoleErrors);
 });

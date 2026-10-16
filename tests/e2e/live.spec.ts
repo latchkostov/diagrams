@@ -295,8 +295,11 @@ test.describe("live view", () => {
     await expect
       .poll(() => edgeDecoration("edge-payments-to-payment-db"))
       .toMatchObject({ dim: null, trace: "1", opacity: "1" });
-    expect(Number((await nodeDecoration("node-inventory")).opacity)).toBeLessThan(1);
-    expect(Number((await edgeDecoration("edge-order-events-to-inventory")).opacity)).toBeLessThan(1);
+    // The dim attribute precedes the CSS transition's first frame; wait for the rendered result too.
+    await expect.poll(async () => Number((await nodeDecoration("node-inventory")).opacity)).toBeLessThan(1);
+    await expect
+      .poll(async () => Number((await edgeDecoration("edge-order-events-to-inventory")).opacity))
+      .toBeLessThan(1);
     await page.getByTestId("live-trace-clear").click();
     await expect(page.getByTestId("live-trace")).toHaveCount(0);
     await expect.poll(() => nodeDecoration("node-inventory")).toMatchObject({ dim: null, opacity: "1" });

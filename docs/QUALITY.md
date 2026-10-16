@@ -293,6 +293,12 @@ first view, or if the canvas splits into more chunks. `scripts/perf/startup.mjs`
 interactive and the first open of the File menu, the dialogs, Ctrl+K, quick-add, the AI panel and live view on
 a production build, at a CPU and network throttle (`--cold`: each on a fresh page as soon as it's up).
 
+Large image exports wait on the progress phase and success toast within the whole-test hang backstop,
+then check the observed download's completion. The action timeout is not an export-duration budget.
+The cancelled-load retries and decode-progress regression keep a 4× CPU throttle to exercise slow CI
+rendering locally. A live dim attribute likewise precedes the opacity transition: poll the rendered
+opacity when asserting the visual result, rather than sampling it immediately after the attribute.
+
 ## A1 bookkeeping invariants
 
 `src/sim/resourceInvariants.ts` is an opt-in ownership oracle. Ordinary playback does not execute it.
