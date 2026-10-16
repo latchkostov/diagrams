@@ -275,6 +275,16 @@
   regression counts runtime route and member reads at an eighth input and the same 24x limit. Restoring
   per-consumer route scans fails at 1,440,001 reads instead of one; removing shared ID allocation still
   fails the Compose regression. Production behavior and timeouts are unchanged.
+## Resizable Inspector rebase onto Collaboration C0 (#141, 2026-10-16)
+
+- Rebased onto C0, preserving both documentation histories and the union of translation keys. The
+  collaboration Lab's client panels and status indicators remain readable after widening the Inspector:
+  three columns at 1920px, two columns with vertical scrolling at 1366px. A production-build browser
+  regression covers panel bounds, overflow and reachable status indicators; visual review adds no chrome.
+- Generated skill files start from master's release; the refreshed viewer ships at plugin 1.1.34,
+  exactly one patch above master's 1.1.33. Full parity regeneration retains only the 19 intentional changes
+  listed under Resizable Inspector below: catalog metadata for three messages and horizontal
+  `tidy.viewport` translations in 18 layout records. No additional golden changes are accepted.
 
 ## Collaboration reply-byte regression coverage (2026-10-16)
 
@@ -345,8 +355,8 @@
   `kafka-order-pipeline`, `multi-region-active-active`, `nightly-batch-elt`,
   `partitions-vs-subscriptions`, `serverless-burst-buffer`, `shared-api-quotas`, `shared-worker-pool`
   and `webhook-ingestion`. All geometry, zoom, Auto-layout, simulation and export records remain
-  unchanged; no screenshot golden changes. The stale skill viewer is refreshed at plugin 1.1.33,
-  one patch above origin/master's 1.1.32. The generated agent bundle is refreshed for the shifted
+  unchanged; no screenshot golden changes. The stale skill viewer is refreshed at plugin 1.1.34,
+  one patch above origin/master's 1.1.33. The generated agent bundle is refreshed for the shifted
   translation IDs; its freshness regression passes.
 
 ## Routing R1 rejected admission transactions (2026-10-16)

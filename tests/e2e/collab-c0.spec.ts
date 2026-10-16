@@ -97,6 +97,41 @@ test("the network watcher itself catches a same-origin upload, a room socket and
 test.describe("collaboration Lab (in-memory network)", () => {
   const count = (page: Page, name: string) => page.getByTestId(`collab-${name}-nodes`);
 
+  test("client panels and status stay within the Lab after widening the Inspector", async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1000 });
+    await gotoCanvas(page, "kafka-order-pipeline");
+    await page.getByTestId("node-order-events").dblclick();
+    await page.getByTestId("inspector-resize").press("End");
+    await expect
+      .poll(() => page.getByTestId("inspector").evaluate((el) => el.getBoundingClientRect().width))
+      .toBeGreaterThan(640);
+    await gotoLab(page, "collab-c0");
+    await expect(page.getByTestId("collab-converged")).toHaveAttribute("data-converged", "true");
+
+    for (const viewport of [1920, 1366]) {
+      await page.setViewportSize({ width: viewport, height: 1000 });
+      const stage = page.getByTestId("lab-stage");
+      await expect.poll(() => stage.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+      const stageBox = await stage.boundingBox();
+      if (!stageBox) throw new Error("Lab stage is missing");
+      for (const name of ["a", "b", "c"]) {
+        const panel = page.getByTestId(`collab-client-${name}`);
+        const status = page.getByTestId(`collab-${name}-status`);
+        await expect(status).toHaveText("connected");
+        await status.scrollIntoViewIfNeeded();
+        await expect(status).toBeInViewport();
+        const panelBox = await panel.boundingBox();
+        if (!panelBox) throw new Error(`Client ${name} panel is missing`);
+        expect(panelBox.x).toBeGreaterThanOrEqual(stageBox.x);
+        expect(panelBox.x + panelBox.width).toBeLessThanOrEqual(stageBox.x + stageBox.width);
+        expect(await panel.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+      }
+      await page.getByTestId("collab-converged").scrollIntoViewIfNeeded();
+      await expect(page.getByTestId("collab-converged")).toBeInViewport();
+      await page.screenshot({ path: test.info().outputPath(`collaboration-${viewport}.png`) });
+    }
+  });
+
   test("three clients converge, through a partition, with nothing leaving the page", async ({
     page,
     consoleErrors,
