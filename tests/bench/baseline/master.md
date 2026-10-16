@@ -1,25 +1,25 @@
 # Benchmark results
 
-2026-10-16T00:24:23.812Z · commit `0226d5942f` (uncommitted changes) on `test/benchmarks` · mode **full**
+2026-10-16T01:26:39.526Z · commit `b99900a753` (uncommitted changes) on `test/benchmarks` · mode **full**
 
 | Environment |  |
 | --- | ---: |
 | Machine | AMD Ryzen 9 7950X 16-Core Processor, 32 threads, 68 GB, Windows_NT 10.0.26300 (x64) |
 | Runtime | Node v24.22.0, Chromium 156.0.8078.4, Playwright 1.64.1, Vite 8.3.4, React 19.3.1 |
 | Browser settings | CPU throttle 2× (main thread), 1440 × 900 at device scale factor 1, light, en-US, UTC |
-| Calibration | Node 12 ms, browser 26 ms (same-run baseline; "cu" = ms ÷ calibration) |
+| Calibration | Node 14 ms, browser 23 ms (same-run baseline; "cu" = ms ÷ calibration) |
 | CI | no |
 
-## Gates: 70 of 70 pass
+## Gates: 72 of 72 pass
 
 <details><summary>Every gate</summary>
 
 | Gate | Value | Limit |  |
 | --- | ---: | ---: | ---: |
-| `bundle/canvasFirstView/gzip` | 333.1 kB | <= 368.0 kB | pass |
+| `bundle/canvasFirstView/gzip` | 333.1 kB | <= 383.0 kB | pass |
 | `bundle/entry/gzip` | 105.5 kB | <= 123.5 kB | pass |
-| `bundle/liveSession/gzip` | 79.7 kB | <= 90.0 kB | pass |
-| `bundle/startup/gzip` | 154.2 kB | <= 167.0 kB | pass |
+| `bundle/liveSession/gzip` | 79.7 kB | <= 92.0 kB | pass |
+| `bundle/startup/gzip` | 154.2 kB | <= 177.0 kB | pass |
 | `checks/analyzeCapacity-per-run` | 1 | <= 3 | pass |
 | `checks/compileTopology-per-run` | 2 | <= 2 | pass |
 | `checks/runChecks-capacity-mesh/growth` | 12.9× | <= 64.0× | pass |
@@ -33,12 +33,12 @@
 | `imports/import-compose/growth` | 8.0× | <= 24.0× | pass |
 | `imports/import-kubernetes/growth` | 8.1× | <= 24.0× | pass |
 | `imports/import-terraform/growth` | 8.6× | <= 24.0× | pass |
-| `layout/autoLayout-mesh/growth` | 10.4× | <= 24.0× | pass |
-| `layout/autoLayout-pipeline/growth` | 9.4× | <= 24.0× | pass |
-| `layout/routeAll-pipeline/growth` | 23.2× | <= 192.0× | pass |
+| `layout/autoLayout-mesh/growth` | 9.5× | <= 24.0× | pass |
+| `layout/autoLayout-pipeline/growth` | 9.6× | <= 24.0× | pass |
+| `layout/routeAll-pipeline/growth` | 21.8× | <= 192.0× | pass |
 | `layout/routeDragFrame-maxEdges-mesh` | 26 | <= 64 | pass |
 | `layout/routeDragFrame-maxEdges-pipeline` | 10 | <= 64 | pass |
-| `layout/routeDragFrame-pipeline/growth` | 10.7× | <= 192.0× | pass |
+| `layout/routeDragFrame-pipeline/growth` | 9.2× | <= 192.0× | pass |
 | `memory/commandPalette/domNodesPerCycle/pipeline@500` | 0 | <= 0.60 | pass |
 | `memory/commandPalette/listenersPerCycle/pipeline@500` | 0 | <= 0.60 | pass |
 | `memory/exportDialog/domNodesPerCycle/pipeline@500` | 0 | <= 0.60 | pass |
@@ -54,30 +54,32 @@
 | `planning/analyses-for-20-selections` | 1 | <= 1 | pass |
 | `planning/analyzeCapacity/growth` | 8.9× | <= 24.0× | pass |
 | `planning/explanations-for-20-selections` | 20 | <= 20 | pass |
-| `renders/pan/DiagramNodeImpl/pipeline@100` | 0.30 | <= 1 | pass |
-| `renders/pan/DiagramNodeImpl/pipeline@500` | 0.70 | <= 1 | pass |
-| `renders/pan/NodeWrapper/pipeline@100` | 41.20 | <= 80 | pass |
-| `renders/pan/NodeWrapper/pipeline@500` | 307.40 | <= 400 | pass |
+| `renders/pan/DiagramNodeImpl/pipeline@100` | 0 | <= 0.50 | pass |
+| `renders/pan/DiagramNodeImpl/pipeline@500` | 0 | <= 0.50 | pass |
+| `renders/pan/NodeWrapper/pipeline@100` | 0 | <= 2 | pass |
+| `renders/pan/NodeWrapper/pipeline@500` | 0 | <= 2 | pass |
+| `renders/pan/total/pipeline@100` | 4.40 | <= 10 | pass |
+| `renders/pan/total/pipeline@500` | 4.40 | <= 10 | pass |
 | `renders/select/DiagramNodeImpl/pipeline@100` | 3 | <= 3.50 | pass |
 | `renders/select/DiagramNodeImpl/pipeline@500` | 3 | <= 3.50 | pass |
-| `renders/select/NodeWrapper/pipeline@100` | 413.67 | <= 500 | pass |
-| `renders/select/NodeWrapper/pipeline@500` | 2049.67 | <= 2,500 | pass |
-| `renders/select/commits/pipeline@100` | 9.17 | <= 10.50 | pass |
-| `renders/select/commits/pipeline@500` | 9.17 | <= 10.50 | pass |
-| `renders/type-name/DiagramNodeImpl/pipeline@100` | 1 | <= 1.50 | pass |
-| `renders/type-name/DiagramNodeImpl/pipeline@500` | 1.08 | <= 1.50 | pass |
-| `renders/type-name/Inspector/pipeline@100` | 1.17 | <= 1.75 | pass |
-| `renders/type-name/Inspector/pipeline@500` | 1.25 | <= 1.75 | pass |
-| `renders/type-name/NodeWrapper/pipeline@100` | 120 | <= 160 | pass |
-| `renders/type-name/NodeWrapper/pipeline@500` | 639.83 | <= 800 | pass |
+| `renders/select/NodeWrapper/pipeline@100` | 414 | <= 500 | pass |
+| `renders/select/NodeWrapper/pipeline@500` | 2,050 | <= 2,500 | pass |
+| `renders/select/commits/pipeline@100` | 10 | <= 11 | pass |
+| `renders/select/commits/pipeline@500` | 10.17 | <= 11 | pass |
+| `renders/type-name/DiagramNodeImpl/pipeline@100` | 1.08 | <= 1.50 | pass |
+| `renders/type-name/DiagramNodeImpl/pipeline@500` | 1.25 | <= 1.50 | pass |
+| `renders/type-name/Inspector/pipeline@100` | 1.25 | <= 1.75 | pass |
+| `renders/type-name/Inspector/pipeline@500` | 1.42 | <= 1.75 | pass |
+| `renders/type-name/NodeWrapper/pipeline@100` | 128.58 | <= 160 | pass |
+| `renders/type-name/NodeWrapper/pipeline@500` | 725.17 | <= 800 | pass |
 | `renders/type-name/Palette/pipeline@100` | 0 | <= 0 | pass |
 | `renders/type-name/Palette/pipeline@500` | 0 | <= 0 | pass |
 | `renders/type-name/PaletteItem/pipeline@100` | 0 | <= 0 | pass |
 | `renders/type-name/PaletteItem/pipeline@500` | 0 | <= 0 | pass |
-| `renders/type-name/commits/pipeline@100` | 3.42 | <= 4 | pass |
-| `renders/type-name/commits/pipeline@500` | 3.67 | <= 4 | pass |
-| `renders/type-name/total/pipeline@100` | 328 | <= 450 | pass |
-| `renders/type-name/total/pipeline@500` | 1373.58 | <= 1,650 | pass |
+| `renders/type-name/commits/pipeline@100` | 3.67 | <= 4.50 | pass |
+| `renders/type-name/commits/pipeline@500` | 4 | <= 4.50 | pass |
+| `renders/type-name/total/pipeline@100` | 350.75 | <= 480 | pass |
+| `renders/type-name/total/pipeline@500` | 1557.33 | <= 1,800 | pass |
 | `sim/determinism-checksum-delta` | 0 | == 0 | pass |
 | `sim/engineFrame-mesh/growth` | 8.4× | <= 24.0× | pass |
 | `sim/engineFrame-pipeline/growth` | 11.0× | <= 24.0× | pass |
@@ -372,126 +374,126 @@
 
 | Metric | Workload | 100 | 500 | 1500 | 5000 |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `drag-frameP90` | annotated |  |  | 8.05 s |  |
-| `drag-frameP90` | mesh | 67 ms <sub>p90 67 ms</sub> | 467 ms <sub>p90 483 ms</sub> | 3.53 s <sub>p90 4.52 s</sub> |  |
-| `drag-frameP90` | pipeline | 17 ms <sub>p90 17 ms</sub> | 83 ms <sub>p90 83 ms</sub> | 333 ms <sub>p90 433 ms</sub> | 1.29 s |
-| `drag-inputToPaint` | annotated |  |  | 355 ms <sub>p90 459 ms</sub> |  |
-| `drag-inputToPaint` | mesh | 37 ms <sub>p90 49 ms</sub> | 102 ms <sub>p90 139 ms</sub> | 209 ms <sub>p90 299 ms</sub> |  |
-| `drag-inputToPaint` | pipeline | 26 ms <sub>p90 29 ms</sub> | 65 ms <sub>p90 94 ms</sub> | 159 ms <sub>p90 270 ms</sub> | 551 ms <sub>p90 687 ms</sub> |
-| `drag-longestFrame` | annotated |  |  | 11.05 s |  |
-| `drag-longestFrame` | mesh | 97 ms <sub>p90 102 ms</sub> | 799 ms <sub>p90 1.05 s</sub> | 6.32 s <sub>p90 6.45 s</sub> |  |
-| `drag-longestFrame` | pipeline | 50 ms <sub>p90 65 ms</sub> | 179 ms <sub>p90 185 ms</sub> | 585 ms <sub>p90 743 ms</sub> | 1.35 s |
-| `drag-taskMsPerStep` | annotated |  |  | 8.43 s |  |
-| `drag-taskMsPerStep` | mesh | 130 ms <sub>p90 130 ms</sub> | 664 ms <sub>p90 730 ms</sub> | 4.34 s <sub>p90 5.14 s</sub> |  |
-| `drag-taskMsPerStep` | pipeline | 47 ms <sub>p90 47 ms</sub> | 174 ms <sub>p90 174 ms</sub> | 620 ms <sub>p90 871 ms</sub> | 2.54 s |
-| `pan-frameP90` | annotated |  |  | 550 ms |  |
-| `pan-frameP90` | mesh | 17 ms <sub>p90 17 ms</sub> | 33 ms <sub>p90 33 ms</sub> | 283 ms <sub>p90 333 ms</sub> |  |
-| `pan-frameP90` | pipeline | 17 ms <sub>p90 17 ms</sub> | 83 ms <sub>p90 83 ms</sub> | 200 ms <sub>p90 217 ms</sub> | 308 ms |
-| `pan-inputToPaint` | annotated |  |  | 301 ms <sub>p90 921 ms</sub> |  |
-| `pan-inputToPaint` | mesh | 22 ms <sub>p90 25 ms</sub> | 46 ms <sub>p90 164 ms</sub> | 124 ms <sub>p90 494 ms</sub> |  |
-| `pan-inputToPaint` | pipeline | 20 ms <sub>p90 44 ms</sub> | 80 ms <sub>p90 126 ms</sub> | 104 ms <sub>p90 409 ms</sub> | 242 ms <sub>p90 1.01 s</sub> |
-| `pan-longestFrame` | annotated |  |  | 763 ms |  |
-| `pan-longestFrame` | mesh | 63 ms <sub>p90 72 ms</sub> | 147 ms <sub>p90 161 ms</sub> | 418 ms <sub>p90 463 ms</sub> |  |
-| `pan-longestFrame` | pipeline | 0.00 ms <sub>p90 54 ms</sub> | 109 ms <sub>p90 124 ms</sub> | 291 ms <sub>p90 458 ms</sub> | 824 ms |
-| `pan-taskMsPerStep` | annotated |  |  | 696 ms |  |
-| `pan-taskMsPerStep` | mesh | 21 ms <sub>p90 26 ms</sub> | 91 ms <sub>p90 95 ms</sub> | 371 ms <sub>p90 380 ms</sub> |  |
-| `pan-taskMsPerStep` | pipeline | 19 ms <sub>p90 25 ms</sub> | 104 ms <sub>p90 105 ms</sub> | 281 ms <sub>p90 375 ms</sub> | 710 ms |
-| `select-first` | annotated |  |  | 1.75 s |  |
-| `select-first` | mesh | 92 ms <sub>p90 123 ms</sub> | 462 ms <sub>p90 520 ms</sub> | 836 ms <sub>p90 1.09 s</sub> |  |
-| `select-first` | pipeline | 86 ms <sub>p90 90 ms</sub> | 260 ms <sub>p90 327 ms</sub> | 746 ms <sub>p90 845 ms</sub> | 3.12 s |
-| `select` | annotated |  |  | 1.68 s |  |
-| `select` | mesh | 117 ms <sub>p90 144 ms</sub> | 395 ms <sub>p90 650 ms</sub> | 1.46 s <sub>p90 2.23 s</sub> |  |
-| `select` | pipeline | 80 ms <sub>p90 85 ms</sub> | 218 ms <sub>p90 266 ms</sub> | 807 ms <sub>p90 856 ms</sub> | 3.03 s <sub>p90 4.33 s</sub> |
+| `drag-frameP90` | annotated |  |  | 6.35 s |  |
+| `drag-frameP90` | mesh | 67 ms <sub>p90 67 ms</sub> | 417 ms <sub>p90 450 ms</sub> | 3.37 s |  |
+| `drag-frameP90` | pipeline | 17 ms <sub>p90 17 ms</sub> | 100 ms <sub>p90 100 ms</sub> | 250 ms <sub>p90 367 ms</sub> | 1.37 s |
+| `drag-inputToPaint` | annotated |  |  | 184 ms <sub>p90 274 ms</sub> |  |
+| `drag-inputToPaint` | mesh | 27 ms <sub>p90 37 ms</sub> | 63 ms <sub>p90 112 ms</sub> | 152 ms <sub>p90 348 ms</sub> |  |
+| `drag-inputToPaint` | pipeline | 25 ms <sub>p90 28 ms</sub> | 70 ms <sub>p90 123 ms</sub> | 122 ms <sub>p90 252 ms</sub> | 725 ms <sub>p90 930 ms</sub> |
+| `drag-longestFrame` | annotated |  |  | 6.58 s |  |
+| `drag-longestFrame` | mesh | 111 ms <sub>p90 115 ms</sub> | 725 ms <sub>p90 794 ms</sub> | 5.70 s |  |
+| `drag-longestFrame` | pipeline | 0.00 ms <sub>p90 0.00 ms</sub> | 159 ms <sub>p90 171 ms</sub> | 462 ms <sub>p90 670 ms</sub> | 3.01 s |
+| `drag-taskMsPerStep` | annotated |  |  | 6.08 s |  |
+| `drag-taskMsPerStep` | mesh | 101 ms <sub>p90 109 ms</sub> | 603 ms <sub>p90 633 ms</sub> | 3.95 s |  |
+| `drag-taskMsPerStep` | pipeline | 41 ms <sub>p90 42 ms</sub> | 213 ms <sub>p90 219 ms</sub> | 475 ms <sub>p90 675 ms</sub> | 2.93 s |
+| `pan-frameP90` | annotated |  |  | 167 ms |  |
+| `pan-frameP90` | mesh | 17 ms <sub>p90 17 ms</sub> | 50 ms <sub>p90 50 ms</sub> | 117 ms |  |
+| `pan-frameP90` | pipeline | 17 ms <sub>p90 17 ms</sub> | 33 ms <sub>p90 33 ms</sub> | 100 ms <sub>p90 117 ms</sub> | 233 ms |
+| `pan-inputToPaint` | annotated |  |  | 173 ms <sub>p90 277 ms</sub> |  |
+| `pan-inputToPaint` | mesh | 22 ms <sub>p90 25 ms</sub> | 54 ms <sub>p90 62 ms</sub> | 123 ms <sub>p90 158 ms</sub> |  |
+| `pan-inputToPaint` | pipeline | 21 ms <sub>p90 23 ms</sub> | 48 ms <sub>p90 57 ms</sub> | 96 ms <sub>p90 124 ms</sub> | 237 ms <sub>p90 307 ms</sub> |
+| `pan-longestFrame` | annotated |  |  | 166 ms |  |
+| `pan-longestFrame` | mesh | 0.00 ms <sub>p90 0.00 ms</sub> | 0.00 ms <sub>p90 0.00 ms</sub> | 103 ms |  |
+| `pan-longestFrame` | pipeline | 0.00 ms <sub>p90 0.00 ms</sub> | 0.00 ms <sub>p90 0.00 ms</sub> | 58 ms <sub>p90 74 ms</sub> | 174 ms |
+| `pan-taskMsPerStep` | annotated |  |  | 265 ms |  |
+| `pan-taskMsPerStep` | mesh | 15 ms <sub>p90 16 ms</sub> | 72 ms <sub>p90 73 ms</sub> | 203 ms |  |
+| `pan-taskMsPerStep` | pipeline | 10 ms <sub>p90 11 ms</sub> | 53 ms <sub>p90 62 ms</sub> | 142 ms <sub>p90 184 ms</sub> | 425 ms |
+| `select-first` | annotated |  |  | 1.70 s |  |
+| `select-first` | mesh | 133 ms <sub>p90 138 ms</sub> | 351 ms <sub>p90 402 ms</sub> | 1.05 s |  |
+| `select-first` | pipeline | 113 ms <sub>p90 128 ms</sub> | 416 ms <sub>p90 423 ms</sub> | 890 ms <sub>p90 997 ms</sub> | 3.44 s |
+| `select` | annotated |  |  | 1.39 s |  |
+| `select` | mesh | 91 ms <sub>p90 108 ms</sub> | 340 ms <sub>p90 405 ms</sub> | 1.06 s <sub>p90 1.31 s</sub> |  |
+| `select` | pipeline | 68 ms <sub>p90 74 ms</sub> | 354 ms <sub>p90 439 ms</sub> | 886 ms <sub>p90 1.11 s</sub> | 2.45 s |
 | `type-name-checkRuns` | annotated |  |  | 0 |  |
 | `type-name-checkRuns` | mesh | 0 | 0 | 0 |  |
 | `type-name-checkRuns` | pipeline | 0 | 0 | 0 | 0 |
-| `type-name-event` | annotated |  |  | 768 ms <sub>p90 10.18 s</sub> |  |
-| `type-name-event` | mesh | 48 ms <sub>p90 144 ms</sub> | 264 ms <sub>p90 1.26 s</sub> | 2.34 s <sub>p90 8.71 s</sub> |  |
-| `type-name-event` | pipeline | 24 ms <sub>p90 32 ms</sub> | 72 ms <sub>p90 232 ms</sub> | 324 ms <sub>p90 840 ms</sub> | 1.16 s <sub>p90 4.55 s</sub> |
-| `type-name-inputToPaint` | annotated |  |  | 22.11 s <sub>p90 25.03 s</sub> |  |
-| `type-name-inputToPaint` | mesh | 45 ms <sub>p90 272 ms</sub> | 3.06 s <sub>p90 5.42 s</sub> | 20.05 s <sub>p90 27.05 s</sub> |  |
-| `type-name-inputToPaint` | pipeline | 22 ms <sub>p90 32 ms</sub> | 76 ms <sub>p90 289 ms</sub> | 2.59 s <sub>p90 3.89 s</sub> | 12.63 s <sub>p90 16.61 s</sub> |
-| `type-name-longestFrame` | annotated |  |  | 10.01 s |  |
-| `type-name-longestFrame` | mesh | 133 ms <sub>p90 182 ms</sub> | 758 ms <sub>p90 1.06 s</sub> | 5.01 s <sub>p90 5.84 s</sub> |  |
-| `type-name-longestFrame` | pipeline | 0.00 ms <sub>p90 0.00 ms</sub> | 201 ms <sub>p90 218 ms</sub> | 648 ms <sub>p90 718 ms</sub> | 2.57 s |
+| `type-name-event` | annotated |  |  | 512 ms <sub>p90 13.02 s</sub> |  |
+| `type-name-event` | mesh | 32 ms <sub>p90 112 ms</sub> | 144 ms <sub>p90 888 ms</sub> | 1.81 s <sub>p90 6.79 s</sub> |  |
+| `type-name-event` | pipeline | 24 ms <sub>p90 48 ms</sub> | 112 ms <sub>p90 280 ms</sub> | 412 ms <sub>p90 1.29 s</sub> | 2.27 s <sub>p90 4.30 s</sub> |
+| `type-name-inputToPaint` | annotated |  |  | 28.81 s <sub>p90 30.51 s</sub> |  |
+| `type-name-inputToPaint` | mesh | 31 ms <sub>p90 113 ms</sub> | 1.09 s <sub>p90 3.24 s</sub> | 17.92 s <sub>p90 19.52 s</sub> |  |
+| `type-name-inputToPaint` | pipeline | 23 ms <sub>p90 48 ms</sub> | 114 ms <sub>p90 414 ms</sub> | 3.50 s <sub>p90 5.07 s</sub> | 13.52 s <sub>p90 17.75 s</sub> |
+| `type-name-longestFrame` | annotated |  |  | 7.37 s |  |
+| `type-name-longestFrame` | mesh | 104 ms <sub>p90 112 ms</sub> | 571 ms <sub>p90 657 ms</sub> | 3.78 s |  |
+| `type-name-longestFrame` | pipeline | 0.00 ms <sub>p90 0.00 ms</sub> | 257 ms <sub>p90 261 ms</sub> | 760 ms <sub>p90 811 ms</sub> | 2.41 s |
 | `type-name-planningAnalyses` | annotated |  |  | 0 |  |
 | `type-name-planningAnalyses` | mesh | 0 | 0 | 0 |  |
 | `type-name-planningAnalyses` | pipeline | 0 | 0 | 0 | 0 |
 | `type-name-planningReads` | annotated |  |  | 0 |  |
 | `type-name-planningReads` | mesh | 0 | 0 | 0 |  |
 | `type-name-planningReads` | pipeline | 0 | 0 | 0 | 0 |
-| `type-name-taskMsPerKey` | annotated |  |  | 2.14 s |  |
-| `type-name-taskMsPerKey` | mesh | 70 ms <sub>p90 87 ms</sub> | 344 ms <sub>p90 520 ms</sub> | 2.31 s <sub>p90 2.33 s</sub> |  |
-| `type-name-taskMsPerKey` | pipeline | 25 ms <sub>p90 28 ms</sub> | 102 ms <sub>p90 109 ms</sub> | 361 ms <sub>p90 363 ms</sub> | 1.48 s |
-| `type-number-inputToPaint` | annotated |  |  | 999 ms <sub>p90 1.58 s</sub> |  |
-| `type-number-inputToPaint` | mesh | 38 ms <sub>p90 45 ms</sub> | 230 ms <sub>p90 696 ms</sub> | 906 ms <sub>p90 1.50 s</sub> |  |
-| `type-number-inputToPaint` | pipeline | 21 ms <sub>p90 25 ms</sub> | 63 ms <sub>p90 78 ms</sub> | 594 ms <sub>p90 988 ms</sub> | 2.61 s <sub>p90 4.46 s</sub> |
+| `type-name-taskMsPerKey` | annotated |  |  | 2.60 s |  |
+| `type-name-taskMsPerKey` | mesh | 52 ms <sub>p90 56 ms</sub> | 264 ms <sub>p90 309 ms</sub> | 1.66 s |  |
+| `type-name-taskMsPerKey` | pipeline | 28 ms <sub>p90 28 ms</sub> | 137 ms <sub>p90 146 ms</sub> | 441 ms <sub>p90 517 ms</sub> | 1.54 s |
+| `type-number-inputToPaint` | annotated |  |  | 742 ms <sub>p90 1.08 s</sub> |  |
+| `type-number-inputToPaint` | mesh | 24 ms <sub>p90 31 ms</sub> | 89 ms <sub>p90 119 ms</sub> | 988 ms <sub>p90 1.50 s</sub> |  |
+| `type-number-inputToPaint` | pipeline | 20 ms <sub>p90 22 ms</sub> | 98 ms <sub>p90 105 ms</sub> | 654 ms <sub>p90 981 ms</sub> | 1.76 s <sub>p90 2.66 s</sub> |
 | `type-number-planningAnalyses` | annotated |  |  | 0 |  |
 | `type-number-planningAnalyses` | mesh | 0 | 0 | 0 |  |
 | `type-number-planningAnalyses` | pipeline | 0 | 0 | 0 | 0 |
-| `type-number-taskMsPerKey` | annotated |  |  | 404 ms |  |
-| `type-number-taskMsPerKey` | mesh | 42 ms <sub>p90 46 ms</sub> | 147 ms <sub>p90 221 ms</sub> | 319 ms <sub>p90 506 ms</sub> |  |
-| `type-number-taskMsPerKey` | pipeline | 27 ms <sub>p90 28 ms</sub> | 68 ms <sub>p90 78 ms</sub> | 252 ms <sub>p90 262 ms</sub> | 1.10 s |
-| `type-sublabel-inputToPaint` | annotated |  |  | 2.17 s <sub>p90 3.88 s</sub> |  |
-| `type-sublabel-inputToPaint` | mesh | 38 ms <sub>p90 46 ms</sub> | 516 ms <sub>p90 1.60 s</sub> | 1.89 s <sub>p90 3.70 s</sub> |  |
-| `type-sublabel-inputToPaint` | pipeline | 20 ms <sub>p90 27 ms</sub> | 71 ms <sub>p90 82 ms</sub> | 1.33 s <sub>p90 2.19 s</sub> | 5.79 s <sub>p90 11.92 s</sub> |
-| `type-sublabel-taskMsPerKey` | annotated |  |  | 435 ms |  |
-| `type-sublabel-taskMsPerKey` | mesh | 46 ms <sub>p90 48 ms</sub> | 142 ms <sub>p90 227 ms</sub> | 327 ms <sub>p90 530 ms</sub> |  |
-| `type-sublabel-taskMsPerKey` | pipeline | 23 ms <sub>p90 26 ms</sub> | 79 ms <sub>p90 83 ms</sub> | 273 ms <sub>p90 273 ms</sub> | 1.22 s |
-| `zoom-frameP90` | annotated |  |  | 233 ms |  |
-| `zoom-frameP90` | mesh | 17 ms <sub>p90 17 ms</sub> | 50 ms <sub>p90 50 ms</sub> | 150 ms <sub>p90 150 ms</sub> |  |
-| `zoom-frameP90` | pipeline | 17 ms <sub>p90 17 ms</sub> | 17 ms <sub>p90 33 ms</sub> | 83 ms <sub>p90 83 ms</sub> | 250 ms |
-| `zoom-inputToPaint` | annotated |  |  | 349 ms <sub>p90 624 ms</sub> |  |
-| `zoom-inputToPaint` | mesh | 42 ms <sub>p90 44 ms</sub> | 104 ms <sub>p90 130 ms</sub> | 265 ms <sub>p90 330 ms</sub> |  |
-| `zoom-inputToPaint` | pipeline | 40 ms <sub>p90 57 ms</sub> | 64 ms <sub>p90 70 ms</sub> | 158 ms <sub>p90 220 ms</sub> | 436 ms <sub>p90 589 ms</sub> |
-| `zoom-longestFrame` | annotated |  |  | 269 ms |  |
-| `zoom-longestFrame` | mesh | 0.00 ms <sub>p90 0.00 ms</sub> | 0.00 ms <sub>p90 0.00 ms</sub> | 149 ms <sub>p90 152 ms</sub> |  |
-| `zoom-longestFrame` | pipeline | 0.00 ms <sub>p90 0.00 ms</sub> | 0.00 ms <sub>p90 0.00 ms</sub> | 82 ms <sub>p90 89 ms</sub> | 180 ms |
-| `zoom-taskMsPerStep` | annotated |  |  | 561 ms |  |
-| `zoom-taskMsPerStep` | mesh | 16 ms <sub>p90 17 ms</sub> | 123 ms <sub>p90 123 ms</sub> | 368 ms <sub>p90 376 ms</sub> |  |
-| `zoom-taskMsPerStep` | pipeline | 17 ms <sub>p90 17 ms</sub> | 33 ms <sub>p90 39 ms</sub> | 182 ms <sub>p90 197 ms</sub> | 422 ms |
+| `type-number-taskMsPerKey` | annotated |  |  | 275 ms |  |
+| `type-number-taskMsPerKey` | mesh | 28 ms <sub>p90 32 ms</sub> | 96 ms <sub>p90 125 ms</sub> | 381 ms |  |
+| `type-number-taskMsPerKey` | pipeline | 25 ms <sub>p90 27 ms</sub> | 107 ms <sub>p90 112 ms</sub> | 225 ms <sub>p90 327 ms</sub> | 691 ms |
+| `type-sublabel-inputToPaint` | annotated |  |  | 1.56 s <sub>p90 2.90 s</sub> |  |
+| `type-sublabel-inputToPaint` | mesh | 25 ms <sub>p90 33 ms</sub> | 101 ms <sub>p90 125 ms</sub> | 2.03 s <sub>p90 3.33 s</sub> |  |
+| `type-sublabel-inputToPaint` | pipeline | 19 ms <sub>p90 20 ms</sub> | 100 ms <sub>p90 110 ms</sub> | 1.49 s <sub>p90 2.90 s</sub> | 3.63 s <sub>p90 6.39 s</sub> |
+| `type-sublabel-taskMsPerKey` | annotated |  |  | 325 ms |  |
+| `type-sublabel-taskMsPerKey` | mesh | 31 ms <sub>p90 32 ms</sub> | 111 ms <sub>p90 122 ms</sub> | 379 ms |  |
+| `type-sublabel-taskMsPerKey` | pipeline | 22 ms <sub>p90 22 ms</sub> | 106 ms <sub>p90 108 ms</sub> | 328 ms <sub>p90 358 ms</sub> | 722 ms |
+| `zoom-frameP90` | annotated |  |  | 1.00 s |  |
+| `zoom-frameP90` | mesh | 50 ms <sub>p90 50 ms</sub> | 250 ms <sub>p90 250 ms</sub> | 783 ms |  |
+| `zoom-frameP90` | pipeline | 33 ms <sub>p90 33 ms</sub> | 267 ms <sub>p90 267 ms</sub> | 667 ms <sub>p90 833 ms</sub> | 1.62 s |
+| `zoom-inputToPaint` | annotated |  |  | 1.13 s <sub>p90 1.22 s</sub> |  |
+| `zoom-inputToPaint` | mesh | 90 ms <sub>p90 99 ms</sub> | 302 ms <sub>p90 354 ms</sub> | 780 ms <sub>p90 1.21 s</sub> |  |
+| `zoom-inputToPaint` | pipeline | 78 ms <sub>p90 79 ms</sub> | 334 ms <sub>p90 377 ms</sub> | 755 ms <sub>p90 979 ms</sub> | 1.87 s <sub>p90 2.15 s</sub> |
+| `zoom-longestFrame` | annotated |  |  | 1.05 s |  |
+| `zoom-longestFrame` | mesh | 76 ms <sub>p90 80 ms</sub> | 270 ms <sub>p90 296 ms</sub> | 805 ms |  |
+| `zoom-longestFrame` | pipeline | 59 ms <sub>p90 62 ms</sub> | 288 ms <sub>p90 294 ms</sub> | 769 ms <sub>p90 969 ms</sub> | 1.90 s |
+| `zoom-taskMsPerStep` | annotated |  |  | 1.17 s |  |
+| `zoom-taskMsPerStep` | mesh | 67 ms <sub>p90 72 ms</sub> | 315 ms <sub>p90 335 ms</sub> | 975 ms |  |
+| `zoom-taskMsPerStep` | pipeline | 51 ms <sub>p90 53 ms</sub> | 339 ms <sub>p90 346 ms</sub> | 778 ms <sub>p90 982 ms</sub> | 1.94 s |
 
 ## layout
 
 | Metric | Workload | 100 | 500 | 1500 | 5000 |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `autoLayout` | annotated | 0.26 ms <sub>p90 0.27 ms</sub> | 1.56 ms <sub>p90 1.66 ms</sub> | 5.93 ms <sub>p90 6.19 ms</sub> | 19 ms <sub>p90 20 ms</sub> |
-| `autoLayout` | examples | 0.27 ms <sub>p90 0.29 ms</sub> | 1.25 ms <sub>p90 1.72 ms</sub> | 6.01 ms <sub>p90 6.56 ms</sub> | 22 ms <sub>p90 27 ms</sub> |
-| `autoLayout` | k8s | 0.23 ms <sub>p90 0.25 ms</sub> | 1.55 ms <sub>p90 1.63 ms</sub> | 5.46 ms <sub>p90 5.76 ms</sub> | 27 ms <sub>p90 30 ms</sub> |
-| `autoLayout` | mesh | 0.21 ms <sub>p90 0.26 ms</sub> | 1.43 ms <sub>p90 1.59 ms</sub> | 5.01 ms <sub>p90 5.09 ms</sub> | 26 ms <sub>p90 30 ms</sub> |
-| `autoLayout` | pipeline | 0.21 ms <sub>p90 0.24 ms</sub> | 1.32 ms <sub>p90 1.44 ms</sub> | 4.12 ms <sub>p90 4.81 ms</sub> | 19 ms <sub>p90 21 ms</sub> |
-| `autoLayout` | terraform | 0.21 ms <sub>p90 0.22 ms</sub> | 1.28 ms <sub>p90 1.31 ms</sub> | 2.96 ms <sub>p90 3.32 ms</sub> | 12 ms <sub>p90 14 ms</sub> |
-| `routeAll` | annotated | 17 ms <sub>p90 26 ms</sub> | 138 ms <sub>p90 147 ms</sub> | 630 ms <sub>p90 642 ms</sub> | 5.34 s <sub>p90 6.35 s</sub> |
-| `routeAll` | examples | 9.50 ms <sub>p90 13 ms</sub> | 111 ms <sub>p90 132 ms</sub> | 762 ms <sub>p90 829 ms</sub> | 3.21 s <sub>p90 3.54 s</sub> |
-| `routeAll` | k8s | 197 ms <sub>p90 205 ms</sub> | 2.63 s <sub>p90 3.70 s</sub> | 33.28 s |  |
-| `routeAll` | mesh | 45 ms <sub>p90 56 ms</sub> | 347 ms <sub>p90 414 ms</sub> | 2.47 s <sub>p90 5.10 s</sub> |  |
-| `routeAll` | pipeline | 9.26 ms <sub>p90 10 ms</sub> | 90 ms <sub>p90 103 ms</sub> | 390 ms <sub>p90 423 ms</sub> | 3.65 s <sub>p90 3.93 s</sub> |
-| `routeAll` | terraform | 39 ms <sub>p90 41 ms</sub> | 382 ms <sub>p90 412 ms</sub> | 2.84 s <sub>p90 3.43 s</sub> | 77.08 s |
-| `routeDragFrame-edgesRouted` | annotated | 3.90 | 6.90 | 7.80 | 5.80 |
-| `routeDragFrame-edgesRouted` | examples | 3 | 10 | 9 | 30 |
-| `routeDragFrame-edgesRouted` | k8s | 21.70 | 39.30 | 87 |  |
+| `autoLayout` | annotated | 0.19 ms <sub>p90 0.21 ms</sub> | 1.26 ms <sub>p90 1.36 ms</sub> | 5.01 ms <sub>p90 5.22 ms</sub> | 21 ms <sub>p90 24 ms</sub> |
+| `autoLayout` | examples | 0.26 ms <sub>p90 0.28 ms</sub> | 1.60 ms <sub>p90 1.69 ms</sub> | 5.42 ms <sub>p90 5.75 ms</sub> | 22 ms <sub>p90 26 ms</sub> |
+| `autoLayout` | k8s | 0.20 ms <sub>p90 0.25 ms</sub> | 1.52 ms <sub>p90 1.68 ms</sub> | 5.24 ms <sub>p90 5.61 ms</sub> | 26 ms <sub>p90 28 ms</sub> |
+| `autoLayout` | mesh | 0.71 ms <sub>p90 0.89 ms</sub> | 2.86 ms <sub>p90 3.53 ms</sub> | 8.28 ms <sub>p90 10 ms</sub> | 44 ms <sub>p90 65 ms</sub> |
+| `autoLayout` | pipeline | 0.26 ms <sub>p90 0.32 ms</sub> | 1.78 ms <sub>p90 2.44 ms</sub> | 4.99 ms <sub>p90 5.66 ms</sub> | 31 ms <sub>p90 42 ms</sub> |
+| `autoLayout` | terraform | 0.21 ms <sub>p90 0.22 ms</sub> | 1.22 ms <sub>p90 1.29 ms</sub> | 3.70 ms <sub>p90 3.96 ms</sub> | 12 ms <sub>p90 13 ms</sub> |
+| `routeAll` | annotated | 19 ms <sub>p90 22 ms</sub> | 393 ms <sub>p90 400 ms</sub> | 3.60 s <sub>p90 3.72 s</sub> | 86.26 s |
+| `routeAll` | examples | 13 ms <sub>p90 14 ms</sub> | 102 ms <sub>p90 116 ms</sub> | 660 ms <sub>p90 677 ms</sub> | 2.78 s <sub>p90 2.82 s</sub> |
+| `routeAll` | k8s | 199 ms <sub>p90 215 ms</sub> | 3.41 s <sub>p90 3.54 s</sub> | 38.90 s |  |
+| `routeAll` | mesh | 163 ms <sub>p90 381 ms</sub> | 824 ms <sub>p90 1.25 s</sub> | 5.18 s <sub>p90 5.37 s</sub> |  |
+| `routeAll` | pipeline | 12 ms <sub>p90 13 ms</sub> | 101 ms <sub>p90 126 ms</sub> | 476 ms <sub>p90 514 ms</sub> | 3.67 s <sub>p90 4.50 s</sub> |
+| `routeAll` | terraform | 38 ms <sub>p90 44 ms</sub> | 407 ms <sub>p90 412 ms</sub> | 3.40 s <sub>p90 3.48 s</sub> | 80.70 s |
+| `routeDragFrame-edgesRouted` | annotated | 13 | 55 | 155 | 524 |
+| `routeDragFrame-edgesRouted` | examples | 3.10 | 10 | 9 | 30 |
+| `routeDragFrame-edgesRouted` | k8s | 21.70 | 39.50 | 87 |  |
 | `routeDragFrame-edgesRouted` | mesh | 18 | 40.50 | 28 |  |
 | `routeDragFrame-edgesRouted` | pipeline | 4.90 | 7.90 | 5.80 | 7.70 |
 | `routeDragFrame-edgesRouted` | terraform | 52.80 | 76 | 134 | 465 |
-| `routeDragFrame` | annotated | 3.63 ms <sub>p90 4.05 ms</sub> | 30 ms <sub>p90 31 ms</sub> | 127 ms <sub>p90 136 ms</sub> | 836 ms <sub>p90 907 ms</sub> |
-| `routeDragFrame` | examples | 2.42 ms <sub>p90 2.77 ms</sub> | 35 ms <sub>p90 46 ms</sub> | 275 ms <sub>p90 283 ms</sub> | 447 ms <sub>p90 490 ms</sub> |
-| `routeDragFrame` | k8s | 114 ms <sub>p90 127 ms</sub> | 1.72 s <sub>p90 1.77 s</sub> | 8.19 s <sub>p90 12.26 s</sub> |  |
-| `routeDragFrame` | mesh | 37 ms <sub>p90 41 ms</sub> | 203 ms <sub>p90 215 ms</sub> | 972 ms <sub>p90 1.09 s</sub> |  |
-| `routeDragFrame` | pipeline | 4.73 ms <sub>p90 5.44 ms</sub> | 22 ms <sub>p90 24 ms</sub> | 93 ms <sub>p90 98 ms</sub> | 867 ms <sub>p90 949 ms</sub> |
-| `routeDragFrame` | terraform | 22 ms <sub>p90 26 ms</sub> | 149 ms <sub>p90 172 ms</sub> | 1.02 s <sub>p90 1.14 s</sub> | 24.01 s |
+| `routeDragFrame` | annotated | 8.98 ms <sub>p90 10 ms</sub> | 320 ms <sub>p90 331 ms</sub> | 3.13 s <sub>p90 3.18 s</sub> | 54.95 s |
+| `routeDragFrame` | examples | 3.34 ms <sub>p90 3.56 ms</sub> | 37 ms <sub>p90 40 ms</sub> | 278 ms <sub>p90 289 ms</sub> | 379 ms <sub>p90 391 ms</sub> |
+| `routeDragFrame` | k8s | 118 ms <sub>p90 136 ms</sub> | 1.70 s <sub>p90 1.91 s</sub> | 13.58 s <sub>p90 13.61 s</sub> |  |
+| `routeDragFrame` | mesh | 86 ms <sub>p90 119 ms</sub> | 328 ms <sub>p90 389 ms</sub> | 1.45 s <sub>p90 1.67 s</sub> |  |
+| `routeDragFrame` | pipeline | 6.08 ms <sub>p90 7.55 ms</sub> | 30 ms <sub>p90 33 ms</sub> | 110 ms <sub>p90 130 ms</sub> | 820 ms <sub>p90 848 ms</sub> |
+| `routeDragFrame` | terraform | 24 ms <sub>p90 28 ms</sub> | 175 ms <sub>p90 186 ms</sub> | 1.25 s <sub>p90 1.31 s</sub> | 24.12 s |
 | `routeSkipped` | k8s |  |  |  | 1 |
 | `routeSkipped` | mesh |  |  |  | 1 |
-| `tidyAll` | annotated | 0.49 ms <sub>p90 0.53 ms</sub> | 2.67 ms <sub>p90 2.87 ms</sub> | 10 ms <sub>p90 11 ms</sub> | 42 ms <sub>p90 45 ms</sub> |
-| `tidyAll` | examples | 0.40 ms <sub>p90 0.43 ms</sub> | 2.38 ms <sub>p90 2.62 ms</sub> | 9.08 ms <sub>p90 10 ms</sub> | 39 ms <sub>p90 43 ms</sub> |
-| `tidyAll` | k8s | 0.41 ms <sub>p90 0.49 ms</sub> | 2.45 ms <sub>p90 2.68 ms</sub> | 8.22 ms <sub>p90 8.68 ms</sub> | 40 ms <sub>p90 42 ms</sub> |
-| `tidyAll` | mesh | 0.32 ms <sub>p90 0.35 ms</sub> | 2.27 ms <sub>p90 2.52 ms</sub> | 7.42 ms <sub>p90 7.95 ms</sub> | 44 ms <sub>p90 46 ms</sub> |
-| `tidyAll` | pipeline | 0.38 ms <sub>p90 0.40 ms</sub> | 2.14 ms <sub>p90 2.28 ms</sub> | 7.83 ms <sub>p90 8.58 ms</sub> | 39 ms <sub>p90 46 ms</sub> |
-| `tidyAll` | terraform | 0.42 ms <sub>p90 0.48 ms</sub> | 3.08 ms <sub>p90 3.60 ms</sub> | 17 ms <sub>p90 18 ms</sub> | 95 ms <sub>p90 109 ms</sub> |
-| `tidySelection` | annotated | 0.08 ms <sub>p90 0.08 ms</sub> | 0.10 ms <sub>p90 0.11 ms</sub> | 0.15 ms <sub>p90 0.16 ms</sub> | 0.25 ms <sub>p90 0.28 ms</sub> |
-| `tidySelection` | examples | 0.06 ms <sub>p90 0.07 ms</sub> | 0.10 ms <sub>p90 0.13 ms</sub> | 0.13 ms <sub>p90 0.15 ms</sub> | 0.28 ms <sub>p90 0.31 ms</sub> |
-| `tidySelection` | k8s | 0.08 ms <sub>p90 0.08 ms</sub> | 0.12 ms <sub>p90 0.13 ms</sub> | 0.36 ms <sub>p90 0.39 ms</sub> | 1.43 ms <sub>p90 1.64 ms</sub> |
-| `tidySelection` | mesh | 0.91 ms <sub>p90 1.08 ms</sub> | 1.65 ms <sub>p90 1.77 ms</sub> | 3.02 ms <sub>p90 3.45 ms</sub> | 2.19 ms <sub>p90 2.34 ms</sub> |
-| `tidySelection` | pipeline | 0.16 ms <sub>p90 0.18 ms</sub> | 0.18 ms <sub>p90 0.20 ms</sub> | 0.18 ms <sub>p90 0.23 ms</sub> | 0.32 ms <sub>p90 0.36 ms</sub> |
+| `tidyAll` | annotated | 0.38 ms <sub>p90 0.41 ms</sub> | 2.26 ms <sub>p90 2.32 ms</sub> | 8.42 ms <sub>p90 8.77 ms</sub> | 39 ms <sub>p90 46 ms</sub> |
+| `tidyAll` | examples | 0.42 ms <sub>p90 0.44 ms</sub> | 2.38 ms <sub>p90 2.52 ms</sub> | 8.79 ms <sub>p90 9.51 ms</sub> | 44 ms <sub>p90 45 ms</sub> |
+| `tidyAll` | k8s | 0.43 ms <sub>p90 0.45 ms</sub> | 2.49 ms <sub>p90 2.73 ms</sub> | 10 ms <sub>p90 11 ms</sub> | 40 ms <sub>p90 41 ms</sub> |
+| `tidyAll` | mesh | 0.81 ms <sub>p90 1.24 ms</sub> | 6.99 ms <sub>p90 16 ms</sub> | 15 ms <sub>p90 17 ms</sub> | 68 ms <sub>p90 89 ms</sub> |
+| `tidyAll` | pipeline | 0.53 ms <sub>p90 0.71 ms</sub> | 2.77 ms <sub>p90 2.97 ms</sub> | 8.79 ms <sub>p90 9.39 ms</sub> | 53 ms <sub>p90 55 ms</sub> |
+| `tidyAll` | terraform | 0.42 ms <sub>p90 0.47 ms</sub> | 3.37 ms <sub>p90 3.59 ms</sub> | 17 ms <sub>p90 19 ms</sub> | 103 ms <sub>p90 134 ms</sub> |
+| `tidySelection` | annotated | 0.06 ms <sub>p90 0.06 ms</sub> | 0.07 ms <sub>p90 0.08 ms</sub> | 0.11 ms <sub>p90 0.12 ms</sub> | 0.28 ms <sub>p90 0.30 ms</sub> |
+| `tidySelection` | examples | 0.07 ms <sub>p90 0.08 ms</sub> | 0.08 ms <sub>p90 0.09 ms</sub> | 0.13 ms <sub>p90 0.14 ms</sub> | 0.27 ms <sub>p90 0.30 ms</sub> |
+| `tidySelection` | k8s | 0.09 ms <sub>p90 0.09 ms</sub> | 0.12 ms <sub>p90 0.13 ms</sub> | 0.42 ms <sub>p90 0.43 ms</sub> | 1.45 ms <sub>p90 1.67 ms</sub> |
+| `tidySelection` | mesh | 3.23 ms <sub>p90 5.31 ms</sub> | 3.77 ms <sub>p90 5.57 ms</sub> | 3.93 ms <sub>p90 4.71 ms</sub> | 2.70 ms <sub>p90 3.25 ms</sub> |
+| `tidySelection` | pipeline | 0.21 ms <sub>p90 0.25 ms</sub> | 0.20 ms <sub>p90 0.21 ms</sub> | 0.24 ms <sub>p90 0.27 ms</sub> | 0.51 ms <sub>p90 0.64 ms</sub> |
 
 ## live
 
@@ -525,14 +527,14 @@
 | `longestFrame/worker/x1` | pipeline | 0.00 ms | 242 ms | 152 ms | 220 ms |
 | `longestFrame/worker/x10` | mesh | 0.00 ms | 277 ms | 1.84 s |  |
 | `longestFrame/worker/x10` | pipeline | 60 ms | 131 ms | 319 ms | 2.73 s |
-| `mainBusyPct/main/x1` | mesh | 100 ms | 99 ms | 100 ms |  |
-| `mainBusyPct/main/x1` | pipeline | 81 ms | 97 ms | 100 ms | 100 ms |
-| `mainBusyPct/main/x10` | mesh | 100 ms | 98 ms | 99 ms |  |
-| `mainBusyPct/main/x10` | pipeline | 98 ms | 97 ms | 99 ms | 100 ms |
-| `mainBusyPct/worker/x1` | mesh | 62 ms | 97 ms | 97 ms |  |
-| `mainBusyPct/worker/x1` | pipeline | 29 ms | 95 ms | 98 ms | 100 ms |
-| `mainBusyPct/worker/x10` | mesh | 65 ms | 100 ms | 100 ms |  |
-| `mainBusyPct/worker/x10` | pipeline | 95 ms | 96 ms | 96 ms | 100 ms |
+| `mainBusyPct/main/x1` | mesh | 99.5% | 98.7% | 100.0% |  |
+| `mainBusyPct/main/x1` | pipeline | 80.7% | 96.5% | 99.9% | 99.9% |
+| `mainBusyPct/main/x10` | mesh | 99.8% | 97.5% | 99.4% |  |
+| `mainBusyPct/main/x10` | pipeline | 98.3% | 96.6% | 98.6% | 100.0% |
+| `mainBusyPct/worker/x1` | mesh | 61.8% | 96.8% | 97.3% |  |
+| `mainBusyPct/worker/x1` | pipeline | 29.2% | 94.9% | 97.7% | 99.9% |
+| `mainBusyPct/worker/x10` | mesh | 65.3% | 99.7% | 99.9% |  |
+| `mainBusyPct/worker/x10` | pipeline | 94.7% | 96.2% | 96.0% | 100.0% |
 | `mainMsPerFrame/main/x1` | mesh | 20 ms | 261 ms | 720 ms |  |
 | `mainMsPerFrame/main/x1` | pipeline | 15 ms | 108 ms | 334 ms | 202 ms |
 | `mainMsPerFrame/main/x10` | mesh | 28 ms | 136 ms | 385 ms |  |
@@ -889,151 +891,144 @@
 
 | Metric | Workload | 100 | 500 | 1500 |
 | --- | ---: | ---: | ---: | ---: |
-| `drag/A11yDescriptions` | mesh | 1.60 | 1.40 |  |
-| `drag/A11yDescriptions` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/AiMount` | mesh | 1.40 | 1.10 |  |
-| `drag/AiMount` | pipeline | 1.10 | 1.30 | 1.50 |
-| `drag/AriaLiveMessage` | mesh | 1.60 | 1.40 |  |
-| `drag/AriaLiveMessage` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/Attribution` | mesh | 1.60 | 1.40 |  |
-| `drag/Attribution` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/CanvasInner` | mesh | 1.60 | 1.40 |  |
-| `drag/CanvasInner` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/CardNode` | mesh | 1.20 | 1.10 |  |
-| `drag/CardNode` | pipeline | 1 | 1.10 | 1.10 |
-| `drag/ConnectionLineWrapper` | mesh | 1.60 | 1.40 |  |
-| `drag/ConnectionLineWrapper` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/ControlButton` | mesh | 9.60 | 8.40 |  |
-| `drag/ControlButton` | pipeline | 8.40 | 11.40 | 10.20 |
-| `drag/Controls` | mesh | 1.60 | 1.40 |  |
-| `drag/Controls` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/CopyId` | mesh | 1.60 | 1.40 |  |
-| `drag/CopyId` | pipeline | 1.40 | 1.70 | 1.70 |
-| `drag/DiagramCardMeta` | mesh | 1.80 | 1.80 |  |
-| `drag/DiagramCardMeta` | pipeline | 1.50 | 2.10 | 1.70 |
-| `drag/DiagramNodeImpl` | mesh | 1.20 | 1.10 |  |
-| `drag/DiagramNodeImpl` | pipeline | 1 | 1.10 | 1.10 |
-| `drag/Disclosure` | mesh | 3.20 | 2.80 |  |
-| `drag/Disclosure` | pipeline | 2.80 | 3.40 | 3.40 |
-| `drag/DotGrid` | mesh | 1.60 | 1.40 |  |
-| `drag/DotGrid` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/EdgeLabelRenderer` | mesh | 15 | 20.20 |  |
-| `drag/EdgeLabelRenderer` | pipeline | 1.60 | 1.80 | 4.20 |
-| `drag/EdgeMarkers` | mesh | 1.60 | 1.40 |  |
-| `drag/EdgeMarkers` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/EdgeWrapper` | mesh | 3 | 4.50 |  |
-| `drag/EdgeWrapper` | pipeline | 2.40 | 2.40 | 1.60 |
-| `drag/Field` | mesh | 6.40 | 5.60 |  |
-| `drag/Field` | pipeline | 5.60 | 7.60 | 6.80 |
-| `drag/FindingRow` | mesh | 1.70 | 1.60 |  |
-| `drag/FirstRunHint` | mesh | 1.60 | 1.40 |  |
-| `drag/FirstRunHint` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/FlowEdgeImpl` | mesh | 20.30 | 30.60 |  |
-| `drag/FlowEdgeImpl` | pipeline | 2.40 | 2.60 | 5.30 |
-| `drag/FlowRenderer` | mesh | 1.60 | 1.40 |  |
-| `drag/FlowRenderer` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/Glyph` | mesh |  | 1 |  |
-| `drag/Glyph` | pipeline |  | 1 | 2 |
-| `drag/GraphView` | mesh | 1.60 | 1.40 |  |
-| `drag/GraphView` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/Icon` | mesh | 24.60 | 22.30 |  |
-| `drag/Icon` | pipeline | 16.90 | 22.60 | 21.80 |
-| `drag/Inspector` | mesh | 1.60 | 1.40 |  |
-| `drag/Inspector` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/InspectorFindings` | mesh | 1.70 | 1.60 |  |
-| `drag/LandingOutline` | mesh | 1.60 | 1.40 |  |
-| `drag/LandingOutline` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/Lazy` | mesh | 3.30 | 3 |  |
-| `drag/Lazy` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/LiveView` | mesh | 1.60 | 1.40 |  |
-| `drag/LiveView` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/Menu` | pipeline |  |  | 1.20 |
-| `drag/MiniMap` | mesh | 1.60 | 1.40 |  |
-| `drag/MiniMap` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/MiniMapNodeComponent` | mesh | 1.10 |  |  |
-| `drag/MiniMapNodeComponent` | pipeline |  | 1 | 1 |
-| `drag/MiniMapNodes` | mesh | 1.60 | 1.40 |  |
-| `drag/MiniMapNodes` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/MinusIcon` | mesh | 1.60 | 1.40 |  |
-| `drag/MinusIcon` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/NodeComponentWrapperInner` | mesh | 167.70 | 728.90 |  |
-| `drag/NodeComponentWrapperInner` | pipeline | 143.80 | 972.20 | 2605.50 |
-| `drag/NodePanel` | mesh | 1.60 | 1.40 |  |
-| `drag/NodePanel` | pipeline | 1.40 | 1.70 | 1.70 |
-| `drag/NodePlanning` | mesh | 1.60 | 1.40 |  |
-| `drag/NodePlanning` | pipeline | 1.40 | 1.70 | 1.70 |
-| `drag/NodeRenderer` | mesh | 1.60 | 1.40 |  |
-| `drag/NodeRenderer` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/NodeTooltip` | pipeline |  | 1.20 | 1 |
-| `drag/NodeWrapper` | mesh | 167.70 | 729.10 |  |
-| `drag/NodeWrapper` | pipeline | 143.90 | 972.20 | 2605.50 |
-| `drag/Pane` | mesh | 1.60 | 1.40 |  |
-| `drag/Pane` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/Panel` | mesh | 4.80 | 4.20 |  |
-| `drag/Panel` | pipeline | 4.20 | 5.70 | 5.10 |
-| `drag/PlusIcon` | mesh | 1.60 | 1.40 |  |
-| `drag/PlusIcon` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/ReactFlow` | mesh | 1.60 | 1.40 |  |
-| `drag/ReactFlow` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/Section` | mesh | 1.60 | 1.40 |  |
-| `drag/Section` | pipeline | 1.40 | 2.10 | 1.70 |
-| `drag/SelectionFindings` | mesh | 1.70 | 1.70 |  |
-| `drag/SelectionFindings` | pipeline | 1.50 | 1.90 | 1.70 |
-| `drag/SelectionListener` | mesh | 1.60 | 1.40 |  |
-| `drag/SelectionListener` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/SelectionListenerInner` | mesh | 1.70 | 1.50 |  |
-| `drag/SelectionListenerInner` | pipeline | 1.50 | 2 | 1.80 |
-| `drag/StencilIcon` | mesh | 2.80 | 2.50 |  |
-| `drag/StencilIcon` | pipeline | 2.40 | 2.80 | 2.80 |
-| `drag/StoreUpdater` | mesh | 1.60 | 1.40 |  |
-| `drag/StoreUpdater` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/UserSelection` | mesh | 1.60 | 1.40 |  |
-| `drag/UserSelection` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/Viewport` | mesh | 1.60 | 1.40 |  |
-| `drag/Viewport` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/Wrapper` | mesh | 1.60 | 1.40 |  |
-| `drag/Wrapper` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/ZoomPane` | mesh | 1.60 | 1.40 |  |
-| `drag/ZoomPane` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/ZoomVar` | mesh | 1.60 | 1.40 |  |
-| `drag/ZoomVar` | pipeline | 1.40 | 1.90 | 1.70 |
-| `drag/commits` | mesh | 3.20 | 3 |  |
-| `drag/commits` | pipeline | 2.80 | 3.50 | 3 |
-| `drag/total` | mesh | 495.80 | 1624.90 |  |
-| `drag/total` | pipeline | 391.80 | 2084.20 | 5348.50 |
-| `live/ControlBar` | pipeline | 7.30 | 5.70 | 3 |
-| `live/IdleChip` | pipeline | 491.30 | 1,300 | 456 |
-| `live/LiveIcon` | pipeline | 396 | 923.70 | 296.30 |
-| `live/LiveSession` | pipeline | 7.30 | 5.70 | 3 |
-| `live/MoreMenu` | pipeline | 7.30 | 5.70 | 3 |
-| `live/NodeBadge` | pipeline | 733.30 | 2833.30 | 4,500 |
-| `live/NodeBadges` | pipeline | 7.30 | 5.70 | 3 |
-| `live/NoteCallout` | pipeline | 7.30 | 5.70 | 3 |
-| `live/Recorder` | pipeline | 7.30 | 5.70 | 3 |
-| `live/SlowCaption` | pipeline | 7.30 | 5.70 | 3 |
-| `live/ViewportPortal` | pipeline | 7.30 | 5.70 | 3 |
-| `live/commits` | pipeline | 7.30 | 5.70 | 3 |
-| `live/rendersPerCommit` | pipeline | 229 | 900.40 | 1758.80 |
-| `live/total` | pipeline | 1679.30 | 5102.30 | 5276.30 |
-| `pan/ControlButton` | mesh |  | 2.40 |  |
-| `pan/ControlButton` | pipeline | 2.40 | 3.60 | 2.40 |
-| `pan/DiagramNodeImpl` | mesh | 0 | 0.40 |  |
-| `pan/DiagramNodeImpl` | pipeline |  |  | 0.30 |
-| `pan/Icon` | mesh | 1.10 | 4.80 |  |
-| `pan/Icon` | pipeline | 4.10 | 6 | 4.10 |
-| `pan/NodeComponentWrapperInner` | mesh | 10.40 | 208.30 |  |
-| `pan/NodeComponentWrapperInner` | pipeline | 41 | 307.20 | 613 |
-| `pan/NodeWrapper` | mesh | 10.40 | 208.30 |  |
-| `pan/NodeWrapper` | pipeline |  |  | 613.20 |
-| `pan/Panel` | mesh |  | 1.30 |  |
-| `pan/Panel` | pipeline | 1.30 | 1.90 | 1.30 |
-| `pan/SelectionListenerInner` | pipeline |  | 1 |  |
-| `pan/UserSelection` | mesh | 1.20 | 1.30 |  |
-| `pan/UserSelection` | pipeline | 1.30 | 1.40 | 1.40 |
-| `pan/commits` | mesh | 1.40 | 1.90 |  |
-| `pan/commits` | pipeline | 2.20 | 2.50 | 2.20 |
-| `pan/total` | mesh | 27.50 | 441.80 |  |
-| `pan/total` | pipeline | 108.10 | 653.90 | 1252.30 |
+| `drag/A11yDescriptions` | mesh | 1.50 | 1.40 |  |
+| `drag/A11yDescriptions` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/AiMount` | mesh | 1.30 | 1.20 |  |
+| `drag/AiMount` | pipeline | 1.20 | 1.20 | 1.30 |
+| `drag/AriaLiveMessage` | mesh | 1.50 | 1.40 |  |
+| `drag/AriaLiveMessage` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/Attribution` | mesh | 1.50 | 1.40 |  |
+| `drag/Attribution` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/CanvasInner` | mesh | 1.50 | 1.40 |  |
+| `drag/CanvasInner` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/CardNode` | mesh | 1.10 | 1.20 |  |
+| `drag/CardNode` | pipeline | 1.20 | 1.20 | 1.10 |
+| `drag/ConnectionLineWrapper` | mesh | 1.50 | 1.40 |  |
+| `drag/ConnectionLineWrapper` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/ControlButton` | mesh | 9 | 8.40 |  |
+| `drag/ControlButton` | pipeline | 8.40 | 8.40 | 9 |
+| `drag/Controls` | mesh | 1.50 | 1.40 |  |
+| `drag/Controls` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/CopyId` | mesh | 1.50 | 1.40 |  |
+| `drag/CopyId` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/DiagramCardMeta` | mesh | 1.50 | 1.70 |  |
+| `drag/DiagramCardMeta` | pipeline | 1.50 | 1.50 | 1.50 |
+| `drag/DiagramNodeImpl` | mesh | 1.10 | 1.20 |  |
+| `drag/DiagramNodeImpl` | pipeline | 1.20 | 1.20 | 1.10 |
+| `drag/Disclosure` | mesh | 3 | 2.80 |  |
+| `drag/Disclosure` | pipeline | 2.80 | 2.80 | 3 |
+| `drag/DotGrid` | mesh | 1.50 | 1.40 |  |
+| `drag/DotGrid` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/EdgeLabelRenderer` | mesh | 12.40 | 16.80 |  |
+| `drag/EdgeLabelRenderer` | pipeline | 2.20 | 1.30 |  |
+| `drag/EdgeMarkers` | mesh | 1.50 | 1.40 |  |
+| `drag/EdgeMarkers` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/EdgeWrapper` | mesh |  | 6 |  |
+| `drag/EdgeWrapper` | pipeline | 2 | 1.80 | 1.80 |
+| `drag/Field` | mesh | 6 | 5.60 |  |
+| `drag/Field` | pipeline | 5.60 | 5.60 | 6 |
+| `drag/FindingRow` | mesh |  | 1.60 |  |
+| `drag/FirstRunHint` | mesh | 1.50 | 1.40 |  |
+| `drag/FirstRunHint` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/FlowEdgeImpl` | mesh | 14.20 | 27.80 |  |
+| `drag/FlowEdgeImpl` | pipeline | 3.40 | 4.10 | 2.70 |
+| `drag/FlowRenderer` | mesh | 1.50 | 1.40 |  |
+| `drag/FlowRenderer` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/GraphView` | mesh | 1.50 | 1.40 |  |
+| `drag/GraphView` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/Icon` | mesh | 19.70 | 21.90 |  |
+| `drag/Icon` | pipeline | 17 | 17 | 18.20 |
+| `drag/Inspector` | mesh | 1.50 | 1.40 |  |
+| `drag/Inspector` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/InspectorFindings` | mesh |  | 1.60 |  |
+| `drag/LandingOutline` | mesh | 1.50 | 1.40 |  |
+| `drag/LandingOutline` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/Lazy` | mesh | 1.50 | 3 |  |
+| `drag/Lazy` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/LiveView` | mesh | 1.50 | 1.40 |  |
+| `drag/LiveView` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/MiniMap` | mesh | 1.50 | 1.40 |  |
+| `drag/MiniMap` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/MiniMapNodeComponent` | mesh | 1 | 1 |  |
+| `drag/MiniMapNodeComponent` | pipeline | 1 | 1 | 1 |
+| `drag/MiniMapNodes` | mesh | 1.50 | 1.40 |  |
+| `drag/MiniMapNodes` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/MinusIcon` | mesh | 1.50 | 1.40 |  |
+| `drag/MinusIcon` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/NodeComponentWrapperInner` | mesh | 157.20 | 729.10 |  |
+| `drag/NodeComponentWrapperInner` | pipeline | 143.90 | 716.50 | 2299.20 |
+| `drag/NodePanel` | mesh | 1.50 | 1.40 |  |
+| `drag/NodePanel` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/NodePlanning` | mesh | 1.50 | 1.40 |  |
+| `drag/NodePlanning` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/NodeRenderer` | mesh | 1.50 | 1.40 |  |
+| `drag/NodeRenderer` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/NodeWrapper` | mesh | 157.30 | 729.30 |  |
+| `drag/NodeWrapper` | pipeline | 144.10 | 716.70 | 2299.30 |
+| `drag/Pane` | mesh | 1.50 | 1.40 |  |
+| `drag/Pane` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/Panel` | mesh | 4.50 | 4.20 |  |
+| `drag/Panel` | pipeline | 4.20 | 4.20 | 4.50 |
+| `drag/PlusIcon` | mesh | 1.50 | 1.40 |  |
+| `drag/PlusIcon` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/ReactFlow` | mesh | 1.50 | 1.40 |  |
+| `drag/ReactFlow` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/Section` | mesh | 1.50 | 1.40 |  |
+| `drag/Section` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/SelectionFindings` | mesh | 1.50 | 1.60 |  |
+| `drag/SelectionFindings` | pipeline | 1.50 | 1.50 | 1.50 |
+| `drag/SelectionListener` | mesh | 1.50 | 1.40 |  |
+| `drag/SelectionListener` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/SelectionListenerInner` | mesh | 1.60 | 1.50 |  |
+| `drag/SelectionListenerInner` | pipeline | 1.50 | 1.50 | 1.60 |
+| `drag/StencilIcon` | mesh | 2.60 | 2.60 |  |
+| `drag/StencilIcon` | pipeline | 2.60 | 2.60 | 2.60 |
+| `drag/StoreUpdater` | mesh | 1.50 | 1.40 |  |
+| `drag/StoreUpdater` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/UserSelection` | mesh | 1.50 | 1.40 |  |
+| `drag/UserSelection` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/Viewport` | mesh | 1.50 | 1.40 |  |
+| `drag/Viewport` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/Wrapper` | mesh | 1.50 | 1.40 |  |
+| `drag/Wrapper` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/ZoomPane` | mesh | 1.50 | 1.40 |  |
+| `drag/ZoomPane` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/ZoomVar` | mesh | 1.50 | 1.40 |  |
+| `drag/ZoomVar` | pipeline | 1.40 | 1.40 | 1.50 |
+| `drag/commits` | mesh | 2.90 | 3.10 |  |
+| `drag/commits` | pipeline | 2.90 | 2.80 | 2.90 |
+| `drag/total` | mesh | 448.20 | 1617.60 |  |
+| `drag/total` | pipeline | 394.20 | 1539.50 | 4707.80 |
+| `live/ControlBar` | pipeline | 7.70 | 6.30 | 3.70 |
+| `live/IdleChip` | pipeline | 513.70 | 1704.30 | 905.30 |
+| `live/LiveIcon` | pipeline | 414 | 1224.70 | 588.70 |
+| `live/LiveSession` | pipeline | 7.70 | 6.30 | 3.70 |
+| `live/MoreMenu` | pipeline | 7.70 | 6.30 | 3.70 |
+| `live/NodeBadge` | pipeline | 766.70 | 3166.70 | 5,500 |
+| `live/NodeBadges` | pipeline | 7.70 | 6.30 | 3.70 |
+| `live/NoteCallout` | pipeline | 7.70 | 6.30 | 3.70 |
+| `live/Recorder` | pipeline | 7.70 | 6.30 | 3.70 |
+| `live/SlowCaption` | pipeline | 7.70 | 6.30 | 3.70 |
+| `live/ViewportPortal` | pipeline | 7.70 | 6.30 | 3.70 |
+| `live/commits` | pipeline | 7.70 | 6.30 | 3.70 |
+| `live/rendersPerCommit` | pipeline | 229 | 970.50 | 1915.50 |
+| `live/total` | pipeline | 1755.70 | 6146.30 | 7023.30 |
+| `pan/Background` | mesh | 1 | 1 |  |
+| `pan/Background` | pipeline | 1 | 1 | 1 |
+| `pan/DiagramNodeImpl` | mesh | 0 | 0 |  |
+| `pan/DiagramNodeImpl` | pipeline |  |  | 0 |
+| `pan/DotPattern` | mesh | 1 | 1 |  |
+| `pan/DotPattern` | pipeline | 1 | 1 | 1 |
+| `pan/MiniMap` | mesh | 1 | 1 |  |
+| `pan/MiniMap` | pipeline | 1 | 1 | 1 |
+| `pan/NodeWrapper` | mesh | 0 | 0 |  |
+| `pan/NodeWrapper` | pipeline |  |  | 0 |
+| `pan/Panel` | mesh | 1 | 1 |  |
+| `pan/Panel` | pipeline | 1 | 1 | 1 |
+| `pan/commits` | mesh | 1.20 | 1.20 |  |
+| `pan/commits` | pipeline | 1.20 | 1.20 | 1.20 |
+| `pan/total` | mesh | 4.40 | 4.40 |  |
+| `pan/total` | pipeline |  |  | 4.40 |
 | `select/A11yDescriptions` | mesh | 4 | 4 |  |
 | `select/A11yDescriptions` | pipeline | 4 | 4 | 4 |
 | `select/AiMount` | mesh | 1 | 1 |  |
@@ -1054,41 +1049,43 @@
 | `select/Controls` | pipeline | 4 | 4 | 4 |
 | `select/CopyId` | mesh | 4 | 4 |  |
 | `select/CopyId` | pipeline | 4 | 4 | 4 |
-| `select/DiagramCardMeta` | mesh | 4.50 | 4.33 |  |
-| `select/DiagramCardMeta` | pipeline | 4.33 | 4.33 | 4 |
+| `select/DiagramCardMeta` | mesh | 4.17 | 4 |  |
+| `select/DiagramCardMeta` | pipeline | 4.17 | 4.17 | 4 |
 | `select/DiagramNodeImpl` | mesh | 3 | 3 |  |
 | `select/DiagramNodeImpl` | pipeline |  |  | 3 |
 | `select/Disclosure` | mesh | 8 | 8 |  |
 | `select/Disclosure` | pipeline | 8 | 8 | 8 |
 | `select/DotGrid` | mesh | 4 | 4 |  |
 | `select/DotGrid` | pipeline | 4 | 4 | 4 |
-| `select/EdgeLabelRenderer` | mesh | 1.17 | 1 |  |
+| `select/EdgeLabelRenderer` | mesh |  | 1 |  |
 | `select/EdgeMarkers` | mesh | 4 | 4 |  |
 | `select/EdgeMarkers` | pipeline | 4 | 4 | 4 |
-| `select/EdgeWrapper` | mesh | 1.17 | 1.50 |  |
+| `select/EdgeWrapper` | mesh |  | 1 |  |
+| `select/EdgeWrapper` | pipeline | 1.17 | 1.17 | 1.17 |
 | `select/Field` | mesh | 16 | 16 |  |
 | `select/Field` | pipeline | 16 | 16 | 16 |
-| `select/FindingRow` | pipeline | 1.50 |  |  |
+| `select/FindingRow` | pipeline | 2 |  |  |
 | `select/FirstRunHint` | mesh | 4 | 4 |  |
 | `select/FirstRunHint` | pipeline | 4 | 4 | 4 |
-| `select/FlowEdgeImpl` | mesh | 1.17 | 1.50 |  |
+| `select/FlowEdgeImpl` | mesh |  | 1 |  |
+| `select/FlowEdgeImpl` | pipeline | 1.17 | 1.17 | 1.17 |
 | `select/FlowRenderer` | mesh | 4 | 4 |  |
 | `select/FlowRenderer` | pipeline | 4 | 4 | 4 |
 | `select/GraphView` | mesh | 4 | 4 |  |
 | `select/GraphView` | pipeline | 4 | 4 | 4 |
-| `select/GrowChip` | mesh | 1 | 2 |  |
-| `select/GrowChip` | pipeline | 1.67 | 1.67 | 2 |
-| `select/HandleComponent` | mesh | 1 | 2 |  |
-| `select/HandleComponent` | pipeline | 1.67 | 1.67 | 2 |
-| `select/Icon` | mesh | 50.83 | 50.67 |  |
-| `select/Icon` | pipeline | 46.50 | 45.33 | 45 |
+| `select/GrowChip` | mesh | 1.67 | 1 |  |
+| `select/GrowChip` | pipeline | 2 | 2 | 2 |
+| `select/HandleComponent` | mesh | 1.67 | 1 |  |
+| `select/HandleComponent` | pipeline | 2 | 2 | 2 |
+| `select/Icon` | mesh | 50.83 | 49 |  |
+| `select/Icon` | pipeline | 47 | 45 | 45 |
 | `select/Inspector` | mesh | 4 | 4 |  |
 | `select/Inspector` | pipeline | 4 | 4 | 4 |
-| `select/InspectorFindings` | pipeline | 1.50 |  |  |
+| `select/InspectorFindings` | pipeline | 2 |  |  |
 | `select/LandingOutline` | mesh | 4 | 4 |  |
 | `select/LandingOutline` | pipeline | 4 | 4 | 4 |
-| `select/Lazy` | mesh | 4.67 | 5.50 |  |
-| `select/Lazy` | pipeline | 5.50 | 5 | 4 |
+| `select/Lazy` | mesh | 5 | 4 |  |
+| `select/Lazy` | pipeline | 6 | 4 | 4 |
 | `select/LiveView` | mesh | 4 | 4 |  |
 | `select/LiveView` | pipeline | 4 | 4 | 4 |
 | `select/MiniMap` | mesh | 4 | 4 |  |
@@ -1109,7 +1106,7 @@
 | `select/NodeRenderer` | pipeline | 4 | 4 | 4 |
 | `select/NodeTooltip` | mesh | 3 | 3 |  |
 | `select/NodeTooltip` | pipeline | 3 | 3 | 3 |
-| `select/NodeWrapper` | mesh | 421 | 2,086 |  |
+| `select/NodeWrapper` | mesh | 421.67 | 2,085 |  |
 | `select/NodeWrapper` | pipeline |  |  | 6,134 |
 | `select/PaletteFoot` | mesh | 1 | 1 |  |
 | `select/PaletteFoot` | pipeline | 1 | 1 | 1 |
@@ -1123,8 +1120,8 @@
 | `select/ReactFlow` | pipeline | 4 | 4 | 4 |
 | `select/Section` | mesh | 4 | 4 |  |
 | `select/Section` | pipeline | 4 | 4 | 4 |
-| `select/SelectionFindings` | mesh | 4.50 | 4.33 |  |
-| `select/SelectionFindings` | pipeline | 4.33 | 4.33 | 4 |
+| `select/SelectionFindings` | mesh | 4.17 | 4 |  |
+| `select/SelectionFindings` | pipeline | 4.17 | 4.17 | 4 |
 | `select/SelectionListener` | mesh | 4 | 4 |  |
 | `select/SelectionListener` | pipeline | 4 | 4 | 4 |
 | `select/SelectionListenerInner` | mesh | 5 | 5 |  |
@@ -1143,130 +1140,126 @@
 | `select/ZoomPane` | pipeline | 4 | 4 | 4 |
 | `select/ZoomVar` | mesh | 4 | 4 |  |
 | `select/ZoomVar` | pipeline | 4 | 4 | 4 |
-| `select/commits` | mesh | 7.33 | 10.17 |  |
+| `select/commits` | mesh | 9.17 | 7 |  |
 | `select/commits` | pipeline |  |  | 10 |
-| `select/total` | mesh | 1125.33 | 4457.17 |  |
-| `select/total` | pipeline | 1107.50 | 4374.67 | 12542.17 |
-| `type-name/A11yDescriptions` | mesh | 1.58 | 1.75 |  |
-| `type-name/A11yDescriptions` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/AiMount` | mesh | 1.50 | 1.75 |  |
-| `type-name/AiMount` | pipeline | 1.08 | 1.17 | 1.67 |
-| `type-name/AriaLiveMessage` | mesh | 1.58 | 1.75 |  |
-| `type-name/AriaLiveMessage` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/Attribution` | mesh | 1.58 | 1.75 |  |
-| `type-name/Attribution` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/CanvasInner` | mesh | 1.58 | 1.75 |  |
-| `type-name/CanvasInner` | pipeline | 1.17 | 1.25 | 1.50 |
+| `select/total` | mesh | 1125.83 | 4,448 |  |
+| `select/total` | pipeline | 1,111 | 4374.83 | 12542.33 |
+| `type-name/A11yDescriptions` | mesh | 1.50 | 1.50 |  |
+| `type-name/A11yDescriptions` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/AiMount` | mesh | 1.42 | 1.42 |  |
+| `type-name/AiMount` | pipeline | 1.17 | 1.33 | 1.33 |
+| `type-name/AriaLiveMessage` | mesh | 1.50 | 1.50 |  |
+| `type-name/AriaLiveMessage` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/Attribution` | mesh | 1.50 | 1.50 |  |
+| `type-name/Attribution` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/CanvasInner` | mesh | 1.50 | 1.50 |  |
+| `type-name/CanvasInner` | pipeline | 1.25 | 1.42 | 1.42 |
 | `type-name/CardNode` | mesh | 1.33 | 1.33 |  |
-| `type-name/CardNode` | pipeline | 1 | 1.08 | 1.08 |
-| `type-name/ConnectionLineWrapper` | mesh | 1.58 | 1.75 |  |
-| `type-name/ConnectionLineWrapper` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/ControlButton` | mesh | 9.50 | 10.50 |  |
-| `type-name/ControlButton` | pipeline | 7 | 7.50 | 9 |
-| `type-name/Controls` | mesh | 1.58 | 1.75 |  |
-| `type-name/Controls` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/CopyId` | mesh | 1.58 | 1.75 |  |
-| `type-name/CopyId` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/DiagramCardMeta` | mesh | 1.67 | 1.83 |  |
-| `type-name/DiagramCardMeta` | pipeline | 1.25 | 1.33 | 1.50 |
+| `type-name/CardNode` | pipeline | 1.08 | 1.25 | 1.17 |
+| `type-name/ConnectionLineWrapper` | mesh | 1.50 | 1.50 |  |
+| `type-name/ConnectionLineWrapper` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/ControlButton` | mesh | 9 | 9 |  |
+| `type-name/ControlButton` | pipeline | 7.50 | 8.50 | 8.50 |
+| `type-name/Controls` | mesh | 1.50 | 1.50 |  |
+| `type-name/Controls` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/CopyId` | mesh | 1.50 | 1.50 |  |
+| `type-name/CopyId` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/DiagramCardMeta` | mesh | 1.67 | 1.50 |  |
+| `type-name/DiagramCardMeta` | pipeline | 1.33 | 1.50 | 1.42 |
 | `type-name/DiagramNodeImpl` | mesh | 1.33 | 1.33 |  |
-| `type-name/DiagramNodeImpl` | pipeline |  |  | 1.08 |
-| `type-name/Disclosure` | mesh | 3.17 | 3.50 |  |
-| `type-name/Disclosure` | pipeline | 2.33 | 2.50 | 3 |
-| `type-name/DotGrid` | mesh | 1.58 | 1.75 |  |
-| `type-name/DotGrid` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/EdgeLabelRenderer` | mesh | 3 | 3.08 |  |
-| `type-name/EdgeMarkers` | mesh | 1.58 | 1.75 |  |
-| `type-name/EdgeMarkers` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/EdgeWrapper` | mesh | 4 | 6.67 |  |
-| `type-name/EdgeWrapper` | pipeline | 3 | 2.17 | 2.17 |
-| `type-name/Field` | mesh | 6.33 | 7 |  |
-| `type-name/Field` | pipeline | 4.67 | 5 | 6 |
-| `type-name/FindingRow` | mesh | 1.67 | 1.83 |  |
-| `type-name/FirstRunHint` | mesh | 1.58 | 1.75 |  |
-| `type-name/FirstRunHint` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/FlowEdgeImpl` | mesh | 5.58 | 6.08 |  |
-| `type-name/FlowRenderer` | mesh | 1.58 | 1.75 |  |
-| `type-name/FlowRenderer` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/Glyph` | mesh |  | 2.08 |  |
-| `type-name/Glyph` | pipeline |  |  | 2.92 |
-| `type-name/GraphView` | mesh | 1.58 | 1.75 |  |
-| `type-name/GraphView` | pipeline | 1.17 | 1.25 | 1.50 |
+| `type-name/DiagramNodeImpl` | pipeline |  |  | 1.17 |
+| `type-name/Disclosure` | mesh | 3 | 3 |  |
+| `type-name/Disclosure` | pipeline | 2.50 | 2.83 | 2.83 |
+| `type-name/DotGrid` | mesh | 1.50 | 1.50 |  |
+| `type-name/DotGrid` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/EdgeLabelRenderer` | mesh | 3.25 | 2.33 |  |
+| `type-name/EdgeMarkers` | mesh | 1.50 | 1.50 |  |
+| `type-name/EdgeMarkers` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/EdgeWrapper` | mesh | 1.33 | 8 |  |
+| `type-name/EdgeWrapper` | pipeline | 2.17 | 2.50 | 2.33 |
+| `type-name/Field` | mesh | 6 | 6 |  |
+| `type-name/Field` | pipeline | 5 | 5.67 | 5.67 |
+| `type-name/FindingRow` | mesh |  | 1.50 |  |
+| `type-name/FirstRunHint` | mesh | 1.50 | 1.50 |  |
+| `type-name/FirstRunHint` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/FlowEdgeImpl` | mesh | 4.08 | 4.58 |  |
+| `type-name/FlowRenderer` | mesh | 1.50 | 1.50 |  |
+| `type-name/FlowRenderer` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/GraphView` | mesh | 1.50 | 1.50 |  |
+| `type-name/GraphView` | pipeline | 1.25 | 1.42 | 1.42 |
 | `type-name/GrowChip` | mesh | 1.67 | 1.67 |  |
-| `type-name/GrowChip` | pipeline | 1 | 1.17 | 1.17 |
+| `type-name/GrowChip` | pipeline | 1.17 | 1.50 | 1.33 |
 | `type-name/HandleComponent` | mesh | 1.67 | 1.67 |  |
-| `type-name/HandleComponent` | pipeline | 1 | 1.17 | 1.17 |
-| `type-name/Icon` | mesh | 24.58 | 28.17 |  |
-| `type-name/Icon` | pipeline | 14.25 | 15.25 | 20.50 |
-| `type-name/Inspector` | mesh | 1.58 | 1.75 |  |
-| `type-name/Inspector` | pipeline |  |  | 1.50 |
-| `type-name/InspectorFindings` | mesh | 1.67 | 1.83 |  |
-| `type-name/LandingOutline` | mesh | 1.58 | 1.75 |  |
-| `type-name/LandingOutline` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/Lazy` | mesh | 3.25 | 3.58 |  |
-| `type-name/Lazy` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/LiveView` | mesh | 1.58 | 1.75 |  |
-| `type-name/LiveView` | pipeline | 1.17 | 1.25 | 1.50 |
+| `type-name/HandleComponent` | pipeline | 1.17 | 1.50 | 1.33 |
+| `type-name/Icon` | mesh | 19.92 | 22.75 |  |
+| `type-name/Icon` | pipeline | 15.25 | 17.25 | 17.58 |
+| `type-name/Inspector` | mesh | 1.50 | 1.50 |  |
+| `type-name/Inspector` | pipeline |  |  | 1.42 |
+| `type-name/InspectorFindings` | mesh |  | 1.50 |  |
+| `type-name/LandingOutline` | mesh | 1.50 | 1.50 |  |
+| `type-name/LandingOutline` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/Lazy` | mesh | 1.50 | 3 |  |
+| `type-name/Lazy` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/LiveView` | mesh | 1.50 | 1.50 |  |
+| `type-name/LiveView` | pipeline | 1.25 | 1.42 | 1.42 |
 | `type-name/MarkerDefinitions` | mesh | 1.33 | 1.33 |  |
-| `type-name/MarkerDefinitions` | pipeline | 1 | 1.08 | 1.08 |
-| `type-name/Menu` | mesh |  | 1.25 |  |
-| `type-name/Menu` | pipeline |  |  | 1.75 |
-| `type-name/MiniMap` | mesh | 1.58 | 1.75 |  |
-| `type-name/MiniMap` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/MiniMapNodes` | mesh | 1.58 | 1.75 |  |
-| `type-name/MiniMapNodes` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/MinusIcon` | mesh | 1.58 | 1.75 |  |
-| `type-name/MinusIcon` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/NodeComponentWrapperInner` | mesh | 166 | 911.33 |  |
-| `type-name/NodeComponentWrapperInner` | pipeline | 120 | 639.83 | 2299.08 |
-| `type-name/NodePanel` | mesh | 1.58 | 1.75 |  |
-| `type-name/NodePanel` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/NodePlanning` | mesh | 1.58 | 1.75 |  |
-| `type-name/NodePlanning` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/NodeRenderer` | mesh | 1.58 | 1.75 |  |
-| `type-name/NodeRenderer` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/NodeWrapper` | mesh | 166 | 911.33 |  |
-| `type-name/NodeWrapper` | pipeline |  |  | 2299.08 |
+| `type-name/MarkerDefinitions` | pipeline | 1.08 | 1.25 | 1.17 |
+| `type-name/MiniMap` | mesh | 1.50 | 1.50 |  |
+| `type-name/MiniMap` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/MiniMapNodes` | mesh | 1.50 | 1.50 |  |
+| `type-name/MiniMapNodes` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/MinusIcon` | mesh | 1.50 | 1.50 |  |
+| `type-name/MinusIcon` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/NodeComponentWrapperInner` | mesh | 157.33 | 781.33 |  |
+| `type-name/NodeComponentWrapperInner` | pipeline | 128.58 | 725.17 | 2171.50 |
+| `type-name/NodePanel` | mesh | 1.50 | 1.50 |  |
+| `type-name/NodePanel` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/NodePlanning` | mesh | 1.50 | 1.50 |  |
+| `type-name/NodePlanning` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/NodeRenderer` | mesh | 1.50 | 1.50 |  |
+| `type-name/NodeRenderer` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/NodeWrapper` | mesh | 157.33 | 781.33 |  |
+| `type-name/NodeWrapper` | pipeline |  |  | 2171.50 |
 | `type-name/Palette` | mesh | 0 | 0 |  |
 | `type-name/Palette` | pipeline |  |  | 0 |
 | `type-name/PaletteFoot` | mesh | 1 | 1 |  |
 | `type-name/PaletteFoot` | pipeline | 1 | 1 | 1 |
 | `type-name/PaletteItem` | mesh | 0 | 0 |  |
 | `type-name/PaletteItem` | pipeline |  |  | 0 |
-| `type-name/Pane` | mesh | 1.58 | 1.75 |  |
-| `type-name/Pane` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/Panel` | mesh | 4.75 | 5.25 |  |
-| `type-name/Panel` | pipeline | 3.50 | 3.75 | 4.50 |
-| `type-name/PlusIcon` | mesh | 1.58 | 1.75 |  |
-| `type-name/PlusIcon` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/ReactFlow` | mesh | 1.58 | 1.75 |  |
-| `type-name/ReactFlow` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/Section` | mesh | 1.58 | 1.75 |  |
-| `type-name/Section` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/SelectionFindings` | mesh | 1.67 | 1.83 |  |
-| `type-name/SelectionFindings` | pipeline | 1.25 | 1.33 | 1.50 |
-| `type-name/SelectionListener` | mesh | 1.58 | 1.75 |  |
-| `type-name/SelectionListener` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/SelectionListenerInner` | mesh | 1.58 | 1.75 |  |
-| `type-name/SelectionListenerInner` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/StencilIcon` | mesh | 2.92 | 3.08 |  |
-| `type-name/StencilIcon` | pipeline | 2.17 | 2.33 | 2.58 |
-| `type-name/StoreUpdater` | mesh | 1.58 | 1.75 |  |
-| `type-name/StoreUpdater` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/UserSelection` | mesh | 1.58 | 1.75 |  |
-| `type-name/UserSelection` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/Viewport` | mesh | 1.58 | 1.75 |  |
-| `type-name/Viewport` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/Wrapper` | mesh | 1.58 | 1.75 |  |
-| `type-name/Wrapper` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/ZoomPane` | mesh | 1.58 | 1.75 |  |
-| `type-name/ZoomPane` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/ZoomVar` | mesh | 1.58 | 1.75 |  |
-| `type-name/ZoomVar` | pipeline | 1.17 | 1.25 | 1.50 |
-| `type-name/commits` | mesh | 4.42 | 4.58 |  |
-| `type-name/commits` | pipeline |  |  | 3.75 |
-| `type-name/total` | mesh | 471.83 | 1984.25 |  |
-| `type-name/total` | pipeline |  |  | 4721.58 |
+| `type-name/Pane` | mesh | 1.50 | 1.50 |  |
+| `type-name/Pane` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/Panel` | mesh | 4.50 | 4.50 |  |
+| `type-name/Panel` | pipeline | 3.75 | 4.25 | 4.25 |
+| `type-name/PlusIcon` | mesh | 1.50 | 1.50 |  |
+| `type-name/PlusIcon` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/ReactFlow` | mesh | 1.50 | 1.50 |  |
+| `type-name/ReactFlow` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/Section` | mesh | 1.50 | 1.50 |  |
+| `type-name/Section` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/SelectionFindings` | mesh | 1.67 | 1.50 |  |
+| `type-name/SelectionFindings` | pipeline | 1.33 | 1.50 | 1.42 |
+| `type-name/SelectionListener` | mesh | 1.50 | 1.50 |  |
+| `type-name/SelectionListener` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/SelectionListenerInner` | mesh | 1.50 | 1.50 |  |
+| `type-name/SelectionListenerInner` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/StencilIcon` | mesh | 2.83 | 2.83 |  |
+| `type-name/StencilIcon` | pipeline | 2.33 | 2.67 | 2.58 |
+| `type-name/StoreUpdater` | mesh | 1.50 | 1.50 |  |
+| `type-name/StoreUpdater` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/UserSelection` | mesh | 1.50 | 1.50 |  |
+| `type-name/UserSelection` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/Viewport` | mesh | 1.50 | 1.50 |  |
+| `type-name/Viewport` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/Wrapper` | mesh | 1.50 | 1.50 |  |
+| `type-name/Wrapper` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/ZoomPane` | mesh | 1.50 | 1.50 |  |
+| `type-name/ZoomPane` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/ZoomVar` | mesh | 1.50 | 1.50 |  |
+| `type-name/ZoomVar` | pipeline | 1.25 | 1.42 | 1.42 |
+| `type-name/commits` | mesh | 4.42 | 4.33 |  |
+| `type-name/commits` | pipeline |  |  | 3.83 |
+| `type-name/total` | mesh | 434.83 | 1696.08 |  |
+| `type-name/total` | pipeline |  |  | 4450.42 |
 
 ## sim
 

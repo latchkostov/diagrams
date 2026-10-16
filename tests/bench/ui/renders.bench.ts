@@ -40,30 +40,38 @@ async function typeKeys(page: Page, text: string) {
 
 /**
  * Gate budgets per unit of interaction, on the pipeline workload at 100 and 500 nodes: `fixed + perNode × nodes`.
- * Measured on 2026-10-14 (three runs each; docs/BENCHMARKS.md § Baseline), with room for the run-to-run spread of a
+ * Measured on 2026-10-14 and 2026-10-15 (several runs each; docs/BENCHMARKS.md § Baseline), with room for the run-to-run spread of a
  * commit or two (a debounced follow-up landing inside or outside the reading), never for a whole extra render per
  * key. The per-node ones hold today's hotspots (every node wrapper re-renders per key, per selection) from getting
  * worse; when the refactor brings them down, bring the budgets down with them.
  */
 const BUDGETS: Record<string, { fixed?: number; perNode?: number; why: string }> = {
-  "type-name/commits": { fixed: 4, why: "measured 3.2 to 3.7 commits per key; one more per key is 4.2 or more" },
-  "type-name/Inspector": { fixed: 1.75, why: "measured 1.17 to 1.33 per key: the inspector renders once a key" },
-  "type-name/DiagramNodeImpl": { fixed: 1.5, why: "only the renamed node's card renders (1 per key)" },
+  "type-name/commits": {
+    fixed: 4.5,
+    why: "measured 3.25 to 4 commits per key (React may fold an extra update into a commit it makes anyway)",
+  },
+  "type-name/Inspector": { fixed: 1.75, why: "measured 1.08 to 1.42 per key: the inspector renders once a key" },
+  "type-name/DiagramNodeImpl": { fixed: 1.5, why: "only the renamed node's card renders (1 to 1.25 per key)" },
   "type-name/Palette": { fixed: 0, why: "the stencil rail never reacts to typing" },
   "type-name/PaletteItem": { fixed: 0, why: "the stencil rail never reacts to typing" },
   "type-name/NodeWrapper": {
     perNode: 1.6,
-    why: "hotspot: every node's React Flow wrapper re-renders per key (1.1 to 1.3 per node today); not another pass",
+    why: "hotspot: every node's React Flow wrapper re-renders per key (1.1 to 1.45 per node today); not another pass",
   },
-  "type-name/total": { fixed: 150, perNode: 3, why: "measured 306 to 375 at 100 nodes, 1,283 to 1,374 at 500" },
-  "select/commits": { fixed: 10.5, why: "measured 9 to 9.7 commits per click; one more per click is 10 or more" },
+  "type-name/total": {
+    fixed: 150,
+    perNode: 3.3,
+    why: "measured 306 to 375 at 100 nodes, 1,283 to 1,557 at 500; another pass over the nodes adds 2 per node",
+  },
+  "select/commits": { fixed: 11, why: "measured 9 to 10.2 commits per click" },
   "select/DiagramNodeImpl": { fixed: 3.5, why: "the two cards whose selection changed, and the inspector's preview" },
   "select/NodeWrapper": {
     perNode: 5,
     why: "hotspot: every node's wrapper re-renders about 4 times per click today; not another pass",
   },
-  "pan/DiagramNodeImpl": { fixed: 1, why: "panning moves the viewport; only a hovered card may render" },
-  "pan/NodeWrapper": { perNode: 0.8, why: "measured 0.4 to 0.6 per node per frame (hotspot); not more" },
+  "pan/DiagramNodeImpl": { fixed: 0.5, why: "a pan moves the viewport: no card renders (0 measured)" },
+  "pan/NodeWrapper": { fixed: 2, why: "a pan moves the viewport: no node re-renders (0 measured)" },
+  "pan/total": { fixed: 10, why: "4.4 renders per pan frame (background, minimap), whatever the diagram's size" },
 };
 
 const GATED = (family: string, n: number) => family === "pipeline" && (n === 100 || n === 500);

@@ -70,7 +70,7 @@ machine. Every result records its workload's node and edge counts and a fingerpr
 | `k8s`       | Kubernetes manifests (Deployments, Services, ConfigMaps, Secrets, Strimzi topics, KEDA ScaledObjects, Ingress, a PostgreSQL StatefulSet per namespace) through the real importer, every boundary drawn.                                                                                                                                                                                                     | about      |
 | `terraform` | A Terraform plan (`terraform show -json`) of order-processing slices on AWS (SNS, SQS with DLQ, Lambda, DynamoDB, Secrets Manager, IAM, EventBridge) through the real importer.                                                                                                                                                                                                                             | about      |
 | `annotated` | The pipeline with a boundary per lane, a zone and a title per domain, a note per lane and a connectable shape per ten nodes (with a documentation edge to it).                                                                                                                                                                                                                                              | yes        |
-| `examples`  | The public examples saved as `diagrams/v1` (`src/examples/*.json`), copied onto a grid until the size is reached (a v2 example's planning model, with its shared quota ids, belongs to one document). The inspector planning scenario reads every public example as saved.                                                                                                                                                                                                                                                                                                                  | yes        |
+| `examples`  | The public examples saved as `diagrams/v1` (`src/examples/*.json`), copied onto a grid until the size is reached (a v2 example's planning model, with its shared quota ids, belongs to one document). The inspector planning scenario reads every public example as saved.                                                                                                                                  | yes        |
 
 Sizes: **100, 500, 1,500 and 5,000** nodes (5,000 is the file format's limit). The imported families solve for the
 number of units that draws about that many nodes. The generators were written to look like real systems: call chains
@@ -84,8 +84,8 @@ Synthetic data only. The generators read `src/examples/*.json` through a glob th
 run production builds, which can't contain it.
 
 Generating the biggest imported workloads takes seconds, so each one is written once to
-`tests/.output/bench/workloads/<key>/<family>-<n>.json`, keyed by a hash of everything that shapes it (the generators,
-the importers, the model, the public examples). The browser suites read those files; `pnpm bench:prepare` writes them
+`tests/.output/bench/workloads/<key>/<family>-<n>.json`, keyed by a hash of every source a generator can reach (all of
+`src/` but its tests, the public examples included, and `pnpm-lock.yaml`; `src/examples/private/` is skipped unread). The browser suites read those files; `pnpm bench:prepare` writes them
 before running a browser spec by hand.
 
 ## Metrics
@@ -95,27 +95,27 @@ with p90 beside them.
 
 ### Node suites (Vitest)
 
-| Suite      | Scenarios                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `parse`    | `serialize` (save), `parseNative` (open: parse, migrate, validate), `toFlow` and `fromFlow` (the canvas's conversion both ways), file size                                                                                                                                                                                                                                                                                                                                         |
-| `checks`   | `runChecks` (what the canvas runs in a worker after edits), `runSimulations` (Run simulations: every saved simulation played, with the losses it found)                                                                                                                                                                                                                                                                                                                            |
-| `planning` | `analyzeCapacity` (behind the inspector's planning, the heat map and the capacity check) per family and size; `inspectorPlanning-keystroke` (the inspector's planning for one node recomputed as a keystroke in its label does) for legacy, P1, P2 and P3 files where the inspector offers it; `planningCompute` (the same past the inspector's work estimate, at 100 and 250 nodes); `explainEveryNode` (hover cards); `upgradePlanning` (to P3); `planningSignature`; `analyzeCapacity-withLoop` |
-| `sim`      | `engineLoad`; `liveFrame` (the live view's per-frame main-thread work: `LiveController.advance` and `snapshot` each frame, `publish` every 125 ms) at three message rates (x1 free play; x10 and x100 Traffic × at the same dot scale); `engineStep`, `engineFrame`, `engineSnapshot`; `savedSimulation` (a saved simulation played to the end)                                                                                                                                    |
-| `layout`   | `autoLayout` (layered layout), `tidyAll`, `tidySelection` (one boundary, the rest as obstacles), `routeAll` (every edge routed from scratch), `routeDragFrame` (one node moved a few pixels with the router kept) and the edges it routed per frame. Routing isn't timed for the mesh and the Kubernetes import at 5,000 nodes (`routeSkipped`): a single call takes minutes there (one Kubernetes sample ran past 15), and the curve to 1,500 already shows it                                                                                                                                                                                                                                |
-| `imports`  | Compose, Kubernetes, Terraform and AsyncAPI: `import` (what File ▸ Import draws by default), `importEverything` (Draw everything), `read` (the reader alone), source size                                                                                                                                                                                                                                                                                                          |
-| `exports`  | `interactiveHtml` (with the build's real viewer template and icons), `drawio`, `mermaid`, `shareEncode`/`shareDecode` (share links), `thumbnail` (the library's, on every save)                                                                                                                                                                                                                                                                                                    |
+| Suite      | Scenarios                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `parse`    | `serialize` (save), `parseNative` (open: parse, migrate, validate), `toFlow` and `fromFlow` (the canvas's conversion both ways), file size                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `checks`   | `runChecks` (what the canvas runs in a worker after edits), `runSimulations` (Run simulations: every saved simulation played, with the losses it found)                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `planning` | `analyzeCapacity` (behind the inspector's planning, the heat map and the capacity check) per family and size; `inspectorPlanning-keystroke` (the inspector's planning for one node recomputed as a keystroke in its label does) for legacy, P1, P2 and P3 files where the inspector offers it; `planningCompute` (the same past the inspector's work estimate, at 100 and 250 nodes); `explainEveryNode` (hover cards); `upgradePlanning` (to P3); `planningSignature`; `analyzeCapacity-withLoop`                                                                                                   |
+| `sim`      | `engineLoad`; `liveFrame` (the live view's per-frame main-thread work: `LiveController.advance` and `snapshot` each frame, `publish` every 125 ms) at three message rates (x1 free play; x10 and x100 Traffic × at the same dot scale); `engineStep`, `engineFrame`, `engineSnapshot`; `savedSimulation` (a saved simulation played to the end)                                                                                                                                                                                                                                                      |
+| `layout`   | `autoLayout` (layered layout), `tidyAll`, `tidySelection` (one boundary, the rest as obstacles), `routeAll` (every edge routed from scratch, with the route input the canvas itself assembles: `routeInputFromStore`, so notes and shapes are obstacles and shapes are edge ends), `routeDragFrame` (one node moved a few pixels with the router kept) and the edges it routed per frame. Routing isn't timed for the mesh and the Kubernetes import at 5,000 nodes (`routeSkipped`): a single call takes minutes there (one Kubernetes sample ran past 15), and the curve to 1,500 already shows it |
+| `imports`  | Compose, Kubernetes, Terraform and AsyncAPI: `import` (what File ▸ Import draws by default), `importEverything` (Draw everything), `read` (the reader alone), source size                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `exports`  | `interactiveHtml` (with the build's real viewer template and icons), `drawio`, `mermaid`, `shareEncode`/`shareDecode` (share links), `thumbnail` (the library's, on every save)                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 ### Browser suites (Playwright, production e2e build)
 
-| Suite      | Scenarios                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `load`     | Cold load in a fresh context: `firstNode` (navigation to the first frame with a node: first meaningful render), `settled` (the end of the last long animation frame, once three quiet seconds pass), `checksDone` (the first check run delivered; checks run by themselves up to 1,500 nodes), `firstNodeTimedOut` (nothing on screen in five minutes), main-thread task time and its script, style and layout parts, the longest frame and total blocking time, JS heap after GC, DOM nodes and listeners                                                              |
-| `interact` | `pan` and `zoom` (main-thread ms per step, frame intervals, longest frame, input to next paint); `select` (a click to the frame the inspector shows the node; `select-first` unfolds the inspector); typing a node's name, its secondary line and a number in the inspector at a key every 120 ms (input to next paint per key, Event Timing's longest event per key, main-thread ms per key, check runs and planning analyses caused); `drag`. The pipeline and the mesh at every size they open in (the mesh stops at 1,500: at 5,000 it takes minutes to open and seconds a drag frame), the annotated pipeline at 1,500 |
-| `renders`  | React commits and component renders per key, per click, per pan and drag frame, by component, and per second of live view                                                                                                                                                                                                                                                                                                                      |
-| `live`     | Main-thread busy %, ms per frame, frame rate, particle frame rate and dots, with the particles drawn in the worker and on the main thread (`renderer=main`), at x1 and x10, turned on from a settled canvas (live view's frames never go quiet); heap and DOM over a minute of playback                                                                                                                                                                                                                                     |
-| `features` | Auto-layout, Tidy up, Run simulations, PNG, SVG and Interactive HTML export, switching the language: input to done, main-thread time, longest frame                                                                                                                                                                                                                                                                                            |
-| `memory`   | DOM nodes, listeners and heap kept per open and close of the inspector, the command palette, the export dialog and live view                                                                                                                                                                                                                                                                                                                   |
-| `profile`  | CPU profiles (DevTools sampling profiler) of the slowest interactions, self time by function: the evidence behind [Hotspots](#hotspots)                                                                                                                                                                                                                                                                                                        |
+| Suite      | Scenarios                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `load`     | Cold load in a fresh context: `firstNode` (navigation to the first frame with a node: first meaningful render), `settled` (the end of the last long animation frame, once three quiet seconds pass), `checksDone` (the first check run delivered; checks run by themselves up to 1,500 nodes), `firstNodeTimedOut` (nothing on screen in five minutes), main-thread task time and its script, style and layout parts, the longest frame and total blocking time, JS heap after GC, DOM nodes and listeners                                                                                                                                                                                                                                                                           |
+| `interact` | `pan` (a middle-button drag: a left drag draws a selection box) and `zoom` (Control and the wheel: a plain wheel pans), each checked to have moved or scaled the viewport (main-thread ms per step, frame intervals, longest frame, input to next paint); `select` (a click to the frame the inspector shows the node; `select-first` unfolds the inspector); typing a node's name, its secondary line and a number in the inspector at a key every 120 ms (input to next paint per key, Event Timing's longest event per key, main-thread ms per key, check runs and planning analyses caused); `drag`. The pipeline and the mesh at every size they open in (the mesh stops at 1,500: at 5,000 it takes minutes to open and seconds a drag frame), the annotated pipeline at 1,500 |
+| `renders`  | React commits and component renders per key, per click, per pan and drag frame, by component, and per second of live view                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `live`     | Main-thread busy %, ms per frame, frame rate, particle frame rate and dots, with the particles drawn in the worker and on the main thread (`renderer=main`), at x1 and x10, turned on from a settled canvas (live view's frames never go quiet); heap and DOM over a minute of playback                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `features` | Auto-layout, Tidy up, Run simulations, PNG, SVG and Interactive HTML export, switching the language: input to done, main-thread time, longest frame                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `memory`   | DOM nodes, listeners and heap kept per open and close of the inspector, the command palette, the export dialog and live view                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `profile`  | CPU profiles (DevTools sampling profiler) of the slowest interactions, self time by function: the evidence behind [Hotspots](#hotspots)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 
 ### Bundle
 
@@ -153,16 +153,16 @@ hook asserts it counted something, so a React upgrade that changed these interna
 
 ## Method and noise control
 
-| Concern              | What the suite does                                                                                                                                                                                                                                                                                                                                 |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| JIT and caches       | Warm-up calls before sampling (one for a call over 2 s); browser runs open a fresh context each run, so a cold load is cold                                                                                                                                                                                                                         |
-| Timer resolution     | Node: a sample batches calls until it lasts 25 ms and divides; browser: input-to-paint and DevTools counters, not `Date.now()`                                                                                                                                                                                                                      |
-| Garbage collection   | Node runs with `--expose-gc` and collects before every sample; browser heap readings collect twice first                                                                                                                                                                                                                                            |
-| Outliers             | Several samples (Node 15, or 11 and 7 for the big sizes, fewer for calls over 5 s), medians, p90, CoV recorded                                                                                                                                                                                                                                      |
-| Interference         | One process (Vitest `fileParallelism: false`, one fork) and one Playwright worker; Chromium's background throttling off                                                                                                                                                                                                                             |
-| Pinned environment   | 1440 × 900, device scale factor 1, light theme, en-US, UTC, CPU throttle 2× on the main thread (`BENCH_CPU`)                                                                                                                                                                                                                                        |
-| Determinism          | Seeded workloads with fingerprints; seeded simulations (`sim/determinism-checksum-delta` gates it); the engine and the live controller advanced with explicit time steps in Node (a fake clock that can't distort anything); Run simulations given a clock that never runs out (`now: () => 0`), so how much it plays doesn't depend on the machine |
-| Machines and runners | A same-run calibration ("cu"): a fixed JavaScript workload (sorting, Maps, strings, JSON) timed in the same Node process at each suite's start and end, and in a page at the same throttle; every time is also stored divided by its own suite's reading, the one closest in time (a shared machine's speed moved by half between suites of one run)                                                                                                                                          |
+| Concern              | What the suite does                                                                                                                                                                                                                                                                                                                                  |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| JIT and caches       | Warm-up calls before sampling (one for a call over 2 s); browser runs open a fresh context each run, so a cold load is cold                                                                                                                                                                                                                          |
+| Timer resolution     | Node: a sample batches calls until it lasts 25 ms and divides; browser: input-to-paint and DevTools counters, not `Date.now()`                                                                                                                                                                                                                       |
+| Garbage collection   | Node runs with `--expose-gc` and collects before every sample; browser heap readings collect twice first                                                                                                                                                                                                                                             |
+| Outliers             | Several samples (Node 15, or 11 and 7 for the big sizes, fewer for calls over 5 s), medians, p90, CoV recorded                                                                                                                                                                                                                                       |
+| Interference         | One process (Vitest `fileParallelism: false`, one fork) and one Playwright worker; Chromium's background throttling off                                                                                                                                                                                                                              |
+| Pinned environment   | 1440 × 900, device scale factor 1, light theme, en-US, UTC, CPU throttle 2× on the main thread (`BENCH_CPU`)                                                                                                                                                                                                                                         |
+| Determinism          | Seeded workloads with fingerprints; seeded simulations (`sim/determinism-checksum-delta` gates it); the engine and the live controller advanced with explicit time steps in Node (a fake clock that can't distort anything); Run simulations given a clock that never runs out (`now: () => 0`), so how much it plays doesn't depend on the machine  |
+| Machines and runners | A same-run calibration ("cu"): a fixed JavaScript workload (sorting, Maps, strings, JSON) timed in the same Node process at each suite's start and end, and in a page at the same throttle; every time is also stored divided by its own suite's reading, the one closest in time (a shared machine's speed moved by half between suites of one run) |
 
 Fake clocks stop where they would distort: the browser suites run on real time, because frames, input latency and the
 live view's frame rate are what they measure (a page clock would also stop `requestAnimationFrame`).
@@ -229,7 +229,7 @@ becoming two. When the refactor fixes a hotspot, tighten its gate in the same ch
 - `tests/.output/bench/results.json`: schema `livediagrams-bench/v1`. `meta` (date, mode, commit, branch, machine,
   Node, Chromium, Playwright, Vite and React versions, CPU throttle, calibration in ms for Node and the browser, gate
   totals and failures), `info` (per suite: browser version, the HTML template, the bundle's chunks and modules) and
-  `metrics`: `{ id, suite, scenario, kind: time|count|ratio|bytes, unit, value, normalized?, stats?: { n, median, p90,
+  `metrics`: `{ id, suite, scenario, kind: time|count|ratio|bytes|percent, unit, value, normalized?, stats?: { n, median, p90,
 min, max, mean, cov }, workload?: { family, n, nodes, edges, fingerprint }, gate?: { op, limit, pass, why } }`.
 - `tests/.output/bench/summary.md`: environment, gates, and every suite as a table (workloads in rows, sizes in columns).
 - `tests/.output/bench/profiles/*.cpuprofile`.
@@ -256,47 +256,48 @@ min, max, mean, cov }, workload?: { family, n, nodes, edges, fingerprint }, gate
 `tests/bench/baseline/master.json` (and its summary, `master.md`): `pnpm bench` on master `bf806a6` plus this suite,
 2026-10-15. AMD Ryzen 9 7950X (16 cores, 32 threads), 68 GB, Windows 11, Node 24.22.0, Chromium 156 (Playwright
 1.64.1), Vite 8.3.4, React 19.3.1, CPU throttle 2×. Calibration: Node 9.7 to 14.9 ms per suite (10.6 median), browser
-26 ms. 3,012 metrics; all 70 gates pass. It ran in parts (`--keep`), each under the two-hour limit of the tool that ran
+26 ms. 2,997 metrics; all 72 gates pass. It ran in parts (`--keep`), each under the two-hour limit of the tool that ran
 it: the Node suites 25 minutes, cold load 45, interactions and features 30, the rest 35 (the profiles once more, after a
 fix to how they name anonymous functions).
 
 The headline numbers (medians, ms unless marked; browser numbers at 2× CPU throttle on the main thread):
 
-| What                                                       | 100           | 500            | 1,500                | 5,000               |
-| ---------------------------------------------------------- | ------------- | -------------- | -------------------- | ------------------- |
-| Cold load, first node (pipeline)                           | 785           | 866            | 1,293                | 6,831               |
-| Cold load, settled (pipeline / mesh)                       | 1,141 / 845   | 1,705 / 2,044  | 3,474 / 8,787        | 27,170 / 164,083    |
-| Cold load, longest frame (mesh)                            | 403           | 1,433          | 8,289                | 154,422             |
-| Cold load, Kubernetes import: settled                      | 1,872         | 7,503          | 76 s of main thread  | no node in 5 min    |
-| JS heap after load (pipeline)                              | 11.9 MB       | 32.1 MB        | 79.0 MB              | 247.5 MB            |
-| Type a name: main-thread ms per key (pipeline / mesh)      | 25 / 70       | 102 / 344      | 361 / 2,310          | 1,476 / –           |
-| Type a name: input to next paint, p50 (pipeline)           | 22            | 76             | 2,590 (keys queue)   | 12,634              |
-| Type the secondary line / a number, ms per key (pipeline)  | 23 / 27       | 79 / 68        | 273 / 252            | 1,218 / 1,098       |
-| Select a node: click to painted inspector (pipeline)       | 80            | 218            | 807                  | 3,029               |
-| Pan: main-thread ms per frame (pipeline)                   | 19            | 104            | 281                  | 710                 |
-| Drag: main-thread ms per frame (pipeline / mesh)           | 47 / 130      | 174 / 664      | 620 / 4,341          | 2,541 / –           |
-| Live view: main-thread ms per frame (pipeline, worker, x1) | 4.9           | 160            | 200                  | 186                 |
-| Live view: frames per second (pipeline, worker, x1)        | 60            | 5.9            | 4.9                  | 5.4                 |
-| Auto-layout through the UI (pipeline)                      | 182           | 932            | 3,887                | –                   |
-| PNG / SVG export (pipeline)                                | 4.2 s / 2.7 s | 17.7 s / 12.9 s | 51.2 s / 44.0 s     | –                   |
-| Interactive HTML export (pipeline)                         | 362           | 347            | 962                  | –                   |
-| Switch to German (pipeline)                                | 200           | 471            | 1,285                | –                   |
-| Run simulations through the UI (pipeline, two saved)       | 222           | 512            | 1,059                | –                   |
-| `runChecks` (Node; mesh / pipeline)                        | 3.5 / 2.5     | 21 / 11        | 95 / 71              | 381 / 238           |
-| Run simulations (Node, pipeline)                           | 120           | 315            | 810                  | 4,278               |
-| `analyzeCapacity` (Node; mesh / pipeline)                  | 1.3 / 1.1     | 8.9 / 5.5      | 41 / 22              | 186 / 80            |
-| Full routing (Node; pipeline / mesh / k8s)                 | 9 / 45 / 197  | 90 / 347 / 2,633 | 390 / 2,469 / 33,284 | 3,649 / – / –     |
-| Drag frame routing (Node; pipeline / mesh)                 | 4.7 / 37      | 22 / 203       | 93 / 972             | 867 / –             |
-| Live frame, engine and controller only (Node, pipeline x1) | 0.18          | 0.57           | 1.8                  | 6.9                 |
-| Open a file: `parseNative` (Node, pipeline)                | 0.42          | 1.7            | 5.7                  | 19.3                |
-| Kubernetes import (Node)                                   | 146           | 526            | 946                  | 4,561               |
+| What                                                       | 100            | 500               | 1,500                | 5,000            |
+| ---------------------------------------------------------- | -------------- | ----------------- | -------------------- | ---------------- |
+| Cold load, first node (pipeline)                           | 785            | 866               | 1,293                | 6,831            |
+| Cold load, settled (pipeline / mesh)                       | 1,141 / 845    | 1,705 / 2,044     | 3,474 / 8,787        | 27,170 / 164,083 |
+| Cold load, longest frame (mesh)                            | 403            | 1,433             | 8,289                | 154,422          |
+| Cold load, Kubernetes import: settled                      | 1,872          | 7,503             | 76 s of main thread  | no node in 5 min |
+| JS heap after load (pipeline)                              | 11.9 MB        | 32.1 MB           | 79.0 MB              | 247.5 MB         |
+| Type a name: main-thread ms per key (pipeline / mesh)      | 28 / 52        | 137 / 264         | 440 / 1,664          | 1,540 / –        |
+| Type a name: input to next paint, p50 (pipeline)           | 23             | 114               | 3,497 (keys queue)   | 13,523           |
+| Type the secondary line / a number, ms per key (pipeline)  | 22 / 25        | 106 / 107         | 328 / 225            | 722 / 691        |
+| Select a node: click to painted inspector (pipeline)       | 68             | 354               | 886                  | 2,446            |
+| Pan: main-thread ms per frame (pipeline)                   | 10             | 53                | 142                  | 425              |
+| Zoom: main-thread ms per wheel notch (pipeline)            | 51             | 339               | 778                  | 1,938            |
+| Drag: main-thread ms per frame (pipeline / mesh)           | 41 / 101       | 213 / 603         | 475 / 3,945          | 2,927 / –        |
+| Live view: main-thread ms per frame (pipeline, worker, x1) | 4.9            | 160               | 200                  | 186              |
+| Live view: frames per second (pipeline, worker, x1)        | 60             | 5.9               | 4.9                  | 5.4              |
+| Auto-layout through the UI (pipeline)                      | 182            | 932               | 3,887                | –                |
+| PNG / SVG export (pipeline)                                | 4.2 s / 2.7 s  | 17.7 s / 12.9 s   | 51.2 s / 44.0 s      | –                |
+| Interactive HTML export (pipeline)                         | 362            | 347               | 962                  | –                |
+| Switch to German (pipeline)                                | 200            | 471               | 1,285                | –                |
+| Run simulations through the UI (pipeline, two saved)       | 222            | 512               | 1,059                | –                |
+| `runChecks` (Node; mesh / pipeline)                        | 3.5 / 2.5      | 21 / 11           | 95 / 71              | 381 / 238        |
+| Run simulations (Node, pipeline)                           | 120            | 315               | 810                  | 4,278            |
+| `analyzeCapacity` (Node; mesh / pipeline)                  | 1.3 / 1.1      | 8.9 / 5.5         | 41 / 22              | 186 / 80         |
+| Full routing (Node; pipeline / mesh / k8s)                 | 12 / 163 / 199 | 101 / 824 / 3,410 | 476 / 5,177 / 38,904 | 3,666 / – / –    |
+| Drag frame routing (Node; pipeline / mesh)                 | 6.1 / 86       | 30 / 328          | 110 / 1,451          | 820 / –          |
+| Live frame, engine and controller only (Node, pipeline x1) | 0.18           | 0.57              | 1.8                  | 6.9              |
+| Open a file: `parseNative` (Node, pipeline)                | 0.42           | 1.7               | 5.7                  | 19.3             |
+| Kubernetes import (Node)                                   | 146            | 526               | 946                  | 4,561            |
 
 Bundle (the shipped build, gzip): entry 105.5 kB (budget 123.5), startup JavaScript 154.2 kB in 20 files, the canvas's
 first view 333.1 kB, the live session 79.7 kB, all JavaScript 2.48 MB in 146 chunks.
 
-Render counts per unit (pipeline at 500 nodes): a keystroke in a name commits 3.7 times and renders 1,374 components (640
-of them React Flow node wrappers); a click on another node commits 9 times and renders 4,375 (2,050 node wrappers); a
-pan frame renders 654 and a drag frame 2,084. Live view renders 900 components per commit at 500 nodes (`NodeBadge` for
+Render counts per unit (pipeline at 500 nodes): a keystroke in a name commits 4 times and renders 1,557 components (725
+of them React Flow node wrappers); a click on another node commits 10 times and renders 4,375 (2,050 node wrappers); a
+pan frame renders 4.4 (no node) and a drag frame 1,648. Live view renders 900 components per commit at 500 nodes (`NodeBadge` for
 every node), 1,759 at 1,500. Leaks: nothing kept per open and close of the inspector, the command palette, the export
 dialog or live view; a minute of live view at 1,500 nodes grows the DOM by 6,108 nodes and the heap by 5.6 MB.
 
@@ -314,37 +315,37 @@ target: what to change, where, and the evidence (metric ids are in `master.json`
 1. **Routing every edge when a diagram opens (and after auto-layout and tidy).** After the first nodes paint, the router
    blocks the main thread: an 8.3 s frame for the mesh at 1,500 nodes, 154 s at 5,000 (settled after 164 s), 235 s for
    the annotated pipeline at 5,000; the Kubernetes import shows no node within five minutes at 5,000 and spends 76 s of
-   main thread at 1,500. In Node, `layout/routeAll` grows about n^1.5 for the pipeline (90 ms, 390 ms, 3.6 s; the gate
-   reads 21–22× for 8× the nodes), and takes 2.5 s for the mesh and 33 s for the Kubernetes import at 1,500. Each
-   edge's search works on an obstacle grid built from the whole diagram. *Where:* `src/canvas/geometry/router.ts`
+   main thread at 1,500. In Node, `layout/routeAll` grows about n^1.5 for the pipeline (101 ms, 476 ms, 3.7 s; the gate
+   reads 21–22× for 8× the nodes), and takes 5.2 s for the mesh and 39 s for the Kubernetes import at 1,500. Each
+   edge's search works on an obstacle grid built from the whole diagram. _Where:_ `src/canvas/geometry/router.ts`
    (`Router.route`), `orthogonal.ts` (`search`, `linkCost`, `segmentHitsRect` top the load, typing and drag
-   profiles), `obstacleGrid.ts`; reached through `selectRoutes` in `src/canvas/edges/useEdgeRoute.ts`. *Target:* a
+   profiles), `obstacleGrid.ts`; reached through `selectRoutes` in `src/canvas/edges/useEdgeRoute.ts`. _Target:_ a
    spatial index, so an edge only sees the obstacles near its corridor; the visible edges first and the rest in idle
    slices; never a frame of seconds. Auto-layout through the UI takes 3.9 s at 1,500 nodes where the layout itself takes
-   4 ms (`layout/autoLayout`): the rest is this.
+   5 ms (`layout/autoLayout`): the rest is this.
 2. **Re-routing during a drag.** Only 6 to 8 edges change per frame (`layout/routeDragFrame-edgesRouted`), yet a frame's
-   routing takes 93 ms at 1,500 pipeline nodes and 867 ms at 5,000, 972 ms for the mesh and 8.2 s for the Kubernetes
-   import at 1,500: each re-routed edge still searches the whole diagram's grid. In the browser a drag frame costs 620 ms
-   of main thread (frame p90 333 ms) for the pipeline at 1,500, 4.3 s for the mesh and 8.4 s for the annotated
-   pipeline. *Same code as 1. Target:* update the moved node's cells instead of the grid, and draw provisional routes
+   routing takes 110 ms at 1,500 pipeline nodes and 820 ms at 5,000, 1.45 s for the mesh and 13.6 s for the Kubernetes
+   import at 1,500: each re-routed edge still searches the whole diagram's grid. In the browser a drag frame costs 475 ms
+   of main thread for the pipeline at 1,500, 3.9 s for the mesh and 6.1 s for the annotated pipeline (whose notes and
+   shapes are obstacles too: 3.1 s a frame in Node at 1,500, 155 edges re-routed). _Same code as 1. Target:_ update the moved node's cells instead of the grid, and draw provisional routes
    while the pointer moves, routed properly on drop.
-3. **A keystroke in a node's name resizes its card and re-routes its edges.** A name costs 361 ms of main thread per key
-   at 1,500 pipeline nodes against 273 for the secondary line and 252 for a number; in the mesh 2.31 s per key against
-   327 (7×). At a quick typist's pace the keys queue: input to next paint has a median of 2.6 s (pipeline) and 20 s
+3. **A keystroke in a node's name resizes its card and re-routes its edges.** A name costs 440 ms of main thread per key
+   at 1,500 pipeline nodes against 328 for the secondary line and 225 for a number; in the mesh 1.66 s per key against
+   379 (4.4×). At a quick typist's pace the keys queue: input to next paint has a median of 3.5 s (pipeline) and 18 s
    (mesh) at 1,500 nodes. The typing profile (`profile/typeName-mesh@500`) is routing and `getBoundingClientRect`.
-   *Target:* don't remeasure and re-route on every key (keep the card's width while its name is being typed, or
+   _Target:_ don't remeasure and re-route on every key (keep the card's width while its name is being typed, or
    debounce it; `tests/e2e/checks-ui.spec.ts` already notes the cost).
-4. **Every node's React Flow wrapper re-renders on every edit, click and frame.** Per keystroke 1.5 wrapper renders per
-   node (2,299 at 1,500), per click 4 (6,134), per drag frame 1.7 (2,606), per pan frame 0.4 (613), when only one card's
-   data changed. It's most of what the secondary line (273 ms per key) and a number (252 ms) cost at 1,500, and of
-   selection (7). The card itself (`DiagramNodeImpl`, memoised) renders once: the node objects are recreated, so React
-   Flow's wrapper re-renders for each. *Where:* the flow nodes built in `src/canvas/CanvasView.tsx` and
+4. **Every node's React Flow wrapper re-renders on every edit, click and frame.** Per keystroke 1.4 wrapper renders per
+   node (2,044 at 1,500), per click 4 (6,134), per drag frame 1.4 (2,146), when only one card's data changed (a pan, by
+   contrast, renders 4.4 components and no node). It's most of what the secondary line (328 ms per key) and a number
+   (225 ms) cost at 1,500, and of selection (7). The card itself (`DiagramNodeImpl`, memoised) renders once: the node objects are recreated, so React
+   Flow's wrapper re-renders for each. _Where:_ the flow nodes built in `src/canvas/CanvasView.tsx` and
    `src/editor/useEditor.ts` (`toFlow`, `withNodeAria` and `withRovingFocus` in `src/canvas/convert.ts` map every
-   node to a new object). *Target:* keep a node's object while it doesn't change. Gated (`renders/*/NodeWrapper`):
+   node to a new object). _Target:_ keep a node's object while it doesn't change. Gated (`renders/*/NodeWrapper`):
    lower the budgets when it's fixed.
 5. **PNG and SVG export run on the main thread.** 4.2 s for a PNG at 100 nodes, 17.7 s at 500 and 51 s at 1,500, with a
-   single frame of 30 s; SVG 44 s at 1,500. The Interactive HTML export of the same diagram takes 1 s. *Where:*
-   `src/interop/image.ts` (html-to-image clones and inlines the whole canvas DOM). *Target:* build the SVG from the model
+   single frame of 30 s; SVG 44 s at 1,500. The Interactive HTML export of the same diagram takes 1 s. _Where:_
+   `src/interop/image.ts` (html-to-image clones and inlines the whole canvas DOM). _Target:_ build the SVG from the model
    and the routes, as the HTML export builds its payload, and rasterise it in a worker with OffscreenCanvas.
 6. **Live view re-renders every node's badge on every publish, and reads styles and path lengths every tick.** At 500
    nodes the main thread is 95 to 100% busy and draws 5 to 9 frames a second, worker renderer or not (160 ms per frame
@@ -352,31 +353,34 @@ target: what to change, where, and the evidence (metric ids are in `master.json`
    second) renders 900 components at 500 nodes and 1,759 at 1,500 (`NodeBadge` for every node, `IdleChip`,
    `LiveIcon`). The live profile is `readMarch` (`getComputedStyle` for every marching path and its ancestors, each
    tick; 324 ms of a 4 s profile), `getPointAtLength` and `getTotalLength` (300 ms), and style and layout ("(program)",
-   2.6 s). *Where:* `src/live/NodeBadges.tsx`, `src/live/liveScene.ts` (`readMarch`), `src/live/pathSampler.ts`, the
-   tick in `src/live/LiveSession.tsx`. *Target:* badges that subscribe to their own node's numbers; read the march
+   2.6 s). _Where:_ `src/live/NodeBadges.tsx`, `src/live/liveScene.ts` (`readMarch`), `src/live/pathSampler.ts`, the
+   tick in `src/live/LiveSession.tsx`. _Target:_ badges that subscribe to their own node's numbers; read the march
    styles when they change, not every tick; sample paths from the router's points instead of the SVG.
 7. **Selecting a node commits about ten times.** A click commits 9 to 10 times and renders 4,375 components at 500 nodes;
-   click to painted inspector takes 807 ms at 1,500 pipeline nodes, 1.46 s for the mesh and 3.0 s at 5,000. The profile
+   click to painted inspector takes 886 ms at 1,500 pipeline nodes, 1.06 s for the mesh and 2.4 s at 5,000. The profile
    (`profile/select-pipeline@1500`) is reconciliation and store selectors (`shallow`, `updateProperties`) and
-   `getBoundingClientRect`. *Target:* one commit for the selection and the inspector's opening; with 4 fixed, most of
+   `getBoundingClientRect`. _Target:_ one commit for the selection and the inspector's opening; with 4 fixed, most of
    the rest goes too.
 8. **Layout reads on every store change while a diagram loads, and every node always in the DOM.** The load profile at
    1,500 nodes spends 1.8 s of its 5.7 s busy in `useCovered`'s `check` (it loops over every node with
    `getBoundingClientRect` on each store change) and `overlayRects` (forced layout). At 5,000 nodes the page keeps
-   110,508 DOM nodes and 248 MB of heap after GC: every node and edge is rendered, in view or not. *Where:*
-   `src/canvas/useOverlayFit.ts`; React Flow's `onlyRenderVisibleElements`. *Target:* measure once per frame or on
+   110,508 DOM nodes and 248 MB of heap after GC: every node and edge is rendered, in view or not. A pan frame renders
+   4 components and still costs 142 ms of main thread at 1,500 nodes (425 at 5,000): style, layout and paint of the whole
+   canvas. A zoom notch costs 778 ms (1.9 s at 5,000), five times a pan frame, so something more reacts to the scale
+   (`useReadableScale` and the cards it styles are the first place to look). _Where:_
+   `src/canvas/useOverlayFit.ts`; React Flow's `onlyRenderVisibleElements`. _Target:_ measure once per frame or on
    resize; render only what's in view above a few hundred nodes (minding the accessibility and test paths that expect
    every node).
 9. **Live view grows the DOM and the heap while it plays.** A minute of playback at 1,500 nodes adds 6,108 DOM nodes and
    5.6 MB of heap after GC (`live/domNodesLiveGrowth60s`, `live/heapLiveGrowth60s`), and opening and closing live view
    leaks nothing (`memory/liveView`): something kept while it runs (the event log, trace labels, badges) never shrinks.
-   *Target:* a heap snapshot after a minute shows what holds the nodes; bound it.
+   _Target:_ a heap snapshot after a minute shows what holds the nodes; bound it.
 10. **The engine and the live controller's per-frame work grows with the diagram.** In Node, without React or drawing, a
     live frame (`LiveController.advance` and a full `snapshot()`, as `LiveSession`'s tick asks every frame) takes
     1.8 ms at 1,500 nodes and 6.9 ms at 5,000 at the default rate (8 ms at x100): half a frame's budget before anything
     is drawn. `snapshot()` copies every node's state and the event log (3.7 ms at 5,000, `sim/engineSnapshot`), and an
-    idle tick still walks every node (`sim/idleTick` grows linearly). *Where:* `src/live/controller.ts` (`snapshot`
-    every frame), `src/sim/engine.ts`. *Target:* draw from `frame()`, publish only what changed, skip idle nodes.
+    idle tick still walks every node (`sim/idleTick` grows linearly). _Where:_ `src/live/controller.ts` (`snapshot`
+    every frame), `src/sim/engine.ts`. _Target:_ draw from `frame()`, publish only what changed, skip idle nodes.
 
 Smaller, also measured: the capacity check rule is superlinear (its sizing fix analyses the diagram again per candidate;
 the gate reads 18–25× for 8× the nodes) and `runChecks` takes 381 ms on the 5,000-node mesh in its worker; Run
@@ -387,11 +391,11 @@ simulations takes 4.3 s at 5,000 nodes in its worker; the Kubernetes and compose
 Each gate was checked against the regression it exists for, injected on purpose and reverted (`git checkout -- src`)
 on the baseline's commit:
 
-| Regression injected | Gates run | Result |
-| --- | --- | --- |
-| O(n²) in a hot path: `compileTopology` finds each edge's target with `nodes.find` instead of its Map (`src/sim/topology.ts`) | `checks`, `sim`, `planning` | **Caught** by 4 gates: `runChecks-structural` 25.7× (mesh) and 33.6× (pipeline), `engineLoad` 36.7× (mesh) and 31.0× (pipeline), all against 24; before, 9 to 10× |
-| An extra render per keystroke: the inspector bumps a state in an effect on the name | `renders` | **Caught**: `type-name/Inspector` 2.08 (100 nodes) and 2.25 (500) per key against 1.75; before, 1.17 to 1.25. The commit count didn't move: React folded the update into a commit it was making anyway |
-| A bigger entry chunk: the YAML parser imported in `src/main.tsx` | `bundle`, `pnpm size` | **Caught**: entry 135.0 kB gzip against 123.5 (`pnpm size` fails too), startup 183.7 kB against 177 |
+| Regression injected                                                                                                          | Gates run                   | Result                                                                                                                                                                                                 |
+| ---------------------------------------------------------------------------------------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| O(n²) in a hot path: `compileTopology` finds each edge's target with `nodes.find` instead of its Map (`src/sim/topology.ts`) | `checks`, `sim`, `planning` | **Caught** by 4 gates: `runChecks-structural` 25.7× (mesh) and 33.6× (pipeline), `engineLoad` 36.7× (mesh) and 31.0× (pipeline), all against 24; before, 9 to 10×                                      |
+| An extra render per keystroke: the inspector bumps a state in an effect on the name                                          | `renders`                   | **Caught**: `type-name/Inspector` 2.08 (100 nodes) and 2.25 (500) per key against 1.75; before, 1.17 to 1.25. The commit count didn't move: React folded the update into a commit it was making anyway |
+| A bigger entry chunk: the YAML parser imported in `src/main.tsx`                                                             | `bundle`, `pnpm size`       | **Caught**: entry 135.0 kB gzip against 123.5 (`pnpm size` fails too), startup 183.7 kB against 177                                                                                                    |
 
 The suite's own checks: three back-to-back `pnpm bench:gates` runs passed every gate every time (see
 [Measured variance](#measured-variance)), and the render hook was checked against React's development profiler.
