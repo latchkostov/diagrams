@@ -18,7 +18,6 @@ import { getMimeType } from "html-to-image/es/mimes";
 import type { Options } from "html-to-image/es/types";
 import {
   checkCanvasDimensions,
-  createImage,
   getImageSize,
   getPixelRatio,
   getStyleProperties,
@@ -115,6 +114,20 @@ function nextTask(): Promise<void> {
       resolve();
     };
     channel.port2.postMessage(null);
+  });
+}
+
+/** The library's image loader, forwarding decode failures as well as load failures. */
+function createImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      void img.decode().then(() => requestAnimationFrame(() => resolve(img)), reject);
+    };
+    img.onerror = reject;
+    img.crossOrigin = "anonymous";
+    img.decoding = "async";
+    img.src = url;
   });
 }
 

@@ -33,6 +33,15 @@ Corrected capacity and throttling values fit the existing rate units and conditi
 Round 44's routing disclosure, legend and keyboard review remains applicable. No simplification
 was needed. This follow-up did not include a fresh browser or assistive-technology walkthrough.
 
+## Image export completion (2026-10-16)
+
+Scoped source and browser-regression review: progress and Cancel stay in the existing busy toast, adding
+no permanent chrome. Cancel takes focus after the Image dialog closes; Tab stays there, Enter cancels,
+and Escape cancels from the page. All four production cancellation cases pass. Decode/encode errors
+restore the canvas and permit another export; the error uses the existing File toast. Workers and
+OffscreenCanvas are not required. This check covers export interactions, not a whole-app visual or
+assistive-technology walkthrough. The main remaining responsiveness limit is PNG decoding/drawing.
+
 ## Static-page review follow-up (2026-10-16)
 
 The designer agent approved the scoped source review with no actionable UX issue. Named blocks and

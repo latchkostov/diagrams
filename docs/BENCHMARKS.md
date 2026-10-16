@@ -435,6 +435,64 @@ Smaller, also measured: the capacity check rule is superlinear (its sizing fix a
 the gate reads 18–25× for 8× the nodes) and `runChecks` takes 381 ms on the 5,000-node mesh in its worker; Run
 simulations takes 4.3 s at 5,000 nodes in its worker; the Kubernetes and compose imports take 3 to 5 s at 5,000 nodes.
 
+## Perf 3 export final measurements (2026-10-16)
+
+After rebasing onto #138, the production `features.bench.ts` sweep ran on origin/master `17c1349b`
+and then this branch in this same worktree, without concurrent tests/builds. Both used Chromium
+156.0.8078.4, the suite's 1440×900 viewport and 2× CPU throttle, and the same pipeline workloads.
+Command: `BENCH_PORT=6420 BENCH_SIZES=500,1500 node scripts/bench/run.mjs --only ui --ui features
+--mode full --out tests/.output/bench-export-{master,head}` (one output directory per checkout).
+These measurements precede the later #139/#140 rebase; they compare the #138 base with the
+then-current export implementation, not the other changes in those later merges. Each size has
+one observation, not a repeated median. Raw seconds:
+
+| Export | Nodes | Total, master → branch | Longest frame, master → branch |
+| ------ | ----- | ---------------------- | ------------------------------ |
+| SVG    | 500   | 15.52 → 10.97          | 12.33 → 0.29                   |
+| SVG    | 1,500 | 40.35 → 29.68          | 32.30 → 0.56                   |
+| PNG    | 500   | 26.91 → 15.44          | 16.80 → 3.43                   |
+| PNG    | 1,500 | 48.62 → 42.73          | 28.87 → 9.39                   |
+
+Artifacts are `tests/.output/bench-export-{master,head}/{results.json,summary.md}` and
+`tests/.output/export-comparison.md`. Browser calibration moved from 37 to 23 ms; consequently
+the normalized comparator flags 24 report-only timing differences, including unrelated layout,
+language and HTML-export scenarios whose raw times are mostly similar. This single sweep supports
+the large frame reduction, not claims about small timing changes elsewhere. The earlier interleaved
+measurements in hotspot 5 remain separate evidence. No timing budget is raised or added.
+
+The implementation yields the main thread; no image-rendering work moved into a worker. DOM and
+computed-style reads require the document, workers cannot render its HTML foreignObject, and a
+model renderer was rejected because it would change the pinned picture. PNG decode/draw remains a
+single browser task. Perf PR 4's remaining Live-view work is separate: per-node badge subscriptions,
+cached march styles and route-based path sampling, lighter controller snapshots, and bounded
+retained playback state (hotspots 6, 9 and 10). This PR changes none of those outputs.
+
+On the #138 base, `BENCH_PORT=6420 BENCH_OUT=tests/.output/bench-gates-export pnpm bench:gates` passed all
+85 gates (520 metrics): seven Node suites, six browser tests and the bundle checks. The 201
+Node and six browser report-only cases are intentionally skipped in gates mode. Entry is
+106.5 kB gzip, startup 160.5 kB and canvas first view 344.9 kB, all within their existing budgets.
+
+The first final gate on the #138 base completed every shard: 1,376 passed, two failed, zero flaky
+or skipped. Both privacy cases reached their final console-error assertion, which caught
+`net::ERR_ADDRESS_IN_USE` on React/JSX assets. Windows Tcpip event 4227 at 10:27:16 local time
+matches the first failure and reports reuse of a recently used TCP endpoint. Clean master
+`c21bf79d` then passed 100 targeted attempts, two shard-3 passes (446 tests), the full production
+suite (1,379) and all six separate same-port/server-restart shards (1,379): 3,304 attempts without
+reproducing the error. No master exception was established or error assertion weakened. These
+are diagnostic results, not export timings. The final gate is rerun on the combined #139/#140
+rebase and its complete summary accompanies the pushed commit.
+
+For that final verification, benchmark browsers use the reserved 6218–6219 ports, separate from
+E2E's 6420–6424 range. Earlier connections on the E2E range are allowed to drain to zero TCP
+records before starting the gate. The real server, console-error assertions, three E2E workers
+and zero retries remain in use; no Windows network setting is changed.
+
+After the combined #139/#140 rebase, `BENCH_PORT=6218
+BENCH_OUT=tests/.output/bench-gates-export-final pnpm bench:gates` passes all 85 gates (522
+metrics). Entry is 106.6 kB gzip, startup 165.7 kB (20 chunks) and canvas first view 354.4 kB;
+all existing budgets pass. The seven Node suites and six browser tests pass, with the same
+201 Node and six browser report-only cases skipped by gates mode.
+
 ## Proving the gates
 
 Each gate was checked against the regression it exists for, injected on purpose and reverted (`git checkout -- src`)

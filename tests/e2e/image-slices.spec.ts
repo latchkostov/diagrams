@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 import { test, expect, expectNoErrors, gotoCanvas, pageLoadTimeout, publicExamples } from "./fixtures";
 
 // Image export clones the canvas in time slices (src/interop/imageClone.ts, a port of html-to-image's clone): the
@@ -253,6 +254,77 @@ async function exportThroughDialog(page: Page) {
   await page.getByTestId("export-image").click();
   await page.getByTestId("image-export").click();
 }
+
+for (const unavailable of [["Worker"], ["OffscreenCanvas"], ["Worker", "OffscreenCanvas"]])
+  test(`PNG and SVG export work without ${unavailable.join(" or ")}`, async ({ page, consoleErrors }) => {
+    await page.addInitScript((names) => {
+      for (const name of names) Object.defineProperty(window, name, { configurable: true, value: undefined });
+    }, unavailable);
+    await gotoCanvas(page, publicExamples[0].slug);
+    await expect(page.locator('[data-testid^="rf__node-"]').first()).toBeVisible({ timeout: pageLoadTimeout() });
+    await page.getByTestId("file-button").click();
+    const [png] = await Promise.all([page.waitForEvent("download"), page.getByTestId("export-png").click()]);
+    const pngPath = await png.path();
+    if (!pngPath) throw new Error("PNG download failed");
+    expect((await readFile(pngPath)).subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+    await page.getByTestId("file-button").click();
+    await page.getByTestId("file-more-formats").click();
+    await page.getByTestId("export-image").click();
+    await page.getByTestId("image-options-toggle").click();
+    await page.getByTestId("image-format-svg").click();
+    const [svg] = await Promise.all([page.waitForEvent("download"), page.getByTestId("image-export").click()]);
+    const svgPath = await svg.path();
+    if (!svgPath) throw new Error("SVG download failed");
+    expect(await readFile(svgPath, "utf8")).toMatch(/^<svg[^>]+xmlns="http:\/\/www.w3.org\/2000\/svg"/);
+    expectNoErrors(consoleErrors);
+  });
+
+for (const phase of ["decode", "encode"] as const)
+  test(`a PNG ${phase} error releases the canvas, reports the error and allows another export`, async ({
+    page,
+    consoleErrors,
+  }) => {
+    await gotoCanvas(page, publicExamples[0].slug);
+    const id = publicExamples[0].nodeIds[0];
+    const card = page.getByTestId(`node-${id}`);
+    const node = page.getByTestId(`rf__node-${id}`);
+    await expect(node).toBeVisible({ timeout: pageLoadTimeout() });
+    await card.click();
+    await expect(node).toHaveClass(/selected/);
+    // Fail once, at the browser boundary. The next export uses the original implementation.
+    await page.evaluate((phase) => {
+      if (phase === "decode") {
+        const decode = HTMLImageElement.prototype.decode;
+        HTMLImageElement.prototype.decode = function () {
+          HTMLImageElement.prototype.decode = decode;
+          return Promise.reject(new Error("Image decode failed"));
+        };
+      } else {
+        const encode = HTMLCanvasElement.prototype.toDataURL;
+        HTMLCanvasElement.prototype.toDataURL = function () {
+          HTMLCanvasElement.prototype.toDataURL = encode;
+          throw new Error("Image encode failed");
+        };
+      }
+    }, phase);
+    let downloads = 0;
+    page.on("download", () => downloads++);
+    await page.getByTestId("file-button").click();
+    await page.getByTestId("export-png").click();
+    await expect(page.getByTestId("toast")).toHaveAttribute("data-kind", "error");
+    await expect(page.getByTestId("toast")).toContainText(`Image ${phase} failed`);
+    await expect(node).toHaveClass(/selected/);
+    await expect(page.getByTestId("export-header")).toHaveCount(0);
+    expect(downloads).toBe(0);
+    // The input hold and temporary paint must both be restored, including after the final drawing fails.
+    await node.focus();
+    await page.keyboard.press("Escape");
+    await expect(node).not.toHaveClass(/selected/);
+    await page.getByTestId("file-button").click();
+    const [download] = await Promise.all([page.waitForEvent("download"), page.getByTestId("export-png").click()]);
+    expect(download.suggestedFilename()).toMatch(/\.png$/);
+    expectNoErrors(consoleErrors);
+  });
 
 test("an export started from the Image dialog hands the keyboard to its Cancel", async ({ page }) => {
   test.slow();
