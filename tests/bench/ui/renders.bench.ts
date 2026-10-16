@@ -42,8 +42,9 @@ async function typeKeys(page: Page, text: string) {
  * Gate budgets per unit of interaction, on the pipeline workload at 100 and 500 nodes: `fixed + perNode × nodes`.
  * Measured on 2026-10-14 and 2026-10-15 (several runs each; docs/BENCHMARKS.md § Baseline), with room for the run-to-run spread of a
  * commit or two (a debounced follow-up landing inside or outside the reading), never for a whole extra render per
- * key. The per-node ones hold today's hotspots (every node wrapper re-renders per key, per selection) from getting
- * worse; when the refactor brings them down, bring the budgets down with them.
+ * key. Every node's wrapper (and minimap rect) re-rendered per key, per click and per drag frame until perf/1-editing
+ * (1.1 to 1.45 per node per key, about 4 per click): those budgets are now a few renders whatever the size, so another
+ * pass over the nodes fails them.
  */
 const BUDGETS: Record<string, { fixed?: number; perNode?: number; why: string }> = {
   "type-name/commits": {
@@ -55,22 +56,38 @@ const BUDGETS: Record<string, { fixed?: number; perNode?: number; why: string }>
   "type-name/Palette": { fixed: 0, why: "the stencil rail never reacts to typing" },
   "type-name/PaletteItem": { fixed: 0, why: "the stencil rail never reacts to typing" },
   "type-name/NodeWrapper": {
-    perNode: 1.6,
-    why: "hotspot: every node's React Flow wrapper re-renders per key (1.1 to 1.45 per node today); not another pass",
+    fixed: 3,
+    why: "only the renamed node's React Flow wrapper re-renders (1.2 to 1.7 per key); every node's did (1.1 to 1.45 per node)",
+  },
+  "type-name/NodeComponentWrapperInner": {
+    fixed: 3,
+    why: "the minimap redraws the renamed node's rect only (1.1 to 1.3 per key); it redrew every node's",
   },
   "type-name/total": {
     fixed: 150,
-    perNode: 3.3,
-    why: "measured 306 to 375 at 100 nodes, 1,283 to 1,557 at 500; another pass over the nodes adds 2 per node",
+    why: "measured 84 at 100 nodes and 95 at 500, whatever the size (was 351 and 1,557); another pass over the nodes fails it",
   },
   "select/commits": {
-    fixed: 12,
-    why: "measured 9 to 10.2 commits per click; 11.2 since #126 (its settled fit-view signal commits once more per click: raised on purpose)",
+    fixed: 10,
+    why: "measured 9.2 commits per click (was 11.2): the grow chip measures its node once; one more commit per click fails it",
+  },
+  "select/CanvasInner": {
+    fixed: 2.5,
+    why: "the canvas renders for the focus and the selection (2 per click); the tooltip's hide and show render its own layer",
   },
   "select/DiagramNodeImpl": { fixed: 3.5, why: "the two cards whose selection changed, and the inspector's preview" },
   "select/NodeWrapper": {
-    perNode: 5,
-    why: "hotspot: every node's wrapper re-renders about 4 times per click today; not another pass",
+    fixed: 8,
+    why: "the wrappers of the nodes whose selection changed (5 per click); every node's re-rendered about 4 times",
+  },
+  "select/NodeComponentWrapperInner": {
+    fixed: 6,
+    why: "the minimap redraws the two nodes whose selection changed (4)",
+  },
+  "select/total": { fixed: 250, why: "measured 139 per click at 100 and 500 nodes (was 1,111 and 4,376)" },
+  "drag/NodeWrapper": {
+    fixed: 4,
+    why: "only the dragged node's wrapper re-renders (1.4 per frame; React batching moves only lowers it); every node's did",
   },
   "pan/DiagramNodeImpl": { fixed: 0.5, why: "a pan moves the viewport: no card renders (0 measured)" },
   "pan/NodeWrapper": { fixed: 2, why: "a pan moves the viewport: no node re-renders (0 measured)" },
