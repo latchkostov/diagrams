@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type CSSProperties,
   type KeyboardEvent,
   type FocusEvent,
@@ -496,10 +497,12 @@ function NodePanel({
   // until then only an Add button inside Simulation).
   const router = routeTableCapable(node.data.stencil, role);
   const mixer = trafficMixCapable(role);
+  // Each routing request (right-click, or the first route chosen into a mix) remounts the fields onto it.
+  const intentSerial = useSyncExternalStore(routingIntent.subscribe, () => routingIntent.serial(node.id));
   const routing = router ? (
-    <RouteTableFields editor={editor} nodeId={node.id} props={props} planning={meta.planning} />
+    <RouteTableFields key={intentSerial} editor={editor} nodeId={node.id} props={props} planning={meta.planning} />
   ) : mixer ? (
-    <TrafficMixFields editor={editor} nodeId={node.id} props={props} planning={meta.planning} />
+    <TrafficMixFields key={intentSerial} editor={editor} nodeId={node.id} props={props} planning={meta.planning} />
   ) : null;
   // A right-click "Add …" opens the section on its own; it stays there while this node is selected, so an
   // unfinished form never moves (and loses its fields) once the form has consumed the intent.

@@ -21,8 +21,9 @@ export function quotaRequirements(
   key: string,
   quotas: readonly Quota[],
   planning: PlanningModel | undefined,
+  /** The planning's shared quotas by id, when the caller indexes them once for many actions. */
+  shared: ReadonlyMap<string, Quota> = new Map((planning?.sharedQuotas ?? []).map((q) => [q.id, q])),
 ): QuotaRequirement[] {
-  const shared = new Map((planning?.sharedQuotas ?? []).map((q) => [q.id, q]));
   return uniqueRequirements(
     quotas.map((declared) => ({
       key: quotaKey(node, ["rule", key], declared),

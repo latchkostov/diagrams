@@ -175,6 +175,41 @@ test("a right-click traffic mix keeps its unfinished route while the node's name
   await expect(page.getByTestId("mix-new-route-path")).toHaveValue("/parcels");
 });
 
+test("the first route chosen into a mix keeps the keyboard on its value as the mix gets its own section", async ({
+  page,
+}) => {
+  const d = routingFixture();
+  delete d.nodes[0].props?.trafficMix;
+  await seed(page, d);
+  await gotoCanvas(page, slug);
+  await waitForStableViewport(page);
+  await page.getByTestId("node-app").click();
+  await page.getByTestId("mix-add-route").focus();
+  await page.keyboard.press("Enter");
+  await page.getByTestId("mix-add-route-search-get").focus();
+  await page.keyboard.press("Enter");
+  await expect
+    .poll(
+      async () => (props(await savedDiagram(page), "app").trafficMix as { entries: unknown[] } | undefined)?.entries,
+    )
+    .toEqual([{ routeId: "search-get", share: 1 }]);
+  await expect(page.getByTestId("mix-row-search-get-value")).toBeFocused();
+});
+
+test("asking for a traffic mix again opens the new route's form again", async ({ page }) => {
+  await seed(page, unrouted());
+  await gotoCanvas(page, slug);
+  await waitForStableViewport(page);
+  await page.getByTestId("node-app").click({ button: "right" });
+  await page.getByTestId("context-menu-item-node.add-mix").click();
+  await expect(page.getByTestId("mix-new-route-path")).toBeFocused();
+  await page.getByTestId("mix-new-route-cancel").click();
+  await expect(page.getByTestId("mix-new-route-path")).toHaveCount(0);
+  await page.getByTestId("node-app").click({ button: "right" });
+  await page.getByTestId("context-menu-item-node.add-mix").click();
+  await expect(page.getByTestId("mix-new-route-path")).toBeFocused();
+});
+
 test("a source's traffic mix: new routes, shares that must add up, Normalize", async ({ page }) => {
   await seed(page, unrouted());
   await gotoCanvas(page, slug);

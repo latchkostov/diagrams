@@ -19,6 +19,7 @@ import { resolveMultiplier } from "./units";
 import { iterationBound } from "./iterationBound";
 import { admissionPlan, type RoutedDemand } from "./admissionPlanning";
 import { quotaRequirements, type QuotaRequirement } from "./admission";
+import type { Quota } from "../model/admission";
 import {
   chooseAction,
   compileFilter,
@@ -26,6 +27,7 @@ import {
   compileRoutes,
   compileTable,
   matchesRequest,
+  routingCounters,
   type CompiledMatch,
   type CompiledMix,
   type CompiledRoute,
@@ -339,15 +341,28 @@ export function analyzeCapacity(
         forwarded: sum ? eligible.reduce((total, edge, i) => total + (edge.deny ? 0 : weights[i]), 0) / sum : 0,
         action: "action" in choice ? choice.action.key : "",
         // The same buckets, by the same identities, playback charges (shared quotas are one bucket everywhere).
-        requirements:
-          "action" in choice && choice.action.quotas.length
-            ? quotaRequirements(id, choice.action.key, choice.action.quotas, diagram.planning)
-            : [],
+        requirements: "action" in choice ? actionRequirements(id, choice.action.key, choice.action.quotas) : [],
       };
     }
     byClass.set(key, decision);
     return decision;
   }
+  // An action's quota buckets depend on the router and action only, never the traffic class: built once per analysis
+  // against one index of the shared quotas.
+  const sharedQuotas = new Map((diagram.planning?.sharedQuotas ?? []).map((q) => [q.id, q]));
+  const actionBuckets = new Map<string, QuotaRequirement[]>();
+  function actionRequirements(router: string, action: string, quotas: readonly Quota[]): QuotaRequirement[] {
+    if (!quotas.length) return [];
+    const cacheKey = JSON.stringify([router, action]);
+    let known = actionBuckets.get(cacheKey);
+    if (!known) {
+      routingCounters.actionBuckets++;
+      actionBuckets.set(cacheKey, (known = quotaRequirements(router, action, quotas, diagram.planning, sharedQuotas)));
+    }
+    return known;
+  }
+  // What reaches each table router's admission: its table's 404s and deny shares never do, as in playback.
+  const reachesAdmission = new Map<string, number>();
   // What each router's rule quotas are offered, by router, route and action: settled with the rest of the demand,
   // then charged once on the admission ledger (below).
   const routed = new Map<string, { router: string; route: string; demand: RoutedDemand }>();
@@ -468,6 +483,10 @@ export function analyzeCapacity(
     const self = { type, route };
     if (entry.table && entry.role === "gateway") {
       const decision = decide(id, entry.table, key, type, route, !!c.sync);
+      reachesAdmission.set(
+        id,
+        (reachesAdmission.get(id) ?? 0) + (decision === "legacy" ? rate : rate * decision.forwarded),
+      );
       if (decision !== "legacy") {
         if (!decision.eligible.length) {
           routeDemandAt(id, route).rejected += rate;
@@ -483,7 +502,7 @@ export function analyzeCapacity(
             routed.set(routedKey, {
               router: id,
               route: route?.id ?? "",
-              demand: { requirements: decision.requirements, rate: rate * decision.forwarded },
+              demand: { node: id, requirements: decision.requirements, rate: rate * decision.forwarded },
             });
         }
         decision.eligible.forEach((edge, i) => {
@@ -546,6 +565,7 @@ export function analyzeCapacity(
     connections = Object.create(null);
     demand.clear();
     routed.clear();
+    reachesAdmission.clear();
     const next: Rates = new Map([...external].map(([id, types]) => [id, new Map(types)]));
     for (const [id, types] of rates) {
       const entry = entries.get(id)!;
@@ -615,6 +635,11 @@ export function analyzeCapacity(
     list.push(edge);
     incoming.set(edge.to, list);
   }
+  // A table router admits only what its table forwards (no 404s, no deny shares): its calls scale to that.
+  const admissionShare = (id: string) => {
+    const reached = reachesAdmission.get(id);
+    return reached === undefined || !nodes[id].offered ? 1 : Math.min(1, reached / nodes[id].offered);
+  };
   const managed = [...entries].flatMap(([id, entry]) =>
     entry.props.admission
       ? [
@@ -630,11 +655,14 @@ export function analyzeCapacity(
                       entry.active * entry.props.admission.fixedSlotsPerReplica,
                     ),
             },
-            offered: nodes[id].offered,
+            offered: nodes[id].offered * admissionShare(id),
             latencyMs: entry.props.latencyMs,
             endpoints: [
-              ...(incoming.get(id) ?? []).map((e) => ({ id: e.endpointId, rate: connections[e.id] ?? 0 })),
-              { rate: total(external.get(id)) },
+              ...(incoming.get(id) ?? []).map((e) => ({
+                id: e.endpointId,
+                rate: (connections[e.id] ?? 0) * admissionShare(id),
+              })),
+              { rate: total(external.get(id)) * admissionShare(id) },
             ],
           },
         ]

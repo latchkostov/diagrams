@@ -6,7 +6,7 @@ import { validateDiagram } from "../interop/native";
 import type { DiagramFile } from "../model/types";
 import type { RouteTable, TrafficMix } from "../model/requestRouting";
 import type { Quota } from "../model/admission";
-import { ROUTING_TABLE, routingFixture } from "../lab/routingFixture";
+import { ROUTING_MIX, ROUTING_TABLE, routingFixture } from "../lab/routingFixture";
 import {
   chooseAction,
   compileMatch,
@@ -761,6 +761,120 @@ describe("request routing: analysis follows rule quotas (review round 1)", () =>
     table.rules[1].quotas = [limit(10, { burst })];
     const a = analyzeCapacity(routingFixture({ table, rate: 100, mix: searchOnly }));
     expect(a.routeDemand!.kong["search-get"].throttled).toBeCloseTo(100);
+  });
+
+  /** The fixture's gateway as a managed AWS API Gateway with a node quota (shared when `group` is given). */
+  const managedGateway = (d: DiagramFile, amount: number, group?: string) => {
+    Object.assign(d.nodes[1], {
+      stencil: "aws.api-gateway",
+      props: { ...d.nodes[1].props, api: { quotas: [limit(amount, group ? { sharedGroup: group } : {})] } },
+    });
+  };
+
+  it("a managed router charges a shared node-and-rule quota once per request (review round 3)", () => {
+    const build = (onRule: boolean) => {
+      const table = structuredClone(ROUTING_TABLE);
+      if (onRule) table.rules[1].quotas = [limit(30, { sharedGroup: "account" })];
+      const d = routingFixture({ table, rate: 100, mix: searchOnly });
+      d.planning = { ...d.planning!, sharedQuotas: [limit(30, { id: "account" })] };
+      managedGateway(d, 30, "account");
+      expect(validateDiagram(d).ok).toBe(true);
+      return d;
+    };
+    const a = analyzeCapacity(build(true));
+    expect(a.nodes.kong.capacity).toBeCloseTo(30);
+    expect(a.routeDemand!.kong["search-get"].throttled).toBeCloseTo(70);
+    // Playback charges the bucket once whether or not the rule names it too.
+    const delivered20 = (d: DiagramFile) => delivered(run(d, 20_000, { drain: true }), "kong-search");
+    expect(delivered20(build(true))).toBe(delivered20(build(false)));
+  });
+
+  it("a table router's 404s spend none of a shared quota another router uses (review round 3)", () => {
+    // The managed gateway's table only knows POST /orders; every GET /search it gets is refused 404.
+    const table = structuredClone(ROUTING_TABLE);
+    table.rules = table.rules.slice(0, 1);
+    const d = routingFixture({ table, rate: 100, mix: searchOnly });
+    d.planning = { ...d.planning!, sharedQuotas: [limit(100, { id: "account" })] };
+    managedGateway(d, 100, "account");
+    // A second, unmanaged router: its search rule names the same 100 req/s account.
+    d.nodes.push(
+      {
+        id: "app2",
+        stencil: "client.mobile",
+        label: "App 2",
+        x: 0,
+        y: 400,
+        props: { ratePerSec: 100, trafficMix: searchOnly },
+      },
+      {
+        id: "gw2",
+        stencil: "kong",
+        label: "Gateway 2",
+        x: 240,
+        y: 400,
+        props: {
+          routeTable: {
+            rules: [
+              {
+                id: "search",
+                match: { path: { kind: "prefix", value: "/search" } },
+                targets: [{ edgeId: "gw2-search", weight: 1 }],
+                quotas: [limit(100, { sharedGroup: "account" })],
+              },
+            ],
+          },
+        },
+      },
+    );
+    d.edges.push(
+      { id: "app2-gw2", from: "app2", to: "gw2", kind: "sync" },
+      { id: "gw2-search", from: "gw2", to: "search", kind: "sync" },
+    );
+    expect(validateDiagram(d).ok).toBe(true);
+    const a = analyzeCapacity(d);
+    expect(a.routeDemand!.kong["search-get"].rejected).toBeCloseTo(100);
+    expect(a.routeDemand!.gw2["search-get"].throttled).toBeCloseTo(0);
+  });
+
+  it("builds an action's quota buckets once, however many traffic classes reach it (review round 3)", () => {
+    const table: RouteTable = {
+      rules: [
+        {
+          id: "all",
+          match: { path: { kind: "prefix", value: "/" } },
+          targets: [{ edgeId: "kong-search", weight: 1 }],
+          quotas: [limit(10, { sharedGroup: "account" })],
+        },
+      ],
+    };
+    const d = routingFixture({ table, rate: 100 });
+    d.planning = { ...d.planning!, sharedQuotas: [limit(10, { id: "account" })] };
+    // Two routes and three message types: six classes through the one action.
+    d.nodes.push(
+      {
+        id: "app2",
+        stencil: "client.mobile",
+        label: "App 2",
+        x: 0,
+        y: 300,
+        props: { ratePerSec: 10, messageType: "B", trafficMix: ROUTING_MIX },
+      },
+      {
+        id: "app3",
+        stencil: "client.mobile",
+        label: "App 3",
+        x: 0,
+        y: 400,
+        props: { ratePerSec: 10, messageType: "C", trafficMix: ROUTING_MIX },
+      },
+    );
+    d.edges.push(
+      { id: "app2-kong", from: "app2", to: "kong", kind: "sync" },
+      { id: "app3-kong", from: "app3", to: "kong", kind: "sync" },
+    );
+    const before = routingCounters.actionBuckets;
+    analyzeCapacity(d);
+    expect(routingCounters.actionBuckets - before).toBe(1);
   });
 
   it("routers and traffic classes whose names contain separators never share a decision", () => {

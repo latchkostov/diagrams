@@ -22,7 +22,7 @@ import {
  */
 
 /** Work counters for the bounds tests: compilations and predicate evaluations (docs/QUALITY.md, count the work). */
-export const routingCounters = { compiles: 0, predicates: 0 };
+export const routingCounters = { compiles: 0, predicates: 0, actionBuckets: 0 };
 
 /** A request route ready to match: its address normalized once (lower-case host and header names, split path). */
 export interface CompiledRoute {

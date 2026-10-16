@@ -1057,7 +1057,10 @@ export function TrafficMixFields({
   const [choosing, setChoosing] = useState(false);
   // Keyboard position after choosing from Add route: the new form's Path, or the added row's value.
   const [focusNew, setFocusNew] = useState(false);
-  const [focusRow, setFocusRow] = useState<string | null>(null);
+  const [focusRow, setFocusRow] = useState<string | null>(() => {
+    const intent = routingIntent.peek(nodeId);
+    return typeof intent === "object" ? intent.focusRow : null;
+  });
   const valueRefs = useRef(new Map<string, HTMLInputElement>());
   useEffect(() => {
     const input = focusRow ? valueRefs.current.get(focusRow) : undefined;
@@ -1123,7 +1126,11 @@ export function TrafficMixFields({
                   setDraft(null);
                   setFocusRow(r.id);
                   if (mix) save(addMixRow(mix, r.id), `add:${r.id}`);
-                  else applyRouted(editor, (d) => setProps(d, nodeId, { trafficMix: addMixRow(undefined, r.id) }));
+                  else {
+                    // The first row moves the mix into its own section: the fields there take the focus over.
+                    routingIntent.set(nodeId, { focusRow: r.id });
+                    applyRouted(editor, (d) => setProps(d, nodeId, { trafficMix: addMixRow(undefined, r.id) }));
+                  }
                 }}
               >
                 <RouteSwatch route={r} /> {routeName(r)}
