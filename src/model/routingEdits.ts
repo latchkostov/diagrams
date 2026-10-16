@@ -283,3 +283,23 @@ export function strippedTables(
   }
   return tables.size ? { tables, rules } : undefined;
 }
+
+/** The document with a first route table on a router (Default keeps today's connections): one undo step. */
+export function withRouteTable(d: DiagramFile, nodeId: string): DiagramFile {
+  const next = structuredClone(d);
+  next.planning = withRouting(next.planning);
+  const node = next.nodes.find((n) => n.id === nodeId);
+  if (node) node.props = { ...node.props, routeTable: firstTable(outgoingFlows(next, nodeId)) };
+  return next;
+}
+
+/** The document with a traffic mix on a source: one new route (GET /, to rename) at 100%. One undo step. */
+export function withTrafficMix(d: DiagramFile, nodeId: string): DiagramFile {
+  const next = structuredClone(d);
+  next.planning = withRouting(next.planning);
+  const added = addRoute(next.planning?.requestRoutes ?? [], { method: "GET", path: "/" });
+  next.planning = { ...next.planning!, requestRoutes: added.routes };
+  const node = next.nodes.find((n) => n.id === nodeId);
+  if (node) node.props = { ...node.props, trafficMix: addMixRow(undefined, added.id) };
+  return next;
+}

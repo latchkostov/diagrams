@@ -15,7 +15,7 @@ import {
   nextByDeficit,
   pickWeighted,
   routingCounters,
-} from "./requestRouting";
+} from "./routeMatching";
 
 const run = (
   d: DiagramFile,

@@ -1276,7 +1276,16 @@ const VISIBLE = 7;
  * The diagram's request routes. Editing: each definition, its address and where it's used. Live: the Routes legend
  * (swatch, marker and address, with each route's counts in real units), seven at a time with a search for the rest.
  */
-export function RequestRoutesSection({ editor, planning }: { editor: EditorApi; planning: PlanningModel | undefined }) {
+export function RequestRoutesSection({
+  editor,
+  planning,
+  place,
+}: {
+  editor: EditorApi;
+  planning: PlanningModel | undefined;
+  /** "live": the legend, first in the panel while live; "edit": the definitions, after the diagram's fields. */
+  place: "live" | "edit";
+}) {
   useLocale();
   const [query, setQuery] = useState("");
   const [all, setAll] = useState(false);
@@ -1284,7 +1293,7 @@ export function RequestRoutesSection({ editor, planning }: { editor: EditorApi; 
   const live = useSyncExternalStore(planningHost.subscribe, planningHost.get);
   const state = useSyncExternalStore(live?.controller.subscribe ?? noSubscribe, live?.controller.getState ?? noState);
   const routes = useMemo(() => planning?.requestRoutes ?? [], [planning]);
-  if (!routingEnabled(planning) || !routes.length) return null;
+  if (!routingEnabled(planning) || !routes.length || (place === "live") !== !!live) return null;
   const counts = (state?.snapshot as { routes?: Record<string, RouteCounts> } | undefined)?.routes;
   const q = query.trim().toLowerCase();
   const matching = routes.filter((r) => !q || `${routeName(r)} ${addressText(r.address)}`.toLowerCase().includes(q));

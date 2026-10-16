@@ -77,6 +77,9 @@ const STARTUP_CHUNKS = [
   "react",
   "react-dom",
   "registry",
+  // Request routing R1's file grammar and bounds (src/model/requestRouting.ts): native validation refuses a bad
+  // route table or mix on open. Matching, the engine and the routing inspector stay lazy.
+  "requestRouting",
   "size",
   "storage",
   "toast",

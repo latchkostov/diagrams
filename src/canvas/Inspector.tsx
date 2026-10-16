@@ -2024,6 +2024,7 @@ function DiagramPanel({ editor, meta, counts, focus, takeFocus }: InspectorProps
 
   return (
     <>
+      <RequestRoutesSection editor={editor} planning={meta.planning} place="live" />
       <PlanningUpgrade
         editor={editor}
         planning={meta.planning}
@@ -2116,7 +2117,7 @@ function DiagramPanel({ editor, meta, counts, focus, takeFocus }: InspectorProps
           />
         </Field>
       </Section>
-      <RequestRoutesSection editor={editor} planning={meta.planning} />
+      <RequestRoutesSection editor={editor} planning={meta.planning} place="edit" />
       <Section>
         <p className="insp-note">{countText(counts.nodes, counts.edges, counts.groups)}</p>
         <p className="insp-note">Select a node, edge or boundary to edit it. Right-click anything for its actions.</p>

@@ -71,7 +71,7 @@ import {
   type CompiledMix,
   type CompiledRoute,
   type CompiledTable,
-} from "./requestRouting";
+} from "./routeMatching";
 import { routeTableCapable } from "../model/requestRouting";
 import { quotaRequirements, attemptQuotas, reconfigureQuotas, type QuotaRequirement } from "./admission";
 import { QUOTA_UNITS } from "../model/admission";

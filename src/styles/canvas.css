@@ -3773,7 +3773,7 @@ button.route-row:hover,
 }
 .route-legend-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 2px 8px;
   align-items: center;
   width: 100%;
@@ -3797,11 +3797,13 @@ button.route-row:hover,
   white-space: nowrap;
 }
 .route-legend-address {
+  grid-column: 2;
   color: var(--text-2);
   font-size: 11px;
+  overflow-wrap: anywhere;
 }
 .route-legend-counts {
-  grid-column: 2 / -1;
+  grid-column: 2;
   color: var(--text-3);
   font-size: 11px;
 }

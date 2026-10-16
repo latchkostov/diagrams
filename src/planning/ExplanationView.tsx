@@ -99,6 +99,27 @@ export function ExplanationView({
       <p data-testid="planning-contributors">
         {sources ? t("planning.incoming", { sources }) : t("planning.noTraffic")}
       </p>
+      {x.routes && (
+        <p data-testid="planning-routes">
+          {t("routing.explainRoutes", {
+            routes: formatList(
+              x.routes.map((r) =>
+                t("routing.explainRoute", { route: r.address || t("routing.unaddressed"), rate: rate(r.offered) }),
+              ),
+            ),
+          })}
+        </p>
+      )}
+      {x.routes?.some((r) => r.rejected > 0) && (
+        <p data-testid="planning-route-refusals">
+          {t("routing.explainRefused", {
+            rate: rate(x.routes.reduce((sum, r) => sum + r.rejected, 0)),
+            routes: formatList(
+              x.routes.filter((r) => r.rejected > 0).map((r) => r.address || t("routing.unaddressed")),
+            ),
+          })}
+        </p>
+      )}
       {x.omittedContributors > 0 && (
         <p data-testid="planning-omitted">{t("planning.omittedContributors", { count: x.omittedContributors })}</p>
       )}

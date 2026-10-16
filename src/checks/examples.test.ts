@@ -57,6 +57,8 @@ const EXPECTED: Record<string, string[]> = {
   "contoso-dmz": [],
   "shared-worker-pool": ["warning capacity:worker"],
   "cloud-run-timetable-api": ["warning capacity:worker"],
+  // Carrier events reach their service through the route table at 30/s, over its 20/s: on purpose.
+  "api-route-table": ["warning capacity:events"],
 };
 
 describe("checks on the public examples", () => {
@@ -108,6 +110,8 @@ it("P3 precision gate adds no findings to the same materialized P2 public exampl
 const PLANNED: Record<string, string[]> = {
   "azure-service-bus-integration": ["30 unread dlq in Poison invoices (expected)"],
   "multi-region-active-active": ["96 dropped alb-us in Region outage and failover (down)"],
+  // The canary keeps its 10% of quotes while it's down: an outage the table doesn't hide (on purpose).
+  "api-route-table": ["15 dropped pricing-canary in The pricing canary goes down (down)"],
 };
 
 describe("simulation evidence on the public examples", () => {

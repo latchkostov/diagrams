@@ -4,7 +4,7 @@ import { analyzeCapacity } from "./capacity";
 import type { DiagramFile } from "../model/types";
 import type { RouteTable } from "../model/requestRouting";
 import { routingFixture } from "../lab/routingFixture";
-import { chooseAction, compileRoutes, compileTable, routingCounters } from "./requestRouting";
+import { chooseAction, compileRoutes, compileTable, routingCounters } from "./routeMatching";
 import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 import { createRoutingValidator, routingValidations, validateRouting } from "../model/routingValidation";
 

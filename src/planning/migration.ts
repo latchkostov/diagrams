@@ -109,6 +109,8 @@ export function legacyExport(d: DiagramFile): { diagram: DiagramFile; losses: st
   const diagram = normalizePersistence(d);
   const losses: string[] = [];
   if (diagram.planning) losses.push("planning.revision");
+  // Request routing has no older equivalent: its routes, mixes, tables and caller addresses are listed and dropped.
+  if (diagram.planning?.requestRoutes) losses.push("planning.requestRoutes");
   delete diagram.planning;
   diagram.format = "diagrams/v1";
   const strip = (props: Record<string, unknown> | undefined, path: string) => {
@@ -124,6 +126,8 @@ export function legacyExport(d: DiagramFile): { diagram: DiagramFile; losses: st
       "endpoints",
       "scaling",
       "maxConcurrency",
+      "trafficMix",
+      "routeTable",
     ])
       if (props && key in props) {
         losses.push(`${path}.${key}`);
@@ -137,7 +141,7 @@ export function legacyExport(d: DiagramFile): { diagram: DiagramFile; losses: st
       if (step.action.do === "props") strip(step.action.props, `${sim.id}.timeline.${i}.props`);
   }
   for (const edge of diagram.edges) {
-    for (const key of ["endpointId", "caller"])
+    for (const key of ["endpointId", "caller", "requestRouteId", "requestFilter"])
       if (edge.props && key in edge.props) {
         losses.push(`${edge.id}.props.${key}`);
         Reflect.deleteProperty(edge.props, key);

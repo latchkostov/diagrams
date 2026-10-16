@@ -5,7 +5,7 @@ import type { NodeSimProps, NodeStatus } from "./types";
 import { createEngine } from "./engine";
 import { mulberry32 } from "./rng";
 import { validateDiagram } from "../interop/native";
-import { chooseAction, compileRoutes, compileTable, matchesRequest, compileFilter } from "./requestRouting";
+import { chooseAction, compileRoutes, compileTable, matchesRequest, compileFilter } from "./routeMatching";
 import { acceptsType } from "./topology";
 
 /**
