@@ -1,5 +1,14 @@
 # Release notes
 
+## Collaboration architecture research (2026-10-15)
+
+- Added [a sourced collaboration recommendation](research/collaboration.md): optional anonymous E2E rooms,
+  browser-side Yjs and a TypeScript/Node relay, followed separately by encrypted persistence and optional accounts.
+- Compared collaborative tools, sync engines, hosting/auth costs and self-hosting; specified the Private opt-in
+  boundary, key rotation, per-user undo, local simulation/presenter design, portable review and phased acceptance tests.
+- Research only: no app behaviour, dependencies, privacy gates or output goldens change. Hosting prices and unknowns
+  are dated; a prototype and security review remain prerequisites, not completed implementation evidence.
+
 ## Stencil names and agent connection defaults (2026-10-15)
 
 - Changing a stencil updates a node's name when it still matches the previous stencil's default.
