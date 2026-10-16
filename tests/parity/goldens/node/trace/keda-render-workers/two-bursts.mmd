@@ -1,0 +1,10 @@
+---
+title: "Poster studio #1 · 2.26 s end to end"
+---
+sequenceDiagram
+  participant source as Poster studio
+  participant uploads as Render requests
+  participant worker as Poster workers
+  source-)uploads: Poster studio (+0.00 s)
+  Note over source,worker: ⏱ 1.99 s waiting in Render requests
+  uploads-)worker: Poster studio (+2.00 s)

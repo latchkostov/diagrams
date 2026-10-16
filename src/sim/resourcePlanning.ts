@@ -28,6 +28,17 @@ export function resourcePlan(p: ResolvedProps, offered: number, assigned: number
   });
   const targetReplicas = needed.length ? Math.max(range?.min ?? 1, ...needed) : undefined;
   return {
+    ...(r.preset === "kubernetes-unmeasured" ? { unmeasured: true } : {}),
+    ...(c?.kind === "keda"
+      ? {
+          keda: {
+            pollingMs: c.pollingMs,
+            cooldownMs: c.cooldownMs,
+            lagBeforePoll: range?.initial === 0 ? Math.ceil((offered * c.pollingMs) / 1000) : 0,
+            offered,
+          },
+        }
+      : {}),
     perReplica,
     initial: range?.initial ?? fixed,
     min: range?.min,

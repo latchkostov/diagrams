@@ -803,5 +803,114 @@ inspector. Estimates distinguish initial and maximum capacity before partitions/
 replicas, maximum reached, baseline-memory targets that cannot be fixed with replicas, and peak-memory risk.
 Live capacity follows ready replicas; playback explains its observed metric, raw recommendation, bounded
 desired count, reason and next sync. These steady-state estimates are not verified burst guarantees.
-KEDA/zero activation, external metrics, multi-container accounting and provider adapters remain A2; scenario
-cloud sizing and verified automatic policy edits remain A3.
+KEDA activation and local broker metrics are described below. Generic external metrics, multi-container
+accounting and provider adapters remain unsupported; scenario cloud sizing and verified automatic policy edits remain A3.
+
+## A2: KEDA activation and Kubernetes import
+
+A KEDA ScaledObject is a node-owned `autoscaling` policy with `modelRevision: "a2"` and
+`controller.kind: "keda"`, within the existing explicit `p3-a1` document revision. Older readers reject
+the new controller/revision union instead of silently playing it as HPA. A1 and resource-less diagrams
+retain their existing execution path and arithmetic. Imported and newly opted-in resources carry their own `modelRevision: "a2"`,
+which enables generic Kubernetes Deployment resources independently of the controller. Selecting Fixed or
+disabling scaling retains CPU limits, memory and lifecycle. Older unmarked A1 Deployment resources retain
+their previous unsupported behavior. Imported HPA policies also carry the A2 controller revision. Resources and autoscaling remain atomic replacement
+properties in native, agent, setup and timeline patches.
+
+The pinned profile is KEDA 2.18, not a claim about the newest KEDA release. Its defaults are 30 s polling,
+300 s final-zero cooldown, no initial cooldown, min/initial 0 and max 100; the generated HPA retains A1's
+15 s sync, tolerance, rolling stabilization and policies. The supported triggers are:
+
+| Trigger            | Local real-message metric                                                             | Default target / activation |
+| ------------------ | ------------------------------------------------------------------------------------- | --------------------------- |
+| `kafka`            | Named group's pending plus outstanding, uncommitted deliveries across its partitions  | 10 / 0                      |
+| `azure-servicebus` | Active waiting messages in one queue or exact topic subscription, excluding DLQ       | 5 / 0                       |
+| `aws-sqs-queue`    | Waiting plus outstanding once by default; `scaleOnInFlight` can exclude outstanding   | 5 / 0                       |
+| `rabbitmq`         | AMQP waiting messages; HTTP optionally includes unacknowledged/outstanding deliveries | Lesson 20 / 0               |
+
+Modern RabbitMQ QueueLength imports require an explicit `value`; the old `queueLength` default is 20.
+The lesson's 20 is an assumption. Delayed SQS visibility, RabbitMQ rate/regex modes, experimental
+`apache-kafka`, unspecified Kafka topics/history and generic metric-server queries are unsupported.
+An imported Kafka trigger needs one declared local topic with known partitions; its simulated history
+begins with the authored empty log. No live cluster or real offsets are read.
+
+Activation is strictly `metric > activation`. At zero, only a due KEDA poll can request the activation
+floor `max(1, min)`. Starting replicas have no slots until A1 readiness. Subsequent changes are made by
+one generated-HPA evaluation, with the largest trigger/resource recommendation; KEDA never separately
+applies a second 1→N count. Its activation delta does not consume HPA's rolling rate-policy budget.
+Activation thresholds do not gate 1→N while the minimum is positive. Each trigger can independently cache
+its metric until the next KEDA poll; an uncached HPA sync reads the current indexed counter.
+
+When every trigger is inactive, an eligible zero transition runs before the HPA branch, after the
+initial guard while the fleet has never been active, then cooldown since the last active poll (the
+pinned 2.18 executor switches between these clocks). Initial warm fleets with no activation history
+use the initial guard; there is no fabricated last activity. Final zero is independent of HPA downscale
+stabilization, rather than a universal sum of their defaults. An optional `idleReplicas: 0` can idle a
+positive-minimum policy; the active HPA branch still clamps to at least one. Unknown/error metrics are
+never zero: they inhibit unsafe shrink and cannot wake a sleeping fleet. Other valid metrics may grow.
+Fallback is per trigger and begins when consecutive failed source reads **exceed** `failureThreshold`,
+matching the pinned 2.18 implementation. Static/current/current-if-higher/current-if-lower fallback
+feeds the same HPA pipeline, so stabilization and bounds still apply. A cached HPA lookup does not count
+as another failed source read. A good source read resets failures. Fallback does not invent activation
+from an unavailable zero-wake source.
+
+Kafka caps its own recommendation at topic partitions unless `allowIdleConsumers` is true. This is
+independent of P2 assignment: eight ready workers on a three-partition input still have three assigned
+and five idle there. HTTP, queues or other subscriptions can use spare replicas in the shared fleet.
+No keys, hot partitions, rebalance delay or new delivery/retry policy are introduced.
+
+Broker metric lookup uses a compiled broker/group index and real-unit pending/outstanding counters,
+never a message/partition/particle scan. Each due evaluation reads at most sixteen triggers plus resource
+metrics; idle ticks inspect deadlines only. Sampling applies `scale` once. At a measurement boundary,
+input quantization is less than one represented message; use scale 1 for exact activation thresholds.
+KEDA poll state, cached validity, failure counts and last activity are checkpointed with A1 state.
+Pause shifts lifecycle/activity clocks and schedules future polls on resume, with no missed-poll replay.
+Fixed overrides, scaler disable/re-enable and Capacity × retain A1 ownership rules; zero floors stay zero.
+Only successfully reconciled HPA changes enter its policy history; a refused zero proposal retains history.
+
+The shared resource validator checks schema, complete node settings, document budget and broker/group
+references at native/editor/import/agent boundaries. Clipboard fragments keep external references for
+validation against the destination; copied broker IDs, implicit edge groups and inferred consumer groups
+are remapped after ID allocation in linear graph work. A label is never a binding identity. Topology edits
+preflight the complete candidate, including saved-simulation policies; an edit that would break a source
+is refused with recovery guidance. Change or disable the affected policy before deleting its source.
+Binding validation and playback share inferred dead-letter classification.
+
+Kubernetes import resolves exact namespace, kind and API version. It maps single-container CPU/memory
+requests and limits (decimal and binary quantities stay distinct), resource/ContainerResource HPA targets,
+min/max/initial counts, behavior and KEDA timing/activation/cache/fallback settings. Limit-derived requests
+are marked with `resources.requestDefaults`. Workload costs are **unmeasured**, not inferred from limits:
+CPU/memory readings remain unknown until the person explicitly chooses the Advanced workload lesson.
+That action preserves imported denominators, lifecycle and policy. The imported desired range remains
+separate from the Deployment's authored starting-count metadata; imported status is never live state.
+
+An HPA owned by its ScaledObject is linked rather than executed twice. Independent controllers targeting
+one workload become unsupported, retaining up to sixteen safe kind/range summaries plus an omitted count.
+Unsupported fields disable the whole policy and produce translated recovery diagnostics. ScaledJob keeps
+its finite-job identity/topology with “Job execution is not simulated”; it never becomes a Deployment HPA.
+Authentication objects/values, raw manifests, executable queries and credential-bearing URLs are absent
+from persisted policy summaries. Existing YAML resource/alias/depth/document budgets apply, with additional
+sixteen-trigger/eight-policy/controller-time bounds before execution.
+
+Configured analysis and checks expose the same polling backlog estimate: at zero, rate × polling interval
+arrives before the first poll, plus the separately disclosed startup delay. This is a configured estimate,
+not an A3 burst planner or a throughput guarantee. Playback Why reports the actual real metric, activation,
+raw recommendation, bounded desired count, reason and next deadline. The existing inspector retains four
+main fields (preset, target, min, max); source choice, activation, polling, cooldown, resource assumptions
+and complete controller JSON stay in Advanced. No scaler node or global control is added.
+
+`keda-render-workers` is the public Autoscaling showcase: a synthetic poster-rendering burst wakes an
+idle Kafka consumer and returns it to zero within ten simulated seconds. Its explicitly shortened
+1 s polling/sync/startup and 2 s cooldown teach the phases rather than claiming vendor defaults.
+Three frozen `a2-*` corpus diagrams pin activation, published cooldown and idle-reader behavior.
+The seeded per-step ownership oracle includes KEDA zero activation, strict threshold edges, cooldown,
+lag bursts, pause/resume, policy refusal and scaler disable/re-enable. It also checks nonnegative broker
+pending/outstanding counts, desired bounds and successful zero-transition eligibility. Deliberate regression
+controls cover metric adapters, partition gates, clocks, fallback, imports, editing and UI truth.
+Successful cached metrics stay fixed between KEDA polls, independently of uncached triggers. The inspector
+keeps its validator cache and avoids graph snapshots for Fixed/HPA; a refused pending source remains visible
+with an accessible explanation, while an accepted binding focuses the surviving Target field.
+
+Sources: [ScaledObject specification](https://keda.sh/docs/2.18/reference/scaledobject-spec/),
+[Kafka scaler](https://keda.sh/docs/2.18/scalers/apache-kafka/),
+[pinned fallback implementation](https://github.com/kedacore/keda/blob/v2.18.0/pkg/fallback/fallback.go).

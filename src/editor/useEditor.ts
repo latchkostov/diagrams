@@ -5,7 +5,7 @@ import { annotationGeometryMessage, relationChangeMessage } from "./editMessages
 import { useLayoutEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { createResourceValidator } from "../model/resourceValidation";
 import { newPlanningProps } from "../model/planning";
-import { useReactFlow, useStoreApi, type ReactFlowInstance } from "@xyflow/react";
+import { useReactFlow, type ReactFlowInstance } from "@xyflow/react";
 import { flushSync } from "react-dom";
 import {
   annotationToFlow,
@@ -75,7 +75,7 @@ import type { EditorApi, EditorPrefs, NewNode, Selection, XY } from "./types";
 import { diagramDiff } from "./diagramDiff";
 import { nudgeOnGrid } from "../canvas/guides";
 import { validateDiagram } from "../interop/native";
-import type { AnnotationColor, DiagramAnnotation, GroupTone } from "../model/types";
+import type { AnnotationColor, DiagramAnnotation, DiagramFile, GroupTone } from "../model/types";
 import { isHexColor } from "../model/colors";
 import {
   centre,
@@ -185,25 +185,18 @@ export interface EditorDeps {
    * be (an example, a shared diagram): then nothing is pasted.
    */
   makePrivate?: () => boolean;
+  /** Persist the whole naming transaction when Enter, Esc or leaving the fields finishes it. */
+  flushSave?: (diagram: DiagramFile) => void;
 }
 
-export function useEditor(deps: EditorDeps): EditorApi {
+type EditorState = Pick<ReactFlowInstance<FlowNode, DiagramFlowEdge>, "getNodes" | "getEdges">;
+
+export function useEditor(deps: EditorDeps & EditorState): EditorApi {
   const rf = useReactFlow<FlowNode, DiagramFlowEdge>();
-  const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const [, invalidateCommands] = useState(0);
-  const [editor] = useState(() =>
-    createEditor(
-      rf,
-      deps,
-      {
-        getNodes: () => store.getState().nodes,
-        getEdges: () => store.getState().edges,
-      },
-      () => invalidateCommands((n) => n + 1),
-    ),
-  );
+  const [editor] = useState(() => createEditor(rf, deps, deps, () => invalidateCommands((n) => n + 1)));
   useLayoutEffect(() => {
-    editor.updateDeps(rf, deps);
+    editor.updateDeps(rf, deps, deps);
   });
   return editor.api;
 }
@@ -232,7 +225,7 @@ function withGroup(n: FlowNode, group: string | undefined): FlowNode {
 export function createEditor(
   rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>,
   initialDeps: EditorDeps,
-  committed: Pick<ReactFlowInstance<FlowNode, DiagramFlowEdge>, "getNodes" | "getEdges"> = rf,
+  committed: EditorState = rf,
   commandsChanged: () => void = () => {},
 ) {
   let latest = initialDeps;
@@ -250,7 +243,8 @@ export function createEditor(
   // Stage editor updates in call order: React's node/edge queues may commit independently later.
   let stagedNodes: FlowNode[] | undefined;
   let stagedEdges: DiagramFlowEdge[] | undefined;
-  // Read the store arrays: React Flow's public getters clone every element. A render ends the batch.
+  // Read the controlled canvas state: React Flow's store catches up in a passive effect, so it can
+  // still hold the previous name/connection when a render ends the batch. Public getters also clone.
   const currentNodes = () => stagedNodes ?? committed.getNodes();
   const currentEdges = () => stagedEdges ?? committed.getEdges();
   const setNodes = (update: Parameters<EditorDeps["setNodes"]>[0], documentEdit = true) => {
@@ -274,7 +268,7 @@ export function createEditor(
     height: n.measured?.height ?? n.height ?? deps().nodeSize.height,
   });
   const pendingIds = new Set<string>();
-  const diagram = () => fromFlow(deps().meta, rf.getNodes(), rf.getEdges());
+  const diagram = () => fromFlow(deps().meta, committed.getNodes(), committed.getEdges());
   const directMembers = (groupId: string): FlowNode[] => rf.getNodes().filter((n) => n.data.group === groupId);
   const expandSelection = (sel: Partial<Selection>, allNodes: readonly FlowNode[]) => {
     const groupIds = expandGroupIds(
@@ -309,10 +303,17 @@ export function createEditor(
         },
       },
     });
-  const acceptNodes = (nodes: FlowNode[]): boolean => {
+  const acceptNodes = (nodes: FlowNode[], edges = currentEdges(), meta = deps().meta): boolean => {
     const error = validateResources({
-      ...deps().meta,
-      nodes: nodes.filter(isDiagram).map((n) => ({ id: n.id, props: n.data.props })),
+      ...meta,
+      nodes: nodes.filter(isDiagram).map((n) => ({
+        id: n.id,
+        stencil: n.data.stencil,
+        label: n.data.label,
+        sublabel: n.data.sublabel,
+        props: n.data.props,
+      })),
+      edges: edges.map((e) => ({ id: e.id, from: e.source, to: e.target, ...e.data })),
     });
     if (!error) return true;
     if (error === t("autoscaling.modelRequired")) explainModelRequired();
@@ -323,14 +324,16 @@ export function createEditor(
   const commitNodes = (
     update: (nodes: FlowNode[]) => FlowNode[],
     updateEdges: (edges: DiagramFlowEdge[]) => DiagramFlowEdge[],
+    opts?: { merge?: string },
   ): boolean => {
     const current = currentNodes(),
       candidate = update(current);
-    if (!acceptNodes(candidate)) return false;
     const edges = updateEdges(currentEdges());
+    if (!acceptNodes(candidate, edges)) return false;
     const existing = new Set([...current.map((n) => n.id), ...currentEdges().map((e) => e.id)]);
     const reserved = [...candidate, ...edges].map((item) => item.id).filter((id) => !existing.has(id));
     for (const id of reserved) pendingIds.add(id);
+    if (opts) deps().history.hint(opts.merge);
     setNodes(candidate);
     setEdges(edges);
     return true;
@@ -338,6 +341,13 @@ export function createEditor(
   const hint = (merge?: string) => {
     cancelLayout();
     deps().history.hint(merge);
+  };
+  const commitEdges = (update: (edges: DiagramFlowEdge[]) => DiagramFlowEdge[], merge?: string) => {
+    const candidate = update(currentEdges());
+    if (!acceptNodes(currentNodes(), candidate)) return false;
+    deps().history.hint(merge);
+    setEdges(candidate);
+    return true;
   };
   /**
    * Opens the creation transaction of a node about to be added (`new:<id>`): the node, its edge and the name
@@ -629,23 +639,23 @@ export function createEditor(
    * (src/stencils/relations.ts, reinferRelations), and a toast says what changed, with Undo. A flow drawn into a
    * generic node that then became App Configuration turns Config, so no requests go through it in Live.
    */
-  const reinferEdges = (stencils: ReadonlyMap<string, string>) => {
-    if (!stencils.size) return;
-    const current = new Map(
-      rf
-        .getNodes()
-        .filter(isDiagram)
-        .map((n) => [n.id, n.data.stencil]),
-    );
+  const inferEdges = (
+    nodes: readonly FlowNode[],
+    flowEdges: DiagramFlowEdge[],
+    stencils: ReadonlyMap<string, string>,
+  ) => {
+    const unchanged = { edges: flowEdges, changes: [] as ReturnType<typeof reinferRelations> };
+    if (!stencils.size) return unchanged;
+    const current = new Map(nodes.filter(isDiagram).map((n) => [n.id, n.data.stencil]));
     const changed = new Set(
       [...stencils].filter(([id, st]) => current.has(id) && current.get(id) !== st).map(([id]) => id),
     );
-    if (!changed.size) return;
-    const edges = rf.getEdges().map((e) => ({ id: e.id, from: e.source, to: e.target, ...e.data }));
+    if (!changed.size) return unchanged;
+    const edges = flowEdges.map((e) => ({ id: e.id, from: e.source, to: e.target, ...e.data }));
     const changes = reinferRelations(edges, (id) => stencils.get(id) ?? current.get(id), changed);
-    if (!changes.length) return;
+    if (!changes.length) return unchanged;
     const to = new Map(changes.map((c) => [c.id, c.to]));
-    deps().setEdges((es) =>
+    const update = (es: DiagramFlowEdge[]) =>
       es.map((e) => {
         const relation = to.get(e.id);
         if (relation === undefined) return e;
@@ -655,8 +665,20 @@ export function createEditor(
           delete data.relationOrigin;
         } else Object.assign(data, { relation, relationOrigin: "inferred" });
         return { ...e, data };
-      }),
-    );
+      });
+    return { edges: update(flowEdges), changes };
+  };
+  const commitNodeEdit = (nodes: FlowNode[], stencils: ReadonlyMap<string, string>, merge?: string) => {
+    const { edges, changes } = inferEdges(currentNodes(), currentEdges(), stencils);
+    if (
+      !commitNodes(
+        () => nodes,
+        () => edges,
+        { merge },
+      )
+    )
+      return;
+    if (!changes.length) return;
     notify(relationChangeMessage(changes), {
       action: {
         get label() {
@@ -846,17 +868,14 @@ export function createEditor(
     },
     updateNodes: (ids, patch, opts) => {
       const set = new Set(ids);
-      hint(opts?.merge);
-      if (patch.stencil) reinferEdges(new Map(ids.map((id) => [id, patch.stencil!])));
-      deps().setNodes((ns) =>
-        ns.map((n) => {
-          if (!set.has(n.id) || !isDiagram(n)) return n;
-          const data = { ...n.data };
-          if (patch.stencil) data.stencil = patch.stencil;
-          if ("group" in patch) data.group = patch.group || undefined;
-          return data.stencil === n.data.stencil && data.group === n.data.group ? n : { ...n, data };
-        }),
-      );
+      const nodes = currentNodes().map((n) => {
+        if (!set.has(n.id) || !isDiagram(n)) return n;
+        const data = { ...n.data };
+        if (patch.stencil) data.stencil = patch.stencil;
+        if ("group" in patch) data.group = patch.group || undefined;
+        return data.stencil === n.data.stencil && data.group === n.data.group ? n : { ...n, data };
+      });
+      commitNodeEdit(nodes, new Map(patch.stencil ? ids.map((id) => [id, patch.stencil!]) : []), opts?.merge);
     },
     setNodesProps: (ids, patch, opts) => {
       const set = new Set(ids);
@@ -875,12 +894,7 @@ export function createEditor(
               }
             : n,
         );
-      if (!acceptNodes(update(rf.getNodes()))) return;
-      hint(opts?.merge);
-      deps().setNodes((ns) => {
-        const next = update(ns);
-        return acceptNodes(next) ? next : ns;
-      });
+      commitNodes(update, (edges) => edges, { merge: opts?.merge });
     },
     updateGroups: (ids, patch, opts) => {
       const set = new Set(ids);
@@ -894,81 +908,70 @@ export function createEditor(
       );
     },
     updateNode: (id, patch, opts) => {
-      if (
-        "props" in patch &&
-        !acceptNodes(
-          rf
-            .getNodes()
-            .map((n) => (n.id === id && isDiagram(n) ? { ...n, data: { ...n.data, props: patch.props } } : n)),
-        )
-      )
-        return;
-      hint(opts?.merge);
-      if (patch.stencil) reinferEdges(new Map([[id, patch.stencil]]));
-      deps().setNodes((ns) => {
-        const next = ns.map((n) => {
-          if (n.id !== id || !isDiagram(n)) return n;
-          const data = { ...n.data };
-          if ("stencil" in patch && patch.stencil) data.stencil = patch.stencil;
-          if ("label" in patch) data.label = patch.label ?? "";
-          if ("sublabel" in patch) data.sublabel = patch.sublabel || undefined;
-          if ("group" in patch) data.group = patch.group || undefined;
-          if ("props" in patch) data.props = patch.props && withoutUndefined(patch.props);
-          const x = patch.x ?? n.position.x;
-          const y = patch.y ?? n.position.y;
-          const position = x === n.position.x && y === n.position.y ? n.position : { x, y };
-          return { ...n, data, position };
-        });
-        return "props" in patch && !acceptNodes(next) ? ns : next;
+      const nodes = currentNodes().map((n) => {
+        if (n.id !== id || !isDiagram(n)) return n;
+        const data = { ...n.data };
+        if ("stencil" in patch && patch.stencil) data.stencil = patch.stencil;
+        if ("label" in patch) data.label = patch.label ?? "";
+        if ("sublabel" in patch) data.sublabel = patch.sublabel || undefined;
+        if ("group" in patch) data.group = patch.group || undefined;
+        if ("props" in patch) data.props = patch.props && withoutUndefined(patch.props);
+        const x = patch.x ?? n.position.x;
+        const y = patch.y ?? n.position.y;
+        const position = x === n.position.x && y === n.position.y ? n.position : { x, y };
+        return { ...n, data, position };
       });
+      commitNodeEdit(nodes, new Map(patch.stencil ? [[id, patch.stencil]] : []), opts?.merge);
     },
     setNodeProps: (id, patch, opts) => api.setNodesProps([id], patch, opts),
     updateEdge: (id, patch, opts) => api.updateEdges([id], patch, opts),
     updateEdges: (ids, patch, opts) => {
       const targets = new Set(ids);
-      hint(opts?.merge);
-      deps().setEdges((es) =>
-        es.map((e) => {
-          if (!targets.has(e.id)) return e;
-          const data = { kind: "async" as const, ...e.data };
-          if ("label" in patch) data.label = patch.label || undefined;
-          if ("kind" in patch) data.kind = patch.kind ?? "async";
-          if ("relation" in patch) {
-            // A relationship someone picks (the menu, Make it a flow) is theirs, even when it's the one it already had
-            // (Request on a Message, Config on an inferred Config): a stencil change never re-infers it.
-            data.relation = isDependency(patch) ? relationOf(patch) : undefined;
-            data.relationOrigin = patch.relationOrigin ?? "explicit";
-          } else if ("relationOrigin" in patch) data.relationOrigin = patch.relationOrigin;
-          if ("sourceSide" in patch) data.sourceSide = patch.sourceSide;
-          if ("targetSide" in patch) data.targetSide = patch.targetSide;
-          if ("props" in patch) data.props = patch.props && withoutUndefined(patch.props);
-          return {
-            ...e,
-            source: patch.from ?? e.source,
-            target: patch.to ?? e.target,
-            data:
-              patch.to && data.props?.groupOrigin === "inferred"
-                ? { ...data, props: { ...data.props, group: patch.to } }
-                : data,
-          };
-        }),
+      commitEdges(
+        (es) =>
+          es.map((e) => {
+            if (!targets.has(e.id)) return e;
+            const data = { kind: "async" as const, ...e.data };
+            if ("label" in patch) data.label = patch.label || undefined;
+            if ("kind" in patch) data.kind = patch.kind ?? "async";
+            if ("relation" in patch) {
+              // A relationship someone picks (the menu, Make it a flow) is theirs, even when it's the one it already had
+              // (Request on a Message, Config on an inferred Config): a stencil change never re-infers it.
+              data.relation = isDependency(patch) ? relationOf(patch) : undefined;
+              data.relationOrigin = patch.relationOrigin ?? "explicit";
+            } else if ("relationOrigin" in patch) data.relationOrigin = patch.relationOrigin;
+            if ("sourceSide" in patch) data.sourceSide = patch.sourceSide;
+            if ("targetSide" in patch) data.targetSide = patch.targetSide;
+            if ("props" in patch) data.props = patch.props && withoutUndefined(patch.props);
+            return {
+              ...e,
+              source: patch.from ?? e.source,
+              target: patch.to ?? e.target,
+              data:
+                patch.to && data.props?.groupOrigin === "inferred"
+                  ? { ...data, props: { ...data.props, group: patch.to } }
+                  : data,
+            };
+          }),
+        opts?.merge,
       );
     },
     setEdgeProps: (id, patch, opts) => {
-      hint(opts?.merge);
-      deps().setEdges((es) =>
-        es.map((e) =>
-          e.id === id
-            ? {
-                ...e,
-                data: {
-                  kind: "async" as const,
-                  ...e.data,
-                  props: withoutUndefined(connectionProps(e.data?.props, patch)),
-                },
-              }
-            : e,
-        ),
+      commitEdges(
+        (es) =>
+          es.map((e) =>
+            e.id === id
+              ? {
+                  ...e,
+                  data: {
+                    kind: "async" as const,
+                    ...e.data,
+                    props: withoutUndefined(connectionProps(e.data?.props, patch)),
+                  },
+                }
+              : e,
+          ),
+        opts?.merge,
       );
     },
     updateGroup: (id, patch, opts) => {
@@ -1002,6 +1005,11 @@ export function createEditor(
       });
     },
     updateMeta: (patch, opts) => {
+      if (
+        ("planning" in patch || "simulations" in patch) &&
+        !acceptNodes(currentNodes(), currentEdges(), { ...deps().meta, ...patch })
+      )
+        return;
       hint(opts?.merge);
       deps().setMeta((m) => ({ ...m, ...patch }));
     },
@@ -1020,7 +1028,7 @@ export function createEditor(
       return edge.id;
     },
     reverseEdge: (id) => {
-      deps().setEdges((es) =>
+      commitEdges((es) =>
         es.map((e) =>
           e.id === id
             ? {
@@ -1095,7 +1103,7 @@ export function createEditor(
       return { id, edge: edge.id, merge };
     },
     insertNode: (edgeId, stencilId, at) => {
-      const es = rf.getEdges();
+      const es = currentEdges();
       const e = es.find((x) => x.id === edgeId);
       const a = e && rf.getNode(e.source);
       const b = e && rf.getNode(e.target);
@@ -1152,20 +1160,18 @@ export function createEditor(
       return id;
     },
     reconnectEdge: (edgeId, end, nodeId) => {
-      const target = rf.getNode(nodeId);
+      const target = currentNodes().find((n) => n.id === nodeId);
       if (!target || !takesEdges(target)) return false;
-      const next = reconnectEdge(rf.getEdges(), edgeId, end, nodeId);
+      const next = reconnectEdge(currentEdges(), edgeId, end, nodeId);
       if (!next) return false;
-      deps().setEdges(next);
-      return true;
+      return commitEdges(() => next);
     },
     insertIntoEdge: (edgeId, nodeId) => {
-      const n = rf.getNode(nodeId);
+      const n = currentNodes().find((n) => n.id === nodeId);
       if (!n || !takesEdges(n)) return false;
-      const r = splitFlowEdge(rf.getEdges(), edgeId, nodeId, takenIds());
+      const r = splitFlowEdge(currentEdges(), edgeId, nodeId, takenIds());
       if (!r) return false;
-      deps().setEdges(r.edges);
-      return true;
+      return commitEdges(() => r.edges);
     },
 
     deleteElements: (sel) => {
@@ -1173,13 +1179,17 @@ export function createEditor(
       const groupIds = new Set(sel.groupIds ?? []);
       const edgeIds = new Set(sel.edgeIds ?? []);
       if (!nodeIds.size && !groupIds.size && !edgeIds.size) return;
-      deps().setEditing(null);
-      deps().setNodes((ns) =>
+      const update = (ns: FlowNode[]) =>
         ns
           .filter((n) => (isGroup(n) ? !groupIds.has(n.data.groupId) : !nodeIds.has(n.id)))
-          .map((n) => (n.data.group && groupIds.has(n.data.group) ? withGroup(n, undefined) : n)),
-      );
-      deps().setEdges((es) => es.filter((e) => !edgeIds.has(e.id) && !nodeIds.has(e.source) && !nodeIds.has(e.target)));
+          .map((n) => (n.data.group && groupIds.has(n.data.group) ? withGroup(n, undefined) : n));
+      if (
+        !commitNodes(update, (es) =>
+          es.filter((e) => !edgeIds.has(e.id) && !nodeIds.has(e.source) && !nodeIds.has(e.target)),
+        )
+      )
+        return;
+      deps().setEditing(null);
     },
     duplicate: (sel) => {
       const p = makePayload(diagram(), sel.nodeIds ?? [], sel.groupIds ?? []);
@@ -1677,7 +1687,10 @@ export function createEditor(
       deps().history.begin(tag);
       return tag;
     },
-    doneNaming: (tag) => deps().history.end(tag),
+    doneNaming: (tag) => {
+      deps().history.end(tag);
+      deps().flushSave?.(fromFlow(deps().meta, currentNodes(), currentEdges()));
+    },
     openInspector: (field) => deps().openInspector(field),
     showShortcuts: () => deps().showShortcuts(),
     autoLayout: () => {
@@ -1750,10 +1763,11 @@ export function createEditor(
   };
   return {
     api,
-    updateDeps: (flow: ReactFlowInstance<FlowNode, DiagramFlowEdge>, next: EditorDeps) => {
+    updateDeps: (flow: ReactFlowInstance<FlowNode, DiagramFlowEdge>, next: EditorDeps, state = committed) => {
       if (next.slug !== latest.slug) cancelLayout();
       rf = flow;
       latest = next;
+      committed = state;
       stagedNodes = undefined;
       stagedEdges = undefined;
     },

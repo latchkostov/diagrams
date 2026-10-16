@@ -23,6 +23,7 @@ const bySlug = Object.fromEntries(
 
 const EXPECTED: Record<string, string[]> = {
   "autoscaling-image-workers": [],
+  "keda-render-workers": ["warning capacity:uploads", "suggestion capacity:worker"],
   "aks-app-config-key-vault": [],
   "aws-fanout": ["suggestion dead-letter:archive-q", "suggestion dead-letter:receipt-q", "suggestion no-reader:dlq"],
   "aws-serverless-orders": [],
@@ -494,6 +495,7 @@ describe("batch 4 rules scale linearly", () => {
 
 it("A1 precision gate preserves findings and severities on all 17 public examples", () => {
   for (const d of Object.values(bySlug)) {
+    if (d.planning?.revision === "p3-a1") continue; // Already opted in: never downgrade an executing scaler.
     const p3 = upgradePlanning(d),
       a1 = upgradeAutoscaling(p3);
     expect(runChecks(a1).findings.map((f) => [f.id, f.severity])).toEqual(

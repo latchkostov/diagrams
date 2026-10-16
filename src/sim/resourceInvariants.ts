@@ -25,6 +25,7 @@ export interface ResourceState {
     };
     working: readonly Work[];
     pending: Iterable<Work>;
+    groups?: readonly { active: number; pending: { length: number } }[];
   }>;
 }
 const pausedClocks = new WeakMap<
@@ -35,6 +36,7 @@ const memoryClocks = new WeakMap<
   Fleet,
   { published: number; occupancy: number; retained: Set<Work>; up: boolean; capacity: number }
 >();
+const previousDesired = new WeakMap<Fleet, number>();
 const reservationAttempts = new WeakMap<Fleet, Map<Work, number>>();
 /** Opt-in diagnostic: independent ownership/counting oracle, never run in ordinary playback. */
 export function assertResourceInvariants(state: ResourceState) {
@@ -47,6 +49,7 @@ export function assertResourceInvariants(state: ResourceState) {
     const queued = [...node.pending];
     const all = [...node.working, ...queued];
     const fail = (ok: boolean, message: string) => check(ok, `${node.id} @${state.time}: ${message}`);
+    for (const g of node.groups ?? []) fail(g.pending.length >= 0 && g.active >= 0, "negative broker lag");
     if (!node.props.resources) {
       fail(
         !f &&
@@ -63,6 +66,8 @@ export function assertResourceInvariants(state: ResourceState) {
     }
     fail(!!f, "enabled resources have no fleet");
     if (!f) continue;
+    const previousCount = previousDesired.get(f);
+    previousDesired.set(f, f.desired);
     fail(
       f.paused === (node.status === "paused") && (node.status !== "paused" || f.pausedAt !== undefined),
       "fleet pause clock disagrees with node",
@@ -112,7 +117,21 @@ export function assertResourceInvariants(state: ResourceState) {
     const a = node.props.autoscaling;
     if (a?.mode === "on" && !f.override) {
       const range = replicaRange(a.controller, state.capacityMultiplier);
-      fail(f.desired >= range.min && f.desired <= range.max, "desired outside HPA bounds");
+      const idle =
+        a.controller.kind === "keda" && f.desired === 0 && (range.min === 0 || a.controller.idleReplicas === 0);
+      fail((f.desired >= range.min || idle) && f.desired <= range.max, "desired outside HPA bounds");
+      if (idle && f.decision?.reason === "inactive" && f.decision.at === state.time && f.keda) {
+        fail(!f.keda.active, "zero while activation is true");
+        // An initially sleeping fleet may remain asleep before it has ever activated.
+        if ((previousCount ?? 0) > 0)
+          fail(
+            f.decision.at >=
+              (f.keda.lastActive === undefined
+                ? f.keda.createdAt + (a.controller.kind === "keda" ? a.controller.initialCooldownMs : 0)
+                : f.keda.lastActive + (a.controller.kind === "keda" ? a.controller.cooldownMs : 0)),
+            "zero before cooldown elapsed",
+          );
+      }
     }
     fail(
       queued.every((w) => w.replica === undefined && w.cpuParts === undefined),

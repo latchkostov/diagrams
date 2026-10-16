@@ -18,6 +18,7 @@ import { LIMITS, exceedsDepth, validateDiagram } from "../interop/native";
 import { propsProblem, unsupportedPreset, invalidPlanningDelay } from "../model/simProps";
 import { clipboardNodes } from "../model/planning";
 import { remapConnection } from "../model/connectionDefaults";
+import { remapScaler, scalerGroupRemap } from "../model/kedaBindings";
 
 // Copy / paste on the saved-file level, so it is pure and the system clipboard carries plain
 // JSON that also pastes into another tab (or a text editor).
@@ -121,7 +122,7 @@ export function parsePayload(text: string): ClipboardPayload | null {
   );
   if (nodes.some((n) => n.props !== undefined && (unsupportedPreset(n.props) || propsProblem(n.props)))) return null;
   if (
-    createResourceValidator()({
+    createResourceValidator({ fragment: true })({
       nodes,
       planning: isObj(data.planning) && data.planning.revision === "p3-a1" ? { revision: "p3-a1" } : undefined,
     })
@@ -186,6 +187,7 @@ export function remapPayload(p: ClipboardPayload, taken: TakenIds, offset: { x: 
   const used = new Set([...taken.nodes, ...taken.edges, ...taken.groups]);
   const gmap = new Map<string, string>();
   const nmap = new Map<string, string>();
+  const emap = new Map<string, string>();
   const groupIds = p.groups.map((g) => {
     const id = uniqueId(g.id, used);
     used.add(id);
@@ -223,8 +225,11 @@ export function remapPayload(p: ClipboardPayload, taken: TakenIds, offset: { x: 
   const edges = p.edges.map((e) => {
     const id = uniqueId(e.id, used);
     used.add(id);
+    emap.set(e.id, id);
     return { ...remapConnection(e, nmap), id };
   });
+  const scalerGroups = scalerGroupRemap(p.edges, nmap, emap);
+  for (const n of nodes) remapScaler(n.props, nmap, scalerGroups);
   return {
     format: p.format,
     ...(p.planning ? { planning: p.planning } : {}),

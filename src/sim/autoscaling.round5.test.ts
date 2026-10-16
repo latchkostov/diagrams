@@ -491,3 +491,46 @@ it("preflight stops at the actual tick, duration and pausing note boundaries", (
     budget.mockRestore();
   }
 });
+
+it("sampled retained retries keep their memory on draining replicas", () => {
+  const run = (scale: number) => {
+    const d = fixed();
+    d.nodes[0].stencil = "aws.sqs";
+    d.nodes[0].props = { maxDeliveryCount: 5 };
+    d.edges[0].kind = "async";
+    Object.assign(d.nodes[1].props!, {
+      replicas: 2,
+      concurrency: 4,
+      latencyMs: 100,
+      failureRate: 1,
+      retry: "inplace",
+      retryBackoffMs: 5000,
+      resources: {
+        ...resourceLesson(),
+        cpuMsPerMessage: 0,
+        baselineMemoryMiB: 0,
+        memoryMiBPerMessage: 10,
+        terminationGraceMs: 5000,
+      },
+    });
+    let occupancy = 0;
+    const e = createEngine({
+      scale,
+      seed: 42,
+      verifyResources(state) {
+        assertResourceInvariants(state);
+        for (const n of state.nodes) if (n.id === "worker") occupancy = n.fleet?.samples.at(-1)?.occupancy ?? 0;
+      },
+    });
+    e.load(d);
+    e.inject("source", 8 / scale);
+    e.step(2000);
+    expect(occupancy).toBe(8);
+    e.setNodeProps("worker", { replicas: 1 });
+    e.step(1000);
+    expect(e.frame().nodes.worker.fleet).toMatchObject({ ready: 1, draining: 1 });
+    expect(occupancy).toBe(8);
+  };
+  run(1);
+  run(2);
+});

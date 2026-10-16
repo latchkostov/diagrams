@@ -52,6 +52,11 @@ const publicExamples: PublicExample[] = (
       featured: true,
     },
     {
+      slug: "keda-render-workers",
+      theme: "streaming",
+      summary: "Kafka lag wakes workers from zero; idle workers sleep",
+    },
+    {
       slug: "autoscaling-image-workers",
       theme: "streaming",
       summary: "HPA startup, buffered uploads and replica history",

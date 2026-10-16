@@ -24,6 +24,9 @@ VALID <repo>/tests/parity/corpus/a1-downscale-stabilization.diagram.json: 3 node
 VALID <repo>/tests/parity/corpus/a1-idle-partitions.diagram.json: 3 nodes, 2 edges, 1 simulation
 VALID <repo>/tests/parity/corpus/a1-max-reached.diagram.json: 3 nodes, 2 edges, 1 simulation
 VALID <repo>/tests/parity/corpus/a1-startup-backlog.diagram.json: 3 nodes, 2 edges, 1 simulation
+VALID <repo>/tests/parity/corpus/a2-activation.diagram.json: 3 nodes, 2 edges, 1 simulation
+VALID <repo>/tests/parity/corpus/a2-cooldown.diagram.json: 3 nodes, 2 edges, 1 simulation
+VALID <repo>/tests/parity/corpus/a2-idle.diagram.json: 3 nodes, 2 edges, 1 simulation
 VALID <repo>/tests/parity/corpus/annotation-course.diagram.json: 6 nodes, 4 edges
 VALID <repo>/tests/parity/corpus/back-edges.diagram.json: 6 nodes, 8 edges
   warning: edges[7] "self": it connects "retry" to itself.

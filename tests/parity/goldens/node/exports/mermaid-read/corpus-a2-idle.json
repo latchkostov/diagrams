@@ -1,0 +1,17 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "a2-idle",
+    "direction": "LR",
+    "nodes": [
+      { "id": "source", "stencil": "generic.service", "label": "Poster studio", "x": 40, "y": 40 },
+      { "id": "uploads", "stencil": "generic.service", "label": "Render requests", "sublabel": "3 partitions", "x": 400, "y": 40 },
+      { "id": "worker", "stencil": "generic.service", "label": "Poster workers", "x": 760, "y": 40 }
+    ],
+    "edges": [
+      { "id": "e1-source-uploads", "from": "source", "to": "uploads", "kind": "async" },
+      { "id": "e2-uploads-worker", "from": "uploads", "to": "worker", "kind": "async" }
+    ]
+  }
+}

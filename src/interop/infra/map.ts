@@ -1,3 +1,5 @@
+import type { AutoscalingConfig } from "../../model/autoscaling";
+import { bindingValidator, remapScaler } from "../../model/kedaBindings";
 import { diagnostic } from "./graph";
 import { t as tr } from "../../i18n";
 import {
@@ -108,6 +110,7 @@ export function graphToDiagram(g: ImportGraph, total?: number): { diagram: Diagr
       ...(c.props ? { props: { ...c.props } } : {}),
     };
   });
+  for (const n of nodes) remapScaler(n.props, ids);
   const labelOf = new Map(g.components.map((c) => [c.key, rowLabel(c)]));
   const inferred: ReportConnection[] = [];
   /** Inferred connections past MAX_REPORT_LINES: counted in a note, not listed. */
@@ -147,6 +150,19 @@ export function graphToDiagram(g: ImportGraph, total?: number): { diagram: Diagr
         ...(l.evidence.guess ? { guess: true } : {}),
       });
   }
+  // A partial/external graph must still open with a report if a source or its group route is absent.
+  const binding = bindingValidator(nodes, edges);
+  const omitted: ReportLine[] = [];
+  for (const n of nodes) {
+    const a = n.props?.autoscaling as AutoscalingConfig | undefined;
+    if (binding(a)) continue;
+    n.props!.autoscaling = {
+      mode: "unsupported",
+      provider: g.format,
+      reason: "KEDA source binding omitted from import; include its broker and consumer group route",
+    };
+    omitted.push({ name: n.label, reason: diagnostic("importDetail.scalingSourceOmitted") });
+  }
   const used = new Set(nodes.map((n) => n.group));
   const groups = g.groups
     .filter((gr) => used.has(groupIds.get(gr.key)))
@@ -176,7 +192,10 @@ export function graphToDiagram(g: ImportGraph, total?: number): { diagram: Diagr
       }
     : undefined;
   const diagram = layoutImport({
-    format: DIAGRAM_FORMAT,
+    format: nodes.some((n) => n.props?.resources || n.props?.autoscaling) ? "diagrams/v2" : DIAGRAM_FORMAT,
+    ...(nodes.some((n) => n.props?.resources || n.props?.autoscaling)
+      ? { planning: { revision: "p3-a1" as const } }
+      : {}),
     title: g.title,
     direction: "LR",
     ...(groups.length ? { groups } : {}),
@@ -206,7 +225,7 @@ export function graphToDiagram(g: ImportGraph, total?: number): { diagram: Diagr
       guesses,
       inferred,
       ...(g.connectionsTitle ? { connectionsTitle: g.connectionsTitle } : {}),
-      notDrawn: capped(g.notDrawn),
+      notDrawn: capped([...g.notDrawn, ...omitted]),
       unread: capped(g.unread),
       notes: [
         ...g.notes,

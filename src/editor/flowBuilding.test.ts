@@ -5,7 +5,10 @@ import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 import type { EdgeMark } from "../canvas/edgeMarks";
 import { createEditor, type EditorDeps } from "./useEditor";
 import type { DiagramFile } from "../model/types";
+import type { AutoscalingConfig } from "../model/autoscaling";
 import { hpaLesson, resourceLesson } from "../model/autoscaling";
+import { kedaLesson } from "../model/autoscaling";
+import { kedaFixture } from "../lab/kedaFixture";
 import * as validation from "../model/resourceValidation";
 import * as planningDefaults from "../model/planning";
 import * as resourceSchemas from "../model/autoscalingSchema";
@@ -25,6 +28,218 @@ import { validateDiagram } from "../interop/native";
 type Box = { x: number; y: number; width: number; height: number };
 const SIZE = { width: 220, height: 72 };
 
+it.each(["add", "named", "rail", "connected", "insert"])("validates KEDA binding defaults at %s creation", (action) => {
+  const d = kedaFixture(),
+    t = setup([], d),
+    a = kedaLesson("kafka", { node: "missing", group: "renders" });
+  const defaults = vi
+    .spyOn(planningDefaults, "newPlanningProps")
+    .mockReturnValue({ resources: resourceLesson(), autoscaling: a });
+  try {
+    if (action === "add") t.api.addNode("service.go");
+    if (action === "named") t.api.addNamed("service.go", { x: 0, y: 1000 });
+    if (action === "rail") t.api.addStencil("service.go");
+    if (action === "connected") t.api.createConnected({ from: "worker", stencil: "service.go" });
+    if (action === "insert") t.api.insertNode("consume", "service.go");
+    t.commit();
+    expect(t.api.getDiagram()).toEqual(d);
+  } finally {
+    defaults.mockRestore();
+  }
+});
+it.each(["paste", "duplicate", "connected"])("preserves KEDA bindings through %s", (action) => {
+  const d = kedaFixture(),
+    t = setup([], d);
+  if (action === "paste") t.api.pastePayload(makePayload(d, ["uploads", "worker"])!);
+  if (action === "duplicate") t.api.duplicate({ nodeIds: ["uploads", "worker"] });
+  if (action === "connected") t.api.createConnected({ from: "worker", clone: true });
+  t.commit();
+  expect(t.nodes().length).toBeGreaterThan(d.nodes.length);
+  const result = t.api.getDiagram();
+  expect(validateDiagram(result).ok).toBe(true);
+  const worker = result.nodes.find((n) => n.id !== "worker" && n.stencil === d.nodes[1].stencil)!;
+  const broker =
+    action === "connected" ? d.nodes[0] : result.nodes.find((n) => n.id !== "uploads" && n.stencil === "kafka.topic")!;
+  const original = d.nodes[1].props!.autoscaling as Extract<AutoscalingConfig, { mode: "on" }>;
+  const policy = worker.props!.autoscaling as typeof original;
+  expect(policy).toEqual({
+    ...original,
+    controller: {
+      ...original.controller,
+      triggers:
+        original.controller.kind === "keda"
+          ? original.controller.triggers.map((trigger) => ({
+              ...trigger,
+              source: { ...trigger.source, node: broker.id },
+            }))
+          : [],
+    },
+  });
+  expect(result.nodes.find((n) => n.id === "worker")?.props?.autoscaling).toEqual(original);
+});
+it("refuses pasted and edited KEDA references before mutation", () => {
+  const d = kedaFixture(),
+    t = setup([], d),
+    a = kedaLesson("kafka", { node: "missing", group: "renders" });
+  t.api.setNodeProps("worker", { autoscaling: a });
+  t.commit();
+  expect(t.api.getDiagram()).toEqual(d);
+  const copy = makePayload(d, ["worker"])!;
+  copy.nodes[0].props!.autoscaling = a;
+  t.api.pastePayload(copy);
+  t.commit();
+  expect(t.api.getDiagram()).toEqual(d);
+});
+
+it.each([
+  "broker",
+  "edge",
+  "group",
+  "stencil",
+  "bulk-stencil",
+  "relation",
+  "dlq",
+  "reconnect",
+  "reverse",
+  "insert",
+  "saved",
+])("keeps KEDA native/autosave state readable through %s edits", (action) => {
+  const d = kedaFixture();
+  d.nodes.push({ id: "other", stencil: "kafka.topic", label: "Other", x: 10, y: 800 });
+  if (action === "saved") {
+    const a = d.nodes[1].props!.autoscaling;
+    d.nodes[1].props!.autoscaling = { mode: "off" };
+    d.simulations = [
+      {
+        id: "burst",
+        title: "Burst",
+        durationMs: 1000,
+        traffic: [],
+        setup: { props: { worker: { autoscaling: a } } },
+      },
+    ];
+  }
+  const t = setup([], d);
+  if (action === "broker") t.api.deleteElements({ nodeIds: ["uploads"] });
+  if (action === "edge" || action === "saved") t.api.deleteElements({ edgeIds: ["consume"] });
+  if (action === "group") t.api.setEdgeProps("consume", { group: "renamed" });
+  if (action === "stencil") t.api.updateNode("uploads", { stencil: "postgres" });
+  if (action === "bulk-stencil") t.api.updateNodes(["uploads"], { stencil: "postgres" });
+  if (action === "relation") t.api.updateEdge("consume", { relation: "depends" });
+  if (action === "dlq") t.api.setEdgeProps("consume", { dlq: true });
+  if (action === "reverse") t.api.reverseEdge("consume");
+  if (action === "reconnect") t.api.reconnectEdge("consume", "source", "other");
+  if (action === "insert") t.api.insertIntoEdge("consume", "other");
+  t.commit();
+  expect(validateDiagram(t.api.getDiagram()).ok).toBe(true);
+  if (action === "insert") expect(t.api.getDiagram()).not.toEqual(d);
+  else expect(t.api.getDiagram()).toEqual(d);
+});
+it("explains how to recover from a refused edit to an existing scaling source", () => {
+  const d = kedaFixture();
+  d.edges = [];
+  const error = validation.createResourceValidator()(d);
+  expect(error).toContain("Change or disable");
+  expect(error).toContain("saved-simulation policy");
+  expect(error).not.toContain("preset is not saved");
+});
+it("allows removing a KEDA source after explicitly disabling its policy in the same batch", () => {
+  const t = setup([], kedaFixture());
+  t.api.setNodeProps("worker", { autoscaling: { mode: "off" } });
+  t.api.deleteElements({ nodeIds: ["uploads"] });
+  t.commit();
+  expect(t.api.getDiagram().nodes).toHaveLength(1);
+  expect(validateDiagram(t.api.getDiagram()).ok).toBe(true);
+});
+
+it("infers relationships from staged nodes across successive stencil edits", () => {
+  const t = setup();
+  t.api.updateNode("b", { stencil: "k8s.configmap" });
+  t.api.updateNode("b", { stencil: "postgres" });
+  t.commit();
+  expect(t.api.getNode("b")!.stencil).toBe("postgres");
+  expect(t.api.getEdge("ab")!.relation).toBeUndefined();
+});
+it("validates the fully patched node and inferred connection together once", () => {
+  const validate = validation.createResourceValidator();
+  const preflight = vi.fn(validate);
+  const factory = vi.spyOn(validation, "createResourceValidator").mockReturnValue(preflight);
+  try {
+    const d = kedaFixture(),
+      t = setup([], d);
+    t.api.updateNode("worker", { stencil: "k8s.configmap", props: { autoscaling: { mode: "off" } } });
+    t.commit();
+    expect(preflight).toHaveBeenCalledTimes(1);
+    const next = t.api.getDiagram();
+    expect(next.nodes[1]).toMatchObject({ stencil: "k8s.configmap", props: { autoscaling: { mode: "off" } } });
+    expect(next.edges[0]).toMatchObject({ relation: "config", relationOrigin: "inferred" });
+    expect(validateDiagram(next).ok).toBe(true);
+  } finally {
+    factory.mockRestore();
+  }
+});
+it.each(["single", "bulk", "props"])("preflights %s resource transactions only once", (action) => {
+  const preflight = vi.fn(validation.createResourceValidator());
+  const factory = vi.spyOn(validation, "createResourceValidator").mockReturnValue(preflight);
+  try {
+    const t = setup([], kedaFixture());
+    if (action === "single") t.api.updateNode("worker", { label: "Renamed" });
+    if (action === "bulk") t.api.updateNodes(["worker"], { stencil: "service.go" });
+    if (action === "props") t.api.setNodeProps("worker", { latencyMs: 50 });
+    t.commit();
+    expect(preflight).toHaveBeenCalledTimes(1);
+  } finally {
+    factory.mockRestore();
+  }
+});
+it("does no graph preflight for presentation metadata and still checks planning and simulations", () => {
+  const preflight = vi.fn(validation.createResourceValidator());
+  const factory = vi.spyOn(validation, "createResourceValidator").mockReturnValue(preflight);
+  try {
+    const t = setup([], kedaFixture());
+    t.api.updateMeta({ title: "Typing", description: "Text", direction: "TB", color: "#ff0000" });
+    t.commit();
+    expect(preflight).not.toHaveBeenCalled();
+    t.api.updateMeta({ planning: undefined });
+    t.commit();
+    expect(preflight).toHaveBeenCalledTimes(1);
+    expect(t.api.getDiagram().planning?.revision).toBe("p3-a1");
+    t.api.updateMeta({ simulations: [] });
+    t.commit();
+    expect(preflight).toHaveBeenCalledTimes(2);
+  } finally {
+    factory.mockRestore();
+  }
+});
+
+it.each(["setup", "timeline"] as const)("refuses invalid saved-simulation %s metadata atomically", (kind) => {
+  const t = setup([], kedaFixture());
+  const before = structuredClone(t.api.getDiagram());
+  const simulations = (source: string): NonNullable<DiagramFile["simulations"]> => {
+    const props = { autoscaling: kedaLesson("kafka", { node: source, group: "renders" }) };
+    return [
+      {
+        id: "binding",
+        title: "Binding",
+        traffic: [],
+        ...(kind === "setup"
+          ? { setup: { props: { worker: props } } }
+          : {
+              timeline: [{ atMs: 1000, action: { do: "props", node: "worker", props } }],
+            }),
+      },
+    ];
+  };
+  t.api.updateMeta({ title: "Refused with simulations", simulations: simulations("missing-source") });
+  t.commit();
+  expect(t.api.getDiagram()).toEqual(before);
+  const valid = simulations("uploads");
+  t.api.updateMeta({ title: "Saved with simulations", simulations: valid });
+  t.commit();
+  expect(t.api.getDiagram()).toEqual({ ...before, title: "Saved with simulations", simulations: valid });
+  expect(validateDiagram(t.api.getDiagram()).ok).toBe(true);
+});
+
 const BASE: DiagramFile = {
   format: "diagrams/v1",
   title: "t",
@@ -37,22 +252,40 @@ const BASE: DiagramFile = {
 };
 
 /** hub alone at (1000, 400); a → b in a row far to the left, with a labelled request edge. */
-function setup(marks: EdgeMark[] = [], diagram: DiagramFile = BASE) {
+function setup(marks: EdgeMark[] = [], diagram: DiagramFile = BASE, lagStore = false) {
   const flow = toFlow(diagram);
   let nodes: FlowNode[] = flow.nodes;
   let edges: DiagramFlowEdge[] = flow.edges;
   const queue: (() => void)[] = [];
-  const commit = () => queue.splice(0).forEach((f) => f());
+  let storeNodes = nodes;
+  let storeEdges = edges;
+  const catchUp = () => {
+    storeNodes = nodes;
+    storeEdges = edges;
+  };
+  const commit = () => {
+    queue.splice(0).forEach((f) => f());
+    if (!lagStore) {
+      storeNodes = nodes;
+      storeEdges = edges;
+    }
+    editor.updateDeps(rf, deps, { getNodes: () => nodes, getEdges: () => edges });
+  };
   const rf = {
-    getNodes: () => nodes.map((n) => ({ ...n })),
-    getNode: (id: string) => nodes.find((n) => n.id === id),
-    getEdges: () => edges.map((e) => ({ ...e })),
+    getNodes: () => storeNodes.map((n) => ({ ...n })),
+    getNode: (id: string) => storeNodes.find((n) => n.id === id),
+    getEdges: () => storeEdges.map((e) => ({ ...e })),
   } as unknown as ReactFlowInstance<FlowNode, DiagramFlowEdge>;
   const reveal = vi.fn();
   const hint = vi.fn();
   const deps = {
     meta: flow.meta,
-    history: { hint },
+    setMeta: (u: Parameters<EditorDeps["setMeta"]>[0]) =>
+      void queue.push(() => {
+        deps.meta = typeof u === "function" ? u(deps.meta) : u;
+      }),
+    history: { hint, end: vi.fn() },
+    flushSave: vi.fn(),
     nodeSize: SIZE,
     viewCenter: () => ({ x: 1110, y: 1000 }),
     edgeMarks: () => marks,
@@ -65,7 +298,8 @@ function setup(marks: EdgeMark[] = [], diagram: DiagramFile = BASE) {
     setEdges: (u: Parameters<EditorDeps["setEdges"]>[0]) =>
       void queue.push(() => (edges = typeof u === "function" ? u(edges) : u)),
   } as unknown as EditorDeps;
-  const { api } = createEditor(rf, deps, { getNodes: () => nodes, getEdges: () => edges });
+  const editor = createEditor(rf, deps, { getNodes: () => storeNodes, getEdges: () => storeEdges });
+  const { api } = editor;
   const boxOf = (id: string): Box => {
     const n = nodes.find((x) => x.id === id);
     if (!n) throw new Error(`no node ${id}`);
@@ -74,10 +308,114 @@ function setup(marks: EdgeMark[] = [], diagram: DiagramFile = BASE) {
   const hits = (a: Box, b: Box) =>
     a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
   const overlapsAny = (id: string) => nodes.filter((n) => n.id !== id).some((n) => hits(boxOf(id), boxOf(n.id)));
-  return { api, boxOf, overlapsAny, edges: () => edges, nodes: () => nodes, reveal, hint, commit, deps };
+  return { api, boxOf, overlapsAny, edges: () => edges, nodes: () => nodes, reveal, hint, commit, catchUp, deps };
 }
 
 describe("the next node (Alt+arrow, the +)", () => {
+  it("finishing naming flushes the complete new node and connection before the autosave debounce", () => {
+    const t = setup();
+    const made = t.api.createConnected({ from: "hub", stencil: "redis.cache" })!;
+    t.commit();
+    t.api.updateNode(made.id, { label: "dedupe table", sublabel: "Cache" });
+    t.commit();
+    // The node's name may already have autosaved when the connection is typed. Finishing must save
+    // the connection too, even if its queued update has not rendered yet.
+    t.api.updateEdge(made.edge!, { label: "SET NX" });
+    t.api.doneNaming(made.merge);
+    expect(t.deps.flushSave).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        nodes: expect.arrayContaining([
+          expect.objectContaining({ id: made.id, label: "dedupe table", sublabel: "Cache" }),
+        ]),
+        edges: expect.arrayContaining([
+          expect.objectContaining({ id: made.edge, from: "hub", to: made.id, label: "SET NX" }),
+        ]),
+      }),
+    );
+    expect(t.deps.history.end).toHaveBeenCalledExactlyOnceWith(made.merge);
+  });
+  it("keeps every newly connected name keystroke across renders before React Flow catches up", () => {
+    const t = setup([], BASE, true);
+    const made = t.api.createConnected({ from: "hub", stencil: "redis.cache" })!;
+    t.commit();
+    t.catchUp();
+    for (const field of ["label", "sublabel"] as const) {
+      let value = "";
+      for (const key of field === "label" ? "dedupe table" : "Cache") {
+        t.api.updateNode(made.id, { [field]: (value += key) });
+        t.commit();
+      }
+    }
+    let label = "";
+    for (const key of "SET NX") {
+      t.api.updateEdge(made.edge!, { label: (label += key) });
+      t.commit();
+    }
+    // Enter returns focus/selection to the node. Its selection update must not restore the old edge.
+    t.api.select({ nodeIds: [made.id] });
+    t.commit();
+    expect(t.edges().find((e) => e.id === made.edge)?.data?.label).toBe("SET NX");
+    expect(t.nodes().find((n) => n.id === made.id)?.data).toMatchObject({ label: "dedupe table", sublabel: "Cache" });
+    expect(t.api.getNode(made.id)).toMatchObject({ label: "dedupe table", sublabel: "Cache" });
+    expect(t.api.getEdge(made.edge!)).toMatchObject({ from: "hub", to: made.id, label: "SET NX" });
+  });
+  it("retains edge and node edits, bulk edits and pasted content across lagging-store renders", () => {
+    const t = setup([], BASE, true);
+    t.api.updateEdge("ab", { label: "Stored", relation: "depends" });
+    t.commit();
+    t.api.setEdgeProps("ab", { description: "Connection details" });
+    t.commit();
+    t.api.updateNode("a", { label: "Orders", sublabel: "Public API" });
+    t.commit();
+    t.api.setNodeProps("a", { description: "Node details" });
+    t.commit();
+    t.api.updateMeta({ description: "Diagram details" });
+    t.commit();
+    t.api.updateNodes(["a", "b"], { group: "" });
+    t.commit();
+    t.api.setNodesProps(["a", "b"], { concurrency: 3 });
+    t.commit();
+    t.api.updateEdges(["ab"], { label: "Bulk label" });
+    t.commit();
+    t.api.reverseEdge("ab");
+    t.commit();
+    t.api.pastePayload(makePayload(BASE, ["a", "b"])!);
+    t.commit();
+    t.api.updateNode("hub", { label: "Still editing" });
+    t.commit();
+    const d = t.api.getDiagram();
+    expect(d.nodes).toHaveLength(BASE.nodes.length + 2);
+    expect(d.edges).toHaveLength(2);
+    expect(t.api.getNode("a")).toMatchObject({
+      label: "Orders",
+      sublabel: "Public API",
+      props: { description: "Node details", concurrency: 3 },
+    });
+    expect(t.api.getNode("b")!.props).toMatchObject({ concurrency: 3 });
+    expect(t.api.getEdge("ab")).toMatchObject({
+      from: "b",
+      to: "a",
+      label: "Bulk label",
+      relation: "depends",
+      props: { description: "Connection details" },
+    });
+    expect(d.description).toBe("Diagram details");
+    expect(validateDiagram(d).ok).toBe(true);
+  });
+  it.each(["reconnect", "insert", "insert-new"])("keeps queued edge edits through %s", (action) => {
+    const t = setup();
+    t.api.updateEdge("ab", { label: "Latest", relation: "depends" });
+    t.api.setEdgeProps("ab", { description: "Details" });
+    if (action === "reconnect") expect(t.api.reconnectEdge("ab", "target", "hub")).toBe(true);
+    if (action === "insert") expect(t.api.insertIntoEdge("ab", "hub")).toBe(true);
+    if (action === "insert-new") expect(t.api.insertNode("ab", "service.go")).not.toBeNull();
+    t.commit();
+    expect(t.api.getEdge("ab")).toMatchObject({
+      label: "Latest",
+      relation: "depends",
+      props: { description: "Details" },
+    });
+  });
   it("editing a name keeps the position identity; a real move updates it", () => {
     const t = setup();
     const before = t.nodes().find((n) => n.id === "a")!.position;

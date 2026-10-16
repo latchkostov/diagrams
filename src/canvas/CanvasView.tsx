@@ -603,6 +603,8 @@ function CanvasInner({
   const privacyFlags = usePrivacyFlags(slug);
   const privacyNow = () => privacyOf({ ...privacyFlags, editor: { getDiagram: () => fromFlow(meta, nodes, edges) } });
   const editor = useEditor({
+    getNodes: () => nodes,
+    getEdges: () => edges,
     slug,
     isPrivate: () => privacyNow() !== null,
     makePrivate: () => {
@@ -655,6 +657,10 @@ function CanvasInner({
     hovered: () => hovered.current,
     reveal: () => revealSelection(),
     nameNew: (make, fallback) => nameNew.current(make, fallback),
+    flushSave: (diagram) => {
+      const mod = flushSave(diagram);
+      if (mod !== undefined) setModified(mod);
+    },
   });
 
   /** Alt+arrow and Alt+Shift+arrow (set below, once the flows they open are defined). */
@@ -695,6 +701,7 @@ function CanvasInner({
   });
   // The command palette (Ctrl/Cmd+K) acts on this canvas while it's mounted and editable.
   const hostRevision = useMemo(() => ({ nodes, edges, meta }), [nodes, edges, meta]);
+  const readInspectorDiagram = useCallback(() => fromFlow(meta, nodes, edges), [meta, nodes, edges]);
 
   // ---------------------------------------------------------------- architecture checks
   // They run after edits pause, in idle time, off the main thread (checks/useChecks.ts). Editing only: no count
@@ -2706,7 +2713,7 @@ function CanvasInner({
           <Inspector
             editor={editor}
             revision={hostRevision}
-            readDiagram={() => fromFlow(meta, nodes, edges)}
+            readDiagram={readInspectorDiagram}
             meta={meta}
             selectedNodes={selectedNodes}
             selectedGroups={selectedGroups}

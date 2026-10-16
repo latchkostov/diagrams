@@ -28,6 +28,9 @@ import {
   type Fleet,
 } from "./autoscaling";
 import { replicaRange } from "../model/autoscaling";
+import { triggerFits } from "../model/kedaBindings";
+import { evaluateKeda, resetKeda, type BrokerMetric } from "./keda";
+import type { KedaTrigger } from "../model/autoscaling";
 import type { DiagramFile, SimRole } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { messageColor } from "./colors";
@@ -248,6 +251,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   let topology = 0;
   let compiled: CompiledTopology = { edges: [], outgoing: new Map(), groups: new Map(), restricted: new Set() };
   const groupsByConsumer = new Map<string, Group[]>();
+  const metricGroups = new Map<string, Map<string, Group>>();
   const checkpoints = new WeakMap<EngineCheckpoint, () => void>();
   const lineage = createLineage({
     time: () => time,
@@ -415,6 +419,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function indexGroups(): void {
     groupsByConsumer.clear();
+    metricGroups.clear();
+    for (const broker of nodes.values()) metricGroups.set(broker.id, new Map(broker.groups.map((g) => [g.name, g])));
     for (const broker of nodes.values())
       for (const group of broker.groups)
         for (const id of group.members) {
@@ -422,6 +428,21 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           memberships.push(group);
           groupsByConsumer.set(id, memberships);
         }
+  }
+
+  function readBrokerMetric(trigger: KedaTrigger): BrokerMetric | undefined {
+    const broker = nodes.get(trigger.source.node);
+    if (!broker || broker.status !== "up" || !isBroker(broker) || !triggerFits(trigger.type, broker.stencil)) return;
+    const group = metricGroups.get(broker.id)?.get(trigger.source.group ?? "queue");
+    if (!group)
+      return broker.role === "queue" && !broker.groups.length
+        ? { pending: broker.pending.length * scale, outstanding: 0 }
+        : undefined;
+    return {
+      pending: group.pending.length * scale,
+      outstanding: group.active * scale,
+      ...(trigger.type === "kafka" ? { partitions: broker.props.partitions } : {}),
+    };
   }
 
   /**
@@ -547,6 +568,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (!node) continue;
       if (patch.resumeAutoscaling && node.fleet) {
         node.fleet.override = false;
+        if (
+          node.fleet.keda &&
+          node.props.autoscaling?.mode === "on" &&
+          node.props.autoscaling.controller.kind === "keda"
+        )
+          node.fleet.keda.nextPoll = time + node.props.autoscaling.controller.pollingMs;
         node.fleet.decision = undefined;
         node.fleet.nextSync =
           time + (node.props.autoscaling?.mode === "on" ? node.props.autoscaling.controller.settings.syncMs : 15_000);
@@ -569,6 +596,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
       if (node.fleet && patch.resumeAutoscaling) {
         node.fleet.override = false;
+        if (
+          node.fleet.keda &&
+          node.props.autoscaling?.mode === "on" &&
+          node.props.autoscaling.controller.kind === "keda"
+        )
+          node.fleet.keda.nextPoll = time + node.props.autoscaling.controller.pollingMs;
         node.fleet.nextSync =
           time + (node.props.autoscaling?.mode === "on" ? node.props.autoscaling.controller.settings.syncMs : 15_000);
       }
@@ -624,6 +657,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           f.changes = [];
           f.decision = undefined;
           f.nextSync = time + (a?.mode === "on" ? a.controller.settings.syncMs : 15_000);
+          f.keda = undefined;
+          if (a?.mode === "on" && a.controller.kind === "keda") resetKeda(f, a.controller, time);
           reconcile.add(node);
         }
         changed.add(id);
@@ -655,6 +690,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           if (time === 0) {
             node.fleet = createFleet(desired, c?.settings.syncMs, partBudget);
             node.fleet.override = f.override;
+            if (c?.kind === "keda") resetKeda(node.fleet, c, time);
           } else reconcileResources(node, desired);
         }
         if (patches[node.id]?.replicas !== undefined && node.fleet.override)
@@ -854,6 +890,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function fail(node: Node, work: Work): void {
+    // A queued retained attempt can fail again while down. Retention belongs only to this attempt.
+    work.retained = false;
     node.failed++;
     log("fail", node, work.message, `attempt ${work.message.attempts + 1}`);
     if (work.message.family.trace) step(work.message, "fail", node.id, { attempt: work.message.attempts + 1 });
@@ -1112,6 +1150,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       partBudget,
     );
     node.fleet.paused = node.status === "paused";
+    if (c?.kind === "keda") resetKeda(node.fleet, c, time);
     if (node.fleet.paused) node.fleet.pausedAt = time;
   }
   function reconcileResources(node: Node, desired: number): boolean {
@@ -1333,11 +1372,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         const occupancy =
           f && r
             ? scale === 1
-              ? f.active
+              ? node.working.length
               : Math.min(
                   Math.max(f.memoryCredit / STEP, retained),
                   Math.max(
-                    Math.min(slots(node), (f.ready + f.draining) * node.props.concurrency),
+                    // Admission limits new work; draining replicas still own retained memory.
+                    Math.min(slots(node), f.ready * node.props.concurrency) + f.draining * node.props.concurrency,
                     Math.min(priorSlots, priorOccupancy),
                   ),
                 )
@@ -1411,14 +1451,29 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           if (scale > 1) f.memoryCredit = Math.max(0, f.memoryCredit - occupancy * STEP);
           integrateResources(f, occupancy, time, STEP);
           const a = node.props.autoscaling;
-          if (a?.mode === "on" && !f.override && time >= f.nextSync && node.status === "up") {
-            const decision = evaluateHpa(f, a.controller, r, time, capacityMultiplier, scale);
-            const previous = f.desired;
-            if (!reconcileResources(node, decision.desired)) {
-              decision.desired = f.desired;
-              decision.reason = "policy";
-            } else commitScalingChange(f, previous, time);
-            if (advanceFleet(f, time, node.working) || node.replicas !== f.ready) fleetChanges.add(node.id);
+          const due =
+            a?.mode === "on" && a.controller.kind === "keda" && f.keda
+              ? f.desired === 0
+                ? f.keda.nextPoll
+                : Math.min(f.nextSync, f.keda.nextPoll)
+              : f.nextSync;
+          if (a?.mode === "on" && !f.override && time >= due && node.status === "up") {
+            const decision =
+              a.controller.kind === "keda"
+                ? evaluateKeda(f, a.controller, r, time, readBrokerMetric, capacityMultiplier, scale)
+                : evaluateHpa(f, a.controller, r, time, capacityMultiplier, scale);
+            if (decision) {
+              const previous = f.desired;
+              if (!reconcileResources(node, decision.desired)) {
+                decision.desired = f.desired;
+                decision.reason = "policy";
+              } else if (a.controller.kind === "keda" && decision.reason === "inactive") {
+                // A successful KEDA zero transition ends this active HPA epoch.
+                f.recommendations = [];
+                f.changes = [];
+              } else if (decision.reason !== "activation") commitScalingChange(f, previous, time);
+              if (advanceFleet(f, time, node.working) || node.replicas !== f.ready) fleetChanges.add(node.id);
+            }
           }
         }
       }
@@ -1827,6 +1882,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           f.pausedAt = undefined;
           f.nextSync =
             time + (node.props.autoscaling?.mode === "on" ? node.props.autoscaling.controller.settings.syncMs : 15_000);
+          if (f.keda && node.props.autoscaling?.mode === "on" && node.props.autoscaling.controller.kind === "keda") {
+            f.keda.createdAt += duration;
+            if (f.keda.lastActive !== undefined) f.keda.lastActive += duration;
+            f.keda.nextPoll = time + node.props.autoscaling.controller.pollingMs;
+          }
         }
         f.paused = status === "paused";
         if (f.paused) f.pausedAt = time;

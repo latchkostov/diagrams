@@ -9,7 +9,7 @@ import { HELM_TEMPLATE, readKubernetes } from "./kubernetes";
 import { readTerraform, TERRAFORM_BINARY, TERRAFORM_SOURCE } from "./terraform";
 import type { ImportGraph } from "./graph";
 import { graphToDiagram } from "./map";
-import { defaultPick, MAX_DRAWN, PICK_OVER, pickedTitle, pickGraph, pickGroups } from "./pick";
+import { defaultSelection, MAX_DRAWN, PICK_OVER, pickedTitle, pickGraph, pickGroups } from "./pick";
 import { ImportError } from "./yaml";
 
 // One pipeline for every infrastructure source (docs/research/imports.md § Pipeline): reader → ImportGraph →
@@ -30,13 +30,14 @@ export function outcomeOf(
   full: ImportGraph,
   { chosen, budget = PICK_OVER }: { chosen?: readonly string[]; budget?: number } = {},
 ): ImportOutcome {
-  const keys = chosen ?? defaultPick(full, budget);
+  const selection = chosen ? { keys: chosen, unresolved: undefined } : defaultSelection(full, budget);
+  const { keys } = selection;
   if (keys && !keys.length) throw new ImportError(tr("importDetail.noBoundaryInItFitsIn", { value0: MAX_DRAWN }));
   const graph = !keys
     ? full
     : chosen
       ? { ...pickGraph(full, keys), title: pickedTitle(full, keys) }
-      : pickGraph(full, keys);
+      : pickGraph(full, keys, selection.unresolved);
   const { diagram, report } = graphToDiagram(graph, keys && full.components.length);
   if (keys) report.pick = { format, total: full.components.length, groups: pickGroups(full, keys), graph: full };
   const r = validateDiagram(diagram);

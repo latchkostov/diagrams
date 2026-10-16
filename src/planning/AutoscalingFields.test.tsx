@@ -1,6 +1,7 @@
 import { createEngine } from "../sim/engine";
 import { realNodeMetrics } from "../sim/units";
 import { ResourceDetails, ResourceEstimate } from "./ResourceDetails";
+import { kedaFixture } from "../lab/kedaFixture";
 import { autoscalingFixture } from "../lab/autoscalingFixture";
 import { analyzeCapacity } from "../sim/capacity";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -46,3 +47,59 @@ it("keeps a rolling history spread over the chart after ten minutes", () => {
   };
   expect(renderToStaticMarkup(<ResourceDetails metrics={s} />)).toMatch(/points="0,[^"]*260,/);
 });
+
+it("does not turn an unavailable fallback broker metric into zero", () => {
+  const d = kedaFixture();
+  const e = createEngine();
+  e.load(d);
+  const s = realNodeMetrics(e.frame().nodes.worker);
+  s.fleet!.decision = {
+    at: 1000,
+    nextAt: 2000,
+    raw: 3,
+    desired: 3,
+    reason: "fallback",
+    broker: "uploads",
+    active: false,
+  };
+  const html = renderToStaticMarkup(<ResourceDetails metrics={s} />);
+  expect(html).toContain("Broker metric: Unknown messages");
+  expect(html).not.toContain("Broker metric: 0 messages");
+});
+
+it.each([{ mode: "off" }, hpaLesson()])("does not copy a diagram to render fixed/HPA controls", (autoscaling) => {
+  const readDiagram = vi.fn(() => kedaFixture());
+  renderToStaticMarkup(
+    <AutoscalingFields
+      stencil="service.dotnet"
+      props={{ resources: resourceLesson(), autoscaling }}
+      readDiagram={readDiagram}
+      set={() => {}}
+    >
+      <span />
+    </AutoscalingFields>,
+  );
+  expect(readDiagram).not.toHaveBeenCalled();
+});
+
+it.each([undefined, { mode: "off" }, { mode: "unsupported", provider: "Kubernetes", reason: "Unsupported metric" }])(
+  "keeps imported resources and the workload lesson accessible for %s scaling",
+  (autoscaling) => {
+    const resources = { ...resourceLesson(), modelRevision: "a2", preset: "kubernetes-unmeasured" };
+    const html = renderToStaticMarkup(
+      <AutoscalingFields stencil="k8s.deployment" props={{ resources, autoscaling }} set={() => {}}>
+        <span />
+      </AutoscalingFields>,
+    );
+    for (const testId of [
+      "autoscaling-advanced",
+      "autoscaling-use-lesson",
+      "autoscaling-cpuMsPerMessage",
+      "autoscaling-cpuRequestMilli",
+      "autoscaling-memoryLimitMiB",
+    ])
+      expect(html).toContain(`data-testid="${testId}"`);
+    expect(html).not.toContain('data-testid="autoscaling-target"');
+    expect(html).not.toContain('data-testid="autoscaling-policy"');
+  },
+);

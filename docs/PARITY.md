@@ -218,6 +218,44 @@ gate need no hierarchy-specific fallback or new timing budget.
   them. Its added annotation-membership check compares by id because normalization draws zones
   before notes; the initial order-sensitive assertion failed, and the corrected targeted run passes.
 
+## Autoscaling A2 round 2 review (2026-10-15)
+
+The rebase retained master and A2 code and documentation; no golden was hand-merged. The full
+initial check compared 1,854 goldens and found exactly one intended difference from round 1:
+`node/i18n/catalogs.json`. Three translated import-report messages add the current selected-boundary
+count, explain automatic scaling dependency inclusion, and explain missing-source recovery. This
+changes catalog message counts and the `importReport`/`importDetail` area hashes (114 fields).
+
+Only that golden was re-recorded, with `pnpm parity:update --tier node i18n`, after inspecting the
+initial full-run difference. All other 1,853 goldens remain unchanged, including every simulation,
+planning, import, layout, renderer, native/export and skill output. The performance and transaction
+refactors introduce no output changes. The final full verification is recorded in
+[the round 2 review](research/autoscaling-a2-round2-review.md).
+
+## Autoscaling A2 verification (2026-10-15)
+
+A2 adds frozen activation, published-cooldown and idle-reader diagrams, a public two-burst Kafka showcase,
+and a synthetic Kubernetes controller import. All existing legacy/A1 **diagram-output** goldens remain
+unchanged. New goldens cover those inputs through simulation, controller history/explanations, planning,
+checks/evidence, agent/native/skill/export paths and the showcase's browser layout.
+
+The update records **93 new goldens** and changes these **seven** existing shared/import goldens
+(1,854 total; all other 1,754 are unchanged):
+
+| Golden                             | Reason                                                                                                                                                                  |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `node/agent/tools.json`            | Agent input schemas accept the bounded A2 controller, resource-default provenance, independent resource execution revision and unsupported-controller summaries.        |
+| `node/skill/public-schemas.json`   | Hashes and sizes of the generated v2 diagram and v1 ops schemas reflect the same contracts.                                                                             |
+| `node/skill/files.json`            | Generated format reference and spec describe the new controller, trigger and import support.                                                                            |
+| `node/skill/current-stencils.json` | The new public example changes the generated “Most used in the examples” ordering; stencil definitions are unchanged.                                                   |
+| `node/skill/validate.txt`          | Validation transcript includes the three new frozen A2 corpus inputs.                                                                                                   |
+| `node/i18n/catalogs.json`          | Eighteen A2 autoscaling/import messages and their translations change the relevant catalog hashes.                                                                      |
+| `node/imports/kubernetes.json`     | The existing fixture now carries executable ScaledObject settings, unmeasured resource assumptions and an explicit policy note; its original range summary is retained. |
+
+The initial check found only these intentional differences and absent new-input goldens. Re-recording is
+limited to these additions/contracts/import behavior; no legacy/A1 output or existing browser output is
+accepted with a changed golden. The eight pre-existing browser measurement deferrals remain deferred.
+
 ## Example gallery verification round (2026-10-15)
 
 These fixes change save-destination ownership, launch queuing, retained conversation memory and
@@ -402,6 +440,16 @@ repository's history; a typical change rewrites a few files. Hashing everything 
 recording everything (each event, each rendered message) would be ten times the size for detail that the summaries
 point to anyway. On a failure, every actual output is written to `tests/.output/parity/actual/` and every diff to
 `tests/.output/parity/diffs/` (CI uploads both as `parity-output`), so the full detail is one download away.
+
+## Autoscaling A2 import recovery (#125, 2026-10-15)
+
+Only `node/i18n/catalogs.json` changes: the new `importDetail.scalingWorkExhausted` message
+raises every catalog's message count from 1,778 to 1,779 and changes its `importDetail` hash.
+The 37 untranslated catalogs gain one English fallback (78 to 79); the pseudo-locale's fallback
+count remains zero. All other 1,853 goldens retain their output. No diagram, simulation, import,
+export or browser golden is re-recorded. Focused tests cover dependency-work exhaustion and exact
+completion outside the frozen corpus, including drawable fallback, named recovery reports and
+successful reselection. Deliberate reversions also reject repeated closure marking and rebuilding.
 
 ## Updating
 

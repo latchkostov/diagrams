@@ -1,3 +1,6 @@
+import { importHpa, importKeda, importTrigger, workloadResources } from "./k8sScaling";
+import { resourceLesson, type AutoscalingConfig, type KedaTrigger, type ScalingSummary } from "../../model/autoscaling";
+import { scalingReasonCode } from "../../model/scalingReason";
 import { diagnostic, diagnosticKey, type ImportText } from "./graph";
 import { t as tr } from "../../i18n";
 import type { Evidence, ImportComponent, ImportGraph } from "./graph";
@@ -748,25 +751,111 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
     const name = str(own(ref, "name"));
     if (!name) return undefined;
     const kind = str(own(ref, "kind")) ?? "Deployment";
-    return workloadNames.at(kind, r.ns, name) ?? workloadNamed(r.ns, name);
+    const w = workloadNames.at(kind, r.ns, name);
+    const version = str(own(ref, "apiVersion")) ?? "apps/v1";
+    return w && str(own(w.res.obj, "apiVersion")) === version ? w : undefined;
   };
-  /** Workloads an autoscaler scales: their count is its to set. */
-  const autoscaled = new Set<Workload>();
-  /** An autoscaler's floor (`min`, only when the file sets it) raises the workload's replicas. */
-  const floor = (w: Workload, min: number | undefined) => {
-    const c = components.byKey.get(w.key);
-    if (!c) return;
-    if (!autoscaled.has(w)) {
-      autoscaled.add(w);
-      // The manifest's own single replica isn't the count once an autoscaler owns it (kube-score and KICS ask
-      // that such a Deployment set none): only the autoscaler's own floor of one says one.
-      if (c.props?.replicas === 1) {
-        const { replicas: _, ...rest } = c.props;
-        c.props = Object.keys(rest).length ? rest : undefined;
+  const claimed = new Map<Workload, ScalingSummary[]>();
+  const omittedControllers = new Map<Workload, number>();
+  const failure = (w: Workload, reason: string) => {
+    const c = components.byKey.get(w.key)!;
+    c.props = {
+      ...c.props,
+      autoscaling: {
+        mode: "unsupported",
+        provider: "Kubernetes",
+        reason,
+        ...(claimed.has(w) ? { controllers: claimed.get(w), controllersOmitted: omittedControllers.get(w) ?? 0 } : {}),
+      },
+    };
+    note(
+      diagnostic("importDetail.scalingUnsupported", {
+        reason: diagnostic("importDetail.scalingReason", { reason: scalingReasonCode(reason) }),
+      }),
+    );
+  };
+  const resourceErrors = new Map<Workload, string>();
+  for (const w of workloads) {
+    try {
+      const r = workloadResources(w.pod);
+      if (r) {
+        const c = components.byKey.get(w.key)!;
+        c.props = { ...c.props, resources: r };
       }
+    } catch {
+      resourceErrors.set(w, "Container resources are unsupported or exceed simulator bounds");
+      note(
+        diagnostic("importDetail.scalingUnsupported", {
+          reason: diagnostic("importDetail.scalingReason", { reason: "container" }),
+        }),
+      );
     }
-    const current = Number(c.props?.replicas ?? 0);
-    if (min !== undefined && min > current && min <= 10_000) c.props = { ...c.props, replicas: min };
+  }
+  const attach = (w: Workload, r: Res, create: () => AutoscalingConfig) => {
+    const previous = claimed.get(w),
+      summaries = previous ?? [];
+    const hpa = r.kind === "HorizontalPodAutoscaler";
+    const summaryCount = (key: string, fallback?: number) => {
+      return own(spec(r), key) === undefined ? fallback : num(own(spec(r), key));
+    };
+    const minimum = summaryCount(hpa ? "minReplicas" : "minReplicaCount", hpa ? 1 : 0),
+      maximum = summaryCount(hpa ? "maxReplicas" : "maxReplicaCount", hpa ? undefined : 100);
+    if (summaries.length < 16)
+      summaries.push({
+        kind: hpa ? "HPA" : r.kind === "ScaledJob" ? "ScaledJob" : "ScaledObject",
+        ...(minimum !== undefined ? { minReplicas: minimum } : {}),
+        ...(maximum !== undefined ? { maxReplicas: maximum } : {}),
+      });
+    else omittedControllers.set(w, (omittedControllers.get(w) ?? 0) + 1);
+    claimed.set(w, summaries);
+    if (previous) {
+      failure(w, "Conflicting controllers target this workload; choose one policy");
+      return;
+    }
+    try {
+      const annotations = own(own(r.obj, "metadata"), "annotations");
+      if (isMap(annotations) && Object.keys(annotations).some((key) => key.startsWith("autoscaling.keda.sh/")))
+        throw new Error("Unsupported KEDA scaling annotation fields");
+      if (resourceErrors.has(w)) throw new Error(resourceErrors.get(w));
+      if (list(own(w.pod, "containers")).length !== 1 || list(own(w.pod, "initContainers")).length)
+        throw new Error("Multi-container resource accounting is unsupported");
+      const autoscaling = create(),
+        c = components.byKey.get(w.key)!;
+      const resources = c.props?.resources ?? {
+        ...resourceLesson(),
+        preset: "kubernetes-unmeasured",
+        modelRevision: "a2" as const,
+        cpuMsPerMessage: 0,
+        baselineMemoryMiB: 0,
+        memoryMiBPerMessage: 0,
+        cpuRequestMilli: undefined,
+        cpuLimitMilli: undefined,
+        memoryRequestMiB: undefined,
+        memoryLimitMiB: undefined,
+      };
+      c.props = { ...c.props, resources, autoscaling };
+      if (autoscaling.mode === "on")
+        note(
+          diagnostic(
+            autoscaling.controller.kind === "keda"
+              ? "importDetail.value0ScalesFromValue1ToValue2"
+              : "importDetail.value0ScalesFromValue1ToValue2More",
+            {
+              value0: w.res.name,
+              value1: autoscaling.controller.minReplicas,
+              value2: autoscaling.controller.maxReplicas,
+            },
+          ),
+        );
+      note(
+        diagnostic("importDetail.scalingMapped", {
+          kind:
+            autoscaling.mode === "on" ? (autoscaling.controller.kind === "keda" ? "KEDA 2.18" : "HPA") : "Kubernetes",
+        }),
+      );
+    } catch (error) {
+      failure(w, error instanceof Error ? error.message : "Unsupported scaling settings");
+    }
   };
   const brokerHosts = (value: string | undefined) =>
     (value ?? "")
@@ -790,17 +879,20 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
       skip(so.kind, so.name, diagnostic("importDetail.scalesAWorkloadThatIsntIn"));
       continue;
     }
-    const wl = label(w.res.name);
-    const max = num(own(s, "maxReplicaCount")) ?? 100;
-    const min = num(own(s, "minReplicaCount"));
-    if (job) note(diagnostic("importDetail.value0RunsUpToValue1Jobs", { value0: wl, value1: max }));
-    else {
-      note(diagnostic("importDetail.value0ScalesFromValue1ToValue2", { value0: wl, value1: min ?? 0, value2: max }));
-      floor(w, min);
-    }
+    const triggers: KedaTrigger[] = [];
+    let triggerProblem: string | undefined;
+    const bind = (input: unknown, node: string, group?: string) => {
+      try {
+        triggers.push(importTrigger(input, { node, ...(group ? { group } : {}) }));
+      } catch (error) {
+        triggerProblem = error instanceof Error ? error.message : "Unsupported KEDA trigger";
+      }
+    };
+    const inputs = list(own(s, "triggers"));
+    if (!inputs.length || inputs.length > 16) triggerProblem = "KEDA requires one to sixteen supported triggers";
     const scope = scopeFor(so.ns);
     const evidence: Evidence = { source: "spec", note: "KEDA trigger" };
-    for (const t of list(own(s, "triggers"))) {
+    for (const t of inputs.slice(0, 16)) {
       const type = (str(own(t, "type")) ?? "").toLowerCase().slice(0, 40);
       const md = own(t, "metadata");
       if (type === "kafka" || type === "apache-kafka") {
@@ -811,9 +903,14 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
           .map((x) => x.trim())
           .filter((x) => /^[\w.-]{1,249}$/.test(x));
         for (const name of topics) {
-          const topic = topicOn(cluster, name);
+          const localCluster =
+            cluster ?? (components.has(topicKey(clusterId(so.ns, ""), name)) ? clusterId(so.ns, "") : undefined);
+          const topic = topicOn(localCluster, name);
           if (cluster) links.topicCluster.set(topic, cluster);
           links.flow(topic, w.key, "async", evidence, group ? { group } : undefined);
+          bind(t, topic, group);
+          if (topics.length !== 1 || components.byKey.get(topic)?.props?.partitions === undefined)
+            triggerProblem = "Kafka needs one known topic with declared partitions and local offset history";
         }
         if (!topics.length && cluster) {
           const node = clusterNode(cluster);
@@ -834,6 +931,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
           ...(group ? { group, context: group } : {}),
         });
         links.flow(key, w.key, "async", evidence);
+        bind(t, key);
       } else if (type === "aws-sqs-queue") {
         const url = (str(own(md, "queueURL")) ?? "").replace(/[?#].*$/s, "");
         const name = str(own(md, "queueName")) ?? url.slice(url.lastIndexOf("/") + 1);
@@ -846,6 +944,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
           stencil: "aws.sqs",
         });
         links.flow(key, w.key, "async", evidence);
+        bind(t, key);
       } else if (type === "azure-servicebus") {
         const queue = str(own(md, "queueName"));
         const topic = str(own(md, "topicName"));
@@ -860,14 +959,34 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
           stencil: queue ? "azure.service-bus.queue" : "azure.service-bus.topic",
         });
         links.flow(key, w.key, "async", evidence, !queue && subscription ? { group: subscription } : undefined);
-      } else if (type)
+        bind(t, key, !queue ? subscription : undefined);
+      } else if (type) {
+        triggerProblem = "Unsupported KEDA trigger";
         skip(
           so.kind,
           so.name,
           diagnostic("importDetail.value0TriggerScalingOnly", { value0: type.replace(/[^\w-]/g, "") }),
         );
+      }
     }
+    attach(w, so, () => {
+      if (job) throw new Error("Job execution is not simulated");
+      if (str(own(so.obj, "apiVersion")) !== "keda.sh/v1alpha1")
+        throw new Error("Unsupported KEDA API version (profile is 2.18)");
+      if (triggerProblem || triggers.length !== inputs.length)
+        throw new Error(triggerProblem ?? "A KEDA trigger has no exact local broker binding");
+      const annotations = own(meta(so), "annotations");
+      if (
+        isMap(annotations) &&
+        Object.keys(annotations).some((k) => k.startsWith("autoscaling.keda.sh/") || k.includes("hpa-ownership"))
+      )
+        throw new Error("KEDA pause and ownership-transfer annotations require a deliberate policy choice");
+      return importKeda(s, num(own(spec(w.res), "replicas")), triggers);
+    });
   }
+  const scaledObjects = new Map(
+    resources.filter((r) => r.group === "keda.sh" && r.kind === "ScaledObject").map((r) => [nsName(r.ns, r.name), r]),
+  );
   for (const hpa of resources.filter((r) => r.kind === "HorizontalPodAutoscaler")) {
     handled.add(hpa);
     const s = spec(hpa);
@@ -876,17 +995,27 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
       skip(hpa.kind, hpa.name, diagnostic("importDetail.scalesAWorkloadThatIsntIn"));
       continue;
     }
-    const min = num(own(s, "minReplicas"));
-    const max = num(own(s, "maxReplicas"));
-    if (max !== undefined)
-      note(
-        diagnostic("importDetail.value0ScalesFromValue1ToValue2More", {
-          value0: label(w.res.name),
-          value1: min ?? 1,
-          value2: max,
-        }),
-      );
-    floor(w, min);
+    const owners = list(own(meta(hpa), "ownerReferences"));
+    const owner = owners.find(
+      (o) =>
+        own(o, "kind") === "ScaledObject" &&
+        own(o, "apiVersion") === "keda.sh/v1alpha1" &&
+        own(o, "controller") !== false,
+    );
+    if (owner) {
+      const so = scaledObjects.get(nsName(hpa.ns, str(own(owner, "name")) ?? ""));
+      if (
+        so &&
+        scaled(so, own(spec(so), "scaleTargetRef")) === w &&
+        (own(owner, "uid") === undefined || own(owner, "uid") === own(meta(so), "uid"))
+      )
+        continue;
+      attach(w, hpa, () => {
+        throw new Error("Generated HPA owner is missing or targets a different workload");
+      });
+      continue;
+    }
+    attach(w, hpa, () => importHpa(s, num(own(spec(w.res), "replicas")), str(own(hpa.obj, "apiVersion")) ?? ""));
   }
 
   // ------------------------------------------------ Kafka Connect: depends on the cluster it names

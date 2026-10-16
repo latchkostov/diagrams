@@ -2966,6 +2966,37 @@ exports[`public examples route cleanly (estimated card sizes) > kafka-order-pipe
 ]
 `;
 
+exports[`public examples route cleanly (estimated card sizes) > keda-render-workers.json 1`] = `
+[
+  {
+    "id": "publish",
+    "points": [
+      {
+        "x": 300,
+        "y": 216,
+      },
+      {
+        "x": 420,
+        "y": 216,
+      },
+    ],
+  },
+  {
+    "id": "consume",
+    "points": [
+      {
+        "x": 640,
+        "y": 216,
+      },
+      {
+        "x": 780,
+        "y": 216,
+      },
+    ],
+  },
+]
+`;
+
 exports[`public examples route cleanly (estimated card sizes) > measured-order-capacity.json 1`] = `
 [
   {

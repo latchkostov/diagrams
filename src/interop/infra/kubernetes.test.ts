@@ -134,7 +134,10 @@ describe("Kubernetes import: the fixture set", () => {
     // `replicas: 1` in the manifest is said, so single-point can read it; KEDA's own floor of 1 says it too.
     expect(n("postgres").props).toEqual({ replicas: 1 });
     expect(n("redis").props).toEqual({ replicas: 1 });
-    expect(n("payments-worker").props).toEqual({ replicas: 1 });
+    expect(n("payments-worker").props).toMatchObject({
+      replicas: 1,
+      autoscaling: { mode: "on", controller: { kind: "keda", minReplicas: 1, maxReplicas: 12 } },
+    });
     expect(n("settlement-report")).toMatchObject({ stencil: "generic.scheduler", sublabel: "0 2 * * *" });
     expect(n("storefront")).toMatchObject({ stencil: "generic.service", sublabel: "no workload in these files" });
     expect(n("ingress-shop")).toMatchObject({ stencil: "nginx", label: "shop", sublabel: "shop.example.com" });
@@ -206,6 +209,7 @@ describe("Kubernetes import: the fixture set", () => {
     expect(report.notes.map(formatImportMessage)).toEqual([
       "storefront: a Service with no workload in these files",
       "payments-worker scales from 1 to 12 replicas (KEDA)",
+      "Executable KEDA 2.18 policy imported. Controller timings and workload costs are assumptions; inspect Advanced.",
     ]);
     expect(report.unread.map(presentReportLine)).toEqual([]);
   });
@@ -631,9 +635,9 @@ spec:
     expect(node(diagram, "topic-refunds")?.stencil).toBe("aws.sqs");
     expect(node(diagram, "topic-invoices")?.stencil).toBe("azure.service-bus.topic");
     expect(edge(diagram, "topic-invoices", "worker")?.props).toEqual({ group: "worker" });
-    // KEDA keeps at least minReplicaCount running.
-    expect(node(diagram, "worker")?.props).toEqual({ replicas: 2 });
-    expect(report.notes.map(formatImportMessage)).toContain("worker scales from 2 to 20 replicas (KEDA)");
+    // Unsupported triggers retain topology and a safe summary without enabling a partial controller.
+    expect(node(diagram, "worker")?.props?.autoscaling).toMatchObject({ mode: "unsupported" });
+    expect(report.notes.map(formatImportMessage).join(" ")).toContain("not simulated");
     expect(report.notDrawn.map(presentReportLine)).toEqual([
       { name: "ScaledObject worker-scaler", reason: "cpu trigger: scaling only" },
       { name: "ScaledObject worker-scaler", reason: "cron trigger: scaling only" },
@@ -653,9 +657,14 @@ kind: ScaledObject
 metadata: { name: ghost }
 spec: { scaleTargetRef: { name: ghost }, triggers: [] }
 `);
-    expect(node(diagram, "web")).toMatchObject({ stencil: "nginx", props: { replicas: 3 } });
+    expect(node(diagram, "web")).toMatchObject({
+      stencil: "nginx",
+      props: {
+        autoscaling: { mode: "on", controller: { kind: "hpa", minReplicas: 3, maxReplicas: 9, initialReplicas: 3 } },
+      },
+    });
     expect(report.notes.map(formatImportMessage)).toContain(
-      "web scales from 3 to 9 replicas (HorizontalPodAutoscaler)",
+      "Executable HPA policy imported. Controller timings and workload costs are assumptions; inspect Advanced.",
     );
     expect(report.notDrawn.map(presentReportLine)).toEqual([
       { name: "ScaledObject ghost", reason: "scales a workload that isn't in these files" },
@@ -703,18 +712,19 @@ spec: { scaleTargetRef: { name: web }, ${min}triggers: [{ type: cpu, metadata: {
     expect(replicasOf(chain(0))).toBeUndefined();
   });
 
-  it("an autoscaler owns the count: only its own floor says one", () => {
-    // The manifest's 1 is the autoscaler's to change; a minimum it doesn't set isn't evidence either.
-    expect(replicasOf(chain(1, hpa("")))).toBeUndefined();
-    expect(replicasOf(chain(1, keda("")))).toBeUndefined();
-    expect(replicasOf(chain(1, keda("minReplicaCount: 0, ")))).toBeUndefined();
-    // Its floor, when the file sets it.
-    expect(replicasOf(chain("", hpa("minReplicas: 1, ")))).toBe(1);
-    expect(replicasOf(chain(1, keda("minReplicaCount: 1, ")))).toBe(1);
-    expect(replicasOf(chain(1, hpa("minReplicas: 2, ")))).toBe(2);
-    // A count above the floor stays, as before; a KEDA object and its HPA together keep the higher floor.
-    expect(replicasOf(chain(4, hpa("minReplicas: 2, ")))).toBe(4);
-    expect(replicasOf(chain(1, keda("minReplicaCount: 3, ") + hpa("minReplicas: 1, ")))).toBe(3);
+  it("persists authored starting counts separately from controller ranges and diagnoses conflicts", () => {
+    const policy = (text: string) => node(k8s(text).diagram, "web")?.props?.autoscaling;
+    expect(replicasOf(chain(1, hpa("")))).toBe(1);
+    expect(policy(chain(1, hpa("minReplicas: 2, ")))).toMatchObject({
+      mode: "on",
+      controller: { initialReplicas: 2, minReplicas: 2 },
+    });
+    expect(policy(chain(4, hpa("minReplicas: 2, ")))).toMatchObject({ mode: "on", controller: { initialReplicas: 4 } });
+    expect(policy(chain(1, keda("minReplicaCount: 0, ")))).toMatchObject({ mode: "unsupported" });
+    expect(policy(chain(1, keda("minReplicaCount: 3, ") + hpa("minReplicas: 1, ")))).toMatchObject({
+      mode: "unsupported",
+      reason: expect.stringContaining("Conflicting"),
+    });
   });
 
   it("single-point sees an imported one-replica gateway on the only way in, and nothing when it's unset", () => {
@@ -725,7 +735,7 @@ spec: { scaleTargetRef: { name: web }, ${min}triggers: [{ type: cpu, metadata: {
     expect(findings(chain(1))).toEqual(["suggestion single-point:web"]);
     expect(findings(chain(""))).toEqual([]);
     expect(findings(chain(2))).toEqual([]);
-    expect(findings(chain(1, hpa("")))).toEqual([]);
+    expect(findings(chain(1, hpa("")))).toEqual(["suggestion single-point:web"]);
   });
 });
 

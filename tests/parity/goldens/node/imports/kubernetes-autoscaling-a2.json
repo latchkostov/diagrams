@@ -1,0 +1,130 @@
+{
+  "ok": true,
+  "format": "kubernetes",
+  "warnings": [],
+  "report": {
+    "summary": {
+      "code": "importReport.summary",
+      "args": [
+        { "title": "studio", "format": "Kubernetes", "total": "all", "drawn": 2, "nodes": 2, "connections": 1, "guesses": 1 }
+      ]
+    },
+    "format": "Kubernetes",
+    "source": "autoscaling-a2.yaml",
+    "title": "studio",
+    "nodes": 2,
+    "connections": 1,
+    "boundaries": 1,
+    "guesses": [
+      { "nodeId": "renderer", "label": "renderer", "stencil": "k8s.deployment", "evidence": "render-worker:1", "alternatives": ["generic.service", "generic.external-api"] }
+    ],
+    "inferred": [],
+    "notDrawn": [],
+    "unread": [],
+    "notes": [
+      {
+        "code": "importDetail.value0ScalesFromValue1ToValue2",
+        "args": [{ "value0": "renderer", "value1": 0, "value2": 20 }]
+      },
+      { "code": "importDetail.scalingMapped", "args": [{ "kind": "KEDA 2.18" }] }
+    ]
+  },
+  "reportEnglish": { "report.summary": "Imported “studio” from Kubernetes: 2 nodes, 1 connection. 1 guess.", "report.notes[0]": "renderer scales from 0 to 20 replicas (KEDA)", "report.notes[1]": "Executable KEDA 2.18 policy imported. Controller timings and workload costs are assumptions; inspect Advanced." },
+  "replay": null,
+  "checks": [],
+  "diagram": {
+    "format": "diagrams/v2",
+    "planning": { "revision": "p3-a1" },
+    "title": "studio",
+    "direction": "LR",
+    "groups": [
+      { "id": "boundary-studio", "label": "studio", "tone": "k8s", "x": 40, "y": 40, "width": 660, "height": 176 }
+    ],
+    "nodes": [
+      {
+        "id": "renderer",
+        "stencil": "k8s.deployment",
+        "label": "renderer",
+        "sublabel": "render-worker:1",
+        "x": 440,
+        "y": 104,
+        "group": "boundary-studio",
+        "props": {
+          "resources": {
+            "preset": "kubernetes-unmeasured",
+            "presetRevision": "1",
+            "modelRevision": "a2",
+            "container": "renderer",
+            "cpuMsPerMessage": 0,
+            "baselineMemoryMiB": 0,
+            "memoryMiBPerMessage": 0,
+            "cpuRequestMilli": 500,
+            "cpuLimitMilli": 1000,
+            "memoryRequestMiB": 256,
+            "memoryLimitMiB": 512,
+            "startup": { "delayMs": 5000, "jitterFraction": 0 },
+            "terminationGraceMs": 30000
+          },
+          "autoscaling": {
+            "mode": "on",
+            "modelRevision": "a2",
+            "preset": "keda-kafka",
+            "presetRevision": "1",
+            "controller": {
+              "kind": "keda",
+              "minReplicas": 0,
+              "initialReplicas": 0,
+              "maxReplicas": 20,
+              "pollingMs": 30000,
+              "cooldownMs": 300000,
+              "initialCooldownMs": 60000,
+              "triggers": [
+                {
+                  "source": { "node": "topic-render-jobs", "group": "renderers" },
+                  "target": 10,
+                  "activation": 5,
+                  "useCachedMetrics": true,
+                  "type": "kafka",
+                  "allowIdleConsumers": true
+                }
+              ],
+              "settings": {
+                "syncMs": 15000,
+                "tolerance": 0.1,
+                "initialReadinessDelayMs": 30000,
+                "cpuInitializationPeriodMs": 300000,
+                "metrics": [],
+                "up": {
+                  "stabilizationMs": 0,
+                  "selectPolicy": "Max",
+                  "policies": [
+                    { "type": "Pods", "value": 4, "periodMs": 15000 },
+                    { "type": "Percent", "value": 100, "periodMs": 15000 }
+                  ]
+                },
+                "down": {
+                  "stabilizationMs": 120000,
+                  "selectPolicy": "Min",
+                  "policies": [{ "type": "Pods", "value": 2, "periodMs": 30000 }]
+                }
+              },
+              "fallback": { "failureThreshold": 3, "replicas": 4, "behavior": "currentReplicasIfHigher" }
+            }
+          }
+        }
+      },
+      {
+        "id": "topic-render-jobs",
+        "stencil": "kafka.topic",
+        "label": "render-jobs",
+        "x": 80,
+        "y": 104,
+        "group": "boundary-studio",
+        "props": { "partitions": 3 }
+      }
+    ],
+    "edges": [
+      { "id": "e1", "from": "topic-render-jobs", "to": "renderer", "kind": "async", "props": { "group": "renderers" } }
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+---
+title: a2-idle
+---
+flowchart LR
+  source(["Poster studio"])
+  uploads["Render requests<br/>3 partitions"]
+  worker["Poster workers"]
+  source -.-> uploads
+  uploads -.-> worker
+  linkStyle 0,1 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"An invented poster-rendering pipeline. KEDA observes real Kafka group lag, wakes from zero, and sends the active fleet through HPA. The burst drains and workers return to zero within ten simulated seconds. Teaching timings: 1 s polling and HPA sync, 1 s startup, 2 s final-zero cooldown; these are deliberately shorter than the published 30/15/300 s defaults. Kafka offset history starts empty and rebalance delay is not simulated.","nodes":{"source":["source","client.browser"],"uploads":["uploads","kafka.topic"],"worker":["worker","service.go"]},"edges":["publish","consume"],"relations":{}}

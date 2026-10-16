@@ -894,7 +894,7 @@ test.describe("imports: big imports", () => {
     await page.getByTestId("toast-import-details").click();
     const pick = page.getByTestId("import-report-pick");
     await expect(pick).toBeVisible();
-    await expect(pick).toContainText("Boundaries (30 of 40 drawn)");
+    await expect(pick).toContainText("Boundaries (30 of 40 selected)");
     await expect(page.getByTestId("import-report-pick-lede")).toContainText("It has 400 nodes");
     // The most flows first, each row with its nodes and flows; the drawn ones ticked.
     await expect(page.getByTestId("import-report-pick-row-0")).toContainText("team-00");

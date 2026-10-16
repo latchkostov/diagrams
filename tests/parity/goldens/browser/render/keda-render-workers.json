@@ -1,0 +1,10 @@
+{
+  "viewport": "translate(-48.6957px, 184.522px) scale(1.1087)",
+  "nodes": {
+    "source": { "kind": "node", "box": "translate(80px, 180px) 220×72", "text": "Poster studio Web Browser" },
+    "uploads": { "kind": "node", "box": "translate(420px, 180px) 220×72", "text": "Render requests 3 partitions" },
+    "worker": { "kind": "node", "box": "translate(780px, 180px) 220×72", "text": "Poster workers Go Service" }
+  },
+  "edges": { "publish": "M300,216 L420,216", "consume": "M640,216 L780,216" },
+  "labels": {}
+}

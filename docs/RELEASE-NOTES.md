@@ -1,5 +1,69 @@
 # Release notes
 
+## Autoscaling A2 edit preservation (#125, 2026-10-15)
+
+- Finishing a name with Enter, Esc or a click away immediately saves its complete transaction,
+  including the new Connection field reached with Tab, Tab. The CI trace showed the typed label
+  on the canvas but an earlier autosave without it; the debounce no longer leaves that older save
+  after naming finishes. A fake-clock E2E regression fixes that ordering deterministically.
+- Editor transactions use the controlled canvas state instead of React Flow's store, which can
+  still contain the previous render until its passive effect runs and overwrite newer edits.
+- Reconnect and insert retain queued connection labels, relationships and properties. Regression
+  tests also cover node labels/subtitles, descriptions, reversal, bulk edits and paste across
+  delayed store updates. All six new unit regressions fail with the fixes removed.
+- Binding validation stays atomic; it is not bypassed for naming. UX review: existing keyboard,
+  inspector and undo flows retain their controls and behavior; no chrome added.
+- Rebased onto master’s settled-view fixes after the full E2E run exposed a nested-boundary redo
+  failure; both sides of the document conflicts are retained. The naming and edit fixes change no
+  output goldens. The stale skill viewer is refreshed; plugin 1.1.26 remains exactly one
+  patch above origin/master.
+- Full production E2E, all six shards and projects in the pinned Linux image: 1,312 passed,
+  1 failed, 0 flaky. The sole failure is the + chip placement predicate at
+  `tests/e2e/flow-building.spec.ts:204`, reproduced identically on clean `origin/master`
+  (`d2f6f03b`); the naming regression passes. Windows attempts encountered socket-buffer errors.
+
+## Autoscaling A2 import recovery (#125, 2026-10-15)
+
+- Exhausted dependency work is distinct from an oversized boundary. Imports still draw fitting
+  boundaries and nodes, retain resolved scaling bindings, and omit unresolved bindings with named
+  report entries explaining how to recover by importing a smaller selection.
+- Accepted boundaries skip marking already-expanded closures. Regressions cover exhaustion before
+  any successful selection, exact work-budget completion, recovery, oversized closure caching and
+  eightfold operation-count growth; deliberate reversions fail.
+- UX review: recovery stays in the existing import report and boundary selection; no controls added.
+  The stale skill viewer is refreshed, with plugin 1.1.26 exactly one patch above master.
+- Only `node/i18n/catalogs.json` changes: one English import-recovery message adds one message and
+  updates the import-detail hash in every catalog; untranslated catalogs gain one English fallback.
+  All diagram, simulation, import, export and browser goldens remain unchanged.
+
+## Autoscaling A2 final import review (#125, 2026-10-15)
+
+- Import selection indexes shared KEDA broker/group routes once and caches their dependency closures
+  across boundary candidates, including cycles. Automatic selection stops oversized candidates early
+  and caps total expansion work; remaining boundaries stay available in the import report.
+- Operation-count regressions cover eightfold shared-route growth, the total work cap, deduplicated
+  counts and selections just below, at and above both picker budgets. Saved simulation setup and
+  timeline patches with missing metric sources are rejected atomically; valid patches persist.
+- UX review: existing selection, counts and recovery flow stay in the import report; no chrome added.
+- This performance fix preserves existing output goldens; no golden is re-recorded for the fix.
+
+## Autoscaling A2 round 2 review fixes (#125, 2026-10-15)
+
+- Large and selected namespace imports retain KEDA broker and consumer-group dependencies within
+  the picker budget. Missing sources produce an unsupported-policy recovery report. The report
+  explains automatic inclusion and counts the boundaries currently selected.
+- RabbitMQ imports infer omitted/auto protocol from HTTP(S) or AMQP(S) hosts. Connection reversal
+  rejects broken scaler bindings; colliding clipboard node/edge IDs keep distinct remappings.
+- Fixed scaling keeps resource editing and the workload lesson in Advanced. Applying the lesson
+  restores focus to CPU cost. Node/stencil patches and inferred connections validate together once;
+  title and description typing no longer validates the graph.
+- Copy tests assert exact policy/source identity; unavailable metrics cannot wake a sleeping fleet.
+  Rebased onto master, retained both documentation histories and regenerated the skill viewer at 1.1.26.
+- Round 2 changes only `node/i18n/catalogs.json`: three translated messages for current boundary
+  selection, automatic scaling-source inclusion and omitted-policy recovery update counts and hashes.
+  The other 1,853 goldens, including every simulation and export, are unchanged. Details and verification:
+  `docs/PARITY.md` and `docs/research/autoscaling-a2-round2-review.md`.
+
 ## Relationship dropdown review fixes (#122, 2026-10-15)
 
 - Removing an inert edge setting returns keyboard focus to Label, and Tab reaches the relationship
@@ -13,6 +77,38 @@
   change: this review changes inspector interaction, not diagram output.
 - Merged the latest master without rewriting collaborator history, retaining both documentation
   histories and the follow-up fixes in #123.
+
+## Autoscaling A2 — KEDA and Kubernetes import (2026-10-15)
+
+- KEDA 2.18 ScaledObject lessons observe actual Kafka group lag, Service Bus queue/subscription messages,
+  SQS visible/in-flight messages and RabbitMQ ready/unacknowledged messages. Strict activation, cold starts,
+  per-trigger caching, polling, independent final-zero cooldown and fallback feed A1's HPA and lifecycle.
+  Kafka's controller cap remains separate from partition assignment; spare workers can serve other inputs.
+- Kubernetes manifests now persist resource quantities, HPA targets/behavior and executable KEDA settings.
+  Exact namespace/kind/version and ownership checks prevent double controllers. Unsupported fields,
+  visibility, multi-container accounting and ScaledJob execution are explicitly diagnosed; conflicting
+  policies retain safe bounded summaries. Workload costs remain unmeasured until explicitly acknowledged.
+- Four main inspector fields, translated Advanced settings and shared planning/check explanations disclose
+  polling backlog and startup. The new public **Render workers sleep between bursts** example is tagged
+  Autoscaling and demonstrates zero → burst activation → drain → zero within ten simulated seconds.
+- The expanded per-step seeded oracle also found and fixed stale retry retention that could return the
+  same work twice and make broker lag negative. A larger 5,000-seed run also exposed sampled retained-retry
+  memory being clipped by ready-only admission during replica drain; both exact and sampled memory
+  integrals now retain those attempts through the drain.
+  KEDA activation no longer consumes HPA's growth budget.
+- Parity: existing legacy/A1 diagram outputs are unchanged. New goldens cover the three frozen A2 diagrams,
+  the public showcase and synthetic import. Seven existing goldens change deliberately: `node/agent/tools.json`
+  and `node/skill/public-schemas.json` add A2 schema support; `node/skill/files.json` updates format/spec hashes;
+  `node/skill/current-stencils.json` reflects example popularity; `node/skill/validate.txt` lists the new corpus;
+  `node/i18n/catalogs.json` adds eighteen translated messages; `node/imports/kubernetes.json` gains executable
+  KEDA/resource settings and the policy note while retaining the range summary. See `docs/PARITY.md`.
+- Refreshed the offline skill viewer and released plugin 1.1.25, one patch above origin/master.
+
+- Review fixes preserve opted-in Deployment resources with Fixed scaling, reject topology edits that would
+  break node or saved-simulation metric bindings, retain positive replica bounds at fractional Capacity ×,
+  and keep unsupported resource imports recoverable. Accepted source bindings retain keyboard focus;
+  refused bindings remain visible with translated feedback. Fixed/HPA inspectors avoid broker graph copies.
+- Refreshed the offline skill viewer and released plugin 1.1.26, one patch above origin/master.
 
 ## Autoscaling preflight follow-ups (#117, 2026-10-15)
 

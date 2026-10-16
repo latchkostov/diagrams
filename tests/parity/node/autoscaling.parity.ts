@@ -8,8 +8,8 @@ import { corpus, examples } from "../lib/corpus";
 import { expectGolden } from "../lib/golden";
 
 for (const { slug, diagram } of [
-  ...corpus.filter(({ slug }) => slug.startsWith("a1-")),
-  ...examples.filter(({ slug }) => slug === "autoscaling-image-workers"),
+  ...corpus.filter(({ slug }) => slug.startsWith("a1-") || slug.startsWith("a2-")),
+  ...examples.filter(({ slug }) => slug === "autoscaling-image-workers" || slug === "keda-render-workers"),
 ]) {
   for (const simulation of diagram.simulations ?? []) {
     it(`${slug}: ${simulation.id} replica history and explanations`, () => {
@@ -42,7 +42,9 @@ for (const { slug, diagram } of [
                 desired: decision.desired,
                 next: formatNumber(decision.nextAt / 1000),
               }),
-              reason: t("autoscaling.reason", { reason: decision.reason }),
+              reason: ["activation", "inactive", "cooldown", "partitions", "fallback"].includes(decision.reason)
+                ? t("autoscaling.kedaReason", { reason: decision.reason })
+                : t("autoscaling.reason", { reason: decision.reason }),
             },
           });
           if (controller.getState().run?.done) break;

@@ -1,5 +1,6 @@
 import { autoscalingProblem, checkAutoscaling } from "../model/autoscalingSchema";
 import type { ComputeResources, AutoscalingConfig } from "../model/autoscaling";
+import { resourceWorkload } from "../model/autoscaling";
 import type { DiagramFile, DiagramNode, SimRole } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import {
@@ -170,7 +171,11 @@ export function resolveProps(
   const a1 =
     planning?.revision === "p3-a1" &&
     role === "processor" &&
-    ["service", "workflow", "stream-processor"].includes(profile?.family ?? "");
+    resourceWorkload(
+      stencil,
+      profile?.family,
+      (props.resources as ComputeResources | undefined)?.modelRevision ?? "a1",
+    );
   let validResources = true;
   try {
     checkAutoscaling(props.resources);

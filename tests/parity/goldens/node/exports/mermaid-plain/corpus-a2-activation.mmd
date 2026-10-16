@@ -1,0 +1,10 @@
+---
+title: a2-activation
+---
+flowchart LR
+  source(["Poster studio"])
+  uploads["Render requests<br/>3 partitions"]
+  worker["Poster workers"]
+  source -.-> uploads
+  uploads -.-> worker
+  linkStyle 0,1 stroke-dasharray: 6 4

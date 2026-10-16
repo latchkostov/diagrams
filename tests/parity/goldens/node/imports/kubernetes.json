@@ -36,14 +36,23 @@
       {
         "code": "importDetail.value0ScalesFromValue1ToValue2",
         "args": [{ "value0": "payments-worker", "value1": 1, "value2": 12 }]
-      }
+      },
+      { "code": "importDetail.scalingMapped", "args": [{ "kind": "KEDA 2.18" }] }
     ]
   },
-  "reportEnglish": { "report.summary": "Imported “shop and kafka” from Kubernetes: 14 nodes, 13 connections.", "report.notDrawn[0].reason": "shown through its topics", "report.notDrawn[1].reason": "unknown kind (monitoring.coreos.com)", "report.notes[0]": "storefront: a Service with no workload in these files", "report.notes[1]": "payments-worker scales from 1 to 12 replicas (KEDA)" },
+  "reportEnglish": {
+    "report.summary": "Imported “shop and kafka” from Kubernetes: 14 nodes, 13 connections.",
+    "report.notDrawn[0].reason": "shown through its topics",
+    "report.notDrawn[1].reason": "unknown kind (monitoring.coreos.com)",
+    "report.notes[0]": "storefront: a Service with no workload in these files",
+    "report.notes[1]": "payments-worker scales from 1 to 12 replicas (KEDA)",
+    "report.notes[2]": "Executable KEDA 2.18 policy imported. Controller timings and workload costs are assumptions; inspect Advanced."
+  },
   "replay": null,
   "checks": ["warning no-reader:topic-payments.completed.v1"],
   "diagram": {
-    "format": "diagrams/v1",
+    "format": "diagrams/v2",
+    "planning": { "revision": "p3-a1" },
     "title": "shop and kafka",
     "direction": "LR",
     "groups": [
@@ -89,7 +98,64 @@
         "x": 440,
         "y": 104,
         "group": "boundary-shop",
-        "props": { "replicas": 1 }
+        "props": {
+          "replicas": 1,
+          "resources": {
+            "preset": "kubernetes-unmeasured",
+            "presetRevision": "1",
+            "cpuMsPerMessage": 0,
+            "baselineMemoryMiB": 0,
+            "memoryMiBPerMessage": 0,
+            "startup": { "delayMs": 5000, "jitterFraction": 0 },
+            "terminationGraceMs": 30000,
+            "modelRevision": "a2"
+          },
+          "autoscaling": {
+            "mode": "on",
+            "modelRevision": "a2",
+            "preset": "keda-kafka",
+            "presetRevision": "1",
+            "controller": {
+              "kind": "keda",
+              "minReplicas": 1,
+              "initialReplicas": 1,
+              "maxReplicas": 12,
+              "pollingMs": 30000,
+              "cooldownMs": 300000,
+              "initialCooldownMs": 0,
+              "triggers": [
+                {
+                  "source": { "node": "topic-orders.placed.v1", "group": "payments" },
+                  "target": 50,
+                  "activation": 0,
+                  "useCachedMetrics": false,
+                  "type": "kafka",
+                  "allowIdleConsumers": false
+                }
+              ],
+              "settings": {
+                "syncMs": 15000,
+                "tolerance": 0.1,
+                "initialReadinessDelayMs": 30000,
+                "cpuInitializationPeriodMs": 300000,
+                "metrics": [],
+                "up": {
+                  "stabilizationMs": 0,
+                  "selectPolicy": "Max",
+                  "policies": [
+                    { "type": "Pods", "value": 4, "periodMs": 15000 },
+                    { "type": "Percent", "value": 100, "periodMs": 15000 }
+                  ]
+                },
+                "down": {
+                  "stabilizationMs": 300000,
+                  "selectPolicy": "Max",
+                  "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+                }
+              }
+            }
+          }
+        }
       },
       { "id": "settlement-report", "stencil": "generic.scheduler", "label": "settlement-report", "sublabel": "0 2 * * *", "x": 440, "y": 344, "group": "boundary-shop" },
       {

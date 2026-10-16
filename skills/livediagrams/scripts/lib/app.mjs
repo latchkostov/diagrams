@@ -74,6 +74,7 @@ var resourcesSchema = object({
 		maxLength: 100
 	},
 	presetRevision: { enum: ["1"] },
+	modelRevision: { enum: ["a2"] },
 	container: {
 		type: "string",
 		minLength: 1,
@@ -95,7 +96,12 @@ var resourcesSchema = object({
 			maximum: 1
 		}
 	}),
-	terminationGraceMs: time$3
+	terminationGraceMs: time$3,
+	requestDefaults: {
+		type: "array",
+		maxItems: 2,
+		items: { enum: ["cpu", "memory"] }
+	}
 }, [
 	"preset",
 	"presetRevision",
@@ -127,7 +133,144 @@ var direction = object({
 		})
 	}
 });
+var hpaSettingsSchema = object({
+	syncMs: interval,
+	tolerance: {
+		type: "number",
+		minimum: 0,
+		maximum: 1
+	},
+	initialReadinessDelayMs: time$3,
+	cpuInitializationPeriodMs: time$3,
+	metrics: {
+		type: "array",
+		minItems: 1,
+		maxItems: 16,
+		items: object({
+			source: object({
+				kind: { enum: ["resource"] },
+				resource: { enum: ["cpu", "memory"] },
+				container: {
+					type: "string",
+					minLength: 1,
+					maxLength: 100
+				}
+			}, ["kind", "resource"]),
+			target: { anyOf: [object({
+				kind: { enum: ["utilization"] },
+				percentOfRequest: positive$1
+			}), object({
+				kind: { enum: ["averageValue"] },
+				value: positive$1
+			})] },
+			windowMs: interval,
+			metricDelayMs: time$3
+		})
+	},
+	up: direction,
+	down: direction
+});
+var binding = object({
+	node: {
+		type: "string",
+		minLength: 1,
+		maxLength: 1e3
+	},
+	group: {
+		type: "string",
+		minLength: 1,
+		maxLength: 1e3
+	}
+}, ["node"]);
+var trigger = (properties) => object({
+	source: binding,
+	target: positive$1,
+	activation: quantity$2,
+	useCachedMetrics: { type: "boolean" },
+	...properties
+});
 var autoscalingSchema = { anyOf: [
+	object({
+		mode: { enum: ["on"] },
+		modelRevision: { enum: ["a2"] },
+		preset: {
+			type: "string",
+			maxLength: 100
+		},
+		presetRevision: { enum: ["1"] },
+		controller: object({
+			kind: { enum: ["keda"] },
+			minReplicas: {
+				...count$1,
+				minimum: 0
+			},
+			maxReplicas: count$1,
+			initialReplicas: {
+				...count$1,
+				minimum: 0
+			},
+			pollingMs: interval,
+			cooldownMs: time$3,
+			initialCooldownMs: time$3,
+			idleReplicas: { enum: [0] },
+			settings: {
+				...hpaSettingsSchema,
+				properties: {
+					...hpaSettingsSchema.properties,
+					metrics: {
+						...hpaSettingsSchema.properties.metrics,
+						minItems: 0
+					}
+				}
+			},
+			triggers: {
+				type: "array",
+				minItems: 1,
+				maxItems: 16,
+				items: { anyOf: [
+					trigger({
+						type: { enum: ["kafka"] },
+						allowIdleConsumers: { type: "boolean" }
+					}),
+					trigger({ type: { enum: ["azure-servicebus"] } }),
+					trigger({
+						type: { enum: ["aws-sqs-queue"] },
+						scaleOnInFlight: { type: "boolean" },
+						scaleOnDelayed: { enum: [false] }
+					}),
+					trigger({
+						type: { enum: ["rabbitmq"] },
+						protocol: { enum: ["http", "amqp"] },
+						excludeUnacknowledged: { type: "boolean" }
+					})
+				] }
+			},
+			fallback: object({
+				failureThreshold: {
+					...count$1,
+					minimum: 0,
+					maximum: 600
+				},
+				replicas: count$1,
+				behavior: { enum: [
+					"static",
+					"currentReplicas",
+					"currentReplicasIfHigher",
+					"currentReplicasIfLower"
+				] }
+			})
+		}, [
+			"kind",
+			"minReplicas",
+			"maxReplicas",
+			"initialReplicas",
+			"pollingMs",
+			"cooldownMs",
+			"initialCooldownMs",
+			"settings",
+			"triggers"
+		])
+	}),
 	object({ mode: { enum: ["off"] } }),
 	object({
 		mode: { enum: ["unsupported"] },
@@ -138,11 +281,41 @@ var autoscalingSchema = { anyOf: [
 		reason: {
 			type: "string",
 			maxLength: 1e3
+		},
+		controllers: {
+			type: "array",
+			maxItems: 16,
+			items: object({
+				kind: { enum: [
+					"HPA",
+					"ScaledObject",
+					"ScaledJob"
+				] },
+				minReplicas: {
+					...count$1,
+					minimum: 0,
+					maximum: 1e5
+				},
+				maxReplicas: {
+					...count$1,
+					minimum: 0,
+					maximum: 1e5
+				}
+			}, ["kind"])
+		},
+		controllersOmitted: {
+			type: "integer",
+			minimum: 0,
+			maximum: 1e4
 		}
-	}),
+	}, [
+		"mode",
+		"provider",
+		"reason"
+	]),
 	object({
 		mode: { enum: ["on"] },
-		modelRevision: { enum: ["a1"] },
+		modelRevision: { enum: ["a1", "a2"] },
 		preset: {
 			type: "string",
 			maxLength: 100
@@ -153,43 +326,7 @@ var autoscalingSchema = { anyOf: [
 			minReplicas: count$1,
 			maxReplicas: count$1,
 			initialReplicas: count$1,
-			settings: object({
-				syncMs: interval,
-				tolerance: {
-					type: "number",
-					minimum: 0,
-					maximum: 1
-				},
-				initialReadinessDelayMs: time$3,
-				cpuInitializationPeriodMs: time$3,
-				metrics: {
-					type: "array",
-					minItems: 1,
-					maxItems: 16,
-					items: object({
-						source: object({
-							kind: { enum: ["resource"] },
-							resource: { enum: ["cpu", "memory"] },
-							container: {
-								type: "string",
-								minLength: 1,
-								maxLength: 100
-							}
-						}, ["kind", "resource"]),
-						target: { anyOf: [object({
-							kind: { enum: ["utilization"] },
-							percentOfRequest: positive$1
-						}), object({
-							kind: { enum: ["averageValue"] },
-							value: positive$1
-						})] },
-						windowMs: interval,
-						metricDelayMs: time$3
-					})
-				},
-				up: direction,
-				down: direction
-			})
+			settings: hpaSettingsSchema
 		})
 	})
 ] };
@@ -200,6 +337,14 @@ function checkAutoscaling(resources, autoscaling) {
 	const a = autoscaling;
 	if (a.mode !== "on") return;
 	const c = a.controller;
+	if (c.kind === "keda") {
+		if (c.triggers.length + c.settings.metrics.length > 16) throw new Error("autoscaling: at most 16 metrics and triggers");
+		if (c.idleReplicas !== void 0 && c.minReplicas === 0) throw new Error("autoscaling: idle replicas must be below the minimum");
+		for (const t of c.triggers) {
+			if (t.type === "kafka" && !t.source.group) throw new Error("autoscaling: Kafka needs a named consumer group and known topic history");
+			if (t.type === "rabbitmq" && t.protocol === "amqp" && !t.excludeUnacknowledged) throw new Error("autoscaling: RabbitMQ AMQP observes ready messages only");
+		}
+	}
 	if (c.settings.metrics.some((m) => m.windowMs + m.metricDelayMs > 6e5)) throw new Error("autoscaling: metric window plus delay must fit the 600000 ms history budget");
 	if (c.minReplicas > c.maxReplicas || c.initialReplicas < c.minReplicas || c.initialReplicas > c.maxReplicas) throw new Error("autoscaling: initial and minimum replicas must fit the maximum");
 }
@@ -258,20 +403,2228 @@ function t(key, english, values) {
 	return typeof m == "function" ? m(values) : m;
 }
 //#endregion
+//#region src/model/brokerRoutes.ts
+var brokerRole = (role) => role === "queue" || role === "topic" || role === "stream";
+/** Explicit false wins; infer labels only on broker-to-broker/store paths. */
+function isDlqEdge(edge, fromRole, target, toRole) {
+	return edge.props?.dlq === true || edge.props?.dlq !== false && brokerRole(fromRole) && (brokerRole(toRole) || toRole === "store") && /dlq|dead.?letter/i.test(`${target.label} ${target.sublabel ?? ""}`);
+}
+//#endregion
+//#region src/stencils/catalog.ts
+function group(category, defs) {
+	return defs.map(([id, label, vendor, icon, accent, simRole, description, defaultSublabel]) => ({
+		id,
+		label,
+		category,
+		vendor,
+		icon,
+		accent,
+		simRole,
+		description,
+		...defaultSublabel ? { defaultSublabel } : {}
+	}));
+}
+var KAFKA = "#7C3AED";
+var AZURE = "#0078D4";
+var AWS_INTEGRATION = "#E7157B";
+var AWS_ANALYTICS_NET = "#8C4FFF";
+var AWS_COMPUTE = "#ED7100";
+var AWS_SECURITY = "#DD344C";
+var REDIS = "#DC382D";
+var GCP = "#4285F4";
+var messaging = group("messaging", [
+	[
+		"kafka.topic",
+		"Kafka Topic",
+		"Apache Kafka",
+		"kafka",
+		KAFKA,
+		"topic",
+		"Partitioned, replicated log; every consumer group gets every record.",
+		"topic"
+	],
+	[
+		"kafka.cluster",
+		"Kafka Cluster",
+		"Apache Kafka",
+		"kafka",
+		KAFKA,
+		"none",
+		"A set of Kafka brokers hosting topics and partitions.",
+		"cluster"
+	],
+	[
+		"kafka.connect",
+		"Kafka Connect",
+		"Apache Kafka",
+		"kafka",
+		KAFKA,
+		"processor",
+		"Source/sink connectors streaming data between Kafka and external systems.",
+		"connector"
+	],
+	[
+		"kafka.schema-registry",
+		"Schema Registry",
+		"Apache Kafka",
+		"kafka",
+		KAFKA,
+		"none",
+		"Central store of Avro/Protobuf/JSON schemas for Kafka topics.",
+		"schemas"
+	],
+	[
+		"kafka.ksqldb",
+		"ksqlDB",
+		"Apache Kafka",
+		"kafka",
+		KAFKA,
+		"processor",
+		"Streaming SQL engine for filtering, joining and aggregating Kafka topics.",
+		"stream processor"
+	],
+	[
+		"azure.service-bus.queue",
+		"Service Bus Queue",
+		"Azure",
+		"azure-service-bus",
+		AZURE,
+		"queue",
+		"Durable point-to-point queue with sessions, DLQ and competing consumers.",
+		"queue"
+	],
+	[
+		"azure.service-bus.topic",
+		"Service Bus Topic",
+		"Azure",
+		"azure-service-bus",
+		AZURE,
+		"topic",
+		"Pub/sub topic; each subscription receives its own copy of every message.",
+		"topic"
+	],
+	[
+		"azure.event-hubs",
+		"Event Hubs",
+		"Azure",
+		"azure-event-hubs",
+		"#5EA02E",
+		"stream",
+		"Partitioned big-data event streaming service (Kafka-compatible).",
+		"event hub"
+	],
+	[
+		"azure.event-grid",
+		"Event Grid",
+		"Azure",
+		"azure-event-grid",
+		"#3E8E2A",
+		"topic",
+		"Serverless event routing with push delivery and filtering.",
+		"topic"
+	],
+	[
+		"azure.storage-queue",
+		"Storage Queue",
+		"Azure",
+		"azure-storage-queue",
+		"#8452E3",
+		"queue",
+		"Simple, cheap queue in an Azure Storage account.",
+		"queue"
+	],
+	[
+		"rabbitmq.exchange",
+		"RabbitMQ Exchange",
+		"RabbitMQ",
+		"rabbitmq",
+		"#FF6600",
+		"topic",
+		"Routes messages to bound queues (direct, topic, fanout, headers).",
+		"exchange"
+	],
+	[
+		"rabbitmq.queue",
+		"RabbitMQ Queue",
+		"RabbitMQ",
+		"rabbitmq",
+		"#FF6600",
+		"queue",
+		"Buffers messages for competing consumers.",
+		"queue"
+	],
+	[
+		"aws.sqs",
+		"Amazon SQS",
+		"AWS",
+		"aws-sqs",
+		AWS_INTEGRATION,
+		"queue",
+		"Fully managed message queue (standard or FIFO).",
+		"queue"
+	],
+	[
+		"aws.sns",
+		"Amazon SNS",
+		"AWS",
+		"aws-sns",
+		AWS_INTEGRATION,
+		"topic",
+		"Pub/sub fan-out to SQS, Lambda, HTTP, email and SMS.",
+		"topic"
+	],
+	[
+		"aws.eventbridge",
+		"Amazon EventBridge",
+		"AWS",
+		"aws-eventbridge",
+		AWS_INTEGRATION,
+		"topic",
+		"Serverless event bus with rule-based routing.",
+		"event bus"
+	],
+	[
+		"aws.kinesis",
+		"Kinesis Data Streams",
+		"AWS",
+		"aws-kinesis",
+		AWS_ANALYTICS_NET,
+		"stream",
+		"Sharded real-time data stream.",
+		"stream"
+	],
+	[
+		"gcp.pubsub",
+		"Pub/Sub",
+		"Google Cloud",
+		"gcp-pubsub",
+		"#4285F4",
+		"topic",
+		"Global managed pub/sub messaging.",
+		"topic"
+	],
+	[
+		"nats.subject",
+		"NATS Subject",
+		"NATS",
+		"nats",
+		"#27AAE1",
+		"topic",
+		"Lightweight subject-based pub/sub (optionally persisted with JetStream).",
+		"subject"
+	],
+	[
+		"redis.stream",
+		"Redis Stream",
+		"Redis",
+		"redis",
+		REDIS,
+		"stream",
+		"Append-only log with consumer groups inside Redis.",
+		"stream"
+	],
+	[
+		"confluent.cloud",
+		"Confluent Cloud",
+		"Confluent",
+		"confluent",
+		"#3B6FE5",
+		"stream",
+		"Managed Kafka from Confluent (Cloud or Platform) with connectors, governance and Flink.",
+		"kafka topic"
+	],
+	[
+		"kafka.streams",
+		"Kafka Streams",
+		"Apache Kafka",
+		"kafka",
+		KAFKA,
+		"processor",
+		"Java library for stateful stream processing that reads from and writes back to Kafka.",
+		"stream app"
+	],
+	[
+		"debezium",
+		"Debezium CDC",
+		"Debezium",
+		"generic-cdc",
+		"#65A30D",
+		"source",
+		"Change data capture: turns database row changes into an event stream.",
+		"cdc"
+	],
+	[
+		"pulsar.topic",
+		"Pulsar Topic",
+		"Apache Pulsar",
+		"pulsar",
+		"#188FFF",
+		"topic",
+		"Multi-tenant pub/sub with tiered storage and shared or exclusive subscriptions.",
+		"topic"
+	],
+	[
+		"mqtt.broker",
+		"MQTT Broker",
+		"MQTT",
+		"mqtt",
+		"#A855A8",
+		"topic",
+		"Lightweight pub/sub for devices (Mosquitto, EMQX, HiveMQ); every subscriber to a topic gets a copy.",
+		"topic"
+	],
+	[
+		"aws.msk",
+		"Amazon MSK",
+		"AWS",
+		"aws-msk",
+		AWS_ANALYTICS_NET,
+		"stream",
+		"Managed Streaming for Apache Kafka: AWS-run Kafka clusters.",
+		"kafka topic"
+	],
+	[
+		"aws.mq",
+		"Amazon MQ",
+		"AWS",
+		"aws-mq",
+		AWS_INTEGRATION,
+		"queue",
+		"Managed ActiveMQ and RabbitMQ brokers for JMS and AMQP workloads.",
+		"queue"
+	]
+]);
+var compute = group("compute", [
+	[
+		"azure.functions",
+		"Azure Functions",
+		"Azure",
+		"azure-functions",
+		"#E8A80C",
+		"processor",
+		"Event-driven serverless functions.",
+		"function"
+	],
+	[
+		"azure.app-service",
+		"App Service",
+		"Azure",
+		"azure-app-service",
+		"#2F7FE3",
+		"processor",
+		"Managed hosting for web apps and APIs."
+	],
+	[
+		"azure.container-apps",
+		"Container Apps",
+		"Azure",
+		"azure-container-apps",
+		"#9061F0",
+		"processor",
+		"Serverless containers with KEDA-based autoscaling.",
+		"container app"
+	],
+	[
+		"azure.aks",
+		"AKS",
+		"Azure",
+		"azure-aks",
+		"#7C4DDB",
+		"processor",
+		"Azure Kubernetes Service — managed Kubernetes clusters.",
+		"cluster"
+	],
+	[
+		"azure.logic-apps",
+		"Logic Apps",
+		"Azure",
+		"azure-logic-apps",
+		"#5DA82A",
+		"processor",
+		"Low-code workflows and integrations with hundreds of connectors.",
+		"workflow"
+	],
+	[
+		"azure.signalr",
+		"SignalR Service",
+		"Azure",
+		"azure-signalr",
+		AZURE,
+		"gateway",
+		"Managed real-time WebSocket messaging to clients."
+	],
+	[
+		"aws.lambda",
+		"AWS Lambda",
+		"AWS",
+		"aws-lambda",
+		AWS_COMPUTE,
+		"processor",
+		"Serverless functions triggered by events.",
+		"function"
+	],
+	[
+		"aws.ecs",
+		"Amazon ECS",
+		"AWS",
+		"aws-ecs",
+		AWS_COMPUTE,
+		"processor",
+		"Managed container orchestration (EC2 or Fargate).",
+		"service"
+	],
+	[
+		"aws.step-functions",
+		"Step Functions",
+		"AWS",
+		"aws-step-functions",
+		AWS_INTEGRATION,
+		"processor",
+		"Serverless state-machine workflow orchestration.",
+		"state machine"
+	],
+	[
+		"k8s.pod",
+		"Kubernetes Pod",
+		"Kubernetes",
+		"k8s-pod",
+		"#326CE5",
+		"processor",
+		"Smallest deployable unit: one or more co-located containers.",
+		"pod"
+	],
+	[
+		"k8s.deployment",
+		"Kubernetes Deployment",
+		"Kubernetes",
+		"k8s-deployment",
+		"#326CE5",
+		"processor",
+		"Declarative, replicated set of pods with rolling updates.",
+		"deployment"
+	],
+	[
+		"docker.container",
+		"Docker Container",
+		"Docker",
+		"docker",
+		"#2496ED",
+		"processor",
+		"A containerised process.",
+		"container"
+	],
+	[
+		"service.dotnet",
+		".NET Service",
+		".NET",
+		"dotnet",
+		"#512BD4",
+		"processor",
+		"Microservice built with .NET / ASP.NET Core.",
+		"service"
+	],
+	[
+		"service.java",
+		"Java Service",
+		"Java",
+		"java",
+		"#E76F00",
+		"processor",
+		"Microservice on the JVM (Spring Boot, Quarkus, ...).",
+		"service"
+	],
+	[
+		"service.node",
+		"Node.js Service",
+		"Node.js",
+		"nodejs",
+		"#5FA04E",
+		"processor",
+		"Microservice built on Node.js.",
+		"service"
+	],
+	[
+		"service.python",
+		"Python Service",
+		"Python",
+		"python",
+		"#3776AB",
+		"processor",
+		"Microservice built with Python (FastAPI, Django, ...).",
+		"service"
+	],
+	[
+		"service.go",
+		"Go Service",
+		"Go",
+		"go",
+		"#00ADD8",
+		"processor",
+		"Microservice written in Go.",
+		"service"
+	],
+	[
+		"flink",
+		"Apache Flink",
+		"Apache Flink",
+		"flink",
+		"#E6526F",
+		"processor",
+		"Stateful stream and batch processing with event-time windows and exactly-once state.",
+		"stream job"
+	],
+	[
+		"gcp.dataflow",
+		"Dataflow",
+		"Google Cloud",
+		"gcp-dataflow",
+		GCP,
+		"processor",
+		"Managed Apache Beam pipelines for streaming and batch data.",
+		"pipeline"
+	],
+	[
+		"temporal",
+		"Temporal",
+		"Temporal",
+		"temporal",
+		"#7B61FF",
+		"processor",
+		"Durable workflow engine: code-defined workflows that survive crashes and retries.",
+		"workflow"
+	],
+	[
+		"camunda",
+		"Camunda",
+		"Camunda",
+		"camunda",
+		"#FC5D0D",
+		"processor",
+		"BPMN process orchestration across services, people and systems.",
+		"process"
+	],
+	[
+		"airflow",
+		"Apache Airflow",
+		"Apache Airflow",
+		"airflow",
+		"#017CEE",
+		"source",
+		"Schedules and runs data pipelines defined as Python DAGs.",
+		"DAG"
+	],
+	[
+		"gcp.cloud-run",
+		"Cloud Run",
+		"Google Cloud",
+		"gcp-cloud-run",
+		GCP,
+		"processor",
+		"Serverless containers that scale to zero on Google Cloud.",
+		"service"
+	],
+	[
+		"gcp.cloud-functions",
+		"Cloud Functions",
+		"Google Cloud",
+		"gcp-cloud-functions",
+		GCP,
+		"processor",
+		"Event-driven serverless functions on Google Cloud.",
+		"function"
+	],
+	[
+		"gcp.gke",
+		"GKE",
+		"Google Cloud",
+		"gcp-gke",
+		GCP,
+		"processor",
+		"Google Kubernetes Engine: managed Kubernetes clusters.",
+		"cluster"
+	],
+	[
+		"azure.static-web-apps",
+		"Static Web Apps",
+		"Azure",
+		"azure-static-web-apps",
+		AZURE,
+		"processor",
+		"Global static front-end hosting with an integrated serverless API.",
+		"web app"
+	],
+	[
+		"vercel",
+		"Vercel",
+		"Vercel",
+		"vercel",
+		"#0070F3",
+		"processor",
+		"Front-end cloud: deploys web apps with edge and serverless functions.",
+		"web app"
+	],
+	[
+		"netlify",
+		"Netlify",
+		"Netlify",
+		"netlify",
+		"#00AD9F",
+		"processor",
+		"Hosts web front ends with serverless and edge functions.",
+		"web app"
+	],
+	[
+		"cloudflare.workers",
+		"Cloudflare Workers",
+		"Cloudflare",
+		"cloudflare-workers",
+		"#F38020",
+		"processor",
+		"Serverless functions running on Cloudflare's edge network.",
+		"edge function"
+	],
+	[
+		"graphql",
+		"GraphQL API",
+		"GraphQL",
+		"graphql",
+		"#E10098",
+		"gateway",
+		"Typed query endpoint that resolves one request across many backends.",
+		"graphql"
+	],
+	[
+		"grpc",
+		"gRPC Service",
+		"gRPC",
+		"grpc",
+		"#2DA6B0",
+		"processor",
+		"Service exposing Protobuf-typed RPCs over HTTP/2.",
+		"grpc"
+	]
+]);
+var data = group("data", [
+	[
+		"postgres",
+		"PostgreSQL",
+		"PostgreSQL",
+		"postgresql",
+		"#336791",
+		"store",
+		"Open-source relational database.",
+		"database"
+	],
+	[
+		"mysql",
+		"MySQL",
+		"MySQL",
+		"mysql",
+		"#00758F",
+		"store",
+		"Open-source relational database (MariaDB too).",
+		"database"
+	],
+	[
+		"sqlserver",
+		"SQL Server",
+		"Microsoft",
+		"sqlserver",
+		"#CC2927",
+		"store",
+		"Microsoft SQL Server relational database.",
+		"database"
+	],
+	[
+		"azure.sql",
+		"Azure SQL Database",
+		"Azure",
+		"azure-sql",
+		AZURE,
+		"store",
+		"Managed SQL Server engine as a service.",
+		"database"
+	],
+	[
+		"azure.cosmos-db",
+		"Cosmos DB",
+		"Azure",
+		"azure-cosmos-db",
+		"#2A9FD8",
+		"store",
+		"Globally distributed multi-model NoSQL database.",
+		"container"
+	],
+	[
+		"azure.blob-storage",
+		"Blob Storage",
+		"Azure",
+		"azure-blob-storage",
+		"#1FA898",
+		"store",
+		"Object storage for unstructured data.",
+		"container"
+	],
+	[
+		"azure.redis",
+		"Azure Managed Redis",
+		"Azure",
+		"azure-redis",
+		REDIS,
+		"store",
+		"Managed Redis for caching, sessions and pub/sub.",
+		"cache"
+	],
+	[
+		"mongodb",
+		"MongoDB",
+		"MongoDB",
+		"mongodb",
+		"#13AA52",
+		"store",
+		"Document database.",
+		"database"
+	],
+	[
+		"redis.cache",
+		"Redis Cache",
+		"Redis",
+		"redis",
+		REDIS,
+		"store",
+		"In-memory key-value cache.",
+		"cache"
+	],
+	[
+		"elasticsearch",
+		"Elasticsearch",
+		"Elastic",
+		"elasticsearch",
+		"#00BFB3",
+		"store",
+		"Distributed search and analytics engine.",
+		"index"
+	],
+	[
+		"aws.s3",
+		"Amazon S3",
+		"AWS",
+		"aws-s3",
+		"#7AA116",
+		"store",
+		"Object storage.",
+		"bucket"
+	],
+	[
+		"aws.dynamodb",
+		"Amazon DynamoDB",
+		"AWS",
+		"aws-dynamodb",
+		"#C925D1",
+		"store",
+		"Serverless key-value and document database.",
+		"table"
+	],
+	[
+		"snowflake",
+		"Snowflake",
+		"Snowflake",
+		"snowflake",
+		"#29B5E8",
+		"store",
+		"Cloud data warehouse.",
+		"warehouse"
+	],
+	[
+		"adobe.aem",
+		"Adobe Experience Manager",
+		"Adobe",
+		"adobe",
+		"#FA0F00",
+		"store",
+		"Headless CMS serving content fragments and treatments.",
+		"content"
+	],
+	[
+		"databricks",
+		"Databricks",
+		"Databricks",
+		"databricks",
+		"#FF3621",
+		"store",
+		"Lakehouse platform for data engineering and ML.",
+		"lakehouse"
+	],
+	[
+		"gcp.bigquery",
+		"BigQuery",
+		"Google Cloud",
+		"gcp-bigquery",
+		GCP,
+		"store",
+		"Serverless data warehouse for SQL analytics at scale.",
+		"warehouse"
+	],
+	[
+		"gcp.spanner",
+		"Cloud Spanner",
+		"Google Cloud",
+		"gcp-spanner",
+		GCP,
+		"store",
+		"Globally distributed, strongly consistent relational database.",
+		"database"
+	],
+	[
+		"gcp.cloud-sql",
+		"Cloud SQL",
+		"Google Cloud",
+		"gcp-cloud-sql",
+		GCP,
+		"store",
+		"Managed PostgreSQL, MySQL and SQL Server on Google Cloud.",
+		"database"
+	],
+	[
+		"gcp.firestore",
+		"Firestore",
+		"Google Cloud",
+		"gcp-firestore",
+		GCP,
+		"store",
+		"Serverless document database with realtime listeners.",
+		"documents"
+	],
+	[
+		"aws.redshift",
+		"Amazon Redshift",
+		"AWS",
+		"aws-redshift",
+		AWS_ANALYTICS_NET,
+		"store",
+		"Columnar data warehouse for SQL analytics on AWS.",
+		"warehouse"
+	],
+	[
+		"aws.aurora",
+		"Amazon Aurora",
+		"AWS",
+		"aws-aurora",
+		"#C925D1",
+		"store",
+		"MySQL- and PostgreSQL-compatible relational database built for the cloud.",
+		"database"
+	],
+	[
+		"cassandra",
+		"Apache Cassandra",
+		"Apache Cassandra",
+		"cassandra",
+		"#1287B1",
+		"store",
+		"Wide-column database for high write throughput across regions.",
+		"keyspace"
+	],
+	[
+		"clickhouse",
+		"ClickHouse",
+		"ClickHouse",
+		"clickhouse",
+		"#E0A800",
+		"store",
+		"Columnar OLAP database for real-time analytics.",
+		"analytics"
+	],
+	[
+		"supabase",
+		"Supabase",
+		"Supabase",
+		"supabase",
+		"#24B47E",
+		"store",
+		"Hosted Postgres with auth, storage, realtime and edge functions.",
+		"postgres"
+	],
+	[
+		"firebase",
+		"Firebase",
+		"Google Cloud",
+		"firebase",
+		"#F57C00",
+		"store",
+		"App backend platform: realtime database, auth, hosting and messaging.",
+		"realtime db"
+	],
+	[
+		"minio",
+		"MinIO",
+		"MinIO",
+		"minio",
+		"#C72E49",
+		"store",
+		"S3-compatible object storage you can run anywhere.",
+		"bucket"
+	],
+	[
+		"pinecone",
+		"Pinecone",
+		"Pinecone",
+		"pinecone",
+		"#4F46E5",
+		"store",
+		"Managed vector database for similarity search and RAG.",
+		"vector index"
+	],
+	[
+		"azure.data-factory",
+		"Data Factory",
+		"Azure",
+		"azure-data-factory",
+		AZURE,
+		"processor",
+		"Managed ETL/ELT pipelines that move and transform data.",
+		"pipeline"
+	],
+	[
+		"azure.synapse",
+		"Synapse Analytics",
+		"Azure",
+		"azure-synapse",
+		"#1490DF",
+		"store",
+		"Analytics service combining a SQL data warehouse with Spark.",
+		"warehouse"
+	],
+	[
+		"microsoft-fabric",
+		"Microsoft Fabric",
+		"Microsoft",
+		"microsoft-fabric",
+		"#0F9D7A",
+		"store",
+		"SaaS analytics platform with OneLake, warehousing and real-time intelligence.",
+		"lakehouse"
+	]
+]);
+var network = group("network", [
+	[
+		"azure.api-management",
+		"API Management",
+		"Azure",
+		"azure-api-management",
+		"#7A52C7",
+		"gateway",
+		"API gateway with policies, auth, quotas and a developer portal.",
+		"gateway"
+	],
+	[
+		"azure.front-door",
+		"Front Door",
+		"Azure",
+		"azure-front-door",
+		AZURE,
+		"gateway",
+		"Global edge load balancer, CDN and WAF."
+	],
+	[
+		"azure.app-gateway",
+		"Application Gateway",
+		"Azure",
+		"azure-app-gateway",
+		"#3E9B3A",
+		"gateway",
+		"Regional L7 load balancer with WAF."
+	],
+	[
+		"aws.api-gateway",
+		"Amazon API Gateway",
+		"AWS",
+		"aws-api-gateway",
+		AWS_ANALYTICS_NET,
+		"gateway",
+		"Managed REST, HTTP and WebSocket APIs.",
+		"API"
+	],
+	[
+		"aws.elb",
+		"Elastic Load Balancing",
+		"AWS",
+		"aws-elb",
+		AWS_ANALYTICS_NET,
+		"gateway",
+		"Application / Network load balancer.",
+		"ALB"
+	],
+	[
+		"nginx",
+		"NGINX",
+		"NGINX",
+		"nginx",
+		"#009639",
+		"gateway",
+		"Reverse proxy, load balancer and ingress.",
+		"reverse proxy"
+	],
+	[
+		"kong",
+		"Kong Gateway",
+		"Kong",
+		"kong",
+		"#14B59A",
+		"gateway",
+		"API gateway with auth, rate-limiting and routing plugins.",
+		"api gateway"
+	],
+	[
+		"cloudflare",
+		"Cloudflare",
+		"Cloudflare",
+		"cloudflare",
+		"#F38020",
+		"gateway",
+		"Edge network: CDN, WAF, DNS and Workers."
+	],
+	[
+		"load-balancer",
+		"Load Balancer",
+		"Generic",
+		"generic-load-balancer",
+		"#0EA5E9",
+		"gateway",
+		"Distributes traffic across instances."
+	],
+	[
+		"envoy",
+		"Envoy Proxy",
+		"Envoy",
+		"envoy",
+		"#AC6199",
+		"gateway",
+		"L7 proxy and sidecar used by service meshes and edge gateways.",
+		"proxy"
+	],
+	[
+		"istio",
+		"Istio",
+		"Istio",
+		"istio",
+		"#466BB0",
+		"gateway",
+		"Service mesh adding mTLS, traffic policy and telemetry between services.",
+		"mesh"
+	],
+	[
+		"linkerd",
+		"Linkerd",
+		"Linkerd",
+		"linkerd",
+		"#1FA88E",
+		"gateway",
+		"Lightweight service mesh with automatic mTLS and retries.",
+		"mesh"
+	],
+	[
+		"traefik",
+		"Traefik",
+		"Traefik",
+		"traefik",
+		"#24A1C1",
+		"gateway",
+		"Cloud-native reverse proxy and ingress controller with automatic discovery.",
+		"ingress"
+	],
+	[
+		"haproxy",
+		"HAProxy",
+		"HAProxy",
+		"haproxy",
+		"#106DA9",
+		"gateway",
+		"High-performance TCP/HTTP load balancer and reverse proxy.",
+		"load balancer"
+	],
+	[
+		"generic.cdn",
+		"CDN",
+		"Generic",
+		"generic-cdn",
+		"#06B6D4",
+		"gateway",
+		"Edge cache that serves content close to users.",
+		"edge"
+	],
+	[
+		"generic.dns",
+		"DNS",
+		"Generic",
+		"generic-dns",
+		"#0284C7",
+		"gateway",
+		"Resolves names to the endpoints behind them.",
+		"dns"
+	],
+	[
+		"generic.firewall",
+		"Firewall / WAF",
+		"Generic",
+		"generic-firewall",
+		"#EF4444",
+		"gateway",
+		"Filters traffic before it reaches your services.",
+		"waf"
+	]
+]);
+var CISCO = "#049FD9";
+var JUNIPER = "#5E8C1F";
+var onprem = group("onprem", [
+	[
+		"generic.router",
+		"Router",
+		"Generic",
+		"net-router",
+		"#0E7490",
+		"gateway",
+		"Forwards traffic between networks: WAN edge, branch, campus core.",
+		"router"
+	],
+	[
+		"cisco.isr",
+		"Cisco ISR",
+		"Cisco",
+		"net-router",
+		CISCO,
+		"gateway",
+		"Branch and WAN edge routers: ISR 1000 and 4000, and their successors, the Catalyst 8000 edge platforms (older: 2900, 3800 like the 3825).",
+		"edge router"
+	],
+	[
+		"juniper.mx",
+		"Juniper MX",
+		"Juniper",
+		"net-router",
+		JUNIPER,
+		"gateway",
+		"Universal routing platform for the data-centre and service-provider edge.",
+		"edge router"
+	],
+	[
+		"generic.switch",
+		"Switch",
+		"Generic",
+		"net-switch",
+		"#0369A1",
+		"gateway",
+		"Connects hosts on a network: access, core, or a data centre's leaf and spine.",
+		"switch"
+	],
+	[
+		"cisco.catalyst",
+		"Cisco Catalyst",
+		"Cisco",
+		"net-switch",
+		CISCO,
+		"gateway",
+		"Campus access and core switches (Catalyst 9200, 9300, 9500).",
+		"campus switch"
+	],
+	[
+		"cisco.nexus",
+		"Cisco Nexus",
+		"Cisco",
+		"net-switch",
+		CISCO,
+		"gateway",
+		"Data-centre leaf and spine switches (Nexus 9000, NX-OS or ACI).",
+		"data-centre switch"
+	],
+	[
+		"arista.switch",
+		"Arista Switch",
+		"Arista",
+		"net-switch",
+		"#1F5DA8",
+		"gateway",
+		"Campus and data-centre switches running EOS (720XP campus, 7050X leaf, 7800R spine).",
+		"leaf / spine"
+	],
+	[
+		"juniper.ex",
+		"Juniper EX",
+		"Juniper",
+		"net-switch",
+		JUNIPER,
+		"gateway",
+		"Campus access and aggregation switches (EX2300 to EX4650).",
+		"campus switch"
+	],
+	[
+		"juniper.qfx",
+		"Juniper QFX",
+		"Juniper",
+		"net-switch",
+		JUNIPER,
+		"gateway",
+		"Data-centre leaf and spine switches (QFX5120 to QFX5240).",
+		"data-centre switch"
+	],
+	[
+		"aruba.cx",
+		"Aruba CX",
+		"HPE Aruba",
+		"net-switch",
+		"#FF8300",
+		"gateway",
+		"HPE Aruba Networking CX campus and data-centre switches (6100 to 8360).",
+		"campus switch"
+	],
+	[
+		"generic.ngfw",
+		"Firewall (NGFW)",
+		"Generic",
+		"net-firewall",
+		"#DC2626",
+		"gateway",
+		"A firewall appliance in your rack: allows or denies each connection, inspects what it allows.",
+		"appliance"
+	],
+	[
+		"paloalto.ngfw",
+		"Palo Alto NGFW",
+		"Palo Alto Networks",
+		"net-firewall",
+		"#FA582D",
+		"gateway",
+		"PA-Series next-generation firewalls (PA-440 branch to PA-5440 data centre).",
+		"PA-Series"
+	],
+	[
+		"fortinet.fortigate",
+		"FortiGate",
+		"Fortinet",
+		"net-firewall",
+		"#EE3124",
+		"gateway",
+		"Next-generation firewalls with SD-WAN built in (FortiGate 70G to 3700F).",
+		"NGFW"
+	],
+	[
+		"cisco.secure-firewall",
+		"Cisco Secure Firewall",
+		"Cisco",
+		"net-firewall",
+		CISCO,
+		"gateway",
+		"Firepower Threat Defense and ASA firewalls (Secure Firewall 1200, 3100 and 4200 series).",
+		"Firepower"
+	],
+	[
+		"checkpoint.quantum",
+		"Check Point Quantum",
+		"Check Point",
+		"net-firewall",
+		"#E5007E",
+		"gateway",
+		"Quantum Force security gateways (3920 branch to 19100 data centre).",
+		"security gateway"
+	],
+	[
+		"juniper.srx",
+		"Juniper SRX",
+		"Juniper",
+		"net-firewall",
+		JUNIPER,
+		"gateway",
+		"SRX firewalls and secure routers (SRX345 branch to SRX4600 data centre).",
+		"firewall"
+	],
+	[
+		"generic.adc",
+		"ADC",
+		"Generic",
+		"net-adc",
+		"#0EA5E9",
+		"gateway",
+		"Application delivery controller: a hardware or virtual load balancer that health-checks its targets.",
+		"load balancer"
+	],
+	[
+		"f5.bigip",
+		"F5 BIG-IP",
+		"F5",
+		"net-adc",
+		"#E4002B",
+		"gateway",
+		"BIG-IP Local Traffic Manager on rSeries (r2600 to r10900), VELOS or virtual editions.",
+		"LTM"
+	],
+	[
+		"netscaler.adc",
+		"NetScaler ADC",
+		"NetScaler",
+		"net-adc",
+		"#2F6FDE",
+		"gateway",
+		"NetScaler (formerly Citrix ADC) on MPX, SDX or VPX (MPX 9210 to 17000Z).",
+		"load balancer"
+	]
+]);
+var observability = group("observability", [
+	[
+		"grafana",
+		"Grafana",
+		"Grafana Labs",
+		"grafana",
+		"#F46800",
+		"sink",
+		"Dashboards and alerting over metrics, logs and traces.",
+		"dashboards"
+	],
+	[
+		"prometheus",
+		"Prometheus",
+		"Prometheus",
+		"prometheus",
+		"#E6522C",
+		"sink",
+		"Pull-based metrics collection and time-series database.",
+		"metrics"
+	],
+	[
+		"datadog",
+		"Datadog",
+		"Datadog",
+		"datadog",
+		"#632CA6",
+		"sink",
+		"SaaS monitoring, APM and log management.",
+		"APM"
+	],
+	[
+		"azure.app-insights",
+		"Application Insights",
+		"Azure",
+		"azure-app-insights",
+		"#8661C5",
+		"sink",
+		"APM and telemetry for apps, part of Azure Monitor.",
+		"telemetry"
+	],
+	[
+		"opentelemetry",
+		"OpenTelemetry Collector",
+		"OpenTelemetry",
+		"opentelemetry",
+		"#425CC7",
+		"processor",
+		"Vendor-neutral pipeline that receives, processes and exports telemetry.",
+		"collector"
+	],
+	[
+		"splunk",
+		"Splunk",
+		"Splunk",
+		"splunk",
+		"#ED0080",
+		"sink",
+		"Log search, SIEM and observability.",
+		"logs"
+	],
+	[
+		"loki",
+		"Loki",
+		"Grafana Labs",
+		"loki",
+		"#F2A900",
+		"sink",
+		"Grafana's log aggregation system, indexed by labels.",
+		"logs"
+	],
+	[
+		"jaeger",
+		"Jaeger",
+		"Jaeger",
+		"jaeger",
+		"#17A2C4",
+		"sink",
+		"Distributed tracing backend for following requests across services.",
+		"traces"
+	],
+	[
+		"kibana",
+		"Kibana",
+		"Elastic",
+		"kibana",
+		"#F04E98",
+		"sink",
+		"Search and dashboards over Elasticsearch logs and metrics.",
+		"dashboards"
+	],
+	[
+		"new-relic",
+		"New Relic",
+		"New Relic",
+		"new-relic",
+		"#00AC69",
+		"sink",
+		"Hosted observability: APM, logs, infrastructure and browser monitoring.",
+		"apm"
+	],
+	[
+		"sentry",
+		"Sentry",
+		"Sentry",
+		"sentry",
+		"#7553FF",
+		"sink",
+		"Error tracking and performance monitoring for apps.",
+		"errors"
+	],
+	[
+		"aws.cloudwatch",
+		"CloudWatch",
+		"AWS",
+		"aws-cloudwatch",
+		AWS_INTEGRATION,
+		"sink",
+		"AWS logs, metrics, alarms and dashboards; where Lambda writes by default.",
+		"logs · metrics"
+	]
+]);
+var security = group("security", [
+	[
+		"azure.key-vault",
+		"Key Vault",
+		"Azure",
+		"azure-key-vault",
+		"#F28C00",
+		"none",
+		"Managed secrets, keys and certificates."
+	],
+	[
+		"entra-id",
+		"Microsoft Entra ID",
+		"Microsoft",
+		"entra-id",
+		"#1490DF",
+		"none",
+		"Identity provider (formerly Azure AD): OAuth/OIDC tokens.",
+		"identity"
+	],
+	[
+		"vault",
+		"HashiCorp Vault",
+		"HashiCorp",
+		"vault",
+		"#EAB308",
+		"none",
+		"Secrets management, dynamic credentials and encryption."
+	],
+	[
+		"okta",
+		"Okta",
+		"Okta",
+		"okta",
+		"#007DC1",
+		"none",
+		"Cloud identity provider for SSO, MFA and user lifecycle.",
+		"identity"
+	],
+	[
+		"auth0",
+		"Auth0",
+		"Okta",
+		"auth0",
+		"#EB5424",
+		"none",
+		"Customer identity platform for login, social sign-in and tokens.",
+		"identity"
+	],
+	[
+		"keycloak",
+		"Keycloak",
+		"Keycloak",
+		"keycloak",
+		"#0098D4",
+		"none",
+		"Open-source identity and access management (OIDC, SAML).",
+		"identity"
+	],
+	[
+		"azure.app-config",
+		"App Configuration",
+		"Azure",
+		"azure-app-config",
+		AZURE,
+		"none",
+		"Central settings and feature flags; an entry can reference a Key Vault secret.",
+		"config store"
+	],
+	[
+		"azure.managed-identity",
+		"Managed Identity",
+		"Azure",
+		"azure-managed-identity",
+		"#1490DF",
+		"none",
+		"An Entra identity for a workload, with no stored credentials (also AKS workload identity).",
+		"workload identity"
+	],
+	[
+		"aws.secrets-manager",
+		"Secrets Manager",
+		"AWS",
+		"aws-secrets-manager",
+		AWS_SECURITY,
+		"none",
+		"Stores and rotates secrets such as database credentials and API keys.",
+		"secrets"
+	],
+	[
+		"aws.parameter-store",
+		"Parameter Store",
+		"AWS",
+		"aws-parameter-store",
+		AWS_INTEGRATION,
+		"none",
+		"Systems Manager parameters; /aws/reference/secretsmanager/ paths pass through to Secrets Manager.",
+		"parameters"
+	],
+	[
+		"aws.iam-role",
+		"IAM Role",
+		"AWS",
+		"aws-iam-role",
+		AWS_SECURITY,
+		"none",
+		"The identity a Lambda function, ECS task or pod (IRSA) runs as.",
+		"execution role"
+	],
+	[
+		"gcp.service-account",
+		"Service Account",
+		"Google Cloud",
+		"gcp-service-account",
+		GCP,
+		"none",
+		"A Google Cloud identity a workload runs as (GKE Workload Identity), granted IAM roles.",
+		"service account"
+	],
+	[
+		"gcp.secret-manager",
+		"Secret Manager",
+		"Google Cloud",
+		"gcp-secret-manager",
+		GCP,
+		"none",
+		"Google Cloud's store for API keys, passwords and certificates.",
+		"secrets"
+	],
+	[
+		"k8s.configmap",
+		"ConfigMap",
+		"Kubernetes",
+		"k8s-configmap",
+		"#326CE5",
+		"none",
+		"Non-secret settings mounted into pods as files or environment variables.",
+		"configmap"
+	],
+	[
+		"k8s.secret",
+		"Kubernetes Secret",
+		"Kubernetes",
+		"k8s-secret",
+		"#326CE5",
+		"none",
+		"Secret values mounted into pods; often synced from a vault.",
+		"secret"
+	]
+]);
+var clients = group("clients", [
+	[
+		"client.user",
+		"User",
+		"Client",
+		"client-user",
+		"#0EA5E9",
+		"source",
+		"A person using the system.",
+		"user"
+	],
+	[
+		"client.browser",
+		"Web Browser",
+		"Client",
+		"client-browser",
+		"#6366F1",
+		"source",
+		"Web front-end / SPA running in a browser.",
+		"web app"
+	],
+	[
+		"client.mobile",
+		"Mobile App",
+		"Client",
+		"client-mobile",
+		"#10B981",
+		"source",
+		"iOS / Android application.",
+		"mobile app"
+	],
+	[
+		"client.iot",
+		"IoT Device",
+		"Client",
+		"client-iot",
+		"#14B8A6",
+		"source",
+		"Sensor or edge device emitting telemetry.",
+		"device"
+	],
+	[
+		"client.team",
+		"Team",
+		"Client",
+		"client-team",
+		"#3B82F6",
+		"source",
+		"A group of users, such as operators, support staff or a customer segment.",
+		"users"
+	],
+	[
+		"generic.external-api",
+		"External API",
+		"Generic",
+		"generic-external-api",
+		"#6366F1",
+		"sink",
+		"A third-party HTTP API your system calls.",
+		"api"
+	],
+	[
+		"iterable",
+		"Iterable",
+		"Iterable",
+		"generic-marketing",
+		"#F43F5E",
+		"sink",
+		"Customer engagement API for events, user profiles and cross-channel campaigns.",
+		"engagement API"
+	],
+	[
+		"braze",
+		"Braze",
+		"Braze",
+		"generic-marketing",
+		"#F43F5E",
+		"sink",
+		"Customer engagement API for user updates, events and messaging campaigns.",
+		"engagement API"
+	],
+	[
+		"segment",
+		"Segment",
+		"Segment",
+		"generic-external-api",
+		"#6366F1",
+		"sink",
+		"Customer data API collecting events and routing them to connected destinations.",
+		"customer data API"
+	],
+	[
+		"shopify",
+		"Shopify",
+		"Shopify",
+		"generic-external-api",
+		"#6366F1",
+		"sink",
+		"Commerce API for store products, orders and customer data.",
+		"commerce API"
+	],
+	[
+		"paypal",
+		"PayPal",
+		"PayPal",
+		"generic-external-api",
+		"#6366F1",
+		"sink",
+		"Payments API for checkout, payment capture and refunds.",
+		"payments API"
+	],
+	[
+		"adyen",
+		"Adyen",
+		"Adyen",
+		"generic-external-api",
+		"#6366F1",
+		"sink",
+		"Payments API for authorisation, capture and refunds across payment methods.",
+		"payments API"
+	],
+	[
+		"client.partner",
+		"Partner System",
+		"Client",
+		"client-partner",
+		"#F97316",
+		"sink",
+		"External system or third-party API.",
+		"external"
+	],
+	[
+		"stripe",
+		"Stripe",
+		"Stripe",
+		"stripe",
+		"#635BFF",
+		"sink",
+		"Payments API: charges, subscriptions and payouts.",
+		"payments"
+	],
+	[
+		"twilio",
+		"Twilio",
+		"Twilio",
+		"twilio",
+		"#F22F46",
+		"sink",
+		"Communications API for SMS, voice and WhatsApp.",
+		"sms"
+	],
+	[
+		"sendgrid",
+		"SendGrid",
+		"Twilio",
+		"sendgrid",
+		"#1A82E2",
+		"sink",
+		"Transactional and marketing email delivery API.",
+		"email"
+	],
+	[
+		"salesforce",
+		"Salesforce",
+		"Salesforce",
+		"salesforce",
+		"#00A1E0",
+		"sink",
+		"CRM platform receiving leads, accounts and events.",
+		"crm"
+	],
+	[
+		"hubspot",
+		"HubSpot",
+		"HubSpot",
+		"hubspot",
+		"#FF7A59",
+		"sink",
+		"Marketing and CRM platform for contacts and campaigns.",
+		"crm"
+	],
+	[
+		"slack",
+		"Slack",
+		"Slack",
+		"slack",
+		"#E01E5A",
+		"sink",
+		"Team chat receiving alerts and notifications via webhooks or bots.",
+		"notifications"
+	],
+	[
+		"github",
+		"GitHub",
+		"GitHub",
+		"github",
+		"#8250DF",
+		"source",
+		"Code hosting that emits webhooks on pushes, PRs and releases.",
+		"webhooks"
+	],
+	[
+		"openai",
+		"OpenAI API",
+		"OpenAI",
+		"openai",
+		"#10A37F",
+		"processor",
+		"Hosted LLM API for chat, embeddings and tool calling.",
+		"llm"
+	],
+	[
+		"anthropic.claude",
+		"Claude API",
+		"Anthropic",
+		"claude",
+		"#D97757",
+		"processor",
+		"Anthropic's hosted Claude models for chat, tool use and agents.",
+		"llm"
+	],
+	[
+		"generic.email",
+		"Email",
+		"Generic",
+		"generic-email",
+		"#EF4444",
+		"sink",
+		"Outbound email / notification delivery.",
+		"email"
+	],
+	[
+		"generic.sms",
+		"SMS",
+		"Generic",
+		"generic-sms",
+		"#22C55E",
+		"sink",
+		"Text message delivered to a phone number.",
+		"sms"
+	],
+	[
+		"generic.push",
+		"Mobile Push",
+		"Generic",
+		"generic-push",
+		"#F97316",
+		"sink",
+		"Push notification to phones (APNs, FCM).",
+		"push"
+	],
+	[
+		"generic.marketing",
+		"Marketing Automation",
+		"Generic",
+		"generic-marketing",
+		"#F43F5E",
+		"sink",
+		"Campaigns and journeys driven by customer data (Braze, Customer.io, Iterable).",
+		"campaigns"
+	],
+	[
+		"generic.webhook",
+		"Webhook",
+		"Generic",
+		"generic-webhook",
+		"#EC4899",
+		"source",
+		"Inbound HTTP callback from another system.",
+		"webhook"
+	],
+	[
+		"generic.llm",
+		"LLM API",
+		"Generic",
+		"generic-llm",
+		"#8B5CF6",
+		"processor",
+		"Any hosted or self-hosted large language model endpoint.",
+		"llm"
+	]
+]);
+var generic = group("generic", [
+	[
+		"generic.service",
+		"Service",
+		"Generic",
+		"generic-service",
+		"#6366F1",
+		"processor",
+		"A generic microservice.",
+		"service"
+	],
+	[
+		"generic.database",
+		"Database",
+		"Generic",
+		"generic-database",
+		"#0D9488",
+		"store",
+		"A generic database.",
+		"database"
+	],
+	[
+		"generic.queue",
+		"Queue",
+		"Generic",
+		"generic-queue",
+		"#F59E0B",
+		"queue",
+		"Point-to-point queue: each message goes to one consumer.",
+		"queue"
+	],
+	[
+		"generic.topic",
+		"Topic",
+		"Generic",
+		"generic-topic",
+		"#8B5CF6",
+		"topic",
+		"Pub/sub topic: every subscriber gets a copy.",
+		"topic"
+	],
+	[
+		"generic.scheduler",
+		"Scheduler",
+		"Generic",
+		"generic-scheduler",
+		"#64748B",
+		"source",
+		"Cron / timer that triggers work on a schedule.",
+		"cron"
+	],
+	[
+		"github-actions",
+		"GitHub Actions",
+		"GitHub",
+		"github-actions",
+		"#2088FF",
+		"source",
+		"CI/CD workflows that build, test and deploy.",
+		"workflow"
+	],
+	[
+		"generic.batch-job",
+		"Batch Job",
+		"Generic",
+		"generic-batch-job",
+		"#A855F7",
+		"processor",
+		"Processes a bounded set of records in one run, often on a schedule.",
+		"batch"
+	],
+	[
+		"generic.file",
+		"File / Blob",
+		"Generic",
+		"generic-file",
+		"#14B8A6",
+		"store",
+		"A file share, blob or object stored by key.",
+		"files"
+	],
+	[
+		"generic.warehouse",
+		"Data Warehouse",
+		"Generic",
+		"generic-warehouse",
+		"#0891B2",
+		"store",
+		"Analytical store for reporting and BI.",
+		"warehouse"
+	],
+	[
+		"generic.cache",
+		"Cache",
+		"Generic",
+		"generic-cache",
+		"#F43F5E",
+		"store",
+		"Fast in-memory copy of hot data.",
+		"cache"
+	],
+	[
+		"generic.search-index",
+		"Search Index",
+		"Generic",
+		"generic-search-index",
+		"#EAB308",
+		"store",
+		"Full-text index for search queries.",
+		"index"
+	],
+	[
+		"generic.vector-db",
+		"Vector DB",
+		"Generic",
+		"generic-vector-db",
+		"#7C3AED",
+		"store",
+		"Stores embeddings for similarity search (pgvector, Weaviate, Qdrant).",
+		"vectors"
+	],
+	[
+		"generic.ml-model",
+		"ML Model",
+		"Generic",
+		"generic-ml-model",
+		"#D946EF",
+		"processor",
+		"A trained model served for inference.",
+		"inference"
+	],
+	[
+		"terraform",
+		"Terraform",
+		"HashiCorp",
+		"terraform",
+		"#7B42BC",
+		"source",
+		"Infrastructure as code that provisions cloud resources.",
+		"iac"
+	],
+	[
+		"argocd",
+		"Argo CD",
+		"Argo",
+		"argo",
+		"#EF7B4D",
+		"source",
+		"GitOps controller that syncs Kubernetes clusters from Git.",
+		"gitops"
+	],
+	[
+		"generic.config-store",
+		"Config Store",
+		"Generic",
+		"generic-config-store",
+		"#0D9488",
+		"none",
+		"Any central configuration service or feature-flag store.",
+		"config"
+	],
+	[
+		"generic.secret-store",
+		"Secret Store",
+		"Generic",
+		"generic-secret-store",
+		"#B45309",
+		"none",
+		"Any secrets manager or vault.",
+		"secrets"
+	],
+	[
+		"generic.identity-provider",
+		"Identity Provider",
+		"Generic",
+		"generic-identity-provider",
+		"#4F46E5",
+		"none",
+		"Issues OAuth 2.0 / OIDC tokens to users and workloads.",
+		"IdP"
+	]
+]);
+var patternsData = group("data", [
+	[
+		"dbt",
+		"dbt",
+		"dbt Labs",
+		"dbt",
+		"#FF694A",
+		"processor",
+		"SQL transformations that build tested models (staging, marts) inside the warehouse.",
+		"models"
+	],
+	[
+		"airbyte",
+		"Airbyte",
+		"Airbyte",
+		"airbyte",
+		"#615EFF",
+		"processor",
+		"Open-source ELT connectors that copy SaaS and database tables into a warehouse.",
+		"ELT"
+	],
+	[
+		"snowflake.snowpipe",
+		"Snowpipe Streaming",
+		"Snowflake",
+		"snowflake",
+		"#29B5E8",
+		"processor",
+		"Loads rows into Snowflake tables continuously, e.g. from the Snowflake Kafka connector.",
+		"loader"
+	],
+	[
+		"generic.reverse-etl",
+		"Reverse ETL",
+		"Generic",
+		"generic-reverse-etl",
+		"#14B8A6",
+		"processor",
+		"Syncs warehouse tables back to operational tools and topics (Hightouch, Census).",
+		"sync"
+	],
+	[
+		"gcp.cloud-storage",
+		"Cloud Storage",
+		"Google Cloud",
+		"gcp-cloud-storage",
+		GCP,
+		"store",
+		"Object storage buckets on Google Cloud.",
+		"bucket"
+	],
+	[
+		"looker",
+		"Looker",
+		"Google Cloud",
+		"looker",
+		GCP,
+		"sink",
+		"BI dashboards and a semantic model.",
+		"BI"
+	],
+	[
+		"tableau",
+		"Tableau",
+		"Tableau",
+		"tableau",
+		"#E97627",
+		"sink",
+		"BI dashboards and visual analytics.",
+		"BI"
+	]
+]);
+var patternsNetwork = group("network", [
+	[
+		"aws.route53",
+		"Route 53",
+		"AWS",
+		"aws-route53",
+		AWS_ANALYTICS_NET,
+		"gateway",
+		"DNS with health checks and latency, weighted or failover routing across regions.",
+		"DNS"
+	],
+	[
+		"azure.traffic-manager",
+		"Traffic Manager",
+		"Azure",
+		"azure-traffic-manager",
+		AZURE,
+		"gateway",
+		"DNS-based global traffic routing with endpoint health checks.",
+		"global routing"
+	],
+	[
+		"gcp.cloud-load-balancing",
+		"Cloud Load Balancing",
+		"Google Cloud",
+		"gcp-cloud-load-balancing",
+		GCP,
+		"gateway",
+		"Global anycast load balancer in front of regional backends.",
+		"global LB"
+	]
+]);
+var patternsGeneric = group("generic", [
+	[
+		"generic.event-store",
+		"Event Store",
+		"Generic",
+		"generic-event-store",
+		"#0891B2",
+		"stream",
+		"Append-only log of domain events per aggregate; projections subscribe and catch up.",
+		"event store"
+	],
+	[
+		"generic.projection",
+		"Projection",
+		"Generic",
+		"generic-projection",
+		"#2563EB",
+		"processor",
+		"Builds a read model from events. Rebuild it any time by replaying the log.",
+		"projection"
+	],
+	[
+		"generic.saga",
+		"Saga Orchestrator",
+		"Generic",
+		"generic-saga",
+		"#EA580C",
+		"processor",
+		"Coordinates a multi-step transaction and runs compensating steps when one fails.",
+		"saga"
+	],
+	[
+		"generic.rate-limiter",
+		"Rate Limiter",
+		"Generic",
+		"generic-rate-limiter",
+		"#CA8A04",
+		"processor",
+		"Caps throughput (token bucket); work over the limit waits its turn.",
+		"rate limit"
+	]
+]);
+var catalog = [
+	...messaging,
+	...compute,
+	...data,
+	...network,
+	...onprem,
+	...observability,
+	...security,
+	...clients,
+	...generic,
+	...patternsData,
+	...patternsNetwork,
+	...patternsGeneric
+];
+//#endregion
+//#region src/stencils/roles.ts
+var roles = new Map(catalog.map((stencil) => [stencil.id, stencil.simRole]));
+function stencilRole(id) {
+	return roles.get(id) ?? "processor";
+}
+//#endregion
+//#region src/model/kedaBindings.ts
+function triggerFits(t, stencil) {
+	return t === "kafka" ? [
+		"kafka.topic",
+		"aws.msk",
+		"confluent.cloud"
+	].includes(stencil) : t === "aws-sqs-queue" ? stencil === "aws.sqs" : t === "rabbitmq" ? stencil === "rabbitmq.queue" : ["azure.service-bus.queue", "azure.service-bus.topic"].includes(stencil);
+}
+/** Compile once per graph change. Per-candidate work is bounded by its sixteen bindings. */
+function bindingValidator(nodes, edges) {
+	const byId = new Map(nodes.map((n) => [n.id, n]));
+	const groups = /* @__PURE__ */ new Map();
+	for (const e of edges) {
+		const source = byId.get(e.from), target = byId.get(e.to);
+		if (!source || !target || e.relation && e.relation !== "flow" || e.props?.deny || isDlqEdge(e, stencilRole(source.stencil), target, stencilRole(target.stencil))) continue;
+		const names = groups.get(e.from) ?? /* @__PURE__ */ new Set();
+		names.add(typeof e.props?.group === "string" ? e.props.group : e.id);
+		groups.set(e.from, names);
+	}
+	return (a) => a?.mode !== "on" || a.controller.kind !== "keda" || a.controller.triggers.every((t) => {
+		const source = byId.get(t.source.node);
+		if (!source || !triggerFits(t.type, source.stencil)) return false;
+		return t.type === "kafka" || source.stencil === "azure.service-bus.topic" ? !!t.source.group && !!groups.get(source.id)?.has(t.source.group) : t.source.group === void 0 || t.source.group === "queue";
+	});
+}
+//#endregion
 //#region src/model/resourceValidation.ts
 /** Persisted-resource rules shared by native reads and editor transactions. Cache only immutable editor inputs. */
-function createResourceValidator() {
+function createResourceValidator({ fragment = false } = {}) {
 	let previous = /* @__PURE__ */ new Map();
 	let simulations;
 	let revision;
 	let initialized = false;
+	let savedBindings = [];
 	return (candidate) => {
+		let bindings;
+		const checkBindings = (a) => {
+			const config = a;
+			if (fragment || config?.mode !== "on" || config.controller.kind !== "keda") return true;
+			bindings ??= bindingValidator(candidate.nodes.map((n) => ({
+				id: n.id,
+				stencil: n.stencil ?? "",
+				label: n.label ?? "",
+				sublabel: n.sublabel
+			})), candidate.edges ?? []);
+			return bindings(config);
+		};
 		const next = /* @__PURE__ */ new Map();
 		let budgetChanged = !initialized || simulations !== candidate.simulations || revision !== candidate.planning?.revision;
 		const check = (props) => {
 			if (candidate.planning?.revision !== "p3-a1" && (props?.resources !== void 0 || props?.autoscaling !== void 0)) return t`Resources and HPA require the p3-a1 model. Preview the model upgrade first.`;
 			try {
 				checkAutoscaling(props?.resources, props?.autoscaling);
+				if (!checkBindings(props?.autoscaling)) return t`This edit would break a scaling source. Change or disable the affected node or saved-simulation policy first.`;
 			} catch {
 				return t`HPA needs valid resource requests and a compatible workload. Review Advanced settings.`;
 			}
@@ -287,19 +2640,25 @@ function createResourceValidator() {
 				const error = check(node.props);
 				if (error) return error;
 				budgetChanged = true;
-			}
+			} else if (!checkBindings(node.props?.autoscaling)) return t`This edit would break a scaling source. Change or disable the affected node or saved-simulation policy first.`;
 			if (old?.replicas !== entry.replicas) budgetChanged = true;
 			next.set(node.id, entry);
 		}
-		if (!initialized || simulations !== candidate.simulations || revision !== candidate.planning?.revision) for (const sim of candidate.simulations ?? []) {
+		const changedPatches = !initialized || simulations !== candidate.simulations || revision !== candidate.planning?.revision;
+		const nextBindings = [];
+		if (changedPatches) for (const sim of candidate.simulations ?? []) {
 			const patches = [...Object.values(sim.setup?.props ?? {}), ...(sim.timeline ?? []).flatMap((step) => step.action.do === "props" ? [step.action.props] : [])];
 			for (const patch of patches) {
 				const error = check(patch);
 				if (error) return error;
+				const a = patch.autoscaling;
+				if (a?.mode === "on" && a.controller.kind === "keda") nextBindings.push(a);
 			}
 		}
+		else for (const a of savedBindings) if (!checkBindings(a)) return t`This edit would break a scaling source. Change or disable the affected node or saved-simulation policy first.`;
 		budgetChanged ||= next.size !== previous.size;
-		if (budgetChanged && resourceBudgetExceeded(candidate)) return t(193, (v) => "Resource lifecycle budget exceeded: " + v.limit.toLocaleString("en") + ". Reduce configured fleets or Capacity ×.", { limit: MAX_LIFECYCLE_REPLICAS });
+		if (budgetChanged && resourceBudgetExceeded(candidate)) return t(197, (v) => "Resource lifecycle budget exceeded: " + v.limit.toLocaleString("en") + ". Reduce configured fleets or Capacity ×.", { limit: MAX_LIFECYCLE_REPLICAS });
+		if (changedPatches) savedBindings = nextBindings;
 		previous = next;
 		simulations = candidate.simulations;
 		revision = candidate.planning?.revision;
@@ -1179,13 +3538,13 @@ function validateDiagram(data) {
 			const props = isObj$1(sim.setup) && isObj$1(sim.setup.props) ? sim.setup.props : {};
 			for (const [id, value] of Object.entries(props)) if (unsupportedPreset(value)) return {
 				ok: false,
-				error: t(1173, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
+				error: t(1195, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
 			};
 			if (Array.isArray(sim.timeline)) for (const step of sim.timeline) {
 				const action = isObj$1(step) && isObj$1(step.action) ? step.action : void 0;
 				if (action?.do === "props" && unsupportedPreset(action.props)) return {
 					ok: false,
-					error: t(1173, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
+					error: t(1195, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
 				};
 			}
 		}
@@ -1288,7 +3647,7 @@ function validateDiagram(data) {
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
 		if (unsupportedPreset(out.props)) return {
 			ok: false,
-			error: t(1173, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
+			error: t(1195, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
 		};
 		const problem = out.props === void 0 ? void 0 : propsProblem(out.props);
 		if (problem) return {
@@ -1388,7 +3747,7 @@ function validateDiagram(data) {
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
 		if (invalidPlanningDelay(out.props)) return {
 			ok: false,
-			error: t(1118, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
+			error: t(1140, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
 				id: e.id,
 				limit: SIM_LIMITS.timeMs
 			})

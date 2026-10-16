@@ -1,0 +1,68 @@
+{
+  "run": {
+    "time": 10000,
+    "totalMs": 10000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [],
+    "markers": [{ "atMs": 1000, "kind": "traffic", "label": "burst" }]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "replicas": [1, 1, 0] },
+        "uploads": { "lag": { "renders": 0 }, "replicas": [1, 1, 0] },
+        "worker": { "replicas": [0, 0, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 0,
+      "nodes": {
+        "source": { "processed": 80, "throughput": 0.009922313207164997, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 80,
+          "throughput": 0.009922313207164997,
+          "lag": { "renders": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "worker": { "processed": 80, "throughput": 0.4131746217207187, "replicas": [0, 0, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 10000,
+    "inSystem": 0,
+    "real": {
+      "source": { "processed": 80, "throughput": 0.009922313207164997, "replicas": [1, 1, 0] },
+      "uploads": {
+        "processed": 80,
+        "throughput": 0.009922313207164997,
+        "lag": { "renders": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "worker": { "processed": 80, "throughput": 0.4131746217207187, "replicas": [0, 0, 0] }
+    },
+    "edges": { "publish": 80, "consume": 80 }
+  },
+  "events": {
+    "total": 480,
+    "byKind": { "inject": 80, "process": 240, "deliver": 160 },
+    "byNode": {
+      "source": { "inject": 80, "process": 80 },
+      "uploads": { "deliver": 80, "process": 80 },
+      "worker": { "deliver": 80, "process": 80 }
+    },
+    "perSecond": ["-", "7f8b183cdb4e", "-", "f7314d821e69", "97ec7e80b102", "fc35a23ea9eb", "-", "-", "-", "-", "-"]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 80, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 80, "min": 2260, "mean": 3579.5, "p50": 3750, "p90": 4290, "max": 4510 },
+    "waitMs": { "worker": { "count": 80, "min": 0, "mean": 50.25, "p50": 0, "p90": 220, "max": 250 } },
+    "processMs": { "worker": { "count": 80, "min": 250, "mean": 250, "p50": 250, "p90": 250, "max": 250 } }
+  }
+}
