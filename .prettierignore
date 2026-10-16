@@ -20,3 +20,5 @@ deploy/self-host/github-pages/meta-csp.html
 deploy/self-host/helm/templates
 # Parity goldens are compared byte for byte; their printer (tests/parity/lib/stable.ts) formats them.
 tests/parity/goldens
+# Written by `pnpm bench` (docs/BENCHMARKS.md § Baseline)
+tests/bench/baseline

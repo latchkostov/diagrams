@@ -181,6 +181,8 @@ Every conversion is checked by a deliberate regression (make it quadratic, remov
 catch. An e2e test that clicks must wait for the layout it clicks into (a panel opening, a pan, a lazily loaded
 menu), not for time. A page opened in live view (`live=1`, `sim=`) waits for its live session with `gotoLive()`: the
 session's code loads on first use, after the canvas's, and takes seconds on a busy dev server (nightly #78).
+Measuring performance itself (workloads to 5,000 nodes, timings as trends, gates for ratios, counts and bundle sizes, a
+committed baseline and the ranked hotspots) is the benchmark suite's job: `pnpm bench`, `pnpm bench:gates`, docs/BENCHMARKS.md.
 
 ## Accessibility
 
