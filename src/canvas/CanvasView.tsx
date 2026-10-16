@@ -582,12 +582,22 @@ function CanvasInner({
     [afterMeasured, fitView_, flushSave, modified],
   );
   const nodesInitialized = useNodesInitialized();
-  const paneSize = useStore((s) => `${s.width}:${s.height}`);
   useLayoutEffect(() => {
     // React Flow's initial measurements and document commands can commit after the
     // request. Apply their known geometry before paint, without waiting for fonts.
     earlyFit.current?.();
-  }, [nodes, edges, nodesInitialized, paneSize]);
+  }, [nodes, edges, nodesInitialized]);
+  useLayoutEffect(() => {
+    // Controlled nodes/edges enter React Flow in its passive StoreUpdater effect,
+    // after our layout effect. Fit that commit before its new positions paint too.
+    // Pane-only changes are deliberately excluded: they are not document commits.
+    let previous = store.getState();
+    return store.subscribe((state) => {
+      const changed = state.nodes !== previous.nodes || state.edges !== previous.edges;
+      previous = state;
+      if (changed) earlyFit.current?.();
+    });
+  }, [store]);
   const fit = useCallback(() => overlayFit({ maxZoom: 1.25, duration: 300 }, true), [overlayFit]);
   // Privacy: the diagram's provenance (Private switch, local-only example), re-read when the library changes.
   const privacyFlags = usePrivacyFlags(slug);
@@ -2350,6 +2360,9 @@ function CanvasInner({
           tabIndex={-1}
           ref={wrapper}
           style={diagramColor ? ({ "--diagram-color": diagramColor } as CSSProperties) : undefined}
+          onFocusCapture={(e) => {
+            if (e.target instanceof Element && e.target.closest('[data-testid^="rf__node-"]')) interruptFit();
+          }}
           onPointerDownCapture={(e) => {
             // Shift+drag on empty canvas adds the box's pick to the selection, as Shift+click adds a node.
             const onPane = e.target instanceof Element && e.target.classList.contains("react-flow__pane");
@@ -2362,6 +2375,22 @@ function CanvasInner({
           }}
           onPointerMove={(e) => {
             pointer.current = { x: e.clientX, y: e.clientY };
+            const target =
+              e.target instanceof Element ? e.target.closest<HTMLElement>('[data-testid^="rf__node-"]') : null;
+            if (earlyFit.current && target) {
+              // Hover is input too: keep the target still and arm its tooltip after
+              // stopping the fit (whose move-start dismisses the previous tooltip).
+              interruptFit();
+              const id = target.dataset.testid?.slice("rf__node-".length);
+              const node = id ? getNode(id) : undefined;
+              if (node?.type === "diagram" && !editing)
+                showTip(target, {
+                  nodeId: node.id,
+                  label: node.data.label || node.id,
+                  sublabel: node.data.sublabel,
+                  stencil: node.data.stencil,
+                });
+            }
             // Ctrl/Cmd during a box selection: only what's wholly inside.
             contain.current = e.ctrlKey || e.metaKey;
           }}

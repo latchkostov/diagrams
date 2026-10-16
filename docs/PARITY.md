@@ -23,6 +23,8 @@ fit; committed nodes and panel geometry also fit before paint. A refinement stil
 existing measured routes, fonts and chrome, preserving the settled goldens. Captured input
 cancels the waiting refinement before dispatch, and stops an active fit transition at its
 current viewport. Readiness subscribers for ordered document commands remain independent.
+Controlled geometry also receives its early fit when React Flow's passive StoreUpdater commits
+the nodes/edges, rather than fitting the previous store snapshot in the parent's layout effect.
 
 The production regressions hold only font readiness promises, preserving real font metrics.
 They inspect the first visible frame, press a node while the final fit is held and compare its
@@ -30,6 +32,26 @@ screen box/viewport across release, and open the inspector before releasing the 
 checks cover the usable intermediate view as well as the final settled drawing. Waiting for
 the full gate before permitting interactions was rejected because it preserves the opening
 UX regression. No assertions are relaxed and no golden is re-recorded for this correction.
+
+Reverting the app correction fails all three held-font checks: the first visible drawing is
+clipped, a node press leaves the refinement pending, and opening the inspector covers content.
+Hover/focus regressions keep tooltips across release; the Auto-layout regression holds only
+the post-commit font refinement in the existing Edge kinds Lab preset, whose cards never resize.
+Without the store-commit fit it changes from `scale(0.838355)` to `scale(1.16667)` on release.
+The Lab regression holds ResizeObserver delivery for the existing measured hierarchy and checks
+that its render metric appears only after descendants measure, despite zero-area boundaries.
+Reverting the complete app correction fails all seven of these checks. Removing the early
+keyboard-zoom ownership guard independently fails the eighth regression.
+The first full shard also caught an over-broad pane-size subscription: it kept early-fitting
+an arbitrary resize while refinement was pending. Limiting early fits to committed geometry
+restores the existing fullscreen regression; all 37 fit/fullscreen checks then pass unchanged.
+The subsequent complete shard/repeat sweep isolated the tooltip and empty-boundary Lab failures;
+both are fixed in the app. No pre-existing assertion or timeout is changed. The expanded focused
+production run passes 73 tests across fits, fullscreen, first run and the complete Lab sweep.
+
+UX review: the first drawing is usable, a press keeps its target still, and a newly opened panel
+leaves content clear. No control or placeholder is added. User pan/zoom ownership, lazy Checks
+mounts, ordered Auto-layout, Undo cancellation and idle observer cleanup retain their checks.
 
 ## Final P2 review follow-up (2026-10-15)
 

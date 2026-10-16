@@ -1,4 +1,4 @@
-import { test, expect, savedDiagram, pauseClock } from "./fixtures";
+import { test, expect, savedDiagram, pauseClock, gotoLab, waitForStableBox } from "./fixtures";
 import { checksChrome, command, readCanvas, settledCanvas } from "../parity/browser/canvas";
 import type { Drawn } from "../parity/browser/canvas";
 import layout from "../parity/goldens/browser/layout/aws-fanout.json" with { type: "json" };
@@ -64,6 +64,12 @@ test("pressing a node cancels a pending refinement without moving its screen box
   const node = page.getByTestId("node-client");
   await expect(node).toBeVisible();
   await expect(canvas).toHaveAttribute("data-fit-pending", "true");
+  await node.hover();
+  // Hover already owns the opening view. Request another fit with the pointer
+  // stationary on the card, so only the subsequent press can cancel this one.
+  await page.keyboard.press("Shift+Digit1");
+  await waitForStableBox(node);
+  await expect(canvas).toHaveAttribute("data-fit-pending", "true");
   // Make the eventual chrome refinement observably different from the early fit.
   await page.getByTestId("diagram-card").evaluate((el) => {
     const row = document.createElement("div");
@@ -74,7 +80,6 @@ test("pressing a node cancels a pending refinement without moving its screen box
   const before = await node.boundingBox();
   if (!before) throw new Error("Expected the client card");
   const view = (await readCanvas(page)).viewport;
-  await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
   await page.mouse.down();
   await expect(canvas).toHaveAttribute("data-fit-pending", "false");
   await page.evaluate(() => window.dispatchEvent(new Event("release-fit-fonts")));
@@ -85,9 +90,26 @@ test("pressing a node cancels a pending refinement without moving its screen box
   expect((await readCanvas(page)).viewport).toBe(view);
   expect(await node.boundingBox()).toEqual(before);
   await page.mouse.up();
+  await expect(page.getByTestId("rf__node-client")).toHaveClass(/\bselected\b/);
   expect((await settledCanvas(page)).viewport).toBe(view);
   expect(await node.boundingBox()).toEqual(before);
 });
+
+for (const interaction of ["hovering", "focusing"]) {
+  test(`${interaction} a node cancels a pending refinement and keeps its tooltip`, async ({ page }) => {
+    await page.addInitScript(holdFitFonts);
+    await page.goto("./?view=canvas&example=kafka-order-pipeline");
+    const canvas = page.getByTestId("canvas-wrap");
+    await expect(canvas).toHaveAttribute("data-fit-pending", "true");
+    if (interaction === "hovering") await page.getByTestId("node-shopper").hover();
+    else await page.getByTestId("rf__node-shopper").focus();
+    await expect(canvas).toHaveAttribute("data-fit-pending", "false");
+    const before = (await readCanvas(page)).viewport;
+    await page.evaluate(() => window.dispatchEvent(new Event("release-fit-fonts")));
+    await expect(page.getByTestId("node-tooltip")).toBeVisible();
+    expect((await settledCanvas(page)).viewport).toBe(before);
+  });
+}
 
 test("opening a panel fits immediately while a refinement is pending", async ({ page }) => {
   await page.addInitScript(holdFitFonts);
@@ -124,6 +146,41 @@ test("a keyboard zoom during opening owns the view before the first refinement",
   const before = (await settledCanvas(page)).viewport;
   await page.getByTestId("inspector-toggle").click();
   expect((await settledCanvas(page)).viewport).toBe(before);
+});
+
+test("Auto-layout fits its committed positions before the next font refinement", async ({ page }) => {
+  await page.addInitScript(() => {
+    const load = document.fonts.load.bind(document.fonts);
+    let armed = false;
+    let original = "";
+    const position = () => document.querySelector<HTMLElement>('[data-testid="rf__node-async-b"]')?.style.transform;
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    document.fonts.load = async (...args) => {
+      const fonts = await load(...args);
+      if (armed && position() !== original) await held;
+      return fonts;
+    };
+    window.addEventListener("hold-layout-refinement", () => {
+      original = position() ?? "";
+      armed = true;
+    });
+    window.addEventListener("release-layout-refinement", release);
+  });
+  await gotoLab(page, "edges-kinds");
+  await page.getByTestId("lab-open-editor").click();
+  await settledCanvas(page);
+  const node = page.getByTestId("rf__node-async-b");
+  const before = await node.evaluate((el) => el.style.transform);
+  await page.evaluate(() => window.dispatchEvent(new Event("hold-layout-refinement")));
+  await command(page, "Auto-layout", "canvas.auto-layout");
+  await expect.poll(() => node.evaluate((el) => el.style.transform)).not.toBe(before);
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-fit-pending", "true");
+  // No card resizes or changes identity to mask a missed React Flow store commit.
+  await node.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  const fitted = (await readCanvas(page)).viewport;
+  await page.evaluate(() => window.dispatchEvent(new Event("release-layout-refinement")));
+  expect((await settledCanvas(page)).viewport).toBe(fitted);
 });
 
 // Pin the mutation itself before comparing fits: two identical drawings could both be

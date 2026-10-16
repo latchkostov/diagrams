@@ -65,8 +65,13 @@
   the gesture is handled, including a node press, menu, wheel or keyboard command. Active fit
   transitions stop at the current viewport too, so they cannot move a target under the pointer.
   Regressions hold font readiness to check the first visible frame, a stationary node press and
-  a panel opened during a pending refinement. Every existing parity golden must remain unchanged;
-  this fix introduces no new diagram output or golden recordings.
+  a panel opened during a pending refinement, plus keyboard zoom before the first refinement.
+  Hover and keyboard focus keep their tooltips by cancelling the pending refinement too.
+  Early fits follow React Flow's committed nodes/edges rather than every pane resize, preserving
+  fullscreen refits and fitting Auto-layout before its next font refinement.
+  The Lab accepts zero-area boundaries while waiting for every visible descendant to measure.
+  Eight regressions cover these windows and fail with their fixes temporarily reverted.
+  All 1,769 parity goldens remain unchanged: zero changed or added, with none re-recorded.
 - Final P2 follow-up: the title-card warning count waits until the opening viewport is computed
   (or the person takes control). Checks still run independently; delayed fonts, measurements and
   worker delivery produce the same opening view without a harness override or a blank warning row.
