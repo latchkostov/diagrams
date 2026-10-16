@@ -227,50 +227,34 @@ export const routeTableSchema: JsonSchema = {
     default: { type: "object", additionalProperties: false, required: ["targets"], properties: action },
   },
 };
+/** One schema for both modes (tools need flat schemas): checkTrafficMix requires each mode's own field. */
 export const trafficMixSchema: JsonSchema = {
-  oneOf: [
-    {
-      type: "object",
-      additionalProperties: false,
-      required: ["mode", "entries"],
-      properties: {
-        mode: { const: "shares" },
-        entries: {
-          type: "array",
-          minItems: 1,
-          maxItems: ROUTING_LIMITS.mixRows,
-          items: {
-            type: "object",
-            additionalProperties: false,
-            required: ["routeId", "share"],
-            properties: { routeId: id, share: { type: "number", minimum: 0, maximum: 1 } },
+  type: "object",
+  additionalProperties: false,
+  required: ["mode", "entries"],
+  properties: {
+    mode: { type: "string", enum: ["shares", "rates"] },
+    entries: {
+      type: "array",
+      minItems: 1,
+      maxItems: ROUTING_LIMITS.mixRows,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["routeId"],
+        properties: {
+          routeId: id,
+          share: { type: "number", minimum: 0, maximum: 1, description: "Shares mode: this route's fraction, 0..1." },
+          ratePerSec: {
+            type: "number",
+            minimum: 0,
+            maximum: SIM_LIMITS.ratePerSec,
+            description: "Rates mode: this route's real requests per second.",
           },
         },
       },
     },
-    {
-      type: "object",
-      additionalProperties: false,
-      required: ["mode", "entries"],
-      properties: {
-        mode: { const: "rates" },
-        entries: {
-          type: "array",
-          minItems: 1,
-          maxItems: ROUTING_LIMITS.mixRows,
-          items: {
-            type: "object",
-            additionalProperties: false,
-            required: ["routeId", "ratePerSec"],
-            properties: {
-              routeId: id,
-              ratePerSec: { type: "number", minimum: 0, maximum: SIM_LIMITS.ratePerSec },
-            },
-          },
-        },
-      },
-    },
-  ],
+  },
 };
 
 /** A request path: starts with "/", no query or fragment, no whitespace or control characters. */
@@ -360,6 +344,13 @@ export function checkRouteTable(value: unknown, where = "routeTable"): void {
 export function checkTrafficMix(value: unknown, where = "trafficMix"): void {
   checkJsonSchema(value, trafficMixSchema, where);
   const mix = value as TrafficMix;
+  const field = mix.mode === "shares" ? "share" : "ratePerSec";
+  mix.entries.forEach((entry, i) => {
+    if (typeof (entry as Record<string, unknown>)[field] !== "number")
+      throw new Error(`${where}.entries[${i}]: a ${mix.mode} mix needs ${field} on every row`);
+    if ((entry as Record<string, unknown>)[field === "share" ? "ratePerSec" : "share"] !== undefined)
+      throw new Error(`${where}.entries[${i}]: a ${mix.mode} mix takes only ${field}`);
+  });
   const ids = mix.entries.map((entry) => entry.routeId);
   if (new Set(ids).size !== ids.length) throw new Error(`${where}.entries: a route appears twice`);
   if (mix.mode === "shares") {

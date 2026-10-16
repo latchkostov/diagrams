@@ -2946,9 +2946,6 @@ function createResourceValidator({ fragment = false } = {}) {
 	};
 }
 //#endregion
-//#region src/model/types.ts
-var DIAGRAM_FORMAT = "diagrams/v1";
-//#endregion
 //#region src/model/admission.ts
 /** P3 admission uses real units. Missing budgets mean unknown, never unlimited. */
 var QUOTA_UNITS = [
@@ -2960,8 +2957,8 @@ var QUOTA_UNITS = [
 	"bytes"
 ];
 //#endregion
-//#region src/model/admissionSchema.ts
-var id = {
+//#region src/model/quotaSchema.ts
+var id$1 = {
 	type: "string",
 	minLength: 1,
 	maxLength: 200
@@ -2992,7 +2989,7 @@ var quotaSchema = {
 		"algorithm"
 	],
 	properties: {
-		id,
+		id: id$1,
 		unit: { enum: QUOTA_UNITS },
 		amount: positive,
 		windowMs: {
@@ -3005,15 +3002,510 @@ var quotaSchema = {
 			enum: ["token-bucket"]
 		},
 		burst: quantity$1,
-		sharedGroup: id
+		sharedGroup: id$1
 	}
 };
+//#endregion
+//#region src/model/simLimits.ts
+/**
+* The file format's bounds on simulation settings, which every place that edits them uses too (the inspector, the
+* Inputs panel, fixes): a rate up to 10 million messages a second (the live view samples big rates, so they cost
+* nothing to play), counts (replicas, partitions, concurrency, deliveries) up to 10,000, times up to 10 minutes.
+*/
+var SIM_LIMITS = {
+	ratePerSec: 1e7,
+	count: 1e4,
+	timeMs: 6e5
+};
+//#endregion
+//#region src/model/relations.ts
+var EDGE_RELATIONS = [
+	"flow",
+	"config",
+	"secret",
+	"identity",
+	"telemetry",
+	"deploy",
+	"depends"
+];
+EDGE_RELATIONS.filter((r) => r !== "flow");
+var isRelationOrigin = (v) => v === "inferred" || v === "explicit";
+var isEdgeRelation = (v) => typeof v === "string" && EDGE_RELATIONS.includes(v);
+/** The edge's relationship; absent or unknown reads as a flow (the safe fallback). */
+var relationOf = (e) => e && isEdgeRelation(e.relation) ? e.relation : "flow";
+var isDependency = (e) => relationOf(e) !== "flow";
+/** Only the edges that carry traffic: what the simulation, capacity analysis and trace see. */
+var flowEdges = (edges) => edges.some(isDependency) ? edges.filter((e) => !isDependency(e)) : edges;
+/** Valid `{ key, secret? }` entries (trimmed, deduplicated, bounded), or undefined when there are none. */
+function sanitizeSettings(raw) {
+	if (!Array.isArray(raw)) return void 0;
+	const out = [];
+	const seen = /* @__PURE__ */ new Set();
+	for (const item of raw) {
+		if (out.length >= 200) break;
+		if (typeof item !== "object" || item === null) continue;
+		const { key, secret } = item;
+		if (typeof key !== "string") continue;
+		if (looksLikeCredential(key)) continue;
+		const k = key.trim().slice(0, 200);
+		if (!k || seen.has(k)) continue;
+		seen.add(k);
+		out.push(secret === true ? {
+			key: k,
+			secret: true
+		} : { key: k });
+	}
+	return out.length ? out : void 0;
+}
+/** Credential-shaped text is never a setting name, including names supplied by JSON imports. */
+function looksLikeCredential(key) {
+	return /(?:^|[;:])\s*(?:Server|Data Source|AccountKey|SharedAccessKey|Password|User Id)\s*=[^;]+(?:;|$)/i.test(key) || /(?:^|[:/])(?:Bearer\s+|eyJ[\w-]+\.[\w-]+\.[\w-]+|(?:sk|ghp|github_pat|AKIA)[_-]?[\w-]{16,})/i.test(key.trim()) || /^[A-Za-z0-9+/_=-]{40,}$/.test(key.trim()) && /[A-Z]/.test(key) && /[a-z]/.test(key) && /\d/.test(key) || /:\/\/[^\s/]+:[^\s/]+@/.test(key);
+}
+//#endregion
+//#region src/model/requestRouting.ts
+/**
+* Request routing R1 (docs/research/routing.md): optional request routes (addressed traffic classes), traffic mixes
+* on sources, ordered route tables on HTTP routers and an explicit caller address on Request connections. Every field
+* is optional: a diagram without them plays exactly as before. A document opts in with `planning.requestRoutes` (an
+* array, possibly empty) on revision p3-a1; older readers refuse that key, so they never play routed traffic wrong.
+*/
+var HTTP_METHODS = [
+	"GET",
+	"POST",
+	"PUT",
+	"PATCH",
+	"DELETE",
+	"HEAD",
+	"OPTIONS",
+	"TRACE"
+];
+var ROUTE_MARKERS = [
+	"circle",
+	"square",
+	"diamond",
+	"triangle"
+];
+/** Simulator bounds (not vendor limits). Validation errors name the field and the bound. */
+var ROUTING_LIMITS = {
+	routes: 500,
+	mixRows: 64,
+	rules: 256,
+	targets: 16,
+	quotas: 8,
+	text: 200,
+	entries: 16,
+	name: 64,
+	value: 200,
+	weight: 1e4,
+	/** Across the whole document, so per-node caps can't multiply into an unbounded configuration. */
+	totalRules: 4096,
+	totalMixRows: 4096,
+	shareEpsilon: 1e-9
+};
+/** Routing is on for a p3-a1 document that declares its request routes (an empty list counts). */
+function routingEnabled(planning) {
+	return planning?.revision === "p3-a1" && Array.isArray(planning.requestRoutes);
+}
+var CONTROL = /[\u0000-\u001f\u007f]/u;
+var TOKEN = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/u;
+var HOST = /^[A-Za-z0-9](?:[A-Za-z0-9.-]{0,198}[A-Za-z0-9])?$/u;
+var PARAM = /^\{[A-Za-z_][A-Za-z0-9_]{0,63}\}$/u;
+var text = {
+	type: "string",
+	minLength: 1,
+	maxLength: ROUTING_LIMITS.text
+};
+var id = {
+	type: "string",
+	minLength: 1,
+	maxLength: ROUTING_LIMITS.text
+};
+var record = {
+	type: "object",
+	additionalProperties: {
+		type: "string",
+		maxLength: ROUTING_LIMITS.value
+	}
+};
+var methods = {
+	type: "array",
+	minItems: 1,
+	maxItems: HTTP_METHODS.length,
+	uniqueItems: true,
+	items: { enum: [...HTTP_METHODS] }
+};
+var requestAddressSchema = {
+	type: "object",
+	additionalProperties: false,
+	required: ["method", "path"],
+	properties: {
+		method: { enum: [...HTTP_METHODS] },
+		path: {
+			...text,
+			pattern: "^/"
+		},
+		host: text,
+		headers: record,
+		query: record
+	}
+};
+var requestRouteSchema = {
+	type: "object",
+	additionalProperties: false,
+	required: ["id", "address"],
+	properties: {
+		id,
+		label: {
+			type: "string",
+			maxLength: ROUTING_LIMITS.text
+		},
+		address: requestAddressSchema,
+		appearance: {
+			type: "object",
+			additionalProperties: false,
+			required: ["paletteSlot", "marker"],
+			properties: {
+				paletteSlot: {
+					type: "integer",
+					minimum: 0,
+					maximum: 6
+				},
+				marker: { enum: [...ROUTE_MARKERS] }
+			}
+		}
+	}
+};
+var requestRoutesSchema = {
+	type: "array",
+	maxItems: ROUTING_LIMITS.routes,
+	items: requestRouteSchema
+};
+var routeMatchSchema = {
+	type: "object",
+	additionalProperties: false,
+	properties: {
+		methods,
+		path: {
+			type: "object",
+			additionalProperties: false,
+			required: ["kind", "value"],
+			properties: {
+				kind: { enum: [
+					"exact",
+					"prefix",
+					"template"
+				] },
+				value: {
+					...text,
+					pattern: "^/"
+				}
+			}
+		},
+		hosts: {
+			type: "array",
+			minItems: 1,
+			maxItems: ROUTING_LIMITS.entries,
+			items: text
+		},
+		headers: record,
+		query: record
+	}
+};
+var action = {
+	targets: {
+		type: "array",
+		minItems: 1,
+		maxItems: ROUTING_LIMITS.targets,
+		items: {
+			type: "object",
+			additionalProperties: false,
+			required: ["edgeId", "weight"],
+			properties: {
+				edgeId: id,
+				weight: {
+					type: "integer",
+					minimum: 0,
+					maximum: ROUTING_LIMITS.weight
+				}
+			}
+		}
+	},
+	quotas: {
+		type: "array",
+		maxItems: ROUTING_LIMITS.quotas,
+		items: quotaSchema
+	}
+};
+var routeTableSchema = {
+	type: "object",
+	additionalProperties: false,
+	required: ["rules"],
+	properties: {
+		rules: {
+			type: "array",
+			maxItems: ROUTING_LIMITS.rules,
+			items: {
+				type: "object",
+				additionalProperties: false,
+				required: [
+					"id",
+					"match",
+					"targets"
+				],
+				properties: {
+					id,
+					label: {
+						type: "string",
+						maxLength: ROUTING_LIMITS.text
+					},
+					match: routeMatchSchema,
+					...action
+				}
+			}
+		},
+		default: {
+			type: "object",
+			additionalProperties: false,
+			required: ["targets"],
+			properties: action
+		}
+	}
+};
+/** One schema for both modes (tools need flat schemas): checkTrafficMix requires each mode's own field. */
+var trafficMixSchema = {
+	type: "object",
+	additionalProperties: false,
+	required: ["mode", "entries"],
+	properties: {
+		mode: {
+			type: "string",
+			enum: ["shares", "rates"]
+		},
+		entries: {
+			type: "array",
+			minItems: 1,
+			maxItems: ROUTING_LIMITS.mixRows,
+			items: {
+				type: "object",
+				additionalProperties: false,
+				required: ["routeId"],
+				properties: {
+					routeId: id,
+					share: {
+						type: "number",
+						minimum: 0,
+						maximum: 1,
+						description: "Shares mode: this route's fraction, 0..1."
+					},
+					ratePerSec: {
+						type: "number",
+						minimum: 0,
+						maximum: SIM_LIMITS.ratePerSec,
+						description: "Rates mode: this route's real requests per second."
+					}
+				}
+			}
+		}
+	}
+};
+/** A request path: starts with "/", no query or fragment, no whitespace or control characters. */
+function checkPath(value, where, template) {
+	if (!value.startsWith("/") || /[\s?#]/u.test(value) || CONTROL.test(value)) throw new Error(`${where}: a path starts with "/" and has no spaces, "?" or "#"`);
+	if (!/[{}]/u.test(value)) return;
+	if (!template) throw new Error(`${where}: a concrete path can't contain "{" or "}"`);
+	for (const segment of value.split("/")) if (/[{}]/u.test(segment) && !PARAM.test(segment)) throw new Error(`${where}: a template parameter is a whole segment, like /orders/{id}`);
+}
+function checkEntries(value, where, headers) {
+	if (!value) return;
+	const names = Object.keys(value);
+	if (names.length > ROUTING_LIMITS.entries) throw new Error(`${where}: at most ${ROUTING_LIMITS.entries} entries`);
+	const seen = /* @__PURE__ */ new Set();
+	for (const name of names) {
+		if (!name || name.length > ROUTING_LIMITS.name || (headers ? !TOKEN.test(name) : CONTROL.test(name))) throw new Error(`${where}: "${name.slice(0, 64)}" isn't a valid name (at most ${ROUTING_LIMITS.name} characters)`);
+		const folded = headers ? name.toLowerCase() : name;
+		if (seen.has(folded)) throw new Error(`${where}: "${name}" appears twice`);
+		seen.add(folded);
+		if (CONTROL.test(value[name])) throw new Error(`${where}.${name}: no control characters`);
+	}
+}
+function checkHost(value, where) {
+	if (!HOST.test(value)) throw new Error(`${where}: a host name without a scheme or port, like api.example.com`);
+}
+function checkAddress(address, where) {
+	checkJsonSchema(address, requestAddressSchema, where);
+	checkPath(address.path, `${where}.path`, false);
+	if (address.host !== void 0) checkHost(address.host, `${where}.host`);
+	checkEntries(address.headers, `${where}.headers`, true);
+	checkEntries(address.query, `${where}.query`, false);
+}
+function checkRouteMatch(match, where) {
+	checkJsonSchema(match, routeMatchSchema, where);
+	if (!match.methods && !match.path && !match.hosts && !Object.keys(match.headers ?? {}).length && !Object.keys(match.query ?? {}).length) throw new Error(`${where}: a rule needs at least one condition (use Default for everything else)`);
+	if (match.path) checkPath(match.path.value, `${where}.path`, match.path.kind === "template");
+	for (const host of match.hosts ?? []) checkHost(host, `${where}.hosts`);
+	if (match.hosts && new Set(match.hosts.map((h) => h.toLowerCase())).size !== match.hosts.length) throw new Error(`${where}.hosts: a host appears twice`);
+	checkEntries(match.headers, `${where}.headers`, true);
+	checkEntries(match.query, `${where}.query`, false);
+}
+function checkAction(value, where) {
+	if (!value.targets.some((target) => target.weight > 0)) throw new Error(`${where}.targets: at least one target needs a weight above 0`);
+	if (new Set(value.targets.map((target) => target.edgeId)).size !== value.targets.length) throw new Error(`${where}.targets: a connection appears twice`);
+	if (new Set((value.quotas ?? []).map((quota) => quota.id)).size !== (value.quotas ?? []).length) throw new Error(`${where}.quotas: quota ids must be unique`);
+}
+/** Shape and bounds of a node's route table, without references (checkRouting adds those). */
+function checkRouteTable(value, where = "routeTable") {
+	checkJsonSchema(value, routeTableSchema, where);
+	const table = value;
+	const ids = /* @__PURE__ */ new Set();
+	table.rules.forEach((rule, i) => {
+		const at = `${where}.rules[${i}]`;
+		if (ids.has(rule.id)) throw new Error(`${at}.id: rule ids must be unique in a table`);
+		ids.add(rule.id);
+		checkRouteMatch(rule.match, `${at}.match`);
+		checkAction(rule, at);
+	});
+	if (table.default) checkAction(table.default, `${where}.default`);
+}
+/** Shape and bounds of a source's traffic mix, without references. */
+function checkTrafficMix(value, where = "trafficMix") {
+	checkJsonSchema(value, trafficMixSchema, where);
+	const mix = value;
+	const field = mix.mode === "shares" ? "share" : "ratePerSec";
+	mix.entries.forEach((entry, i) => {
+		if (typeof entry[field] !== "number") throw new Error(`${where}.entries[${i}]: a ${mix.mode} mix needs ${field} on every row`);
+		if (entry[field === "share" ? "ratePerSec" : "share"] !== void 0) throw new Error(`${where}.entries[${i}]: a ${mix.mode} mix takes only ${field}`);
+	});
+	const ids = mix.entries.map((entry) => entry.routeId);
+	if (new Set(ids).size !== ids.length) throw new Error(`${where}.entries: a route appears twice`);
+	if (mix.mode === "shares") {
+		const sum = mix.entries.reduce((total, entry) => total + entry.share, 0);
+		if (Math.abs(sum - 1) > ROUTING_LIMITS.shareEpsilon) throw new Error(`${where}: shares add up to ${Math.round(sum * 1e6) / 1e4}%, not 100% (use Normalize)`);
+	} else {
+		const sum = mix.entries.reduce((total, entry) => total + entry.ratePerSec, 0);
+		if (sum > SIM_LIMITS.ratePerSec) throw new Error(`${where}: the rates add up to ${sum.toLocaleString("en-US")}, over the 10,000,000 limit`);
+	}
+}
+var isObject$1 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var hasNodeRouting = (props) => !!props && (props.trafficMix !== void 0 || props.routeTable !== void 0);
+var hasEdgeRouting = (props) => !!props && (props.requestRouteId !== void 0 || props.requestFilter !== void 0);
+/** The ordinary outgoing flows a route table may target, by router: dependencies, DLQ paths and shapes excluded. */
+function routeTargetEdges(diagram, roleOf, isDlq) {
+	const nodes = new Map(diagram.nodes.map((n) => [n.id, n]));
+	const out = /* @__PURE__ */ new Map();
+	for (const edge of flowEdges(diagram.edges)) {
+		const from = nodes.get(edge.from), to = nodes.get(edge.to);
+		if (!from || !to) continue;
+		if (isDlq(edge, roleOf(from.stencil), to, roleOf(to.stencil))) continue;
+		let set = out.get(edge.from);
+		if (!set) out.set(edge.from, set = /* @__PURE__ */ new Set());
+		set.add(edge.id);
+	}
+	return out;
+}
+function routingProblem(diagram, context) {
+	try {
+		checkRouting(diagram, context);
+		return;
+	} catch (error) {
+		return error instanceof Error ? error.message : String(error);
+	}
+}
+function checkRouting(diagram, context) {
+	const planning = diagram.planning;
+	const enabled = routingEnabled(planning);
+	const declared = planning?.requestRoutes;
+	if (declared !== void 0 && planning?.revision !== "p3-a1") throw new Error("planning.requestRoutes: request routing needs the current planning model (p3-a1)");
+	const anyPatch = (diagram.simulations ?? []).some((sim) => Object.values(sim.setup?.props ?? {}).some((p) => hasNodeRouting(p)) || (sim.timeline ?? []).some((step) => step.action.do === "props" && hasNodeRouting(step.action.props)));
+	const nodesRouted = diagram.nodes.some((n) => hasNodeRouting(n.props));
+	const edgesRouted = diagram.edges.some((e) => hasEdgeRouting(e.props));
+	if (!enabled) {
+		if (nodesRouted || edgesRouted || anyPatch) throw new Error("Request routing settings need the diagram's request routes (planning.requestRoutes) on the current planning model");
+		return;
+	}
+	checkJsonSchema(declared, requestRoutesSchema, "planning.requestRoutes");
+	const routes = /* @__PURE__ */ new Map();
+	declared.forEach((route, i) => {
+		if (routes.has(route.id)) throw new Error(`planning.requestRoutes[${i}].id: "${route.id}" appears twice`);
+		checkAddress(route.address, `planning.requestRoutes[${i}].address`);
+		routes.set(route.id, route);
+	});
+	const shared = new Map((planning?.sharedQuotas ?? []).map((quota) => [quota.id, quota]));
+	const targets = routeTargetEdges(diagram, context.roleOf, context.isDlq);
+	const budget = {
+		rules: 0,
+		rows: 0
+	};
+	const checkNode = (nodeId, stencil, props, where) => {
+		if (props.trafficMix !== void 0) {
+			checkTrafficMix(props.trafficMix, `${where}.trafficMix`);
+			const mix = props.trafficMix;
+			budget.rows += mix.entries.length;
+			for (const entry of mix.entries) if (!routes.has(entry.routeId)) throw new Error(`${where}.trafficMix: route "${entry.routeId}" isn't one of the diagram's request routes`);
+		}
+		if (props.routeTable !== void 0) {
+			checkRouteTable(props.routeTable, `${where}.routeTable`);
+			const table = props.routeTable;
+			budget.rules += table.rules.length;
+			const allowed = targets.get(nodeId) ?? /* @__PURE__ */ new Set();
+			const actions = [...table.rules.map((rule, i) => [rule, `${where}.routeTable.rules[${i}]`]), ...table.default ? [[table.default, `${where}.routeTable.default`]] : []];
+			for (const [act, at] of actions) {
+				for (const target of act.targets) if (!allowed.has(target.edgeId)) throw new Error(`${at}.targets: "${target.edgeId}" isn't an ordinary connection out of ${stencil ? `"${nodeId}"` : "this node"}`);
+				for (const quota of act.quotas ?? []) if (quota.sharedGroup !== void 0) {
+					const definition = shared.get(quota.sharedGroup);
+					if (!definition || !sameQuota(definition, quota)) throw new Error(`${at}.quotas: shared quota "${quota.sharedGroup}" must match a definition in planning.sharedQuotas`);
+				}
+			}
+		}
+	};
+	for (const node of diagram.nodes) if (node.props) checkNode(node.id, node.stencil, node.props, `Node "${node.id}"`);
+	const byId = new Map(diagram.nodes.map((n) => [n.id, n]));
+	for (const sim of diagram.simulations ?? []) {
+		for (const [nodeId, patch] of Object.entries(sim.setup?.props ?? {})) if (hasNodeRouting(patch)) checkNode(nodeId, byId.get(nodeId)?.stencil, patch, `Simulation "${sim.id}" setup "${nodeId}"`);
+		for (const step of sim.timeline ?? []) if (step.action.do === "props" && hasNodeRouting(step.action.props)) checkNode(step.action.node, byId.get(step.action.node)?.stencil, step.action.props, `Simulation "${sim.id}" timeline "${step.action.node}"`);
+		for (const profile of sim.traffic) {
+			const node = byId.get(profile.node);
+			const mix = sim.setup?.props?.[profile.node]?.trafficMix ?? node?.props?.trafficMix;
+			if (mix?.mode === "rates" && !mix.entries.some((entry) => entry.ratePerSec > 0)) throw new Error(`Simulation "${sim.id}" traffic "${profile.id}": the traffic mix at "${profile.node}" has no rate above 0 to split it by`);
+		}
+	}
+	if (budget.rules > ROUTING_LIMITS.totalRules) throw new Error(`The diagram has ${budget.rules} route rules; the limit is ${ROUTING_LIMITS.totalRules}`);
+	if (budget.rows > ROUTING_LIMITS.totalMixRows) throw new Error(`The diagram has ${budget.rows} traffic mix rows; the limit is ${ROUTING_LIMITS.totalMixRows}`);
+	for (const edge of diagram.edges) {
+		const props = edge.props;
+		if (!props || !hasEdgeRouting(props)) continue;
+		const where = `Connection "${edge.id}"`;
+		if (props.requestRouteId !== void 0) {
+			checkJsonSchema(props.requestRouteId, id, `${where}.requestRouteId`);
+			if (!routes.has(props.requestRouteId)) throw new Error(`${where}.requestRouteId: route "${String(props.requestRouteId)}" isn't one of the diagram's request routes`);
+		}
+		if (props.requestFilter !== void 0) {
+			if (!isObject$1(props.requestFilter)) throw new Error(`${where}.requestFilter: expected an object`);
+			checkRouteMatch(props.requestFilter, `${where}.requestFilter`);
+		}
+	}
+}
+var sameQuota = (a, b) => a.unit === b.unit && a.amount === b.amount && a.windowMs === b.windowMs && (a.burst ?? a.amount) === (b.burst ?? b.amount) && a.algorithm === b.algorithm;
+7 * ROUTE_MARKERS.length;
+//#endregion
+//#region src/model/routingValidation.ts
+/** The playback topology's view of roles and dead-letter routes, so validation and playback agree on targets. */
+var ROUTING_CONTEXT = {
+	roleOf: stencilRole,
+	isDlq: isDlqEdge
+};
+/** Request routing's one validation path (src/model/requestRouting.ts), bound to the stencil catalogue. */
+var validateRouting = (diagram) => routingProblem(diagram, ROUTING_CONTEXT);
+//#endregion
+//#region src/model/types.ts
+var DIAGRAM_FORMAT = "diagrams/v1";
+//#endregion
+//#region src/model/admissionSchema.ts
 var allocationSchema = {
 	type: "object",
 	additionalProperties: false,
 	required: ["id", "maxInFlight"],
 	properties: {
-		id,
+		id: id$1,
 		maxInFlight: quantity$1
 	}
 };
@@ -3027,7 +3519,7 @@ var apiSchema = {
 			items: quotaSchema
 		},
 		maxInFlight: quantity$1,
-		sharedConcurrency: id,
+		sharedConcurrency: id$1,
 		latencyMs: time$2,
 		errorRate: {
 			type: "number",
@@ -3057,7 +3549,7 @@ var endpointsSchema = {
 			"path"
 		],
 		properties: {
-			id,
+			id: id$1,
 			method: { enum: [
 				"GET",
 				"POST",
@@ -3143,6 +3635,7 @@ var planningSchema = {
 			"p3",
 			"p3-a1"
 		] },
+		requestRoutes: requestRoutesSchema,
 		sharedQuotas: {
 			type: "array",
 			maxItems: 128,
@@ -3163,16 +3656,6 @@ function checkApi(value) {
 }
 //#endregion
 //#region src/model/simProps.ts
-/**
-* The file format's bounds on simulation settings, which every place that edits them uses too (the inspector, the
-* Inputs panel, fixes): a rate up to 10 million messages a second (the live view samples big rates, so they cost
-* nothing to play), counts (replicas, partitions, concurrency, deliveries) up to 10,000, times up to 10 minutes.
-*/
-var SIM_LIMITS = {
-	ratePerSec: 1e7,
-	count: 1e4,
-	timeMs: 6e5
-};
 var ADMISSION_PRESET_IDS = [
 	"lambda-account",
 	"stripe-live",
@@ -3285,9 +3768,17 @@ var nodeProperties = {
 		]
 	},
 	failoverMs: time$1,
-	healthChecks: { type: "boolean" }
+	healthChecks: { type: "boolean" },
+	trafficMix: trafficMixSchema,
+	routeTable: routeTableSchema
 };
 var edgeProperties = {
+	requestRouteId: {
+		type: "string",
+		minLength: 1,
+		maxLength: 200
+	},
+	requestFilter: routeMatchSchema,
 	endpointId: {
 		type: "string",
 		minLength: 1,
@@ -3349,7 +3840,7 @@ var aiProperties = {
 Object.fromEntries(Object.entries({
 	...edgeProperties,
 	...aiProperties
-}).map(([key, schema]) => [key, "anyOf" in schema ? { anyOf: [...schema.anyOf, { type: "null" }] } : {
+}).map(([key, schema]) => [key, "anyOf" in schema ? { anyOf: [...schema.anyOf, { type: "null" }] } : "oneOf" in schema ? { anyOf: [schema, { type: "null" }] } : {
 	...schema,
 	type: [schema.type, "null"],
 	..."enum" in schema ? { enum: [...schema.enum, null] } : {}
@@ -3367,8 +3858,13 @@ function propsProblem(value) {
 		try {
 			if (key === "endpoints") checkEndpoints(field);
 			else if (key === "api") checkApi(field);
-			else checkJsonSchema(field, schema, key);
+			else if (key === "trafficMix" || key === "routeTable") {
+				if (key === "trafficMix") checkTrafficMix(field);
+				else checkRouteTable(field);
+				continue;
+			} else checkJsonSchema(field, schema, key);
 		} catch (error) {
+			if (key === "trafficMix" || key === "routeTable") return error instanceof Error ? error.message : String(error);
 			if (error instanceof Error && error.message.includes("ids must be unique")) return error.message;
 			if (typeof field === "number" && typeof schema.maximum === "number" && field > schema.maximum) return `${key} ${number(field)} is over the ${number(schema.maximum)} limit`;
 			if (typeof field === "number" && typeof schema.minimum === "number" && field < schema.minimum) return `${key} ${number(field)} is under the minimum of ${number(schema.minimum)}`;
@@ -3496,48 +3992,6 @@ function annotationGeometryReason({ x, y, width, height }) {
 	if (Math.abs(x) > ANNOTATION_LIMITS.maxCoordinate || Math.abs(y) > ANNOTATION_LIMITS.maxCoordinate) return "coordinate-budget";
 	if (width < 1 || height < 1 || width > ANNOTATION_LIMITS.maxAnnotationSize || height > ANNOTATION_LIMITS.maxAnnotationSize) return "size";
 	return null;
-}
-//#endregion
-//#region src/model/relations.ts
-var EDGE_RELATIONS = [
-	"flow",
-	"config",
-	"secret",
-	"identity",
-	"telemetry",
-	"deploy",
-	"depends"
-];
-EDGE_RELATIONS.filter((r) => r !== "flow");
-var isRelationOrigin = (v) => v === "inferred" || v === "explicit";
-var isEdgeRelation = (v) => typeof v === "string" && EDGE_RELATIONS.includes(v);
-/** The edge's relationship; absent or unknown reads as a flow (the safe fallback). */
-var relationOf = (e) => e && isEdgeRelation(e.relation) ? e.relation : "flow";
-var isDependency = (e) => relationOf(e) !== "flow";
-/** Valid `{ key, secret? }` entries (trimmed, deduplicated, bounded), or undefined when there are none. */
-function sanitizeSettings(raw) {
-	if (!Array.isArray(raw)) return void 0;
-	const out = [];
-	const seen = /* @__PURE__ */ new Set();
-	for (const item of raw) {
-		if (out.length >= 200) break;
-		if (typeof item !== "object" || item === null) continue;
-		const { key, secret } = item;
-		if (typeof key !== "string") continue;
-		if (looksLikeCredential(key)) continue;
-		const k = key.trim().slice(0, 200);
-		if (!k || seen.has(k)) continue;
-		seen.add(k);
-		out.push(secret === true ? {
-			key: k,
-			secret: true
-		} : { key: k });
-	}
-	return out.length ? out : void 0;
-}
-/** Credential-shaped text is never a setting name, including names supplied by JSON imports. */
-function looksLikeCredential(key) {
-	return /(?:^|[;:])\s*(?:Server|Data Source|AccountKey|SharedAccessKey|Password|User Id)\s*=[^;]+(?:;|$)/i.test(key) || /(?:^|[:/])(?:Bearer\s+|eyJ[\w-]+\.[\w-]+\.[\w-]+|(?:sk|ghp|github_pat|AKIA)[_-]?[\w-]{16,})/i.test(key.trim()) || /^[A-Za-z0-9+/_=-]{40,}$/.test(key.trim()) && /[A-Z]/.test(key) && /[a-z]/.test(key) && /\d/.test(key) || /:\/\/[^\s/]+:[^\s/]+@/.test(key);
 }
 //#endregion
 //#region src/model/checks.ts
@@ -3830,13 +4284,13 @@ function validateDiagram(data) {
 			const props = isObj$1(sim.setup) && isObj$1(sim.setup.props) ? sim.setup.props : {};
 			for (const [id, value] of Object.entries(props)) if (unsupportedPreset(value)) return {
 				ok: false,
-				error: t(1244, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
+				error: t(1245, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
 			};
 			if (Array.isArray(sim.timeline)) for (const step of sim.timeline) {
 				const action = isObj$1(step) && isObj$1(step.action) ? step.action : void 0;
 				if (action?.do === "props" && unsupportedPreset(action.props)) return {
 					ok: false,
-					error: t(1244, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
+					error: t(1245, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
 				};
 			}
 		}
@@ -3939,7 +4393,7 @@ function validateDiagram(data) {
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
 		if (unsupportedPreset(out.props)) return {
 			ok: false,
-			error: t(1244, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
+			error: t(1245, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
 		};
 		const problem = out.props === void 0 ? void 0 : propsProblem(out.props);
 		if (problem) return {
@@ -4039,7 +4493,7 @@ function validateDiagram(data) {
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
 		if (invalidPlanningDelay(out.props)) return {
 			ok: false,
-			error: t(1189, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
+			error: t(1190, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
 				id: e.id,
 				limit: SIM_LIMITS.timeMs
 			})
@@ -4112,6 +4566,11 @@ function validateDiagram(data) {
 	if (resourceError) return {
 		ok: false,
 		error: resourceError
+	};
+	const routingError = validateRouting(authored);
+	if (routingError) return {
+		ok: false,
+		error: routingError
 	};
 	return {
 		ok: true,

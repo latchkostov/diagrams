@@ -15,6 +15,44 @@ import { edit_diagramSchema } from "./schemas";
 import { diagramDiff } from "../model/diagramDiff";
 import { simulationReferenceWarnings } from "../interop/native";
 import type { ApplyOpsOptions, ApplyOpsResult, DiagramOp, OpResult } from "./index";
+import {
+  hasEdgeRouting,
+  hasNodeRouting,
+  nextAppearance,
+  routeTableCapable,
+  trafficMixCapable,
+  type RequestRoute,
+  type RouteTable,
+} from "../model/requestRouting";
+import { stencilRole } from "../stencils/roles";
+
+/**
+ * Request routing settings an op writes on a node: a table only on an HTTP router and a mix only on a source (a
+ * table that went dormant with a stencil change stays, but none is added there), and a table's targets named by a
+ * batch key resolve to that connection's id (stored tables never hold keys or labels).
+ */
+function routedProps(n: DiagramNode, keys: ReadonlyMap<string, string>): void {
+  const props = n.props;
+  if (!props) return;
+  const role = stencilRole(n.stencil);
+  if (props.routeTable !== undefined && !routeTableCapable(n.stencil, role))
+    throw new Error(
+      `props.routeTable needs an HTTP router (Kong, API Management, API Gateway, NGINX, Envoy and similar); ${n.stencil} doesn't route by path.`,
+    );
+  if (props.trafficMix !== undefined && !trafficMixCapable(role))
+    throw new Error("props.trafficMix belongs on a source (a client, a webhook, a producer).");
+  const table = props.routeTable as RouteTable | undefined;
+  if (!table || !Array.isArray(table.rules)) return;
+  const resolve = <A extends { targets?: { edgeId: string; weight: number }[] }>(a: A): A =>
+    Array.isArray(a.targets)
+      ? { ...a, targets: a.targets.map((t) => ({ ...t, edgeId: keys.get(t.edgeId) ?? t.edgeId })) }
+      : a;
+  props.routeTable = {
+    ...table,
+    rules: table.rules.map(resolve),
+    ...(table.default ? { default: resolve(table.default) } : {}),
+  };
+}
 
 /** Re-inferred connections listed in one op's result, and in a whole batch's: the rest are counted, not listed. */
 export const MAX_RELATIONS_PER_OP = 50;
@@ -116,6 +154,7 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
             ...(op.in ? { group: boundary(op.in) } : {}),
             ...(op.props ? { props: op.props } : {}),
           });
+          routedProps(next.nodes.at(-1)!, keys);
           fresh.push(id);
           Object.assign(result, { id, label: op.label, stencil });
           if (stencil.confidence === "low")
@@ -170,7 +209,10 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
               if (n.stencil !== before) reinferEdges(next, n.id, result, relationBudget);
             }
             if (op.label !== undefined) n.label = op.label;
-            if (op.props) n.props = mergeProps(n.props, op.props);
+            if (op.props) {
+              n.props = mergeProps(n.props, op.props);
+              if (op.props.routeTable || op.props.trafficMix) routedProps(n, keys);
+            }
             if (op.in === null) {
               delete n.group;
               keepOutside.add(n.id);
@@ -328,6 +370,18 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
           if (op.title !== undefined) next.title = op.title;
           if (op.description !== undefined) next.description = op.description;
           if (op.direction !== undefined) next.direction = op.direction;
+          if (op.requestRoutes !== undefined) {
+            if (next.planning?.revision !== "p3-a1")
+              throw new Error("requestRoutes needs the current planning model (p3-a1): upgrade the diagram first.");
+            // A route keeps its colour and marker by id; a new one gets the next free pair.
+            const before = new Map((next.planning.requestRoutes ?? []).map((r) => [r.id, r]));
+            const routes: RequestRoute[] = [];
+            for (const route of op.requestRoutes) {
+              const appearance = route.appearance ?? before.get(route.id)?.appearance ?? nextAppearance(routes);
+              routes.push({ ...route, appearance });
+            }
+            next.planning = { ...next.planning, requestRoutes: routes };
+          }
           break;
         }
       }
@@ -363,6 +417,13 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
       annotation.x = center.x - annotation.width / 2;
       annotation.y = center.y - annotation.height / 2;
     }
+    // Routing settings opt the document into request routing (on the current planning model).
+    if (
+      next.planning?.revision === "p3-a1" &&
+      !next.planning.requestRoutes &&
+      (next.nodes.some((n) => hasNodeRouting(n.props)) || next.edges.some((e) => hasEdgeRouting(e.props)))
+    )
+      next.planning = { ...next.planning, requestRoutes: [] };
     next = validated(next);
     const nodeIds = new Set(next.nodes.map((n) => n.id));
     for (const sim of next.simulations ?? []) warnings.push(...simulationReferenceWarnings(sim, nodeIds));

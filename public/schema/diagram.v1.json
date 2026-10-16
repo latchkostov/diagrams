@@ -607,6 +607,12 @@
         },
         "healthChecks": {
           "type": "boolean"
+        },
+        "trafficMix": {
+          "enum": []
+        },
+        "routeTable": {
+          "enum": []
         }
       }
     },
@@ -694,6 +700,12 @@
       "type": "object",
       "additionalProperties": true,
       "properties": {
+        "requestRouteId": {
+          "enum": []
+        },
+        "requestFilter": {
+          "enum": []
+        },
         "endpointId": {
           "type": "string",
           "minLength": 1,

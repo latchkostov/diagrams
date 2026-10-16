@@ -1991,6 +1991,11 @@ const en = {
   "routing.targetsGone":
     "{routers} sends requests over this connection in its route table. {rules, plural, =0 {Remove it from the table first.} one {Removing it there also removes # rule left with nowhere to send.} other {Removing it there also removes # rules left with nowhere to send.}}",
   "routing.removeTargets": "Remove from route table",
+  "routing.ruleNumber": "rule {n, number}",
+  "routing.unaddressed": "no address",
+  "routing.splitShare": "{share, number, percent} split",
+  "routing.notFound": "no route: rejected 404",
+  "routing.noTarget": "no eligible connection: rejected 404",
   "routing.tableNotCopied": "The copy of {routers} has no route table: not all of its connections were copied.",
   "examples.themeStreaming": "Event streaming",
   "examples.themeData": "Data & AI",

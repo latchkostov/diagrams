@@ -9,6 +9,7 @@ import type { SimRole } from "../../model/types";
 import { messageColor } from "../../sim/colors";
 import type { MessageTrace, TraceStep } from "../../sim/types";
 import { buildJourney, formatDuration, type DiagramLike } from "../../trace/journey";
+import { routeWords } from "../../trace/routeWords";
 
 /** Every pacing constant in one place (wall milliseconds at 1×; the speed select scales the clock). */
 export const PACING = {
@@ -183,6 +184,8 @@ export interface ScriptInput {
 interface Track {
   id: number;
   type: string;
+  /** Request routing: the address it carries (its colour, and the routing beat's words). */
+  route?: string;
   node: string;
   /** Script time its chain is free. */
   ready: number;
@@ -221,6 +224,7 @@ export function buildScript(input: ScriptInput): SlowScript {
   const nodes = new Map(diagram.nodes.map((n) => [n.id, n]));
   const edges = new Map(diagram.edges.map((e) => [e.id, e]));
   const name = (id: string | undefined) => (id ? nodes.get(id)?.label || id : "");
+  const words = routeWords(diagram);
   const t0 = trace.startedAt;
   const steps = trace.steps;
   // The trace card's rows (back-to-back failures fold into one): a beat names the row it tells.
@@ -251,7 +255,14 @@ export function buildScript(input: ScriptInput): SlowScript {
   let hiddenCopies = 0;
 
   const push = (b: Omit<Beat, "i" | "color" | "tone"> & { tone?: Tone; color?: string }): Beat => {
-    const beat: Beat = { ...b, i: beats.length, color: b.color ?? messageColor(b.type), tone: b.tone ?? "plain" };
+    // An addressed message keeps its route's colour on every beat (outcome tones still tint retries and failures).
+    const route = tracks.get(b.msg)?.route;
+    const beat: Beat = {
+      ...b,
+      i: beats.length,
+      color: b.color ?? words.look(route)?.color ?? messageColor(b.type),
+      tone: b.tone ?? "plain",
+    };
     const prefix = b.node ? `${name(b.node)} · ` : "";
     if (prefix && b.caption?.startsWith(prefix)) beat.short = b.caption.slice(prefix.length);
     beats.push(beat);
@@ -275,6 +286,7 @@ export function buildScript(input: ScriptInput): SlowScript {
       fails: 0,
       replies: [],
       ended: false,
+      ...(s.route !== undefined ? { route: s.route } : {}),
     };
     const out = firstSend(s.id, index);
     if (out?.edge) tr.anchor = { edge: out.edge, end: 0 };
@@ -409,8 +421,18 @@ export function buildScript(input: ScriptInput): SlowScript {
       const { tr, step } = m;
       const edge = edges.get(step.edge!)!;
       markEdge(edge.id);
-      const caption =
-        kind === "retry"
+      // A router's choice is the routing beat: "POST /orders → rule 1 → Orders canary (10% split)".
+      const routing =
+        kind === "travel" && step.rule !== undefined
+          ? `${words.hop(step.route, step.node, step.rule)} → ${name(edge.to)}${
+              step.weight !== undefined && step.weight < 1
+                ? ` (${t("routing.splitShare", { share: step.weight })})`
+                : ""
+            }`
+          : undefined;
+      const caption = routing
+        ? routing
+        : kind === "retry"
           ? `${step.type} ↺`
           : kind === "dlq"
             ? `Dead-lettered after ${tr.deadletterAttempt ?? tr.fails} attempts`
@@ -450,6 +472,8 @@ export function buildScript(input: ScriptInput): SlowScript {
   for (let i = 0; i < steps.length; i++) {
     if (consumed.has(i)) continue;
     const s = steps[i];
+    const known = tracks.get(s.id);
+    if (known && s.route !== undefined) known.route = s.route;
     const r = s.t - t0;
     if (hidden.has(s.id)) {
       if (s.kind === "copy" && s.parent !== undefined) hidden.add(s.id);
@@ -691,7 +715,12 @@ export function buildScript(input: ScriptInput): SlowScript {
       case "block": {
         flushCollapse(tr);
         atNode(tr, "block", PACING.drop, r, r, {
-          caption: s.kind === "reject" ? t("admission.rejected") : "Blocked by a deny rule",
+          caption:
+            s.kind === "reject"
+              ? words.refusal(s.reason)
+                ? `${words.hop(s.route, s.node, s.rule)} → ${words.refusal(s.reason)}`
+                : t("admission.rejected")
+              : "Blocked by a deny rule",
           tone: "plain",
           rowKey: rowOf.get(i),
         });

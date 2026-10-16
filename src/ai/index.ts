@@ -32,7 +32,14 @@ export type DiagramOp =
   | { op: "insert_between"; from: Ref; to: Ref; kind: string; label: string; sublabel?: string; key?: string }
   | { op: "add_boundary"; label: string; members: Ref[]; tone?: DiagramGroup["tone"]; key?: string }
   | { op: "add_note"; text: string; style?: "note" | "text"; near?: Ref; key?: string }
-  | { op: "set_meta"; title?: string; description?: string; direction?: "LR" | "TB" };
+  | {
+      op: "set_meta";
+      title?: string;
+      description?: string;
+      direction?: "LR" | "TB";
+      /** Request routing: the diagram's complete request routes (a replacement, validated against the whole batch). */
+      requestRoutes?: import("../model/requestRouting").RequestRoute[];
+    };
 export interface ApplyOpsOptions {
   layout?: LayoutMode;
   dryRun?: boolean;

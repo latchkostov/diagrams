@@ -12,6 +12,11 @@ import { scenarioPlans } from "../sim/scalingPlanner";
 import { planMessage } from "../checks/scalingFindings";
 
 const quote = (s: string) => JSON.stringify(s);
+const round = (n: number) => Math.round(n * 1000) / 1000;
+/** A connection's routing settings, in describe's words (absent: nothing). */
+const routing = (props: Record<string, unknown> | undefined) =>
+  (props?.requestRouteId !== undefined ? ` requestRoute=${JSON.stringify(props.requestRouteId)}` : "") +
+  (props?.requestFilter !== undefined ? ` requestFilter=${JSON.stringify(props.requestFilter)}` : "");
 /** Data only: authored strings are JSON quoted so they cannot introduce output lines. */
 export function describeDiagram(diagram: DiagramFile, options: DescribeOptions = {}): string {
   const d = validated(diagram);
@@ -74,6 +79,7 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
             })),
           }
         : {}),
+      ...(analysis?.routeDemand ? { routeDemand: analysis.routeDemand } : {}),
       truncated: nodes.length + edges.length + groups.length + notes.length + sims.length > limit,
     });
   }
@@ -91,8 +97,25 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
   for (const e of edges)
     lines.push(
       // A dependency says so: it carries no messages, whatever its kind.
-      `  ${quote(e.id)} ${quote(e.from)} -> ${quote(e.to)} ${isDependency(e) ? `${relationOf(e)} dependency` : (e.kind ?? "async")}${e.label !== undefined ? ` ${quote(e.label)}` : ""}`,
+      `  ${quote(e.id)} ${quote(e.from)} -> ${quote(e.to)} ${isDependency(e) ? `${relationOf(e)} dependency` : (e.kind ?? "async")}${e.label !== undefined ? ` ${quote(e.label)}` : ""}${routing(e.props)}`,
     );
+  // Request routing: the definitions (bounded, the rest counted) and the configured demand per route at each node.
+  const routes = d.planning?.requestRoutes;
+  if (routes) {
+    lines.push(`request routes (${routes.length}):`);
+    const shown = routes.slice(0, 50);
+    for (const r of shown)
+      lines.push(
+        `  ${quote(r.id)} ${r.address.method} ${quote(r.address.path)}${r.label ? ` ${quote(r.label)}` : ""}${r.address.host ? ` host=${quote(r.address.host)}` : ""}`,
+      );
+    if (routes.length > shown.length) lines.push(`  … ${routes.length - shown.length} more routes omitted`);
+    for (const [node, byRoute] of Object.entries(analysis?.routeDemand ?? {}))
+      for (const [route, demand] of Object.entries(byRoute))
+        if (demand.rejected > 0 || nodes.some((n) => n.id === node && n.props?.routeTable))
+          lines.push(
+            `route demand ${quote(node)} ${route ? quote(route) : "(no address)"}: offered ${round(demand.offered)} req/s, refused 404 ${round(demand.rejected)} req/s`,
+          );
+  }
   for (const g of groups)
     lines.push(
       `boundary ${quote(g.id)} ${quote(g.label)} (${g.tone ?? "neutral"}): ${nodes

@@ -1,3 +1,4 @@
+import { requestRoutesSchema } from "../model/requestRouting";
 // JSON Schema draft 2020-12. Shared by paste, WebMCP and static schema generation.
 import { aiNodePropsSchema, simPropsPatchSchema } from "../model/simProps";
 import { CHECK_RULES } from "../model/checks";
@@ -364,6 +365,11 @@ export const edit_diagramSchema: JsonSchema = {
                 direction: {
                   type: "string",
                   enum: ["LR", "TB"],
+                },
+                requestRoutes: {
+                  ...requestRoutesSchema,
+                  description:
+                    "Request routing (current planning model): the diagram's complete list of request routes, each an id and a method/path address. Replaces the list; mixes (props.trafficMix), caller addresses (connection props.requestRouteId) and route tables (props.routeTable on an HTTP router) refer to these ids.",
                 },
               },
             },

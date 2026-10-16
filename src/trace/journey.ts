@@ -5,7 +5,7 @@
 import type { DiagramFile } from "../model/types";
 import type { MessageTrace, TraceStep } from "../sim/types";
 
-export type DiagramLike = Pick<DiagramFile, "nodes" | "edges">;
+export type DiagramLike = Pick<DiagramFile, "nodes" | "edges"> & Partial<Pick<DiagramFile, "planning">>;
 
 /** One node visit by one message (or copy): when it got there, started and finished. */
 export interface Visit {
@@ -53,6 +53,10 @@ export interface JourneyRow {
   reason?: string;
   /** This row belongs to a fan-out copy, not the original message. */
   copy: boolean;
+  /** Request routing: the address's route id; on a hop from a router, the rule that chose it and its share. */
+  route?: string;
+  rule?: string;
+  weight?: number;
 }
 
 export interface Journey {
@@ -152,7 +156,16 @@ export function buildJourney(trace: MessageTrace, diagram: DiagramLike, now = tr
     switch (step.kind) {
       case "emit":
         visit(step.id, step.node!, t);
-        rows.push({ key, kind: "origin", t, id: step.id, type: step.type, node: step.node!, copy });
+        rows.push({
+          key,
+          kind: "origin",
+          t,
+          id: step.id,
+          type: step.type,
+          node: step.node!,
+          copy,
+          ...(step.route !== undefined ? { route: step.route } : {}),
+        });
         break;
       case "copy": {
         const parent = at.get(step.parent!);
@@ -203,6 +216,9 @@ export function buildJourney(trace: MessageTrace, diagram: DiagramLike, now = tr
           renamed,
           ...(redeliver ? { attempt: (lastFail.get(step.id) ?? 0) + 1 } : {}),
           copy,
+          ...(step.route !== undefined ? { route: step.route } : {}),
+          ...(send?.rule !== undefined ? { rule: send.rule } : {}),
+          ...(send?.weight !== undefined ? { weight: send.weight } : {}),
         });
         redelivering.delete(step.id);
         sent.delete(step.id);
@@ -273,6 +289,8 @@ export function buildJourney(trace: MessageTrace, diagram: DiagramLike, now = tr
           node: step.node!,
           reason: step.reason,
           copy,
+          ...(step.route !== undefined ? { route: step.route } : {}),
+          ...(step.rule !== undefined ? { rule: step.rule } : {}),
         });
         break;
       case "block":
