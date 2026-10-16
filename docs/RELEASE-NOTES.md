@@ -15,6 +15,11 @@
   describe the same server-ownership issue; both focused-test P2s share one fix.
   No finding is rejected. Regression tests cover every underlying issue, including
   occupied ports, ignored/untracked files, focused-test CLI rejection and build reuse.
+- The first full gate also caught a flow-building test issuing Alt+arrow while its
+  selection's inspector reveal was still moving the viewport. Selection now waits for
+  that layout before the next gesture. A clock-controlled regression fails at the
+  canvas boundary assertion when those waits are removed; existing placement,
+  connection and Undo assertions remain intact. No application geometry changes.
 
 ## Reliable local verification (2026-10-15)
 

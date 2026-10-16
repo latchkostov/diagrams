@@ -76,6 +76,14 @@ a failed fresh build skips shards and cannot stamp HEAD. The final unchanged-HEA
 clean-tree checks still apply. Vitest gets `--allowOnly=false` and Playwright gets
 `--forbid-only`, independently of the caller's CI setting.
 
+The full-suite gate also caught the flow-building selection helper returning before
+the inspector's deferred reveal finished. Following it immediately with Alt+arrow
+could overlap viewport commands and measure a node outside the pane. The helper now
+waits for the inspector and stable viewport before the next gesture. A regression
+holds the reveal's clock until selection publishes, then verifies the selected node
+is in the pane when the helper returns. Removing the waits fails that boundary
+assertion. Placement, connection, direction and Undo assertions stay unchanged.
+
 Failures do not stop the remaining checks or shards. Every shard reports passed, failed,
 flaky and skipped totals from Playwright's JSON report, including a non-zero exit or missing
 report as a gate failure. Logs, HTML reports, screenshots and traces stay in separate
