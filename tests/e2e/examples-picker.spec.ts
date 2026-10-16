@@ -117,6 +117,7 @@ test("ordinary autosaves serialize the diagram once and reuse that result", asyn
   await seedWork(page);
   await page.goto("./");
   await page.getByTestId("node-worker").click();
+  await expect(page.getByTestId("inspector-field-label")).toBeVisible();
   await page.clock.install();
   await pauseClock(page);
   await page.getByTestId("inspector-field-label").fill("Edited worker");
@@ -541,6 +542,7 @@ test("storage-full promotion preserves conversation, pending edits and undo, the
   await page.goto(`./?example=${SLUG}`);
   await page.getByTestId("node-shopper").click();
   await page.getByTestId("canvas-view").evaluate((el) => el.setAttribute("data-test-instance", "retained"));
+  await expect(page.getByTestId("inspector-field-label")).toBeVisible();
   await page.clock.install();
   await pauseClock(page);
   await page.getByTestId("inspector-field-label").fill("Edited while full");
@@ -571,6 +573,7 @@ test("storage-full promotion preserves conversation, pending edits and undo, the
 test("a failed example copy debounces retries, warns once and recovers the latest edits", async ({ page }) => {
   await page.goto(`./?example=${SLUG}`);
   await page.getByTestId("node-shopper").click();
+  await expect(page.getByTestId("inspector-field-label")).toBeVisible();
   await page.clock.install();
   await pauseClock(page);
   await page.evaluate(() => {

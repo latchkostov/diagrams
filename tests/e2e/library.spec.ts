@@ -76,6 +76,7 @@ test.describe("data safety", () => {
     await importDiagram(page, "Page lifecycle");
     const node = "n0";
     await page.getByTestId(`node-${node}`).click();
+    await expect(page.getByTestId("inspector-field-label")).toBeVisible();
     await pauseClock(page);
     await page.getByTestId("inspector-field-label").fill("Before pagehide");
     const saved = async () =>

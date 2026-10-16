@@ -394,6 +394,7 @@ test("a pending switch keeps the edited source canvas when the flush creates a c
   const sourceNode = page.getByTestId(`node-${other.nodeIds[0]}`);
   await expect(sourceNode).toBeVisible();
   await sourceNode.click();
+  await expect(page.getByTestId("inspector-field-label")).toBeVisible();
   await pauseClock(page);
   await page.getByTestId("inspector-field-label").fill("Kept during download");
   await expect(sourceNode).toContainText("Kept during download");
