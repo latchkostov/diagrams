@@ -16,6 +16,208 @@ pnpm parity sim checks # only parity files whose path contains "sim" or "checks"
 A filtered run skips the stale-golden check. The browser tier needs Docker running (see "Browser tier").
 Without it, `pnpm parity:node` still checks everything that doesn't need a browser.
 
+## Immediate fits and cancellable refinements (2026-10-15)
+
+The measurement gate refines an already fitted canvas. Opening restores React Flow's initial
+fit; committed nodes and panel geometry also fit before paint. A refinement still uses the
+existing measured routes, fonts and chrome, preserving the settled goldens. Captured input
+cancels the waiting refinement before dispatch, and stops an active fit transition at its
+current viewport. Readiness subscribers for ordered document commands remain independent.
+Controlled geometry also receives its early fit when React Flow's passive StoreUpdater commits
+the nodes/edges, rather than fitting the previous store snapshot in the parent's layout effect.
+
+The production regressions hold only font readiness promises, preserving real font metrics.
+They inspect the first visible frame, press a node while the final fit is held and compare its
+screen box/viewport across release, and open the inspector before releasing the gate. These
+checks cover the usable intermediate view as well as the final settled drawing. Waiting for
+the full gate before permitting interactions was rejected because it preserves the opening
+UX regression. No assertions are relaxed and no golden is re-recorded for this correction.
+
+Reverting the app correction fails all three held-font checks: the first visible drawing is
+clipped, a node press leaves the refinement pending, and opening the inspector covers content.
+Hover/focus regressions keep tooltips across release; the Auto-layout regression holds only
+the post-commit font refinement in the existing Edge kinds Lab preset, whose cards never resize.
+Without the store-commit fit it changes from `scale(0.838355)` to `scale(1.16667)` on release.
+The Lab regression holds ResizeObserver delivery for the existing measured hierarchy and checks
+that its render metric appears only after descendants measure, despite zero-area boundaries.
+Reverting the complete app correction fails all seven of these checks. Removing the early
+keyboard-zoom ownership guard independently fails the eighth regression.
+The first full shard also caught an over-broad pane-size subscription: it kept early-fitting
+an arbitrary resize while refinement was pending. Limiting early fits to committed geometry
+restores the existing fullscreen regression; all 37 fit/fullscreen checks then pass unchanged.
+The subsequent complete shard/repeat sweep isolated the tooltip and empty-boundary Lab failures;
+both are fixed in the app. No pre-existing assertion or timeout is changed. The expanded focused
+production run passes 73 tests across fits, fullscreen, first run and the complete Lab sweep.
+
+UX review: the first drawing is usable, a press keeps its target still, and a newly opened panel
+leaves content clear. No control or placeholder is added. User pan/zoom ownership, lazy Checks
+mounts, ordered Auto-layout, Undo cancellation and idle observer cleanup retain their checks.
+
+### Complete correction verification
+
+All six whole-file CI shard lists from `node scripts/e2e-shard.mjs <n> 6` pass locally on the
+production `VITE_E2E=1` bundle, with `CI=true`, three workers and explicit ports 6330–6334:
+
+| Shard | Passed | Skipped | Retries |
+| ----- | ------ | ------- | ------- |
+| 1/6   | 227    | 0       | 0       |
+| 2/6   | 155    | 0       | 0       |
+| 3/6   | 208    | 0       | 0       |
+| 4/6   | 252    | 0       | 0       |
+| 5/6   | 255    | 0       | 0       |
+| 6/6   | 203    | 0       | 0       |
+
+The complete suite passes 1,300 tests, including dev, subpath, internal and locked projects.
+The supplied failure list resolves to exactly 47 tests in 21 files; `--repeat-each=3` passes
+all 141 runs without retries. No existing test assertion, selector or timeout is changed.
+
+- Two fresh `pnpm parity` runs each compare all 1,769 goldens: zero changed, added, missing or
+  stale. No update command is run.
+- Four subsequent Docker browser runs alternate `PARITY_WORKERS=24` with
+  `PARITY_CPU_THROTTLE=10 PARITY_WORKERS=8`. Each passes all 70 tests and compares all 84 browser
+  goldens unchanged, without retries, using the second fresh production bundle.
+- The full unit suite passes: 534 files, 7,201 tests, four existing skips, no type errors.
+  Production build, startup chunk test and entry budget pass (105.7/123.5 kB gzip).
+- Skill freshness passes with the refreshed viewer at plugin 1.1.26, exactly one patch above
+  origin/master's 1.1.25. i18n reports zero errors; existing translation gaps/warnings remain.
+- The implementation commit `7b6ceedf` also passes CI run
+  [38828615367](https://github.com/latchkostov/diagrams/actions/runs/38828615367).
+
+Earlier local dev trials had page-load and lazy-view timeouts while Vite scanned accumulated
+HTML exports and trace snapshots as dependency entries (its default is `**/*.html`). Temporary
+per-port dev caches were kept under `node_modules`, and the local dev server's dependency scan
+was limited to the actual `index.html` app entry. The five affected dev checks then pass without
+retries, followed by the clean shard runs above. This is a local runner configuration only;
+no product Vite configuration or test behavior is changed. Temporary servers are stopped.
+Automatic approval review blocked recursive scratch cleanup (`blocked by policy`, without a
+detailed reason), so generated scratch builds/results remain ignored. Master remains `66583484`.
+
+## Final P2 review follow-up (2026-10-15)
+
+- Opening checks still run independently, but the optional title-card warning count renders only
+  after the first viewport is computed, or the person takes control. The browser harness neither
+  hides the count nor clicks Fit. Holding real node measurements and worker results independently,
+  then releasing them in both orders, gives the same opening viewport and the existing golden.
+  Reverting the app gate produces `scale(1.12414)` versus `scale(1.14674)` in that regression.
+- The measurement gate disconnects its ResizeObserver and clears its element map when idle.
+  Late deliveries cannot repopulate that map. The count regression checks zero retained observations
+  after opening and deletion, then verifies new registrations and cleanup on the next Fit.
+  Restoring the old gate retains 23 observations immediately after opening.
+- Folded title cards cache their expanded footprint across padding and hover notifications.
+  Content, available width, font completion and presentation typography invalidate the metrics.
+  The count regression delivers twelve resize notifications without another clone, then checks
+  content/font/style/width invalidation separately. Restoring the old code clones repeatedly.
+- Every context-created parity page awaits its own CDP throttle command before navigation,
+  including exported HTML viewers. The regression exports and opens a real viewer and checks
+  the configured rate on both targets while each is still at `about:blank`. Restoring per-page
+  throttling leaves the viewer's rate absent and fails the regression.
+
+UX review: no new control or blank warning row, no extra delay before checks run, and no viewport
+takeover on warning delivery. Warning counts remain discoverable after an interrupted opening.
+A harness-only warning override was rejected because it would preserve the race for people.
+An async page-event callback alone was rejected because navigation could outrun its CDP command.
+No golden was re-recorded. Initial count-test fixtures needed to await selection's own measurement
+transaction and change the flex basis to exercise available width; those were corrected without
+loosening the assertions. The refreshed skill viewer remains at 1.1.26, one patch above master.
+
+Final verification: six Docker passes on the final fresh bundle alternate three `PARITY_WORKERS=24`
+runs with three `PARITY_CPU_THROTTLE=10 PARITY_WORKERS=8` runs. Each passes all 70 tests and checks
+all 84 browser goldens unchanged, with no retries. An earlier six-pass matrix also passes unchanged.
+Two fresh `pnpm parity` runs each check all 1,769 goldens with zero changed, added, missing or stale.
+No update command was run. The full unit suite passes twice: 534 files, 7,201 tests, four existing
+skips, no type errors. Production Chromium passes all 138 tests in the five branch-touched e2e
+specs plus CSP, then all six repeats of the two count regressions. Explicit ports are 6205–6209;
+all servers stop. Build, entry budget (105.7/123.5 kB gzip), skill freshness and i18n pass; existing
+translation gaps and warnings remain. Master is still `66583484`, so no further rebase is needed.
+
+## Measurement review follow-up (2026-10-15)
+
+Rebased onto `feca7852`, preserving both documentation histories and regenerating the viewer
+from master's template. Plugin 1.1.26 is exactly one patch above master's 1.1.25. Every golden
+is byte-for-byte unchanged from `35bdd142`; no update command was run for these review fixes.
+
+- **Command order:** the editor owns the cancellable pending layout. Undo cancels it before
+  touching earlier history; edits and replacements invalidate it. Selection alone preserves it.
+  The held-ResizeObserver browser regression compares all original node/boundary boxes after Undo
+  and release, then checks normal completed-layout Undo/Redo. Removing Undo cancellation fails
+  the box comparison. Unit regressions cover Redo, replacement, edits and late readiness delivery.
+- **Interrupted fits:** readiness subscribers and the active viewport transition are separate.
+  Actual user viewport movement/node drags cancel viewport work, preserving subscribers. The
+  real wheel regression interrupts an animation and requests no further fit, then checks pending
+  state, zero connected mutation observers and unchanged callback/record counts over 20 frames.
+  Disabling interruption fails with pending still true; unit tests cover stale completions,
+  preserved subscribers and cancellation between stable samples.
+- **Sub-pixel boundaries:** delivered DOM axes that round to zero count as empty, while descendants
+  still measure. Imports with width 0.1, height 0.4 and both axes pass opening, Fit and Auto-layout.
+  Restoring the exact-zero check fails all three. The parity reader records these boundaries;
+  restoring its old check independently fails its three new fractional cases.
+- **Delayed Checks:** the held route matches hashed assets and dev TSX URLs, including queries.
+  The existing test keeps the card absent until release, then verifies its final fit. Restoring
+  the production-only route fails the dev request assertion.
+
+Final verification: a fresh `pnpm parity` compares all 1,769 goldens with zero changed, added,
+missing or stale. Six consecutive Docker browser passes alternate three `PARITY_WORKERS=24`
+runs with three `PARITY_CPU_THROTTLE=10 PARITY_WORKERS=8` runs: 68 tests and 84 unchanged goldens
+per pass, no retries. These reuse the fresh production bundle. Unit tests pass 7,201 with four
+existing skips across 534 files (`pnpm test --maxWorkers=2`). Production build and entry budget
+pass (105.7/123.5 kB gzip). Production Chromium passes all 136 tests in every touched e2e spec
+plus CSP; the final dev fit-settled run passes all 18. Both use explicit ports 6205–6209, and
+all servers stop. Skill freshness and i18n pass; existing translation gaps/warnings remain.
+
+Early runs caught a test-fixture omission, invalid void unions and an unnecessary offscreen drag;
+these were corrected. The interruption negative control initially passed because the pointer was
+still over Fit's button; moving it onto the canvas makes the reverted cleanup fail as intended.
+An early four-worker dev run hit Chromium's `ERR_NO_BUFFER_SPACE` at navigation; the final
+isolated two-worker run is clean. No timeout or assertion was loosened to cover these failures.
+The scoped designer review rejected broad wheel capture because panel/text/embed-page scrolling
+is not viewport takeover; actual React Flow move events handle cancellation instead. Undo
+cancellation avoids waiting indefinitely behind unavailable measurements. No timing fallback
+or golden re-recording was introduced.
+
+## Browser parity integration with master (2026-10-15)
+
+Rebased onto `1486840b` (#115, #118, #117 and #123), retaining both documentation histories,
+master's complete autosave/example-copy/CopyNotice flow, and measured fits without timer-driven
+opening or Auto-layout fits. The latest master defers exactly the same eight showcase cases;
+all are restored. Relative to master, the only golden differences remain the eight additions
+and the two Tidy input corrections detailed in "Restoring showcase coverage" below. No golden
+was re-recorded during this integration, including after the nested-boundary adaptation.
+
+Auto-layout now indexes the unified element hierarchy and refits children before parents, using
+measured cards and annotations and the newly computed child-boundary boxes. Empty boundaries
+stay valid and membership is unchanged. Parent-first and child-first unit regressions both fail
+when the refit is temporarily reverted. The production browser regression holds ResizeObserver
+deliveries across a three-level, initially empty hierarchy, queues Auto-layout then Fit view,
+and checks every resulting boundary and an unchanged subsequent fit. The fixture is in the Lab.
+
+The parity reader also accepts explicitly zero-sized boundaries, still recording them and
+independently checking descendants. Reverting only that reader change makes its dedicated
+regression fail to settle; no assertion or golden output is removed. The task queue and measured
+gate need no hierarchy-specific fallback or new timing budget.
+
+### Integration verification
+
+- Eight consecutive Docker browser-tier passes: three with `PARITY_WORKERS=24`, three with
+  `PARITY_CPU_THROTTLE=10 PARITY_WORKERS=8`, and two with
+  `PARITY_CPU_THROTTLE=4 PARITY_WORKERS=16`. Each passed all 65 tests and compared all 84 browser
+  goldens with zero differences, missing or stale records and no retries. The first built fresh;
+  repeats reused that production bundle. Production e2e ran alongside much of this stress sweep.
+- Two subsequent fresh `pnpm parity` runs each compare all 1,769 goldens with zero changes,
+  additions, missing or stale files. No golden was re-recorded during the rebase or verification.
+- `pnpm test --maxWorkers=2`: 532 files passed, 7,184 tests passed, four existing skips, no type
+  errors. Production build and entry budget pass (105.7/123.5 kB gzip). The released viewer is
+  fresh at plugin 1.1.25; `pnpm i18n check` reports zero errors with existing gaps and warnings.
+- Production Chromium on explicit ports 6205–6209: all 161 checks pass across fit-settled,
+  layout, round13-polish, CSP, examples-picker, zones-boundaries and showcase-examples. The first
+  expanded sweep passed 159 and failed two tests that started counting saves or measuring a drag
+  before the opening fit settled. Both now await `settledCanvas`; all six focused repeats pass.
+  Temporarily restoring the old waits reproduces the nested drag failure in all three repeats.
+  The selection race appeared only in the initial full-load run. The waits ensure the existing
+  assertions start from the finished opening fit.
+- Final lint found six non-null assertions in the new browser regression; explicit checks replace
+  them. Its added annotation-membership check compares by id because normalization draws zones
+  before notes; the initial order-sensitive assertion failed, and the corrected targeted run passes.
+
 ## Example gallery verification round (2026-10-15)
 
 These fixes change save-destination ownership, launch queuing, retained conversation memory and
@@ -98,19 +300,6 @@ latencies.
 
 ### Deliberately not pinned
 
-**TODO (`test/parity-browser-stable`, PR #120):** once the browser measurement fix lands, remove the
-precise deferrals in `tests/parity/browser/render.parity.ts` and record the eight missing cases:
-
-- Opening canvas renders: `contoso-dmz`, `shared-api-quotas`.
-- Auto-layout **and** Tidy results for each of `contoso-dmz`, `measured-order-capacity`,
-  `partitions-vs-subscriptions`, `serverless-burst-buffer`, `shared-api-quotas`, `shared-worker-pool`
-  (six cases, each pinning both operations).
-
-Verify settled measured boxes, routed edges, text and labels before recording. The other four showcase
-opening renders, every existing browser case, all six showcases' Node goldens and production Live tests
-stay enabled. This is a temporary coverage gap, not a permanent output exclusion; do not re-record
-existing goldens to accept measurement drift.
-
 - **Built code.** Minified bundles, chunk names, the viewer's script and style, the skill's `app.mjs` and `inject.mjs`
   and the released viewer template: a refactor changes them by design. What they _do_ is pinned (the HTML file is
   opened in a browser, the skill's scripts are run). The skill's generated files are pinned as committed;
@@ -125,9 +314,6 @@ existing goldens to accept measurement drift.
 - **The chrome.** Menus, dialogs, the inspector and toasts are the e2e suite's. This harness pins what a diagram
   produces.
 - **Pixel-exact PNGs.** Rasterisers differ between CPUs; see "Browser tier".
-- **The automatic fit on opening.** Its framing depends on timing (see "App behaviour found" below); the harness
-  pins Fit view instead. The Interactive HTML viewer waits for fonts and layout, then zooms and fits explicitly;
-  omitting that fit fails deterministically instead of depending on startup timing.
 
 ## Determinism
 
@@ -176,6 +362,23 @@ viewer's inline script and style (build output) and their hashes in the Content-
 pinned as data, icons by hash.
 
 `PARITY_BROWSER_HOST=1` runs the browser tier on the host instead, for debugging; expect differences off Linux.
+
+The reader explicitly loads every font face/weight used by rendered text (with its actual characters), then awaits
+`document.fonts.ready`. Every React Flow node must have dimensions and be visible (React Flow hides unmeasured
+nodes); the app's `data-fit-pending` must be false. Node boxes, edge paths, label placement and the viewport must
+agree across rendered frames. A pending fit includes its measurement transaction and viewport animation. Opening
+no longer gets a corrective Fit view click: the app's automatic fit uses those same final inputs.
+
+Readiness compares geometry, rather than a node's `innerText`: a live badge or timer can change every frame without
+moving anything, making text-based polling never converge. The full text is still returned and compared exactly in
+the golden; no text, path, box or viewport value is normalised away. `settle.parity.ts` exercises a badge that changes
+every frame and checks that its words are still read. This is not a way to record wall-clock live counters as goldens;
+those belong in the seeded Node tier.
+
+Stress options apply inside Docker too: `PARITY_CPU_THROTTLE=10 pnpm parity:browser` uses Chromium's CDP CPU throttle;
+`PARITY_WORKERS=40 pnpm parity:browser` increases parallelism. They never change expected output or enable retries.
+For repeated ad-hoc runs, use Playwright's `--repeat-each` inside the same image; the parity CLI intentionally rejects
+duplicate golden records within one ledger, so full `pnpm parity:browser` stress runs use separate invocations.
 
 ## Storage
 
@@ -329,12 +532,97 @@ On a laptop: the Node tier about 15 s (1,355 goldens in parallel workers; simula
 browser tier about 45 s with warm Docker volumes (70 goldens; the first run installs Linux dependencies into a
 volume and takes a few minutes). On CI, add the image pull and an install inside it.
 
-## App behaviour found
+## Fit timing fixed
 
-- **The automatic fit on opening depends on timing.** It keeps clear of the floating chrome on screen at that
-  moment, and under load some of it arrives later, so the same example opened twice can be framed differently
-  (webhook-ingestion: zoom 0.4036 in most runs, 0.4078 in one; cqrs-event-sourcing: 0.4751 and 0.4802). Not fixed
-  here (it's behaviour, not the harness's to change); the harness presses Fit view once the canvas has settled.
+Auto-layout used to refit boundaries from `measured ?? defaultSize`, then fit after 60 ms. Opening combined React
+Flow's automatic fit, a nodes-initialized fit and an 80 ms mode fit. None ensured that the pane, boundary dimensions,
+fonts or expanded floating chrome had finished measuring. The reset row arrived with the later autosave, and a
+folded title card could retain its previous expanded footprint. The first-run hint also has a delayed entrance
+animation: equal frames during its delay do not mean its final geometry is in place.
+
+Fits now share a signal-driven transaction: the React commit must match the React Flow store; every visible node's
+DOM dimensions must match React Flow's measured dimensions; ResizeObserver (border box, including padding
+transitions) must have delivered current sizes for the pane, nodes and overlays; used fonts must finish loading;
+finite chrome animations must finish; and the geometry
+must agree across frames. Auto-layout waits for measurements before moving/refitting boundaries, then requests a
+second transaction for the rendered result. The reset row is committed before fitting, and a folded card measures
+its expanded footprint in an unpainted copy when its content changes. Opening has one overlay-aware fit instead of
+competing automatic/timer fits. Each task's React updates commit synchronously in its frame callback before the
+next task can sample; equal frames alone cannot prove a queued React update committed. Viewport animation completion
+clears the pending-fit signal. Decorative node animations do not block fitting the chrome. Failed font downloads
+settle on measured fallback metrics in the app; the parity reader still requires successful font loading.
+
+`tests/e2e/fit-settled.spec.ts` holds real ResizeObserver notifications while advancing a fake clock past the old
+timers, then releases them. With the app fix reverted, all three early-layout repeats size the boundary at 2686 px
+instead of 2726 px. All three delayed-chrome repeats reproduce the CI viewport exactly:
+`translate(40px, 313.114px) scale(0.379747)`; after pressing Fit view it becomes the golden's
+`translate(40px, 332.701px) scale(0.374175)`. The fixed test requires that Fit view leave every drawn value unchanged,
+and also exercises opening with delayed measurements/entrance animation. The editor unit test fails with the app
+fix reverted too: Auto-layout acts before its measurement callback.
+
+A second init script holds React's `MessageChannel` work queue after opening. Without the commit barrier, two
+unchanged frames let a fit run before the queued layout commit: the final node boxes are laid out, but the viewport
+remains the opening fit (`0.395349`) until Fit view moves it to `0.374175`. The regression fails before the barrier
+and passes in all three repeats with it. Thus the frame comparison supplements commit/measurement signals; it does
+not replace them. The font-failure and decorative-animation tests also fail with their fixes removed.
+
+No golden was changed or loosened for this fix.
+
+## Restoring showcase coverage: what changed and why (2026-10-15)
+
+The eight cases deferred by #120 are enabled again. Added opening renders are
+`browser/render/{contoso-dmz,shared-api-quotas}.json`; added Auto-layout/Tidy results are
+`browser/layout/{contoso-dmz,measured-order-capacity,partitions-vs-subscriptions,serverless-burst-buffer,shared-api-quotas,shared-worker-pool}.json`.
+The canvas reader identifies an edge by its nesting, so an id starting with `deny-` is included while the
+deny marker inside it is excluded. Opening waits for each file edge by its own test id.
+
+The layout harness had two independent control bugs:
+
+- Ctrl+A was sent with focus on the page body after the Auto-layout palette closed. Selection shortcuts act
+  on the canvas, intentionally leaving text fields and toolbar controls alone. Undo selects the elements the
+  step changed, not necessarily every element; Ctrl+A outside the canvas left that partial selection intact.
+  Palette Select all and Ctrl+A with canvas focus both select every diagram node, boundary and edge. Opening
+  the palette preserves that selection. Node selection is read from React Flow's test-id wrappers and their
+  `selected` state (React Flow does not expose `aria-selected`); the inspector confirms the combined count.
+  Button and keyboard Undo restore the same document and changed-element selection. Keyboard Undo from the
+  canvas also follows that selection with focus/pan; the original shortcut ran from the body, so it did neither.
+- Auto-layout is already the saved layout in the five small planning showcases. It creates no undo step:
+  Ctrl+Z does nothing, and the replacement Undo-button click waited forever on a disabled control. The supplied
+  run's trace ends retrying that disabled click, before Select all or Tidy. With a full selection, Tidy is
+  offered in all five; no example needs a `tidy: "not offered"` result.
+
+The harness now compares the opening and laid-out node boxes, undoes only a real document change, verifies
+the restored boxes, and asserts every node/boundary and edge is selected both before and inside the Tidy
+palette. `selection.parity.ts` covers unchanged Auto-layout, Undo's partial selection, body/toolbar versus
+canvas Ctrl+A, palette selection preservation, boundary-constrained Tidy, and deny-prefixed edge ids.
+
+A first 24-worker pass then exposed a separate readiness race in the new quota layout: the deferred
+architecture-check result adds a warning row, growing the title card from 103 px to 129 px. Auto-layout
+sometimes fitted before that row arrived (`scale(1.14674)`) instead of after it (`scale(1.12414)`). Layout
+cases now wait for the warning count computed from their public input to appear in `checks-count` before
+running Auto-layout; a diagram with zero warnings adds no row to wait for. Opening still records the app's
+initial fit, with no corrective Fit click. `checks.parity.ts` holds the actual checks worker's result and
+proves that the layout wait stays pending until the row renders, then matches the recorded Auto-layout.
+Removing the wait fails that regression. No app behavior or golden changed for this readiness fix.
+
+Only two existing goldens change, solely in their `tidy` records. A diagnostic replay of the original
+Ctrl+Z/Ctrl+A sequence matched both old records exactly:
+
+- `browser/layout/aws-fanout.json`: Undo selected the AWS boundary and its 15 changed members, omitting
+  unchanged `client` and every edge. The old golden tidied those members alone, keeping the outside client
+  fixed and growing the boundary from 2240×632 to 2350×632. Selecting all 16 nodes includes the client and
+  its connection to the API. That whole-diagram Tidy cannot satisfy boundary membership, reports
+  "Couldn't find room. Nothing moved.", and preserves the saved 2240×632 boundary at 380,0 and original
+  node positions. Paths and labels now describe that unchanged drawing. This is an offered, refused Tidy,
+  not a missing action.
+- `browser/layout/rag-assistant.json`: Undo selected 12 changed nodes, omitting unchanged `user` and every
+  edge. The old Tidy excluded `user-to-rag-api` from its layout graph, treating the chat as an obstacle and
+  placing the API at 40,250. All 13 nodes now participate, including that incoming connection; the API lands
+  at 427,160 and the downstream layers, routes and labels follow the complete graph. The chat remains at
+  40,160. No stencil, size or wording changes.
+
+Auto-layout records, all other existing browser records, and the entire Node tier stay unchanged. These
+are corrections to harness inputs; the app's selection, history and layout behavior are unchanged.
 
 ## How it was checked
 
@@ -456,3 +744,43 @@ The 127 A1-specific goldens added earlier in this PR remain unchanged by the reb
 Released viewer and generated application implementation bytes remain outside semantic parity. The
 combined build folds the persisted-resource validator into the preloaded `groupHierarchy` chunk;
 startup tests pin its presence, keep controllers lazy and preserve the entry size budget.
+
+## Browser fit verification (2026-10-15)
+
+- Twelve full browser-tier passes on the completed fix: ten with 12 workers, one with CDP CPU throttling at 10×
+  and 8 workers, and one with 40 workers (the Docker host reports 32 cores). Each checked all 70 browser goldens,
+  with zero changes, additions, missing or stale files. The first built production fresh; repeats reused that
+  same production bundle. During reproduction work, a full 20× CPU / 4-worker run also matched every golden.
+- Two fresh `pnpm parity` passes: 1,425 goldens each, all unchanged. No golden was re-recorded.
+- The production e2e fit, layout, polish and CSP specs: 37 passed on ports 6205–6209. The fit regressions also
+  passed all 18 tests under `--repeat-each=3`. The reverted app, held React queue and changing-text negative
+  controls failed as described above.
+- `pnpm test --maxWorkers=2`: 494 test files, 6,366 passed, 4 skipped, no type errors. Earlier runs alongside
+  builds/browser stress hit the existing local five-second test timeouts; the isolated run passed without changing
+  a timeout or assertion. Production build, entry bundle budget and the released viewer's freshness check passed.
+
+## Restored showcase verification (2026-10-15)
+
+- `pnpm parity:update`: exactly eight added goldens and the two explained Tidy corrections above; no other
+  existing output changed. All eight deferred cases now run, with no skips or `not offered` placeholders.
+- Six consecutive complete browser-tier passes after the warning-chrome readiness fix: three with
+  `PARITY_WORKERS=24`, alternating with three with `PARITY_CPU_THROTTLE=10 PARITY_WORKERS=8`.
+  Each passed 62 tests and checked all 82 browser goldens with zero differences and no retries. These reused
+  the production bundle made by the update; two subsequent fresh `pnpm parity` runs each checked all 1,642
+  goldens unchanged.
+- Restoring the old unconditional Undo click, unfocused Ctrl+A and deny-prefix exclusion made all four
+  selection/reader regressions fail (disabled Undo, incomplete selection, or the omitted connection).
+  Restoring the fixes passed all four. Removing the warning-chrome wait made the held-worker regression
+  resolve before its warning row existed; restoring it passed. The first stress attempt exposed that race;
+  its viewport difference was fixed without recording it.
+- The optional polish sweep exposed two drags starting with `data-fit-pending=true`: no boundary-exit toast
+  and an empty box selection. Both now await `settledCanvas` before measuring coordinates. Temporarily removing
+  those waits reproduces both failures; restoring them passes both, without changing app behavior.
+- `pnpm test --maxWorkers=2`: 498 files passed, 6,477 tests passed, 4 skipped, no type errors. The initial
+  post-rebase run had one metadata failure: Vitest's filesystem transform cache still held the 17-example
+  registry and pre-showcase globs. `pnpm exec vitest --clearCache` followed by the full run passed all 23
+  examples and removed the obsolete-snapshot warnings. Production build, entry size budget (103.9/123.5 kB
+  gzip), and skill viewer freshness passed; plugin 1.1.21 remains exactly one patch above origin/master.
+- Production e2e on explicit ports 6205–6209 (`VITE_E2E=1` build): 79 passed across fit-settled, layout,
+  round13-polish and CSP; no retries. Both servers stopped after the run. `pnpm i18n check` reports no errors;
+  existing catalog gaps and translation warnings remain unchanged.

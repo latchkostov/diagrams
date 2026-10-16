@@ -1,4 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
+import { settledCanvas } from "../parity/browser/canvas";
 import { openAdvanced } from "./ai-helpers";
 import {
   test,
@@ -636,6 +637,7 @@ test("gallery horizontal arrows follow the visual order in Arabic", async ({ pag
 test("selection-only changes do not schedule example autosaves", async ({ page }) => {
   await page.goto(`./?example=${SLUG}`);
   await expect(page.getByTestId("node-shopper")).toBeVisible();
+  await settledCanvas(page);
   await page.clock.install();
   await pauseClock(page);
   await page.clock.runFor(1000);

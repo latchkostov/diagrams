@@ -1,4 +1,4 @@
-import { nestedBoundariesFixture } from "./nestedBoundariesFixture";
+import { measuredHierarchyFixture, nestedBoundariesFixture } from "./nestedBoundariesFixture";
 import { captionContrastFixture } from "./captionContrastFixture";
 import { GalleryCatalogLab } from "./GalleryCatalogLab";
 import { autoscalingFixture } from "./autoscalingFixture";
@@ -323,6 +323,14 @@ const diagramPresets: Preset[] = [
     group: "Diagrams",
     description: "Custom caption ink over separate boundary and zone fills.",
     diagram: () => structuredClone(captionContrastFixture),
+  },
+  {
+    kind: "diagram",
+    id: "measured-hierarchy",
+    title: "Measured hierarchy",
+    group: "Diagrams",
+    description: "Auto-layout refits three empty boundary levels around measured cards, a note and a zone.",
+    diagram: () => structuredClone(measuredHierarchyFixture),
   },
   {
     kind: "diagram",

@@ -1,4 +1,6 @@
 import { test, expect, gotoLab, labPresetIds, expectNoErrors, publicExamples } from "./fixtures";
+import { holdResizeObservers } from "../parity/browser/holdReadiness";
+import { measuredHierarchyFixture } from "../../src/lab/nestedBoundariesFixture";
 
 /** Waits until a preset has fully rendered: diagram stages report a render time; sim stages show a readout. */
 async function waitForPreset(page: import("@playwright/test").Page) {
@@ -14,6 +16,15 @@ async function waitForPreset(page: import("@playwright/test").Page) {
 const PRESET_PARTS = 8;
 
 test.describe("lab", () => {
+  test("empty boundaries wait for their descendants before reporting a rendered stage", async ({ page }) => {
+    await page.addInitScript(holdResizeObservers, true);
+    await gotoLab(page, "measured-hierarchy");
+    await expect(page.getByTestId("lab-render-time")).toHaveAttribute("data-ms", "");
+    await page.evaluate(() => window.dispatchEvent(new Event("release-resize-observers")));
+    await waitForPreset(page);
+    for (const node of measuredHierarchyFixture.nodes) await expect(page.getByTestId(`node-${node.id}`)).toBeVisible();
+  });
+
   for (let part = 0; part < PRESET_PARTS; part++)
     test(`every preset renders without errors (part ${part + 1} of ${PRESET_PARTS})`, async ({
       page,

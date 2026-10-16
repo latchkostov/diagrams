@@ -90,18 +90,34 @@ for (const slug of EXAMPLES) {
     const viewer = await context.newPage();
     await viewer.goto(pathToFileURL(file).href);
     await expect(viewer.getByTestId("html-viewer")).toBeVisible();
-    await viewer.evaluate(async () => {
-      await document.fonts.ready;
-    });
-    await settledCanvas(viewer);
-    // Pin Fit view with fonts and chrome in place, as openExample does for the app. Starting zoomed
-    // makes a missing refit fail deterministically instead of depending on the automatic fit's timing.
-    await viewer.getByTestId("viewer-zoom-in").click();
-    await settledCanvas(viewer);
-    await viewer.getByTestId("viewer-fit").click();
+    // The viewer's own fit on opening is pinned: it waits for fonts, measured nodes and settled chrome
+    // (src/canvas/useMeasuredTask.ts), and settledCanvas waits for it (fonts, data-fit-pending, stable geometry).
     expectGolden(`html/${slug}.dark.drawn.json`, await settledCanvas(viewer));
     // How it looks, banner and footer included: the viewer's own CSS isn't in the file's golden (it's build output).
     await expectGoldenPng(page, `html/${slug}.dark.png`, await viewer.screenshot({ fullPage: true }));
     await viewer.close();
   });
 }
+
+test.describe("CPU stress", () => {
+  test.use({ cpuThrottleRate: 10 });
+  test("CPU throttle applies to exported viewer pages before navigation", async ({
+    page,
+    context,
+    cpuThrottle,
+  }, info) => {
+    expect(page.url()).toBe("about:blank");
+    expect(cpuThrottle.get(page)).toBe(10);
+    await openExample(page, "kafka-order-pipeline");
+    const file = info.outputPath("throttled-viewer.html");
+    writeFileSync(file, withFixedDate(await exportHtml(page)));
+    const viewer = await context.newPage();
+    expect(viewer.url()).toBe("about:blank");
+    expect(cpuThrottle.get(viewer)).toBe(10);
+    expect(cpuThrottle.size).toBe(2);
+    await viewer.goto(pathToFileURL(file).href);
+    await expect(viewer.getByTestId("html-viewer")).toBeVisible();
+    await settledCanvas(viewer);
+    await viewer.close();
+  });
+});

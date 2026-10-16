@@ -1,5 +1,16 @@
 # Design review
 
+## Deferred layout and interrupted-fit review (2026-10-15)
+
+The designer agent's scoped source/regression review found no added chrome, wording or focus targets.
+Undo cancels a layout that has not mutated the document, leaving earlier history available. Fit
+cancellation preserves measurement subscribers and sub-pixel boundaries retain descendant checks.
+The review flagged broad wheel capture because scrolling Checks, text editors or an embed's host page
+is not viewport takeover. Cancellation now follows actual viewport move events and node drags;
+programmatic fit starts have their own transition token. Browser regressions cover the real wheel
+interruption and count observer work after cleanup. This was a scoped source review backed by browser
+regressions, not a whole-app visual or assistive-technology walkthrough.
+
 ## Relationship dropdown review gate (#122, 2026-10-15)
 
 The designer agent's scoped source/test review approved the existing inspector placement and eight
@@ -11,6 +22,16 @@ headers remain the target inside collapsible sections.
 
 This was a source and regression-test review, not an independent whole-app visual walkthrough or
 screen-reader session. Production browser checks cover the changed interactions and accessibility.
+
+## Measured fits and nested-boundary integration (2026-10-15)
+
+Primary engineer's scoped source review: Auto-layout retains membership and refits enclosing
+boundaries around the complete measured hierarchy, including annotations. The final fit stays
+behind the existing measurement gate; later fit requests cannot discard layout commands.
+Example-copy notification, save behavior and caption-contrast fixes from master are retained.
+No production controls, focus targets or wording are added. The regression fixture lives in the
+Lab. Production browser checks cover the affected geometry and held-measurement flows separately;
+this source review is not a whole-app accessibility audit.
 
 ## Review follow-ups 1 UX gate (2026-10-15)
 
@@ -117,6 +138,20 @@ at 1 s and points to replica history at 7 s without pausing playback; its shorte
 are disclosed as teaching assumptions. No global controls or blocking source concerns were found.
 Production e2e and parity separately verify the observed ten-second story; this source review does not
 replace visual or screen-reader verification.
+
+## Deterministic canvas fits (2026-10-15)
+
+Scoped source and production-browser regression review: opening and Auto-layout retain one final fit clear of the
+existing floating chrome. A folded title card accounts for its updated expanded content without painting a second
+card. No controls, focus targets or wording were added. The pending fit tracks viewport animation completion; the
+first-run hint finishes its entrance before final framing. This review covers the affected flows, not a whole-app
+accessibility audit. Output parity verifies the settled drawing against the existing goldens.
+
+Showcase parity restoration review: the canvas and palette Select all agree when the canvas owns keyboard
+focus; text fields and toolbar controls retain their own keys. Undo's changed-element selection follows the
+documented rule. Full-selection AWS Tidy correctly keeps membership intact and explains its refusal with the
+existing no-room toast. The harness now exercises those states explicitly, without adding controls or changing
+selection, focus, layout or wording in the app.
 
 ## Self-hosting review fixes (2026-10-14)
 

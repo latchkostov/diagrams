@@ -23,8 +23,19 @@ export type ChecksHost = RowHost & {
  * The diagram card's meta row: "Edited, reset" (when given) and the count of warnings. Warnings only: suggestions
  * never show uninvited, and with none there's nothing (never "0 issues").
  */
-export function DiagramCardMeta({ store, reset, open }: { store: ChecksStore; reset: ReactNode; open: boolean }) {
-  const { warnings } = useChecksState(store);
+export function DiagramCardMeta({
+  store,
+  reset,
+  open,
+  showWarnings,
+}: {
+  store: ChecksStore;
+  reset: ReactNode;
+  open: boolean;
+  showWarnings: boolean;
+}) {
+  const state = useChecksState(store);
+  const warnings = showWarnings ? state.warnings : 0;
   if (!reset && !warnings) return null;
   return (
     <div className="diagram-card-meta">
@@ -44,7 +55,17 @@ export function DiagramCardMeta({ store, reset, open }: { store: ChecksStore; re
   );
 }
 
-export function ChecksCardView({ store, host, top }: { store: ChecksStore; host: ChecksHost; top: number }) {
+export function ChecksCardView({
+  store,
+  host,
+  top,
+  onMount,
+}: {
+  store: ChecksStore;
+  host: ChecksHost;
+  top: number;
+  onMount(): void;
+}) {
   const state = useChecksState(store);
   return (
     <ChecksCard
@@ -53,6 +74,7 @@ export function ChecksCardView({ store, host, top }: { store: ChecksStore; host:
       result={state.result}
       state={state}
       top={top}
+      onMount={onMount}
       onClose={() => checksPanel.close()}
       simulations={{ view: state.evidence, run: store.runSimulations, stop: store.stopSimulations }}
     />

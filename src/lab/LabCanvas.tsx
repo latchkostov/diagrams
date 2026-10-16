@@ -10,7 +10,7 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useEdgesState,
-  useNodesInitialized,
+  useStore,
   useNodesState,
   type EdgeTypes,
   type NodeTypes,
@@ -59,7 +59,20 @@ function Stage({ diagram, minimap = true, onRendered }: Props) {
   const [edges, , onEdgesChange] = useEdgesState<DiagramFlowEdge>(flow.edges);
   const showDependencies = useShowDependencies();
   const visibleEdges = useMemo(() => projectDependencies(edges, showDependencies), [edges, showDependencies]);
-  const initialized = useNodesInitialized();
+  const initialized = useStore(
+    (state) =>
+      state.nodeLookup.size === flow.nodes.length &&
+      [...state.nodeLookup.values()].every(
+        (node) =>
+          node.hidden ||
+          // A zero-area boundary never gets React Flow handle measurements. Its
+          // descendants still have to measure before the stage reports ready.
+          (node.type === "boundary" &&
+            ((node.width !== undefined && Math.round(node.width) === 0) ||
+              (node.height !== undefined && Math.round(node.height) === 0))) ||
+          (!!node.internals.handleBounds && !!node.measured.width && !!node.measured.height),
+      ),
+  );
   const reported = useRef(false);
 
   useEffect(() => {

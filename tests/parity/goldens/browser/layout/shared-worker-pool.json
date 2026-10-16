@@ -1,0 +1,40 @@
+{
+  "autoLayout": {
+    "viewport": "translate(359.704px, 42.4593px) scale(1.20741)",
+    "nodes": {
+      "orders": { "kind": "node", "box": "translate(40px, 40px) 220×72", "text": "Acme orders 3 orders/s" },
+      "refunds": { "kind": "node", "box": "translate(360px, 40px) 220×72", "text": "Acme refunds 3 refunds/s" },
+      "order-log": { "kind": "node", "box": "translate(40px, 200px) 220×72", "text": "Order events 8 partitions" },
+      "refund-log": { "kind": "node", "box": "translate(360px, 200px) 220×72", "text": "Refund events 8 partitions" },
+      "worker": { "kind": "node", "box": "translate(200px, 360px) 253×72", "text": "Ledger worker One shared pool: 1 × 4 / 1 s" },
+      "ledger": { "kind": "node", "box": "translate(200px, 520px) 220×72", "text": "Acme ledger Orders and refunds" }
+    },
+    "edges": { "order-publish": "M150,112 L150,200", "refund-publish": "M470,112 L470,200", "read-orders": "M150,272 L150,306 Q150,316 160,316 L309.5,316 Q319.5,316 319.5,326 L319.5,360", "read-refunds": "M470,272 L470,306 Q470,316 460,316 L343.5,316 Q333.5,316 333.5,326 L333.5,360", "save": "M326.5,432 L326.5,467.8 Q326.5,476 318.3,476 L318.3,476 Q310,476 310,484.3 L310,520" },
+    "labels": {
+      "order-publish": { "style": "transform: translate(-50%, -50%) translate(150px, 150px); --fe-w: 47px; --fe-h: 19px;", "text": "Order" },
+      "refund-publish": { "style": "transform: translate(-50%, -50%) translate(470px, 150px); --fe-w: 53px; --fe-h: 19px;", "text": "Refund" },
+      "read-orders": { "style": "transform: translate(-50%, -50%) translate(234.75px, 316px); --fe-w: 95px; --fe-h: 19px;", "text": "order-posting" },
+      "read-refunds": { "style": "transform: translate(-50%, -50%) translate(401.75px, 316px); --fe-w: 101px; --fe-h: 19px;", "text": "refund-posting" },
+      "save": { "style": "transform: translate(-50%, -50%) translate(326.5px, 455px); --fe-w: 53px; --fe-h: 19px;", "text": "Record" }
+    }
+  },
+  "tidy": {
+    "viewport": "translate(115.704px, 42.4593px) scale(1.20741)",
+    "nodes": {
+      "orders": { "kind": "node", "box": "translate(40px, 40px) 220×72", "text": "Acme orders 3 orders/s" },
+      "refunds": { "kind": "node", "box": "translate(350px, 40px) 220×72", "text": "Acme refunds 3 refunds/s" },
+      "order-log": { "kind": "node", "box": "translate(40px, 200px) 220×72", "text": "Order events 8 partitions" },
+      "refund-log": { "kind": "node", "box": "translate(350px, 200px) 220×72", "text": "Refund events 8 partitions" },
+      "worker": { "kind": "node", "box": "translate(200px, 360px) 253×72", "text": "Ledger worker One shared pool: 1 × 4 / 1 s" },
+      "ledger": { "kind": "node", "box": "translate(200px, 520px) 220×72", "text": "Acme ledger Orders and refunds" }
+    },
+    "edges": { "order-publish": "M150,112 L150,200", "refund-publish": "M460,112 L460,200", "read-orders": "M150,272 L150,306 Q150,316 160,316 L309.5,316 Q319.5,316 319.5,326 L319.5,360", "read-refunds": "M460,272 L460,306 Q460,316 450,316 L343.5,316 Q333.5,316 333.5,326 L333.5,360", "save": "M326.5,432 L326.5,467.8 Q326.5,476 318.3,476 L318.3,476 Q310,476 310,484.3 L310,520" },
+    "labels": {
+      "order-publish": { "style": "transform: translate(-50%, -50%) translate(150px, 150px); --fe-w: 47px; --fe-h: 19px;", "text": "Order" },
+      "refund-publish": { "style": "transform: translate(-50%, -50%) translate(460px, 150px); --fe-w: 53px; --fe-h: 19px;", "text": "Refund" },
+      "read-orders": { "style": "transform: translate(-50%, -50%) translate(234.75px, 316px); --fe-w: 95px; --fe-h: 19px;", "text": "order-posting" },
+      "read-refunds": { "style": "transform: translate(-50%, -50%) translate(396.75px, 316px); --fe-w: 101px; --fe-h: 19px;", "text": "refund-posting" },
+      "save": { "style": "transform: translate(-50%, -50%) translate(326.5px, 455px); --fe-w: 53px; --fe-h: 19px;", "text": "Record" }
+    }
+  }
+}

@@ -77,14 +77,14 @@ export function useOverlayFit(root: RefObject<HTMLElement | null>, opts: { style
   return (o: FitOptions & { duration?: number; only?: ReadonlySet<string>; onlyEdges?: ReadonlySet<string> } = {}) => {
     const el = root.current;
     const s = store.getState() as State;
-    if (!el || !s.width || !s.height) return;
+    if (!el || !el.clientWidth || !el.clientHeight) return;
     const v = fitAvoiding(
       contentRects(s, routing, o.only, o.onlyEdges),
-      { width: s.width, height: s.height },
+      { width: el.clientWidth, height: el.clientHeight },
       overlayRects(el),
       o,
     );
-    if (v) void setViewport(v, { duration: motionMs(o.duration ?? 0) });
+    if (v) return setViewport(v, { duration: motionMs(o.duration ?? 0) });
   };
 }
 
@@ -205,9 +205,31 @@ export function useCovered(
     const base = root.current;
     if (!enabled || !el || !base) return;
     let full: { w: number; h: number } | null = null;
-    const measure = () => {
-      if (el.dataset.collapsed) return;
-      full = { w: el.offsetWidth, h: el.offsetHeight };
+    let availableWidth = 0;
+    let appearance = "";
+    const measure = (invalidate = false) => {
+      const width = base.clientWidth;
+      const expandedAppearance = el.className.replace(/\bis-compact\b/g, "");
+      // Folding/hover animates padding, but not the expanded footprint. Keep that footprint
+      // until the content's metrics (including presentation style/fonts) or available width change.
+      if (el.dataset.collapsed && full && width === availableWidth && appearance === expandedAppearance && !invalidate)
+        return;
+      // Text/reset rows can change while folded. Measure an unpainted expanded copy in
+      // the same containing block, so the next fit never uses the old expanded footprint.
+      let expanded = el;
+      if (el.dataset.collapsed) {
+        expanded = el.cloneNode(true) as HTMLElement;
+        expanded.classList.remove("is-compact");
+        expanded.removeAttribute("data-canvas-overlay");
+        expanded.style.visibility = "hidden";
+        expanded.style.transition = "none";
+        expanded.inert = true;
+        el.parentElement?.append(expanded);
+      }
+      full = { w: expanded.offsetWidth, h: expanded.offsetHeight };
+      availableWidth = width;
+      appearance = expandedAppearance;
+      if (expanded !== el) expanded.remove();
       // Fit-view avoids the expanded card even while it's folded (see overlayRects).
       el.dataset.overlayWidth = String(full.w);
       el.dataset.overlayHeight = String(full.h);
@@ -251,11 +273,19 @@ export function useCovered(
       typeof ResizeObserver === "undefined"
         ? null
         : new ResizeObserver(() => {
-            if (el.dataset.collapsed) return;
             measure();
             check();
           });
-    ro?.observe(el);
+    ro?.observe(el, { box: "border-box" });
+    ro?.observe(base, { box: "border-box" });
+    const contentChanged = () => {
+      measure(true);
+      check();
+    };
+    const content = new MutationObserver(contentChanged);
+    content.observe(el, { subtree: true, childList: true, characterData: true });
+    document.fonts.addEventListener("loadingdone", contentChanged);
+    document.fonts.addEventListener("loadingerror", contentChanged);
     check();
     // The store changes many times a frame while dragging, zooming or measuring; checking on each
     // forced a layout (two rect reads) every time. Once per frame, at the frame's own layout, is enough.
@@ -271,6 +301,9 @@ export function useCovered(
       unsubscribe();
       cancelAnimationFrame(frame);
       ro?.disconnect();
+      content.disconnect();
+      document.fonts.removeEventListener("loadingdone", contentChanged);
+      document.fonts.removeEventListener("loadingerror", contentChanged);
     };
   }, [card, root, store, enabled]);
   return enabled && covered;

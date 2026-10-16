@@ -132,8 +132,8 @@ function browserInContainer() {
       "/work",
       "-e",
       "PARITY_CONTAINER=1",
-      ...["CI", "GITHUB_ACTIONS", "PARITY_PORT", "PARITY_PREBUILT"].flatMap((k) =>
-        process.env[k] ? ["-e", `${k}=${process.env[k]}`] : [],
+      ...["CI", "GITHUB_ACTIONS", "PARITY_PORT", "PARITY_PREBUILT", "PARITY_CPU_THROTTLE", "PARITY_WORKERS"].flatMap(
+        (k) => (process.env[k] ? ["-e", `${k}=${process.env[k]}`] : []),
       ),
       image,
       "bash",

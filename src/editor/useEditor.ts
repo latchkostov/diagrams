@@ -166,6 +166,8 @@ export interface EditorDeps {
   /** Small boxes along the drawn edges (flow coordinates), so new things are placed off them. */
   edgeMarks?: () => EdgeMark[];
   fit: () => void;
+  /** Subscribe to canvas measurement readiness; returns an unsubscribe function. */
+  afterMeasured?: (run: () => void) => undefined | (() => void);
   /** Nominal node size for the current renderer (before React Flow has measured). */
   nodeSize: { width: number; height: number };
   /** Fits these nodes (flow ids) in the view, clear of the panels. */
@@ -188,11 +190,17 @@ export interface EditorDeps {
 export function useEditor(deps: EditorDeps): EditorApi {
   const rf = useReactFlow<FlowNode, DiagramFlowEdge>();
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
+  const [, invalidateCommands] = useState(0);
   const [editor] = useState(() =>
-    createEditor(rf, deps, {
-      getNodes: () => store.getState().nodes,
-      getEdges: () => store.getState().edges,
-    }),
+    createEditor(
+      rf,
+      deps,
+      {
+        getNodes: () => store.getState().nodes,
+        getEdges: () => store.getState().edges,
+      },
+      () => invalidateCommands((n) => n + 1),
+    ),
   );
   useLayoutEffect(() => {
     editor.updateDeps(rf, deps);
@@ -225,20 +233,34 @@ export function createEditor(
   rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>,
   initialDeps: EditorDeps,
   committed: Pick<ReactFlowInstance<FlowNode, DiagramFlowEdge>, "getNodes" | "getEdges"> = rf,
+  commandsChanged: () => void = () => {},
 ) {
   let latest = initialDeps;
+  // Document scheduling belongs to the editor. A waiting layout has not edited history yet:
+  // Undo cancels it instead of undoing an earlier edit and laying out that restored document.
+  let waitingLayout: { cancel?: () => void } | undefined;
+  const cancelLayout = () => {
+    if (!waitingLayout) return false;
+    const waiting = waitingLayout;
+    waitingLayout = undefined;
+    waiting.cancel?.();
+    commandsChanged();
+    return true;
+  };
   // Stage editor updates in call order: React's node/edge queues may commit independently later.
   let stagedNodes: FlowNode[] | undefined;
   let stagedEdges: DiagramFlowEdge[] | undefined;
   // Read the store arrays: React Flow's public getters clone every element. A render ends the batch.
   const currentNodes = () => stagedNodes ?? committed.getNodes();
   const currentEdges = () => stagedEdges ?? committed.getEdges();
-  const setNodes: EditorDeps["setNodes"] = (update) => {
+  const setNodes = (update: Parameters<EditorDeps["setNodes"]>[0], documentEdit = true) => {
+    if (documentEdit) cancelLayout();
     const current = currentNodes();
     stagedNodes = typeof update === "function" ? update(current) : update;
     latest.setNodes(stagedNodes);
   };
-  const setEdges: EditorDeps["setEdges"] = (update) => {
+  const setEdges = (update: Parameters<EditorDeps["setEdges"]>[0], documentEdit = true) => {
+    if (documentEdit) cancelLayout();
     const current = currentEdges();
     stagedEdges = typeof update === "function" ? update(current) : update;
     latest.setEdges(stagedEdges);
@@ -313,12 +335,16 @@ export function createEditor(
     setEdges(edges);
     return true;
   };
-  const hint = (merge?: string) => deps().history.hint(merge);
+  const hint = (merge?: string) => {
+    cancelLayout();
+    deps().history.hint(merge);
+  };
   /**
    * Opens the creation transaction of a node about to be added (`new:<id>`): the node, its edge and the name
    * typed in its editor are one undo step, however long the naming takes (useHistory's `begin`).
    */
   const beginCreation = (merge: string) => {
+    cancelLayout();
     const h = deps().history;
     if (h.begin) h.begin(merge);
     else h.hint(merge);
@@ -334,14 +360,17 @@ export function createEditor(
     const nodes = new Set(sel.nodeIds ?? []);
     const groups = new Set(sel.groupIds ?? []);
     const edges = new Set(sel.edgeIds ?? []);
-    deps().setNodes((ns) =>
-      ns.map((n) => {
-        const want = isGroup(n) ? groups.has(n.data.groupId) : nodes.has(n.id);
-        return !!n.selected === want ? n : { ...n, selected: want };
-      }),
+    setNodes(
+      (ns) =>
+        ns.map((n) => {
+          const want = isGroup(n) ? groups.has(n.data.groupId) : nodes.has(n.id);
+          return !!n.selected === want ? n : { ...n, selected: want };
+        }),
+      false,
     );
-    deps().setEdges((es) =>
-      es.map((e) => (!!e.selected === edges.has(e.id) ? e : { ...e, selected: edges.has(e.id) })),
+    setEdges(
+      (es) => es.map((e) => (!!e.selected === edges.has(e.id) ? e : { ...e, selected: edges.has(e.id) })),
+      false,
     );
   };
 
@@ -653,10 +682,11 @@ export function createEditor(
   let namingSequence = 0;
   const api: EditorApi = {
     getDiagram: diagram,
-    undoTarget: () => deps().history.top(),
+    undoTarget: () => (waitingLayout ? undefined : deps().history.top()),
     applyDiagram: (next, opts) => {
       const checked = validateDiagram(next);
       if (!checked.ok) throw new Error(checked.error);
+      cancelLayout();
       const before = api.getDiagram();
       const diff = diagramDiff(before, checked.diagram);
       if (!diff.hasChanges) return diff;
@@ -1605,10 +1635,15 @@ export function createEditor(
     hasClipboard: () => clipboard !== null,
     isPrivate: () => deps().isPrivate?.() ?? false,
 
-    undo: () => deps().history.undo(),
-    redo: () => deps().history.redo(),
-    canUndo: () => deps().history.canUndo,
-    canRedo: () => deps().history.canRedo,
+    undo: () => {
+      if (!cancelLayout()) deps().history.undo();
+    },
+    redo: () => {
+      cancelLayout();
+      deps().history.redo();
+    },
+    canUndo: () => !!waitingLayout || deps().history.canUndo,
+    canRedo: () => !waitingLayout && deps().history.canRedo,
 
     fitView: () => deps().fit(),
     zoomTo100: () => void rf.zoomTo(1, { duration: motionMs(250) }),
@@ -1646,31 +1681,77 @@ export function createEditor(
     openInspector: (field) => deps().openInspector(field),
     showShortcuts: () => deps().showShortcuts(),
     autoLayout: () => {
-      const d = diagram();
-      const pos = layeredLayout({ nodes: d.nodes, edges: d.edges, direction: d.direction });
-      movePositions(pos);
-      // Refit boundaries around their (moved) members.
-      const { width, height } = deps().nodeSize;
-      for (const g of d.groups ?? []) {
-        const boxes = d.nodes
-          .filter((n) => n.group === g.id && pos.has(n.id))
-          .map((n) => {
-            const measured = rf.getNode(n.id);
-            return {
-              id: n.id,
-              ...pos.get(n.id)!,
-              width: measured?.measured?.width ?? width,
-              height: measured?.measured?.height ?? height,
-            };
-          });
-        if (boxes.length) api.updateGroup(g.id, boundaryAround(boxes));
-      }
-      setTimeout(() => deps().fit(), 60);
+      const run = () => {
+        const d = diagram();
+        const pos = layeredLayout({ nodes: d.nodes, edges: d.edges, direction: d.direction });
+        movePositions(pos);
+        // Refit direct contents bottom-up: parents use each child's new box, never its old
+        // measurement. Index once, so file order and hierarchy depth do not change the work.
+        const moved = currentNodes();
+        const groups = new Map(moved.filter(isGroup).map((n) => [n.data.groupId, n]));
+        const members = new Map<string, FlowNode[]>();
+        const boxes = new Map(moved.map((n) => [n.id, box(n)]));
+        const remaining = new Map([...groups.keys()].map((id) => [id, 0]));
+        for (const n of moved) {
+          const parent = n.data.group;
+          if (!parent || !groups.has(parent)) continue;
+          const list = members.get(parent) ?? [];
+          list.push(n);
+          members.set(parent, list);
+          if (isGroup(n)) remaining.set(parent, remaining.get(parent)! + 1);
+        }
+        const ready = [...groups.keys()].filter((id) => remaining.get(id) === 0);
+        const refits = new Map<string, ReturnType<typeof boundaryAround>>();
+        while (ready.length) {
+          const id = ready.pop()!;
+          const group = groups.get(id)!;
+          const contents = members.get(id) ?? [];
+          if (contents.length) {
+            const bounds = boundaryAround(contents.map((n) => boxes.get(n.id)!));
+            boxes.set(group.id, { id: group.id, ...bounds });
+            refits.set(group.id, bounds);
+          }
+          const parent = group.data.group;
+          if (parent && remaining.has(parent)) {
+            const left = remaining.get(parent)! - 1;
+            remaining.set(parent, left);
+            if (!left) ready.push(parent);
+          }
+        }
+        if (refits.size) {
+          hint();
+          deps().setNodes((ns) =>
+            ns.map((n) => {
+              const bounds = refits.get(n.id);
+              return bounds
+                ? { ...n, position: { x: bounds.x, y: bounds.y }, width: bounds.width, height: bounds.height }
+                : n;
+            }),
+          );
+        }
+        deps().fit();
+      };
+      cancelLayout();
+      const before = JSON.stringify(fromFlow(deps().meta, currentNodes(), currentEdges()));
+      const waiting: NonNullable<typeof waitingLayout> = {};
+      waitingLayout = waiting;
+      commandsChanged();
+      const ready = () => {
+        if (waitingLayout !== waiting) return;
+        waitingLayout = undefined;
+        commandsChanged();
+        // Replacements and gestures can also originate outside EditorApi (reset, drag).
+        if (JSON.stringify(diagram()) !== before) return;
+        run();
+      };
+      if (deps().afterMeasured) waiting.cancel = deps().afterMeasured!(ready);
+      else ready();
     },
   };
   return {
     api,
     updateDeps: (flow: ReactFlowInstance<FlowNode, DiagramFlowEdge>, next: EditorDeps) => {
+      if (next.slug !== latest.slug) cancelLayout();
       rf = flow;
       latest = next;
       stagedNodes = undefined;

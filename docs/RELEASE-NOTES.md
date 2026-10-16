@@ -58,6 +58,69 @@
   Existing unmount cleanup was correct and is retained.
 - Production gallery/picker/interop checks and deliberate reversions pass. No parity golden changes.
 
+## Browser parity integration with master (2026-10-15)
+
+- Restore a fitted opening frame and immediate refits when panels or Auto-layout change the canvas.
+  Font and geometry readiness refine the automatic view; any input cancels that refinement before
+  the gesture is handled, including a node press, menu, wheel or keyboard command. Active fit
+  transitions stop at the current viewport too, so they cannot move a target under the pointer.
+  Regressions hold font readiness to check the first visible frame, a stationary node press and
+  a panel opened during a pending refinement, plus keyboard zoom before the first refinement.
+  Hover and keyboard focus keep their tooltips by cancelling the pending refinement too.
+  Early fits follow React Flow's committed nodes/edges rather than every pane resize, preserving
+  fullscreen refits and fitting Auto-layout before its next font refinement.
+  The Lab accepts zero-area boundaries while waiting for every visible descendant to measure.
+  Eight regressions cover these windows and fail with their fixes temporarily reverted.
+  All 1,769 parity goldens remain unchanged: zero changed or added, with none re-recorded.
+- Complete correction verification: all six local CI shard lists pass 1,300 tests, and the
+  47 previously failing tests pass all 141 three-repeat runs, without retries. Two fresh full
+  parity runs and four alternating Docker stress runs are clean. Unit tests pass 7,201 with
+  four existing skips; build, size, i18n and refreshed skill freshness pass. Detailed negative
+  controls, preliminary failures and local dev-runner corrections are recorded in `docs/PARITY.md`.
+- Final P2 follow-up: the title-card warning count waits until the opening viewport is computed
+  (or the person takes control). Checks still run independently; delayed fonts, measurements and
+  worker delivery produce the same opening view without a harness override or a blank warning row.
+- Measurement transactions disconnect their ResizeObserver and clear retained elements when idle,
+  then register current targets on the next request. Folded cards reuse their expanded footprint
+  across padding/hover notifications, invalidating it for content and available-width changes.
+- CPU stress now awaits throttling before every context-created page is returned, including offline
+  exported viewers. A page-event-only callback was rejected because navigation could race its CDP command.
+- All four regressions fail with their respective fixes temporarily reverted: different opening
+  viewports, retained idle observations, repeated expanded-card clones and an unthrottled viewer.
+  No golden is re-recorded for these fixes; no controls or reserved blank chrome are added.
+- Final P2 verification: six final-build Docker stress passes (24 workers alternating with 10× CPU
+  and eight workers), two fresh full-parity passes with all 1,769 goldens unchanged, 7,201 unit passes
+  (four existing skips), 138 production Chromium passes and six positive regression repeats.
+  Build, size, i18n and the refreshed 1.1.26 skill viewer pass; initial fixture corrections and
+  negative-control evidence are recorded in `docs/PARITY.md`.
+- Review fixes: Undo cancels Auto-layout while measurements are pending, preserving the prior
+  document and history. Other edits/replacements invalidate that waiting layout in the editor.
+- User viewport movement cancels interrupted fits and releases the measurement observer without
+  discarding measurement subscribers. Rendered zero-axis boundaries include sub-pixel dimensions;
+  their descendants still measure normally. Delayed Checks coverage matches dev and built URLs.
+- Each review regression fails with its fix temporarily removed. Every parity golden remains
+  unchanged in this follow-up: zero changed or added; none were re-recorded.
+- Final review verification: six clean Docker stress passes, 1,769 unchanged parity goldens,
+  7,201 unit passes (four existing skips), 136 production and 18 dev browser passes. Build, size,
+  i18n and skill freshness pass; early harness/resource failures are recorded in `docs/PARITY.md`.
+- Rebased the deterministic fits onto nested boundaries (#115), the example picker/gallery (#118)
+  and Autoscaling A1 (#117), including the subsequent review follow-ups (#123). Autosave,
+  example-copy promotion and CopyNotice are retained alongside the measured fit gate. Both
+  documentation histories and both Lab fixtures are preserved.
+- Auto-layout refits nested boundaries from the inside out, including measured annotations and
+  each child's new bounds, regardless of file order. Membership survives; empty boundaries remain
+  valid. Ordered layout commands still finish before the final measured fit. The new Lab fixture
+  covers three empty boundary levels, a note, a zone and an empty leaf.
+- Parity readiness accepts an explicitly zero-sized boundary while still measuring its descendants
+  and recording the boundary. No rendered output is omitted or loosened.
+- Gallery save-count and nested-drag regressions wait for the measured opening fit before sampling.
+- Regenerated the released viewer from master's copy; plugin 1.1.26 is one patch above master.
+- The eight showcase additions and the two complete-selection Tidy corrections are described under
+  Deterministic canvas fits below. No other existing golden is intentionally changed.
+- Verification: eight Docker stress passes, two fresh full-parity passes (1,769 goldens each),
+  7,184 unit passes (four existing skips), and 161 production Chromium passes. Details and the
+  initial test-readiness failures are recorded in `docs/PARITY.md`.
+
 ## Example gallery integration with master (#118, 2026-10-15)
 
 - Rebased the gallery onto nested boundaries and zones (#115), the six showcases (#120) and the
@@ -209,6 +272,31 @@ goldens match, with the eight previously documented browser deferrals.
 - Refreshed the offline skill viewer; plugin version remains one patch above master (1.1.21).
 - No parity goldens change. The frozen scenarios do not exercise these failure paths; focused
   regressions, deliberate reversions and the expanded fuzzer cover them without re-recording output.
+
+## Deterministic canvas fits and browser parity (2026-10-15)
+
+- Opening and Auto-layout fit the rendered, measured result after fonts and floating chrome settle. Boundaries use
+  measured card sizes; the title card keeps an up-to-date expanded footprint while folded. Competing opening fits
+  and guessed fit delays are removed.
+- Auto-layout commands run in order and survive later fit requests. Checks refits after its lazy card mounts;
+  zero-sized imported boundaries no longer block fits or Auto-layout. The canvas observes subtree mutations only
+  while measured work is pending, leaving idle drags and live decorations free of that observer.
+- Browser parity waits for fonts, measured nodes, pending fits and stable geometry; changing badge text cannot
+  prevent convergence. CPU-throttle and parallel-worker stress options are documented in `docs/PARITY.md`.
+- Refreshed the Claude Code viewer with the same fit behavior; the plugin is 1.1.21.
+- Interactive HTML parity now pins the viewer's own opening fit again: the fit waits for fonts, measured nodes and
+  settled chrome, so the explicit zoom-and-fit steps added by the toolchain review are no longer needed.
+- Browser parity restores eight showcase goldens deferred by #120: opening renders for `contoso-dmz` and
+  `shared-api-quotas`; Auto-layout/Tidy for `contoso-dmz`, `measured-order-capacity`,
+  `partitions-vs-subscriptions`, `serverless-burst-buffer`, `shared-api-quotas` and `shared-worker-pool`.
+  The harness skips Undo after a layout that changes nothing, verifies the entire selection before Tidy, and
+  reads connections whose ids start with `deny-` without mistaking their nested deny markers for connections.
+  Layout parity waits for deferred warning counts to render before fitting, so their title-card row cannot race it.
+- Corrected only the Tidy portions of two existing browser layout goldens: `aws-fanout` had omitted `client`
+  and `rag-assistant` had omitted `user`, because Ctrl+A outside the canvas left Undo's changed-node selection.
+  With everything selected, AWS correctly reports no room within its boundary constraints and keeps its original
+  2240×632 boundary; RAG includes the chat-to-API connection and lays out all 13 nodes (API at 427,160 rather
+  than 40,250). Routes and labels follow those corrected positions; all other existing goldens are unchanged.
 
 ## Showcase review fixes (2026-10-15)
 

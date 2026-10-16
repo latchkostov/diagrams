@@ -1,4 +1,5 @@
 import { nestedBoundariesFixture as nestedFixture } from "../../src/lab/nestedBoundariesFixture";
+import { settledCanvas } from "../parity/browser/canvas";
 import { captionContrastFixture } from "../../src/lab/captionContrastFixture";
 import { gotoLab } from "./fixtures";
 import { test, expect, expectNoErrors, gotoCanvas, waitForStableViewport, STORAGE_KEYS, type Page } from "./fixtures";
@@ -23,7 +24,7 @@ async function seed(page: Page, diagram: unknown) {
   );
   await gotoCanvas(page, SLUG);
   await expect(page.getByTestId("group-label-grp-core")).toBeVisible();
-  await waitForStableViewport(page);
+  await settledCanvas(page);
 }
 
 const fixtureDiagram = {
@@ -250,7 +251,7 @@ test("dragging selected parent and child preserves nesting and undo/redo", async
   await seed(page, nestedFixture);
   await page.getByTestId("group-label-grp-core").click();
   await page.getByTestId("group-label-child").click({ modifiers: ["Shift"] });
-  await waitForStableViewport(page);
+  await settledCanvas(page);
   const elements = ["group-grp-core", "group-child", "node-member", "annotation-note"].map((id) =>
     page.getByTestId(id),
   );
