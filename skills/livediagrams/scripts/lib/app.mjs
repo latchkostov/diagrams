@@ -3631,6 +3631,18 @@ function idClaimer(taken = /* @__PURE__ */ new Set(), avoid) {
 }
 //#endregion
 //#region src/model/groupHierarchy.ts
+/** Recursively computes all ancestor group IDs of `groupId`. */
+function ancestorGroupIds(groupId, groups, byId = new Map(groups.map((g) => [g.id, g]))) {
+	const result = /* @__PURE__ */ new Set();
+	let cur = byId.get(groupId)?.group;
+	const visited = /* @__PURE__ */ new Set([groupId]);
+	while (cur && !visited.has(cur)) {
+		result.add(cur);
+		visited.add(cur);
+		cur = byId.get(cur)?.group;
+	}
+	return result;
+}
 /** Input parents are untrusted. Keep only existing references and break cycles before rendering. */
 function sanitizeGroupParents(groups, externalIds) {
 	const ids = /* @__PURE__ */ new Set([...externalIds, ...groups.map((g) => g.id)]);
@@ -4516,6 +4528,60 @@ function boundaryAround(boxes, pad = 40, labelRoom = 24) {
 	};
 }
 //#endregion
+//#region src/editor/boundaryFit.ts
+/** Fit direct contents bottom-up. Empty boundaries keep their box; parents use each child's
+* planned box. All coordinates are absolute, so callers only adapt ids and measured sizes. */
+function planBoundaryRefits(groups, elements, requested) {
+	return createBoundaryRefitter(groups, elements)(requested);
+}
+/** Index geometry and bottom-up order once. Later fits can reuse it after an element's box moves;
+* child boxes retain their latest fit, so collision placement sees every preceding adjustment. */
+function createBoundaryRefitter(groups, elements) {
+	const byId = new Map(groups.map((g) => [g.id, g]));
+	const members = /* @__PURE__ */ new Map();
+	const boxes = new Map(groups.map((g) => [g.id, g]));
+	const remaining = new Map(groups.map((g) => [g.id, 0]));
+	const add = (n, boundary) => {
+		if (!n.group || !byId.has(n.group)) return;
+		const list = members.get(n.group) ?? [];
+		list.push({
+			box: n,
+			child: boundary ? n.id : void 0
+		});
+		members.set(n.group, list);
+		if (boundary) remaining.set(n.group, remaining.get(n.group) + 1);
+	};
+	groups.forEach((g) => add(g, true));
+	elements.forEach((n) => add(n, false));
+	const ready = groups.filter((g) => !remaining.get(g.id)).map((g) => g.id);
+	const order = /* @__PURE__ */ new Map();
+	while (ready.length) {
+		const id = ready.pop();
+		const group = byId.get(id);
+		order.set(id, order.size);
+		if (group.group && remaining.has(group.group)) {
+			const left = remaining.get(group.group) - 1;
+			remaining.set(group.group, left);
+			if (!left) ready.push(group.group);
+		}
+	}
+	return (requested) => {
+		const ids = requested ? [...requested].filter((id) => order.has(id)).sort((a, b) => order.get(a) - order.get(b)) : [...order.keys()];
+		const refits = /* @__PURE__ */ new Map();
+		for (const id of ids) {
+			const contents = members.get(id) ?? [];
+			if (!contents.length) continue;
+			const bounds = boundaryAround(contents.map((n) => n.child ? boxes.get(n.child) : n.box));
+			boxes.set(id, {
+				id,
+				...bounds
+			});
+			refits.set(id, bounds);
+		}
+		return refits;
+	};
+}
+//#endregion
 //#region src/canvas/placement.ts
 var GAP_X = 80;
 var GAP_Y = 40;
@@ -4758,17 +4824,21 @@ function isClear(box, others, margin = 0) {
 }
 //#endregion
 //#region src/ai/place.ts
-function fitGroupToContents(diagram, groupId) {
-	const members = diagram.nodes.filter((n) => n.group === groupId).map((n) => ({
+function fitGroups(diagram, requested) {
+	if (!diagram.groups?.length || requested?.size === 0) return diagram;
+	const refits = planBoundaryRefits(diagram.groups ?? [], [...diagram.nodes.map((n) => ({
 		...n,
 		...estimateCardSize(n.label, n.sublabel)
-	}));
-	return members.length ? {
+	})), ...diagram.annotations ?? []], requested);
+	return refits.size ? {
 		...diagram,
-		groups: diagram.groups?.map((g) => g.id === groupId ? {
-			...g,
-			...boundaryAround(members)
-		} : g)
+		groups: diagram.groups?.map((g) => {
+			const bounds = refits.get(g.id);
+			return bounds ? {
+				...g,
+				...bounds
+			} : g;
+		})
 	} : diagram;
 }
 /**
@@ -4797,6 +4867,19 @@ function placeNew(diagram, newIds, mode = "auto", touchedGroups = [], keepOutsid
 			if (group) n.group = group;
 		}
 	}
+	const ancestry = /* @__PURE__ */ new Map();
+	const groups = diagram.groups ?? [];
+	const groupById = new Map(groups.map((g) => [g.id, g]));
+	for (const n of nodes) {
+		if (!n.group || ancestry.has(n.group)) continue;
+		ancestry.set(n.group, /* @__PURE__ */ new Set([n.group, ...ancestorGroupIds(n.group, groups, groupById)]));
+	}
+	const foreignGroups = (n, candidates = groups) => candidates.filter((g) => !n.group || !ancestry.get(n.group)?.has(g.id));
+	const includeAncestors = (ids) => {
+		const result = new Set(ids);
+		for (const id of ids) for (const ancestor of ancestry.get(id) ?? ancestorGroupIds(id, groups, groupById)) result.add(ancestor);
+		return result;
+	};
 	if (full) {
 		const positions = layeredLayout({
 			nodes,
@@ -4814,7 +4897,7 @@ function placeNew(diagram, newIds, mode = "auto", touchedGroups = [], keepOutsid
 		})), ...diagram.annotations ?? []];
 		for (const n of nodes.filter((n) => fresh.has(n.id))) {
 			const size = estimateCardSize(n.label, n.sublabel);
-			const occupied = [...boxes, ...(diagram.groups ?? []).filter((g) => g.id !== n.group)];
+			const occupied = [...boxes, ...foreignGroups(n)];
 			const edge = mode === "none" ? void 0 : diagram.edges.find((e) => e.from === n.id && !fresh.has(e.to) || e.to === n.id && !fresh.has(e.from));
 			const neighbor = edge && nodes.find((o) => o.id === (edge.from === n.id ? edge.to : edge.from));
 			let center = neighbor ? placeNextTo({
@@ -4842,15 +4925,26 @@ function placeNew(diagram, newIds, mode = "auto", touchedGroups = [], keepOutsid
 			});
 		}
 	}
-	let next = {
+	const next = {
 		...diagram,
-		nodes
+		nodes,
+		groups: diagram.groups?.map((g) => ({ ...g }))
+	};
+	const nextGroups = new Map(next.groups?.map((g) => [g.id, g]));
+	const sized = nodes.map((n) => ({
+		...n,
+		...estimateCardSize(n.label, n.sublabel)
+	}));
+	const sizedById = new Map(sized.map((n) => [n.id, n]));
+	const planRefits = createBoundaryRefitter(groups, [...sized, ...diagram.annotations ?? []]);
+	const refit = (requested) => {
+		for (const [id, bounds] of planRefits(requested)) Object.assign(nextGroups.get(id), bounds);
 	};
 	const touched = /* @__PURE__ */ new Set([...touchedGroups, ...nodes.filter((n) => fresh.has(n.id) && n.group).map((n) => n.group)]);
-	for (const group of next.groups ?? []) if (full || touched.has(group.id)) next = fitGroupToContents(next, group.id);
+	refit(full ? void 0 : includeAncestors(touched));
 	for (const n of next.nodes) {
 		if (!full && !fresh.has(n.id)) continue;
-		const foreign = (next.groups ?? []).filter((g) => g.id !== n.group);
+		const foreign = foreignGroups(n, next.groups);
 		const size = estimateCardSize(n.label, n.sublabel);
 		if (!foreign.some((g) => overlaps({
 			...n,
@@ -4878,7 +4972,11 @@ function placeNew(diagram, newIds, mode = "auto", touchedGroups = [], keepOutsid
 		};
 		n.x = Math.round(center.x - size.width / 2);
 		n.y = Math.round(center.y - size.height / 2);
-		if (n.group) next = fitGroupToContents(next, n.group);
+		Object.assign(sizedById.get(n.id), {
+			x: n.x,
+			y: n.y
+		});
+		if (n.group) refit(includeAncestors([n.group]));
 	}
 	return next;
 }
@@ -4935,7 +5033,7 @@ function layoutDiagram(input, opts = {}) {
 		d = placeNew(d, ids, "full", [], ids);
 		fitted = (d.groups ?? []).map((g) => g.id);
 	} else {
-		for (const id of unboxed) d = fitGroupToContents(d, id);
+		d = fitGroups(d, unboxed);
 		fitted = (d.groups ?? []).filter((g) => unboxed.has(g.id)).map((g) => g.id);
 	}
 	const nodeAt = new Map(d.nodes.map((n) => [n.id, n]));

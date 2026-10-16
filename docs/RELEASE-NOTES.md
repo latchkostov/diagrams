@@ -1,5 +1,15 @@
 # Release notes
 
+## Review follow-ups rebase (#139, 2026-10-16)
+
+- Rebased the existing fixes onto static-page translations (#138), preserving both documentation
+  histories and every English and translated message. Regenerated locale metadata; catalog validation
+  reports zero errors and zero stale messages, with the existing translation gaps and warnings.
+- Generated skill files start from master and are rebuilt from the combined sources. The refreshed
+  viewer ships as plugin 1.1.31, exactly one patch above master's 1.1.30.
+- Full parity regeneration leaves all 2,092 master goldens identical: no changed, added, missing or
+  stale records. This rebase adds no behavior changes and needs no golden exceptions.
+
 ## Static-page translation review fixes (2026-10-16)
 
 - Skill-page translations bind to named blocks and preserved inline slots, so adding paragraphs or
