@@ -997,6 +997,34 @@ its cooldown or against its direction, request wakes come only from request scal
 holds its group slot. A resumed controller owns the count from its first evaluation; an override above the
 maximum stands until then.
 
+### Terraform import
+
+Only Terraform (`terraform show -json` plans and state) already reads these services, so only Terraform maps
+their scaling (`src/interop/infra/tfScaling.ts`). Each policy attaches to exactly one drawn node; values are
+validated before use and the result passes the shared schema, or the policy is imported as `unsupported` with a
+reason category, keeping the drawn topology. Unknown non-empty fields in a mapped block are reported, never
+dropped. No secret, authentication value, URL or connection-string name is read into the diagram.
+
+| Terraform input                                                                                       | Imported as                                                                                                                                                          |
+| ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `aws_appautoscaling_target` (ECS desired count), joined by reference or `service/<cluster>/<service>` | ECS range: `min_capacity`/`max_capacity`; initial is the service's `desired_count` clamped to the range                                                              |
+| `aws_appautoscaling_policy` target tracking: ECS CPU, memory, `ALBRequestCountPerTarget`              | Target-tracking policies; ALB metrics bind the drawn load balancer that routes to the service; cooldowns in ms (unset: 300 s); `disable_scale_in`                    |
+| Step scaling with the `aws_cloudwatch_metric_alarm`s that invoke it                                   | Step policies: AWS/ECS CPU and memory (Average) or ALB `RequestCount` / `RequestCountPerTarget` (Sum over 60 s); threshold, operator, periods, steps, type, cooldown |
+| `aws_ecs_task_definition` `cpu` / `memory`                                                            | Task size as CPU and memory limits (1,024 units = 1 vCPU), with unmeasured workload costs until a lesson is chosen                                                   |
+| `azurerm_container_app` `template`                                                                    | Container Apps range, cooldown and polling, one HTTP rule, Service Bus queue or topic-subscription rules bound to drawn entities; first container's size             |
+| `azurerm_monitor_autoscale_setting` on a plan hosting exactly one drawn web app                       | App Service capacity (default/min/max) and CpuPercentage, MemoryPercentage, HttpQueueLength rules with windows, actions and cooldowns                                |
+| `google_cloud_run_v2_service` `template.scaling`; `google_cloud_run_service` Knative annotations      | Cloud Run range (unset maximum: 100), per-instance concurrency as the node's Concurrency (≤ 1,000), CPU and memory limits                                            |
+
+Gaps, each reported with its reason: ECS customized metrics, predictive and scheduled scaling, step policies
+whose alarm isn't in the files, metric math, M-of-N alarms and other missing-data treatments, policies with
+different periods; Container Apps TCP, Azure Storage queue and other custom rule types, more than one HTTP rule,
+multi-container apps; App Service shared plans (capacity ownership is ambiguous), recurrence or fixed-date
+profiles, `divide_by_instance_count`, statistics other than Average and Functions plans; Cloud Run service-level
+or manual scaling, other Knative annotations and sidecars; any sensitive scaling attribute. Not read at all:
+Bicep/ARM, CloudFormation/SAM, CDK, Pulumi, Terraform HCL source, VM scale sets and auto scaling groups, and Lambda
+or Functions concurrency (P3 owns those). Hostile inputs are bounded by fixed caps; tests prove that 100,000-item
+collections and deep nesting are never walked and that 8× more services cost linear work.
+
 `cloud-run-timetable-api` is the public Autoscaling showcase: an invented commuter timetable API sleeps overnight,
 wakes on demand, hits its maximum of 6 in the morning rush (Check diagram suggests 11, verified) and returns to
 zero. Its shortened timings are labelled teaching assumptions. Ten frozen `a3-*` corpus diagrams pin each adapter

@@ -51,6 +51,52 @@ headers remain the target inside collapsible sections.
 This was a source and regression-test review, not an independent whole-app visual walkthrough or
 screen-reader session. Production browser checks cover the changed interactions and accessibility.
 
+## Round 43 — Autoscaling A3: cloud adapters and scenario sizing (2026-10-16)
+
+The designer agent reviewed A3 against `UX-PRINCIPLES.md` using source, the production E2E spec and the
+captures below; verdict **pass with fixes**, no blocking issue. Every platform keeps the A2 inspector pattern:
+one preset select plus the platform's target, minimum and maximum (four main fields); cooldowns, alarm periods,
+windows, bindings, resources and the complete policy JSON stay in Advanced. No top-bar control, global mode,
+scaler stencil or floating panel is added; scenario sizing reuses the Checks card, the inspector's findings and
+Live details.
+
+Fixed from the review:
+
+- The preset list showed every platform on every service (13 flat options). Now a platform's own stencil
+  offers only its presets, other services see them grouped by provider (Kubernetes, AWS, Azure, Google Cloud),
+  and the current preset always stays listed.
+- Two notes and the word "adapter" in the default view became one plain note: "An approximation of {platform}
+  scaling. Workload costs and settings marked “assumption” are estimates, not {platform} guarantees."
+- App Service's cooldown no longer reuses "Cooldown to zero"; ECS step scaling's target says "Scale out above
+  CPU (% of task CPU)"; the ALB target says "Requests per task per minute (ALB)"; Cloud Run's main field is
+  "Concurrency (requests per instance)"; the initial count says tasks, instances or replicas per platform.
+- Scenario sizing moved from below the replica table to right after the counts in Live details.
+- Live details showed two CPU figures with different denominators; A3 adapters now show one, "% of allocated".
+- The planner sentence reads fact, startup backlog, advice, then what the rerun showed, in plain words ("A rerun
+  with this change confirmed it."; an unconfirmed maximum says "Raising it to N didn't help in a rerun, so no fix
+  is offered"); metric phrases no longer repeat "CPU"; fix labels match the fields ("Raise maximum to 14", "Set
+  minimum to 4").
+- Pending bindings say "choose it below" and Container Apps events name a Service Bus queue instead of a
+  consumer group.
+- The showcase description shrank from 90 to 37 words, without jargon.
+- New production tests cover focus after a Container Apps event binding, the no-load-balancer empty state, and
+  that Checks and Live details render exactly the same scenario sizing sentence.
+
+Deferred, with reasons: A1's generic "replica" wording in Connections, the replica chart and per-replica table
+is shared by every compute node and stays for a separate copy pass; the A1 "Target requires N" estimate still
+shows without traffic (an A1 behaviour, unchanged here).
+
+![ECS: CPU target, minimum and maximum tasks](screenshots/autoscaling-a3/a3-ecs-cpu-inspector.png)
+![Container Apps: HTTP requests per replica](screenshots/autoscaling-a3/a3-aca-http-inspector.png)
+![App Service: scale-out rule threshold and instances](screenshots/autoscaling-a3/a3-app-service-inspector.png)
+![Cloud Run in the dark theme](screenshots/autoscaling-a3/a3-cloud-run-inspector-dark.png)
+![The Cloud Run showcase at its maximum during the morning rush](screenshots/autoscaling-a3/a3-cloud-run-live.png)
+
+Production Chromium tests cover keyboard editing and Undo, axe WCAG 2.0/2.1 A/AA on the controls (light and
+dark, Advanced open), 1280×800 fit, Arabic JSON direction, explicit load balancer and Service Bus bindings with
+focus, the showcase's zero → on-demand → maximum → zero playback, and the scenario sizing fix with Undo. The
+designer's review was read-only: no independent browser or screen-reader session.
+
 ## Round 42 — Autoscaling A2 (2026-10-15)
 
 The designer reviewed A2 against `UX-PRINCIPLES.md` using source, regression tests and the captures below.
