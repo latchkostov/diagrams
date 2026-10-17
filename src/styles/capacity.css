@@ -61,6 +61,20 @@
   animation: cap-pulse 1.3s ease-in-out infinite;
 }
 
+/* A large diagram (data-live-large, src/live/decorations.ts) holds an over-capacity ring at its strongest instead of
+   pulsing it: hundreds of pulsing rings repainted every frame. */
+.react-flow[data-live-large] .cap-ring {
+  transition: none;
+}
+
+.react-flow[data-live-large] .cap-ring.is-over {
+  animation: none;
+  border-color: var(--cap);
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--cap) 16%, transparent),
+    0 0 28px 0 color-mix(in oklab, var(--cap) 50%, transparent);
+}
+
 @keyframes cap-pulse {
   50% {
     border-color: var(--cap);

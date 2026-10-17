@@ -23,6 +23,7 @@ import { useAllRoutes, useRoutingOptions } from "../canvas/edges/useEdgeRoute";
 import { LiveController } from "./controller";
 import { LiveContext, useLiveState, type LiveUi, type TraceChoice } from "./context";
 import { Decorator, type DecorationStats } from "./decorations";
+import { createFrameClock } from "./frameClock";
 import { downstreamOfEdge, edgesWithin } from "./graph";
 import { liveActions, liveMutationGuard } from "./liveActions";
 import { DEFAULT_TOKENS, readParticleTokens, type Rect } from "./particleRenderer";
@@ -549,7 +550,12 @@ export function LiveSession({
       (window as unknown as { __liveProbe?: LiveRenderer["probe"] }).__liveProbe = (l, r) => renderer.probe(l, r);
     const decorator = new Decorator(root);
     let raf = 0;
-    let last = performance.now();
+    // Slow frames catch the simulation up (bounded); a hidden page resumes where it was (frameClock.ts).
+    const clock = createFrameClock(performance.now());
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") clock.hidden();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
     // Benchmark hook (dev and e2e builds): Traffic × 10 at the dot scale in use without opening Inputs & capacity
     // (which turns the heat map on for the session), and the decorator's counters.
     const bench = window as unknown as { __liveBench?: { timesTen(): void; decorations: DecorationStats } };
@@ -569,9 +575,9 @@ export function LiveSession({
     /** Milliseconds of moving simulation: the marching ants' clock (it stops when the simulation does). */
     let march = 0;
     const tick = (now: number) => {
-      const dt = Math.min(100, now - last);
-      last = now;
-      controller.advance(dt);
+      const step = clock.step(now);
+      const dt = step.visual;
+      controller.advance(step.sim);
       const gen = controller.getState().generation;
       if (gen !== generation) {
         generation = gen;
@@ -615,6 +621,7 @@ export function LiveSession({
     raf = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(raf);
+      document.removeEventListener("visibilitychange", onVisibility);
       decorator.clear();
       root.style.removeProperty(LIVE_BAR_VAR);
       renderer.dispose();
