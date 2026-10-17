@@ -7,7 +7,11 @@
   of script, style, layout and paint together), so this was not where the 3 s frames came from, and it isn't fixed
   here. Next step: cache the wrapper lists per React Flow render, and read march geometry only for edges whose route
   changed.
-- **Why the node heat pulse ends the slow phase.** In the earlier ablations, turning off `lv-heat-pulse` made the slow
-  phase last the whole run (0.31 fps at 77 s). The likely reason is that Chrome merges layers differently once many
-  nodes animate a filter. This is inferred, not verified. With the fades dropped on large diagrams the slow phase no
-  longer depends on it, but a trace with `LayerTree` snapshots before and after the first pulses would confirm it.
+- **Why the node heat pulses help.** In the earlier ablations, turning off `lv-heat-pulse` made the slow phase last the
+  whole run (0.31 fps at 77 s). Perf 5 measured the same direction with the fades already gone: holding the pulse
+  still on large diagrams (its brightest frame, no animation) cut the layers at Traffic × 10 on 5,000 nodes from about
+  5,000 to 970 but doubled the steady frame (557 to about 1,000 ms at 2×), so it was dropped. The likely reason: each
+  pulsing node gets a compositor layer of its own, so its large blurred shadow is rastered once and only composited
+  afterwards, where a static one is repainted with everything around it. Not verified; a trace comparing raster time
+  with and without the pulses would settle it, and might show a cheaper glow (a pre-rendered shadow, `will-change` on
+  the heated cards) that keeps the gain without hundreds of animations.
