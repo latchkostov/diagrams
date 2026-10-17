@@ -9,3 +9,7 @@
   It preserves authored reference prose, stops on competing edits, and leaves parity goldens for review.
 - No app behavior, controls, UI text or parity goldens change. No benchmarks or full e2e gates run for this
   contributor-tooling change; CI retains the full suite. Details and the local proof: [parallel work](../PARALLEL-WORK.md).
+- The two-branch scratch proof rebased without manual resolution, preserved both sets of entries/keys and
+  authored skill prose, passed i18n/viewer checks and reported 8,706 unit checks passed, 4 skipped, then deleted
+  the scratch branches. The normal local unit run also passed. All 2,196 parity goldens are unchanged; the
+  production-build skill/schema spec reported 7 passed, 0 failed and 0 flaky tests with two workers.

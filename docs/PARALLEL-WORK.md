@@ -100,3 +100,59 @@ The best code splits for a separate task are CanvasView's interaction controller
 menus and overlays), canvas.css by those same surfaces, Lab presets into domain modules with an index, and
 useEditor's document/history versus selection/gesture commands. Preserve lazy boundaries and public APIs.
 Those shared implementation contracts and their tests are untouched here.
+
+## Local proof (2026-10-17)
+
+Windows, Node 24.22.0. The isolated scratch master contained origin/master at `391857e7` plus the proposed
+workflow commits through `71d363c6`. Its origin was itself (`.`), so fetching could not contact or update the
+real remote. Dependencies were installed offline with the frozen lockfile in the ignored scratch repository.
+No other worktree was used.
+
+Two branches, `proof-a` and `proof-b`, started from that scratch master. Each added a release note, design
+review, backlog entry and English key at the same insertion point; changed a different skill-generator note;
+appended authored skill-reference prose; and changed a different CSS source with an unused fixture variable
+to force a conflict in the generated minified viewer. All fixture changes stayed in the scratch repository.
+
+```text
+scratch master> git merge --no-ff -S proof-a
+proof-b> pnpm sync
+regenerate: skills/livediagrams/scripts/lib/viewer-template.html
+merged: src/i18n/en.ts
+Synced with origin/master; generated artifacts refreshed.
+proof-b> pnpm i18n check          # 0 errors; two fixture keys use English fallback
+proof-b> pnpm skill:check         # committed copy matches a fresh build
+proof-b> pnpm test --maxWorkers=2 # CI=1: 8,706 passed, 4 skipped, no type errors
+scratch master> git branch -D proof-a proof-b
+```
+
+No manual resolution or intermediate editing followed `pnpm sync`. Assertions verified both keys, all six
+new fragments, both authored paragraphs and both generated reference changes, plus a clean index/worktree.
+The replayed commit and merge had valid GPG signatures. Both proof branches were deleted; tracked scratch
+sources were then removed individually, retaining ignored diagnostic metadata and dependency caches.
+
+Eight deliberate unit regressions were rejected: disabling fragment validation, reversing ordering, dropping
+generated conflict classification, dropping one side's English keys, copying the old offline note index,
+restoring a plugin version, amending an upstream commit, and reverting the fixed Windows launcher. Disabling
+the Vite schema emitter also failed the new browser test (HTML instead of JSON); restoring it passed.
+
+The consumer audit found offline packaging as the direct file reader; its regression now checks both new
+notes and history. Documentation links, historical anchors, agent/contributor instructions and the review
+runner's triage handoff were updated. Review reports still stay in `.reviews/`; app code, the site, skill and
+CI have no direct imports of the old logs. Shared landing pages remain readable for historical references.
+
+Validation of the final implementation:
+
+- Normal local `pnpm test --maxWorkers=2`: 8,706 passed, 4 skipped, no type errors. The same totals passed with
+  the repository's CI timeout setting and in the rebased scratch branch. An earlier normal run hit the
+  existing Compose-import test's five-second hang backstop under load; the final normal run passed without
+  changing its assertions or timeout.
+- Lint, typecheck, formatting, build, entry size, i18n and skill freshness checks passed. Lint retains one
+  existing Fast Refresh warning in RoutingFields.tsx; i18n retains the existing missing translations/glossary
+  warnings, with zero errors. The entry is 107.0 kB gzip against a 123.5 kB budget.
+- Production-build `skill-html.spec.ts`, ports 6520–6524, two workers and no retries: 7 passed, 0 failed,
+  0 flaky. Disabling the emitter was a separate intentional failure, followed by this passing restored run.
+- `pnpm parity`: 2,196 goldens, 0 changed, 0 added, 0 missing, 0 stale; all 76 Linux browser cases passed with
+  two workers. No goldens were recorded. Playwright stopped its servers.
+- The task's override leaves full e2e and the full push gate to CI; benchmarks were not run. The protected
+  gate files and four code hotspots were not edited. No macOS host run was available; unit tests exercise
+  both Windows and macOS invocation paths without depending on host-specific Git setup.
