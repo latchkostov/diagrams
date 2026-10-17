@@ -246,6 +246,23 @@
   user-select: text;
 }
 
+/* A long task's share done (an image export), between its words and its Cancel. */
+.ix-toast-progress {
+  flex: none;
+  width: 72px;
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in oklab, currentColor 25%, transparent);
+  overflow: hidden;
+}
+
+.ix-toast-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: currentColor;
+}
+
 .ix-toast-action {
   flex: none;
   height: 26px;

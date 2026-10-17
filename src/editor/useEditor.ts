@@ -152,6 +152,9 @@ function explainInference(relation: DependencyRelation, makeFlow: () => void): v
 
 export interface EditorDeps {
   slug: string;
+  /** Already computed by history, once per committed snapshot (never in an export slice). */
+  documentKey?: string;
+  documentId?: string;
   meta: DiagramMeta;
   setMeta: Dispatch<SetStateAction<DiagramMeta>>;
   setNodes: Dispatch<SetStateAction<FlowNode[]>>;
@@ -234,6 +237,10 @@ export function createEditor(
   commandsChanged: () => void = () => {},
 ) {
   let latest = initialDeps;
+  let version = { identity: {}, revision: 0 };
+  const documentEdited = () => {
+    version = { ...version, revision: version.revision + 1 };
+  };
   // Document scheduling belongs to the editor. A waiting layout has not edited history yet:
   // Undo cancels it instead of undoing an earlier edit and laying out that restored document.
   let waitingLayout: { cancel?: () => void } | undefined;
@@ -253,18 +260,28 @@ export function createEditor(
   const currentNodes = () => stagedNodes ?? committed.getNodes();
   const currentEdges = () => stagedEdges ?? committed.getEdges();
   const setNodes = (update: Parameters<EditorDeps["setNodes"]>[0], documentEdit = true) => {
-    if (documentEdit) cancelLayout();
+    if (documentEdit) {
+      cancelLayout();
+      documentEdited();
+    }
     const current = currentNodes();
     stagedNodes = typeof update === "function" ? update(current) : update;
     latest.setNodes(stagedNodes);
   };
   const setEdges = (update: Parameters<EditorDeps["setEdges"]>[0], documentEdit = true) => {
-    if (documentEdit) cancelLayout();
+    if (documentEdit) {
+      cancelLayout();
+      documentEdited();
+    }
     const current = currentEdges();
     stagedEdges = typeof update === "function" ? update(current) : update;
     latest.setEdges(stagedEdges);
   };
-  const deps = () => ({ ...latest, setNodes, setEdges });
+  const setMeta: EditorDeps["setMeta"] = (update) => {
+    documentEdited();
+    latest.setMeta(update);
+  };
+  const deps = () => ({ ...latest, setNodes, setEdges, setMeta });
   const box = (n: FlowNode): Box => ({
     id: n.id,
     x: n.position.x,
@@ -790,6 +807,7 @@ export function createEditor(
 
   let namingSequence = 0;
   const api: EditorApi = {
+    getDocumentVersion: () => version,
     getDiagram: diagram,
     undoTarget: () => (waitingLayout ? undefined : deps().history.top()),
     applyDiagram: (next, opts) => {
@@ -799,6 +817,7 @@ export function createEditor(
       const before = api.getDiagram();
       const diff = diagramDiff(before, checked.diagram);
       if (!diff.hasChanges) return diff;
+      documentEdited();
       lastDuplicate = null;
       flushSync(() => deps().history.replace(toFlow(checked.diagram), opts?.merge, toFlow(before)));
       return diff;
@@ -1827,6 +1846,9 @@ export function createEditor(
   return {
     api,
     updateDeps: (flow: ReactFlowInstance<FlowNode, DiagramFlowEdge>, next: EditorDeps, state = committed) => {
+      if (next.slug !== latest.slug || next.documentId !== latest.documentId)
+        version = { identity: {}, revision: version.revision + 1 };
+      else if (next.documentKey !== latest.documentKey) documentEdited();
       if (next.slug !== latest.slug) cancelLayout();
       rf = flow;
       latest = next;

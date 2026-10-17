@@ -113,7 +113,7 @@ import type { FlowSelection } from "../editor/historySelection";
 import { useEditor } from "../editor/useEditor";
 import { inCanvas, useCanvasShortcuts, type NavStep } from "../editor/useCanvasShortcuts";
 import { formatCombo, isEditableTarget, shortcutKeys } from "../editor/shortcuts";
-import type { NewNode, Selection, XYBox } from "../editor/types";
+import type { EditorApi, NewNode, Selection, XYBox } from "../editor/types";
 import type { AnnotationFlowNode, DiagramFlowEdge, DiagramFlowNode, FlowNode, GroupFlowNode } from "./types";
 import { flushSync } from "react-dom";
 import { LiveView, type LiveHandle, type LiveViewProps } from "../live/LiveView";
@@ -222,6 +222,7 @@ const ROOMY = 1680;
 const CRAMPED = 1280;
 
 export interface CanvasHandle {
+  getDocumentVersion: EditorApi["getDocumentVersion"];
   /** Current canvas as a diagrams/v1 file. */
   getDiagram: () => DiagramFile;
   /** Writes pending edits to storage now (before reading or replacing this diagram's stored copy). */
@@ -631,11 +632,14 @@ function CanvasInner({
   // Privacy: the diagram's provenance (Private switch, local-only example), re-read when the library changes.
   const privacyFlags = usePrivacyFlags(slug);
   const privacyNow = () => privacyOf({ ...privacyFlags, editor: { getDiagram: () => fromFlow(meta, nodes, edges) } });
+  const documentId = getDiagramIdentity(slug);
   const editor = useEditor({
     getNodes: () => nodes,
     getEdges: () => edges,
     slug,
     isPrivate: () => privacyNow() !== null,
+    documentKey: history.stateKey,
+    documentId,
     makePrivate: () => {
       if (setDiagramPrivate(slug, true)) {
         notify(tr("chrome.pastedFromAPrivateDiagramSoThisOneIsPrivate"), {
@@ -770,7 +774,7 @@ function CanvasInner({
     private: !!privacyFlags.private,
     onDevice: !!privacyFlags.onDevice,
     allowOnDevice,
-    documentId: getDiagramIdentity(slug),
+    documentId,
     revision: hostRevision,
   });
 
@@ -807,7 +811,7 @@ function CanvasInner({
   }, [readOnly, flushSave]);
 
   // Release after the unmount flush: promotion still needs this tab's conversation snapshot.
-  const conversationIdentity = initial ? undefined : getDiagramIdentity(slug);
+  const conversationIdentity = initial ? undefined : documentId;
   useEffect(
     () => (conversationIdentity ? retainConversation(conversationIdentity) : undefined),
     [conversationIdentity],
@@ -822,6 +826,7 @@ function CanvasInner({
         if (mod !== undefined) setModified(mod);
       },
       setTitle: (title: string) => editor.updateMeta({ title }),
+      getDocumentVersion: editor.getDocumentVersion,
     }),
     [meta, nodes, edges, flushSave, editor],
   );

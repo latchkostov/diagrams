@@ -166,6 +166,8 @@ export default defineConfig({
       // switches (src/lib/deployment.ts) fold in every chunk, so the code they turn off drops out.
       optimization: { inlineConst: true },
       output: {
+        // Keep upstream notices, including the MIT-licensed image-export port, in the shipped JavaScript.
+        comments: { legal: true },
         codeSplitting: {
           groups: [
             canvas.group,

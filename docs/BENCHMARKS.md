@@ -381,6 +381,17 @@ target: what to change, where, and the evidence (metric ids are in `master.json`
    single frame of 30 s; SVG 44 s at 1,500. The Interactive HTML export of the same diagram takes 1 s. _Where:_
    `src/interop/image.ts` (html-to-image clones and inlines the whole canvas DOM). _Target:_ build the SVG from the model
    and the routes, as the HTML export builds its payload, and rasterise it in a worker with OffscreenCanvas.
+   _perf/3-export:_ building the picture from the model would draw a different picture (the export goldens pin this
+   one), and a worker can't draw HTML. The clone runs in time slices instead (`src/interop/imageClone.ts`, a port of
+   html-to-image's clone, image embedding and serialising that makes the same calls in the same order): the tab paints
+   between slices, the toast shows a progress bar and a Cancel (Escape too), and input is held meanwhile so nothing
+   changes the canvas mid-picture. PNG bytes and SVG text equal the library's (`tests/e2e/image-slices`), apart from
+   its random pseudo-element class names, which the SVG comparison canonicalizes.
+   Longest frame, interleaved with master's build: SVG 11.3 s → 0.28 s at 500 nodes and 32.6 s → 0.52 s at 1,500; PNG
+   14.2 s → 4.2 s and 33.2 s → 12.3 s; the whole export 16.1 → 12.3 s (SVG) and 21.6 → 16.1 s (PNG) at 500, 43.9 →
+   33.8 s and 55.7 → 45.4 s at 1,500 (the clone's per-property loop no longer walks each node's prototype chain 350
+   times, and the SVG file is saved from its text, not encoded into a data URL and decoded again). What's left is the
+   PNG's one frame: the browser decoding the picture (an SVG of 67 MB at 500 nodes) is a single task of its own.
 6. **Live view re-renders every node's badge on every publish, and reads styles and path lengths every tick.** At 500
    nodes the main thread is 95 to 100% busy and draws 5 to 9 frames a second, worker renderer or not (160 ms per frame
    with the worker, 108 with the fallback); at 100 nodes the worker does help (4.9 ms against 14.5). Each publish (8 a
@@ -424,6 +435,83 @@ target: what to change, where, and the evidence (metric ids are in `master.json`
 Smaller, also measured: the capacity check rule is superlinear (its sizing fix analyses the diagram again per candidate;
 the gate reads 18–25× for 8× the nodes) and `runChecks` takes 381 ms on the 5,000-node mesh in its worker; Run
 simulations takes 4.3 s at 5,000 nodes in its worker; the Kubernetes and compose imports take 3 to 5 s at 5,000 nodes.
+
+## Perf 3 export final measurements (2026-10-16)
+
+After rebasing onto #138, the production `features.bench.ts` sweep ran on origin/master `17c1349b`
+and then this branch in this same worktree, without concurrent tests/builds. Both used Chromium
+156.0.8078.4, the suite's 1440×900 viewport and 2× CPU throttle, and the same pipeline workloads.
+Command: `BENCH_PORT=6420 BENCH_SIZES=500,1500 node scripts/bench/run.mjs --only ui --ui features
+--mode full --out tests/.output/bench-export-{master,head}` (one output directory per checkout).
+These measurements precede the later #139/#140 rebase; they compare the #138 base with the
+then-current export implementation, not the other changes in those later merges. Each size has
+one observation, not a repeated median. Raw seconds:
+
+| Export | Nodes | Total, master → branch | Longest frame, master → branch |
+| ------ | ----- | ---------------------- | ------------------------------ |
+| SVG    | 500   | 15.52 → 10.97          | 12.33 → 0.29                   |
+| SVG    | 1,500 | 40.35 → 29.68          | 32.30 → 0.56                   |
+| PNG    | 500   | 26.91 → 15.44          | 16.80 → 3.43                   |
+| PNG    | 1,500 | 48.62 → 42.73          | 28.87 → 9.39                   |
+
+Review-fix recheck (2026-10-16): the same production `features` workflow at 500 and 1,500 nodes,
+Chromium 156.0.8078.4, 1440×900 and 2× CPU throttle, on ports 6218–6219 with no concurrent tests or
+builds. Artifacts: `tests/.output/bench-export-review/{results.json,summary.md}` (66 metrics, both
+cases passed). These compare the previous branch observations above with the revised branch;
+the master observations are the previously recorded baseline, not a new master run. Raw seconds:
+
+| Export | Nodes | Total, previous branch → review fix | Longest frame, previous branch → review fix |
+| ------ | ----- | ----------------------------------- | ------------------------------------------- |
+| SVG    | 500   | 10.97 → 8.86                        | 0.293 → 0.239                               |
+| SVG    | 1,500 | 29.68 → 28.01                       | 0.558 → 0.771                               |
+| PNG    | 500   | 15.44 → 14.51                       | 3.43 → 3.38                                 |
+| PNG    | 1,500 | 42.73 → 43.98                       | 9.39 → 10.65                                |
+
+The large frame reduction still holds; PNG decode/draw remains the unsliced limit. Each case is one
+observation and browser calibration is 20 ms, so small changes are not a new performance claim or
+budget. The revision-read regression also calls `getDocumentVersion()` 1,000 times without a node
+or edge read: no fingerprinting, serialization or traversal occurs in an export slice's check.
+
+Artifacts are `tests/.output/bench-export-{master,head}/{results.json,summary.md}` and
+`tests/.output/export-comparison.md`. Browser calibration moved from 37 to 23 ms; consequently
+the normalized comparator flags 24 report-only timing differences, including unrelated layout,
+language and HTML-export scenarios whose raw times are mostly similar. This single sweep supports
+the large frame reduction, not claims about small timing changes elsewhere. The earlier interleaved
+measurements in hotspot 5 remain separate evidence. No timing budget is raised or added.
+
+The implementation yields the main thread; no image-rendering work moved into a worker. DOM and
+computed-style reads require the document, workers cannot render its HTML foreignObject, and a
+model renderer was rejected because it would change the pinned picture. PNG decode/draw remains a
+single browser task. Perf PR 4's remaining Live-view work is separate: per-node badge subscriptions,
+cached march styles and route-based path sampling, lighter controller snapshots, and bounded
+retained playback state (hotspots 6, 9 and 10). This PR changes none of those outputs.
+
+On the #138 base, `BENCH_PORT=6420 BENCH_OUT=tests/.output/bench-gates-export pnpm bench:gates` passed all
+85 gates (520 metrics): seven Node suites, six browser tests and the bundle checks. The 201
+Node and six browser report-only cases are intentionally skipped in gates mode. Entry is
+106.5 kB gzip, startup 160.5 kB and canvas first view 344.9 kB, all within their existing budgets.
+
+The first final gate on the #138 base completed every shard: 1,376 passed, two failed, zero flaky
+or skipped. Both privacy cases reached their final console-error assertion, which caught
+`net::ERR_ADDRESS_IN_USE` on React/JSX assets. Windows Tcpip event 4227 at 10:27:16 local time
+matches the first failure and reports reuse of a recently used TCP endpoint. Clean master
+`c21bf79d` then passed 100 targeted attempts, two shard-3 passes (446 tests), the full production
+suite (1,379) and all six separate same-port/server-restart shards (1,379): 3,304 attempts without
+reproducing the error. No master exception was established or error assertion weakened. These
+are diagnostic results, not export timings. The final gate is rerun on the combined #139/#140
+rebase and its complete summary accompanies the pushed commit.
+
+For that final verification, benchmark browsers use the reserved 6218–6219 ports, separate from
+E2E's 6420–6424 range. Earlier connections on the E2E range are allowed to drain to zero TCP
+records before starting the gate. The real server, console-error assertions, three E2E workers
+and zero retries remain in use; no Windows network setting is changed.
+
+After the combined #139/#140 rebase, `BENCH_PORT=6218
+BENCH_OUT=tests/.output/bench-gates-export-cancel pnpm bench:gates` passes all 85 gates (523
+metrics), with upstream legal notices retained and Cancel owned until export cleanup. Entry is 106.9 kB
+gzip, startup 166.6 kB (20 chunks) and canvas first view 355.5 kB;
+all existing budgets pass. The seven Node suites and six browser tests pass, with the same
+201 Node and six browser report-only cases skipped by gates mode.
 
 ## Proving the gates
 

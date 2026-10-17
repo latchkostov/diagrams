@@ -258,6 +258,8 @@ test.describe("command palette", () => {
     // The second Enter runs a leaf instead of repeatedly selecting the parent.
     await page.keyboard.press("Enter");
     await expect(palette(page)).toHaveCount(0);
+    // The leaf is an image export: it holds the page's input until it's done (its toast stops being busy).
+    await expect(page.locator('[data-testid="toast"][data-kind="busy"]')).toHaveCount(0);
     await openPalette(page);
 
     await input(page).fill("zzzzqqq");

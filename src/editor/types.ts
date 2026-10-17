@@ -61,6 +61,8 @@ export interface EditorPrefs {
  */
 export interface EditorApi {
   // ---- read ----
+  /** Stable between document edits; excludes selection, measurements and live counters. */
+  getDocumentVersion(): { readonly identity: object; readonly revision: number };
   getDiagram(): DiagramFile;
   getNode(id: string): DiagramNode | undefined;
   getEdge(id: string): DiagramEdge | undefined;

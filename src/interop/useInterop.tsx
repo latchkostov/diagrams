@@ -1,4 +1,5 @@
 import { t } from "../i18n";
+import { holdInput } from "../lib/inputHold";
 import {
   useCallback,
   useEffect,
@@ -60,7 +61,7 @@ import {
   encryptedPayloadFromInput,
   parseEncrypted,
 } from "./passwordLink";
-import { downloadDataUrl, downloadText, fsAccessSupported, openWithPicker, slugify, type FileHandle } from "./files";
+import { downloadBlob, downloadText, fsAccessSupported, openWithPicker, slugify, type FileHandle } from "./files";
 import { deviceProvider } from "./storage/device";
 import { CLOUD_PROVIDERS, providerInfo, type ProviderInfo } from "./storage/registry";
 import { StorageError, type OpenContext, type StorageEntry, type StorageProvider } from "./storage/types";
@@ -350,19 +351,63 @@ export function useInterop({
   const exportImage = (kind: "png" | "svg", opts: ImageExportOptions = {}) =>
     attempt({ action: "image", name: kind.toUpperCase() }, async () => {
       const d = current();
-      const busy = toast.busy(t("fileToast.renderingValue0", { value0: kind.toUpperCase() }));
-      const { renderDiagramImage } = await import("./image");
-      // The picture carries its title, as presentation does (an untitled diagram has none to show).
-      const title = d.title.trim();
-      const header =
-        opts.title !== false && title && title !== UNTITLED
-          ? { title, description: d.description?.trim() || undefined }
-          : undefined;
-      const url = await renderDiagramImage(kind, { scale: opts.scale, transparent: opts.transparent, header });
-      const suffix = kind === "png" ? `${opts.scale === 1 ? "" : "@2x"}${opts.transparent ? "-transparent" : ""}` : "";
-      await downloadDataUrl(url, `${baseName(d)}${suffix}.${kind}`);
-      toast.dismiss(busy);
-      toast.success(t("fileToast.exportedValue0", { value0: kind.toUpperCase() }));
+      // A big diagram takes seconds: the toast shows how far it has got and offers Cancel (Escape too).
+      const version = canvasRef.current?.getDocumentVersion();
+      const check = () => {
+        if (canvasRef.current?.getDocumentVersion() !== version)
+          // Reuse the localized export failure + retry messages; no image is downloaded from mixed revisions.
+          throw new Error(t("storageDialog.tryAgain"));
+      };
+      const cancel = new AbortController();
+      const release = holdInput(() => cancel.abort());
+      const busy = toast.busy(t("fileToast.renderingValue0", { value0: kind.toUpperCase() }), {
+        blocking: true,
+        action: { label: t("common.cancel"), run: () => cancel.abort(), testId: "image-export-cancel", focus: true },
+      });
+      let abort!: () => void;
+      const aborted = new Promise<never>((_, reject) => {
+        abort = () => reject(cancel.signal.reason);
+        cancel.signal.addEventListener("abort", abort, { once: true });
+      });
+      try {
+        const { renderDiagramImage } = await Promise.race([import("./image"), aborted]);
+        cancel.signal.throwIfAborted();
+        check();
+        // The picture carries its title, as presentation does (an untitled diagram has none to show).
+        const title = d.title.trim();
+        const header =
+          opts.title !== false && title && title !== UNTITLED
+            ? { title, description: d.description?.trim() || undefined }
+            : undefined;
+        const image = await renderDiagramImage(kind, {
+          scale: opts.scale,
+          transparent: opts.transparent,
+          header,
+          signal: cancel.signal,
+          onProgress: (done) => toast.progress(busy, done),
+          onEscape: () => cancel.abort(),
+          check,
+        });
+        // Cancelled as it finished: still nothing downloaded.
+        if (cancel.signal.aborted) {
+          toast.dismiss(busy);
+          return;
+        }
+        check();
+        const suffix =
+          kind === "png" ? `${opts.scale === 1 ? "" : "@2x"}${opts.transparent ? "-transparent" : ""}` : "";
+        // A download clicks its temporary anchor; it must no longer be captured by our input hold.
+        release();
+        downloadBlob(image, `${baseName(d)}${suffix}.${kind}`);
+        toast.dismiss(busy);
+        toast.success(t("fileToast.exportedValue0", { value0: kind.toUpperCase() }));
+      } catch (err) {
+        if (!cancel.signal.aborted) throw err;
+      } finally {
+        cancel.signal.removeEventListener("abort", abort);
+        release();
+        toast.dismiss(busy);
+      }
     });
 
   const exportDrawio = () =>

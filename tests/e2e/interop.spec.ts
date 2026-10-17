@@ -621,10 +621,7 @@ test("image export wraps an unbroken title and URL within the measured one-node 
       contentHeight: header.scrollHeight,
     };
     const image = await rendering;
-    const svg = new DOMParser().parseFromString(
-      decodeURIComponent(image.slice(image.indexOf(",") + 1)),
-      "image/svg+xml",
-    );
+    const svg = new DOMParser().parseFromString(await image.text(), "image/svg+xml");
     return {
       ...size,
       exportedTitle: svg.querySelector('[data-testid="export-header"] h1')?.textContent,

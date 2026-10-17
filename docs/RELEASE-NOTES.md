@@ -1,5 +1,50 @@
 # Release notes
 
+## Linux image export regression workload (#142, 2026-10-16)
+
+- CI run 38983826029 and a two-CPU Playwright Linux container reproduce whole-test timeouts
+  after cancellation, resumed loading and a successfully started retry. The 300-node PNG at
+  4× CPU throttling consumes the remaining 90-second test backstop; changing the completion
+  wait in the previous fix was insufficient. CI screenshots even show a completed PNG at the
+  timeout boundary. This is a test workload assumption, not a stuck dynamic import or retry.
+- The loading-cancellation and held-decode tests now use 45 nodes, retaining the 4× throttle,
+  controlled stalls, input/focus recovery, late-completion checks and successful saved download.
+  The separate 300-node responsiveness and byte-parity tests keep their large workload.
+  Product code, timeouts and output goldens are unchanged; no golden is re-recorded.
+- Documented the exact Docker reproduction command in `docs/QUALITY.md` for future Linux checks.
+- The full Chromium spec passes five Linux repetitions (70 passed, zero failed or flaky). Temporarily
+  restoring the 300-node workload reproduces the timeout under full-spec scheduling; an isolated
+  three-case control passes, confirming load sensitivity. Full parity preserves all 2,196 goldens.
+
+## Image export CI synchronization (#142, 2026-10-16)
+
+- Fixed export regressions that assumed the 300-node PNG would download within the action timeout
+  or reach decoding within the ordinary assertion timeout. All four CI failures reproduce with
+  three Chromium workers at 4× CPU throttling. The tests now observe export progress and the success
+  toast within the existing whole-test hang backstop, then verify the actual download completes.
+  Retried exports after cancelled module/code/font loading all finish under that same throttle;
+  no stuck retry or product cancellation bug was found, and no app timeout was increased.
+- Added a production-browser regression for cancellation during FileReader icon conversion. It
+  verifies abort, cleared handlers, input/selection recovery, no download after late completion,
+  and a retry that refetches the uncached resource and embeds its exact bytes in the SVG. Removing
+  the reader's abort call makes this regression fail.
+- The live-path assertion now waits for rendered opacity as well as the dim attribute. Its test,
+  decorator and CSS transition were already identical on `origin/master`; a delayed transition
+  reproduces the CI failure before this assertion fix and passes afterwards. No live behavior changed.
+- Scoped designer source review found no new UX issues or chrome. Full parity passes all 2,196
+  goldens unchanged: zero changed, added, missing or stale records. No goldens were re-recorded.
+
+## Responsive image export rebase onto Review follow-ups 3 (#144, 2026-10-16)
+
+- Rebased the export branch onto master's boundary-refit, ancestry and capacity-cache changes,
+  preserving both documentation histories and all translation keys. Export behavior is unchanged.
+- Took master's skill/plugin files before refreshing the viewer; plugin 1.1.35 is exactly one patch
+  above master's 1.1.34. Full parity passes all 2,196 goldens unchanged: zero changed, added, missing
+  or stale records. No golden was re-recorded.
+- The production bundle regression passes: collaboration, Yjs and tracker code are absent from every
+  production chunk, with image export loading only when used. The scoped UX review finds no new
+  controls, wording or chrome; export progress and cancellation retain their existing tests.
+
 ## Review follow-ups 3, round 1 (2026-10-16)
 
 - Skill layout now copies translated annotation positions from the app's placement result while
@@ -61,6 +106,48 @@
   five-port range on IPv4 and IPv6 before keeping their intended occupied member. A forced blocked
   neighbour regression fails with the old setup; the real preflight and its exact-port assertions
   remain intact. All 1,403 E2E tests passed in that run; the complete gate is repeated after this fix.
+
+## Image export review fixes (#142, 2026-10-16)
+
+- PNG and SVG exports capture the editor's document identity and monotonic edit revision. Renaming,
+  moving, reconnecting, undoing, replacing or otherwise editing the document between slices stops the
+  export and downloads nothing. The existing translated export-failure toast asks to try again.
+  Version reads are constant time: they reuse history's committed fingerprint and synchronous editor
+  mutation tracking, excluding selection, measurements, live counters and export-owned DOM changes.
+- Touch drags wait during export; touch capture is non-passive. Modifier-key releases still reach
+  keyboard state, and Cancel remains available by touch, mouse, Enter, Space and Escape.
+- Cancellation aborts pending image fetches and file reads, removes image sources and handlers, and
+  interrupts canvas/video cloning and decoding. Aborted resources cannot poison the successful-resource
+  cache. Progress counts elements consistently, advances through export phases and reaches 100% only
+  when the image is ready.
+- Regression coverage resumes stalled module/font requests after cancellation, verifies no late
+  download or error and then successfully exports again. Module interception matches both dev and
+  production URLs. Deliberate reversions prove the revision, input, progress and resource regressions.
+- No golden is changed or re-recorded. The localized failure and retry messages are reused to preserve
+  the catalog fingerprint too; a new diagnostic translation key and a model-based renderer were rejected
+  because they would change pinned output. The refreshed skill viewer keeps plugin 1.1.34, exactly one
+  patch above origin/master's 1.1.33.
+- The production timing recheck keeps the original frame improvement: at 1,500 nodes, SVG's longest
+  frame is 0.77 seconds and PNG's 10.65 seconds (previous branch: 0.56 and 9.39; recorded master:
+  32.30 and 28.87). Totals remain comparable at 28.01/43.98 seconds. These are single observations,
+  not timing assertions; details and all four comparisons are in [BENCHMARKS.md](BENCHMARKS.md).
+
+## Responsive image export rebase onto Collaboration C0 (#141, 2026-10-16)
+
+- Rebased onto master with Collaboration C0, preserving both documentation histories and all translation
+  keys. The production bundle guard still excludes collaboration, Yjs and tracker code from every chunk;
+  sliced image export remains lazy and adds no collaboration imports.
+- Restored generated skill files from master before refreshing the viewer. Plugin 1.1.34 is exactly one
+  patch above master's 1.1.33. Catalog validation reports zero errors and zero stale messages, with the
+  existing translation gaps and warnings. No controls, wording or chrome change in this rebase.
+- Full output parity checks all 2,196 goldens with zero changed, added, missing or stale records.
+  Every golden remains identical to master; none is re-recorded.
+- The first full gate passed all 1,411 E2E tests but found a cold-import timeout and a noisy consumer-limit
+  timing ratio in unit tests; the same unit command passed on a clean master checkout in this worktree.
+  The ID regression now calls the loaded Compose pipeline, retaining every assertion. The consumer-limit
+  regression counts runtime route and member reads at an eighth input and the same 24x limit. Restoring
+  per-consumer route scans fails at 1,440,001 reads instead of one; removing shared ID allocation still
+  fails the Compose regression. Production behavior and timeouts are unchanged.
 
 ## Collaboration reply-byte regression coverage (2026-10-16)
 
@@ -152,6 +239,34 @@
   above master; the viewer already matched. No existing parity golden changes.
 - C1 still needs decisions on Private-diagram consent wording, permitted public trackers/STUN,
   TURN service/credentials and connectivity fallback. C0 makes no new Private-sharing promise.
+
+## Responsive image export (2026-10-16)
+
+- PNG and SVG export clone the canvas, embed images and serialize in slices, letting the tab paint between
+  them. The existing busy toast shows progress and Cancel; Escape cancels too. Input waits until export ends
+  so the picture cannot mix edits. Cancelling or failing restores selection, paint and the title header.
+- Image decode failures now reach the error toast instead of leaving export waiting. Production regressions
+  cover decode/encode failures and successful retry, cancellation during code/font loading, and PNG/SVG export
+  without Worker, OffscreenCanvas or both. The decode regression fails with its fix temporarily reverted.
+- Cancel stays visible until export cleanup completes: dismiss and unrelated notifications cannot hide it.
+  Escape also cancels a stalled initial export-module download, before the renderer loads. Ownership and
+  early-Escape regressions fail with their fixes removed; notifications resume after the task finishes.
+- The port retains html-to-image 1.11.13's upstream MIT notice in source and the minified export chunk.
+  A production-build regression checks the shipped copyright, permission and warranty text; disabling
+  legal-comment retention fails it. Existing startup and lazy-loading assertions remain unchanged.
+- Rendering remains on the main thread: workers cannot render this HTML picture, and a model renderer would
+  change the pinned output. PNG decoding/drawing still contains an unsliced browser task. Timing results and
+  the remaining Live-view work for perf PR 4 are recorded in `docs/BENCHMARKS.md`.
+  The #138-base same-machine sweep reduced the 1,500-node SVG's longest frame from 32.30 to 0.56 seconds,
+  PNG's from 28.87 to 9.39 seconds; total exports went from 40.35 to 29.68 and 48.62 to 42.73 seconds.
+  These are single observations at 2× CPU throttle, with calibration drift documented alongside the results.
+- Rebased onto static-page translations (#138), review fixes (#139) and Routing R1 (#140), retaining
+  both documentation histories and all i18n keys.
+  Regenerating static-page metadata leaves it unchanged; i18n has zero errors and zero stale entries.
+  The refreshed skill viewer ships at plugin 1.1.33, one patch above base `78269886`'s 1.1.32.
+- `pnpm parity:update` checks all 2,196 goldens with zero changes, additions, missing or removed records.
+  PNG bytes and canonical SVG text match master; only the library's random pseudo-element class names
+  are normalized. No golden is re-recorded to accommodate a failure.
 
 ## Static-page translation review fixes (2026-10-16)
 

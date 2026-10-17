@@ -18,6 +18,21 @@ export function Toaster() {
     const id = setTimeout(() => toast.dismiss(t.id), t.duration);
     return () => clearTimeout(id);
   }, [t]);
+  // An action that asks for the focus (a long task's Cancel) takes it from wherever it was, and gives it back.
+  const action = useRef<HTMLButtonElement>(null);
+  const focusAction = !!t?.action?.focus;
+  const toastId = t?.id;
+  // After the effects of the same commit: a dialog closing as the toast shows gives its opener the focus back first.
+  useEffect(() => {
+    if (!focusAction) return;
+    const before = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const button = action.current;
+    button?.focus();
+    return () => {
+      const now = document.activeElement;
+      if (before?.isConnected && (!now || now === document.body || now === button)) before.focus();
+    };
+  }, [focusAction, toastId]);
   // One bottom-centre stack: the toast sits above the hint or the live bar instead of over them (they
   // can appear, move or resize while it shows, so it follows them).
   const el = useRef<HTMLDivElement>(null);
@@ -60,26 +75,42 @@ export function Toaster() {
         <Glyph name={ICON[t.kind]} size={16} />
       </span>
       <span className="ix-toast-text">{t.text}</span>
+      {t.progress !== undefined && (
+        <span
+          className="ix-toast-progress"
+          role="progressbar"
+          aria-label={t.text}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(t.progress * 100)}
+          data-testid="toast-progress"
+        >
+          <span style={{ width: `${Math.round(t.progress * 100)}%` }} />
+        </span>
+      )}
       {t.action && (
         <button
+          ref={action}
           className="ix-toast-action"
           onClick={() => {
             t.action!.run();
-            toast.dismiss(t.id);
+            if (!t.blocking) toast.dismiss(t.id);
           }}
           data-testid={t.action.testId ?? "toast-action"}
         >
           {t.action.label}
         </button>
       )}
-      <button
-        className="ix-toast-close"
-        onClick={() => toast.dismiss(t.id)}
-        aria-label="Dismiss"
-        data-testid="toast-dismiss"
-      >
-        <Glyph name="close" size={14} />
-      </button>
+      {!t.blocking && (
+        <button
+          className="ix-toast-close"
+          onClick={() => toast.dismiss(t.id)}
+          aria-label="Dismiss"
+          data-testid="toast-dismiss"
+        >
+          <Glyph name="close" size={14} />
+        </button>
+      )}
     </div>,
     document.body,
   );

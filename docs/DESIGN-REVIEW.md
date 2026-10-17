@@ -1,5 +1,14 @@
 # Design review
 
+## Image export CI synchronization (#142, 2026-10-16)
+
+The designer agent's scoped source review found no new UX issues. These changes affect tests only:
+export progress, Cancel, keyboard/focus recovery, wording and chrome keep their existing behavior.
+Slow-export coverage observes completion and the actual saved file; FileReader coverage checks that
+cancellation releases input and that a retry includes its icons. The live-path assertion observes the
+rendered transition rather than only its preceding DOM attributes. No controls or focus targets were
+added. This was a source review, not a whole-app or assistive-technology walkthrough.
+
 ## Review follow-ups 3, round 1 (2026-10-16)
 
 The designer agent's focused source review found no blocking UX issue. Skill annotations keep their
@@ -18,6 +27,19 @@ Production phone regressions cover both explicit AI entry points, preserving uns
 fields and dirty state while using the existing single-panel slot. No chrome, wording or focus target
 is added. This was not an independent whole-app designer or assistive-technology walkthrough.
 
+## Image export review fixes (#142, 2026-10-16)
+
+The designer agent's scoped source review passes progress, Cancel/input accessibility and the chrome
+budget: the busy toast keeps its one Cancel action, touch is held, modifier releases pass through and
+100% is reserved for a completed picture. Browser regressions cover touch dragging, stalled decoding,
+resource cleanup and successful retry. No permanent control or focus target was added.
+
+The review preferred a specific translated explanation when an edit interrupts export. This task
+requires every golden, including the translation-catalog fingerprint, to remain unchanged, so the
+existing localized export-failure message with "Try again" is retained. It reports failure honestly
+and provides recovery; a dedicated diagnostic key is deferred under that explicit constraint. This
+was a scoped source review with browser regressions, not an assistive-technology walkthrough.
+
 ## Routing R1 rejected transactions (2026-10-16)
 
 Scoped source UX review: rejected managed calls now keep capacity analysis and its existing readouts
@@ -32,6 +54,17 @@ traffic-class interning changes add no controls, copy, chrome, focus targets or 
 Corrected capacity and throttling values fit the existing rate units and conditional readouts.
 Round 44's routing disclosure, legend and keyboard review remains applicable. No simplification
 was needed. This follow-up did not include a fresh browser or assistive-technology walkthrough.
+
+## Image export completion (2026-10-16)
+
+Scoped source and browser-regression review: progress and Cancel stay in the existing busy toast, adding
+no permanent chrome. Cancel takes focus after the Image dialog closes; Tab stays there, Enter cancels,
+and Escape cancels from the page, including during the initial module download. A task owns its Cancel
+until cleanup completes: there is no separate dismiss button to hide it, and unrelated notifications wait.
+All five production cancellation cases pass. Decode/encode errors
+restore the canvas and permit another export; the error uses the existing File toast. Workers and
+OffscreenCanvas are not required. This check covers export interactions, not a whole-app visual or
+assistive-technology walkthrough. The main remaining responsiveness limit is PNG decoding/drawing.
 
 ## Static-page review follow-up (2026-10-16)
 

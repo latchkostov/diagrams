@@ -1,6 +1,11 @@
 // PNG / SVG export of the live canvas with html-to-image. We render React Flow's viewport element
 // at 1:1 zoom, cropped to the diagram's bounds, so the image doesn't depend on the current pan/zoom
-// or window size. html-to-image is loaded on demand (only when someone exports an image).
+// or window size. html-to-image is loaded on demand (only when someone exports an image), and its clone runs in
+// time slices (imageClone.ts): the tab keeps painting and the export can be cancelled. While it runs, input to the
+// page is held (but for the toast's Cancel), so nothing changes the canvas between two slices of the same picture.
+
+import { dataUrlToBlob } from "./files";
+import { holdInput } from "../lib/inputHold";
 
 export interface ImageOptions {
   /** Pixel ratio for PNG (1 or 2). */
@@ -10,6 +15,14 @@ export interface ImageOptions {
   padding?: number;
   /** A header above the diagram: its title and description, as presentation shows them. */
   header?: { title: string; description?: string };
+  /** Cancels the export: it stops at the next slice and puts the canvas back as it was. */
+  signal?: AbortSignal;
+  /** How far the export has got (0 to 1), told between slices. */
+  onProgress?: (done: number) => void;
+  /** Escape pressed while the export runs (its owner cancels it). */
+  onEscape?: () => void;
+  /** Throws when the captured document identity or edit revision changes. */
+  check?: () => void;
 }
 
 type Bounds = { x: number; y: number; width: number; height: number };
@@ -85,7 +98,10 @@ let fontCss: Promise<string> | undefined;
 
 const MAX_PIXELS = 16_000_000; // keep well under browsers' canvas limits
 
-export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions = {}): Promise<string> {
+/** The picture as a file: a PNG, or the SVG's text (what its data URL would decode to). */
+export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions = {}): Promise<Blob> {
+  opts.signal?.throwIfAborted();
+  opts.check?.();
   const viewport = findViewport();
   const content = bounds(viewport);
   if (!content) throw new Error("This diagram is empty, so there's nothing to export.");
@@ -104,25 +120,38 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
       ? css.backgroundColor
       : getComputedStyle(document.body).backgroundColor;
 
-  // Edge arrowheads are defined in an <svg><defs> outside the viewport; clone them inside for the shot.
-  const defs = document.querySelector("svg.df-defs");
-  const defsClone = defs?.cloneNode(true) as SVGElement | undefined;
-  if (defsClone) {
-    defsClone.setAttribute("style", "position:absolute;width:0;height:0;overflow:hidden");
-    viewport.prepend(defsClone);
-  }
-  // The picture shows the diagram, not the editing state: no selection outlines or resize handles.
-  const unselect = clearSelectionMarks(viewport);
-  // html-to-image copies computed styles onto HTML elements only; SVG children (edge paths, arrow
-  // heads, annotation shapes) keep just their attributes, so their CSS fills and strokes would be
-  // lost (black blobs). Write the computed paint onto them for the shot.
-  const restoreSvg = inlineSvgPaint(viewport);
+  let defsClone: SVGElement | undefined;
+  let unselect = () => {};
+  const paint = new SvgPaint();
+  const releaseInput = holdInput(opts.onEscape);
+  let slicer: import("./imageClone").Slicer | undefined;
   try {
-    const { toPng, toSvg, getFontEmbedCSS } = await import("html-to-image");
+    const [{ toPng, toSvgText, Slicer }, { getWebFontCSS }] = await unlessCancelled(
+      Promise.all([import("./imageClone"), import("html-to-image/es/embed-webfonts")]),
+      opts.signal,
+    );
+    slicer = new Slicer(viewport.getElementsByTagName("*").length, {
+      signal: opts.signal,
+      onProgress: opts.onProgress,
+      check: opts.check,
+    });
+    // Edge arrowheads are defined in an <svg><defs> outside the viewport; clone them inside for the shot.
+    defsClone = document.querySelector("svg.df-defs")?.cloneNode(true) as SVGElement | undefined;
+    if (defsClone) {
+      defsClone.setAttribute("style", "position:absolute;width:0;height:0;overflow:hidden");
+      viewport.prepend(defsClone);
+    }
+    // The picture shows the diagram, not the editing state: no selection outlines or resize handles.
+    unselect = clearSelectionMarks(viewport);
+    // html-to-image copies computed styles onto HTML elements only; SVG children (edge paths, arrow
+    // heads, annotation shapes) keep just their attributes, so their CSS fills and strokes would be
+    // lost (black blobs). Write the computed paint onto them for the shot.
+    await paint.apply(viewport, slicer);
     // Embedding web fonts is the slow part (fetch + inline every @font-face): do it once per session.
-    fontCss ??= getFontEmbedCSS(viewport).catch(() => "");
+    fontCss ??= getWebFontCSS(viewport, {}).catch(() => "");
+    const fontEmbedCSS = await slicer.wait(fontCss);
     const options = {
-      fontEmbedCSS: await fontCss,
+      fontEmbedCSS,
       width,
       height,
       pixelRatio: scale,
@@ -139,12 +168,38 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
         !(node instanceof HTMLElement && EDITING_ONLY.some((cls) => node.classList.contains(cls))) &&
         !(node instanceof SVGElement && EDITING_ONLY_SVG.some((cls) => node.classList.contains(cls))),
     };
-    return kind === "png" ? await toPng(viewport, options) : await toSvg(viewport, options);
+    const image =
+      kind === "png"
+        ? dataUrlToBlob(await toPng(viewport, options, slicer))
+        : new Blob([await toSvgText(viewport, options, slicer)], { type: "image/svg+xml;charset=utf-8" });
+    slicer.stopIfAsked();
+    opts.onProgress?.(1);
+    return image;
   } finally {
-    restoreSvg();
+    slicer?.dispose();
+    releaseInput();
+    paint.restore();
     unselect();
     defsClone?.remove();
     header?.remove();
+  }
+}
+
+/** `promise`, or the cancel's reason if the export is cancelled first (a stalled download never holds the page). */
+async function unlessCancelled<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise;
+  signal.throwIfAborted();
+  let onAbort = () => {};
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        onAbort = () => reject(signal.reason as Error);
+        signal.addEventListener("abort", onAbort, { once: true });
+      }),
+    ]);
+  } finally {
+    signal.removeEventListener("abort", onAbort);
   }
 }
 
@@ -193,25 +248,36 @@ const SVG_PAINT = [
   "visibility",
 ] as const;
 
-/** Writes each SVG child's computed paint into its style attribute; returns the undo. */
-function inlineSvgPaint(root: HTMLElement): () => void {
-  const saved: [SVGElement, string | null][] = [];
-  const els = root.querySelectorAll<SVGElement>("svg *");
-  // Read everything first, then write, so one write can't change what the next read sees.
-  const values = [...els].map((el) => {
-    const cs = getComputedStyle(el);
-    return SVG_PAINT.map((p) => [p, cs.getPropertyValue(p)] as const);
-  });
-  els.forEach((el, i) => {
-    saved.push([el, el.getAttribute("style")]);
-    for (const [p, v] of values[i]) if (v) el.style.setProperty(p, v);
-  });
-  return () => {
-    for (const [el, style] of saved) {
+/**
+ * Each SVG child's computed paint, written into its style attribute for the shot, and put back by `restore`. Every
+ * value is read before any is written, so one write can't change what a later read sees; both run in slices (a big
+ * diagram has thousands of edge parts), and `restore` undoes whatever was written, even if a cancel stopped it.
+ */
+class SvgPaint {
+  private saved: [SVGElement, string | null][] = [];
+
+  async apply(root: HTMLElement, slicer: { breathe(): Promise<void> }) {
+    const els = [...root.querySelectorAll<SVGElement>("svg *")];
+    const values: (readonly (readonly [string, string])[])[] = [];
+    for (const el of els) {
+      const cs = getComputedStyle(el);
+      values.push(SVG_PAINT.map((p) => [p, cs.getPropertyValue(p)] as const));
+      await slicer.breathe();
+    }
+    for (const [i, el] of els.entries()) {
+      this.saved.push([el, el.getAttribute("style")]);
+      for (const [p, v] of values[i]) if (v) el.style.setProperty(p, v);
+      await slicer.breathe();
+    }
+  }
+
+  restore() {
+    for (const [el, style] of this.saved) {
       if (style === null) el.removeAttribute("style");
       else el.setAttribute("style", style);
     }
-  };
+    this.saved = [];
+  }
 }
 
 /**

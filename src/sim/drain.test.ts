@@ -1,10 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { DiagramEdge, DiagramFile, DiagramNode } from "../model/types";
 import gcp from "../examples/gcp-streaming-analytics.json";
 import { analyzeCapacity } from "./capacity";
 import { createEngine } from "./engine";
 import { DEFAULT_TRAVEL_MS } from "./topology";
-import { GROWTH_FACTOR, LINEAR_LIMIT, growth } from "../test/complexity";
+import * as topology from "./topology";
+import { countingReads, GROWTH_FACTOR, LINEAR_LIMIT, growth } from "../test/complexity";
 
 // A consumer behind a broker drains at the rate capacity analysis reports: its slots are taken when a delivery
 // arrives, not while it travels (docs/research/sim-flows-review.md, F-1). Seeded runs, compared as ratios and
@@ -270,7 +271,7 @@ describe("second review", () => {
   });
 
   it("refreshing a group's limits reads each consumer's travel time from an index (linear in consumers)", () => {
-    const engineWith = (n: number) => {
+    const work = (n: number) => {
       const d: DiagramFile = {
         format: "diagrams/v1",
         title: "Wide",
@@ -281,13 +282,48 @@ describe("second review", () => {
         d.nodes.push(node(`c${i}`, "service.go"));
         d.edges.push({ ...edge("broker", `c${i}`, { group: "g" }), id: `e${i}` });
       }
-      const engine = createEngine({ seed: 1 });
-      engine.load(d);
-      let scale = 1;
-      // A scale change refreshes every group's limit.
-      return () => engine.setScale((scale = scale === 1 ? 2 : 1));
+      const compile = topology.compileTopology;
+      const routeReads: (() => number)[] = [];
+      const memberReads: (() => number)[] = [];
+      const spy = vi.spyOn(topology, "compileTopology").mockImplementation((...args) => {
+        const compiled = compile(...args);
+        for (const groups of compiled.groups.values())
+          for (const group of groups) {
+            const members = countingReads(group.members);
+            group.members = members.items;
+            memberReads.push(members.reads);
+            // The engine maps compiled routes to its runtime edges. Count that resulting array too,
+            // so a per-consumer route scan cannot hide behind the one-time topology compilation.
+            group.edges = new Proxy(group.edges, {
+              get(target, key, receiver) {
+                if (key === "map")
+                  return (...mapArgs: Parameters<typeof target.map>) => {
+                    const routes = countingReads(target.map(...mapArgs));
+                    routeReads.push(routes.reads);
+                    return routes.items;
+                  };
+                return Reflect.get(target, key, receiver) as unknown;
+              },
+            });
+          }
+        return compiled;
+      });
+      try {
+        const engine = createEngine({ seed: 1 });
+        engine.load(d);
+        const routesBefore = routeReads.reduce((sum, reads) => sum + reads(), 0);
+        const membersBefore = memberReads.reduce((sum, reads) => sum + reads(), 0);
+        engine.setScale(2);
+        const routes = routeReads.reduce((sum, reads) => sum + reads(), 0) - routesBefore;
+        const members = memberReads.reduce((sum, reads) => sum + reads(), 0) - membersBefore;
+        expect(members).toBe(n);
+        expect(routes).toBe(1); // Only the broker's partitioned flag; travel times come from the index.
+        return routes + members;
+      } finally {
+        spy.mockRestore();
+      }
     };
-    expect(growth(engineWith(150), engineWith(150 * GROWTH_FACTOR))).toBeLessThan(LINEAR_LIMIT);
+    expect(work(150 * GROWTH_FACTOR) / work(150)).toBeLessThan(LINEAR_LIMIT);
   });
 
   it.each(["constructor", "__proto__"])("a consumer called %s survives a checkpoint round trip mid-delivery", (id) => {

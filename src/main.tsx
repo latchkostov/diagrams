@@ -1,4 +1,6 @@
-// First, so its Esc listener is the first on the window (see the module).
+// First, so its listeners run before every other on the window (see the modules): holding input for an image export,
+// then Esc leaving full screen.
+import "./lib/inputHold";
 import "./lib/fullscreenEscape";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
