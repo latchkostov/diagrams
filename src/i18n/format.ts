@@ -1,6 +1,8 @@
 import { getLocale, t } from "./index";
 import { formatNumber } from "./number";
+import { formatList } from "./list";
 export { formatNumber } from "./number";
+export { formatList } from "./list";
 export { formatAgo } from "./relativeTime";
 
 // Numbers, units, rates, percentages, dates, relative times and lists in the current language, all through the
@@ -20,10 +22,6 @@ export function formatDuration(ms: number): string {
   const [value, unit] = ms < 1000 ? [ms, "millisecond"] : ms < 60_000 ? [ms / 1000, "second"] : [ms / 60_000, "minute"];
   return formatNumber(value, { style: "unit", unit, unitDisplay: "short", maximumFractionDigits: value < 10 ? 1 : 0 });
 }
-
-/** A list: "A, B and C" ("A, B und C"; "A、B、C"). `or` for alternatives. */
-export const formatList = (items: string[], type: "and" | "or" = "and"): string =>
-  new Intl.ListFormat(getLocale(), { type: type === "and" ? "conjunction" : "disjunction" }).format(items);
 
 /** A date (a day and a short month by default: "12 Oct", "12. Okt."). */
 export const formatDate = (
