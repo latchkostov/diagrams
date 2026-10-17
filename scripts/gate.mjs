@@ -5,7 +5,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, realpathSy
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { performance } from "node:perf_hooks";
-import { options, canStamp, checkTree } from "./gate/logic.mjs";
+import { options, canStamp, checkTree, gitFiles } from "./gate/logic.mjs";
 import { acquireLock, pickPorts, probePorts } from "./gate/host.mjs";
 import { git, cancelCommands } from "./gate/commands.mjs";
 import { doctor, setup } from "./gate/doctor.mjs";
@@ -53,8 +53,8 @@ try {
       const behind = Number(await git(["rev-list", "--count", "HEAD..origin/master"], root));
       if (behind)
         console.warn(`WARNING: branch is behind origin/master by ${behind} commits; rebase before the full gate.`);
-      changed = (await git(["diff", "--name-only", "--diff-filter=ACMR", base], root)).split(/\r?\n/).filter(Boolean);
-      changed.push(...(await git(["ls-files", "--others", "--exclude-standard"], root)).split(/\r?\n/).filter(Boolean));
+      changed = gitFiles(await git(["diff", "--name-only", "-z", "--diff-filter=ACMR", base], root));
+      changed.push(...gitFiles(await git(["ls-files", "--others", "--exclude-standard", "-z"], root)));
       console.log(`Related files: ${changed.join(", ") || "none"}`);
     }
     const out = join(root, "tests/.output/g");

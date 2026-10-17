@@ -14,7 +14,7 @@ export async function linuxRun(root, config, changed, directory, sha, execute = 
     .update(readFileSync(join(root, "pnpm-lock.yaml")))
     .digest("hex")
     .slice(0, 16);
-  const modules = `livediagrams-gate-modules-${platform.text.trim()}-${hash}`;
+  const modules = `livediagrams-gate-modules-${(platform.stdout ?? platform.text).trim()}-${hash}`;
   // A run directory is unique even after a hard kill and eventual PID reuse.
   const name = `ld-gate-${process.pid}-${basename(directory)}`;
   const source = `${name}-source`;

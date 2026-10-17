@@ -8,6 +8,8 @@ application branches and pinch events, but cannot emulate native text editing.
 PowerShell's `pnpm.ps1` can turn an unquoted `unit,e2e` argument into `unit e2e`.
 The gate accepts both forms; Nightly quotes the list explicitly. Parsing tests
 and a native PowerShell doctor probe cover the wrapper's actual argument form.
+Git commands keep stdout separate from diagnostic stderr and request zero-delimited
+paths: CRLF warnings, spaces and non-ASCII names cannot contaminate the changed-file list.
 
 ## Reported Mac failures
 

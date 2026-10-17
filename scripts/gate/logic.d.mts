@@ -25,6 +25,7 @@ export interface BrowserCounts extends Counts {
 }
 export const CATEGORIES: string[];
 export const GIB: number;
+export function gitFiles(output: string): string[];
 export function options(argv: string[]): Config;
 export function positive(value: unknown, name: string): number;
 export function validatePorts(base: number): number;

@@ -9,6 +9,7 @@ import { expect, it, vi } from "vitest";
 import {
   canStamp,
   checkTree,
+  gitFiles,
   GIB,
   lockPort,
   options,
@@ -21,7 +22,7 @@ import { acquireLock, pickPorts, probePorts } from "../../scripts/gate/host.mjs"
 import { browserTemp, prepareBrowserTemp, runSteps } from "../../scripts/gate/run.mjs";
 import { linuxRun } from "../../scripts/gate/linux.mjs";
 import { installed } from "../../scripts/gate/doctor.mjs";
-import { pnpmCommand } from "../../scripts/gate/commands.mjs";
+import { command, git, pnpmCommand } from "../../scripts/gate/commands.mjs";
 
 it("invokes standalone pnpm and JS shims without shell interpretation", () => {
   const args = ["exec", "tool", "a path with spaces", "$(literal)"];
@@ -30,6 +31,37 @@ it("invokes standalone pnpm and JS shims without shell interpretation", () => {
 });
 
 const config = (args: string[] = []) => options(["full", ...args]);
+
+it("keeps command stdout separate from diagnostic stderr", async () => {
+  const result = await command(process.execPath, [
+    "-e",
+    'process.stdout.write("مثال.ts\\0"); process.stderr.write("warning\\n")',
+  ]);
+  expect(result.code).toBe(0);
+  expect(result.stdout).toBe("مثال.ts\0");
+  expect(result.stderr).toBe("warning\n");
+  expect(result.text).toContain(result.stdout);
+  expect(result.text).toContain(result.stderr);
+});
+
+it("Git diagnostics cannot become changed file names", async () => {
+  const stdout = "tests/e2e/smoke.spec.ts\0";
+  const stderr = "warning: CRLF will be replaced by LF\n";
+  expect(
+    await git(["diff", "--name-only", "-z"], process.cwd(), async () => ({
+      code: 0,
+      text: stderr + stdout,
+      stdout,
+      stderr,
+    })),
+  ).toBe(stdout);
+});
+
+it("reads zero-delimited Git paths without quoting or splitting valid file names", () => {
+  const files = ["tests/e2e/my file.spec.ts", "src/i18n/مثال.ts", "dir/line\nbreak.ts"];
+  expect(gitFiles(files.join("\0") + "\0")).toEqual(files);
+  expect(gitFiles("")).toEqual([]);
+});
 
 it.each(["unit,e2e", "unit e2e", "unit, e2e"])("accepts native and PowerShell category lists (%s)", (list) => {
   expect(config(["--only", list]).only).toEqual(["unit", "e2e"]);

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 export const CATEGORIES = ["lint", "typecheck", "format", "i18n", "skill", "unit", "build", "size", "parity", "e2e"];
 export const GIB = 1024 ** 3;
+export const gitFiles = (output) => output.split("\0").filter(Boolean);
 
 export function positive(value, name) {
   const n = Number(value);

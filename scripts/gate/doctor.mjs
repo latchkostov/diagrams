@@ -50,9 +50,10 @@ export async function doctor(root, config) {
   );
   const wanted = manifest(root).packageManager.split("@")[1];
   const version = await pnpm(["--version"], { cwd: root });
+  const pnpmVersion = (version.stdout ?? version.text).trim();
   item(
-    version.code === 0 && version.text.trim() === wanted,
-    `pnpm ${version.text.trim()} (pin ${wanted})`,
+    version.code === 0 && pnpmVersion === wanted,
+    `pnpm ${pnpmVersion} (pin ${wanted})`,
     `Enable Corepack (corepack enable), then corepack prepare pnpm@${wanted} --activate.`,
   );
   item(
@@ -91,7 +92,7 @@ export async function doctor(root, config) {
       if (config.linux) {
         const info = await command("docker", ["info", "--format", '{"cpus":{{.NCPU}},"memory":{{.MemTotal}}}']);
         if (!info.code) {
-          const vm = JSON.parse(info.text);
+          const vm = JSON.parse(info.stdout);
           console.log(
             `Linux VM: ${vm.cpus} CPUs, ${(vm.memory / GIB).toFixed(1)} GiB RAM; workers=${config.workers ?? workerCount(vm.cpus, vm.memory)}`,
           );

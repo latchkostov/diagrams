@@ -48,10 +48,12 @@ export function pnpmCommand(args, entry = process.env.npm_execpath) {
 }
 
 export function command(bin, args, { cwd, env = {}, log, live = false, input, signal, cleanup = false } = {}) {
-  if (cancelled && !cleanup) return Promise.resolve({ code: 130, text: "Gate interrupted" });
+  if (cancelled && !cleanup) return Promise.resolve({ code: 130, text: "Gate interrupted", stdout: "", stderr: "" });
   return new Promise((resolve) => {
     const output = log ? createWriteStream(log) : undefined;
     let text = "";
+    let stdout = "";
+    let stderr = "";
     const child = spawn(bin, args, {
       cwd,
       env: { ...process.env, MSYS_NO_PATHCONV: "1", VITE_CONFIG_NATIVE_IGNORE_WARNING: "true", ...env },
@@ -61,32 +63,36 @@ export function command(bin, args, { cwd, env = {}, log, live = false, input, si
       signal,
     });
     children.add(child);
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
     if (input) {
       input.pipe(child.stdin);
       child.stdin.on("error", () => {});
     }
-    const collect = (chunk) => {
+    const collect = (chunk, stream) => {
       output?.write(chunk);
       if (live) process.stdout.write(chunk);
       text = (text + chunk).slice(-4_000_000);
+      if (stream === "stdout") stdout = (stdout + chunk).slice(-4_000_000);
+      else stderr = (stderr + chunk).slice(-4_000_000);
     };
-    child.stdout.on("data", collect);
-    child.stderr.on("data", collect);
-    child.on("error", (error) => collect(String(error)));
+    child.stdout.on("data", (chunk) => collect(chunk, "stdout"));
+    child.stderr.on("data", (chunk) => collect(chunk, "stderr"));
+    child.on("error", (error) => collect(String(error), "stderr"));
     child.on("close", (code) => {
       children.delete(child);
       output?.end();
-      resolve({ code: code ?? 1, text });
+      resolve({ code: code ?? 1, text, stdout, stderr });
     });
   });
 }
 
 export const pnpm = (args, config) => command(...pnpmCommand(args), config);
 
-export async function git(args, cwd) {
-  const result = await command("git", args, { cwd });
+export async function git(args, cwd, execute = command) {
+  const result = await execute("git", args, { cwd });
   if (result.code) throw new Error(`git ${args.join(" ")} failed: ${result.text}`);
-  return result.text.trim();
+  return result.stdout.trim();
 }
 
 export async function required(bin, args, config) {
