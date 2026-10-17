@@ -54,9 +54,16 @@ other gates; process death releases the lock without stale files on Windows, mac
 
 Full runs lint, typecheck, formatting, i18n and skill checks, unit coverage, production build,
 entry size, output parity, then every CI Playwright project: chromium, dev, subpath, internal
-and locked. The four independent E2E builds run together with CI's environments. One Playwright
-invocation runs all specs with `--retries=0 --forbid-only`; there are no sequential shards.
+and locked. Independent E2E builds run together with CI's environments. One Playwright
+invocation runs the selected specs with `--retries=0 --forbid-only`; there are no sequential shards.
 CPU and RAM determine workers (measured cap 12); `--workers N` overrides the formula.
+
+`pnpm gate full --only e2e --shard 2/6` selects one duration-balanced shard of whole spec files
+using `scripts/e2e-shard.mjs`, the same planner and timings as PR CI. `--shard i/n` requires
+positive one-based integers with `i <= n`, at most as many shards as spec files, and a full
+run including E2E. The internal and locked profiles are built and served only where their
+specs occur. Shards keep auto workers and zero retries, and never write verification stamps,
+including `--shard 1/1`.
 
 `pnpm gate quick [spec...]` runs static checks, Vitest tests related to files changed since
 the merge-base with origin/master, and only the explicit or changed E2E specs on production
@@ -77,11 +84,15 @@ avoiding parallel browser trace writes through the host filesystem mount.
 Short paths under `tests/.output/g/` preserve Windows's file URL path budget. Each step has
 a log; JSON/HTML reports, screenshots and traces persist per repetition. The final timing
 table and `SUMMARY:` line include units, goldens and per-project browser counts.
+E2E also writes an atomic checkpoint after each completed test, seeded before builds with an
+interruption marker. An interrupted gate retains these partial counts when the final Playwright
+JSON is absent. Nightly collects the final report or checkpoint (never both) for its failure issue;
+if tests never start, it uploads a clear interruption/no-counts marker instead.
 
 Full requires a clean tree (including nonignored untracked files), invalidates an earlier
 stamp, and checks that HEAD and the tree stayed unchanged. Only complete successful runs
-write `$(git rev-parse --git-common-dir)/verified/<sha>`. Quick, subsets and `--no-docker`
-never stamp. `--no-docker` loudly skips Docker checks and browser parity for native CI runners.
+write `$(git rev-parse --git-common-dir)/verified/<sha>`. Quick runs, subsets, shards and
+`--no-docker` never stamp. `--no-docker` loudly skips Docker checks and browser parity for native CI runners.
 
 | Platform/mode           | What it predicts                                       | When to use it                                 |
 | ----------------------- | ------------------------------------------------------ | ---------------------------------------------- |
@@ -260,8 +271,14 @@ blocking a merge, but the job summary lists every test that needed one: treat th
 `.github/workflows/nightly.yml` runs every night (04:23 UTC) and on demand (Actions › Nightly › Run
 workflow). It covers what pull requests skip for speed, with no retries:
 
-- **Native portability:** Windows and macOS run `pnpm gate full --no-docker --only unit,e2e`,
-  including all five browser projects. Reports feed the same failure issue.
+- **Native portability:** Windows and macOS each run unit coverage in a separate job, plus
+  `pnpm gate full --no-docker --only e2e --shard i/n` across six Windows shards and eight macOS
+  shards. Together each OS covers all five browser projects once with auto workers and no retries.
+  The interrupted runs projected to about 59 minutes of Windows E2E and 75 minutes of macOS E2E;
+  six/eight balanced shards target about ten minutes each. E2E steps have 25 minutes inside
+  35-minute jobs; unit steps have 15 minutes inside 25-minute jobs, leaving setup/upload margin.
+  Both matrices use `fail-fast: false`. Per-OS/per-shard artifacts, partial browser counts and unit
+  failures feed the same failure issue, with interrupted runs explicitly marked.
   [Dated portability audit](design-review/2026-10-17-portable-gate.md).
 
 - **Dev server 1/4 … 4/4:** the whole suite with `E2E_TARGET=dev`: the `chromium` and `dev` projects on

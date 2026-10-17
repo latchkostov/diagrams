@@ -32,5 +32,15 @@
   exercises failure, late tree/HEAD changes and complete success. Browser coverage
   observes frames between unheld clone-progress updates and checks selection zoom
   only after Inspector reveal, measured fit and a stable viewport.
+- Review round 3 adds `pnpm gate full --shard i/n`, using PR CI's duration-balanced
+  whole-spec planner in one zero-retry Playwright invocation. Shards never stamp;
+  internal and locked self-host profiles build and serve only in shards selecting
+  their specs. Native Nightly separates unit coverage from E2E: six Windows shards
+  and eight macOS shards target about ten minutes each from projected 59/75-minute
+  full-suite times, with step/job timeouts leaving setup and report-upload margin.
+  Atomic per-test checkpoints preserve partial results on interruption. The failure
+  issue reads per-OS/per-shard artifacts, prefers final reports over checkpoints,
+  includes unit failures, and explicitly marks missing or interrupted reports.
+  This tooling change alters no app output or parity goldens.
 - The committed skill viewer is regenerated without a plugin version. No parity
   golden changes are intended; output parity must remain unchanged.

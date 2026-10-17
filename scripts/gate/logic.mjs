@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { E2E_PROFILES, e2eBuild } from "../e2e-profiles.mjs";
+import { e2eBuild, selfHostProfiles } from "../e2e-profiles.mjs";
+import { shardFiles } from "../e2e-shard.mjs";
 
 export const CATEGORIES = ["lint", "typecheck", "format", "i18n", "skill", "unit", "build", "size", "parity", "e2e"];
 export const GIB = 1024 ** 3;
@@ -22,7 +23,13 @@ export function options(argv) {
     if (arg === "--linux") result.linux = true;
     else if (arg === "--no-docker") result.docker = false;
     else if (["--ports", "--workers", "--repeat"].includes(arg)) result[arg.slice(2)] = positive(args.shift(), arg);
-    else if (arg === "--only") {
+    else if (arg === "--shard") {
+      const value = args.shift() ?? "";
+      if (!/^[1-9]\d*\/[1-9]\d*$/.test(value)) throw new Error("--shard requires i/n (one-based)");
+      const [current, total] = value.split("/").map((n) => positive(n, "--shard"));
+      if (current > total) throw new Error("--shard index must not exceed total");
+      result.shard = { current, total };
+    } else if (arg === "--only") {
       // pnpm.ps1 can join an unquoted PowerShell comma-array with spaces.
       result.only = (args.shift() ?? "").trim().split(/[,\s]+/);
       if (result.only.some((name) => !CATEGORIES.includes(name)))
@@ -32,6 +39,8 @@ export function options(argv) {
   }
   if (result.ports) validatePorts(result.ports);
   if (result.linux && !result.docker) throw new Error("--linux requires Docker");
+  if (result.shard && (result.command !== "full" || (result.only.length && !result.only.includes("e2e"))))
+    throw new Error("--shard requires full with the e2e category");
   return result;
 }
 
@@ -89,7 +98,7 @@ export function playwrightCounts(report) {
 }
 
 /** Groups execute sequentially; independent members of a group execute together. */
-export function plan(config, changed = []) {
+export function plan(config, changed = [], root) {
   const wanted = new Set(
     config.only.length
       ? config.only
@@ -117,13 +126,22 @@ export function plan(config, changed = []) {
   if (wanted.has("build") || wanted.has("size")) groups.push([step("build", ["build"])]);
   if (wanted.has("size")) groups.push([step("size", ["size"])]);
   if (wanted.has("parity")) groups.push([step("parity", ["parity", ...(!config.docker ? ["--tier", "node"] : [])])]);
-  const specs = config.specs.length ? config.specs : changed.filter((f) => /^tests\/e2e\/.*\.spec\.ts$/.test(f));
+  const specs = config.shard
+    ? shardFiles(config.shard.current, config.shard.total, root)
+    : config.specs.length
+      ? config.specs
+      : changed.filter((f) => /^tests\/e2e\/.*\.spec\.ts$/.test(f));
   if (wanted.has("e2e") && (config.command !== "quick" || specs.length)) {
-    groups.push(Object.keys(E2E_PROFILES).map((name) => ({ name: `${name}-build`, ...e2eBuild(name) })));
+    const selfHost = selfHostProfiles(specs);
+    groups.push(["e2e", "preview", ...selfHost].map((name) => ({ name: `${name}-build`, ...e2eBuild(name) })));
     for (let i = 1; i <= config.repeat; i++)
-      groups.push([step(`e2e-${i}`, ["exec", "playwright", "test", ...specs, "--retries=0", "--forbid-only"])]);
+      groups.push([
+        step(`e2e-${i}`, ["exec", "playwright", "test", ...specs, "--retries=0", "--forbid-only"], {
+          E2E_SELF_HOST: selfHost.join(","),
+        }),
+      ]);
   }
   return groups;
 }
 
-export const canStamp = (config) => config.command === "full" && config.docker && !config.only.length;
+export const canStamp = (config) => config.command === "full" && config.docker && !config.only.length && !config.shard;

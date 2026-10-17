@@ -7,6 +7,7 @@ export interface Config {
   only: string[];
   ports?: number;
   workers?: number;
+  shard?: { current: number; total: number };
 }
 export interface Step {
   name: string;
@@ -33,5 +34,5 @@ export function workerCount(cpus: number, memory: number): number;
 export function lockPort(common: string, platform: string): number;
 export function checkTree(status: string, before: string, after?: string): void;
 export function playwrightCounts(report: unknown): BrowserCounts;
-export function plan(config: Config, changed?: string[]): Step[][];
+export function plan(config: Config, changed?: string[], root?: string): Step[][];
 export function canStamp(config: Config): boolean;

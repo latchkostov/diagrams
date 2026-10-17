@@ -16,6 +16,7 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import console from "node:console";
+import { fileURLToPath } from "node:url";
 
 const TEST_DIR = "tests/e2e";
 const TIMINGS = "tests/e2e-timings.json";
@@ -28,23 +29,26 @@ const fail = (message) => {
 };
 
 /** Spec files relative to the test dir, with forward slashes (as Playwright's reports name them). */
-function specFiles() {
+function specFiles(root = process.cwd()) {
   return fs
-    .readdirSync(TEST_DIR, { recursive: true })
+    .readdirSync(path.join(root, TEST_DIR), { recursive: true })
     .map((f) => String(f).replaceAll("\\", "/"))
     .filter((f) => SPEC.test(f))
     .sort();
 }
 
-function readTimings() {
-  if (!fs.existsSync(TIMINGS)) return {};
-  return JSON.parse(fs.readFileSync(TIMINGS, "utf8")).seconds ?? {};
+function readTimings(root = process.cwd()) {
+  if (!fs.existsSync(path.join(root, TIMINGS))) return {};
+  return JSON.parse(fs.readFileSync(path.join(root, TIMINGS), "utf8")).seconds ?? {};
 }
 
 /** Longest first, each to the least loaded shard (ties to the lower shard), so the result is stable. */
-function plan(total) {
-  const files = specFiles();
-  const timings = readTimings();
+export function planShards(total, root = process.cwd()) {
+  if (!Number.isSafeInteger(total) || total < 1) throw new Error("Shard total must be a positive integer");
+  const files = specFiles(root);
+  // Empty shards must never fall back to running the whole Playwright suite.
+  if (total > files.length) throw new Error("More shards than spec files; use fewer shards");
+  const timings = readTimings(root);
   const known = files.filter((f) => timings[f] !== undefined).map((f) => timings[f]);
   const average = known.length ? known.reduce((a, b) => a + b, 0) / known.length : 1;
   const unknown = files.filter((f) => timings[f] === undefined);
@@ -59,6 +63,12 @@ function plan(total) {
   }
   for (const s of shards) s.files.sort();
   return shards;
+}
+
+export function shardFiles(current, total, root = process.cwd()) {
+  if (!Number.isSafeInteger(current) || current < 1 || current > total)
+    throw new Error("Shard index must be between 1 and total");
+  return planShards(total, root)[current - 1].files.map((f) => path.posix.join(TEST_DIR, f));
 }
 
 function update(reports) {
@@ -93,20 +103,23 @@ function update(reports) {
   console.log(`e2e-shard: wrote ${Object.keys(seconds).length} spec timings from ${reports.length} report(s).`);
 }
 
-const [a, b, ...rest] = process.argv.slice(2);
-if (a === "--update") update([b, ...rest].filter(Boolean));
-else if (a === "--plan") {
-  const total = Number(b);
-  if (!Number.isInteger(total) || total < 1) fail("usage: --plan <total>");
-  for (const [i, s] of plan(total).entries())
-    console.log(`shard ${i + 1}: ${s.seconds.toFixed(0)} s, ${s.files.length} files: ${s.files.join(" ")}`);
-} else {
-  const current = Number(a);
-  const total = Number(b);
-  if (!Number.isInteger(total) || total < 1 || !Number.isInteger(current) || current < 1 || current > total)
-    fail("usage: <current> <total> (one-based)");
-  const files = plan(total)[current - 1].files;
-  // An empty list would make `playwright test` run everything.
-  if (!files.length) fail(`shard ${current}/${total} got no spec files; use fewer shards.`);
-  console.log(files.map((f) => path.posix.join(TEST_DIR, f)).join(" "));
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const [a, b, ...rest] = process.argv.slice(2);
+  try {
+    if (a === "--update") update([b, ...rest].filter(Boolean));
+    else if (a === "--plan") {
+      const total = Number(b);
+      if (!Number.isInteger(total) || total < 1) fail("usage: --plan <total>");
+      for (const [i, s] of planShards(total).entries())
+        console.log(`shard ${i + 1}: ${s.seconds.toFixed(0)} s, ${s.files.length} files: ${s.files.join(" ")}`);
+    } else {
+      const current = Number(a);
+      const total = Number(b);
+      if (!Number.isInteger(total) || total < 1 || !Number.isInteger(current) || current < 1 || current > total)
+        fail("usage: <current> <total> (one-based)");
+      console.log(shardFiles(current, total).join(" "));
+    }
+  } catch (error) {
+    fail(error.message);
+  }
 }

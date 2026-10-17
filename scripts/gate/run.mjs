@@ -5,6 +5,7 @@ import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { performance } from "node:perf_hooks";
 import { pnpm } from "./commands.mjs";
 import { plan, playwrightCounts, workerCount } from "./logic.mjs";
+import { pendingReport, writeCheckpoint, readTestReport } from "./reporter.mjs";
 
 // Linux reports are copied home after the run. Keep Chrome's high-churn profiles
 // outside that copy tree, in their own native volume at this repository path.
@@ -54,7 +55,15 @@ export async function runSteps(root, config, changed, directory, extraEnv = {}, 
     // Parity's Linux container must not use the host's temp path.
     ...extraEnv,
   };
-  for (const group of plan(config, changed)) {
+  const groups = plan(config, changed, root);
+  // Seed before builds: an interruption there still leaves an uploadable marker.
+  for (const step of groups.flat().filter((step) => /^e2e-\d+$/.test(step.name))) {
+    const stepDir = join(directory, `e${step.name.slice(4)}`);
+    mkdirSync(stepDir, { recursive: true });
+    writeCheckpoint(join(stepDir, "checkpoint.json"), pendingReport());
+  }
+  if (config.shard) console.log(`Shard ${config.shard.current}/${config.shard.total} (whole spec files)`);
+  for (const group of groups) {
     const buildsFailed = rows.some((r) => r.name.endsWith("-build") && !r.ok);
     const results = await Promise.all(
       group.map(async (step) => {
@@ -67,19 +76,32 @@ export async function runSteps(root, config, changed, directory, extraEnv = {}, 
         if (e2e) {
           Object.assign(stepEnv, { TMPDIR: temp, TMP: temp, TEMP: temp });
           if (buildsFailed) return { name: step.name, ok: false, seconds: 0, detail: "Skipped: a fresh build failed" };
-          args.push(`--workers=${workers}`, `--output=${join(stepDir, "results")}`, "--reporter=line,html,json");
+          args.push(
+            `--workers=${workers}`,
+            `--output=${join(stepDir, "results")}`,
+            "--reporter=line,html,json,./scripts/gate/reporter.mjs",
+          );
+          stepEnv.GATE_CHECKPOINT = resolve(stepDir, "checkpoint.json");
           stepEnv.PLAYWRIGHT_JSON_OUTPUT_NAME = resolve(stepDir, "results.json");
           stepEnv.PLAYWRIGHT_HTML_OUTPUT_DIR = resolve(stepDir, "report");
         }
         if (step.name === "unit")
           args.push("--reporter=default", "--reporter=json", `--outputFile=${join(stepDir, "results.json")}`);
-        console.log(`== ${step.name} ${e2e ? `(${workers} workers, all CI projects)` : ""}`);
+        console.log(`== ${step.name} ${e2e ? `(${workers} workers)` : ""}`);
+        if (e2e)
+          console.log(
+            `Spec files: ${step.args.slice(3, -2).join(" ") || "all"}; self-host: ${stepEnv.E2E_SELF_HOST || "none"}`,
+          );
         const result = await execute(args, { cwd: root, env: stepEnv, log: join(stepDir, "step.log") });
         let ok = result.code === 0;
         let counts;
         try {
           if (e2e) {
-            counts = playwrightCounts(JSON.parse(readFileSync(join(stepDir, "results.json"), "utf8")));
+            const report = readTestReport(stepDir);
+            if (report.interrupted)
+              console.error(`Interrupted: ${step.name}; retaining ${report.completed} completed tests`);
+            ok &&= !report.interrupted;
+            counts = playwrightCounts(report);
             reports.push({ name: step.name, ...counts });
             ok &&= counts.failed === 0 && counts.flaky === 0 && counts.errors === 0;
             for (const [project, c] of Object.entries(counts.projects))

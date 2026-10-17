@@ -27,6 +27,17 @@ export const E2E_PROFILES = {
   },
 };
 
+/** An empty or nonliteral filter can match either spec, as in Playwright. */
+export function selfHostProfiles(specs) {
+  const unfiltered = !specs.length || specs.some((spec) => !/^tests\/e2e\/[\w/-]+\.spec\.ts$/.test(spec));
+  return [
+    ["internal", "tests/e2e/self-host.spec.ts"],
+    ["locked", "tests/e2e/self-host-locked.spec.ts"],
+  ]
+    .filter(([, spec]) => unfiltered || specs.includes(spec))
+    .map(([name]) => name);
+}
+
 export function e2eBuild(name) {
   const profile = Object.hasOwn(E2E_PROFILES, name) && E2E_PROFILES[name];
   if (!profile) throw new Error(`Unknown E2E build profile: ${name}`);
