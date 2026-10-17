@@ -1,5 +1,20 @@
 # Release notes
 
+## Collaboration export Linux synchronization (#143, 2026-10-16)
+
+- Reproduced CI's 0% progress failure in the two-CPU Playwright Linux container. The test held
+  the first export macrotask, but SVG paint preparation can yield before any node is cloned.
+  It now lets preparation continue and holds a continuation only after the rendered progress
+  bar reports cloning in progress, before the peer edit. Retry, no-download and scoped Undo/Redo
+  assertions remain intact. No product change or timeout increase is needed.
+- The repeated full spec also exposed a relay-fixture race: a late heartbeat could reconnect a
+  disconnected test page. The relay now drops packets from detached pages; the recovery regression
+  explicitly sends a late heartbeat and verifies the remaining editor stays saved on this device.
+- Five full-spec Linux repetitions pass: 80 passed, zero failed or flaky. Temporarily restoring
+  the old export hook fails all five focused repetitions at 0%; removing the relay guard makes
+  its regression observe the forbidden late packet.
+- No UI or output changes; no golden is changed or re-recorded.
+
 ## Collaboration C1a: responsive export rebase (#143, 2026-10-16)
 
 - Rebased onto master including #142. The editor retains room-specific ID allocation alongside

@@ -15,6 +15,7 @@ type TestWindow = Window & {
   __c1Deliver(packet: LabPacket): void;
   __c1Post(packet: LabPacket): Promise<void>;
   __c1CipherReads?: number;
+  __c1LatePeerPackets?: number;
   __releaseRecoveryOpen?: () => void;
   __recoveryChannelsClosed?: number;
   __restoreRecoveryWrites?: () => void;
@@ -26,12 +27,7 @@ async function relay(contexts: BrowserContext[], seed: number, initial?: Diagram
     ids = new Map<Page, string>();
   let paused = false;
   const queued: { from: Page; packet: LabPacket }[] = [];
-  const deliver = async (from: Page, packet: LabPacket) => {
-    ids.set(from, packet.from);
-    if (paused) {
-      queued.push({ from, packet });
-      return;
-    }
+  const broadcast = async (from: Page, packet: LabPacket) => {
     await Promise.all(
       [...pages]
         .filter((p) => p !== from && !p.isClosed())
@@ -39,6 +35,15 @@ async function relay(contexts: BrowserContext[], seed: number, initial?: Diagram
           await p.evaluate((msg) => (window as TestWindow).__c1Deliver?.(msg), packet).catch(() => {});
         }),
     );
+  };
+  const deliver = async (from: Page, packet: LabPacket) => {
+    if (!pages.has(from)) return;
+    ids.set(from, packet.from);
+    if (paused) {
+      queued.push({ from, packet });
+      return;
+    }
+    await broadcast(from, packet);
   };
   for (const context of contexts) {
     for (const p of context.pages()) pages.add(p);
@@ -79,8 +84,9 @@ async function relay(contexts: BrowserContext[], seed: number, initial?: Diagram
     },
     async disconnect(page: Page) {
       const from = ids.get(page);
-      if (from) await deliver(page, { from, kind: "bye" });
       pages.delete(page);
+      if (from) await broadcast(page, { from, kind: "bye" });
+      return from;
     },
     attach(page: Page) {
       pages.add(page);
@@ -225,7 +231,21 @@ test("room recovery preserves an existing local autosave across reload and rejoi
     await name(page, "api", "Before everybody left");
     await expect(b.getByTestId("node-api")).toContainText("Before everybody left");
     await expect(b.getByTestId("collab-room-status")).toHaveAttribute("data-saved", "true");
-    await wire.disconnect(b);
+    const departed = await wire.disconnect(b);
+    if (!departed) throw new Error("Expected the peer to have joined the relay");
+    // A heartbeat already on its way out cannot reconnect a page whose wire was disconnected.
+    await page.evaluate((from) => {
+      (window as TestWindow).__c1LatePeerPackets = 0;
+      window.__collabC1?.wire.subscribe((packet) => {
+        if (packet.from === from) {
+          const w = window as TestWindow;
+          w.__c1LatePeerPackets = (w.__c1LatePeerPackets ?? 0) + 1;
+        }
+      });
+    }, departed);
+    await b.evaluate((from) => (window as TestWindow).__c1Post({ from, kind: "hello" }), departed);
+    expect(await page.evaluate(() => (window as TestWindow).__c1LatePeerPackets)).toBe(0);
+    await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-status", "saved-device");
     await b.goto("about:blank");
     await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-status", "saved-device");
     await page.reload();
@@ -835,7 +855,8 @@ test("a peer edit between image export slices aborts with a retry toast and pres
     await open(b, true);
     await name(page, "api", "My local API");
     await expect(b.getByTestId("node-api")).toContainText("My local API");
-    // Hold the first clone slice's macrotask, rather than racing a fast export against peer input.
+    // SVG paint preparation can yield at 0%, before cloning. Hold a continuation only after
+    // the app reports clone progress, rather than assuming the first macrotask is a clone slice.
     await page.evaluate(() => {
       const NativeChannel = window.MessageChannel;
       const w = window as unknown as { __exportSliceHeld: boolean; __resumeExportSlice: () => void };
@@ -843,11 +864,21 @@ test("a peer edit between image export slices aborts with a retry toast and pres
       window.MessageChannel = class extends NativeChannel {
         constructor() {
           super();
-          window.MessageChannel = NativeChannel;
           const post = this.port2.postMessage.bind(this.port2);
           this.port2.postMessage = (message: unknown) => {
-            w.__exportSliceHeld = true;
-            w.__resumeExportSlice = () => post(message);
+            // Let React commit the progress published before this yield, even on a slow machine.
+            requestAnimationFrame(() => {
+              const progress = Number(
+                document.querySelector('[data-testid="toast-progress"]')?.getAttribute("aria-valuenow"),
+              );
+              if (!(progress > 0 && progress < 70)) {
+                post(message);
+                return;
+              }
+              window.MessageChannel = NativeChannel;
+              w.__exportSliceHeld = true;
+              w.__resumeExportSlice = () => post(message);
+            });
           };
         }
       };

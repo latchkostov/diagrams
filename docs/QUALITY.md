@@ -309,6 +309,19 @@ waiting on success within that backstop alone did not fix it. A live dim attribu
 the opacity transition: poll the rendered opacity when asserting the visual result, rather than
 sampling it immediately after the attribute.
 
+The collaboration export regression holds a macrotask only after the rendered progress bar
+reports a value above 0% and below the clone phase's 70% boundary. SVG paint preparation can
+yield at 0% on a slower machine, before cloning starts; holding the first MessageChannel
+unconditionally caught that preparation yield on Linux (#143). The test lets React publish
+progress on an animation frame before deciding whether to hold the continuation, then waits
+for the peer's edit to appear before releasing it. No elapsed-time wait or timeout increase
+is needed.
+
+The isolated-context relay drops outgoing packets from detached test pages before announcing
+their departure. A heartbeat sent after disconnect must never reach the other editor; the
+recovery regression counts received packets as well as checking its saved-on-device status.
+Otherwise the status can briefly pass before a late heartbeat reconnects the departed peer.
+
 ### Linux browser reproduction on Windows
 
 Run from this checkout in PowerShell. This uses parity's pinned Playwright Linux image and separate
