@@ -78,8 +78,24 @@ test("benchmark fits an off-pane card through the app before clicking it", async
   const b = new Bench(page, await page.context().newCDPSession(page));
   const target = await b.nodeNearCentre(eventPipeline(100).nodes.map((n) => n.id));
   await b.clickNode(target);
-  await b.pan(await b.emptySpot(), 80);
+  const pane = await page.getByTestId("canvas-wrap").boundingBox();
+  const card = await page.getByTestId(target).boundingBox();
+  if (!pane || !card) throw new Error("Expected the canvas and selected card");
+  const from = await b.emptySpot({ x: 0.9, y: 0.5 });
+  // Only the off-pane state matters here. The benchmark's 80 frame-paced moves
+  // consumed CI's whole-test timeout before the recovery fit could finish.
+  const dx = pane.x - (card.x + card.width) - 16;
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down({ button: "middle" });
+  await page.mouse.move(from.x + dx, from.y);
+  await page.mouse.up({ button: "middle" });
   await b.canvasSettled();
+  await expect
+    .poll(async () => {
+      const box = await page.getByTestId(target).boundingBox();
+      return box ? box.x + box.width < pane.x : false;
+    })
+    .toBe(true);
   await expect(b.pointOn(target, { fit: false })).rejects.toThrow("no clickable point");
   const before = await b.viewport();
   await b.clickNode(target);

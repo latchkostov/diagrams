@@ -344,6 +344,14 @@ session's code loads on first use, after the canvas's, and takes seconds on a bu
 Measuring performance itself (workloads to 5,000 nodes, timings as trends, gates for ratios, counts and bundle sizes, a
 committed baseline and the ranked hotspots) is the benchmark suite's job: `pnpm bench`, `pnpm bench:gates`, docs/BENCHMARKS.md.
 
+The benchmark harness's off-pane regression uses one geometry-derived middle drag to move a card
+fully beyond the pane, then exercises the app's Fit action. Reusing an 80-frame benchmark pan for
+setup consumed 20–22 seconds in CI: the whole-test timeout interrupted the final settle check,
+sometimes only 2 ms after it started. That did not establish a stuck `data-fit-pending` request.
+Keep the fit readiness wait and off-pane/hit-test assertions; frame-paced performance workloads
+belong in the benchmark suite. The original setup also fails at 4× browser CPU throttle in the
+two-CPU Linux container, which provides a same-configuration check of the shorter gesture.
+
 ## Accessibility
 
 `tests/e2e/a11y.spec.ts` runs axe-core (WCAG 2.0/2.1 A and AA) on every main view and overlay, in both

@@ -1,5 +1,20 @@
 # Release notes
 
+## Benchmark off-pane recovery on Linux (#145, 2026-10-16)
+
+- CI's off-pane benchmark regression exhausted the whole-test timeout after its 80-frame
+  setup pan consumed 20–22 seconds. The final fit-pending assertion had under a second left, rather than its stated
+  seven-second assertion timeout; the traces do not show a stuck fit request.
+- Move the target beyond the pane with one geometry-derived middle-button drag, then keep
+  the existing settled-canvas, off-pane rejection, app Fit and hit-test assertions. The
+  benchmark's measured pan workload and render budgets stay unchanged.
+- No product behavior, UI text or parity goldens change. UX review keeps the current
+  Inspector reveal, fit and reserved canvas space; no controls are added.
+- Linux verification: six production-build specs repeated three times in the pinned two-CPU
+  container, 393 passed, zero failed, flaky or skipped. At 4× browser CPU throttle the fixed
+  off-pane case passes all three runs; temporarily restoring the old setup produces three
+  whole-test timeouts. All 2,196 parity goldens remain unchanged.
+
 ## Resizable Inspector benchmark harness (#145, 2026-10-16)
 
 - The UI benchmark harness waits for the Inspector's deferred reveal, pane resize and camera pan
