@@ -10,6 +10,7 @@ import { interactiveViewer } from "./scripts/interactive-viewer";
 import { deploymentSwitches } from "./scripts/deployment-env";
 import { selfHostPreviewHeaders } from "./scripts/self-host-headers";
 import { i18n } from "./scripts/i18n-plugin";
+import { schemaAssets } from "./scripts/schema-assets";
 
 /**
  * `VITE_E2E=1` builds the app for the e2e suite: a production build that keeps the dev-only test hooks
@@ -138,6 +139,7 @@ export default defineConfig({
     i18n(),
     staticPages(),
     exampleMetadataPlugin(),
+    schemaAssets(),
     react(),
     noPrivateExamples(),
     noTestHooks(),

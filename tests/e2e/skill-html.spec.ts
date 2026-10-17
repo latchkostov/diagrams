@@ -15,6 +15,17 @@ import { expectPlaying, filePayload, KAFKA, watchedPage } from "./html-viewer";
 const SCRIPTS = join(process.cwd(), "skills", "livediagrams", "scripts");
 const BANNER = "Confidential: internal use only";
 
+test("the build publishes generated agent schemas", async ({ request }) => {
+  for (const name of ["diagram.v1.json", "diagram.v2.json", "ops.v1.json", "stencils.json"]) {
+    const response = await request.get(`/schema/${name}`);
+    expect(response.status()).toBe(200);
+    expect(response.headers()["content-type"]).toContain("application/json");
+    const schema = await response.json();
+    if (name === "stencils.json") expect(schema.stencils.length).toBeGreaterThan(0);
+    else expect(schema.type).toBe("object");
+  }
+});
+
 function run(script: string, ...args: string[]) {
   const r = spawnSync(process.execPath, [join(SCRIPTS, script), ...args], { encoding: "utf8" });
   return { code: r.status, out: r.stdout, err: r.stderr };

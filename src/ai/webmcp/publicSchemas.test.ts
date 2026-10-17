@@ -1,18 +1,9 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { catalog } from "../../stencils/catalog";
 import { publicSchemaFiles } from "./publicSchemas";
 
 describe("public/schema", () => {
   const files = publicSchemaFiles();
-
-  it("is current with the code (run `pnpm schemas` after changing the catalog or the tool schemas)", () => {
-    for (const [name, text] of Object.entries(files))
-      expect(readFileSync(join(process.cwd(), "public", "schema", name), "utf8").replace(/\r\n/g, "\n"), name).toBe(
-        text,
-      );
-  });
 
   it("lists every stencil and describes the file and ops formats", () => {
     const stencils = JSON.parse(files["stencils.json"]).stencils as { id: string; aliases?: string[] }[];

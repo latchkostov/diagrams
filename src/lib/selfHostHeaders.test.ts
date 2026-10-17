@@ -27,7 +27,7 @@ const directive = (csp: string, name: string) =>
     .split(" ") ?? [];
 
 describe("self-hosting headers", () => {
-  it("deploy/self-host/ is generated from scripts/self-host-headers.ts (run `pnpm schemas` if this fails)", () => {
+  it("deploy/self-host/ is generated from scripts/self-host-headers.ts (run `pnpm regen` if this fails)", () => {
     for (const [name, text] of Object.entries(selfHostSamples()))
       expect(read(`deploy/self-host/${name}`), name).toBe(text);
   });

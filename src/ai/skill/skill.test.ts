@@ -11,14 +11,10 @@ import { inflateRawSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { generateSkillFiles, publicExamples, SKILL_DIR } from "../../../scripts/skill-gen";
 import { readSkill, withFresh, zipSkill } from "../../../scripts/skill-assets";
-import {
-  applyRelease,
-  bumpVersion,
-  iconMap,
-  RELEASED,
-  releasedFiles,
-  type ReleaseFs,
-} from "../../../scripts/skill-viewer";
+import generated from "../../../scripts/generated-files.json";
+import { selfHostSamples } from "../../../scripts/self-host-headers";
+import { hostingTemplates } from "../../../scripts/self-host-templates";
+import { applyRelease, iconMap, RELEASED, releasedFiles, type ReleaseFs } from "../../../scripts/skill-viewer";
 import {
   buildPayload,
   exportHtml,
@@ -84,8 +80,19 @@ function unplaced(d: object): Record<string, unknown> {
 }
 
 describe("generated skill files", () => {
-  it("are current (run `pnpm schemas` after changing the catalog, the format or the layout)", async () => {
+  it("are current (run `pnpm regen` after changing the catalog, the format or the layout)", async () => {
     const files = await generateSkillFiles(root);
+    const all = [
+      ...Object.keys(files).map((name) => `${SKILL_DIR}/${name}`),
+      ...Object.values(RELEASED).map((name) => `${SKILL_DIR}/${name}`),
+      ...Object.keys({ ...selfHostSamples(), ...hostingTemplates() }).map((name) => `deploy/self-host/${name}`),
+      "vercel.json",
+    ];
+    expect([...generated.files, ...generated.regions].sort(), "sync must cover every committed output").toEqual(
+      all.sort(),
+    );
+    const attributes = readFileSync(path.join(root, ".gitattributes"), "utf8");
+    for (const name of all) expect(attributes, name).toContain(`${name} linguist-generated=true`);
     expect(Object.keys(files).sort()).toEqual([
       "reference/format.md",
       "reference/simulation.md",
@@ -1007,62 +1014,53 @@ describe("export-html.mjs", () => {
 });
 
 describe("releasing the viewer", () => {
-  it("bumps the plugin's version, patch by default, and keeps the rest of the manifest as it is", () => {
-    const text = readFileSync(path.join(root, ".claude-plugin", "marketplace.json"), "utf8");
-    const version = JSON.parse(text).plugins[0].version as string;
-    expect(version).toMatch(/^\d+\.\d+\.\d+$/);
-    const [major, minor, patch] = version.split(".").map(Number);
-    const p = bumpVersion(text, "patch");
-    expect([p.from, p.to]).toEqual([version, `${major}.${minor}.${patch + 1}`]);
-    expect(p.text).toBe(text.replace(`"version": "${version}"`, `"version": "${p.to}"`));
-    expect(bumpVersion(text, "minor").to).toBe(`${major}.${minor + 1}.0`);
-    expect(() => bumpVersion("{}", "patch")).toThrow(/no "version"/);
+  it("uses commit tracking without a competing manifest version", () => {
+    const manifest = JSON.parse(readFileSync(path.join(root, ".claude-plugin", "marketplace.json"), "utf8"));
+    expect(manifest.plugins[0]).not.toHaveProperty("version");
+    expect(existsSync(path.join(skill, ".claude-plugin", "plugin.json"))).toBe(false);
   });
 
-  it("a release that fails partway changes nothing, so a retry releases and bumps", () => {
+  it("a release that fails partway changes nothing, so a retry refreshes both assets", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "livediagrams-release-"));
     const asset = path.join(dir, "viewer-template.html");
     const icons = path.join(dir, "icons.json");
-    const manifest = path.join(dir, "marketplace.json");
-    const manifestAt = (v: string) => `{ "plugins": [{ "name": "livediagrams", "version": "${v}" }] }\n`;
     writeFileSync(asset, "old template");
     writeFileSync(icons, "old icons");
-    writeFileSync(manifest, manifestAt("1.1.0"));
     const files = { [asset]: "new template", [icons]: "new icons" };
-    const state = () => [asset, icons, manifest].map((f) => readFileSync(f, "utf8"));
+    const state = () => [asset, icons].map((f) => readFileSync(f, "utf8"));
     const listing = () => readdirSync(dir).sort();
     const before = state();
 
-    // The manifest's swap, the last step, fails: the assets already swapped get their old contents back.
-    let failManifest = true;
+    // The second asset's swap fails: the assets already swapped get their old contents back.
+    let failIcons = true;
     const fs: ReleaseFs = {
       readFileSync: (f, e) => readFileSync(f, e),
       writeFileSync: (f, t) => writeFileSync(f, t),
       renameSync: (from, to) => {
-        if (failManifest && to === manifest) throw new Error("disk full");
+        if (failIcons && to === icons) throw new Error("disk full");
         renameSync(from, to);
       },
       rmSync: (f, o) => rmSync(f, o),
       existsSync: (f) => existsSync(f),
     };
-    expect(() => applyRelease(files, manifest, "patch", fs)).toThrow(/disk full/);
+    expect(() => applyRelease(files, fs)).toThrow(/disk full/);
     expect(state()).toEqual(before);
-    expect(listing()).toEqual(["icons.json", "marketplace.json", "viewer-template.html"]);
+    expect(listing()).toEqual(["icons.json", "viewer-template.html"]);
     // Staging fails: nothing is swapped at all.
-    failManifest = false;
+    failIcons = false;
     const readOnly: ReleaseFs = {
       ...fs,
       writeFileSync: () => {
         throw new Error("read-only");
       },
     };
-    expect(() => applyRelease(files, manifest, "patch", readOnly)).toThrow(/read-only/);
+    expect(() => applyRelease(files, readOnly)).toThrow(/read-only/);
     expect(state()).toEqual(before);
 
-    // The retry sees the same stale files and version, and completes.
-    expect(applyRelease(files, manifest, "patch", fs)).toEqual({ from: "1.1.0", to: "1.1.1" });
-    expect(state()).toEqual(["new template", "new icons", manifestAt("1.1.1")]);
-    expect(listing()).toEqual(["icons.json", "marketplace.json", "viewer-template.html"]);
+    // The retry sees the same stale files, and completes.
+    applyRelease(files, fs);
+    expect(state()).toEqual(["new template", "new icons"]);
+    expect(listing()).toEqual(["icons.json", "viewer-template.html"]);
   });
 
   it("the site serves a fresh template and icons in place of the committed ones", () => {

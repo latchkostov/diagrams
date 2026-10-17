@@ -2,12 +2,12 @@
 //   diagram.v1.json  the .diagram.json file format (src/model/types.ts)
 //   ops.v1.json      edit_diagram's input (src/ai/schemas.ts), plus the other tools' inputs
 //   stencils.json    the stencil catalog with search aliases (src/stencils/catalog.ts)
-// Written by scripts/gen-schemas.mjs before every build; a unit test keeps the committed files current.
+// Served/emitted directly by scripts/schema-assets.ts in dev/build; no generated source-tree files.
 
 import { catalog } from "../../stencils/catalog";
-import { diagramV2Schema } from "../../model/diagramSchema";
+import { diagramV1Schema, diagramV2Schema } from "../../model/diagramSchema";
 import { STENCIL_ALIASES } from "../../lib/stencilSearch";
-import { diagramV1Schema, toolDescriptions, toolSchemas, opsSchema, toolAnnotations } from "../index";
+import { toolDescriptions, toolSchemas, opsSchema, toolAnnotations } from "../schemas";
 
 export const SITE = "https://www.livediagrams.dev";
 const SCHEMA = "https://json-schema.org/draft/2020-12/schema";

@@ -32,7 +32,7 @@ function allows(source: string, url: string): boolean {
 }
 
 describe("security headers", () => {
-  it("vercel.json is generated from scripts/security-headers.ts (run `pnpm schemas` if this fails)", () => {
+  it("vercel.json is generated from scripts/security-headers.ts (run `pnpm regen` if this fails)", () => {
     expect(read("vercel.json")).toBe(vercelJson());
     expect(JSON.parse(read("vercel.json"))).toEqual(vercelConfig());
   });

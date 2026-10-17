@@ -1,9 +1,30 @@
 * text=auto eol=lf
 *.png binary
 *.svg text eol=lf
-# The agent skill's Interactive HTML viewer, refreshed only by `pnpm skill:release` (scripts/skill-viewer.ts):
-# generated, no line diffs, and a merge keeps this branch's copy (run `pnpm skill:release` again if it matters).
-# merge=ours needs, once per clone: git config merge.ours.driver true (without it Git merges as usual).
-skills/livediagrams/scripts/lib/viewer-template.html -diff linguist-generated=true merge=ours
-skills/livediagrams/scripts/lib/icons.json -diff linguist-generated=true merge=ours
-skills/livediagrams/scripts/lib/inject.mjs -diff linguist-generated=true
+# Committed outputs consumed directly from git; refresh with pnpm regen.
+vercel.json linguist-generated=true
+skills/livediagrams/scripts/lib/spec.json linguist-generated=true
+skills/livediagrams/scripts/lib/app.mjs linguist-generated=true -diff
+skills/livediagrams/scripts/lib/inject.mjs linguist-generated=true -diff
+skills/livediagrams/scripts/lib/icons.json linguist-generated=true -diff
+skills/livediagrams/scripts/lib/viewer-template.html linguist-generated=true -diff
+skills/livediagrams/reference/stencils.md linguist-generated=true
+deploy/self-host/nginx.conf linguist-generated=true
+deploy/self-host/_headers linguist-generated=true
+deploy/self-host/framed/nginx.conf linguist-generated=true
+deploy/self-host/framed/_headers linguist-generated=true
+deploy/self-host/docker/default.conf linguist-generated=true
+deploy/self-host/nginx/nginx.conf linguist-generated=true
+deploy/self-host/caddy/Caddyfile linguist-generated=true
+deploy/self-host/netlify/netlify.toml linguist-generated=true
+deploy/self-host/vercel/vercel.json linguist-generated=true
+deploy/self-host/cloudflare/_headers linguist-generated=true
+deploy/self-host/cloudflare/_redirects linguist-generated=true
+deploy/self-host/github-pages/meta-csp.html linguist-generated=true
+deploy/self-host/azure/staticwebapp.config.json linguist-generated=true
+deploy/self-host/aws/response-headers-policy.json linguist-generated=true
+deploy/self-host/aws/embed-response-headers-policy.json linguist-generated=true
+deploy/self-host/aws/assets-response-headers-policy.json linguist-generated=true
+deploy/self-host/aws/auth-response-headers-policy.json linguist-generated=true
+skills/livediagrams/reference/format.md linguist-generated=true
+skills/livediagrams/reference/simulation.md linguist-generated=true

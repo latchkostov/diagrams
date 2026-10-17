@@ -6,7 +6,7 @@
 //   - icons.json: the SVG text of every icon the catalog uses.
 // The template and the icons change with any canvas, live or export change, so they're refreshed only on
 // release (`pnpm skill:release`, scripts/skill-release.mjs), never by `pnpm schemas` or a build: concurrent pull
-// requests would otherwise conflict on an unmergeable file. The committed copy is what Claude Code's marketplace
+// requests use `pnpm sync` to regenerate conflicts on this file. The committed copy is what Claude Code's marketplace
 // installs from git. The site's /skill/ folder and /livediagrams-skill.zip are built fresh from the current viewer
 // (scripts/skill-assets.ts), so downloads are always current. `pnpm skill:check` reports a stale copy (nightly).
 
@@ -77,22 +77,6 @@ export function releasedFiles(root: string, template: string): Record<string, st
   };
 }
 
-/** The plugin's version in `.claude-plugin/marketplace.json` text, bumped; the rest of the text is kept as is. */
-export function bumpVersion(text: string, kind: "patch" | "minor"): { text: string; from: string; to: string } {
-  const re = /("version":\s*")(\d+)\.(\d+)\.(\d+)(")/;
-  const m = re.exec(text);
-  if (!m) throw new Error('skill: .claude-plugin/marketplace.json has no "version": "x.y.z" to bump.');
-  if (re.test(text.slice(m.index + m[0].length)))
-    throw new Error("skill: .claude-plugin/marketplace.json has more than one version; bump it by hand.");
-  const [major, minor, patch] = [Number(m[2]), Number(m[3]), Number(m[4])];
-  const to = kind === "minor" ? `${major}.${minor + 1}.0` : `${major}.${minor}.${patch + 1}`;
-  return {
-    text: text.slice(0, m.index) + m[1] + to + m[5] + text.slice(m.index + m[0].length),
-    from: `${major}.${minor}.${patch}`,
-    to,
-  };
-}
-
 /** The file operations a release uses (the test fails one of them). */
 export interface ReleaseFs {
   readFileSync(file: string, encoding: "utf8"): string;
@@ -106,19 +90,13 @@ export interface ReleaseFs {
 const staged = (file: string) => path.join(path.dirname(file), `.${path.basename(file)}.release-tmp`);
 
 /**
- * Publishes a release as one step that can't stop halfway: every refreshed file and the bumped manifest are written
- * to staged copies first (nothing changes if that fails), then swapped in by rename, the manifest last. If a swap
- * fails, the files already swapped get their old contents back, so a retry sees the same stale files and the same
- * version and does the whole release again. `files`: path → new text, only the ones that change.
+ * Publishes a release as one step that can't stop halfway: every refreshed file is written
+ * to staged copies first (nothing changes if that fails), then swapped in by rename. If a swap
+ * fails, the files already swapped get their old contents back, so a retry sees the same stale files
+ * and does the whole refresh again. `files`: path → new text, only the ones that change.
  */
-export function applyRelease(
-  files: Readonly<Record<string, string>>,
-  manifest: string,
-  kind: "patch" | "minor",
-  fs: ReleaseFs = nodeFs,
-): { from: string; to: string } {
-  const bumped = bumpVersion(fs.readFileSync(manifest, "utf8"), kind);
-  const writes: [string, string][] = [...Object.entries(files), [manifest, bumped.text]];
+export function applyRelease(files: Readonly<Record<string, string>>, fs: ReleaseFs = nodeFs): void {
+  const writes = Object.entries(files);
   const before = new Map(writes.map(([file]) => [file, fs.existsSync(file) ? fs.readFileSync(file, "utf8") : null]));
   const cleanUp = () => {
     for (const [file] of writes) fs.rmSync(staged(file), { force: true });
@@ -144,5 +122,4 @@ export function applyRelease(
     cleanUp();
     throw err;
   }
-  return { from: bumped.from, to: bumped.to };
 }
