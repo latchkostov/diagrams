@@ -16,23 +16,51 @@ export interface DecorationInput {
 
 const RISE_WINDOW = 8; // samples (~1 s at 8 Hz)
 
+/**
+ * A diagram with more decorated nodes and edges than this is large: live view's benchmarks hold their gates there
+ * (docs/BENCHMARKS.md § Live view on large diagrams).
+ */
+export const LARGE_LIVE_ELEMENTS = 1_000;
+
+/** What the decorator did: cheap counters, read by the benchmarks. */
+export interface DecorationStats {
+  /** apply() calls. */
+  applies: number;
+  /** apply() calls on a simulation clock that moved. */
+  publishes: number;
+  /** Edges that changed between active and idle. */
+  edgeFlips: number;
+  /** Nodes and edges decorated by the last apply(). */
+  elements: number;
+  /** More than LARGE_LIVE_ELEMENTS. */
+  large: boolean;
+}
+
 export class Decorator {
   private applied = new Map<Element, string>();
   private history = new Map<string, number[]>();
+  private lastTime = NaN;
+  readonly stats: DecorationStats = { applies: 0, publishes: 0, edgeFlips: 0, elements: 0, large: false };
 
   constructor(private root: HTMLElement) {}
 
   apply({ snapshot, spotlight, still }: DecorationInput): void {
     const root = this.root;
+    const stats = this.stats;
+    stats.applies++;
+    if (!still && snapshot.time !== this.lastTime) stats.publishes++;
+    this.lastTime = snapshot.time;
     setAttr(root, "data-live", "on");
     setAttr(root, "data-live-spotlight", spotlight?.kind ?? null);
     setAttr(root, "data-live-still", still ? "1" : null);
     const seen = new Set<Element>();
+    let elements = 0;
 
     for (const el of root.querySelectorAll<HTMLElement>(".react-flow__node-diagram[data-id]")) {
       const id = el.dataset.id!;
       const n = snapshot.nodes[id];
       if (!n) continue;
+      elements++;
       const hist = this.history.get(id) ?? [];
       hist.push(n.backlog);
       if (hist.length > RISE_WINDOW) hist.shift();
@@ -55,6 +83,7 @@ export class Decorator {
     for (const el of root.querySelectorAll<SVGElement>(".react-flow__edge[data-id]")) {
       const id = el.getAttribute("data-id")!;
       const e = snapshot.edges[id];
+      elements++;
       const active = !!e && e.active > 0;
       const dim = spotlight ? !spotlight.edges.has(id) : false;
       const lit = spotlight?.kind === "trace" && spotlight.edges.has(id);
@@ -62,10 +91,16 @@ export class Decorator {
       seen.add(el);
       if (this.applied.get(el) === key) continue;
       this.applied.set(el, key);
-      setAttr(el, "data-live-edge", active ? "active" : "idle");
+      const state = active ? "active" : "idle";
+      const was = el.getAttribute("data-live-edge");
+      if (was !== null && was !== state) stats.edgeFlips++;
+      setAttr(el, "data-live-edge", state);
       setAttr(el, "data-live-dim", dim ? "1" : null);
       setAttr(el, "data-live-trace", lit ? "1" : null);
     }
+
+    stats.elements = elements;
+    stats.large = elements > LARGE_LIVE_ELEMENTS;
 
     // Elements that went away (deleted, remounted) shouldn't keep a stale cache entry.
     for (const el of this.applied.keys()) if (!seen.has(el)) this.applied.delete(el);
@@ -90,6 +125,7 @@ export class Decorator {
     }
     this.applied.clear();
     this.history.clear();
+    this.lastTime = NaN;
   }
 }
 

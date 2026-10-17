@@ -164,4 +164,9 @@ export interface AppHooks {
   __checks?: { started: number; finished: number; held: boolean; skipped: number };
   __planning?: { reads: number; analyses: number; explanations: number };
   __simulations?: { started: number; finished: number; stopped: number };
+  /** Live view (src/live/LiveSession.tsx): Traffic × 10 without the panel, and the decorator's counters. */
+  __liveBench?: {
+    timesTen(): void;
+    decorations: { applies: number; publishes: number; edgeFlips: number; elements: number; large: boolean };
+  };
 }

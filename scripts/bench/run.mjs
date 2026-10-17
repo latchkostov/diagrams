@@ -34,7 +34,7 @@ const out = path.resolve(args.out ?? OUT);
 const list = (v) => (typeof v === "string" ? v.split(",") : []);
 const nodeSuites = list(args.node);
 /** The browser specs that hold gates; the others only report (they skip themselves in gates mode too). */
-const GATING_SPECS = ["renders", "memory"];
+const GATING_SPECS = ["renders", "memory", "live"];
 const uiSpecs = list(args.ui).length ? list(args.ui) : mode === "gates" ? GATING_SPECS : [];
 const env = { ...process.env, BENCH_MODE: mode, BENCH_OUT: out };
 

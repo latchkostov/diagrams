@@ -22,7 +22,7 @@ import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 import { useAllRoutes, useRoutingOptions } from "../canvas/edges/useEdgeRoute";
 import { LiveController } from "./controller";
 import { LiveContext, useLiveState, type LiveUi, type TraceChoice } from "./context";
-import { Decorator } from "./decorations";
+import { Decorator, type DecorationStats } from "./decorations";
 import { downstreamOfEdge, edgesWithin } from "./graph";
 import { liveActions, liveMutationGuard } from "./liveActions";
 import { DEFAULT_TOKENS, readParticleTokens, type Rect } from "./particleRenderer";
@@ -550,6 +550,17 @@ export function LiveSession({
     const decorator = new Decorator(root);
     let raf = 0;
     let last = performance.now();
+    // Benchmark hook (dev and e2e builds): Traffic × 10 at the dot scale in use without opening Inputs & capacity
+    // (which turns the heat map on for the session), and the decorator's counters.
+    const bench = window as unknown as { __liveBench?: { timesTen(): void; decorations: DecorationStats } };
+    if (testHooks)
+      bench.__liveBench = {
+        timesTen() {
+          const state = controller.getState();
+          controller.setInputs({ ...state.inputs, scale: state.scale, traffic: 10 });
+        },
+        decorations: decorator.stats,
+      };
     let lastUi = 0;
     let generation = controller.getState().generation;
     let stats = 0;
@@ -609,6 +620,7 @@ export function LiveSession({
       renderer.dispose();
       rendererRef.current = null;
       if (testHooks) delete (window as unknown as { __liveProbe?: unknown }).__liveProbe;
+      if (testHooks) delete bench.__liveBench;
     };
     // renderOpts changes are applied through setOptions above, without restarting the loop.
   }, [controller, store, canvas, overlay, rendererKind]);
