@@ -40,6 +40,7 @@ export function holdResizeObservers(initiallyHeld: boolean) {
       });
     }
   };
+  Object.assign(window, { heldResizeObservers: () => pending.size });
   window.addEventListener("release-resize-observers", () => {
     held = false;
     for (const [observer, entries] of pending) callbacks.get(observer)?.([...entries.values()], observer);

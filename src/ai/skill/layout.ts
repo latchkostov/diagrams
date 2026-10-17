@@ -5,6 +5,7 @@
 // whole diagrams). Pure and dependency-free: it must run under plain Node.
 
 import type { DiagramFile } from "../../model/types";
+import { normalizeAnnotation } from "../../model/annotations";
 import { validateDiagram } from "../../interop/native";
 import { estimateCardSize } from "../../canvas/nodes/size";
 import { fitGroups, placeNew } from "../place";
@@ -19,7 +20,7 @@ export type LayoutResult =
   | {
       ok: true;
       /** The input with node/annotation positions and boundary boxes updated; authored fields survive. */
-      diagram: Obj & { nodes: unknown[]; groups?: unknown[]; annotations?: unknown[] };
+      diagram: Obj & { nodes: unknown[]; groups?: unknown; annotations?: unknown };
       /** Every node was placed by the layered layout. */
       laidOut: boolean;
       /** Boundaries whose boxes were fitted around their members. */
@@ -57,6 +58,14 @@ export function layoutDiagram(input: unknown, opts: { force?: boolean } = {}): L
   const checked = validateDiagram(draft);
   if (!checked.ok) return { ok: false, error: checked.error };
   let d: DiagramFile = checked.diagram;
+  // Validation skips malformed annotations and repairs IDs. Keep each authored slot's identity
+  // before layout moves it; looking up the original ID aliases duplicate notes to the first one.
+  let annotationIndex = 0;
+  const annotationIds = Array.isArray(input.annotations)
+    ? input.annotations.map((raw: unknown) =>
+        normalizeAnnotation(raw) ? d.annotations?.[annotationIndex++]?.id : undefined,
+      )
+    : [];
 
   const unboxed = new Set(groupsIn.filter((g): g is Obj => isObj(g) && !hasBox(g)).map((g) => g.id as string));
   let fitted: string[];
@@ -92,8 +101,8 @@ export function layoutDiagram(input: unknown, opts: { force?: boolean } = {}): L
   const placedNotes: string[] = [];
   if (Array.isArray(input.annotations)) {
     const annotationAt = new Map((d.annotations ?? []).map((a) => [a.id, a]));
-    const annotations = (input.annotations as unknown[]).map((raw) => {
-      const placed = isObj(raw) && hasBox(raw) && annotationAt.get(raw.id as string);
+    const annotations = (input.annotations as unknown[]).map((raw, index) => {
+      const placed = isObj(raw) && hasBox(raw) && annotationAt.get(annotationIds[index] ?? "");
       return placed ? { ...raw, x: placed.x, y: placed.y } : raw;
     });
     const occupied = [

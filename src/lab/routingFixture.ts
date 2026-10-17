@@ -36,7 +36,7 @@ export const ROUTING_MIX: TrafficMix = {
 };
 
 /** Longer, invented API paths for checking the inspector's fluid route columns. */
-export function sheetRoutingFixture(): DiagramFile {
+export function sheetRoutingFixture(spread = 1): DiagramFile {
   const d = routingFixture();
   const path = "/v1/orders/reserve";
   d.groups = [{ id: "api", label: "API region", x: 200, y: -60, width: 600, height: 480 }];
@@ -47,11 +47,39 @@ export function sheetRoutingFixture(): DiagramFile {
       title: "Resize during narration",
       traffic: [],
       durationMs: 2000,
-      timeline: [{ atMs: 0, action: { do: "note", text: "Read the route table before continuing.", pause: true } }],
+      timeline: [
+        {
+          atMs: 0,
+          action: {
+            do: "note",
+            text: "Read the route table before continuing.",
+            pause: true,
+            focus: ["kong", "orders"],
+          },
+        },
+      ],
     },
   ];
   d.planning!.requestRoutes![0].address.path = path;
   (d.nodes.find((node) => node.id === "kong")!.props!.routeTable as RouteTable).rules[0].match.path!.value = path;
+  for (const node of d.nodes) node.x *= spread;
+  for (const group of d.groups) {
+    group.x *= spread;
+    group.width *= spread;
+  }
+  return d;
+}
+
+/** The supported rule limit, with long, split destinations in both rules and Default. */
+export function routingSummaryFixture(count = 256): DiagramFile {
+  const d = sheetRoutingFixture();
+  const table = d.nodes.find((node) => node.id === "kong")!.props!.routeTable as RouteTable;
+  table.rules = Array.from({ length: count }, (_, i) => ({
+    ...structuredClone(table.rules[0]),
+    id: `rule-${i}`,
+    match: { path: { kind: "exact" as const, value: `/orders/${i}` } },
+  }));
+  table.default = { targets: structuredClone(table.rules[0].targets) };
   return d;
 }
 

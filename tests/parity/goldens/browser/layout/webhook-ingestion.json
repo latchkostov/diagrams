@@ -49,7 +49,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(-188.697px, 336.232px) scale(0.410133)",
+    "viewport": "translate(-149.608px, 336.232px) scale(0.410133)",
     "nodes": {
       "group:k8s": { "kind": "group", "box": "translate(760px, 240px) 1480×312", "text": "Kubernetes" },
       "partners": { "kind": "node", "box": "translate(40px, 280px) 235×72", "text": "Partner webhooks Shopify · Stripe · GitHub" },

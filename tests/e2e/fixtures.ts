@@ -231,7 +231,8 @@ export function waitForStableBox(locator: Locator) {
 }
 
 /** Waits until the canvas viewport's transform holds still (a fit, a pan or its momentum has finished). */
-export function waitForStableViewport(page: Page) {
+export async function waitForStableViewport(page: Page) {
+  await expect(page.getByTestId("canvas-wrap")).not.toHaveAttribute("data-pane-pending", "true");
   return waitForStable(() => viewportTransform(page));
 }
 

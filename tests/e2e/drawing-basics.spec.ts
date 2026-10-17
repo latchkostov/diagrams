@@ -5,6 +5,7 @@ import {
   gotoCanvas,
   expectNoErrors,
   waitForStableViewport,
+  waitForSelectionSettled,
   viewportTransform,
   pauseClock,
 } from "./fixtures";
@@ -184,12 +185,13 @@ test.describe("drawing basics", () => {
     // The two nodes and the edge between them; not the edges to nodes outside the box.
     await expect(page.getByTestId("inspector-title")).toHaveText("3 selected");
     expect(await selectedIds(page)).toEqual(["edge-inventory-to-stock-db", "node-inventory", "node-stock-db"]);
-    await waitForStableViewport(page);
+    await waitForSelectionSettled(page);
 
     // Drawn the other way: it touches stock-db first, then holds all of inventory. React Flow's own box
     // flips its internal flags when its whole-node pick changes; it must still agree with ours, so
     // dragging one moves both (its drag reads its own selection).
     await page.getByTestId("canvas-wrap").press("Escape");
+    await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
     await waitForStableViewport(page);
     const inv0 = await box(page.getByTestId("node-inventory"));
     const db0 = await box(page.getByTestId("node-stock-db"));
@@ -199,7 +201,7 @@ test.describe("drawing basics", () => {
     await page.mouse.move(inv0.x - 20, inv0.y - 20, { steps: 8 });
     await page.mouse.up();
     expect(await selectedIds(page)).toEqual(["edge-inventory-to-stock-db", "node-inventory", "node-stock-db"]);
-    await waitForStableViewport(page);
+    await waitForSelectionSettled(page);
     const inv1 = await box(page.getByTestId("node-inventory"));
     const db1 = await box(page.getByTestId("node-stock-db"));
     await page.mouse.move(inv1.x + inv1.width / 2, inv1.y + inv1.height / 2);

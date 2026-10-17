@@ -1,6 +1,115 @@
 import { test, expect, gotoCanvas, gotoLive, publicExamples, pageLoadTimeout } from "./fixtures";
 
 test.describe("image resource cancellation", { tag: "@dev" }, () => {
+  test("SVG preparation reports visible progress before cloning starts", async ({ page }) => {
+    await gotoCanvas(page, publicExamples[0].slug);
+    const result = await page.getByTestId(`node-${publicExamples[0].nodeIds[0]}`).evaluate(async () => {
+      const port = (await import(
+        "/src/interop/imageClone.ts" as string
+      )) as typeof import("../../src/interop/imageClone");
+      const image = (await import("/src/interop/image.ts" as string)) as typeof import("../../src/interop/image");
+      const step = port.Slicer.prototype.step;
+      let clones = 0;
+      port.Slicer.prototype.step = function () {
+        clones++;
+        return step.call(this);
+      };
+      const cancel = new AbortController();
+      const progress: number[] = [];
+      try {
+        const outcome = await image
+          .renderDiagramImage("svg", {
+            signal: cancel.signal,
+            onProgress: (value) => {
+              progress.push(value);
+              if (value >= 0.1 && value < 0.15) cancel.abort();
+            },
+          })
+          .then(
+            () => "exported",
+            (e: unknown) => (e instanceof DOMException ? e.name : String(e)),
+          );
+        return { clones, outcome, progress: progress.at(-1) };
+      } finally {
+        port.Slicer.prototype.step = step;
+      }
+    });
+    expect(result).toMatchObject({ clones: 0, outcome: "AbortError" });
+    expect(result.progress).toBeGreaterThanOrEqual(0.1);
+  });
+
+  test("cancelling resource conversion aborts its reader and permits retry", async ({ page }) => {
+    await gotoCanvas(page, publicExamples[0].slug);
+    const node = page.getByTestId(`node-${publicExamples[0].nodeIds[0]}`);
+    await expect(node).toBeVisible({ timeout: pageLoadTimeout() });
+    const result = await node.evaluate(async (node) => {
+      const port = (await import(
+        "/src/interop/imageClone.ts" as string
+      )) as typeof import("../../src/interop/imageClone");
+      const NativeReader = window.FileReader,
+        fetch = window.fetch;
+      const entered = Promise.withResolvers<undefined>();
+      const readers: { reader: FileReader; aborted: boolean }[] = [];
+      const svg =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><path fill="red" d="M0 0h8v8H0z"/></svg>';
+      let fetched = 0;
+      window.fetch = async () => {
+        fetched++;
+        return new Response(svg, { headers: { "Content-Type": "image/svg+xml" } });
+      };
+      window.FileReader = class extends NativeReader {
+        override readAsDataURL() {
+          readers.push({ reader: this, aborted: false });
+          entered.resolve(undefined);
+        }
+        override abort() {
+          const entry = readers.find((entry) => entry.reader === this);
+          if (entry) entry.aborted = true;
+          super.abort();
+        }
+      };
+      const cancel = new AbortController(),
+        slicer = new port.Slicer(1, { signal: cancel.signal });
+      const retry = new port.Slicer(1);
+      const options = { fontEmbedCSS: "", width: 400, height: 200 };
+      const pending = port.toSvgText(node as HTMLElement, options, slicer).then(
+        () => "exported",
+        (e: unknown) => (e instanceof DOMException ? e.name : String(e)),
+      );
+      try {
+        await entered.promise;
+        cancel.abort();
+        const outcome = await pending;
+        const before = fetched;
+        const aborted = readers.every(({ aborted }) => aborted);
+        const handlersCleared = readers.every(({ reader }) => reader.onloadend === null && reader.onerror === null);
+        window.FileReader = NativeReader;
+        const retried = await port.toSvgText(node as HTMLElement, options, retry);
+        return {
+          outcome,
+          readerCount: readers.length,
+          aborted,
+          handlersCleared,
+          fetchedAgain: fetched > before,
+          embedded: retried.includes(btoa(svg)),
+        };
+      } finally {
+        window.FileReader = NativeReader;
+        window.fetch = fetch;
+        slicer.dispose();
+        retry.dispose();
+      }
+    });
+    expect(result).toMatchObject({
+      outcome: "AbortError",
+      aborted: true,
+      handlersCleared: true,
+      fetchedAgain: true,
+      embedded: true,
+    });
+    expect(result.readerCount).toBeGreaterThan(0);
+  });
+
   test("cancelling a canvas clone releases its stalled decode and cleans image handlers", async ({ page }) => {
     await gotoLive(page, `/?view=canvas&example=${publicExamples[0].slug}&live=1`);
     const result = await page.getByTestId("live-canvas").evaluate(async (canvas) => {

@@ -43,7 +43,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(-8.74022px, 326.097px) scale(0.532081)",
+    "viewport": "translate(-99.1941px, 326.097px) scale(0.532081)",
     "nodes": {
       "group:onprem": { "kind": "group", "box": "translate(0px, 90px) 321×302", "text": "On-prem · retail datacenter" },
       "group:platform": { "kind": "group", "box": "translate(380px, 0px) 1180×632", "text": "Kubernetes · CDC platform" },

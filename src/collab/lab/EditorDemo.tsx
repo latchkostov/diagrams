@@ -104,9 +104,21 @@ export function EditorDemo() {
   }, [entry]);
   if (!room)
     return (
-      <p data-testid="collab-editor-loading" role={failed ? "alert" : "status"}>
-        {failed ? t("collab.loadFailed") : t("collab.connecting")}
-      </p>
+      <div data-testid="collab-editor-loading" role={failed ? "alert" : "status"}>
+        {entry.invalid ? t("collab.invalidLink") : failed ? t("collab.loadFailed") : t("collab.connecting")}
+        {entry.invalid && (
+          <button
+            className="btn"
+            data-testid="collab-new-room"
+            onClick={() => {
+              setFailed(false);
+              setEntry({ key: newRoom(), joining: false, invalid: false });
+            }}
+          >
+            {t("collab.newRoom")}
+          </button>
+        )}
+      </div>
     );
   return <RoomEditor room={room} roomKey={entry.key} />;
 }
@@ -130,7 +142,7 @@ function RoomEditor({ room, roomKey }: { room: CollaborativeEditorRoom; roomKey:
   useSyncExternalStore(
     (fn) => session.onChange(fn),
     () =>
-      `${session.roomStatus}:${session.hasDocument}:${session.recovery?.saved}:${session.recovery?.problem ?? ""}:${session.doc.project().status}`,
+      `${session.connectionFailed}:${session.roomStatus}:${session.hasDocument}:${session.recovery?.saved}:${session.recovery?.problem ?? ""}:${session.doc.project().status}`,
   );
   const projection = session.doc.project();
   const ready = projection.diagram !== undefined;
@@ -167,25 +179,27 @@ function RoomEditor({ room, roomKey }: { room: CollaborativeEditorRoom; roomKey:
       )}
       <div
         role="status"
+        tabIndex={-1}
+        className="collab-room-status"
         data-testid="collab-room-status"
         data-status={privateDraft ? "offline" : session.roomStatus}
         data-saved={!privateDraft && session.recovery?.saved ? "true" : "false"}
       >
-        {privateDraft
-          ? t("collab.privateDraft")
-          : {
-              "saved-device": t("collab.savedDevice"),
-              synced: t("collab.synced"),
-              connecting: t("collab.connecting"),
-              offline: t("collab.offline"),
-            }[session.roomStatus]}
-        {session.recovery?.problem && (
+        {session.recovery?.problem ? (
           <span data-testid="collab-recovery-problem">
-            {" "}
-            {session.recovery.problem === "corrupt" ? t("collab.damagedRecovery") : t("collab.storageUnavailable")}
+            {session.recovery.problem === "corrupt" ? t("collab.damagedRecovery") : t("collab.notSaved")}
           </span>
+        ) : privateDraft ? (
+          t("collab.privateDraft")
+        ) : (
+          {
+            "saved-device": t("collab.savedDevice"),
+            synced: t("collab.synced"),
+            connecting: t("collab.connecting"),
+            offline: t("collab.offline"),
+          }[session.roomStatus]
         )}
-        {(session.recovery?.problem || refusal) && ready && (
+        {(session.recovery?.problem || session.connectionFailed || refusal) && ready && (
           <button
             className="btn"
             data-testid="collab-save-copy"
@@ -198,6 +212,25 @@ function RoomEditor({ room, roomKey }: { room: CollaborativeEditorRoom; roomKey:
           </button>
         )}
       </div>
+      {session.connectionFailed && (
+        <div role="alert" data-testid="collab-connection-failed">
+          <p>{t("collab.connectionFailed")}</p>
+          <button
+            className="btn"
+            data-testid="collab-retry"
+            onClick={(e) => {
+              e.currentTarget
+                .closest("section")
+                ?.querySelector<HTMLElement>('[data-testid="collab-room-status"]')
+                ?.focus();
+              session.retryConnection();
+            }}
+          >
+            {t("common.retry")}
+          </button>
+          <p>{t("collab.fileFallback")}</p>
+        </div>
+      )}
       {refusal && <RoomRefusalNotice key={refusalOccurrence} reason={refusal} />}
       {projection.status === "invalid" && (
         <div role="alert" data-testid="collab-invalid-document">

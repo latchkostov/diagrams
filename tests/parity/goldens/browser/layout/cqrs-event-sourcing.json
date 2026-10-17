@@ -47,7 +47,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(-38.0972px, 335.628px) scale(0.412955)",
+    "viewport": "translate(-74.8259px, 335.628px) scale(0.412955)",
     "nodes": {
       "group:write": { "kind": "group", "box": "translate(760px, 120px) 720×152", "text": "Write side" },
       "group:read": { "kind": "group", "box": "translate(760px, 360px) 1100×392", "text": "Read side" },

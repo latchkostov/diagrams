@@ -176,6 +176,8 @@ export interface EditorDeps {
   /** Small boxes along the drawn edges (flow coordinates), so new things are placed off them. */
   edgeMarks?: () => EdgeMark[];
   fit: () => void;
+  /** An explicit camera command takes ownership from automatic fits. */
+  onManualCamera?: () => void;
   /** Subscribe to canvas measurement readiness; returns an unsubscribe function. */
   afterMeasured?: (run: () => void) => undefined | (() => void);
   /** Nominal node size for the current renderer (before React Flow has measured). */
@@ -1769,7 +1771,10 @@ export function createEditor(
     canRedo: () => !waitingLayout && deps().history.canRedo,
 
     fitView: () => deps().fit(),
-    zoomTo100: () => void rf.zoomTo(1, { duration: motionMs(250) }),
+    zoomTo100: () => {
+      deps().onManualCamera?.();
+      void rf.zoomTo(1, { duration: motionMs(250) });
+    },
     zoomToSelection: () => {
       const sel = api.getSelection();
       const ids = flowIdsOf(sel);

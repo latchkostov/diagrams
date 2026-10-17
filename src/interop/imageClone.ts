@@ -49,7 +49,7 @@ import {
   toArray,
 } from "html-to-image/es/util";
 
-/** Overall export progress: cloning takes the first 70%; only the finished renderer reports 1. */
+/** Preparation and cloning take the first 70%; only the finished renderer reports 1. */
 export type Progress = (done: number) => void;
 
 /**
@@ -98,7 +98,11 @@ export class Slicer {
   }
 
   progress(done: number) {
+    const previous = this.reported;
     this.reported = Math.max(this.reported, done);
+    // Preparation visits every SVG child. Publish only changes the percentage bar can show,
+    // rather than synchronously rerendering the toast for every fractional increment.
+    if (Math.floor(this.reported * 100) === Math.floor(previous * 100)) return;
     this.opts.onProgress?.(this.reported);
   }
 
@@ -145,7 +149,7 @@ export class Slicer {
     this.stopIfAsked();
     if (!this.gate) {
       if (performance.now() - this.sliceStart < (this.opts.sliceMs ?? 40)) return;
-      this.progress(this.total ? Math.min(0.7, (0.7 * this.done) / this.total) : 0.7);
+      if (this.done) this.progress(this.total ? Math.min(0.7, 0.15 + (0.55 * this.done) / this.total) : 0.7);
       this.gate = nextTask().then(() => {
         this.gate = undefined;
         this.yields++;

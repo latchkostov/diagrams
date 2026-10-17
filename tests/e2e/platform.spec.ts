@@ -87,4 +87,13 @@ test("zoom to selection wins over a deferred Inspector reveal", async ({ page })
   expect(node.y).toBeGreaterThanOrEqual(pane.y);
   expect(node.x + node.width).toBeLessThanOrEqual(pane.x + pane.width);
   expect(node.y + node.height).toBeLessThanOrEqual(pane.y + pane.height);
+  // The measured selection fit belongs to the user. Later pane changes must
+  // preserve its zoom rather than treating it as a whole-diagram fit.
+  for (const collapsed of [true, false]) {
+    await page.getByTestId("inspector-toggle").click();
+    if (collapsed) await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
+    else await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
+    await waitForStableViewport(page);
+    expect(await zoom()).toBeCloseTo(1.25, 2);
+  }
 });

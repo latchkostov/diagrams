@@ -66,7 +66,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(27.3292px, 342.907px) scale(0.31677)",
+    "viewport": "translate(-24.1087px, 342.907px) scale(0.31677)",
     "nodes": {
       "group:kafka": { "kind": "group", "box": "translate(1520px, 120px) 340×632", "text": "Kafka · saga channels" },
       "client": { "kind": "node", "box": "translate(40px, 320px) 220×72", "text": "Mobile checkout Place order" },

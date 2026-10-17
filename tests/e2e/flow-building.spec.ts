@@ -432,6 +432,7 @@ test.describe("edges: reconnect and insert (D8)", () => {
   }) => {
     await expect(page.getByTestId(/^reconnect-/)).toHaveCount(0);
     await page.getByTestId("edge-label-api-db").click();
+    await waitForSelectionSettled(page);
     const end = page.getByTestId("reconnect-api-db-target");
     await expect(end).toBeVisible();
     await expect(page.getByTestId("reconnect-api-db-source")).toBeVisible();
@@ -459,6 +460,7 @@ test.describe("edges: reconnect and insert (D8)", () => {
 
   test("an edge's end dropped on empty canvas snaps back", async ({ page }) => {
     await page.getByTestId("edge-label-api-db").click();
+    await waitForSelectionSettled(page);
     const from = centre(await box(page.getByTestId("reconnect-api-db-source")));
     const wrap = await box(page.getByTestId("canvas-wrap"));
     await page.mouse.move(from.x, from.y);
@@ -473,6 +475,7 @@ test.describe("edges: reconnect and insert (D8)", () => {
 
   test("Esc during a reconnect over a valid node cancels it: nothing changes, nothing to undo", async ({ page }) => {
     await page.getByTestId("edge-label-api-db").click();
+    await waitForSelectionSettled(page);
     await expect(page.getByTestId("undo-button")).toBeDisabled();
     const from = centre(await box(page.getByTestId("reconnect-api-db-target")));
     const to = centre(await box(page.getByTestId("node-billing")));

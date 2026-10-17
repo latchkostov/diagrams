@@ -141,6 +141,8 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
 
   let handlers: TransportHandlers | undefined;
   let closed = false;
+  let discoveryAttempt = 0;
+  const creatingOffers = new Set<RTCPeerConnection>();
   const sockets: WebSocket[] = [];
   const peers = new Map<PeerId, Peer>();
   /** Our outstanding offers by offer id: the connection waiting for an answer. */
@@ -182,18 +184,18 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
     peer.channel = channel;
     channel.binaryType = "arraybuffer";
     channel.onopen = () => {
-      if (closed || peer.open) return;
+      if (closed || peer.open || peers.get(peer.id) !== peer) return;
       peer.open = true;
       event("peer connected");
       handlers?.join(peer.id);
     };
-    channel.onclose = () => drop(peer.id);
+    channel.onclose = () => drop(peer.id, peer);
     channel.onmessage = (e: MessageEvent) => receive(peer, e.data);
   }
 
-  function drop(id: PeerId) {
+  function drop(id: PeerId, expected?: Peer) {
     const peer = peers.get(id);
-    if (!peer) return;
+    if (!peer || (expected && peer !== expected)) return;
     peers.delete(id);
     try {
       peer.channel?.close();
@@ -208,6 +210,7 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
   }
 
   function receive(peer: Peer, data: unknown) {
+    if (peers.get(peer.id) !== peer) return;
     if (
       closed ||
       !(data instanceof ArrayBuffer) ||
@@ -245,22 +248,33 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
   }
 
   async function makeOffer(): Promise<{ offer_id: string; offer: { type: "offer"; sdp: string } } | undefined> {
+    const attempt = discoveryAttempt;
     const pc = new PC(config());
+    creatingOffers.add(pc);
     const channel = pc.createDataChannel("ld", { ordered: true });
-    await pc.setLocalDescription(await pc.createOffer());
-    await gathered(pc);
+    try {
+      await pc.setLocalDescription(await pc.createOffer());
+      await gathered(pc);
+    } catch {
+      pc.close();
+      return undefined;
+    } finally {
+      creatingOffers.delete(pc);
+    }
     const offerId = latin1(random(20));
     const sdp = pc.localDescription?.sdp;
-    if (!sdp || closed) {
+    if (!sdp || closed || attempt !== discoveryAttempt) {
       pc.close();
       return undefined;
     }
     pending.set(offerId, { pc, channel, at: clock.now() });
+    const sealed = await sealSignal(opts.signal, opts.discovery, "offer", offerId, selfId, sdp, random);
+    if (closed || attempt !== discoveryAttempt) return undefined;
     return {
       offer_id: offerId,
       offer: {
         type: "offer",
-        sdp: await sealSignal(opts.signal, opts.discovery, "offer", offerId, selfId, sdp, random),
+        sdp: sealed,
       },
     };
   }
@@ -268,6 +282,7 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
   /** Announces fresh offers to `only` (a tracker that just opened) or to every open tracker. */
   async function announce(only?: WebSocket) {
     if (closed) return;
+    const attempt = discoveryAttempt;
     for (const [id, o] of pending)
       if (clock.now() - o.at > OFFER_TTL_MS) {
         o.pc.close();
@@ -276,6 +291,7 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
     const room = maxPeers - peers.size;
     const n = Math.max(0, Math.min(offersPerAnnounce, room));
     const offers = (await Promise.all(Array.from({ length: n }, () => makeOffer()))).filter((o) => o !== undefined);
+    if (closed || attempt !== discoveryAttempt) return;
     for (const ws of only ? [only] : sockets)
       send(ws, {
         action: "announce",
@@ -293,15 +309,23 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
 
   function schedule(seconds: number) {
     cancelTimer?.();
+    const attempt = discoveryAttempt;
     if (!closed)
       cancelTimer = clock.after(
         seconds * 1000,
-        () => void track(announce().then(() => schedule(opts.announceSeconds ?? 30))),
+        () =>
+          void track(
+            announce().then(() => {
+              if (attempt === discoveryAttempt) schedule(opts.announceSeconds ?? 30);
+            }),
+          ),
       );
   }
 
   async function onTrackerMessage(ws: WebSocket, raw: unknown) {
     if (closed || typeof raw !== "string" || raw.length > 256 * 1024) return;
+    const attempt = discoveryAttempt;
+    const obsolete = () => closed || attempt !== discoveryAttempt;
     let msg: Record<string, unknown>;
     try {
       msg = JSON.parse(raw) as Record<string, unknown>;
@@ -342,6 +366,7 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
       const seen = `${msg.peer_id}|${offerId}`;
       if (seenOffers.has(seen)) return;
       const sdp = await openSignal(opts.signal, opts.discovery, "offer", offerId, msg.peer_id, offer.sdp);
+      if (obsolete()) return;
       if (!sdp) return event("offer from another room, replayed or tampered: ignored");
       if (seenOffers.has(seen)) return;
       if (seenOffers.size >= 4096) seenOffers.clear();
@@ -350,14 +375,22 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
       const pc = new PC(config());
       const peer: Peer = { id: from, pc, open: false, nextMsg: 1, partial: new Map() };
       peers.set(from, peer);
-      pc.ondatachannel = (e) => attach(peer, e.channel);
-      pc.onconnectionstatechange = () => ["failed", "closed"].includes(pc.connectionState) && drop(from);
+      pc.ondatachannel = (e) => {
+        if (peers.get(from) === peer) attach(peer, e.channel);
+        else e.channel.close();
+      };
+      pc.onconnectionstatechange = () => ["failed", "closed"].includes(pc.connectionState) && drop(from, peer);
       try {
         await pc.setRemoteDescription({ type: "offer", sdp });
+        if (obsolete()) return;
         await pc.setLocalDescription(await pc.createAnswer());
+        if (obsolete()) return;
         await gathered(pc);
+        if (obsolete()) return;
         const local = pc.localDescription?.sdp;
-        if (!local) return drop(from);
+        if (!local) return drop(from, peer);
+        const sealed = await sealSignal(opts.signal, opts.discovery, "answer", offerId, selfId, local, random);
+        if (obsolete() || peers.get(from) !== peer) return;
         send(ws, {
           action: "announce",
           info_hash: infoHash,
@@ -366,17 +399,18 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
           offer_id: offerId,
           answer: {
             type: "answer",
-            sdp: await sealSignal(opts.signal, opts.discovery, "answer", offerId, selfId, local, random),
+            sdp: sealed,
           },
         });
         event("answered an offer");
       } catch {
-        drop(from);
+        drop(from, peer);
       }
     } else if (answer) {
       const waiting = pending.get(offerId);
       if (!waiting || peers.has(from)) return;
       const sdp = await openSignal(opts.signal, opts.discovery, "answer", offerId, msg.peer_id, answer.sdp);
+      if (obsolete()) return;
       if (!sdp) return event("answer from another room, replayed or tampered: ignored");
       if (closed || !pending.has(offerId) || peers.has(from) || peers.size >= maxPeers) return;
       pending.delete(offerId);
@@ -384,33 +418,60 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
       peers.set(from, peer);
       attach(peer, waiting.channel);
       waiting.pc.onconnectionstatechange = () =>
-        ["failed", "closed"].includes(waiting.pc.connectionState) && drop(from);
+        ["failed", "closed"].includes(waiting.pc.connectionState) && drop(from, peer);
       try {
         await waiting.pc.setRemoteDescription({ type: "answer", sdp });
       } catch {
-        drop(from);
+        drop(from, peer);
       }
     }
   }
 
-  for (const url of opts.trackers) {
-    if (!/^wss:\/\//.test(url) && !/^ws:\/\/(127\.0\.0\.1|localhost)[:/]/.test(url)) continue;
-    const ws = new WS(url);
-    sockets.push(ws);
-    ws.onopen = () => {
-      event("tracker connected");
-      void track(announce(ws));
-    };
-    ws.onmessage = (e: MessageEvent) => void track(onTrackerMessage(ws, e.data));
-    ws.onclose = () => event("tracker closed");
-    ws.onerror = () => event("tracker error");
+  const connectTrackers = () => {
+    for (const url of opts.trackers) {
+      if (!/^wss:\/\//.test(url) && !/^ws:\/\/(127\.0\.0\.1|localhost)[:/]/.test(url)) continue;
+      const ws = new WS(url);
+      sockets.push(ws);
+      ws.onopen = () => {
+        event("tracker connected");
+        void track(announce(ws));
+      };
+      ws.onmessage = (e: MessageEvent) => void track(onTrackerMessage(ws, e.data));
+      ws.onclose = () => event("tracker closed");
+      ws.onerror = () => event("tracker error");
+    }
+  };
+  function resetDiscoveryAttempt() {
+    discoveryAttempt++;
+    cancelTimer?.();
+    for (const pc of creatingOffers) pc.close();
+    creatingOffers.clear();
+    for (const o of pending.values()) o.pc.close();
+    pending.clear();
+    for (const peer of peers.values()) if (!peer.open) drop(peer.id, peer);
+    quickFor.clear();
+    lastQuickAnnounce = -Infinity;
   }
+  connectTrackers();
   schedule(opts.announceSeconds ?? 30);
 
   return {
     capabilities: { kind: "webrtc-tracker", durable: false, maxFrameBytes },
     self,
     peers: () => [...peers.values()].filter((p) => p.open).map((p) => p.id),
+    retry() {
+      if (closed) return;
+      resetDiscoveryAttempt();
+      for (const ws of sockets.splice(0)) {
+        ws.onopen = null;
+        ws.onmessage = null;
+        ws.onclose = null;
+        ws.onerror = null;
+        ws.close();
+      }
+      connectTrackers();
+      schedule(opts.announceSeconds ?? 30);
+    },
     send(bytes, to) {
       if (closed) return;
       if (bytes.length > maxFrameBytes) throw new FrameTooLargeError(bytes.length, maxFrameBytes);
@@ -444,7 +505,7 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
     close() {
       if (closed) return;
       closed = true;
-      cancelTimer?.();
+      resetDiscoveryAttempt();
       for (const ws of sockets) {
         send(ws, {
           action: "announce",
@@ -457,8 +518,6 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
         });
         ws.close();
       }
-      for (const o of pending.values()) o.pc.close();
-      pending.clear();
       for (const id of [...peers.keys()]) drop(id);
     },
     async settled() {

@@ -35,7 +35,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(-235.046px, 365.309px) scale(0.473318)",
+    "viewport": "translate(-154.582px, 365.309px) scale(0.473318)",
     "nodes": {
       "group:gcp": { "kind": "group", "box": "translate(380px, 80px) 1860×392", "text": "Google Cloud · analytics project" },
       "app": { "kind": "node", "box": "translate(40px, 240px) 220×72", "text": "Mobile and web apps Clickstream SDK" },

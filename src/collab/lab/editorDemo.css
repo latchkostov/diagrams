@@ -6,3 +6,9 @@
   height: 720px;
   min-width: 0;
 }
+.collab-room-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}

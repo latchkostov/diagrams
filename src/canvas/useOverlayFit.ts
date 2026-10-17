@@ -129,7 +129,8 @@ export function revealPan(root: HTMLElement, viewport: Viewport, want: Rect, mus
  * Pans (never zooms) so the selection and its edges are visible in the pane as it is now, e.g.
  * after the inspector opened and narrowed the canvas. If they can't all fit, the selection itself
  * wins. Returns the viewport it pans to (where the view will be once the pan lands), or null when
- * nothing is selected or nothing had to move.
+ * nothing is selected or nothing had to move. Selection-driven opens use `selectionOnly`
+ * so an attached connection cannot pull an already-visible item away from the pointer.
  */
 export function useKeepSelectionInView(
   root: RefObject<HTMLElement | null>,
@@ -138,7 +139,7 @@ export function useKeepSelectionInView(
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const { setViewport } = useReactFlow<FlowNode, DiagramFlowEdge>();
   const routing = useRoutingOptions(opts);
-  return (duration = 250): Viewport | null => {
+  return (duration = 250, selectionOnly = false): Viewport | null => {
     const el = root.current;
     if (!el) return null;
     const s = store.getState() as State;
@@ -156,7 +157,7 @@ export function useKeepSelectionInView(
     }
     const routes = selectRoutes(s, routing);
     for (const e of s.edges) {
-      const attached = selectedNodes.has(e.source) || selectedNodes.has(e.target);
+      const attached = !selectionOnly && (selectedNodes.has(e.source) || selectedNodes.has(e.target));
       if (!e.selected && !attached) continue;
       const r = routes.get(e.id);
       if (!r) continue;
@@ -183,7 +184,7 @@ export function useKeepSelectionInView(
     };
     const v = panIntoView(want, core, { x, y, zoom }, view);
     if (!v) return null;
-    void setViewport(v, { duration: motionMs(duration) });
+    void setViewport(v, { duration: motionMs(duration), interpolate: "linear" });
     return v;
   };
 }

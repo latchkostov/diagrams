@@ -1,7 +1,38 @@
-import { expect, it } from "vitest";
+import { expect, expectTypeOf, it } from "vitest";
 import type { DiagramFile } from "../../model/types";
 import { placeNew } from "../place";
 import { layoutDiagram } from "./layout";
+
+it("tracks boxed annotations through skipped entries and repaired duplicate IDs", () => {
+  const notes = [
+    { id: "note", kind: "note", text: "First", x: 40, y: 50, width: 120, height: 80 },
+    { id: "invalid", kind: "unknown" },
+    { id: "note", kind: "note", text: "Second", x: 400, y: 500, width: 120, height: 80 },
+  ];
+  const input = { format: "diagrams/v1", title: "Notes", nodes: [], edges: [], annotations: notes };
+  const result = layoutDiagram(input);
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  expect(result.diagram.annotations).toEqual(notes);
+  expect(input.annotations).toEqual(notes);
+});
+
+it.each(["malformed", { not: "a list" }, null])("preserves unknown optional collections %j", (value) => {
+  const result = layoutDiagram({
+    format: "diagrams/v1",
+    title: "Unknown collections",
+    nodes: [],
+    edges: [],
+    groups: value,
+    annotations: value,
+  });
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  expectTypeOf(result.diagram.groups).toEqualTypeOf<unknown>();
+  expectTypeOf(result.diagram.annotations).toEqualTypeOf<unknown>();
+  expect(result.diagram.groups).toBe(value);
+  expect(result.diagram.annotations).toBe(value);
+});
 
 it.each([false, true])("preserves translated annotations from app layout (force %s)", (force) => {
   const input: DiagramFile = {

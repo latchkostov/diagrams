@@ -75,6 +75,7 @@ export async function settledCanvas(page: Page, root = "canvas-wrap"): Promise<D
         const ready = await page.getByTestId(root).evaluate(
           (scope) =>
             scope.dataset.fitPending !== "true" &&
+            scope.dataset.panePending !== "true" &&
             [...scope.querySelectorAll<HTMLElement>('[data-testid^="rf__node-"]')].every((el) => {
               // A saved empty boundary has no measurable area; its descendants are checked
               // independently. Do not confuse it with a card whose measurement is still missing.
@@ -181,6 +182,8 @@ export async function tidyAll(page: Page, drawn: Drawn): Promise<void> {
   await command(page, "Select all", "canvas.select-all");
   const all = { nodes: Object.keys(drawn.nodes).sort(), edges: Object.keys(drawn.edges).sort() };
   await expect.poll(() => canvasSelection(page)).toEqual(all);
+  // Selecting everything opens the Inspector. Its pending fit must finish before Tidy changes the bounds.
+  await settledCanvas(page);
   await page.keyboard.press("Control+k");
   await expect(page.getByTestId("command-palette")).toBeVisible();
   await expect(page.getByTestId("command-input")).toBeFocused();

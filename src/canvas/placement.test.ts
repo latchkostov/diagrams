@@ -207,6 +207,19 @@ describe("a failed search is never a silent overlap", () => {
 });
 
 describe("findClearTranslation (the one free-place search)", () => {
+  it("stops large-candidate scans at the obstacle-test budget", () => {
+    const candidate = box(0, 0, 1_000_000, 1_000_000);
+    const obstacles = [box(-300, 0), box(1_000_100, 0)];
+    const accept = vi.fn(() => true);
+    const options = { margin: 0, accept, budget: { tests: 1, accepts: 1 } };
+    expect(findClearTranslation([candidate], obstacles, options)).toBeNull();
+    expect(accept).not.toHaveBeenCalled();
+    expect(findClearTranslation([candidate], obstacles, { ...options, budget: { tests: 2, accepts: 1 } })).toEqual({
+      x: 0,
+      y: 0,
+    });
+    expect(accept).toHaveBeenCalledExactlyOnceWith({ x: 0, y: 0 });
+  });
   it("bounds cell visits for huge candidates independently of their area", () => {
     for (const extent of [300_000, 1_000_000]) {
       let visits = 0;

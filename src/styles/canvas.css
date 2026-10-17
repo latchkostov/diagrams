@@ -1752,6 +1752,7 @@ html[data-sheet-resizing] * {
   flex-direction: column;
   gap: 5px;
   min-width: 0;
+  max-inline-size: 640px;
 }
 
 .insp-label {
@@ -2177,6 +2178,7 @@ button.insp-input.dropdown-trigger {
 
 /* The multi-selection's compact rows (D11): label beside the control, so a mixed selection fits one screen. */
 .insp-bulk-row {
+  max-inline-size: 640px;
   display: grid;
   grid-template-columns: 84px minmax(0, 1fr);
   align-items: center;
@@ -2233,6 +2235,7 @@ button.insp-input.dropdown-trigger {
 }
 
 .insp-props {
+  max-inline-size: 640px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -3701,7 +3704,7 @@ button.insp-input.dropdown-trigger {
 }
 .route-row {
   display: grid;
-  grid-template-columns: 2.5em minmax(0, 1.4fr) minmax(0, 1fr) 4.5em;
+  grid-template-columns: max-content minmax(0, 1.4fr) minmax(0, 1fr) 4.5em;
   gap: 6px;
   align-items: center;
   width: 100%;
@@ -3717,6 +3720,30 @@ button.insp-input.dropdown-trigger {
 .route-row > span {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+.route-rules-table {
+  grid-template-columns: max-content minmax(0, 1.4fr) minmax(5.5em, 1fr) 4.5em;
+  column-gap: 6px;
+}
+.route-rules-table > div,
+.route-rules-table .route-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+}
+.route-rules-table .route-details,
+.route-rules-table .route-warning {
+  grid-column: 1 / -1;
+}
+.route-rules-table .route-row > span:first-child {
+  min-inline-size: 3.5em;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+.route-target-summary {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .route-head > span {
   overflow-wrap: normal;

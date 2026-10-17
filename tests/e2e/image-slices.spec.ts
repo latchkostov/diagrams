@@ -716,7 +716,7 @@ test("PNG progress stays unfinished through decoding and finishes with the downl
 }) => {
   test.slow();
   // Decode is held explicitly below; the separate long-export test covers the 300-node workload.
-  await openLanes(page, 3);
+  await gotoCanvas(page, "kafka-order-pipeline");
   await slowExports(page);
   await page.evaluate(() => {
     const decode = HTMLImageElement.prototype.decode;
@@ -735,13 +735,13 @@ test("PNG progress stays unfinished through decoding and finishes with the downl
   const downloads = imageDownloads(page);
   await page.getByTestId("export-png").click();
   // Reaching decode includes the entire clone, embedding and serialization.
-  await expect(page.getByTestId("toast-progress")).toHaveAttribute("aria-valuenow", "90", {
+  await page.waitForFunction(() => (window as unknown as { __decoding: boolean }).__decoding, undefined, {
     timeout: test.info().timeout,
   });
-  await page.waitForFunction(() => (window as unknown as { __decoding: boolean }).__decoding, undefined, {
-    timeout: 0,
-  });
+  await expect(page.getByTestId("toast-icon")).toHaveCount(0);
+  await expect(page.getByTestId("toast")).toContainText("Exporting PNG…");
   const value = await page.getByTestId("toast-progress").getAttribute("aria-valuenow");
+  expect(Number(value)).toBeGreaterThan(0);
   expect(Number(value)).toBeLessThan(100);
   expect(downloads.count()).toBe(0);
   await page.evaluate(() => (window as unknown as { __resumeDecode: () => void }).__resumeDecode());

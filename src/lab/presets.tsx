@@ -5,7 +5,7 @@ import { measuredHierarchyFixture, nestedBoundariesFixture } from "./nestedBound
 import { captionContrastFixture } from "./captionContrastFixture";
 import { GalleryCatalogLab } from "./GalleryCatalogLab";
 import { autoscalingFixture } from "./autoscalingFixture";
-import { routingFixture, routingOverlapFixture, sheetRoutingFixture } from "./routingFixture";
+import { routingFixture, routingOverlapFixture, routingSummaryFixture, sheetRoutingFixture } from "./routingFixture";
 import { ColourPickerLab } from "./ColourPickerLab";
 import { customColoursFixture } from "./customColoursFixture";
 import { planningP3Fixture, planningP3BulkFixture } from "./planningP3Fixture";
@@ -473,6 +473,13 @@ const playgroundPresets: Preset[] = [
     title: t("inspector.resizePreview"),
     group: "Playground",
     diagram: () => sheetRoutingFixture(),
+  },
+  {
+    kind: "diagram",
+    id: "routing-summary-limit",
+    title: "Route summaries at the rule limit",
+    group: "Playground",
+    diagram: () => routingSummaryFixture(),
   },
   {
     kind: "diagram",

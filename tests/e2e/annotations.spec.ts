@@ -10,6 +10,8 @@ import {
   expectNoErrors,
   STORAGE_KEYS,
   waitForStableBox,
+  waitForSelectionSettled,
+  savedDiagram,
   emptyCanvasPoint,
 } from "./fixtures";
 
@@ -111,6 +113,7 @@ test.describe("annotations", () => {
       });
       await gotoCanvas(page, SLUG);
       await annotation(page, "shape").click();
+      await waitForSelectionSettled(page);
       await page.getByTestId("inspector-field-width").fill("19990");
       await page.getByTestId("inspector-field-width").press("Enter");
       if (control === "top-left") {
@@ -147,7 +150,9 @@ test.describe("annotations", () => {
         await expect
           .poll(() => annotation(page, "shape").evaluate((el) => el.parentElement?.style.height))
           .toBe("20000px");
-      await page.waitForTimeout(700);
+      await expect
+        .poll(async () => (await savedDiagram(page)).annotations?.find((a) => a.id === "shape")?.width)
+        .toBe(20000);
       await page.reload();
       await expect(annotation(page, "shape")).toBeAttached();
       await expect.poll(width).toBe("20000px");
@@ -224,6 +229,7 @@ test.describe("annotations", () => {
     await typeAndCommit(page, "Keyboard note");
     const focused = () => annotation(page, "note-1").evaluate((el) => el.parentElement === document.activeElement);
     await expect.poll(focused).toBe(true);
+    await waitForSelectionSettled(page);
     const before = await box(annotation(page, "note-1"));
     await page.keyboard.press("ArrowRight");
     await expect.poll(async () => (await box(annotation(page, "note-1"))).x).toBeGreaterThan(before.x);
@@ -497,6 +503,7 @@ test.describe("annotations", () => {
     await annotation(page, "note-retry").click();
     await annotation(page, "note-replay").click({ modifiers: [MOD] });
     await expect(page.getByTestId("inspector-title")).toHaveText("2 selected");
+    await waitForSelectionSettled(page);
     await page.getByTestId("inspector-align-top").click();
     await expect
       .poll(async () => Math.round((await box(annotation(page, "note-retry"))).y))

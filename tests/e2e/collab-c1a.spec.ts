@@ -4,7 +4,16 @@ import type { LabPacket } from "../../src/collab/lab/bridge";
 import { demoDiagram } from "../../src/collab/lab/demo";
 import { RECOVERY_RETRY } from "../../src/collab/recovery";
 import { COLLAB_LIMITS } from "../../src/collab/limits";
-import { test, expect, expectNoErrors, gotoLab, pauseClock, waitForStableViewport, E2E_TARGET } from "./fixtures";
+import {
+  test,
+  expect,
+  expectNoErrors,
+  gotoLab,
+  pauseClock,
+  waitForStableViewport,
+  E2E_TARGET,
+  fitDiagram,
+} from "./fixtures";
 import { isViteHmrHandshake } from "../../scripts/e2e-network";
 
 async function bounds(locator: Locator) {
@@ -23,6 +32,67 @@ type TestWindow = Window & {
   __restoreRecoveryWrites?: () => void;
   __releaseInitialFitFonts?: () => void;
 };
+
+test("an invalid room link explains the problem and explicitly opens a new room", async ({ page }) => {
+  await page.goto("./?view=lab&preset=collab-c1a#room=v1.garbage");
+  await expect(page.getByTestId("collab-editor-loading")).toHaveAttribute("role", "alert");
+  await expect(page.getByTestId("collab-editor-loading")).toContainText("This room link is damaged or incomplete");
+  await expect(page.getByTestId("collab-editor-loading")).not.toContainText("Reload");
+  await expect.poll(() => new URL(page.url()).hash).toBe("");
+  await page.getByTestId("collab-new-room").click();
+  await expect(page.getByTestId("node-api")).toBeVisible();
+});
+
+test("a room that never connects offers Retry and a file copy without losing edits", async ({ context, page }) => {
+  await relay([context], 156);
+  await page.clock.install();
+  await open(page);
+  await name(page, "api", "Keep disconnected edits");
+  await pauseClock(page);
+  await page.clock.runFor(COLLAB_LIMITS.connectionWaitMs);
+  await expect(page.getByTestId("collab-connection-failed")).toContainText("Could not connect to this room");
+  await expect(page.getByTestId("collab-save-copy")).toBeVisible();
+  await page.getByTestId("collab-retry").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("collab-connection-failed")).toHaveCount(0);
+  await expect(page.getByTestId("collab-room-status")).toBeFocused();
+  await expect(page.getByTestId("node-api")).toContainText("Keep disconnected edits");
+  await page.clock.runFor(COLLAB_LIMITS.connectionWaitMs);
+  await expect(page.getByTestId("collab-connection-failed")).toBeVisible();
+  const downloading = page.waitForEvent("download");
+  await page.getByTestId("collab-save-copy").click();
+  const stream = await (await downloading).createReadStream();
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+  expect(Buffer.concat(chunks).toString()).toContain("Keep disconnected edits");
+});
+
+for (const locale of ["ar", "en-XA"]) {
+  test(`storage failure replaces the status with one spaced message in ${locale}`, async ({ context, page }) => {
+    await relay([context], 157);
+    await page.addInitScript((locale) => localStorage.setItem("diagrams.locale", locale), locale);
+    await open(page);
+    await page.evaluate(() => {
+      IDBObjectStore.prototype.put = () => {
+        throw new DOMException("quota", "QuotaExceededError");
+      };
+    });
+    await name(page, "api", "Unsaved draft");
+    const problem = page.getByTestId("collab-recovery-problem");
+    await expect(problem).toBeVisible();
+    const status = page.getByTestId("collab-room-status");
+    expect
+      .soft(
+        await status.evaluate(
+          (el) =>
+            Array.from(el.childNodes).filter((n) => n.nodeType === Node.TEXT_NODE && n.textContent?.trim()).length,
+        ),
+      )
+      .toBe(0);
+    expect.soft(await status.evaluate((el) => getComputedStyle(el).gap)).toBe("8px");
+    await expect(page.getByTestId("collab-save-copy")).toBeVisible();
+  });
+}
 
 /** Only encrypted transport packets cross isolated browser contexts. No socket or external service. */
 async function relay(contexts: BrowserContext[], seed: number, initial?: DiagramFile) {
@@ -365,7 +435,7 @@ test("corrupt IndexedDB checkpoint recovers safely and quota failure preserves d
     };
   });
   await name(page, "api", "Keep quota-failed work");
-  await expect(page.getByTestId("collab-recovery-problem")).toContainText("Could not save");
+  await expect(page.getByTestId("collab-recovery-problem")).toContainText("Not saved on this device");
   await expect(page.getByTestId("collab-room-status")).not.toHaveAttribute("data-status", "saved-device");
   const downloaded = page.waitForEvent("download");
   await page.getByTestId("collab-save-copy").click();
@@ -398,11 +468,11 @@ test("storage retry backoff keeps edits unsaved until a successful retry", async
     };
   });
   await field.fill("Storage failure");
-  await expect(page.getByTestId("collab-recovery-problem")).toContainText("Could not save on this device");
+  await expect(page.getByTestId("collab-recovery-problem")).toContainText("Not saved on this device");
   for (let i = 0; i < 8; i++) {
     await field.fill(`Still editable ${i}`);
     await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-saved", "false");
-    await expect(page.getByTestId("collab-recovery-problem")).toContainText("Could not save on this device");
+    await expect(page.getByTestId("collab-recovery-problem")).toContainText("Not saved on this device");
   }
   await expect(page.getByTestId("collab-save-copy")).toBeVisible();
   await page.evaluate(() => (window as TestWindow).__restoreRecoveryWrites?.());
@@ -738,7 +808,7 @@ test("a room drop restores position, membership and boundary growth with one Und
   const node = page.getByTestId("node-api"),
     group = page.getByTestId("group-cluster");
   await node.click();
-  await waitForStableViewport(page);
+  await fitDiagram(page);
   const before = await bounds(node),
     boundary = await bounds(group);
   const scale = before.width / 220;
@@ -782,7 +852,7 @@ test("a room resize and deferred membership adoption are one Undo step", async (
   await relay([context], 134, boundaryDiagram);
   await open(page);
   await page.getByTestId("group-label-cluster").click();
-  await waitForStableViewport(page);
+  await fitDiagram(page);
   const group = page.getByTestId("group-cluster"),
     before = await bounds(group);
   const handle = page.getByTestId("group-resize-cluster-bottom-right");
@@ -792,8 +862,7 @@ test("a room resize and deferred membership adoption are one Undo step", async (
   await page.mouse.move(box.x + box.width / 2 + before.width, box.y + box.height / 2, { steps: 12 });
   await page.mouse.up();
   await expect(page.getByTestId("membership-undo")).toBeVisible();
-  await page.getByTestId("fit-view-button").click();
-  await waitForStableViewport(page);
+  await fitDiagram(page);
   await page.getByTestId("node-outside").click();
   await expect(page.getByTestId("inspector-field-group")).toHaveValue("cluster");
   await page.getByTestId("undo-button").click();
@@ -802,6 +871,7 @@ test("a room resize and deferred membership adoption are one Undo step", async (
       Math.round((await bounds(group)).width / ((await bounds(page.getByTestId("node-outside"))).width / 220)),
     )
     .toBe(440);
+  await fitDiagram(page);
   await page.getByTestId("node-outside").click();
   await expect(page.getByTestId("inspector-field-group")).toHaveValue("");
   expectNoErrors(consoleErrors);
@@ -866,7 +936,7 @@ for (const abortAfter of [1, 2]) {
       };
     }, abortAfter);
     await name(page, "api", "Interrupted undurable append");
-    await expect(page.getByTestId("collab-recovery-problem")).toContainText("Could not save");
+    await expect(page.getByTestId("collab-recovery-problem")).toContainText("Not saved on this device");
     await expect(page.getByTestId("node-api")).toContainText("Interrupted undurable append");
     await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-saved", "false");
     // Do not close the session or flush before reload: lose everything outside IndexedDB.

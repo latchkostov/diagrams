@@ -4,9 +4,16 @@ import { readSheetWidth, saveSheetWidth, sheetBounds, sheetWidth, SHEET_NARROW }
 
 /** Owns only DOM geometry: pointer frames never publish React or diagram state. */
 export function SheetResizeHandle({ onResize }: { onResize?: () => void }) {
-  useLocale();
+  const locale = useLocale();
   const ref = useRef<HTMLDivElement>(null);
   const notify = useEffectEvent(() => onResize?.());
+  useLayoutEffect(() => {
+    const handle = ref.current!;
+    handle.setAttribute(
+      "aria-valuetext",
+      t("inspector.widthValue", { width: Number(handle.getAttribute("aria-valuenow")) }),
+    );
+  }, [locale]);
   useLayoutEffect(() => {
     const handle = ref.current!;
     const sheet = handle.parentElement!;
@@ -29,6 +36,7 @@ export function SheetResizeHandle({ onResize }: { onResize?: () => void }) {
       sheet.style.setProperty("--sheet-width", `${shown}px`);
       handle.hidden = bounds.min === bounds.max;
       handle.setAttribute("aria-valuenow", String(shown));
+      handle.setAttribute("aria-valuetext", t("inspector.widthValue", { width: shown }));
       handle.setAttribute("aria-valuemin", String(Math.round(bounds.min)));
       handle.setAttribute("aria-valuemax", String(Math.round(bounds.max)));
     };

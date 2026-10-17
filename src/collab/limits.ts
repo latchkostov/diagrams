@@ -3,6 +3,7 @@
 // updates before they are applied, and the projected diagram through the same validator as an imported file.
 
 export const COLLAB_LIMITS = {
+  connectionWaitMs: 10_000,
   /**
    * A document message (an update, a sync reply) larger than this travels as fragments of this size, each sealed in
    * a frame of its own (./protocol.ts), so no frame is ever large and a room isn't bounded by a frame.

@@ -1,10 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { bytesToBase64Url } from "../../interop/codec";
 import { deriveRoomKeys } from "../keys";
 import { COLLAB_LIMITS } from "../limits";
 import { seededBytes } from "../random";
 import { CANARY, canaryDiagram, containsBytes, describeTransportConformance, openClient, roomFor } from "./conformance";
-import { fakeEnvironment, SDP_CANARIES } from "./fakeWebrtc";
+import { FakeDataChannel, FakePeerConnection, fakeEnvironment, SDP_CANARIES } from "./fakeWebrtc";
 import { endpointList } from "../lab/demo";
 import { createTrackerTransport, openSignal, sealSignal, SPIKE_TRACKERS } from "./tracker";
 
@@ -46,6 +46,136 @@ describeTransportConformance("webrtc-tracker (offline fake)", (seed) => {
 });
 
 describe("public matchmaking: what a tracker sees (synthetic capture)", () => {
+  it("Retry invalidates an incoming offer still being authenticated", async () => {
+    const { env, connect } = environment(20);
+    const decrypt = crypto.subtle.decrypt.bind(crypto.subtle);
+    let release!: () => void, entered!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const authenticating = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    let first = true;
+    let retiredSdp = "";
+    const applySignal = vi.spyOn(FakePeerConnection.prototype, "setRemoteDescription");
+    onTestFinished(() => applySignal.mockRestore());
+    const spy = vi.spyOn(crypto.subtle, "decrypt").mockImplementation(async (...args) => {
+      const result = await decrypt(...args);
+      if (first) {
+        first = false;
+        retiredSdp = new TextDecoder().decode(result);
+        entered();
+        await held;
+      }
+      return result;
+    });
+    onTestFinished(() => spy.mockRestore());
+    const a = connect(),
+      b = connect();
+    onTestFinished(() => {
+      release();
+      a.close();
+      b.close();
+    });
+    const pumping = env.wire.pump();
+    await authenticating;
+    a.retry?.();
+    b.retry?.();
+    release();
+    await pumping;
+    expect(applySignal.mock.calls.some(([description]) => description.sdp === retiredSdp)).toBe(false);
+    expect(a.peers()).toEqual([b.self]);
+    expect(b.peers()).toEqual([a.self]);
+  });
+
+  for (const fault of ["stalled channel", "dropped first answer"] as const)
+    it(`Retry reconnects after a ${fault}`, async () => {
+      const { env, connect } = environment(19);
+      let broken = true;
+      if (fault === "stalled channel") {
+        const open = FakeDataChannel.prototype.open;
+        const spy = vi.spyOn(FakeDataChannel.prototype, "open").mockImplementation(function (this: FakeDataChannel) {
+          if (!broken) open.call(this);
+        });
+        onTestFinished(() => spy.mockRestore());
+      } else {
+        const receive = env.tracker.receive.bind(env.tracker);
+        const spy = vi.spyOn(env.tracker, "receive").mockImplementation((socket, raw) => {
+          if (broken && (JSON.parse(raw) as { answer?: unknown }).answer) {
+            broken = false;
+            return;
+          }
+          receive(socket, raw);
+        });
+        onTestFinished(() => spy.mockRestore());
+      }
+      const a = connect();
+      const b = connect();
+      onTestFinished(() => {
+        a.close();
+        b.close();
+      });
+      const identities = [a.self, b.self];
+      await env.wire.pump();
+      expect([a.peers(), b.peers()]).toEqual([[], []]);
+      broken = false;
+      a.retry?.();
+      b.retry?.();
+      await env.wire.pump();
+      expect(a.peers()).toEqual([b.self]);
+      expect(b.peers()).toEqual([a.self]);
+      expect([a.self, b.self]).toEqual(identities);
+      // Retrying an established room preserves the channels and emits no leave/join pair.
+      const leave = vi.fn(),
+        join = vi.fn();
+      a.subscribe({ join, leave, frame: () => {} });
+      a.retry?.();
+      await env.wire.pump();
+      expect(a.peers()).toEqual([b.self]);
+      expect(leave).not.toHaveBeenCalled();
+      expect(join).not.toHaveBeenCalled();
+    });
+
+  it("retry replaces tracker sockets without replacing the transport identity", async () => {
+    const env = fakeEnvironment();
+    const sockets: WebSocket[] = [];
+    const WS = class extends (env.WebSocket as unknown as new (url: string) => WebSocket) {
+      constructor(url: string) {
+        super(url);
+        sockets.push(this);
+      }
+    };
+    const transport = env.wire.track(
+      createTrackerTransport({
+        trackers: ["wss://tracker.invalid"],
+        discovery: keys.discovery,
+        signal: keys.signal,
+        WebSocket: WS,
+        RTCPeerConnection: env.RTCPeerConnection,
+        clock: env.wire.clock,
+      }),
+    );
+    const self = transport.self;
+    await env.wire.pump();
+    expect(transport.diagnostics().trackersOpen).toBe(1);
+    transport.retry?.();
+    expect(sockets).toHaveLength(2);
+    expect(sockets[0].readyState).toBe(3);
+    expect([sockets[0].onopen, sockets[0].onmessage, sockets[0].onerror, sockets[0].onclose]).toEqual([
+      null,
+      null,
+      null,
+      null,
+    ]);
+    await env.wire.pump();
+    expect(transport.self).toBe(self);
+    expect(transport.diagnostics().trackersOpen).toBe(1);
+    transport.close();
+    expect(sockets.every((socket) => socket.readyState === 3)).toBe(true);
+    expect(env.wire.clock.pending).toBe(0);
+  });
+
   it("sees the discovery hash, random ids and ciphertext: no key, no SDP, no diagram", async () => {
     const { env, connect } = environment(7);
     const clock = env.wire.clock;

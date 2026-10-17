@@ -190,10 +190,20 @@ test("Live preserves its camera after an Inspector resize", async ({ page }) => 
     .toBe(true);
 });
 
-test("manual width stops at 60vw on an ultrawide viewport", async ({ page }) => {
+test("manual width stops at 960px on an ultrawide viewport and fields stay at 640px", async ({ page }) => {
   await open(page, 3440);
   await page.getByTestId("inspector-resize").press("End");
-  await expect.poll(() => width(page)).toBe(2064);
+  await expect.poll(() => width(page)).toBe(960);
+  expect(
+    await page.getByTestId("inspector-field-label").evaluate((el) => el.getBoundingClientRect().width),
+  ).toBeLessThanOrEqual(640);
+});
+
+test("an old saved width is clamped on load", async ({ page }) => {
+  await page.addInitScript((key) => localStorage.setItem(key, "2064"), key);
+  await open(page, 3440);
+  await expect.poll(() => width(page)).toBe(960);
+  await expect(page.getByTestId("inspector-resize")).toHaveAttribute("aria-valuetext", "Inspector width, 960 pixels");
 });
 
 test("Enter resets the focused handle without continuing a waiting narration", async ({ page }) => {

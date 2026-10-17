@@ -41,6 +41,7 @@ export class PrivateDiagramError extends Error {
 }
 
 export type SessionStatus = "waiting" | "connected" | "left";
+export const CONNECTION_WAIT_MS = COLLAB_LIMITS.connectionWaitMs;
 export type RoomStatus = "connecting" | "offline" | "saved-device" | "synced";
 export type RejectReason =
   | Rejection
@@ -108,6 +109,8 @@ export class CollabSession {
   /** This session's own presence. */
   me: PresenceState;
   status: SessionStatus = "waiting";
+  connectionFailed = false;
+  private connectionWait?: () => void;
   recovery?: RoomRecovery;
   private synced = new Set<PeerId>();
   private revision = 0;
@@ -207,6 +210,17 @@ export class CollabSession {
     return this.presence.list();
   }
 
+  retryConnection(): void {
+    if (this.leaving || this.status === "left") return;
+    this.connectionWait?.();
+    this.connectionWait = undefined;
+    this.connectionFailed = false;
+    this.transport.retry?.();
+    this.requestSync();
+    this.updateStatus();
+    this.emit();
+  }
+
   onChange(fn: () => void): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
@@ -241,6 +255,9 @@ export class CollabSession {
       await this.outbox.catch(() => {});
     } finally {
       this.status = "left";
+      this.connectionFailed = false;
+      this.connectionWait?.();
+      this.connectionWait = undefined;
       for (const stop of this.stops) stop();
       this.stops = [];
       this.transport.close();
@@ -296,6 +313,17 @@ export class CollabSession {
   private updateStatus(): void {
     if (this.status === "left") return;
     const next: SessionStatus = this.transport.peers().length ? "connected" : "waiting";
+    if (next === "connected") {
+      this.connectionWait?.();
+      this.connectionWait = undefined;
+      this.connectionFailed = false;
+    } else if (!this.connectionWait && !this.connectionFailed) {
+      this.connectionWait = this.clock.after(CONNECTION_WAIT_MS, () => {
+        this.connectionWait = undefined;
+        this.connectionFailed = true;
+        this.emit();
+      });
+    }
     if (next !== this.status) {
       this.status = next;
       this.emit();

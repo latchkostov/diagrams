@@ -45,6 +45,8 @@ export interface CollabTransport {
   send(bytes: Uint8Array, to?: PeerId): void;
   /** One set of handlers at a time; returns an unsubscribe. */
   subscribe(handlers: TransportHandlers): () => void;
+  /** Explicit retry of discovery, preserving the session and its document. */
+  retry?(): void;
   /** Leaves: nothing more is sent or delivered, and peers see `leave`. Idempotent. */
   close(): void;
 }
