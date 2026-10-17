@@ -18,6 +18,7 @@ owner's working reference and stay on this machine.
 
 ## Commands
 
+- `pnpm gate doctor`, `pnpm gate setup`, `pnpm gate quick [spec...]`, `pnpm gate full [--linux]` (portable local gate; see `docs/QUALITY.md`). Full runs require a clean commit and stamp only complete successes.
 - `pnpm dev`, `pnpm build`, `pnpm test` (Vitest), `pnpm test:e2e` (Playwright), `pnpm check` (all)
 - Output parity (`docs/PARITY.md`): `pnpm parity` checks every output against committed goldens. A feature PR that
   changes output on purpose runs `pnpm parity:update` and explains the goldens' diff in its description. The browser

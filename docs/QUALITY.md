@@ -39,48 +39,53 @@ warns. Measurements and migration decisions: [toolchain modernization](TOOLCHAIN
 
 ## E2E projects and ports
 
-### Full local push gate
+### Portable local gate
 
-After committing, run `bash scripts/verify-push.sh 6360` (or the installed
-`bash /c/Users/latch/bin/verify-push.sh 6360` copy). Choose an unused five-port range;
-5190 and 6000 are forbidden. Install updates by copying the versioned script to that path;
-the installed script also works in older checkouts without this runner file.
+Run `pnpm gate setup` once per checkout, then `pnpm gate doctor`. Both work in PowerShell,
+cmd, Git Bash and macOS zsh without shell utilities. Setup installs frozen repo dependencies,
+pinned Chromium and the pinned Playwright Docker image; it never installs system software.
+Doctor explains how to fix Node/pnpm pins, missing installs, Docker access and low disk space.
+Both the OS temp drive and repository drive need at least 8 GiB free.
 
-Full gates queue across worktrees of this repository. The key comes from their shared Git
-metadata: a native named mutex on Windows, `flock` on Linux. The OS owns the lock, so a failed
-or terminated gate cannot leave a stale PID lock behind. This prevents simultaneous unit
-worker pools, builds and browsers from starving one another. Three concurrent gates on the
-Windows host reached 96% CPU and stalled otherwise healthy page startup/input for 10–25 seconds.
-The queue regression holds one fake gate at a barrier, proves the second cannot enter, then
-verifies that a failed first gate releases the second. Assertions and test timeouts stay intact.
+After committing, run `pnpm gate full --ports 6480`. Omit `--ports` to find a free five-port
+range in 6400–6999. The gate checks IPv4 and IPv6 loopback, never reuses an existing server,
+and rejects any range containing 5190 or 6000. A socket lock shared by all worktrees queues
+other gates; process death releases the lock without stale files on Windows, macOS or Linux.
 
-The gate runs lint, typecheck, formatting, units, build, entry size and parity, then every
-whole-file E2E shard against the production bundle. It uses three browser workers, like CI,
-and zero retries. Local Playwright otherwise starts half the logical CPUs' worth of workers:
-on a 32-thread Windows machine that means sixteen concurrent browsers.
-It sets `E2E_CHROMIUM_ONLY=1`: the same `chromium` test selection, with only its app server.
-The unused dev, subpath, internal and locked servers otherwise also start for each shard;
-the dev watcher observes the accumulated trace/export HTML even though no test uses it.
-Normal Playwright runs keep all five projects and their servers.
+Full runs lint, typecheck, formatting, i18n and skill checks, unit coverage, production build,
+entry size, output parity, then every CI Playwright project: chromium, dev, subpath, internal
+and locked. The four independent E2E builds run together with CI's environments. One Playwright
+invocation runs all specs with `--retries=0 --forbid-only`; there are no sequential shards.
+CPU and RAM determine workers (cap 16); `--workers N` overrides the formula.
 
-Gate mode (`E2E_GATE=1`) disables server reuse for every Playwright webServer, even
-with explicit ports, and forbids focused tests. Before running checks, the gate probes
-all five reserved ports on IPv4/IPv6 loopback and fails with the occupied port and a
-remedy. Playwright also rejects a server that appears after preflight. Both initial
-and final cleanliness checks reject nonignored untracked files; gitignored local files
-remain allowed. A rerun invalidates its earlier stamp before these checks.
+`pnpm gate quick [spec...]` runs static checks, Vitest tests related to files changed since
+the merge-base with origin/master, and only the explicit or changed E2E specs on production
+builds. It warns if origin/master is ahead. `--only unit,e2e` selects categories and includes
+their build dependencies. `--repeat N` repeats the entire E2E invocation back to back.
 
-Occupied-port fixtures reserve rotating five-port service ranges from 20,000 through 29,999,
-checking both address families before releasing all but the intended occupied port. Selecting
-an OS-assigned ephemeral range can let client sockets claim a released sibling during Bash
-startup (a Windows run found an earlier sibling unavailable with `EACCES`). Retries stay in
-the service-port pool; the regression preserves the exact intended-port rejection assertion.
+`pnpm gate full --linux` exports exactly HEAD into a Linux volume and runs in the installed
+Playwright version's noble image. Dependencies use a platform/architecture/lock-hash volume;
+a pnpm store is shared. Reports return to the checkout. Both parity tiers run in that same
+container (no nested Docker). The image's Node runtime is intentional; installation disables
+engine-strict inside the image. Native parity retains its existing Linux browser tier.
+`GATE_LINUX_SOURCE=bind` is a diagnostic comparison mode; full archive runs exclude all ignored
+and untracked host content. Measurements: [gate measurements](GATE-MEASUREMENTS.md).
 
-The gate builds the `VITE_E2E=1` bundle once, after the ordinary production build, then
-sets `E2E_PREBUILT=1` for all six shards. An inherited prebuilt setting is discarded;
-a failed fresh build skips shards and cannot stamp HEAD. The final unchanged-HEAD and
-clean-tree checks still apply. Vitest gets `--allowOnly=false` and Playwright gets
-`--forbid-only`, independently of the caller's CI setting.
+Playwright/Chrome temporary profiles use the run's own directory on the repository drive.
+Short paths under `tests/.output/g/` preserve Windows's file URL path budget. Each step has
+a log; JSON/HTML reports, screenshots and traces persist per repetition. The final timing
+table and `SUMMARY:` line include units, goldens and per-project browser counts.
+
+Full requires a clean tree (including nonignored untracked files), invalidates an earlier
+stamp, and checks that HEAD and the tree stayed unchanged. Only complete successful runs
+write `$(git rev-parse --git-common-dir)/verified/<sha>`. Quick, subsets and `--no-docker`
+never stamp. `--no-docker` loudly skips Docker checks and browser parity for native CI runners.
+
+| Choosing a machine/mode       | What it predicts                                       | When to use it                                 |
+| ----------------------------- | ------------------------------------------------------ | ---------------------------------------------- |
+| Windows native                | Windows Chromium, native file paths and shortcuts      | Daily Windows work and portability checks      |
+| macOS native                  | macOS Chromium, Command shortcuts and native fonts     | Daily Mac work and portability checks          |
+| Either machine with `--linux` | CI's pinned Linux browser image and Linux dependencies | Before pushing and to reproduce Linux failures |
 
 The full-suite gate also caught the flow-building selection helper returning before
 the inspector's deferred reveal finished. Following it immediately with Alt+arrow
@@ -89,18 +94,6 @@ waits for the inspector and stable viewport before the next gesture. A regressio
 holds the reveal's clock until selection publishes, then verifies the selected node
 is in the pane when the helper returns. Removing the waits fails that boundary
 assertion. Placement, connection, direction and Undo assertions stay unchanged.
-
-Failures do not stop the remaining checks or shards. Every shard reports passed, failed,
-flaky and skipped totals from Playwright's JSON report, including a non-zero exit or missing
-report as a gate failure. Logs, HTML reports, screenshots and traces stay in separate
-`tests/.output/local-gate/<run>/shard<N>/` directories, so the next shard/run cannot overwrite
-the evidence. Run directory names stay short: Chrome on Windows cannot open an offline
-export at MAX_PATH even when Node can read that same file. A platform-independent path
-budget regression reserves room for a long per-test folder and nested export.
-A final `SUMMARY:` line gives the complete totals. Only a complete success
-stamps the unchanged, clean HEAD in Git's `verified` directory; starting a rerun removes
-its earlier stamp. The orchestration tests replace commands with fakes and verify all six
-shards run after an earlier failure, without starting browsers or servers.
 
 The two compiler probes and the full 5,000-node Draw everything case have explicit 40-second
 hang backstops on every machine, matching CI's intent. The compiler probes are separated by
@@ -399,31 +392,12 @@ their departure. A heartbeat sent after disconnect must never reach the other ed
 recovery regression counts received packets as well as checking its saved-on-device status.
 Otherwise the status can briefly pass before a late heartbeat reconnects the departed peer.
 
-### Linux browser reproduction on Windows
+### Linux reproduction
 
-Run from this checkout in PowerShell. This uses parity's pinned Playwright Linux image and separate
-Linux dependencies, three browser workers, a two-CPU container and a fresh production E2E build.
-There are no retries; all fourteen Chromium tests run five times. Playwright owns and stops its server,
-and Docker removes the container. Change the explicit five-port range if needed.
-
-```powershell
-$inside = @'
-set -e
-corepack enable >/dev/null 2>&1 || npm install -g pnpm@12.11.2 >/dev/null
-export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-pnpm install --frozen-lockfile --prefer-offline --reporter=silent
-npx playwright test tests/e2e/image-slices.spec.ts --project=chromium --repeat-each=5 --workers=3 --retries=0 --reporter=line
-'@
-docker run --rm --name perf3-linux-repro --cpus=2 --ipc=host `
-  -v "${PWD}:/work" `
-  -v livediagrams-perf3-e2e-node-modules:/work/node_modules `
-  -v livediagrams-parity-pnpm-store:/pnpm-store `
-  -e pnpm_config_store_dir=/pnpm-store -e CI=1 -e E2E_TARGET=build `
-  -e E2E_PORT=6420 -e E2E_DEV_PORT=6421 -e E2E_PREVIEW_PORT=6422 `
-  -e E2E_INTERNAL_PORT=6423 -e E2E_LOCKED_PORT=6424 `
-  -e E2E_CHROMIUM_ONLY=1 -e E2E_GATE=1 -w /work `
-  mcr.microsoft.com/playwright:v1.64.1-noble bash -c $inside
-```
+Use `pnpm gate full --linux --ports 6480`. For a focused reproduction use
+`pnpm gate quick tests/e2e/image-slices.spec.ts --linux --only e2e --repeat 5 --ports 6480`.
+Playwright owns and stops its servers; the gate removes its container and temporary source volume.
+No hand-written Docker or Bash command is needed.
 
 ## A1 bookkeeping invariants
 

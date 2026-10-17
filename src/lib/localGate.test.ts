@@ -1,447 +1,325 @@
-import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, watch, writeFileSync } from "node:fs";
-import { dirname, join, relative, resolve, win32 } from "node:path";
-import { createServer, type Server } from "node:net";
+import { spawn } from "node:child_process";
+import { once } from "node:events";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join, resolve, win32 } from "node:path";
+import { pathToFileURL } from "node:url";
+import { createServer } from "node:net";
 import process from "node:process";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
+import {
+  canStamp,
+  checkTree,
+  GIB,
+  lockPort,
+  options,
+  plan,
+  playwrightCounts,
+  validatePorts,
+  workerCount,
+} from "../../scripts/gate/logic.mjs";
+import { acquireLock, pickPorts, probePorts } from "../../scripts/gate/host.mjs";
+import { runSteps } from "../../scripts/gate/run.mjs";
+import { installed } from "../../scripts/gate/doctor.mjs";
 
-// Run the real Bash orchestration with fake commands: no browsers, builds, commits or servers.
-// Functions in BASH_ENV also work on Git Bash, without Windows .cmd/PATH quoting differences.
-const commands = `
-git() {
-  case "$*" in
-    'rev-parse --show-toplevel') pwd ;;
-    'rev-parse HEAD') printf '%040d\\n' 1 ;;
-    'rev-parse --git-common-dir') echo "$GATE_PROBE_DIR/git" ;;
-    'status --porcelain --untracked-files='*)
-      if [ -n "\${GATE_PROBE_TREE:-}" ]; then command git -C "$GATE_PROBE_TREE" "$@"; return; fi
-      if [ "$GATE_PROBE_MODE" = untracked ] && [ "$*" != 'status --porcelain --untracked-files=no' ]; then echo '?? src/helper.ts'; fi
-      if [ "$GATE_PROBE_MODE" = late-untracked ] && [ -f "$GATE_PROBE_DIR/shards" ] && [ "$*" != 'status --porcelain --untracked-files=no' ]; then echo '?? src/helper.ts'; fi
-      ;;
-    *) return 9 ;;
-  esac
-}
-pnpm() {
-  echo "$*" >> "$GATE_PROBE_DIR/steps"
-  if [ -n "\${GATE_PROBE_BARRIER:-}" ] && [ "$*" = '-s lint' ]; then node "$GATE_PROBE_BARRIER"; fi
-  if [ "$GATE_PROBE_MODE" = unit ] && [[ "$*" == '-s test'* ]]; then return 1; fi
-  if [ "$GATE_PROBE_MODE" = focused-unit ] && [[ "$*" == '-s test'*'--allowOnly=false'* ]]; then return 1; fi
-  if [[ "$*" == 'exec vite build'* ]]; then
-    [ "$VITE_E2E:\${E2E_PREBUILT:-}" = '1:' ] || return 9
-    if [ "$GATE_PROBE_MODE" = build ]; then return 1; fi
-  fi
-}
-npx() {
-  local index="\${PLAYWRIGHT_JSON_OUTPUT_NAME%/results.json}"
-  index="\${index##*/shard}"
-  echo "$index" >> "$GATE_PROBE_DIR/shards"
-  # Guard the runner settings too: CI-sized concurrency, production and no retries.
-  case " $* " in *' --workers=3 --retries=0 '*) ;; *) return 9 ;; esac
-  [ "$E2E_TARGET:$E2E_PORT:$E2E_LOCKED_PORT:$E2E_CHROMIUM_ONLY:$PLAYWRIGHT_HTML_OPEN:\${E2E_GATE:-}:\${E2E_PREBUILT:-}" = 'build:6360:6364:1:never:1:1' ] || return 9
-  if [ "$GATE_PROBE_MODE" = focused-e2e ]; then
-    case " $* " in *' --forbid-only '*) return 1 ;; esac
-  fi
-  local passed=2 failed=0 flaky=0 code=0
-  if [ "$index" = 3 ]; then
-    case "$GATE_PROBE_MODE" in
-      missing) return 1 ;;
-      shard) passed=1; failed=1; code=1 ;;
-      flaky) passed=1; flaky=1 ;; # Even a zero process exit cannot authorize a flake.
-    esac
-  fi
-  printf '{"stats":{"expected":%s,"unexpected":%s,"flaky":%s,"skipped":0},"errors":[]}\n' "$passed" "$failed" "$flaky" > "$PLAYWRIGHT_JSON_OUTPUT_NAME"
-  return "$code"
-}
-`;
+const config = (args: string[] = []) => options(["full", ...args]);
+const names = (args: string[] = []) =>
+  plan(config(args))
+    .flat()
+    .map((s: { name: string }) => s.name);
+
+it("rejects forbidden ranges and malformed bases", () => {
+  for (const port of [5190, 6000])
+    for (let offset = 0; offset < 5; offset++) expect(() => validatePorts(port - offset)).toThrow("forbidden");
+  for (const port of [0, -1, 1.2, 65532, NaN]) expect(() => validatePorts(port)).toThrow();
+  expect(validatePorts(6480)).toBe(6480);
+});
+
+it("picks whole ranges in the advertised pool", async () => {
+  const calls: number[] = [];
+  expect(
+    await pickPorts(async (port: number) => {
+      calls.push(port);
+      if (port < 6410) throw new Error("busy");
+      return port;
+    }),
+  ).toBe(6410);
+  expect(calls).toEqual([6400, 6405, 6410]);
+  await expect(
+    pickPorts(async () => {
+      throw new Error("busy");
+    }),
+  ).rejects.toThrow("No free");
+});
+
+it("detects non-HTTP listeners without closing them", async () => {
+  const server = createServer();
+  // Stay out of the client ephemeral pool. A released ephemeral sibling can be
+  // claimed by a connection (or denied by Windows) before the probe reaches it.
+  for (let port = 20000 + (process.pid % 5000); port < 30000; port++) {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        server.once("error", reject);
+        server.listen(port, "127.0.0.1", () => {
+          server.off("error", reject);
+          resolve();
+        });
+      });
+      break;
+    } catch (error) {
+      if (!["EACCES", "EADDRINUSE"].includes((error as NodeJS.ErrnoException).code ?? "")) throw error;
+    }
+  }
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("no listener");
+  try {
+    await expect(probePorts(address.port)).rejects.toThrow(`Port ${address.port}`);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
 
 it.each([
-  { mode: "success", exit: 0, totals: "passed=12 failed=0 flaky=0 skipped=0 gate_failures=0" },
-  { mode: "shard", exit: 1, totals: "passed=11 failed=1 flaky=0 skipped=0 gate_failures=1" },
-  { mode: "flaky", exit: 1, totals: "passed=11 failed=0 flaky=1 skipped=0 gate_failures=1" },
-  { mode: "missing", exit: 1, totals: "passed=10 failed=0 flaky=0 skipped=0 gate_failures=1" },
-  { mode: "unit", exit: 1, totals: "passed=12 failed=0 flaky=0 skipped=0 gate_failures=1" },
-  { mode: "focused-unit", exit: 1, totals: "passed=12 failed=0 flaky=0 skipped=0 gate_failures=1" },
-  { mode: "focused-e2e", exit: 1, totals: "passed=0 failed=0 flaky=0 skipped=0 gate_failures=6" },
-  { mode: "late-untracked", exit: 1, totals: "passed=12 failed=0 flaky=0 skipped=0 gate_failures=1" },
-])("the local gate collects every shard and stamps only a complete success ($mode)", { timeout: 40_000 }, (probe) => {
-  const output = resolve("tests/.output");
-  mkdirSync(output, { recursive: true });
-  const fixture = mkdtempSync(join(output, "gate-probe-"));
-  const sha = "1".padStart(40, "0");
-  const stamp = join(fixture, "git/verified", sha);
-  mkdirSync(join(fixture, "git/verified"), { recursive: true });
-  writeFileSync(stamp, "stale success");
-  const envFile = join(fixture, "commands.sh");
-  writeFileSync(envFile, commands);
+  [32, 64, 16],
+  [10, 24, 7],
+  [4, 16, 3],
+  [32, 12, 4],
+  [1, 2, 1],
+  [128, 256, 16],
+])("bounds workers by CPU and RAM (%s, %s GiB)", (cpus, ram, expected) => {
+  expect(workerCount(cpus, ram * GIB)).toBe(expected);
+});
+
+it("normalizes Windows lock keys across worktrees", () => {
+  expect(lockPort("C:\\repo\\.git", "win32")).toBe(lockPort("c:/REPO/.git", "win32"));
+  expect(lockPort("/repo/.git", "darwin")).toBe(lockPort("/repo/.git", "linux"));
+});
+
+it("queues a contender until release", async () => {
+  const key = `gate-unit-release-${process.pid}`;
+  const release = await acquireLock(key, process.platform, undefined, 0);
+  let waiting!: () => void;
+  const queued = new Promise<void>((resolve) => {
+    waiting = resolve;
+  });
+  const second = acquireLock(key, process.platform, waiting, release.port);
+  await queued;
+  await release();
+  await (
+    await second
+  )();
+  await (
+    await acquireLock(key, process.platform, undefined, 0)
+  )();
+});
+
+it("the OS releases a lock when its holder dies", async () => {
+  const key = `gate-unit-death-${process.pid}`;
+  const module = pathToFileURL(resolve("scripts/gate/host.mjs")).href;
+  const child = spawn(
+    process.execPath,
+    [
+      "--input-type=module",
+      "-e",
+      `import { acquireLock } from ${JSON.stringify(module)}; const release = await acquireLock(${JSON.stringify(key)}, process.platform, undefined, 0); process.send(release.port);`,
+    ],
+    { stdio: ["ignore", "ignore", "pipe", "ipc"] },
+  );
   try {
-    const result = spawnSync("bash", ["scripts/verify-push.sh", "6360"], {
-      encoding: "utf8",
-      timeout: 40_000,
-      env: {
-        ...process.env,
-        BASH_ENV: envFile.replaceAll("\\", "/"),
-        GATE_PROBE_DIR: relative(process.cwd(), fixture).replaceAll("\\", "/"),
-        GATE_PROBE_MODE: probe.mode,
-        E2E_PREBUILT: "1", // A caller's stale bundle must never skip the fresh build.
-      },
+    const [port] = (await once(child, "message")) as [number];
+    let waiting!: () => void;
+    const queued = new Promise<void>((resolve) => {
+      waiting = resolve;
     });
-    expect(result.status, result.error?.message ?? result.stdout + result.stderr).toBe(probe.exit);
-    expect(readFileSync(join(fixture, "shards"), "utf8").trim().split(/\r?\n/)).toEqual(["1", "2", "3", "4", "5", "6"]);
-    expect(readFileSync(join(fixture, "steps"), "utf8").trim().split(/\r?\n/)).toEqual([
-      ...["lint", "typecheck", "format:check", "test --allowOnly=false", "build", "size", "parity"].map(
-        (step) => `-s ${step}`,
-      ),
-      "exec vite build --outDir tests/.output/e2e-dist --emptyOutDir --logLevel error",
-    ]);
-    expect(result.stdout).toContain(`SUMMARY: ${sha} | shards=6 ${probe.totals}`);
-    const log = /^Log: (.+)$/m.exec(result.stdout)?.[1].trim();
-    if (!log) throw new Error("Missing gate log path");
-    // A typical checkout root, Playwright's long per-test directory, and a nested
-    // offline export must fit Chrome's Windows file:// limit on every test host.
-    const offlineFile = win32.join(
+    const contender = acquireLock(key, process.platform, waiting, port);
+    await queued;
+    const dead = once(child, "exit");
+    child.kill();
+    await dead;
+    await (
+      await contender
+    )();
+  } finally {
+    child.kill();
+  }
+});
+
+it("parses JSON counts by project and rejects empty or malformed reports", () => {
+  const report = {
+    stats: { expected: 2, unexpected: 1, flaky: 1, skipped: 1 },
+    errors: [],
+    suites: [
+      {
+        specs: [
+          {
+            tests: [
+              { projectName: "dev", status: "expected" },
+              { projectName: "chromium", status: "expected" },
+              { projectName: "dev", status: "unexpected" },
+              { projectName: "dev", status: "flaky" },
+              { projectName: "locked", status: "skipped" },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+  expect(playwrightCounts(report)).toMatchObject({
+    passed: 2,
+    failed: 1,
+    flaky: 1,
+    skipped: 1,
+    projects: { dev: { passed: 1, failed: 1, flaky: 1, skipped: 0 } },
+  });
+  for (const stats of [{}, { expected: 0, unexpected: 0, flaky: 0, skipped: 0 }, { expected: -1 }])
+    expect(() => playwrightCounts({ stats })).toThrow();
+});
+
+it("rejects dirty trees including untracked files, and a changed HEAD", () => {
+  expect(() => checkTree("", "abc", "abc")).not.toThrow();
+  for (const status of [" M file.ts", "?? file.ts"]) expect(() => checkTree(status, "abc")).toThrow("Commit or stash");
+  expect(() => checkTree("", "abc", "def")).toThrow("HEAD changed");
+});
+
+it("plans all CI builds together without shards or retries", () => {
+  expect(names()).toEqual([
+    "lint",
+    "typecheck",
+    "format",
+    "i18n",
+    "skill",
+    "unit",
+    "build",
+    "size",
+    "parity",
+    "e2e-build",
+    "preview-build",
+    "internal-build",
+    "locked-build",
+    "e2e-1",
+  ]);
+  const groups = plan(config(["--repeat", "3"]));
+  expect(groups.find((g: { name: string }[]) => g.some((s) => s.name === "e2e-build"))).toHaveLength(4);
+  const e2e = groups.flat().filter((s: { name: string }) => /^e2e-\d$/.test(s.name));
+  expect(e2e).toHaveLength(3);
+  expect(e2e[0].args).toEqual(["exec", "playwright", "test", "--retries=0", "--forbid-only"]);
+});
+
+it("quick selects only changed or explicit specs", () => {
+  const changed = ["src/model/types.ts", "tests/e2e/example.spec.ts", "docs/QUALITY.md"];
+  const steps = plan(options(["quick"]), changed).flat();
+  expect(steps.find((s: { name: string }) => s.name === "unit")?.args).toContain("related");
+  const e2e = steps.find((s: { name: string }) => s.name === "e2e-1");
+  expect(e2e?.args).toContain(changed[1]);
+  expect(e2e?.args).not.toContain(changed[0]);
+  expect(
+    plan(options(["quick"]), [])
+      .flat()
+      .map((s: { name: string }) => s.name),
+  ).toEqual(["lint", "typecheck", "format", "i18n", "skill"]);
+  expect(
+    plan(options(["quick", "tests/e2e/explicit.spec.ts"]), changed)
+      .flat()
+      .at(-1)?.args,
+  ).toContain("tests/e2e/explicit.spec.ts");
+});
+
+it("subsets include dependencies, no-docker keeps Node parity and cannot stamp", () => {
+  expect(names(["--only", "e2e"])).toEqual(["e2e-build", "preview-build", "internal-build", "locked-build", "e2e-1"]);
+  expect(names(["--only", "size"])).toEqual(["build", "size"]);
+  expect(plan(config(["--no-docker", "--only", "parity"])).flat()[0].args).toEqual(["parity", "--tier", "node"]);
+  expect(canStamp(config())).toBe(true);
+  for (const args of [["--no-docker"], ["--only", "unit"]]) expect(canStamp(config(args))).toBe(false);
+  expect(canStamp(options(["quick"]))).toBe(false);
+  for (const args of [
+    ["--workers", "0"],
+    ["--only", "unknown"],
+    ["--linux", "--no-docker"],
+  ])
+    expect(() => config(args)).toThrow();
+});
+
+it("doctor recognizes the frozen pnpm 12 install", () => {
+  expect(installed(process.cwd())).toBe(true);
+});
+
+it("doctor rejects dependencies removed from the manifest without a frozen reinstall", () => {
+  mkdirSync("tests/.output", { recursive: true });
+  const dir = mkdtempSync(resolve("tests/.output/gate-install-"));
+  try {
+    mkdirSync(join(dir, "node_modules/.pnpm"), { recursive: true });
+    writeFileSync(join(dir, "package.json"), "{}");
+    writeFileSync(join(dir, "pnpm-lock.yaml"), readFileSync("pnpm-lock.yaml"));
+    writeFileSync(join(dir, "node_modules/.pnpm/lock.yaml"), readFileSync("node_modules/.pnpm/lock.yaml"));
+    expect(installed(dir)).toBe(false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+it("interrupts a queued gate without disturbing the holder", async () => {
+  const key = `gate-unit-interrupt-${process.pid}`;
+  const release = await acquireLock(key, process.platform, undefined, 0);
+  const abort = new AbortController();
+  let waiting!: () => void;
+  const queued = new Promise<void>((resolve) => {
+    waiting = resolve;
+  });
+  const contender = acquireLock(key, process.platform, waiting, release.port, abort.signal);
+  try {
+    await queued;
+    abort.abort(new Error("interrupted"));
+    await expect(contender).rejects.toThrow("interrupted");
+  } finally {
+    await release();
+  }
+});
+
+it("fake orchestration retains failures and rejects a flaky zero-exit report", async () => {
+  mkdirSync("tests/.output", { recursive: true });
+  const dir = mkdtempSync(resolve("tests/.output/gate-unit-"));
+  const calls: string[][] = [];
+  const log = vi.spyOn(console, "log").mockImplementation(() => {});
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    const result = await runSteps(
+      process.cwd(),
+      config(["--only", "e2e", "--repeat", "2", "--ports", "6480"]),
+      [],
+      dir,
+      {},
+      async (args: string[], { env }: { env: Record<string, string> }) => {
+        calls.push(args);
+        expect(env.TEMP).toBe(args.includes("playwright") ? join(dir, "tmp") : undefined);
+        expect(env.E2E_CHROMIUM_ONLY).toBe("");
+        if (args.includes("playwright"))
+          writeFileSync(
+            env.PLAYWRIGHT_JSON_OUTPUT_NAME,
+            JSON.stringify({
+              stats: {
+                expected: 2,
+                unexpected: 0,
+                flaky: calls.filter((a) => a.includes("playwright")).length === 1 ? 1 : 0,
+                skipped: 0,
+              },
+              errors: [],
+            }),
+          );
+        return { code: 0, text: "" };
+      },
+    );
+    expect(calls.filter((args) => args.includes("playwright"))).toHaveLength(2);
+    expect(result.failures).toBe(1);
+    expect(JSON.parse(readFileSync(join(dir, "summary.json"), "utf8")).reports).toHaveLength(2);
+    const path = win32.join(
       "C:/" + "w".repeat(37),
-      relative(process.cwd(), dirname(resolve(log))),
-      "shard4/results",
+      "tests/.output/g/r123456/e1/results",
       "t".repeat(100),
       "downloaded/out/Diagram (password protected) abcde.html",
     );
-    expect(offlineFile.length).toBeLessThan(260);
-    expect(existsSync(stamp)).toBe(probe.exit === 0);
-    if (probe.exit === 0) expect(readFileSync(stamp, "utf8")).toContain(probe.totals);
+    expect(path.length).toBeLessThan(260);
   } finally {
-    // mkdtemp's absolute target is inside the chosen workspace output directory.
-    rmSync(fixture, { recursive: true, force: true });
-  }
-});
-
-function gateProbe(mode: string, base = 6360) {
-  const output = resolve("tests/.output");
-  mkdirSync(output, { recursive: true });
-  const fixture = mkdtempSync(join(output, "gate-preflight-"));
-  const stamp = join(fixture, "git/verified", "1".padStart(40, "0"));
-  mkdirSync(dirname(stamp), { recursive: true });
-  writeFileSync(stamp, "stale success");
-  const envFile = join(fixture, "commands.sh");
-  writeFileSync(envFile, commands);
-  return {
-    fixture,
-    stamp,
-    run(extra: Record<string, string> = {}) {
-      const child = spawn("bash", ["scripts/verify-push.sh", String(base)], {
-        env: {
-          ...process.env,
-          BASH_ENV: envFile.replaceAll("\\", "/"),
-          GATE_PROBE_DIR: relative(process.cwd(), fixture).replaceAll("\\", "/"),
-          GATE_PROBE_MODE: mode,
-          ...extra,
-        },
-      });
-      return new Promise<{ code: number | null; output: string }>((resolve, reject) => {
-        let output = "";
-        child.stdout.on("data", (chunk: Buffer) => (output += chunk.toString()));
-        child.stderr.on("data", (chunk: Buffer) => (output += chunk.toString()));
-        child.on("error", reject);
-        child.on("close", (code) => resolve({ code, output }));
-      });
-    },
-    cleanup: () => rmSync(fixture, { recursive: true, force: true }),
-  };
-}
-
-// Reserve service-port ranges below the usual client ephemeral pool: releasing siblings
-// from an OS-assigned ephemeral range lets outbound connections claim them before Bash starts.
-// Check both address families, then release every listener except the intended occupied port.
-let nextProbeBase = 20_000 + (process.pid % 2_000) * 5;
-const servicePortBase = () => {
-  const base = nextProbeBase;
-  nextProbeBase = base + 5 < 30_000 ? base + 5 : 20_000;
-  return base;
-};
-
-const close = async (server: Server) => {
-  if (!server.listening) return;
-  await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
-};
-const listen = (server: Server, port: number, host: string) =>
-  new Promise<void>((resolve, reject) => {
-    server.once("error", reject);
-    server.listen({ port, host, exclusive: true, ipv6Only: host === "::1" }, () => {
-      server.off("error", reject);
-      resolve();
-    });
-  });
-const codeOf = (error: unknown) =>
-  typeof error === "object" && error !== null && "code" in error ? error.code : undefined;
-
-async function occupiedRange(offset: number, firstBase = servicePortBase()) {
-  for (let attempt = 0; attempt < 32; attempt++) {
-    const servers: Server[] = [];
-    let kept: Server | undefined;
-    const open = async (port: number, host: string) => {
-      const server = createServer();
-      servers.push(server);
-      await listen(server, port, host);
-      return server;
-    };
-    try {
-      const first = await open(attempt === 0 ? firstBase : servicePortBase(), "127.0.0.1");
-      const address = first.address();
-      if (!address || typeof address === "string") throw new Error("Missing probe port");
-      const base = address.port;
-      if (base > 65531 || [5190, 6000].some((port) => base <= port && port <= base + 4)) continue;
-      const ipv4 = [first];
-      for (let i = 1; i < 5; i++) ipv4.push(await open(base + i, "127.0.0.1"));
-      for (let i = 0; i < 5; i++) {
-        try {
-          await open(base + i, "::1");
-        } catch (error) {
-          if (codeOf(error) !== "EAFNOSUPPORT" && codeOf(error) !== "EADDRNOTAVAIL") throw error;
-        }
-      }
-      const target = ipv4[offset];
-      await Promise.all(servers.filter((server) => server !== target).map(close));
-      kept = target;
-      return { base, port: base + offset, close: () => close(target) };
-    } catch (error) {
-      if (codeOf(error) !== "EACCES" && codeOf(error) !== "EADDRINUSE") throw error;
-    } finally {
-      await Promise.all(servers.filter((server) => server !== kept).map(close));
-    }
-  }
-  throw new Error("Could not reserve a complete five-port probe range");
-}
-
-it("occupied-port fixtures skip a range with an unavailable earlier sibling", { timeout: 40_000 }, async () => {
-  const blocked = await occupiedRange(2);
-  let occupied: Awaited<ReturnType<typeof occupiedRange>> | undefined;
-  let probe: ReturnType<typeof gateProbe> | undefined;
-  try {
-    occupied = await occupiedRange(4, blocked.base);
-    expect(occupied.base).not.toBe(blocked.base);
-    // Retrying must stay below client ephemeral ports, rather than falling back to listen(0).
-    expect(occupied.base + 4).toBeLessThan(32_768);
-    probe = gateProbe("success", occupied.base);
-    const result = await probe.run();
-    expect(result.code, result.output).toBe(2);
-    expect(result.output).toContain(`port ${occupied.port} on 127.0.0.1 is unavailable`);
-    expect(existsSync(join(probe.fixture, "steps"))).toBe(false);
-    expect(existsSync(join(probe.fixture, "shards"))).toBe(false);
-    expect(existsSync(probe.stamp)).toBe(false);
-  } finally {
-    await Promise.all([blocked.close(), occupied?.close()]);
-    probe?.cleanup();
-  }
-});
-
-it.each([0, 1, 2, 3, 4])(
-  "gate mode rejects an occupied port at offset %s before checks",
-  { timeout: 40_000 },
-  async (offset) => {
-    const occupied = await occupiedRange(offset);
-    const probe = gateProbe("success", occupied.base);
-    try {
-      const result = await probe.run();
-      expect(result.code, result.output).toBe(2);
-      expect(result.output).toContain(`port ${occupied.port} on 127.0.0.1 is unavailable`);
-      expect(existsSync(join(probe.fixture, "steps"))).toBe(false);
-      expect(existsSync(join(probe.fixture, "shards"))).toBe(false);
-      expect(existsSync(probe.stamp)).toBe(false);
-    } finally {
-      await occupied.close();
-      probe.cleanup();
-    }
-  },
-);
-
-it("rejects nonignored untracked files but permits gitignored files", { timeout: 40_000 }, async () => {
-  const probe = gateProbe("success");
-  const tree = join(probe.fixture, "tree");
-  mkdirSync(tree);
-  const git = (...args: string[]) => {
-    const result = spawnSync("git", ["-C", tree, ...args], { encoding: "utf8" });
-    expect(result.status, result.stderr).toBe(0);
-  };
-  try {
-    git("init", "--quiet");
-    writeFileSync(join(tree, ".git/info/exclude"), "ignored.txt\n");
-    writeFileSync(join(tree, "ignored.txt"), "local ignored data");
-    writeFileSync(join(tree, "helper.ts"), "export const helper = 1;\n");
-    const env = { GATE_PROBE_TREE: tree.replaceAll("\\", "/") };
-    const dirty = await probe.run(env);
-    expect(dirty.code, dirty.output).toBe(2);
-    expect(dirty.output).toContain("nonignored untracked changes");
-    expect(existsSync(join(probe.fixture, "steps"))).toBe(false);
-    expect(existsSync(probe.stamp)).toBe(false);
-    rmSync(join(tree, "helper.ts"));
-    const clean = await probe.run(env);
-    expect(clean.code, clean.output).toBe(0);
-    expect(existsSync(probe.stamp)).toBe(true);
-  } finally {
-    probe.cleanup();
-  }
-});
-
-it("does not run shards or stamp HEAD after the fresh E2E build fails", { timeout: 40_000 }, async () => {
-  const probe = gateProbe("build");
-  try {
-    const result = await probe.run({ E2E_PREBUILT: "1" });
-    expect(result.code, result.output).toBe(1);
-    expect(result.output).toContain("shards=0 passed=0 failed=0 flaky=0 skipped=0 gate_failures=1");
-    expect(result.output).toContain("Skipping e2e shards");
-    expect(existsSync(join(probe.fixture, "shards"))).toBe(false);
-    expect(existsSync(probe.stamp)).toBe(false);
-  } finally {
-    probe.cleanup();
-  }
-});
-
-it.each(["vitest", "playwright"])(
-  "%s rejects focused tests with the gate's CLI policy",
-  { timeout: 40_000 },
-  (runner) => {
-    const output = resolve("tests/.output");
-    mkdirSync(output, { recursive: true });
-    const fixture = mkdtempSync(join(output, "gate-focused-"));
-    const spec = join(fixture, runner === "vitest" ? "focused.test.ts" : "focused.spec.ts");
-    const config = join(fixture, "config.mjs");
-    writeFileSync(
-      spec,
-      `import { ${runner === "vitest" ? "it as test" : "test"} } from "${runner === "vitest" ? "vitest" : "@playwright/test"}";\ntest.only("focused", () => {});\n`,
-    );
-    writeFileSync(
-      config,
-      runner === "vitest"
-        ? `export default { test: { include: [${JSON.stringify(spec.replaceAll("\\", "/"))}] } };\n`
-        : `export default { testDir: ${JSON.stringify(fixture.replaceAll("\\", "/"))}, outputDir: ${JSON.stringify(join(fixture, "results").replaceAll("\\", "/"))} };\n`,
-    );
-    try {
-      // Paths are argv, never interpolated into shell source.
-      const result = spawnSync(
-        "bash",
-        [
-          "-c",
-          'pnpm exec "$@"',
-          "gate-focused",
-          runner,
-          runner === "vitest" ? "run" : "test",
-          "--config",
-          config.replaceAll("\\", "/"),
-          runner === "vitest" ? "--allowOnly=false" : "--forbid-only",
-        ],
-        {
-          encoding: "utf8",
-          timeout: 40_000,
-        },
-      );
-      expect(result.status, result.error?.message ?? result.stdout + result.stderr).toBe(1);
-      expect(result.stdout + result.stderr).toMatch(/\.only/);
-    } finally {
-      rmSync(fixture, { recursive: true, force: true });
-    }
-  },
-);
-
-it("queues gates sharing Git metadata and releases the lock after a failure", { timeout: 40_000 }, async () => {
-  const output = resolve("tests/.output");
-  mkdirSync(output, { recursive: true });
-  const fixture = mkdtempSync(join(output, "gate-queue-"));
-  const envFile = join(fixture, "commands.sh");
-  writeFileSync(envFile, commands);
-  const barrier = join(fixture, "barrier.cjs");
-  writeFileSync(
-    barrier,
-    `const fs = require("node:fs"), path = require("node:path");
-const root = process.env.GATE_PROBE_DIR, id = process.env.GATE_PROBE_INSTANCE;
-const release = path.join(root, "release");
-fs.appendFileSync(path.join(root, "events"), id + " enter\\n");
-fs.writeFileSync(path.join(root, id + "-entered"), "");
-let left = false;
-const leave = () => {
-  if (left) return;
-  left = true;
-  fs.appendFileSync(path.join(root, "events"), id + " leave\\n");
-};
-if (id === "one" && !fs.existsSync(release)) {
-  const watcher = fs.watch(root, () => {
-    if (fs.existsSync(release)) { watcher.close(); leave(); }
-  });
-  if (fs.existsSync(release)) { watcher.close(); leave(); }
-} else leave();
-`,
-  );
-  const arrivals = ["one", "two"].map((id) => {
-    let close = () => {};
-    const ready = new Promise<void>((done) => {
-      const observe = watch(fixture, () => {
-        if (existsSync(join(fixture, id + "-entered"))) {
-          observe.close();
-          done();
-        }
-      });
-      close = () => observe.close();
-    });
-    return { ready, close };
-  });
-  const start = (id: string, mode: string) => {
-    const child = spawn("bash", ["scripts/verify-push.sh", "6360"], {
-      env: {
-        ...process.env,
-        BASH_ENV: envFile.replaceAll("\\", "/"),
-        LD_GATE_REENTRY: "",
-        GATE_PROBE_DIR: relative(process.cwd(), fixture).replaceAll("\\", "/"),
-        GATE_PROBE_MODE: mode,
-        GATE_PROBE_INSTANCE: id,
-        GATE_PROBE_BARRIER: barrier.replaceAll("\\", "/"),
-      },
-    });
-    let out = "";
-    let err = "";
-    child.stdout.on("data", (chunk: Buffer) => (out += chunk.toString()));
-    child.stderr.on("data", (chunk: Buffer) => (err += chunk.toString()));
-    const done = new Promise<number | null>((resolve, reject) => {
-      child.on("error", reject);
-      child.on("close", resolve);
-    });
-    const waiting = new Promise<"waiting">((resolve) => {
-      child.stdout.on("data", () => {
-        if (out.includes("Waiting for another full local gate")) resolve("waiting");
-      });
-    });
-    return { done, waiting, output: () => out + err };
-  };
-  const gates: ReturnType<typeof start>[] = [];
-  try {
-    const first = start("one", "unit");
-    gates.push(first);
-    await Promise.race([
-      arrivals[0].ready,
-      first.done.then(() => {
-        throw new Error(`First gate exited before its barrier: ${first.output()}`);
-      }),
-    ]);
-    const second = start("two", "success");
-    gates.push(second);
-    const observed = await Promise.race([
-      second.waiting,
-      arrivals[1].ready.then(() => "overlapped"),
-      second.done.then(() => `exited: ${second.output()}`),
-    ]);
-    expect(observed).toBe("waiting");
-    expect(existsSync(join(fixture, "two-entered"))).toBe(false);
-    writeFileSync(join(fixture, "release"), "");
-    expect(await Promise.all(gates.map((gate) => gate.done)), gates.map((gate) => gate.output()).join("\n")).toEqual([
-      1, 0,
-    ]);
-    expect(readFileSync(join(fixture, "events"), "utf8").trim().split(/\r?\n/)).toEqual([
-      "one enter",
-      "one leave",
-      "two enter",
-      "two leave",
-    ]);
-  } finally {
-    writeFileSync(join(fixture, "release"), "");
-    await Promise.allSettled(gates.map((gate) => gate.done));
-    arrivals.forEach((arrival) => arrival.close());
-    rmSync(fixture, { recursive: true, force: true });
+    log.mockRestore();
+    error.mockRestore();
+    rmSync(dir, { recursive: true, force: true });
   }
 });
