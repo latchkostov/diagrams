@@ -6,7 +6,6 @@ import {
   layerCount,
   layerRatio,
   LIVE_FLIPS_PER_100_EDGES_LIMIT,
-  LIVE_LAYER_RATIO_LIMIT,
   LIVE_SETTLE_FRAMES,
   LIVE_TRANSITIONS_PER_100_LIMIT,
   per100,
@@ -22,19 +21,13 @@ const at = (gaps: readonly number[], start = 0) => {
 };
 
 describe("live benchmark parsing and gates (no browser)", () => {
-  it("counts LayerTree payloads; an empty one is no reading, and a missing side fails the ratio gate", () => {
+  it("counts LayerTree payloads; an empty one is no reading, and a missing side is no ratio", () => {
     expect(layerCount({ layers: [{}, {}, {}] })).toBe(3);
     expect(layerCount({})).toBeNull();
     expect(layerCount({ layers: [] })).toBeNull();
-    expect(gate("<=", layerRatio(0, 100), LIVE_LAYER_RATIO_LIMIT).pass).toBe(false);
-    expect(gate("<=", layerRatio(100, 0), LIVE_LAYER_RATIO_LIMIT).pass).toBe(false);
-  });
-
-  it("fails the measured layer explosion (993 at x1, 3,700 to 4,900 at x10) and passes bounded growth", () => {
-    for (const peak of [3_700, 4_900])
-      expect(gate("<=", layerRatio(993, peak), LIVE_LAYER_RATIO_LIMIT).pass).toBe(false);
-    expect(gate("<=", layerRatio(993, 1_100), LIVE_LAYER_RATIO_LIMIT).pass).toBe(true);
-    expect(gate("<=", layerRatio(100, 200), LIVE_LAYER_RATIO_LIMIT).pass).toBe(true);
+    expect(layerRatio(598, 4_866)).toBeCloseTo(8.14, 2);
+    expect(layerRatio(0, 100)).toBe(Infinity);
+    expect(layerRatio(100, 0)).toBe(Infinity);
   });
 
   it("reads the slow phase against the steady frame, needing consecutive good frames", () => {

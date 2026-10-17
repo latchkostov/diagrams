@@ -16,10 +16,9 @@
 // frames per second, the longest animation frame, and the dots drawn.
 //
 // Gates (counts, no milliseconds): on a large diagram (decorations.ts, LARGE_LIVE_ELEMENTS), running CSS transitions
-// under LIVE_TRANSITIONS_PER_100_LIMIT per 100 nodes and edges, the layers at x10 within
-// LIVE_LAYER_RATIO_LIMIT times those at x1, and edges flipping between active and idle per publish under
-// LIVE_FLIPS_PER_100_EDGES_LIMIT per 100 edges (that one in `live gates` only). `live gates` holds them in
-// `pnpm bench:gates`.
+// under LIVE_TRANSITIONS_PER_100_LIMIT per 100 nodes and edges, and edges flipping between active and idle per publish
+// under LIVE_FLIPS_PER_100_EDGES_LIMIT per 100 edges (that one in `live gates` only). `live gates` holds them in
+// `pnpm bench:gates`. Composited layers (DevTools LayerTree) are reported, not gated.
 //
 // Memory: the JS heap after load with live on, and after a minute of playback (full mode only).
 
@@ -29,7 +28,6 @@ import {
   layerCount,
   layerRatio,
   LIVE_FLIPS_PER_100_EDGES_LIMIT,
-  LIVE_LAYER_RATIO_LIMIT,
   LIVE_TRANSITIONS_PER_100_LIMIT,
   per100,
   slowPhase,
@@ -205,12 +203,9 @@ function gates(
     ...limit(LIVE_TRANSITIONS_PER_100_LIMIT),
     why: "CSS transitions running at x10 per 100 nodes and edges: each is animated on its own",
   });
-  s.count("layerRatioX10", ratio, {
-    w: w.info,
-    detail,
-    ...limit(LIVE_LAYER_RATIO_LIMIT),
-    why: "composited layers at x10 against x1, same workload: per-element fades multiplied them",
-  });
+  // Report-only: the layers follow how far the simulation has got (each pulsing node is one), and holding the pulses
+  // still cut them by five while making frames twice as slow (docs/BENCHMARKS.md § Live view on large diagrams).
+  s.count("layerRatioX10", ratio, { w: w.info, detail });
   s.count("edgeFlipsPer100EdgesPerPublish", churn, {
     w: w.info,
     detail,

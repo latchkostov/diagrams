@@ -1,8 +1,6 @@
 // Live view's benchmark arithmetic (tests/bench/ui/live.bench.ts, docs/BENCHMARKS.md § Live view on large diagrams):
 // pure, so `pnpm test` checks the parsing and the gates without a browser.
 
-/** Layers at Traffic × 10 may be at most this many times those at × 1, for the same workload and renderer. */
-export const LIVE_LAYER_RATIO_LIMIT = 2;
 /**
  * Edges that change between active and idle per publish, per 100 edges, at most (× 10, the same window). Without the
  * hold (decorations.ts, EDGE_HOLD) a busy edge flips on most publishes.
@@ -25,7 +23,7 @@ export function layerCount(event: { layers?: readonly unknown[] }): number | nul
   return event.layers?.length ? event.layers.length : null;
 }
 
-/** Peak over base; a missing (zero or absent) side fails any `<=` gate. */
+/** Peak over base (reported, not gated); a missing (zero or absent) side reads as Infinity. */
 export function layerRatio(base: number, peak: number): number {
   return base > 0 && peak > 0 ? peak / base : Infinity;
 }
