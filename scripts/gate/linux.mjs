@@ -6,9 +6,9 @@ import console from "node:console";
 import { command, required } from "./commands.mjs";
 import { imageName } from "./doctor.mjs";
 
-export async function linuxRun(root, config, changed, directory, sha) {
+export async function linuxRun(root, config, changed, directory, sha, execute = { command, required }) {
   const image = imageName(root);
-  const platform = await command("docker", ["info", "--format", "{{.OSType}}-{{.Architecture}}"]);
+  const platform = await execute.command("docker", ["info", "--format", "{{.OSType}}-{{.Architecture}}"]);
   if (platform.code) throw new Error("Docker is unavailable");
   const hash = createHash("sha256")
     .update(readFileSync(join(root, "pnpm-lock.yaml")))
@@ -17,6 +17,8 @@ export async function linuxRun(root, config, changed, directory, sha) {
   const modules = `livediagrams-gate-modules-${platform.text.trim()}-${hash}`;
   const name = `ld-gate-${process.pid}`;
   const source = `${name}-source`;
+  const reports = `${name}-reports`;
+  const profiles = `${name}-profiles`;
   // Full gates export exactly HEAD, with no untracked/ignored host content. Quick
   // gates include working edits. GATE_LINUX_SOURCE=bind exists only for measurement.
   const archive = config.command === "full" && process.env.GATE_LINUX_SOURCE !== "bind";
@@ -25,10 +27,10 @@ export async function linuxRun(root, config, changed, directory, sha) {
   try {
     if (archive) {
       const tar = join(directory, "head.tar");
-      await required("git", ["archive", "--format=tar", `--output=${tar}`, sha], { cwd: root });
-      await required("docker", ["volume", "create", source]);
+      await execute.required("git", ["archive", "--format=tar", `--output=${tar}`, sha], { cwd: root });
+      await execute.required("docker", ["volume", "create", source]);
       const unpack = `${name}-unpack`;
-      await required("docker", [
+      await execute.required("docker", [
         "create",
         "--name",
         unpack,
@@ -42,10 +44,10 @@ export async function linuxRun(root, config, changed, directory, sha) {
         "/work",
       ]);
       try {
-        await required("docker", ["cp", tar, `${unpack}:/head.tar`]);
-        await required("docker", ["start", "--attach", unpack]);
+        await execute.required("docker", ["cp", tar, `${unpack}:/head.tar`]);
+        await execute.required("docker", ["start", "--attach", unpack]);
       } finally {
-        await command("docker", ["rm", "-f", unpack], { cleanup: true });
+        await execute.command("docker", ["rm", "-f", unpack], { cleanup: true });
       }
     }
     const innerConfig = { ...config, linux: false };
@@ -61,7 +63,9 @@ export async function linuxRun(root, config, changed, directory, sha) {
       "-v",
       "livediagrams-gate-pnpm-store:/pnpm-store",
       "-v",
-      `${directory}:${innerDir}`,
+      `${reports}:${innerDir}`,
+      "-v",
+      `${profiles}:/work/tests/.output/tmp`,
       "-w",
       "/work",
       "-e",
@@ -83,18 +87,26 @@ export async function linuxRun(root, config, changed, directory, sha) {
       JSON.stringify({ config: innerConfig, changed, directory: innerDir }),
     ];
     // No shell on either side: Docker receives literal POSIX paths even under MSYS.
-    const result = await command("docker", args, { cwd: root, live: true, log: join(directory, "container.log") });
+    const result = await execute.command("docker", args, {
+      cwd: root,
+      live: true,
+      log: join(directory, "container.log"),
+    });
+    // Chromium tracing writes many small records in parallel. Keep them on Linux,
+    // then cross Desktop/OrbStack's host filesystem boundary once after the run.
+    await execute.required("docker", ["cp", `${name}:${innerDir}/.`, directory]);
     const summary = JSON.parse(readFileSync(join(directory, "summary.json"), "utf8"));
     if (result.code && !summary.failures) summary.failures++;
     return summary;
   } finally {
     for (const folder of ["parity", "parity-results", "coverage"])
-      await command(
+      await execute.command(
         "docker",
         ["cp", `${name}:/work/${folder === "coverage" ? folder : `tests/.output/${folder}`}`, join(directory, folder)],
         { cleanup: true },
       );
-    await command("docker", ["rm", "-f", name], { cleanup: true });
-    if (archive) await command("docker", ["volume", "rm", source], { cleanup: true });
+    await execute.command("docker", ["rm", "-f", name], { cleanup: true });
+    await execute.command("docker", ["volume", "rm", reports, profiles], { cleanup: true });
+    if (archive) await execute.command("docker", ["volume", "rm", source], { cleanup: true });
   }
 }

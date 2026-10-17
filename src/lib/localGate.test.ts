@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join, resolve, win32 } from "node:path";
+import { basename, join, resolve, win32 } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createServer } from "node:net";
 import process from "node:process";
@@ -18,7 +18,8 @@ import {
   workerCount,
 } from "../../scripts/gate/logic.mjs";
 import { acquireLock, pickPorts, probePorts } from "../../scripts/gate/host.mjs";
-import { browserTemp, runSteps } from "../../scripts/gate/run.mjs";
+import { browserTemp, prepareBrowserTemp, runSteps } from "../../scripts/gate/run.mjs";
+import { linuxRun } from "../../scripts/gate/linux.mjs";
 import { installed } from "../../scripts/gate/doctor.mjs";
 import { pnpmCommand } from "../../scripts/gate/commands.mjs";
 
@@ -36,6 +37,62 @@ it("keeps container browser profiles on the source volume and native profiles on
   expect(browserTemp(root, report, true)).toBe(join(root, "tests/.output/tmp"));
   expect(browserTemp(root, report)).toBe(join(report, "tmp"));
 });
+
+it("cleans browser profiles without unlinking a mount root or escaping the repository", () => {
+  mkdirSync("tests/.output", { recursive: true });
+  const dir = mkdtempSync(resolve("tests/.output/gate-temp-"));
+  const removed: string[] = [];
+  try {
+    mkdirSync(join(dir, "tmp"));
+    writeFileSync(join(dir, "tmp/stale"), "profile");
+    expect(prepareBrowserTemp(process.cwd(), dir, false, (path) => removed.push(path))).toBe(join(dir, "tmp"));
+    expect(removed).toEqual([join(dir, "tmp/stale")]);
+    expect(() => prepareBrowserTemp(process.cwd(), resolve("../outside-repo"))).toThrow("inside the repository");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+it.each(["", "bind"])(
+  "copies Linux reports after the run rather than writing them through a host mount (%s)",
+  async (source) => {
+    mkdirSync("tests/.output", { recursive: true });
+    const dir = mkdtempSync(resolve("tests/.output/gate-copy-"));
+    const calls: string[][] = [];
+    vi.stubEnv("GATE_LINUX_SOURCE", source);
+    const execute = async (bin: string, args: string[]) => {
+      calls.push([bin, ...args]);
+      if (args[0] === "info") return { code: 0, text: "linux-test" };
+      if (args[0] === "cp" && args[1].endsWith("/.")) {
+        expect(args[2]).toBe(dir);
+        writeFileSync(
+          join(dir, "summary.json"),
+          JSON.stringify({ rows: [], reports: [], failures: 0, workers: 10, seconds: 0 }),
+        );
+      }
+      return { code: 0, text: "" };
+    };
+    try {
+      const result = await linuxRun(process.cwd(), config(), [], dir, "test-head", {
+        command: execute,
+        required: execute,
+      });
+      expect(result.failures).toBe(0);
+      const run = calls.find((c) => c[0] === "docker" && c[1] === "run");
+      if (!run) throw new Error("No container run");
+      const mounts = run.filter((_, i) => run[i - 1] === "-v");
+      expect(mounts).toContain(`ld-gate-${process.pid}-reports:/work/tests/.output/g/${basename(dir)}`);
+      expect(mounts).toContain(`ld-gate-${process.pid}-profiles:/work/tests/.output/tmp`);
+      expect(mounts.some((mount) => mount.startsWith(`${dir}:`))).toBe(false);
+      expect(
+        calls.some((c) => c[1] === "volume" && c[2] === "rm" && c.includes(`ld-gate-${process.pid}-reports`)),
+      ).toBe(true);
+    } finally {
+      vi.unstubAllEnvs();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  },
+);
 const names = (args: string[] = []) =>
   plan(config(args))
     .flat()
@@ -96,7 +153,8 @@ it.each([
   [32, 64, 12],
   [10, 24, 7],
   [4, 16, 3],
-  [32, 12, 4],
+  [32, 12, 3],
+  [32, 31.2, 10],
   [1, 2, 1],
   [128, 256, 12],
 ])("bounds workers by CPU and RAM (%s, %s GiB)", (cpus, ram, expected) => {

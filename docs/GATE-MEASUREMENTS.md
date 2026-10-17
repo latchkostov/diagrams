@@ -1,8 +1,9 @@
 # Portable gate measurements
 
 Worker count reserves one quarter of available CPU capacity and 4 GiB RAM, then
-allows 2 GiB per browser, capped at 12. A 10-core/24 GiB Mac gets 7 workers;
-a 32-thread/64 GiB PC gets 12. `--workers` permits explicit experiments.
+allows 2.5 GiB per browser including trace buffers, capped at 12. A 10-core/24 GiB Mac gets 7 workers;
+a 32-thread/64 GiB PC gets 12, and this PC's 31.2 GiB Docker VM gets 10.
+`--workers` permits explicit experiments.
 
 ## Windows worker sweep
 
@@ -30,3 +31,16 @@ i18n 2.0, skill 0.9, units 60.0 (8,713 passed, four skipped), build 4.0, size 0.
 parity 82.0 (all 2,196 unchanged), parallel E2E builds 2.9/2.9/2.0/2.0, and
 E2E 428.9. Native and Linux acceptance runs retain their per-step timing tables,
 project counts and total wall time in each run's `tests/.output/g/*/summary.json`.
+
+## Linux resource and input controls
+
+The first archive run at 12 workers took 743.9 seconds (546.4 E2E): 8,715 unit
+tests passed, four were skipped, all 2,196 goldens matched, and E2E had 1,535
+passed / two failed / zero flaky. A Lab trace write returned `ENOMEM`; a checks
+responsiveness sample was 0.168529 CPU seconds against its 0.167952 same-run limit.
+
+Browser profiles and reports now use Linux volumes in both transport modes, with
+reports copied back after execution. The RAM reserve includes trace buffers, giving
+this 31.2 GiB VM ten workers. Responsiveness compares identical text at every phase;
+the 1.5x CPU limit, sample counts and 1,500-node workload are unchanged. Neither
+failure was accepted or hidden with retries, timeout increases or golden updates.

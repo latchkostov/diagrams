@@ -1,5 +1,11 @@
 import type { Config, BrowserCounts } from "./logic.mjs";
 export function browserTemp(root: string, directory: string, container?: boolean): string;
+export function prepareBrowserTemp(
+  root: string,
+  directory: string,
+  container?: boolean,
+  remove?: (path: string, options: { recursive: boolean; force: boolean }) => void,
+): string;
 export interface CommandOptions {
   cwd: string;
   env: Record<string, string>;

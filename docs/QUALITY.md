@@ -72,7 +72,8 @@ engine-strict inside the image. Native parity retains its existing Linux browser
 and untracked host content. Measurements: [gate measurements](GATE-MEASUREMENTS.md).
 
 Native Playwright/Chrome temporary profiles use the run's own directory on the repository drive.
-In Linux they stay beside the source in its volume, while reports use the host mount.
+In Linux profiles and reports use native volumes. Reports are copied back after the run,
+avoiding parallel browser trace writes through the host filesystem mount.
 Short paths under `tests/.output/g/` preserve Windows's file URL path budget. Each step has
 a log; JSON/HTML reports, screenshots and traces persist per repetition. The final timing
 table and `SUMMARY:` line include units, goldens and per-project browser counts.

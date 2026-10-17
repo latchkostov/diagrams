@@ -70,6 +70,10 @@ application branches and pinch events, but cannot emulate native text editing.
   that packet and advance the fake clock by the protocol's presence TTL plus its
   heartbeat period. The test checks the real expiry fallback rather than expecting
   a guaranteed disconnect within a real-time assertion window.
+- Responsiveness phases reset to identical input text before measuring. Appending
+  through all phases made every running sample use later/longer text than its held
+  baseline. Both tests retain the 1,500-node workload, sample counts, worker activity
+  checks and 1.5x same-run CPU limit.
 
 Deliberate regressions caught the removed modifier rule, missing Mac label pinning,
 lagging-clock sampling, a disabled HEAD guard, quadratic Terraform scanning, and the

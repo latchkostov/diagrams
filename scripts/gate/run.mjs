@@ -1,24 +1,33 @@
 import os from "node:os";
 import console from "node:console";
-import { mkdirSync, readFileSync, writeFileSync, rmSync, existsSync, cpSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { mkdirSync, readFileSync, writeFileSync, rmSync, readdirSync, existsSync, cpSync } from "node:fs";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { performance } from "node:perf_hooks";
 import { pnpm } from "./commands.mjs";
 import { plan, playwrightCounts, workerCount } from "./logic.mjs";
 
-// In Linux the run reports are a host bind mount, while /work can be a fast source volume.
-// Keep Chrome's high-churn profiles beside that source; only reports cross the VM boundary.
+// Linux reports are copied home after the run. Keep Chrome's high-churn profiles
+// outside that copy tree, in their own native volume at this repository path.
 export const browserTemp = (root, directory, container = false) =>
   resolve(container ? join(root, "tests/.output/tmp") : join(directory, "tmp"));
+
+export function prepareBrowserTemp(root, directory, container = false, remove = rmSync) {
+  const temp = browserTemp(root, directory, container);
+  const within = relative(root, temp);
+  if (!within || within === ".." || within.startsWith(`..${sep}`) || isAbsolute(within))
+    throw new Error("Browser temporary files must stay inside the repository");
+  mkdirSync(temp, { recursive: true });
+  // The Linux directory is a mount point: clean its contents without unlinking it.
+  for (const entry of readdirSync(temp)) remove(join(temp, entry), { recursive: true, force: true });
+  return temp;
+}
 
 export async function runSteps(root, config, changed, directory, extraEnv = {}, execute = pnpm) {
   const started = performance.now();
   const rows = [];
   const reports = [];
   const workers = config.workers ?? workerCount(os.availableParallelism(), os.totalmem());
-  const temp = browserTemp(root, directory, extraEnv.GATE_CONTAINER === "1");
-  rmSync(temp, { recursive: true, force: true });
-  mkdirSync(temp, { recursive: true });
+  const temp = prepareBrowserTemp(root, directory, extraEnv.GATE_CONTAINER === "1");
   const env = {
     CI: "true",
     E2E_TARGET: "build",

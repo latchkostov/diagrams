@@ -405,6 +405,17 @@ performanceTest("typing a label is as responsive while checks run as with them h
     await holdChecks(page, held);
     // A run left over from the last phase finishes first.
     await expect.poll(async () => (await runStats(page)).started - (await runStats(page)).finished).toBe(0);
+    // Match the baseline's exact input. Appending through all phases made every
+    // running phase later/longer and mixed different text-layout/GC costs.
+    if ((await label.inputValue()) !== LONG) {
+      const due = nextDue();
+      await label.fill(LONG);
+      await label.press(TEXT_END);
+      await due;
+      await expect.poll(async () => (await runStats(page)).started - (await runStats(page)).finished).toBe(0);
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    }
+    expect(await label.inputValue(), "each phase starts with identical text").toBe(LONG);
     const before = await runStats(page);
     const samples: number[] = [];
     for (const ch of text) {
@@ -421,8 +432,8 @@ performanceTest("typing a label is as responsive while checks run as with them h
   const held: number[] = [];
   const running: number[] = [];
   let runs = 0;
-  for (const [i, kind] of ["h", "r", "h", "r", "h", "r"].entries()) {
-    const p = await phase(kind === "h", ` ${kind}${i}xyz`);
+  for (const kind of ["h", "r", "h", "r", "h", "r"]) {
+    const p = await phase(kind === "h", " xyz123");
     if (kind === "h") {
       expect(p.started, "checks held: none ran").toBe(0);
       held.push(...p.samples);
@@ -432,7 +443,7 @@ performanceTest("typing a label is as responsive while checks run as with them h
     }
   }
   await holdChecks(page, false);
-  await expect(label).toHaveValue(`${LONG} h0xyz r1xyz h2xyz r3xyz h4xyz r5xyz`);
+  await expect(label).toHaveValue(`${LONG} xyz123`);
   expect(
     await page.evaluate(() => ({
       ...(window as unknown as { __planning: { reads: number; analyses: number; explanations: number } }).__planning,
