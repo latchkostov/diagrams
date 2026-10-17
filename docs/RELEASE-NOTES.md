@@ -38,6 +38,20 @@
   counts from 1,976 to 2,003, add 27 English fallbacks in the 37 translated catalogs (pseudo-locale
   stays at zero), and add the collaboration-area fingerprint. All other golden outputs are unchanged.
 
+## Resizable Inspector coordinate sweep (#145, 2026-10-16)
+
+- Corrected caption contrast drag coverage after the Inspector opens: select and fit before measuring
+  both endpoints. The second CI trace confirmed a selection pan invalidating the return gesture's
+  screen box, rather than a sheet overlay. Coverage includes 1280×800 and 1440×900 and verifies that
+  the return moves the caption out of the zone without resizing it.
+- Remeasure selection-frame drag geometry after the Inspector reveal, including a remembered wide
+  sheet. Swept canvas/selection specs across Chromium and the development project; the audit and
+  gesture rules are documented in `QUALITY.md`.
+- Kept the Inspector's default width and reserved canvas space. No product output or parity golden
+  changes in this follow-up.
+- Rebased onto master's responsive image export work after it advanced, preserving both documentation
+  histories. Refreshed the agent viewer at plugin 1.1.36, exactly one patch above master's 1.1.35.
+
 ## Linux image export regression workload (#142, 2026-10-16)
 
 - CI run 38983826029 and a two-CPU Playwright Linux container reproduce whole-test timeouts
@@ -82,6 +96,7 @@
 - The production bundle regression passes: collaboration, Yjs and tracker code are absent from every
   production chunk, with image export loading only when used. The scoped UX review finds no new
   controls, wording or chrome; export progress and cancellation retain their existing tests.
+
 ## Resizable Inspector CI follow-up (#145, 2026-10-16)
 
 - Fixed the development-project interaction benchmark's viewport assumption: open the Inspector and
@@ -295,6 +310,7 @@
   regression counts runtime route and member reads at an eighth input and the same 24x limit. Restoring
   per-consumer route scans fails at 1,440,001 reads instead of one; removing shared ID allocation still
   fails the Compose regression. Production behavior and timeouts are unchanged.
+
 ## Resizable Inspector rebase onto Collaboration C0 (#141, 2026-10-16)
 
 - Rebased onto C0, preserving both documentation histories and the union of translation keys. The

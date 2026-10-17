@@ -157,11 +157,41 @@ Selecting a node normally opens the Inspector and pans to keep that selection an
 an unrelated node may then lie outside the narrower pane. A test switching to that node must first fit
 or pan it into view, rather than force a click through the sheet. Keep panel/camera setup outside
 performance measurements.
-The #145 audit covered canvas clicks and drags across the specs and all five configured projects:
-the other `@dev` cases use no node selection, a single target, or synthetic fixtures; `library-regressions`,
-`subpath` and `locked` have no canvas-node clicks, and `internal` selects only its initial target.
-Existing multi-target tests that already fit between selections retain those waits. The drawing-basics
-multi-selection sequence remains reachable after its first selection's pan and passes unchanged.
+The first #145 audit covered selection clicks but missed screen boxes reused across a pointer-up.
+The second CI failure's trace shows the caption measured before the Inspector's selection pan finished;
+the return gesture used that stale box. The sheet occupies its own flex column, rather than overlaying
+the canvas. A screen box is still invalid after that column opens and the camera pans.
+
+For repeated coordinate gestures, open the Inspector and fit all endpoints before measuring, or wait
+for its reveal and pan, then remeasure every endpoint. Locator visibility alone does not prove that a
+coordinate is uncovered. Keep deliberate tests of the deferred reveal on a fake clock; do not disable
+the Inspector globally, force clicks, enlarge the viewport or replace pointer coverage with a nudge.
+
+The follow-up sweep selects whole specs with `mouse.`, `dragTo(`, `boxOf(`, canvas test ids or node,
+annotation, boundary, edge and handle test ids, and runs their `chromium` and `dev` projects against
+`E2E_TARGET=build`, Node 24.22.0 and ports 6400–6404 at the configured CI viewports. The audit includes:
+
+| Interaction                                         | Resolution                                                                                                                               |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Caption drags after selection or Escape             | Open the sheet and fit both endpoints before measuring; cover 1280×800 and 1440×900, a deferred reveal and unchanged caption dimensions. |
+| Alt-drag of a selection frame                       | Wait for the sheet and pan, then remeasure both cards and zoom; cover the default and a remembered wide sheet.                           |
+| Drawing-basics box selections and boundary resizing | Existing reveal/viewport waits and remeasurement remain; intentional back-to-back drags use a fake clock.                                |
+| Flow building and multiple unrelated selections     | The selection helper waits for the reveal; existing fits bring subsequent targets into the narrowed pane.                                |
+| Annotation handles, read-only views and Lab drags   | Handles are measured after selection settles, or no Inspector opens.                                                                     |
+| Development-project interactions                    | The benchmark prepares its pane before measurement; other cases use a single selection or synthetic fixtures.                            |
+| Subpath, locked and internal projects               | Subpath and locked have no canvas-node clicks; internal selects only its initial target, with subsequent actions in menus.               |
+
+No default width or canvas-layout change is needed for these stale-coordinate failures. The UX review
+keeps the reserved canvas space and selection reveal, and checks both compact and CI-sized viewports.
+Temporarily removing the caption preparation reproduces the CI colour failure at 1440px. Reusing the
+old selection-frame boxes after a manual pan and a wide-sheet reveal prevents the copies from being
+created. Restoring the preparation and remeasurement passes both regressions.
+
+The expanded dev sweep also covers the image-clone resource tests brought in from master. After a
+rebase introduces new deep imports, rescan a previous checkout's optimizer cache with `pnpm dev --force`
+before sweeping: its stale dependency list can otherwise reload active test pages on first use.
+The resource tests pass after that rescan with the original Vite configuration; no prebundle override
+or relaxation of the existing `devReloads` fixture is needed.
 
 Run them locally:
 

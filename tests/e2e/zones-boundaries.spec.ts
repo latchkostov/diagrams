@@ -2,7 +2,17 @@ import { nestedBoundariesFixture as nestedFixture } from "../../src/lab/nestedBo
 import { settledCanvas } from "../parity/browser/canvas";
 import { captionContrastFixture } from "../../src/lab/captionContrastFixture";
 import { gotoLab } from "./fixtures";
-import { test, expect, expectNoErrors, gotoCanvas, waitForStableViewport, STORAGE_KEYS, type Page } from "./fixtures";
+import {
+  test,
+  expect,
+  expectNoErrors,
+  gotoCanvas,
+  fitDiagram,
+  pauseClock,
+  waitForStableViewport,
+  STORAGE_KEYS,
+  type Page,
+} from "./fixtures";
 
 /**
  * Where elements are on the diagram (flow coordinates: screen boxes less the view's pan, over its zoom), read in one
@@ -28,6 +38,13 @@ async function boxOf(locator: import("@playwright/test").Locator) {
   const box = await locator.boundingBox();
   if (!box) throw new Error("Missing drag geometry");
   return box;
+}
+
+/** Open the selection's sheet and fit both drag endpoints before measuring screen coordinates. */
+async function prepareCaptionDrag(page: Page) {
+  await page.getByTestId("annotation-caption").click();
+  await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
+  await fitDiagram(page);
 }
 
 const SLUG = "kafka-order-pipeline";
@@ -96,40 +113,59 @@ test("custom caption contrast follows visible boundary and zone fills", async ({
   await page.keyboard.press("Enter");
   await expect.poll(() => caption.evaluate((el) => el.style.getPropertyValue("--ann-text-ink"))).toBe("var(--text)");
   await page.keyboard.press("Escape");
-  await caption.click();
+  await prepareCaptionDrag(page);
   const start = await boxOf(caption);
   const target = await boxOf(page.getByTestId("annotation-zone"));
   await page.mouse.move(start.x + 15, start.y + 15);
   await page.mouse.down();
   await page.mouse.move(target.x + 50, target.y + 100, { steps: 10 });
   await page.mouse.up();
+  const moved = await boxOf(caption);
+  expect(moved.y).toBeGreaterThan(target.y);
+  expect(moved.y + moved.height).toBeLessThan(target.y + target.height);
   await expect.poll(() => caption.evaluate((el) => el.style.getPropertyValue("--ann-text-ink"))).toBe("var(--text)");
   expectNoErrors(consoleErrors);
 });
 
-test("custom caption contrast updates over a zone alone and returns after leaving", async ({ page }) => {
-  await seed(page, captionContrastFixture);
-  const caption = page.getByTestId("annotation-caption");
-  await expect(caption).toHaveCSS("--ann-text-ink", "#707070");
-  const initial = await boxOf(caption);
-  const zone = await boxOf(page.getByTestId("annotation-zone"));
-  await page.mouse.move(initial.x + 15, initial.y + 15);
-  await page.mouse.down();
-  await page.mouse.move(zone.x + 50, zone.y + 100, { steps: 10 });
-  await page.mouse.up();
-  const destination = await boxOf(caption);
-  expect(destination.x).toBeGreaterThan(zone.x);
-  expect(destination.y).toBeGreaterThan(zone.y);
-  expect(destination.y + destination.height).toBeLessThan(zone.y + zone.height);
-  const boundary = await boxOf(page.getByTestId("group-grp-core"));
-  expect(destination.x).toBeGreaterThan(boundary.x + boundary.width);
-  await expect.poll(() => caption.evaluate((el) => el.style.getPropertyValue("--ann-text-ink"))).toBe("var(--text)");
-  await page.mouse.move(destination.x + 15, destination.y + 15);
-  await page.mouse.down();
-  await page.mouse.move(initial.x + 15, initial.y + 15, { steps: 10 });
-  await page.mouse.up();
-  await expect(caption).toHaveCSS("--ann-text-ink", "#707070");
-});
+for (const width of [1280, 1440])
+  test(`custom caption contrast updates over a zone alone and returns after leaving at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: width === 1280 ? 800 : 900 });
+    await page.clock.install();
+    await seed(page, captionContrastFixture);
+    const caption = page.getByTestId("annotation-caption");
+    await expect(caption).toHaveCSS("--ann-text-ink", "#707070");
+    await prepareCaptionDrag(page);
+    await pauseClock(page);
+    const initial = await boxOf(caption);
+    const zone = await boxOf(page.getByTestId("annotation-zone"));
+    await page.mouse.move(initial.x + 15, initial.y + 15);
+    await page.mouse.down();
+    await page.mouse.move(zone.x + 50, zone.y + 100, { steps: 10 });
+    await page.mouse.up();
+    await page.clock.runFor(32);
+    const destination = await boxOf(caption);
+    expect(destination.x).toBeGreaterThan(zone.x);
+    expect(destination.y).toBeGreaterThan(zone.y);
+    expect(destination.y + destination.height).toBeLessThan(zone.y + zone.height);
+    const boundary = await boxOf(page.getByTestId("group-grp-core"));
+    expect(destination.x).toBeGreaterThan(boundary.x + boundary.width);
+    await expect.poll(() => caption.evaluate((el) => el.style.getPropertyValue("--ann-text-ink"))).toBe("var(--text)");
+    // Finish any deferred selection pan between measuring and pressing again. Opening/fitting before
+    // the first drag makes these coordinates safe even when the reveal happens on a later frame.
+    await page.clock.runFor(500);
+    await page.mouse.move(destination.x + 15, destination.y + 15);
+    await page.mouse.down();
+    await page.mouse.move(initial.x + 15, initial.y + 15, { steps: 10 });
+    await page.mouse.up();
+    await page.clock.runFor(32);
+    await expect(caption).toHaveCSS("--ann-text-ink", "#707070");
+    const returned = await boxOf(caption);
+    expect(returned.y).toBeGreaterThan(zone.y + zone.height);
+    expect(returned.width).toBeCloseTo(initial.width, 0);
+    expect(returned.height).toBeCloseTo(initial.height, 0);
+  });
 
 test("unrelated service selection and movement perform no caption measurement", async ({ page }) => {
   await seed(page, captionContrastFixture);
