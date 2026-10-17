@@ -2133,19 +2133,24 @@ function CanvasInner({
   // (or, with none, the diagram's centre) in view with a pan. Inspector reveals use this same handler:
   // two concurrent pans could capture an intermediate animation zoom and make it permanent.
   const dockKey = `${aiDock.open}:${aiDock.open ? Math.round(aiDock.width / 40) : 0}:${inspectorHidden}:${sheetResize}`;
-  const lastDock = useRef(dockKey);
+  const appliedDock = useRef(dockKey);
   useEffect(() => {
-    if (lastDock.current === dockKey) return;
+    if (appliedDock.current === dockKey) return;
     // A connected menu reserves camera space for its outline. Apply the pane policy
     // only after it closes, just like the deferred Inspector selection reveal.
     if (menu) return;
-    lastDock.current = dockKey;
     // Live view refits around its own chrome (the trace card, a side panel): see LiveView.
-    if (presenting || live) return;
+    if (presenting || live) {
+      appliedDock.current = dockKey;
+      return;
+    }
     // After React Flow's ResizeObserver has the new pane size, and once a drag on the dock's edge settles.
     const host = wrapper.current;
     host?.setAttribute("data-pane-pending", "true");
     const id = setTimeout(() => {
+      // Cleanup can cancel this timer when a menu opens. Keep the pane change pending
+      // until it runs, so closing the menu retries it using the current camera owner.
+      appliedDock.current = dockKey;
       host?.removeAttribute("data-pane-pending");
       if (camera.owner === "fit") return overlayFit({ maxZoom: FIT.maxZoom, margin: 40, duration: 250 });
       // Shift+2 already refines against the new pane. A pan here would interrupt

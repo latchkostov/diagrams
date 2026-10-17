@@ -171,6 +171,97 @@ test("viewport readiness waits through the delayed pane change", async ({ page }
   expect(await inPane(page)).toBe(true);
 });
 
+/** Count fit transactions, including a redundant refit that would leave the same transform. */
+async function countPaneFits(page: Page) {
+  await page.getByTestId("canvas-wrap").evaluate((pane) => {
+    pane.setAttribute("data-pane-fits", "0");
+    new MutationObserver((records) => {
+      const fits = records.filter((r, i) => {
+        const next = i + 1 < records.length ? records[i + 1].oldValue : pane.getAttribute("data-fit-pending");
+        return r.oldValue !== "true" && next === "true";
+      }).length;
+      pane.setAttribute("data-pane-fits", String(Number(pane.getAttribute("data-pane-fits")) + fits));
+    }).observe(pane, { attributes: true, attributeFilter: ["data-fit-pending"], attributeOldValue: true });
+  });
+}
+
+for (const dismissal of ["Escape", "Properties"]) {
+  test(`right-click Inspector adjustment survives menu cancellation and ${dismissal} dismissal`, async ({ page }) => {
+    await open(page);
+    await pauseClock(page);
+    await countPaneFits(page);
+    const dismiss = () =>
+      dismissal === "Escape"
+        ? page.keyboard.press("Escape")
+        : page.getByTestId("context-menu-item-node.properties").click();
+    const before = await viewportTransform(page);
+    await page.getByTestId("node-kong").click({ button: "right" });
+    await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
+    await expect(page.getByTestId("context-menu")).toBeVisible();
+    await page.clock.runFor(1500);
+    expect(await viewportTransform(page)).toBe(before);
+    await dismiss();
+    await expect(page.getByTestId("context-menu")).toBeHidden();
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-pending", "true");
+    // Reopen before the deferred adjustment runs: the original right-click's pane
+    // change must survive both the cancellation and this interrupted retry.
+    await page.getByTestId("node-kong").click({ button: "right" });
+    await expect(page.getByTestId("context-menu")).toBeVisible();
+    await page.clock.runFor(1500);
+    expect(await viewportTransform(page)).toBe(before);
+    await dismiss();
+    await expect(page.getByTestId("context-menu")).toBeHidden();
+    await page.clock.runFor(1500);
+    expect(await inPane(page)).toBe(true);
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-fits", "1");
+    // A later menu cycle has no pane work left to replay.
+    const adjusted = await viewportTransform(page);
+    await page.getByTestId("node-kong").click({ button: "right" });
+    await page.keyboard.press("Escape");
+    await page.clock.runFor(1500);
+    expect(await viewportTransform(page)).toBe(adjusted);
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-fits", "1");
+  });
+}
+
+test("menu opened during a pending pane change resumes refit after dismissal", async ({ page }) => {
+  await open(page);
+  await pauseClock(page);
+  await countPaneFits(page);
+  const before = await viewportTransform(page);
+  await page.getByTestId("inspector-toggle").click();
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-pending", "true");
+  await page.getByTestId("node-kong").click({ button: "right" });
+  await expect(page.getByTestId("context-menu")).toBeVisible();
+  await page.clock.runFor(1500);
+  expect(await viewportTransform(page)).toBe(before);
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-fits", "0");
+  await page.keyboard.press("Escape");
+  await page.clock.runFor(1500);
+  expect(await inPane(page)).toBe(true);
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-fits", "1");
+});
+
+test("a menu-delayed pane adjustment follows a later manual camera owner", async ({ page }) => {
+  await open(page);
+  await pauseClock(page);
+  await countPaneFits(page);
+  await page.getByTestId("inspector-toggle").click();
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-pending", "true");
+  await page.getByTestId("node-kong").click({ button: "right" });
+  await expect(page.getByTestId("context-menu")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-pending", "true");
+  // The pending work was created under Fit ownership. A keyboard camera command
+  // before its retry executes must choose the manual reveal policy instead.
+  await page.getByTestId("canvas-wrap").focus();
+  await page.keyboard.press("Shift+Digit0");
+  await page.clock.runFor(1500);
+  expect(await zoom(page)).toBe(1);
+  expect(await inPane(page, ["kong"])).toBe(true);
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-fits", "0");
+});
+
 for (const live of [false, true])
   test(`resizing a manually zoomed canvas preserves zoom and reveals selection (${live ? "Live" : "edit"})`, async ({
     page,
