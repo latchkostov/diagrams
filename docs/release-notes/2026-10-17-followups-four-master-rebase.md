@@ -31,3 +31,29 @@ Ownership tests reject replacing claim identity with owner-name equality, which 
 fit after a later fit takes ownership. Camera and geometry units passed before that negative control;
 the original implementation was restored afterward. The final camera/geometry run passes all 103 tests
 with no type errors, and the final focused production run passes all 52 browser cases with zero flaky cases.
+
+## Full-suite follow-ups
+
+The first Linux full gate passed units (8,886 passed, four skipped), build, size and all 2,196 parity
+goldens, but failed ten of 1,565 browser cases. The other four browser projects passed completely.
+
+- A node drag now claims manual ownership as well as cancelling refinement. Without that handoff,
+  opening the Inspector on the dropped copy could zoom the diagram and reconnect the fit observer.
+  The Alt-drag displacement and idle-observer assertions are retained.
+- Annotation size edits, reconnect drags and text-position baselines wait for the selected Inspector
+  pane before using geometry. Text-position baselines also wait for measured fit refinement. The
+  pointer-text case opens its pane and explicitly selects 100% zoom before measuring, retaining its
+  pixel thresholds. The resize-limit case waits for persisted width instead of a timed sleep.
+- The HTML export test observes the success notification at download time, before saving and reading
+  the file. The failed Linux trace spent about 22 seconds in those file operations before checking a
+  toast that had already expired. A fake-clock check expires the observed toast before file saving,
+  so completion of file I/O cannot determine whether the notification assertion passes.
+
+The six affected whole production browser specs pass all 116 cases locally after the corrections,
+with zero failures or flaky cases. No geometry assertion, hit-test, persistence limit or golden is removed.
+Temporarily restoring the old drag/setup behavior and moving the toast check after its fake-clock expiry
+reproduces all ten failures (106 passed); the corrected files were restored afterward. The complete HTML
+export spec also passes three Linux repetitions: 39 passed, zero failed or flaky.
+The combined Linux run passed 167 of 168 cases and exposed the same unfinished-fit baseline in the
+remaining inspector text-growth case. Its baseline now waits for refinement too. The complete
+text-polish spec then passed three Linux repetitions: 27 passed, zero failed or flaky.

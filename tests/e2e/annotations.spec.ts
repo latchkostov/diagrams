@@ -10,6 +10,9 @@ import {
   expectNoErrors,
   STORAGE_KEYS,
   waitForStableBox,
+  waitForSelectionSettled,
+  waitForStableViewport,
+  savedDiagram,
   emptyCanvasPoint,
 } from "./fixtures";
 
@@ -111,6 +114,7 @@ test.describe("annotations", () => {
       });
       await gotoCanvas(page, SLUG);
       await annotation(page, "shape").click();
+      await waitForSelectionSettled(page);
       await page.getByTestId("inspector-field-width").fill("19990");
       await page.getByTestId("inspector-field-width").press("Enter");
       if (control === "top-left") {
@@ -147,7 +151,9 @@ test.describe("annotations", () => {
         await expect
           .poll(() => annotation(page, "shape").evaluate((el) => el.parentElement?.style.height))
           .toBe("20000px");
-      await page.waitForTimeout(700);
+      await expect
+        .poll(async () => (await savedDiagram(page)).annotations?.find((a) => a.id === "shape")?.width)
+        .toBe(20000);
       await page.reload();
       await expect(annotation(page, "shape")).toBeAttached();
       await expect.poll(width).toBe("20000px");
@@ -419,6 +425,11 @@ test.describe("annotations", () => {
   test("T adds text at the pointer; double-click edits it, multi-line", async ({ page, consoleErrors }) => {
     await gotoCanvas(page, SLUG);
     await expect(page.getByTestId("node-payments")).toBeVisible();
+    // Settle the pane before measuring pointer coordinates; adding text selects it.
+    await page.getByTestId("inspector-toggle").click();
+    await page.getByTestId("canvas-wrap").focus();
+    await page.keyboard.press("Shift+Digit0");
+    await waitForStableViewport(page);
     const wrap = await box(page.getByTestId("canvas-wrap"));
     // Left of centre, but clear of the diagram card (top left, 380 px wide) at any canvas width.
     const spot = await emptySpot(page, -150);

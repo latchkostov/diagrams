@@ -1,7 +1,16 @@
 import { TEXT_END } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, gotoGallery, gotoLab, waitForStableBox, emptyCanvasPoint } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  gotoGallery,
+  gotoLab,
+  waitForStableBox,
+  waitForSelectionSettled,
+  emptyCanvasPoint,
+} from "./fixtures";
 
 // UX gate 4 follow-ups (docs/DESIGN-REVIEW.md, round 4, "P2 moved to the backlog"). Selectors are
 // data-testid only.
@@ -172,6 +181,10 @@ test.describe("round 4 polish", () => {
     });
     const text = page.getByTestId("annotation-text-1");
     const edge = page.getByTestId("edge-ab");
+    await text.click();
+    await waitForSelectionSettled(page);
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-fit-pending", "false");
+    await waitForStableBox(text);
     const overlaps = (p: Box, q: Box) =>
       p.x < q.x + q.width && q.x < p.x + p.width && p.y < q.y + q.height && q.y < p.y + p.height;
     expect(overlaps(await box(text), await box(edge))).toBe(false);
@@ -206,6 +219,8 @@ test.describe("round 4 polish", () => {
     await waitForStableBox(text);
     await text.click();
     // Selecting opens the inspector, which may move the view: measure where the text settles.
+    await waitForSelectionSettled(page);
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-fit-pending", "false");
     await waitForStableBox(text);
     const placed = await box(text);
     await page.getByTestId("inspector-field-text").fill("Caption\nwith a second line\nand a third");
@@ -226,6 +241,9 @@ test.describe("round 4 polish", () => {
     await text.click();
     const field = page.getByTestId("inspector-field-text");
     await expect(field).toHaveValue("One line");
+    await waitForSelectionSettled(page);
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-fit-pending", "false");
+    await waitForStableBox(text);
     const before = await box(text);
     await field.fill("One line\nTwo lines\nThree lines\nAnd a fourth that is long enough to wrap in the box");
     await expect.poll(async () => (await box(text)).height).toBeGreaterThan(before.height * 3);

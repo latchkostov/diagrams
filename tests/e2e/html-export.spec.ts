@@ -9,6 +9,7 @@ import {
   publicExamples,
   STORAGE_KEYS,
   waitForHtmlTemplate,
+  pauseClock,
 } from "./fixtures";
 import { expectPlaying, filePayloadText, hostPage, KAFKA, watchedPage } from "./html-viewer";
 import { deflateRaw, textToBytes } from "../../src/interop/codec";
@@ -33,9 +34,13 @@ async function openHtmlExport(page: Page) {
   await template;
 }
 
-async function download(page: Page): Promise<{ download: Download; path: string; html: string }> {
+async function download(
+  page: Page,
+  beforeSave?: () => Promise<void>,
+): Promise<{ download: Download; path: string; html: string }> {
   await waitForHtmlTemplate(page);
   const [file] = await Promise.all([page.waitForEvent("download"), page.getByTestId("html-export-download").click()]);
+  await beforeSave?.();
   const path = test.info().outputPath(file.suggestedFilename());
   await file.saveAs(path);
   return { download: file, path, html: readFileSync(path, "utf8") };
@@ -202,6 +207,7 @@ test.describe("Interactive HTML export", () => {
     consoleErrors,
   }) => {
     test.setTimeout(90_000);
+    await page.clock.install();
     await gotoCanvas(page, KAFKA);
     await openHtmlExport(page);
     await expect(page.getByTestId("html-export-anyone")).toContainText(ANYONE);
@@ -209,9 +215,19 @@ test.describe("Interactive HTML export", () => {
     // Options: a banner; the rest stays as it is (both simulations, the first plays).
     await page.getByTestId("html-export-options-toggle").click();
     await page.getByTestId("html-export-banner").fill(BANNER);
-    const { download: file, path, html } = await download(page);
+    const {
+      download: file,
+      path,
+      html,
+    } = await download(page, async () => {
+      // Saving the file can outlive the notification; observe it at download time.
+      await expect(page.getByTestId("toast").last()).toContainText("Anyone who has it can open it");
+      await pauseClock(page);
+      await page.clock.fastForward(60_000);
+      await expect(page.getByTestId("toast")).toHaveCount(0);
+      await page.clock.resume();
+    });
     expect(file.suggestedFilename()).toBe("Kafka order pipeline.html");
-    await expect(page.getByTestId("toast").last()).toContainText("Anyone who has it can open it");
 
     // One file: the viewer, the diagram, and only the icons it uses.
     expect(html).toContain('<meta http-equiv="Content-Security-Policy" content="default-src \'none\'');

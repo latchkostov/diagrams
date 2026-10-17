@@ -1601,6 +1601,7 @@ function CanvasInner({
       beginGesture();
       dragActive.current = true;
       interruptFit();
+      camera.claim("manual");
       showingAll.current = false;
       setMenu(null);
       hideTip();
@@ -1620,7 +1621,7 @@ function CanvasInner({
       guides.start(e, dragged, altCopies.current);
       if (editGestures) watchMembership(dragged, altCopies.current);
     },
-    [hideTip, editGestures, editor, guides, store, watchInsert, watchMembership, interruptFit, beginGesture],
+    [hideTip, editGestures, editor, guides, store, watchInsert, watchMembership, interruptFit, beginGesture, camera],
   );
   const onNodeDragStop: OnNodeDrag<FlowNode> = useCallback(
     (e, _node, dragged) => {
