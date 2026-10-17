@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, expectNoErrors, gotoLive } from "./fixtures";
+import { test, expect, expectNoErrors, gotoLive, pauseClock } from "./fixtures";
 
 // Record video: the live view's "⋯ › Record video…" and canvas right-click. Real share prompts can't
 // be automated, so getDisplayMedia is stubbed with a canvas stream (captureStream) and, in most
@@ -315,7 +315,7 @@ test.describe("record video", () => {
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     // A paused clock holds the two frames between the countdown's end and the recorder's start.
     await page.clock.install();
-    await page.clock.pauseAt(new Date(Date.now() + 1000));
+    await pauseClock(page);
     await openRecord(page);
     await page.getByTestId("record-start").click();
     const countdown = page.getByTestId("record-countdown");

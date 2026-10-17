@@ -179,7 +179,7 @@ test("autosaves refresh same-tab title, node count and palette after navigation"
   await page.getByTestId("example-picker").click();
   await expect(page.getByTestId(`picker-option-${a}`)).toHaveText("Fresh title");
   await page.keyboard.press("Escape");
-  await page.keyboard.press("Control+k");
+  await page.keyboard.press("ControlOrMeta+k");
   await page.getByTestId("command-input").fill("Fresh title");
   await expect(page.getByTestId(`command-item-diagram:${a}`)).toHaveText(/Fresh title/);
   await page.keyboard.press("Escape");

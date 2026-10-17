@@ -8,7 +8,7 @@ import { test, expect, gotoCanvas, expectNoErrors, fitDiagram, waitForStableView
 
 const SLUG = "kafka-order-pipeline";
 const KEY = STORAGE_KEYS.autosavePrefix + SLUG;
-const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const MOD = "ControlOrMeta";
 /** Nodes, not their tooltip or inline editor. */
 const NODES = /^node-(?!tooltip$|editor)/;
 
@@ -546,13 +546,17 @@ test.describe("keyboard selection between nodes (D14)", () => {
   test("Ctrl+Alt+arrows go to the nearest node that way; Ctrl+Alt+] and [ to its edges", async ({ page }) => {
     await seed(page);
     await page.getByTestId("node-api").click();
+    // eslint-disable-next-line no-restricted-syntax -- Literal Ctrl+Alt navigates the canvas on every OS (including macOS).
     await page.keyboard.press("Control+Alt+ArrowDown");
     await expect.poll(() => selectedIds(page)).toEqual(["node-ledger"]);
     await expect(announced(page)).toContainText("Ledger");
+    // eslint-disable-next-line no-restricted-syntax -- Literal Ctrl+Alt navigates the canvas on every OS (including macOS).
     await page.keyboard.press("Control+Alt+ArrowUp");
+    // eslint-disable-next-line no-restricted-syntax -- Literal Ctrl+Alt navigates the canvas on every OS (including macOS).
     await page.keyboard.press("Control+Alt+ArrowRight");
     await expect.poll(() => selectedIds(page)).toEqual(["node-worker"]);
     // Nothing above: it says so, and the selection stays.
+    // eslint-disable-next-line no-restricted-syntax -- Literal Ctrl+Alt navigates the canvas on every OS (including macOS).
     await page.keyboard.press("Control+Alt+ArrowUp");
     await expect(announced(page)).toHaveText("Nothing above.");
     await expect.poll(() => selectedIds(page)).toEqual(["node-worker"]);
@@ -561,20 +565,25 @@ test.describe("keyboard selection between nodes (D14)", () => {
     await page.keyboard.press("ArrowRight");
     await expect.poll(async () => (await box(page.getByTestId("node-worker"))).x).toBeGreaterThan(before.x);
     // The worker's outgoing edge; from it, the incoming edges of where it goes.
+    // eslint-disable-next-line no-restricted-syntax -- Literal Ctrl+Alt navigates the canvas on every OS (including macOS).
     await page.keyboard.press("Control+Alt+BracketRight");
     await expect.poll(() => selectedIds(page)).toEqual(["edge-w-l"]);
     await expect(announced(page)).toContainText("Payment worker to Ledger");
     await expect(announced(page)).toContainText("Outgoing 1 of 1");
+    // eslint-disable-next-line no-restricted-syntax -- Literal Ctrl+Alt navigates the canvas on every OS (including macOS).
     await page.keyboard.press("Control+Alt+BracketLeft");
     await expect(announced(page)).toContainText("Incoming 1 of 1");
     // From the API, its two outgoing edges in turn.
     await page.getByTestId("node-api").click();
+    // eslint-disable-next-line no-restricted-syntax -- Literal Ctrl+Alt navigates the canvas on every OS (including macOS).
     await page.keyboard.press("Control+Alt+BracketRight");
     await expect(announced(page)).toContainText("Outgoing 1 of 2");
+    // eslint-disable-next-line no-restricted-syntax -- Literal Ctrl+Alt navigates the canvas on every OS (including macOS).
     await page.keyboard.press("Control+Alt+BracketRight");
     await expect(announced(page)).toContainText("Outgoing 2 of 2");
     // A node with no incoming edges says so.
     await page.getByTestId("node-api").click();
+    // eslint-disable-next-line no-restricted-syntax -- Literal Ctrl+Alt navigates the canvas on every OS (including macOS).
     await page.keyboard.press("Control+Alt+BracketLeft");
     await expect(announced(page)).toHaveText("Orders API has no incoming edges.");
   });
@@ -646,6 +655,7 @@ test.describe("review follow-ups", () => {
         (els) => els.filter((el) => el.closest(".react-flow__node")?.getAttribute("tabindex") === "0").length,
       );
     expect(stops).toBe(1);
+    // eslint-disable-next-line no-restricted-syntax -- Literal Ctrl+Alt navigates the canvas on every OS (including macOS).
     await page.keyboard.press("Control+Alt+ArrowRight");
     await expect(page.getByTestId("canvas-announce")).toContainText("Alpha, boundary, 0 nodes");
     await page.keyboard.press("Tab");

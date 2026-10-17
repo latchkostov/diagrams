@@ -5,7 +5,7 @@ import { test, expect, gotoCanvas, gotoGallery, expectNoErrors, fitDiagram, wait
 // (ids from src/examples/kafka-order-pipeline.json).
 
 const SLUG = "kafka-order-pipeline";
-const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const MOD = "ControlOrMeta";
 
 const palette = (page: Page) => page.getByTestId("command-palette");
 const input = (page: Page) => page.getByTestId("command-input");
@@ -256,10 +256,12 @@ test.describe("command palette", () => {
     await expect(item(page, "action:canvas.export")).toHaveCount(0);
     await expect(items(page).first()).toHaveAttribute("aria-selected", "true");
     // The second Enter runs a leaf instead of repeatedly selecting the parent.
-    await page.keyboard.press("Enter");
+    // Use the native file leaf: image rendering/cancellation has its own full-size suite.
+    await input(page).fill("Diagram file");
+    await expect(item(page, "action:export:json")).toHaveAttribute("aria-selected", "true");
+    const [download] = await Promise.all([page.waitForEvent("download"), page.keyboard.press("Enter")]);
+    expect(await download.failure()).toBeNull();
     await expect(palette(page)).toHaveCount(0);
-    // The leaf is an image export: it holds the page's input until it's done (its toast stops being busy).
-    await expect(page.locator('[data-testid="toast"][data-kind="busy"]')).toHaveCount(0);
     await openPalette(page);
 
     await input(page).fill("zzzzqqq");

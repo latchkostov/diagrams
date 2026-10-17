@@ -9,6 +9,7 @@ import {
   pageLoadTimeout,
   waitForStableBox,
   waitForStableViewport,
+  waitForSelectionSettled,
   fitDiagram,
 } from "./fixtures";
 import en from "../../src/i18n/en";
@@ -328,8 +329,8 @@ for (const code of ["de", "ar", "en-XA"]) {
       // A boundary named by the person stays as written while its menu is translated.
       await fitDiagram(page);
       await page.getByTestId("node-shopper").click();
-      await page.getByTestId("node-gateway").click({ modifiers: ["Control"] });
-      await page.keyboard.press("Control+g");
+      await page.getByTestId("node-gateway").click({ modifiers: ["ControlOrMeta"] });
+      await page.keyboard.press("ControlOrMeta+g");
       const boundaryName = page.getByTestId("inspector-field-label");
       await expect(boundaryName).toBeFocused();
       await boundaryName.fill("i18n boundary");
@@ -348,7 +349,7 @@ for (const code of ["de", "ar", "en-XA"]) {
       await fitDiagram(page);
       await page.getByTestId("node-payments").click();
       await canvas.focus();
-      await page.keyboard.press("Control+k");
+      await page.keyboard.press("ControlOrMeta+k");
       await expect(page.getByTestId("command-palette")).toBeVisible();
       await expect(page.getByTestId("command-item-action:node.rename")).toContainText(words("chrome.renameNode"));
       await expectNothingCut(page.getByTestId("command-palette"), `${code}: palette`);
@@ -383,7 +384,7 @@ for (const code of ["de", "ar", "en-XA"]) {
       await page.getByTestId("context-menu-item-item.delete").click();
       await expect(page.getByTestId("node-payments")).toHaveCount(0);
       await page.getByTestId("canvas-wrap").focus();
-      await page.keyboard.press("Control+z");
+      await page.keyboard.press("ControlOrMeta+z");
       await expect(page.getByTestId("node-payments")).toBeVisible();
       await expect(page.getByTestId("node-payments")).toContainText(name);
       await expect(page.getByTestId("canvas-announce")).toHaveText(
@@ -598,7 +599,7 @@ for (const outcome of ["pending", "failed"]) {
       await page.getByTestId("context-menu-item-item.duplicate").click();
       await expect.poll(() => nodeCount(page)).toBe(before + 1);
       await page.getByTestId("canvas-wrap").focus();
-      await page.keyboard.press("Control+k");
+      await page.keyboard.press("ControlOrMeta+k");
       await page.getByTestId("command-input").fill("Undo");
       await page.getByTestId("command-item-action:canvas.undo").click();
       await expect.poll(() => nodeCount(page)).toBe(before);
@@ -1051,7 +1052,7 @@ test.describe("choosing a language", () => {
     await page.getByTestId("language-option-ar").click();
     await expect(page.getByTestId("language-option-ar")).toHaveAttribute("aria-checked", "true");
     await page.getByTestId("language-done").click();
-    await page.keyboard.press("Control+k");
+    await page.keyboard.press("ControlOrMeta+k");
     await page.getByTestId("command-input").fill(catalog("ar")["importReport.importReport"]);
     await page.getByTestId("command-input").press("Enter");
     await expect(page.getByTestId("import-report-not-drawn-0")).toContainText(catalog("ar")["importDetail.volume"]);
@@ -1108,7 +1109,7 @@ test.describe("choosing a language", () => {
   test("Ctrl+K finds Language… by the English word, from any language", async ({ page, consoleErrors }) => {
     await remember(page, "ja");
     await gotoStart(page);
-    await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");
+    await page.keyboard.press("ControlOrMeta+k");
     await expect(page.getByTestId("command-palette")).toBeVisible();
     await page.keyboard.type("language");
     await page.keyboard.press("Enter");
@@ -1518,7 +1519,7 @@ for (const surface of ["command", "context", "rail", "rail-role", "gallery"] as 
       await page.keyboard.press("Escape");
       if (surface === "command") {
         await page.getByTestId("canvas-wrap").focus();
-        await page.keyboard.press("Control+k");
+        await page.keyboard.press("ControlOrMeta+k");
         await page.getByTestId("command-input").fill(">");
         await expect(page.getByTestId("command-item-action:canvas.fit")).toContainText("Fit view");
       } else if (surface === "context") {
@@ -1569,6 +1570,7 @@ test("RTL quick-add preserves physical placement and expanded chevrons point dow
   await gotoCanvas(page, SLUG);
   await fitDiagram(page);
   await page.getByTestId("node-payments").click();
+  await waitForSelectionSettled(page);
   await page.keyboard.press("Alt+ArrowRight");
   await expect(page.getByTestId("landing-outline")).toBeVisible();
   await waitForStableViewport(page);

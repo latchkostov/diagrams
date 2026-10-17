@@ -72,7 +72,7 @@ test("Copy for AI puts the selection's ids and labels on the clipboard, for the 
   await page.getByTestId("node-payments").click();
   // The inspector opened and narrowed the canvas, keeping Payments in view: its database can be past the edge.
   await fitDiagram(page);
-  await page.getByTestId("node-payment-db").click({ modifiers: [MOD === "Meta" ? "Meta" : "Control"] });
+  await page.getByTestId("node-payment-db").click({ modifiers: ["ControlOrMeta"] });
   await page.getByTestId("node-payment-db").click({ button: "right" });
   await page.getByTestId("context-menu-item-item.copy-for-ai").click();
   await expect(page.getByTestId("toast")).toContainText("Copied 2 elements for your AI");

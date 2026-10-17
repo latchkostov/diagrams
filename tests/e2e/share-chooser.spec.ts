@@ -12,7 +12,7 @@ import { test, expect, gotoCanvas, expectNoErrors, openShareChooser, pageLoadTim
 // Every diagram here is public or synthetic.
 
 const SLUG = "kafka-order-pipeline";
-const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const MOD = "ControlOrMeta";
 const COMPOSE = readFileSync(join(process.cwd(), "tests", "fixtures", "imports", "compose", "docker-compose.yml"));
 
 /** Share…'s rows, in the order they're shown (and walked by the arrow keys). */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatCombo, matches, shortcutFor, type KeyLike } from "./shortcuts";
+import { isMac, formatCombo, matches, shortcutFor, type KeyLike } from "./shortcuts";
 
 const key = (k: string, mods: Partial<KeyLike> = {}): KeyLike => ({
   key: k,
@@ -71,4 +71,13 @@ describe("shortcuts", () => {
     expect(formatCombo("Mod+Shift+Z", true)).toBe("⌘⇧Z");
     expect(formatCombo("Delete", false)).toBe("Del");
   });
+});
+
+it.each([
+  ["MacIntel", true],
+  ["iPad", true],
+  ["Win32", false],
+  ["Linux x86_64", false],
+])("identifies an explicit platform %s", (platform, mac) => {
+  expect(isMac(platform)).toBe(mac);
 });

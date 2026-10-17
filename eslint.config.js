@@ -137,6 +137,19 @@ export default tseslint.config(
     rules: { "local/no-literal-ui-text": "error" },
   },
   {
+    files: ["tests/e2e/**/*.ts"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "Literal[value=/^Control\\+/]",
+          message:
+            "Use ControlOrMeta for the platform's primary modifier. Disable inline with a reason for deliberate literal Ctrl shortcuts.",
+        },
+      ],
+    },
+  },
+  {
     // The static pages' scripts (theme, sign-in redirect, skill page): plain browser scripts.
     files: ["public/**/*.js"],
     languageOptions: { globals: globals.browser, sourceType: "script" },

@@ -433,7 +433,7 @@ test.describe("interop review regressions", () => {
     await saveFile(page);
     await page.getByTestId("inspector-toggle").click();
     await page.getByTestId("inspector-field-title").fill("Latest edits");
-    await page.keyboard.press("Control+s");
+    await page.keyboard.press("ControlOrMeta+s");
     await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(2);
     const state = await page.evaluate(() => window.__fs);
     expect(state.pickerCalls).toBe(1);
@@ -451,7 +451,7 @@ test.describe("interop review regressions", () => {
     });
     await fileItem(page, "export-save-as");
     await expect.poll(() => page.evaluate(() => window.__fs.pickerCalls)).toBe(2);
-    await page.keyboard.press("Control+s");
+    await page.keyboard.press("ControlOrMeta+s");
     await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(2);
     const state = await page.evaluate(() => window.__fs);
     expect(state.pickerCalls).toBe(2);
@@ -466,14 +466,14 @@ test.describe("interop review regressions", () => {
     await page.evaluate(() => {
       window.__fs.rejectWrite = true;
     });
-    await page.keyboard.press("Control+s");
+    await page.keyboard.press("ControlOrMeta+s");
     await expect(page.getByTestId("toast")).toHaveAttribute("data-kind", "error");
     await expect(page.getByTestId("toast")).toContainText("write failed");
     await page.evaluate(() => {
       window.__fs.rejectWrite = false;
       window.__fs.denyPermission = true;
     });
-    await page.keyboard.press("Control+s");
+    await page.keyboard.press("ControlOrMeta+s");
     await expect(page.getByTestId("toast")).toHaveAttribute("data-kind", "error");
     await expect(page.getByTestId("toast")).toContainText("wasn't granted");
     expect(await page.evaluate(() => window.__fs.writes.length)).toBe(1);
@@ -544,7 +544,7 @@ test.describe("interop review regressions", () => {
     await page.keyboard.press("Escape");
     await openExample(page, a);
     await expect(page.getByTestId("diagram-title")).toHaveText(NATIVE.title);
-    await page.keyboard.press("Control+s");
+    await page.keyboard.press("ControlOrMeta+s");
     await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(3);
     const state = await page.evaluate(() => window.__fs);
     expect(state.pickerCalls).toBe(2);
@@ -654,7 +654,7 @@ test("pending Save follows the first promoted copy (device)", async ({ page }) =
   });
   await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(1);
   await expect(page.getByTestId("save-status")).toBeVisible();
-  await page.keyboard.press("Control+s");
+  await page.keyboard.press("ControlOrMeta+s");
   await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(2);
   expect(await page.evaluate(() => window.__fs.pickerCalls)).toBe(1);
   expect(
@@ -675,20 +675,20 @@ test("reopening an example never overwrites its Private copy's destination", asy
   await page.getByTestId("file-privacy").click();
   await page.getByTestId("privacy-diagram").click();
   await expect(page.getByTestId("private-badge")).toBeVisible();
-  await page.keyboard.press("Control+s");
+  await page.keyboard.press("ControlOrMeta+s");
   await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(2);
   const privateFile = await page.evaluate(() => window.__fs.writes[1]);
   expect(JSON.parse(privateFile.text).private).toBe(true);
   await openExample(page, "kafka-order-pipeline");
   await expect(page.getByTestId("example-badge")).toBeVisible();
   await expect(page.getByTestId("node-shopper")).not.toContainText("Private storefront");
-  await page.keyboard.press("Control+s");
+  await page.keyboard.press("ControlOrMeta+s");
   await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(3);
   expect(await page.evaluate(() => window.__fs.pickerCalls)).toBe(2);
   await page.getByTestId("node-shopper").click();
   await page.getByTestId("inspector-field-label").fill("Second storefront");
   await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
-  await page.keyboard.press("Control+s");
+  await page.keyboard.press("ControlOrMeta+s");
   await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(4);
   expect(await page.evaluate(() => window.__fs.writes.filter((w) => w.name === "saved-1.json"))).toEqual([
     expect.anything(),
@@ -723,13 +723,13 @@ for (const deferred of [false, true]) {
       });
       await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(1);
     }
-    await page.keyboard.press("Control+s");
+    await page.keyboard.press("ControlOrMeta+s");
     await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(2);
     expect(await page.evaluate(() => window.__fs.pickerCalls)).toBe(2);
     await page.getByTestId("node-shopper").click();
     await page.getByTestId("inspector-field-label").fill("Reopened storefront");
     await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
-    await page.keyboard.press("Control+s");
+    await page.keyboard.press("ControlOrMeta+s");
     await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(3);
     expect(await page.evaluate(() => window.__fs.writes[2].name)).toBe("saved-2.json");
   });

@@ -1,4 +1,5 @@
 import { useCaptionContrast } from "./useCaptionContrast";
+import { ConnectedQuickAddMenu, type ConnectedMenuAnchor } from "./ConnectedQuickAddMenu";
 import { retainConversation } from "../lib/exampleConversations";
 import { isDenyRule } from "../stencils/netDevices";
 import { edgeSettings, isDependency, RELATION_META, settingsSummary } from "../model/relations";
@@ -296,6 +297,7 @@ const isAnnotationNode = (n: FlowNode): n is AnnotationFlowNode => n.type === "a
 const EMPTY: Selection = { nodeIds: [], edgeIds: [], groupIds: [] };
 
 type MenuState = {
+  connected?: ConnectedMenuAnchor;
   x: number;
   y: number;
   flipX?: number;
@@ -570,6 +572,7 @@ function CanvasInner({
   } = useMeasuredTask(wrapper, nodes, edges, `${theme}:${nodeVariant}:${locale}`);
   const [openingFitDone, setOpeningFitDone] = useState(false);
   const fitEpoch = useRef(0);
+  const inspectorPanCommand = useRef(-1);
   const earlyFit = useRef<(() => void) | null>(null);
   const fitStarting = useRef<object | null>(null);
   const fitTransition = useRef<object | null>(null);
@@ -613,11 +616,11 @@ function CanvasInner({
   /** True while the view is a fit (the whole diagram in view), false once the user pans or zooms. */
   const showingAll = useRef(true);
   const overlayFit = useCallback(
-    (o?: Parameters<typeof fitView_>[0], animate = false) => {
+    (o?: Parameters<typeof fitView_>[0], animate = false, wholeDiagram = true) => {
       const epoch = fitEpoch.current;
-      showingAll.current = true;
+      showingAll.current = wholeDiagram;
       const runFit = () => {
-        if (epoch !== fitEpoch.current || !showingAll.current) return;
+        if (epoch !== fitEpoch.current || showingAll.current !== wholeDiagram) return;
         firstFit.current = true;
         const own = {};
         fitStarting.current = own;
@@ -635,7 +638,7 @@ function CanvasInner({
       // Fit the committed geometry now. Fonts/chrome readiness only refines this view;
       // it must never leave an interactive canvas at its default transform.
       const immediate = (duration: number) => {
-        if (epoch !== fitEpoch.current || !showingAll.current) return;
+        if (epoch !== fitEpoch.current || showingAll.current !== wholeDiagram) return;
         const own = {};
         fitStarting.current = own;
         fitTransition.current = own;
@@ -647,7 +650,7 @@ function CanvasInner({
       earlyFit.current = () => immediate(0);
       immediate(animate ? (o?.duration ?? 0) : 0);
       afterMeasured(() => {
-        if (epoch !== fitEpoch.current || !showingAll.current) return;
+        if (epoch !== fitEpoch.current || showingAll.current !== wholeDiagram) return;
         earlyFit.current = null;
         return runFit();
       });
@@ -730,7 +733,12 @@ function CanvasInner({
     afterMeasured: whenReady,
     nodeSize: getNodeVariant(nodeVariant).size,
     // Zoom to selection: never past 125% (no huge single node), clear of the panels.
-    zoomTo: (only, onlyEdges) => fitView_({ only, onlyEdges, maxZoom: 1.25, margin: 64, duration: 300 }),
+    // Refine after pane measurements too: a pending Inspector reveal must not
+    // overwrite Shift+2 with its earlier selection pan at the old zoom.
+    zoomTo: (only, onlyEdges) => {
+      inspectorPanCommand.current = fitEpoch.current;
+      overlayFit({ only, onlyEdges, maxZoom: 1.25, margin: 64, duration: 300 }, true, false);
+    },
     hovered: () => hovered.current,
     reveal: () => revealSelection(),
     nameNew: (make, fallback) => nameNew.current(make, fallback),
@@ -1101,6 +1109,7 @@ function CanvasInner({
       const right = sx + spot.width * k + 8;
       landing.set(spot);
       setMenu({
+        connected: { spot, card, left: menuLeft, width: QUICK_ADD_W },
         alignment: "physical-left",
         x: menuLeft ? sx - 8 - QUICK_ADD_W : right,
         flipX: sx - 8,
@@ -2103,7 +2112,7 @@ function CanvasInner({
   useEffect(() => {
     const opened = inspectorWasHidden.current && !inspectorHidden;
     inspectorWasHidden.current = inspectorHidden;
-    if (opened && !readOnly && !nothingSelected) keepPending.current = true;
+    if (opened && !readOnly && !nothingSelected) keepPending.current = inspectorPanCommand.current !== fitEpoch.current;
     if (inspectorHidden) keepPending.current = false;
     if (!keepPending.current || menu) return;
     const id = requestAnimationFrame(() => {
@@ -2859,19 +2868,18 @@ function CanvasInner({
           />
         )}
       </div>
-      {menu && (
-        <ContextMenu
-          x={menu.x}
-          y={menu.y}
-          flipX={menu.flipX}
-          alignment={menu.alignment}
-          items={menuItems}
-          label={menu.label}
-          searchable={menu.searchable}
-          testId={menu.testId}
-          onClose={() => setMenu(null)}
-        />
-      )}
+      {menu &&
+        (menu.connected ? (
+          <ConnectedQuickAddMenu
+            {...menu}
+            anchor={menu.connected}
+            root={wrapper}
+            items={menuItems}
+            onClose={() => setMenu(null)}
+          />
+        ) : (
+          <ContextMenu {...menu} items={menuItems} onClose={() => setMenu(null)} />
+        ))}
       {shortcutsOpen && <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />}
       {!readOnly && (
         <div

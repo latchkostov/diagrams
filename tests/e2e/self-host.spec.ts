@@ -14,7 +14,7 @@ import { expectHostEmbed, expectShareWithoutLinks, serveHostPage } from "./self-
 
 const BRAND = "Acme Diagrams (internal)";
 const SLUG = "kafka-order-pipeline";
-const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const MOD = "ControlOrMeta";
 const kafka = must(
   publicExamples.find((e) => e.slug === SLUG),
   "the Kafka example",

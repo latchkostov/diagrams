@@ -919,28 +919,49 @@ describe("Terraform import: hostile input", () => {
     return resources;
   };
 
-  it("reads a state in linear time", () => {
-    // Eight times the resources take about eight times as long; matching each ARN or name against every resource
-    // would take sixty-four. A ratio against an eighth of the state, not a budget in ms. Each state is parsed once,
-    // so the ratio is the reader's: JSON.parse's linear time would hide it.
+  it("reads a state with linear work", () => {
+    // Count access to parsed input, including descriptor reads in own(). A repeated
+    // scan of resource values costs 64x at eight times the input; GC and CPU load
+    // cannot affect this oracle. JSON parsing stays outside the measurement.
     const parse = JSON.parse;
-    const parsed = new Map<string, unknown>();
-    const spy = vi.spyOn(JSON, "parse").mockImplementation((text: string, reviver) => {
-      if (reviver || text.length < 100_000) return parse(text, reviver) as unknown;
-      if (!parsed.has(text)) parsed.set(text, parse(text));
-      return parsed.get(text);
-    });
-    try {
-      const run = (n: number) => {
-        const text = state(queueFunctions(n));
-        expect(readTerraform([{ name: "big.json", text }]).links).toHaveLength(n);
-        return () => readTerraform([{ name: "big.json", text }]);
+    const reads = (n: number) => {
+      const text = state(queueFunctions(n));
+      let count = 0;
+      const cache = new WeakMap<object, object>();
+      const track = (value: unknown): unknown => {
+        if (!value || typeof value !== "object") return value;
+        const cached = cache.get(value);
+        if (cached) return cached;
+        const proxy = new Proxy(value, {
+          get(target, key, receiver) {
+            count++;
+            return track(Reflect.get(target, key, receiver));
+          },
+          getOwnPropertyDescriptor(target, key) {
+            count++;
+            const descriptor = Reflect.getOwnPropertyDescriptor(target, key);
+            return descriptor && "value" in descriptor ? { ...descriptor, value: track(descriptor.value) } : descriptor;
+          },
+        });
+        cache.set(value, proxy);
+        return proxy;
       };
-      expect(growth(run(300), run(300 * GROWTH_FACTOR), { samples: 3 })).toBeLessThan(LINEAR_LIMIT);
-    } finally {
-      spy.mockRestore();
-    }
-  }, 30_000);
+      const parsed = track(parse(text));
+      const spy = vi
+        .spyOn(JSON, "parse")
+        .mockImplementation((input: string, reviver) =>
+          input === text && !reviver ? parsed : (parse(input, reviver) as unknown),
+        );
+      try {
+        expect(readTerraform([{ name: "big.json", text }]).links).toHaveLength(n);
+        expect(count).toBeGreaterThan(n);
+        return count;
+      } finally {
+        spy.mockRestore();
+      }
+    };
+    expect(reads(64 * GROWTH_FACTOR) / reads(64)).toBeLessThan(LINEAR_LIMIT);
+  });
 
   it("reads a 10,000-resource state, and refuses more", () => {
     const resources = queueFunctions(2_500);

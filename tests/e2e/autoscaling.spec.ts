@@ -163,7 +163,7 @@ test("A1: keyboard Save flushes a focused numeric draft before downloading", asy
   const field = page.getByTestId("autoscaling-max");
   await field.fill("14");
   await expect(field).toBeFocused();
-  const [download] = await Promise.all([page.waitForEvent("download"), field.press("Control+s")]);
+  const [download] = await Promise.all([page.waitForEvent("download"), field.press("ControlOrMeta+s")]);
   const path = info.outputPath("keyboard-save.json");
   await download.saveAs(path);
   const saved = JSON.parse(readFileSync(path, "utf8"));
@@ -268,19 +268,19 @@ test("A1: four main fields, explicit lesson, Advanced policy validation and undo
   await expect(page.getByTestId("inspector-field-replicas")).toHaveCount(0);
   await page.getByTestId("autoscaling-max").fill("14");
   await page.getByTestId("autoscaling-max").press("Tab");
-  await page.keyboard.press("Control+z");
+  await page.keyboard.press("ControlOrMeta+z");
   await expect(page.getByTestId("autoscaling-max")).toHaveValue("10");
   await page.getByTestId("autoscaling-preset").scrollIntoViewIfNeeded();
   await page.screenshot({ path: info.outputPath("a1-inspector-light.png") });
   await page.getByTestId("autoscaling-advanced-toggle").click();
   await expect(page.getByTestId("autoscaling-startup")).toHaveValue("5000");
   const sync = page.getByTestId("autoscaling-sync");
-  await sync.press("Control+a");
+  await sync.press("ControlOrMeta+a");
   await sync.pressSequentially("5000");
   await expect(sync).toHaveValue("5000");
   await sync.press("Tab");
   await page.getByTestId("autoscaling-advanced-toggle").focus();
-  await page.keyboard.press("Control+z");
+  await page.keyboard.press("ControlOrMeta+z");
   await expect(sync).toHaveValue("15000");
   await page.getByTestId("autoscaling-policy").fill('{"up": {}}');
   await expect(page.getByTestId("autoscaling-policy-invalid")).toBeVisible();
@@ -359,7 +359,7 @@ test("A1: an old model previews an explicit upgrade and Undo restores it", async
   await seed(page, { fixed: true, older: true });
   await page.getByTestId("node-worker").click();
   await expect(page.getByTestId("autoscaling-controls")).toHaveCount(0);
-  await page.keyboard.press("Control+k");
+  await page.keyboard.press("ControlOrMeta+k");
   await page.keyboard.type("diagram properties");
   await page.keyboard.press("Enter");
   await page.getByTestId("autoscaling-upgrade-preview").click();
@@ -460,7 +460,7 @@ test("A1: incomplete optional numbers retain saved resources on Tab", async ({ p
     const field = page.getByTestId(`autoscaling-${name}`);
     const saved = await field.inputValue();
     await field.focus();
-    await field.press("Control+a");
+    await field.press("ControlOrMeta+a");
     await field.pressSequentially("1e");
     await field.press("Tab");
     await expect(field).toHaveAttribute("aria-invalid", "true");
@@ -557,7 +557,7 @@ test("A1 startup timing is independent of page readiness", async ({ page }) => {
 
 test("A1 model disclosures switch to the requested preview and expose their own state", async ({ page }) => {
   await seed(page, { fixed: true, older: true });
-  await page.keyboard.press("Control+k");
+  await page.keyboard.press("ControlOrMeta+k");
   await page.keyboard.type("diagram properties");
   await page.keyboard.press("Enter");
   const a1 = page.getByTestId("autoscaling-upgrade-preview"),
@@ -587,13 +587,13 @@ test("A1 refused paste announces model compatibility and opens the upgrade previ
   if (!payload) throw new Error("Missing A1 clipboard fixture");
   await page.evaluate((text) => navigator.clipboard.writeText(text), JSON.stringify(payload));
   await page.getByTestId("node-worker").click();
-  await page.keyboard.press("Control+v");
+  await page.keyboard.press("ControlOrMeta+v");
   await expect(page.getByTestId("toast-model-upgrade")).toBeVisible();
   await page.getByTestId("toast-model-upgrade").click();
   await expect(page.getByTestId("planning-upgrade-preview")).toBeVisible();
   await expect(page.getByTestId("autoscaling-upgrade-preview")).toBeFocused();
   await page.getByTestId("node-worker").click();
-  await page.keyboard.press("Control+k");
+  await page.keyboard.press("ControlOrMeta+k");
   await page.keyboard.type("diagram properties");
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("autoscaling-upgrade-preview")).toHaveAttribute("aria-expanded", "false");
@@ -604,7 +604,7 @@ for (const live of [false, true])
   test(`A1: mixed bulk selection hides HPA-owned replicas (live=${live})`, async ({ page, consoleErrors }) => {
     await seed(page, { twoWorkers: true });
     await page.getByTestId("node-worker").click();
-    await page.keyboard.press("Control+a");
+    await page.keyboard.press("ControlOrMeta+a");
     if (live) {
       await page.getByTestId("live-toggle").click();
       await expect(page.getByTestId("live-controls")).toBeVisible();

@@ -46,6 +46,25 @@ it("keeps dependency tints at 3:1 on the canvas and label pills in both themes",
   }
 });
 
+it("keeps a highlighted context-menu hint at AA after compositing to display RGB", () => {
+  const canvas = readFileSync("src/styles/canvas.css", "utf8");
+  const ink = /\.cm-hint \{[^}]*color: var\(--([\w-]+)\)/.exec(canvas)?.[1];
+  expect(ink).toBeDefined();
+  for (const [i, block] of [css.split('[data-theme="dark"]')[0], css.split('[data-theme="dark"]')[1]].entries()) {
+    const tokens = Object.fromEntries([...block.matchAll(/--([\w-]+):\s*(#[\da-f]{6})/g)].map((m) => [m[1], m[2]]));
+    const tint = /--accent-soft:\s*rgb\((\d+) (\d+) (\d+) \/ ([\d.]+)\)/.exec(block)!;
+    const [r, g, b, alpha] = tint.slice(1).map(Number);
+    // Light menus use surface; dark menus use surface-2 (canvas.css).
+    const surface = tokens[i ? "surface-2" : "surface"];
+    const under = [1, 3, 5].map((at) => parseInt(surface.slice(at, at + 2), 16));
+    const mixed = [r, g, b].map((c, at) => Math.round(c * alpha + under[at] * (1 - alpha)));
+    const background = `#${mixed.map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+    const a = luminance(tokens[ink!]),
+      bg = luminance(background);
+    expect((Math.max(a, bg) + 0.05) / (Math.min(a, bg) + 0.05)).toBeGreaterThanOrEqual(4.5);
+  }
+});
+
 it("keeps small warning words (the trace card's Kept and Waiting) at AA on the warning tint, in both themes", () => {
   const trace = readFileSync("src/styles/trace.css", "utf8");
   expect(trace).toMatch(/\.tr-status\.is-kept \{[^}]*color: var\(--warning-ink\)/);

@@ -1,3 +1,4 @@
+import { TEXT_END } from "./fixtures";
 import AxeBuilder from "@axe-core/playwright";
 import type { Locator, Page } from "@playwright/test";
 import { test, expect, gotoCanvas, gotoLab, expectNoErrors, gotoLive } from "./fixtures";
@@ -20,6 +21,9 @@ async function box(locator: Locator) {
 
 async function expectNoViolations(page: Page, scope?: string) {
   let axe = new AxeBuilder({ page }).withTags(WCAG);
+  // Focus arrives before the menu's fade finishes. Audit the painted colours,
+  // rather than a transient partially transparent frame on a faster machine.
+  if (scope) await expect(page.getByTestId(scope)).toHaveCSS("opacity", "1");
   if (scope) axe = axe.include(`[data-testid="${scope}"]`);
   const { violations } = await axe.analyze();
   const report = violations.map((v) => `${v.id}: ${v.help} (${v.nodes.map((n) => n.target.join(" ")).join(", ")})`);
@@ -173,9 +177,9 @@ test.describe("relationships", () => {
     await expect(page.getByTestId("edge-glyph-e-1")).toHaveCount(0);
     // Undo brings the inferred secret back (Make it a flow was its own step).
     await page.getByTestId("canvas-wrap").click({ position: { x: 600, y: 90 } });
-    await page.keyboard.press(process.platform === "darwin" ? "Meta+z" : "Control+z");
+    await page.keyboard.press("ControlOrMeta+z");
     await expect(edge).toHaveAttribute("data-relation", "secret");
-    await page.keyboard.press(process.platform === "darwin" ? "Meta+Shift+z" : "Control+Shift+z");
+    await page.keyboard.press("ControlOrMeta+Shift+z");
     await expect(edge).not.toHaveAttribute("data-relation", /.+/);
     expectNoErrors(consoleErrors);
   });
@@ -230,7 +234,7 @@ test.describe("relationships", () => {
 
   test("Ctrl+K sets the relationship of the selected edge", async ({ page, consoleErrors }) => {
     await page.getByTestId("edge-label-api-to-sb").click();
-    await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");
+    await page.keyboard.press("ControlOrMeta+k");
     await page.getByTestId("command-input").fill("relationship secret");
     await expect(page.getByTestId("command-item-action:relation:secret")).toBeVisible();
     await page.keyboard.press("Enter");
@@ -305,7 +309,7 @@ test.describe("relationships", () => {
     await pill.click();
     const field = page.getByTestId("inspector-field-settings");
     await expect(field).toHaveValue(/!Stripe:ApiKey/);
-    await field.press("End");
+    await field.press(TEXT_END);
     await field.pressSequentially("\n!Payments:WebhookSecret");
     await expect(pill).toContainText("5 settings · 3 secret");
     await expect(page.getByTestId("edge-label-appcfg-to-kv")).toContainText("3 references");
@@ -490,7 +494,7 @@ test("literal names survive editing another row and toggling locks", async ({ pa
   await pasteSettings(page, JSON.stringify({ "Feature Flag": true, "A=B": "fake", "!Literal": 1 }));
   const field = page.getByTestId("inspector-field-settings");
   await expect(field).toHaveValue('"Feature Flag"\n"A=B"\n"!Literal"');
-  await field.press("Control+End");
+  await field.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(el.value.length, el.value.length));
   await field.pressSequentially("\nAdded");
   await page.getByTestId("inspector-setting-lock-0").click();
   await expect(field).toHaveValue('!"Feature Flag"\n"A=B"\n"!Literal"\nAdded');

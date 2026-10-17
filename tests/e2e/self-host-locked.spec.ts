@@ -11,7 +11,7 @@ import { expectHostEmbed, expectShareWithoutLinks, serveHostPage } from "./self-
  */
 
 const SLUG = "kafka-order-pipeline";
-const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const MOD = "ControlOrMeta";
 const OFF = "Opening shared links is turned off here. Ask for the diagram file instead.";
 const other = must(
   publicExamples.find((e) => e.slug !== SLUG),

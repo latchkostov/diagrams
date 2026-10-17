@@ -243,7 +243,7 @@ test.describe("message trace", () => {
     await page.getByTestId("trace-card-close").click();
     await expect(card(page)).toHaveCount(0);
 
-    await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");
+    await page.keyboard.press("ControlOrMeta+k");
     await page.getByTestId("command-input").fill("slowest");
     await page.getByTestId("command-item-action:sim.trace-message:slowest").click();
     await expect(card(page)).toHaveAttribute("data-state", "done", { timeout: 10_000 });

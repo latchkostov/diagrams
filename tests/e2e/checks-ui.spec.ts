@@ -1,3 +1,4 @@
+import { TEXT_END, TEXT_START } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { Locator, Page } from "@playwright/test";
 import {
@@ -16,7 +17,7 @@ import { typingWork, median } from "./typing-work";
 // right-click, Ctrl+K and the View menu), fixes, Ignore and Turn off (kept in the file), markers while the card
 // is open, the inspector's finding, and typing that stays responsive while checks run. data-testid only.
 
-const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const MOD = "ControlOrMeta";
 /** One warning: the ledger worker fails in "Poison invoices" and ledger-posting has no dead-letter queue. */
 const WARN = "azure-service-bus-integration";
 const WARNING = "dead-letter:posting-sub";
@@ -236,10 +237,10 @@ test("keyboard: Esc closes a finding's options first, then the card, and focus g
   await page.getByTestId(`check-ignore-${WARNING}`).click();
   const reason = page.getByTestId(`check-ignore-reason-${WARNING}`);
   await reason.fill("abc");
-  // Home and End move the caret in the reason box; they don't jump between findings.
-  await reason.press("Home");
+  // Native line-boundary keys move the caret; they do not jump between findings.
+  await reason.press(TEXT_START);
   await expect(reason).toBeFocused();
-  await reason.press("End");
+  await reason.press(TEXT_END);
   await expect(reason).toBeFocused();
   // Esc: the options close (focus back on ⋯), the card stays.
   await page.keyboard.press("Escape");
@@ -342,7 +343,7 @@ performanceTest("typing a label is as responsive while checks run as with them h
   // A name already wider than a card can grow: typing on doesn't resize the node and re-route its edges, a
   // cost of its own (several times a keystroke's) that would land in whichever phase crosses the width.
   await label.fill(LONG);
-  await label.press("End");
+  await label.press(TEXT_END);
   await expect(page.getByTestId("planning-unavailable")).toBeVisible();
   const planningBefore = await page.evaluate(() => ({
     ...(window as unknown as { __planning: { reads: number; analyses: number; explanations: number } }).__planning,

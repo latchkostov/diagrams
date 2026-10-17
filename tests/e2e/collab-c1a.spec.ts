@@ -3,7 +3,8 @@ import type { DiagramFile } from "../../src/model/types";
 import type { LabPacket } from "../../src/collab/lab/bridge";
 import { demoDiagram } from "../../src/collab/lab/demo";
 import { RECOVERY_RETRY } from "../../src/collab/recovery";
-import { test, expect, expectNoErrors, gotoLab, pauseClock, waitForStableViewport } from "./fixtures";
+import { test, expect, expectNoErrors, gotoLab, pauseClock, waitForStableViewport, E2E_TARGET } from "./fixtures";
+import { isViteHmrHandshake } from "../../scripts/e2e-network";
 
 async function bounds(locator: Locator) {
   const rect = await locator.boundingBox();
@@ -124,8 +125,15 @@ test("isolated editors preserve a pending inspector edit, scope Undo/Redo, and h
   const errors: string[] = [];
   b.on("pageerror", (e) => errors.push(e.message));
   const requests: string[] = [];
+  const sockets: { url: string; hmr: boolean }[] = [];
   for (const p of [page, b]) {
-    p.on("websocket", (ws) => requests.push(ws.url()));
+    p.on("websocket", (ws) => {
+      const socket = { url: ws.url(), hmr: false };
+      sockets.push(socket);
+      ws.on("framereceived", ({ payload }) => {
+        socket.hmr ||= isViteHmrHandshake(socket.url, baseURL ?? page.url(), String(payload), E2E_TARGET);
+      });
+    });
     p.on("request", (r) => {
       if (new URL(r.url()).origin !== new URL(baseURL ?? page.url()).origin) requests.push(r.url());
     });
@@ -182,12 +190,12 @@ test("isolated editors preserve a pending inspector edit, scope Undo/Redo, and h
     await page.clock.runFor(32);
     await expect(page.getByTestId("canvas-wrap")).toBeFocused();
     await b.getByTestId("canvas-wrap").focus();
-    await b.keyboard.press("Control+z");
+    await b.keyboard.press("ControlOrMeta+z");
     await expect(b.getByTestId("node-web")).toBeVisible();
     await expect
       .poll(() => b.getByTestId("node-web").evaluate((el) => document.activeElement?.contains(el)))
       .toBe(true);
-    expect(requests).toEqual([]);
+    expect([...requests, ...sockets.filter((socket) => !socket.hmr).map((socket) => socket.url)]).toEqual([]);
     expectNoErrors(consoleErrors);
     expectNoErrors(errors);
   } finally {
@@ -629,7 +637,7 @@ test("pasting Private content stops sharing before the paste reaches peers or ro
       ),
     );
     await page.getByTestId("canvas-wrap").focus();
-    await page.keyboard.press("Control+v");
+    await page.keyboard.press("ControlOrMeta+v");
     await expect(page.getByTestId("collab-edit-refused")).toContainText("Sharing stopped");
     const made = page.getByTestId(/^node-private-input-/);
     await expect(made).toContainText("Device-only draft");
@@ -773,7 +781,7 @@ test("privacy-only shutdown leaves Undo disabled until a local edit", async ({ c
   );
   await page.getByTestId("canvas-wrap").focus();
   await pauseClock(page);
-  await page.keyboard.press("Control+v");
+  await page.keyboard.press("ControlOrMeta+v");
   await expect(page.getByTestId("collab-edit-refused")).toContainText("Sharing stopped");
   await expect(page.getByTestId(/^node-new-model-/)).toHaveCount(0);
   await expect(page.getByTestId("undo-button")).toBeDisabled();

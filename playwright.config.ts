@@ -127,6 +127,20 @@ const devWebServer = {
   stderr: "pipe" as const,
 };
 
+// Keep the pinned Desktop Chrome identity while reporting the host OS correctly.
+// The stock descriptor always says Windows, which gives React Flow the wrong wheel modifier on Mac.
+const desktopChrome = {
+  ...devices["Desktop Chrome"],
+  userAgent: devices["Desktop Chrome"].userAgent.replace(
+    /\([^)]*\)/,
+    process.platform === "darwin"
+      ? "(Macintosh; Intel Mac OS X 10_15_7)"
+      : process.platform === "linux"
+        ? "(X11; Linux x86_64)"
+        : "(Windows NT 10.0; Win64; x64)",
+  ),
+};
+
 export default defineConfig({
   testDir: "./tests/e2e",
   outputDir: "./tests/.output/results",
@@ -162,14 +176,14 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
+      use: { ...desktopChrome, viewport: { width: 1440, height: 900 } },
       testIgnore: OWN_BUILD,
       grepInvert: DEV_ONLY,
     },
     {
       name: "dev",
       use: {
-        ...devices["Desktop Chrome"],
+        ...desktopChrome,
         viewport: { width: 1440, height: 900 },
         baseURL: `http://localhost:${devServer.port}`,
       },
@@ -181,12 +195,15 @@ export default defineConfig({
       : [
           {
             name: "subpath",
-            use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${preview.port}${PREVIEW_BASE}` },
+            use: {
+              ...desktopChrome,
+              baseURL: `http://localhost:${preview.port}${PREVIEW_BASE}`,
+            },
             testMatch: /subpath\.spec\.ts/,
           },
           ...selfHost.map(({ name, at, spec }) => ({
             name,
-            use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${at.port}/` },
+            use: { ...desktopChrome, baseURL: `http://localhost:${at.port}/` },
             testMatch: spec,
           })),
         ]),

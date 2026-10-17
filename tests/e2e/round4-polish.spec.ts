@@ -1,3 +1,4 @@
+import { TEXT_END } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { Locator, Page } from "@playwright/test";
 import { test, expect, gotoCanvas, gotoGallery, gotoLab, waitForStableBox, emptyCanvasPoint } from "./fixtures";
@@ -178,7 +179,7 @@ test.describe("round 4 polish", () => {
     // Four more lines: it grows down, over the edge.
     await text.dblclick();
     await expect(page.getByTestId("annotation-editor")).toBeFocused();
-    await page.keyboard.press("End");
+    await page.keyboard.press(TEXT_END);
     for (const line of ["Second line", "Third line", "Fourth line", "Fifth line"]) {
       await page.keyboard.press("Enter");
       await page.keyboard.type(line);

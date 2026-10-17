@@ -498,7 +498,7 @@ test("Auto-layout commits before fitting even when React's deferred work is held
   await page.goto("./?view=canvas&example=aws-fanout");
   await settledCanvas(page);
   await page.clock.install();
-  await page.keyboard.press("Control+k");
+  await page.keyboard.press("ControlOrMeta+k");
   await page.getByTestId("command-input").fill("Auto-layout");
   await page.evaluate(() => window.dispatchEvent(new Event("hold-react-work")));
   await page.getByTestId("command-item-action:canvas.auto-layout").click();
@@ -564,7 +564,7 @@ test("Undo cancels Auto-layout while measurements are held and preserves history
   await command(page, "Auto-layout", "canvas.auto-layout");
   await expect(page.getByTestId("undo-button")).toBeEnabled();
   await page.getByTestId("canvas-wrap").focus();
-  await page.keyboard.press("Control+z");
+  await page.keyboard.press("ControlOrMeta+z");
   await page.evaluate(() => window.dispatchEvent(new Event("release-resize-observers")));
   await settledCanvas(page);
   expect(await boxes()).toEqual(original);

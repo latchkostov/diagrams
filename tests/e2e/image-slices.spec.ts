@@ -1,6 +1,15 @@
 import type { Download, Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
-import { test, expect, expectNoErrors, gotoCanvas, pageLoadTimeout, publicExamples } from "./fixtures";
+import {
+  test,
+  expect,
+  expectNoErrors,
+  gotoCanvas,
+  pageLoadTimeout,
+  publicExamples,
+  waitForSelectionSettled,
+  fitDiagram,
+} from "./fixtures";
 import { callTool, installFakeModelContext, toolNames } from "./ai-helpers";
 
 /** Keep the slow-rendering CI case exercised even on a fast workstation. */
@@ -31,25 +40,30 @@ function imageDownloads(page: Page) {
 // draws, byte for byte; the browser parity tier pins the exported images too (docs/PARITY.md).
 
 /** The library's toSvg and toPng against the sliced port, on the canvas as it is, with the same options. */
-async function bothWays(page: Page, sliceMs: number) {
-  return page.evaluate(async (sliceMs) => {
-    const port = (await import(
-      "/src/interop/imageClone.ts" as string
-    )) as typeof import("../../src/interop/imageClone");
-    const lib = (await import("/node_modules/html-to-image/es/index.js" as string)) as typeof import("html-to-image");
-    const viewport = document.querySelector<HTMLElement>('[data-testid="canvas-wrap"] .react-flow__viewport');
-    if (!viewport) throw new Error("no canvas");
-    const fontEmbedCSS = await lib.getFontEmbedCSS(viewport);
-    const options = { fontEmbedCSS, width: 1600, height: 1200, pixelRatio: 1, cacheBust: false };
-    const slicer = () => new port.Slicer(viewport.getElementsByTagName("*").length, { sliceMs });
-    const svgSlicer = slicer();
-    const svg = [await lib.toSvg(viewport, options), await port.toSvg(viewport, options, svgSlicer)];
-    const png = [await lib.toPng(viewport, options), await port.toPng(viewport, options, slicer())];
-    // The file the app saves: the SVG text itself, which decoding the data URL gives back.
-    const text = await port.toSvgText(viewport, options, slicer());
-    const fromUrl = decodeURIComponent(svg[1].slice(svg[1].indexOf(",") + 1));
-    return { svg, png, text, fromUrl, yields: svgSlicer.yields, elements: viewport.getElementsByTagName("*").length };
-  }, sliceMs);
+async function bothWays(page: Page, sliceMs: number, kind: "all" | "svg" | "png" = "all") {
+  return page.evaluate(
+    async ({ sliceMs, kind }) => {
+      const port = (await import(
+        "/src/interop/imageClone.ts" as string
+      )) as typeof import("../../src/interop/imageClone");
+      const lib = (await import("/node_modules/html-to-image/es/index.js" as string)) as typeof import("html-to-image");
+      const viewport = document.querySelector<HTMLElement>('[data-testid="canvas-wrap"] .react-flow__viewport');
+      if (!viewport) throw new Error("no canvas");
+      const fontEmbedCSS = await lib.getFontEmbedCSS(viewport);
+      const options = { fontEmbedCSS, width: 1600, height: 1200, pixelRatio: 1, cacheBust: false };
+      const slicer = () => new port.Slicer(viewport.getElementsByTagName("*").length, { sliceMs });
+      const svgSlicer = slicer();
+      const svg =
+        kind === "png" ? [] : [await lib.toSvg(viewport, options), await port.toSvg(viewport, options, svgSlicer)];
+      const png =
+        kind === "svg" ? [] : [await lib.toPng(viewport, options), await port.toPng(viewport, options, slicer())];
+      // The file the app saves: the SVG text itself, which decoding the data URL gives back.
+      const text = kind === "all" ? await port.toSvgText(viewport, options, slicer()) : "";
+      const fromUrl = kind === "all" ? decodeURIComponent(svg[1].slice(svg[1].indexOf(",") + 1)) : "";
+      return { svg, png, text, fromUrl, yields: svgSlicer.yields, elements: viewport.getElementsByTagName("*").length };
+    },
+    { sliceMs, kind },
+  );
 }
 
 /** html-to-image's pseudo-element class names (u, four random characters, a counter), numbered by first appearance. */
@@ -185,15 +199,19 @@ test.describe("image export in slices", { tag: "@dev" }, () => {
       expectNoErrors(consoleErrors);
     });
 
-  test("draws what html-to-image draws, byte for byte: 300 nodes", async ({ page, consoleErrors }) => {
-    test.slow();
-    await openLanes(page);
-    const r = await bothWays(page, 0);
-    const [lib, port] = r.svg.map(canonicalNames);
-    expect(port === lib, "the same SVG").toBe(true);
-    expect(r.png[1] === r.png[0], "the same PNG").toBe(true);
-    expectNoErrors(consoleErrors);
-  });
+  for (const kind of ["svg", "png"] as const)
+    test(`draws what html-to-image draws, byte for byte: 300 nodes (${kind})`, async ({ page, consoleErrors }) => {
+      test.slow();
+      await openLanes(page);
+      // Keep both full-size comparisons, without five serial clones in one case.
+      // SVG text/data-URL equivalence is already checked on every small example above.
+      const r = await bothWays(page, 0, kind);
+      if (kind === "svg") {
+        const [lib, port] = r.svg.map(canonicalNames);
+        expect(port === lib, "the same SVG").toBe(true);
+      } else expect(r.png[1] === r.png[0], "the same PNG").toBe(true);
+      expectNoErrors(consoleErrors);
+    });
 });
 
 /** A diagram big enough that its export takes many slices: 20 lanes of 15 services, chained. */
@@ -234,6 +252,36 @@ async function countFrames(page: Page) {
   return () => page.evaluate(() => (window as unknown as { __frames: number }).__frames);
 }
 
+/** Keep a real clone slice pending while exercising cancellation, regardless of host speed. */
+async function holdExportSlice(page: Page) {
+  await page.evaluate(() => {
+    const NativeChannel = window.MessageChannel;
+    const w = window as unknown as { __sliceHeld: boolean; __releaseSlice: () => void };
+    w.__sliceHeld = false;
+    window.MessageChannel = class extends NativeChannel {
+      constructor() {
+        super();
+        const post = this.port2.postMessage.bind(this.port2);
+        this.port2.postMessage = (message: unknown) => {
+          requestAnimationFrame(() => {
+            const progress = Number(
+              document.querySelector('[data-testid="toast-progress"]')?.getAttribute("aria-valuenow"),
+            );
+            if (!(progress > 0 && progress < 70)) return post(message);
+            window.MessageChannel = NativeChannel;
+            w.__sliceHeld = true;
+            w.__releaseSlice = () => post(message);
+          });
+        };
+      }
+    };
+  });
+  return {
+    held: () => page.waitForFunction(() => (window as unknown as { __sliceHeld: boolean }).__sliceHeld),
+    release: () => page.evaluate(() => (window as unknown as { __releaseSlice: () => void }).__releaseSlice()),
+  };
+}
+
 test("a long image export keeps the page painting, shows its progress and can be cancelled", async ({
   page,
   consoleErrors,
@@ -242,13 +290,16 @@ test("a long image export keeps the page painting, shows its progress and can be
   await openLanes(page);
   // Something selected: the export takes its marks off for the picture and must put them back.
   await page.getByTestId("node-p0n0").click();
+  await waitForSelectionSettled(page);
   await expect(page.getByTestId("rf__node-p0n0")).toHaveClass(/selected/);
   const downloads = imageDownloads(page);
 
   // The export reports progress while the clone runs; the page paints between its slices.
   const frames = await countFrames(page);
+  const firstSlice = await holdExportSlice(page);
   await page.getByTestId("file-button").click();
   await page.getByTestId("export-png").click();
+  await firstSlice.held();
   await expect(page.getByTestId("toast-progress")).toBeVisible();
   const atProgress = await frames();
   await expect.poll(frames).toBeGreaterThan(atProgress + 2);
@@ -261,23 +312,28 @@ test("a long image export keeps the page painting, shows its progress and can be
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   await page.mouse.move(400, 400);
   await page.keyboard.press("t");
-  await page.keyboard.press("Control+a");
+  await page.keyboard.press("ControlOrMeta+a");
   // Cancel: the toast goes, nothing downloads, and the canvas is as it was.
   await page.getByTestId("image-export-cancel").click();
+  await firstSlice.release();
   await expect(page.getByTestId("toast")).toHaveCount(0);
   await expect(page.getByTestId("rf__node-p0n0")).toHaveClass(/selected/);
   await expect(page.locator('[data-testid^="annotation-"]')).toHaveCount(0);
   await expect(page.getByTestId("rf__node-p1n0")).not.toHaveClass(/selected/);
   // Input is the page's again: a click selects.
+  await fitDiagram(page);
   await page.getByTestId("node-p1n0").click();
   await expect(page.getByTestId("rf__node-p1n0")).toHaveClass(/selected/);
   expect(downloads.count()).toBe(0);
 
   // Escape cancels too.
+  const secondSlice = await holdExportSlice(page);
   await page.getByTestId("file-button").click();
   await page.getByTestId("export-png").click();
+  await secondSlice.held();
   await expect(page.getByTestId("toast-progress")).toBeVisible();
   await page.keyboard.press("Escape");
+  await secondSlice.release();
   await expect(page.getByTestId("toast")).toHaveCount(0);
   expect(downloads.count()).toBe(0);
 
@@ -305,7 +361,9 @@ for (const unavailable of [["Worker"], ["OffscreenCanvas"], ["Worker", "Offscree
     await gotoCanvas(page, publicExamples[0].slug);
     await expect(page.locator('[data-testid^="rf__node-"]').first()).toBeVisible({ timeout: pageLoadTimeout() });
     await page.getByTestId("file-button").click();
-    const [png] = await Promise.all([page.waitForEvent("download"), page.getByTestId("export-png").click()]);
+    const pngDownloads = imageDownloads(page);
+    await page.getByTestId("export-png").click();
+    const png = await pngDownloads.finished();
     const pngPath = await png.path();
     if (!pngPath) throw new Error("PNG download failed");
     expect((await readFile(pngPath)).subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
@@ -314,7 +372,9 @@ for (const unavailable of [["Worker"], ["OffscreenCanvas"], ["Worker", "Offscree
     await page.getByTestId("export-image").click();
     await page.getByTestId("image-options-toggle").click();
     await page.getByTestId("image-format-svg").click();
-    const [svg] = await Promise.all([page.waitForEvent("download"), page.getByTestId("image-export").click()]);
+    const svgDownloads = imageDownloads(page);
+    await page.getByTestId("image-export").click();
+    const svg = await svgDownloads.finished("svg");
     const svgPath = await svg.path();
     if (!svgPath) throw new Error("SVG download failed");
     expect(await readFile(svgPath, "utf8")).toMatch(/^<svg[^>]+xmlns="http:\/\/www.w3.org\/2000\/svg"/);
@@ -376,7 +436,7 @@ test("an export started from the Image dialog hands the keyboard to its Cancel",
   await expect(page.getByTestId("toast-progress")).toBeVisible();
   // The dialog gives its opener the focus back as it closes; Cancel takes it after that, and Enter presses it.
   await expect(page.getByTestId("image-export-cancel")).toBeFocused();
-  await page.keyboard.press("Control+k");
+  await page.keyboard.press("ControlOrMeta+k");
   await expect(page.getByTestId("command-palette")).toHaveCount(0);
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("toast")).toHaveCount(0);

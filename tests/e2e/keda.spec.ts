@@ -74,7 +74,7 @@ test("KEDA: preset is four main fields, pins defaults and supports keyboard edit
   await expect
     .poll(async () => (await savedDiagram(page)).nodes.find((n) => n.id === "worker")?.props?.autoscaling)
     .toMatchObject({ controller: { pollingMs: 1000 } });
-  await page.getByTestId("canvas-view").press("Control+z");
+  await page.getByTestId("canvas-view").press("ControlOrMeta+z");
   await expect(field).toHaveValue("30000");
   expectNoErrors(consoleErrors);
 });

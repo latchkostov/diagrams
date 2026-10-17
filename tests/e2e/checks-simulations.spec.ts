@@ -1,3 +1,4 @@
+import { TEXT_END } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import { test, performanceTest, expect, gotoCanvas, expectNoErrors, pageLoadTimeout } from "./fixtures";
@@ -9,7 +10,7 @@ import { typingWork, median } from "./typing-work";
 
 const card = (page: Page) => page.getByTestId("checks-card");
 const status = (page: Page) => page.getByTestId("checks-simulations-status");
-const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const MOD = "ControlOrMeta";
 const RESPONSIVENESS = "typing is as responsive while simulations play as with none playing";
 
 /** An example as a file, changed by `edit`, imported over the canvas. */
@@ -498,7 +499,7 @@ test.describe("a long run", () => {
           .toBeGreaterThan(before);
       }
       await box.click();
-      await box.press("End");
+      await box.press(TEXT_END);
       const samples: number[] = [];
       for (const ch of text) samples.push(await work.key(ch));
       // Still playing when the typing ended: the whole phase was typed over a run.

@@ -152,7 +152,7 @@ test.describe("imports: docker-compose", () => {
 
     // Ctrl+K finds it again while the diagram is open; a row's name selects that node.
     await page.keyboard.press("Escape");
-    await page.keyboard.press("Control+k");
+    await page.keyboard.press("ControlOrMeta+k");
     await page.getByTestId("command-input").fill("Import report");
     await page.getByTestId("command-input").press("Enter");
     await expect(report).toBeVisible();
@@ -182,7 +182,7 @@ test.describe("imports: docker-compose", () => {
     await page.keyboard.press("Escape");
     await expect(report).toHaveCount(0);
     // Make it private removes its button: Done takes the focus.
-    await page.keyboard.press("Control+k");
+    await page.keyboard.press("ControlOrMeta+k");
     await page.getByTestId("command-input").fill("Import report");
     await page.getByTestId("command-input").press("Enter");
     await expect(report).toBeVisible();

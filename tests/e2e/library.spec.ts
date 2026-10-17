@@ -1,4 +1,5 @@
 import { currentDiagram } from "./fixtures";
+import { waitForSelectionSettled } from "./fixtures";
 import { openExample } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, publicExamples, expectNoErrors, pauseClock, STORAGE_KEYS } from "./fixtures";
@@ -43,7 +44,8 @@ test.describe("data safety", () => {
     await page.clock.install();
     await gotoCanvas(page, a.slug);
     await page.getByTestId(`node-${node}`).click();
-    await page.clock.pauseAt(new Date(Date.now() + 1000));
+    await waitForSelectionSettled(page);
+    await pauseClock(page);
     await page.getByTestId("inspector-field-label").fill("Edited just now");
     await expect(page.getByTestId(`node-${node}`)).toContainText("Edited just now");
     await openExample(page, b.slug);
@@ -181,7 +183,7 @@ test.describe("Your diagrams", () => {
     await importDiagram(page, "Alpha");
     // No timer runs: the label can't be waiting for the autosave.
     await page.clock.install();
-    await page.clock.pauseAt(new Date(Date.now() + 1000));
+    await pauseClock(page);
     await page.getByTestId("inspector-toggle").click();
     await page.getByTestId("inspector-field-title").fill("Alpha, retitled");
     await expect(page.getByTestId("example-picker")).toContainText("Alpha, retitled");

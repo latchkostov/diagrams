@@ -138,12 +138,13 @@ test("the title card folds to a chip when nodes go under it", async ({ page }) =
   const wrap = await page.getByTestId("canvas-wrap").boundingBox();
   if (!wrap) throw new Error("canvas not visible");
   await page.mouse.move(wrap.x + wrap.width / 2, wrap.y + wrap.height / 2);
-  await page.keyboard.down(process.platform === "darwin" ? "Meta" : "Control");
+  // Literal Control: a trackpad pinch emits ctrl+wheel on every OS.
+  await page.keyboard.down("Control");
   for (let i = 0; i < 5; i++) {
     await page.mouse.wheel(0, -300);
     await waitForStableBox(page.getByTestId(/^node-(?!editor)/).first());
   }
-  await page.keyboard.up(process.platform === "darwin" ? "Meta" : "Control");
+  await page.keyboard.up("Control");
   await expect(card).toHaveAttribute("data-collapsed", "1");
   // Fit again: the card has room and unfolds.
   await page.getByTestId("fit-view-button").click();

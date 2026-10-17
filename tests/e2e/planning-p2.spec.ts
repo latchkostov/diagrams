@@ -45,7 +45,7 @@ function materializedP1() {
   return d;
 }
 async function modelPreview(page: Page, clock = false) {
-  await page.keyboard.press("Control+k");
+  await page.keyboard.press("ControlOrMeta+k");
   await page.keyboard.type("diagram properties");
   await page.keyboard.press("Enter");
   if (clock) await page.clock.runFor(1000);

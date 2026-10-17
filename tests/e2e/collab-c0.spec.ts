@@ -63,12 +63,12 @@ test("local use makes no network requests and never loads the collaboration code
   // Edit: rename a node in its property sheet, then undo it.
   await page.getByTestId("node-order-events").dblclick();
   await expect(page.getByTestId("inspector-field-label")).toBeFocused();
-  await page.keyboard.press("Control+A");
+  await page.keyboard.press("ControlOrMeta+A");
   await page.keyboard.type("Renamed locally");
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("node-order-events")).toContainText("Renamed locally");
   await page.keyboard.press("Escape");
-  await page.keyboard.press("Control+Z");
+  await page.keyboard.press("ControlOrMeta+Z");
   await expect(page.getByTestId("node-order-events")).not.toContainText("Renamed locally");
   await net.expectNothingLeft();
   expect(net.loadedCollab()).toBe(false);

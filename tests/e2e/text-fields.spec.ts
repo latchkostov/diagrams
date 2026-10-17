@@ -1,3 +1,4 @@
+import { TEXT_END } from "./fixtures";
 import type { Locator, Page } from "@playwright/test";
 import { textFieldsFixture } from "../../src/lab/textFieldsFixture";
 import {
@@ -21,7 +22,7 @@ import { must, openAdvanced } from "./ai-helpers";
 // still edited in place. Selectors are data-testid only.
 
 const SLUG = "kafka-order-pipeline";
-const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const MOD = "ControlOrMeta";
 // The keyboard tooltip also starts with node- and repeats the focused node's name.
 const nodes = (page: Page) => page.getByTestId(/^node-(?!tooltip$|editor-)/);
 
@@ -467,7 +468,7 @@ test.describe("renaming in the inspector", () => {
     await page.getByTestId("node-c").dblclick();
     const label = page.getByTestId("inspector-field-label");
     await expect(label).toBeFocused();
-    await label.press("End");
+    await label.press(TEXT_END);
     await page.keyboard.press(`${MOD}+k`);
     await page.getByTestId("command-input").fill("rename");
     await page.getByTestId("command-item-action:node.rename").click();

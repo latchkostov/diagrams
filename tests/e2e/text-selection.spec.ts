@@ -1,3 +1,4 @@
+import { TEXT_END } from "./fixtures";
 import type { Locator, Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors, waitForStableBox, fitDiagram } from "./fixtures";
 
@@ -165,7 +166,7 @@ test.describe("no text selection on the canvas", () => {
     await page.getByTestId("node-orders").dblclick();
     const label = page.getByTestId("inspector-field-label");
     await expect(label).toBeFocused();
-    await page.keyboard.press("End");
+    await page.keyboard.press(TEXT_END);
     expect(await dragSelect(page, label)).toBeGreaterThan(0);
     await expect(label).toBeFocused();
     const sub = page.getByTestId("inspector-field-sublabel");
