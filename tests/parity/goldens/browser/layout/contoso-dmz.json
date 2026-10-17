@@ -36,7 +36,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(186.125px, 109.758px) scale(0.53104)",
+    "viewport": "translate(224.146px, -40.0597px) scale(0.675373)",
     "nodes": {
       "group:dmz": { "kind": "group", "box": "translate(0px, 296px) 462×336", "text": "DMZ" },
       "group:trusted": { "kind": "group", "box": "translate(160px, 650px) 340×582", "text": "Trusted services" },

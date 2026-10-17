@@ -134,7 +134,7 @@ for (const live of [false, true]) {
     await page.getByTestId("fit-view-button").click();
     await waitForStableViewport(page);
     await pauseClock(page);
-    await page.getByTestId("node-kong").dblclick();
+    await page.getByTestId("inspector-toggle").click();
     await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
     await page.clock.runFor(1500);
     expect(await inPane(page)).toBe(true);
@@ -149,7 +149,7 @@ for (const live of [false, true]) {
 test("viewport readiness waits through the delayed pane change", async ({ page }) => {
   await open(page);
   await pauseClock(page);
-  await page.getByTestId("node-kong").dblclick();
+  await page.getByTestId("inspector-toggle").click();
   const pane = page.getByTestId("canvas-wrap");
   await expect(pane).toHaveAttribute("data-pane-pending", "true");
   await pane.evaluate((el) => {
@@ -186,7 +186,7 @@ async function countPaneFits(page: Page) {
 }
 
 for (const dismissal of ["Escape", "Properties"]) {
-  test(`right-click Inspector adjustment survives menu cancellation and ${dismissal} dismissal`, async ({ page }) => {
+  test(`right-click selection only reveals after menu cancellation and ${dismissal} dismissal`, async ({ page }) => {
     await open(page);
     await pauseClock(page);
     await countPaneFits(page);
@@ -195,6 +195,7 @@ for (const dismissal of ["Escape", "Properties"]) {
         ? page.keyboard.press("Escape")
         : page.getByTestId("context-menu-item-node.properties").click();
     const before = await viewportTransform(page);
+    const beforeZoom = await zoom(page);
     await page.getByTestId("node-kong").click({ button: "right" });
     await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
     await expect(page.getByTestId("context-menu")).toBeVisible();
@@ -212,14 +213,21 @@ for (const dismissal of ["Escape", "Properties"]) {
     await dismiss();
     await expect(page.getByTestId("context-menu")).toBeHidden();
     await page.clock.runFor(1500);
-    expect(await inPane(page)).toBe(true);
-    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-fits", "1");
+    expect(await inPane(page, ["kong"])).toBe(true);
+    expect(await zoom(page)).toBe(beforeZoom);
+    // Kong is already clear of the narrower pane; its attached edges do not justify a pan.
+    expect(await viewportTransform(page)).toBe(before);
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-fits", "0");
     // A later menu cycle has no pane work left to replay.
     const adjusted = await viewportTransform(page);
     await page.getByTestId("node-kong").click({ button: "right" });
     await page.keyboard.press("Escape");
     await page.clock.runFor(1500);
     expect(await viewportTransform(page)).toBe(adjusted);
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-fits", "0");
+    // The selection reveal kept Fit ownership: a later panel control still refits.
+    await page.getByTestId("inspector-toggle").click();
+    await page.clock.runFor(1500);
     await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-fits", "1");
   });
 }
@@ -231,7 +239,7 @@ test("menu opened during a pending pane change resumes refit after dismissal", a
   const before = await viewportTransform(page);
   await page.getByTestId("inspector-toggle").click();
   await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-pending", "true");
-  await page.getByTestId("node-kong").click({ button: "right" });
+  await page.getByTestId("canvas-wrap").click({ button: "right", position: await pendingPlacementPoint(page) });
   await expect(page.getByTestId("context-menu")).toBeVisible();
   await page.clock.runFor(1500);
   expect(await viewportTransform(page)).toBe(before);
@@ -258,7 +266,7 @@ async function pendingPlacementPoint(page: Page) {
 }
 
 for (const dismissal of ["Escape", "pick", "Inspector reveal"]) {
-  test(`quick-add owns pane adjustments across ${dismissal}`, async ({ page }) => {
+  test(`quick-add defers panels and only reveals placements across ${dismissal}`, async ({ page }) => {
     await open(page);
     await pauseClock(page);
     await countPaneFits(page);
@@ -270,7 +278,6 @@ for (const dismissal of ["Escape", "pick", "Inspector reveal"]) {
     const point = await pendingPlacementPoint(page);
     await page.getByTestId("canvas-wrap").dblclick({ position: point });
     await expect(page.getByTestId("quick-add")).toBeVisible();
-    const before = await viewportTransform(page);
     const anchor = await boxOf(page.getByTestId("node-kong"));
     const beforeZoom = await zoom(page);
     if (dismissal === "Escape") await page.keyboard.press("Escape");
@@ -280,9 +287,11 @@ for (const dismissal of ["Escape", "pick", "Inspector reveal"]) {
     }
     await expect(page.getByTestId("quick-add")).toBeHidden();
     await page.clock.runFor(1500);
-    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-fits", "0");
-    if (dismissal === "Escape") expect(await viewportTransform(page)).toBe(before);
-    else {
+    if (dismissal === "Escape") {
+      await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-fits", "1");
+      expect(await inPane(page)).toBe(true);
+    } else {
+      await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-fits", "0");
       const node = await boxOf(page.getByTestId("node-topic-1"));
       // The placement's own reveal may pan clear of chrome, but must keep the
       // same flow position and zoom. Measure relative to an existing card.

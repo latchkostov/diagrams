@@ -41,6 +41,9 @@ export interface LiveHandle {
 export interface LiveViewProps {
   /** Inspector visibility and completed resizes, so Live preserves its camera policy as the pane changes. */
   paneRevision?: number | string;
+  /** Selection-driven opens only reveal; menus defer panel-driven refits. */
+  paneChange?: () => "panel" | "selection";
+  paneMenuOpen?: boolean;
   /** Pan a manual view's selection into the resized pane, keeping its zoom. */
   onManualPaneChange?: () => void;
   /** Current camera owner, shared with the canvas and its camera commands. */

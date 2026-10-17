@@ -413,8 +413,10 @@ function CanvasInner({
     setInspectorFocus((f) => (f?.seq === seq && f.name === "autoscaling-upgrade-preview" ? { ...f, name: "" } : f));
     return true;
   }, []);
+  const [inspectorRequest, requestInspector] = useState(0);
   const openInspector = useCallback(
     (field?: string, caret?: "end", target?: string) => {
+      requestInspector((revision) => revision + 1);
       liveHandle.current?.session?.closePanel();
       setPref("inspector", true);
       setOpenedByHand((o) => ({ ...o, inspector: true }));
@@ -1005,7 +1007,7 @@ function CanvasInner({
         const kept = keepInView.current();
         const next = clearOfChrome(kept);
         if (!next) return;
-        const go = () => void setViewport(next, { duration: motionMs(200) });
+        const go = () => void setViewport(next, { duration: motionMs(200), interpolate: "linear" });
         if (kept) setTimeout(go, motionMs(250) + 30);
         else go();
       };
@@ -1110,7 +1112,7 @@ function CanvasInner({
       const connected = { spot, card, left: menuLeft, width: QUICK_ADD_W };
       const view = { x: tx, y: ty, zoom: k };
       const { viewport: next } = connectedMenuPlacement(connected, view, r);
-      if (next) void setViewport(next, { duration: motionMs(200) });
+      if (next) void setViewport(next, { duration: motionMs(200), interpolate: "linear" });
       const { position } = connectedMenuPlacement(connected, next ?? view, r);
       landing.set(spot);
       setMenu({
@@ -2109,71 +2111,73 @@ function CanvasInner({
   // and its edges in view (a pan, never a zoom), once the pane has its new size.
   const keepSelectionInView = useKeepSelectionInView(wrapper, { style: edgeStyle, direction: meta.direction ?? "LR" });
   useLayoutEffect(() => {
-    keepInView.current = keepSelectionInView;
+    keepInView.current = () => keepSelectionInView(250, true);
   });
-  // A side panel opened or closed while the whole diagram was in view refits it to the new pane,
-  // so nothing ends up under the panel or its rail. A view the user panned or zoomed stays put.
-  const panelsKey = `${paletteHidden}`;
-  const lastPanels = useRef(panelsKey);
-  useLayoutEffect(() => {
-    if (lastPanels.current === panelsKey) return;
-    lastPanels.current = panelsKey;
-    if (camera.owner !== "fit" || live || presenting || !nothingSelected) return;
-    overlayFit({ maxZoom: FIT.maxZoom, margin: 40, duration: 250 });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when a side panel opens or closes
-  }, [panelsKey]);
   // The Checks card opened over a diagram that was all in view: refit it clear of the card (the card is floating
   // chrome, data-canvas-overlay), once the card has drawn. A view the user panned or zoomed stays put.
   const checksMounted = () => {
     if (camera.owner !== "fit" || live || presenting) return;
     overlayFit({ maxZoom: FIT.maxZoom, margin: 40, duration: 250 });
   };
-  // The AI panel opened, closed or was resized, or an Inspector resize completed: the pane changed size at its
-  // right edge. A fit is refitted to the new pane; a view the user panned or zoomed keeps the selection
-  // (or, with none, the diagram's centre) in view with a pan. Inspector reveals use this same handler:
-  // two concurrent pans could capture an intermediate animation zoom and make it permanent.
-  const dockKey = `${aiDock.open}:${aiDock.open ? Math.round(aiDock.width / 40) : 0}:${inspectorHidden}:${sheetResize}`;
-  const appliedDock = useRef(dockKey);
-  const paneNodeCount = useRef(nodes.length);
-  const placementReveal = useRef(false);
-  const namingNewNode = selectedNodes.some((n) => editor.creating(n.id));
-  useEffect(() => {
-    const placed = nodes.length > paneNodeCount.current;
-    paneNodeCount.current = nodes.length;
-    if (placed) placementReveal.current = true;
-    const revealingPlacement = placementReveal.current && !nothingSelected;
-    // A pointer placement can publish its selection before pointer-up opens the
-    // Inspector. Consume that first reveal too, then resume ordinary pane policy.
-    if (!inspectorHidden || !settledEmpty || nothingSelected) placementReveal.current = false;
-    // Placement owns its spot and any reveal it needs. A quick-add outline/menu
-    // also owns its camera space, including when dismissed without a pick.
-    // Keep that ownership while its editor opens the Inspector on a later frame.
-    // A pane adjustment from before either flow must never refit the new content.
-    if (placed || revealingPlacement || namingNewNode || menu?.testId === "quick-add") {
-      appliedDock.current = dockKey;
-      return;
+  // Record the cause independently of deferred execution: menus suspend panel work,
+  // while a new selection replaces it with a reveal that never changes zoom or ownership.
+  const dockKey = `${paletteHidden}:${aiDock.open}:${aiDock.open ? Math.round(aiDock.width / 40) : 0}:${inspectorHidden}:${sheetResize}`;
+  const panelKey = `${paletteHidden}:${aiDock.open}:${aiDock.open ? Math.round(aiDock.width / 40) : 0}:${prefs.inspector}:${openedByHand.inspector}:${sheetResize}:${livePanelOpen}:${narrow}:${cramped}`;
+  const selectionKey = JSON.stringify([
+    ...nodes.filter((n) => n.selected).map((n) => n.id),
+    ...edges.filter((e) => e.selected).map((e) => e.id),
+  ]);
+  const previousPane = useRef({ dockKey, panelKey, selectionKey, inspectorRequest });
+  const paneChange = useRef<"panel" | "selection">("panel");
+  const pendingPane = useRef(false);
+  const readPaneChange = useCallback(() => paneChange.current, []);
+  useLayoutEffect(() => {
+    const previous = previousPane.current;
+    const selection =
+      inspectorRequest !== previous.inspectorRequest || (selectionKey !== previous.selectionKey && !nothingSelected);
+    if (
+      (selection && pendingPane.current) ||
+      inspectorRequest !== previous.inspectorRequest ||
+      dockKey !== previous.dockKey
+    ) {
+      paneChange.current = selection || panelKey === previous.panelKey ? "selection" : "panel";
+      pendingPane.current = true;
     }
-    if (appliedDock.current === dockKey) return;
-    // Context menus defer (rather than discard) the pane policy until dismissal.
-    if (menu) return;
-    // Live view refits around its own chrome (the trace card, a side panel): see LiveView.
-    if (presenting || live) {
-      appliedDock.current = dockKey;
+    previousPane.current = { dockKey, panelKey, selectionKey, inspectorRequest };
+  }, [dockKey, panelKey, selectionKey, inspectorRequest, nothingSelected]);
+  useEffect(() => {
+    if (!pendingPane.current || menu) return;
+    // Live owns panel refits; selection reveals use the same rule in both modes.
+    if (presenting || (live && paneChange.current === "panel")) {
+      pendingPane.current = false;
       return;
     }
     // After React Flow's ResizeObserver has the new pane size, and once a drag on the dock's edge settles.
     const host = wrapper.current;
     host?.setAttribute("data-pane-pending", "true");
-    const id = setTimeout(() => {
+    let stopWaiting = () => {};
+    const adjust = () => {
+      const measured = store.getState();
+      // A held/late ResizeObserver must not let the reveal consume the old pane.
+      // Subscribe to delivered measurements rather than guessing how many frames they need.
+      if (!host || measured.width !== host.clientWidth || measured.height !== host.clientHeight) return;
+      if (
+        getNodes().some(
+          (n) => n.selected && !n.hidden && !(n.type === "boundary" && (!n.width || !n.height)) && !n.measured?.width,
+        )
+      )
+        return;
+      stopWaiting();
       // Cleanup can cancel this timer when a menu opens. Keep the pane change pending
       // until it runs, so closing the menu retries it using the current camera owner.
-      appliedDock.current = dockKey;
+      pendingPane.current = false;
       host?.removeAttribute("data-pane-pending");
-      if (camera.owner === "fit") return overlayFit({ maxZoom: FIT.maxZoom, margin: 40, duration: 250 });
+      if (paneChange.current === "panel" && camera.owner === "fit")
+        return overlayFit({ maxZoom: FIT.maxZoom, margin: 40, duration: 250 });
       // Shift+2 already refines against the new pane. A pan here would interrupt
       // that transition at an intermediate zoom and invalidate its refinement.
       if (inspectorPanCommand.current === fitEpoch.current) return;
-      if (keepSelectionInView()) return;
+      if (keepSelectionInView(250, paneChange.current === "selection") || paneChange.current === "selection") return;
       const pane = wrapper.current?.getBoundingClientRect();
       const nodes = getNodes().filter((n) => !n.hidden);
       if (!pane || !nodes.length) return;
@@ -2183,13 +2187,18 @@ function CanvasInner({
       const cy = (b.y + b.height / 2) * zoom + y;
       if (cx < 40 || cx > pane.width - 40 || cy < 40 || cy > pane.height - 40)
         void setCenter(b.x + b.width / 2, b.y + b.height / 2, { zoom, duration: motionMs(250) });
+    };
+    const id = setTimeout(() => {
+      stopWaiting = store.subscribe(adjust);
+      adjust();
     }, 150);
     return () => {
       clearTimeout(id);
+      stopWaiting();
       host?.removeAttribute("data-pane-pending");
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the dock changes the pane
-  }, [dockKey, menu, nodes.length, namingNewNode, settledEmpty, nothingSelected]);
+  }, [dockKey, menu, selectionKey, inspectorRequest, settledEmpty, live, presenting]);
   // Stable, so the memoized stencil rail skips the canvas's frequent renders (drag, select, zoom).
   const togglePalette = useCallback(() => {
     setPaletteCollapsed(!paletteHidden);
@@ -2261,7 +2270,7 @@ function CanvasInner({
           }
         : { ...card, width: Math.min(width, 240), height: Math.min(height, 48) };
       const next = revealPan(el, { x: tx, y: ty, zoom: k }, card, must);
-      if (next) void setViewport(next, { duration: motionMs(200) });
+      if (next) void setViewport(next, { duration: motionMs(200), interpolate: "linear" });
     };
   });
   useEffect(() => {
@@ -2748,8 +2757,12 @@ function CanvasInner({
             {/* Nothing to simulate on a blank canvas: the Live toggle appears with the first node. */}
             {(nodeCount > 0 || live) && (
               <LiveView
-                paneRevision={`${inspectorHidden}:${sheetResize}`}
-                onManualPaneChange={keepSelectionInView}
+                paneRevision={`${paletteHidden}:${inspectorHidden}:${sheetResize}`}
+                paneChange={readPaneChange}
+                paneMenuOpen={!!menu}
+                onManualPaneChange={() => {
+                  if (inspectorPanCommand.current !== fitEpoch.current) keepSelectionInView();
+                }}
                 camera={camera}
                 readOnly={readOnly}
                 initial={viewer?.live}

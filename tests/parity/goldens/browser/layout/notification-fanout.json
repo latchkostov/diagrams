@@ -52,7 +52,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(28.96px, 353.344px) scale(0.276)",
+    "viewport": "translate(-155.814px, 321.707px) scale(0.419236)",
     "nodes": {
       "group:azure": { "kind": "group", "box": "translate(380px, 0px) 1860×512", "text": "Azure · notifications" },
       "carrier": { "kind": "node", "box": "translate(40px, 280px) 220×72", "text": "Carrier tracking Parcel scanned" },

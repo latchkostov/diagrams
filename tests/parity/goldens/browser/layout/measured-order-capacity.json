@@ -17,7 +17,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(409.975px, 2.47191px) scale(0.938202)",
+    "viewport": "translate(377.643px, 29.3258px) scale(1.01685)",
     "nodes": {
       "orders": { "kind": "node", "box": "translate(40px, 40px) 220×72", "text": "Northwind orders 1 order/s today" },
       "intake": { "kind": "node", "box": "translate(40px, 200px) 259×72", "text": "Order intake Pinned lesson: 1 × 4 / 0.25 s" },

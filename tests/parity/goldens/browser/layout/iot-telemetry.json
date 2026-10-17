@@ -43,7 +43,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(27.2222px, 323.056px) scale(0.319444)",
+    "viewport": "translate(-98.6579px, 344.542px) scale(0.431837)",
     "nodes": {
       "group:azure": { "kind": "group", "box": "translate(380px, 0px) 1480×632", "text": "Azure · industrial telemetry" },
       "devices": { "kind": "node", "box": "translate(40px, 280px) 260×72", "text": "Factory sensors Temperature · vibration · deviceId" },

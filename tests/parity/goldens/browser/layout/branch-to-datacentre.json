@@ -46,7 +46,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(-47.3645px, 167px) scale(0.416899)",
+    "viewport": "translate(53.7363px, 72px) scale(0.497253)",
     "nodes": {
       "group:branch": { "kind": "group", "box": "translate(960px, 0px) 340×312", "text": "Branch office" },
       "group:dc": { "kind": "group", "box": "translate(340px, 320px) 1020×1112", "text": "Data centre" },

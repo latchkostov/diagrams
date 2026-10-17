@@ -19,7 +19,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(44.1123px, 113.014px) scale(1.09964)",
+    "viewport": "translate(29.7037px, 42.4593px) scale(1.20741)",
     "nodes": {
       "orders": { "kind": "node", "box": "translate(40px, 40px) 220×72", "text": "Acme orders 3 orders/s" },
       "refunds": { "kind": "node", "box": "translate(350px, 40px) 220×72", "text": "Acme refunds 3 refunds/s" },

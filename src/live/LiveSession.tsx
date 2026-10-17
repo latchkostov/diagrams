@@ -155,6 +155,8 @@ export function LiveSession({
   onSession,
   privateDiagram,
   paneRevision = 0,
+  paneChange,
+  paneMenuOpen,
   onManualPaneChange,
   camera: sharedCamera,
 }: SessionProps) {
@@ -451,12 +453,16 @@ export function LiveSession({
   const dockFitted = useRef(dockKey);
   useEffect(() => {
     if (dockKey === dockFitted.current) return;
-    dockFitted.current = dockKey;
-    if (presenting) return;
+    if (paneMenuOpen) return;
+    if (presenting || paneChange?.() === "selection") {
+      dockFitted.current = dockKey;
+      return;
+    }
     // After React Flow's ResizeObserver has the new pane size.
     const host = store.getState().domNode?.closest('[data-testid="canvas-wrap"]');
     host?.setAttribute("data-pane-pending", "true");
     const t = window.setTimeout(() => {
+      dockFitted.current = dockKey;
       host?.removeAttribute("data-pane-pending");
       if (slowRef.current?.session.active) return;
       if (camera.owner === "manual") return manualPaneChange.current?.();
@@ -470,7 +476,7 @@ export function LiveSession({
       window.clearTimeout(t);
       host?.removeAttribute("data-pane-pending");
     };
-  }, [dockKey, presenting, fitView, reducedMotion, fitPadding, fitAll, camera, store]);
+  }, [dockKey, presenting, fitView, reducedMotion, fitPadding, fitAll, camera, store, paneChange, paneMenuOpen]);
 
   // ---------------------------------------------------------------- the frame loop
 

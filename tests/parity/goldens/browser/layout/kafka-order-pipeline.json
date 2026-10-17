@@ -55,7 +55,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(27.2222px, 303.889px) scale(0.319444)",
+    "viewport": "translate(-112.561px, 311.16px) scale(0.444251)",
     "nodes": {
       "group:aks": { "kind": "group", "box": "translate(760px, 120px) 1100×392", "text": "AKS · commerce workloads + Kafka" },
       "shopper": { "kind": "node", "box": "translate(40px, 280px) 235×72", "text": "Storefront Browser / mobile checkout" },
