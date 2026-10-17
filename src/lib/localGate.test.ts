@@ -31,6 +31,10 @@ it("invokes standalone pnpm and JS shims without shell interpretation", () => {
 
 const config = (args: string[] = []) => options(["full", ...args]);
 
+it.each(["unit,e2e", "unit e2e", "unit, e2e"])("accepts native and PowerShell category lists (%s)", (list) => {
+  expect(config(["--only", list]).only).toEqual(["unit", "e2e"]);
+});
+
 it("keeps container browser profiles on the source volume and native profiles on the repo drive", () => {
   const root = resolve("tests/.output/volume-source");
   const report = join(root, "reports/run");
@@ -80,13 +84,14 @@ it.each(["", "bind"])(
       expect(result.failures).toBe(0);
       const run = calls.find((c) => c[0] === "docker" && c[1] === "run");
       if (!run) throw new Error("No container run");
-      const mounts = run.filter((_, i) => run[i - 1] === "-v");
-      expect(mounts).toContain(`ld-gate-${process.pid}-reports:/work/tests/.output/g/${basename(dir)}`);
-      expect(mounts).toContain(`ld-gate-${process.pid}-profiles:/work/tests/.output/tmp`);
+      const name = `ld-gate-${process.pid}-${basename(dir)}`;
+      const mounts = run.filter((_, i) => ["-v", "--mount"].includes(run[i - 1]));
+      expect(mounts).toContain(
+        `type=volume,source=${name}-reports,target=/work/tests/.output/g/${basename(dir)},volume-nocopy`,
+      );
+      expect(mounts).toContain(`type=volume,source=${name}-profiles,target=/work/tests/.output/tmp,volume-nocopy`);
       expect(mounts.some((mount) => mount.startsWith(`${dir}:`))).toBe(false);
-      expect(
-        calls.some((c) => c[1] === "volume" && c[2] === "rm" && c.includes(`ld-gate-${process.pid}-reports`)),
-      ).toBe(true);
+      expect(calls.some((c) => c[1] === "volume" && c[2] === "rm" && c.includes(`${name}-reports`))).toBe(true);
     } finally {
       vi.unstubAllEnvs();
       rmSync(dir, { recursive: true, force: true });

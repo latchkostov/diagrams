@@ -31,7 +31,7 @@ jobs:
       - uses: ./.github/actions/toolchain
       - uses: ./.github/actions/chromium-cache
       - name: Native unit and every production E2E project, no retries
-        run: pnpm gate full --no-docker --only unit,e2e
+        run: pnpm gate full --no-docker --only "unit,e2e"
       - name: Upload native reports
         if: always()
         uses: actions/upload-artifact@v7

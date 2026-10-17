@@ -125,13 +125,15 @@ The config regressions catch removal of the workaround and clobbered defaults; L
 launch arguments stay unchanged. Review/remove this deliberately narrow internal API
 integration when upgrading Playwright/Chromium; it must never enter an app bundle.
 
-`pnpm test:e2e` starts its own servers and runs three Playwright projects:
+`pnpm test:e2e` starts its own servers and runs five Playwright projects:
 
-| Project    | What it tests                                                                  | Server                            |
-| ---------- | ------------------------------------------------------------------------------ | --------------------------------- |
-| `chromium` | every spec except the two below                                                | `E2E_PORT` (default 5191)         |
-| `dev`      | tests that need the Vite dev server (`DEV_ONLY` in `playwright.config.ts`)     | the dev server                    |
-| `subpath`  | `subpath.spec.ts`: the real production build embedded under `/tools/diagrams/` | `E2E_PREVIEW_PORT` (default 5193) |
+| Project    | What it tests                                                                  | Server                             |
+| ---------- | ------------------------------------------------------------------------------ | ---------------------------------- |
+| `chromium` | every spec except `@dev` and the specs with their own builds                   | `E2E_PORT` (default 5191)          |
+| `dev`      | tests that need the Vite dev server (`DEV_ONLY` in `playwright.config.ts`)     | the dev server                     |
+| `subpath`  | `subpath.spec.ts`: the real production build embedded under `/tools/diagrams/` | `E2E_PREVIEW_PORT` (default 5193)  |
+| `internal` | `self-host.spec.ts`: branded internal production build                         | `E2E_INTERNAL_PORT` (default 5194) |
+| `locked`   | `self-host-locked.spec.ts`: production with every privacy switch enabled       | `E2E_LOCKED_PORT` (default 5195)   |
 
 `E2E_TARGET` picks what `chromium` runs against:
 

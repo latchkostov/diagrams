@@ -21,7 +21,8 @@ export function options(argv) {
     else if (arg === "--no-docker") result.docker = false;
     else if (["--ports", "--workers", "--repeat"].includes(arg)) result[arg.slice(2)] = positive(args.shift(), arg);
     else if (arg === "--only") {
-      result.only = (args.shift() ?? "").split(",");
+      // pnpm.ps1 can join an unquoted PowerShell comma-array with spaces.
+      result.only = (args.shift() ?? "").trim().split(/[,\s]+/);
       if (result.only.some((name) => !CATEGORIES.includes(name)))
         throw new Error(`--only accepts ${CATEGORIES.join(",")}`);
     } else if (arg.startsWith("--") || result.command !== "quick") throw new Error(`Unexpected argument: ${arg}`);

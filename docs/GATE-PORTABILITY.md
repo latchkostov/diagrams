@@ -5,6 +5,10 @@ Nightly jobs run units and every production E2E project with zero retries. The
 platform spec also supplies Mac/Windows browser inputs on every host; this checks
 application branches and pinch events, but cannot emulate native text editing.
 
+PowerShell's `pnpm.ps1` can turn an unquoted `unit,e2e` argument into `unit e2e`.
+The gate accepts both forms; Nightly quotes the list explicitly. Parsing tests
+and a native PowerShell doctor probe cover the wrapper's actual argument form.
+
 ## Reported Mac failures
 
 | Original case                         | Classification                                | Correction / coverage                                                                                                                                                              |

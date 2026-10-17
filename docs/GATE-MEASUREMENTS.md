@@ -44,3 +44,45 @@ reports copied back after execution. The RAM reserve includes trace buffers, giv
 this 31.2 GiB VM ten workers. Responsiveness compares identical text at every phase;
 the 1.5x CPU limit, sample counts and 1,500-node workload are unchanged. Neither
 failure was accepted or hidden with retries, timeout increases or golden updates.
+
+## Linux source transport
+
+Both full runs below test commit `3988f71c` in the pinned image, with ten workers,
+warm dependency/store volumes, native report/profile volumes and zero retries.
+Archive ran first, bind second. Each passed 8,721 unit tests (four skipped), all
+2,196 unchanged goldens and all 1,537 browser tests, with zero failed or flaky.
+
+| Step (seconds) | Archive | Bind  |
+| -------------- | ------- | ----- |
+| lint           | 21.0    | 24.8  |
+| typecheck      | 1.6     | 3.7   |
+| format         | 17.6    | 33.9  |
+| i18n           | 1.8     | 2.4   |
+| skill          | 1.1     | 2.7   |
+| unit           | 59.7    | 82.3  |
+| build          | 4.5     | 11.4  |
+| size           | 0.1     | 0.1   |
+| parity         | 63.1    | 84.6  |
+| E2E build      | 3.5     | 10.2  |
+| preview build  | 3.4     | 9.8   |
+| internal build | 2.5     | 7.6   |
+| locked build   | 2.3     | 7.6   |
+| E2E            | 427.5   | 524.7 |
+| total wall     | 626.2   | 794.4 |
+
+The four E2E builds overlap; wall time also includes setup, transport and cleanup.
+Archive saves 21% of total time and 19% of browser time on this SATA/NTFS checkout,
+and exports exactly the commit being stamped. It is the full Linux gate's default.
+Quick Linux runs bind the working edits. Per-run volume names prevent reuse after
+a hard kill/PID recycle; report/profile mounts disable copy-up and reports return
+to the host only after execution.
+
+## Nightly dev target
+
+The full native dev-server sweep at 12 workers passed 1,525 tests, skipped the
+12 production-build-only cases and had zero failed or flaky, in 664.5 seconds.
+Projects: chromium 1,451 passed / 12 skipped; dev 51; subpath 5; internal 12;
+locked 6. This exercises the real Vite HMR handshake and the source-import tests,
+in addition to the production-target gate. Vite emitted ResizeObserver diagnostics;
+the sweep's assertions and error checks passed. Its servers were stopped before
+the final unit/compiler checks.

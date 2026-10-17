@@ -15,7 +15,8 @@ export async function linuxRun(root, config, changed, directory, sha, execute = 
     .digest("hex")
     .slice(0, 16);
   const modules = `livediagrams-gate-modules-${platform.text.trim()}-${hash}`;
-  const name = `ld-gate-${process.pid}`;
+  // A run directory is unique even after a hard kill and eventual PID reuse.
+  const name = `ld-gate-${process.pid}-${basename(directory)}`;
   const source = `${name}-source`;
   const reports = `${name}-reports`;
   const profiles = `${name}-profiles`;
@@ -23,7 +24,9 @@ export async function linuxRun(root, config, changed, directory, sha, execute = 
   // gates include working edits. GATE_LINUX_SOURCE=bind exists only for measurement.
   const archive = config.command === "full" && process.env.GATE_LINUX_SOURCE !== "bind";
   const innerDir = `/work/tests/.output/g/${basename(directory)}`;
-  console.log(`Linux source: ${archive ? "git archive HEAD → Linux volume" : "bind mount"}; dependencies: ${modules}`);
+  console.log(
+    `Linux source: ${archive ? "git archive HEAD → Linux volume" : "bind mount"}; container: ${name}; dependencies: ${modules}`,
+  );
   try {
     if (archive) {
       const tar = join(directory, "head.tar");
@@ -62,10 +65,10 @@ export async function linuxRun(root, config, changed, directory, sha, execute = 
       `${modules}:/work/node_modules`,
       "-v",
       "livediagrams-gate-pnpm-store:/pnpm-store",
-      "-v",
-      `${reports}:${innerDir}`,
-      "-v",
-      `${profiles}:/work/tests/.output/tmp`,
+      "--mount",
+      `type=volume,source=${reports},target=${innerDir},volume-nocopy`,
+      "--mount",
+      `type=volume,source=${profiles},target=/work/tests/.output/tmp,volume-nocopy`,
       "-w",
       "/work",
       "-e",
