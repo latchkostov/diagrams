@@ -15,6 +15,8 @@ export interface Summary {
   reports: (BrowserCounts & { name: string })[];
   failures: number;
   workers: number;
+  seconds: number;
+  totalSeconds?: number;
 }
 export function runSteps(
   root: string,

@@ -4,6 +4,7 @@ import console from "node:console";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, realpathSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { performance } from "node:perf_hooks";
 import { options, canStamp, checkTree } from "./gate/logic.mjs";
 import { acquireLock, pickPorts, probePorts } from "./gate/host.mjs";
 import { git, cancelCommands } from "./gate/commands.mjs";
@@ -34,6 +35,7 @@ try {
       undefined,
       abort.signal,
     );
+    const started = performance.now();
     const sha = await git(["rev-parse", "HEAD"], root);
     const stamp = join(common, "verified", sha);
     if (config.command === "full") {
@@ -73,6 +75,8 @@ try {
       summary.failures++;
       console.error(error.message);
     }
+    summary.totalSeconds = (performance.now() - started) / 1000;
+    writeFileSync(join(directory, "summary.json"), JSON.stringify(summary, null, 2));
     const line = printSummary(sha, summary);
     writeFileSync(join(directory, "summary.txt"), line + "\n");
     if (summary.failures) process.exitCode = 1;

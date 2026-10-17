@@ -20,6 +20,13 @@ import {
 import { acquireLock, pickPorts, probePorts } from "../../scripts/gate/host.mjs";
 import { runSteps } from "../../scripts/gate/run.mjs";
 import { installed } from "../../scripts/gate/doctor.mjs";
+import { pnpmCommand } from "../../scripts/gate/commands.mjs";
+
+it("invokes standalone pnpm and JS shims without shell interpretation", () => {
+  const args = ["exec", "tool", "a path with spaces", "$(literal)"];
+  expect(pnpmCommand(args, process.execPath)).toEqual([process.execPath, args]);
+  expect(pnpmCommand(args, "pnpm.cjs")).toEqual([process.execPath, ["pnpm.cjs", ...args]]);
+});
 
 const config = (args: string[] = []) => options(["full", ...args]);
 const names = (args: string[] = []) =>

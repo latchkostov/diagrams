@@ -7,6 +7,7 @@ import { pnpm } from "./commands.mjs";
 import { plan, playwrightCounts, workerCount } from "./logic.mjs";
 
 export async function runSteps(root, config, changed, directory, extraEnv = {}, execute = pnpm) {
+  const started = performance.now();
   const rows = [];
   const reports = [];
   const workers = config.workers ?? workerCount(os.availableParallelism(), os.totalmem());
@@ -104,7 +105,13 @@ export async function runSteps(root, config, changed, directory, extraEnv = {}, 
     );
     rows.push(...results);
   }
-  const summary = { rows, reports, failures: rows.filter((r) => !r.ok).length, workers };
+  const summary = {
+    rows,
+    reports,
+    failures: rows.filter((r) => !r.ok).length,
+    workers,
+    seconds: (performance.now() - started) / 1000,
+  };
   writeFileSync(join(directory, "summary.json"), JSON.stringify(summary, null, 2));
   return summary;
 }
@@ -113,6 +120,7 @@ export function printSummary(sha, summary) {
   console.log("\nStep                      Seconds  Result");
   for (const row of summary.rows)
     console.log(`${row.name.padEnd(25)} ${row.seconds.toFixed(1).padStart(7)}  ${row.ok ? "PASS" : "FAIL"}`);
+  console.log(`Wall time: ${(summary.totalSeconds ?? summary.seconds).toFixed(1)}s`);
   const units = summary.rows.find((r) => r.name === "unit")?.counts;
   const parity = summary.rows.find((r) => r.name === "parity")?.counts;
   const totals = { passed: 0, failed: 0, flaky: 0, skipped: 0 };

@@ -37,9 +37,10 @@ export async function cancelCommands() {
 
 // Invoke the JS entry point, never a .cmd through a shell. Arguments (including paths
 // with spaces) retain their identity in PowerShell, cmd, Git Bash and zsh.
-export function pnpmCommand(args) {
-  const entry = process.env.npm_execpath;
+export function pnpmCommand(args, entry = process.env.npm_execpath) {
   if (entry && /\.(?:c?js|mjs)$/.test(entry)) return [process.execPath, [entry, ...args]];
+  // Standalone pnpm does not require Corepack to be installed on the host.
+  if (entry && existsSync(entry) && !/\.(?:cmd|bat|ps1)$/i.test(entry)) return [entry, args];
   const corepack = join(dirname(process.execPath), "node_modules/corepack/dist/pnpm.js");
   if (existsSync(corepack)) return [process.execPath, [corepack, ...args]];
   // The Linux image has Corepack on PATH; this branch never invokes a shell.
