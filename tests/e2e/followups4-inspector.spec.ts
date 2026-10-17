@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { sheetRoutingFixture } from "../../src/lab/routingFixture";
+import { routingSummaryFixture, sheetRoutingFixture } from "../../src/lab/routingFixture";
 import {
   test,
   expect,
@@ -47,6 +47,86 @@ async function inPane(page: Page, nodes = ids) {
   );
 }
 const zoom = async (page: Page) => Number((await viewportTransform(page)).match(/scale\(([^)]+)\)/)?.[1]);
+
+test("Edit zoom then entering Live gives the automatic fit ownership of Inspector changes", async ({ page }) => {
+  await open(page, false, false, 2);
+  await page.getByTestId("canvas-wrap").focus();
+  await page.keyboard.press("Shift+Digit0");
+  await waitForStableViewport(page);
+  expect(await zoom(page)).toBe(1);
+  await page.getByTestId("live-toggle").click();
+  await expect(page.getByTestId("live-controls")).toBeVisible();
+  await waitForStableViewport(page);
+  await pauseClock(page);
+  await page.getByTestId("inspector-toggle").click();
+  await page.clock.runFor(1500);
+  expect(await inPane(page)).toBe(true);
+});
+
+test("Inspector resize preserves keyboard-only Live zoom", async ({ page }) => {
+  await open(page, true);
+  await page.getByTestId("inspector-toggle").click();
+  await waitForStableViewport(page);
+  await page.getByTestId("canvas-wrap").focus();
+  await page.keyboard.press("Shift+Digit0");
+  await waitForStableViewport(page);
+  expect(await zoom(page)).toBe(1);
+  await pauseClock(page);
+  // Keyboard only, including the resize: no wheel or pointer input can claim the camera.
+  await page.getByTestId("inspector-resize").press("End");
+  await page.clock.runFor(1500);
+  expect(await zoom(page)).toBe(1);
+});
+
+test("narration takes ownership after a manual pan and yields to later keyboard zoom", async ({ page }) => {
+  await open(page, true);
+  const pane = await boxOf(page.getByTestId("canvas-wrap"));
+  const point = await emptyCanvasPoint(page);
+  await page.mouse.move(pane.x + point.x, pane.y + point.y);
+  await page.mouse.wheel(300, 80);
+  await waitForStableViewport(page);
+  await page.getByTestId("live-sim-picker").selectOption("inspector-note");
+  await expect(page.getByTestId("live-note-continue")).toBeVisible();
+  await waitForStableViewport(page);
+  await page.getByTestId("inspector-toggle").click();
+  await waitForStableViewport(page);
+  await pauseClock(page);
+  await page.getByTestId("inspector-resize").press("End");
+  await page.clock.runFor(1500);
+  expect(await inPane(page, ["kong", "orders"])).toBe(true);
+  await page.getByTestId("canvas-wrap").focus();
+  await page.keyboard.press("Shift+Digit0");
+  await page.clock.runFor(1500);
+  expect(await zoom(page)).toBe(1);
+  await page.getByTestId("inspector-resize").press("Home");
+  await page.clock.runFor(1500);
+  expect(await zoom(page)).toBe(1);
+});
+
+for (const locale of ["en", "ar", "en-XA"])
+  test(`Default announces every destination and its split when compact in ${locale}`, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.addInitScript(
+      ({ locale, key, diagram }) => {
+        localStorage.setItem("diagrams.locale", locale);
+        localStorage.setItem(key, JSON.stringify(diagram));
+      },
+      { locale, key: STORAGE_KEYS.autosavePrefix + "kafka-order-pipeline", diagram: routingSummaryFixture(2) },
+    );
+    await gotoCanvas(page, "kafka-order-pipeline");
+    await page.getByTestId("node-kong").dblclick();
+    await page.getByTestId("inspector-resize").press("Home");
+    const fallback = page.getByTestId("routes-default");
+    await expect(fallback.getByTestId("route-target-summary")).not.toHaveText("Orders, Orders canary");
+    await expect(fallback).toHaveAccessibleName(/Orders, Orders canary/);
+    const name = await fallback.getAttribute("aria-label");
+    if (name === null) throw new Error("Expected a localized Default accessible name");
+    expect(name).toContain("90 / 10");
+    if (locale !== "en") expect(name).not.toMatch(/^Default:/);
+    await page.getByTestId("inspector-resize").press("End");
+    await expect(fallback.getByTestId("route-target-summary")).toHaveText("Orders, Orders canary");
+    await expect(fallback).toHaveAccessibleName(name);
+  });
 
 for (const live of [false, true]) {
   test(`opening and closing the Inspector refits a fitted ${live ? "Live" : "edit"} view`, async ({ page }) => {

@@ -1,5 +1,44 @@
 import { test, expect } from "./fixtures";
 import { canvasSelection, command, openExample, readCanvas, restoreOpening, settledCanvas, tidyAll } from "./canvas";
+import { waitForStableBox } from "../../e2e/fixtures";
+import { holdResizeObservers } from "./holdReadiness";
+
+test("Tidy waits for the Inspector pane opened by Select all", async ({ page }) => {
+  await page.addInitScript(holdResizeObservers, false);
+  const opened = await openExample(page, "shared-worker-pool");
+  await page.evaluate(() => window.dispatchEvent(new Event("hold-resize-observers")));
+  const pane = page.getByTestId("canvas-wrap");
+  await pane.evaluate((scope) => {
+    scope.setAttribute("data-tidy-during-pane", "0");
+    document.addEventListener(
+      "click",
+      (event) => {
+        if (
+          event.target instanceof Element &&
+          event.target.closest('[data-testid="command-item-action:selection.tidy"]') &&
+          (scope.getAttribute("data-pane-pending") === "true" || scope.getAttribute("data-fit-pending") === "true")
+        )
+          scope.setAttribute("data-tidy-during-pane", "1");
+      },
+      true,
+    );
+  });
+  let finished = false;
+  const tidying = tidyAll(page, opened).then(() => {
+    finished = true;
+  });
+  await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { heldResizeObservers(): number }).heldResizeObservers()))
+    .toBeGreaterThan(0);
+  // A stationary node settles in this same run while the pane's measurements are held.
+  await waitForStableBox(page.getByTestId("node-orders"));
+  expect(finished).toBe(false);
+  await expect(pane).toHaveAttribute("data-tidy-during-pane", "0");
+  await page.evaluate(() => window.dispatchEvent(new Event("release-resize-observers")));
+  await tidying;
+  await expect(pane).toHaveAttribute("data-tidy-during-pane", "0");
+});
 
 test("an unchanged Auto-layout needs no Undo; full selection offers Tidy without boundaries", async ({ page }) => {
   const opened = await openExample(page, "shared-worker-pool");

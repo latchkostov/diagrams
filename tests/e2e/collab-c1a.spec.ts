@@ -43,8 +43,10 @@ test("a room that never connects offers Retry and a file copy without losing edi
   await page.clock.runFor(COLLAB_LIMITS.connectionWaitMs);
   await expect(page.getByTestId("collab-connection-failed")).toContainText("Could not connect to this room");
   await expect(page.getByTestId("collab-save-copy")).toBeVisible();
-  await page.getByTestId("collab-retry").click();
+  await page.getByTestId("collab-retry").focus();
+  await page.keyboard.press("Enter");
   await expect(page.getByTestId("collab-connection-failed")).toHaveCount(0);
+  await expect(page.getByTestId("collab-room-status")).toBeFocused();
   await expect(page.getByTestId("node-api")).toContainText("Keep disconnected edits");
   await page.clock.runFor(COLLAB_LIMITS.connectionWaitMs);
   await expect(page.getByTestId("collab-connection-failed")).toBeVisible();

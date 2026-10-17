@@ -70,6 +70,19 @@ export function sheetRoutingFixture(spread = 1): DiagramFile {
   return d;
 }
 
+/** The supported rule limit, with long, split destinations in both rules and Default. */
+export function routingSummaryFixture(count = 256): DiagramFile {
+  const d = sheetRoutingFixture();
+  const table = d.nodes.find((node) => node.id === "kong")!.props!.routeTable as RouteTable;
+  table.rules = Array.from({ length: count }, (_, i) => ({
+    ...structuredClone(table.rules[0]),
+    id: `rule-${i}`,
+    match: { path: { kind: "exact" as const, value: `/orders/${i}` } },
+  }));
+  table.default = { targets: structuredClone(table.rules[0].targets) };
+  return d;
+}
+
 export function routingFixture(options: { rate?: number; mix?: TrafficMix; table?: RouteTable } = {}): DiagramFile {
   const service = (id: string, label: string, x: number, y: number) => ({
     id,

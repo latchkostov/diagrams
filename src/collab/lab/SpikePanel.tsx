@@ -211,7 +211,13 @@ export function SpikePanel() {
             <button
               className="btn"
               data-testid="collab-spike-retry"
-              onClick={() => conn.client.session.retryConnection()}
+              onClick={(e) => {
+                e.currentTarget
+                  .closest("section")
+                  ?.querySelector<HTMLElement>('[data-testid="collab-spike-status"]')
+                  ?.focus();
+                conn.client.session.retryConnection();
+              }}
             >
               {t("common.retry")}
             </button>
@@ -233,7 +239,7 @@ export function SpikePanel() {
       </div>
       {conn && client && (
         <div className="collab-spike-session">
-          <p data-testid="collab-spike-status">
+          <p data-testid="collab-spike-status" role="status" tabIndex={-1}>
             {client.session.status} · trackers open {diag?.trackersOpen} · peers{" "}
             <span data-testid="collab-spike-peers" data-count={diag?.peers}>
               {diag?.peers}

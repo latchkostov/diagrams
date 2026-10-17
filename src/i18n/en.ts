@@ -2202,6 +2202,7 @@ const en = {
   "routing.rateLimitFold": "Rate limit",
   "routing.ruleNamed": "rule {n, number} ({name})",
   "routing.ruleRow": "Rule {n, number}: {match}, sends to {targets}, {split}.",
+  "routing.defaultRow": "Default: sends to {targets}, {split}.",
   "routing.moreTargets": "{target} +{count, number}",
   "routing.ruleDeleted": "Rule {rule, number} deleted.",
   "routing.newRouteMenu": "New route…",

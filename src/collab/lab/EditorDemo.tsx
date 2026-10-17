@@ -179,6 +179,7 @@ function RoomEditor({ room, roomKey }: { room: CollaborativeEditorRoom; roomKey:
       )}
       <div
         role="status"
+        tabIndex={-1}
         className="collab-room-status"
         data-testid="collab-room-status"
         data-status={privateDraft ? "offline" : session.roomStatus}
@@ -214,7 +215,17 @@ function RoomEditor({ room, roomKey }: { room: CollaborativeEditorRoom; roomKey:
       {session.connectionFailed && (
         <div role="alert" data-testid="collab-connection-failed">
           <p>{t("collab.connectionFailed")}</p>
-          <button className="btn" data-testid="collab-retry" onClick={() => session.retryConnection()}>
+          <button
+            className="btn"
+            data-testid="collab-retry"
+            onClick={(e) => {
+              e.currentTarget
+                .closest("section")
+                ?.querySelector<HTMLElement>('[data-testid="collab-room-status"]')
+                ?.focus();
+              session.retryConnection();
+            }}
+          >
             {t("common.retry")}
           </button>
           <p>{t("collab.fileFallback")}</p>

@@ -1,3 +1,4 @@
+import { createCameraOwnership } from "./cameraOwnership";
 import { useCaptionContrast } from "./useCaptionContrast";
 import { ConnectedQuickAddMenu } from "./ConnectedQuickAddMenu";
 import { connectedMenuPlacement, type ConnectedMenuAnchor } from "./geometry/connectedMenuPlacement";
@@ -614,15 +615,16 @@ function CanvasInner({
     };
   }, [interruptFit]);
   const firstFit = useRef(false);
-  /** True while the view is a fit (the whole diagram in view), false once the user pans or zooms. */
+  /** Eligibility for this canvas's pending measurement refinements; camera owns pane-change policy. */
   const showingAll = useRef(true);
-  const manualCamera = useRef(false);
+  const [camera] = useState(createCameraOwnership);
   const overlayFit = useCallback(
     (o?: Parameters<typeof fitView_>[0], animate = false, wholeDiagram = true) => {
       const epoch = fitEpoch.current;
+      const claim = camera.claim(wholeDiagram ? "fit" : "manual");
       showingAll.current = wholeDiagram;
       const runFit = () => {
-        if (epoch !== fitEpoch.current || showingAll.current !== wholeDiagram) return;
+        if (epoch !== fitEpoch.current || showingAll.current !== wholeDiagram || !camera.isCurrent(claim)) return;
         firstFit.current = true;
         const own = {};
         fitStarting.current = own;
@@ -640,7 +642,7 @@ function CanvasInner({
       // Fit the committed geometry now. Fonts/chrome readiness only refines this view;
       // it must never leave an interactive canvas at its default transform.
       const immediate = (duration: number) => {
-        if (epoch !== fitEpoch.current || showingAll.current !== wholeDiagram) return;
+        if (epoch !== fitEpoch.current || showingAll.current !== wholeDiagram || !camera.isCurrent(claim)) return;
         const own = {};
         fitStarting.current = own;
         fitTransition.current = own;
@@ -652,12 +654,12 @@ function CanvasInner({
       earlyFit.current = () => immediate(0);
       immediate(animate ? (o?.duration ?? 0) : 0);
       afterMeasured(() => {
-        if (epoch !== fitEpoch.current || showingAll.current !== wholeDiagram) return;
+        if (epoch !== fitEpoch.current || showingAll.current !== wholeDiagram || !camera.isCurrent(claim)) return;
         earlyFit.current = null;
         return runFit();
       });
     },
-    [afterMeasured, fitView_],
+    [afterMeasured, fitView_, camera],
   );
   const nodesInitialized = useNodesInitialized();
   useLayoutEffect(() => {
@@ -677,7 +679,6 @@ function CanvasInner({
     });
   }, [store]);
   const fit = useCallback(() => {
-    manualCamera.current = false;
     overlayFit({ maxZoom: 1.25, duration: 300 }, true);
   }, [overlayFit]);
   // Privacy: the diagram's provenance (Private switch, local-only example), re-read when the library changes.
@@ -736,7 +737,7 @@ function CanvasInner({
     edgeMarks: () => edgeMarks(wrapper.current),
     fit,
     onManualCamera: () => {
-      manualCamera.current = true;
+      camera.claim("manual");
     },
     afterMeasured: whenReady,
     nodeSize: getNodeVariant(nodeVariant).size,
@@ -744,7 +745,6 @@ function CanvasInner({
     // Refine after pane measurements too: a pending Inspector reveal must not
     // overwrite Shift+2 with its earlier selection pan at the old zoom.
     zoomTo: (only, onlyEdges) => {
-      manualCamera.current = true;
       inspectorPanCommand.current = fitEpoch.current;
       overlayFit({ only, onlyEdges, maxZoom: 1.25, margin: 64, duration: 300 }, true, false);
     },
@@ -924,7 +924,7 @@ function CanvasInner({
   useEffect(() => {
     if (lastFullscreen.current === fullscreen) return;
     lastFullscreen.current = fullscreen;
-    if (!presenting || !showingAll.current) return;
+    if (!presenting || camera.owner !== "fit") return;
     overlayFit({
       maxZoom: FIT_PRESENT.maxZoom,
       margin: 64,
@@ -1791,7 +1791,7 @@ function CanvasInner({
       // A pan by hand closes menus; the app's own (a new node brought into view) doesn't: quick-add
       // opened right after naming the last node must stay open while the view settles.
       if (e) setMenu(null);
-      if (e) manualCamera.current = true;
+      if (e) camera.claim("manual");
       hideTip();
       // A pan or zoom by hand (an event), or by a command such as Shift+0 (no event, and not
       // our own fit starting), means the view is the user's now, not a fit.
@@ -1801,20 +1801,20 @@ function CanvasInner({
       }
       fitStarting.current = null;
     },
-    [hideTip, interruptFit],
+    [hideTip, interruptFit, camera],
   );
   const onMove: OnMove = useCallback(
     (e) => {
       // Wheel input can interrupt a running transition without another move-start.
       // Only actual viewport movement counts; scrolling a panel or embed page does not.
       if (e) {
-        manualCamera.current = true;
+        camera.claim("manual");
         fitStarting.current = null;
         interruptFit();
         showingAll.current = false;
       }
     },
-    [interruptFit],
+    [interruptFit, camera],
   );
   /** The inline edit as of the last render, for the hover handler (which keeps its identity). */
   const editingNow = useRef(editing);
@@ -2135,14 +2135,14 @@ function CanvasInner({
   useLayoutEffect(() => {
     if (lastPanels.current === panelsKey) return;
     lastPanels.current = panelsKey;
-    if (!showingAll.current || live || presenting || !nothingSelected) return;
+    if (camera.owner !== "fit" || live || presenting || !nothingSelected) return;
     overlayFit({ maxZoom: FIT.maxZoom, margin: 40, duration: 250 });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when a side panel opens or closes
   }, [panelsKey]);
   // The Checks card opened over a diagram that was all in view: refit it clear of the card (the card is floating
   // chrome, data-canvas-overlay), once the card has drawn. A view the user panned or zoomed stays put.
   const checksMounted = () => {
-    if (!showingAll.current || live || presenting) return;
+    if (camera.owner !== "fit" || live || presenting) return;
     overlayFit({ maxZoom: FIT.maxZoom, margin: 40, duration: 250 });
   };
   // The AI panel opened, closed or was resized, or an Inspector resize completed: the pane changed size at its
@@ -2160,7 +2160,7 @@ function CanvasInner({
     host?.setAttribute("data-pane-pending", "true");
     const id = setTimeout(() => {
       host?.removeAttribute("data-pane-pending");
-      if (showingAll.current) return overlayFit({ maxZoom: FIT.maxZoom, margin: 40, duration: 250 });
+      if (camera.owner === "fit") return overlayFit({ maxZoom: FIT.maxZoom, margin: 40, duration: 250 });
       if (keepSelectionInView()) return;
       const pane = wrapper.current?.getBoundingClientRect();
       const nodes = getNodes().filter((n) => !n.hidden);
@@ -2676,11 +2676,11 @@ function CanvasInner({
                 showFitView={false}
                 position="bottom-left"
                 onZoomIn={() => {
-                  manualCamera.current = true;
+                  camera.claim("manual");
                   showingAll.current = false;
                 }}
                 onZoomOut={() => {
-                  manualCamera.current = true;
+                  camera.claim("manual");
                   showingAll.current = false;
                 }}
               >
@@ -2738,7 +2738,7 @@ function CanvasInner({
               <LiveView
                 paneRevision={`${inspectorHidden}:${sheetResize}`}
                 onManualPaneChange={keepSelectionInView}
-                manualCamera={manualCamera}
+                camera={camera}
                 readOnly={readOnly}
                 initial={viewer?.live}
                 onHandle={receiveLiveHandle}

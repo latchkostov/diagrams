@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import type { EditorApi } from "../editor/types";
+import { createTargetSummaries } from "./targetSummaries";
 import type { DiagramFile, PlanningModel } from "../model/types";
 import {
   checkAddress,
@@ -719,26 +720,21 @@ function RateLimitField({
   );
 }
 
-function TargetSummary({ labels }: { labels: string[] }) {
+function TargetSummary({
+  labels,
+  summaries,
+}: {
+  labels: string[];
+  summaries: ReturnType<typeof createTargetSummaries>;
+}) {
   const ref = useRef<HTMLSpanElement>(null);
   const full = labels.join(", ");
   const short = labels.length > 1 ? t("routing.moreTargets", { target: labels[0], count: labels.length - 1 }) : full;
   useLayoutEffect(() => {
-    const span = ref.current!;
-    const range = document.createRange();
-    span.textContent = full;
-    range.selectNodeContents(span);
-    const width = Math.ceil(range.getBoundingClientRect().width);
-    const paint = () => {
-      span.textContent = span.clientWidth < width ? short : full;
-    };
-    paint();
-    const observer = new ResizeObserver(paint);
-    observer.observe(span);
-    return () => observer.disconnect();
-  }, [full, short]);
+    return summaries.add(ref.current!, full, short);
+  }, [full, short, summaries]);
   return (
-    <span className="route-target-summary" ref={ref}>
+    <span className="route-target-summary" data-testid="route-target-summary" ref={ref}>
       {full}
     </span>
   );
@@ -756,6 +752,7 @@ export function RouteTableFields({
   planning: PlanningModel | undefined;
 }) {
   useLocale();
+  const [summaries] = useState(createTargetSummaries);
   const [open, setOpen] = useState<string | null>(() => (routingIntent.peek(nodeId) === "default" ? "default" : null));
   const defaultRow = useRef<HTMLButtonElement>(null);
   const rowRefs = useRef(new Map<string, HTMLButtonElement>());
@@ -851,7 +848,7 @@ export function RouteTableFields({
                 data-testid={`routes-rule-${rule.id}-targets`}
                 title={rule.targets.map((x) => labelOf(x.edgeId)).join(", ")}
               >
-                <TargetSummary labels={rule.targets.map((x) => labelOf(x.edgeId))} />
+                <TargetSummary labels={rule.targets.map((x) => labelOf(x.edgeId))} summaries={summaries} />
               </span>
               <span className="mono route-split">{splitText(rule)}</span>
             </button>
@@ -949,6 +946,14 @@ export function RouteTableFields({
             ref={defaultRow}
             className="route-row route-default"
             aria-expanded={open === "default"}
+            aria-label={
+              fallback
+                ? t("routing.defaultRow", {
+                    targets: fallback.targets.map((x) => labelOf(x.edgeId)).join(", "),
+                    split: splitText(fallback),
+                  })
+                : undefined
+            }
             data-testid="routes-default"
             onClick={() => setOpen(open === "default" ? null : "default")}
           >
@@ -959,7 +964,7 @@ export function RouteTableFields({
               title={fallback ? fallback.targets.map((x) => labelOf(x.edgeId)).join(", ") : undefined}
             >
               {fallback ? (
-                <TargetSummary labels={fallback.targets.map((x) => labelOf(x.edgeId))} />
+                <TargetSummary labels={fallback.targets.map((x) => labelOf(x.edgeId))} summaries={summaries} />
               ) : (
                 t("routing.reject404")
               )}

@@ -1834,6 +1834,7 @@
   "routing.rateLimitFold": "حد المعدل",
   "routing.ruleNamed": "القاعدة {n, number} ({name})",
   "routing.ruleRow": "القاعدة {n, number}: {match}، ترسل إلى {targets}، {split}.",
+  "routing.defaultRow": "افتراضي: ترسل إلى {targets}، {split}.",
   "routing.moreTargets": "{target} +{count, number}",
   "routing.ruleDeleted": "تم حذف القاعدة {rule, number}.",
   "routing.newRouteMenu": "مسار جديد…",

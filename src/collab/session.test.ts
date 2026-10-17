@@ -64,6 +64,40 @@ it("bounds authenticated proof floods before computing sync fingerprints", async
   expect(proof.mock.calls.length).toBeLessThanOrEqual(COLLAB_LIMITS.syncProofsPerWindow);
 });
 
+for (const retry of [false, true])
+  it(
+    retry ? "Retry connects and cancels the failure deadline" : "a peer joining before the initial deadline cancels it",
+    async () => {
+      const clock = new FakeClock(),
+        net = new MemoryNetwork();
+      const a = await openClient("a", net.connect(), room, clock, 21, { initial: canaryDiagram() });
+      onTestFinished(async () => {
+        await a.session.leave();
+        a.session.doc.destroy();
+      });
+      a.edit((d) => ({ ...d, title: "Edits while disconnected" }));
+      if (retry) {
+        clock.advance(CONNECTION_WAIT_MS);
+        expect(a.session.connectionFailed).toBe(true);
+        a.session.retryConnection();
+      } else clock.advance(CONNECTION_WAIT_MS / 2);
+      expect(a.session.connectionFailed).toBe(false);
+      const b = await openClient("b", net.connect(), room, clock, 22);
+      onTestFinished(async () => {
+        await b.session.leave();
+        b.session.doc.destroy();
+      });
+      const settle = () => net.settle(async () => void (await Promise.all([a.session.idle(), b.session.idle()])));
+      await settle();
+      expect(b.diagram?.title).toBe("Edits while disconnected");
+      expect(await b.session.doc.syncProof()).toEqual(await a.session.doc.syncProof());
+      expect([a.session.roomStatus, b.session.roomStatus]).toEqual(["synced", "synced"]);
+      clock.advance(CONNECTION_WAIT_MS + 1);
+      await settle();
+      expect([a.session.connectionFailed, b.session.connectionFailed]).toEqual([false, false]);
+    },
+  );
+
 async function room3(opts: { seed?: number } = {}) {
   const net = new MemoryNetwork({ seed: opts.seed ?? 1 });
   const clock = new FakeClock();

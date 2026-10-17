@@ -182,6 +182,8 @@ export async function tidyAll(page: Page, drawn: Drawn): Promise<void> {
   await command(page, "Select all", "canvas.select-all");
   const all = { nodes: Object.keys(drawn.nodes).sort(), edges: Object.keys(drawn.edges).sort() };
   await expect.poll(() => canvasSelection(page)).toEqual(all);
+  // Selecting everything opens the Inspector. Its pending fit must finish before Tidy changes the bounds.
+  await settledCanvas(page);
   await page.keyboard.press("Control+k");
   await expect(page.getByTestId("command-palette")).toBeVisible();
   await expect(page.getByTestId("command-input")).toBeFocused();

@@ -1,3 +1,4 @@
+import { createCameraOwnership } from "../canvas/cameraOwnership";
 import { useLocale } from "../i18n";
 import { edgeSemanticSignature } from "../model/relations";
 import { planningHost } from "../planning/host";
@@ -155,8 +156,10 @@ export function LiveSession({
   privateDiagram,
   paneRevision = 0,
   onManualPaneChange,
-  manualCamera,
+  camera: sharedCamera,
 }: SessionProps) {
+  const [localCamera] = useState(createCameraOwnership);
+  const camera = sharedCamera ?? localCamera;
   const locale = useLocale();
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const { fitView, setViewport } = useReactFlow<FlowNode, DiagramFlowEdge>();
@@ -346,11 +349,14 @@ export function LiveSession({
   const reducedMotion = useReducedMotion();
   useEffect(() => {
     const focus = noteFocus;
+    if (!focus.length && !zoomedForNote.current) return;
+    zoomedForNote.current = focus.length > 0;
+    const claim = camera.claim(focus.length ? "narration" : "fit");
     // Wait out the canvas's own refit (presentation mode toggles refit after ~80 ms).
     const t = window.setTimeout(
       () => {
+        if (!camera.isCurrent(claim)) return;
         if (focus.length) {
-          zoomedForNote.current = true;
           const padding = fitPadding(NOTE_PADDING);
           void fitView({
             ...NOTE_FIT,
@@ -358,15 +364,14 @@ export function LiveSession({
             nodes: focus.map((id) => ({ id })),
             duration: reducedMotion ? 0 : NOTE_FIT.duration,
           });
-        } else if (zoomedForNote.current) {
-          zoomedForNote.current = false;
+        } else {
           fitAll(reducedMotion ? 0 : (FULL_FIT.duration ?? 0));
         }
       },
       panelOpenRef.current ? 320 : 160,
     );
     return () => window.clearTimeout(t);
-  }, [noteKey, noteFocus, fitView, reducedMotion, fitPadding, fitAll]);
+  }, [noteKey, noteFocus, fitView, reducedMotion, fitPadding, fitAll, camera]);
 
   // The authoring panel covers the right of the pane: fit the diagram into what's left (unless a
   // note is steering the camera).
@@ -380,8 +385,9 @@ export function LiveSession({
     if (panel.open === panelFitted.current) return;
     panelFitted.current = panel.open;
     const t = window.setTimeout(() => {
+      if (camera.owner === "manual") return;
       const duration = reducedMotion ? 0 : FULL_FIT.duration;
-      if (zoomedForNote.current) {
+      if (camera.owner === "narration") {
         const focus = noteFocusRef.current;
         if (!focus.length) return;
         const padding = fitPadding(NOTE_PADDING, panel.open);
@@ -391,7 +397,7 @@ export function LiveSession({
       fitAll(duration ?? 0, panel.open);
     }, 320);
     return () => window.clearTimeout(t);
-  }, [panel.open, fitView, reducedMotion, fitPadding, fitAll]);
+  }, [panel.open, fitView, reducedMotion, fitPadding, fitAll, camera]);
 
   // Opening or closing the trace card refits, so it never covers the diagram.
   const cardFitted = useRef(false);
@@ -400,14 +406,15 @@ export function LiveSession({
     cardFitted.current = cardOpen;
     if (slowRef.current?.session.active) return;
     const t = window.setTimeout(() => {
+      if (camera.owner === "manual") return;
       const duration = reducedMotion ? 0 : FULL_FIT.duration;
       const focus = noteFocusRef.current;
-      if (zoomedForNote.current && focus.length)
+      if (camera.owner === "narration" && focus.length)
         void fitView({ ...NOTE_FIT, padding: fitPadding(NOTE_PADDING), nodes: focus.map((id) => ({ id })), duration });
       else fitAll(duration ?? 0);
     }, 120);
     return () => window.clearTimeout(t);
-  }, [cardOpen, fitView, reducedMotion, fitPadding, fitAll]);
+  }, [cardOpen, fitView, reducedMotion, fitPadding, fitAll, camera]);
 
   // The AI panel opened, closed or was resized: the pane changed width at its right edge. Refit the
   // same way, or half the diagram stayed past the pane's edge (slow motion keeps its own camera).
@@ -452,10 +459,10 @@ export function LiveSession({
     const t = window.setTimeout(() => {
       host?.removeAttribute("data-pane-pending");
       if (slowRef.current?.session.active) return;
-      if (manualCamera?.current) return manualPaneChange.current?.();
+      if (camera.owner === "manual") return manualPaneChange.current?.();
       const duration = reducedMotion ? 0 : FULL_FIT.duration;
       const focus = noteFocusRef.current;
-      if (zoomedForNote.current && focus.length)
+      if (camera.owner === "narration" && focus.length)
         void fitView({ ...NOTE_FIT, padding: fitPadding(NOTE_PADDING), nodes: focus.map((id) => ({ id })), duration });
       else fitAll(duration ?? 0);
     }, 200);
@@ -463,7 +470,7 @@ export function LiveSession({
       window.clearTimeout(t);
       host?.removeAttribute("data-pane-pending");
     };
-  }, [dockKey, presenting, fitView, reducedMotion, fitPadding, fitAll, manualCamera, store]);
+  }, [dockKey, presenting, fitView, reducedMotion, fitPadding, fitAll, camera, store]);
 
   // ---------------------------------------------------------------- the frame loop
 

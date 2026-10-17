@@ -90,8 +90,10 @@ test("an unreachable matchmaking transport offers Retry and a file without losin
   await pauseClock(page);
   await page.clock.runFor(COLLAB_LIMITS.connectionWaitMs);
   await expect(page.getByTestId("collab-spike-connection-failed")).toContainText("Could not connect to this room");
-  await page.getByTestId("collab-spike-retry").click();
+  await page.getByTestId("collab-spike-retry").focus();
+  await page.keyboard.press("Enter");
   await expect(page.getByTestId("collab-spike-connection-failed")).toHaveCount(0);
+  await expect(page.getByTestId("collab-spike-status")).toBeFocused();
   expect(
     await page.evaluate(() => (window as unknown as { __spikeSocketAttempts: number }).__spikeSocketAttempts),
   ).toBe(2);

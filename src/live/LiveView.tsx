@@ -1,3 +1,4 @@
+import type { CameraOwnership } from "../canvas/cameraOwnership";
 import { useCallback, useEffect, useState } from "react";
 import { useNodesInitialized, useStore } from "@xyflow/react";
 import "../styles/live.css";
@@ -42,8 +43,8 @@ export interface LiveViewProps {
   paneRevision?: number | string;
   /** Pan a manual view's selection into the resized pane, keeping its zoom. */
   onManualPaneChange?: () => void;
-  /** Set by the canvas's actual pan/zoom handlers and explicit camera commands. */
-  manualCamera?: { readonly current: boolean };
+  /** Current camera owner, shared with the canvas and its camera commands. */
+  camera?: CameraOwnership;
   /** The canvas editor. Absent in the Lab: no authoring, no saving, no context-menu actions. */
   editor?: EditorApi;
   presenting: boolean;
