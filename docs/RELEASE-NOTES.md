@@ -1,5 +1,28 @@
 # Release notes
 
+## Resizable Inspector Linux selection sweep (#145, 2026-10-16)
+
+- Reproduced the third CI failure in the pinned Playwright Linux container. Selecting an edge
+  reveals the Inspector and pans the canvas; a box around an unrelated node can then start outside
+  the narrower pane. Waiting for the pan alone still fails.
+- Share the Inspector-reveal, pane-size and viewport waits across selection, flow-building and
+  caption-drag coverage. Fit before measuring box-selection corners, and exercise edge preservation
+  at 1280×800 and 1440×900 with the default and a remembered wide Inspector. Temporarily removing
+  the preparation reproduces the failure; the selection assertions and real pointer gestures stay.
+- The Linux sweep also caught an embed-test assumption about server writes racing browser reads.
+  Hold the streamed response open just beyond the size limit and require cancellation before EOF,
+  instead of using TCP buffering as a read counter. Removing stream cancellation fails the connection
+  closure assertion; restoring it retains the real HTTP coverage.
+- Install the autosave-count test's fake clock before mounting, settle the selection and observe the
+  edited label before flushing. Previously, a native timer scheduled before clock installation could
+  save before the counter was installed. The exact one-serialization assertion is unchanged.
+- Install the admission simulation's clock before Live starts and restart from zero before advancing
+  it. Rejections must come from the controlled run, while failure and caller-cascade assertions stay.
+- No product behavior, UI text or parity goldens change. UX review retains the reserved canvas space,
+  deferred Inspector reveal and existing chrome.
+- The complete Linux production-build Chromium + dev sweep passes with four workers and no retries:
+  1,488 passed (1,438 Chromium, 50 dev), zero failed, flaky or skipped.
+
 ## Collaboration export Linux synchronization (#143, 2026-10-16)
 
 - Reproduced CI's 0% progress failure in the two-CPU Playwright Linux container. The test held

@@ -97,8 +97,8 @@ async function serveHost(
   /** /api/diagrams/slow.json answers only once the test calls release(). */
   let release = () => {};
   const released = new Promise<void>((resolve) => (release = resolve));
-  /** /api/diagrams/huge.json: how much it got to send before the page hung up. */
-  const huge = { sent: 0, closedEarly: false };
+  /** /api/diagrams/huge.json: whether the browser cancelled the held oversized response. */
+  const huge = { closedEarly: false };
   const send = (res: ServerResponse, status: number, type: string, body: string, headers = {}) => {
     res.writeHead(status, { "Content-Type": type, ...headers });
     res.end(body);
@@ -115,17 +115,19 @@ async function serveHost(
       return;
     }
     if (path === "/api/diagrams/huge.json") {
-      // 40 MB of JSON text, streamed with no Content-Length: the page must stop reading at its 8 MB limit.
+      // Send past the 8 MB limit with no Content-Length, then hold the response open. The browser must
+      // cancel it without waiting for EOF. Server writes can run ahead through TCP buffers, so their
+      // count on an unbounded stream cannot measure how much the page actually read.
       res.writeHead(200, { "Content-Type": "application/json" });
       const chunk = "x".repeat(1_000_000);
+      let sent = 0;
       res.on("close", () => (huge.closedEarly = !res.writableFinished));
       const pump = () => {
-        while (huge.sent < 40) {
+        while (sent < 9) {
           if (res.destroyed) return;
-          huge.sent++;
+          sent++;
           if (!res.write(chunk)) return void res.once("drain", pump);
         }
-        res.end();
       };
       return pump();
     }
@@ -713,11 +715,10 @@ test.describe("host-supplied embeds: timing and requests", () => {
     await expect(view(page).getByTestId("diagram-title")).toHaveText("Newer");
     expect((await events(page, "loaded")).map((e) => e.detail.title)).toEqual(["Newer"]);
 
-    // 40 MB streamed: the page gives up past 8 MB and hangs up, long before the end.
+    // The stream stays open past 8 MB: refusal must cancel it without waiting for the end.
     await el(page).evaluate((node) => node.setAttribute("src-json", "/api/diagrams/huge.json"));
     await expect.poll(() => lastEvent(page, "error")).toMatchObject({ code: "too_large" });
     await expect.poll(() => host.huge.closedEarly).toBe(true);
-    expect(host.huge.sent).toBeLessThan(30);
     await expect(view(page).getByTestId("diagram-title")).toHaveText("Newer");
     expectNoErrors(consoleErrors);
   });

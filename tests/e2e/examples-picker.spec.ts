@@ -13,6 +13,7 @@ import {
   pageLoadTimeout,
   pauseClock,
   savedDiagram,
+  waitForSelectionSettled,
 } from "./fixtures";
 
 import type { Page } from "@playwright/test";
@@ -114,13 +115,18 @@ test("inactive shared work stays reachable with an overflowing library", async (
 });
 
 test("ordinary autosaves serialize the diagram once and reuse that result", async ({ page }) => {
+  // Install before mounting: an already scheduled native save timer survives a later clock install.
+  await page.clock.install();
   await seedWork(page);
   await page.goto("./");
   await page.getByTestId("node-worker").click();
   await expect(page.getByTestId("inspector-field-label")).toBeVisible();
-  await page.clock.install();
+  await waitForSelectionSettled(page);
   await pauseClock(page);
   await page.getByTestId("inspector-field-label").fill("Edited worker");
+  // The input action can finish before the canvas commit updates the pagehide snapshot.
+  // Keep the save timer paused, but wait for the edit itself before counting the flush's work.
+  await expect(page.getByTestId("node-worker")).toContainText("Edited worker");
   const serializations = await page.evaluate(() => {
     const stringify = JSON.stringify;
     let calls = 0;

@@ -10,6 +10,7 @@ import {
   fitDiagram,
   pauseClock,
   waitForStableViewport,
+  waitForSelectionSettled,
   STORAGE_KEYS,
   type Page,
 } from "./fixtures";
@@ -43,7 +44,7 @@ async function boxOf(locator: import("@playwright/test").Locator) {
 /** Open the selection's sheet and fit both drag endpoints before measuring screen coordinates. */
 async function prepareCaptionDrag(page: Page) {
   await page.getByTestId("annotation-caption").click();
-  await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
+  await waitForSelectionSettled(page);
   await fitDiagram(page);
 }
 

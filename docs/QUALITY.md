@@ -187,6 +187,34 @@ Temporarily removing the caption preparation reproduces the CI colour failure at
 old selection-frame boxes after a manual pan and a wide-sheet reveal prevents the copies from being
 created. Restoring the preparation and remeasurement passes both regressions.
 
+The third #145 CI failure exposed a second constraint: even a fresh box can start outside the pane.
+After selecting an edge, the selection pan can leave an unrelated node near the left edge; the
+selection box's corner, 14 px farther left, then falls on the stencil rail. The pinned Linux container
+reproduces the missing-node selection. Waiting for the pan alone failed all five repetitions.
+Use `waitForSelectionSettled()` before measuring after selection: it waits for the Inspector reveal,
+the canvas size and the viewport. If the next gesture targets an unrelated object, fit all endpoints
+with `fitDiagram()` before measuring, including the empty canvas where a box drag starts.
+The edge-preservation cases cover both 1280×800 and 1440×900 with default and remembered wide sheets.
+Removing their preparation reproduces the failure without weakening selection or pointer coverage.
+
+The full Linux sweep also caught the embed stream test treating HTTP server writes as browser reads.
+TCP buffers can accept extra writes before cancellation reaches the server. The fixture now sends
+9 MB (past the 8 MB limit) and holds the response open: the test requires `too_large` and connection
+closure before EOF. This proves bounded reading and cancellation without a network-throughput budget.
+Removing `reader.cancel()` fails the connection-closure assertion, and restoring it passes.
+Keep unit compiler probes out of a running dev sweep: creating/removing their temporary tsconfig files
+clears Vite's module cache and forces reloads. Refresh the optimizer before the isolated final sweep;
+do not weaken the `devReloads` fixture to hide them.
+Install a page clock before navigation when it must control every autosave timer. A timer scheduled
+before a late installation can still run while the fake clock is paused. The serialization-count
+test settles selection, pauses the already-installed clock and observes the edited node before
+measuring `pagehide`; its exact count remains one.
+The admission playback test likewise installs its clock before Live mounts, then restarts at zero
+before advancing it. Rejections must come from controlled simulation progress, never traffic that
+happened to run before the pause.
+The final #145 Linux sweep runs both complete projects with four workers and `--retries=0`:
+1,438 Chromium plus 50 dev cases pass, with zero failures, flaky cases or skips.
+
 The expanded dev sweep also covers the image-clone resource tests brought in from master. After a
 rebase introduces new deep imports, rescan a previous checkout's optimizer cache with `pnpm dev --force`
 before sweeping: its stale dependency list can otherwise reload active test pages on first use.

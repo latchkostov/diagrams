@@ -7,6 +7,7 @@ import {
   expectNoErrors,
   fitDiagram,
   waitForStableViewport,
+  waitForSelectionSettled,
   pauseClock,
   STORAGE_KEYS,
 } from "./fixtures";
@@ -124,9 +125,7 @@ async function flowPos(page: Page, testId: string) {
 async function select(page: Page, id: string) {
   await page.getByTestId(`node-${id}`).click();
   await expect(page.getByTestId(`grow-chip-${id}`)).toBeVisible();
-  // Selection publishes before the deferred inspector opens and pans it into view.
-  await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
-  await waitForStableViewport(page);
+  await waitForSelectionSettled(page);
 }
 
 /**

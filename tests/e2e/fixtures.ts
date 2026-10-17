@@ -231,6 +231,17 @@ export function waitForStableViewport(page: Page) {
 }
 
 /**
+ * Selection publishes before pointer-up reveals the Inspector and pans the narrower canvas.
+ * Wait for that boundary before measuring the next gesture; selection/locator visibility alone
+ * can still describe the old pane. Call only when the selection is meant to open the Inspector.
+ */
+export async function waitForSelectionSettled(page: Page) {
+  await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
+  await waitForStableBox(page.getByTestId("canvas-wrap"));
+  await waitForStableViewport(page);
+}
+
+/**
  * Fits the whole diagram to the canvas (Fit diagram, Shift+1) and waits for the view to settle. The canvas
  * never scrolls (overflow: clip), so a node past its edge, under the inspector or the AI rail, can't be
  * clicked until the view brings it back: a selection that opened the inspector, or a smaller window,

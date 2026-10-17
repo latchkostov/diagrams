@@ -9,6 +9,8 @@ import {
   pauseClock,
   shareVia,
   waitForStableBox,
+  waitForSelectionSettled,
+  fitDiagram,
 } from "./fixtures";
 import {
   callTool,
@@ -63,6 +65,10 @@ async function drawBox(page: Page, from: { x: number; y: number }, to: { x: numb
 }
 /** A box around one node, starting just outside its top-left corner. */
 async function boxAround(page: Page, testId: string, shift = false) {
+  await waitForSelectionSettled(page);
+  // A selection pan keeps its target visible, but can leave this unrelated node at the pane's edge.
+  // Fit before measuring so the box's starting corner is on canvas too.
+  await fitDiagram(page);
   const n = await box(page, testId);
   await drawBox(page, { x: n.x - 14, y: n.y - 14 }, { x: n.x + n.width + 6, y: n.y + n.height + 14 }, shift);
 }
@@ -269,14 +275,22 @@ test.describe("Shift+box adds to the selection", () => {
     expectNoErrors(consoleErrors);
   });
 
-  test("Shift box preserves a selected edge", async ({ page, consoleErrors }) => {
-    await gotoCanvas(page, KAFKA);
-    await page.getByTestId("edge-label-order-events-to-payments").click();
-    await expect.poll(() => selectedIds(page)).toEqual(["edge-order-events-to-payments"]);
-    await boxAround(page, "node-shopper", true);
-    await expect.poll(() => selectedIds(page)).toEqual(["edge-order-events-to-payments", "node-shopper"]);
-    expectNoErrors(consoleErrors);
-  });
+  for (const width of [1280, 1440])
+    for (const sheetWidth of [null, 672])
+      test(`Shift box preserves a selected edge (${width}px, sheet: ${sheetWidth ?? "default"})`, async ({
+        page,
+        consoleErrors,
+      }) => {
+        await page.setViewportSize({ width, height: width === 1280 ? 800 : 900 });
+        if (sheetWidth !== null)
+          await page.addInitScript((w) => localStorage.setItem("diagrams.inspector.width.v1", String(w)), sheetWidth);
+        await gotoCanvas(page, KAFKA);
+        await page.getByTestId("edge-label-order-events-to-payments").click();
+        await expect.poll(() => selectedIds(page)).toEqual(["edge-order-events-to-payments"]);
+        await boxAround(page, "node-shopper", true);
+        await expect.poll(() => selectedIds(page)).toEqual(["edge-order-events-to-payments", "node-shopper"]);
+        expectNoErrors(consoleErrors);
+      });
 
   test("Shift box selects edges between old and newly selected nodes", async ({ page, consoleErrors }) => {
     await gotoCanvas(page, KAFKA);
@@ -300,7 +314,7 @@ test.describe("Shift+box adds to the selection", () => {
     );
     await expect.poll(() => selectedIds(page)).toEqual(["node-order-events", "node-schemas"]);
     // Re-measured once the view rests: the selection opened the inspector, which may pan.
-    await waitForStableBox(page.getByTestId("node-order-events"));
+    await waitForSelectionSettled(page);
     const a = await box(page, "node-schemas");
     const b = await box(page, "node-order-events");
     // Empty canvas between the two (inside their boundary's backdrop, which takes no clicks).
