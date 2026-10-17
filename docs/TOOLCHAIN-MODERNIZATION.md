@@ -6,8 +6,8 @@ Times are elapsed seconds, including command startup; they are observations, not
 
 ## Local baseline
 
-Windows, 32 logical processors, 64 GiB RAM; checkout-local Node 22.23.3, pnpm 10.0.0,
-TypeScript 5.9.3. The machine was not reserved exclusively for this benchmark.
+One developer workstation (not reserved for the benchmark); checkout-local Node 22.23.3, pnpm 10.0.0,
+TypeScript 5.9.3. Compare these timings only with runs on the same machine.
 Each command ran serially, three times. Installs used dependency-only directories under
 `tests/.output/toolchain`, containing copies of the same package manifest and lockfile:
 each cold sample had empty `node_modules` and its own empty store; warm samples repeated
