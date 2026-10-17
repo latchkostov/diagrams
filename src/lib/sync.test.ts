@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { classifyConflict, mergeEnglish, withoutGeneratedRegions } from "../../scripts/sync-lib";
-import { sync, type Run } from "../../scripts/sync-runner";
+import { invocation, sync, type Run } from "../../scripts/sync-runner";
 
 const en = (entries: Record<string, string>) => `const en = ${JSON.stringify(entries)} as const;\nexport default en;\n`;
 
@@ -57,6 +57,37 @@ describe("English three-way union", () => {
 });
 
 describe("sync git orchestration", () => {
+  it("uses a fixed Windows regeneration command and argv on macOS without interpolating shell arguments", () => {
+    expect(invocation("pnpm", ["regen"], "darwin")).toEqual({ command: "pnpm", args: ["regen"] });
+    expect(invocation("pnpm", ["regen"], "win32").args).toEqual(["/d", "/s", "/c", "pnpm regen"]);
+    expect(() => invocation("pnpm", ["regen & other-command"], "win32")).toThrow(/fixed/);
+    expect(invocation("git", ["show", ":2:path with spaces"], "win32")).toEqual({
+      command: "git",
+      args: ["show", ":2:path with spaces"],
+    });
+  });
+
+  it("creates a signed regeneration commit when the rebased branch has no commits beyond master", async () => {
+    const root = mkdtempSync(join(tmpdir(), "diagrams-sync-upstream-"));
+    const calls: string[][] = [];
+    try {
+      const run: Run = (command, args) => {
+        calls.push([command, ...args]);
+        let stdout = "";
+        if (command === "pnpm") writeFileSync(join(root, "vercel.json"), "fresh");
+        else if (args[0] === "rev-parse") stdout = args[1] === "--git-path" ? ".git/inactive" : "upstream";
+        else if (args[0] === "branch") stdout = "feature";
+        else if (args[0] === "diff") stdout = "vercel.json";
+        return { status: 0, stdout, stderr: "" };
+      };
+      await sync(root, run, () => {});
+      expect(calls).toContainEqual(["git", "commit", "-S", "-m", "Regenerate derived artifacts after sync"]);
+      expect(calls.some((call) => call.includes("--amend"))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it.each([false, true])(
     "regenerates before continuing (empty commit: %s), and signs final output changes",
     async (empty) => {
@@ -74,7 +105,15 @@ describe("sync git orchestration", () => {
           if (command === "pnpm") {
             generations++;
             writeFileSync(join(root, "vercel.json"), "fresh");
-          } else if (args[0] === "rev-parse") stdout = rebasing ? ".git/rebase-merge" : ".git/inactive";
+          } else if (args[0] === "rev-parse")
+            stdout =
+              args[1] === "--git-path"
+                ? rebasing
+                  ? ".git/rebase-merge"
+                  : ".git/inactive"
+                : args[1] === "HEAD"
+                  ? "local"
+                  : "upstream";
           else if (args[0] === "diff") {
             if (args.includes("--diff-filter=U")) stdout = conflict ? "vercel.json\0" : "";
             else stdout = staged ? "vercel.json\n" : "";

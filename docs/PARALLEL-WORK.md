@@ -70,7 +70,8 @@ signing replayed commits. At a conflict it:
    Use `git rebase --abort` while the rebase is in progress to return to the starting point.
 
 Only allowlisted generated files are staged automatically. If final regeneration changes files after the rebase,
-sync amends the final commit with a signature; review the rewritten branch before pushing. A signing or generator
+sync amends the final branch commit with a signature. If HEAD is master itself, it creates a new signed regeneration
+commit instead of rewriting master's commit. Review the rewritten branch before pushing. A signing or generator
 failure stops the command. Failed regeneration after a completed rebase leaves its edits available for review;
 rerun regen, commit the outputs and validate. There is no implicit stash or push.
 

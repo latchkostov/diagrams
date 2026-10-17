@@ -23,7 +23,7 @@ const read = (file: string) => readFileSync(join(root, file), "utf8").replace(/\
 const options = { frameAncestors: ["https://wiki.example.com"], base: "/tools/diagrams/" };
 
 describe("self-host kit", () => {
-  it("keeps every committed target config in sync with the shared policy", () => {
+  it("keeps committed target configs current (run `pnpm regen` if this fails)", () => {
     for (const [file, contents] of Object.entries(hostingTemplates()))
       expect(read(`deploy/self-host/${file}`), file).toBe(contents);
   });

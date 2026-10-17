@@ -99,20 +99,34 @@ export function sync(root: string, run: Run, log: (text: string) => void, contin
     }
     regenerate();
     const staged = checked(git("diff", "--cached", "--name-only")).trim();
-    if (staged) checked(git("commit", "-S", "--amend", "--no-edit"));
+    if (staged) {
+      const head = checked(git("rev-parse", "HEAD")).trim();
+      const upstream = checked(git("rev-parse", "origin/master")).trim();
+      checked(
+        head === upstream
+          ? git("commit", "-S", "-m", "Regenerate derived artifacts after sync")
+          : git("commit", "-S", "--amend", "--no-edit"),
+      );
+    }
     log(
       "Synced with origin/master; generated artifacts refreshed. Run pnpm i18n check, pnpm skill:check, pnpm test and pnpm parity. Review output changes; sync never updates parity goldens.",
     );
   })();
 }
 
+/** Windows launches the one fixed pnpm command through cmd.exe; Git never goes through a shell. */
+export function invocation(command: string, args: string[], platform: string = process.platform) {
+  if (command !== "pnpm" || platform !== "win32") return { command, args };
+  if (args.length !== 1 || args[0] !== "regen") throw new Error("Only the fixed pnpm regen command is supported");
+  return { command: process.env.ComSpec ?? "cmd.exe", args: ["/d", "/s", "/c", "pnpm regen"] };
+}
+
 export function gitRunner(root: string): Run {
   return (command, args) => {
-    // pnpm.cmd needs cmd.exe on Windows; arguments here are fixed, never user-supplied shell text.
-    const result = spawnSync(command, args, {
+    const launch = invocation(command, args);
+    const result = spawnSync(launch.command, launch.args, {
       cwd: root,
       encoding: "utf8",
-      shell: command === "pnpm" && process.platform === "win32",
       maxBuffer: 32 * 1024 * 1024,
     });
     return { status: result.status, stdout: result.stdout ?? "", stderr: result.error?.message ?? result.stderr ?? "" };
