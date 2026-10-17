@@ -90,6 +90,9 @@ export function labBridge(
     self,
     capabilities: { kind: "lab-bridge", durable: false, maxFrameBytes },
     peers: () => [...peers.keys()],
+    retry() {
+      if (!closed && !suspended) wire.post({ from: self, kind: "hello" });
+    },
     suspend() {
       if (closed || suspended) return;
       suspended = true;

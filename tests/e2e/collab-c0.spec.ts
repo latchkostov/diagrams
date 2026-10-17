@@ -1,11 +1,12 @@
 import type { Page } from "@playwright/test";
-import { test, expect, expectNoErrors, gotoCanvas, gotoLab, waitForStableViewport } from "./fixtures";
+import { test, expect, expectNoErrors, gotoCanvas, gotoLab, waitForStableViewport, pauseClock } from "./fixtures";
+import { COLLAB_LIMITS } from "../../src/collab/limits";
 
 // Collaboration C0 (docs/research/collaboration.md; src/collab). Two promises, in the browser:
 //  1. Local use makes no network requests: editing never contacts anything, never opens a socket or a peer
 //     connection, and never even loads the collaboration code (Yjs marks the page when it's imported).
 //  2. The Lab's three-client room converges in a real browser (WebCrypto included) over the in-memory network,
-//     through a partition, with nothing leaving the page. The public-matchmaking spike is never pressed here.
+//     through a partition, with nothing leaving the page. The public spike uses only a never-opening fake socket.
 // Selectors are data-testid only.
 
 /** Counts peer connections the page makes, and records every request and socket. */
@@ -55,6 +56,55 @@ async function watchNetwork(page: Page) {
 }
 
 const yjsLoaded = (page: Page) => page.evaluate(() => "__ $YJS$ __" in window);
+
+test("an unreachable matchmaking transport offers Retry and a file without losing the Lab edits", async ({ page }) => {
+  await page.clock.install();
+  await page.addInitScript(() => {
+    const w = window as unknown as { WebSocket: unknown; __spikeSocketAttempts: number };
+    w.__spikeSocketAttempts = 0;
+    w.WebSocket = class {
+      readyState = 0;
+      onopen = null;
+      onclose = null;
+      onmessage = null;
+      onerror = null;
+      constructor() {
+        w.__spikeSocketAttempts++;
+      }
+      close() {
+        this.readyState = 3;
+      }
+      send() {
+        throw new Error("A stalled socket cannot send");
+      }
+    };
+  });
+  await gotoLab(page, "collab-c0");
+  await page.getByTestId("collab-spike-new").click();
+  await page.getByTestId("collab-spike-trackers").fill("wss://tracker.invalid");
+  await page.getByTestId("collab-spike-connect").click();
+  await expect(page.getByTestId("collab-spike-status")).toContainText("waiting");
+  await page.getByTestId("collab-spike-title-input").fill("Keep my disconnected edits");
+  await page.getByTestId("collab-spike-set-title").click();
+  await expect(page.getByTestId("collab-spike-title")).toHaveAttribute("data-title", "Keep my disconnected edits");
+  await pauseClock(page);
+  await page.clock.runFor(COLLAB_LIMITS.connectionWaitMs);
+  await expect(page.getByTestId("collab-spike-connection-failed")).toContainText("Could not connect to this room");
+  await page.getByTestId("collab-spike-retry").click();
+  await expect(page.getByTestId("collab-spike-connection-failed")).toHaveCount(0);
+  expect(
+    await page.evaluate(() => (window as unknown as { __spikeSocketAttempts: number }).__spikeSocketAttempts),
+  ).toBe(2);
+  await page.clock.runFor(COLLAB_LIMITS.connectionWaitMs);
+  const downloading = page.waitForEvent("download");
+  await page.getByTestId("collab-spike-save-copy").click();
+  const stream = await (await downloading).createReadStream();
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+  expect(Buffer.concat(chunks).toString()).toContain("Keep my disconnected edits");
+  await page.getByTestId("collab-spike-disconnect").click();
+  await expect(page.getByTestId("collab-spike-status")).toHaveCount(0);
+});
 
 test("local use makes no network requests and never loads the collaboration code", async ({ page, consoleErrors }) => {
   const net = await watchNetwork(page);

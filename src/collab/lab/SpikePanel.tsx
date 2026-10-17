@@ -8,6 +8,9 @@ import { consumeRoomFragment, parseRoomLink, parseRoomValue, ROOM_PARAM, type Ro
 import { bytesToBase64Url } from "../../interop/codec";
 import { createTrackerTransport, SPIKE_STUN, SPIKE_TRACKERS, type TrackerTransport } from "../transport/tracker";
 import { applyMoves, demoDiagram, endpointList, refusalMessage } from "./demo";
+import { t, useLocale } from "../../i18n";
+import { downloadText } from "../../interop/files";
+import { serializeNative } from "../../interop/native";
 
 // The public-matchmaking spike (C0, Lab only). Nothing connects until "Connect" is pressed: the panel names every
 // public service first. Two tabs (or two browsers) with the same room key find each other through public
@@ -23,6 +26,7 @@ function readRoom(text: string): RoomLink {
 }
 
 export function SpikePanel() {
+  useLocale();
   // A room key in the address bar (`#room=…`) fills the field and leaves the address bar at once. It doesn't connect.
   const [key, setKey] = useState(() => {
     try {
@@ -53,7 +57,7 @@ export function SpikePanel() {
   );
   useSyncExternalStore(
     (fn) => conn?.client.session.onChange(fn) ?? (() => {}),
-    () => conn?.client.session.doc.stats.projections ?? 0,
+    () => `${conn?.client.session.doc.stats.projections}:${conn?.client.session.connectionFailed}`,
   );
   useEffect(() => {
     if (!conn) return;
@@ -200,6 +204,31 @@ export function SpikePanel() {
           <p role="alert" data-testid="collab-spike-error">
             {error}
           </p>
+        )}
+        {conn?.client.session.connectionFailed && (
+          <div role="alert" data-testid="collab-spike-connection-failed">
+            <p>{t("collab.connectionFailed")}</p>
+            <button
+              className="btn"
+              data-testid="collab-spike-retry"
+              onClick={() => conn.client.session.retryConnection()}
+            >
+              {t("common.retry")}
+            </button>
+            <p>{t("collab.fileFallback")}</p>
+            {conn.client.diagram && (
+              <button
+                className="btn"
+                data-testid="collab-spike-save-copy"
+                onClick={() => {
+                  if (conn.client.diagram)
+                    downloadText(serializeNative(conn.client.diagram), "room-copy.diagram.json", "application/json");
+                }}
+              >
+                {t("collab.saveCopy")}
+              </button>
+            )}
+          </div>
         )}
       </div>
       {conn && client && (

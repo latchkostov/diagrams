@@ -231,6 +231,11 @@ const en = {
   "fileDialog.permissionToSaveValue0WasntGranted": "Permission to save “{value0}” wasn't granted.",
   "fileToast.openADiagramOnTheCanvasFirst": "Open a diagram on the canvas first.",
   "fileToast.renderingValue0": "Rendering {value0}…",
+  "collab.connectionFailed": "Could not connect to this room. Check your connection or try again.",
+  "collab.fileFallback": "You can send a diagram file instead. Your edits stay on this page.",
+  "collab.invalidLink": "This room link is damaged or incomplete. Ask for the link again, or open a new room.",
+  "collab.newRoom": "Open a new room",
+  "collab.notSaved": "Not saved on this device · keep this page open",
   "fileToast.exportedValue0": "Exported {value0}.",
   "fileToast.theBrowserBlockedClipboardAccessUseDownload":
     "The browser blocked clipboard access. Use Download .mmd instead.",

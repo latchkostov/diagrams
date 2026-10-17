@@ -46,6 +46,45 @@ describeTransportConformance("webrtc-tracker (offline fake)", (seed) => {
 });
 
 describe("public matchmaking: what a tracker sees (synthetic capture)", () => {
+  it("retry replaces tracker sockets without replacing the transport identity", async () => {
+    const env = fakeEnvironment();
+    const sockets: WebSocket[] = [];
+    const WS = class extends (env.WebSocket as unknown as new (url: string) => WebSocket) {
+      constructor(url: string) {
+        super(url);
+        sockets.push(this);
+      }
+    };
+    const transport = env.wire.track(
+      createTrackerTransport({
+        trackers: ["wss://tracker.invalid"],
+        discovery: keys.discovery,
+        signal: keys.signal,
+        WebSocket: WS,
+        RTCPeerConnection: env.RTCPeerConnection,
+        clock: env.wire.clock,
+      }),
+    );
+    const self = transport.self;
+    await env.wire.pump();
+    expect(transport.diagnostics().trackersOpen).toBe(1);
+    transport.retry?.();
+    expect(sockets).toHaveLength(2);
+    expect(sockets[0].readyState).toBe(3);
+    expect([sockets[0].onopen, sockets[0].onmessage, sockets[0].onerror, sockets[0].onclose]).toEqual([
+      null,
+      null,
+      null,
+      null,
+    ]);
+    await env.wire.pump();
+    expect(transport.self).toBe(self);
+    expect(transport.diagnostics().trackersOpen).toBe(1);
+    transport.close();
+    expect(sockets.every((socket) => socket.readyState === 3)).toBe(true);
+    expect(env.wire.clock.pending).toBe(0);
+  });
+
   it("sees the discovery hash, random ids and ciphertext: no key, no SDP, no diagram", async () => {
     const { env, connect } = environment(7);
     const clock = env.wire.clock;

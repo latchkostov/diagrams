@@ -11,12 +11,44 @@ import { DOC, fragment, frame, PRESENCE } from "./protocol";
 import { metaOf } from "./schema";
 import { refusalMessage } from "./lab/demo";
 import { seededBytes } from "./random";
-import { CollabSession, PrivateDiagramError } from "./session";
+import { CollabSession, CONNECTION_WAIT_MS, PrivateDiagramError } from "./session";
 import { canaryDiagram, openClient, roomFor, type TestClient } from "./transport/conformance";
 import { MemoryNetwork } from "./transport/memory";
 import type { CollabTransport } from "./transport/types";
 
 const room = roomFor(1);
+
+it("bounds a never-connecting transport, retries discovery and keeps edits", async () => {
+  const clock = new FakeClock(),
+    net = new MemoryNetwork();
+  const retry = vi.fn();
+  const session = await CollabSession.open({
+    room,
+    clock,
+    transport: { ...net.connect(), retry },
+    privacy: {},
+    initial: canaryDiagram(),
+  });
+  const changed = vi.fn();
+  session.onChange(changed);
+  session.doc.apply([{ op: "meta", set: { title: "Keep my local edits" } }]);
+  const proof = await session.doc.syncProof();
+  clock.advance(CONNECTION_WAIT_MS - 1);
+  expect(session.connectionFailed).toBe(false);
+  clock.advance(1);
+  expect(session.connectionFailed).toBe(true);
+  expect(changed).toHaveBeenCalled();
+  session.retryConnection();
+  expect(retry).toHaveBeenCalledTimes(1);
+  expect(session.connectionFailed).toBe(false);
+  expect(await session.doc.syncProof()).toEqual(proof);
+  clock.advance(CONNECTION_WAIT_MS);
+  expect(session.connectionFailed).toBe(true);
+  await session.leave();
+  expect(session.connectionFailed).toBe(false);
+  expect(clock.pending).toBe(0);
+  session.doc.destroy();
+});
 
 it("bounds authenticated proof floods before computing sync fingerprints", async () => {
   const { a, net, settle } = await room3();

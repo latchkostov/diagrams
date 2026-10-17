@@ -393,24 +393,40 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
     }
   }
 
-  for (const url of opts.trackers) {
-    if (!/^wss:\/\//.test(url) && !/^ws:\/\/(127\.0\.0\.1|localhost)[:/]/.test(url)) continue;
-    const ws = new WS(url);
-    sockets.push(ws);
-    ws.onopen = () => {
-      event("tracker connected");
-      void track(announce(ws));
-    };
-    ws.onmessage = (e: MessageEvent) => void track(onTrackerMessage(ws, e.data));
-    ws.onclose = () => event("tracker closed");
-    ws.onerror = () => event("tracker error");
-  }
+  const connectTrackers = () => {
+    for (const url of opts.trackers) {
+      if (!/^wss:\/\//.test(url) && !/^ws:\/\/(127\.0\.0\.1|localhost)[:/]/.test(url)) continue;
+      const ws = new WS(url);
+      sockets.push(ws);
+      ws.onopen = () => {
+        event("tracker connected");
+        void track(announce(ws));
+      };
+      ws.onmessage = (e: MessageEvent) => void track(onTrackerMessage(ws, e.data));
+      ws.onclose = () => event("tracker closed");
+      ws.onerror = () => event("tracker error");
+    }
+  };
+  connectTrackers();
   schedule(opts.announceSeconds ?? 30);
 
   return {
     capabilities: { kind: "webrtc-tracker", durable: false, maxFrameBytes },
     self,
     peers: () => [...peers.values()].filter((p) => p.open).map((p) => p.id),
+    retry() {
+      if (closed) return;
+      for (const ws of sockets.splice(0)) {
+        ws.onopen = null;
+        ws.onmessage = null;
+        ws.onclose = null;
+        ws.onerror = null;
+        ws.close();
+      }
+      for (const o of pending.values()) o.pc.close();
+      pending.clear();
+      connectTrackers();
+    },
     send(bytes, to) {
       if (closed) return;
       if (bytes.length > maxFrameBytes) throw new FrameTooLargeError(bytes.length, maxFrameBytes);

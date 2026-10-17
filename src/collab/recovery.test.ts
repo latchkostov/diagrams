@@ -1085,6 +1085,60 @@ it("drives recovery retries with the session clock and cancels them on leave", a
   session.doc.destroy();
 });
 
+it("leaving during backoff saves immediately when storage recovers", async () => {
+  const store = new Store(),
+    clock = new FakeClock(),
+    net = new MemoryNetwork();
+  store.fail = true;
+  const room = roomFor(133);
+  const session = await CollabSession.open({
+    room,
+    transport: net.connect(),
+    privacy: {},
+    initial: demoDiagram(),
+    recovery: store,
+    clock,
+  });
+  await session.recovery!.flush(session.doc);
+  expect(clock.nextDue()).toBe(clock.now() + RECOVERY_RETRY.initialMs);
+  session.doc.apply([{ op: "meta", set: { title: "Durable before leaving" } }]);
+  store.fail = false;
+  const entered = barrier(),
+    finalWrite = barrier();
+  const write = store.write.bind(store);
+  const writes = vi.spyOn(store, "write").mockImplementation(async (record, expected) => {
+    entered.release();
+    await finalWrite.held;
+    return write(record, expected);
+  });
+  let left = false;
+  const leaving = session.leave().then(() => {
+    left = true;
+  });
+  try {
+    await Promise.race([entered.held, leaving]);
+    expect(writes).toHaveBeenCalledTimes(1);
+    expect(left).toBe(false);
+    expect(session.recovery!.saved).toBe(false);
+    expect(clock.now()).toBe(0);
+    expect(store.records.size).toBe(0);
+  } finally {
+    finalWrite.release();
+  }
+  await leaving;
+  expect(session.recovery!.saved).toBe(true);
+  const restored = new CollabDoc();
+  await new RoomRecovery(store, await deriveRoomKeys(room)).restore(restored);
+  expect(await restored.syncProof()).toEqual(await session.doc.syncProof());
+  expect(clock.pending).toBe(0);
+  const count = writes.mock.calls.length;
+  clock.advance(RECOVERY_RETRY.maxMs * 2);
+  await session.recovery!.flush(session.doc);
+  expect(writes).toHaveBeenCalledTimes(count);
+  session.doc.destroy();
+  restored.destroy();
+});
+
 it("decrypts the checkpoint once during a full recovery read with journal entries", async () => {
   const store = new Store(),
     keys = await deriveRoomKeys(roomFor(131)),
