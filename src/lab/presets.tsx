@@ -24,7 +24,7 @@ import { InspectorFocusLab } from "./InspectorFocusLab";
 import { TroubleCallout } from "../live/CapacityLayer";
 import "../styles/capacity.css";
 import { FilePrompts } from "./FilePrompts";
-import { CollabLab } from "./CollabLab";
+import { CollabLab, CollabEditorLab } from "./CollabLab";
 // The Lab's preset registry. Every entry renders the *current* components with fixed data, so
 // opening ?view=lab&preset=<id> is a quick visual check of whatever you're working on.
 //
@@ -1013,6 +1013,15 @@ const tracePresets: Preset[] = [
 ];
 
 export const presets: readonly Preset[] = [
+  {
+    kind: "render",
+    id: "collab-c1a",
+    title: t("collab.presetTitle"),
+    group: "Playground",
+    description: t("collab.presetDescription"),
+    controls: [],
+    render: () => <CollabEditorLab />,
+  },
   {
     kind: "render",
     id: "import-retry",

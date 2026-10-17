@@ -129,6 +129,113 @@ defaults (`wss://tracker.webtorrent.dev`, `wss://tracker.openwebtorrent.com`, `w
 - Both peers ran on one machine, so this says nothing about NAT traversal between networks, corporate firewalls or
   how often TURN would be needed. That needs the C1 beta's measurements.
 
+## C1a editor and local recovery (2026-10-16)
+
+C1a binds the real canvas history commit to field-level room commands. Room edits commit after their
+render, excluding active drags/resizes; those gestures defer remote projection until their final commit.
+Scoped room Undo replaces snapshot Undo. A remote baseline retains selection, unchanged element identities
+and property-field focus, and deleting the focused target returns focus to the canvas with an announcement.
+The native canvas round-trip's defaults are normalized before diffing, never published as another person's edit.
+Ordinary local history, local autosave identities and the native output pipeline are unchanged.
+
+Recovery is opt-in at the room-session boundary, after the existing privacy/deployment gate, before transport
+subscription. IndexedDB database `livediagrams-collab-recovery-v1` contains one CRDT binary checkpoint per
+public derived room id and generation. It never stores a room secret, link, title, native diagram, provider
+token, alias or Undo stack. A new HKDF purpose `storage`, with the existing versioned salt/info and epoch,
+derives a non-extractable AES-256-GCM key independent of all wire/signalling keys. Each write draws a fresh
+96-bit WebCrypto IV; additional authenticated data binds storage version, room id and generation. The app
+holds the capability only in memory: reopening requires the original recovery link. The Lab offers an explicit
+copy action (with a selectable fallback) and consumes/scrubs a supplied fragment, including same-page links.
+No account can recover a missing key. Browser history, clipboard and other same-origin JavaScript remain
+part of the existing capability-link risk; ciphertext at rest does not protect against a compromised app/browser.
+
+Concurrent tabs read/decrypt/guard-check and merge a changed checkpoint before an atomic IndexedDB
+compare-and-swap. A losing writer retries; a known authenticated checkpoint token avoids decoding our own
+previous write. Eviction reads a separate, atomically maintained metadata store rather than other rooms'
+ciphertext; the schema upgrade preserves existing checkpoints. Checkpoints preserve Yjs identities and tombstones. Encryption failure, blocked storage or
+quota exhaustion keeps edits in memory and exposes a file-copy action; a successful save is acknowledged
+only after the IDB transaction completes. Asynchronous encryption/IDB cannot promise to survive closing a tab
+before that acknowledgement. A damaged/authentication-failing/guard-invalid record is removed conditionally
+by token, so a concurrent replacement is not deleted. A guard-valid CRDT whose native projection is invalid
+is retained, with the last valid canvas and a raw recovery export; it is not classified as corrupt.
+Accumulated checkpoints have their own cardinality limits (4 million structs, 1 million clients and
+4 million delete ranges) within the same 32 MiB encoded/schema bounds. Each checkpoint is checked before
+acknowledging a save. A resource-limit refusal retains the authenticated record and reports unavailable
+recovery; it is not deleted as corruption. Wire-update limits remain unchanged.
+
+### Recovery invariants
+
+- **A complete base, then ordered deltas.** Every attachment first saves the entire supplied CRDT,
+  including edits made before recovery was attached. Only its durable acknowledgement permits journal
+  appends. Checkpoints retain Yjs client identities, clocks and tombstones; native JSON is never their base.
+- **Atomic storage and acknowledgement.** The checkpoint, metadata/head, journal and evictions share
+  one IndexedDB transaction. An append advances the head in the same transaction as its ordered chunk;
+  compaction replaces the base and removes the covered journal atomically. Compare-and-swap retries merge
+  other writers first. Only `oncomplete` acknowledges durability, never an individual request's success.
+- **Authenticated reads, including external tails.** Cursors name a checkpoint and journal position.
+  A changed checkpoint requires a full read. Both paths authenticate/decode and apply the same schema and
+  resource checks before applying bytes to the live document. Verified corruption conditionally removes
+  only the returned token; a racing replacement survives and is merged on retry. A damaged journal falls
+  back to its last valid base checkpoint, preserving live edits, then requires a replacement checkpoint.
+  Newer damaged journal edits may be missing; the UI offers peer recovery or a file copy. A damaged base
+  cannot be recovered from dependent deltas alone. Resource-limit failures retain records and report
+  unavailable storage, rather than deleting otherwise authenticated work. A full read decrypts its
+  base once, validates it for fallback, and merges its retained bytes with decrypted journal entries.
+- **Bounded pending memory.** Pending plaintext deltas occupy at most 256 KiB and 128 entries. Overflow
+  discards redundant deltas and marks a full checkpoint required; it never merges a growing backlog in
+  the synchronous update listener. Storage failure also clears that backlog and requires a checkpoint on
+  retry. The live CRDT remains the source of truth. At most one bounded encode/encrypt/write job is in
+  flight, in addition to the bounded queue; document, checkpoint and ciphertext limits still apply.
+  After a checkpoint captures its revision, later deltas queue within the same bounds and append only
+  once that base is durable. Overflow invalidates that capture; a rejected base must be recaptured too.
+- **Failure retry schedule.** A failed save retries on the session clock after 1, 2, 4, 8, 16, then
+  30 seconds, capped at 30 seconds without jitter. Typing and ordinary flush calls cannot bypass that
+  timer or grow a delta backlog while a fresh checkpoint is required. A successful complete save resets
+  the delay. Leaving makes one explicit final attempt and cancels every retry timer before disposal.
+- **Exact durable revisions.** Edits arriving during an in-flight checkpoint require another save before
+  `saved` can become true. A failed save says it is not saved on this device and leaves the editable
+  document and file-copy action available. Closing/crashing before acknowledgement can lose unsaved work;
+  no peer-sync status promises remote durability.
+
+`recovery.test.ts` snapshots storage after every write from initialization through journal compaction,
+then simulates process death without a final flush and compares reloaded CRDT proofs with each durable
+revision. It includes empty-document hydration and reattachment with offline structs/deletions. A
+four-update journal fixture exercises that complete cycle with bounded work; the production 128-update
+limit is covered separately by the sustained-editing/compaction regression. Stalled
+writes, failure retries, in-flight edits, corrupted external tails, racing replacements and retained
+resource-limited records are covered separately. Production-browser tests abort IndexedDB after each
+staged append write, then reload to verify transaction rollback and the previous durable document.
+
+Privacy shutdown explicitly detaches the history driver. The retained draft starts local snapshot Undo
+at the last shared canvas, including peers' preceding changes; the triggering paste/edit and later edits
+are undoable locally. Privacy provenance remains outside snapshots and cannot be cleared by Undo. A
+remount stays detached. Privacy flags are checked immediately, while history, binding and content-based
+privacy checks reuse the same cached native diagram per immutable snapshot. Consecutive actual refusals
+advance an announcement occurrence; repeated privacy polling does not.
+
+Retention is bounded to 16 room generations and 64 MiB of ciphertext, with a 32 MiB per-record limit plus
+the GCM tag. Writes atomically evict the oldest-write records (stable id breaks ties); records older than
+30 days expire on read/write. The Lab explains these bounds. Browser storage eviction/clearing can still
+remove a checkpoint. Generations have distinct ids, keys and AAD: no automatic cross-generation replay.
+Rotation/end-session admission and explicit stale-generation recovery remain C1d work.
+
+Room status distinguishes a completed local save from connection. “Connected and synced” requires
+authenticated proofs from every currently reachable transport peer matching the local state vector **and
+delete set**; reachable ids and their count are bounded. This is a current convergence observation, not a
+remote durability acknowledgement, attribution or Byzantine guarantee. Any document change invalidates it.
+The Lab uses only same-origin BroadcastChannel (or the injected ciphertext test wire), with page lifecycle
+goodbyes, suspension/resume and bounded heartbeat expiry; no public trackers, ICE or endpoints were added.
+Proofs are cached by document revision; authenticated proof/ack input has a separate 128-message/10 s
+count bucket before hashing, alongside the existing byte limits. A new peer always notifies status subscribers.
+
+**Known Lab limitation, blocking production enablement:** the existing “Clear everything on this device”
+flow clears localStorage/sessionStorage but does not yet coordinate IndexedDB deletion and pending room
+writers. Browser site-data clearing removes the Lab database. The asynchronous, generation-safe integration
+is explicitly tracked in [the C1b backlog](../BACKLOG.md#collaboration-c1b-prerequisite-device-wipe-c1a-review-2026-10-16).
+
+Evidence: `editorRoom.test.ts`, `recovery.test.ts`, `lab/bridge.test.ts`, `collab-c1a.spec.ts`; existing
+production bundle/CSP guards remain required. This slice remains Lab-only and adds no Private-diagram permission.
+
 ## Residual risks and open items for C1
 
 1. **Independent review** of the key schedule, envelope and link format before any Private-diagram promise.
@@ -140,11 +247,11 @@ defaults (`wss://tracker.webtorrent.dev`, `wss://tracker.openwebtorrent.com`, `w
    joining; a TURN-only mode needs a TURN service with safe credentials (an owner decision).
 5. **Public infrastructure terms and availability:** check each tracker's terms, contact operators, credit them,
    respect announce intervals, and add their hosts to `connect-src` only for builds that enable collaboration.
-6. **Local recovery:** C0 keeps the document in memory only. C1 needs IndexedDB per room and generation, and "Saved on
-   this device" versus "Connected and synced" states.
-7. **Editor binding:** C1 wires `EditorBinding.localChanged` to the editor's history commit, routes Undo/Redo to the
-   session in a room, and generates session-unique ids for new elements (`RoomClient.newId`), so two people adding
-   at once never collide.
+6. **Local recovery:** C1a implements encrypted per-generation IndexedDB and distinct local-save/sync states
+   as described above. Production share/join recovery and consent remain C1b; no remote durable storage exists.
+7. **Editor binding:** C1a wires the real history commit, scoped Undo and session-unique create/paste ids.
+   Labels remain last-writer-wins fields; simulation playback remains local. Production room mounting waits
+   for the remaining C1 acceptance gates.
 8. **Labels as collaborative text** (Y.Text) and movable list order remain C1 or later decisions; C0 uses
    last-writer-wins fields and arrays with deterministic de-duplication.
 

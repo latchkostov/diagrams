@@ -15,6 +15,7 @@ import { secureRandom, type RandomBytes } from "./random";
 //   presence     AES-256-GCM base for presence frames (alias, colour, status).
 //   signal       AES-256-GCM key that encrypts WebRTC offers/answers on public matchmaking. Independent of the
 //                content keys, so a signalling adapter never holds a key that opens the diagram.
+//   storage      AES-256-GCM key for local encrypted CRDT checkpoints, never used on the wire.
 //
 // Document and presence frames are sealed with per-sender subkeys: HKDF(<channel base>, info "sender/<id>"). Each
 // session draws a fresh random 16-byte sender id, so every (subkey, counter) pair, and therefore every GCM IV, is
@@ -36,6 +37,8 @@ export interface RoomKeys {
   discovery: Uint8Array;
   /** Signalling key: encrypts SDP on public matchmaking. */
   signal: CryptoKey;
+  /** Local recovery only; independent of every wire key and scoped to this generation. */
+  storage: CryptoKey;
   /** Per-channel HKDF bases for sender subkeys. */
   channels: Record<Channel, CryptoKey>;
 }
@@ -66,28 +69,32 @@ async function hkdfBase(raw: Uint8Array): Promise<CryptoKey> {
 export async function deriveRoomKeys(room: RoomLink): Promise<RoomKeys> {
   if (room.secret.length !== ROOM_SECRET_BYTES) throw new Error("A room secret is 32 bytes.");
   const base = await hkdfBase(room.secret);
-  const [roomIdBytes, discovery, signalRaw, docRaw, presenceRaw] = await Promise.all([
+  const [roomIdBytes, discovery, signalRaw, docRaw, presenceRaw, storageRaw] = await Promise.all([
     bits(base, "room-id", room.epoch, 32),
     bits(base, "discovery", room.epoch, 20),
     bits(base, "signal", room.epoch, 32),
     bits(base, "doc", room.epoch, 32),
     bits(base, "presence", room.epoch, 32),
+    bits(base, "storage", room.epoch, 32),
   ]);
-  const [signal, doc, presence] = await Promise.all([
+  const [signal, doc, presence, storage] = await Promise.all([
     subtle().importKey("raw", signalRaw as BufferSource, "AES-GCM", false, ["encrypt", "decrypt"]),
     hkdfBase(docRaw),
     hkdfBase(presenceRaw),
+    subtle().importKey("raw", storageRaw as BufferSource, "AES-GCM", false, ["encrypt", "decrypt"]),
   ]);
   // The raw intermediate bytes are dropped here; only non-extractable keys survive.
   signalRaw.fill(0);
   docRaw.fill(0);
   presenceRaw.fill(0);
+  storageRaw.fill(0);
   return {
     epoch: room.epoch,
     roomId: bytesToBase64Url(roomIdBytes),
     roomIdBytes,
     discovery,
     signal,
+    storage,
     channels: { doc, presence },
   };
 }

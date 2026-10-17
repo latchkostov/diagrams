@@ -1,5 +1,14 @@
 # Design review
 
+## Collaboration C1a export rebase (#143, 2026-10-16)
+
+Scoped source review: the rebase preserves the existing progress, cancellation and localized retry
+feedback. Peer edits invalidate exports through the history key without changing local Undo/Redo.
+The new export button mounts only when the Lab's browser-test fixture explicitly requests it;
+normal rooms and production UI gain no controls or wording. The browser regression checks the
+retry state, export cleanup and scoped Undo/Redo after a remote change. This is a focused source
+and behavior review, not a whole-app or assistive-technology walkthrough.
+
 ## Image export CI synchronization (#142, 2026-10-16)
 
 The designer agent's scoped source review found no new UX issues. These changes affect tests only:
@@ -8,6 +17,15 @@ Slow-export coverage observes completion and the actual saved file; FileReader c
 cancellation releases input and that a retry includes its icons. The live-path assertion observes the
 rendered transition rather than only its preceding DOM attributes. No controls or focus targets were
 added. This was a source review, not a whole-app or assistive-technology walkthrough.
+
+## Collaboration C1a review round 3 (2026-10-16)
+
+The required designer-agent source review found no UX issue in the restored final implementation.
+Storage failures keep the existing unsaved state, guidance and file-copy action throughout backoff.
+Success clears the warning only after all pending revisions are durable; overlapping writes and
+overflow do not prematurely claim a save. Recovery-link and raw-data export fallbacks remain available.
+No controls, wording or chrome were added. This was a scoped source review, without an independent
+browser, keyboard or screen-reader walkthrough; production browser checks run separately.
 
 ## Review follow-ups 3, round 1 (2026-10-16)
 
@@ -26,6 +44,53 @@ subtree together, without adding controls. Metadata and capacity caching change 
 Production phone regressions cover both explicit AI entry points, preserving unsaved simulation
 fields and dirty state while using the existing single-panel slot. No chrome, wording or focus target
 is added. This was not an independent whole-app designer or assistive-technology walkthrough.
+
+## Collaboration C1a review round 2 (2026-10-16)
+
+The designer-agent source review flagged history-key stability during privacy-only transitions and
+inaccurate damaged-copy wording that implied recovery always required a peer after valid checkpoint
+fallback. History keys now keep the same representation across detachment, avoiding a mutable-mode memo
+dependency. New translated-source wording explains that some changes may be missing and offers peer/file
+recovery.
+The final source re-review passed with no remaining actionable UX/a11y finding.
+
+Local Undo begins at the last shared canvas and retains the triggering restricted edit as its own step;
+privacy stays sticky. Repeated refusals replace the alert paragraph to announce again without moving
+focus; repeated privacy checks do not repeat announcements. Existing contextual file-copy recovery stays
+available, unsaved status is honest, and no toolbar/menu controls were added. Production-browser
+regressions cover private-paste Undo/Redo, later edits, a privacy-only shutdown, repeat alert replacement,
+focus and interrupted storage. This was a scoped source review with supplied browser evidence, not an
+independent visual or assistive-technology walkthrough.
+
+## Collaboration C1a review round 1 (2026-10-16)
+
+The required designer-agent source review found and resolved two recovery dead ends: a refusal or
+Private-stop message recommended a file copy while its button was hidden, and a persistent canvas
+alert could cover content outside the overlay-aware fit system. Feedback now lives in normal flow
+in the Lab's existing status area. Save a file copy appears for refusals and Private drafts as well
+as storage failures. A Private draft says sharing stopped, is not labelled saved, and downloads the
+current canvas with its privacy flag. A later successful edit clears an ordinary rejection.
+
+Final source re-review passed with no remaining actionable finding. Focus recovery acts only when
+an editor control disconnects and focus falls to the body; surviving input focus and caret stay put.
+Distinct announcements cover deleted elements and properties removed by stencil changes. Drop and
+resize settlement share the gesture's Undo capture without additional controls. There are no new
+production toolbar/menu items. Production-build browser regressions exercise focus, alert semantics,
+file-copy recovery, Private downloads and boundary Undo. The designer reviewed source and tests;
+they did not independently perform a browser or assistive-technology walkthrough.
+
+## Collaboration C1a (2026-10-16)
+
+Designer-agent source review and the Lab screenshot kept this slice behind a preset with no production
+toolbar additions. The real editor keeps its familiar controls. One compact text status distinguishes
+local durability and peer convergence; file-copy/raw-recovery actions appear only for relevant failures.
+The reviewer found a missing reopenable room capability, lost keyboard focus on remote deletion and
+silent clipboard failure. The Lab now offers an explicit recovery link with a selectable fallback,
+scrubs incoming fragments, explains retention/key handling, and returns focus/announces a removed target.
+Invalid-state wording makes no durability promise. Property edits to other elements never steal focus.
+Share/participants and public connectivity controls remain deferred to C1b/c. Browser regressions cover
+focus, recovery, copying, real same-origin tabs and isolated contexts; this review was not a fresh
+assistive-technology or whole-app visual walkthrough.
 
 ## Image export review fixes (#142, 2026-10-16)
 

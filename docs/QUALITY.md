@@ -70,6 +70,12 @@ remedy. Playwright also rejects a server that appears after preflight. Both init
 and final cleanliness checks reject nonignored untracked files; gitignored local files
 remain allowed. A rerun invalidates its earlier stamp before these checks.
 
+Occupied-port fixtures reserve rotating five-port service ranges from 20,000 through 29,999,
+checking both address families before releasing all but the intended occupied port. Selecting
+an OS-assigned ephemeral range can let client sockets claim a released sibling during Bash
+startup (a Windows run found an earlier sibling unavailable with `EACCES`). Retries stay in
+the service-port pool; the regression preserves the exact intended-port rejection assertion.
+
 The gate builds the `VITE_E2E=1` bundle once, after the ordinary production build, then
 sets `E2E_PREBUILT=1` for all six shards. An inherited prebuilt setting is discarded;
 a failed fresh build skips shards and cannot stamp HEAD. The final unchanged-HEAD and
@@ -302,6 +308,19 @@ the throttle made healthy retries exhaust the 90-second whole-test backstop on L
 waiting on success within that backstop alone did not fix it. A live dim attribute likewise precedes
 the opacity transition: poll the rendered opacity when asserting the visual result, rather than
 sampling it immediately after the attribute.
+
+The collaboration export regression holds a macrotask only after the rendered progress bar
+reports a value above 0% and below the clone phase's 70% boundary. SVG paint preparation can
+yield at 0% on a slower machine, before cloning starts; holding the first MessageChannel
+unconditionally caught that preparation yield on Linux (#143). The test lets React publish
+progress on an animation frame before deciding whether to hold the continuation, then waits
+for the peer's edit to appear before releasing it. No elapsed-time wait or timeout increase
+is needed.
+
+The isolated-context relay drops outgoing packets from detached test pages before announcing
+their departure. A heartbeat sent after disconnect must never reach the other editor; the
+recovery regression counts received packets as well as checking its saved-on-device status.
+Otherwise the status can briefly pass before a late heartbeat reconnects the departed peer.
 
 ### Linux browser reproduction on Windows
 

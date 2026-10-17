@@ -151,6 +151,8 @@ function explainInference(relation: DependencyRelation, makeFlow: () => void): v
 }
 
 export interface EditorDeps {
+  /** A room supplies session-unique ids for every create, paste and duplicate. */
+  newId?: (base: string) => string;
   slug: string;
   /** Already computed by history, once per committed snapshot (never in an export slice). */
   documentKey?: string;
@@ -241,6 +243,7 @@ export function createEditor(
   const documentEdited = () => {
     version = { ...version, revision: version.revision + 1 };
   };
+  const allocateId: typeof uniqueId = (base, taken) => latest.newId?.(base) ?? uniqueId(base, taken);
   // Document scheduling belongs to the editor. A waiting layout has not edited history yet:
   // Undo cancels it instead of undoing an earlier edit and laying out that restored document.
   let waitingLayout: { cancel?: () => void } | undefined;
@@ -490,7 +493,7 @@ export function createEditor(
       groups: new Set(ns.filter(isGroup).map((n) => n.data.groupId)),
       edges: new Set(rf.getEdges().map((e) => e.id)),
     };
-    const remapped = remapPayload(p, taken, { x: snap10(offset.x), y: snap10(offset.y) });
+    const remapped = remapPayload(p, taken, { x: snap10(offset.x), y: snap10(offset.y) }, allocateId);
     // Request routes travel with what uses them: merged into this diagram's (same id and address: the same route).
     let meta: DiagramMeta | undefined;
     let r = remapped;
@@ -731,7 +734,7 @@ export function createEditor(
   ): DiagramFlowEdge => {
     return {
       // Its ends too: a node not yet in React Flow's store is in no other list.
-      id: uniqueId("e", new Set([...takenIds(), a.id, b.id, ...existing.map((e) => e.id)])),
+      id: allocateId("e", new Set([...takenIds(), a.id, b.id, ...existing.map((e) => e.id)])),
       source: a.id,
       target: b.id,
       type: "flow",
@@ -887,7 +890,7 @@ export function createEditor(
       // No spot given (a click in the rail or the palette): the free place nearest the view's centre.
       const c =
         at ?? placeFree(deps().viewCenter(), { width, height }, [...ns.map(box), ...(deps().edgeMarks?.() ?? [])]);
-      const id = uniqueId(stencilIdBase(s.id), takenIds());
+      const id = allocateId(stencilIdBase(s.id), takenIds());
       // Its name, typed in the editor that may open next (quick-add, or Enter on it), joins the step that made it.
       beginCreation(`new:${id}`);
       const node: DiagramFlowNode = {
@@ -939,7 +942,7 @@ export function createEditor(
         );
         return null;
       }
-      const id = uniqueId(annotationIdBase(kind), takenIds());
+      const id = allocateId(annotationIdBase(kind), takenIds());
       const node: AnnotationFlowNode = {
         ...annotationToFlow({
           id,
@@ -1189,7 +1192,7 @@ export function createEditor(
         ? { x: req.at.x - size.width / 2, y: req.at.y - size.height / 2 }
         : spotBeside(box(src), toward, size);
       const position = { x: snap10(spot.x), y: snap10(spot.y) };
-      const id = uniqueId(stencilIdBase(data.stencil), takenIds());
+      const id = allocateId(stencilIdBase(data.stencil), takenIds());
       const node: DiagramFlowNode = {
         id,
         type: "diagram",
@@ -1230,7 +1233,7 @@ export function createEditor(
       };
       const others = obstacles().filter((o) => (o as { edge?: string }).edge !== edgeId);
       const c = at ?? placeFree(mid, size, others, { margin: COPY_MARGIN, step: 20, maxRings: 40 });
-      const id = uniqueId(stencilIdBase(s.id), takenIds());
+      const id = allocateId(stencilIdBase(s.id), takenIds());
       const node: DiagramFlowNode = {
         id,
         type: "diagram",
@@ -1244,7 +1247,7 @@ export function createEditor(
           props: newPlanningProps(s.simRole, deps().meta.planning, s.id),
         },
       };
-      const r = splitFlowEdge(es, edgeId, id, takenIds().add(id));
+      const r = splitFlowEdge(es, edgeId, id, takenIds().add(id), allocateId);
       if (!r) return null;
       const merge = `new:${id}`;
       beginCreation(merge);
@@ -1279,7 +1282,7 @@ export function createEditor(
     insertIntoEdge: (edgeId, nodeId) => {
       const n = currentNodes().find((n) => n.id === nodeId);
       if (!n || !takesEdges(n)) return false;
-      const r = splitFlowEdge(currentEdges(), edgeId, nodeId, takenIds());
+      const r = splitFlowEdge(currentEdges(), edgeId, nodeId, takenIds(), allocateId);
       if (!r) return false;
       return commitEdges(() => r.edges);
     },
@@ -1439,7 +1442,7 @@ export function createEditor(
       const ns = rf.getNodes();
       const nodes = ns.filter(isSelected);
       if (!nodes.length) return null;
-      const id = uniqueId("boundary", takenIds());
+      const id = allocateId("boundary", takenIds());
       const label = tone in toneLabel ? toneLabel[tone as GroupTone] : t("chrome.untitledBoundary");
       const bounds = boundaryAround(nodes.map(box));
       const existingGroups: GroupBox[] = ns.filter(isGroup).map((g) => ({
@@ -1506,7 +1509,7 @@ export function createEditor(
       const ns = rf.getNodes();
       const groupNode = ns.find((n): n is GroupFlowNode => isGroup(n) && n.data.groupId === groupId);
       if (!groupNode) return null;
-      const id = uniqueId("zone", takenIds());
+      const id = allocateId("zone", takenIds());
       const w = groupNode.width ?? groupNode.measured?.width ?? 0;
       const h = groupNode.height ?? groupNode.measured?.height ?? 0;
       if (groupNode.data.label.length > ANNOTATION_LIMITS.maxAnnotationText) {
@@ -1569,7 +1572,7 @@ export function createEditor(
         (n): n is AnnotationFlowNode => isAnnotation(n) && n.id === zoneId && n.data.kind === "zone",
       );
       if (!zoneNode) return null;
-      const id = uniqueId("boundary", takenIds());
+      const id = allocateId("boundary", takenIds());
       const zw = zoneNode.width ?? zoneNode.measured?.width ?? 0;
       const zh = zoneNode.height ?? zoneNode.measured?.height ?? 0;
       const zoneBox: Rect = {
@@ -1848,6 +1851,7 @@ export function createEditor(
     updateDeps: (flow: ReactFlowInstance<FlowNode, DiagramFlowEdge>, next: EditorDeps, state = committed) => {
       if (next.slug !== latest.slug || next.documentId !== latest.documentId)
         version = { identity: {}, revision: version.revision + 1 };
+      // History keys include remote room projections and Undo/Redo, but exclude transient live state.
       else if (next.documentKey !== latest.documentKey) documentEdited();
       if (next.slug !== latest.slug) cancelLayout();
       rf = flow;

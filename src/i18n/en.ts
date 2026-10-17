@@ -2215,5 +2215,40 @@ const en = {
   "staticSkill.copy": "Copy",
   "staticSkill.copied": "Copied",
   "staticSkill.selectCopy": "Select and copy",
+  "collab.presetTitle": "Collaboration: editor and recovery",
+  "collab.presetDescription":
+    "The real editor with scoped Undo and encrypted recovery on this device. Lab only; no public network.",
+  "collab.savedDevice": "Saved on this device",
+  "collab.saveCopy": "Save a file copy",
+  "collab.copyRecoveryLink": "Copy Lab recovery link",
+  "collab.linkCopied": "Recovery link copied",
+  "collab.copyFailed": "Could not copy. Select and copy this recovery link:",
+  "collab.invalidDocument": "The room needs recovery. Save its shared data before starting a new room.",
+  "collab.saveRoomData": "Save room data",
+  "collab.targetRemoved": "The element you were editing was removed by a peer.",
+  "collab.controlRemoved": "A peer changed the properties you were editing. Focus returned to the canvas.",
+  "collab.refusedKey": "Your last change was undone: a field name is too long for a room. Shorten it and try again.",
+  "collab.refusedText": "Your last change was undone: its text is too long for a room. Shorten it or save a file copy.",
+  "collab.refusedDepth":
+    "Your last change was undone: a value is nested too deeply for a room. Simplify it or save a file copy.",
+  "collab.refusedSize":
+    "Your last change was undone: it is too large for one room edit. Split it into smaller edits or save a file copy.",
+  "collab.refusedId":
+    "Your last change was undone: an element ID cannot be used in a room. Paste a fresh copy and try again.",
+  "collab.refusedFull":
+    "Your last change was undone: the room is full. Save a file copy to keep editing outside the room.",
+  "collab.leftPrivate":
+    "Sharing stopped because this diagram is Private. Your changes stay on this device. Save a file copy to keep them.",
+  "collab.privateDraft": "Sharing stopped · save a file copy to keep your Private changes",
+  "collab.synced": "Connected and synced",
+  "collab.connecting": "Connecting…",
+  "collab.offline": "Offline · changes are in memory",
+  "collab.loadFailed": "Could not open the Lab room. Reload to try again.",
+  "collab.corrupt": "A damaged local copy was removed. Rejoin a peer to recover it.",
+  "collab.damagedRecovery":
+    "A damaged local copy was found. Some changes may be missing. Rejoin a peer or save a file copy.",
+  "collab.storageUnavailable": "Could not save on this device. Keep this page open and save a file copy.",
+  "collab.labOnly":
+    "Lab only: an invented room over a local test transport. Keep the recovery link to reopen your local copy or connect another tab. Local copies expire after 30 days; the oldest are evicted past 16 rooms or 64 MiB. Room keys are never stored by the app.",
 } as const;
 export default en;

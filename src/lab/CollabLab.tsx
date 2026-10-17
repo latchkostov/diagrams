@@ -18,3 +18,5 @@ export const CollabLab = lazyComponent(
       <p data-testid="collab-loading">Loading…</p>
     ),
 );
+
+export const CollabEditorLab = lazyComponent(() => import("../collab/lab/EditorDemo").then((m) => m.EditorDemo));

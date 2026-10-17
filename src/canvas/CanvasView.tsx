@@ -151,6 +151,8 @@ import { useFullscreen } from "../lib/fullscreen";
 import { t as tr, useLocale } from "../i18n";
 import { CopyNotice } from "./CopyNotice";
 import { useMeasuredTask } from "./useMeasuredTask";
+import type { EditorRoom } from "../editor/room";
+import { remoteTargetRemoved } from "../editor/remoteSnapshot";
 
 const nodeTypes: NodeTypes = canvasNodeTypes;
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
@@ -232,6 +234,8 @@ export interface CanvasHandle {
 }
 
 interface Props {
+  /** Lab-only room mount, with its own document identity and encrypted recovery. Stable for this canvas's life. */
+  room?: EditorRoom;
   slug: string;
   presenting: boolean;
   onExitPresent: () => void;
@@ -320,6 +324,7 @@ function CanvasInner({
   copyNotice,
   focusRequest,
   viewer,
+  room,
 }: Props) {
   const locale = useLocale();
   const { theme, nodeVariant, edgeStyle } = useSettings();
@@ -447,19 +452,56 @@ function CanvasInner({
     hideTip,
   );
 
+  const [announcement, setAnnouncement] = useState({ text: "", seq: 0 });
+  const remoteFocusFrame = useRef(0);
+  useEffect(() => () => cancelAnimationFrame(remoteFocusFrame.current), []);
   const snapshot = useMemo<CanvasSnapshot>(() => ({ meta, nodes, edges }), [meta, nodes, edges]);
+  const libraryPrivacy = usePrivacyFlags(slug);
+  const [roomPrivate, setRoomPrivate] = useState(false);
+  const privacyFlags = useMemo(
+    () => ({ ...libraryPrivacy, private: libraryPrivacy.private || roomPrivate }),
+    [libraryPrivacy, roomPrivate],
+  );
   /** Undo and Redo chose a selection: keyboard focus follows it (set up with the keyboard selection, below). */
   const onHistoryStep = useRef((_direction: "undo" | "redo", _selection: FlowSelection) => {});
   const history = useHistory(
     snapshot,
-    (s) => {
-      setEditing(null);
+    (s, remote) => {
+      const active = document.activeElement;
+      const root = wrapper.current?.closest('[data-testid="canvas-view"]');
+      const originatedHere = remote && active && root?.contains(active);
+      const removed =
+        originatedHere &&
+        remoteTargetRemoved(snapshot, s, {
+          inspector: !!active.closest('[data-testid="inspector"]'),
+          id:
+            active.closest("[data-id]")?.getAttribute("data-id") ??
+            active.closest('[data-testid="inspector"]')?.getAttribute("data-inspector-target") ??
+            undefined,
+        });
+      if (originatedHere) {
+        cancelAnimationFrame(remoteFocusFrame.current);
+        remoteFocusFrame.current = requestAnimationFrame(() => {
+          if (active.isConnected || (document.activeElement !== document.body && document.activeElement !== null))
+            return;
+          wrapper.current?.focus({ preventScroll: true });
+          setAnnouncement((a) => ({
+            text: removed ? tr("collab.targetRemoved") : tr("collab.controlRemoved"),
+            seq: a.seq + 1,
+          }));
+        });
+      }
+      if (!remote) setEditing(null);
+      else setEditing((current) => (current && !s.nodes.some((n) => n.id === current.id) ? null : current));
       setMeta(s.meta);
       setNodes(s.nodes);
       setEdges(s.edges);
     },
     (direction, selection) => onHistoryStep.current(direction, selection),
+    room,
+    privacyFlags,
   );
+  const { beginGesture, endGesture } = history;
 
   const renameHistoryTitle = history.renameTitle;
   const latest = useRef({ meta, nodes, edges, slug, revision: history.stateKey });
@@ -477,7 +519,7 @@ function CanvasInner({
   /** Returns whether the diagram differs from its original, or undefined when there was nothing to write. */
   const flushSave = useCallback(
     (override?: DiagramFile): boolean | undefined => {
-      if (readOnly) return undefined;
+      if (readOnly || room) return undefined;
       // Measurements, selection and viewport changes are not document edits. In particular,
       // opening a previously edited example must not promote it before a new edit occurs.
       if (!override && latest.current.revision === lastSaved.current) return undefined;
@@ -513,7 +555,7 @@ function CanvasInner({
         lastSaved.current = json;
       return mod;
     },
-    [readOnly, identity, renameHistoryTitle, original.title],
+    [readOnly, room, identity, renameHistoryTitle, original.title],
   );
   const firstExampleEdit = onExampleCopy !== undefined;
   const saveRevision = history.stateKey;
@@ -630,10 +672,10 @@ function CanvasInner({
   }, [store]);
   const fit = useCallback(() => overlayFit({ maxZoom: 1.25, duration: 300 }, true), [overlayFit]);
   // Privacy: the diagram's provenance (Private switch, local-only example), re-read when the library changes.
-  const privacyFlags = usePrivacyFlags(slug);
   const privacyNow = () => privacyOf({ ...privacyFlags, editor: { getDiagram: () => fromFlow(meta, nodes, edges) } });
   const documentId = getDiagramIdentity(slug);
   const editor = useEditor({
+    newId: room ? (base) => room.newId(base) : undefined,
     getNodes: () => nodes,
     getEdges: () => edges,
     slug,
@@ -641,7 +683,8 @@ function CanvasInner({
     documentKey: history.stateKey,
     documentId,
     makePrivate: () => {
-      if (setDiagramPrivate(slug, true)) {
+      if (room || setDiagramPrivate(slug, true)) {
+        if (room) setRoomPrivate(true);
         notify(tr("chrome.pastedFromAPrivateDiagramSoThisOneIsPrivate"), {
           kind: "info",
         });
@@ -820,7 +863,7 @@ function CanvasInner({
   useImperativeHandle(
     ref,
     () => ({
-      getDiagram: () => fromFlow(meta, nodes, edges),
+      getDiagram: () => ({ ...fromFlow(meta, nodes, edges), ...(room && privacy !== null ? { private: true } : {}) }),
       flush: () => {
         const mod = flushSave();
         if (mod !== undefined) setModified(mod);
@@ -828,7 +871,7 @@ function CanvasInner({
       setTitle: (title: string) => editor.updateMeta({ title }),
       getDocumentVersion: editor.getDocumentVersion,
     }),
-    [meta, nodes, edges, flushSave, editor],
+    [meta, nodes, edges, flushSave, editor, room, privacy],
   );
 
   useEffect(() => onTitleChange?.(meta.title), [meta.title, onTitleChange]);
@@ -1338,6 +1381,11 @@ function CanvasInner({
   });
   const handleNodesChange = useCallback(
     (changes: NodeChange<FlowNode>[]) => {
+      if (changes.some((c) => c.type === "dimensions" && c.resizing)) beginGesture();
+      if (changes.some((c) => c.type === "dimensions" && c.resizing === false)) {
+        // Boundary adoption also runs in this frame; close only after both have rendered.
+        requestAnimationFrame(endGesture);
+      }
       let next = changes;
       if (store.getState().userSelectionActive) next = next.filter((c) => c.type !== "select");
       const copies = altCopies.current;
@@ -1347,7 +1395,7 @@ function CanvasInner({
       next = guides.filter(next);
       if (next.length) onNodesChange(next);
     },
-    [store, onNodesChange, guides],
+    [store, onNodesChange, guides, beginGesture, endGesture],
   );
   const handleEdgesChange = useCallback(
     (changes: EdgeChange<DiagramFlowEdge>[]) => {
@@ -1537,6 +1585,7 @@ function CanvasInner({
   const onNodeDragStart: OnNodeDrag<FlowNode> = useCallback(
     (e, _node, dragged) => {
       if (dragActive.current) return;
+      beginGesture();
       dragActive.current = true;
       interruptFit();
       showingAll.current = false;
@@ -1558,7 +1607,7 @@ function CanvasInner({
       guides.start(e, dragged, altCopies.current);
       if (editGestures) watchMembership(dragged, altCopies.current);
     },
-    [hideTip, editGestures, editor, guides, store, watchInsert, watchMembership, interruptFit],
+    [hideTip, editGestures, editor, guides, store, watchInsert, watchMembership, interruptFit, beginGesture],
   );
   const onNodeDragStop: OnNodeDrag<FlowNode> = useCallback(
     (e, _node, dragged) => {
@@ -1581,6 +1630,7 @@ function CanvasInner({
       // overlaps by default), then the dropped nodes settle into the boundaries around them, which grow to hold
       // a member poking out (D12), in the drop's undo step. A member that left its boundary says so.
       requestAnimationFrame(() => {
+        endGesture();
         if (copies) {
           const made = [...copies.values()];
           editor.keepClear({
@@ -1599,7 +1649,7 @@ function CanvasInner({
         }
       });
     },
-    [editor, guides, editGestures, sayLeft, droppedNodes],
+    [editor, guides, editGestures, sayLeft, droppedNodes, endGesture],
   );
 
   // ---------------------------------------------------------------- Space, Alt and the middle button (D4, D9)
@@ -2206,7 +2256,7 @@ function CanvasInner({
     [nodes, readOnly, rovingId],
   );
   /** What the live region says (seq: the same words again are read again). */
-  const [announcement, setAnnouncement] = useState({ text: "", seq: 0 });
+
   const announce = useCallback((text: string) => setAnnouncement((a) => ({ text, seq: a.seq + 1 })), []);
   useLayoutEffect(() => {
     navigate.current = (step, from) => {

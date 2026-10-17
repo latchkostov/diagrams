@@ -786,6 +786,31 @@ runtime feature/example or re-record any golden. [Showcase roadmap rule][ld-road
 
 ## Phased delivery and acceptance gates
 
+**C1a slice (2026-10-16):** real editor command/history binding, scoped Undo, selection/property-edit
+preservation and encrypted per-generation IndexedDB recovery are implemented behind the Lab preset.
+The Lab recovery link and same-origin/injected test transport exercise reload/rejoin without a public
+endpoint. Storage/sync limits and residual risks are recorded in the [threat model](collaboration-threat-model.md#c1a-editor-and-local-recovery-2026-10-16).
+C1b owns production Share/Join/Leave, consent/IP disclosure, aliases and participants; C1c owns public
+trackers/STUN, collaboration-build CSP and connectivity/file fallback; C1d owns End session, rotation
+and stale-generation handling. These are still acceptance gates before enabling collaboration outside
+the Lab. Private diagrams remain excluded pending independent review; no TURN, backend or telemetry
+is introduced by this slice.
+
+C1a review triage: the seven-angle review found four P1s, all fixed: accumulated checkpoint guards,
+proof-flood work, generated skill freshness and growing duplicate ids. Duplicate P2 reports are
+covered by the same fixes. Other P2 fixes cover scoped Undo selection/focus/target tags, focused remote
+deletion (including SVG), linear selected-target checks, metadata-only eviction and v1 migration,
+durability-aware navigation tests, status notifications and opening-session disposal. Regression
+proofs remove each fix temporarily. The shared asynchronous device-wipe lifecycle is ticketed in
+[BACKLOG](../BACKLOG.md#collaboration-c1b-prerequisite-device-wipe-c1a-review-2026-10-16), with the
+current Lab limitation disclosed in the threat model. It must land before production rooms are enabled.
+
+UX source/test review found no remaining actionable issue: recovery copying has a labeled selectable
+fallback, room Undo preserves the editor's selection/focus/announcement policy, remote deletion returns
+focus gracefully, and failure copy distinguishes live edits from completed saves. This adds only Lab
+status/recovery controls, leaving the production chrome budget unchanged. No new assistive-technology
+walkthrough was performed in this slice.
+
 All costs and effort below are **planning estimates**, not bids. A phase is incomplete until privacy,
 accessibility, docs, failure recovery and the specified tests pass. Engineering time includes tests
 and docs but excludes waiting for independent cryptographic review. Each future fix gets a regression

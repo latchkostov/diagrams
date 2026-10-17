@@ -1,9 +1,11 @@
 // The canvas's undo history and the selection each step starts from, outside React: useHistory drives it from
 // renders and timers, and the tests drive it the same way, renders and batching included.
-import { commit, commitReplacement, createHistory, present } from "./history";
+import { commit, commitReplacement, createHistory, present, MERGE_WINDOW_MS } from "./history";
+import type { EditorRoom } from "./room";
 import {
   selectionOf,
   snapshotKey,
+  roomSnapshotKey,
   stepWithSelection,
   type CanvasHistory,
   type FlowSelection,
@@ -25,10 +27,38 @@ export class HistoryController {
    * commit (an edit in between), Undo, Redo or a replacement closes it, as does `end`.
    */
   private transaction: string | undefined;
+  private roomStep: { mergeKey?: string; at: number; tag: string } | undefined;
+  private roomCoalescingBroken = false;
+  private readonly keyOf: (state: CanvasSnapshot) => string;
+  private roomBaseline?: { snapshot: CanvasSnapshot; at: number; selection: FlowSelection };
 
-  constructor(state: CanvasSnapshot, at: number) {
-    this.history = createHistory(snapshotKey(state), state, at);
+  constructor(
+    state: CanvasSnapshot,
+    at: number,
+    private room?: EditorRoom,
+  ) {
+    this.keyOf = room ? roomSnapshotKey : snapshotKey;
+    this.history = createHistory(this.key(state), state, at);
     this.settled = selectionOf(state);
+  }
+
+  get collaborative(): boolean {
+    return this.room !== undefined;
+  }
+
+  /** Sharing has ended: start local Undo at the last agreed canvas, before the restricted edit. */
+  detachRoom() {
+    if (!this.room) return;
+    const baseline = this.roomBaseline ?? {
+      snapshot: present(this.history).value,
+      at: present(this.history).at,
+      selection: this.settled,
+    };
+    this.room = undefined;
+    this.transaction = undefined;
+    this.roomStep = undefined;
+    this.history = createHistory(this.key(baseline.snapshot), baseline.snapshot, baseline.at);
+    this.settled = baseline.selection;
   }
 
   /** Opens a creation transaction under `tag` (the next commits tagged so are the node's own step). */
@@ -47,7 +77,11 @@ export class HistoryController {
   }
 
   /** The canvas rendered `state` (its `key`): while it matches the present step, its selection is settled. */
-  observe(state: CanvasSnapshot, key = snapshotKey(state)) {
+  key(state: CanvasSnapshot): string {
+    return this.keyOf(state);
+  }
+
+  observe(state: CanvasSnapshot, key = this.key(state)) {
     if (key === present(this.history).key) this.settled = selectionOf(state);
   }
 
@@ -58,10 +92,35 @@ export class HistoryController {
    */
   commit(state: CanvasSnapshot, mergeKey: string | undefined, at: number): boolean {
     const prev = this.history;
-    const key = snapshotKey(state);
+    const key = this.key(state);
     // Another edit in between closes the creation: the name typed after it is a step of its own.
     if (this.transaction !== undefined && mergeKey !== this.transaction && key !== present(prev).key)
       this.transaction = undefined;
+    if (this.room) {
+      if (key === present(prev).key) return false;
+      const last = this.roomStep;
+      const merge =
+        !this.roomCoalescingBroken &&
+        last &&
+        mergeKey !== undefined &&
+        last.mergeKey === mergeKey &&
+        (at - last.at <= MERGE_WINDOW_MS || mergeKey === this.transaction);
+      this.roomStep = { mergeKey, at, tag: merge ? last.tag : this.room.newId("room-step") };
+      this.roomCoalescingBroken = false;
+      const start = this.settled;
+      // A room keeps only a baseline here; Undo belongs to the scoped driver, never to snapshots.
+      this.roomBaseline = { snapshot: present(prev).value, at: present(prev).at, selection: start };
+      this.receive(state, at);
+      try {
+        this.room.commit(state, this.roomStep.tag, { mergeKey, start });
+        // A deferred remote projection may have replaced the baseline during commit. Keep it.
+        // Privacy detaches synchronously and restores the baseline from before this candidate.
+        if (!this.room) return this.commit(state, mergeKey, at);
+        return true;
+      } finally {
+        this.roomBaseline = undefined;
+      }
+    }
     this.history = commit(prev, { key, value: state, mergeKey, at, start: this.settled }, undefined, this.transaction);
     this.settled = selectionOf(state);
     return this.history !== prev;
@@ -81,12 +140,29 @@ export class HistoryController {
     at: number,
   ) {
     this.transaction = undefined;
+    if (this.room) {
+      this.commit(current, pendingMergeKey, at);
+      this.roomCoalescingBroken = true;
+      this.commit(next, mergeKey, at);
+      this.roomCoalescingBroken = true;
+      return;
+    }
     this.history = commitReplacement(
       this.history,
-      { key: snapshotKey(current), value: current, mergeKey: pendingMergeKey, at, start: this.settled },
-      { key: snapshotKey(next), value: next, mergeKey, at, start: selection },
+      { key: this.key(current), value: current, mergeKey: pendingMergeKey, at, start: this.settled },
+      { key: this.key(next), value: next, mergeKey, at, start: selection },
     );
     this.settled = selectionOf(next);
+  }
+
+  /** Remote baseline: preserves an open naming transaction and never creates an undo entry. */
+  receive(state: CanvasSnapshot, at = 0) {
+    this.history = createHistory(this.key(state), state, at);
+    this.settled = selectionOf(state);
+  }
+
+  top(): string | undefined {
+    return this.room ? this.room.top() : present(this.history).mergeKey;
   }
 
   /** A system-assigned copy name is not an edit: keep step tags, selections and redo intact. */
@@ -96,13 +172,19 @@ export class HistoryController {
       entries: this.history.entries.map((entry) => {
         if (entry.value.meta.title !== from) return entry;
         const value = { ...entry.value, meta: { ...entry.value.meta, title: to } };
-        return { ...entry, value, key: snapshotKey(value) };
+        return { ...entry, value, key: this.key(value) };
       }),
     };
   }
 
   /** Undo or Redo with the canvas's `current` selection: the snapshot to show, or null at either end. */
   step(direction: "undo" | "redo", current: FlowSelection): CanvasSnapshot | null {
+    if (this.room) {
+      this.transaction = undefined;
+      this.roomStep = undefined;
+      this.room[direction]();
+      return null;
+    }
     const step = stepWithSelection(this.history, direction, current);
     if (!step) return null;
     this.transaction = undefined;

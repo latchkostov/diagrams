@@ -1,5 +1,43 @@
 # Release notes
 
+## Collaboration export Linux synchronization (#143, 2026-10-16)
+
+- Reproduced CI's 0% progress failure in the two-CPU Playwright Linux container. The test held
+  the first export macrotask, but SVG paint preparation can yield before any node is cloned.
+  It now lets preparation continue and holds a continuation only after the rendered progress
+  bar reports cloning in progress, before the peer edit. Retry, no-download and scoped Undo/Redo
+  assertions remain intact. No product change or timeout increase is needed.
+- The repeated full spec also exposed a relay-fixture race: a late heartbeat could reconnect a
+  disconnected test page. The relay now drops packets from detached pages; the recovery regression
+  explicitly sends a late heartbeat and verifies the remaining editor stays saved on this device.
+- Five full-spec Linux repetitions pass: 80 passed, zero failed or flaky. Temporarily restoring
+  the old export hook fails all five focused repetitions at 0%; removing the relay guard makes
+  its regression observe the forbidden late packet.
+- No UI or output changes; no golden is changed or re-recorded.
+
+## Collaboration C1a: responsive export rebase (#143, 2026-10-16)
+
+- Rebased onto master including #142. The editor retains room-specific ID allocation alongside
+  document identity and monotonic edit revisions. History-key changes include peer edits and
+  reversions, so a sliced image export aborts with the existing localized retry toast instead of
+  downloading a mixed revision. Selection, measurements and transient live state remain excluded.
+- A production-browser regression holds a clone slice while a peer edits, checks the retry toast
+  and absence of downloads, then verifies local Undo/Redo preserves the peer's change. An opt-in
+  Lab fixture invokes the real export controller; the normal Lab room gains no controls.
+  A unit regression covers remote projections and reversions. Removing the history-key revision
+  increment makes both regressions fail.
+- The quick gate exposed an occupied-port fixture race: it selected a dynamic client-port range,
+  released its siblings, then found an earlier sibling unavailable when the child process started.
+  The fixture now reserves explicit service-port ranges on both address families and keeps retries
+  below the usual client-port pool. The strengthened retry regression fails with the allocator
+  change removed. No gate assertion, timeout or application behavior is relaxed.
+- Preserved both documentation histories and all translation keys. Took master's skill/plugin
+  files, regenerated the helper and refreshed the viewer at plugin 1.1.36 (master + one patch).
+  Parity regeneration preserves all 2,196 goldens already on the rebased branch. Relative to master,
+  only `node/i18n/catalogs.json` changes: the 27 English `collab.*` keys raise all 38 catalog message
+  counts from 1,976 to 2,003, add 27 English fallbacks in the 37 translated catalogs (pseudo-locale
+  stays at zero), and add the collaboration-area fingerprint. All other golden outputs are unchanged.
+
 ## Linux image export regression workload (#142, 2026-10-16)
 
 - CI run 38983826029 and a two-CPU Playwright Linux container reproduce whole-test timeouts
@@ -44,6 +82,26 @@
 - The production bundle regression passes: collaboration, Yjs and tracker code are absent from every
   production chunk, with image export loading only when used. The scoped UX review finds no new
   controls, wording or chrome; export progress and cancellation retain their existing tests.
+
+## Collaboration C1a: review round 3 and rebase (2026-10-16)
+
+- Failed device saves retry after 1, 2, 4, 8, 16 and then at most 30 seconds, without jitter.
+  Typing during backoff stays editable and unsaved without encoding or encrypting full checkpoints.
+  The next successful save clears the storage warning only after the latest revision is durable.
+  Leaving attempts one final save and cancels retry timers; retries use the session's fakeable clock.
+- Full recovery reads decrypt the checkpoint once and retain its validated bytes for corrupt-journal
+  fallback. Edits arriving after a checkpoint is captured queue bounded deltas for appending once that
+  base is durable. Overflow and rejected checkpoint writes still require a fresh complete base.
+- Regression tests cover successful stalled appends followed by overflow recovery, sustained edits
+  during checkpoint writes, and unsaved status between separately held writes. Temporarily removing
+  backoff, base reuse, overlapping-delta retention, overflow checkpointing or honest acknowledgement
+  fails the corresponding behavior assertions; removing overflow checkpointing loses CRDT edits.
+- Rebased onto master including Review follow-ups 3, retained both documentation histories and the
+  union of translation keys, and regenerated the skill helper/viewer at plugin 1.1.35 (master + one patch).
+  Only `node/i18n/catalogs.json` changes relative to master: the branch's 27 English `collab.*` keys
+  raise all 38 catalog message counts from 1,976 to 2,003, add 27 English fallbacks in the 37 translated
+  catalogs (pseudo-locale stays at zero), and add the collaboration-area fingerprint. Every other
+  area and every diagram, simulation, layout, import/export and browser golden stays unchanged.
 
 ## Review follow-ups 3, round 1 (2026-10-16)
 
@@ -106,6 +164,75 @@
   five-port range on IPv4 and IPv6 before keeping their intended occupied member. A forced blocked
   neighbour regression fails with the old setup; the real preflight and its exact-port assertions
   remain intact. All 1,403 E2E tests passed in that run; the complete gate is repeated after this fix.
+
+## Collaboration C1a: review round 2 (2026-10-16)
+
+- Recovery now checkpoints the entire document when attaching, including earlier offline edits, before
+  appending deltas. Pending plaintext is capped at 256 KiB; stalled or failed storage switches to a fresh
+  checkpoint retry and keeps the unsaved draft editable. Crash/reload regressions verify every durable
+  write, and browser tests verify rollback after interrupted IndexedDB writes.
+- Journal and checkpoint reads share authentication/schema validation. Corrupt external tails no longer
+  block future saves: the last valid checkpoint and live edits survive, while conditional removal protects
+  a concurrent replacement. Resource-limited records remain available for recovery. The threat model now
+  documents the complete base, transaction, cursor, corruption, memory and acknowledgement invariants.
+- Privacy shutdown, including Private paste, restores local Undo/Redo from the last shared canvas.
+  Later edits stay undoable and privacy stays sticky. Repeated refusals announce again without moving
+  focus; privacy polling stays quiet. Privacy and binding reads reuse history's cached diagram conversion.
+  Boundary fixtures use one deterministic initialization script, and the membership-cache regression now
+  compares surviving nodes against a fresh equivalent diagram.
+- Only `node/i18n/catalogs.json` intentionally changes: one English `collab.damagedRecovery` addition
+  updates message counts, English fallbacks and collaboration-area fingerprints. It explains possible
+  missing changes after damaged recovery. All other areas and all diagram/browser goldens stay unchanged.
+  The generated skill helper and stale committed viewer are refreshed; plugin 1.1.35 remains one patch above master.
+
+## Collaboration C1a: review round 1 (2026-10-16)
+
+- Concurrent edge inserts keep both peers' connections, and a drop or resize with its boundary
+  settlement is one per-person Undo step. Undo captures stay distinct across editor remounts.
+- Room edits now use incremental comparisons and encrypted recovery journals. On the same 5,000-node,
+  8,281-edge workload, median remote selection retention fell from 85.677 to 4.788 ms, and encrypted
+  in-memory recovery saving from 74.754 to 0.186 ms (2,396,961 to 42 encrypted plaintext bytes per rename).
+  Full checkpoints compact periodically; same-device tabs merge only newly appended journal entries.
+- Effective canvas privacy stops sharing before restricted edits enter the room or its recovery store.
+  Private drafts have honest unsaved status and a downloadable Private file copy. Refused edits explain
+  their reason accessibly and offer recovery; remote changes that remove a focused property control
+  restore keyboard focus. Clock corrections preserve valid encrypted work, and differing peer proofs
+  invalidate sync. Stronger tests cover existing autosaves and pasted internal references.
+- All 14 review findings and deliberate-reversion regressions are detailed in
+  [the review resolutions](COLLAB-C1A-REVIEW.md). The designer-agent source review passed after moving
+  feedback into the Lab status area and exposing its file-copy action; no global controls were added.
+- Only `node/i18n/catalogs.json` intentionally changes: nine English `collab.*` additions update message
+  counts, English fallbacks and collaboration-area fingerprints. All other message areas and every
+  diagram, simulation, layout, import/export and browser golden remain unchanged.
+
+## Collaboration C1a: real editor and encrypted local recovery (2026-10-16)
+
+- The Lab's collaboration editor now uses the real canvas command/history path, per-person Undo/Redo
+  and session-unique create/paste ids. Remote edits preserve selection and property-field drafts/focus;
+  active gestures finish before remote projection, and a remotely deleted edit target returns keyboard
+  focus to the canvas. Ordinary diagrams retain their existing history and save destination.
+- Room generations keep encrypted Yjs checkpoints in IndexedDB, merging concurrent device writers.
+  Reopen with the Lab recovery link; its key is cleared from the address bar and never stored by the app.
+  Local copies expire after 30 days and evict oldest-first beyond 16 generations or 64 MiB. Corrupt records,
+  storage failures and invalid native projections have explicit recovery paths without discarding live work.
+- The compact Lab status distinguishes “Saved on this device” from “Connected and synced”; peer sync
+  proofs include deletions and every reachable peer. Local test transports cover isolated browser contexts,
+  same-origin tabs, navigation, expiry and suspension without public network traffic. All new copy uses i18n.
+- C1b share/join consent, IP disclosure, aliases/participants; C1c public transport/CSP/connectivity UX;
+  and C1d End session/rotation/stale-generation handling remain deferred. Collaboration stays out of
+  production bundles, with no new Private-diagram permission or outside endpoint.
+- Regression validation temporarily removes the fixes: 28 unit-level mutations and five browser-level
+  mutations fail their targeted tests, including real scoped Undo, encrypted-key separation, gestures,
+  corruption/quota recovery, eviction, deletion-aware sync, rendered commits and focus restoration.
+  All mutations are restored before the full gate.
+- Review fixes preserve Undo selection/target tags, bound repeated-duplicate ids and authenticated
+  proof work, retain resource-limited checkpoints, and index eviction metadata without reading other
+  rooms' ciphertext. The existing device-wipe flow's IndexedDB integration is ticketed for C1b and
+  blocks production enablement; browser site-data clearing removes the Lab recovery database.
+- The sole intentional parity change is `node/i18n/catalogs.json`: 17 new `collab.*` English messages add
+  a collaboration area hash and 17 English fallbacks in each non-English catalog; the pseudo-locale adds
+  the rendered area. Existing message-area hashes and every diagram, simulation, import/export and browser
+  golden remain unchanged. The refreshed agent viewer ships at plugin 1.1.34, one patch above master.
 
 ## Image export review fixes (#142, 2026-10-16)
 

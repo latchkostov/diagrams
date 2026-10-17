@@ -18,6 +18,20 @@ import type { CollabTransport } from "./transport/types";
 
 const room = roomFor(1);
 
+it("bounds authenticated proof floods before computing sync fingerprints", async () => {
+  const { a, net, settle } = await room3();
+  const evil = await rogue(net);
+  onTestFinished(() => evil.transport.close());
+  await settle();
+  const proof = vi.spyOn(a.session.doc, "syncProof");
+  onTestFinished(() => proof.mockRestore());
+  for (let i = 0; i < COLLAB_LIMITS.syncProofsPerWindow * 2; i++)
+    await evil.send("doc", frame(i % 2 ? DOC.syncProof : DOC.syncAck, new Uint8Array(32)));
+  await settle();
+  expect(a.session.stats.rejected["proof-throttled"] ?? 0).toBeGreaterThan(0);
+  expect(proof.mock.calls.length).toBeLessThanOrEqual(COLLAB_LIMITS.syncProofsPerWindow);
+});
+
 async function room3(opts: { seed?: number } = {}) {
   const net = new MemoryNetwork({ seed: opts.seed ?? 1 });
   const clock = new FakeClock();
