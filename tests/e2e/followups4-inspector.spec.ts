@@ -242,6 +242,101 @@ test("menu opened during a pending pane change resumes refit after dismissal", a
   await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-fits", "1");
 });
 
+/** These tests deliberately hold pane work; the usual emptyCanvasPoint waits for it. */
+async function pendingPlacementPoint(page: Page) {
+  return page.getByTestId("canvas-wrap").evaluate((pane) => {
+    const b = pane.getBoundingClientRect();
+    const flow = pane.querySelector('[data-testid="rf__wrapper"]');
+    // Leave room for the new item when its selection opens the Inspector.
+    const x = Math.min(b.width / 2, 400);
+    for (const y of [90, 160, 200, b.height * 0.4, b.height * 0.6]) {
+      const hit = document.elementFromPoint(b.x + x, b.y + y)?.closest("[data-testid]");
+      if (hit === flow || hit === pane) return { x, y };
+    }
+    throw new Error("Expected an uncovered placement point");
+  });
+}
+
+for (const dismissal of ["Escape", "pick", "Inspector reveal"]) {
+  test(`quick-add owns pane adjustments across ${dismissal}`, async ({ page }) => {
+    await open(page);
+    await pauseClock(page);
+    await countPaneFits(page);
+    if (dismissal !== "Inspector reveal") {
+      await page.getByTestId("inspector-toggle").click();
+      await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-pending", "true");
+    }
+    const pane = await boxOf(page.getByTestId("canvas-wrap"));
+    const point = await pendingPlacementPoint(page);
+    await page.getByTestId("canvas-wrap").dblclick({ position: point });
+    await expect(page.getByTestId("quick-add")).toBeVisible();
+    const before = await viewportTransform(page);
+    const anchor = await boxOf(page.getByTestId("node-kong"));
+    const beforeZoom = await zoom(page);
+    if (dismissal === "Escape") await page.keyboard.press("Escape");
+    else {
+      await page.getByTestId("quick-add-search").fill("kafka topic");
+      await page.getByTestId("context-menu-item-quick-add:kafka.topic").click();
+    }
+    await expect(page.getByTestId("quick-add")).toBeHidden();
+    await page.clock.runFor(1500);
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-fits", "0");
+    if (dismissal === "Escape") expect(await viewportTransform(page)).toBe(before);
+    else {
+      const node = await boxOf(page.getByTestId("node-topic-1"));
+      // The placement's own reveal may pan clear of chrome, but must keep the
+      // same flow position and zoom. Measure relative to an existing card.
+      const now = await boxOf(page.getByTestId("node-kong"));
+      expect(await zoom(page)).toBe(beforeZoom);
+      expect(Math.abs(node.x + node.width / 2 - now.x - (pane.x + point.x - anchor.x))).toBeLessThan(12);
+      expect(Math.abs(node.y + node.height / 2 - now.y - (pane.y + point.y - anchor.y))).toBeLessThan(12);
+      await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+    }
+  });
+}
+
+for (const pendingMenu of [false, true])
+  test(`text placement owns the Inspector reveal (${pendingMenu ? "menu-delayed" : "new selection"})`, async ({
+    page,
+  }) => {
+    await open(page);
+    await pauseClock(page);
+    await countPaneFits(page);
+    if (pendingMenu) {
+      await page.getByTestId("node-kong").click({ button: "right" });
+      await expect(page.getByTestId("context-menu")).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-pending", "true");
+    }
+    const pane = await boxOf(page.getByTestId("canvas-wrap"));
+    const point = await pendingPlacementPoint(page);
+    await page.getByTestId("canvas-wrap").focus();
+    await page.mouse.move(pane.x + point.x, pane.y + point.y);
+    await page.keyboard.press("t");
+    await page.clock.runFor(1500);
+    await expect(page.getByTestId("annotation-editor")).toBeFocused();
+    await page.keyboard.type("Order flow");
+    await page.keyboard.press("Escape");
+    await page.clock.runFor(1500);
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-fits", "0");
+    const text = await boxOf(page.getByTestId("annotation-text-1"));
+    expect(Math.abs(text.x - (pane.x + point.x))).toBeLessThan(40);
+    expect(Math.abs(text.y + text.height / 2 - (pane.y + point.y))).toBeLessThan(30);
+  });
+
+test("a new shape owns the Inspector reveal without a naming editor", async ({ page }) => {
+  await open(page);
+  await pauseClock(page);
+  await countPaneFits(page);
+  const beforeZoom = await zoom(page);
+  await page.getByTestId("palette-annotate-shape").click();
+  await page.clock.runFor(1500);
+  await expect(page.getByTestId("annotation-shape-1")).toBeVisible();
+  await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-fits", "0");
+  expect(await zoom(page)).toBe(beforeZoom);
+});
+
 test("a menu-delayed pane adjustment follows a later manual camera owner", async ({ page }) => {
   await open(page);
   await pauseClock(page);

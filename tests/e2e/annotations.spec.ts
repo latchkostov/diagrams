@@ -230,6 +230,7 @@ test.describe("annotations", () => {
     await typeAndCommit(page, "Keyboard note");
     const focused = () => annotation(page, "note-1").evaluate((el) => el.parentElement === document.activeElement);
     await expect.poll(focused).toBe(true);
+    await waitForSelectionSettled(page);
     const before = await box(annotation(page, "note-1"));
     await page.keyboard.press("ArrowRight");
     await expect.poll(async () => (await box(annotation(page, "note-1"))).x).toBeGreaterThan(before.x);
@@ -508,6 +509,7 @@ test.describe("annotations", () => {
     await annotation(page, "note-retry").click();
     await annotation(page, "note-replay").click({ modifiers: [MOD] });
     await expect(page.getByTestId("inspector-title")).toHaveText("2 selected");
+    await waitForSelectionSettled(page);
     await page.getByTestId("inspector-align-top").click();
     await expect
       .poll(async () => Math.round((await box(annotation(page, "note-retry"))).y))

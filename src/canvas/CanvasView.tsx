@@ -2134,10 +2134,27 @@ function CanvasInner({
   // two concurrent pans could capture an intermediate animation zoom and make it permanent.
   const dockKey = `${aiDock.open}:${aiDock.open ? Math.round(aiDock.width / 40) : 0}:${inspectorHidden}:${sheetResize}`;
   const appliedDock = useRef(dockKey);
+  const paneNodeCount = useRef(nodes.length);
+  const placementReveal = useRef(false);
+  const namingNewNode = selectedNodes.some((n) => editor.creating(n.id));
   useEffect(() => {
+    const placed = nodes.length > paneNodeCount.current;
+    paneNodeCount.current = nodes.length;
+    if (placed) placementReveal.current = true;
+    const revealingPlacement = placementReveal.current && !nothingSelected;
+    // A pointer placement can publish its selection before pointer-up opens the
+    // Inspector. Consume that first reveal too, then resume ordinary pane policy.
+    if (!inspectorHidden || !settledEmpty || nothingSelected) placementReveal.current = false;
+    // Placement owns its spot and any reveal it needs. A quick-add outline/menu
+    // also owns its camera space, including when dismissed without a pick.
+    // Keep that ownership while its editor opens the Inspector on a later frame.
+    // A pane adjustment from before either flow must never refit the new content.
+    if (placed || revealingPlacement || namingNewNode || menu?.testId === "quick-add") {
+      appliedDock.current = dockKey;
+      return;
+    }
     if (appliedDock.current === dockKey) return;
-    // A connected menu reserves camera space for its outline. Apply the pane policy
-    // only after it closes, just like the deferred Inspector selection reveal.
+    // Context menus defer (rather than discard) the pane policy until dismissal.
     if (menu) return;
     // Live view refits around its own chrome (the trace card, a side panel): see LiveView.
     if (presenting || live) {
@@ -2172,7 +2189,7 @@ function CanvasInner({
       host?.removeAttribute("data-pane-pending");
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the dock changes the pane
-  }, [dockKey, menu]);
+  }, [dockKey, menu, nodes.length, namingNewNode, settledEmpty, nothingSelected]);
   // Stable, so the memoized stencil rail skips the canvas's frequent renders (drag, select, zoom).
   const togglePalette = useCallback(() => {
     setPaletteCollapsed(!paletteHidden);
