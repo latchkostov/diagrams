@@ -1,122 +1,15 @@
 # Backlog
 
-Review findings and ideas not yet scheduled. Remove items when they land.
+Review findings and ideas not yet scheduled. Add one `YYYY-MM-DD-short-slug.md` file in
+[backlog/](backlog/); edit or remove that file when the item lands. `pnpm notes backlog` prints
+the open entries newest first. Existing entries moved on 2026-10-17:
 
-## Collaboration C1b prerequisite: device wipe (C1a review, 2026-10-16)
-
-- **P2: include room recovery in Clear everything on this device.** The Lab-only IndexedDB checkpoint
-  store is not yet part of the synchronous localStorage/sessionStorage wipe. Before production rooms
-  are enabled, extend the shared storage lifecycle to register asynchronous stores, stop old-generation
-  writers before deleting their records, and wait for deletion before acknowledging the wipe. Cover
-  concurrent tabs, pending encryption/IDB writes, blocked deletion and a room reopened with its old link.
-  This needs a coordinated lifecycle change rather than a fire-and-forget database delete. Until then,
-  clearing the browser's site data removes Lab checkpoints; the Lab explains its normal bounded retention.
-
-## Baseline reliability (toolchain trial, 2026-10-14)
-
-- **P2: quick-add connection naming flake.** `flow-building.spec.ts`'s typing/Tab test sometimes reads
-  the new edge without its `SET NX` label. It retried in baseline PR #113 (run 38673071376) and again
-  in the modernized run 38678179132. Reproduce and distinguish commit/readiness timing from lost input;
-  keep the label assertion and retries visible.
-- **P2: HTML viewer initial fit varies.** On unchanged master, the dark HTML parity fixture's viewport
-  scale varied from 0.62963 to 0.630798, moving its drawn-geometry and screenshot goldens. Investigate
-  font/measurement readiness and fit ordering; do not re-record the goldens to accept a race.
-- **P2: import-layout complexity sampling.** `src/interop/infra/layout.test.ts`'s custom fastest-run
-  sampler failed at ratio 25.49 against 24 on unchanged master. Convert to the shared interleaved
-  `growth()` helper and verify a deliberate quadratic regression, preserving the existing limit.
-
-## draw.io planning preservation (showcase review, 2026-10-15)
-
-- The adapter emits v1 and drops v2 planning revision and shared quota definitions. Node/workload
-  fields round-trip, but planning playback does not. Preserve the planning model in draw.io metadata
-  and report any losses; add a v2 round-trip regression and deliberately update the existing P3
-  parity corpus when implementing it. The showcase batch records this existing limitation explicitly.
-
-## Managed admission performance (P3 review, 2026-10-14)
-
-- Compile endpoint lookups, quota authorities, signatures, keys and charge order once per configuration.
-  The current bounded helper rebuilds these on each sampled attempt; the reviewer measured roughly
-  430–440 ms for 10,000 attempts with 32 shared quotas. Keep request-time costs and simulation-clock
-  bucket/reservation updates dynamic, preserve spent credit across edits, and guard complexity with
-  operation counts or same-run growth. This is a P2 optimization; the correctness fixes remain in P3.
-
-## On-device model
-
-- Run the on-device evals (`?view=lab&preset=ondevice-evals` on `pnpm dev`, see `docs/research/on-device-model.md`) in a
-  Chrome with the model and record the rate. The box is on by default since round 3 (the 80% bar reached by
-  projection only): if a measured run falls short, decide whether to turn `ON_DEVICE_DEFAULT` back off.
-- Live view: scenario requests as simulations (`set_simulation`) need their own prompt and eval cases.
-- Boundaries and notes aren't in the on-device op format yet.
-
-## Your diagrams
-
-- The library lives in `localStorage` (about 5M characters per site). If people keep many large
-  diagrams, move documents to IndexedDB and keep only the index in `localStorage`.
-- Device file handles (File > Save to a local file) are remembered for the session only; persisting
-  them needs IndexedDB too.
-
-## Engine gaps found while modelling real systems
-
-- Layout lint for authors (overlaps, crossings, truncated labels) is in progress via the overlap audit.
-
-## Live view and trace (UX gate 5)
-
-- A narration close-up (e.g. Poison invoices at 1440) crops nodes at the left under the rail and the
-  zoom controls; the note fit only guarantees the focused nodes.
-- A node's badge can sit on an edge label (Azure: "29 queued" over "After 5 failed deliveries").
-- At 1440 a 13-participant sequence diagram scrolls sideways (fitting would take 63%, too small to read).
-  A "whole journey" zoom could help presenters, if anyone asks.
-- In presentation at 1920, wide diagrams show node titles at about 9 px; a camera that follows the traced
-  path would read better at a distance.
-- Trace card hop rows truncate "as PaymentCompleted" at 352 px.
-
-## Performance (measured 2026-10-11, production build, 4x CPU throttle)
-
-- **Live input latency: landed (particles, marching ants and the Live dot draw in a worker).** Menu and
-  palette feedback while live took 24-40 ms (edit mode: under 16) because something repainted on the
-  main thread or the compositor every frame: the particle canvas, the `lv-march` dash animation and the
-  Live dot's `lv-breathe` box-shadow each held input a frame deeper on its own (any one of the three
-  kept it at 24-40 ms). A compositor version of the dot (an opacity cross-fade) still cost 8-16 ms. Now
-  all three draw on `OffscreenCanvas`es in a module worker (`src/live/liveRenderer.ts`,
-  `particleWorker.ts`); the main thread steps the engine and posts one message per frame, and the march
-  stops while the simulation does. Measured with `node scripts/perf/live-latency.mjs --headed`
-  (production build, Kafka example at 1x, Chromium, 100 Hz display; Event Timing p50 / p90, which
-  rounds to 8 ms and doesn't report under 16 ms; main-thread task time over 5 s of traffic):
-
-  | Live, playing                   | Menu hover | Menu arrows | Palette hover | Palette arrows | Main thread           | Particle frames |
-  | ------------------------------- | ---------- | ----------- | ------------- | -------------- | --------------------- | --------------- |
-  | Before, 1x                      | 40 / 40    | 32 / 40     | 40 / 40       | 32 / 40        | 10.5% (1.05 ms/frame) | 100 fps         |
-  | After, 1x                       | 16 / 16    | 16 / 16     | 16 / 16       | 16 / 16        | 4.9% (0.49 ms/frame)  | 98.5 fps        |
-  | Before, 4x (median of 3)        | 32 / 32    | 24 / 32     | 32 / 40       | 32 / 40        | 74.5% (7.5 ms/frame)  | 100 fps         |
-  | After, 4x (median of 3)         | 16 / 24    | 16 / 16     | 16 / 32       | 24 / 24        | 21.7% (2.2 ms/frame)  | 98.7 fps        |
-  | Fallback (`?renderer=main`), 1x | 40 / 40    | 32 / 40     | 40 / 40       | 32 / 40        | 10.2%                 | 98.8 fps        |
-  | Fallback, 4x (median of 3)      | 32 / 32    | 24 / 32     | 24 / 32       | 32 / 40        | 58.6%                 | 98.5 fps        |
-  | Edit mode, 1x (calibration)     | <16 / 24   | <16 / <16   | 16 / 16       | <16 / 24       | 1.2%                  | -               |
-
-  Paused, before: 9.9% main thread and 32-40 ms (the march and the dot kept animating); after: 2.1%
-  and 16 ms. DevTools CPU throttling slows only the main thread, so at 4x the worker still drew at the
-  display's rate. Follow-ups:
-  - Any other endless animation shown while live costs the same frame: `tr-pulse` (the trace card's
-    "In flight" dot), `lv-breathe-accent` (Continue while a note waits), `lv-rec-pulse` (recording) and
-    the heat-map pulses below. Draw them on a worker canvas too, or make them still.
-  - The fallback (no OffscreenCanvas or module workers, or the worker failed to start) keeps the old
-    latency: it still draws on the main thread and the dot breathes in CSS.
-  - The worker's frame and the main thread's canvas placement commit separately, so a fast pan or zoom
-    could show particles a frame off their edges. Not seen in screenshots taken mid-pan.
-
-- **Dragging a node in a 150-node diagram** spends about 6 ms per pointer move (1x) re-routing edges
-  (`router.ts` → `routeOrthogonal`/`search`), plus React Flow's per-node wrappers: 80-104 ms per
-  event at 4x. Route only edges whose corridor the moved node crosses, or route on `requestIdleCallback`
-  and draw straight segments until then.
-- **CanvasView re-renders on every drag frame, selection and zoom**, taking the inspector and React
-  Flow's controls with it (34 renders for a 30-move drag). The stencil rail is memoized now; a memoized
-  controls cluster and inspector (stable `nodeLabel`, `counts`, `onToggle`) would cut most of the rest.
-- **Live UI clock**: every 125 ms the live view re-renders ~70 components (each NodeBadge, its icons and
-  chips, the control bar). Cheap in production; in dev mode it saturates a throttled CPU (98% busy),
-  which is what made menus feel slow in `pnpm dev`. Memoize `LiveIcon` / `IdleChip` and skip badges
-  whose numbers didn't change.
-- **Heat-map pulses** (`lv-heat-pulse` on rising nodes, `cap-pulse` on over-capacity rings) animate large
-  blurred box-shadows on the main thread. Not active in the measured Black Friday run. Moving them to the
-  compositor won't help input latency (see above); draw them in the particle worker, or hold them still.
-- **Startup**: about 300 ms of long frames at 4x on a cold canvas load (React Flow's first measure and
-  routing). Worth a look once the canvas chunk is profiled with source maps.
+- [Collaboration C1b prerequisite: device wipe (C1a review, 2026-10-16)](backlog/2026-10-16-collaboration-c1b-prerequisite-device-wipe-c1a-review-2026-10-16.md)
+- [Baseline reliability (toolchain trial, 2026-10-14)](backlog/2026-10-14-baseline-reliability-toolchain-trial-2026-10-14.md)
+- [draw.io planning preservation (showcase review, 2026-10-15)](backlog/2026-10-15-draw-io-planning-preservation-showcase-review-2026-10-15.md)
+- [Managed admission performance (P3 review, 2026-10-14)](backlog/2026-10-14-managed-admission-performance-p3-review-2026-10-14.md)
+- [On-device model](backlog/2026-10-17-on-device-model.md)
+- [Your diagrams](backlog/2026-10-17-your-diagrams.md)
+- [Engine gaps found while modelling real systems](backlog/2026-10-17-engine-gaps-found-while-modelling-real-systems.md)
+- [Live view and trace (UX gate 5)](backlog/2026-10-17-live-view-and-trace-ux-gate-5.md)
+- [Performance (measured 2026-10-11, production build, 4x CPU throttle)](backlog/2026-10-11-performance-measured-2026-10-11-production-build-4x-cpu-throttle.md)

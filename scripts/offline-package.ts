@@ -3,6 +3,7 @@ import { cpSync, lstatSync, mkdirSync, readFileSync, readdirSync, writeFileSync 
 import { join, win32 } from "node:path";
 import { hostingTemplates, type HostingOptions } from "./self-host-templates";
 import { prepareSite } from "./prepare-site";
+import { combinedNotes } from "./fragments";
 
 export function offlineBuildEnv(
   shell: Record<string, string | undefined>,
@@ -49,8 +50,9 @@ export function stageOffline(root: string, output: string, version: string, opti
     mkdirSync(join(target, ".."), { recursive: true });
     writeFileSync(target, contents);
   }
-  for (const file of ["SELF-HOSTING.md", "EMBEDDING.md", "RELEASE-NOTES.md", "INTEROP.md"])
+  for (const file of ["SELF-HOSTING.md", "EMBEDDING.md", "INTEROP.md"])
     cpSync(join(root, "docs", file), join(directory, file));
+  writeFileSync(join(directory, "RELEASE-NOTES.md"), combinedNotes(root));
   cpSync(join(root, "LICENSE"), join(directory, "LICENSE"));
   writeFileSync(join(directory, "VERSION"), `${version}\n`);
   writeFileSync(

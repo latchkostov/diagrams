@@ -42,7 +42,8 @@
     "self-host:image": "node scripts/build-host-image.mjs",
     "self-host:smoke": "node scripts/self-host-smoke.mjs",
     "package:offline": "node scripts/package-offline.mjs",
-    "review": "bash scripts/review/run.sh"
+    "review": "bash scripts/review/run.sh",
+    "notes": "node scripts/notes.mjs"
   },
   "dependencies": {
     "@fontsource-variable/geist-mono": "^5.3.0",

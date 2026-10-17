@@ -39,3 +39,5 @@ done
 wait
 node scripts/review/merge.mjs "$out"
 echo "Report: $out/REPORT.md"
+
+echo "After triage: add dated fragments in docs/backlog/ and docs/design-review/; see docs/PARALLEL-WORK.md."

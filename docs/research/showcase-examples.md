@@ -41,7 +41,7 @@ token/RPM contracts and the payment's local 5/s cap are fictional assumptions, d
 payment account preset. None of these examples calls a real API.
 
 Verification and the complete added-golden manifest are recorded below; screenshots and the UX review
-are in [Round 41](../DESIGN-REVIEW.md#round-41--public-feature-showcases-2026-10-14).
+are in [Round 41](../DESIGN-REVIEW-HISTORY.md#round-41--public-feature-showcases-2026-10-14).
 
 ## PR #120 review triage — 2026-10-15
 

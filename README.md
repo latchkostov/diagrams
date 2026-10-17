@@ -60,11 +60,11 @@ stencil list, validator, layout, parts of its reference and its HTML export's in
 `pnpm schemas`, and a unit test fails when they're stale.
 
 **Releasing the skill.** Its HTML export's viewer (`scripts/lib/viewer-template.html` and `icons.json`) is refreshed only
-on release: run `pnpm skill:release` (`--minor` for a minor version) when you want Claude Code users to get the latest
-viewer. It rebuilds them and bumps the plugin's version in `.claude-plugin/marketplace.json`; commit what it changes.
-Bump the version the same way (`pnpm skill:release --force`) after other skill changes. The site's `/skill/` folder and
-zip always carry the current viewer, and `pnpm skill:check` (nightly) reports a stale committed copy. Once per clone,
-`git config merge.ours.driver true` lets merges keep your copy of the viewer files.
+with `pnpm regen` (or `pnpm skill:release`) when you want Claude Code users to get the latest
+viewer. It rebuilds them; commit what it changes.
+Plugin updates track git commits; PRs never bump a version. The site's `/skill/` folder and
+zip always carry the current viewer, and `pnpm skill:check` (nightly) reports a stale committed copy.
+`pnpm sync` resolves generated-file conflicts without local merge-driver configuration.
 
 ## Run your own copy
 
@@ -99,7 +99,7 @@ audits, simulation scenarios and capacity states. Use it to preview changes quic
 | `docs/SELF-HOSTING.md`  | Running your own copy: the switches, hosting behind SSO, headers and updates     |
 | `docs/ICONS.md`         | Icon sources and licences                                                        |
 | `docs/QUALITY.md`       | The quality loop: checks, Codex reviews, and UX gates                            |
-| `docs/DESIGN-REVIEW.md` | UX review rounds and scorecards                                                  |
+| `docs/design-review/`   | UX review fragments (history linked from `docs/DESIGN-REVIEW.md`)                |
 | `docs/BACKLOG.md`       | Known follow-ups                                                                 |
 
 ## License
@@ -110,3 +110,9 @@ MIT. See `LICENSE`. Icons keep their own licences (below).
 
 Product logos and service icons are trademarks of their owners and are used to identify those products in
 architecture diagrams. Sources and licences are listed in `docs/ICONS.md`.
+
+## Parallel contributions
+
+Add one dated Markdown fragment per PR under `docs/release-notes/` and `docs/design-review/`, rather than
+editing a shared log. Use `pnpm notes` to read release notes, `pnpm regen` to refresh generated artifacts,
+and `pnpm sync` to rebase with mechanical conflict resolution. See [the workflow](docs/PARALLEL-WORK.md).

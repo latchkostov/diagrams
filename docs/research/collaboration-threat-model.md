@@ -231,7 +231,7 @@ count bucket before hashing, alongside the existing byte limits. A new peer alwa
 **Known Lab limitation, blocking production enablement:** the existing “Clear everything on this device”
 flow clears localStorage/sessionStorage but does not yet coordinate IndexedDB deletion and pending room
 writers. Browser site-data clearing removes the Lab database. The asynchronous, generation-safe integration
-is explicitly tracked in [the C1b backlog](../BACKLOG.md#collaboration-c1b-prerequisite-device-wipe-c1a-review-2026-10-16).
+is explicitly tracked in [the C1b backlog](../backlog/2026-10-16-collaboration-c1b-prerequisite-device-wipe-c1a-review-2026-10-16.md).
 
 Evidence: `editorRoom.test.ts`, `recovery.test.ts`, `lab/bridge.test.ts`, `collab-c1a.spec.ts`; existing
 production bundle/CSP guards remain required. This slice remains Lab-only and adds no Private-diagram permission.

@@ -1240,7 +1240,7 @@ All four warnings are intentional, actionable bottlenecks: **4/4 would fix**, ze
 The two suggestions describe optional dead-letter routes and are retained, not hidden. The saved evidence
 adds no loss finding or planned-loss count. Free play exposes each default-pressure signal within eight
 simulated seconds; the measured example's overload is in its explicitly labelled 3× saved simulation.
-See [the feature inventory and verification](showcase-examples.md) and [Round 41](../DESIGN-REVIEW.md#round-41--public-feature-showcases-2026-10-14).
+See [the feature inventory and verification](showcase-examples.md) and [Round 41](../DESIGN-REVIEW-HISTORY.md#round-41--public-feature-showcases-2026-10-14).
 
 ## Autoscaling A1: precision gate (2026-10-14)
 

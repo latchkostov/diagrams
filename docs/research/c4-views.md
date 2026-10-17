@@ -788,4 +788,4 @@ not tests added or executed by this docs-only research.
   not grounds to fabricate execution semantics in the research.
 
 This document introduces no user-visible application change and adds no release-note promise. Implementation
-PRs must add [RELEASE-NOTES.md](../RELEASE-NOTES.md) entries for what they actually deliver.
+PRs must add [release-note fragments](../release-notes/) for what they actually deliver.

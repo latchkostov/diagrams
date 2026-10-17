@@ -561,7 +561,7 @@ and **[Vocabulary]** mark anything that alters what people already know.
 
 ## Build batches
 
-Each batch is one PR, ends with a UX review gate (`docs/DESIGN-REVIEW.md`), and updates the shortcuts sheet,
+Each batch is one PR, ends with a UX review gate (`docs/design-review/`), and updates the shortcuts sheet,
 `docs/UX-PRINCIPLES.md` (vocabulary and the Mouse rows) and the e2e specs (`data-testid` only).
 
 ### Batch 1: the basics feel right (highest impact, mostly S)

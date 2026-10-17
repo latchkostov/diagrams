@@ -36,8 +36,18 @@ check the chrome budget and prefer context menus and the inspector. Every featur
   `vercel.json` and is served by `vite preview`): no inline scripts or `eval`, and a new outside endpoint goes in
   its connect-src. `tests/e2e/csp.spec.ts` fails on any violation.
 - New previews and test fixtures go in the Lab (`src/lab/presets.tsx`, `?view=lab`).
-- The agent skill (`skills/livediagrams/`) is partly generated: run `pnpm schemas` after changing the catalog,
-  the file format or the layout (`scripts/skill-gen.ts`; `src/ai/skill/skill.test.ts` fails when it is stale).
-- The skill's HTML-export viewer (`skills/livediagrams/scripts/lib/viewer-template.html`, `icons.json`) is
-  refreshed only by `pnpm skill:release` (it also bumps the plugin version): run it when Claude Code users should
-  get the latest viewer. The site's `/skill/` and zip are always built fresh; `pnpm skill:check` reports staleness.
+- The agent skill (`skills/livediagrams/`) is partly generated: run `pnpm regen` after changing its sources.
+  The site's `/skill/` and zip are built fresh; `pnpm skill:check` reports viewer staleness.
+
+## Parallel changes
+
+- Add release notes to `docs/release-notes/YYYY-MM-DD-short-slug.md` and UX reviews to
+  `docs/design-review/YYYY-MM-DD-short-slug.md`, using `## Heading` sections. Never prepend to the
+  shared indexes or frozen histories. `pnpm notes [release|design|backlog]` prints a combined view.
+- Put independent follow-ups in `docs/backlog/YYYY-MM-DD-short-slug.md`; edit/remove that entry when resolved.
+  Keep UX principles as shared behavior contracts, not a log of each PR.
+- Run `pnpm regen` for all generated artifacts (no parity updates or translation stamping). Plugin updates
+  track commits: do not add/bump a version. `pnpm skill:release` refreshes assets without editing a manifest.
+- Use `pnpm sync` to fetch/rebase onto origin/master and regenerate safe conflicts. For real conflicts, resolve
+  and stage them, then `pnpm sync --continue`; abort with `git rebase --abort`. It never resolves parity goldens.
+  Review intended output changes with `pnpm parity:update`. Details: [parallel work](docs/PARALLEL-WORK.md).

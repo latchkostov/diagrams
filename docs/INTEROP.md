@@ -606,13 +606,12 @@ those): it comes from `LIVEDIAGRAMS_HTML_PASSWORD`, or a terminal prompt that do
 - `inject.mjs`: this module as plain JavaScript. Small and stable, so `pnpm schemas` keeps it current and the
   staleness test (`src/ai/skill/skill.test.ts`) compares it byte for byte.
 - `viewer-template.html` (`buildViewerTemplate`, 1.2 MB minified) and `icons.json` (the SVG text of every icon the
-  catalog uses, 387 kB) are **refreshed only on release**: `pnpm skill:release` (`scripts/skill-release.mjs`) rebuilds
-  them, regenerates `inject.mjs` and bumps the plugin's version in `.claude-plugin/marketplace.json` (patch, or
-  `--minor`): it stages every file, swaps them in by rename with the version bump last, and rolls back if a step
-  fails, so a retry releases again. Run it when you want Claude Code users to get the latest viewer: the committed copy is what the
-  marketplace installs from git. Neither `pnpm schemas` nor a build rewrites them, so pull requests that touch the
-  canvas, live view or the export never conflict on an unmergeable minified file (`.gitattributes` also marks them
-  `-diff`, generated, and `merge=ours`).
+  catalog uses, 387 kB) are **refreshed only on release**: `pnpm regen` (`scripts/skill-release.mjs`) rebuilds
+  them and regenerates `inject.mjs`. It stages each asset, swaps them by rename and rolls back if a step
+  fails, so a retry refreshes the same files. The committed copy is what the marketplace installs from git.
+  Plugin updates track commits; the manifest has no version to bump. Neither `pnpm schemas` nor a build
+  rewrites the viewer assets. `pnpm sync` regenerates conflicts without local merge drivers; `.gitattributes`
+  marks them generated. See [parallel work](PARALLEL-WORK.md).
 - **The site is always current.** The build serves `/skill/` and `/livediagrams-skill.zip` (`scripts/skill-assets.ts`)
   with the template the same build emits for the app and fresh icons, in place of the committed copy; the dev server
   does the same.
@@ -624,7 +623,7 @@ the zip deflates it to the same size either way. Tests: `src/ai/skill/skill.test
 self-consistent: its CSP hashes match its inline script and style, it has the payload placeholder once and
 references nothing outside itself, and `icons.json` covers every icon it names; the script's file equals
 `exportHtml` from `inject.ts` on the committed template for several option sets; a private diagram exports but gets
-no link; bad input writes nothing; the version bump; the site's fresh copy) and `tests/e2e/skill-html.spec.ts` (the
+no link; bad input writes nothing; atomic asset refresh; the site's fresh copy) and `tests/e2e/skill-html.spec.ts` (the
 same diagram and options as the app's download; opens from `file://`, renders and plays with zero requests; a
 private diagram; the build's `/skill/` template and zip are this build's viewer).
 
